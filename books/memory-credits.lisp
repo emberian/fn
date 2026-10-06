@@ -501,3 +501,206 @@
                                   (fn-mcr-total fn-mcr-resize fn-mcr-move fn-mcr-opsp
                                    fn-mcr-resize-and-move-keep-the-rest))
            :use (fn-mcr-resize-and-move-keep-the-rest))))
+
+; -----------------------------------------------------------------------------
+; BORROW and RETURN (lane reclaim-funding, 2026-10-04;
+; planning/design/reclaim-funding-2026-10-04.md): the owner's own work is
+; funded from the completion reserve, never from the budget's free room, so
+; it cannot take what the users' operations are admitted against and they
+; cannot take what it was promised.
+;
+;   fn-mcr-borrow id X    the owner operation ID (the live reclaim pass)
+;                         takes X of the completion reserve as its credit:
+;                         the reserve falls by X and ID holds X, the funded
+;                         total unchanged.  Refused by name, the ledger
+;                         unchanged, when ID already has an entry
+;                         (:operation-already-admitted) or X does not fit in
+;                         the reserve beside what is drawn of it
+;                         (:completion-reserve-exhausted).
+;   fn-mcr-return id      ID's credit goes back to the completion reserve
+;                         and ID's entry is dropped: never refused (an ID
+;                         holding nothing returns nothing).
+(defun fn-mcr-borrow (l id x)
+  (declare (xargs :guard t))
+  (let ((x (nfix x)))
+    (cond ((hons-assoc-equal id (fn-mcr-ops l)) (list :refused :operation-already-admitted))
+          ((< (fn-mcr-completion l) (+ (fn-mcr-drawn l) x))
+           (list :refused :completion-reserve-exhausted))
+          (t (list :ok (fn-mcr-make (fn-mcr-budget l) (fn-mcr-base l) (fn-mcr-cache l)
+                                    (- (fn-mcr-completion l) x) (fn-mcr-runtime l)
+                                    (fn-mcr-drawn l)
+                                    (fn-mcr-put id (cons 0 x) (fn-mcr-ops l))))))))
+
+(defun fn-mcr-return (l id)
+  (declare (xargs :guard t))
+  (list :ok (fn-mcr-make (fn-mcr-budget l) (fn-mcr-base l) (fn-mcr-cache l)
+                         (+ (fn-mcr-completion l) (fn-mcr-credit-of id (fn-mcr-ops l)))
+                         (fn-mcr-runtime l) (fn-mcr-drawn l)
+                         (fn-mcr-drop id (fn-mcr-ops l)))))
+
+(local
+ (defthm fn-mcr-accessors-of-make
+   (and (equal (fn-mcr-budget (fn-mcr-make b ba c co r d o)) (nfix b))
+        (equal (fn-mcr-base (fn-mcr-make b ba c co r d o)) (nfix ba))
+        (equal (fn-mcr-cache (fn-mcr-make b ba c co r d o)) (nfix c))
+        (equal (fn-mcr-completion (fn-mcr-make b ba c co r d o)) (nfix co))
+        (equal (fn-mcr-runtime (fn-mcr-make b ba c co r d o)) (nfix r))
+        (equal (fn-mcr-drawn (fn-mcr-make b ba c co r d o)) (nfix d))
+        (equal (fn-mcr-ops (fn-mcr-make b ba c co r d o)) o))
+   :hints (("Goal" :in-theory (enable fn-mcr-budget fn-mcr-base fn-mcr-cache
+                                      fn-mcr-completion fn-mcr-runtime fn-mcr-drawn
+                                      fn-mcr-ops)))))
+
+(local
+ (defthm fn-mcr-accessors-natp
+   (and (natp (fn-mcr-budget l)) (natp (fn-mcr-base l)) (natp (fn-mcr-cache l))
+        (natp (fn-mcr-completion l)) (natp (fn-mcr-runtime l)) (natp (fn-mcr-drawn l)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-mcr-budget fn-mcr-base fn-mcr-cache
+                                      fn-mcr-completion fn-mcr-runtime fn-mcr-drawn)))))
+
+(local
+ (defthm fn-mcr-nfix-of-accessors
+   (and (equal (nfix (fn-mcr-budget l)) (fn-mcr-budget l))
+        (equal (nfix (fn-mcr-base l)) (fn-mcr-base l))
+        (equal (nfix (fn-mcr-cache l)) (fn-mcr-cache l))
+        (equal (nfix (fn-mcr-completion l)) (fn-mcr-completion l))
+        (equal (nfix (fn-mcr-runtime l)) (fn-mcr-runtime l))
+        (equal (nfix (fn-mcr-drawn l)) (fn-mcr-drawn l)))
+   :hints (("Goal" :use fn-mcr-accessors-natp))))
+
+(local (in-theory (disable fn-mcr-make)))
+
+(defthm fn-mcr-credit-of-of-drop-same
+  (equal (fn-mcr-credit-of id (fn-mcr-drop id ops)) 0)
+  :hints (("Goal" :in-theory (enable fn-mcr-credit-of))))
+
+(defthm fn-mcr-credit-of-of-drop-other
+  (implies (not (equal a id))
+           (equal (fn-mcr-credit-of a (fn-mcr-drop id ops)) (fn-mcr-credit-of a ops)))
+  :hints (("Goal" :in-theory (enable fn-mcr-credit-of))))
+
+(defthm fn-mcr-credit-of-of-put
+  (equal (fn-mcr-credit-of a (fn-mcr-put id op ops))
+         (if (equal a id)
+             (+ (fn-mcr-op-owned op) (fn-mcr-op-reserved op))
+           (fn-mcr-credit-of a ops)))
+  :hints (("Goal" :in-theory (enable fn-mcr-credit-of fn-mcr-put))))
+
+(defthm fn-mcr-hons-assoc-of-set-other
+  (implies (not (equal a b))
+           (equal (hons-assoc-equal a (fn-mcr-set b n ops)) (hons-assoc-equal a ops)))
+  :hints (("Goal" :in-theory (enable fn-mcr-set fn-mcr-put))))
+
+(local
+ (defthm fn-mcr-drop-of-drop
+   (equal (fn-mcr-drop id (fn-mcr-drop id ops)) (fn-mcr-drop id ops))
+   :hints (("Goal" :in-theory (enable fn-mcr-drop)))))
+
+(local
+ (defthm fn-mcr-drop-of-put-same
+   (equal (fn-mcr-drop id (fn-mcr-put id op ops)) (fn-mcr-drop id ops))
+   :hints (("Goal" :in-theory (enable fn-mcr-put fn-mcr-drop)))))
+
+; Admitted exactly when ID has no entry and X fits in the reserve beside
+; what is drawn of it.
+(defthm fn-mcr-borrow-refuses-exactly-past-the-reserve
+  (equal (equal (car (fn-mcr-borrow l id x)) :ok)
+         (and (not (hons-assoc-equal id (fn-mcr-ops l)))
+              (<= (+ (fn-mcr-drawn l) (nfix x)) (fn-mcr-completion l)))))
+
+; A refusal is by name and leaves the ledger as it was.
+(defthm fn-mcr-borrow-refused-by-name
+  (implies (not (equal (car (fn-mcr-borrow l id x)) :ok))
+           (member-equal (fn-mcr-borrow l id x)
+                         '((:refused :operation-already-admitted)
+                           (:refused :completion-reserve-exhausted)))))
+
+; What an admitted borrow sets: ID holds X, every other operation what it
+; held, the reserve is X less, and the budget, the base, the cache, the
+; runtime reserve and what is drawn are as they were.
+(defthm fn-mcr-borrow-sets-the-credit
+  (implies (equal (car (fn-mcr-borrow l id x)) :ok)
+           (let ((l1 (cadr (fn-mcr-borrow l id x))))
+             (and (equal (fn-mcr-credit-of id (fn-mcr-ops l1)) (nfix x))
+                  (implies (not (equal a id))
+                           (equal (fn-mcr-credit-of a (fn-mcr-ops l1))
+                                  (fn-mcr-credit-of a (fn-mcr-ops l))))
+                  (equal (fn-mcr-completion l1) (- (fn-mcr-completion l) (nfix x)))
+                  (equal (fn-mcr-budget l1) (fn-mcr-budget l))
+                  (equal (fn-mcr-base l1) (fn-mcr-base l))
+                  (equal (fn-mcr-cache l1) (fn-mcr-cache l))
+                  (equal (fn-mcr-runtime l1) (fn-mcr-runtime l))
+                  (equal (fn-mcr-drawn l1) (fn-mcr-drawn l))))))
+
+; The borrow moves credit from the reserve to the operation: the funded
+; total, so the budget's free room, is unchanged.
+(defthm fn-mcr-borrow-keeps-the-total
+  (implies (and (fn-mcr-opsp (fn-mcr-ops l))
+                (equal (car (fn-mcr-borrow l id x)) :ok))
+           (equal (fn-mcr-total (cadr (fn-mcr-borrow l id x))) (fn-mcr-total l)))
+  :hints (("Goal" :use ((:instance fn-mcr-drop-when-absent (ops (fn-mcr-ops l)))))))
+
+; The return moves it back: the funded total is unchanged, ID holds
+; nothing, every other operation what it held.
+(defthm fn-mcr-return-gives-back-the-credit
+  (let ((l1 (cadr (fn-mcr-return l id))))
+    (and (equal (car (fn-mcr-return l id)) :ok)
+         (implies (fn-mcr-opsp (fn-mcr-ops l))
+                  (equal (fn-mcr-total l1) (fn-mcr-total l)))
+         (equal (fn-mcr-credit-of id (fn-mcr-ops l1)) 0)
+         (not (hons-assoc-equal id (fn-mcr-ops l1)))
+         (implies (not (equal a id))
+                  (equal (fn-mcr-credit-of a (fn-mcr-ops l1))
+                         (fn-mcr-credit-of a (fn-mcr-ops l))))
+         (equal (fn-mcr-completion l1)
+                (+ (fn-mcr-completion l) (fn-mcr-credit-of id (fn-mcr-ops l))))
+         (equal (fn-mcr-budget l1) (fn-mcr-budget l))
+         (equal (fn-mcr-drawn l1) (fn-mcr-drawn l))))
+  :hints (("Goal" :in-theory (disable fn-mcr-opsp)
+           :use ((:instance fn-mcr-ops-credit-splits-at (ops (fn-mcr-ops l)))))))
+
+(local
+ (defthm fn-mcr-borrow-and-return-ops
+   (and (implies (equal (car (fn-mcr-borrow l id x)) :ok)
+                 (equal (fn-mcr-ops (cadr (fn-mcr-borrow l id x)))
+                        (fn-mcr-put id (cons 0 (nfix x)) (fn-mcr-ops l))))
+        (equal (fn-mcr-ops (cadr (fn-mcr-return l id))) (fn-mcr-drop id (fn-mcr-ops l))))
+   :hints (("Goal" :in-theory (enable fn-mcr-borrow fn-mcr-return)))))
+
+; KEYSTONE (K5).  From a funded ledger an admitted borrow and every return
+; leave it funded.
+(defthm fn-mcr-borrow-and-return-keep-funded
+  (implies (fn-mcr-fundedp l)
+           (and (implies (equal (car (fn-mcr-borrow l id x)) :ok)
+                         (fn-mcr-fundedp (cadr (fn-mcr-borrow l id x))))
+                (fn-mcr-fundedp (cadr (fn-mcr-return l id)))))
+  :hints (("Goal" :in-theory (e/d (fn-mcr-fundedp)
+                                  (fn-mcr-total fn-mcr-borrow fn-mcr-return fn-mcr-opsp
+                                   fn-mcr-borrow-refuses-exactly-past-the-reserve
+                                   fn-mcr-borrow-sets-the-credit
+                                   fn-mcr-return-gives-back-the-credit
+                                   fn-mcr-borrow-keeps-the-total))
+           :use (fn-mcr-borrow-keeps-the-total
+                 fn-mcr-borrow-refuses-exactly-past-the-reserve
+                 (:instance fn-mcr-borrow-sets-the-credit (a id))
+                 (:instance fn-mcr-return-gives-back-the-credit (a id))
+                 (:instance fn-mcr-opsp-of-put (op (cons 0 (nfix x))) (ops (fn-mcr-ops l)))
+                 (:instance fn-mcr-opsp-of-drop (ops (fn-mcr-ops l)))))))
+
+; The round trip: a return after an admitted borrow restores the reserve and
+; the operations exactly.
+(defthm fn-mcr-return-of-borrow
+  (implies (and (fn-mcr-opsp (fn-mcr-ops l))
+                (equal (car (fn-mcr-borrow l id x)) :ok))
+           (let ((l2 (cadr (fn-mcr-return (cadr (fn-mcr-borrow l id x)) id))))
+             (and (equal (fn-mcr-completion l2) (fn-mcr-completion l))
+                  (equal (fn-mcr-ops l2) (fn-mcr-ops l))
+                  (equal (fn-mcr-budget l2) (fn-mcr-budget l))
+                  (equal (fn-mcr-base l2) (fn-mcr-base l))
+                  (equal (fn-mcr-cache l2) (fn-mcr-cache l))
+                  (equal (fn-mcr-runtime l2) (fn-mcr-runtime l))
+                  (equal (fn-mcr-drawn l2) (fn-mcr-drawn l)))))
+  :hints (("Goal" :in-theory (e/d (fn-mcr-opsp) (fn-mcr-total)))))
+
+(in-theory (disable fn-mcr-borrow fn-mcr-return))

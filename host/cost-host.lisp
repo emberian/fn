@@ -50,4 +50,6 @@
 (def-cost fn-ocap-admit-preview :visits 0 :conses 3)
 (def-cost fn-tariff-article-octets :visits 0 :conses 0)
 (def-cost fn-tariff-stat-octets :visits 0 :conses 0)
+(def-cost fn-tariff-line-octets :visits 0 :conses 0)
+(def-cost fn-tariff-group-reply-octets :visits 0 :conses 0)
 (def-cost fn-tariff-descriptor :visits 0 :conses 3)

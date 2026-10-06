@@ -3695,6 +3695,9 @@
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)
 
+(definterface fn-heap-reclaim-chunk-rows
+  :class :common-lisp-compliant)
+
 (definterface fn-heap-reserve-init-connections
   :class :common-lisp-compliant)
 
@@ -3712,6 +3715,16 @@
   :class :common-lisp-compliant
   :keystones (fn-orv-accepted-launch-fits-observed-machine
               fn-orv-accepted-launch-funds-output-dynamic-allowance))
+
+(definterface fn-rrv-extend-reservation
+  :class :common-lisp-compliant
+  :keystones (fn-rrv-accepted-launch-fits-observed-machine
+              fn-rrv-accepted-launch-funds-the-reclaim-reserve
+              fn-rrv-accepted-launch-holds-the-live-figure))
+
+(definterface fn-mca-figure-octets
+  :class :common-lisp-compliant
+  :keystones (fn-mca-initial-funds-exactly-the-articles))
 
 (definterface fn-heap-reserve-report-line
   :class :common-lisp-compliant)
@@ -4013,6 +4026,9 @@
   :class ::program)
 
 (definterface fn-native-operator-host-result-run-output-resources
+  :class :program)
+
+(definterface fn-native-operator-host-result-run-reclaim-live
   :class :program)
 
 (definterface fn-native-operator-host-result-run-implicit-tls-port
@@ -5733,6 +5749,7 @@
 (definterface fn-native-operator-host-result-config :class :program)
 (definterface fn-native-config-cold-resources :class :common-lisp-compliant)
 (definterface fn-native-config-output-resources :class :common-lisp-compliant)
+(definterface fn-native-config-reclaim-livep :class :common-lisp-compliant)
 ; Actual retained BP/TCPCL consumer entries. COMMON denotes guard-verified
 ; logical execution, not whole-turn funding, allocation or native qualification.
 (definterface fn-bpsched-accept-plan :class :common-lisp-compliant)

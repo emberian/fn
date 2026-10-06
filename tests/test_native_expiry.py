@@ -62,14 +62,28 @@ def words(stdout: bytes) -> dict:
     return dict(w.split("=", 1) for w in line.split() if "=" in w)
 
 
+# D53: live reclaim is the operator's opt-in (`[resources] reclaim_live`).
+# The serving-node passes these suites run are on nodes that ask for it
+# (Node's EXTRA text closes the [listener] table with this one); a class or
+# a node with reclaim_live False writes no key, and its live pass is refused
+# by name, offline-only (tests.test_native_reclaim_walk).
+RECLAIM_LIVE = "[resources]\nreclaim_live = true\n"
+
+
+def reclaim_extra(live: bool) -> str:
+    return RECLAIM_LIVE if live else ""
+
+
 class ExpiryMixin:
     image = None
+    reclaim_live = True
 
     def setUp(self):
         self.root = scratch(self, "fn-xpy-")
 
-    def node(self, name="node"):
-        node = Node(self, self.image, root=self.root / name)
+    def node(self, name="node", live=None):
+        live = self.reclaim_live if live is None else live
+        node = Node(self, self.image, root=self.root / name, extra=reclaim_extra(live))
         node.operator("init", GROUP, KEEP, timeout=600, expect=EXIT.OK)
         secret = node.store("node-secret", "create", timeout=600)
         self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
@@ -268,7 +282,8 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
         return base
 
     def copy_of(self, base, name):
-        copy = Node(self, self.image, root=self.root / name)
+        copy = Node(self, self.image, root=self.root / name,
+                    extra=reclaim_extra(self.reclaim_live))
         shutil.rmtree(copy.store_path, ignore_errors=True)
         shutil.copytree(base.store_path, copy.store_path)
         return copy

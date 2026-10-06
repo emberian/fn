@@ -639,6 +639,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \
 	tests/acl2/output-reservation-tests \
+	books/reclaim-reservation \
+	tests/acl2/reclaim-reservation-tests \
 	books/resource-output \
 	tests/acl2/resource-output-tests \
 	tests/acl2/resource-syncer-tests \
@@ -2054,6 +2056,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/output-tariff-article-row \
 	tests/acl2/output-tariff-article-row-tests \
 	books/output-tariff-family \
+	books/output-tariff-line \
+	books/output-tariff-auth \
+	books/output-tariff-input \
 	books/output-tariff-families \
 	tests/acl2/output-tariff-family-tests \
 	books/output-admission-line \

@@ -80,6 +80,39 @@ class NativeOperatorCliTests(unittest.TestCase):
         self.assertEqual(again.returncode, EXIT.OK, again.stderr)
         self.assertEqual(again.stdout, whole.stdout)
 
+    def test_show_renders_the_live_reclaim_opt_in_only_when_set(self):
+        """D53: `[resources] reclaim_live = true' is shown and loads back;
+        `false' renders exactly what no key renders (no [resources] table);
+        a value that is not a boolean is refused by name."""
+        on = self.root / "live.toml"
+        on.write_text('[store]\npath = "store"\n[resources]\nreclaim_live = true\n',
+                      encoding="ascii")
+        shown = invoke(on, "show", "resources", "reclaim_live")
+        self.assertEqual(shown.returncode, EXIT.OK, shown.stderr)
+        self.assertEqual(shown.stdout, b"true\n")
+        whole = invoke(on, "show")
+        self.assertEqual(whole.returncode, EXIT.OK, whole.stderr)
+        self.assertIn(b"reclaim_live=true", whole.stdout)
+        rendered = self.root / "rendered-live.toml"
+        rendered.write_bytes(whole.stdout)
+        again = invoke(rendered, "show")
+        self.assertEqual(again.returncode, EXIT.OK, again.stderr)
+        self.assertEqual(again.stdout, whole.stdout)
+        off = self.root / "off.toml"
+        off.write_text('[store]\npath = "store"\n[resources]\nreclaim_live = false\n',
+                       encoding="ascii")
+        bare = self.root / "bare.toml"
+        bare.write_text('[store]\npath = "store"\n', encoding="ascii")
+        off_shown, bare_shown = invoke(off, "show"), invoke(bare, "show")
+        self.assertEqual(off_shown.returncode, EXIT.OK, off_shown.stderr)
+        self.assertEqual(off_shown.stdout, bare_shown.stdout)
+        self.assertNotIn(b"[resources]", off_shown.stdout)
+        bad = self.root / "bad.toml"
+        bad.write_text('[store]\npath = "store"\n[resources]\nreclaim_live = 1\n',
+                       encoding="ascii")
+        refused = invoke(bad, "show")
+        self.assertNotEqual(refused.returncode, EXIT.OK, refused.stdout)
+
     def test_missing_directory_and_oversize_config_are_usage(self):
         missing = invoke(self.root / "missing.toml", "status")
         directory = self.root / "directory"
