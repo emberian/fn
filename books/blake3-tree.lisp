@@ -381,6 +381,87 @@
   :hints (("Goal" :induct (fn-b3-stack-spine key flags st1 acc))))
 
 ; -----------------------------------------------------------------------------
+; List alignment: the lw doubling identities, and pair/take/drop commutations
+; the tree-pairing lemmas rewrite through.
+
+(defthm fn-b3-left-windows-double
+  ; lw doubling: an even count splits at twice the halved count's split.
+  (implies (and (posp p) (natp u) (< p u))
+           (equal (fn-b3-left-windows p (* 2 u))
+                  (* 2 (fn-b3-left-windows p u))))
+  :hints (("Goal" :induct (fn-b3-left-windows p u)
+                   :nonlinearp t)))
+
+(defthm fn-b3-left-windows-double-minus
+  ; The odd twin: an odd count splits at the same doubled split.
+  (implies (and (posp p) (natp u) (< p u))
+           (equal (fn-b3-left-windows p (+ -1 (* 2 u)))
+                  (* 2 (fn-b3-left-windows p u))))
+  :hints (("Goal" :induct (fn-b3-left-windows p u)
+                   :nonlinearp t)))
+
+(defun fn-b3-pf-ind (i outs)
+  ; Pair/firstn induction: one pair per step, i counting halves.
+  (declare (xargs :measure (nfix i) :verify-guards nil))
+  (if (or (zp i) (atom outs) (atom (cdr outs)))
+      (list i outs)
+    (fn-b3-pf-ind (- i 1) (cddr outs))))
+
+(defthm fn-b3-len-of-pair-outs
+  (equal (len (fn-b3-pair-outs key flags outs))
+         (floor (len outs) 2))
+  :hints (("Goal" :induct (fn-b3-pair-outs key flags outs))))
+
+(defthm fn-b3-pair-outs-of-firstn
+  ; Pairing commutes with taking an EVEN prefix.
+  (implies (and (natp i) (<= (* 2 i) (len outs)) (true-listp outs))
+           (equal (fn-b3-pair-outs key flags (fn-b3-firstn (* 2 i) outs))
+                  (fn-b3-firstn i (fn-b3-pair-outs key flags outs))))
+  :hints (("Goal" :induct (fn-b3-pf-ind i outs)
+                   :expand ((fn-b3-firstn (* 2 i) outs)))))
+
+(defthm fn-b3-pair-outs-of-nthcdrx
+  ; Pairing commutes with dropping any prefix.
+  (implies (natp i)
+           (equal (fn-b3-pair-outs key flags (fn-b3-nthcdrx (* 2 i) outs))
+                  (fn-b3-nthcdrx i (fn-b3-pair-outs key flags outs))))
+  :hints (("Goal" :induct (fn-b3-pf-ind i outs)
+                   :expand ((fn-b3-nthcdrx (* 2 i) outs)))))
+
+(defthm fn-b3-firstn-all
+  (implies (true-listp x)
+           (equal (fn-b3-firstn (len x) x) x)))
+
+(defthm fn-b3-nthcdrx-all
+  (implies (true-listp x)
+           (equal (fn-b3-nthcdrx (len x) x) nil)))
+
+(defthm fn-b3-firstn-of-append-le
+  ; A take within the first part does not see the second.
+  (implies (and (natp a) (<= a (len x)) (true-listp x))
+           (equal (fn-b3-firstn a (append x y))
+                  (fn-b3-firstn a x))))
+
+(defthm fn-b3-nthcdrx-of-append-le
+  ; A drop within the first part leaves the second appended.
+  (implies (and (natp a) (<= a (len x)) (true-listp x))
+           (equal (fn-b3-nthcdrx a (append x y))
+                  (append (fn-b3-nthcdrx a x) y))))
+
+(defthm fn-b3-firstn-split-sum
+  ; Taking a+b is taking a then b of the rest.
+  (implies (and (natp a) (natp b))
+           (equal (fn-b3-firstn (+ a b) x)
+                  (append (fn-b3-firstn a x)
+                          (fn-b3-firstn b (fn-b3-nthcdrx a x))))))
+
+(defthm fn-b3-nthcdrx-of-firstn
+  ; Dropping past a take takes the remainder of the rest.
+  (implies (and (natp a) (natp b))
+           (equal (fn-b3-nthcdrx a (fn-b3-firstn b x))
+                  (fn-b3-firstn (nfix (- b a)) (fn-b3-nthcdrx a x)))))
+
+; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
 
 ; The whole input's node equals the window tree over the windows' subtree
