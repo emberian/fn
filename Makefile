@@ -3126,11 +3126,12 @@ certs-install:
 # The comprehensiveness gate (build/coordinator/COORDINATOR-SOP.md): every open
 # repair item has a disposition (LANDED / IN-FLIGHT / PARKED / UNOWNED) and every
 # declared native scenario has a recorded run, or planning/repair/ACKS.md says
-# why not.  NOT in check-fast until the backlog is dispositioned.
+# why not.  Plain commands, no CHECK_STEPS_DIR (so it cannot disturb a concurrent
+# check-fast).  NOT in check-fast until the backlog is dispositioned.
 .PHONY: check-coverage
 check-coverage:
-	@$(CHECK_STEP) $(PYTHON) tools/coverage_gap.py --check
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_coverage_gap
+	$(PYTHON) tools/coverage_gap.py --check $(COVERAGE_GAP_ARGS)
+	$(PYTHON) -m unittest -q tests.test_coverage_gap
 
 # The dynamic half of tools/host_shape_check.py: the ACL2-mode prefix of
 # host/native/build.lisp (every include-book and host `ld`), translated the
