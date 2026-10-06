@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3053 |
-| Certification roots in the Makefile | 2558 |
-| Books inside the root closure | 2877 |
-| `defthm` and `defthmd` events | 40404 |
-| `defun` events | 25977 |
+| Books read | 3056 |
+| Certification roots in the Makefile | 2561 |
+| Books inside the root closure | 2880 |
+| `defthm` and `defthmd` events | 40476 |
+| `defun` events | 25983 |
 | Functions with verified guards | 4053 |
 | Functions declared `:verify-guards nil` and never verified | 3367 |
-| Functions left at the default with an explicit guard | 14387 |
+| Functions left at the default with an explicit guard | 14393 |
 | Functions left at the default with no guard | 4170 |
 | `assert-event` checks | 27989 |
-| `must-fail` checks | 2712 |
+| `must-fail` checks | 2718 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
 | Theorems flagged SUSPECT by shape | 1472 |
 | Export-hygiene warnings | 423 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 297 |
-| Include-hygiene warnings | 4051 |
+| Include-hygiene warnings | 4057 |
 | Host-names warnings | 3562 |
 | Hand-written-record warnings | 19 |
 
@@ -1125,8 +1125,11 @@ that `make certify` requests.
 | `books/output-reservation.lisp` | root | 4 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/output-tariff-article-row.lisp` | root | 11 | 8 | 0/0/8/0 | 0 | 0 | 2 |
 | `books/output-tariff-article.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/output-tariff-auth.lisp` | root | 39 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/output-tariff-families.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/output-tariff-family.lisp` | root | 3 | 4 | 0/0/2/2 | 0 | 0 | 0 |
+| `books/output-tariff-input.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/output-tariff-line.lisp` | root | 15 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 48 | 14 | 2/8/4/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 33 | 7 | 0/2/5/0 | 0 | 0 | 0 |
@@ -2607,7 +2610,7 @@ that `make certify` requests.
 | `tests/acl2/output-command-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/output-reservation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/output-tariff-article-row-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 0 | 1 | 0 |
-| `tests/acl2/output-tariff-family-tests.lisp` | root | 4 | 2 | 0/0/1/1 | 17 | 2 | 0 |
+| `tests/acl2/output-tariff-family-tests.lisp` | root | 16 | 2 | 0/0/1/1 | 17 | 8 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 15 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 64 | 16 | 0 |

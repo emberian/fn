@@ -2046,6 +2046,9 @@
     "books/output-tariff-article-row",
     "tests/acl2/output-tariff-article-row-tests",
     "books/output-tariff-family",
+    "books/output-tariff-line",
+    "books/output-tariff-auth",
+    "books/output-tariff-input",
     "books/output-tariff-families",
     "tests/acl2/output-tariff-family-tests",
     "books/output-admission-line",
@@ -2562,26 +2565,26 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3053,
-    "books_in_root_closure": 2877,
-    "roots": 2558,
-    "theorems": 40404,
-    "functions": 25977,
+    "books": 3056,
+    "books_in_root_closure": 2880,
+    "roots": 2561,
+    "theorems": 40476,
+    "functions": 25983,
     "assert_events": 27989,
-    "must_fails": 2712,
+    "must_fails": 2718,
     "prover_refusals": 0,
     "encapsulates": 257,
     "guards": {
       "verified": 4053,
       "declared-off": 3367,
-      "default-guarded": 14387,
+      "default-guarded": 14393,
       "default-unguarded": 4170
     },
     "suspect_theorems": 1472,
     "export_hygiene_warnings": 423,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 297,
-    "include_hygiene_warnings": 4051,
+    "include_hygiene_warnings": 4057,
     "host_names_warnings": 3562,
     "hand_written_record_warnings": 19
   },
@@ -33451,6 +33454,34 @@
       "read_error": null
     },
     {
+      "book": "books/output-tariff-auth.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 39,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-auth",
+        "nntp-compress-dict",
+        "output-tariff-line"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/output-tariff-families.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -33471,7 +33502,10 @@
       "encapsulates": 0,
       "includes": [
         "output-tariff-article-row",
-        "output-tariff-family"
+        "output-tariff-auth",
+        "output-tariff-family",
+        "output-tariff-input",
+        "output-tariff-line"
       ],
       "system_includes": [],
       "suspects": [],
@@ -33498,6 +33532,59 @@
       "encapsulates": 0,
       "includes": [
         "output-command-admission"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/output-tariff-input.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "output-tariff-auth"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/output-tariff-line.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "output-tariff-article",
+        "served-available-commands"
       ],
       "system_includes": [],
       "suspects": [],
@@ -75355,7 +75442,7 @@
       "book": "tests/acl2/output-tariff-family-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
+      "theorems": 16,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -75365,9 +75452,9 @@
       },
       "verify_guards_events": 0,
       "assert_events": 17,
-      "must_fails": 2,
+      "must_fails": 8,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 20,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -118956,10 +119043,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/output-tariff-auth.lisp",
+        "line": 18,
+        "include": "output-tariff-line",
+        "included": "books/output-tariff-line.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/output-tariff-families.lisp",
-        "line": 17,
+        "line": 23,
         "include": "output-tariff-article-row",
         "included": "books/output-tariff-article-row.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/output-tariff-families.lisp",
+        "line": 24,
+        "include": "output-tariff-line",
+        "included": "books/output-tariff-line.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/output-tariff-families.lisp",
+        "line": 25,
+        "include": "output-tariff-auth",
+        "included": "books/output-tariff-auth.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/output-tariff-families.lisp",
+        "line": 26,
+        "include": "output-tariff-input",
+        "included": "books/output-tariff-input.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -118967,6 +119082,20 @@
         "line": 25,
         "include": "output-command-admission",
         "included": "books/output-command-admission.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/output-tariff-input.lisp",
+        "line": 37,
+        "include": "output-tariff-auth",
+        "included": "books/output-tariff-auth.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/output-tariff-line.lisp",
+        "line": 27,
+        "include": "output-tariff-article",
+        "included": "books/output-tariff-article.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

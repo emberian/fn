@@ -29,40 +29,40 @@
  },
  "families": {
   "served": 30,
-  "priced": 4,
+  "priced": 22,
   "priced_families": [
    "article",
-   "body",
-   "head",
-   "stat"
-  ],
-  "unpriced_families": [
    "article-input",
    "authentication",
+   "body",
    "capabilities",
    "check",
    "close",
    "closed",
    "compression-transition",
    "date",
-   "extension",
    "group",
-   "group-range",
-   "header-pattern",
-   "header-range",
+   "head",
    "help",
    "ihave",
-   "list",
    "mode",
    "neighbour",
-   "newgroups",
-   "newnews",
-   "overview",
    "partial-input",
    "post",
    "protocol-error",
+   "stat",
    "takethis",
    "tls-transition"
+  ],
+  "unpriced_families": [
+   "extension",
+   "group-range",
+   "header-pattern",
+   "header-range",
+   "list",
+   "newgroups",
+   "newnews",
+   "overview"
   ]
  },
  "undispatched_declarations": [
@@ -72,6 +72,8 @@
   "fn-sl-step",
   "fn-tariff-article-octets",
   "fn-tariff-descriptor",
+  "fn-tariff-group-reply-octets",
+  "fn-tariff-line-octets",
   "fn-tariff-stat-octets"
  ],
  "entries": [
@@ -17771,6 +17773,20 @@
    "bound": "3",
    "unaccounted": [],
    "theorem": "fn-tariff-descriptor-conses-bound",
+   "declared_in": "host/cost-host.lisp"
+  },
+  "fn-tariff-group-reply-octets": {
+   "claim": "proved",
+   "bound": "0",
+   "unaccounted": [],
+   "theorem": "fn-tariff-group-reply-octets-conses-bound",
+   "declared_in": "host/cost-host.lisp"
+  },
+  "fn-tariff-line-octets": {
+   "claim": "proved",
+   "bound": "0",
+   "unaccounted": [],
+   "theorem": "fn-tariff-line-octets-conses-bound",
    "declared_in": "host/cost-host.lisp"
   },
   "fn-tariff-stat-octets": {
