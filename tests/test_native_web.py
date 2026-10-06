@@ -261,7 +261,16 @@ class FaceCases:
 
         baseline = article_bytes()
         self.assertIn(body.encode("ascii"), baseline)
-        status, _, page, _, _ = b.request("GET", "/a?g=local.general&n=" + number)
+        try:
+            status, _, page, _, _ = b.request("GET", "/a?g=local.general&n=" + number)
+        except Exception:
+            # WW-DIAG (lane w-window, temporary): a stalled or failed web
+            # render dumps the node stderr into the module log.
+            trace = self.node.process.stderr.since(0)
+            sys.stderr.write("\n=== WW-DIAG web /a failure, node stderr ({} octets, {} dropped) ===\n{}\n=== WW-DIAG end ===\n".format(
+                len(trace), self.node.process.stderr.dropped,
+                trace.decode("utf-8", "replace")))
+            raise
         self.assertEqual(status, 200, page)
         self.assertEqual(page.count(html.escape(line, quote=False)), 256)
         first = self.node.process
