@@ -160,7 +160,8 @@ exposure admission decides (the id, or NIL when it refused)."
         (fnn-web-conn-page-cursor conn) nil (fnn-web-conn-page-response conn) nil
         (fnn-web-conn-reply-scan conn) nil (fnn-web-conn-captured-plans conn) nil
         (fnn-web-conn-replay-plans conn) nil (fnn-web-conn-replay-plan conn) nil
-        (fnn-web-conn-replay-return conn) nil (fnn-web-conn-replay-tail conn) nil))
+        (fnn-web-conn-replay-return conn) nil (fnn-web-conn-replay-tail conn) nil)
+  (fnn-web-replay-forget conn))
 
 (defun fnn-web-dispose-semantic (face conn)
   ;; Claim the whole disposal, not just each effect. Concurrent shutdown or
@@ -474,6 +475,7 @@ exposure admission decides (the id, or NIL when it refused)."
                      (and (fnn-core 'fn-web-host-stream-p next)
                           (fnn-core 'fn-web-host-stream-start next))
                      (fnn-web-conn-captured-plans conn) nil)
+               (fnn-web-replay-forget conn)
                (fnn-web-fill (fnn-web-conn-in conn) (fnn-make-octets 0))))
       (:close (destructuring-bind (cid next) (rest action)
                 (fnn-web-cleanup face conn (list :close cid)
@@ -618,24 +620,42 @@ exposure admission decides (the id, or NIL when it refused)."
               (fnn-web-plan-begin conn (fnn-core 'fn-splan-step-plan step completion redeem))
               (setf (fnn-web-conn-await conn) nil))))))))
 
+;;; WW-Q (lane w-window, temporary, never lands): one line per render
+;;; quantum of a web connection, on the node stderr.
+(defparameter *wwq-k* 0)
+(defparameter *wwq-t0* nil)
+
 (defun fnn-web-render-step (face conn)
   (let ((service (fnn-web-face-service face)) (cid (fnn-web-conn-cid conn))
         (plan (fnn-web-conn-plan conn)))
     (if plan
-        (multiple-value-bind (part rest donep yieldedp issued-read)
-            (fnn-owner-render-next-quantum service cid plan :reader)
+        (let ((q0 (get-internal-real-time)))
+          (unless *wwq-t0* (setq *wwq-t0* q0))
+          (multiple-value-bind (part rest donep yieldedp issued-read)
+              (fnn-owner-render-next-quantum service cid plan :reader)
+            (fnn-err "WW-Q k=~d part=~d done=~s yield=~s cold=~s last-i=~d reads=~d qms=~d tms=~d"
+                     (incf *wwq-k*) (length part) donep yieldedp (not (null issued-read))
+                     (symbol-value '*wwt-last-i*) (symbol-value '*wwt-n*)
+                     (truncate (* (- (get-internal-real-time) q0) 1000) internal-time-units-per-second)
+                     (truncate (* (- (get-internal-real-time) *wwq-t0*) 1000) internal-time-units-per-second))
           (cond (issued-read (fnn-web-cold-start conn issued-read :render))
                 (t (if (fnn-web-conn-reply-scan conn)
                        (progn
                          (fnn-web-fill (fnn-web-conn-in conn) part)
-                         (setf (fnn-web-conn-reply-scan conn)
-                               (fnn-core 'fn-web-host-stream-scan
-                                         (fnn-web-conn-reply-scan conn) (fnn-web-conn-in conn))))
+                         ;; WW-S (lane w-window, temporary, never lands)
+                         (let ((wws-t0 (get-internal-real-time)))
+                           (setf (fnn-web-conn-reply-scan conn)
+                                 (fnn-core 'fn-web-host-stream-scan
+                                           (fnn-web-conn-reply-scan conn) (fnn-web-conn-in conn)))
+                           (fnn-err "WW-S scan=~dms inlen=~d"
+                                    (truncate (* (- (get-internal-real-time) wws-t0) 1000)
+                                              internal-time-units-per-second)
+                                    (fnn-web-len (fnn-web-conn-in conn)))))
                      (fnn-web-append (fnn-web-conn-in conn) part))
                    (setf (fnn-web-conn-plan conn) (if donep nil rest))
                    (when (and (not donep) yieldedp)
                      (setf (fnn-web-conn-resume-at conn)
-                           (fnn-mux-ms-ticks (fnn-core 'fn-splan-cursor-resume-ms)))))))
+                           (fnn-mux-ms-ticks (fnn-core 'fn-splan-cursor-resume-ms))))))))
       (progn
         ;; The final article plan remains pinned through both HTML passes
         ;; and the final socket suffix. Earlier GROUP plans are immutable
@@ -665,7 +685,63 @@ exposure admission decides (the id, or NIL when it refused)."
                      (fnn-web-conn-cold-word conn)
                      (and (eq mode :feed) (list word since now limit (fnn-web-conn-line-since conn)))))))))
 
+;;; The reply octets the replay has already rendered, kept per connection:
+;;; a contiguous [base, base+len) span of the virtual reply.  The immutable
+;;; captured plans render deterministically (the premise the replay itself
+;;; rests on), so a covered span needs no re-render.  Transient per
+;;; connection, bounded by the flow's admitted article (the same admission
+;;; that bounds the reply's render work), dropped where captured-plans is.
+;;; A synchronized table, not a record slot: the reactor and the semantic
+;;; worker both reach these boundaries, and a slot would change the
+;;; connection record's layout (an overlay cannot carry that).
+(defparameter *fnn-web-replay-retained* (make-hash-table :test #'eq :synchronized t))
+
+(defun fnn-web-replay-retain (conn part base)
+  "Keep the rendered PART at reply offset BASE for the spans still to come:
+  contiguous growth extends the retained reply, a re-rendered prefix is
+  already kept, anything else restarts the retention at the part."
+  (let* ((kept (gethash conn *fnn-web-replay-retained*))
+         (cache (first kept)) (cbase (second kept)) (clen (third kept))
+         (plen (length part)))
+    (cond ((and cache (= base (+ cbase clen)))
+           (when (< (length cache) (+ clen plen))
+             (let ((grown (make-array (fnn-core 'fn-web-host-reserve-size
+                                              (+ clen plen) (length cache))
+                                      :element-type '(unsigned-byte 8))))
+               (replace grown cache) (setq cache grown)))
+           (replace cache part :start1 clen)
+           (setf (gethash conn *fnn-web-replay-retained*) (list cache cbase (+ clen plen))))
+          ((and cache (<= cbase base) (<= (+ base plen) (+ cbase clen)))
+           nil)
+          (t
+           (let ((fresh (make-array (fnn-core 'fn-web-host-reserve-size plen 0)
+                                    :element-type '(unsigned-byte 8))))
+             (replace fresh part)
+             (setf (gethash conn *fnn-web-replay-retained*) (list fresh base plen)))))))
+
+(defun fnn-web-replay-retained-window (conn need)
+  "The retained reply octets of NEED's span, or NIL when not covered."
+  (let* ((kept (gethash conn *fnn-web-replay-retained*))
+         (cache (first kept)) (cbase (second kept)) (clen (third kept))
+         (from (- (car need) cbase)) (to (- (cdr need) cbase)))
+    (and cache (<= 0 from) (<= to clen)
+         (subseq cache from to))))
+
+(defun fnn-web-replay-forget (conn)
+  (remhash conn *fnn-web-replay-retained*))
+
 (defun fnn-web-replay-start (conn need return-phase)
+  ;; A span the replay has already rendered is served from the retained
+  ;; reply: no plan walk, no re-render from zero.  The page cursor sees
+  ;; the same window (IN holding exactly [base, need-end) octets) either
+  ;; way; only the source of those octets differs.
+  (let ((window (fnn-web-replay-retained-window conn need)))
+    (when window
+      (fnn-web-fill (fnn-web-conn-in conn) window)
+      (setf (fnn-web-conn-window-base conn) (car need)
+            (fnn-web-conn-replay-need conn) nil
+            (fnn-web-conn-phase conn) return-phase)
+      (return-from fnn-web-replay-start nil)))
   (let ((forward (and (fnn-web-conn-replay-tail conn)
                       (fnn-core 'fn-web-host-replay-forward-p need
                                 (fnn-web-conn-replay-tail-base conn) (fnn-web-conn-replay-at conn)))))
@@ -709,6 +785,7 @@ exposure admission decides (the id, or NIL when it refused)."
     (cond (read (fnn-web-cold-start conn read :replay))
           (t
            (let ((base (fnn-web-conn-replay-at conn)))
+             (fnn-web-replay-retain conn part base)
              (setf (fnn-web-conn-replay-tail conn) part (fnn-web-conn-replay-tail-base conn) base
                    (fnn-web-conn-replay-at conn) (fnn-web-replay-part conn part base)
                    (fnn-web-conn-replay-plan conn) (unless done rest)))
@@ -835,7 +912,17 @@ exposure admission decides (the id, or NIL when it refused)."
   ;; Stateful event/session owner admission still runs under O. Captured
   ;; reply plan construction is private worker work, but is not yet a
   ;; bounded semantic quantum; this is not full semantic-event fairness.
-  (dolist (conn (fnn-web-face-conns face)) (fnn-web-advance face conn))
+  (dolist (conn (fnn-web-face-conns face))
+    ;; WW-A (lane w-window, temporary, never lands): per-pass phase timing.
+    (let ((wwa-t0 (get-internal-real-time)))
+      (fnn-web-advance face conn)
+      (let ((wwa-ms (truncate (* (- (get-internal-real-time) wwa-t0) 1000)
+                              internal-time-units-per-second)))
+        (when (>= wwa-ms 3)
+          (fnn-err "WW-A phase=~s advance=~dms inlen=~d outlen=~d"
+                   (fnn-web-conn-phase conn) wwa-ms
+                   (fnn-web-len (fnn-web-conn-in conn))
+                   (fnn-web-len (fnn-web-conn-out conn)))))))
   (setf (fnn-web-face-conns face)
         (remove-if (lambda (conn) (and (fnn-web-conn-closedp conn) (fnn-web-conn-semantic-ended conn)
                                        (null (fnn-web-conn-job conn))))
