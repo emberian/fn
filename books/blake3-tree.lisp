@@ -908,14 +908,20 @@
 ; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
 
-; The digest of the whole equals the root of that window composition.
-;
-; PROOF-OWED: fn-blake3-is-window-composition
-;   (implies (fn-b3-octet-listp m)
-;            (equal (fn-blake3 m)
-;                   (fn-b3-output-root
-;                     (fn-b3-window-tree *fn-b3-iv* 0
-;                       (fn-b3-window-outs *fn-b3-iv* k 0 m 0)))))
+(defthm fn-blake3-is-window-composition
+  ; The digest of the whole is the root of the window composition.
+  (implies (fn-b3-octet-listp m)
+           (equal (fn-blake3 m)
+                  (fn-b3-output-root
+                    (fn-b3-window-tree *fn-b3-iv* 0
+                      (fn-b3-window-outs *fn-b3-iv* k 0 m 0)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-b3-node-is-window-tree
+                          (key *fn-b3-iv*) (counter 0) (flags 0)
+                          (octets m)))
+                  :do-not-induct t
+                  :in-theory (e/d (fn-blake3 fn-b3-hash)
+                                  (fn-b3-node fn-b3-window-outs fn-b3-window-tree)))))
 
 ; The held state: folding the stack built from the windows' subtree outputs
 ; is the whole input's node (PAIRING: fold = window-tree, then decomposition).
