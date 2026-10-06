@@ -2306,7 +2306,9 @@
   :class :common-lisp-compliant
   :keystones (fn-csp-step-keeps-window
               (fn-csp-write-spools-whole-or-fails-by-name :via fn-csp-write)
-              (fn-csp-framer-window-accounts-for-every-octet :via fn-csp-framer-window)))
+              (fn-csp-framer-window-accounts-for-every-octet :via fn-csp-framer-window)
+              fn-csp-step-settles-one-verdict-exactly-once
+              fn-csp-step-final-verdict-journals))
 
 (definterface fn-csp-done-p :class :common-lisp-compliant)
 (definterface fn-csp-close :class :common-lisp-compliant)
