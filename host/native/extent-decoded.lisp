@@ -5,15 +5,23 @@
 
 (defun fnn-extent-decoded-window-realize-octet (file eoff elen poff compressed trailer decoded dict i)
   "The actual scalar getter either borrows a returned decoded byte or throws
-its full core-selected cold descriptor while the captured owner is held."
+its full core-selected cold descriptor while the captured owner is held.  A
+borrow is a SPAN (fnn-extent-decoded-window-span-octet, KEYSTONE
+fn-owner-page-decoded-job-span-at-is-the-scalar-borrows): octets after the
+first are read from this worker's copy with no descriptor call, lock or ACL2 call."
+  (let ((worker *fnn-extent-window-worker*))
+    (when worker
+      (let ((hit (fnn-extent-decoded-span-hit worker *fnn-extent-window-token*
+                                              file eoff elen poff compressed trailer decoded dict i)))
+        (when hit (return-from fnn-extent-decoded-window-realize-octet (values hit))))))
   (let* ((descriptor (fnn-core 'fn-pwz-cold-descriptor
                        file eoff elen poff compressed trailer decoded dict i))
          (dict-id (fnn-core 'fn-pwz-nth 8 descriptor)))
     (multiple-value-bind (word byte)
         (if *fnn-extent-window-worker*
-            (fnn-extent-decoded-window-byte-at
+            (fnn-extent-decoded-window-span-octet
               *fnn-extent-window-worker* *fnn-extent-window-token*
-              file eoff elen poff compressed trailer decoded dict-id i)
+              file eoff elen poff compressed trailer decoded dict dict-id i)
           (values :unavailable nil))
       (cond ((eq word :byte) byte)
             ((member word '(:cancelled :stale-job))
@@ -26,6 +34,63 @@ its full core-selected cold descriptor while the captured owner is held."
                  (throw 'fnn-extent-cold descriptor)))
             (t (error 'fnn-extent-fault
                       :message "arena-extent-read: decoded window was not an authenticated returned result"))))))
+
+(defun fnn-extent-decoded-key-matches-p (key file eoff elen poff compressed trailer decoded dict)
+  (and (eql (first key) file) (eql (second key) eoff) (eql (third key) elen)
+       (eql (fourth key) poff) (eql (fifth key) compressed) (equal (sixth key) trailer)
+       (eql (seventh key) decoded) (eq (eighth key) dict)))
+
+(defun fnn-extent-decoded-span-hit (worker token file eoff elen poff compressed trailer decoded dict i)
+  "Octet I from WORKER's span copy, or NIL: only when this very job's span
+covers I for exactly this descriptor and the job is still the returned one."
+  (let ((span (fnn-cold-worker-span worker)))
+    (when (and span (eq (fnn-window-span-token span) token)
+               (eq (fnn-cold-worker-phase worker) :returned)
+               (<= (fnn-window-span-base span) i)
+               (< i (+ (fnn-window-span-base span) (fnn-window-span-len span)))
+               (fnn-extent-decoded-key-matches-p (fnn-window-span-key span)
+                                                 file eoff elen poff compressed trailer decoded dict))
+      (fn-ew-span-bytesi (- i (fnn-window-span-base span)) (fnn-window-span-dst span)))))
+
+(defun fnn-extent-decoded-window-span-at (worker token file eoff elen poff compressed trailer
+                                          decoded dict-id i dst)
+  "One lock, one ACL2 call: the decoded window's octets from I on (at most the
+buffer, never past DECODED) copied into DST.  (values WORD J)."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (unless (fnn-extent-executor-observe-returned worker)
+      (return-from fnn-extent-decoded-window-span-at (values :pending nil)))
+    (let ((result (fnn-cold-worker-result worker)))
+      (when (typep result 'condition) (error result))
+      (unless (and (fnn-decoded-activation-p result)
+                   (eq (fnn-decoded-activation-stage result) :idle))
+        (fnn-fault "decoded borrow lacks a completed private activation"))
+      (let ((j (and (integerp (eighth token)) (integerp decoded)
+                    (min decoded (+ i +fnn-extent-span-capacity+) (+ (eighth token) 16384)))))
+        (if (and j (< (1+ i) j))
+            (values (first (fnn-call 'fn-owner-page-decoded-job-span-at
+                             (fnn-cold-worker-row worker) token file eoff elen poff compressed
+                             trailer decoded dict-id i j (fnn-decoded-activation-job result)
+                             dst (fnn-live-page-read-pool)))
+                    j)
+            (values :unavailable nil))))))
+
+(defun fnn-extent-decoded-window-span-octet (worker token file eoff elen poff compressed trailer
+                                             decoded dict dict-id i)
+  "A miss of the span copy: borrow a span from I (ACL2 decides it), else the scalar."
+  (let* ((span (fnn-cold-worker-span worker))
+         (dst (if span (fnn-window-span-dst span) (create-fn-ew-span))))
+    (multiple-value-bind (word j)
+        (fnn-extent-decoded-window-span-at worker token file eoff elen poff compressed trailer
+                                           decoded dict-id i dst)
+      (if (eq word :span)
+          (progn
+            (setf (fnn-cold-worker-span worker)
+                  (make-fnn-window-span token
+                                        (list file eoff elen poff compressed trailer decoded dict)
+                                        i (- j i) dst))
+            (values :byte (fn-ew-span-bytesi 0 dst)))
+          (fnn-extent-decoded-window-byte-at worker token file eoff elen poff compressed
+                                             trailer decoded dict-id i)))))
 
 ;;; The native envelope is published on the existing worker before the
 ;;; sanctioned private creator runs. It preserves partial construction and
@@ -143,8 +208,19 @@ pushed out (the caller releases their rows)."
 (defun fnn-extent-decoded-window-cache-byte (file eoff elen poff compressed trailer decoded dict-id i)
   "A cached decoded window's byte I of this exact descriptor, or NIL.  The host
 only selects candidates by the token's own descriptor and requested offset;
-ACL2 decides the hit (fn-owner-page-decoded-window-cache-byte-at)."
+ACL2 decides the hit (fn-owner-page-decoded-window-cache-byte-at), as a SPAN
+(KEYSTONE fn-owner-page-decoded-window-cache-span-at-is-the-cached-bytes): the
+octets from I on are copied once and the following ones read from the copy
+while the entry is still in the cache."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (let ((span *fnn-extent-cache-span*)
+          (key (list :decoded file eoff elen poff compressed trailer decoded dict-id)))
+      (when (and span (equal (second span) key)
+                 (<= (third span) i) (< i (+ (third span) (fourth span)))
+                 (member (first span) *fnn-extent-window-cache* :test #'eq))
+        (incf (first *fnn-extent-stats*))
+        (return-from fnn-extent-decoded-window-cache-byte
+          (fn-ew-span-bytesi (- i (third span)) *fnn-extent-cache-span-dst*))))
     (dolist (entry *fnn-extent-window-cache* nil)
       (destructuring-bind (token plan window) entry
         (declare (ignore plan))
@@ -154,6 +230,22 @@ ACL2 decides the hit (fn-owner-page-decoded-window-cache-byte-at)."
                    (eql (seventh token) compressed) (eql (ninth token) trailer)
                    (eql (tenth token) decoded) (eql (nth 10 token) dict-id)
                    (integerp (eighth token)) (<= (eighth token) i))
+          (let ((j (min decoded (+ i +fnn-extent-span-capacity+) (+ (eighth token) 16384))))
+            (when (< (1+ i) j)
+              (let ((dst (or *fnn-extent-cache-span-dst*
+                             (setq *fnn-extent-cache-span-dst* (create-fn-ew-span)))))
+                (when (eq (first (fnn-core-page-read-pool 'fn-owner-page-decoded-window-cache-span-at
+                                    token file eoff elen poff compressed trailer decoded
+                                    dict-id i j window dst))
+                          :span)
+                  (setq *fnn-extent-cache-span*
+                        (list entry (list :decoded file eoff elen poff compressed trailer decoded dict-id)
+                              i (- j i)))
+                  (incf (first *fnn-extent-stats*))
+                  (unless (eq entry (first *fnn-extent-window-cache*))
+                    (setq *fnn-extent-window-cache*
+                          (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
+                  (return (fn-ew-span-bytesi 0 dst))))))
           (destructuring-bind (word byte)
               (fnn-core-page-read-pool 'fn-owner-page-decoded-window-cache-byte-at
                                        token file eoff elen poff compressed trailer decoded

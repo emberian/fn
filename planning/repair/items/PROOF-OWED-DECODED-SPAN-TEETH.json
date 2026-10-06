@@ -1,0 +1,18 @@
+{
+ "category": "proof-owed",
+ "detail": "books/decoded-window-span.lisp states and proves the decoded span keystones (is-the-borrowed-bytes, refuses-where-the-octet-refuses, answers-when-its-ends-do, refusal-leaves-the-buffer) at fn-pwz, fn-dwj and the cache. The statement-first teeth owed per keystone (a REACHABLE positive and one removal witness per hypothesis) need a published decoded window (fn-ewz-publication on a real controller trajectory); tests/acl2/decoded-window-read-tests.lisp says the same of the scalar borrow: 'Full decoded publication/read positives await shared typed physical lifecycle and the real decoder/dictionary byte trajectory'. The raw span has its teeth (tests/acl2/page-window-span-tests.lisp).",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "books/decoded-window-span.lisp",
+ "fix": "Add the span positive and removals beside the scalar's when that trajectory witness exists.",
+ "id": "PROOF-OWED-DECODED-SPAN-TEETH",
+ "locus": "decoded-window-span",
+ "notes": [],
+ "owner": "span-borrow",
+ "scenario": "A decoded span keystone could be vacuous; today it is only as witnessed as fn-pwz-byte-at.",
+ "severity": "medium",
+ "source": "span-borrow-2026-10-05",
+ "state": "open",
+ "title": "proof-owed: positive witness for the decoded span keystones (fn-pwz-span-at, fn-pwz-cache-span-at)",
+ "updated": "2026-10-05T15:50:49Z"
+}

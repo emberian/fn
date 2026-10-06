@@ -602,6 +602,11 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
       ;; ineligible idle deadline made a yield's wait a busy poll, r71 F11).
       (fnn-err "OVER ~a cid=~d passes=~d" (if empty-progressp "empty-yield" "cursor-yield")
                (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop)))
+    ;; An ARTICLE quantum always consumes its fuel, so its yield is never
+    ;; empty progress: ACL2's positive delay exists for a sparse OVER range
+    ;; that would otherwise rescan in one event.  The article resumes on the
+    ;; next pass of the loop (due now: the poll timeout is zero, every other
+    ;; ready connection is served first), not after a fixed millisecond.
     (setf (fnn-mux-conn-plan conn) plan
           (fnn-mux-conn-drained-late conn) t
           (fnn-mux-conn-after conn) after
@@ -611,7 +616,11 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
           (fnn-mux-conn-out-deadline conn) nil
           (fnn-mux-conn-want conn) nil
           (fnn-mux-conn-resume-at conn)
-          (+ (fnn-now) (round (* ms internal-time-units-per-second) 1000)))))
+          (+ (fnn-now)
+             (if (or (fnn-core 'fn-asto-plan-articlep plan)
+                     (fnn-core 'fn-asto-preflight-planp plan))
+                 0
+                 (round (* ms internal-time-units-per-second) 1000))))))
 
 (defun fnn-mux-plan-cold (loop conn plan after read)
   "Suspend this response on its exact issued READ; no socket body or input
