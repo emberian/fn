@@ -1165,7 +1165,6 @@
   ; (fn-csp-step-settles-one-verdict-exactly-once).
   (implies (and (fn-cu-session-readyp (fn-csp-session s))
                 (fn-pull-octetsp octets)
-                (not (member-eq (fn-csp-mode s) '(:failed :done)))
                 (equal (fn-csp-conn j s) (cons msgid :verdict))
                 (member-equal (fn-pull-local-code octets) '(235 437))
                 (eq (fn-csp-mode s) :drain)
