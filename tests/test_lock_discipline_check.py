@@ -266,6 +266,44 @@ class CallbackContexts(unittest.TestCase):
             self.run_with({self.LAMBDA: {"runs_in": "fnn-command-other", "why": "w"}}, src)
 
 
+class CallbackOrdinalAudit(unittest.TestCase):
+    """--audit-callbacks: a why text's own-file file.lisp:NNN marker must name
+    the line the declared ordinal resolves to (declare_callback_contexts
+    refuses a MISSING ordinal, never a MOVED one); a row without a marker is
+    not audited, and a marker naming another file is context, not a claim."""
+    # the spawn-free source, so the declaration itself is accepted
+    SRC = CallbackContexts.SRC.replace(
+        '(defun fnn-cbx-spawn (grant) (sb-thread:make-thread (lambda () (fnn-cbx-loop grant)) :name "t"))',
+        "")
+    LAMBDA = CallbackContexts.LAMBDA
+
+    def audit(self, why):
+        raw = dict(CONTRACTS.raw, callback_contexts={self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": why}})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + self.SRC)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return ldc.audit_callbacks(model, checker.c.raw), model.an.infos[self.LAMBDA].line
+
+    def test_an_agreeing_marker_passes(self):
+        _, line = self.audit("no marker yet")
+        failures, _ = self.audit(f"the grant's turn callback (fixture.lisp:{line})")
+        self.assertEqual(failures, [])
+
+    def test_a_moved_marker_fails(self):
+        _, line = self.audit("no marker yet")
+        failures, _ = self.audit(f"the grant's turn callback (fixture.lisp:{line + 1})")
+        self.assertEqual(len(failures), 1)
+        self.assertIn(f"fixture.lisp:{line + 1}", failures[0])
+        self.assertIn(f"fixture.lisp:{line}", failures[0])
+
+    def test_a_markerless_row_and_other_file_markers_pass(self):
+        failures, _ = self.audit("the grant's turn callback, funcalled by the loop "
+                                 "(host/native/other.lisp:12); no line claimed here")
+        self.assertEqual(failures, [])
+
+
 class R7Failure(unittest.TestCase):
     COMMITTER = """
 (defun fnn-pipeline (service) (fnn-core 'fn-otb-issue service))

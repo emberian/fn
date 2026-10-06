@@ -89,6 +89,9 @@ not in it is new; a baseline row no longer found must be removed
     python3 tools/lock_discipline_check.py --root DIR      # another checkout (a pre-fix commit)
     python3 tools/lock_discipline_check.py --write-baseline [--initial]
     python3 tools/lock_discipline_check.py --emit-realization  # planning/host-realization.json
+    python3 tools/lock_discipline_check.py --audit-callbacks  # opt-in, no gate runs it: a
+                           # callback_contexts why text that names its own file (file.lisp:NNN)
+                           # must name the line its ordinal resolves to
 """
 from __future__ import annotations
 
@@ -3083,6 +3086,35 @@ def write_baseline(path: Path, findings: list[Finding], old: dict, initial: bool
     return []
 
 
+def audit_callbacks(model: Model, raw: dict) -> list[str]:
+    """--audit-callbacks: hold a why text's own-file line marker to its ordinal.
+
+    declare_callback_contexts refuses a MISSING ordinal, never a MOVED one:
+    a lambda inserted before a declared callback silently re-targets the row,
+    and the declaration then masks a different function than its text
+    describes (found live in fnn-bpnode-passive-begin, 2026-10-05: three rows
+    had drifted onto other lambdas).  A why text that names the callback's own
+    file with `file.lisp:NNN' claims that line for the ordinal; this audit
+    fails every such marker that disagrees with the line the ordinal resolves
+    to.  A row without an own-file marker is not audited and never an error:
+    only rows that claim a line are held to it (a marker naming ANOTHER file
+    -- a funcall site elsewhere -- is context, not an ordinal claim).
+    """
+    failures = []
+    for lam, row in raw.get("callback_contexts", {}).items():
+        info = model.an.infos.get(lam)
+        if info is None:
+            continue  # a run over other files (a fixture) does not see it
+        base = re.escape(Path(info.path).name)
+        for mark in re.finditer(rf"\b({base}):(\d+)", row.get("why", "")):
+            if int(mark.group(2)) != info.line:
+                failures.append(
+                    f"callback_contexts {lam}: its why text names {mark.group(0)} but the "
+                    f"ordinal resolves to {info.path}:{info.line} -- a lambda insert moved "
+                    f"it: re-declare the row (declare_callback_contexts cannot see a move)")
+    return failures
+
+
 def analyze_tree(root: Path, contracts: Contracts, files: list[str] | None = None,
                  reach: dict | None = None) -> tuple[Analyzer, Model, Checker]:
     tree = collect_tree(root, files)
@@ -3114,11 +3146,29 @@ def main(argv=None) -> int:
     ap.add_argument("--write-baseline", action="store_true")
     ap.add_argument("--initial", action="store_true")
     ap.add_argument("--emit-realization", action="store_true")
+    ap.add_argument("--audit-callbacks", action="store_true",
+                    help="opt-in (no gate runs it): fail when a callback_contexts why text "
+                         "names its own file (file.lisp:NNN) at a line the ordinal does not "
+                         "resolve to; a row without such a marker is not audited")
     ap.add_argument("--summary", action="store_true")
     args = ap.parse_args(argv)
     started = time.time()
     root = Path(args.root).resolve()
     an, model, checker = build(root, Path(args.contracts))
+    if args.audit_callbacks:
+        failures = audit_callbacks(model, checker.c.raw)
+        for why in failures:
+            print("lock_discipline_check: " + why)
+        marked = 0
+        for lam in model.declared_callbacks:
+            info = model.an.infos.get(lam)
+            why = checker.c.raw.get("callback_contexts", {}).get(lam, {}).get("why", "")
+            if info is not None and re.search(rf"\b{re.escape(Path(info.path).name)}:\d+", why):
+                marked += 1
+        print(f"lock_discipline_check: callback-ordinal audit: {len(model.declared_callbacks)} "
+              f"declared row(s), {marked} with an own-file line marker, "
+              f"{len(failures)} disagreeing marker(s)")
+        return 1 if failures else 0
     findings = checker.run(set(args.rule) if args.rule else None)
     if not args.rule or "R3" in args.rule:
         check_realization(checker)
