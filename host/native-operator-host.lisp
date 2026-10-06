@@ -111,6 +111,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-output-resources result))
 
+(defun fn-native-operator-host-result-run-reclaim-live (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-reclaim-live result))
+
 (defun fn-native-operator-host-result-run-store-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-store-octets result))
