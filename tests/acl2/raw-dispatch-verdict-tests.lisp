@@ -19,6 +19,7 @@
 (in-package "ACL2")
 (include-book "../../books/raw-dispatch-verdict")
 (include-book "../../books/payload-kinds") ; *fn-entry-guard-kinds*
+(include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 
 ; ---------------------------------------------------------------------------
@@ -208,3 +209,68 @@
  (thm (equal (fn-rdv-verdict-digest (cdr (fn-rdv-lookup name verdicts))) digest)))
 (must-fail-checked
  (thm (not (fn-rdv-verdict-problem (cdr (fn-rdv-lookup name verdicts))))))
+
+; ---------------------------------------------------------------------------
+; 4. The teeth of the two keystones (GEN: defteeth).  The subject is the
+; admission the host calls (host/native/raw-trap.lisp fnn-install-raw-dispatch,
+; in the image and the extracted core alike); each mutation names the check
+; of fn-rdv-admit whose deletion it models, witnessed at a clean admission.
+
+(defteeth fn-rdv-admits-only-a-clean-judged-row
+  :claim (((clean (not (mv-nth 0 (fn-rdv-admit name digest verdicts)))))
+          (let ((v (cdr (fn-rdv-lookup name verdicts))))
+            (and (fn-rdv-lookup name verdicts)
+                 (consp digest)
+                 (equal (fn-rdv-verdict-digest v) digest)
+                 (not (fn-rdv-verdict-problem v)))))
+  :subject fn-rdv-admit
+  :witness ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+  :breaks ((clean ((name 'x) (digest '(1)) (verdicts '((x (2) nil x nil))))))
+  :mutations ((unjudged-row
+               (:conclusion (not (mv-nth 0 (fn-rdv-admit name digest nil))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+               :fault "an admit that dispatches a row no verdict judged")
+              (unread-row
+               (:conclusion (not (mv-nth 0 (fn-rdv-admit name nil verdicts))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+               :fault "an admit that takes a row it could not read (no digest) dispatches it raw")
+              (digest-unchecked
+               (:conclusion (not (mv-nth 0 (fn-rdv-admit name (append digest '(0)) verdicts))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+               :fault "an admit that skips the digest comparison dispatches a row changed since its verdict")
+              (problem-ignored
+               (:conclusion (not (mv-nth 0 (fn-rdv-admit
+                                            name digest
+                                            (cons (list name digest t name nil) verdicts)))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+               :fault "an admit that ignores the judged problem dispatches a refused row"))
+  :must-fail t)
+
+(defteeth fn-rdv-admit-returns-the-judged-target
+  :claim (((clean (not (mv-nth 0 (fn-rdv-admit name digest verdicts)))))
+          (and (equal (mv-nth 1 (fn-rdv-admit name digest verdicts))
+                      (fn-rdv-verdict-target (cdr (fn-rdv-lookup name verdicts))))
+               (equal (mv-nth 2 (fn-rdv-admit name digest verdicts))
+                      (fn-rdv-verdict-creatorp (cdr (fn-rdv-lookup name verdicts))))))
+  :subject fn-rdv-admit
+  :witness ((name 'x) (digest '(1)) (verdicts '((x (1) nil other nil))))
+  :breaks ((clean ((name 'x) (digest '(1)) (verdicts '((x (2) nil other nil))))))
+  :mutations ((judged-target-ignored
+               (:conclusion (equal name
+                                   (fn-rdv-verdict-target
+                                    (cdr (fn-rdv-lookup name verdicts)))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil other nil))))
+               :fault "an admit that returns the row's own name instead of the judged target applies the wrong raw function")
+              (judged-role-ignored
+               (:conclusion (equal t
+                                   (fn-rdv-verdict-creatorp
+                                    (cdr (fn-rdv-lookup name verdicts)))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil other nil))))
+               :fault "an admit that grants the registered creator role to every admitted row traps the wrong dispatch"))
+  :must-fail t)
+
+; No `(defteeth-check)' here: this book declares teeth for its own plain
+; defthms, not for a generator's keystones, and its closure (via
+; books/state-digest's chain to books/def-keyset-check) carries other
+; books' fn-teeth-owed rows that are dev-wide debt (keystone_emit's gate),
+; not this book's to discharge.

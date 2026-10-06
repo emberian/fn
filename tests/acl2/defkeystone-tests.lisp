@@ -147,6 +147,31 @@
                                          nil *fn-dkt-sample-spec*)
                      *fn-dkt-sample-teeth*))
 
+; A claim over a multiple-value call, the way theorems state it (under
+; MV-NTH): the assert-events cannot run that text (a multiply valued call
+; cannot be an argument outside a theorem context), so fn-dt-expand bridges
+; each multiple-output call with MV-LIST -- definitionally the identity --
+; and the witnesses run.  This sample pins that: the defteeth below would
+; fail to translate, unbridged, at its own witness event.
+
+(defun fn-dkt-two (x)
+  (declare (xargs :guard t))
+  (mv (nfix x) t))
+
+(defthm fn-dkt-two-first-is-x
+  (implies (natp x) (equal (mv-nth 0 (fn-dkt-two x)) x))
+  :rule-classes nil)
+
+(defteeth fn-dkt-two-first-is-x
+  :claim (((nat (natp x))) (equal (mv-nth 0 (fn-dkt-two x)) x))
+  :subject fn-dkt-two
+  :witness ((x 3))
+  :breaks ((nat ((x -1))))
+  :mutations ((second-output (:conclusion (equal (mv-nth 1 (fn-dkt-two x)) x))
+                             ((x 3))
+                             :fault "a two that answers x twice"))
+  :must-fail t)
+
 ; ---------------------------------------------------------------------------
 ; 3. Refusals, each by name (world-free).
 

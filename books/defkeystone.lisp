@@ -46,6 +46,13 @@
 ;
 ; WITNESS MODES (c04 1a).  The positive witness and every bound witness run
 ; UNDER THE GUARDS, as the host would (a guard violation fails the book).  A
+; claim may state a multiple-value call the way theorems do, under MV-NTH
+; (:DOC mv-nth): ACL2's evaluator cannot run that text -- a multiply valued
+; call cannot be passed as an argument outside a theorem context -- so at
+; expansion (fn-dt-expand) every emitted assert-event's value is re-read and
+; each call of a function with more than one output is wrapped in (MV-LIST k
+; ...), definitionally the identity (mv-list returns its second argument):
+; the value the assert-event checks is the claim's.  A
 ; removal, mutation or corrupted-state witness runs under the guards too,
 ; unless its entry says `:logical "why"', when it is evaluated for its
 ; LOGICAL value (with-guard-checking :none) and the row records the label as
@@ -820,6 +827,98 @@
        nil
      (cons (fn-dt-subst (car terms) alist) (fn-dt-subst-lst (cdr terms) alist)))))
 
+(defun fn-dt-mv-outputs (fn w)
+  (declare (xargs :mode :program))
+  ; the number of outputs FN declares when more than one, else nil.  Read
+  ; the property directly: STOBJS-OUT itself hard-errors on IF and on a
+  ; non-function, and the property is nil exactly there.
+  (let ((so (getpropc fn 'stobjs-out nil w)))
+    (and (consp (cdr so)) (len so))))
+
+(defun fn-dt-keep-used (formals actuals body)
+  (declare (xargs :mode :program))
+  ; (mv KEPT-FORMALS KEPT-ACTUALS): drop each formal unused in BODY whose
+  ; actual is a variable or a constant -- a source lambda application may
+  ; not name an unused formal (the world's terms carry the ignorable lets a
+  ; defteeth witness binds), and such an actual has no effect to keep.
+  ; A used formal, or one whose actual is a call, stays.
+  (cond ((atom formals) (mv nil nil))
+        (t (mv-let (kf ka)
+             (fn-dt-keep-used (cdr formals) (cdr actuals) body)
+             (cond
+              ((and (not (member-eq (car formals) (all-vars body)))
+                    (or (atom (car actuals))
+                        (eq (car (car actuals)) 'quote)))
+               (mv kf ka))
+              (t (mv (cons (car formals) kf)
+                     (cons (car actuals) ka))))))))
+
+(mutual-recursion
+ (defun fn-dt-bridge (x w)
+   (declare (xargs :mode :program))
+   ; X: a translated term; every call of a function with more than one
+   ; output, wherever it sits (an argument, a lambda body), wrapped in
+   ; (MV-LIST k ...) -- definitionally the identity, and the only shape
+   ; ACL2's evaluator accepts for a multiple-value call (:DOC mv-nth: a
+   ; multiply valued call cannot be an argument outside a theorem context).
+   ; Source teeth never write MV-LIST themselves, so no double wrap arises.
+   (cond ((atom x) x)
+         ((eq (car x) 'quote) x)
+         ((eq (car x) 'mv-list)
+          (cons 'mv-list (fn-dt-bridge-lst (cdr x) w)))
+         ((consp (car x))
+          ; ((lambda (formals) body) actuals ...): bridge the body and the
+          ; actuals; a let's lambda body may itself hold the mv calls.  A
+          ; formal the body no longer uses, with a variable or constant
+          ; actual, goes: source lambdas name no unused formal.
+          (let* ((body (fn-dt-bridge (caddr (car x)) w))
+                 (actuals (fn-dt-bridge-lst (cdr x) w)))
+            (mv-let (formals* actuals*)
+              (fn-dt-keep-used (cadr (car x)) actuals body)
+              (cons (list 'lambda formals* body) actuals*))))
+         (t (let ((k (fn-dt-mv-outputs (car x) w)))
+              (if k
+                  (list 'mv-list k
+                        (cons (car x) (fn-dt-bridge-lst (cdr x) w)))
+                (cons (car x) (fn-dt-bridge-lst (cdr x) w)))))))
+ (defun fn-dt-bridge-lst (xs w)
+   (declare (xargs :mode :program))
+   (if (atom xs)
+       nil
+     (cons (fn-dt-bridge (car xs) w)
+           (fn-dt-bridge-lst (cdr xs) w)))))
+
+(defun fn-dt-bridge-assert (event w)
+  (declare (xargs :mode :program))
+  ; one emitted event: an assert-event whose value is re-read (stobjs-out T,
+  ; as the binding check reads the claim) and every multiple-output call
+  ; bridged for the evaluator; identity when the value has none.  The
+  ; WITH-GUARD-CHECKING wrapper of a :logical or corrupt witness is kept
+  ; around the bridged value.  A value that will not translate even with
+  ; stobjs-out T is left as it was, so its own assert-event names the form.
+  (if (not (and (consp event) (eq (car event) 'assert-event)))
+      event
+    (let ((wrapped (and (consp (cadr event))
+                        (eq (car (cadr event)) 'with-guard-checking)
+                        (consp (cdr (cadr event)))
+                        (eq (cadr (cadr event)) :none)))
+          (rest (cddr event)))
+      (mv-let (bad term)
+        (fn-dt-translate (if wrapped (caddr (cadr event)) (cadr event)) w)
+        (cond
+         (bad event)
+         (wrapped `(assert-event (with-guard-checking :none
+                                   ,(fn-dt-bridge term w))
+                                 ,@rest))
+         (t `(assert-event ,(fn-dt-bridge term w) ,@rest)))))))
+
+(defun fn-dt-bridge-events (events w)
+  (declare (xargs :mode :program))
+  (if (atom events)
+      nil
+    (cons (fn-dt-bridge-assert (car events) w)
+          (fn-dt-bridge-events (cdr events) w))))
+
 (defun fn-dt-bindings-alist (bindings w)
   (declare (xargs :mode :program))
   ; (mv BAD ALIST): each VAR to its translated VAL
@@ -931,8 +1030,11 @@
                                                 (fn-dk-get :allocation kvs) subject w))))
     (if problem
         (er soft by "~x0: ~@1" name (fn-dk-refusal-text problem))
-      (value (cons 'progn (fn-dk-teeth-events name by claim
-                                              (getpropc name 'theorem nil w) kvs))))))
+      (value (cons 'progn
+                   (fn-dt-bridge-events
+                    (fn-dk-teeth-events name by claim
+                                        (getpropc name 'theorem nil w) kvs)
+                    w))))))
 
 (defun fn-teeth-form (name kvs)
   (declare (xargs :mode :program))
