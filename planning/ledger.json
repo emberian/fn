@@ -128,12 +128,16 @@
     "tests/acl2/decoded-window-action-trajectory-tests",
     "tests/acl2/decoded-window-begin-tests",
     "tests/acl2/decoded-window-budget-completion-tests",
+    "tests/acl2/decoded-window-budget-completion-2-tests",
     "tests/acl2/decoded-window-budget-trajectory-tests",
+    "tests/acl2/decoded-window-budget-trajectory-2-tests",
+    "tests/acl2/decoded-window-budget-trajectory-3-tests",
     "tests/acl2/decoded-window-canonical-trajectory-tests",
     "tests/acl2/decoded-window-clear-trajectory-tests",
     "tests/acl2/decoded-window-copy-trajectory-tests",
     "tests/acl2/decoded-window-descriptor-tests",
     "tests/acl2/decoded-window-digest-trajectory-tests",
+    "tests/acl2/decoded-window-digest-trajectory-2-tests",
     "tests/acl2/decoded-window-executor-tests",
     "tests/acl2/decoded-window-finite-canonical-tests",
     "tests/acl2/decoded-window-finite-output-trajectory-tests",
@@ -382,6 +386,7 @@
     "books/retention",
     "books/retention-invariants",
     "tests/acl2/retention-tests",
+    "tests/acl2/committer-actor-tests",
     "books/node",
     "books/node-invariants",
     "books/node-retention-transitions",
@@ -2553,26 +2558,26 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3043,
-    "books_in_root_closure": 2867,
-    "roots": 2549,
-    "theorems": 40213,
-    "functions": 25903,
-    "assert_events": 27615,
+    "books": 3049,
+    "books_in_root_closure": 2873,
+    "roots": 2554,
+    "theorems": 40215,
+    "functions": 25938,
+    "assert_events": 27901,
     "must_fails": 2708,
     "prover_refusals": 0,
     "encapsulates": 255,
     "guards": {
       "verified": 4053,
-      "declared-off": 3363,
-      "default-guarded": 14354,
-      "default-unguarded": 4133
+      "declared-off": 3367,
+      "default-guarded": 14356,
+      "default-unguarded": 4162
     },
     "suspect_theorems": 1469,
     "export_hygiene_warnings": 423,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 296,
-    "include_hygiene_warnings": 4046,
+    "include_hygiene_warnings": 4052,
     "host_names_warnings": 3558,
     "hand_written_record_warnings": 19
   },
@@ -28719,7 +28724,7 @@
       "book": "books/legacy-parser-catalog.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 28,
+      "theorems": 29,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -57091,7 +57096,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 28,
+      "assert_events": 36,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 15,
@@ -57099,6 +57104,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/app-pattern-delivery",
+        "../../books/defkeystone",
         "hybrid-store-tests"
       ],
       "system_includes": [],
@@ -57118,7 +57124,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
+      "assert_events": 39,
       "must_fails": 7,
       "prover_refusals": 0,
       "defconsts": 11,
@@ -57126,6 +57132,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/app-pattern",
+        "../../books/defkeystone",
         "must-fail-checked"
       ],
       "system_includes": [],
@@ -57334,14 +57341,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 22,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/article-kind-codec"
+        "../../books/article-kind-codec",
+        "../../books/defkeystone"
       ],
       "system_includes": [],
       "suspects": [],
@@ -57360,16 +57368,17 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 11,
+      "assert_events": 61,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 15,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
         "../../books/article-kind-acceptance",
         "../../books/article-kind-hybrid",
-        "../../books/codec-attach"
+        "../../books/codec-attach",
+        "../../books/defkeystone"
       ],
       "system_includes": [],
       "suspects": [],
@@ -59289,14 +59298,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 9,
+      "assert_events": 12,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-ion-lifetime"
+        "../../books/bp-ion-lifetime",
+        "../../books/defkeystone"
       ],
       "system_includes": [],
       "suspects": [],
@@ -59537,14 +59547,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 19,
+      "assert_events": 30,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-node-budget-input"
+        "../../books/bp-node-budget-input",
+        "../../books/defkeystone"
       ],
       "system_includes": [],
       "suspects": [],
@@ -64003,6 +64014,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/committer-actor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/committer-actor",
+        "../../books/defkeystone"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/config-carried-candidate-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -64552,7 +64590,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 70,
+      "assert_events": 77,
       "must_fails": 12,
       "prover_refusals": 0,
       "defconsts": 29,
@@ -64560,6 +64598,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/connection-budget",
+        "../../books/defkeystone",
         "must-fail-checked"
       ],
       "system_includes": [],
@@ -66753,10 +66792,10 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/decoded-window-budget-completion-tests.lisp",
+      "book": "tests/acl2/decoded-window-budget-completion-2-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
+      "theorems": 7,
       "functions": 9,
       "guards": {
         "verified": 0,
@@ -66779,10 +66818,88 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/decoded-window-budget-completion-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-budget-completion"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-budget-trajectory-2-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-budget-trajectory"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-budget-trajectory-3-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-budget-trajectory"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/decoded-window-budget-trajectory-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 6,
       "functions": 6,
       "guards": {
         "verified": 0,
@@ -66939,16 +67056,42 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/decoded-window-digest-trajectory-tests.lisp",
+      "book": "tests/acl2/decoded-window-digest-trajectory-2-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
+      "theorems": 10,
       "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-digest-trajectory"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-digest-trajectory-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -67471,7 +67614,7 @@
       "book": "tests/acl2/def-carried-view-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
+      "theorems": 44,
       "functions": 53,
       "guards": {
         "verified": 0,
@@ -68586,13 +68729,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 14,
+      "assert_events": 19,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/feed-journal-order"
       ],
       "system_includes": [],
@@ -72076,7 +72220,7 @@
         "default-unguarded": 11
       },
       "verify_guards_events": 0,
-      "assert_events": 98,
+      "assert_events": 103,
       "must_fails": 11,
       "prover_refusals": 0,
       "defconsts": 43,
@@ -72085,6 +72229,7 @@
       "includes": [
         "../../books/account-list",
         "../../books/config-invariants",
+        "../../books/defkeystone",
         "../../books/native-admin",
         "../../books/nntp-auth",
         "../../books/owner-agent",
@@ -72879,13 +73024,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 24,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/native-init-resume"
       ],
       "system_includes": [],
@@ -73100,13 +73246,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 26,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/native-retire"
       ],
       "system_includes": [],
@@ -73237,13 +73384,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 0,
+      "assert_events": 6,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/newnews-matching-selector"
       ],
       "system_includes": [],
@@ -73825,7 +73973,7 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 149,
+      "assert_events": 157,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 43,
@@ -73833,6 +73981,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
+        "../../books/defkeystone",
         "../../books/nntp-auth",
         "arena-lift"
       ],
@@ -75063,13 +75212,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 14,
+      "assert_events": 17,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/output-command-admission"
       ],
       "system_includes": [],
@@ -75089,13 +75239,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 1,
+      "assert_events": 11,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/output-reservation"
       ],
       "system_includes": [
@@ -76884,13 +77035,14 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
+      "assert_events": 49,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/owner-queued-work"
       ],
       "system_includes": [],
@@ -77020,13 +77172,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 5,
+      "assert_events": 8,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/owner-reclaim-carry",
         "must-fail-checked"
       ],
@@ -77806,13 +77959,14 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 16,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 0,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/owner-time-journal-stream"
       ],
       "system_includes": [],
@@ -78302,13 +78456,14 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 21,
+      "assert_events": 28,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 16,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/page-read-startup"
       ],
       "system_includes": [],
@@ -78925,6 +79080,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/payload-lz-scalar-realizer"
       ],
       "system_includes": [],
@@ -79428,13 +79584,14 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 14,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/peer-flight-reservation"
       ],
       "system_includes": [
@@ -81880,13 +82037,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 11,
+      "assert_events": 14,
       "must_fails": 2,
       "prover_refusals": 0,
       "defconsts": 3,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/reclaim-chunked-seal",
         "reclaim-chunked-walk-tests"
       ],
@@ -81907,7 +82065,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
+      "assert_events": 19,
       "must_fails": 3,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -81915,6 +82073,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
+        "../../books/defkeystone",
         "../../books/reclaim-chunked-walk",
         "arena-lift",
         "expiry-tests",
@@ -82842,7 +83001,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 36,
+      "assert_events": 37,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 28,
@@ -82872,7 +83031,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 14,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 22,
@@ -82954,13 +83113,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 71,
+      "assert_events": 75,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 25,
+      "defconsts": 26,
       "defmacros": 0,
       "encapsulates": 1,
       "includes": [
+        "../../books/defkeystone",
         "../../books/retention-invariants",
         "must-fail-checked"
       ],
@@ -83209,21 +83369,22 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 11,
+      "functions": 13,
       "guards": {
         "verified": 0,
         "declared-off": 4,
-        "default-guarded": 0,
+        "default-guarded": 2,
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 27,
+      "assert_events": 38,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 26,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/served-access-revoke",
         "arena-lift"
       ],
@@ -85176,13 +85337,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 7,
+      "assert_events": 10,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/store-checkpoint-verify",
         "store-checkpoint-arena-tests"
       ],
@@ -85452,14 +85614,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 92,
+      "assert_events": 96,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 18,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
+        "../../books/defkeystone",
         "../../books/store-files-invariants",
         "held-rows-tests",
         "must-fail-checked"
@@ -86018,24 +86181,26 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 27,
+      "functions": 31,
       "guards": {
         "verified": 0,
-        "declared-off": 21,
+        "declared-off": 25,
         "default-guarded": 6,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
+      "assert_events": 25,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 1,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
+        "../../books/defkeystone",
         "../../books/frame-trailer",
-        "../../books/store-log-durable"
+        "../../books/store-log-durable",
+        "teeth-ground-lemma"
       ],
       "system_includes": [],
       "suspects": [],
@@ -86054,13 +86219,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 5,
+      "assert_events": 11,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/store-log-entry-bound",
         "store-log-stream-tests"
       ],
@@ -86276,13 +86442,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 17,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
+        "../../books/records-attach",
         "../../books/store-log-route-programs",
         "store-log-kernel-tests"
       ],
@@ -87512,13 +87680,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 5,
+      "assert_events": 9,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/string-line-cursor-cost"
       ],
       "system_includes": [],
@@ -88084,13 +88253,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 2,
+      "assert_events": 4,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/tcpcl-received-source-refinement"
       ],
       "system_includes": [],
@@ -88110,13 +88280,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 72,
+      "assert_events": 77,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/tcpcl-retained-turn"
       ],
       "system_includes": [],
@@ -88163,13 +88334,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 2,
+      "assert_events": 8,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 1,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/tcpcl-source-control-refinement",
         "tcpcl-received-source-refinement-tests"
       ],
@@ -88253,6 +88425,32 @@
       "includes": [
         "../../books/tcpcl-invariants",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/teeth-ground-lemma.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/defkeystone"
       ],
       "system_includes": [],
       "suspects": [],
@@ -89318,13 +89516,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 0,
+      "assert_events": 14,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/wildmat-cursor"
       ],
       "system_includes": [],
@@ -89344,13 +89543,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 0,
+      "assert_events": 12,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/defkeystone",
         "../../books/wildmat-live"
       ],
       "system_includes": [],
@@ -93262,7 +93462,7 @@
     {
       "theorem": "fn-lpv-nil-span-value-by-definition",
       "book": "books/legacy-parser-catalog.lisp",
-      "line": 148,
+      "line": 161,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-lpc-span-value and the conclusion is that arm's value"
       ]
@@ -102592,13 +102792,13 @@
       {
         "theorem": "fn-lpv-complete-feed-tombstone-is-actual",
         "book": "books/legacy-parser-catalog.lisp",
-        "line": 122,
+        "line": 135,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-lpv-actual-parser-catalog-verdict",
         "book": "books/legacy-parser-catalog.lisp",
-        "line": 222,
+        "line": 235,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -102610,25 +102810,25 @@
       {
         "theorem": "fn-lpc-feed-body-lines-is-body-lines-of",
         "book": "books/legacy-parser-reference.lisp",
-        "line": 222,
+        "line": 223,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-lpc-tick-full-body-lines-is-body-lines-of",
         "book": "books/legacy-parser-reference.lisp",
-        "line": 250,
+        "line": 251,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-lpc-feed-body-lines-is-body-lines-of-all-tails",
         "book": "books/legacy-parser-reference.lisp",
-        "line": 297,
+        "line": 298,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-lpc-tick-full-body-lines",
         "book": "books/legacy-parser-reference.lisp",
-        "line": 308,
+        "line": 309,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -126561,7 +126761,7 @@
       },
       {
         "book": "tests/acl2/connection-budget-tests.lisp",
-        "line": 13,
+        "line": 14,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -127127,15 +127327,36 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/decoded-window-budget-completion-tests.lisp",
-        "line": 2,
+        "book": "tests/acl2/decoded-window-budget-completion-2-tests.lisp",
+        "line": 7,
         "include": "../../books/decoded-window-budget-completion",
         "included": "books/decoded-window-budget-completion.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/decoded-window-budget-completion-tests.lisp",
+        "line": 5,
+        "include": "../../books/decoded-window-budget-completion",
+        "included": "books/decoded-window-budget-completion.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-budget-trajectory-2-tests.lisp",
+        "line": 6,
+        "include": "../../books/decoded-window-budget-trajectory",
+        "included": "books/decoded-window-budget-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-budget-trajectory-3-tests.lisp",
+        "line": 6,
+        "include": "../../books/decoded-window-budget-trajectory",
+        "included": "books/decoded-window-budget-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/decoded-window-budget-trajectory-tests.lisp",
-        "line": 2,
+        "line": 5,
         "include": "../../books/decoded-window-budget-trajectory",
         "included": "books/decoded-window-budget-trajectory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -127197,8 +127418,15 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/decoded-window-digest-trajectory-2-tests.lisp",
+        "line": 8,
+        "include": "../../books/decoded-window-digest-trajectory",
+        "included": "books/decoded-window-digest-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/decoded-window-digest-trajectory-tests.lisp",
-        "line": 4,
+        "line": 7,
         "include": "../../books/decoded-window-digest-trajectory",
         "included": "books/decoded-window-digest-trajectory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -128857,28 +129085,28 @@
       },
       {
         "book": "tests/acl2/moderation-tests.lisp",
-        "line": 13,
+        "line": 14,
         "include": "../../books/owner-agent",
         "included": "books/owner-agent.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/moderation-tests.lisp",
-        "line": 15,
+        "line": 16,
         "include": "../../books/account-list",
         "included": "books/account-list.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/moderation-tests.lisp",
-        "line": 16,
+        "line": 17,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/moderation-tests.lisp",
-        "line": 364,
+        "line": 365,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -129466,14 +129694,14 @@
       },
       {
         "book": "tests/acl2/nntp-auth-tests.lisp",
-        "line": 12,
+        "line": 13,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/nntp-auth-tests.lisp",
-        "line": 229,
+        "line": 230,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -130873,7 +131101,7 @@
       },
       {
         "book": "tests/acl2/owner-reclaim-carry-tests.lisp",
-        "line": 4,
+        "line": 5,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -132665,7 +132893,7 @@
       },
       {
         "book": "tests/acl2/reclaim-chunked-seal-tests.lisp",
-        "line": 6,
+        "line": 7,
         "include": "reclaim-chunked-walk-tests",
         "included": "tests/acl2/reclaim-chunked-walk-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -132679,28 +132907,28 @@
       },
       {
         "book": "tests/acl2/reclaim-chunked-walk-tests.lisp",
-        "line": 6,
+        "line": 7,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/reclaim-chunked-walk-tests.lisp",
-        "line": 7,
+        "line": 8,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/reclaim-chunked-walk-tests.lisp",
-        "line": 8,
+        "line": 9,
         "include": "expiry-tests",
         "included": "tests/acl2/expiry-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/reclaim-chunked-walk-tests.lisp",
-        "line": 11,
+        "line": 12,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -133134,7 +133362,7 @@
       },
       {
         "book": "tests/acl2/served-access-revoke-tests.lisp",
-        "line": 26,
+        "line": 27,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -134295,6 +134523,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-log-durable-tests.lisp",
+        "line": 20,
+        "include": "teeth-ground-lemma",
+        "included": "tests/acl2/teeth-ground-lemma.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-log-entry-bound-tests.lisp",
         "line": 17,
         "include": "store-log-stream-tests",
@@ -134408,9 +134643,16 @@
       },
       {
         "book": "tests/acl2/store-log-route-programs-tests.lisp",
-        "line": 7,
+        "line": 8,
         "include": "store-log-kernel-tests",
         "included": "tests/acl2/store-log-kernel-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-route-programs-tests.lisp",
+        "line": 11,
+        "include": "../../books/records-attach",
+        "included": "books/records-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -135318,7 +135560,7 @@
       },
       {
         "book": "tests/acl2/tcpcl-source-control-refinement-tests.lisp",
-        "line": 3,
+        "line": 4,
         "include": "tcpcl-received-source-refinement-tests",
         "included": "tests/acl2/tcpcl-received-source-refinement-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
