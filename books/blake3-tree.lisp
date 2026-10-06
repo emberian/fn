@@ -461,6 +461,140 @@
            (equal (fn-b3-nthcdrx a (fn-b3-firstn b x))
                   (fn-b3-firstn (nfix (- b a)) (fn-b3-nthcdrx a x)))))
 
+(defthm fn-b3-firstn-true-listp
+  (true-listp (fn-b3-firstn n x))
+  :hints (("Goal" :induct (fn-b3-firstn n x))))
+
+(defthm fn-b3-nthcdrx-true-listp
+  (implies (true-listp x)
+           (true-listp (fn-b3-nthcdrx n x)))
+  :hints (("Goal" :induct (fn-b3-nthcdrx n x))))
+
+; -----------------------------------------------------------------------------
+; WTREE PAIRING: the tree over an even run of outputs is the tree over their
+; pairs.  The len-equality hypothesis stays explicit so the doubling bridge
+; rewrites the split the definition computes; the single-step bridges keep the
+; base leaves in list form.
+
+(defun fn-b3-lw-ind (p j)
+  ; lw's own climb as an induction driver over p.
+  (declare (xargs :measure (nfix (- (nfix j) (nfix p))) :verify-guards nil))
+  (if (and (posp p) (natp j) (< (* 2 p) j))
+      (fn-b3-lw-ind (* 2 p) j)
+    (list p j)))
+
+(defthm fn-b3-lw-of-double-len
+  ; Bridge: an even-length run's wtree split is twice the half-count's
+  ; split.  Stated with the doubled length as an explicit n so the len
+  ; hypothesis relieves from the caller's ancestors.
+  (implies (and (posp p) (natp u) (< p u)
+                (equal n (* 2 u)))
+           (equal (fn-b3-left-windows p n)
+                  (* 2 (fn-b3-left-windows p u))))
+  :hints (("Goal" :induct (fn-b3-lw-ind p u)
+                   :expand ((fn-b3-left-windows p n)))))
+
+(defthm fn-b3-left-windows-1-double
+  ; p=1 instance of the doubling, as a rewrite.
+  (implies (and (natp u) (<= 2 u))
+           (equal (fn-b3-left-windows 1 (* 2 u))
+                  (* 2 (fn-b3-left-windows 1 u))))
+  :hints (("Goal" :use ((:instance fn-b3-left-windows-double (p 1) (u u))))))
+
+(defthm fn-b3-window-tree-split
+  ; One unfolding of the window tree: the split at lw(1, count).
+  (implies (and (consp outs) (consp (cdr outs)))
+           (equal (fn-b3-window-tree key flags outs)
+                  (fn-b3-parent-out key
+                    (fn-b3-window-tree key flags
+                      (fn-b3-firstn (fn-b3-left-windows 1 (len outs)) outs))
+                    (fn-b3-window-tree key flags
+                      (fn-b3-nthcdrx (fn-b3-left-windows 1 (len outs)) outs))
+                    flags)))
+  :hints (("Goal" :expand ((fn-b3-window-tree key flags outs)))))
+
+(defthm fn-b3-window-tree-of-single
+  (equal (fn-b3-window-tree key flags (list x)) x)
+  :hints (("Goal" :expand ((fn-b3-window-tree key flags (list x))))))
+
+(defthm fn-b3-firstn-of-1
+  (implies (consp x)
+           (equal (fn-b3-firstn 1 x) (list (car x))))
+  :hints (("Goal" :expand ((fn-b3-firstn 1 x)))))
+
+(defthm fn-b3-nthcdrx-of-1
+  (implies (consp x)
+           (equal (fn-b3-nthcdrx 1 x) (cdr x)))
+  :hints (("Goal" :expand ((fn-b3-nthcdrx 1 x)))))
+
+(defthm fn-b3-car-of-pair-outs
+  (implies (and (consp outs) (consp (cdr outs)))
+           (equal (car (fn-b3-pair-outs key flags outs))
+                  (fn-b3-parent-out key (car outs) (cadr outs) flags)))
+  :hints (("Goal" :expand ((fn-b3-pair-outs key flags outs)))))
+
+(defthm fn-b3-pair-outs-consp
+  (implies (and (consp outs) (consp (cdr outs)))
+           (consp (fn-b3-pair-outs key flags outs)))
+  :hints (("Goal" :expand ((fn-b3-pair-outs key flags outs)))))
+
+(defthm fn-b3-cdr-of-pair-outs-consp
+  ; Four or more outputs pair into at least two.
+  (implies (and (consp (cddr outs)) (consp (cdddr outs)))
+           (consp (cdr (fn-b3-pair-outs key flags outs))))
+  :hints (("Goal" :expand ((fn-b3-pair-outs key flags outs)))))
+
+(defthm fn-b3-cddr-consp-of-even
+  ; An even run of 2u outputs, u >= 2, has a fourth element: its pairs
+  ; are at least two, never a singleton.
+  (implies (and (natp u) (<= 2 u) (equal (len outs) (* 2 u)))
+           (and (consp (cddr outs)) (consp (cdddr outs))))
+  :hints (("Goal" :expand ((len outs)))))
+
+(defthm fn-b3-window-tree-of-1-list
+  (implies (and (consp outs) (atom (cdr outs)))
+           (equal (fn-b3-window-tree key flags outs) (car outs)))
+  :hints (("Goal" :expand ((fn-b3-window-tree key flags outs)))))
+
+(defthm fn-b3-window-tree-of-pair-outs-2
+  ; The pairs of exactly two outputs tree to their parent.
+  (implies (and (consp outs) (consp (cdr outs)) (atom (cddr outs)))
+           (equal (fn-b3-window-tree key flags
+                     (fn-b3-pair-outs key flags outs))
+                  (fn-b3-parent-out key (car outs) (cadr outs) flags)))
+  :hints (("Goal" :expand ((fn-b3-pair-outs key flags outs)))))
+
+(defthm fn-b3-atom-cdr-of-len-1
+  (implies (equal (len x) 1)
+           (atom (cdr x)))
+  :hints (("Goal" :expand ((len x)))))
+
+(defun fn-b3-wt-pair-ind (u outs)
+  ; wtree-pairing induction: split an even run of outs at its wtree split
+  ; (2*lw of the half-count), both children strictly fewer pairs.
+  (declare (xargs :measure (nfix u) :verify-guards nil))
+  (if (or (<= (nfix u) 1) (atom outs) (atom (cdr outs)))
+      (list u outs)
+    (list (fn-b3-wt-pair-ind (fn-b3-left-windows 1 u)
+            (fn-b3-firstn (* 2 (fn-b3-left-windows 1 u)) outs))
+          (fn-b3-wt-pair-ind (- u (fn-b3-left-windows 1 u))
+            (fn-b3-nthcdrx (* 2 (fn-b3-left-windows 1 u)) outs)))))
+
+(defthm fn-b3-window-tree-of-pairs
+  ; L-WTREE-PAIR: the tree over an EVEN run of outputs is the tree over
+  ; their pairs — one pairing level of the reference tree.
+  (implies (and (equal (len outs) (* 2 u)) (natp u) (true-listp outs))
+           (equal (fn-b3-window-tree key flags outs)
+                  (fn-b3-window-tree key flags
+                    (fn-b3-pair-outs key flags outs))))
+  :hints (("Goal" :induct (fn-b3-wt-pair-ind u outs)
+                   :in-theory (disable fn-b3-window-tree)
+                   :expand ((fn-b3-window-tree key flags outs)
+                            (fn-b3-window-tree key flags
+                              (fn-b3-pair-outs key flags outs))))
+          ("Subgoal *1/1.4'" :cases ((consp (cddr outs)))
+                            :expand ((fn-b3-pair-outs key flags outs)))))
+
 ; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
 
