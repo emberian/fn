@@ -652,10 +652,6 @@
    "runs_in": "fnn-command-bp-node",
    "why": "the *fnn-tcl-deliver* binding of the grant's turn (bp-node.lisp:1022), funcalled by fnn-tcl-session for one accepted connection during a turn; bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock. Re-declared 2026-10-05 (baseline-reds): the row's old text named the grant's turn itself (now #lambda5, undeclared: nothing it reaches needs a lock)"
   },
-  "lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda9": {
-   "runs_in": "fnn-command-bp-node",
-   "why": "the *fnn-tcl-progress* binding of the grant's turn (bp-node.lisp:1025), funcalled by the tcl machinery after each connection progress step during fnn-tcl-turn; it runs fnn-bpnode-dispatch-one, whose fnn-owner-core calls take the owner mutex per call; bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock. Declared 2026-10-05 (baseline-reds), closing R1's 9 unresolved rows for this root"
-  },
   "lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda2": {
    "runs_in": "fnn-command-bp-node",
    "why": "*fnn-bpnode-control-pump*, let-bound by fnn-command-bp-node and funcalled by the node's own waits (bp-node.lisp:1127, audit-verified 2026-10-06); bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
