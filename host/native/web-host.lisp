@@ -722,10 +722,13 @@ exposure admission decides (the id, or NIL when it refused)."
 (defun fnn-web-replay-retained-window (conn need)
   "The retained reply octets of NEED's span, or NIL when not covered."
   (let* ((kept (gethash conn *fnn-web-replay-retained*))
-         (cache (first kept)) (cbase (second kept)) (clen (third kept))
-         (from (- (car need) cbase)) (to (- (cdr need) cbase)))
-    (and cache (<= 0 from) (<= to clen)
-         (subseq cache from to))))
+         (cache (first kept)) (cbase (second kept)) (clen (third kept)))
+    ;; The offsets are computed only under the cache: an empty entry has no
+    ;; base, and (- need nil) is a type error, not a miss.
+    (when cache
+      (let ((from (- (car need) cbase)) (to (- (cdr need) cbase)))
+        (and (<= 0 from) (<= to clen)
+             (subseq cache from to))))))
 
 (defun fnn-web-replay-forget (conn)
   (remhash conn *fnn-web-replay-retained*))
