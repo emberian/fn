@@ -7,34 +7,42 @@
  "harness": "tests/test_certs.py",
  "id": "FILL-CERTS-INSTALL-DELETED-BOOK",
  "notes": [
-  "10-06 10:39 claimed: scope=['tools/cert_images.py', 'tools/certs.py', 'tests/test_certs.py'] test=python3 -m unittest tests.test_certs"
+  "10-06 10:39 claimed: scope=['tools/cert_images.py', 'tools/certs.py', 'tests/test_certs.py'] test=python3 -m unittest tests.test_certs",
+  "10-06 10:42 claimed: scope=['tools/cert_images.py', 'tools/certs.py', 'tests/test_certs.py', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_certs"
  ],
  "owner": "unowned",
  "scope": [
   "tools/cert_images.py",
   "tools/certs.py",
-  "tests/test_certs.py"
+  "tests/test_certs.py",
+  "planning/evidence-index.tsv"
  ],
  "severity": "high",
  "source": "fill-20261004",
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_certs",
  "title": "certs.py install (all roots) crashes FileNotFoundError on books/held-record-shape.lisp, which books/acceptance-binding-held-gate.lisp still includes (D43 deleted the book); the install step of remote_check/make check aborts with a traceback, so no certificate is installed and host_check prints NOT RUN for both images (193 / 126 books uncertified) on every box that has not already got them",
- "updated": "2026-10-06T14:41:47Z",
+ "updated": "2026-10-06T14:42:28Z",
  "verify": {
   "base": "93c692e385b83c38b7828b8439c78c059b645fb1",
-  "changed_files": [],
-  "diff_lines": 0,
+  "changed_files": [
+   "planning/evidence-index.tsv",
+   "planning/repair/items/FILL-CERTS-INSTALL-DELETED-BOOK.json",
+   "tests/test_certs.py",
+   "tools/cert_images.py",
+   "tools/certs.py"
+  ],
+  "diff_lines": 42,
   "evidence": {
-   "bytes": 307,
-   "path": "planning/evidence/repair/FILL-CERTS-INSTALL-DELETED-BOOK-4177d3ecc83a4912b603f70e48e2108a.json",
-   "sha256": "fd97d3513708350c3efc0d579e41e0abea55c775e1f4c97f6deec8b26b08dba0"
+   "bytes": 440,
+   "path": "planning/evidence/repair/FILL-CERTS-INSTALL-DELETED-BOOK-861849d01e774be8b3856dca2141d47d.json",
+   "sha256": "923c5c9775a23063b555718fa505b157cd87684f7e9a354ad37da25e16d4f97b"
   },
   "evidence_outcome": "archived",
-  "head": "93c692e385b83c38b7828b8439c78c059b645fb1",
+  "head": "c2bcdeb78d6815cc909b2e9b5037627ad097d9a0",
   "ok": false,
   "problems": [
-   "no commit in 93c692e385b83c38b7828b8439c78c059b645fb1..HEAD names FILL-CERTS-INSTALL-DELETED-BOOK"
+   "files outside the claimed scope: planning/evidence-index.tsv"
   ],
   "semantic_ok": false
  }
