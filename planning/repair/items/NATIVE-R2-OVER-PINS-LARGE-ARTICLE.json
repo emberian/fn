@@ -7,12 +7,14 @@
  "fix": "Undiagnosed; this is a diagnosis item, not a ready fix. Owner of the cold-line/window route should take it.",
  "id": "NATIVE-R2-OVER-PINS-LARGE-ARTICLE",
  "locus": "owner-large-article",
- "notes": [],
- "owner": "unassigned",
+ "notes": [
+  "10-05 05:12 serve-next 2026-10-05: MEASURED (live dev owner, set 3e53d7bc5): 1 MiB 220 at 13.5 s / whole 31.5 s; 12 MiB window job 1.45 s x 768 jobs before the 220 (~20 min). Cause: whole-payload preflight before 220; each 16 KiB window job re-digests the whole protected prefix (quadratic); ~5 us/octet scalar borrow + 1 ms resume per 256-octet quantum. ROOT RULING: (a) profile-derived window 256 KiB, bulk span borrow, (c) verified streaming ledgered, (d) rejected. AMENDMENT: no new disconnect semantics (FIN == SHUT_WR, served on purpose: over_pins:168-172); hard close already cancels via POLLERR/HUP; witness = stop delay before/after. lanedumps/serve-next.md"
+ ],
+ "owner": "serve-next",
  "scenario": "A reader requests a 12 MiB article on a node whose profile admits it: no reply.",
  "severity": "high",
  "source": "native-set-bdd4f40c4-r2",
  "state": "open",
  "title": "tests.test_native_over_pins.test_a_large_article_drained_slowly_refreshes_the_idle_deadline: a 12 MiB ARTICLE gets no 220 line for 300 s (the POST is accepted, the reader connects, then silence; no log line, no close)",
- "updated": "2026-10-04T19:04:15Z"
+ "updated": "2026-10-05T09:12:58Z"
 }

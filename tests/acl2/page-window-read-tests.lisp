@@ -51,7 +51,7 @@
         (equal (nth 0 answer) :byte)
         (fn-pwx-boundp ledger worker token :returned)
         (fn-pwr-plan-matches-token s token) (fn-ewp-publication s)
-        (natp 1) (< 1 (nth 5 s)) (<= (nth 5 s) 16384)
+        (natp 1) (< 1 (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets))
         (equal (nth 1 answer) (nth 1 (nth 0 buffer)))
         (equal (nth 1 answer) 2))))
 (defthm pwrtest-positive-witness (pwrtest-positive) :rule-classes nil
@@ -67,7 +67,7 @@
    (and (not (equal (nth 0 answer) :byte))
         (not (and (fn-pwx-boundp ledger worker token :returned)
                   (fn-pwr-plan-matches-token s token) (fn-ewp-publication s)
-                  (natp 1) (< 1 (nth 5 s)) (<= (nth 5 s) 16384)
+                  (natp 1) (< 1 (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets))
                   (equal (nth 1 answer) (nth 1 (nth 0 buffer))))))))
 
 (defthm pwrtest-removal-witness (pwrtest-removal) :rule-classes nil

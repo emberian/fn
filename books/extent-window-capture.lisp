@@ -6,7 +6,7 @@
 (defun fn-ewb-capture (s fn-octets fn-ew-buffer)
   (declare (xargs :stobjs (fn-octets fn-ew-buffer)
                   :guard (and (true-listp s) (natp (nth 5 s))
-                              (<= (nth 5 s) 16384)
+                              (<= (nth 5 s) (fn-profile-limit :read-window-octets))
                               (<= (fn-ewp-demand s) (fn-octets-len fn-octets)))
                   :guard-hints (("Goal"
                     :use (fn-ewp-window-span-bounds fn-ewp-demand-bounded)
