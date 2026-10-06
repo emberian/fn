@@ -942,6 +942,29 @@
   (equal (fn-cu-r-counts (mv-nth 0 (fn-cu-next r))) (fn-cu-r-counts r))
   :hints (("Goal" :in-theory (enable fn-cu-next)))))
 
+(local (defthm fn-cu-next-nil-todo-effects
+  ; The nil-todo variant.  With nothing left to offer, fn-cu-next does not
+  ; emit an IHAVE: the effects are one (:journal . cursor) naming the cursor
+  ; the produced round commits, then the next request or the quit and close.
+  ; No second journal, no :local effect.  The consp-todo branch offers
+  ; instead; fn-csp-batch-finish never takes it, because it forces todo nil.
+  (implies (not (consp (fn-cu-r-todo r)))
+           (let ((next (mv-nth 0 (fn-cu-next r)))
+                 (effs (mv-nth 1 (fn-cu-next r))))
+             (and (consp effs)
+                  (equal (car effs)
+                         (cons :journal (fn-cu-round-cursor next)))
+                  (not (member-eq :journal (strip-cars (cdr effs))))
+                  (not (member-eq :local (strip-cars effs)))
+                  (equal (fn-cu-r-counts next) (fn-cu-r-counts r))
+                  (equal (fn-cu-r-position next)
+                         (fn-cu-batch-next (fn-cu-r-batch r)))
+                  (equal (fn-cu-r-chain next)
+                         (fn-cu-batch-claim (fn-cu-r-batch r)))
+                  (or (equal (fn-cu-r-phase next) :reply)
+                      (equal (fn-cu-r-phase next) :done)))))
+  :hints (("Goal" :in-theory (enable fn-cu-next fn-cu-round-cursor)))))
+
 (local (defthm fn-csp-fail-keeps-counts
   ; A named failure settles no record either.
   (equal (fn-cu-r-counts (fn-cu-s-round (fn-csp-session (car (fn-csp-fail s reason)))))
