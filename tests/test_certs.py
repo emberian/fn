@@ -623,6 +623,19 @@ class InstallTests(unittest.TestCase):
                           report.unreadable)
             self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
 
+    def test_install_exits_nonzero_when_a_book_is_unreadable(self):
+        """repair-wave-1 residual: the finding is reported and the rest installs,
+        but the command's exit status is 1; a clean install exits 0."""
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                mock.patch("sys.stdout"):
+            _, cache = self.published(one, ["books/mid"])
+            target = worktree(two)
+            argv = ["--root", str(target), "--cache", str(cache), "install"]
+            self.assertEqual(certs.main(argv), 0)
+            (target / "books/parked.lisp").write_text(
+                '(in-package "ACL2")\n(include-book "gone")\n')
+            self.assertEqual(certs.main(argv), 1)
+
     def test_a_changed_dependency_is_not_a_cache_hit(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             _, cache = self.published(one, ["books/mid"])
