@@ -244,6 +244,35 @@
                                    fn-nntp-multi fn-nntp-single
                                    fn-nntp-result-effects)))))
 
+; XFN-ZARTICLE always replies.  When the decision is :syntax the reply is
+; that single line.  When its car is :stored and the initial line passes
+; fn-zar-line-okp, the wire image is that initial line plus
+; (fn-zdn-body-lines (nth 2 d)) of the compressed octets.  Otherwise the
+; reply is the msgid-retrieval-indexed call, exactly as fn-zar-command
+; writes it.  fn-zar-line-okp already forces the initial line inside
+; *fn-nntp-max-response-octets*.  Dot-stuffing can make the stored arm's
+; wire longer than the article-row charge, so this states the value, not a
+; numeric article-row bound: a wire image of a payload, not a data cap (D27).
+(defthm fn-tariff-zar-command-value
+  (equal (fn-zar-command session archive index args fn-arena)
+         (let ((d (fn-zar-decide args index fn-arena)))
+           (if (equal d :syntax)
+               (fn-nntp-single session (fn-proto-text * :syntax))
+             (let ((initial (and (equal (car d) :stored)
+                                 (fn-zar-initial (nth 1 d) (nth 3 d)
+                                                 (len (nth 2 d))))))
+               (if (and (equal (car d) :stored)
+                        (fn-zar-line-okp initial))
+                   (fn-nntp-multi-octets session initial
+                                         (fn-zdn-body-lines (nth 2 d)))
+                 (fn-nntp-msgid-retrieval-indexed
+                  session archive index :article
+                  (if (equal (car d) :stored)
+                      (cadr (fn-zdn-request args))
+                    (cadr d))
+                  fn-arena))))))
+  :hints (("Goal" :in-theory (enable fn-zar-command))))
+
 ; ---------------------------------------------------------------------------
 ; The peer layer's transit commands (books/peer-inbound.lisp fn-peer-command):
 ; IHAVE answers one decision line (the reason text at most 100 octets), CHECK
