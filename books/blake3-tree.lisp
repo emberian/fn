@@ -672,6 +672,28 @@
   (true-listp (fn-b3-pair-outs key flags outs))
   :hints (("Goal" :induct (fn-b3-pair-outs key flags outs))))
 
+(defthm fn-b3-window-tree-of-even-prefix
+  ; The even prefix of a run trees as the prefix of its pairs.  The
+  ; non-edge step of L-wtree-pair-tail reads this as its left child:
+  ; off the doubling edge that child is the even prefix of length
+  ; 2*lw(1,u), and the pairs' tree splits at the same prefix.
+  (implies (and (natp i)
+                (true-listp outs)
+                (<= (* 2 i) (len outs)))
+           (equal (fn-b3-window-tree key flags
+                    (fn-b3-firstn (* 2 i) outs))
+                  (fn-b3-window-tree key flags
+                    (fn-b3-firstn i
+                      (fn-b3-pair-outs key flags outs)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-b3-window-tree
+                               fn-b3-window-tree-of-pairs
+                               fn-b3-pair-outs)
+           :use ((:instance fn-b3-window-tree-of-pairs
+                   (u i)
+                   (outs (fn-b3-firstn (* 2 i) outs)))))))
+
 ; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
 
