@@ -1,0 +1,12 @@
+{
+ "category": "host-owed",
+ "file": "books/index-backing-connection-pins.lisp",
+ "id": "HOST-OWED-PRF-1182-RX-SOURCE-HOOKS",
+ "notes": "[\"Unreached keystones (planning/reach-baseline.json, ade31f2e9): PRF-1182:fn-crx-accepted-association-is-readable and PRF-1182:fn-crx-bind-preserves-connection-custody, whose subjects fn-ich-rx-bind / fn-ich-rx-origin / fn-ich-row are reached only through fn-ich-event (books/index-backing-connection-pins.lisp:59), which nothing in host/ calls. The host call that would reach them: the receiver-source gate host (host/receiver-source-gate-host.lisp) must drive its connection custody through fn-ich-event (the :rx-bind and :rx-origin operations) instead of its plain-list issued model (fn-crx-turn-currentp), and the runtime getter for the segment stobj must be wired (specs/connection-receiver-source.md RX source host hooks). Until then the baseline row is the only thing standing for reachability.\"]",
+ "owner": "integration-owner",
+ "severity": "medium",
+ "source": "p-teeth",
+ "state": "open",
+ "title": "PRF-1182 host owed: no host line calls fn-ich-event, so fn-ich-rx-bind, fn-ich-rx-origin and fn-ich-row are unreached",
+ "updated": "2026-10-06T23:38:24Z"
+}
