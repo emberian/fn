@@ -1064,6 +1064,37 @@
                                                               (if (equal code 235) 0 2))))
                                   :conns (fn-csp-conns-set conns j :free)))))))))
 
+(local (defthm fn-csp-local-verdict-final-journals
+  ; The drained batch's last settling reply.  Freeing j leaves the window
+  ; idle, so the verdict hands the state to fn-csp-batch-finish, whose
+  ; effects are the nil-todo journal: one (:journal . cursor) naming the
+  ; cursor the produced round commits, and no :local effect.
+  (implies (and (natp j)
+                (equal round (fn-cu-s-round (fn-csp-session s)))
+                (member-equal code '(235 437))
+                (eq (fn-csp-mode s) :drain)
+                (fn-csp-conns-idlep-but conns (nfix j)))
+           (let* ((pair (fn-csp-local-verdict s j code conns round))
+                  (effs (cadr pair))
+                  (s2 (car pair)))
+             (and (consp effs)
+                  (eq (car (car effs)) :journal)
+                  (equal (cdr (car effs))
+                         (fn-cu-round-cursor
+                          (fn-cu-s-round (fn-csp-session s2))))
+                  (not (member-eq :journal (strip-cars (cdr effs))))
+                  (not (member-eq :local (strip-cars effs))))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csp-local-verdict fn-csp-session-with-round)
+                           (fn-csp-batch-finish fn-cu-next))
+           :use ((:instance fn-csp-batch-finish-effects
+                  (s (fn-csp-with
+                      (fn-csp-session-with-round
+                       s (fn-cu-with round :counts
+                                     (fn-cu-count (fn-cu-r-counts round)
+                                                  (if (equal code 235) 0 2))))
+                      :conns (fn-csp-conns-set conns j :free)))))))))
+
 (local (defthm fn-csp-conn-verdict-fc
   (implies (equal (fn-csp-conn j s) (cons msgid :verdict))
            (and (consp (fn-csp-conn j s))
