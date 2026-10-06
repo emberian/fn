@@ -1824,6 +1824,31 @@ def file_extents(path):
     return out, unwritten
 
 
+def extents_written(path):
+    """Rewrite PATH's bytes in place, a block read then written back at the
+    same offset: posix_fallocate's UNWRITTEN extents become written ones with
+    the content unchanged (unwritten reads zeros; the block written back is
+    the block read).  The copy-and-swap open (lane m1-durable-5) preallocates
+    the segment it swaps in with posix_fallocate (A-HOST: the allocated range
+    reads zeros), so its tail is unwritten, and a writeback the flakey table
+    errors into it would first CONVERT the extent through ext4's journal
+    instead of failing a plain data writeback.  The m1-durable-4 hand recipe
+    zero-wrote the extent for the same reason (its `dd zeros' step); the
+    rewrite is that step, content-neutral by construction."""
+    size = path.stat().st_size
+    with open(path, "rb+") as f:
+        at = 0
+        while at < size:
+            block = f.read1(min(1 << 20, size - at))
+            if not block:
+                break
+            f.seek(at)
+            f.write(block)
+            at += len(block)
+        f.flush()
+        os.fsync(f.fileno())
+
+
 def active_segment(store):
     segs = sorted(p for p in (store / "journal").iterdir()
                   if re.fullmatch(r"\d{6}\.log", p.name) and p.name != "000000.log")
@@ -1925,6 +1950,7 @@ def rl01(a):
     n = a.posts
     ids = {"A": list(range(0, n)), "B": [n], "C": list(range(n + 1, 2 * n + 1))}
     acked = {"A": [], "B": [], "C": []}
+    p, err = None, None
     try:
         code, so, se = native(image, "operator", cfg, "init", *native_env.HARNESS_INIT_WORDS, GROUP)
         if code:
@@ -1944,6 +1970,12 @@ def rl01(a):
             p, err = start_owner_env(image, cfg, work / "owner-2.err",
                                      {"FN_NATIVE_LOG_FAULT": "log-written"})
         else:
+            if unwritten:
+                # the copy-and-swap open's fallocate tail (extents_written):
+                # rewrite it written, then demand a fully written segment
+                extents_written(seg)
+                extents, unwritten = file_extents(seg)
+                record["extents_after_rewrite"] = extents
             if unwritten:
                 raise SystemExit("INVALID: the segment has unwritten extents %r" % extents)
             flakey_load(flakey_error(rig["sectors"], extents))
@@ -1980,6 +2012,15 @@ def rl01(a):
             ([] if len(acked["A"]) == n else ["A not all acknowledged"]) + \
             ([] if a.scenario == "eio-only" or len(acked["C"]) == n else ["C not all acknowledged"])
     finally:
+        # a refusal mid-scenario (the unwritten-extents precondition, an init
+        # failure) must not leave the owner holding the rig's mount: the
+        # device would stay busy and the next rig_up would fail on the name
+        if p is not None and p.poll() is None:
+            try:
+                stop_owner(p, err)
+            except Exception:
+                p.kill()
+                p.wait()
         rig_down_flakey(work)
     record["replays"] = rl01_replay(a, work, rig, target, {k: v for k, v in acked.items() if v}, image)
     record["verdict"] = ("INVALID" if record["invalid"] else
