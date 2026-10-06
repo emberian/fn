@@ -11544,6 +11544,9 @@ e79d3185944388f3fa08c6e186f69936da7c5ab1fdd1b42a798f9419af870a52 50161 planning/
 66b05fdfcfd8f9631c8531e62fe4e1095b71e644e1ef20e05a2cd4cf8d8995a4 1498 planning/evidence/rl01-native-2026-10-05/base-eio-only.jsonl
 b24f37b0576a0aafa975fddb78959e40b50c9851fc8ea07fae81f1adc552f276 1561 planning/evidence/rl01-native-2026-10-05/base-kill-only.jsonl
 17e9b7422e624f0ad924a2d6c0ab88c860f9be7ddd4a4eb601ec785634520878 2131 planning/evidence/rl01-native-2026-10-05/base-rl01.jsonl
+6d4cc68971235f7dff3d86afa976af6bf1b01f53a5f4eabc80968c567bcaf637 1520 planning/evidence/rl01-native-2026-10-05/head-eio-only.jsonl
+e2416ca8321b6ac48bf7ec0c618d34997a370516a02af2cf0b99ad5863a240a7 1540 planning/evidence/rl01-native-2026-10-05/head-kill-only.jsonl
+91c5f5ca7c070e6363573282e669da64778137e100b2b4b427537515376efaf8 1640 planning/evidence/rl01-native-2026-10-05/head-rl01.jsonl
 f2b78c89804367fe8f9f46406996d0f82911db65f375f7f70b08f23c359c2833 19171 planning/evidence/rm2-format9-2026-09-27.md
 607551e805c25dd15ed9000362f1a5975bceae688baa7c8dc30541e6737030b2 705 planning/evidence/rm2-format9-2026-09-27/build_prof.sh
 243b2e32473e480c5c2d767efed5d09d560f578170a7c56c3b355434bf9c8cd5 1862 planning/evidence/rm2-format9-2026-09-27/matched-aborted-first-f9r1.txt
