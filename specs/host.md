@@ -1083,7 +1083,7 @@ at every start (a missing library or function refuses the start by name):
 
 | Seam | Library | Functions | Found |
 | --- | --- | --- | --- |
-| TLS (STARTTLS, the TLS-only listener, the peer feed's client) | the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later | `TLS_server_method`, `TLS_client_method`, `SSL_CTX_new/free/ctrl/use_certificate_chain_file/use_PrivateKey_file/set_default_passwd_cb/check_private_key/set_verify/load_verify_locations`, `SSL_new/free/set_fd/accept/connect/set1_host/ctrl/get_verify_result/get_error/pending/read/write/shutdown`, `ERR_clear_error/get_error/reason_error_string`, `OpenSSL_version(_num)`, and for `tls reload` and the served line (HST-020) `SSL_CTX_get0_certificate`, `X509_get0_notBefore/notAfter`, `X509_get_ext_by_NID/get_ext`, `X509_EXTENSION_get_data`, `ASN1_STRING_get0_data/length`, in `host/native/tls.lisp` (`*fnn-tls-required-symbols*`); the protocol floor and SNI go through `SSL_CTX_ctrl`/`SSL_ctrl` command numbers both libraries implement | `libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |
+| TLS (STARTTLS, the TLS-only listener, the peer feed's client) | on Linux the OpenSSL 3.5.8 pair fn ships (`FN_OPENSSL_PREFIX`, by default the release's `libexec/fn/openssl` or the build boxes' toolchain; when it holds no pair the system's is loaded, and `run` refuses a node that serves TLS or requires the hybrid, `fn-tlsk-library-decide`, D59); elsewhere the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later | `TLS_server_method`, `TLS_client_method`, `SSL_CTX_new/free/ctrl/use_certificate_chain_file/use_PrivateKey_file/set_default_passwd_cb/check_private_key/set_verify/load_verify_locations`, `SSL_new/free/set_fd/accept/connect/set1_host/ctrl/get_verify_result/get_error/pending/read/write/shutdown`, `ERR_clear_error/get_error/reason_error_string`, `OpenSSL_version(_num)`, and for `tls reload` and the served line (HST-020) `SSL_CTX_get0_certificate`, `X509_get0_notBefore/notAfter`, `X509_get_ext_by_NID/get_ext`, `X509_EXTENSION_get_data`, `ASN1_STRING_get0_data/length`, in `host/native/tls.lisp` (`*fnn-tls-required-symbols*`); the protocol floor and SNI go through `SSL_CTX_ctrl`/`SSL_ctrl` command numbers both libraries implement, and the key exchange's groups through `SSL_CTX_ctrl` command 92 (`SSL_CTRL_SET_GROUPS_LIST`, PRF-1327); `SSL_get0_group_name` (OpenSSL 3.2+) is optional, for the session's group line | `libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |
 | Ed25519, SHA-512 | libsodium | `crypto_sign_verify_detached`, `crypto_sign_detached`, `crypto_sign_keypair`, `crypto_hash_sha512`, width and init checks, in `host/native/crypto.lisp`, `signatures.lisp`, `peer-invite.lisp` | the system's (Linux, OpenBSD package, Homebrew) or the release's `lib/libsodium.so.23` |
 | ML-DSA-65 | `lib/libfn-mldsa65`: vendored PQClean ml-dsa-65 clean (`third_party/pqclean-ml-dsa-65`, upstream commit in `UPSTREAM.txt`) behind `host/native/fn-mldsa65.c`, built by `tools/build_mldsa65.sh` | `fn_mldsa65_public_from_pem_file`, `fn_mldsa65_sign_pem_file`, `fn_mldsa65_verify`, `fn_mldsa65_generate_pem`, `fn_mldsa65_widths`, in `host/native/signatures.lisp` and `peer-invite.lisp` | `lib/` beside the image's core (`FN_MLDSA_LIBRARY` overrides) |
 
@@ -1716,9 +1716,13 @@ Memory credits (lane credits, B5, 2026-09-28; PRF-380, SCN-194). The
 article slots are now one instance of the credit ledger
 (books/memory-credits.lisp): the run's ledger (`fn-owner-credits`, installed
 by `fn-owner-connection-budget` as `fn-mca-initial`) has the launcher's heap
-figure as its budget, the figure's fixed terms as its base, the open's terms
-as a completion reserve that nothing is admitted against, the collector's room
-as the runtime reserve, and exactly the articles' pool free
+figure as its budget, the figure's fixed terms as its base, the owner's work
+reserve as its completion reserve (the open's terms and, only with the
+operator's opt-in `[resources] reclaim_live` (D53), a live reclaim's excess
+over them: only the live reclaim pass draws it, by `fn-mcr-borrow`, and no
+user's operation is admitted against it; lane reclaim-funding,
+planning/design/reclaim-funding-2026-10-04.md), the collector's room as the
+runtime reserve, and exactly the articles' pool free
 (`fn-mca-initial-funds-exactly-the-articles`). Every served read is
 `fn-mca-read-span` (books/owner-credits.lisp) over `fn-oas-read-span`: the
 connection's credit becomes one reserve while it is mid-article plus one per

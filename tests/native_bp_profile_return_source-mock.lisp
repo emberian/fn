@@ -39,7 +39,7 @@
           (*fnn-escape-cleanup-debts* (list nil)))
       (handler-case
           (assert (= (apply command (if (eq command 'fnn-command-bp-node-profile)
-                                        '("/root" "id" 1 2) '("/root" "id" 1 2 3 4))) 0))
+                                        '("/root" "id" 1 2) '("/root" "id" 1 2 3 4 5 6))) 0))
         (error (condition) (setq caught condition)))
       (if fault (assert caught) (assert (null caught)))
       ;; A staging fault whose root release then fails uncertainly: the fence

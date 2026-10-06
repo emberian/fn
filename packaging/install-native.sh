@@ -6,7 +6,8 @@
 #
 # PREFIX (default /opt/fn; /usr/local/fn on OpenBSD) receives bin/fn,
 # libexec/fn/ (launcher, core, SBCL runtime, the bundled libraries,
-# source-revision), share/fn/ (the service templates, native-artifacts.txt)
+# source-revision; on Linux openssl/lib/, the OpenSSL 3.5.8 pair fn ships,
+# D59), share/fn/ (the service templates, native-artifacts.txt)
 # and install.sh, the installer a release carries (packaging/install.sh).
 # It refuses a PREFIX that exists and is not empty: a stage is one release
 # in one directory.  On a machine, install.sh (the file this stages) puts
@@ -57,6 +58,8 @@ if grep -q '^# fn frozen image launcher v2$' "$image"; then
     [ -s "$image_dir/lib/libfn-deflate.so" ] &&
     [ -s "$image_dir/lib/libfn-blake3.so" ] || {
       echo "install-native: frozen crypto dependencies missing" >&2; exit 4; }
+    # The TLS library a Linux freeze carries (packaging/freeze-native-image.sh).
+    openssl_lib=$image_dir/openssl/lib
   fi
   frozen=yes
 else
@@ -89,6 +92,16 @@ else
   done
   [ -n "$blake3" ] || {
     echo "install-native: no lib/libfn-blake3 beside the core (tools/build_blake3.sh)" >&2; exit 4; }
+  # On Linux, the OpenSSL 3.5.8 pair the image was built against: the
+  # caller's FN_OPENSSL_PREFIX, else the build boxes' toolchain
+  # (host/native/tls.lisp *fnn-tls-default-openssl-prefix*).
+  if [ "$(uname -s)" = Linux ]; then
+    openssl_prefix=${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}
+    openssl_lib=$openssl_prefix/lib
+    if [ -s "$openssl_prefix/lib64/libcrypto.so.3" ] && [ -s "$openssl_prefix/lib64/libssl.so.3" ]; then
+      openssl_lib=$openssl_prefix/lib64
+    fi
+  fi
   frozen=no
 fi
 [ -s "$launcher_core" ] || { echo "install-native: generated launcher core is unavailable" >&2; exit 4; }
@@ -97,12 +110,21 @@ cmp -s "$core" "$launcher_core" || {
 [ -n "$runtime" ] && [ -x "$runtime" ] || { echo "install-native: generated launcher runtime is unavailable" >&2; exit 4; }
 [ -n "$sbcl_home" ] && [ -d "$sbcl_home" ] || { echo "install-native: generated launcher SBCL_HOME is unavailable" >&2; exit 4; }
 
+openssl_lib=${openssl_lib:-}
+if [ "$(uname -s)" = Linux ]; then
+  [ -s "$openssl_lib/libcrypto.so.3" ] && [ -s "$openssl_lib/libssl.so.3" ] || {
+    echo "install-native: no OpenSSL 3.5.8 libcrypto.so.3/libssl.so.3 pair to ship (looked in ${openssl_lib:-the frozen image}; FN_OPENSSL_PREFIX names its prefix)" >&2; exit 4; }
+  grep -aq 'OpenSSL 3\.5\.8 ' "$openssl_lib/libcrypto.so.3" || {
+    echo "install-native: $openssl_lib/libcrypto.so.3 is not OpenSSL 3.5.8" >&2; exit 4; }
+fi
 hash_command=sha256sum
 command -v "$hash_command" >/dev/null 2>&1 || hash_command='shasum -a 256'
 command -v sha256sum >/dev/null 2>&1 || ! command -v sha256 >/dev/null 2>&1 || hash_command='sha256 -r'
-# The system provides the TLS library (OpenSSL 3.0+ or LibreSSL 3+; the
-# image checks the version and every function at start).  libsodium comes
-# from the frozen lib/ or the system; ML-DSA-65 from lib/ (HST-016).
+# The TLS library: on Linux the release's own OpenSSL 3.5.8 (above; a node
+# that serves no TLS may fall back to the system's pair, D59), elsewhere the
+# system's (OpenSSL 3.0+ or LibreSSL 3+; the image checks the version and
+# every function at start).  libsodium comes from the frozen lib/ or the
+# system; ML-DSA-65 from lib/ (HST-016).
 crypto_inventory=
 if [ "$(uname -s)" = OpenBSD ]; then
   ls /usr/lib/libssl.so.* /usr/lib/libcrypto.so.* >/dev/null 2>&1 || {
@@ -114,11 +136,7 @@ elif command -v ldconfig >/dev/null 2>&1; then
   crypto_inventory=$(ldconfig -p 2>/dev/null || true)
   [ "$frozen" = yes ] || printf '%s\n' "$crypto_inventory" | grep -Eq 'libsodium\.so(\.23)? ' || {
     echo "install-native: libsodium shared library is unavailable" >&2; exit 4; }
-  printf '%s\n' "$crypto_inventory" | grep -q 'libcrypto\.so\.3 ' || {
-    echo "install-native: the system's OpenSSL 3 libcrypto is unavailable" >&2; exit 4; }
-  printf '%s\n' "$crypto_inventory" | grep -q 'libssl\.so\.3 ' || {
-    echo "install-native: the system's OpenSSL 3 libssl is unavailable" >&2; exit 4; }
-elif [ "$frozen" = yes ]; then
+elif [ "$frozen" = yes ] && [ -z "$openssl_lib" ]; then
   echo "install-native: cannot check the system's TLS library (no ldconfig)" >&2; exit 4
 else
   sodium_path=
@@ -164,6 +182,12 @@ mkdir -p "$libdir/runtime/sbcl-home"
 install -m 0755 "$runtime" "$libdir/runtime/sbcl"
 cp -RL "$sbcl_home"/. "$libdir/runtime/sbcl-home"/
 mkdir -p "$libdir/lib"
+if [ -n "$openssl_lib" ]; then
+  # packaging/fn and the frozen launcher point FN_OPENSSL_PREFIX here.
+  mkdir -p "$libdir/openssl/lib"
+  install -m 0755 "$openssl_lib/libcrypto.so.3" "$libdir/openssl/lib/libcrypto.so.3"
+  install -m 0755 "$openssl_lib/libssl.so.3" "$libdir/openssl/lib/libssl.so.3"
+fi
 if [ "$frozen" = yes ]; then
   cp -p "$image_dir/lib/"* "$libdir/lib/"
   cp -p "$image" "$libdir/fn-host"
@@ -222,7 +246,13 @@ install -m 0755 packaging/install.sh "$destdir$prefix/install.sh"
   elif command -v otool >/dev/null 2>&1; then otool -L "$runtime"
   elif command -v ldd >/dev/null 2>&1; then ldd "$runtime"
   fi
-  echo "dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)"
+  if [ -n "$openssl_lib" ]; then
+    echo "dlopen-requirements: openssl/lib/libcrypto.so.3+libssl.so.3 (OpenSSL 3.5.8, bundled; the system's pair only for a node serving no TLS, D59), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)"
+    $hash_command "$openssl_lib/libcrypto.so.3" "$openssl_lib/libssl.so.3" \
+                  "$libdir/openssl/lib/libcrypto.so.3" "$libdir/openssl/lib/libssl.so.3"
+  else
+    echo "dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)"
+  fi
   if [ "$frozen" = yes ]; then
     $hash_command "$image_dir"/lib/*
     $hash_command "$libdir"/lib/*

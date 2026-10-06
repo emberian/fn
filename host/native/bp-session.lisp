@@ -1,6 +1,9 @@
 ;;; Explicit BP retained-session projection; one physical owner, no threads.
 (in-package "ACL2")
-(defstruct (fnn-bp-session-bank (:conc-name fnn-bpsb-)) grant ledger (held (make-hash-table :test #'eq)) slots incoming-cursor outgoing-cursor)
+(defstruct (fnn-bp-session-bank (:conc-name fnn-bpsb-)) grant ledger (held (make-hash-table :test #'eq)) slots incoming-cursor outgoing-cursor
+  ;; S025: the installed profile (its no-progress bounds), the count of held :incoming
+  ;; grants, and ACL2's verdict (fn-bpsp-incoming-contended) as of this scheduler turn.
+  profile (incoming-held 0) (contended nil))
 (defstruct (fnn-bp-session-grant (:conc-name fnn-bpsg-)) row socket conn
   turn finish result peer (close-attempted nil) (connecting nil))
 (defvar *fnn-bp-session-bank* nil)
@@ -27,7 +30,7 @@
                   (fnn-core 'fn-bpnpf-held-octets node)
                   (fnn-core 'fn-bpnpf-rows node)
                   (fnn-core 'fn-bpnpf-adu-octets node))))
-        (bank (make-fnn-bp-session-bank :grant grant
+        (bank (make-fnn-bp-session-bank :grant grant :profile profile
                   :ledger (fnn-core 'create-fn-resource-ledger))))
   (unless (eq (first grant) :hold)
    (fnn-refuse "BP session funding refused ~s" grant))
@@ -57,6 +60,7 @@
    (:outgoing (setf (fnn-bpsb-outgoing-cursor bank) next-cursor)))
   (case word
    (:drawn (let ((grant (make-fnn-bp-session-grant :row row)))
+             (when (eq class :incoming) (incf (fnn-bpsb-incoming-held bank)))
              (setf (gethash grant (fnn-bpsb-held bank)) t
                    (aref (fnn-bpsb-slots bank) (second row)) grant)
              (values grant word)))
@@ -75,6 +79,7 @@
      (unless (eq word :settled)
       (fnn-fault "BP session custody settlement refused ~a" word))
      (setf (aref (fnn-bpsb-slots bank) (second (fnn-bpsg-row grant))) nil)
+     (when (eq (fourth (fnn-bpsg-row grant)) :incoming) (decf (fnn-bpsb-incoming-held bank)))
      (remhash grant (fnn-bpsb-held bank))))
    (otherwise (fnn-fault "BP session custody observation unavailable")))))
 
@@ -163,6 +168,9 @@
                    (let ((at (fnn-core 'fn-bpsched-listener-index listener-index (length live))))
                      (and (fnn-poll-readable (list (fnn-socket-fd (nth at live))) 0) at)))))
     (setq listener-index (+ listener-index 1))
+    (setf (fnn-bpsb-contended bank)
+          (fnn-core 'fn-bpsp-incoming-contended (and index t) (fnn-bpsb-incoming-held bank)
+                    (fifth (fnn-bpsb-grant bank))))
     (when index
      (let ((grant (fnn-bp-session-acquire bank :incoming)))
       (when grant

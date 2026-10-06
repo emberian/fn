@@ -27,6 +27,10 @@
 (include-book "wire-grammar")
 (include-book "consumer-position")
 
+; Helper lemmas about len, consp, take, nthcdr and nth stay local to this
+; book: as global rules they fire in every later proof of a world that
+; includes it (the may-seal hang, harden/may-seal-hang@a99f7abd6).
+
 (defconst *fn-wf-fncu-grammar*
   '(:seq (:const (102 110 99 117 1))      ; "fncu", version 1
          (:bytes 1 1 64 :any)              ; history
@@ -65,12 +69,14 @@
                     (fn-wg-le-bytes 1 (floor (floor (floor n 256) 256) 256))
                     (fn-wg-le-bytes 0 (floor (floor (floor (floor n 256) 256) 256) 256)))))))
 
-(defthm fn-wf-at-mostp-len
-  (implies (fn-cbor-at-mostp x n) (<= (len x) (nfix n)))
-  :rule-classes :linear)
-(defthm fn-wf-consp-len
-  (implies (consp x) (< 0 (len x)))
-  :rule-classes :linear)
+(local
+ (defthm fn-wf-at-mostp-len
+   (implies (fn-cbor-at-mostp x n) (<= (len x) (nfix n)))
+   :rule-classes :linear))
+(local
+ (defthm fn-wf-consp-len
+   (implies (consp x) (< 0 (len x)))
+   :rule-classes :linear))
 (defthm fn-wf-fncu-encode-agrees-fields
    (implies (fn-cp-cursorp (fn-cp-cursor h i cn p q qv vv e pos))
             (and (fn-wg-valuep *fn-wf-fncu-grammar* (list nil h i cn p q qv vv e pos))
@@ -95,9 +101,10 @@
            :in-theory (e/d (fn-cp-cursor fn-cp-nth) (fn-wf-fncu-encode-agrees-fields fn-cp-cursor-rebuild
                                        fn-cp-cursorp fn-cp-cursor-encode)))))
 
-(defthm fn-wf-append-take-nthcdr
-  (implies (<= (nfix n) (len x))
-           (equal (append (take n x) (nthcdr n x)) x)))
+(local
+ (defthm fn-wf-append-take-nthcdr
+   (implies (<= (nfix n) (len x))
+            (equal (append (take n x) (nthcdr n x)) x))))
 (defthm fn-wf-u32-bytes-of-from-reassemble
   (implies (and (fn-cbor-octet-listp xs) (<= 4 (len xs)))
            (equal (append (fn-cbor-u32-bytes (fn-cbor-u32-from xs)) (nthcdr 4 xs)) xs))
@@ -105,8 +112,9 @@
            :expand ((nthcdr 4 xs) (nthcdr 3 (cdr xs)) (nthcdr 2 (cddr xs)) (nthcdr 1 (cdddr xs))
                     (fn-cbor-octet-listp xs))
            :in-theory (disable fn-cbor-u32-to-from-octets fn-cbor-u32-bytes fn-cbor-u32-from))))
-(defthm fn-wf-len-take
-  (equal (len (take n x)) (nfix n)))
+(local
+ (defthm fn-wf-len-take
+   (equal (len (take n x)) (nfix n))))
 (defthm fn-wf-cp-read-fields-inverse
   (implies (and (fn-cbor-octet-listp xs)
                 (equal (car (fn-cp-read-fields xs kinds)) :ok))
@@ -123,23 +131,25 @@
                 (equal (len (fn-cp-nth 1 (fn-cp-read-fields xs kinds))) (len kinds))))
   :hints (("Goal" :induct (fn-cp-read-fields xs kinds)
            :in-theory (enable fn-cp-read-fields fn-cp-read-id fn-cp-read-u32 fn-cp-nth))))
-(defthm fn-wf-nine-nths
-  (implies (and (true-listp v) (equal (len v) 9))
-           (equal (list (fn-cp-nth 0 v) (fn-cp-nth 1 v) (fn-cp-nth 2 v) (fn-cp-nth 3 v)
-                        (fn-cp-nth 4 v) (fn-cp-nth 5 v) (fn-cp-nth 6 v) (fn-cp-nth 7 v)
-                        (fn-cp-nth 8 v))
-                  v))
-  :hints (("Goal" :in-theory (enable fn-cp-nth)
-           :expand ((len v) (len (cdr v)) (len (cddr v)) (len (cdddr v)) (len (cddddr v))
-                    (len (cdr (cddddr v))) (len (cddr (cddddr v))) (len (cdddr (cddddr v)))
-                    (len (cddddr (cddddr v))) (len (cdr (cddddr (cddddr v))))))))
-(defthm fn-wf-header-reassemble
-  (implies (and (<= 5 (len x)) (equal (take 4 x) m))
-           (equal (append m (cons (fn-cp-nth 4 x) (nthcdr 5 x))) x))
-  :hints (("Goal" :in-theory (enable fn-cp-nth)
-           :expand ((take 4 x) (take 3 (cdr x)) (take 2 (cddr x)) (take 1 (cdddr x))
-                    (nthcdr 5 x) (nthcdr 4 (cdr x)) (nthcdr 3 (cddr x)) (nthcdr 2 (cdddr x))
-                    (nthcdr 1 (cddddr x))))))
+(local
+ (defthm fn-wf-nine-nths
+   (implies (and (true-listp v) (equal (len v) 9))
+            (equal (list (fn-cp-nth 0 v) (fn-cp-nth 1 v) (fn-cp-nth 2 v) (fn-cp-nth 3 v)
+                         (fn-cp-nth 4 v) (fn-cp-nth 5 v) (fn-cp-nth 6 v) (fn-cp-nth 7 v)
+                         (fn-cp-nth 8 v))
+                   v))
+   :hints (("Goal" :in-theory (enable fn-cp-nth)
+            :expand ((len v) (len (cdr v)) (len (cddr v)) (len (cdddr v)) (len (cddddr v))
+                     (len (cdr (cddddr v))) (len (cddr (cddddr v))) (len (cdddr (cddddr v)))
+                     (len (cddddr (cddddr v))) (len (cdr (cddddr (cddddr v)))))))))
+(local
+ (defthm fn-wf-header-reassemble
+   (implies (and (<= 5 (len x)) (equal (take 4 x) m))
+            (equal (append m (cons (fn-cp-nth 4 x) (nthcdr 5 x))) x))
+   :hints (("Goal" :in-theory (enable fn-cp-nth)
+            :expand ((take 4 x) (take 3 (cdr x)) (take 2 (cddr x)) (take 1 (cdddr x))
+                     (nthcdr 5 x) (nthcdr 4 (cdr x)) (nthcdr 3 (cddr x)) (nthcdr 2 (cdddr x))
+                     (nthcdr 1 (cddddr x)))))))
 
 (defthm fn-wf-cp-cursor-decode-inversion
   (let* ((f (fn-cp-read-fields (nthcdr 5 x) '(:id :id :id :id :id :uint :uint :uint :uint)))
@@ -200,18 +210,21 @@
            :in-theory (disable fn-cp-cursorp fn-cp-cursor fn-cp-fields-encode
                                fn-wf-header-reassemble fn-wf-nine-nths fn-wf-fncu-encode-agrees fn-wf-fncu-encode-agrees-fields))))
 
-(defthm fn-wf-octets-true-listp-of-nthcdr
-  (implies (fn-cbor-octet-listp x) (true-listp (nthcdr n x))))
-(defthm fn-wf-octets-of-nthcdr
-  (implies (fn-cbor-octet-listp x) (fn-cbor-octet-listp (nthcdr n x))))
+(local
+ (defthm fn-wf-octets-true-listp-of-nthcdr
+   (implies (fn-cbor-octet-listp x) (true-listp (nthcdr n x)))))
+(local
+ (defthm fn-wf-octets-of-nthcdr
+   (implies (fn-cbor-octet-listp x) (fn-cbor-octet-listp (nthcdr n x)))))
 (defthm fn-wf-cp-read-fields-of-empty
   (implies (and (not (consp xs)) (equal (car kinds) :id))
            (not (equal (car (fn-cp-read-fields xs kinds)) :ok)))
   :hints (("Goal" :expand ((fn-cp-read-fields xs kinds))
            :in-theory (enable fn-cp-read-id))))
 
-(defthm fn-wf-nthcdr-of-atom
-  (implies (not (consp x)) (not (consp (nthcdr n x)))))
+(local
+ (defthm fn-wf-nthcdr-of-atom
+   (implies (not (consp x)) (not (consp (nthcdr n x))))))
 (defthm fn-wf-len-when-nthcdr-consp
   (implies (consp (nthcdr n x)) (< (nfix n) (len x)))
   :rule-classes nil
@@ -245,8 +258,9 @@
                                fn-wf-fncu-encode-agrees fn-wf-fncu-encode-agrees-fields
                                fn-cp-cursor-encode-fields))))
 
-(defthm fn-wf-at-mostp-of-len
-  (implies (and (natp n) (<= (len x) n)) (fn-cbor-at-mostp x n)))
+(local
+ (defthm fn-wf-at-mostp-of-len
+   (implies (and (natp n) (<= (len x) n)) (fn-cbor-at-mostp x n))))
 (defthm fn-wf-fncu-value-is-a-cursor
   (implies (fn-wg-valuep *fn-wf-fncu-grammar* v)
            (and (fn-cp-cursorp (fn-wf-fncu-cursor v))

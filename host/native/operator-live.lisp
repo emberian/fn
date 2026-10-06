@@ -78,6 +78,10 @@
                       *fnn-owner-log-path* log-path)
                 (fnn-operator-log-run-line
                  (fnn-core 'fn-native-health-host-run-started-line)))
+              ;; D59: a start whose pinned OpenSSL prefix held no pair runs
+              ;; on the system's only when it serves no TLS and does not
+              ;; require the hybrid; otherwise it is refused here by name.
+              (fnn-tls-decide-library *fnn-operator-config-octets* certificate)
               ;; ACL2 already enforced paired presence.  Only a pair ACL2
               ;; accepted (fn-tlsr-start-decide, the decision `tls reload'
               ;; applies; PRF-387) is passed to auth/owner.
@@ -143,7 +147,10 @@
                         ;; Same accepted plan as launcher reservation; never
                         ;; reparse configuration or grant cold/output twice.
                         (fnn-core 'fn-native-operator-host-result-run-cold-resources result)
-                        (fnn-core 'fn-native-operator-host-result-run-output-resources result))))
+                        (fnn-core 'fn-native-operator-host-result-run-output-resources result)
+                        ;; D53: the live-reclaim opt-in, the same accepted
+                        ;; plan's as the launcher's reservation.
+                        (fnn-core 'fn-native-operator-host-result-run-reclaim-live result))))
                 (setq run-code code)
                 ;; The owner's fault, when it stopped on one, is the
                 ;; result line's reason: the last line the service

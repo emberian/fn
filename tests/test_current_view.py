@@ -96,5 +96,21 @@ class ViewTests(unittest.TestCase):
         self.assertEqual(current_view.build(), committed)
 
 
+class CarriedTests(unittest.TestCase):
+    """A host file the image's revision lacks reads as absent; one never
+    pinned is still an error (a sidecar that forgot --pin-image)."""
+
+    def test_pinned_absent_host_file_is_absent(self):
+        image = {"source": "a" * 40, "host_sha256": {}, "host_absent": ["host/new.lisp"]}
+        held, why = current_view.carried(None, image, ["host/new.lisp"])
+        self.assertFalse(held)
+        self.assertIn("absent from it: `host/new.lisp`", why)
+
+    def test_unpinned_host_file_is_an_error(self):
+        image = {"source": "a" * 40, "host_sha256": {}}
+        with self.assertRaisesRegex(current_view.ViewError, "no digest for host/new.lisp"):
+            current_view.carried(None, image, ["host/new.lisp"])
+
+
 if __name__ == "__main__":
     unittest.main()

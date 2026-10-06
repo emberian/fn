@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/tls-key-exchange")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 (defun tkxt-octs (s) (declare (xargs :guard (stringp s))) (fn-record-string-octets s))
 
@@ -54,8 +55,9 @@ groups = \"x\"
 "))
                      '(:refused :syntax)))
 
-; --- KEYSTONE fn-tlsk-required-refuses-by-name-without-the-hybrid and
-; fn-tlsk-required-serves-only-the-hybrid-list.  Witness: both observations.
+; --- KEYSTONE fn-tlsk-required-serves-only-the-hybrid-list (and its arm
+; fn-tlsk-required-without-the-hybrid-refuses-by-definition).  Witness: both
+; observations.
 (assert-event (equal (fn-tlsk-decide :hybrid-required nil)
                      '(:refuse :hybrid-unavailable)))
 (assert-event (equal (fn-tlsk-decide :hybrid-required t)
@@ -170,3 +172,97 @@ groups = \"x\"
 (assert-event (null (fn-tlsk-health-client-line (list :accepted nil *tkxt-served*))))
 (assert-event (null (fn-tlsk-health-client-line :bad)))
 (assert-event (null (fn-tlsk-health-client-line (list :refused nil (fn-tlsk-status-lines *tkxt-served* *tkxt-kx*)))))
+
+; --- KEYSTONES fn-tlsk-library-without-tls-never-refuses and
+; fn-tlsk-library-served-tls-never-falls-back (D59's refusal scope).
+; Witness: each of the three answers is reached, and both antecedents are
+; inhabited (a served node and a hybrid-required one, each with the pair
+; missing, are refused, not fallen back).
+(assert-event (equal (fn-tlsk-library-decide nil t :hybrid-required) :pinned))
+(assert-event (equal (fn-tlsk-library-decide t nil :hybrid-preferred) :fallback))
+(assert-event (equal (fn-tlsk-library-decide t t :hybrid-preferred) :refuse))
+(assert-event (equal (fn-tlsk-library-decide t nil :hybrid-required) :refuse))
+; A bad policy word on a node with no certificate is not hybrid-required: the
+; [tls] table is refused only where the key exchange is decided.
+(assert-event (equal (fn-tlsk-library-decide t nil :bad) :fallback))
+(assert-event (equal (fn-record-octets-string (fn-tlsk-library-line :fallback))
+                     "tls library warning: no OpenSSL libcrypto/libssl pair under the pinned prefix; the system's pair is loaded, and this node serves no TLS"))
+(assert-event (null (fn-tlsk-library-line :pinned)))
+; Teeth: a missing pinned pair does not always refuse (the node without TLS
+; runs), and a served TLS node with it missing never falls back.
+(must-fail-checked
+ (defthm tkxt-tooth-missing-always-refuses
+   (implies missing
+            (equal (fn-tlsk-library-decide missing served policy) :refuse))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm tkxt-tooth-served-may-fall-back
+   (implies (and missing served)
+            (equal (fn-tlsk-library-decide missing served policy) :fallback))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm tkxt-tooth-required-without-tls-runs
+   (implies missing
+            (not (equal (fn-tlsk-library-decide missing nil :hybrid-required) :refuse)))
+   :rule-classes nil))
+(must-fail-checked
+ (defthm tkxt-tooth-any-node-never-falls-back
+   (not (equal (fn-tlsk-library-decide missing served policy) :fallback))
+   :rule-classes nil))
+
+; TEETH-22 BEGIN
+; fn-tlsk-hybrid-is-served-only-when-offered stays owed: its first hypothesis
+; (fn-tlsk-servep of the decision) is a conjunct of the second (fn-tlsk-serve-mode
+; starts with fn-tlsk-servep), so no assignment keeps the mode hypothesis while
+; breaking the serve hypothesis; a removal for it would need the keystone
+; restated (no-counterexample, the fn-rcw-rebuild class).
+(defteeth fn-tlsk-required-serves-only-the-hybrid-list
+  :claim (((served (fn-tlsk-servep (fn-tlsk-decide :hybrid-required offered))))
+          (and offered
+               (equal (fn-tlsk-serve-groups (fn-tlsk-decide :hybrid-required offered))
+                      *fn-tlsk-hybrid-list*)))
+  :subject fn-tlsk-decide
+  :witness ((offered t))
+  :breaks ((served ((offered nil))))
+  :mutations ((serves-the-classical-list
+               (:conclusion (and offered
+                                 (equal (fn-tlsk-serve-groups
+                                         (fn-tlsk-decide :hybrid-required offered))
+                                        *fn-tlsk-classical-list*)))
+               ((offered t))
+               :fault "hybrid-required serving the classical list when the library offers the hybrid group")))
+
+(defteeth fn-tlsk-preferred-never-refuses
+  :claim (() (fn-tlsk-servep (fn-tlsk-decide :hybrid-preferred offered)))
+  :subject fn-tlsk-decide
+  :witness ((offered t))
+  :mutations ((refuses-the-offered-library
+               (:conclusion (equal (fn-tlsk-decide :hybrid-preferred offered)
+                                   (list :refuse :policy)))
+               ((offered t))
+               :fault "hybrid-preferred refusing a library that offers the hybrid group")))
+
+(defteeth fn-tlsk-library-without-tls-never-refuses
+  :claim (((serves-no-tls (not served))
+           (not-required (not (equal policy :hybrid-required))))
+          (not (equal (fn-tlsk-library-decide missing served policy) :refuse)))
+  :subject fn-tlsk-library-decide
+  :witness ((missing t) (served nil) (policy :hybrid-preferred))
+  :breaks ((serves-no-tls ((missing t) (served t) (policy :hybrid-preferred)))
+           (not-required ((missing t) (served nil) (policy :hybrid-required))))
+  :mutations ((refuses-a-plain-node
+               (:conclusion (equal (fn-tlsk-library-decide missing served policy) :refuse))
+               ((missing t) (served nil) (policy :hybrid-preferred))
+               :fault "a node that serves no TLS refusing its start for lack of the pinned library")))
+
+(defteeth fn-tlsk-library-served-tls-never-falls-back
+  :claim (((served-or-required (or served (equal policy :hybrid-required))))
+          (not (equal (fn-tlsk-library-decide missing served policy) :fallback)))
+  :subject fn-tlsk-library-decide
+  :witness ((missing t) (served t) (policy :hybrid-preferred))
+  :breaks ((served-or-required ((missing t) (served nil) (policy :hybrid-preferred))))
+  :mutations ((falls-back-to-the-system-pair
+               (:conclusion (equal (fn-tlsk-library-decide missing served policy) :fallback))
+               ((missing t) (served t) (policy :hybrid-preferred))
+               :fault "a TLS-serving node running on the system library pair in place of the pinned one")))
+; TEETH-22 END

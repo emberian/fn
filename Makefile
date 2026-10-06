@@ -139,12 +139,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-action-trajectory-tests \
 	tests/acl2/decoded-window-begin-tests \
 	tests/acl2/decoded-window-budget-completion-tests \
+	tests/acl2/decoded-window-budget-completion-2-tests \
 	tests/acl2/decoded-window-budget-trajectory-tests \
+	tests/acl2/decoded-window-budget-trajectory-2-tests \
+	tests/acl2/decoded-window-budget-trajectory-3-tests \
 	tests/acl2/decoded-window-canonical-trajectory-tests \
 	tests/acl2/decoded-window-clear-trajectory-tests \
 	tests/acl2/decoded-window-copy-trajectory-tests \
 	tests/acl2/decoded-window-descriptor-tests \
 	tests/acl2/decoded-window-digest-trajectory-tests \
+	tests/acl2/decoded-window-digest-trajectory-2-tests \
 	tests/acl2/decoded-window-executor-tests \
 	tests/acl2/decoded-window-finite-canonical-tests \
 	tests/acl2/decoded-window-finite-output-trajectory-tests \
@@ -393,6 +397,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/retention \
 	books/retention-invariants \
 	tests/acl2/retention-tests \
+	tests/acl2/committer-actor-tests \
 	books/node \
 	books/node-invariants \
 	books/node-retention-transitions \
@@ -634,6 +639,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \
 	tests/acl2/output-reservation-tests \
+	books/reclaim-reservation \
+	tests/acl2/reclaim-reservation-tests \
 	books/resource-output \
 	tests/acl2/resource-output-tests \
 	tests/acl2/resource-syncer-tests \
@@ -1020,8 +1027,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-window-lease \
 	books/page-window-executor \
 	books/page-window-read \
+	books/page-window-span \
+	books/decoded-window-span \
 	tests/acl2/page-window-executor-tests \
 	tests/acl2/page-window-read-tests \
+	tests/acl2/page-window-span-tests \
 	tests/acl2/page-window-admission-tests \
 	tests/acl2/page-window-lease-tests \
 	tests/acl2/page-file-lease-tests \
@@ -1943,6 +1953,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wire-family-fncu \
 	tests/acl2/wire-family-fncu-tests \
 	books/wire-family-identity \
+	books/wire-family-fnct \
+	books/wire-family-consumer \
+	books/wire-family-control \
+	tests/acl2/wire-family-consumer-tests \
+	tests/acl2/wire-family-control-tests \
 	books/wire-export \
 	books/store-identity \
 	tests/acl2/store-identity-tests \
@@ -2044,6 +2059,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/output-tariff-article-row \
 	tests/acl2/output-tariff-article-row-tests \
 	books/output-tariff-family \
+	books/output-tariff-line \
+	books/output-tariff-auth \
+	books/output-tariff-input \
 	books/output-tariff-families \
 	tests/acl2/output-tariff-family-tests \
 	books/output-admission-line \
@@ -2903,6 +2921,12 @@ check:
 # pattern: a buffer twin and its boundary theorem).
 	@$(CHECK_STEP) $(PYTHON) tools/list_codec_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_list_codec_check
+# Host loops that call ACL2 or take a lock once per iteration (the per-octet borrow
+# protocol, PERF-REGRESSION-20261005): tools/loop_call_baseline.json counts them
+# per host file and only shrinks; a new one is judged (a span or batch call) or
+# its baseline raised with the reason.  Source-level, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/loop_call_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_loop_call_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
@@ -3100,6 +3124,16 @@ acl2-ld:
 # certified some other way.  FN_CERT_REMOTE=hbox also mirrors to that box.
 certs-install:
 	$(PYTHON) tools/certs.py install
+
+# The comprehensiveness gate (build/coordinator/COORDINATOR-SOP.md): every open
+# repair item has a disposition (LANDED / IN-FLIGHT / PARKED / UNOWNED) and every
+# declared native scenario has a recorded run, or planning/repair/ACKS.md says
+# why not.  Plain commands, no CHECK_STEPS_DIR (so it cannot disturb a concurrent
+# check-fast).  NOT in check-fast until the backlog is dispositioned.
+.PHONY: check-coverage
+check-coverage:
+	$(PYTHON) tools/coverage_gap.py --check $(COVERAGE_GAP_ARGS)
+	$(PYTHON) -m unittest -q tests.test_coverage_gap
 
 # The dynamic half of tools/host_shape_check.py: the ACL2-mode prefix of
 # host/native/build.lisp (every include-book and host `ld`), translated the

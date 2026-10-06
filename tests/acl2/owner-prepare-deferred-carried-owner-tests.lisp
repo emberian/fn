@@ -19,13 +19,13 @@
 (assert-event (equal *pdt-consumer-staged* *pse-consumer-staged*))
 (assert-event (equal (lgt-phase *pdt-consumer-staged*) :record-staged))
 (assert-event (fn-lgoc-invariantp *pdt-consumer-staged*))
-(assert-event (equal (mv-nth 0 (fn-pdc-pout-prepare-consumer *lgt-reserved* *pse-consumer-event*))
+(assert-event (equal (mv-nth 0 (mv-list 2 (fn-pdc-pout-prepare-consumer *lgt-reserved* *pse-consumer-event*)))
                      :prepared))
 (make-event `(defconst *pdt-topic-staged*
                ',(fn-pdc-psrv-prepare-topic *lgt-reserved* *pse-topic-event*)))
 (assert-event (equal *pdt-topic-staged* *pse-topic-staged*))
 (assert-event (fn-lgoc-invariantp *pdt-topic-staged*))
-(assert-event (equal (mv-nth 0 (fn-pdc-pout-prepare-topic *lgt-reserved* *pse-topic-event*))
+(assert-event (equal (mv-nth 0 (mv-list 2 (fn-pdc-pout-prepare-topic *lgt-reserved* *pse-topic-event*)))
                      :prepared))
 ; Hypothesis-removal witness (CORRUPTED STATE, labelled: owner-prepare-served-
 ; events-tests' *lgt-bad-reserved*, the topic counter moved): the antecedent
@@ -37,8 +37,8 @@
                     (fn-pdc-psrv-prepare-topic *lgt-bad-reserved* *pse-topic-event*))))
 ; A refused prepare answers :refused and leaves the owner unchanged: the
 ; consumer bootstrap proposed again after it committed.
-(assert-event (equal (mv-nth 0 (fn-pdc-pout-prepare-consumer *pse-consumer-finished* *pse-consumer-event*))
+(assert-event (equal (mv-nth 0 (mv-list 2 (fn-pdc-pout-prepare-consumer *pse-consumer-finished* *pse-consumer-event*)))
                      :refused))
-(assert-event (equal (lgt-store (mv-nth 1 (fn-pdc-pout-prepare-consumer *pse-consumer-finished*
-                                                                       *pse-consumer-event*)))
+(assert-event (equal (lgt-store (mv-nth 1 (mv-list 2 (fn-pdc-pout-prepare-consumer *pse-consumer-finished*
+                                                                       *pse-consumer-event*))))
                      (lgt-store *pse-consumer-finished*)))

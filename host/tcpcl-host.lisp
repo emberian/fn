@@ -79,6 +79,17 @@
 (defun fn-tcl-host-terminate (s now)
   (fn-tcl-host-triple (fn-tcl-terminate s *fn-tcl-term-unknown* now)))
 
+; A no-progress bound ended the session (books/tcpcl-retained-turn.lisp
+; fn-tcrt-expiry): the same SESS_TERM handshake, with the bound's own reason
+; code (1 Idle timeout, 5 Resource Exhaustion; RFC 9174 section 6.1).
+(defun fn-tcl-host-terminate-reason (s reason now)
+  (fn-tcl-host-triple (fn-tcl-terminate s reason now)))
+
+; Whether the session has a transfer in flight, either direction: the fact
+; fn-tcrt-stall-timeout-p's in-transfer argument reads.
+(defun fn-tcl-host-in-transfer (s)
+  (and (or (fn-tcl-session-inbound s) (fn-tcl-session-outbound s)) t))
+
 ; Whether the active entity ends the session now (RFC 9174 section 6.1: only
 ; it initiates SESS_TERM here).  The session machine has no effect that says
 ; "nothing more to send or await"; this is that decision, over facts the

@@ -58,7 +58,7 @@
     (or (and (eq (first form) 'defstruct) (eq (car (second form)) 'fnn-tcl-conn))
         (and (eq (first form) 'defun)
           (member (second form) '(fnn-tcl-flush fnn-tcl-drop fnn-tcl-pump-out fnn-tcl-offer
-            fnn-tcl-input-initialize fnn-tcl-input-decode fnn-tcl-input-materialize-turn fnn-tcl-input-turn fnn-tcl-physical-attempt fnn-tcl-begin fnn-tcl-turn-lost fnn-tcl-turn-local fnn-tcl-source-control-octet fnn-tcl-turn fnn-tcl-session)))))
+            fnn-tcl-input-initialize fnn-tcl-input-decode fnn-tcl-input-materialize-turn fnn-tcl-input-turn fnn-tcl-physical-attempt fnn-tcl-note-frame fnn-tcl-expire-no-progress fnn-tcl-begin fnn-tcl-turn-lost fnn-tcl-turn-local fnn-tcl-source-control-octet fnn-tcl-turn fnn-tcl-session)))))
    (eval form))))
 (defvar *fnn-tcl-progress* nil)
 (defvar *fnn-tcl-source-start* nil)
@@ -82,7 +82,7 @@
  (unless (fnn-tclc-source-pending conn) (fnn-tcl-flush conn)))
 (defun fnn-core (name &rest args)
  (case name
-  ((fn-tclsctl-source-action fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p fn-tcrt-init-deadline fn-tcrt-init-timeout-p) (apply name args))
+  ((fn-tclsctl-source-action fn-tcim-turn fn-tcf-at fn-tcf-begin fn-tcf-contactp fn-tcf-byte fn-tcf-span fn-tcrt-action fn-tcrt-write-end fn-tcrt-read-limit fn-tcrt-write-deadline fn-tcrt-contact-deadline fn-tcrt-contact-timeout-p fn-tcrt-init-deadline fn-tcrt-init-timeout-p fn-tcrt-progress-clock fn-tcrt-note-frame fn-tcrt-expiry) (apply name args))
   (fn-tclsctl-turn (list (first args) nil))
   (fn-tcl-max-message 200000)
   (fn-tcl-host-segment-mru 100000)

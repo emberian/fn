@@ -208,30 +208,35 @@
                  (:instance fn-sjh-col-held-not-composite)
                  (:instance fn-held-p-implies-cat-rowp (x r))))))
 
-(defthm fn-sjh-col-handles-below-of-load-held-row
+; The open loads each held row through fn-sca-load-held-available-row
+; (catalog-availability-owner-load): the row's availability is prepared from
+; the arena, which keeps its payload handle (fn-cat-prepare-row-availability-
+; keeps-read-identity), so the handles stay below the arena's length.
+(defthm fn-sjh-col-handles-below-of-load-available-row
   (implies (and (fn-scol-handles-below fn-cat n)
                 (implies (fn-scj-load-h r) (fn-scol-handles-below (list (fn-scj-load-h r)) n)))
-           (fn-scol-handles-below (fn-sca-load-held-row r view-index fn-cat) n))
-  :hints (("Goal" :in-theory (e/d (fn-scj-load-held-row-is)
-                                  (fn-scj-load-h fn-cat-commit fn-held-with-withdrawn fn-midx-lookup
-                                   fn-scol-handles-below fn-sca-load-held-row)))))
+           (fn-scol-handles-below (fn-sca-load-held-available-row r view-index fn-arena fn-cat) n))
+  :hints (("Goal" :in-theory (e/d (fn-sca-load-held-available-row fn-scj-load-held-row-is)
+                                  (fn-cat-commit fn-held-with-withdrawn fn-midx-lookup
+                                   fn-sca-load-held-row)))))
 
-
-(defthm fn-sjh-col-handles-below-of-load-from
+(defthm fn-sjh-col-handles-below-of-load-available-from
   (implies (and (fn-scol-handles-below fn-cat (len fn-arena))
                 (fn-rows-handles-inp rows fn-arena)
                 (fn-sf-record-valuesp rows))
-           (fn-scol-handles-below (fn-sca-load-held-rows-from rows view-index fn-cat) (len fn-arena)))
-  :hints (("Goal" :induct (fn-sca-load-held-rows-from rows view-index fn-cat)
-           :in-theory (union-theories '(fn-sca-load-held-rows-from fn-sf-record-valuesp car-cons cdr-cons cons-car-cdr)
+           (fn-scol-handles-below (fn-sca-load-held-available-from rows view-index fn-arena fn-cat)
+                                  (len fn-arena)))
+  :hints (("Goal" :induct (fn-sca-load-held-available-from rows view-index fn-arena fn-cat)
+           :in-theory (union-theories '(fn-sca-load-held-available-from fn-sf-record-valuesp
+                                        car-cons cdr-cons cons-car-cdr)
                                       (theory 'minimal-theory)))
           ("Subgoal *1/2" :use ((:instance fn-sjh-col-load-h-handle (r (car rows)))
                                 (:instance fn-sjh-col-rows-handles-inp-of-cons (r (car rows)) (rs (cdr rows)))
-                                (:instance fn-sjh-col-handles-below-of-load-held-row (r (car rows))
+                                (:instance fn-sjh-col-handles-below-of-load-available-row (r (car rows))
                                            (n (len fn-arena)))))
           ("Subgoal *1/1" :use ((:instance fn-sjh-col-load-h-handle (r (car rows)))
                                 (:instance fn-sjh-col-rows-handles-inp-of-cons (r (car rows)) (rs (cdr rows)))
-                                (:instance fn-sjh-col-handles-below-of-load-held-row (r (car rows))
+                                (:instance fn-sjh-col-handles-below-of-load-available-row (r (car rows))
                                            (n (len fn-arena)))))))
 
 (defthm fn-sjh-col-cat-clear-is-nil
@@ -251,7 +256,7 @@
   :hints (("Goal" :in-theory (union-theories '(fn-sjh-colsp fn-sca-load-held-rows fn-sjh-col-handles-below-of-clear fn-sjh-col-cat-clear-is-nil fn-scol-handles-below)
                                              (theory 'minimal-theory))
            :use ((:instance fn-scol-okp-of-load-held-rows)
-                 (:instance fn-sjh-col-handles-below-of-load-from (fn-cat (fn-cat-clear fn-cat)))))))
+                 (:instance fn-sjh-col-handles-below-of-load-available-from (fn-cat (fn-cat-clear fn-cat)))))))
 
 ; KEYSTONE (the columns at the checkpoint open and recovery): the owner
 ; fn-owner-install-extended installs from a checkpoint's rows PREFIX and the

@@ -141,7 +141,7 @@
     (otherwise (error "unknown core seam ~s" name))))
 (defun fnn-core (name &rest args) (first (apply #'fnn-call name args)))
 (load "host/native/history-root.lisp")
-(defparameter +fnn-reclaim-chunk-rows+ 3)
+(defun fnn-reclaim-chunk-rows () 3)
 (with-open-file (s "host/native/owner.lisp")
   (loop for form = (read s nil :eof) until (eq form :eof)
         when (and (consp form) (eq (car form) 'defun)
@@ -175,7 +175,7 @@
       ;; the rewriting pass hands each chunk on and keeps none of them
       (assert (null (fnn-owner-reclaim-walk '(:poisoned-list-source) nil nil service pin
                                             (lambda (chunk) (push chunk chunks)))))
-      (assert (every (lambda (c) (<= (length c) +fnn-reclaim-chunk-rows+)) chunks))
+      (assert (every (lambda (c) (<= (length c) (fnn-reclaim-chunk-rows))) chunks))
       (assert (equal (apply #'append (reverse chunks)) captured)))
     (let ((ordered (reverse *fx-trace*)))
       (assert (position 'fn-owner-hroot-read-fund ordered))

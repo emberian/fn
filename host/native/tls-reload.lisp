@@ -95,6 +95,32 @@ refusal is a start refusal by ACL2's word."
                                  (fnn-core 'fn-tlsk-host-zero-tally))))
       decision)))
 
+;;; D59's refusal scope (books/tls-key-exchange.lisp fn-tlsk-library-decide).
+;;; A start whose pinned OpenSSL prefix held no pair runs on the system's
+;;; (host/native/tls.lisp fnn-tls-pinned-missing); `run' asks ACL2 whether
+;;; this node may: refused by name when it serves TLS or requires the hybrid
+;;; key exchange, a warning line in its log when it does neither.
+(defun fnn-tls-decide-library (config-octets served)
+  "Decide the library this start runs on; refuse the start by ACL2's word,
+or log its warning.  SERVED: `run' holds a certificate (STARTTLS and the
+implicit-TLS listener)."
+  (let ((missing (fnn-tls-pinned-missing)))
+    (when missing
+      (let* ((plan (fnn-core 'fn-tlsk-host-plan
+                             (and config-octets (fnn-octet-list config-octets))))
+             (policy (fnn-core 'fn-tlsk-host-plan-policy plan))
+             (decision (fnn-core 'fn-tlsk-host-library-decide t (and served t) policy))
+             (line (fnn-core 'fn-tlsk-host-library-line decision))
+             ;; ACL2's line, then the prefix the host looked under.
+             (octets (and (fnn-octet-list-p line)
+                          (append line (fnn-octet-list
+                                        (fnn-string-octets (format nil ": ~a" missing)))))))
+        (case decision
+          (:refuse (error 'fnn-store-error :message (fnn-octets-string (fnn-octets octets))))
+          (:fallback (fnn-log-line octets))
+          (t nil))
+        decision))))
+
 (defun fnn-tls-note-session (channel)
   "An established server session: its negotiated group in the log, in ACL2's
 words, and in the tally.  Observation only (fnn-tls-established ignores a

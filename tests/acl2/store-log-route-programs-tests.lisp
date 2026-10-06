@@ -4,7 +4,11 @@
 ; zeros, the kernel it recovers, the batch appended).
 (in-package "ACL2")
 (include-book "../../books/store-log-route-programs")
+(include-book "../../books/defkeystone")
 (include-book "store-log-kernel-tests")
+; The witnesses evaluate the recovered kernel, which decodes records through
+; the seam's constrained fn-record-decode-exact: run it under its attachment.
+(include-book "../../books/records-attach")
 
 (defun slrp-related-run-p (bs ks program)
   (declare (xargs :verify-guards nil))

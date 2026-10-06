@@ -1064,6 +1064,17 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-owner-sco-global 'fn-owner-orc-pass state))
 
+; The operator's opt-in (`[resources] reclaim_live', books/reclaim-
+; reservation.lisp): installed once per run by fn-owner-connection-budget
+; (below), NIL until then (an offline or unconfigured owner has no live
+; reclaim).  Defined here, above fn-owner-orc-request which reads it: the
+; ld build order refuses a forward call.
+(defun fn-owner-reclaim-live-p (state)
+  (declare (xargs :stobjs state :guard t))
+  (and (f-boundp-global 'fn-owner-reclaim-live state)
+       (f-get-global 'fn-owner-reclaim-live state)
+       t))
+
 ; The answer to the request (fn-orc-request-word) over the owner's own
 ; observations: the pass in flight, the publication in flight, a deferral
 ; (the publication's, as fn-owner-sco-due reads it; FREE the statvfs the
@@ -1080,14 +1091,18 @@
          (v (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state)))))
     (value (if (not (member-eq mode '(:dry-run :recorded :reclaim)))
                :offline-only
-             (fn-orc-request-word
+             ; without the opt-in a pass that installs is refused by name
+             ; before anything is recorded or reserved
+             (fn-orcp-request-word
+              mode (fn-owner-reclaim-live-p state)
+              (fn-orc-request-word
             (fn-owner-orc-pass state)
             (and (not dry) (fn-owner-sco-global 'fn-owner-sco-inflight state))
             (and (not dry) profile
                  (fn-ock-publication-blockedp (fn-owner-sco-deferred state)
                                               (fn-owner-sco-budget override profile)
                                               (fn-ockp-space free)))
-            (or dry (eq mode :reclaim) (fn-rci-recordedp v)))))))
+            (or dry (eq mode :reclaim) (fn-rci-recordedp v))))))))
 
 (defun fn-owner-orc-request-status (word)
   (declare (xargs :guard t))
@@ -1524,18 +1539,19 @@
     (value :ok)))
 
 (defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
-                                           tlsp state)
+                                           tlsp live state)
   ; Once per run, after recovery and before listen (host/native/mux.lisp
   ; fnn-mux-budget-install, from fnn-owner-run).  MACHINE, DYNAMIC (the
   ; dynamic space this process has), CORE, THREADS and STACK are the host's
   ; observations; NURSERY its collection trigger;
-  ; PROFILE the store's; TLSP whether a TLS context is loaded.  The capacity
-  ; is the live configuration's.
+  ; PROFILE the store's; TLSP whether a TLS context is loaded; LIVE the
+  ; operator's live-reclaim opt-in (the owner's work reserve beyond the
+  ; open's exists only with it).  The capacity is the live configuration's.
   (declare (xargs :stobjs state :mode :program))
   (let* ((v (fn-cfg-value (fn-owner-config state)))
          (capacity (fn-exp-connections-capacity v))
          (article (fn-bs-profile-max-article-octets profile))
-         (hneed (fn-heap-figure-octets profile core nursery))
+         (hneed (fn-mca-figure-octets profile core nursery live))
          ;; PRF-986: the handshakes' native scratch, L x the scratch with a
          ;; TLS context, is part of the base (books/connection-budget.lisp).
          (slots (fn-cbud-config-handshake-slots v tlsp))
@@ -1564,7 +1580,8 @@
          (state (f-put-global 'fn-owner-credit-reserve
                               (fn-heap-article-reserve-octets profile)
                               state))
-         (state (fn-owner-put-credits (fn-mca-initial profile core nursery) state))
+         (state (f-put-global 'fn-owner-reclaim-live (and live t) state))
+         (state (fn-owner-put-credits (fn-mca-initial profile core nursery live) state))
          (state (f-put-global 'fn-owner-connection-budget-line
                               (fn-record-string-octets
                                (if (equal (car d) :hold)
@@ -5443,12 +5460,15 @@ existing port only after fn-fc has made this connection ready."
 ; (fn-orc-capture-word over the pass and the publication in flight as they
 ; are now): a pass or a publication that holds it is refused by name before any
 ; credit is reserved or anything written, (:deferred WORD NIL).  Then the pass's
-; credit reserved under :reclaim (fn-orcp-reserve, at fn-orcp-estimate of the
-; committed record octets the owner carries, fn-owner-record-octets); refused
-; by name, nothing is captured or in flight.  Admitted, fn-owner-orc-capture's
-; values (the pass and the publication in flight at COUNT) and the owner's
-; connection bound.  Answers (:deferred WORD NIL), (:deferred :credit ESTIMATE)
-; or (:captured CAPTURE MAX-CONNS).
+; credit reserved under :reclaim (fn-orcp-reserve: the second generation's
+; demand over the committed records N and the history octets C the owner
+; carries, fn-owner-record-octets, borrowed from the owner's work reserve; lane
+; reclaim-funding); refused by name, nothing is captured or in flight.
+; Without the operator's opt-in (D53) the reservation is refused
+; :offline-only, answered (:deferred :offline-only NIL).
+; Admitted, fn-owner-orc-capture's values (the pass and the publication in
+; flight at COUNT) and the owner's connection bound.  Answers (:deferred WORD
+; NIL), (:deferred :credit DEMAND) or (:captured CAPTURE MAX-CONNS).
 (defun fn-owner-orcp-capture (mode clock override free revision fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let ((word (fn-orc-capture-word (fn-owner-orc-pass state)
@@ -5459,9 +5479,16 @@ existing port only after fn-fc has made this connection ready."
       ;; Synchronize the committed history and its carried byte count before
       ;; reserving. The raw (K . SUM) cache may lag the last committed batch.
       (mv-let (octets fn-hist state) (fn-owner-record-octets fn-hist state)
-        (let ((r (fn-orcp-reserve (fn-owner-credits state) octets)))
+        (let* ((n (fn-owner-sco-count state))
+               (r (fn-orcp-reserve (fn-owner-credits state) n octets
+                                   (fn-owner-reclaim-live-p state))))
           (if (not (eq (car r) :ok))
-              (mv nil (list :deferred :credit (fn-orcp-estimate octets)) fn-hist state)
+              ;; without the opt-in, by that name (the request refuses it
+              ;; first; this is the capture's own check), else the demand
+              (mv nil (if (eq (cadr r) :offline-only)
+                          (list :deferred :offline-only nil)
+                        (list :deferred :credit (fn-heap-reclaim-demand-octets n octets)))
+                  fn-hist state)
             (let ((state (fn-owner-put-credits (cadr r) state)))
               (mv-let (erp captured state)
                 (fn-owner-orc-capture mode clock override free revision state)
