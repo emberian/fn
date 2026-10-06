@@ -428,6 +428,17 @@
   :hints (("Goal" :induct (fn-b3-pf-ind i outs)
                    :expand ((fn-b3-nthcdrx (* 2 i) outs)))))
 
+(defthm fn-b3-pair-outs-of-append-two
+  ; Pairing an even run followed by two singles pairs the run, then the two —
+  ; the alignment the odd Q' step needs (its last single pairs with the
+  ; appended A).
+  (implies (and (natp i) (true-listp os) (equal (len os) (* 2 i)))
+           (equal (fn-b3-pair-outs key flags (append os (list x y)))
+                  (append (fn-b3-pair-outs key flags os)
+                          (list (fn-b3-parent-out key x y flags)))))
+  :hints (("Goal" :induct (fn-b3-pf-ind i os)
+                   :expand ((fn-b3-pair-outs key flags (append os (list x y)))))))
+
 (defthm fn-b3-firstn-all
   (implies (true-listp x)
            (equal (fn-b3-firstn (len x) x) x)))
@@ -482,6 +493,36 @@
   (if (and (posp p) (natp j) (< (* 2 p) j))
       (fn-b3-lw-ind (* 2 p) j)
     (list p j)))
+
+(defthm fn-b3-left-windows-plus
+  ; Climbing past u by ONE window: the split is the same, unless u is exactly
+  ; twice it (the doubling edge), where it doubles.  An IF-valued rewrite: each
+  ; use site case-splits on the edge itself.
+  (implies (and (posp p) (natp u) (< p u))
+           (equal (fn-b3-left-windows p (+ 1 u))
+                  (if (equal u (* 2 (fn-b3-left-windows p u)))
+                      u
+                    (fn-b3-left-windows p u))))
+  :hints (("Goal" :induct (fn-b3-lw-ind p u)
+                   :nonlinearp t)))
+
+(defthm fn-b3-left-windows-1-plus
+  ; The p=1 instance, its edge condition phrased on lw(1, u) itself.
+  (implies (and (natp u) (<= 2 u))
+           (equal (fn-b3-left-windows 1 (+ 1 u))
+                  (if (equal u (* 2 (fn-b3-left-windows 1 u)))
+                      u
+                    (fn-b3-left-windows 1 u))))
+  :hints (("Goal" :use ((:instance fn-b3-left-windows-plus (p 1))))))
+
+(defthm fn-b3-left-windows-1-of-2u+1
+  ; An odd run of 2u+1 outputs splits at twice lw(1, u+1) — the tail lemmas'
+  ; left side, where the appended single makes the count odd.
+  (implies (and (natp u) (<= 1 u))
+           (equal (fn-b3-left-windows 1 (+ 1 (* 2 u)))
+                  (* 2 (fn-b3-left-windows 1 (+ 1 u)))))
+  :hints (("Goal" :use ((:instance fn-b3-left-windows-double-minus (p 1) (u (+ 1 u))))
+                   :nonlinearp t)))
 
 (defthm fn-b3-lw-of-double-len
   ; Bridge: an even-length run's wtree split is twice the half-count's
