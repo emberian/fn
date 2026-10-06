@@ -1,0 +1,18 @@
+{
+ "category": "implementation",
+ "disposition": "SLICE",
+ "evidence": "host/native/reader-model-host.lisp:20 (ld \"../reader-host.lisp\" :ld-error-action :error); D61 (planning/decisions.md) certifies the six carriers whose sibling edges became include-books; this file is a :program host file, not a carrier, and was left as an ld.",
+ "exposure": "latent",
+ "file": "host/native/reader-model-host.lisp",
+ "fix": "Un-park condition: reader-host.lisp is itself a certified closure member (an include-book edge from reader-model-host, as D61 did for the six carriers) or reader-model-host is folded into an umbrella that includes reader-host; then host_check --read/--world and a certify manifest naming the file are green. Needs an owner to take it (open).",
+ "id": "D61-READER-MODEL-HOST-LD",
+ "locus": "host-certify",
+ "notes": [],
+ "owner": "open",
+ "scenario": "Not a runtime fault: a nested ld cannot be certified (certify-book rejects LD-FN), so the file and what it loads stay gated only by host_check, not by a certify manifest.",
+ "severity": "low",
+ "source": "host-certify-ld-2",
+ "state": "open",
+ "title": "host/native/reader-model-host.lisp still ld's host/reader-host.lisp, so it stays outside every certify closure (D61 exception)",
+ "updated": "2026-10-06T23:47:55Z"
+}
