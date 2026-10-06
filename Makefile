@@ -3123,6 +3123,15 @@ acl2-ld:
 certs-install:
 	$(PYTHON) tools/certs.py install
 
+# The comprehensiveness gate (build/coordinator/COORDINATOR-SOP.md): every open
+# repair item has a disposition (LANDED / IN-FLIGHT / PARKED / UNOWNED) and every
+# declared native scenario has a recorded run, or planning/repair/ACKS.md says
+# why not.  NOT in check-fast until the backlog is dispositioned.
+.PHONY: check-coverage
+check-coverage:
+	@$(CHECK_STEP) $(PYTHON) tools/coverage_gap.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_coverage_gap
+
 # The dynamic half of tools/host_shape_check.py: the ACL2-mode prefix of
 # host/native/build.lisp (every include-book and host `ld`), translated the
 # way the image build does it, without saving an image.  Exit 2 is NOT RUN
