@@ -51,7 +51,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [bp-source-control](#bp-source-control) KEEPALIVE while exact received-source ACK remains held | `fn-tclsctl-never-releases-ack` | yes | yes: `certify-20261003T163429Z-2470673` | no: no matching image evidence | no: profile not deployed |
 | [operator-default-launch](#operator-default-launch) DEFAULT launcher and configured next-run resource projection | `fn-prstartup-accepted-default-launch-fits-machine` | yes | yes: `certify-20261005T045423Z-4058702` | no: no matching image evidence | no: dev source not on the node |
 | [durable-after-ack](#durable-after-ack) durable after acknowledgement (Mini M1) | `fn-lgu-acknowledged-records-are-recovered-at-every-cut` | yes | yes: `certify-20261004T195103Z-266420` | no: no matching image evidence | no: dev source not on the node |
-| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | yes: `certify-20261005T072706Z-625950` | no: no matching image evidence | no: dev source not on the node |
+| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | yes: `certify-20261006T023206Z-2931173` | no: no matching image evidence | no: dev source not on the node |
 
 ## Records
 
@@ -372,7 +372,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **store identity by command (Mini M4).** IDENTITY: `fn identity CONTROL` asks the running owner (FNCT kind 24, a :read control) and prints the reply (kind 25) that ACL2 encodes over the exported wire grammar: the open's genesis format, node, schema and profile digests, the consumer arm (unbootstrapped, or bootstrapped with non-empty history id and incarnation), the created and running revisions and the BLAKE3 of specs/wire-grammar.json; Mini pins its decoder by that digest.
 
 - Host-called subject: `fn-stid-host-reply` at host/native/store-identity.lisp:23, equated by `fn-stid-value-is-a-reply-value` (books/store-identity.lisp:282).
-- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:317; in no registry row); certified at the current source and closure by `certify-20261005T072706Z-625950` (earliest archived).
+- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:317; in no registry row); certified at the current source and closure by `certify-20261006T023206Z-2931173` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/store-identity.lisp`, `host/native/store-identity.lisp`.
 - Latest positive result: M4 on dev ad33dd8c4 (merge dce7b2333 of f84daa568, with the may-seal fix 5ea752578): tests.test_native_store_identity 2 ran OK on the published set ad33dd8c4 (developer image), boxq bq10050444-0146, run hbox:/tank/fn/scratch/mini-contract-3/native-bq10050444-0146; books certified lat1 certify-20261004T202723Z-407947 and certify-20261004T203446Z-443120.
