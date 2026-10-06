@@ -1218,3 +1218,38 @@
            :in-theory (e/d (fn-csp-record-done) (fn-csp-batch-finish fn-cu-next))
            :use ((:instance fn-csp-batch-finish-effects
                   (s (fn-csp-with s :slot nil :skip nil :framer nil :msgid nil))))))))
+
+(local (defthm fn-csp-consp-binding-not-idle
+  ; A consp placed at j is a (msgid . phase) binding, and idleness is the
+  ; absence of every such entry.  The terminator installs one before it
+  ; asks record-done.
+  (implies (and (natp j) (consp c))
+           (not (fn-csp-conns-idlep (update-nth j c conns))))
+  :hints (("Goal" :induct (update-nth j c conns)
+                  :in-theory (e/d (fn-csp-conns-idlep)
+                                  (fn-csp-windowp fn-csp-windowp-of-symbol))))))
+
+(local (defthm fn-csp-terminator-journals-nothing
+  ; The next no-journal branch of the step.  Mode :terminator writes the
+  ; dot and binds j to (msgid . :verdict), then returns record-done's
+  ; effects under that :local.  The binding is consp, so the window is not
+  ; idle, and record-done journals only from an idle window: these effects
+  ; carry no :journal.  The composition (a :journal in fn-csp-step only from
+  ; a settled batch-finish) is not this lemma.
+  (implies (equal (fn-csp-mode s) :terminator)
+           (not (member-eq :journal
+                           (strip-cars (cadr (fn-csp-next s))))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csp-next)
+                           (fn-csp-record-done fn-csp-batch-finish fn-csp-fail
+                            fn-csp-read-replay fn-csp-write fn-csp-try-offer
+                            fn-csp-after-header fn-csp-hash-effect
+                            fn-csp-header-window fn-csp-framer-window
+                            fn-csp-windowp fn-csp-windowp-of-symbol
+                            fn-pull-list
+                            (:rewrite fn-csp-record-done-journals-only-settled)))
+           :use ((:instance fn-csp-record-done-journals-only-settled
+                  (s (fn-csp-with s :conns
+                       (fn-csp-conns-set (fn-csp-conns s)
+                                         (nfix (fn-csp-slot s))
+                                         (cons (fn-csp-msgid s) :verdict))))))))))
