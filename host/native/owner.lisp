@@ -805,16 +805,24 @@ never awaits a page or replays a quantum in the same I/O event."
         (values (second result) nil)
       (values plan (second result)))))
 
+;;; WW-R (lane w-window, temporary, never lands): the render quantum's two
+;;; phases, on the node stderr.
+(defparameter *wwr-ready-ms* 0)
+
 (defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp borrowp)
   "Render a window, running at most one cursor quantum under the owner
 mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ END).
 Empty progress yields; a cold read retains the exact original plan/capture."
-  (multiple-value-bind (ready ready-p yield cold)
-      (fnn-owner-ready-plan-step service cid plan class)
-    (unless ready-p
-      (return-from fnn-owner-render-next-quantum
-        (values (fnn-make-octets 0) ready nil yield cold 0)))
-    (setq plan ready))
+  (let ((wwr-t0 (get-internal-real-time)))
+    (multiple-value-bind (ready ready-p yield cold)
+        (fnn-owner-ready-plan-step service cid plan class)
+      (setq *wwr-ready-ms* (truncate (* (- (get-internal-real-time) wwr-t0) 1000)
+                                     internal-time-units-per-second))
+      (unless ready-p
+        (fnn-err "WW-R yield ready=~dms" *wwr-ready-ms*)
+        (return-from fnn-owner-render-next-quantum
+          (values (fnn-make-octets 0) ready nil yield cold 0)))
+      (setq plan ready)))
   (when (fnn-core 'fn-asto-plan-articlep plan)
     (let ((article
             (fnn-owner-cursor-step-serialized service cid
@@ -822,10 +830,15 @@ Empty progress yields; a cold read retains the exact original plan/capture."
                (let ((attempt
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
-                           (destructuring-bind (word bytes next done)
-                               (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-over-window)
-                                         (fnn-live-stobj 'fn-arena))
-                             (list :warm word bytes next done))))))))
+                           (let ((wwr-t1 (get-internal-real-time)))
+                             (multiple-value-prog1
+                                 (destructuring-bind (word bytes next done)
+                                     (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-over-window)
+                                               (fnn-live-stobj 'fn-arena))
+                                   (list :warm word bytes next done))
+                               (fnn-err "WW-R ready=~dms render=~dms" *wwr-ready-ms*
+                                        (truncate (* (- (get-internal-real-time) wwr-t1) 1000)
+                                                  internal-time-units-per-second))))))))))
                  (if (eq (car attempt) :warm) attempt
                    (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
       (when (eq (car article) :cold)

@@ -3,38 +3,60 @@
 ;;; This driver does not admit jobs or allocate a whole compressed payload.
 (in-package "ACL2")
 
+;;; WW-TIME (lane w-window, temporary, never lands): component timers for the
+;;; decoded cold path, in microseconds.  No per-byte printing; one WW-TIME
+;;; line per 2048 realize calls, on the node stderr.
+(defparameter *wwt-n* 0)
+(defparameter *wwt-desc-us* 0)
+(defparameter *wwt-borrow-us* 0)
+(defparameter *wwt-cache-us* 0)
+(defparameter *wwt-acl2-us* 0)
+(defparameter *wwt-scan-entries* 0)
+(defparameter *wwt-resets* 0)
+(defparameter *wwt-last-i* -1)
+
+(defmacro wwt-elapsed-us (start)
+  `(truncate (* (- (get-internal-real-time) ,start) 1000000)
+             internal-time-units-per-second))
+
 (defun fnn-extent-decoded-window-realize-octet (file eoff elen poff compressed trailer decoded dict i)
   "The actual scalar getter either borrows a returned decoded byte or throws
 its full core-selected cold descriptor while the captured owner is held."
-  (let* ((descriptor (fnn-core 'fn-pwz-cold-descriptor
-                       file eoff elen poff compressed trailer decoded dict i))
-         (dict-id (fnn-core 'fn-pwz-nth 8 descriptor)))
-    (multiple-value-bind (word byte)
-        (if *fnn-extent-window-worker*
-            (fnn-extent-decoded-window-byte-at
-              *fnn-extent-window-worker* *fnn-extent-window-token*
-              file eoff elen poff compressed trailer decoded dict-id i)
-          (values :unavailable nil))
-      (cond ((eq word :byte) byte)
-            ((member word '(:cancelled :stale-job))
-             ;; WW-DIAG (lane w-window, temporary): a borrow that answers a
-             ;; refusal word never reaches the cache arm.
-             (fnn-err "WW-DIAG realize refused word=~s i=~s borrowed=~s"
-                      word i (if *fnn-extent-window-worker* t nil))
-             (throw 'fnn-extent-window-refused (values word nil nil nil)))
-            ((eq word :unavailable)
-             ;; Not in the borrowed window: a verified cached window, else the
-             ;; core's complete cold descriptor.
-             ;; WW-DIAG (lane w-window, temporary)
-             (fnn-err "WW-DIAG realize miss i=~s borrowed=~s cache-entries=~d"
-                      i (if *fnn-extent-window-worker* t nil)
-                      (length *fnn-extent-window-cache*))
-             (let ((hit (fnn-extent-decoded-window-cache-byte
-                         file eoff elen poff compressed trailer decoded dict-id i)))
-               (fnn-err "WW-DIAG realize miss resolved=~s" (not (null hit)))
-               (or hit (throw 'fnn-extent-cold descriptor))))
-            (t (error 'fnn-extent-fault
-                      :message "arena-extent-read: decoded window was not an authenticated returned result"))))))
+  (incf *wwt-n*)
+  (when (and (= i 0) (> *wwt-last-i* 0)) (incf *wwt-resets*))
+  (setq *wwt-last-i* i)
+  (when (zerop (mod *wwt-n* 2048))
+    (fnn-err "WW-TIME n=~d desc=~dms borrow=~dms cache=~dms acl2incache=~dms scan-entries=~d resets=~d"
+             *wwt-n* (truncate *wwt-desc-us* 1000) (truncate *wwt-borrow-us* 1000)
+             (truncate *wwt-cache-us* 1000) (truncate *wwt-acl2-us* 1000)
+             *wwt-scan-entries* *wwt-resets*))
+  (let ((t0 (get-internal-real-time)))
+    (let* ((descriptor (fnn-core 'fn-pwz-cold-descriptor
+                         file eoff elen poff compressed trailer decoded dict i))
+           (dict-id (fnn-core 'fn-pwz-nth 8 descriptor)))
+      (incf *wwt-desc-us* (wwt-elapsed-us t0))
+      (multiple-value-bind (word byte)
+          (let ((t1 (get-internal-real-time)))
+            (multiple-value-prog1
+                (if *fnn-extent-window-worker*
+                    (fnn-extent-decoded-window-byte-at
+                      *fnn-extent-window-worker* *fnn-extent-window-token*
+                      file eoff elen poff compressed trailer decoded dict-id i)
+                  (values :unavailable nil))
+              (incf *wwt-borrow-us* (wwt-elapsed-us t1))))
+        (cond ((eq word :byte) byte)
+              ((member word '(:cancelled :stale-job))
+               (throw 'fnn-extent-window-refused (values word nil nil nil)))
+              ((eq word :unavailable)
+               ;; Not in the borrowed window: a verified cached window, else the
+               ;; core's complete cold descriptor.
+               (let ((t2 (get-internal-real-time)))
+                 (let ((hit (fnn-extent-decoded-window-cache-byte
+                             file eoff elen poff compressed trailer decoded dict-id i)))
+                   (incf *wwt-cache-us* (wwt-elapsed-us t2))
+                   (or hit (throw 'fnn-extent-cold descriptor)))))
+              (t (error 'fnn-extent-fault
+                        :message "arena-extent-read: decoded window was not an authenticated returned result")))))))
 
 ;;; The native envelope is published on the existing worker before the
 ;;; sanctioned private creator runs. It preserves partial construction and
@@ -172,34 +194,27 @@ only selects candidates by the token's own descriptor and requested offset;
 ACL2 decides the hit (fn-owner-page-decoded-window-cache-byte-at)."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (dolist (entry *fnn-extent-window-cache* nil)
+      (incf *wwt-scan-entries*)
       (destructuring-bind (token plan window) entry
         (declare (ignore plan))
-        ;; WW-DIAG (lane w-window, temporary): each scanned entry's whole
-        ;; descriptor against the request, so a mismatching field is visible.
-        (fnn-err "WW-DIAG scan kind=~s tok=(~s ~s ~s ~s ~s ~s ~s ~s ~s ~s) want=(~s ~s ~s ~s ~s ~s ~s ~s i=~s)"
-                 (first token)
-                 (second token) (third token) (fourth token) (fifth token)
-                 (sixth token) (seventh token) (eighth token) (ninth token)
-                 (tenth token) (nth 10 token)
-                 file eoff elen poff compressed trailer decoded dict-id i)
         (when (and (eq (first token) :decoded-window)
                    (eql (third token) file) (eql (fourth token) eoff)
                    (eql (fifth token) elen) (eql (sixth token) poff)
                    (eql (seventh token) compressed) (eql (ninth token) trailer)
                    (eql (tenth token) decoded) (eql (nth 10 token) dict-id)
                    (integerp (eighth token)) (<= (eighth token) i))
-          (destructuring-bind (word byte)
-              (fnn-core-page-read-pool 'fn-owner-page-decoded-window-cache-byte-at
-                                       token file eoff elen poff compressed trailer decoded
-                                       dict-id i window)
-            ;; WW-DIAG (lane w-window, temporary)
-            (fnn-err "WW-DIAG scan answer word=~s byte=~s" word byte)
-            (when (eq word :byte)
-              (incf (first *fnn-extent-stats*))
-              (unless (eq entry (first *fnn-extent-window-cache*))
-                (setq *fnn-extent-window-cache*
-                      (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
-              (return byte))))))))
+          (let ((t0 (get-internal-real-time)))
+            (destructuring-bind (word byte)
+                (fnn-core-page-read-pool 'fn-owner-page-decoded-window-cache-byte-at
+                                         token file eoff elen poff compressed trailer decoded
+                                         dict-id i window)
+              (incf *wwt-acl2-us* (wwt-elapsed-us t0))
+              (when (eq word :byte)
+                (incf (first *fnn-extent-stats*))
+                (unless (eq entry (first *fnn-extent-window-cache*))
+                  (setq *fnn-extent-window-cache*
+                        (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
+                (return byte)))))))))
 
 (defun fnn-extent-decoded-window-run (worker token)
   "Same worker/token/pool; actual retained ACL2 controller selects each step.
