@@ -585,6 +585,53 @@ class R7ClassifyingEscape(unittest.TestCase):
             raw["fence_functions"].remove("fnn-x-classify")
 
 
+class R7ConvertingClause(unittest.TestCase):
+    """a clause that ends in a call signalling a fault or indeterminate
+    condition on every path converts it; it does not consume it"""
+    HELPERS = """
+(defun fnn-indeterminate (control) (error 'fnn-store-indeterminate :message control))
+(defun fnn-refuse-x (control) (error 'fnn-store-error :message control))
+(defun fnn-die (control) (fnn-fault control))
+(defun fnn-maybe-die (control flag) (when flag (fnn-fault control)))
+"""
+
+    def swallows(self, clause_body):
+        src = self.HELPERS + """
+(defun fnn-actor (s flag)
+  (handler-case (fnn-fault "x")
+    (serious-condition (e) %s)))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s nil)) :name "t"))
+""" % clause_body
+        return [f for f in run(src, ["R7"]) if f.key.startswith("swallow")]
+
+    def test_a_clause_ending_in_fnn_indeterminate_converts(self):
+        self.assertEqual(self.swallows('(fnn-out "x") (fnn-indeterminate "y")'), [])
+
+    def test_a_clause_ending_in_fnn_fault_through_a_helper_converts(self):
+        self.assertEqual(self.swallows('(fnn-die "y")'), [])
+
+    def test_both_arms_of_an_if_converts(self):
+        self.assertEqual(self.swallows('(if flag (fnn-fault "a") (fnn-indeterminate "b"))'), [])
+
+    def test_a_conditional_signal_is_a_swallow(self):
+        self.assertTrue(self.swallows('(when flag (fnn-fault "y"))'))
+
+    def test_one_arm_of_an_if_is_a_swallow(self):
+        self.assertTrue(self.swallows('(if flag (fnn-fault "a") (fnn-out "b"))'))
+
+    def test_a_helper_that_signals_only_sometimes_is_a_swallow(self):
+        self.assertTrue(self.swallows('(fnn-maybe-die "y" flag)'))
+
+    def test_converting_to_a_refusal_is_a_swallow(self):
+        self.assertTrue(self.swallows('(fnn-refuse-x "y")'))
+
+    def test_an_early_return_before_the_signal_is_a_swallow(self):
+        self.assertTrue(self.swallows('(when flag (return-from fnn-actor nil)) (fnn-fault "y")'))
+
+    def test_a_signal_that_is_not_the_last_form_is_a_swallow(self):
+        self.assertTrue(self.swallows('(fnn-fault "y") (fnn-out "z")'))
+
+
 class CallbackContexts(unittest.TestCase):
     """contracts `callback_contexts': a stored callback declared to run in a
     command's own extent gets that command's context, and nothing else does."""
