@@ -303,49 +303,66 @@ then removed (unwind-protect).  Six words."
                 (remhash raw captured)
                 (setf (symbol-function raw) original)))))))))
 
+(defun fnn-raw-dispatch-msg-text (msg)
+  "An ACL2 msg (STRING . ALIST), the refusal a verdict carries, as one line of
+text without ACL2's printer (an extracted core has none): ~x, ~& and ~@
+directives print their argument (a nested msg as text), a tilde-newline
+skips the line break and the indentation after it."
+  (cond ((stringp msg) msg)
+        ((and (consp msg) (stringp (car msg)))
+         (with-output-to-string (out)
+           (let* ((text (car msg)) (n (length text)) (i 0)
+                  (*package* (find-package "ACL2")))
+             (loop while (< i n)
+                   do (let ((c (char text i)))
+                        (cond ((and (char= c #\~) (< (+ i 1) n)
+                                    (char= (char text (+ i 1)) #\Newline))
+                               (setq i (+ i 2))
+                               (loop while (and (< i n)
+                                                (member (char text i) '(#\Space #\Tab)))
+                                     do (incf i)))
+                              ((and (char= c #\~) (< (+ i 2) n)
+                                    (find (char text (+ i 1)) "x@&")
+                                    (digit-char-p (char text (+ i 2))))
+                               (let ((arg (cdr (assoc (char text (+ i 2)) (cdr msg)))))
+                                 (if (char= (char text (+ i 1)) #\@)
+                                     (write-string (fnn-raw-dispatch-msg-text arg) out)
+                                   (prin1 arg out)))
+                               (incf i 3))
+                              (t (write-char (if (char= c #\Newline) #\Space c) out)
+                                 (incf i))))))))
+        (t (let ((*package* (find-package "ACL2"))) (prin1-to-string msg)))))
+
 (defun fnn-install-raw-dispatch (&key (report t))
   "Fill the dispatch table from the fn-interfaces table of the loaded world:
-the :raw-with and :raw-guarded entries, each re-checked against the world;
-the count.  An unknown or unverified target stops the build."
-  (let ((wrld (w *the-live-state*)))
+each :raw-with and :raw-guarded entry admitted by its verdict in the
+fn-raw-dispatch-verdicts table (books/raw-dispatch-verdict.lisp: judged in
+the ACL2 world, carried into an extracted core by its export) over the row's
+digest as this world gives it; the count.  An unjudged, changed or refused
+row, or an absent or unverified target, stops the build by name."
+  (let* ((wrld (w *the-live-state*))
+         (verdicts (table-alist 'fn-raw-dispatch-verdicts wrld)))
     (fnn-raw-dispatch-reset)
     (dolist (entry (table-alist 'fn-interfaces wrld))
-      (let ((name (car entry))
-            (theorems (cadr (assoc-keyword :raw-with (cdr entry))))
-            (guarded (assoc-keyword :raw-guarded (cdr entry))))
-        (when (or theorems guarded)
-          (when guarded
-            (let ((problem (fn-di-raw-guarded-problem name (cdr entry) wrld)))
-              (when problem
-                (error "fnn-install-raw-dispatch: ~a has a refused guarded declaration: ~s"
-                       name problem))))
-          ;; Recheck the loaded table at the dispatch installation boundary,
-          ;; rather than assuming every table entry came from definterface.
-          (let ((problem (and theorems (fn-di-raw-with-problem name (cdr entry) wrld))))
+      (let ((name (car entry)))
+        (when (fn-rdv-raw-declared-p (cdr entry))
+          (multiple-value-bind (problem raw creatorp)
+              (fn-rdv-admit name (fn-rdv-row-digest name (cdr entry) wrld) verdicts)
             (when problem
-              (error "fnn-install-raw-dispatch: ~a has a refused declaration: ~s"
-                     name problem)))
-          (multiple-value-bind (target-problem raw)
-              (if guarded (fn-di-raw-guarded-target name (cdr entry) wrld)
-                (values nil name))
-            (when target-problem
-              (error "fnn-install-raw-dispatch: refused creator target for ~a: ~s" name target-problem))
+              (error "fnn-install-raw-dispatch: ~(~a~): ~a" name
+                     (fnn-raw-dispatch-msg-text problem)))
             (when (and raw (macro-function raw))
               (error "fnn-install-raw-dispatch: ~a resolved to a macro, not a raw function" name))
             (unless (and raw (fboundp raw))
               (error "fnn-install-raw-dispatch: ~a has a raw declaration but no raw definition" name))
-            (unless (eq (symbol-class name wrld) :common-lisp-compliant)
-              (error "fnn-install-raw-dispatch: ~a has a raw declaration but is ~a, not guard-verified"
-                     name (symbol-class name wrld)))
-            (when (and guarded (not (compiled-function-p (symbol-function raw))))
+            (when (and (assoc-keyword :raw-guarded (cdr entry))
+                       (not (compiled-function-p (symbol-function raw))))
               (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
-            ;; ACL2's loaded-world predicate limits the creator role to the
-            ;; exact creator and its validated compiled target.
-            (fnn-raw-trap-install name raw
-                                  :creator (and (fn-di-raw-creatorp name (cdr entry) wrld) t))
+            (fnn-raw-trap-install name raw :creator creatorp)
             (when report
               (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
                       name (symbol-class name wrld)
                       (if (getpropc name 'invariant-risk nil wrld) "t" "nil")
-                      (if guarded (cadr guarded) theorems)))))))
+                      (or (cadr (assoc-keyword :raw-guarded (cdr entry)))
+                          (cadr (assoc-keyword :raw-with (cdr entry))))))))))
     (fnn-raw-dispatch-count)))

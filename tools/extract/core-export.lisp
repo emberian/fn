@@ -15,7 +15,9 @@
 ;                    state and world at run time, as its values in this
 ;                    session: the state globals they name, the defconsts
 ;                    host/native names, and each root's formals, stobjs-in
-;                    and guard (fnn-entry-guard-spec, fnn-trailing-kind).
+;                    and guard (fnn-entry-guard-spec, fnn-trailing-kind),
+;                    and D40's raw-dispatch verdicts as judged here
+;                    (xt-core-verdicts).
 (in-package "ACL2")
 (program)
 (set-state-ok t)
@@ -171,10 +173,11 @@
                           (guard (car roots) nil w))
                     acc))))
 
-; Installation reads the selected world's declarations and their citations,
-; not an inferred class or a host-created dispatch table.  Preserve raw
-; property presence (including NIL), then add the system queries whose value
-; is computed by ACL2 rather than stored verbatim.
+; Installation reads the selected world's declarations and the verdicts
+; judged on them here (xt-core-verdicts), not an inferred class or a
+; host-created dispatch table.  Preserve raw property presence (including
+; NIL), then add the system queries whose value is computed by ACL2 rather
+; than stored verbatim: each raw-declared row's digest reads them.
 (defun xt-interface-raw-roots (entries w)
   (if (endp entries) nil
     (let ((entry (car entries)))
@@ -183,11 +186,6 @@
                (xt-core-root-p (car entry) w))
           (cons (car entry) (xt-interface-raw-roots (cdr entries) w))
         (xt-interface-raw-roots (cdr entries) w)))))
-
-(defun xt-interface-citations (entries)
-  (if (endp entries) nil
-    (append (cadr (assoc-keyword :raw-with (cdar entries)))
-            (xt-interface-citations (cdr entries)))))
 
 (defun xt-snapshot-stored-properties (name trips seen)
   (if (endp trips) nil
@@ -204,7 +202,7 @@
               (cons (cons (cadr trip) (cddr trip)) tail)))
         (xt-snapshot-stored-properties name (cdr trips) seen)))))
 
-(defun xt-world-snapshot (names w)
+(defun xt-world-snapshot (names verdicts w)
   (if (endp names) nil
     (let* ((name (car names))
            (functionp (not (eq (getpropc name 'formals :none w) :none)))
@@ -213,6 +211,9 @@
             (append
              (and (eq name 'fn-interfaces)
                   (list (cons 'table-alist (table-alist name w))))
+             ; D40's verdicts, as this export judged them (xt-core-verdicts)
+             (and (eq name 'fn-raw-dispatch-verdicts)
+                  (list (cons 'table-alist verdicts)))
              (and functionp
                   (list (cons 'guard (guard name nil w))
                         (cons 'symbol-class (symbol-class name w))
@@ -222,7 +223,27 @@
                         (cons :xl-stobj-creator (get-stobj-creator name w))
                         (cons :xl-stobj-recognizer (get-stobj-recognizer name w)))))))
       (cons (cons name (append computed (xt-snapshot-stored-properties name w nil)))
-            (xt-world-snapshot (cdr names) w)))))
+            (xt-world-snapshot (cdr names) verdicts w)))))
+
+; D40's raw-dispatch verdicts (books/raw-dispatch-verdict.lisp), judged HERE
+; in the world: the core cannot judge (its world is this snapshot), so it
+; admits a raw dispatch only on a verdict this export judged clean over a row
+; with the same digest (host/native/raw-trap.lisp fnn-install-raw-dispatch).
+; The world's own table (host/raw-dispatch-verdicts.lisp) must be this
+; judgment, pair for pair; otherwise the export stops.
+(defun xt-core-verdicts (w)
+  (let ((judged (fn-rdv-verdicts (table-alist 'fn-interfaces w) w))
+        (table (table-alist 'fn-raw-dispatch-verdicts w)))
+    (if (and (equal (len judged) (len table))
+             (subsetp-equal judged table)
+             (subsetp-equal table judged))
+        judged
+      (er hard 'xt-core-export
+          "The world's fn-raw-dispatch-verdicts table is not this export's ~
+           judgment of its raw-declared fn-interfaces rows (judged ~x0 rows, ~
+           table ~x1): host/raw-dispatch-verdicts.lisp was not the last ~
+           declaration event of this world"
+          (len judged) (len table)))))
 
 ; The packages: each non-builtin package's imports, by (package . name).
 (defun xt-sym-pairs (syms)
@@ -306,6 +327,8 @@
 
 (defun xt-core-export (tokens json-path lisp-path pkg-path state)
   (let* ((w (w state))
+         ; judged first: a refused export writes nothing
+         (verdicts (xt-core-verdicts w))
          (macros (xt-core-macros tokens w nil))
          (roots (append (xt-core-roots tokens w nil)
                         (xt-core-roots (xt-sym-names (xt-macro-callees macros nil)) w nil)
@@ -338,9 +361,9 @@
                                                      (remove-duplicates-eq
                                                       (append (xt-entry-fns entries nil)
                                                               (xt-stobj-closure-1 stobjs nil w)
-                                                              (xt-interface-citations (table-alist 'fn-interfaces w))
-                                                              '(state fn-interfaces *fn-entry-guard-kinds*)))
-                                                     w)))
+                                                              '(state fn-interfaces fn-raw-dispatch-verdicts
+                                                                *fn-entry-guard-kinds*)))
+                                                     verdicts w)))
                                         channel state))
                        (state (close-output-channel channel state)))
                   (value (list :roots (len roots) :consts (len consts) :globals (len globals)

@@ -433,3 +433,4 @@
 (include-book "../../books/history-paged")
 (include-book "../../books/history-records")
 (include-book "../../books/resource-vector-exec")
+(include-book "../../books/raw-dispatch-verdict")

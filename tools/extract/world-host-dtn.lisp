@@ -38,6 +38,7 @@
 (ld "../../host/bp-node-machine-host.lisp" :ld-error-action :error)
 (ld "../../host/bp-receive-evidence-host.lisp" :ld-error-action :error)
 (ld "../../host/interfaces-raw.lisp" :ld-error-action :error)
+(ld "../../host/raw-dispatch-verdicts.lisp" :ld-error-action :error)
 (ld "../../host/store-open-host.lisp" :ld-error-action :error)
 (ld "../../host/store-write-host.lisp" :ld-error-action :error)
 (ld "../../host/interfaces-extract.lisp" :ld-error-action :error)
