@@ -93,7 +93,10 @@ def forms(build):
 
 
 def host_books(hosts):
-    """The include-books the host files make themselves (their lds followed)."""
+    """The include-books the host files make themselves (their lds and their
+    host-sibling include-books followed: a sibling included as a book loads
+    its own edges with its certificate, so the umbrella names them the same
+    way an ld'd sibling's books are named)."""
     out, seen = [], set()
 
     def visit(rel):
@@ -104,10 +107,17 @@ def host_books(hosts):
         text = path.read_text()
         for m in re.finditer(r'^\s*\((include-book|ld) "([^"]+)"', text, re.M):
             target = (path.parent / m.group(2)).resolve()
-            if m.group(1) == "include-book":
-                out.append(str(target.relative_to(ROOT)))
-            else:
-                visit(str(target.relative_to(ROOT)))
+            trell = str(target.relative_to(ROOT))
+            if m.group(1) == "ld":
+                visit(trell)
+                continue
+            out.append(trell)
+            source = target if target.suffix == ".lisp" else target.with_name(target.name + ".lisp")
+            if trell.startswith("host/") and source.is_file():
+                # a host sibling included as a book: walk it like an ld.  A
+                # books/ target's own closure arrives through its
+                # certificate, not this list.
+                visit(str(source.relative_to(ROOT)))
 
     for h in hosts:
         visit(h)
@@ -215,8 +225,19 @@ def render(variant="default"):
 
 
 def lds_followed(root, rel):
-    """REL and every file its `ld's reach, in first-visit order."""
+    """REL and every file its `ld's and host-sibling include-books reach, in
+    first-visit order (the digest's file set: a host file reached only
+    through an include-book is loaded all the same, so its bytes must key
+    the cache; a books/ include's bytes arrive below as its certificate and
+    compiled artifacts, not as a source file)."""
     out, seen = [], set()
+
+    def under_host(path):
+        try:
+            path.resolve().relative_to(Path(root).resolve().joinpath("host"))
+            return True
+        except ValueError:
+            return False
 
     def visit(path):
         path = path.resolve()
@@ -224,8 +245,14 @@ def lds_followed(root, rel):
             return
         seen.add(path)
         out.append(path)
-        for m in re.finditer(r'^\s*\(ld "([^"]+)"', path.read_text(), re.M):
-            visit(path.parent / m.group(1))
+        for m in re.finditer(r'^\s*\((ld|include-book) "([^"]+)"', path.read_text(), re.M):
+            target = path.parent / m.group(2)
+            if m.group(1) == "include-book":
+                if target.suffix != ".lisp":
+                    target = target.with_name(target.name + ".lisp")
+                if not under_host(target):
+                    continue
+            visit(target)
 
     visit(root / rel)
     return out

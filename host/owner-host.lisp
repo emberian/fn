@@ -304,11 +304,14 @@
 (include-book "../books/owner-retire-counted")
 (include-book "../books/owner-connection-callbacks")
 ;
-; Loaded here, not left to a bridge's `ld' order: this file uses names
-; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
-; must get them too.  A second `ld' of a file already in the session
-; re-admits identical definitions, which ACL2 accepts as redundant.
-(ld "store-node-host.lisp" :ld-error-action :error)
+; The sibling edge is an include-book, the discipline the account-*/index-*
+; host books already follow for this file: certify-book refuses an `ld'
+; (LD-FN is not an embedded event form), and the ld that stood here is why
+; owner-host had never certified at current content (the store-node names
+; this file uses are store-node-host's either way).  In a session that
+; ld'd store-node-host earlier the include is redundant and loads nothing;
+; store-host comes with store-node-host's include of it.
+(include-book "store-node-host")
 
 ; The posting configuration: the groups served at the live configuration
 ; generation, the node's own <path-identity> from the ONE slot that holds it

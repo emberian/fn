@@ -2,8 +2,12 @@
 (in-package "ACL2")
 (include-book "../books/native-admin")
 (include-book "../books/accounts")
-(ld "store-node-host.lisp" :ld-error-action :error)
-(ld "owner-host.lisp" :ld-error-action :error)
+; The sibling edges are include-books (the account-*/index-* discipline),
+; not `ld's: certify-book refuses an ld (LD-FN is not an embedded event
+; form).  In a session that ld'd them earlier the includes are redundant
+; and load nothing; store-host comes with store-node-host's include of it.
+(include-book "store-node-host")
+(include-book "owner-host")
 
 (defun fn-native-admin-host-plan (argv) (fn-native-admin-plan argv))
 (defun fn-native-admin-host-status (result) (fn-native-admin-result-status result))
