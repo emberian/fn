@@ -22,10 +22,6 @@
   (harness-stub-reached 'fnn-owner-output-issue "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 
-(load-deployed-forms "host/native/owner.lisp"
- '((defvar *fnn-owner-measure-table*) (defun fnn-owner-measure-now)
-   (defun fnn-owner-measure-note) (defun fnn-owner-measure-report)))
-
 (defun trace-disabled-loop (n)
   (dotimes (i n) (fnn-trace-span ((error "disabled phase evaluated") :cid (error "disabled CID evaluated"))
                   (values i :ok))))
@@ -52,16 +48,15 @@
 (let ((original (make-condition 'simple-error :format-control "SECRET MUST NOT LOG")))
   (assert (eq (handler-case (fnn-trace-span (:error) (error original))
                 (serious-condition (e) e)) original)))
-(let ((*fnn-owner-measure* t))
-  (assert (equal (multiple-value-list (fnn-owner-measured (:actual-owner 9) (values :owner :ok)))
-                 '(:owner :ok))))
+(assert (equal (multiple-value-list (fnn-trace-span (:actual-owner :cid 9) (values :owner :ok)))
+               '(:owner :ok)))
 ;; Real mux render caller over a recorded owner leaf: all six results and
 ;; exact ACL2 response generations remain available through the trace hook.
 (load-deployed-forms "host/native/owner.lisp" '((defvar *fnn-output-grant*)))
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-loop (:constructor %make-fnn-mux-loop)))
    (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn)))
-   (defun fnn-mux-service) (defun fnn-mux-render-next)))
+   (defun fnn-mux-service) (defun fnn-mux-read-class) (defun fnn-mux-render-next)))
 (defun fnn-owner-render-next-quantum (service cid plan class compressed &optional borrowp)
   (assert (and (eq service :service) (= cid 9) (eq plan :plan)
                (eq class :read) (null compressed) borrowp))

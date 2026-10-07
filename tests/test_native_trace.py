@@ -51,7 +51,7 @@ class NativeTraceTests(unittest.TestCase):
   (unwind-protect
        (progn (setf (symbol-function 'sb-ext:get-bytes-consed)
                     (lambda () (error "allocation sampling not opted in")))
-              (assert (eq (fnn-owner-measured (:clock-only 3) :ok) :ok)))
+              (assert (eq (fnn-trace-span (:clock-only :cid 3) :ok) :ok)))
     (setf (symbol-function 'sb-ext:get-bytes-consed) original)))
 (fnn-trace-report *standard-output*)'''
         # SBCL's package lock intentionally protects its API; the fixture

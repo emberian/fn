@@ -534,67 +534,6 @@ stop, caught before the first POST instead of at the second."
 ;;; Shared opt-in diagnostic span macro, also used by native adapters.
 (load "host/native/trace.lisp")
 
-;;; Measurement (adapter-retirement-2; opt-in, FN_OWNER_MEASURE=1 at start):
-;;; per label, how many times the owner mutex was held, for how long, and
-;;; how many octets SBCL allocated while it was, in all and in the largest
-;;; single hold (sb-ext:get-bytes-consed is process-wide: a measurement run
-;;; keeps other threads quiet).  The label is the dynamic
-;;; *fnn-owner-measure-label*: :control inside a control request (an
-;;; operator post), :feed-flush for the flush's own cost (nested in a hold),
-;;; otherwise the gate class the hold was admitted as (:commit for the
-;;; committer's quanta, which run every served POST's attempt).  Off, it costs the two diagnostic special-variable tests
-;;; per hold.  The totals go to stderr when the owner stops
-;;; (fnn-owner-measure-report).  It decides nothing and changes no state the
-;;; owner reads.
-(defvar *fnn-owner-measure* nil)
-(defvar *fnn-owner-measure-label* :other)
-(defvar *fnn-owner-measure-table*
-  (make-hash-table :test 'eq :synchronized t))
-
-(defun fnn-owner-measure-now ()
-  "Monotonic microseconds; clock resolution is runtime ticks."
-  (fnn-trace-now))
-
-(defun fnn-owner-measure-note (label start bytes)
-  (let* ((held (- (fnn-owner-measure-now) start))
-         (consed (- (sb-ext:get-bytes-consed) bytes))
-         (row (or (gethash label *fnn-owner-measure-table*)
-                  (setf (gethash label *fnn-owner-measure-table*)
-                        (list 0 0 0 0 0)))))
-    (incf (first row))
-    (incf (second row) held)
-    (setf (third row) (max (third row) held))
-    (incf (fourth row) consed)
-    (setf (fifth row) (max (fifth row) consed))))
-
-(defmacro fnn-owner-measured ((label &optional cid (operation '*fnn-trace-operation*)
-                                    (connection-generation '*fnn-trace-connection-generation*)) &body body)
-  (let ((start (gensym "START")) (bytes (gensym "BYTES")) (phase (gensym "PHASE")))
-    `(if (or *fnn-owner-measure* *fnn-trace-state*)
-         (let ((,phase ,label))
-           (fnn-trace-span (,phase :cid ,cid :operation ,operation
-                           :connection-generation ,connection-generation)
-             (if *fnn-owner-measure*
-                 (let ((,start (fnn-owner-measure-now))
-                       (,bytes (sb-ext:get-bytes-consed)))
-                   (unwind-protect (progn ,@body)
-                     (fnn-owner-measure-note ,phase ,start ,bytes)))
-               (progn ,@body))))
-       (progn ,@body))))
-
-(defun fnn-owner-measure-report ()
-  (when *fnn-owner-measure*
-    (maphash
-     (lambda (label row)
-       (destructuring-bind (count held most consed most-consed) row
-         (format *error-output*
-                 "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d max-bytes=~d~%"
-                 label count
-                 held most
-                 consed most-consed)))
-     *fnn-owner-measure-table*)
-    (finish-output *error-output*)))
-
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
 
@@ -778,7 +717,7 @@ No byte vector is exposed; every scalar borrow checks its returned typed row."
       (funcall thunk))))
 
 (defun fnn-owner-cursor-step-serialized (service cid thunk class)
-  (let ((*fnn-owner-measure-label* :over-cursor))
+  (let ((*fnn-trace-label* :over-cursor))
     (fnn-owner-serialized service cid thunk class)))
 
 (defun fnn-owner-ready-plan-step (service cid plan class)
@@ -1284,7 +1223,7 @@ followed these writes, under this lock."
   "Write each (JOURNAL . FRAME) of PAIRS, in order, with no barrier; answer
 WRITTEN with each journal written added once, in first-written order.  The
 caller owes each one barrier (fnn-owner-feed-barrier-batch)."
-  (fnn-owner-measured (:feed-flush)
+  (fnn-trace-span (:feed-flush)
     (let ((seen (make-hash-table :test #'eq))
           (fresh nil))
       (dolist (journal written)
@@ -1483,7 +1422,7 @@ state); nothing is written."
   "Append each (JOURNAL . FRAME) of a resolved plan, in order, each across
 its own barrier (fnn-owner-feed-append).  Called under the owner mutex for
 an immediate flush, or by the batch job off it."
-  (fnn-owner-measured (:feed-flush)
+  (fnn-trace-span (:feed-flush)
     (dolist (pair pairs)
       (fnn-owner-feed-append (car pair) (cdr pair)))))
 
@@ -2667,9 +2606,10 @@ fnn-section-run and fnn-section-run-cleanup."
                          (serious-condition (,failure)
                            (fnn-owner-gate-fail-locked ,s ,g ,failure)))
                        ,admission
-                       (fnn-owner-measured ((if (eq *fnn-owner-measure-label* :other)
-                                                 ,c
-                                               *fnn-owner-measure-label*) ,cid)
+                       (fnn-trace-span ((if (eq *fnn-trace-label* :other)
+                                            ,c
+                                          *fnn-trace-label*)
+                                        :cid ,cid)
                           ,@body))
                    (setq *fnn-boundary-outcome* :completed))))
            ;; An unwind no condition explains (a throw, a thread termination):
@@ -5262,7 +5202,7 @@ named snapshot, wait or existing serialized batch pipeline."
             (case (first action)
               (:pipeline
                (fnn-owner-committer-test-fault)
-               (let* ((*fnn-owner-measure-label* :commit)
+               (let* ((*fnn-trace-label* :commit)
                       (receipt (fnn-owner-commit-pipeline service)))
                  (destructuring-bind (next named) (fn-cmt-step control receipt)
                    (setq control next action named)))
@@ -8854,9 +8794,9 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
   ;; Explicit developer trace profile; exhaustion invalidates comparison.
   (fnn-native-with-observation ((fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD") 4096)
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
-  (fnn-trace-configure)
-  (setq *fnn-owner-measure*
-        (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
+  ;; Tracing is the operator's (`fn operator CONFIG trace on'), never the
+  ;; environment's: a run starts with none, whatever an earlier run left.
+  (fnn-trace-reset)
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
         (log-close-action nil) (run-authority-claimed nil)
         (page-read-started nil) (peer-capture nil)
@@ -9043,8 +8983,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (let ((worker (fnn-owner-service-committer service)))
                       (when (or (null worker) (not (sb-thread:thread-alive-p worker)))
                         (fnn-owner-wait-workers service)))
-                    (fnn-owner-measure-report)
                     (fnn-trace-report)
+                    (fnn-dtrace-report)
                     ;; Keep the captured listener fd live while the focused
                     ;; test delivers a repeated SIGTERM during cleanup.
                     (when (string= (or (fnn-developer-selector

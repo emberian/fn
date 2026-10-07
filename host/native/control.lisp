@@ -275,7 +275,7 @@ ACL2 returns."
    :inspect))
 
 (defun fnn-control-handle-client (control socket)
-  (let* ((*fnn-owner-measure-label* :control)
+  (let* ((*fnn-trace-label* :control)
          (service (fnn-control-state-service control))
          (maximum (fnn-control-state-read-maximum control))
          ;; PKT-453 (a): a frame of the reasoned kinds (13, 17) is answered

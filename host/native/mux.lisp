@@ -656,9 +656,9 @@ DONEP YIELDP COLD-READ END)."
                                   (fnn-mux-conn-response-capture conn))))
   (let ((*fnn-output-grant* (fnn-mux-conn-output-grant conn))
         (*fnn-response-capture* (fnn-mux-conn-response-capture conn)))
-    (fnn-owner-measured (:mux-render (fnn-mux-conn-cid conn)
-                         (fourth (fnn-mux-conn-response-identity conn))
-                         (third (fnn-mux-conn-response-identity conn)))
+    (fnn-trace-span (:mux-render :cid (fnn-mux-conn-cid conn)
+                         :operation (fourth (fnn-mux-conn-response-identity conn))
+                         :connection-generation (third (fnn-mux-conn-response-identity conn)))
       (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
                                      (fnn-mux-read-class loop conn)
                                      (and (fnn-mux-conn-zout conn) t) t))))
@@ -937,7 +937,7 @@ the same octets are handed to the next step."
                          (*fnn-response-capture* capture))
                      (setf (fnn-mux-conn-cold-word conn) nil)
                      (destructuring-bind (&optional w since now limit line-since) word
-                       (fnn-owner-measured (:mux-input (fnn-mux-conn-cid conn))
+                       (fnn-trace-span (:mux-input :cid (fnn-mux-conn-cid conn))
                          (fnn-owner-handle-chunk-step service (fnn-mux-conn-cid conn) incoming
                                                       (fnn-mux-conn-socket conn)
                                                       class
