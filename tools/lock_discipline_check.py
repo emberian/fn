@@ -3477,8 +3477,55 @@ class Checker:
         core = (CLASS_TYPE["fault"], CLASS_TYPE["indet"])
         return all(any(self.m.subtype(x, t) for t in core) for x in c)
 
+    def verified_diagnostic_sinks(self) -> set:
+        """The declared diagnostic sinks (contract diagnostic_sinks) that hold
+        up against the source: a function of the analyzed host whose call
+        closure reaches no fence function and no descriptor open or close
+        primitive, so a failure inside it cannot alter custody or the node's
+        lifecycle.  A row whose function is absent is inert in a fixture host
+        without its file, and a loud error otherwise."""
+        forbidden = (set(self.c.raw.get("fence_functions", [])) | set(self.c.raw.get("close_primitives", []))
+                     | set(self.c.raw.get("open_primitives", [])))
+        out = set()
+        for name, row in sorted(self.c.raw.get("diagnostic_sinks", {}).items()):
+            if name not in self.infos:
+                if not (self.an.tree.root / row["file"]).exists():
+                    continue
+                raise ValueError(f"diagnostic_sinks {name}: not a function of the analyzed host")
+            hit = self.reaches(("u", frozenset(), (name,), ()), forbidden - {name})
+            if hit:
+                raise ValueError(f"diagnostic_sinks {name}: reaches {hit[-1]} ({' -> '.join(hit)}); "
+                                 f"a diagnostic sink cannot touch custody or the fence")
+            out.add(name)
+        return out
+
+    @staticmethod
+    def _sig_calls(sig) -> tuple:
+        """(every callee name in the SigX, whether any raw leaf signal is in it)."""
+        calls, leaves = set(), False
+        stack = [sig]
+        while stack:
+            s = stack.pop()
+            if s[0] == "u":
+                calls.update(s[2])
+                leaves = leaves or bool(s[1])
+                stack.extend(s[3])
+            else:
+                stack.append(s[1])
+                stack.extend(b for _, _, b in s[2])
+        return calls, leaves
+
+    def diagnostic_only(self, inner, clauses, sinks) -> bool:
+        """The protected form calls nothing but verified diagnostic sinks and
+        signals nothing of its own, and every clause body is empty (no call, no
+        rethrow): the swallowed condition is the sink's own failure."""
+        calls, leaves = self._sig_calls(inner)
+        return (bool(calls) and not leaves and calls <= sinks
+                and all(body == EMPTY_SIG for _, _, body, _, _, _ in clauses))
+
     def rule_R7(self):
         fences = set(self.c.raw.get("fence_functions", []))
+        sinks = self.verified_diagnostic_sinks()
         # classify-and-route functions (contract classifying_escape_functions):
         # a fault or indeterminate condition handed to one reaches the fence
         # or fault stop; any other kind is answered to the caller. They count
@@ -3491,6 +3538,8 @@ class Checker:
                 continue  # offline/command code: inventoried, not a served failure scope
             for (line, inner, clauses, ctx) in info.handlers:
                 can = set(self.m.eval_sig(inner, self.m.signals))
+                if sinks and self.diagnostic_only(inner, clauses, sinks):
+                    continue
                 row = scopes.get(f"{name}:{line}") or scopes.get(name)
                 scope = row["scope"] if isinstance(row, dict) else row
                 remaining = set(can)

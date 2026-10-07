@@ -1849,3 +1849,77 @@ class ManualGrabCriticalSection(unittest.TestCase):
     (unless (sb-thread:holding-mutex-p lock) (sb-thread:grab-mutex lock))))
 """, ["R5"])
         self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in keys(found, "R5")))
+
+
+class DiagnosticSinkSwallow(unittest.TestCase):
+    """A handler that swallows only a diagnostic sink's own failure is exempt
+    from R7 (contract diagnostic_sinks), and only when the checker verifies the
+    sink and the handler's shape."""
+
+    SINKS = {"fnn-err": {"file": "host/native/fixture.lisp", "why": "test"}}
+
+    def run7(self, source, sinks=None):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["diagnostic_sinks"] = self.SINKS if sinks is None else sinks
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath),
+                                                  ["host/native/fixture.lisp"], {})
+            return [(f.function, f.key) for f in checker.run({"R7"}) if f.rule == "R7"]
+
+    BASE = """
+(defun fnn-err (control &rest args) (fnn-emit-line control args))
+(defun fnn-emit-line (control args) (fnn-fault control))
+(defun fnn-worker-start ()
+  (sb-thread:make-thread (lambda () (fnn-trace-it 1)) :name "w"))
+"""
+
+    def test_a_failure_swallowed_around_only_the_sink_is_exempt(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (fnn-err "x ~a" x) (serious-condition () nil)))
+""")
+        self.assertEqual(found, [])
+
+    def test_ignore_errors_around_only_the_sink_is_exempt(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x) (ignore-errors (fnn-err "x ~a" x)))
+""")
+        self.assertEqual(found, [])
+
+    def test_the_same_swallow_without_a_declared_sink_is_refused(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (fnn-err "x ~a" x) (serious-condition () nil)))
+""", sinks={})
+        self.assertTrue(any(k[1].startswith("swallow:") for k in found), found)
+
+    def test_a_protected_form_that_also_does_real_work_is_refused(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (progn (fnn-fault "x") (fnn-err "x ~a" x)) (serious-condition () nil)))
+""")
+        self.assertTrue(any(k[1].startswith("swallow:") for k in found), found)
+
+    def test_a_clause_that_does_work_is_refused(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (fnn-err "x ~a" x) (serious-condition () (fnn-fault "y"))))
+""")
+        self.assertEqual([k for k in found if k[1].startswith("swallow:")], [], found)
+        found2 = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (fnn-err "x ~a" x) (serious-condition () (fnn-close x))))
+""")
+        self.assertTrue(any(k[1].startswith("swallow:") for k in found2), found2)
+
+    def test_a_sink_that_reaches_a_descriptor_close_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7("""
+(defun fnn-err (control &rest args) (fnn-close args))
+(defun fnn-trace-it (x) (ignore-errors (fnn-err "x ~a" x)))
+""")
