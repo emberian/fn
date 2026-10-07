@@ -36,6 +36,12 @@ class ConnGreetingTests(unittest.TestCase):
         self.assertEqual(c.greeting, b"200 ready\r\n")
         c.sock.close()
 
+    def test_a_201_greeting_connects(self):
+        port = serve_once(b"201 ready, posting prohibited\r\n")
+        c = m.Conn(port)
+        self.assertTrue(c.greeting.startswith(b"201"))
+        c.sock.close()
+
 
 if __name__ == "__main__":
     unittest.main()
