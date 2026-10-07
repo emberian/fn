@@ -133,6 +133,18 @@ class MergeTests(TrainBase):
         self.assertEqual(len(parents), 3, "expected a merge commit")
         self.assertIn(f"Merge lane/a @{sha} into integrate/t1", sh(self.work, "git", "log", "-1", "--format=%s").stdout)
 
+    def test_curated_proofs_conflict_goes_back_to_the_lane(self):
+        # proofs.json rows are lane-curated: a conflict is not resolved to ours.
+        sha = self.lane("p", {"planning/proofs.json": "lane repoint\n"})
+        self.advance_dev({"planning/proofs.json": "dev row\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+        p = self.train("merge", f"p@{sha}")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("planning/proofs.json", p.stdout)
+        self.assertEqual((self.work / "planning/proofs.json").read_text(), "dev row\n")
+        self.assertFalse((self.work / ".git" / "MERGE_HEAD").exists())
+
     def test_source_conflict_aborts_lane_and_next_lane_merges(self):
         bad = self.lane("bad", {"src.txt": "a\nlane-bad\nc\n"})
         good = self.lane("good", {"other.txt": "ok\n"})

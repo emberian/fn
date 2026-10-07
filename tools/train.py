@@ -32,9 +32,11 @@ GENERATED = (
     "planning/current.md",
     "planning/repair/STATUS.md",
     "planning/interfaces.json",
-    "planning/proofs.json",
     "specs/wire-grammar.json",
 )
+# planning/proofs.json is NOT here: ledger.py --write regenerates only its
+# event arrays, and lanes curate its rows (re-pointing a PRF row at a renamed
+# keystone), so a conflict there goes back to the lane like source does.
 # Tail-append files: keep both sides' lines.
 UNION = ("planning/evidence-index.tsv", "planning/decisions.md")
 EVIDENCE_INDEX = "planning/evidence-index.tsv"
@@ -45,6 +47,7 @@ REGEN_OUTPUTS = (
     EVIDENCE_INDEX,
     "planning/ledger.json",
     "planning/ledger.md",
+    "planning/proofs.json",
     "planning/current.md",
     "planning/repair/STATUS.md",
 )
