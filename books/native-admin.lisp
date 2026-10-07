@@ -9,6 +9,7 @@
 
 (in-package "ACL2")
 (include-book "node-config")
+(include-book "def-loop")
 (include-book "store-observed")
 (include-book "config-observed")
 (include-book "byte-store-txn-name")
@@ -60,30 +61,9 @@
 
 ; PKT-867: argv words have no length bound; the walks over them are loop
 ; twins (tools/depth_check.py).
-(defun fn-native-admin-fold-octets-loop (xs acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp xs)
-      (fn-native-admin-fold-octets-loop (cdr xs) (cons (if (and (integerp (car xs)) (<= 65 (car xs)) (<= (car xs) 90))
-                (+ 32 (car xs))
-              (car xs)) acc))
-    (revappend acc nil)))
-
-(defun fn-native-admin-fold-octets (xs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp xs)
-                  (cons (if (and (integerp (car xs)) (<= 65 (car xs)) (<= (car xs) 90))
-                (+ 32 (car xs))
-              (car xs))
-                        (fn-native-admin-fold-octets (cdr xs)))
-                nil)
-       :exec (fn-native-admin-fold-octets-loop xs nil)))
-
-(local
- (defthm fn-native-admin-fold-octets-loop-is-revappend
-   (equal (fn-native-admin-fold-octets-loop xs acc)
-          (revappend acc (fn-native-admin-fold-octets xs)))))
-
-(verify-guards fn-native-admin-fold-octets)
+(def-loop fn-native-admin-fold-octets (xs)
+  :shape :map :over xs :elt x
+  :body (if (and (integerp x) (<= 65 x) (<= x 90)) (+ 32 x) x))
 
 (defun fn-native-admin-group-name-reservedp (text)
   (declare (xargs :guard t))
@@ -274,26 +254,9 @@
         :bad)
     (list mods queue address)))
 
-(defun fn-native-admin-octets-strings-loop (xs acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp xs)
-      (fn-native-admin-octets-strings-loop (cdr xs) (cons (fn-record-octets-string (car xs)) acc))
-    (revappend acc nil)))
-
-(defun fn-native-admin-octets-strings (xs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp xs)
-                  (cons (fn-record-octets-string (car xs))
-                        (fn-native-admin-octets-strings (cdr xs)))
-                nil)
-       :exec (fn-native-admin-octets-strings-loop xs nil)))
-
-(local
- (defthm fn-native-admin-octets-strings-loop-is-revappend
-   (equal (fn-native-admin-octets-strings-loop xs acc)
-          (revappend acc (fn-native-admin-octets-strings xs)))))
-
-(verify-guards fn-native-admin-octets-strings)
+(def-loop fn-native-admin-octets-strings (xs)
+  :shape :map :over xs :elt x
+  :body (fn-record-octets-string x))
 
 (defun fn-native-admin-moderate-plan (words argv)
   (declare (xargs :guard t))
@@ -470,26 +433,9 @@
 
 (verify-guards fn-native-admin-text-pieces)
 
-(defun fn-native-admin-line-pieces-loop (lines acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp lines)
-      (fn-native-admin-line-pieces-loop (cdr lines) (cons (fn-record-octets-string (car lines)) acc))
-    (revappend acc nil)))
-
-(defun fn-native-admin-line-pieces (lines)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp lines)
-                  (cons (fn-record-octets-string (car lines))
-                        (fn-native-admin-line-pieces (cdr lines)))
-                nil)
-       :exec (fn-native-admin-line-pieces-loop lines nil)))
-
-(local
- (defthm fn-native-admin-line-pieces-loop-is-revappend
-   (equal (fn-native-admin-line-pieces-loop lines acc)
-          (revappend acc (fn-native-admin-line-pieces lines)))))
-
-(verify-guards fn-native-admin-line-pieces)
+(def-loop fn-native-admin-line-pieces (lines)
+  :shape :map :over lines :elt l
+  :body (fn-record-octets-string l))
 
 ;; PRF-222: `account access LOGIN|--anonymous --read R --post P'.  A
 ;; pattern is admitted only when it is an RFC 3977 section 4.2 wildmat over
@@ -1778,43 +1724,13 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-native-admin-append-record-loop (records record acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp records)
-      (fn-native-admin-append-record-loop (cdr records) record (cons (car records) acc))
-    (revappend acc (list record))))
-
-(defun fn-native-admin-append-record (records record)
-  "Total, one-record extension for the candidate replay.  The byte decoder
-supplies proper record lists, but this boundary remains executable for a
-malformed logical value and therefore does not make an unproved LISTP claim
-to Common Lisp's guarded APPEND."
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp records)
-           (cons (car records) (fn-native-admin-append-record (cdr records) record))
-         (list record))
-       :exec (fn-native-admin-append-record-loop records record nil)))
-
-(local
- (defthm fn-native-admin-append-record-loop-is-revappend
-   (equal (fn-native-admin-append-record-loop records record acc)
-          (revappend acc (fn-native-admin-append-record records record)))
-   :hints (("Goal" :induct (fn-native-admin-append-record-loop records record acc)
-                   :in-theory (union-theories '(fn-native-admin-append-record-loop fn-native-admin-append-record revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-native-admin-append-record-loop)
-
-(verify-guards fn-native-admin-append-record
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-native-admin-append-record)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-native-admin-append-record-loop-is-revappend (acc nil))))))
-
+; Total, one-record extension for the candidate replay.  The byte decoder
+; supplies proper record lists, but this boundary remains executable for a
+; malformed logical value and therefore does not make an unproved LISTP claim
+; to Common Lisp's guarded APPEND.
+(def-loop fn-native-admin-append-record (records record)
+  :shape :map :over records :elt r :tail (list record)
+  :body r)
 
 (defun fn-native-admin-publication-authorize
     (records frontier config-records record lock-owned observed-names
