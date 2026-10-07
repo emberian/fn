@@ -3581,6 +3581,15 @@ class Checker:
             out[name] = clause_type
         return out
 
+    @staticmethod
+    def _subforms(f):
+        stack = [f]
+        while stack:
+            x = stack.pop()
+            yield x
+            if isinstance(x, list):
+                stack.extend(x)
+
     def verified_diagnostic_sinks(self) -> set:
         """The declared diagnostic sinks (contract diagnostic_sinks) that hold
         up against the source: a function of the analyzed host whose call
@@ -3631,6 +3640,7 @@ class Checker:
         fences = set(self.c.raw.get("fence_functions", []))
         sinks = self.verified_diagnostic_sinks()
         status_routed = self.verified_status_rethrows()
+        debt_routed = self.verified_debt_rethrows()
         # classify-and-route functions (contract classifying_escape_functions):
         # a fault or indeterminate condition handed to one reaches the fence
         # or fault stop; any other kind is answered to the caller. They count
@@ -3656,6 +3666,12 @@ class Checker:
                     routes = rethrows or bool(names & fences)
                     if status_routed.get(name) and spec == status_routed[name] and (caught & {"fault", "indet"}) == {"indet"}:
                         continue    # handed on as a returned status the callers convert (verified)
+                    drow = debt_routed.get(name)
+                    if (drow and spec == drow["clause"] and any(
+                            isinstance(y, list) and head(y) == "setq" and len(y) == 3
+                            and sym(y[1]) == drow["var"] and isinstance(y[2], Sym)
+                            for f in forms for y in self._subforms(f))):
+                        continue    # captured into the verified debt slot (contract debt_rethrows)
                     core = caught & {"fault", "indet"}
                     local = caught & {"socket", "refusal", "connection"}
                     if core and not (routes or names & classifiers or self._converts(forms)) \
@@ -3713,6 +3729,217 @@ class Checker:
                              "push:" + e.name, [row.get("why", "")])
 
     # R9 ----------------------------------------------------------------------
+    def verified_debt_rethrows(self) -> dict:
+        """{function: row} for the declared cross-function debt rethrows
+        (contract debt_rethrows) that hold up against the source.  A handler
+        of FUNCTION captures a cleanup condition into the local VAR instead of
+        signalling it (a primary escape may be unwinding); the swallow is
+        deferred, not lost, when ALL of these hold:
+          1. a clause of CLAUSE type in FUNCTION assigns the condition to VAR
+             (setq VAR condition), VAR bound by a let to nil;
+          2. on that let's body, past forms that cannot leave early, comes
+             (when VAR (setf (SLOT R) VAR));
+          3. that store is the only write of SLOT in the host (no other
+             setf/setq/incf/push/pop of a (SLOT x) place, no :SLOT-keyword);
+          4. CLOSER, on its own spine and past no early exit, reaches
+             (when (SLOT R) (error (SLOT R))) for the R it got from the registry;
+             every other removal from REGISTRY is under an (unless ... (SLOT R)
+             ...) guard;
+          5. CLOSER is a close hook of the stop path: a binding of SPECIAL
+             names #'CLOSER, a constructor stores SPECIAL as its :close-hooks,
+             and a stop function funcalls each hook of the service's close-hooks
+             inside a handler whose clause clears a flag the same function then
+             tests; the constructor and the stop function are both reached from
+             inside that binding's body.
+        A row that does not verify is a loud error."""
+        out = {}
+        tree = self.an.tree
+        exits = Analyzer.EXIT_HEADS
+        mutators = {"setq", "setf", "psetq", "psetf", "incf", "decf", "push", "pushnew", "pop",
+                    "rotatef", "shiftf", "remf"}
+
+        def walk(forms):
+            stack = [(f, ()) for f in forms]
+            while stack:
+                x, anc = stack.pop()
+                yield x, anc
+                if isinstance(x, list):
+                    stack.extend((c, anc + ((x, k),)) for k, c in enumerate(x))
+
+        def has_exit(f):
+            stack = [f]
+            while stack:
+                x = stack.pop()
+                if isinstance(x, list) and x:
+                    if head(x) in ("quote", "lambda", "function"):
+                        continue
+                    if head(x) in exits:
+                        return True
+                    stack.extend(x)
+            return False
+
+        def spine(forms, goal):
+            """GOAL is reached on the spine of FORMS (descending let, let*, when,
+            unless bodies, progn) before any form that may leave early."""
+            for f in forms:
+                if goal(f):
+                    return True
+                if isinstance(f, list) and head(f) in ("let", "let*") and len(f) > 2:
+                    if any(has_exit(b) for b in (f[1] if isinstance(f[1], list) else [])):
+                        return False
+                    if spine(f[2:], goal):
+                        return True
+                if isinstance(f, list) and head(f) in ("when", "unless", "progn") and len(f) > 1:
+                    if head(f) != "progn" and has_exit(f[1]):
+                        return False
+                    if spine(f[(1 if head(f) == "progn" else 2):], goal):
+                        return True
+                if has_exit(f):
+                    return False
+            return False
+
+        for name, row in sorted(self.c.raw.get("debt_rethrows", {}).items()):
+            if name not in self.infos:
+                if not (tree.root / row["file"]).exists():
+                    continue
+                raise ValueError(f"debt_rethrows {name}: not a function of the analyzed host")
+            var, slot, closer = row["var"], row["slot"], row["closer"]
+            registry, special = row["registry"], row["special"]
+
+            def fail(why, name=name):
+                raise ValueError(f"debt_rethrows {name}: {why}")
+
+            # 1 + 2: the capture and the store
+            captured = False
+            store = None
+            for x, anc in walk(tree.defs[name].body):
+                if isinstance(x, list) and head(x) == "handler-case":
+                    for cl in x[2:]:
+                        if isinstance(cl, list) and cl and sym(cl[0]) == row["clause"]:
+                            for y, _ in walk(cl[2:]):
+                                if (isinstance(y, list) and head(y) == "setq" and len(y) == 3
+                                        and sym(y[1]) == var and isinstance(y[2], Sym)):
+                                    captured = True
+                if isinstance(x, list) and head(x) in ("let", "let*") and len(x) > 2 and isinstance(x[1], list):
+                    binds = [b for b in x[1] if isinstance(b, list) and b and sym(b[0]) == var]
+                    if binds and (len(binds[0]) == 1 or binds[0][1] is None or sym(binds[0][1]) == "nil"):
+                        def is_store(f):
+                            return (isinstance(f, list) and head(f) == "when" and len(f) == 3 and sym(f[1]) == var
+                                    and isinstance(f[2], list) and head(f[2]) == "setf" and len(f[2]) == 3
+                                    and isinstance(f[2][1], list) and head(f[2][1]) == slot
+                                    and len(f[2][1]) == 2 and sym(f[2][2]) == var)
+                        if spine(x[2:], is_store):
+                            store = next(f for f, _ in walk(x[2:]) if is_store(f))
+            if not captured:
+                fail(f"no {row['clause']} clause assigns the condition to {var}")
+            if store is None:
+                fail(f"{var} is not stored into {slot} past forms that cannot leave early")
+            # 3: the only write of the slot
+            for dname, d in tree.defs.items():
+                for x, anc in walk(d.body):
+                    if isinstance(x, Sym) and str(x).lower() == row["slot_keyword"]:
+                        fail(f"{dname} initialises the slot by keyword")
+                    if (isinstance(x, list) and len(x) > 1 and head(x) in mutators and x is not store[2]
+                            and isinstance(x[1], list) and x[1] and sym(x[1][0]) == slot):
+                        fail(f"{dname} writes {slot} other than the one store")
+            # 4: the closer
+            if closer not in self.infos:
+                fail(f"closer {closer} is not a function of the host")
+            cd = tree.defs[closer]
+            rvars = set()
+            for x, _ in walk(cd.body):
+                if (isinstance(x, list) and head(x) in ("let", "let*") and len(x) > 2 and isinstance(x[1], list)):
+                    for b in x[1]:
+                        if isinstance(b, list) and len(b) == 2 and isinstance(b[1], list) \
+                                and head(b[1]) == row["registry_reader"]:
+                            rvars.add(sym(b[0]))
+            if not rvars:
+                fail(f"{closer} does not take its runtime from {row['registry_reader']}")
+
+            def is_signal(f):
+                if not (isinstance(f, list) and head(f) == "when" and len(f) == 3):
+                    return False
+                t, a = f[1], f[2]
+                if not (isinstance(t, list) and len(t) == 2 and sym(t[0]) == slot and sym(t[1]) in rvars):
+                    return False
+                return (isinstance(a, list) and head(a) == "error" and len(a) == 2
+                        and isinstance(a[1], list) and len(a[1]) == 2 and sym(a[1][0]) == slot
+                        and sym(a[1][1]) == sym(t[1]))
+            if not spine(cd.body, is_signal):
+                fail(f"{closer} does not signal {slot} on its spine before any early exit")
+            for dname, d in tree.defs.items():
+                if dname == closer:
+                    continue
+                for x, anc in walk(d.body):
+                    if isinstance(x, list) and head(x) == "remhash" and len(x) > 2 and sym(x[2]) == registry:
+                        guarded = any(isinstance(f, list) and head(f) == "unless" and len(f) > 2
+                                      and any(isinstance(t, list) and len(t) == 2 and sym(t[0]) == slot
+                                              for t, _ in walk([f[1]]))
+                                      for f, _ in anc)
+                        if not guarded:
+                            fail(f"{dname} removes a runtime from {registry} without checking {slot}")
+            # 5: the closer is a close hook of the stop path
+            binders = []
+            for dname, d in tree.defs.items():
+                for x, anc in walk(d.body):
+                    if isinstance(x, list) and head(x) in ("let", "let*") and len(x) > 2 and isinstance(x[1], list):
+                        for bi, b in enumerate(x[1]):
+                            if (isinstance(b, list) and len(b) == 2 and sym(b[0]) == special
+                                    and any(isinstance(y, list) and head(y) == "function" and len(y) == 2
+                                            and sym(y[1]) == closer for y, _ in walk([b[1]]))):
+                                # the binding is in effect in the body and, for let*, in later inits
+                                later = [lb[1] for lb in x[1][bi + 1:]
+                                         if head(x) == "let*" and isinstance(lb, list) and len(lb) == 2]
+                                binders.append((dname, list(x[2:]) + later))
+            if not binders:
+                fail(f"no binding of {special} names #'{closer}")
+            ctors = {dname for dname, d in tree.defs.items()
+                     if any(isinstance(x, list) and ":close-hooks" in [str(t) for t in x if isinstance(t, Sym)]
+                            and any(str(x[k]) == ":close-hooks" and k + 1 < len(x) and sym(x[k + 1]) == special
+                                    for k in range(len(x) - 1) if isinstance(x[k], Sym))
+                            for x, _ in walk(d.body))}
+            stops = set()
+            for dname, d in tree.defs.items():
+                for x, anc in walk(d.body):
+                    if not (isinstance(x, list) and head(x) == "dolist" and len(x) > 2 and isinstance(x[1], list)
+                            and len(x[1]) >= 2 and isinstance(x[1][1], list) and len(x[1][1]) == 2
+                            and sym(x[1][1][0]) == row["hooks_reader"]):
+                        continue
+                    hv = sym(x[1][0])
+                    flag = None
+                    for y, _ in walk(x[2:]):
+                        if (isinstance(y, list) and head(y) == "handler-case" and len(y) > 2
+                                and isinstance(y[1], list) and head(y[1]) == "funcall" and len(y[1]) > 1
+                                and sym(y[1][1]) == hv):
+                            for cl in y[2:]:
+                                if (isinstance(cl, list) and len(cl) == 3 and isinstance(cl[2], list)
+                                        and head(cl[2]) == "setq" and len(cl[2]) == 3 and sym(cl[2][2]) == "nil"):
+                                    flag = sym(cl[2][1])
+                    if flag and any(isinstance(z, list) and (
+                            (head(z) == "unless" and len(z) > 2 and sym(z[1]) == flag) or
+                            (head(z) == "when" and len(z) > 2 and isinstance(z[1], list) and head(z[1]) == "and"
+                             and flag in [sym(t) for t in z[1][1:]]))
+                            for z, _ in walk(d.body)):
+                        stops.add(dname)
+            if not ctors:
+                fail(f"no constructor stores {special} as :close-hooks")
+            if not stops:
+                fail(f"no stop function funcalls each hook of ({row['hooks_reader']} ...) and tests the failure flag")
+            ok = False
+            for dname, forms in binders:
+                heads = set()
+                for f, _ in walk(forms):
+                    if isinstance(f, list) and f and isinstance(f[0], Sym):
+                        heads.add(str(f[0]))
+                heads &= set(self.infos)
+                if (self.reaches(("u", frozenset(), tuple(sorted(heads)), ()), ctors)
+                        and self.reaches(("u", frozenset(), tuple(sorted(heads)), ()), stops)):
+                    ok = True
+            if not ok:
+                fail(f"the binding of {special} does not reach both a constructor and a stop function")
+            out[name] = row
+        return out
+
     def verified_dead_call_arms(self) -> dict:
         """{(caller, callee): the callee calls that sit only in the arm CALLER
         has excluded} for the declared edges (contract dead_call_arms) that hold

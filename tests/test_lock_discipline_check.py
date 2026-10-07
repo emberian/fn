@@ -2077,3 +2077,117 @@ class DeadCallArm(unittest.TestCase):
     def test_another_route_of_the_mux_loop_to_the_callee_keeps_the_arm(self):
         found = self.run9(self.src(mux="(progn (fnn-step x) (fnn-results x (list :cold)))"))
         self.assertTrue(self.waits(found), found)
+
+
+class DebtRethrow(unittest.TestCase):
+    """A cleanup failure captured into a debt slot while a primary escape may
+    be unwinding is a deferred rethrow when the checker verifies the whole
+    chain to the close hook that signals it (contract debt_rethrows)."""
+
+    ROW = {"fnn-w": {"file": "host/native/fixture.lisp", "clause": "serious-condition", "var": "failure",
+                     "slot": "fnn-rt-debt", "slot_keyword": ":debt", "closer": "fnn-rt-close",
+                     "registry": "*rts*", "registry_reader": "fnn-rt-get",
+                     "special": "*fnn-owner-close-hooks*", "hooks_reader": "fnn-svc-close-hooks",
+                     "why": "test"}}
+
+    def run7(self, source, row=None):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["debt_rethrows"] = self.ROW if row is None else row
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath),
+                                                  ["host/native/fixture.lisp"], {})
+            return [(f.function, f.key) for f in checker.run({"R7"}) if f.rule == "R7"]
+
+    def src(self, store="(when failure (setf (fnn-rt-debt rt) failure))",
+            closer_body="(when (fnn-rt-debt rt) (error (fnn-rt-debt rt)))",
+            binding="(list #'fnn-rt-close)", extra="", top="(fnn-run)",
+            stop_test="(unless joined (fnn-fault \"x\"))",
+            remover="(when (fnn-rt-debt rt) (fnn-fault \"x\"))"):
+        return f"""
+(defstruct (fnn-rt (:constructor %make-fnn-rt)) service (debt nil))
+(defstruct (fnn-svc (:constructor %make-fnn-svc)) close-hooks)
+(defvar *rts* (make-hash-table))
+(defvar *fnn-owner-close-hooks* nil)
+(defun fnn-rt-get (service) (gethash service *rts*))
+(defun fnn-w-core (x) (fnn-fault x))
+(defun fnn-w (rt primary)
+  (let ((failure nil))
+    (flet ((release (thunk)
+             (handler-case (funcall thunk)
+               (serious-condition (c) (unless failure (setq failure c))))))
+      (release (lambda () (fnn-w-core rt))))
+    {store}
+    (when (and failure (null primary)) (error failure))))
+(defun fnn-rt-close (service)
+  (let ((rt (fnn-rt-get service)))
+    (when rt
+      {closer_body}
+      (remhash service *rts*)))
+  nil)
+(defun fnn-rt-abort (service rt)
+  (unless (fnn-rt-debt rt) (remhash service *rts*)))
+(defun fnn-install () (%make-fnn-svc :close-hooks *fnn-owner-close-hooks*))
+(defun fnn-stop (svc)
+  (let ((joined t))
+    (dolist (hook (fnn-svc-close-hooks svc))
+      (handler-case (funcall hook svc) (serious-condition () (setq joined nil))))
+    {stop_test}))
+(defun fnn-run () (let ((svc (fnn-install))) (fnn-stop svc)))
+(defun fnn-top () (let ((*fnn-owner-close-hooks* {binding})) {top}))
+(defun fnn-other (service) service)
+(defun fnn-start () (sb-thread:make-thread (lambda () (fnn-w 1 nil)) :name "w"))
+{extra}
+"""
+
+    def swallow(self, found):
+        return [k for k in found if k[0] == "fnn-w" and k[1].startswith("swallow:")]
+
+    def test_the_verified_chain_makes_the_capture_a_deferred_rethrow(self):
+        self.assertEqual(self.swallow(self.run7(self.src())), [])
+
+    def test_the_same_capture_without_the_row_is_a_swallow(self):
+        self.assertEqual(len(self.swallow(self.run7(self.src(), row={}))), 1)
+
+    def test_a_slot_cleared_before_the_signal_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(closer_body="""(let ((d (fnn-rt-debt rt)))
+        (setf (fnn-rt-debt rt) nil)
+        (when d (error d)))"""))
+
+    def test_a_closer_that_is_not_a_close_hook_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(binding="(list #'fnn-other)"))
+
+    def test_a_signal_on_only_one_branch_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(closer_body="(when (fnn-rt-debt rt) (when service (error (fnn-rt-debt rt))))"))
+
+    def test_an_early_exit_before_the_signal_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(closer_body="""(when (null service) (return-from fnn-rt-close nil))
+      (when (fnn-rt-debt rt) (error (fnn-rt-debt rt)))"""))
+
+    def test_a_store_that_does_not_happen_on_the_spine_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(store="(when (and failure primary) (setf (fnn-rt-debt rt) failure))"))
+
+    def test_another_writer_of_the_slot_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(extra="(defun fnn-clear (rt) (setf (fnn-rt-debt rt) nil))"))
+
+    def test_a_registry_removal_that_ignores_the_debt_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(extra="(defun fnn-drop (service) (remhash service *rts*))"))
+
+    def test_a_stop_function_that_ignores_a_failed_hook_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(stop_test="nil"))
+
+    def test_a_binding_whose_body_never_reaches_the_stop_path_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(top="(fnn-other 1)"))
