@@ -116,9 +116,12 @@
 (defun cov-json-bool (x channel state)
   (princ$ (if x "true" "false") channel state))
 
-;; var_lhs: the head of every :rewrite rule of NAME whose left-hand side is
-;; that function applied to distinct variables only, (F V1 ... Vn): such a
-;; rule is tried on EVERY call of F in every consumer's proofs (2026-10-07,
+;; var_lhs: the head of every ENABLED :rewrite rule of NAME (enabled in the
+;; dumped world's global theory, what an includer inherits) whose left-hand
+;; side is that function applied to distinct variables only, (F V1 ... Vn):
+;; such a rule is tried on EVERY call of F in every consumer's proofs; a
+;; disabled one is not (P's conversion keeps each rule for its own book and
+;; exports it disabled) (2026-10-07,
 ;; the attach-order stall: car/consp/member-equal rewrites of this shape in
 ;; owner-queued-work and failure-scope, 13M rule attempts on one host
 ;; guard).  tools/hazard_rules_check.py reads it.
@@ -137,12 +140,13 @@
            (add-to-set-eq (car lhs) acc)
          acc)))))
 
-(defun cov-var-lhs (pairs w acc)
+(defun cov-var-lhs (pairs ens w acc)
   (if (endp pairs)
       acc
     (let ((rune (cdar pairs)))
-      (cov-var-lhs (cdr pairs) w
-                   (if (and (consp rune) (eq (car rune) :rewrite))
+      (cov-var-lhs (cdr pairs) ens w
+                   (if (and (consp rune) (eq (car rune) :rewrite)
+                            (enabled-runep rune ens w))
                        (cov-var-lhs-rules (find-rules-of-rune rune w) acc)
                      acc)))))
 
@@ -165,7 +169,8 @@
          (state (princ$ ",\"classes\":" channel state))
          (state (xt-json-symlist classes channel state))
          (state (princ$ ",\"var_lhs\":" channel state))
-         (state (xt-json-symlist (cov-var-lhs (getpropc name 'runic-mapping-pairs nil w) w nil)
+         (state (xt-json-symlist (cov-var-lhs (getpropc name 'runic-mapping-pairs nil w)
+                                              (ens state) w nil)
                                  channel state))
          (state (princ$ ",\"event\":" channel state))
          (state (if kind (xt-json-sym kind channel state) (princ$ "null" channel state)))

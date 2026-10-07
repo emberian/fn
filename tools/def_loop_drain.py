@@ -24,6 +24,7 @@ the refusal list is the tree's fold / step / non-generator inventory:
     two-list      the recursion steps two lists together
     mv            the logic returns multiple values
     pair-result   the recursion's result is destructured (split, partition)
+    foldr-stobjs  a right fold over a stobj formal (def-loop :foldr has no :stobjs)
     exec-differs  the exec loop's terms differ from the logic's (fix, ag-car):
                   the loop is what makes the guards provable
     late-guard    a function the body calls has its verify-guards later in the
@@ -146,6 +147,145 @@ def fn_names(n, out):
             fn_names(i, out)
 
 
+def expand_helpers(n, helpers, used=None):
+    """Inline calls to the twin-owned helper defuns in HELPERS ({name: (formals, body)}):
+    a hand loop's `(NAME-step (car rev) acc)' read as the term it computes.  USED collects
+    the helpers that were inlined."""
+    if not helpers:
+        return n
+    if isinstance(n, Pre):
+        return Pre(n.prefix, expand_helpers(n.node, helpers, used))
+    if not isinstance(n, Lst):
+        return n
+    items = [expand_helpers(i, helpers, used) for i in n.items]
+    if is_call(n) and n.items[0].low in helpers:
+        formals, body = helpers[n.items[0].low]
+        if len(items) - 1 == len(formals):
+            if used is not None:
+                used.add(n.items[0].low)
+            return subst_env(body, {f: a for f, a in zip(formals, items[1:])})
+    return Lst(items)
+
+
+REV_FNS = ("fn-ag-rev-onto", "revappend", "append")
+
+
+def merge_rev_if(n):
+    """(if C (REV acc A) (REV acc B)) -> (REV acc (if C A B)): the generated loop ends
+    `(REV acc TAIL)' once, where a hand loop may repeat the REV in each branch of the
+    tail's own `if'.  Read bottom-up, so nested ifs merge."""
+    if isinstance(n, Pre):
+        return Pre(n.prefix, merge_rev_if(n.node))
+    if not isinstance(n, Lst):
+        return n
+    items = [merge_rev_if(i) for i in n.items]
+    if is_call(n, "if") and len(items) == 4:
+        x, y = items[2], items[3]
+        if is_call(x) and is_call(y) and len(x.items) == 3 and len(y.items) == 3 \
+                and x.items[0].low == y.items[0].low and x.items[0].low in REV_FNS[:2] \
+                and eq(x.items[1], y.items[1]):
+            return Lst([x.items[0], x.items[1], Lst([items[0], items[1], x.items[2], y.items[2]])])
+    return Lst(items)
+
+
+def inline_atom_lets(n):
+    """Drop the bindings of a let / let* whose init is a bare symbol, substituting it into the
+    body (and, for let*, the later bindings): a hand loop renames the accumulator
+    (`(let ((rest acc)) ...)') or the element where the logic's term names the recursion
+    result or `(car XS)'."""
+    if isinstance(n, Pre):
+        return Pre(n.prefix, inline_atom_lets(n.node))
+    if not isinstance(n, Lst):
+        return n
+    items = [inline_atom_lets(i) for i in n.items]
+    if (is_call(n, "let") or is_call(n, "let*")) and len(items) == 3 and isinstance(items[1], Lst) \
+            and items[1].items and all(isinstance(b, Lst) and len(b.items) == 2 and isinstance(b.items[0], Atom)
+                                       for b in items[1].items):
+        seq = is_call(n, "let*")
+        env, keep = {}, []
+        for b in items[1].items:
+            init = subst_env(b.items[1], env) if seq else b.items[1]
+            if isinstance(init, Atom) and not isinstance(init, Str) \
+                    and (not seq or init.low != b.items[0].low):
+                env[b.items[0].low] = init
+            else:
+                keep.append(Lst([b.items[0], init]))
+                env.pop(b.items[0].low, None)
+        if not env:
+            return Lst(items)
+        body = subst_env(items[2], env)
+        return Lst([S("let") if len(keep) == 1 else items[0], Lst(keep), body]) if keep else body
+    if is_call(n, "let*") and len(items) == 3 and isinstance(items[1], Lst) and len(items[1].items) == 1:
+        return Lst([S("let"), items[1], items[2]])
+    return Lst(items)
+
+
+# the book being analysed: its non-recursive defuns, {name: (formals, body)}.  The gate that
+# the hand loop computes the logic's terms reads BOTH sides through `normalize', so a loop
+# that calls a helper of the book (a hand-factored exec term) is the logic's term when the
+# helper's body is.  The generated loop uses the logic's terms; whether their guards
+# verify is the REPL's question, not the gate's.
+BOOK_DEFS: dict = {}
+
+
+def normalize(n, depth=3):
+    n = inline_atom_lets(expand_helpers(n, BOOK_DEFS)) if BOOK_DEFS else inline_atom_lets(n)
+    try:
+        n = cond_to_if(n)
+    except Refuse:
+        pass
+    if depth > 1 and BOOK_DEFS and contains(
+            n, lambda x: is_call(x) and x.items[0].low in BOOK_DEFS):
+        return normalize(n, depth - 1)
+    return n
+
+
+def loop_text(node, helpers=None, used=None):
+    """The hand loop as the terms it computes: step helpers inlined (and tracked), the
+    book's other helpers inlined, atom lets inlined, REVs over an `if' merged."""
+    return merge_rev_if(normalize(expand_helpers(node, helpers, used)))
+
+
+def let_env(bindings):
+    """{var: term} for a let / let* binding list, each term closed over the earlier ones."""
+    env = {}
+    for b in bindings:
+        if isinstance(b, Lst) and len(b.items) == 2 and isinstance(b.items[0], Atom):
+            env[b.items[0].low] = subst_env(b.items[1], env)
+    return env
+
+
+def in_loop(part, loop_flat, bindings=()):
+    """Is PART, as written or with the let-bound variables of BINDINGS replaced by their
+    terms, a piece of the hand loop?  (A hand loop may keep the let or inline it.)"""
+    if flat_low(part) in loop_flat or flat_low(normalize(part)) in loop_flat:
+        return True
+    env = let_env(bindings)
+    return bool(env) and flat_low(normalize(subst_env(part, env))) in loop_flat
+
+
+def subst_env(n, env):
+    """Simultaneous substitution of the atoms in ENV (name -> node)."""
+    if isinstance(n, Pre):
+        return Pre(n.prefix, subst_env(n.node, env))
+    if isinstance(n, Lst):
+        return Lst([subst_env(i, env) for i in n.items])
+    if isinstance(n, Atom) and not isinstance(n, Str) and n.low in env:
+        return env[n.low]
+    return n
+
+
+def binds_any(n, names):
+    """Does a let / let* under N bind one of NAMES?"""
+    def hit(x):
+        if is_call(x, "let") or is_call(x, "let*"):
+            return len(x.items) > 1 and isinstance(x.items[1], Lst) and any(
+                isinstance(b, Lst) and b.items and isinstance(b.items[0], Atom) and b.items[0].low in names
+                for b in x.items[1].items)
+        return False
+    return contains(n, hit)
+
+
 class Refuse(Exception):
     def __init__(self, reason, detail=""):
         super().__init__(reason)
@@ -154,21 +294,28 @@ class Refuse(Exception):
 
 
 def inline_rec_lets(n, name):
-    """(let ((r (NAME ...))) BODY) -> BODY with r replaced by the call: the
-    recursion's result named, which the matcher reads at its use sites."""
+    """(let ((r (NAME ...)) ...) BODY) -> the let without that binding and BODY with r
+    replaced by the call: the recursion's result named, which the matcher reads at its use
+    sites.  A `let' binding sees only the outer scope, so the call is put into the body
+    only; a `let*' also into its later bindings."""
     if isinstance(n, Pre):
         return Pre(n.prefix, inline_rec_lets(n.node, name))
     if not isinstance(n, Lst):
         return n
     items = [inline_rec_lets(i, name) for i in n.items]
-    if (is_call(n, "let") or is_call(n, "let*")) and len(items) == 3 \
-            and isinstance(items[1], Lst) and len(items[1].items) == 1:
-        b = items[1].items[0]
-        if isinstance(b, Lst) and len(b.items) == 2 and isinstance(b.items[0], Atom) \
-                and is_call(b.items[1], name):
-            var = b.items[0].low
-            return subst(items[2], lambda x: isinstance(x, Atom) and not isinstance(x, Str)
-                         and x.low == var, b.items[1])
+    if (is_call(n, "let") or is_call(n, "let*")) and len(items) == 3 and isinstance(items[1], Lst):
+        bs = items[1].items
+        for i, b in enumerate(bs):
+            if isinstance(b, Lst) and len(b.items) == 2 and isinstance(b.items[0], Atom) \
+                    and is_call(b.items[1], name):
+                var = b.items[0].low
+                isvar = lambda x: isinstance(x, Atom) and not isinstance(x, Str) and x.low == var
+                rest_b = [subst(x, isvar, b.items[1]) if is_call(n, "let*") and j > i else x
+                          for j, x in enumerate(bs) if j != i]
+                body = subst(items[2], isvar, b.items[1])
+                if not rest_b:
+                    return body
+                return inline_rec_lets(Lst([items[0], Lst(rest_b), body]), name)
     return Lst(items)
 
 
@@ -397,8 +544,29 @@ def classify_nonshape(name, formals, logic, loop_body, exec_call):
             return Refuse("fold", "loop threads more than one extra")
     if re.search(r"\(let\*?\s+\(\(\w[\w-]*\s+\(" + re.escape(name.lower()), low) or \
             re.search(r"\(let\*?\s+\(\(\w[\w-]* \(" + re.escape(name.lower()), low):
-        return Refuse("pair-result", "recursion result is bound and inspected")
+        return Refuse("pair-result", pair_result_why(logic, name))
     return Refuse("no-shape")
+
+
+def pair_result_why(logic, name):
+    """Which pair-result: the recursion's result bound to R is (a) taken apart with car/cdr to
+    rebuild a pair (a prefix split: take-and-rest), (b) an index to offset (a position search),
+    or (c) inspected for failure and passed on (a parser threading an error record)."""
+    rv = set()
+    contains(logic, lambda x: (is_call(x, "let") or is_call(x, "let*")) and len(x.items) == 3
+             and isinstance(x.items[1], Lst) and rv.update(
+                 b.items[0].low for b in x.items[1].items
+                 if isinstance(b, Lst) and len(b.items) == 2 and isinstance(b.items[0], Atom)
+                 and is_call(b.items[1], name)) and False)
+    split = contains(logic, lambda x: is_call(x) and x.items[0].low in ("car", "cdr") and len(x.items) == 2
+                     and isinstance(x.items[1], Atom) and x.items[1].low in rv)
+    if split:
+        return "split: the result pair is rebuilt around (car R) and (cdr R) (a prefix split; no def-loop shape)"
+    if contains(logic, lambda x: is_call(x) and x.items[0].low in ("+", "1+") and any(
+            isinstance(i, Atom) and i.low in rv for i in x.items[1:])):
+        return "position: the result is an index offset by one per element (a find-position; no def-loop shape)"
+    return ("failure: the recursion's result is inspected and passed on, the loop exits early "
+            "(an error-record parser; no def-loop shape)")
 
 
 def walk_calls(n, name):
@@ -522,7 +690,7 @@ def shape_of(name, formals, logic, wrapper):
             if f != xs and not (isinstance(arg, Atom) and arg.low == f):
                 if is_call(arg, "cdr") or is_call(arg, "cddr") or is_call(arg, "nthcdr"):
                     raise Refuse("two-list" if is_call(arg, "cdr") else "step")
-                raise Refuse("fold", f"parameter {f} changes in the recursion")
+                raise Refuse("fold", f"parameter {f} changes in the recursion (a state thread: no def-loop shape)")
             if f == xs and not (is_call(arg, "cdr") and flat_low(arg.items[1]) == xs):
                 raise Refuse("step", "other than (cdr XS)")
     match_inner(inner, name, formals, xs, spec)
@@ -538,7 +706,7 @@ def rev_call_of(a, xs):
     return None
 
 
-def foldr_spec(name, formals, logic, exe, lf, wrapper):
+def foldr_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helpers=None):
     """:foldr -- the exec runs the loop over the REVERSED list: logic is
     (if (consp XS) COMBINE[(car XS), (NAME .. (cdr XS) ..)] INIT)."""
     fl = [f.low for f in formals.items]
@@ -614,14 +782,18 @@ def foldr_spec(name, formals, logic, exe, lf, wrapper):
         sp2 = split_test(lbody.items[1], lxs)
         step = lbody.items[2] if sp2 and sp2[0] else lbody.items[3]
         if is_call(step, loop):
-            new = step.items[-1]
+            new = cond_to_if(expand_helpers(step.items[-1], helpers, used_helpers))
             carl = lambda n: is_call(n, "car") and len(n.items) == 2 and flat_low(n.items[1]) == lxs
             new = subst(new, carl, S(spec.elt))
             if lacc != acc:
                 new = subst(new, lambda n: isinstance(n, Atom) and n.low == lacc, S(acc))
-            if flat_low(new) != flat_low(spec.combine):
-                raise Refuse("exec-differs", flat_low(new)[:60])
+            new = normalize(new)
+            if flat_low(new) != flat_low(normalize(spec.combine)):
+                raise Refuse("exec-differs", ("step helper differs from the logic: " if used_helpers else "")
+                             + flat_low(new)[:60])
     xa = xargs_of(wrapper)
+    if ":stobjs" in xa:
+        raise Refuse("foldr-stobjs", "def-loop :foldr threads no stobj (the loop and wrapper would need :stobjs)")
     g = xa.get(":guard")
     if g is not None and not (isinstance(g, Atom) and g.low == "t"):
         spec.guard = g
@@ -697,7 +869,7 @@ def order_svars(svars, nexts_by_var, measure_given):
     return good + [v for v in svars if v not in good] if good else list(svars)
 
 
-def step_spec(name, formals, logic, exe, lf, wrapper):
+def step_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helpers=None):
     """:step -- one state (the formals the recursion changes), a done test, an
     emit (or skip) test, and arbitrary advances.  Nothing is bound around the
     recursion result; the loop is the logic's terms threaded."""
@@ -708,7 +880,7 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
         raise Refuse("no-shape", "exec is not (LOOP formals nil)")
     xa = xargs_of(wrapper)
     ph = xa.get(":hints")
-    logic = cond_to_if(logic)
+    logic = cond_to_if(inline_rec_lets(logic, name))
     if "mv-let" in flat_low(logic) or "(mv " in flat_low(logic):
         raise Refuse("mv")
     if not (is_call(logic, "if") and len(logic.items) == 4):
@@ -807,9 +979,9 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
     else:
         spec.elt = None
     # the hand loop computes the same terms (a loop with fix / ag-car is what makes its guards provable)
-    loop_flat = flat_low(lf.node)
+    loop_flat = flat_low(loop_text(lf.node, helpers, used_helpers))
     for part in [body] + nxt + (snx or []) + ([] if tail is None else [tail]):
-        if flat_low(part) not in loop_flat:
+        if not in_loop(part, loop_flat, lets):
             raise Refuse("exec-differs", flat_low(part)[:60])
     if lets_for_done:
         chk = done.items[1]
@@ -1184,6 +1356,14 @@ def analyse(text: str, book: str, other_text: dict | None = None):
             return False
         return ":guard" not in xa and ":stobjs" not in xa
     noguards = {n for n, f in by_name.items() if unverified(f)}
+    BOOK_DEFS.clear()
+    for n_, f_ in by_name.items():
+        fm = f_.node.items[2] if len(f_.node.items) > 3 else None
+        bd = body_of(f_.node)
+        if isinstance(fm, Lst) and all(isinstance(i, Atom) for i in fm.items) \
+                and not mentions(bd, n_) and not mentions(bd, "mbe") and not n_.endswith("-loop") \
+                and ":stobjs" not in xargs_of(f_.node):
+            BOOK_DEFS[n_] = ([i.low for i in fm.items], bd)
     conv, resid = [], []
     moved = {}  # callee -> where its verify-guards now sits (a moved-up form)
     twin_names = {lf.name[:-5] for lf in loop_defuns(forms)}
@@ -1196,6 +1376,12 @@ def analyse(text: str, book: str, other_text: dict | None = None):
         try:
             wnode = w.node
             body = body_of(wnode)
+            helpers, used_helpers = {}, set()
+            h = by_name.get(name + "-step")
+            if h is not None and isinstance(h.node.items[2], Lst):
+                hf = [i.low for i in h.node.items[2].items]
+                if not binds_any(body_of(h.node), set(hf)):
+                    helpers[name + "-step"] = (hf, body_of(h.node))
             mbe = None
             for sub in [body] + [i for i in wnode.items[3:] if is_call(i, "mbe")]:
                 if is_call(sub, "mbe"):
@@ -1212,7 +1398,7 @@ def analyse(text: str, book: str, other_text: dict | None = None):
             rev_exec = exec_call is not None and any(
                 rev_call_of(a, f.low) for a in exec_call.items[1:] for f in formals.items)
             if rev_exec:
-                spec = foldr_spec(name, formals, logic, exe, lf, wnode)
+                spec = foldr_spec(name, formals, logic, exe, lf, wnode, helpers, used_helpers)
             else:
                 try:
                     if exec_call is None:
@@ -1233,7 +1419,7 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                                 raise r2
                     if spec is None and r.reason in ("no-shape", "step", "two-list", "fold"):
                         try:
-                            spec = step_spec(name, formals, logic, exe, lf, wnode)
+                            spec = step_spec(name, formals, logic, exe, lf, wnode, helpers, used_helpers)
                         except Refuse as r2:
                             if r2.reason in ("step-hints", "step-stobjs", "exec-differs", "pair-result"):
                                 raise r2
@@ -1247,14 +1433,15 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                 if spec.shape != "step":
                     xs_ = spec.xs
                     carx = lambda n: is_call(n, "car") and len(n.items) == 2 and flat_low(n.items[1]) == xs_
-                    loop_flat = flat_low(subst(lf.node, carx, S(spec.elt)))
+                    loop_flat = flat_low(subst(loop_text(lf.node, helpers, used_helpers), carx, S(spec.elt)))
                     for part in (spec.body, spec.keep, spec.stop, spec.stopval, spec.tail,
                                  None if spec.shape == "take" else spec.while_):
-                        if part is not None and flat_low(part) not in loop_flat:
+                        if part is not None and not in_loop(
+                                part, loop_flat, spec.lets.items if spec.lets is not None else ()):
                             raise Refuse("exec-differs", flat_low(part)[:60])
                     if spec.lets is not None:
-                        for b in spec.lets.items:
-                            if flat_low(b.items[1]) not in loop_flat:
+                        for i, b in enumerate(spec.lets.items):
+                            if not in_loop(b.items[1], loop_flat, spec.lets.items[:i]):
                                 raise Refuse("exec-differs", flat_low(b.items[1])[:60])
             # late guard: callee verified after the wrapper
             names = set()
@@ -1280,6 +1467,17 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                     kill.append(f)
                 if f.kind == "verify-guards" and f.name in (name, name + "-loop"):
                     kill.append(f)
+            # a twin-owned step helper the loop calls is the logic's term in another form: it
+            # goes with the twin when nothing else names it
+            for hn in sorted(used_helpers):
+                hform = by_name[hn]
+                own = [f for f in forms if f.kind == "verify-guards" and f.name == hn]
+                outside = [f for f in forms if f is not hform and f is not w and f not in kill
+                           and f not in own and mentions(f.node, hn)]
+                outside_txt = [o for o, ot in (other_text or {}).items() if re.search(re.escape(hn), ot, re.I)]
+                if not outside and not outside_txt:
+                    kill.append(hform)
+                    kill.extend(own)
             killset = {id(k) for k in kill}
             if spec.shape in ("foldr", "step", "fold"):
                 for k in kill:
@@ -1322,7 +1520,10 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                     moved[f.name] = w.start
             conv.append(c_new)
         except Refuse as r:
-            resid.append((name, r.reason, r.detail))
+            detail = r.detail
+            if r.reason == "exec-differs":
+                detail = exec_differs_why(name, lf, logic, detail)
+            resid.append((name, r.reason, detail))
     # a shared (encapsulate () (local bridge)... (verify-guards ..)...) goes only
     # when every twin it carries converts; one that stays keeps the others out
     changed = True
@@ -1345,6 +1546,24 @@ def analyse(text: str, book: str, other_text: dict | None = None):
         if owners and not any(f in c["kill"] for c in conv):
             owners[0]["kill"].append(f)
     return conv, resid
+
+
+def exec_differs_why(name, lf, logic, detail):
+    """Name why the loop is not the logic's terms: the functions it calls that the logic
+    (read through the book's own helpers) does not -- an exec twin, a guard-total accessor
+    (fn-ag-car, fix) -- else that its control flow differs (an early exit, a seeded init)."""
+    try:
+        if detail.startswith("init differs"):
+            return "the exec seeds the accumulator with a term that is not the logic's base (a true-listp seed)"
+        lo, lg = set(), set()
+        fn_names(loop_text(body_of(lf.node)), lo)
+        fn_names(normalize(logic), lg)
+        extra = sorted(lo - lg - {name + "-loop", name} - set(REV_FNS))
+        if extra:
+            return "the loop calls " + ", ".join(extra[:4]) + " where the logic does not"
+        return "the loop's control flow differs from the logic (early exit or reshaped test)"
+    except Exception:
+        return detail
 
 
 def pretext(text, f):
@@ -1459,7 +1678,9 @@ def exported(text):
 
 def stmt_diff(old_text, new_text):
     o, n = exported(old_text), exported(new_text)
-    removed = [k for k in o if k not in n and not ("-loop-is-" in k or "-loop-of-" in k or (o[k][0] == "defun" and k.endswith("-loop")))]
+    removed = [k for k in o if k not in n and not ("-loop-is-" in k or "-loop-of-" in k or (o[k][0] == "defun" and k.endswith("-loop"))
+                                       or (o[k][0] == "defun" and k.endswith("-step")
+                                           and n.get(k[:-5]) == ("defun", "def-loop")))]
     removed += [k for k in o if k in n and o[k][0] == "defun" and n[k] == ("defun", "def-loop") and False]
     added = [k for k in n if k not in o]
     changed = [k for k in o if k in n and o[k] != n[k] and o[k][0].startswith("defthm")]

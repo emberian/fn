@@ -205,45 +205,14 @@
         (fn-oag-login-octets
          (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr m))))))
 
-(defun fn-oag-moderation-entries-loop (names v gen acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-oag-moderation-entries-loop
-       (cdr names) v gen
-       (let ((m (fn-cfg-group-moderation v gen (car names))))
-         (if (consp m) (cons (fn-oag-moderation-entry (car names) m) acc) acc)))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-oag-moderation-entries (names v gen)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (let ((m (fn-cfg-group-moderation v gen (car names))))
-             (if (consp m)
-                 (cons (list :moderated (fn-nntp-string-octets (car names))
-                             (fn-nntp-string-octets (fn-cfg-ag-car m))
-                             (fn-oag-login-octets
-                              (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr m)))))
-                       (fn-oag-moderation-entries (cdr names) v gen))
-               (fn-oag-moderation-entries (cdr names) v gen)))
-         nil)
-       :exec (fn-oag-moderation-entries-loop names v gen nil)))
-
-(defthm fn-oag-moderation-entries-loop-is-rev-onto
-  (equal (fn-oag-moderation-entries-loop names v gen acc)
-         (fn-ag-rev-onto acc (fn-oag-moderation-entries names v gen)))
-  :hints (("Goal" :induct (fn-oag-moderation-entries-loop names v gen acc)
-                  :in-theory (union-theories
-                              '(fn-oag-moderation-entries-loop fn-oag-moderation-entries
-                                fn-ag-rev-onto car-cons cdr-cons fn-oag-moderation-entry)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-oag-moderation-entries
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-oag-moderation-entries fn-ag-rev-onto
-                                fn-oag-moderation-entries-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-oag-moderation-entries (names v gen)
+  :shape :map :over names :elt n
+  :let ((m (fn-cfg-group-moderation v gen n)))
+  :keep (consp m)
+  :body (list :moderated
+              (fn-nntp-string-octets n)
+              (fn-nntp-string-octets (fn-cfg-ag-car m))
+              (fn-oag-login-octets (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr m))))))
 
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.

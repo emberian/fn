@@ -62,6 +62,9 @@
 ; 2026-10-04): the run the launcher reserves for a fresh development store
 ; with this peer allowance is admitted and its native grant held at exactly
 ; that figure for the same store observation; the unobserved bound refuses.
+; The host trigger the figures are taken at: books/profile-limits.lisp's :gc-nursery-mib
+; (+fnn-gc-nursery-octets+), not a copy of its value.
+(defconst *pfrst-nursery* (* 1048576 (fn-profile-limit :gc-nursery-mib)))
 (defconst *pfrst-run-core* '(615110568 . 517243296))
 (defconst *pfrst-fresh* '(0 . 0))
 (defconst *pfrst-machine* (list (* 24 1073741824)))
@@ -70,7 +73,7 @@
  (fn-pfr-extend-operation-reservation
   (fn-prstartup-extend-operation-reservation
    (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* *pfrst-run-core*
-                                     (* 64 1048576) *pfrst-machine* 32 *pfrst-fresh*)
+                                     *pfrst-nursery* *pfrst-machine* 32 *pfrst-fresh*)
    :run nil "/tmp/store" 4 8 *pfrst-run-core* *pfrst-machine*
    *fn-bs-profile-development* *pfrst-fresh*)
   :run *pfrst-flight* *pfrst-run-core* *pfrst-machine*))
@@ -78,17 +81,17 @@
  (let* ((dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-run*)))
         (plan (fn-prstartup-default-plan-with-peer
                dyn (cdr *pfrst-run-core*) *fn-bs-profile-development* *pfrst-run-core*
-               (* 64 1048576) nil nil 32 "/tmp/store" 4 8 1024 *pfrst-flight* *pfrst-fresh*)))
+               *pfrst-nursery* nil nil 32 "/tmp/store" 4 8 1024 *pfrst-flight* *pfrst-fresh*)))
   (and (equal (fn-prstartup-nth 0 *pfrst-run*) :heap)
        (fn-prstartup-planp plan)
        (equal (car (fn-prstartup-peer-native-grant
-                    dyn *fn-bs-profile-development* *pfrst-run-core* (* 64 1048576) nil 32
+                    dyn *fn-bs-profile-development* *pfrst-run-core* *pfrst-nursery* nil 32
                     plan *pfrst-flight* *pfrst-machine* *pfrst-fresh*))
               :hold)
        (equal (fn-prstartup-status
                (fn-prstartup-default-plan-with-peer
                 dyn (cdr *pfrst-run-core*) *fn-bs-profile-development* *pfrst-run-core*
-                (* 64 1048576) nil nil 32 "/tmp/store" 4 8 1024 *pfrst-flight* nil))
+                *pfrst-nursery* nil nil 32 "/tmp/store" 4 8 1024 *pfrst-flight* nil))
               :refused))))
 
 ; KEYSTONE fn-prstartup-peer-launch-admits-owner-protected, its fields
@@ -106,7 +109,7 @@
 (defconst *pfrst-wp-owner-core* '(615110568 . 232600000))
 (defconst *pfrst-wp-base*
  (fn-heap-reserve-operation-decide :run *pfrst-wp-profile* *pfrst-wp-probe-core*
-                                   (* 64 1048576) *pfrst-machine* 32 *pfrst-fresh*))
+                                   *pfrst-nursery* *pfrst-machine* 32 *pfrst-fresh*))
 (defconst *pfrst-wp-run*
  (fn-pfr-extend-operation-reservation
   (fn-prstartup-extend-operation-reservation *pfrst-wp-base*
@@ -133,7 +136,7 @@
        (equal (fn-prstartup-nth 0 *pfrst-wp-run*) :heap)
        ;; 1891 before the pool's read reserve (lane pool-refusal): the
        ;; served run now also holds its workers' reads in flight.
-       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1893)
+       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1783)
        (equal (fn-heap-core-file *pfrst-wp-owner-core*) (fn-heap-core-file *pfrst-wp-probe-core*))
        (<= (pfrst-wp-owner-need dyn *pfrst-wp-owner-core*) dyn)
        (fn-prstartup-planp plan)
@@ -142,16 +145,18 @@
                     plan *pfrst-flight* *pfrst-machine* *pfrst-fresh*))
               :hold))))
 ; Teeth: without the DEFAULT extension's launch floor the peer figure is
-; 6107ceb56's 1509, and the owner refuses it (it needs 1526); an owner core
-; with a larger file (the core-file hypothesis dropped) fails at 1893.
+; 6107ceb56's figure (1509 at the 64 MiB trigger, 1397 at the 8 MiB trigger
+; since MEM-007), and the owner refuses it (it needs 1414, was 1526); an owner
+; core with a larger file (the core-file hypothesis dropped) fails at 1783
+; (was 1893).
 (assert-event
  (let* ((old (fn-pfr-extend-operation-reservation *pfrst-wp-base* :run *pfrst-flight*
                                                    *pfrst-wp-probe-core* *pfrst-machine*))
         (dyn-old (* 1048576 (fn-prstartup-nth 1 old)))
         (dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-wp-run*))))
   (and (equal (fn-prstartup-nth 0 old) :heap)
-       (equal (fn-prstartup-nth 1 old) 1509)
+       (equal (fn-prstartup-nth 1 old) 1397)
        (not (<= (pfrst-wp-owner-need dyn-old *pfrst-wp-owner-core*) dyn-old))
-       (<= (pfrst-wp-owner-need (* 1048576 1526) *pfrst-wp-owner-core*) (* 1048576 1526))
-       (not (<= (pfrst-wp-owner-need (* 1048576 1525) *pfrst-wp-owner-core*) (* 1048576 1525)))
+       (<= (pfrst-wp-owner-need (* 1048576 1414) *pfrst-wp-owner-core*) (* 1048576 1414))
+       (not (<= (pfrst-wp-owner-need (* 1048576 1413) *pfrst-wp-owner-core*) (* 1048576 1413)))
        (not (<= (pfrst-wp-owner-need dyn '(1615110568 . 1600000000)) dyn)))))
