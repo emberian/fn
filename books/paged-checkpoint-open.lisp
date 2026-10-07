@@ -762,3 +762,48 @@
                            (fn-pck-pages fn-pck-capture-of-pages pck-capture-of-pages))
            :use ((:instance pck-capture-of-pages)
                  (:instance pcko-sccb-listp-true-listp)))))
+
+(defthm fn-pck-x-open-is-the-capture
+  ; THE KEYSTONE (fn-pck-x-open-is-the-capture).  The exec open of the image the
+  ; writer's pages flatten to answers the capture `fn-pck-capture-of-pages'
+  ; makes of those pages: the arena rows read back as the capture's records, the
+  ; four fold roots and the event index are the capture's.  Scope: the last
+  ; premise (the records intern from the identity root's seed without a
+  ; refusal) is owed PCK-OPEN-INTERN-NOT-BAD.  The image is given by its words;
+  ; the theorem needs neither the residency flags of the writer's invariant nor
+  ; the u64 bound on the programs.
+  (implies (and (fn-pck-recordsp configs recs)
+                (fn-pck-root-fitsp configs recs)
+                (equal npg (len (fn-pck-pages configs recs)))
+                (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem)
+                       (adt-tp-flat (fn-pck-pages configs recs)))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))
+                (fn-arena-p fn-arena)
+                (not (eq (mv-nth 0 (fn-ssr-intern-step
+                                    (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs)))
+                                    recs nil nil :resident nil fn-arena))
+                         :bad)))
+           (let ((c (fn-pck-capture-of-pages (fn-pck-pages configs recs)))
+                 (r (fn-pck-x-open npg pgs-mem fn-arena fn-octets)))
+             (and (equal (mv-nth 0 r) :ok)
+                  (equal (fn-rows-wire-of (mv-nth 1 r) (mv-nth 5 r)) (fn-sco-records c))
+                  (equal (mv-nth 2 r)
+                         (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c)))
+                  (equal (mv-nth 3 r) (fn-sco-event-index c)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-pck-pages fn-pck-x-open fn-ssr-seed fn-ssr-intern-step fn-ssr-rows
+                               fn-pck-capture-of-pages fn-pck-root-tree pcko-open-of-recs
+                               pcko-intern-materializes pcko-capture-fields pcko-wire-of-ssr-rows)
+           :use ((:instance pcko-open-of-recs) (:instance pcko-capture-fields)
+                 (:instance pcko-intern-materializes
+                            (acc (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs))))
+                            (ws recs))
+                 (:instance pcko-wire-of-ssr-rows
+                            (acc (mv-nth 0 (fn-ssr-intern-step
+                                            (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs)))
+                                            recs nil nil :resident nil fn-arena)))
+                            (fn-arena (mv-nth 1 (fn-ssr-intern-step
+                                                 (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs)))
+                                                 recs nil nil :resident nil fn-arena))))
+                 (:instance fn-ssr-seed-establishes-statep
+                            (identity (nth 1 (fn-pck-root-tree configs recs))))))))
