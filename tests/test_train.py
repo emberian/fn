@@ -190,7 +190,6 @@ class TrainBase(unittest.TestCase):
         (self.seed / "src.txt").write_text("a\nb\nc\n")
         (self.seed / "specs").mkdir(exist_ok=True)
         (self.seed / "specs/wire-grammar.json").write_text("base\n")
-        (self.seed / "planning/evidence-index.tsv").write_text("e0\n")
         (self.seed / "planning/decisions.md").write_text("d0\n")
         self.commit(self.seed, "init")
         sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
@@ -292,17 +291,13 @@ class MergeTests(TrainBase):
         st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
         self.assertEqual([l["status"] for l in st["lanes"]], ["conflict", "merged"])
 
-    def test_evidence_index_union_keeps_both_sides_and_dedupes(self):
-        a = self.lane("a", {"planning/evidence-index.tsv": "e0\nshared\nfrom-a\n",
-                            "planning/decisions.md": "d0\nda\n"})
-        self.advance_dev({"planning/evidence-index.tsv": "e0\nshared\nfrom-dev\n",
-                          "planning/decisions.md": "d0\ndd\n"})
+    def test_decisions_union_keeps_both_sides(self):
+        a = self.lane("a", {"planning/decisions.md": "d0\nda\n"})
+        self.advance_dev({"planning/decisions.md": "d0\ndd\n"})
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
         p = self.train("merge", f"a@{a}")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        lines = (self.work / "planning/evidence-index.tsv").read_text().splitlines()
-        self.assertEqual(sorted(lines), ["e0", "from-a", "from-dev", "shared"])
         dec = (self.work / "planning/decisions.md").read_text()
         self.assertIn("da", dec)
         self.assertIn("dd", dec)

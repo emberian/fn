@@ -56,13 +56,10 @@ GENERATED = (
 # event arrays, and lanes curate its rows (re-pointing a PRF row at a renamed
 # keystone), so a conflict there goes back to the lane like source does.
 # Tail-append files: keep both sides' lines.
-UNION = ("planning/evidence-index.tsv", "planning/decisions.md")
-EVIDENCE_INDEX = "planning/evidence-index.tsv"
-DEDUPE = ("planning/evidence-index.tsv",)
+UNION = ("planning/decisions.md",)
 
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
-    EVIDENCE_INDEX,
     "planning/proofs.json",
 )
 HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
@@ -200,36 +197,8 @@ def _union_resolve(t: Train, path: str) -> None:
         if p.returncode < 0 or p.returncode > 127:
             raise TrainError(f"git merge-file failed for {path}")
         merged = p.stdout
-    if path in DEDUPE:
-        seen: set[str] = set()
-        keep = []
-        for line in merged.splitlines(keepends=True):
-            if line in seen:
-                continue
-            seen.add(line)
-            keep.append(line)
-        merged = "".join(keep)
     (t.root / path).write_text(merged)
     git(t.root, "add", "--", path)
-
-
-def _comm_23_missing(root: Path, path: str) -> list[str]:
-    """Lines of origin/dev:path (sorted) absent from the working file (comm -23)."""
-    ref = git(root, "show", f"origin/dev:{path}", check=False)
-    if ref.returncode != 0:
-        return []
-    have = sorted((root / path).read_text().splitlines())
-    want = sorted(ref.stdout.splitlines())
-    i = 0
-    missing = []
-    for w in want:
-        while i < len(have) and have[i] < w:
-            i += 1
-        if i < len(have) and have[i] == w:
-            i += 1
-        else:
-            missing.append(w)
-    return missing
 
 
 def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
@@ -268,14 +237,6 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         else:
             say(f"  conflict {f}: union of both sides")
             _union_resolve(t, f)
-    if (t.root / EVIDENCE_INDEX).exists():
-        missing = _comm_23_missing(t.root, EVIDENCE_INDEX)
-        if missing:
-            git(t.root, "merge", "--abort", check=False)
-            entry.update(status="conflict", files=[EVIDENCE_INDEX])
-            say(f"  lane {name}: evidence-index lost {len(missing)} origin/dev line(s); merge aborted")
-            t.save(st)
-            return False
     git(t.root, "commit", "--no-edit")
     entry.update(status="merged", merge=t.head(), files=conflicted)
     t.save(st)
