@@ -73,6 +73,32 @@
                        '(:refused :checkpoint-root-over-k))
                 (not (fn-pck-root-fitsp configs (append prefix delta))))))
 
+(defun fn-pck-publish-plan-at (cnt tail tree delta)
+  ; The plan from the host's summary of the store: the tape's word count and
+  ; last partial page, the root tree (the live fold state's), the delta.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (fn-pck-root-fitsp-tree tree)
+      (list :commit (fn-pck-dirty-at cnt tail (fn-pck-root-pages-of-tree tree) delta))
+    (list :refused :checkpoint-root-over-k)))
+
+(defthm fn-pck-publish-plan-at-is-the-plan
+  ; The summary plan is the model plan: CNT and TAIL are those of the prefix's
+  ; tape, TREE is the root of the live capture extended by the delta.
+  (let ((w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix))))
+    (implies (and (equal cnt (len w))
+                  (equal tail (nthcdr (* *pgs-page-words* (floor (len w) *pgs-page-words*)) w))
+                  (true-listp delta)
+                  (equal c (fn-sco-capture configs prefix))
+                  (equal tree (fn-pck-root-tree-of-capture (fn-sco-extend c configs delta))))
+             (equal (fn-pck-publish-plan-at cnt tail tree delta)
+                    (fn-pck-publish-plan configs prefix delta))))
+  :hints (("Goal" :in-theory (e/d (fn-pck-publish-plan fn-pck-publish-plan-at fn-pck-root-pages-of fn-pck-root-fitsp)
+                                  (fn-pck-dirty-at fn-pck-root-tree-of-capture fn-sco-extend fn-sco-capture
+                                   fn-pck-dirty-at-is-fn-pck-dirty fn-pck-root-tree-of-extend))
+           :use (fn-pck-root-tree-of-extend
+                 (:instance fn-pck-dirty-at-is-fn-pck-dirty
+                            (root-pages (fn-pck-root-pages-of configs (append prefix delta))))))))
+
 ; -----------------------------------------------------------------------------
 ; 2. Open
 

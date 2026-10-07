@@ -83,3 +83,30 @@
 (assert-event (< *pckh-dirty2* *pckh-full2*))
 (value-triple (cw "pages per publication: whole image ~x0 then ~x1; dirty ~x2 then ~x3~%"
                   *pckh-full1* *pckh-full2* *pckh-dirty1* *pckh-dirty2*))
+
+; 5. The tail of dirty-at must come from page k = floor(cnt/2048).  Off by one
+; page (the tail read from page k-1) is not adt-tp-dirty.
+(defun pckh-iota (n)
+  (declare (xargs :guard (natp n)))
+  (if (zp n) nil (append (pckh-iota (1- n)) (list n))))
+
+(defun pckh-wrong-tail-dirty (w n)
+  (declare (xargs :guard t :verify-guards nil))
+  ; the tail taken from page k-1 instead of page k
+  (let* ((k (floor (len w) *pgs-page-words*))
+         (tail (adt-tp-take (mod (len w) *pgs-page-words*) (nth (1- k) (adt-tp-pages w)))))
+    (adt-tp-dirty-at (len w) tail n)))
+
+(must-fail-checked
+ (defthm pckh-dirty-at-from-previous-page
+   (implies (and (true-listp w) (true-listp n) (< 1 (floor (len w) *pgs-page-words*)))
+            (equal (pckh-wrong-tail-dirty w n) (adt-tp-dirty w n)))))
+
+; The witness: a tape of 2 * 2048 + 5 words, appended with (9).  The right tail
+; is words 4097..4101, which sit in page 2; page 1 holds 2049..2053 there.
+(assert-event
+ (let* ((w (pckh-iota 4101)))
+   (and (equal (adt-tp-dirty-at (len w) (nthcdr 4096 w) '(9)) (adt-tp-dirty w '(9)))
+        (not (equal (pckh-wrong-tail-dirty w '(9)) (adt-tp-dirty w '(9))))
+        (equal (take 6 (cdar (adt-tp-dirty w '(9)))) '(4097 4098 4099 4100 4101 9))
+        (equal (take 6 (cdar (pckh-wrong-tail-dirty w '(9)))) '(2049 2050 2051 2052 2053 9)))))
