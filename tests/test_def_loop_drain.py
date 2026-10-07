@@ -72,5 +72,19 @@ class Reader(unittest.TestCase):
         self.assertEqual(len(comments), 1)
 
 
+class Ledger(unittest.TestCase):
+    def test_library_bridge_by_shape(self):
+        self.assertEqual(d.library_bridge("(def-loop f (x) :shape :map :over x)"),
+                         "fn-dl-map-loop-is-revappend")
+        self.assertEqual(d.library_bridge("(def-loop f (x) :shape :sum :over x)"),
+                         "fn-dl-sum-loop-is-plus")
+        self.assertEqual(d.library_bridge("(def-loop f (x) :shape :concat :over x)"),
+                         "fn-dl-concat-loop-is-revappend")
+
+    def test_loopish_names_only(self):
+        self.assertTrue(d.LOOPISH.search("fn-x-loop-is-rev-onto"))
+        self.assertFalse(d.LOOPISH.search("fn-x-is-sorted"))
+
+
 if __name__ == "__main__":
     unittest.main()
