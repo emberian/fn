@@ -4503,7 +4503,7 @@
  (let* ((readerOC (fn-ocfg-at-reader-view oc views))
         (w (fn-asto-first-event readerOC id start end fn-octets))
         (stop (if w (fn-wsp-next w) end))
-        (capture (and w (fn-asto-capture readerOC id w cache fn-arena))))
+        (capture (and w (fn-asto-capture readerOC id w cache fn-arena fn-cat))))
   (if (not capture)
       (fn-av-mca-read-span credits oc views id start stop cache sched slots reserve fn-octets fn-arena fn-cat)
     (let* ((result (fn-asto-captured-result oc capture (- stop start)))
