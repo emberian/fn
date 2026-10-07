@@ -489,6 +489,7 @@
 (include-book "bp-handoff-report")
 (include-book "tcpcl-delivery-invariants")
 (include-book "resource-syncer")
+(include-book "peer-catchup-spool-body")
 (include-book "raw-dispatch-verdict")
 (include-book "response-identity")
 (include-book "store-log-durable")

@@ -25,6 +25,7 @@
 (include-book "../books/bp-handoff-report")
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
+(include-book "../books/peer-catchup-spool-body")
 (include-book "../books/raw-dispatch-verdict")
 (include-book "../books/response-identity")
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
