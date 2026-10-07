@@ -306,6 +306,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/pgs-frame-fill-tests \
 	books/def-representation-lib \
 	books/def-representation-pages \
+	books/checkpoint-payload-ref \
 	books/paged-checkpoint \
 	books/catalog-pages \
 	books/paged-checkpoint-host \
