@@ -512,3 +512,9 @@
     fn-sn-sweep-staging fn-sn-sweep-round fn-sn-sweep-rounds))
 
 (in-theory (disable fn-sn-sweep-vocabulary))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-sn-sweep-removes-only-unheld-staging-names
+                    fn-sn-sweep-round-removes-only-unheld-staging-names))

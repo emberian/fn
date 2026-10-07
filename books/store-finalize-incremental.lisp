@@ -1046,3 +1046,8 @@
          (fn-sf-next-lower records lower)))
 
 (in-theory (disable fn-sfi-next-lower-total))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-sfi-carried-msgid-trie-is-the-rebuilt-trie))

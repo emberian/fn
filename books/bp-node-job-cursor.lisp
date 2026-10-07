@@ -1393,3 +1393,10 @@
                     fn-bpnjc-disjoint-member fn-bpnjc-len-of-drop fn-bpnjc-drop-one-more
                     fn-bpnjc-prefix-one-more fn-bpnjc-consp-drop fn-bpnjc-len-of-append
                     fn-bpnjc-len-of-replace-job fn-bpnjc-apply-record-jobs))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bpnjc-disjoint-member
+                    fn-bpnjc-member-of-drop
+                    fn-bpnjc-member-of-prefix))

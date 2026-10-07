@@ -327,3 +327,8 @@
           (entries (fn-bpr-state-receipts (cadr (fn-bprr-replay store records fn-arena))))))
   :in-theory (disable fn-bprv-replay-receipts-have-committed-decisions
                        fn-bprv-no-commit-no-committed-receipts))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bprv-no-commit-no-committed-receipts))

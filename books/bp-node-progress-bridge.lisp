@@ -473,3 +473,7 @@
            :in-theory (union-theories '(bpnpb-kind-memberp-atom (:e atom))
                                       (theory 'minimal-theory)))))
 
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bpnp-step-base-event-cl-send-is-authorized-by-durable-attempt-record-by-bridge))

@@ -21,6 +21,9 @@
 (in-package "ACL2")
 (include-book "store-checkpoint-tables")
 (include-book "store-checkpoint-reader")
+; store-checkpoint-reader exports fn-sccr-nth-is-cell disabled (a hazard
+; rule: nth of bare variables); this book's step proofs read cells by it.
+(local (in-theory (enable fn-sccr-nth-is-cell)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).

@@ -900,3 +900,8 @@
                     (:rewrite fn-sccr-open-segment-of-frame)
                     (:rewrite fn-sccr-cbor-octet-listp-is-scc-octet-listp)
                     (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-sccr-nth-is-cell))
