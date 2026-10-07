@@ -29,6 +29,7 @@
 
 (in-package "ACL2")
 (include-book "cbor")
+(include-book "def-loop")
 (include-book "utf8")
 (include-book "rev-onto") ; the loop twins' step
 
@@ -265,26 +266,10 @@
 ; is (mbe :logic <the recursion, unchanged> :exec <a loop>), equal by its
 ; <f>-loop-is-rev-onto (books/rev-onto.lisp); the matcher's O(m*n) work is
 ; unchanged.  Their guards are verified with the rest below.
-(defun fn-wildmat-false-row-loop (target acc)
-  (if (consp target)
-      (fn-wildmat-false-row-loop (cdr target) (cons nil acc))
-    (fn-ag-rev-onto acc nil)))
+(def-loop fn-wildmat-false-row (target)
+  :shape :map :over target :elt e
+  :body 'nil)
 
-(defun fn-wildmat-false-row (target)
-  (declare (xargs :verify-guards nil))
-  (mbe :logic (if (consp target)
-                  (cons nil (fn-wildmat-false-row (cdr target)))
-                nil)
-       :exec (fn-wildmat-false-row-loop target nil)))
-
-(defthm fn-wildmat-false-row-loop-is-rev-onto
-  (equal (fn-wildmat-false-row-loop target acc)
-         (fn-ag-rev-onto acc (fn-wildmat-false-row target)))
-  :hints (("Goal" :induct (fn-wildmat-false-row-loop target acc)
-                  :in-theory (union-theories
-                              '(fn-wildmat-false-row-loop fn-wildmat-false-row
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
 (defun fn-wildmat-initial-row (target)
   (cons t (fn-wildmat-false-row target)))
 (defun fn-wildmat-bool-or (left right)
@@ -623,12 +608,6 @@
 (verify-guards fn-wildmat-parse-codepoints)
 (verify-guards fn-wildmat-parse)
 (verify-guards fn-wildmat-parse-text)
-(verify-guards fn-wildmat-false-row-loop)
-(verify-guards fn-wildmat-false-row
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-wildmat-false-row fn-ag-rev-onto fn-wildmat-false-row-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-wildmat-initial-row)
 (verify-guards fn-wildmat-bool-or)
 (verify-guards fn-wildmat-item-character-matchp)
