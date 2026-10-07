@@ -1,191 +1,182 @@
 ; fn: catalog reads bounded by a frame pool (lane s-pool, 2026-10-07; Phase 2b
-; of build/coordinator/STORAGE-PROGRAM-20261006.md, section 3.4).  PHASE A:
-; the readers and the STATEMENTS below; no theorem is proved here.
+; of build/coordinator/STORAGE-PROGRAM-20261006.md, section 3.4).
 ;
-; The model.  The catalog's persisted image is (fn-pck-cat-pages h)
-; (books/catalog-pages.lisp): a TAPE of the fn-crow rows' words cut into pages
-; of 2048 words.  A reader holds a RESIDENT set RES of page numbers (most
-; recent first; at most (fn-cpg-cap FRAMES) of them) and reads a word through
-; it: a word of a resident page is the word, any other is the verdict
-; (:need-page P) -- books/pagestore-exec.lisp's `pgs-x-read'.  The reader
-; ANSWERS the verdict itself, in the loop: `fn-cpg-fill' (the host's in-place
-; fill, evicting the least recent page past the frame count), then read on from
-; the SAME word.  Progress is kept (the words already read are the loop's
-; accumulator): a retry from the start of a row would not terminate when a row
-; spans more pages than the pool has frames.  The measure is
-; 2 * (words left) + (1 if the current page is not resident).
+; The catalog's persisted image is two tapes (books/catalog-pages.lisp,
+; books/def-representation-pages.lisp): the fn-crow rows (fn-pck-cat-pages h)
+; and their DIRECTORY (fn-crow-dir-pages-of, books/def-representation-pageread
+; .lisp), one (word offset, width) record per row, so row I is found by
+; reading directory record I and then the row's own words -- two reads
+; through the one page pool, never a scan.  The reader answers the page
+; store's verdict (:need-page) itself: fill the page, read the same word
+; again (adt-pr-read-words); progress is kept, so a row of more pages than the
+; pool has frames still completes.
 ;
-; Random access.  The tape is variable width and self delimiting, so a row's
-; place is the sum of the widths before it.  The readers take the DIRECTORY
-; DIR = (fn-cpg-dir rows), N + 1 word offsets, as a given.  It is O(N) words
-; and is NOT derived here: where it lives (the root region, a second tape, or
-; resident) is a decision for S (books/def-representation-pages.lisp scope
-; note 2 names it "an index over the tape (the root's)").
+; What the library proves once over a schema (def-representation-pageread):
+; the indexed read gives row I of the sequence, whatever the pool holds
+; (adt-pr-read-indexed-is-nth); it fills at most 3 + the row's pages (the
+; directory entry takes 2, the row its pages and the one it may straddle:
+; adt-pr-read-indexed-fills); a fill never takes the pool past its frame
+; count (adt-pr-read-indexed-residency).  This book is the catalog's part:
+; the msgid and number tests, and the composition with the existing indexes.
 ;
-; The index.  `fn-cpg-msgid-seqs' is given the CANDIDATES (today the resident
-; fn-mlh answer, `fn-mlh-candidates'), reads each candidate's row through the
-; pool and keeps those whose msgid is the key (`fn-cat$p-confirm').
-; `fn-cpg-group-number' is given the dense map's answer CAND and reads the
-; row's numbers to check it.  Both indexes stay in the heap in this phase.
+; STATEMENTS.  H a catalog, PAGES = (fn-pck-cat-pages h), DPAGES =
+; (fn-crow-dir-pages-of (fn-pck-crow-rows h)), CNT = (len h).  P:
+; (fn-cat-rowsp h), (fn-pck-carriedp h), (fn-cpg-tape-ok h) -- the tape is
+; below 2^64 words, so every offset is a u64.
 ;
-; Generator.  The page-reading half (`fn-cpg-read-words', `fn-cpg-read-row'
-; and the directory) is a function of the schema and is the `:pages' read the
-; generator should emit next to NAME-of-pages (books/def-representation.lisp
-; `rep-pages-events', books/def-representation-pages.lisp `adt-tp-*'); it is
-; instanced here at *fn-crow-schema* and moves there in phase B.  Only
-; the msgid and number tests are the catalog's.
+; 1 fn-cpg-msgid-seqs-of-pages: the candidates are the msgid index's own
+;   lookup, (fn-mlh-candidates (fn-mlh-tag-of msgid fn-mlh) fn-mlh), and the
+;   mlh is the faithful index of the rows (the invariant the stobj carries):
+;   (nth 0 reader) = (fn-cat$a-msgid-seqs msgid h).
+; 2 fn-cpg-group-number-of-pages: CAND is the dense map's lookup
+;   (fn-cat$p-group-number group n fn-cat$p) under (fn-cat$pcorr fn-cat$p h):
+;   (nth 0 reader) = (fn-cat$a-group-number group n h).  The row read through
+;   the pool confirms the number; (:index-mismatch CAND) is the corrupt-index
+;   verdict and is never the answer under the correspondence.
+; 3 fn-cpg-msgid-seqs-fills, fn-cpg-group-number-fills: the pages filled are
+;   at most (fn-cpg-bound cands h), the sum over the candidates of
+;   3 + (fn-crow-pool-pages-of-row row): no term in (len h).
+; 4 fn-cpg-msgid-seqs-residency, fn-cpg-group-number-residency: from a pool
+;   within its frames the pool stays within (adt-pr-cap frames).
 ;
-; STATEMENTS (phase A; proved in phase B).  H a catalog, PAGES =
-; (fn-pck-cat-pages h), DIR = (fn-cpg-dir (fn-pck-crow-rows h)).  Common
-; premises P: (fn-cat-rowsp h), (fn-pck-carriedp h), (posp frames),
-; (fn-cpg-res-okp res pages), (<= (len res) frames).
-;
-; 1 fn-cpg-msgid-seqs-of-pages
-;   (implies (and P (nat-listp cands) (fn-mpx-ascendingp cands)
-;                 (subsetp-equal (fn-cat$a-msgid-seqs msgid h) cands))
-;            (equal (nth 0 (fn-cpg-msgid-seqs msgid cands dir pages res frames))
-;                   (fn-cat$a-msgid-seqs msgid h)))
-;   The COVER premise is the mlh's soundness (an answer is among the
-;   candidates); it is about the index, not the pages, and is proved for the
-;   mlh elsewhere.
-;
-; 2 fn-cpg-group-number-of-pages
-;   (implies (and P (natp n)
-;                 (equal cand (fn-cat$a-group-number group n h)))
-;            (equal (nth 0 (fn-cpg-group-number group n cand dir pages res frames))
-;                   (fn-cat$a-group-number group n h)))
-;   The CAND premise is the dense map's existing correspondence
-;   (fn-cp-group-number-is-seq).  The content is that the row read through the
-;   pool confirms the number (the answer is never (:index-mismatch CAND)), so
-;   this reader is a checked read, not a recomputation.
-;
-; 3 fn-cpg-msgid-seqs-fills / fn-cpg-group-number-fills (pages touched)
-;   (implies (and P (nat-listp cands))
-;            (<= (len (nth 2 (fn-cpg-msgid-seqs msgid cands dir pages res frames)))
-;                (fn-cpg-bound cands h)))
-;   fn-cpg-bound = the sum over the candidates below (len h) of
-;   (1 + (fn-crow-pool-pages-of-row (fn-cp-row-of (nth c h)))), no term in
-;   (len h).  NOTE for S: the program doc's "3 + the candidate rows' pages" is
-;   not true of the crow tape: a row of W words starting mid page spans up to
-;   ceil(W/2048) + 1 pages, so the straddle is one per candidate, not three in
-;   all.  The three (two table pages for the lookup and one for the root) are
-;   the page store's table fills (:need-table), which `fn-cpg-word' does not
-;   see; they are an additive constant owed to the table model.  The group
-;   number's bound is the same sum over the single candidate.
-;
-; 4 fn-cpg-fill-cap / fn-cpg-msgid-seqs-residency (the pool)
-;   (<= (len (fn-cpg-fill p res frames)) (fn-cpg-cap frames))   [no premise]
-;   (implies (and P (nat-listp cands))
-;            (<= (len (nth 1 (fn-cpg-msgid-seqs msgid cands dir pages res frames)))
-;                (fn-cpg-cap frames)))
-;   and likewise for the group number.  Owed, named: the eviction is least
-;   recent; "a frame the ledger allows" (books/page-read-ledger.lisp) is not
-;   modelled -- one reader pins nothing -- and joins when a read holds a frame
-;   across a yield.
+; Owed (not here): CPG-TABLE-FILLS (the page store's :need-table fills, an
+; additive constant); CPG-POOL-LEDGER (eviction of a frame the ledger allows);
+; CPG-MSGID-SCAN (the degraded all-rows scan when the mlh has unplaced rows);
+; CPG-DMAP-PAGED, CPG-MLH-PAGED (the indexes read through the pool too);
+; the directory's persistence in the catalog root and its commit delta
+; (an append of one record) belong with PCK-ADOPT, and a withdrawal that
+; ESCAPES a row shifts the later offsets (PCK-ADOPT-ESCAPED's widening).
 
 (in-package "ACL2")
 (include-book "catalog-pages")
+(include-book "def-representation-pageread")
 
-; The pool holds at least one frame: a smaller profile cannot read at all.
-(defun fn-cpg-cap (frames)
-  (declare (xargs :guard t))
-  (max 1 (nfix frames)))
-
-; Resident pages, most recent first, all pages of the image.
-(defun fn-cpg-res-okp (res pages)
-  (declare (xargs :guard t))
-  (if (consp res)
-      (and (natp (car res)) (< (car res) (len pages)) (fn-cpg-res-okp (cdr res) pages))
-    (null res)))
-
-; The host's fill of page P into the pool: it becomes the most recent
-; resident, the least recent leaves when the pool is full.
-(defun fn-cpg-fill (p res frames)
+(defun fn-cpg-tape-ok (h)
   (declare (xargs :guard t :verify-guards nil))
-  (take (fn-cpg-cap frames) (cons p (remove p res))))
+  (< (len (adt-tp-seq-words *fn-crow-schema* (fn-pck-crow-rows h))) (expt 2 64)))
 
-; Word J (absolute) of the tape: the word, or the verdict.
-(defun fn-cpg-word (j pages res)
-  (declare (xargs :guard (natp j) :verify-guards nil))
-  (let ((p (floor (nfix j) *pgs-page-words*)))
-    (if (member p res)
-        (nth (mod (nfix j) *pgs-page-words*) (nth p pages))
-      (list :need-page p))))
-
-; Word offsets of the rows and the end: N + 1 entries.
-(defun fn-cpg-dir1 (rows off)
-  (declare (xargs :guard (natp off) :verify-guards nil))
-  (if (consp rows)
-      (cons off (fn-cpg-dir1 (cdr rows) (+ off (len (adt-tp-rw *fn-crow-schema* (car rows))))))
-    (list off)))
-
-(defun fn-cpg-dir (rows)
+; The directory tape of the catalog's rows.
+(defun fn-cpg-dir-pages (h)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-cpg-dir1 rows 0))
+  (fn-crow-dir-pages-of (fn-pck-crow-rows h)))
 
-(local
- (defthm fn-cpg-member-of-fill
-   (member p (fn-cpg-fill p res frames))
-   :hints (("Goal" :in-theory (enable fn-cpg-fill fn-cpg-cap)))))
-
-; Read words [J, END) through the pool: a missing page is filled and the SAME
-; word read again.  Returns (mv words res fills); FILLS the pages filled,
-; most recent first.
-(defun fn-cpg-read-words (j end pages res frames acc fills)
-  (declare (xargs :guard (and (natp j) (natp end) (true-listp acc))
-                  :measure (+ (* 2 (nfix (- (nfix end) (nfix j))))
-                              (if (member (floor (nfix j) *pgs-page-words*) res) 0 1))
-                  :verify-guards nil))
-  (cond ((not (< (nfix j) (nfix end))) (mv (reverse acc) res fills))
-        ((member (floor (nfix j) *pgs-page-words*) res)
-         (fn-cpg-read-words (+ 1 (nfix j)) end pages res frames
-                            (cons (fn-cpg-word j pages res) acc) fills))
-        (t (let ((p (floor (nfix j) *pgs-page-words*)))
-             (fn-cpg-read-words j end pages (fn-cpg-fill p res frames) frames acc (cons p fills))))))
-
-; Row SEQ, decoded: (mv crow-row res fills).
-(defun fn-cpg-read-row (seq dir pages res frames fills)
-  (declare (xargs :guard (natp seq) :verify-guards nil))
-  (mv-let (ws res fills)
-    (fn-cpg-read-words (nth seq dir) (nth (+ 1 seq) dir) pages res frames nil fills)
-    (mv (car (adt-tp-dseq *fn-crow-schema* ws)) res fills)))
-
-(defun fn-cpg-msgid-loop (msgid cands dir pages res frames fills acc)
-  (declare (xargs :guard (nat-listp cands) :verify-guards nil))
+; The candidates whose row, read through the pool, carries MSGID: the
+; (mv seqs res fills) of the old fn-cat$p-confirm, over the pages.
+(defun fn-cpg-msgid-loop (msgid cands cnt dpages rpages res frames fills acc)
+  (declare (xargs :guard (and (nat-listp cands) (natp cnt)) :verify-guards nil))
   (if (consp cands)
-      (if (< (+ 1 (car cands)) (len dir))
-          (mv-let (row res fills) (fn-cpg-read-row (car cands) dir pages res frames fills)
-            (fn-cpg-msgid-loop msgid (cdr cands) dir pages res frames fills
-                               (if (equal msgid (fn-record-msgid (fn-cp-row-held row)))
-                                   (cons (car cands) acc)
-                                 acc)))
-        (fn-cpg-msgid-loop msgid (cdr cands) dir pages res frames fills acc))
+      (if (< (car cands) cnt)
+          (mv-let (row res fills) (fn-crow-read-indexed (car cands) dpages rpages res frames fills)
+            (if (equal msgid (fn-record-msgid (fn-cp-row-held row)))
+                (fn-cpg-msgid-loop msgid (cdr cands) cnt dpages rpages res frames fills (cons (car cands) acc))
+              (fn-cpg-msgid-loop msgid (cdr cands) cnt dpages rpages res frames fills acc)))
+        (fn-cpg-msgid-loop msgid (cdr cands) cnt dpages rpages res frames fills acc))
     (mv (reverse acc) res fills)))
 
-; The Message-ID reader: (list seqs res fills).
-(defun fn-cpg-msgid-seqs (msgid cands dir pages res frames)
-  (declare (xargs :guard (nat-listp cands) :verify-guards nil))
-  (mv-let (seqs res fills) (fn-cpg-msgid-loop msgid cands dir pages res frames nil nil)
+; (list seqs res fills)
+(defun fn-cpg-msgid-seqs (msgid cands cnt dpages rpages res frames)
+  (declare (xargs :guard (and (nat-listp cands) (natp cnt)) :verify-guards nil))
+  (mv-let (seqs res fills) (fn-cpg-msgid-loop msgid cands cnt dpages rpages res frames nil nil)
     (list seqs res fills)))
 
-; The (group . number) reader, given the dense map's answer CAND (nil or a
-; seq): (list answer res fills), the answer CAND, nil, or (:index-mismatch CAND).
-(defun fn-cpg-group-number (group n cand dir pages res frames)
+; (list answer res fills), CAND the dense map's answer (nil or a seq): CAND,
+; nil, or (:index-mismatch CAND).
+(defun fn-cpg-group-number (group n cand cnt dpages rpages res frames)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((null cand) (list nil res nil))
-        ((not (and (natp cand) (< (+ 1 cand) (len dir)))) (list (list :index-mismatch cand) res nil))
-        (t (mv-let (row res fills) (fn-cpg-read-row cand dir pages res frames nil)
+        ((not (and (natp cand) (< cand (nfix cnt)))) (list (list :index-mismatch cand) res nil))
+        (t (mv-let (row res fills) (fn-crow-read-indexed cand dpages rpages res frames nil)
              (let ((b (fn-held-number-in group (fn-cp-row-held row))))
                (if (and b (equal b n))
                    (list cand res fills)
                  (list (list :index-mismatch cand) res fills)))))))
 
-; The pages-touched bound of statement 3.
+; The pages-touched bound.
 (defun fn-cpg-bound (cands h)
   (declare (xargs :guard (nat-listp cands) :verify-guards nil))
   (if (consp cands)
       (+ (if (< (car cands) (len h))
-             (+ 1 (fn-crow-pool-pages-of-row (fn-cp-row-of (nth (car cands) h))))
+             (+ 3 (fn-crow-pool-pages-of-row (fn-cp-row-of (nth (car cands) h))))
            0)
          (fn-cpg-bound (cdr cands) h))
     0))
+
+; -----------------------------------------------------------------------------
+; The row read through the pool is the catalog's row.
+
+(local
+ (defthm fn-cpg-carried-nth
+   (implies (and (fn-pck-carriedp h) (natp i) (< i (len h)))
+            (not (fn-cp-overflow-of (nth i h))))
+   :hints (("Goal" :in-theory (enable nth) :induct (nth i h)))))
+
+(local
+ (defthm fn-cpg-held-of-row-of
+   (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (natp i) (< i (len h)))
+            (equal (fn-cp-row-held (fn-cp-row-of (nth i h))) (nth i h)))
+   :hints (("Goal" :use ((:instance fn-pck-row-held-of-carried-row (x (nth i h)))
+                         fn-cpg-carried-nth
+                         (:instance fn-cat-rowp-of-nth-of-rowsp (xs h)))
+            :in-theory (disable fn-pck-row-held-of-carried-row fn-cpg-carried-nth fn-cat-rowp-of-nth-of-rowsp
+                                fn-cp-row-of fn-cp-row-held fn-cp-overflow-of fn-cat-rowp)))))
+
+(defthm fn-cpg-read-row-is-nth
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h) (natp i) (< i (len h)))
+           (equal (mv-nth 0 (fn-crow-read-indexed i (fn-cpg-dir-pages h) (fn-pck-cat-pages h) res frames fills))
+                  (fn-cp-row-of (nth i h))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-crow-read-indexed-is-nth (a (fn-pck-crow-rows h)))
+                 fn-pck-crow-rows-ap
+                 (:instance fn-pck-nth-crow-rows))
+           :in-theory (e/d (fn-cpg-tape-ok fn-cpg-dir-pages fn-pck-cat-pages)
+                           (fn-crow-read-indexed-is-nth fn-pck-crow-rows-ap fn-pck-nth-crow-rows
+                            fn-pck-crow-rows fn-cp-row-of fn-crow-read-indexed fn-crow-dir-pages-of
+                            fn-crow-pages-of)))))
+
+(defthm fn-cpg-read-row-held
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h) (natp i) (< i (len h)))
+           (equal (fn-cp-row-held (mv-nth 0 (fn-crow-read-indexed i (fn-cpg-dir-pages h) (fn-pck-cat-pages h)
+                                                                  res frames fills)))
+                  (nth i h)))
+  :hints (("Goal" :in-theory (disable fn-cp-row-of fn-cp-row-held fn-crow-read-indexed fn-cpg-dir-pages
+                                      fn-pck-cat-pages fn-cpg-tape-ok))))
+
+; -----------------------------------------------------------------------------
+; 1. The Message-ID reader over the pages is the confirmation of its candidates.
+
+(defthm fn-cpg-msgid-loop-is-confirm
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h)
+                (nat-listp cands) (fn-mpx-below-p cands (len h)) (true-listp acc))
+           (equal (mv-nth 0 (fn-cpg-msgid-loop msgid cands (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h)
+                                               res frames fills acc))
+                  (revappend acc (fn-mpxt-confirm msgid cands h))))
+  :hints (("Goal" :induct (fn-cpg-msgid-loop msgid cands (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h)
+                                             res frames fills acc)
+           :in-theory (e/d (fn-mpxt-hitp fn-mpx-below-p)
+                           (fn-cp-row-held fn-cp-row-of fn-cp-escapedp fn-cp-smallp fn-cp-tree-of
+                            fn-crow-read-indexed fn-cpg-dir-pages fn-pck-cat-pages fn-cpg-tape-ok
+                            mv-nth)))))
+
+(local
+ (defthm fn-cpg-tag-of-posp
+   (posp (fn-mlh-tag-of msgid fn-mlh))
+   :hints (("Goal" :in-theory (enable fn-mlh-tag-of)))
+   :rule-classes nil))
+
+(defthm fn-cpg-msgid-seqs-of-pages
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h)
+                (fn-mlhp fn-mlh) (fn-mlh-wfp fn-mlh) (fn-mlh-faithful h fn-mlh))
+           (equal (nth 0 (fn-cpg-msgid-seqs msgid (fn-mlh-candidates (fn-mlh-tag-of msgid fn-mlh) fn-mlh)
+                                            (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h) res frames))
+                  (fn-cat$a-msgid-seqs msgid h)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cpg-msgid-loop-is-confirm (acc nil) (fills nil)
+                            (cands (fn-mlh-candidates (fn-mlh-tag-of msgid fn-mlh) fn-mlh)))
+                 (:instance fn-mlh-seqs-is-cat-msgid-seqs (fn-cat$a h))
+                 (:instance fn-mlh-candidates-below (tag (fn-mlh-tag-of msgid fn-mlh)) (n (len h)))
+                 (:instance fn-mlh-candidates-nat-listp (tag (fn-mlh-tag-of msgid fn-mlh)))
+                 (:instance fn-cpg-tag-of-posp))
+           :in-theory (union-theories '(fn-cpg-msgid-seqs fn-mlh-seqs fn-mlh-faithful (:definition mv-nth)
+                                        (:definition revappend) (:executable-counterpart true-listp)
+                                        (:definition nth) (:executable-counterpart zp) (:rewrite car-cons) (:rewrite cdr-cons))
+                                      (theory 'minimal-theory)))))
