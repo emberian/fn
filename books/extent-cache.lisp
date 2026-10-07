@@ -26,7 +26,9 @@
 ;           and start 0.  A raw window: a = poff, b = plen.  A decoded
 ;           window: a = poff, b = compressed, c = decoded, d = dictionary id.
 ;           START is the window's first payload offset.  The trailer is the
-;           32-octet frame digest read as a natural, a 256-bit column.
+;           32-octet frame digest packed as a natural by fn-bch-pack (the
+;           descriptor's trailer, fn-arx-trailer-nat): 256^32 plus the octets,
+;           so up to 2^257-1, a 257-bit column.
 ;   stamp   the slot's recency: the value of the clock cell at its last
 ;           install or touch.  The clock (cell 0 of the second instance,
 ;           with NE and NW in cells 1 and 2) advances on every use, so the
@@ -71,6 +73,8 @@
 (include-book "def-representation")
 (include-book "page-read-ledger")
 (include-book "profile-limits") ; the cache figures are rows there
+(include-book "packed-octets")  ; the trailer column holds fn-bch-pack of 32 octets
+(include-book "frame-octets")   ; *fn-frame-trailer-octets*
 
 (local (in-theory (enable adt-val-okp)))
 
@@ -79,14 +83,32 @@
   (kind (:nat 3)) (tokp :bool) (tid :u64) (tcid :u64)
   (file :u64) (eoff :u64) (elen :u64) (a :u64) (b :u64) (c :u64) (d :u64)
   (start :u64)
-  (trailer (:nat 115792089237316195423570985008687907853269984665640564039457584007913129639935))
+  (trailer (:nat 231584178474632390847141970017375815706539969331281128078915168015826259279871))
   (stamp :u64))
 
 ; Cells: 0 the clock, 1 NE (whole-entry slots), 2 NW (window slots).
 (def-representation fn-xcc (cell :u64) :scalar t)
 
 (defconst *fn-xc-trailer-max*
-  115792089237316195423570985008687907853269984665640564039457584007913129639935)
+  231584178474632390847141970017375815706539969331281128078915168015826259279871)
+
+; The column holds every descriptor trailer: fn-arx-trailer-nat is fn-bch-pack
+; of the 32 trailer octets (books/payload-extent.lisp), which carries a sentinel
+; digit above them, so it exceeds 2^256.  The first native run refused every
+; window because this bound was 2^256-1.
+(local
+ (defthm fn-xc-bch-pack-bound
+   (implies (fn-bch-octetsp xs)
+            (<= (fn-bch-pack xs) (- (* 2 (expt 256 (len xs))) 1)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-bch-pack fn-bch-byte fn-bch-octetp)))))
+
+(defthm fn-xc-trailer-column-holds-the-frame-trailer-commitment
+  (implies (and (fn-bch-octetsp xs) (equal (len xs) *fn-frame-trailer-octets*))
+           (and (natp (fn-bch-pack xs))
+                (<= (fn-bch-pack xs) *fn-xc-trailer-max*)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-xc-bch-pack-bound)))
 
 (defconst *fn-xc-u64-max* (1- (expt 2 64)))
 
@@ -1234,6 +1256,27 @@
            (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)))
   :rule-classes nil
   :hints (("Goal" :use (fn-xc-install-placement) :in-theory (disable fn-xc-install-placement))))
+
+; TEETH for the trailer column (the first native run refused every window): a
+; raw window token of the shape fn-prw-admit builds, (:window TICKET FILE EOFF
+; ELEN POFF PLEN OFFSET TRAILER), whose trailer is the packed commitment of 32
+; octets, is accepted by a ready table with a window region.
+(defthm fn-xc-install-window-accepts-a-descriptor-trailer
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-readyp fn-xcs fn-xcc)
+                (< 0 (fn-xc-nw fn-xcc))
+                (unsigned-byte-p 64 tid) (unsigned-byte-p 64 file) (unsigned-byte-p 64 eoff)
+                (unsigned-byte-p 64 elen) (unsigned-byte-p 64 poff) (unsigned-byte-p 64 plen)
+                (unsigned-byte-p 64 offset)
+                (fn-bch-octetsp xs) (equal (len xs) *fn-frame-trailer-octets*))
+           (not (equal (mv-nth 0 (fn-xc-install-window
+                                  (list :window tid file eoff elen poff plen offset (fn-bch-pack xs))
+                                  fn-xcs fn-xcc))
+                       :refused)))
+  :hints (("Goal" :in-theory (e/d (fn-xc-install-window fn-xc-lo fn-xc-hi fn-xc-install-okp)
+                                  (fn-xc-install-placement))
+                  :use ((:instance fn-xc-trailer-column-holds-the-frame-trailer-commitment)
+                        (:instance fn-xc-install-placement (kind 2) (tokp t) (tcid 0) (a poff) (b plen)
+                                   (c 0) (d 0) (start offset) (trailer (fn-bch-pack xs)))))))
 
 ; KEYSTONE 2 (install then lookup).  Whatever an install does but refuse, the
 ; key is then found; a whole entry is found in exactly the slot the install
