@@ -10,10 +10,16 @@
     python3 tools/host_check.py --read [FILE...] # static: every host/ file reads (half a second)
     python3 tools/host_check.py --books         # static: each book a host file calls into is in the world
     python3 tools/host_check.py --loaded        # static: every host file is loaded by some build
+    python3 tools/host_check.py --macro-order [FILE...]  # static: no raw macro used before its defmacro
 
 `--loaded` (Q7k, 2026-09-29; `make check` runs it): a host file no build loads
 is refused, so a theorem is never counted as hosted through a file no running
 server contains.  See the section above `loaded_findings`.
+
+`--macro-order` (lane ops-fixes, 2026-09-27; `make check` runs it): a raw macro
+used above its `defmacro` in load order is refused, because the image compiles
+that use as a function call (batch AW's `(log)`).  See the section above
+`macro_blank`.
 
 `--books` (obstructions-9 item 83; `make check-fast` and `--forward`, hence
 hbox_native's pre-image host-forward step, run it): for each image build,
@@ -1713,6 +1719,99 @@ def loaded_main() -> int:
     return 1 if found else 0
 
 
+# --- --macro-order: no raw macro is used before its definition (2026-09-27) --
+#
+# Protects the node's start: the image `load`s host/native/*.lisp in
+# build.lisp's order, compiling each form as it goes, and a form that names a
+# macro defined LATER compiles as a FUNCTION call -- its arguments are
+# evaluated and the macro's name is called.  Batch AW moved a use of
+# `(fnn-log-with-kernel (log) ...)` above the macro in host/native/io.lisp:
+# `(log)` ran as CL:LOG with no arguments and every start of a format-9 store
+# with committed records faulted "invalid number of arguments: 0" (exit 4).
+# SBCL warns at load; the build does not stop.
+#
+# `--macro-order [FILE...]` blanks strings, comments and #| |# blocks
+# (macro_blank, offsets and line numbers kept), collects each `(defmacro NAME`
+# across FILEs (default raw_load_order(): build.lisp's `(load ...)` lines) and
+# names every earlier `(NAME` use as FILE:LINE with the definition's place.
+
+def macro_blank(text: str) -> str:
+    """TEXT with string contents, `;' comments and #| |# blocks replaced by
+    spaces (newlines kept), so offsets and line numbers are unchanged."""
+    out, i, n = list(text), 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == '"':
+            j = i + 1
+            while j < n and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            for k in range(i + 1, min(j, n)):
+                if out[k] != "\n":
+                    out[k] = " "
+            i = j + 1
+        elif c == "#" and i + 1 < n and text[i + 1] == "\\":
+            # A character object: #\( or #\; or #\" is not syntax.
+            for k in range(i, min(i + 3, n)):
+                out[k] = " "
+            i += 3
+        elif c == ";":
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            for k in range(i, j):
+                out[k] = " "
+            i = j
+        elif c == "#" and i + 1 < n and text[i + 1] == "|":
+            j = text.find("|#", i + 2)
+            j = n if j < 0 else j + 2
+            for k in range(i, j):
+                if out[k] != "\n":
+                    out[k] = " "
+            i = j
+        else:
+            i += 1
+    return "".join(out)
+
+
+def macro_load_order() -> list[Path]:
+    return [ROOT / name for name in raw_load_order()]
+
+
+def macro_order_findings(files: list[Path]) -> list[str]:
+    sources = [(f, macro_blank(f.read_text(errors="replace"))) for f in files]
+    defs = {}
+    for index, (f, text) in enumerate(sources):
+        for m in re.finditer(r"\(defmacro\s+([^\s()]+)", text):
+            defs.setdefault(m.group(1).lower(), (index, m.start(), f, text.count("\n", 0, m.start()) + 1))
+    early = []
+    for name, (dindex, doffset, dfile, dline) in sorted(defs.items()):
+        pattern = re.compile(r"\(" + re.escape(name) + r"(?=[\s()])", re.I)
+        for index, (f, text) in enumerate(sources[:dindex + 1]):
+            for m in pattern.finditer(text):
+                if index == dindex and m.start() >= doffset:
+                    break
+                early.append("%s:%d uses %s before its definition at %s:%d" % (
+                    _shown(f), text.count("\n", 0, m.start()) + 1, name, _shown(dfile), dline))
+    return early
+
+
+def _shown(path: Path):
+    try:
+        return path.resolve().relative_to(ROOT)
+    except ValueError:
+        return path
+
+
+def macro_order_main(names: list[str]) -> int:
+    files = [Path(a) for a in names] or macro_load_order()
+    early = macro_order_findings(files)
+    for line in early:
+        print("macro used early:", line)
+    if not early:
+        print("host_check --macro-order: %d files, every macro use follows its definition"
+              % len(files))
+    return 1 if early else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1758,6 +1857,9 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--loaded", action="store_true",
                         help="static: every host/ file is loaded by some build, or is parked "
                              "in planning/host-parked.json (shrink-only)")
+    mode.add_argument("--macro-order", action="store_true",
+                        help="static: no raw host macro is used before its defmacro in "
+                             "build.lisp's load order (FILEs replace the order)")
     mode.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
@@ -1767,6 +1869,8 @@ def main(argv: list[str] | None = None) -> int:
         return books_main(args.files)
     if args.loaded:
         return loaded_main()
+    if args.macro_order:
+        return macro_order_main(args.files)
     if args.read:
         findings = read_check(args.files)
         for one in findings:

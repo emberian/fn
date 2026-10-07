@@ -3003,8 +3003,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/attach_order_check.py
 # A host macro used before its definition in load order compiles as a
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
-	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --macro-order
 # The raw files loaded in build.lisp's order into one bare ACL2 with SBCL's
 # warnings on (seconds, no image build): errors, arity, macro order and names
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
