@@ -4,11 +4,13 @@
  "file": "tools/build_native_host.sh",
  "id": "MEM-002",
  "line": "251",
- "notes": [],
+ "notes": [
+  "2026-10-07 N-MEMSET: READY on lane/memset. tools/build_native_host.sh splices the saved launcher default --dynamic-space-size 32000 -> the small preset figure, derived by the built image itself (operator init under the preset fields of books/heap-figure.lisp *fn-heap-small-request*, reading reservation=MB: the figure the installed launcher decides for that profile); FN_NATIVE_DEFAULT_HEAP_MB overrides. Unit test uses a fake image and pins that the script flags equal the heap-book preset. The installed path (packaging/fn heap probe) and FN_TEST_HEAP_MB/SBCL_USER_ARGS still override (SBCL takes the last option); the native harness already goes through the installed launcher except image_heap opt-outs, which now start at the small figure unless they pass one. Evidence: MEMORY-20261006.md row 8, hbox:/tank/fn/scratch/n-mem/EVIDENCE.txt, bare.sh. OWED AT CONVERGENCE: the real probe (init on a built image) is untested locally (no image here); re-measure a bare start (expect ~34 MB RSS) and run the image_heap opt-out tests."
+ ],
  "owner": "deputy-N",
  "severity": "medium",
  "source": "n-mem",
- "state": "open",
+ "state": "ready",
  "title": "the published fn-host launcher defaults to --dynamic-space-size 32000: a start with no figure is 259 MB RSS, the same start at 1068 MB is 34 MB",
- "updated": "2026-10-06T21:30:00Z"
+ "updated": "2026-10-07T00:00:00Z"
 }

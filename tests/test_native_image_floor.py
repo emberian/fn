@@ -108,7 +108,7 @@ class ProductionTests(unittest.TestCase):
         text = Path(IMAGE).read_text(errors="replace")
         tls = re.findall(r"--tls-limit (\d+) ", text)
         stack = re.findall(r"--control-stack-size (\d+)KB ", text)
-        self.assertEqual(tls, [str(profile_limits.get("tls-limit"))], text)
+        self.assertEqual(tls, [str(profile_limits.get("run-tls-limit"))], text)
         self.assertEqual(stack, [str(profile_limits.get("stack-kib"))], text)
 
     def test_production_refuses_guard_probe(self):

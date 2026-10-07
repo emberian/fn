@@ -4,11 +4,13 @@
  "file": "books/profile-limits.lisp",
  "id": "MEM-001",
  "line": "37",
- "notes": [],
+ "notes": [
+  "2026-10-07 N-MEMSET: READY on lane/memset. New profile row :run-tls-limit 16384 (books/profile-limits.lisp); host/native/build.lisp and build-dtn.lisp print it as FN_NATIVE_TLS_LIMIT, so tools/build_native_host.sh writes it into the saved launcher. The image-build row :tls-limit stays 65536 (hbox_native/cut_release/build_local_acl2 untouched). The TLS budget gate now holds against 16384*8: specs/host.md records the load at 4% of 65536 = 16% of 16384, under the 25% gate. Evidence: build/coordinator/MEMORY-20261006.md rows 5 and the -13 MB end-to-end row, run dirs hbox:/tank/fn/scratch/n-mem/t16384, t4096, s2. Local gates: test_build_native_host, test_profile_limits, test_resource_contract, host_check --load (0 findings). OWED AT CONVERGENCE: books/profile-limits.lisp is recertified with the batch; the runtime re-measure on a dev image, plus test_native_image_floor test_launcher_carries_the_profile_figures and the world-deps check and world-loading native modules (filtered) on a built image."
+ ],
  "owner": "deputy-N",
  "severity": "medium",
  "source": "n-mem",
- "state": "open",
+ "state": "ready",
  "title": "launcher runs at --tls-limit 65536: each thread's thread-local storage costs 512 KiB anonymous RSS; 16384 saves 11.2 MB and 4096 saves 14.0 MB on the 14-thread owner",
- "updated": "2026-10-06T21:30:00Z"
+ "updated": "2026-10-07T00:00:00Z"
 }

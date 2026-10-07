@@ -311,6 +311,8 @@ CONSTANTS: tuple[tuple[str, str, str, str], ...] = (
      r"^\s*\(:stack-kib (\d+) ", "KiB, every thread's control stack"),
     (":tls-limit", "books/profile-limits.lisp",
      r"^\s*'?\(\(:tls-limit (\d+) ", "symbols, SBCL thread-local storage (not Transport Layer Security)"),
+    (":run-tls-limit", "books/profile-limits.lisp",
+     r"^\s*\(:run-tls-limit (\d+) ", "symbols, SBCL thread-local storage the saved launcher runs at"),
     (":max-connections", "books/profile-limits.lisp",
      r"^\s*\(:max-connections (\d+) ", "served connections, default"),
     (":control-clients", "books/profile-limits.lisp",
