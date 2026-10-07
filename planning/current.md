@@ -359,7 +359,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **durable after acknowledgement (Mini M1).** ACKED: the log kernel's acknowledged count (fn-lgc-acked, advanced by fn-lgu-acknowledge (the fold of :finish-one; host/native/io.lisp fnn-log-finish) before the batch's replies leave); client contract: every record whose acceptance a client observed is recovered; not acknowledged = recovered.
 
-- Host-called subject: `fn-lgu-acknowledge` at host/native/io.lisp:8015, equated by `fn-lgu-acknowledge-acknowledges-only-recoverable-records` (books/store-log-durable.lisp:1173).
+- Host-called subject: `fn-lgu-acknowledge` at host/native/io.lisp:8020, equated by `fn-lgu-acknowledge-acknowledges-only-recoverable-records` (books/store-log-durable.lisp:1173).
 - Keystone: `fn-lgu-acknowledged-records-are-recovered-at-every-cut` (books/store-log-durable.lisp:883; PRF-936 (certified)); certified at the current source and closure by `certify-20261005T041721Z-1947144` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/store-log-durable.lisp`.
