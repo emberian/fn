@@ -25,6 +25,10 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
