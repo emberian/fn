@@ -110,7 +110,7 @@ def pairs(root: Path) -> list[tuple[str, str, str]]:
         for m in _ATTACH.finditer(_read(path)):
             gen = m.group(1).lower()
             generic = [p for p in sorted((root / "books").glob("*.lisp"))
-                       if re.search(r"\(defabsstobj\s+%s\b" % re.escape(gen), _read(p), re.I)
+                       if re.search(r"\(defabsstobj\s+%s(?![A-Za-z0-9$*+-])" % re.escape(gen), _read(p), re.I)
                        and ":attachable t" in _read(p).lower()]
             if len(generic) == 1:
                 found.append((gen, "books/" + generic[0].stem, rel))

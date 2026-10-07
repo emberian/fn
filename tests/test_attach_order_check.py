@@ -42,6 +42,13 @@ class AttachOrder(unittest.TestCase):
     def test_green_without_generic(self):
         self.assertEqual(aoc.check(tree("")), [])
 
+    def test_red_when_an_attachable_impl_name_extends_the_generic(self):
+        # fn-cat and fn-cat-paged are both :attachable; the generic match must not
+        # take fn-x-impl's defabsstobj as a second fn-x and drop the pair.
+        d = tree('(include-book "../books/above")\n')
+        (d / "books/impl.lisp").write_text("(in-package \"ACL2\")\n(defabsstobj fn-x-impl\n  :attachable t)\n")
+        self.assertEqual(len(aoc.check(d)), 1)
+
     def test_this_tree_is_clean(self):
         self.assertEqual(aoc.check(ROOT), [])
 
