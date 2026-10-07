@@ -5106,19 +5106,26 @@ caller does not know."
               :exists
             (fnn-os-fail errno new)))))))
 
-(defvar *fnn-publication-close-debts* nil
+(defvar *fnn-close-debts-lock* (sb-thread:make-mutex :name "fn close debts"))
+
+(defvar *fnn-publication-close-debts* nil ; guarded-by: *fnn-close-debts-lock*
   "Publication lock descriptor identities with unobserved physical return.
 These records retain evidence; they never authorize retry of a consumed fd.")
 
 (defvar *fnn-publication-lock-roots* nil
   "Roots of locally owned publication lock descriptors until physical return.")
 
+(defun fnn-publication-close-debts-p ()
+  (sb-thread:with-mutex (*fnn-close-debts-lock*)
+    (and *fnn-publication-close-debts* t)))
+
 (defun fnn-publication-close-observation ()
-  (if *fnn-publication-close-debts* :uncertain :closed))
+  (if (fnn-publication-close-debts-p) :uncertain :closed))
 
 (defun fnn-publication-unlock (fd)
   (when fd
-    (when (assoc fd *fnn-publication-close-debts*)
+    (when (sb-thread:with-mutex (*fnn-close-debts-lock*)
+            (assoc fd *fnn-publication-close-debts*))
       (fnn-indeterminate "publication lock return remains unobserved"))
     (let ((root (cdr (assoc fd *fnn-publication-lock-roots*))))
       ;; Consume custody before issuing return; a descriptor number is never
@@ -5130,7 +5137,8 @@ These records retain evidence; they never authorize retry of a consumed fd.")
             (fnn-flock fd +fnn-lock-un+)
             (fnn-close fd))
         (serious-condition (condition)
-          (push (list fd root condition) *fnn-publication-close-debts*)
+          (sb-thread:with-mutex (*fnn-close-debts-lock*)
+            (push (list fd root condition) *fnn-publication-close-debts*))
           (fnn-indeterminate "publication lock physical return unobserved: ~a" condition))))))
 
 (defun fnn-publication-lock (root-path)
@@ -5146,7 +5154,7 @@ on Linux, where renameat2(RENAME_NOREPLACE) refuses any existing ROOT."
   #+linux nil
   #-linux
   (let ((fd nil) (returned nil))
-    (when *fnn-publication-close-debts*
+    (when (fnn-publication-close-debts-p)
       (fnn-indeterminate "publication lock return remains unobserved"))
     (fnn-unwind-cleanups
         ((setq fd (fnn-open (fnn-concat root-path ".lock")
@@ -5419,18 +5427,21 @@ its name (fnn-archive-entry), never a host fault."
                      count)))
         (fnn-close fd)))))
 
-(defvar *fnn-immutable-close-debts* nil
+(defvar *fnn-immutable-close-debts* nil ; guarded-by: *fnn-close-debts-lock*
   "Exact #(FD STAGE FINAL OPERATION PUBLICATION CONDITION) return debts.")
 
 (defun fnn-immutable-close-observation ()
-  (if *fnn-immutable-close-debts* :uncertain :closed))
+  (if (sb-thread:with-mutex (*fnn-close-debts-lock*)
+        (and *fnn-immutable-close-debts* t))
+      :uncertain :closed))
 
 (defun fnn-immutable-close-handle (fd stage final operation publication)
   "The caller consumed its owning FD slot; retain ambiguity, never retry."
   (handler-case (fnn-close fd)
     (serious-condition (condition)
-      (push (vector fd stage final operation publication condition)
-            *fnn-immutable-close-debts*)
+      (sb-thread:with-mutex (*fnn-close-debts-lock*)
+        (push (vector fd stage final operation publication condition)
+              *fnn-immutable-close-debts*))
       (error condition))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
