@@ -311,6 +311,11 @@ sets *fe-text* and *fe-starts*."
 
 ;;; ------------------------------------------------------------------------
 ;;; free names of an expanded form
+(defun fe-world-function-p (s)
+  "S names a function of the extraction world: the raw symbol, or a *1* symbol of one."
+  (let ((f (if (fe-star1-p s) (fe-star1-of s) s)))
+    (and (symbolp f) (or (gethash f *fe-defs*) (getpropc f 'formals nil *fe-w*)) t)))
+
 (defun fe-calls (form fns vars)
   "Record the function names a macroexpanded FORM calls in FNS, and in VARS every symbol atom outside quote and
 every special variable a let, let* or lambda binds."
@@ -339,6 +344,14 @@ every special variable a let, let* or lambda binds."
                           (load-time-value (walk (cadr x) locals))
                           (eval-when (walk-body (cddr x) locals))
                           (progv (walk (cadr x) locals) (walk (caddr x) locals) (walk-body (cdddr x) locals))
+                          ;; (funcall 'F ...) / (apply 'F ...): ACL2's ec-call expands to these over a *1*
+                          ;; symbol, so F is called though only quoted.  Counted when F names a function of the
+                          ;; world (ec-call also tries F$INLINE behind fboundp, which may name nothing).
+                          ((funcall apply)
+                           (let ((f (cadr x)))
+                             (when (and (consp f) (eq (car f) 'quote) (symbolp (cadr f)) (fe-world-function-p (cadr f)))
+                               (note (cadr f) locals)))
+                           (dolist (y (cdr x)) (walk y locals)))
                           (t (cond ((member op '(if progn setq catch throw unwind-protect multiple-value-prog1
                                                  multiple-value-call locally))
                                     (dolist (y (cdr x)) (walk y locals)))

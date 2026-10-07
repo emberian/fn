@@ -8,23 +8,27 @@
 
 (defparameter *the-live-state* (intern "The Live State Itself" "ACL2_INVISIBLE"))
 
-;;; --- state globals: ACL2's f-get-global/f-put-global over a table whose
-;;; initial values are the image's at extraction (core-world.lisp) -----------
-(defvar *xl-globals* (make-hash-table :test 'eq :synchronized t))
-(defun xl-set-global (sym value) (setf (gethash sym *xl-globals*) value))
+;;; --- state globals.  ACL2 keeps a state global X as the value of its global symbol, X's name in
+;;; the package ACL2_GLOBAL_<X's package> (acl2-fns.lisp:75 global-symbol, ACL2 8.7), and the emitted
+;;; definitions read it there: an inlined `(f-get-global 'safe-mode state)' is the special variable
+;;; ACL2_GLOBAL_ACL2::SAFE-MODE, and boundp-global1 (axioms.lisp:15903) is (boundp (global-symbol x)).
+;;; These accessors use the same cells, so a global the host puts is the one every emitted reader
+;;; sees.  global-symbol itself is ACL2's, emitted into defs.lisp.  Initial values are the image's at
+;;; extraction (core-world.lisp, xl-set-global).
+(defun xl-set-global (sym value) (setf (symbol-value (global-symbol sym)) value))
 (defun f-get-global (sym state)
   (declare (ignore state))
-  (multiple-value-bind (v found) (gethash sym *xl-globals*)
-    (if found v (error "ACL2 state global ~s is unbound in this core" sym))))
+  (let ((g (global-symbol sym)))
+    (if (boundp g) (symbol-value g) (error "ACL2 state global ~s is unbound in this core" sym))))
 (defun get-global (sym state) (f-get-global sym state))
 (defun f-put-global (sym value state)
   (declare (ignore state))
-  (setf (gethash sym *xl-globals*) value)
+  (setf (symbol-value (global-symbol sym)) value)
   *the-live-state*)
 (defun put-global (sym value state) (f-put-global sym value state))
 (defun f-boundp-global (sym state)
   (declare (ignore state))
-  (nth-value 1 (gethash sym *xl-globals*)))
+  (boundp (global-symbol sym)))
 (defun boundp-global (sym state) (f-boundp-global sym state))
 
 ;;; --- the world: the properties host/native reads of an entry
