@@ -431,6 +431,37 @@
    :stobjs dlt-context :body (dlt-hidden-update dlt-context))
  :unchecked "refused at expansion: :stobjs is read-only, including macro-expanded updaters")
 
+; :step :stobjs: read-only context in the base test, the emit test and the body.
+(def-loop dlt-step-context (xs dlt-context)
+  :shape :step :done (atom xs) :emit (not (equal (car xs) (dlt-value dlt-context)))
+  :body (cons (car xs) (dlt-value dlt-context)) :next (cdr xs) :skip-next (cdr xs)
+  :stobjs dlt-context :guard (true-listp xs))
+(defun dlt-step-context-run (xs)
+  (declare (xargs :guard (true-listp xs)))
+  (with-local-stobj dlt-context
+    (mv-let (out dlt-context)
+      (mv (list (dlt-step-context xs dlt-context)
+                (dlt-step-context-loop xs dlt-context '(z))) dlt-context)
+      out)))
+; positive: 7 is the stored value, so the 7s are skipped and the rest carry it
+(assert-event (equal (dlt-step-context-run '(a 7 b))
+                     '(((a . 7) (b . 7)) (z (a . 7) (b . 7)))))
+; negative: a :step :stobjs naming a non-stobj formal, and an updater hidden in
+; the emit test, are both refused at expansion
+(must-fail-checked
+ (def-loop dlt-step-ordinary (xs ordinary)
+   :shape :step :done (atom xs) :body (car xs) :next (cdr xs) :stobjs ordinary)
+ :unchecked "refused at expansion: :stobjs must name distinct stobj formals")
+(must-fail-checked
+ (def-loop dlt-step-updater (xs dlt-context)
+   :shape :step :done (atom xs) :emit (dlt-hidden-update dlt-context)
+   :body (car xs) :next (cdr xs) :stobjs dlt-context)
+ :unchecked "refused at expansion: :stobjs is read-only, including macro-expanded updaters")
+(must-fail-checked
+ (def-loop dlt-fold-with-stobjs (xs dlt-context)
+   :shape :sum :body 1 :stobjs dlt-context)
+ :unchecked "refused at expansion: :stobjs is a read-only :map or :step option")
+
 ; :map :base: base-first stopping, with a nonempty tail and extra context.
 (def-loop dlt-map-base (xs tail)
   :shape :map :base (or (atom xs) (equal (car xs) :end))

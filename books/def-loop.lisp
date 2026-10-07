@@ -85,7 +85,7 @@
 ; :map :acc-fix t reverses (true-list-fix ACC), permitting the loop
 ; guard to omit true-listp ACC. Its bridge states that same fixed value.
 ;
-; :map :stobjs ST (or a list of stobj formals) declares immutable
+; :map or :step :stobjs ST (or a list of stobj formals) declares immutable
 ; context. It uses the same map library bridge, with those formals fixed.
 ; Updaters, including macro-expanded calls, are refused before expansion.
 ;
@@ -681,7 +681,7 @@
 ; The :step events.
 
 (defun fn-dl-step-events (name formals svars done emit skip body elt next skip-next tail let
-                               guard guard-hints guard-theory acc loop measure progress-hints)
+                               guard guard-hints guard-theory acc loop measure progress-hints stobjs)
   (declare (xargs :mode :program))
   (let* ((s1 (car svars))
          (done (fn-dl-elt elt s1 done))
@@ -716,10 +716,12 @@
     `((defun ,loop (,@formals ,acc)
         (declare (xargs :guard ,(fn-dl-and guard `(true-listp ,acc))
                         :verify-guards nil
+                        ,@(and stobjs `(:stobjs ,stobjs))
                         :measure ,m))
         ,loop-body)
       (defun ,name ,formals
         (declare (xargs :guard ,guard :verify-guards nil
+                        ,@(and stobjs `(:stobjs ,stobjs))
                         :measure ,m))
         (mbe :logic ,logic-body
              :exec (,loop ,@formals nil)))
@@ -1343,11 +1345,12 @@
       (er soft ctx "~x0: :acc-fix must be t or nil." name))
      ((and acc-fix (not (eq shape :map)))
       (er soft ctx "~x0: :acc-fix is a :map option." name))
-     ((and stobjs (not (eq shape :map)))
-      (er soft ctx "~x0: :stobjs is a read-only :map option." name))
+     ((and stobjs (not (member-eq shape '(:map :step))))
+      (er soft ctx "~x0: :stobjs is a read-only :map or :step option." name))
      ((not (and (symbol-listp stobjs) (no-duplicatesp-eq stobjs)
                 (fn-dl-stobjs-knownp stobjs formals (w state))
-                (not (member-eq xs stobjs))))
+                (not (member-eq xs stobjs))
+                (not (intersectp-eq stobjs svars))))
       (er soft ctx "~x0: :stobjs must name distinct stobj formals other than :over." name))
      ((and (null body) (not (member-eq shape '(:fold :foldr))))
       (er soft ctx "~x0: :body is required." name))
@@ -1370,7 +1373,8 @@
        (fn-dl-readonly-check
         name stobjs
         (fn-dl-elt elt xs
-          (fn-dl-let let `(list ,body ,while ,stop ,stop-value ,keep ,tail ,base))) state)
+          (fn-dl-let let `(list ,body ,while ,stop ,stop-value ,keep ,tail ,base
+                                ,@(and (eq shape :step) (list done emit skip)) ,@(and (eq shape :step) (if (cdr svars) next (list next))) ,@(and (eq shape :step) skip-next (if (cdr svars) skip-next (list skip-next)))))) state)
        (value
        `(encapsulate
           ()
@@ -1384,7 +1388,7 @@
                                           guard guard-hints guard-theory acc loop measure)))
               (:step (fn-dl-step-events name formals svars done emit skip body elt next skip-next
                                         tail let guard guard-hints guard-theory acc loop measure
-                                        progress-hints))
+                                        progress-hints stobjs))
               (:foldr (fn-dl-foldr-events name formals xs elt combine init rev guard guard-hints
                                           guard-theory acc loop
                                           (if (eq loop-guard :default) t loop-guard) measure))
