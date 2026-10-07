@@ -143,3 +143,26 @@
                (:conclusion (<= (fn-nnm-engine-cons s) 0))
                ((s *nnmt-match*))
                :fault "a matcher microstep charged no cons cells")))
+
+; ---------------------------------------------------------------------------
+; fn-nnm-one-preserves-value (TEETH CONTRACT v1).  fn-nnm-one returns several
+; values, and defteeth's executable witnesses cannot evaluate (mv-nth K (F ..)),
+; so the witnesses are ground theorems (:witness-lemma, :lemma): each states
+; the conjunction the entry would assert, at the entry's bindings, and is
+; proved by evaluation.  They are lemma debt (TEETH-OWED-MV-CLAIM), not
+; executed witnesses.
+(defthm nnmt-preserves-value-witness
+  (equal (fn-nnm-value (mv-nth 2 (fn-nnm-one *nnmt-mid*))) (fn-nnm-value *nnmt-mid*)))
+(defthm nnmt-preserves-value-mutant-witness
+  (and (equal (fn-nnm-value (mv-nth 2 (fn-nnm-one *nnmt-mid*))) (fn-nnm-value *nnmt-mid*))
+       (not (equal (fn-nnm-value (mv-nth 2 (fn-nnm-one *nnmt-mid*))) (not (fn-nnm-value *nnmt-mid*))))))
+(defteeth fn-nnm-one-preserves-value
+  :claim (() (equal (fn-nnm-value (mv-nth 2 (fn-nnm-one s))) (fn-nnm-value s)))
+  :subject fn-nnm-one
+  :witness-lemma nnmt-preserves-value-witness
+  :witness ((s *nnmt-mid*))
+  :mutations ((value-negated
+               (:conclusion (equal (fn-nnm-value (mv-nth 2 (fn-nnm-one s))) (not (fn-nnm-value s))))
+               ((s *nnmt-mid*))
+               :fault "a step that flips the selection value"
+               :lemma nnmt-preserves-value-mutant-witness)))
