@@ -302,3 +302,275 @@
                                fn-asx-start-good fn-asx-start-spec
                                fn-asx-need fn-ast-select-step fn-asx-outcome fn-asx-done-state
                                fn-asx-first fn-asx-spec fn-asx-goodp fn-ast-select-donep))))
+
+(defthm fn-asx-step-of-done
+  (implies (fn-ast-select-donep it)
+           (equal (fn-ast-select-step it fuel) it))
+  :hints (("Goal" :expand ((fn-ast-select-step it fuel)))))
+
+(local
+ (defthm fn-asx-step-nonstring-group
+   (implies (and (posp fuel) (not (fn-ast-select-donep it))
+                 (not (equal (fn-ast-at 1 it) :msgid))
+                 (not (equal (fn-ast-at 1 it) :withdrawn-msgid))
+                 (not (stringp (fn-ast-at 2 it))))
+            (equal (fn-ast-select-step it fuel)
+                   (fn-ast-select-state (fn-ast-at 1 it) (fn-ast-at 2 it) (fn-ast-at 3 it)
+                                        nil nil nil nil 0 :missing)))
+   :hints (("Goal" :expand ((fn-ast-select-step it fuel))
+                   :in-theory (e/d (fn-ast-select-one fn-ast-select-donep fn-ast-select-state fn-ast-at)
+                                   (fn-ast-select-step fn-asx-step-of-done)))
+           ("Goal'" :use ((:instance fn-asx-step-of-done
+                                     (it (fn-ast-select-one it)) (fuel (+ -1 fuel))))
+                    :in-theory (e/d (fn-ast-select-one fn-ast-select-donep fn-ast-select-state fn-ast-at)
+                                    (fn-ast-select-step fn-asx-step-of-done))))))
+
+; A group that is no string names no article: the walk answers missing in one step.
+(defthm fn-asx-walk-nonstring
+  (implies (and (not (stringp group)) (member-eq mode '(:number :current)) (posp fuel))
+           (equal (fn-asx-outcome
+                   (fn-ast-select-step
+                    (fn-ast-select-state mode group number articles nil nil nil 0 :next) fuel))
+                  (fn-asx-outcome (fn-asx-done-state mode group number nil))))
+  :hints (("Goal" :use ((:instance fn-asx-step-nonstring-group
+                                   (it (fn-ast-select-state mode group number articles nil nil nil 0 :next))))
+                  :in-theory (e/d (fn-ast-select-state fn-ast-at fn-ast-select-donep fn-asx-outcome fn-asx-done-state)
+                                  (fn-ast-select-step fn-asx-step-nonstring-group)))))
+
+; -----------------------------------------------------------------------------
+; The Message-ID walk (the selection over an archive no trie indexes) reaches the
+; state the catalog's Message-ID column names.
+
+(defun fn-asx-mn (group key rem)
+  (declare (xargs :guard t))
+  (fn-ast-select-state :msgid group key rem nil nil nil 0 :msgid-next))
+
+(defun fn-asx-mc (group key rem at)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-ast-select-state :msgid group key rem (car rem) nil nil at :msgid-compare))
+
+(defun fn-asx-mtarget (group key rem)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((article (fn-find-article key rem)))
+    (if (consp article)
+        (fn-ast-msgid-local-start group article)
+      (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing))))
+
+(defun fn-asx-cc (key stored at)
+  (declare (xargs :measure (if (stringp key) (nfix (- (length key) (nfix at))) 0)
+                  :verify-guards nil))
+  (cond ((not (and (stringp key) (stringp stored) (equal (length key) (length stored)))) 1)
+        ((>= (nfix at) (length key)) 1)
+        ((equal (char key (nfix at)) (char stored (nfix at)))
+         (+ 1 (fn-asx-cc key stored (+ 1 (nfix at)))))
+        (t 1)))
+
+(defun fn-asx-nc (key rem)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom rem) 1)
+        ((equal key (fn-article-msgid (car rem)))
+         (+ 1 (fn-asx-cc key (fn-article-msgid (car rem)) 0)))
+        (t (+ 1 (fn-asx-cc key (fn-article-msgid (car rem)) 0) (fn-asx-nc key (cdr rem))))))
+
+(defun fn-asx-cres (group key rem)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (equal key (fn-article-msgid (car rem)))
+      (fn-ast-msgid-local-start group (car rem))
+    (fn-asx-mn group key (cdr rem))))
+
+(local
+ (defthm fn-asx-step-unfold
+   (implies (and (posp fuel) (not (fn-ast-select-donep it)))
+            (equal (fn-ast-select-step it fuel)
+                   (fn-ast-select-step (fn-ast-select-one it) (+ -1 fuel))))
+   :rule-classes nil
+   :hints (("Goal" :expand ((fn-ast-select-step it fuel))
+                   :in-theory (disable fn-ast-select-one fn-ast-select-donep)))))
+
+(local
+ (defthm fn-asx-mn-one
+   (equal (fn-ast-select-one (fn-asx-mn group key rem))
+          (if (stringp key)
+              (if (consp rem) (fn-asx-mc group key rem 0)
+                (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing))
+            (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing)))
+   :hints (("Goal" :in-theory (enable fn-ast-select-one fn-ast-msgid-search-one fn-asx-mn fn-asx-mc
+                                      fn-ast-select-state fn-ast-at fn-ast-select-donep)))))
+
+(local
+ (defthm fn-asx-mc-one
+   (implies (and (stringp key) (natp at))
+            (equal (fn-ast-select-one (fn-asx-mc group key rem at))
+                   (let ((stored (fn-article-msgid (car rem))))
+                     (cond ((not (and (stringp stored) (equal (length key) (length stored))))
+                            (fn-asx-mn group key (cdr rem)))
+                           ((>= at (length key))
+                            (fn-ast-msgid-local-start group (car rem)))
+                           ((equal (char key at) (char stored at))
+                            (fn-asx-mc group key rem (+ 1 at)))
+                           (t (fn-asx-mn group key (cdr rem)))))))
+   :hints (("Goal" :in-theory (enable fn-ast-select-one fn-ast-msgid-search-one fn-asx-mn fn-asx-mc
+                                      fn-ast-select-state fn-ast-at fn-ast-select-donep
+                                      fn-cbor-ag-cdr)))))
+
+(local
+ (defthm fn-asx-mn-not-done
+   (not (fn-ast-select-donep (fn-asx-mn group key rem)))
+   :hints (("Goal" :in-theory (enable fn-asx-mn fn-ast-select-state fn-ast-at fn-ast-select-donep)))))
+
+(local
+ (defthm fn-asx-mc-not-done
+   (not (fn-ast-select-donep (fn-asx-mc group key rem at)))
+   :hints (("Goal" :in-theory (enable fn-asx-mc fn-ast-select-state fn-ast-at fn-ast-select-donep)))))
+
+(local
+ (defthm fn-asx-mn-step
+   (implies (posp fuel)
+            (equal (fn-ast-select-step (fn-asx-mn group key rem) fuel)
+                   (fn-ast-select-step
+                    (if (stringp key)
+                        (if (consp rem) (fn-asx-mc group key rem 0)
+                          (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing))
+                      (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing))
+                    (+ -1 fuel))))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-asx-step-unfold (it (fn-asx-mn group key rem))))
+                   :in-theory (disable fn-ast-select-step)))))
+
+(local
+ (defthm fn-asx-mc-step
+   (implies (and (posp fuel) (stringp key) (natp at))
+            (equal (fn-ast-select-step (fn-asx-mc group key rem at) fuel)
+                   (fn-ast-select-step
+                    (let ((stored (fn-article-msgid (car rem))))
+                      (cond ((not (and (stringp stored) (equal (length key) (length stored))))
+                             (fn-asx-mn group key (cdr rem)))
+                            ((>= at (length key))
+                             (fn-ast-msgid-local-start group (car rem)))
+                            ((equal (char key at) (char stored at))
+                             (fn-asx-mc group key rem (+ 1 at)))
+                            (t (fn-asx-mn group key (cdr rem)))))
+                    (+ -1 fuel))))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-asx-step-unfold (it (fn-asx-mc group key rem at))))
+                   :in-theory (disable fn-ast-select-step)))))
+
+(local
+ (defthm fn-asx-find-article-cdr
+   (implies (not (equal key (fn-article-msgid (car rem))))
+            (equal (fn-find-article key rem) (fn-find-article key (cdr rem))))
+   :hints (("Goal" :in-theory (enable fn-find-article)))))
+
+(local
+ (defthm fn-asx-find-article-car
+   (implies (and (consp rem) (equal key (fn-article-msgid (car rem))))
+            (equal (fn-find-article key rem) (car rem)))
+   :hints (("Goal" :in-theory (enable fn-find-article)))))
+
+(local
+ (defthm fn-asx-missing-step
+   (equal (fn-ast-select-step (fn-ast-select-state mode group key nil nil nil nil 0 :missing) fuel)
+          (fn-ast-select-state mode group key nil nil nil nil 0 :missing))
+   :hints (("Goal" :expand ((fn-ast-select-step (fn-ast-select-state mode group key nil nil nil nil 0 :missing) fuel))
+                   :in-theory (e/d (fn-ast-select-donep fn-ast-select-state fn-ast-at)
+                                   (fn-ast-select-step))))))
+
+(local
+ (defthm fn-asx-mtarget-atom
+   (implies (atom rem)
+            (equal (fn-asx-mtarget group key rem)
+                   (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing)))
+   :hints (("Goal" :in-theory (enable fn-asx-mtarget fn-find-article)))))
+
+(local
+ (defthm fn-asx-mtarget-cdr
+   (implies (not (equal key (fn-article-msgid (car rem))))
+            (equal (fn-asx-mtarget group key rem) (fn-asx-mtarget group key (cdr rem))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-asx-mtarget)))))
+
+(local
+ (defthm fn-asx-mtarget-car
+   (implies (and (consp rem) (equal key (fn-article-msgid (car rem))) (stringp key))
+            (equal (fn-asx-mtarget group key rem)
+                   (fn-ast-msgid-local-start group (car rem))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-asx-mtarget)))))
+
+(local
+ (defthm fn-asx-prefix-succ
+   (implies (and (natp at) (< at (length key)) (stringp key) (stringp stored)
+                 (fn-asx-prefix-equalp key stored at)
+                 (equal (char key at) (char stored at)))
+            (fn-asx-prefix-equalp key stored (+ 1 at)))
+   :hints (("Goal" :in-theory (enable fn-asx-prefix-equalp)))))
+
+(local
+ (defthm fn-asx-cc-posp
+   (posp (fn-asx-cc key stored at))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-asx-cc)))))
+(local
+ (defthm fn-asx-compare
+   (implies (and (stringp key) (consp rem) (natp extra) (natp at)
+                 (<= at (length key))
+                 (fn-asx-prefix-equalp key (fn-article-msgid (car rem)) at))
+            (equal (fn-ast-select-step (fn-asx-mc group key rem at)
+                                       (+ (fn-asx-cc key (fn-article-msgid (car rem)) at) extra))
+                   (fn-ast-select-step (fn-asx-cres group key rem) extra)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-asx-cc key (fn-article-msgid (car rem)) at)
+                   :in-theory (e/d (fn-asx-cc)
+                                   (fn-ast-select-step fn-asx-mc fn-asx-mn fn-asx-prefix-equalp
+                                    fn-ast-msgid-local-start
+                                    fn-asx-prefix-is-lp fn-asx-lp-pred fn-asx-lp-snoc fn-asx-lp-zero)))
+           ("Subgoal *1/1" :use ((:instance fn-asx-mc-step (fuel (+ (fn-asx-cc key (fn-article-msgid (car rem)) at) extra)))
+                                 (:instance fn-asx-prefix-equalp-full (a key) (b (fn-article-msgid (car rem))) (at (length key)))))
+           ("Subgoal *1/2" :use ((:instance fn-asx-mc-step (fuel (+ (fn-asx-cc key (fn-article-msgid (car rem)) at) extra)))
+                                 (:instance fn-asx-prefix-equalp-full (a key) (b (fn-article-msgid (car rem))) (at (length key)))))
+           ("Subgoal *1/3" :use ((:instance fn-asx-mc-step (fuel (+ (fn-asx-cc key (fn-article-msgid (car rem)) at) extra)))
+                                 (:instance fn-asx-prefix-equalp-full (a key) (b (fn-article-msgid (car rem))) (at (length key)))))
+           ("Subgoal *1/4" :use ((:instance fn-asx-mc-step (fuel (+ (fn-asx-cc key (fn-article-msgid (car rem)) at) extra)))
+                                 (:instance fn-asx-prefix-equalp-full (a key) (b (fn-article-msgid (car rem))) (at (length key)))))
+           ("Subgoal *1/5" :use ((:instance fn-asx-mc-step (fuel (+ (fn-asx-cc key (fn-article-msgid (car rem)) at) extra)))
+                                 (:instance fn-asx-prefix-equalp-full (a key) (b (fn-article-msgid (car rem))) (at (length key)))))
+           ("Subgoal *1/6" :use ((:instance fn-asx-mc-step (fuel (+ (fn-asx-cc key (fn-article-msgid (car rem)) at) extra)))
+                                 (:instance fn-asx-prefix-equalp-full (a key) (b (fn-article-msgid (car rem))) (at (length key))))))))
+(local
+ (defthm fn-asx-msgid-walk-from
+   (implies (and (stringp key) (natp extra))
+            (equal (fn-ast-select-step (fn-asx-mn group key rem) (+ (fn-asx-nc key rem) extra))
+                   (fn-ast-select-step (fn-asx-mtarget group key rem) extra)))
+   :hints (("Goal" :induct (fn-asx-nc key rem)
+                   :in-theory (e/d (fn-asx-nc fn-asx-cres)
+                                   (fn-ast-select-step fn-asx-mc fn-asx-mn fn-asx-prefix-equalp
+                                    fn-ast-msgid-local-start fn-asx-mtarget fn-asx-cc)))
+           ("Subgoal *1/1" :use ((:instance fn-asx-mn-step (fuel (+ (fn-asx-nc key rem) extra)))
+                                 (:instance fn-asx-compare (at 0) (extra (+ extra (if (equal key (fn-article-msgid (car rem))) 0 (fn-asx-nc key (cdr rem))))))
+                                 (:instance fn-asx-mtarget-cdr) (:instance fn-asx-mtarget-car)))
+           ("Subgoal *1/2" :use ((:instance fn-asx-mn-step (fuel (+ (fn-asx-nc key rem) extra)))
+                                 (:instance fn-asx-compare (at 0) (extra (+ extra (if (equal key (fn-article-msgid (car rem))) 0 (fn-asx-nc key (cdr rem))))))
+                                 (:instance fn-asx-mtarget-cdr) (:instance fn-asx-mtarget-car)))
+           ("Subgoal *1/3" :use ((:instance fn-asx-mn-step (fuel (+ (fn-asx-nc key rem) extra)))
+                                 (:instance fn-asx-compare (at 0) (extra (+ extra (if (equal key (fn-article-msgid (car rem))) 0 (fn-asx-nc key (cdr rem))))))
+                                 (:instance fn-asx-mtarget-cdr) (:instance fn-asx-mtarget-car)))
+           ("Subgoal *1/4" :use ((:instance fn-asx-mn-step (fuel (+ (fn-asx-nc key rem) extra)))
+                                 (:instance fn-asx-compare (at 0) (extra (+ extra (if (equal key (fn-article-msgid (car rem))) 0 (fn-asx-nc key (cdr rem))))))
+                                 (:instance fn-asx-mtarget-cdr) (:instance fn-asx-mtarget-car))))))
+
+; KEYSTONE: the Message-ID selection walk over an archive list, run with the work
+; (fn-asx-nc) it needs, is the walk from the state the first matching article
+; names, which is where the catalog's Message-ID column starts the selection.
+(defthm fn-asx-msgid-walk-is-lookup
+  (implies (and (stringp key) (natp fuel) (<= (fn-asx-nc key rem) fuel))
+           (equal (fn-ast-select-step
+                   (fn-ast-select-state :msgid group key rem nil nil nil 0 :msgid-next) fuel)
+                  (fn-ast-select-step
+                   (let ((article (fn-find-article key rem)))
+                     (if (consp article)
+                         (fn-ast-msgid-local-start group article)
+                       (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing)))
+                   (- fuel (fn-asx-nc key rem)))))
+  :hints (("Goal" :use ((:instance fn-asx-msgid-walk-from (extra (- fuel (fn-asx-nc key rem)))))
+                  :in-theory (e/d (fn-asx-mn fn-asx-mtarget)
+                                  (fn-asx-msgid-walk-from fn-ast-select-step fn-asx-nc)))))
