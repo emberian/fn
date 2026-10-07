@@ -1213,8 +1213,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
                   toolchain_identity: str | None = None,
                   dependencies_only: bool = False,
                   acl2: Path | None = None,
-                  pair_checker=None,
-                  prefer_origins: dict[str, str] | None = None) -> list[ArtifactSet]:
+                  pair_checker=None) -> list[ArtifactSet]:
     """Candidate whole sets for ``roots``, ordered by usable coverage.
 
     Grouping is by origin *and* toolchain. Closure keys bind entries to target
@@ -1222,15 +1221,6 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     actual certificate post-alists. Missing toolchain metadata remains visible
     only when no toolchain was requested; deployment supplies its identity.
 
-    The composed set starts its search from each book's newest pair, unless
-    PREFER_ORIGINS (book -> origin root) names the origin to start from: a
-    run tree passes the pairs its own certify composed and certified on
-    (proof_artifacts.certified_origins).  Without it the composed set follows
-    whatever was published last, so a pair another tree published between a
-    certify and its acquire (same source bytes, a different dependency
-    certificate) displaces the pair this tree certified against, and the
-    greedy search drops its parents (attach-order gate, 2026-10-07:
-    1173/1173 at the first enumeration, 1159/1173 at the next).
     """
     needed = required_closure(root, roots, dependencies_only)
     required = tuple(sorted(needed))
@@ -1290,15 +1280,12 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
                     root, {name: [entry] for name, entry in candidate.entries.items()},
                     acl2, pair_checker)
     for toolchain_id, (toolchain, by_book) in pooled.items():
-        preferred = prefer_origins or {}
-        ordered = {name: sorted(entries, key=lambda entry, name=name: (
-            preferred.get(name) is not None
-            and str(entry[1].get("origin_root", "")) == preferred[name],
+        ordered = {name: sorted(entries, key=lambda entry: (
             str(entry[1].get("published_at", "")), str(entry[0])), reverse=True)
                    for name, entries in by_book.items()}
         chosen = (compatible_partial_choices(root, ordered, acl2, pair_checker)
                   if acl2 is not None else
-                  {name: entries[0] for name, entries in ordered.items()})
+                  {name: newest(entries) for name, entries in by_book.items()})
         origins = {str(meta.get("origin_root", "")) for _, meta in chosen.values()}
         if len(origins) < 2 and (acl2 is None or any(
                 candidate.complete and candidate.entries == chosen
@@ -1371,7 +1358,6 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          dependencies_only: bool = False,
                          acl2: Path | None = None,
                          pair_checker=None,
-                         prefer_origins: dict[str, str] | None = None,
                          candidate: ArtifactSet | None = None,
                          _attempt: int = 0) -> Report:
     """Install one complete set: one origin when one suffices, else composed.
@@ -1402,7 +1388,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         return report
     candidates = ([candidate] if candidate is not None else artifact_sets(
                       root, cache, roots, toolchain_identity,
-                      dependencies_only, acl2, pair_checker, prefer_origins))
+                      dependencies_only, acl2, pair_checker))
     candidates = [one for one in candidates
                   if one.identity not in rejected
                   and (require_origin is None
@@ -1460,7 +1446,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         return install_artifact_set(root, cache, roots, toolchain_identity,
                                     reject, require_origin, purge_on_miss,
                                     dependencies_only, acl2, pair_checker,
-                                    prefer_origins, candidate, _attempt + 1)
+                                    candidate=candidate, _attempt=_attempt + 1)
     return report
 
 

@@ -11,7 +11,6 @@ set is tried.
 from __future__ import annotations
 
 import argparse
-import json
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
@@ -242,36 +241,6 @@ def describe_candidates(root: Path, cache: Path, candidates, toolchain: str | No
     return lines
 
 
-def certified_origins(root: Path) -> dict[str, str]:
-    """Book -> the origin of the pair this tree's last passed certify ran on.
-
-    An incremental certify (tools/certify_books.py) installs cached pairs
-    from many origins and certifies the rest here; its manifest records
-    both (`installed_books`: book -> origin root; `book_results`: the books
-    certified in TREE).  That combination is the one ACL2 just certified
-    against, so acquire starts its composed set there rather than at the
-    newest pairs other trees have published since.  The newest manifest
-    whose `tree` is ROOT and whose status is `passed` counts; none, {}.
-    """
-    target = str(root.resolve())
-    manifests = sorted((root / "build" / "acl2").glob("certify-*/manifest.json"),
-                       reverse=True)
-    for path in manifests:
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if data.get("tree") != target or data.get("status") != "passed":
-            continue
-        origins = {str(name): str(origin) for name, origin
-                   in (data.get("installed_books") or {}).items()}
-        for name, result in (data.get("book_results") or {}).items():
-            if result == "passed":
-                origins[str(name)] = target
-        return origins
-    return {}
-
-
 def acquire(root: Path, cache: Path, acl2: Path, profile: str,
             timeout: int = 1800, run=subprocess.run,
             load_acl2: Path | None = None) -> Acquisition:
@@ -289,9 +258,7 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
             False, profile, roots,
             reason="unqualified ACL2 launcher/core/runtime: " + fingerprint.reason)
     toolchain = fingerprint.identity
-    preferred = certified_origins(root)
-    candidates = certs.artifact_sets(root, cache, roots, toolchain, acl2=acl2,
-                                     prefer_origins=preferred)
+    candidates = certs.artifact_sets(root, cache, roots, toolchain, acl2=acl2)
     rejected: list[str] = []
     attempts: list[str] = []
     tried: dict[str, str] = {}

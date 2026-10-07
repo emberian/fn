@@ -205,28 +205,6 @@ class AcquisitionTests(unittest.TestCase):
         self.assertTrue(result.ok, (result.reason, result.considered))
         self.assertEqual(len(calls), 1)
 
-    def test_certified_origins_reads_the_trees_last_passed_certify(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory).resolve()
-            runs = root / "build" / "acl2"
-
-            def manifest(run, **data):
-                (runs / run).mkdir(parents=True)
-                (runs / run / "manifest.json").write_text(json.dumps(data))
-            manifest("certify-20261007T090000Z-1", tree=str(root), status="passed",
-                     installed_books={"books/base": "/farm/old"},
-                     book_results={"books/mid": "passed"})
-            manifest("certify-20261007T094300Z-2", tree=str(root), status="passed",
-                     installed_books={"books/base": "/farm/run-1"},
-                     book_results={"books/mid": "passed", "books/top": "failed"})
-            manifest("certify-20261007T100000Z-3", tree=str(root), status="failed",
-                     installed_books={"books/base": "/farm/later"}, book_results={})
-            manifest("certify-20261007T110000Z-4", tree="/elsewhere", status="passed",
-                     installed_books={"books/base": "/farm/other"}, book_results={})
-            self.assertEqual(proof_artifacts.certified_origins(root),
-                             {"books/base": "/farm/run-1", "books/mid": str(root)})
-            self.assertEqual(proof_artifacts.certified_origins(root / "none"), {})
-
     def test_books_in_no_set_are_named_with_their_cache_story(self):
         from types import SimpleNamespace
         partial = SimpleNamespace(identity="a" * 64, origin_root="/farm/run-9",
