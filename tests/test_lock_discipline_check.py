@@ -2585,3 +2585,75 @@ class R1bBindingOnlySpecial(unittest.TestCase):
     def test_a_non_nil_initial_value_refuses_the_row(self):
         with self.assertRaises(ValueError):
             self.run_with(self.SRC.replace("(defvar *fnn-bo-deferred* nil)", "(defvar *fnn-bo-deferred* (list :g))"), self.ROW)
+
+
+class R7EscalationLoop(unittest.TestCase):
+    """A let tail (dolist (X (nreverse V)) (WRAPPER (lambda () (CLASSIFIER .. X ..)) ..))
+    escalates every condition the handler captured into V; the wrapper row is
+    verified against its source."""
+
+    WRAPPER = """
+(defun fnn-owner-install-or-end (install original label)
+  (handler-case (funcall install)
+    (serious-condition (failure)
+      (let ((code 4)) (fnn-exit code)))))
+(defun fnn-owner-thread-escape (service condition label) (list service condition label))
+"""
+    ACTOR = """
+(defun fnn-actor (s items)
+  (let ((conditions nil))
+    (dolist (item items)
+      (handler-case (fnn-fault "x")
+        (serious-condition (c) (push c conditions))))
+    %s
+    nil))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s nil)) :name "t"))
+"""
+    GOOD = """(dolist (c (nreverse conditions))
+      (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s c "x")) c "x"))"""
+
+    def swallow(self, tail, wrapper=None, rows=None):
+        src = (self.WRAPPER if wrapper is None else wrapper) + self.ACTOR % tail
+        raw = dict(CONTRACTS.raw, escalation_wrappers=CONTRACTS.raw.get("escalation_wrappers", {}) if rows is None else rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f for f in checker.run({"R7"}) if f.function == "fnn-actor" and f.key.startswith("swallow")]
+
+    def test_the_escalation_loop_is_recognised(self):
+        self.assertEqual(self.swallow(self.GOOD), [])
+
+    def test_without_the_loop_the_capture_is_a_swallow(self):
+        self.assertTrue(self.swallow('(fnn-out "x")'))
+
+    def test_a_loop_that_only_logs_is_not_an_escalation(self):
+        self.assertTrue(self.swallow('(dolist (c (nreverse conditions)) (fnn-err "x" c))'))
+
+    def test_a_closure_that_calls_no_classifier_is_not(self):
+        self.assertTrue(self.swallow("""(dolist (c (nreverse conditions))
+      (fnn-owner-install-or-end (lambda () (fnn-err "x" c)) c "x"))"""))
+
+    def test_a_classifier_given_another_variable_is_not(self):
+        self.assertTrue(self.swallow("""(dolist (c (nreverse conditions))
+      (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s items "x")) c "x"))"""))
+
+    def test_a_loop_over_another_list_is_not(self):
+        self.assertTrue(self.swallow("""(dolist (c items)
+      (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s c "x")) c "x"))"""))
+
+    def test_a_return_inside_the_loop_is_not(self):
+        self.assertTrue(self.swallow("""(dolist (c (nreverse conditions))
+      (when c (return-from fnn-actor nil))
+      (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s c "x")) c "x"))"""))
+
+    def test_a_wrapper_that_swallows_its_own_failure_is_refused(self):
+        bad = self.WRAPPER.replace("(let ((code 4)) (fnn-exit code))", "nil")
+        rows = {"fnn-owner-install-or-end": {"param": "install", "why": "t"}}
+        with self.assertRaises(ValueError):
+            self.swallow(self.GOOD, wrapper=bad, rows=rows)
+
+    def test_a_verified_wrapper_row_is_accepted(self):
+        rows = {"fnn-owner-install-or-end": {"param": "install", "why": "t"}}
+        self.assertEqual(self.swallow(self.GOOD, rows=rows), [])

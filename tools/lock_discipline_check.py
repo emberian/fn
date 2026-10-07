@@ -1567,6 +1567,13 @@ class Analyzer:
         # recorded failure, and signals otherwise: terminal like a fence call
         fences = set(self.c.raw.get("fence_functions", [])) | set(self.c.raw.get("dominated_escape_functions", {}))
         last = body[-1]
+        # a constant NIL after the escalation loop is its value, not a form
+        # that can leave the body
+        if (isinstance(last, Sym) and str(last).lower() == "nil" and len(body) > 1
+                and isinstance(body[-2], list) and head(body[-2]) == "dolist"):
+            return self._deferred_dolist_vars(names, body[:-2], body[-2])
+        if isinstance(last, list) and head(last) == "dolist":
+            return self._deferred_dolist_vars(names, body[:-1], last)
         if isinstance(last, list) and head(last) == "unwind-protect" and len(last) > 2:
             tail, between = last[-1], list(body[:-1]) + list(last[2:-1])
         else:
@@ -1593,6 +1600,62 @@ class Analyzer:
                     and isinstance(f[2], Sym) and str(f[2]) == "nil":
                 return set()
         return {var}
+
+    def _deferred_dolist_vars(self, names, between, loop) -> set:
+        """The let tail is (dolist (X V) ESCALATE) or (dolist (X (nreverse V))
+        ESCALATE) over the captured conditions V: every captured condition is
+        visited (nothing in the loop or before it leaves the body, V is never
+        reset), and each visit makes one terminal escalation of X: a
+        fence/dominated-escape call, or an escalation wrapper
+        (contract escalation_wrappers, verified) whose closure is
+        (lambda () (CLASSIFIER ... X ...)) with CLASSIFIER a
+        classifying_escape_function."""
+        spec = loop[1] if len(loop) > 1 else None
+        if not (isinstance(spec, list) and len(spec) == 2 and isinstance(spec[0], Sym)):
+            return set()
+        x = str(spec[0])
+        src = spec[1]
+        if isinstance(src, list) and head(src) in ("nreverse", "reverse") and len(src) == 2:
+            src = src[1]
+        if not (isinstance(src, Sym) and str(src) in names):
+            return set()
+        var = str(src)
+        body = loop[2:]
+        if len(body) != 1 or self._has_exit(body) or self._has_exit(between):
+            return set()
+        fences = set(self.c.raw.get("fence_functions", [])) | set(self.c.raw.get("dominated_escape_functions", {}))
+        if not self._terminal_escalation(body[0], x, fences):
+            return set()
+        for f in self._flat_forms(list(between) + list(body)):
+            if head(f) in ("setq", "setf") and len(f) == 3 and sym(f[1]) == var \
+                    and isinstance(f[2], Sym) and str(f[2]) == "nil":
+                return set()
+        return {var}
+
+    def _terminal_escalation(self, form, x, fences) -> bool:
+        if not isinstance(form, list) or not form:
+            return False
+        h = head(form)
+        if h in fences:
+            return True
+        wrappers = self._wrappers()
+        if h in wrappers:
+            # the wrapper's closure argument is the form's first argument
+            clo = form[1] if len(form) > 1 else None
+            if not (isinstance(clo, list) and head(clo) == "lambda" and len(clo) == 3
+                    and clo[1] == []):
+                return False
+            call = clo[2]
+            classifiers = set(self.c.raw.get("classifying_escape_functions", {}))
+            return (isinstance(call, list) and head(call) in classifiers
+                    and any(isinstance(a, Sym) and str(a) == x for a in call[1:]))
+        return False
+
+    def _wrappers(self) -> dict:
+        w = getattr(self, "_wrappers_cache", None)
+        if w is None:
+            w = self._wrappers_cache = verified_escalation_wrappers(self.tree, self.c)
+        return w
 
     @staticmethod
     def _flat_forms(forms):
@@ -2643,6 +2706,65 @@ def _call_forms(forms, name):
             if head(f) == name:
                 out.append(f)
             stack.extend(f)
+    return out
+
+
+def _ends_in_fence(form, fences) -> bool:
+    """FORM always finishes by calling a fence function: a fence call, or a
+    let/let*/progn whose last form does, or an if whose two arms both do."""
+    if not isinstance(form, list) or not form:
+        return False
+    h = head(form)
+    if h in fences:
+        return True
+    if h in ("let", "let*") and len(form) > 2:
+        return _ends_in_fence(form[-1], fences)
+    if h == "progn" and len(form) > 1:
+        return _ends_in_fence(form[-1], fences)
+    if h == "if" and len(form) == 4:
+        return _ends_in_fence(form[2], fences) and _ends_in_fence(form[3], fences)
+    return False
+
+
+def verified_escalation_wrappers(tree, contracts) -> dict:
+    """contracts `escalation_wrappers': {FUNCTION: {"param": P, "why"}}.
+
+    FUNCTION runs the escalation closure its parameter P names and, when that
+    closure itself signals, ends the process: its body's final form is a
+    (handler-case (funcall P) ... (serious-condition (V) ... FENCE)) whose
+    serious-condition clause ends in a fence function call (fence_functions),
+    and P is the only thing the protected form calls.  A call to FUNCTION whose
+    P argument is (lambda () (CLASSIFIER ... X ...)) with CLASSIFIER a
+    classifying_escape_function therefore escalates X or ends the process.
+    """
+    rows = contracts.raw.get("escalation_wrappers", {})
+    fences = set(contracts.raw.get("fence_functions", []))
+    out = {}
+    for name, row in rows.items():
+        where = f"escalation_wrappers {name}"
+        if name not in tree.defs:
+            continue    # a row for a function this tree does not define exempts nothing
+        if not row.get("why") or not row.get("param"):
+            raise ValueError(f"{where}: no why/param")
+        d = tree.defs[name]
+        param = row["param"]
+        if param not in lambda_params(d.params):
+            raise ValueError(f"{where}: {param} is not a parameter")
+        last = d.body[-1] if d.body else None
+        if not (isinstance(last, list) and head(last) == "handler-case" and len(last) > 2):
+            raise ValueError(f"{where}: its final form is not a handler-case")
+        protected = last[1]
+        if not (isinstance(protected, list) and head(protected) == "funcall" and len(protected) == 2
+                and isinstance(protected[1], Sym) and str(protected[1]) == param):
+            raise ValueError(f"{where}: the handler-case does not protect exactly (funcall {param})")
+        clauses = last[2:]
+        if len(clauses) != 1 or not (isinstance(clauses[0], list) and clauses[0]
+                                      and isinstance(clauses[0][0], Sym)
+                                      and str(clauses[0][0]) == "serious-condition"):
+            raise ValueError(f"{where}: its only clause is not serious-condition")
+        if not _ends_in_fence(clauses[0][-1], fences):
+            raise ValueError(f"{where}: its serious-condition clause does not end in a fence function")
+        out[name] = row
     return out
 
 

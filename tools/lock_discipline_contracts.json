@@ -934,6 +934,12 @@
   "fnn-app-journal-close": "the application journal's lock fd (fnn-app-journal-lock-fd), consumed here before the close (workflow.lisp:34); unlocked and closed once, custody of an ambiguous return retained via fnn-app-retain-close-debt"
  },
  "unlocked_publication": {},
+ "escalation_wrappers": {
+  "fnn-owner-install-or-end": {
+   "param": "install",
+   "why": "host/native/owner.lisp: runs the off-mutex escalation closure it is given and, when that closure signals, ends the process with ACL2's exit code (fnn-exit). The checker verifies the body ends in (handler-case (funcall install) (serious-condition ... fnn-exit)); a caller's closure must call a classifying_escape_function on the condition it escalates (checked at the escalation loop of fnn-mux-close-wake)."
+  }
+ },
  "binding_only_specials": {
   "*fnn-owner-deferred*": "host/native/owner.lisp: the commit quantum's deferred list. It is bound only by let (fnn-owner-commit-start-locked, the next-batch seal in fnn-owner-commit-complete) to a fresh list; the checker verifies that no host form assigns the symbol, that its defvar value is NIL, and that every rebinding is a lexical variable or a list. Outside a quantum it is the constant NIL, so fnn-owner-log, fnn-owner-line-after-barrier and fnn-owner-feed-flush-after-barrier take their direct branch there (the open's key-statement recovery, an offline command)."
  },
