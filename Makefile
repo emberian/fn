@@ -297,6 +297,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defrecord-tests \
 	books/def-loop \
 	tests/acl2/def-loop-tests \
+	books/def-buffer \
+	tests/acl2/def-buffer-tests \
 	books/def-representation-lib \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
