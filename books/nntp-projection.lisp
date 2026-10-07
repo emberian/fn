@@ -4,6 +4,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-session")
+(include-book "def-loop")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -406,26 +407,9 @@
                 (consp (fn-nntp-available-article group value articles))))
   :rule-classes nil)
 
-(defun fn-nntp-number-lines-loop (numbers acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp numbers)
-      (fn-nntp-number-lines-loop (cdr numbers)
-                                 (cons (fn-nntp-decimal-field (car numbers)) acc))
-    (revappend acc nil)))
-
-(defun fn-nntp-number-lines (numbers)
-  (mbe :logic
-       (if (consp numbers)
-           (cons (fn-nntp-decimal-field (car numbers))
-                 (fn-nntp-number-lines (cdr numbers)))
-         nil)
-       :exec (fn-nntp-number-lines-loop numbers nil)))
-
-(local
- (defthm fn-nntp-number-lines-loop-is-revappend
-   (equal (fn-nntp-number-lines-loop numbers acc)
-          (revappend acc (fn-nntp-number-lines numbers)))
-   :hints (("Goal" :in-theory (disable fn-nntp-decimal-field)))))
+(def-loop fn-nntp-number-lines (numbers)
+  :shape :map :over numbers :elt n
+  :body (fn-nntp-decimal-field n))
 
 (defun fn-nntp-group-summary (archive group)
   (let ((low (fn-nntp-group-low group (fn-state-articles archive))))
@@ -571,12 +555,6 @@
 (verify-guards fn-nntp-group-range-numbers
   :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ng-less-equal fn-nntp-insert-number fn-ag-rev-onto)
                   :use ((:instance fn-nntp-group-range-numbers-loop-of-rev-onto (xs articles) (zs nil))))))
-
-(verify-guards fn-nntp-number-lines-loop)
-
-(verify-guards fn-nntp-number-lines
-  :hints (("Goal" :in-theory (disable fn-nntp-decimal-field fn-nntp-number-lines-loop)
-                  :use ((:instance fn-nntp-number-lines-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nntp-group-summary)
 

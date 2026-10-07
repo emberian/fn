@@ -15,6 +15,7 @@
 (include-book "native-config")
 (include-book "nntp-auth")
 (include-book "identity")
+(include-book "def-loop")
 
 ; D27, PRF-102.  The number of credentials is the operator's: the store
 ; profile's `max-credentials' (books/byte-store-frame.lisp field 12,
@@ -91,35 +92,10 @@
        (equal (nth (- (len xs) 2) xs) a)
        (equal (nth (1- (len xs)) xs) b)))
 
-(defun fn-native-auth-butlast-two-loop (xs acc)
-  (declare (xargs :guard t))
-  (if (and (consp xs) (consp (cdr xs)) (consp (cdr (cdr xs))))
-      (fn-native-auth-butlast-two-loop (cdr xs) (cons (car xs) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-native-auth-butlast-two (xs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (and (consp xs) (consp (cdr xs)) (consp (cdr (cdr xs))))
-                  (cons (car xs) (fn-native-auth-butlast-two (cdr xs)))
-                nil)
-       :exec (fn-native-auth-butlast-two-loop xs nil)))
-
-(defthm fn-native-auth-butlast-two-loop-is-rev-onto
-  (equal (fn-native-auth-butlast-two-loop xs acc)
-         (fn-ag-rev-onto acc (fn-native-auth-butlast-two xs)))
-  :hints (("Goal" :induct (fn-native-auth-butlast-two-loop xs acc)
-                  :in-theory (union-theories
-                              '(fn-native-auth-butlast-two-loop
-                                fn-native-auth-butlast-two
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-native-auth-butlast-two
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-native-auth-butlast-two fn-ag-rev-onto
-                                fn-native-auth-butlast-two-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-native-auth-butlast-two (xs)
+  :shape :map :over xs
+  :while (and (consp (cdr xs)) (consp (cdr (cdr xs))))
+  :body (car xs))
 
 (defun fn-native-auth-login-namep (name)
   ; The canonical writer emits NAME through bin/fn's toml_quote: an NNTP

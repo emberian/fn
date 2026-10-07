@@ -33,6 +33,7 @@
 (include-book "clock-unit")
 (include-book "defevent") ; the delta kinds' stable codes, one form
 (include-book "peer-adoption-receipt-rows")
+(include-book "def-loop")
 
 ; Nothing in this book opens the CBOR or record codec: every definition here
 ; is `:guard t', and the ground witnesses at the end are decided by
@@ -182,40 +183,12 @@
         (fn-cfg-row-lookup (cdr rows) a))
     nil))
 
-(defun fn-cfg-row-upsert-loop (rows row acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (and (equal (fn-cfg-row-a (car rows)) (fn-cfg-row-a row))
-               (equal (fn-cfg-row-b (car rows)) (fn-cfg-row-b row)))
-          (fn-ag-rev-onto acc (cons row (cdr rows)))
-        (fn-cfg-row-upsert-loop (cdr rows) row (cons (car rows) acc)))
-    (fn-ag-rev-onto acc (list row))))
-
-(defun fn-cfg-row-upsert (rows row)
-  ; Replace the first row with the same (a, b) key, else append.  Total.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (and (equal (fn-cfg-row-a (car rows)) (fn-cfg-row-a row))
-                    (equal (fn-cfg-row-b (car rows)) (fn-cfg-row-b row)))
-               (cons row (cdr rows))
-             (cons (car rows) (fn-cfg-row-upsert (cdr rows) row)))
-         (list row))
-       :exec (fn-cfg-row-upsert-loop rows row nil)))
-
-(defthm fn-cfg-row-upsert-loop-is-rev-onto
-  (equal (fn-cfg-row-upsert-loop rows row acc)
-         (fn-ag-rev-onto acc (fn-cfg-row-upsert rows row)))
-  :hints (("Goal" :induct (fn-cfg-row-upsert-loop rows row acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-row-upsert-loop fn-cfg-row-upsert fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-row-upsert
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-row-upsert fn-ag-rev-onto fn-cfg-row-upsert-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-row-upsert (rows row)
+  :shape :map :over rows :elt r
+  :stop (and (equal (fn-cfg-row-a r) (fn-cfg-row-a row))
+             (equal (fn-cfg-row-b r) (fn-cfg-row-b row)))
+  :stop-value (cons row (cdr rows)) :tail (list row)
+  :body r)
 
 ; A policy slot holds one value: replace the first row whose slot (row-a) is
 ; this row's, else append.  fn-cfg-policy reads the first row of a slot, so
@@ -225,37 +198,11 @@
 ; so the first value set stayed in force for good (found on hbox by lane
 ; path-and-login: `policy set posting-policy open' after `bound-logins' was
 ; accepted and changed nothing).
-(defun fn-cfg-row-replace-key-loop (rows row acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (equal (fn-cfg-row-a (car rows)) (fn-cfg-row-a row))
-          (fn-ag-rev-onto acc (cons row (cdr rows)))
-        (fn-cfg-row-replace-key-loop (cdr rows) row (cons (car rows) acc)))
-    (fn-ag-rev-onto acc (list row))))
-
-(defun fn-cfg-row-replace-key (rows row)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (equal (fn-cfg-row-a (car rows)) (fn-cfg-row-a row))
-               (cons row (cdr rows))
-             (cons (car rows) (fn-cfg-row-replace-key (cdr rows) row)))
-         (list row))
-       :exec (fn-cfg-row-replace-key-loop rows row nil)))
-
-(defthm fn-cfg-row-replace-key-loop-is-rev-onto
-  (equal (fn-cfg-row-replace-key-loop rows row acc)
-         (fn-ag-rev-onto acc (fn-cfg-row-replace-key rows row)))
-  :hints (("Goal" :induct (fn-cfg-row-replace-key-loop rows row acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-row-replace-key-loop fn-cfg-row-replace-key fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-row-replace-key
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-row-replace-key fn-ag-rev-onto fn-cfg-row-replace-key-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-row-replace-key (rows row)
+  :shape :map :over rows :elt r
+  :stop (equal (fn-cfg-row-a r) (fn-cfg-row-a row))
+  :stop-value (cons row (cdr rows)) :tail (list row)
+  :body r)
 
 ; The peer table is the peers row list keyed by row-a (the peer name); one
 ; peer is the group of rows sharing that key (specs/peering.md section 1.2,
@@ -267,71 +214,15 @@
 ; no row cap, PRF-171), so it executes by a loop (lane config-and-legacy,
 ; after peer-list-depth's twin in books/native-admin-peer-budget): the :logic
 ; is the recursion, unchanged; the :exec collects onto an accumulator.
-(defun fn-cfg-rows-with-key-loop (rows a acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-with-key-loop
-       (cdr rows) a
-       (if (equal (fn-cfg-row-a (car rows)) a) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
+(def-loop fn-cfg-rows-with-key (rows a)
+  :shape :map :over rows :elt r
+  :keep (equal (fn-cfg-row-a r) a)
+  :body r)
 
-(defun fn-cfg-rows-with-key (rows a)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (equal (fn-cfg-row-a (car rows)) a)
-               (cons (car rows) (fn-cfg-rows-with-key (cdr rows) a))
-             (fn-cfg-rows-with-key (cdr rows) a))
-         nil)
-       :exec (fn-cfg-rows-with-key-loop rows a nil)))
-
-(defthm fn-cfg-rows-with-key-loop-is-rev-onto
-  (equal (fn-cfg-rows-with-key-loop rows a acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-with-key rows a)))
-  :hints (("Goal" :induct (fn-cfg-rows-with-key-loop rows a acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-with-key-loop fn-cfg-rows-with-key
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-with-key
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-with-key
-                                fn-cfg-rows-with-key-loop-is-rev-onto
-                                fn-ag-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
-
-(defun fn-cfg-rows-without-key-loop (rows a acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-without-key-loop (cdr rows) a
-       (if (not (equal (fn-cfg-row-a (car rows)) a)) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-rows-without-key (rows a)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (equal (fn-cfg-row-a (car rows)) a)
-               (fn-cfg-rows-without-key (cdr rows) a)
-             (cons (car rows) (fn-cfg-rows-without-key (cdr rows) a)))
-         nil)
-       :exec (fn-cfg-rows-without-key-loop rows a nil)))
-
-(defthm fn-cfg-rows-without-key-loop-is-rev-onto
-  (equal (fn-cfg-rows-without-key-loop rows a acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-without-key rows a)))
-  :hints (("Goal" :induct (fn-cfg-rows-without-key-loop rows a acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-without-key-loop fn-cfg-rows-without-key fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-without-key
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-without-key fn-ag-rev-onto fn-cfg-rows-without-key-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-rows-without-key (rows a)
+  :shape :map :over rows :elt r
+  :keep (equal (fn-cfg-row-a r) a) :keep-order :skip-first
+  :body r)
 
 (defun fn-cfg-rows-keyed-p (rows a)
   (declare (xargs :guard t))
@@ -343,36 +234,10 @@
 ; The rows of ROWS that are not rows of DROP (exact equality).  The row
 ; arithmetic of the incremental peer deltas, :add-peer-rows and
 ; :remove-peer-rows (D27, PRF-171).
-(defun fn-cfg-rows-without-members-loop (rows drop acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-without-members-loop (cdr rows) drop
-       (if (not (member-equal (car rows) (if (true-listp drop) drop nil))) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-rows-without-members (rows drop)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (member-equal (car rows) (if (true-listp drop) drop nil))
-               (fn-cfg-rows-without-members (cdr rows) drop)
-             (cons (car rows) (fn-cfg-rows-without-members (cdr rows) drop)))
-         nil)
-       :exec (fn-cfg-rows-without-members-loop rows drop nil)))
-
-(defthm fn-cfg-rows-without-members-loop-is-rev-onto
-  (equal (fn-cfg-rows-without-members-loop rows drop acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-without-members rows drop)))
-  :hints (("Goal" :induct (fn-cfg-rows-without-members-loop rows drop acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-without-members-loop fn-cfg-rows-without-members fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-without-members
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-without-members fn-ag-rev-onto fn-cfg-rows-without-members-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-rows-without-members (rows drop)
+  :shape :map :over rows :elt r
+  :keep (member-equal r (if (true-listp drop) drop nil)) :keep-order :skip-first
+  :body r)
 
 ; Every row of XS is a row of YS.
 (defun fn-cfg-rows-within (xs ys)
@@ -547,39 +412,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cfg-group-all-names-loop (es acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp es)
-      (fn-cfg-group-all-names-loop (cdr es) (cons (fn-cfg-group-name (car es)) acc))
-    (revappend acc nil)))
-
-(defun fn-cfg-group-all-names (es)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp es)
-           (cons (fn-cfg-group-name (car es)) (fn-cfg-group-all-names (cdr es)))
-         nil)
-       :exec (fn-cfg-group-all-names-loop es nil)))
-
-(local
- (defthm fn-cfg-group-all-names-loop-is-revappend
-   (equal (fn-cfg-group-all-names-loop es acc)
-          (revappend acc (fn-cfg-group-all-names es)))
-   :hints (("Goal" :induct (fn-cfg-group-all-names-loop es acc)
-                   :in-theory (union-theories '(fn-cfg-group-all-names-loop fn-cfg-group-all-names revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cfg-group-all-names-loop)
-
-(verify-guards fn-cfg-group-all-names
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cfg-group-all-names)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cfg-group-all-names-loop-is-revappend (acc nil))))))
-
+(def-loop fn-cfg-group-all-names (es)
+  :shape :map :over es :elt e
+  :body (fn-cfg-group-name e))
 
 (defun fn-cfg-group-find (es name)
   (declare (xargs :guard t))
@@ -603,43 +438,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cfg-live-names-loop (es gen acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp es)
-      (if (fn-cfg-entry-livep (car es) gen)
-          (fn-cfg-live-names-loop (cdr es) gen (cons (fn-cfg-group-name (car es)) acc))
-        (fn-cfg-live-names-loop (cdr es) gen acc))
-    (revappend acc nil)))
-
-(defun fn-cfg-live-names (es gen)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp es)
-           (if (fn-cfg-entry-livep (car es) gen)
-               (cons (fn-cfg-group-name (car es)) (fn-cfg-live-names (cdr es) gen))
-             (fn-cfg-live-names (cdr es) gen))
-         nil)
-       :exec (fn-cfg-live-names-loop es gen nil)))
-
-(local
- (defthm fn-cfg-live-names-loop-is-revappend
-   (equal (fn-cfg-live-names-loop es gen acc)
-          (revappend acc (fn-cfg-live-names es gen)))
-   :hints (("Goal" :induct (fn-cfg-live-names-loop es gen acc)
-                   :in-theory (union-theories '(fn-cfg-live-names-loop fn-cfg-live-names revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cfg-live-names-loop)
-
-(verify-guards fn-cfg-live-names
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cfg-live-names)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cfg-live-names-loop-is-revappend (acc nil))))))
-
+(def-loop fn-cfg-live-names (es gen)
+  :shape :map :over es :elt e
+  :keep (fn-cfg-entry-livep e gen)
+  :body (fn-cfg-group-name e))
 
 ; -----------------------------------------------------------------------------
 ; The configuration value
@@ -1174,36 +976,10 @@
       "y")))
 
 ; The names among NAMES whose status in V at GEN is "n".
-(defun fn-cfg-closed-filter-loop (names v gen acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-cfg-closed-filter-loop (cdr names) v gen
-       (if (equal (fn-cfg-group-status v gen (car names)) "n") (cons (car names) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-closed-filter (names v gen)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (if (equal (fn-cfg-group-status v gen (car names)) "n")
-               (cons (car names) (fn-cfg-closed-filter (cdr names) v gen))
-             (fn-cfg-closed-filter (cdr names) v gen))
-         nil)
-       :exec (fn-cfg-closed-filter-loop names v gen nil)))
-
-(defthm fn-cfg-closed-filter-loop-is-rev-onto
-  (equal (fn-cfg-closed-filter-loop names v gen acc)
-         (fn-ag-rev-onto acc (fn-cfg-closed-filter names v gen)))
-  :hints (("Goal" :induct (fn-cfg-closed-filter-loop names v gen acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-closed-filter-loop fn-cfg-closed-filter fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-closed-filter
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-closed-filter fn-ag-rev-onto fn-cfg-closed-filter-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-closed-filter (names v gen)
+  :shape :map :over names :elt n
+  :keep (equal (fn-cfg-group-status v gen n) "n")
+  :body n)
 
 ; The live groups whose status is "n", in served-table order.
 (defun fn-cfg-closed-names (v gen)
@@ -1252,38 +1028,10 @@
           (fn-cfg-rows-have-pair (cdr rows) a b))
     nil))
 
-(defun fn-cfg-rows-without-pair-loop (rows a b acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-without-pair-loop (cdr rows) a b
-       (if (not (and (equal (fn-cfg-row-a (car rows)) a)
-                 (equal (fn-cfg-row-b (car rows)) b))) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-rows-without-pair (rows a b)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (and (equal (fn-cfg-row-a (car rows)) a)
-                    (equal (fn-cfg-row-b (car rows)) b))
-               (fn-cfg-rows-without-pair (cdr rows) a b)
-             (cons (car rows) (fn-cfg-rows-without-pair (cdr rows) a b)))
-         nil)
-       :exec (fn-cfg-rows-without-pair-loop rows a b nil)))
-
-(defthm fn-cfg-rows-without-pair-loop-is-rev-onto
-  (equal (fn-cfg-rows-without-pair-loop rows a b acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-without-pair rows a b)))
-  :hints (("Goal" :induct (fn-cfg-rows-without-pair-loop rows a b acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-without-pair-loop fn-cfg-rows-without-pair fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-without-pair
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-without-pair fn-ag-rev-onto fn-cfg-rows-without-pair-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-rows-without-pair (rows a b)
+  :shape :map :over rows :elt r
+  :keep (and (equal (fn-cfg-row-a r) a) (equal (fn-cfg-row-b r) b)) :keep-order :skip-first
+  :body r)
 
 (defun fn-cfg-grant-control (namespace principal verb)
   (declare (xargs :guard t))
@@ -1513,41 +1261,12 @@
   (declare (xargs :guard t))
   (equal (fn-cfg-row-n row) 2))
 
-(defun fn-cfg-rows-without-binding-loop (rows login acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-without-binding-loop (cdr rows) login
-       (if (not (and (fn-cfg-binding-rowp (car rows))
-                 (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
-                        (fn-record-string-octets login)))) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-rows-without-binding (rows login)
-  ; ROWS less every binding row whose login spells LOGIN's octets.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (and (fn-cfg-binding-rowp (car rows))
-                    (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
-                           (fn-record-string-octets login)))
-               (fn-cfg-rows-without-binding (cdr rows) login)
-             (cons (car rows) (fn-cfg-rows-without-binding (cdr rows) login)))
-         nil)
-       :exec (fn-cfg-rows-without-binding-loop rows login nil)))
-
-(defthm fn-cfg-rows-without-binding-loop-is-rev-onto
-  (equal (fn-cfg-rows-without-binding-loop rows login acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-without-binding rows login)))
-  :hints (("Goal" :induct (fn-cfg-rows-without-binding-loop rows login acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-without-binding-loop fn-cfg-rows-without-binding fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-without-binding
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-without-binding fn-ag-rev-onto fn-cfg-rows-without-binding-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-rows-without-binding (rows login)
+  :shape :map :over rows :elt r
+  :keep (and (fn-cfg-binding-rowp r)
+             (equal (fn-record-string-octets (fn-cfg-row-a r)) (fn-record-string-octets login)))
+  :keep-order :skip-first
+  :body r)
 
 (defun fn-cfg-login-binding-reason (d)
   (declare (xargs :guard t))
@@ -1595,41 +1314,12 @@
   (declare (xargs :guard t))
   (equal (fn-cfg-row-n row) 3))
 
-(defun fn-cfg-rows-without-access-loop (rows login acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-without-access-loop (cdr rows) login
-       (if (not (and (fn-cfg-access-rowp (car rows))
-                 (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
-                        (fn-record-string-octets login)))) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-rows-without-access (rows login)
-  ; ROWS less every access row whose login spells LOGIN's octets.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (and (fn-cfg-access-rowp (car rows))
-                    (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
-                           (fn-record-string-octets login)))
-               (fn-cfg-rows-without-access (cdr rows) login)
-             (cons (car rows) (fn-cfg-rows-without-access (cdr rows) login)))
-         nil)
-       :exec (fn-cfg-rows-without-access-loop rows login nil)))
-
-(defthm fn-cfg-rows-without-access-loop-is-rev-onto
-  (equal (fn-cfg-rows-without-access-loop rows login acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-without-access rows login)))
-  :hints (("Goal" :induct (fn-cfg-rows-without-access-loop rows login acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-without-access-loop fn-cfg-rows-without-access fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-without-access
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-without-access fn-ag-rev-onto fn-cfg-rows-without-access-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-rows-without-access (rows login)
+  :shape :map :over rows :elt r
+  :keep (and (fn-cfg-access-rowp r)
+             (equal (fn-record-string-octets (fn-cfg-row-a r)) (fn-record-string-octets login)))
+  :keep-order :skip-first
+  :body r)
 
 (defun fn-cfg-account-access-reason (d)
   (declare (xargs :guard t))
@@ -1648,36 +1338,10 @@
           (t nil))))
 
 ; The access rows of the slot, in slot order.
-(defun fn-cfg-access-table-loop (rows acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-access-table-loop (cdr rows)
-       (if (fn-cfg-access-rowp (car rows)) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-access-table (rows)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (fn-cfg-access-rowp (car rows))
-               (cons (car rows) (fn-cfg-access-table (cdr rows)))
-             (fn-cfg-access-table (cdr rows)))
-         nil)
-       :exec (fn-cfg-access-table-loop rows nil)))
-
-(defthm fn-cfg-access-table-loop-is-rev-onto
-  (equal (fn-cfg-access-table-loop rows acc)
-         (fn-ag-rev-onto acc (fn-cfg-access-table rows)))
-  :hints (("Goal" :induct (fn-cfg-access-table-loop rows acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-access-table-loop fn-cfg-access-table fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-access-table
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-access-table fn-ag-rev-onto fn-cfg-access-table-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-access-table (rows)
+  :shape :map :over rows :elt r
+  :keep (fn-cfg-access-rowp r)
+  :body r)
 
 ;; Consumer bindings (PRF-234, CNS-006; specs/consumer-progress.md "Bound
 ;; consumers").  The same slot holds one account binding per local consumer:
@@ -1716,41 +1380,12 @@
   (declare (xargs :guard t))
   (equal (fn-cfg-row-n row) 6))
 
-(defun fn-cfg-rows-without-consumer-bind-loop (rows name acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-without-consumer-bind-loop (cdr rows) name
-       (if (not (and (fn-cfg-consumer-bind-rowp (car rows))
-                 (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
-                        (fn-record-string-octets name)))) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-rows-without-consumer-bind (rows name)
-  ; ROWS less every consumer binding row whose name spells NAME's octets.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (and (fn-cfg-consumer-bind-rowp (car rows))
-                    (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
-                           (fn-record-string-octets name)))
-               (fn-cfg-rows-without-consumer-bind (cdr rows) name)
-             (cons (car rows) (fn-cfg-rows-without-consumer-bind (cdr rows) name)))
-         nil)
-       :exec (fn-cfg-rows-without-consumer-bind-loop rows name nil)))
-
-(defthm fn-cfg-rows-without-consumer-bind-loop-is-rev-onto
-  (equal (fn-cfg-rows-without-consumer-bind-loop rows name acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-without-consumer-bind rows name)))
-  :hints (("Goal" :induct (fn-cfg-rows-without-consumer-bind-loop rows name acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-without-consumer-bind-loop fn-cfg-rows-without-consumer-bind fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-without-consumer-bind
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-without-consumer-bind fn-ag-rev-onto fn-cfg-rows-without-consumer-bind-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-rows-without-consumer-bind (rows name)
+  :shape :map :over rows :elt r
+  :keep (and (fn-cfg-consumer-bind-rowp r)
+             (equal (fn-record-string-octets (fn-cfg-row-a r)) (fn-record-string-octets name)))
+  :keep-order :skip-first
+  :body r)
 
 (defun fn-cfg-consumer-bind-reason (d)
   (declare (xargs :guard t))
@@ -1827,42 +1462,11 @@
   (declare (xargs :guard t))
   (fn-cfg-row-make (fn-cfg-row-a row) (fn-cfg-row-b row) "" 7))
 
-(defun fn-cfg-rows-deleting-account-loop (rows login acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-deleting-account-loop (cdr rows) login
-       (cons (if (and (equal (fn-cfg-row-n (car rows)) 1)
-                (fn-cfg-same-login-p (fn-cfg-row-b (car rows)) login))
-           (fn-cfg-account-deleted-row (car rows))
-         (car rows)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-rows-deleting-account (rows login)
-  ; ROWS with every redeemed row holding LOGIN replaced by its tombstone.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (cons (if (and (equal (fn-cfg-row-n (car rows)) 1)
-                          (fn-cfg-same-login-p (fn-cfg-row-b (car rows)) login))
-                     (fn-cfg-account-deleted-row (car rows))
-                   (car rows))
-                 (fn-cfg-rows-deleting-account (cdr rows) login))
-         nil)
-       :exec (fn-cfg-rows-deleting-account-loop rows login nil)))
-
-(defthm fn-cfg-rows-deleting-account-loop-is-rev-onto
-  (equal (fn-cfg-rows-deleting-account-loop rows login acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-deleting-account rows login)))
-  :hints (("Goal" :induct (fn-cfg-rows-deleting-account-loop rows login acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-deleting-account-loop fn-cfg-rows-deleting-account fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-deleting-account
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-deleting-account fn-ag-rev-onto fn-cfg-rows-deleting-account-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-rows-deleting-account (rows login)
+  :shape :map :over rows :elt r
+  :body (if (and (equal (fn-cfg-row-n r) 1) (fn-cfg-same-login-p (fn-cfg-row-b r) login))
+            (fn-cfg-account-deleted-row r)
+          r))
 
 ; Whether a redeemed row or a tombstone holds LOGIN.
 (defun fn-cfg-account-heldp (rows login)
@@ -1949,35 +1553,9 @@
 ;; live group other than NAME that is not itself moderated, and NAME is not
 ;; the queue of another moderated group, so a forwarded article never lands
 ;; in a moderated group.
-(defun fn-cfg-moderator-rows-loop (name logins acc)
-  (declare (xargs :guard t))
-  (if (consp logins)
-      (fn-cfg-moderator-rows-loop name (cdr logins)
-       (cons (fn-cfg-row-make (car logins) name "" 4) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-moderator-rows (name logins)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp logins)
-           (cons (fn-cfg-row-make (car logins) name "" 4)
-                 (fn-cfg-moderator-rows name (cdr logins)))
-         nil)
-       :exec (fn-cfg-moderator-rows-loop name logins nil)))
-
-(defthm fn-cfg-moderator-rows-loop-is-rev-onto
-  (equal (fn-cfg-moderator-rows-loop name logins acc)
-         (fn-ag-rev-onto acc (fn-cfg-moderator-rows name logins)))
-  :hints (("Goal" :induct (fn-cfg-moderator-rows-loop name logins acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-moderator-rows-loop fn-cfg-moderator-rows fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-moderator-rows
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-moderator-rows fn-ag-rev-onto fn-cfg-moderator-rows-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-moderator-rows (name logins)
+  :shape :map :over logins :elt l
+  :body (fn-cfg-row-make l name "" 4))
 
 (defun fn-cfg-moderation-rows (name queue address logins)
   (declare (xargs :guard t))
@@ -2001,43 +1579,12 @@
   (declare (xargs :guard t))
   (equal (fn-cfg-row-n row) 4))
 
-(defun fn-cfg-rows-without-moderation-loop (rows name acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-rows-without-moderation-loop (cdr rows) name
-       (if (not (or (and (fn-cfg-moderation-rowp (car rows))
-                     (equal (fn-cfg-row-a (car rows)) name))
-                (and (fn-cfg-moderator-rowp (car rows))
-                     (equal (fn-cfg-row-b (car rows)) name)))) (cons (car rows) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-rows-without-moderation (rows name)
-  ; ROWS less NAME's moderation row and every moderator row of NAME.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (or (and (fn-cfg-moderation-rowp (car rows))
-                        (equal (fn-cfg-row-a (car rows)) name))
-                   (and (fn-cfg-moderator-rowp (car rows))
-                        (equal (fn-cfg-row-b (car rows)) name)))
-               (fn-cfg-rows-without-moderation (cdr rows) name)
-             (cons (car rows) (fn-cfg-rows-without-moderation (cdr rows) name)))
-         nil)
-       :exec (fn-cfg-rows-without-moderation-loop rows name nil)))
-
-(defthm fn-cfg-rows-without-moderation-loop-is-rev-onto
-  (equal (fn-cfg-rows-without-moderation-loop rows name acc)
-         (fn-ag-rev-onto acc (fn-cfg-rows-without-moderation rows name)))
-  :hints (("Goal" :induct (fn-cfg-rows-without-moderation-loop rows name acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-rows-without-moderation-loop fn-cfg-rows-without-moderation fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-rows-without-moderation
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-rows-without-moderation fn-ag-rev-onto fn-cfg-rows-without-moderation-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-rows-without-moderation (rows name)
+  :shape :map :over rows :elt r
+  :keep (or (and (fn-cfg-moderation-rowp r) (equal (fn-cfg-row-a r) name))
+            (and (fn-cfg-moderator-rowp r) (equal (fn-cfg-row-b r) name)))
+  :keep-order :skip-first
+  :body r)
 
 ; NAME's moderation row among ROWS, or nil.
 (defun fn-cfg-moderation-row (rows name)
@@ -2050,39 +1597,10 @@
     nil))
 
 ; The logins of NAME's moderator rows, in slot order.
-(defun fn-cfg-moderator-logins-loop (rows name acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-moderator-logins-loop (cdr rows) name
-       (if (and (fn-cfg-moderator-rowp (car rows))
-            (equal (fn-cfg-row-b (car rows)) name)) (cons (fn-cfg-row-a (car rows)) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-moderator-logins (rows name)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (and (fn-cfg-moderator-rowp (car rows))
-                    (equal (fn-cfg-row-b (car rows)) name))
-               (cons (fn-cfg-row-a (car rows))
-                     (fn-cfg-moderator-logins (cdr rows) name))
-             (fn-cfg-moderator-logins (cdr rows) name))
-         nil)
-       :exec (fn-cfg-moderator-logins-loop rows name nil)))
-
-(defthm fn-cfg-moderator-logins-loop-is-rev-onto
-  (equal (fn-cfg-moderator-logins-loop rows name acc)
-         (fn-ag-rev-onto acc (fn-cfg-moderator-logins rows name)))
-  :hints (("Goal" :induct (fn-cfg-moderator-logins-loop rows name acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-moderator-logins-loop fn-cfg-moderator-logins fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-moderator-logins
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-moderator-logins fn-ag-rev-onto fn-cfg-moderator-logins-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-moderator-logins (rows name)
+  :shape :map :over rows :elt r
+  :keep (and (fn-cfg-moderator-rowp r) (equal (fn-cfg-row-b r) name))
+  :body (fn-cfg-row-a r))
 
 ; Whether some moderation row other than NAME's own names NAME as its queue.
 (defun fn-cfg-queue-of-anotherp (rows name)
@@ -2095,34 +1613,9 @@
     nil))
 
 ; The logins a delta's moderator rows carry, in order.
-(defun fn-cfg-row-logins-loop (rows acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-cfg-row-logins-loop (cdr rows)
-       (cons (fn-cfg-row-a (car rows)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cfg-row-logins (rows)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (cons (fn-cfg-row-a (car rows)) (fn-cfg-row-logins (cdr rows)))
-         nil)
-       :exec (fn-cfg-row-logins-loop rows nil)))
-
-(defthm fn-cfg-row-logins-loop-is-rev-onto
-  (equal (fn-cfg-row-logins-loop rows acc)
-         (fn-ag-rev-onto acc (fn-cfg-row-logins rows)))
-  :hints (("Goal" :induct (fn-cfg-row-logins-loop rows acc)
-                  :in-theory (union-theories
-                              '(fn-cfg-row-logins-loop fn-cfg-row-logins fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cfg-row-logins
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cfg-row-logins fn-ag-rev-onto fn-cfg-row-logins-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cfg-row-logins (rows)
+  :shape :map :over rows :elt r
+  :body (fn-cfg-row-a r))
 
 (defun fn-cfg-moderator-loginsp (logins)
   (declare (xargs :guard t))
@@ -2350,208 +1843,47 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cfg-groups-create-loop (es gen stamp name policy acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp es)
-      (if (equal (fn-cfg-group-name (car es)) name)
-          (revappend acc
-                     (cons (fn-cfg-group-make name
-                                              gen
-                                              stamp
-                                              nil
-                                              policy
-                                              (fn-cfg-group-next (car es)))
-                           (cdr es)))
-        (fn-cfg-groups-create-loop (cdr es) gen stamp name policy (cons (car es) acc)))
-    (revappend acc (list (fn-cfg-group-make name gen stamp nil policy 0)))))
-
-(defun fn-cfg-groups-create (es gen stamp name policy)
-  ; Append, or revive in place keeping the retained watermark.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp es)
-           (if (equal (fn-cfg-group-name (car es)) name)
-               (cons (fn-cfg-group-make name gen stamp nil policy
-                                        (fn-cfg-group-next (car es)))
-                     (cdr es))
-             (cons (car es) (fn-cfg-groups-create (cdr es) gen stamp name policy)))
-         (list (fn-cfg-group-make name gen stamp nil policy 0)))
-       :exec (fn-cfg-groups-create-loop es gen stamp name policy nil)))
-
-(local
- (defthm fn-cfg-groups-create-loop-is-revappend
-   (equal (fn-cfg-groups-create-loop es gen stamp name policy acc)
-          (revappend acc (fn-cfg-groups-create es gen stamp name policy)))
-   :hints (("Goal" :induct (fn-cfg-groups-create-loop es gen stamp name policy acc)
-                   :in-theory (union-theories '(fn-cfg-groups-create-loop fn-cfg-groups-create revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cfg-groups-create-loop)
-
-(verify-guards fn-cfg-groups-create
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cfg-groups-create)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cfg-groups-create-loop-is-revappend (acc nil))))))
-
+(def-loop fn-cfg-groups-create (es gen stamp name policy)
+  :shape :map :over es :elt e
+  :stop (equal (fn-cfg-group-name e) name)
+  :stop-value (cons (fn-cfg-group-make name gen stamp nil policy (fn-cfg-group-next e)) (cdr es))
+  :tail (list (fn-cfg-group-make name gen stamp nil policy 0))
+  :body e)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cfg-groups-retire-loop (es gen name acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp es)
-      (if (equal (fn-cfg-group-name (car es)) name)
-          (revappend acc
-                     (cons (fn-cfg-group-make-with-authority name
-                                              (fn-cfg-group-created-gen (car es))
-                                              (fn-cfg-group-created-stamp (car es))
-                                              gen
-                                              (fn-cfg-group-policy-id (car es))
-                                              (fn-cfg-group-next (car es))
-                                        (fn-cfg-group-authority (car es))
-                                        (fn-cfg-group-authority-gen (car es)))
-                           (cdr es)))
-        (fn-cfg-groups-retire-loop (cdr es) gen name (cons (car es) acc)))
-    (revappend acc nil)))
-
-(defun fn-cfg-groups-retire (es gen name)
-  ; Set retired-gen.  The entry, its creation stamp and its watermark stay.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp es)
-           (if (equal (fn-cfg-group-name (car es)) name)
-               (cons (fn-cfg-group-make-with-authority name (fn-cfg-group-created-gen (car es))
-                                        (fn-cfg-group-created-stamp (car es))
-                                        gen (fn-cfg-group-policy-id (car es))
-                                        (fn-cfg-group-next (car es))
-                                        (fn-cfg-group-authority (car es))
-                                        (fn-cfg-group-authority-gen (car es)))
-                     (cdr es))
-             (cons (car es) (fn-cfg-groups-retire (cdr es) gen name)))
-         nil)
-       :exec (fn-cfg-groups-retire-loop es gen name nil)))
-
-(local
- (defthm fn-cfg-groups-retire-loop-is-revappend
-   (equal (fn-cfg-groups-retire-loop es gen name acc)
-          (revappend acc (fn-cfg-groups-retire es gen name)))
-   :hints (("Goal" :induct (fn-cfg-groups-retire-loop es gen name acc)
-                   :in-theory (union-theories '(fn-cfg-groups-retire-loop fn-cfg-groups-retire revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cfg-groups-retire-loop)
-
-(verify-guards fn-cfg-groups-retire
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cfg-groups-retire)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cfg-groups-retire-loop-is-revappend (acc nil))))))
-
+(def-loop fn-cfg-groups-retire (es gen name)
+  :shape :map :over es :elt e
+  :stop (equal (fn-cfg-group-name e) name)
+  :stop-value (cons (fn-cfg-group-make-with-authority name (fn-cfg-group-created-gen e)
+                      (fn-cfg-group-created-stamp e) gen (fn-cfg-group-policy-id e)
+                      (fn-cfg-group-next e) (fn-cfg-group-authority e)
+                      (fn-cfg-group-authority-gen e))
+                    (cdr es))
+  :body e)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cfg-groups-set-policy-loop (es name policy acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp es)
-      (if (equal (fn-cfg-group-name (car es)) name)
-          (revappend acc
-                     (cons (fn-cfg-group-make-with-authority name
-                                              (fn-cfg-group-created-gen (car es))
-                                              (fn-cfg-group-created-stamp (car es))
-                                              (fn-cfg-group-retired-gen (car es))
-                                              policy
-                                              (fn-cfg-group-next (car es))
-                                        (fn-cfg-group-authority (car es))
-                                        (fn-cfg-group-authority-gen (car es)))
-                           (cdr es)))
-        (fn-cfg-groups-set-policy-loop (cdr es) name policy (cons (car es) acc)))
-    (revappend acc nil)))
+(def-loop fn-cfg-groups-set-policy (es name policy)
+  :shape :map :over es :elt e
+  :stop (equal (fn-cfg-group-name e) name)
+  :stop-value (cons (fn-cfg-group-make-with-authority name (fn-cfg-group-created-gen e)
+                      (fn-cfg-group-created-stamp e) (fn-cfg-group-retired-gen e) policy
+                      (fn-cfg-group-next e) (fn-cfg-group-authority e)
+                      (fn-cfg-group-authority-gen e))
+                    (cdr es))
+  :body e)
 
-(defun fn-cfg-groups-set-policy (es name policy)
-  ; Rewrite the first entry named NAME's policy identifier.  Creation,
-  ; retirement and the watermark stay.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp es)
-           (if (equal (fn-cfg-group-name (car es)) name)
-               (cons (fn-cfg-group-make-with-authority name (fn-cfg-group-created-gen (car es))
-                                        (fn-cfg-group-created-stamp (car es))
-                                        (fn-cfg-group-retired-gen (car es))
-                                        policy
-                                        (fn-cfg-group-next (car es))
-                                        (fn-cfg-group-authority (car es))
-                                        (fn-cfg-group-authority-gen (car es)))
-                     (cdr es))
-             (cons (car es) (fn-cfg-groups-set-policy (cdr es) name policy)))
-         nil)
-       :exec (fn-cfg-groups-set-policy-loop es name policy nil)))
-
-(local
- (defthm fn-cfg-groups-set-policy-loop-is-revappend
-   (equal (fn-cfg-groups-set-policy-loop es name policy acc)
-          (revappend acc (fn-cfg-groups-set-policy es name policy)))
-   :hints (("Goal" :induct (fn-cfg-groups-set-policy-loop es name policy acc)
-                   :in-theory (union-theories '(fn-cfg-groups-set-policy-loop fn-cfg-groups-set-policy revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cfg-groups-set-policy-loop)
-
-(verify-guards fn-cfg-groups-set-policy
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cfg-groups-set-policy)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cfg-groups-set-policy-loop-is-revappend (acc nil))))))
-
-
-(defun fn-cfg-groups-set-authority-loop (es name authority gen acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp es)
-      (if (equal (fn-cfg-group-name (car es)) name)
-          (revappend acc
-                     (cons (fn-cfg-group-make-with-authority name
-                              (fn-cfg-group-created-gen (car es))
-                              (fn-cfg-group-created-stamp (car es))
-                              (fn-cfg-group-retired-gen (car es))
-                              (fn-cfg-group-policy-id (car es))
-                              (fn-cfg-group-next (car es)) authority gen)
-                           (cdr es)))
-        (fn-cfg-groups-set-authority-loop (cdr es) name authority gen (cons (car es) acc)))
-    (revappend acc nil)))
-(defun fn-cfg-groups-set-authority (es name authority gen)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp es)
-           (if (equal (fn-cfg-group-name (car es)) name)
-               (cons (fn-cfg-group-make-with-authority name
-                       (fn-cfg-group-created-gen (car es)) (fn-cfg-group-created-stamp (car es))
-                       (fn-cfg-group-retired-gen (car es)) (fn-cfg-group-policy-id (car es))
-                       (fn-cfg-group-next (car es)) authority gen) (cdr es))
-             (cons (car es) (fn-cfg-groups-set-authority (cdr es) name authority gen)))
-         nil)
-       :exec (fn-cfg-groups-set-authority-loop es name authority gen nil)))
-(local (defthm fn-cfg-groups-set-authority-loop-is-revappend
-  (equal (fn-cfg-groups-set-authority-loop es name authority gen acc)
-         (revappend acc (fn-cfg-groups-set-authority es name authority gen)))
-  :hints (("Goal" :induct (fn-cfg-groups-set-authority-loop es name authority gen acc)
-                  :in-theory (union-theories '(fn-cfg-groups-set-authority-loop fn-cfg-groups-set-authority revappend car-cons cdr-cons)
-                                             (theory 'minimal-theory))))))
-(verify-guards fn-cfg-groups-set-authority-loop)
-(verify-guards fn-cfg-groups-set-authority
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-cfg-groups-set-authority)
-                              (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here)))
-                  :use ((:instance fn-cfg-groups-set-authority-loop-is-revappend (acc nil))))))
-
+(def-loop fn-cfg-groups-set-authority (es name authority gen)
+  :shape :map :over es :elt e
+  :stop (equal (fn-cfg-group-name e) name)
+  :stop-value (cons (fn-cfg-group-make-with-authority name (fn-cfg-group-created-gen e)
+                      (fn-cfg-group-created-stamp e) (fn-cfg-group-retired-gen e)
+                      (fn-cfg-group-policy-id e) (fn-cfg-group-next e) authority gen)
+                    (cdr es))
+  :body e)
 (defun fn-cfg-set-groups (v es)
   (declare (xargs :guard t))
   (fn-cfg-value-make-full es (fn-cfg-capacity v) (fn-cfg-quotas v)
@@ -2833,31 +2165,9 @@
 ; owns the second, so neither is recomputed or copied here.  The owner-state
 ; conditions (reader pins) are packet R3 and never enter a durable record.
 
-(defun fn-cfg-name-line-octets-loop (names acc)
-  (declare (xargs :guard (acl2-numberp acc)))
-  (if (consp names)
-      (fn-cfg-name-line-octets-loop (cdr names) (+ acc (+ 1 (len (fn-record-string-octets (car names))))))
-    acc))
-
-(defun fn-cfg-name-line-octets (names)
-  ; Each name plus one separating octet: the width the served table occupies
-  ; on a generated initial line.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (+ 1 (len (fn-record-string-octets (car names)))
-              (fn-cfg-name-line-octets (cdr names)))
-         0)
-       :exec (fn-cfg-name-line-octets-loop names 0)))
-
-(defthm fn-cfg-name-line-octets-loop-is-plus
-  (implies (acl2-numberp acc)
-           (equal (fn-cfg-name-line-octets-loop names acc)
-                  (+ acc (fn-cfg-name-line-octets names))))
-  :hints (("Goal" :induct (fn-cfg-name-line-octets-loop names acc)
-                  :in-theory (disable fn-record-string-octets))))
-
-(verify-guards fn-cfg-name-line-octets)
+(def-loop fn-cfg-name-line-octets (names)
+  :shape :sum :over names :elt n
+  :body (+ 1 (len (fn-record-string-octets n))))
 
 (defun fn-cfg-delta-reason (v gen stamp reserved ceiling d)
   (declare (xargs :guard t))
@@ -3187,46 +2497,14 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cfg-item-octets-loop (items acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp items)
-      (fn-cfg-item-octets-loop (cdr items)
-                               (fn-ag-rev-onto (fn-cfg-item-encode (car items)) acc))
-    (revappend acc nil)))
-
-(defun fn-cfg-item-octets (items)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp items)
-           (append (fn-cfg-item-encode (car items))
-                   (fn-cfg-item-octets (cdr items)))
-         nil)
-       :exec (fn-cfg-item-octets-loop items nil)))
+(def-loop fn-cfg-item-octets (items)
+  :shape :concat :over items :elt i
+  :body (fn-cfg-item-encode i))
 
 (local
  (defthm fn-cfg-item-octets-loop-rev-onto-append
    (equal (revappend (fn-ag-rev-onto x acc) y)
           (revappend acc (append x y)))))
-
-(local
- (defthm fn-cfg-item-octets-loop-is-revappend
-   (equal (fn-cfg-item-octets-loop items acc)
-          (revappend acc (fn-cfg-item-octets items)))
-   :hints (("Goal" :induct (fn-cfg-item-octets-loop items acc)
-                   :in-theory (union-theories '(fn-cfg-item-octets-loop fn-cfg-item-octets revappend car-cons cdr-cons fn-cfg-item-octets-loop-rev-onto-append)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cfg-item-octets-loop)
-
-(verify-guards fn-cfg-item-octets
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cfg-item-octets)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cfg-item-octets-loop-is-revappend (acc nil))))))
-
 
 (defun fn-cfg-encode (r)
   (declare (xargs :guard t))
