@@ -1,0 +1,23 @@
+{
+ "id": "REACH-PROSE-GENERATOR-WALKS",
+ "category": "reach",
+ "owner": "deputy-P",
+ "severity": "medium",
+ "slice": "proofs",
+ "source": "CONVERGE-2 row 15 (lane/reach-code-only)",
+ "state": "open",
+ "title": "8 reach_check false greens in generated walks (def-loop) the host is said to call: subjects reached only through host prose (2 PRFs: PRF-919, PRF-383)",
+ "notes": [
+  "Each event's subject is named only in host prose (a docstring or comment), never in host code, so reach_check counted it reached until lane/reach-code-only. Per event, one of: the host does run it under another name, so name the correspondence or equality reach_check accepts; or a crash campaign judges the host with it, so make the campaign name it in code (it then counts campaign-tied); or the claim is about a model the host does not run, so re-scope the PRF statement to say so (no served claim). Never re-baseline.",
+  "Events (from build/coordinator/reach-prose-orphans-20261007.txt, dev ac7593c60):",
+  "PRF-919: fn-dl-concat-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-concat, fn-dl-concat-loop)",
+  "PRF-919: fn-dl-fold-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-fo-fail, fn-dl-fold, fn-dl-fold-loop)",
+  "PRF-919: fn-dl-foldr-loop-is-foldr (books/def-loop.lisp; subjects fn-dl-foldr, fn-dl-foldr-loop, fn-dl-fr-z)",
+  "PRF-919: fn-dl-map-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map, fn-dl-map-loop)",
+  "PRF-919: fn-dl-map-skip-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map-skip, fn-dl-map-skip-loop)",
+  "PRF-919: fn-dl-step-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-step, fn-dl-step-loop)",
+  "PRF-919: fn-dl-sum-loop-is-plus (books/def-loop.lisp; subjects fn-dl-sum, fn-dl-sum-loop)",
+  "PRF-383: fn-dl-map-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map, fn-dl-map-loop)"
+ ],
+ "updated": "2026-10-07T14:30:00Z"
+}
