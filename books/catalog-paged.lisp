@@ -56,6 +56,7 @@
 ;; The live links' meaning and the commit/withdrawal keystones (gate C).
 (include-book "catalog-live-links")
 (include-book "def-representation-pages")
+(include-book "def-representation-pageread")
 (include-book "def-representation")
 (include-book "def-representation-tree")
 ;; The (group . number)-keyed tables as dense per-group runs (stage 4).

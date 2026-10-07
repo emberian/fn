@@ -36,6 +36,7 @@
 
 (in-package "ACL2")
 (include-book "def-representation-pages")
+(include-book "def-representation-pageread")
 (include-book "pagestore-keystones")
 (include-book "owner-checkpoint-open")
 (include-book "store-checkpoint-buffer")

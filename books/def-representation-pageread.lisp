@@ -18,6 +18,7 @@
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "std/lists/take" :dir :system))
 (local (include-book "std/lists/nth" :dir :system))
+(local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 
 (defun adt-pr-cap (frames)
   (declare (xargs :guard t))
@@ -104,6 +105,30 @@
            (equal (+ (mod j *pgs-page-words*) (* *pgs-page-words* (floor j *pgs-page-words*))) j))
   :hints (("Goal" :in-theory (enable mod))))
 
+(defthm adt-pr-mod-bounds
+  (implies (natp j)
+           (and (<= 0 (mod j *pgs-page-words*)) (< (mod j *pgs-page-words*) *pgs-page-words*)))
+  :rule-classes nil)
+
+(defthm adt-pr-floor-natp
+  (implies (natp j) (natp (floor j *pgs-page-words*)))
+  :rule-classes :type-prescription)
+
+(defthm adt-pr-mod-natp
+  (implies (natp j) (natp (mod j *pgs-page-words*)))
+  :rule-classes :type-prescription)
+
+; The arithmetic of a word's place, once, with floor and mod closed.
+(defthm adt-pr-place
+  (implies (and (natp j) (natp len) (< j len))
+           (and (< (* *pgs-page-words* (floor j *pgs-page-words*)) len)
+                (< (mod j *pgs-page-words*) (- len (* *pgs-page-words* (floor j *pgs-page-words*))))
+                (< (mod j *pgs-page-words*) *pgs-page-words*)
+                (equal (+ (mod j *pgs-page-words*) (* *pgs-page-words* (floor j *pgs-page-words*))) j)))
+  :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
+           :use (adt-pr-floor-mod adt-pr-mod-bounds)))
+  :rule-classes nil)
+
 ; The word at J of the page image is the tape's.
 (defthm adt-pr-nth-of-pages
   (implies (and (true-listp w) (natp j) (< j (len w)))
@@ -111,13 +136,14 @@
                   (nth j w)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance adt-tp-nth-of-pages (k (floor j *pgs-page-words*)))
-                 (:instance adt-pr-floor-mod)
+                 (:instance adt-pr-place (len (len w)))
                  (:instance adt-pr-nth-of-page (m (mod j *pgs-page-words*))
                             (v (nthcdr (* *pgs-page-words* (floor j *pgs-page-words*)) w)))
                  (:instance adt-pr-nth-of-nthcdr (a (mod j *pgs-page-words*))
                             (b (* *pgs-page-words* (floor j *pgs-page-words*)))))
-           :in-theory (disable adt-tp-nth-of-pages adt-pr-nth-of-page adt-pr-nth-of-nthcdr adt-pr-floor-mod
-                               floor mod adt-tp-page-short adt-tp-page-long))))
+           :in-theory (e/d (adt-tp-len-nthcdr)
+                           (adt-tp-nth-of-pages adt-pr-nth-of-page adt-pr-nth-of-nthcdr adt-pr-floor-mod
+                            floor mod adt-tp-page-short adt-tp-page-long)))))
 
 (defthm adt-pr-nthcdr-cons
   (implies (and (natp j) (< j (len w)))
@@ -149,16 +175,6 @@
            :in-theory (e/d (adt-pr-word) (adt-pr-nth-of-pages adt-tp-pages adt-pr-take-step floor mod)))
           ("Subgoal *1/2" :use ((:instance adt-pr-nth-of-pages (j j)) (:instance adt-pr-take-step)))))
 
-(local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
-
-(defthm adt-pr-mod-bounds
-  (implies (natp j)
-           (and (<= 0 (mod j *pgs-page-words*)) (< (mod j *pgs-page-words*) *pgs-page-words*)))
-  :rule-classes nil)
-
-(defthm adt-pr-floor-natp
-  (implies (natp j) (natp (floor j *pgs-page-words*)))
-  :rule-classes :type-prescription)
 
 (defthm adt-pr-floor-succ
   (implies (natp j)
