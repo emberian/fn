@@ -411,3 +411,15 @@
   :witness ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1)))
   :mutations ((live-at-the-next-operation (:conclusion (implies (and (fn-resource-ledgerp ledger) (eq (mv-nth 0 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) :drawn)) (fn-rlo-livep (mv-nth 1 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) (+ 1 operation-gen) (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))))) ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1))) :fault "a token live for an operation generation other than the one it was issued for" :lemma rcx-fn-rlo-issued-token-is-live-mutant-live-at-the-next-operation)))
 
+
+(defthm rcx-fn-rlo-output-bank-correspondence-witness
+  (equal (fn-rl-bank (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l3)))) (if (and (fn-rlo-livep (rcx-tok) 8 (rcx-l3)) (member-eq :discarded '(:drained :discarded)) (equal (fn-rl-trailersi (caddr (rcx-tok)) (rcx-l3)) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr (rcx-tok)) (fn-rl-gensi (caddr (rcx-tok)) (rcx-l3)) (rcx-l3)))) (fn-rl-bank (rcx-l3)))))
+(defthm rcx-fn-rlo-output-bank-correspondence-mutant-bank-unchanged
+  (and (equal (fn-rl-bank (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l3)))) (if (and (fn-rlo-livep (rcx-tok) 8 (rcx-l3)) (member-eq :discarded '(:drained :discarded)) (equal (fn-rl-trailersi (caddr (rcx-tok)) (rcx-l3)) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr (rcx-tok)) (fn-rl-gensi (caddr (rcx-tok)) (rcx-l3)) (rcx-l3)))) (fn-rl-bank (rcx-l3)))) (not (equal (fn-rl-bank (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l3)))) (fn-rl-bank (rcx-l3))))))
+(defteeth fn-rlo-output-bank-correspondence
+  :claim (() (equal (fn-rl-bank (mv-nth 1 (fn-rlo-output token operation-gen receipt ledger))) (if (and (fn-rlo-livep token operation-gen ledger) (member-eq receipt '(:drained :discarded)) (equal (fn-rl-trailersi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger))))
+  :subject fn-rlo-output
+  :witness-lemma rcx-fn-rlo-output-bank-correspondence-witness
+  :witness ((token (rcx-tok)) (operation-gen 8) (receipt :discarded) (ledger (rcx-l3)))
+  :mutations ((bank-unchanged (:conclusion (equal (fn-rl-bank (mv-nth 1 (fn-rlo-output token operation-gen receipt ledger))) (fn-rl-bank ledger))) ((token (rcx-tok)) (operation-gen 8) (receipt :discarded) (ledger (rcx-l3))) :fault "a settling receipt that leaves the bank charged" :lemma rcx-fn-rlo-output-bank-correspondence-mutant-bank-unchanged)))
+
