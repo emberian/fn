@@ -1447,3 +1447,747 @@ class R2WaitWrapper(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class R1bDynamicBinding(unittest.TestCase):
+    """A `let' of a defvar makes every access in its dynamic extent name the
+    binding of the thread that ran the `let', not the shared global."""
+
+    BASE = """
+(defvar *fnn-dyn-flag* nil)
+(defun fnn-dyn-note () (setf *fnn-dyn-flag* t))
+(defun fnn-dyn-run ()
+  (let ((*fnn-dyn-flag* nil))
+    (fnn-dyn-note)
+    *fnn-dyn-flag*))
+(defun fnn-dyn-start-a ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-run)) :name "dyn a"))
+(defun fnn-dyn-start-b ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-run)) :name "dyn b"))
+"""
+
+    def r1b(self, source):
+        return [k for k in keys(run(source, ["R1b"]), "R1b") if "fnn-dyn-flag" in k[1]]
+
+    def test_a_flag_rebound_around_every_use_is_thread_local(self):
+        self.assertEqual(self.r1b(self.BASE), [])
+
+    def test_a_second_caller_outside_the_binding_keeps_the_finding(self):
+        found = self.r1b(self.BASE + """
+(defun fnn-dyn-other () (fnn-dyn-note))
+(defun fnn-dyn-start-c ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-other)) :name "dyn c"))
+""")
+        self.assertTrue(found)
+
+    def test_a_write_outside_the_let_keeps_the_finding(self):
+        found = self.r1b(self.BASE + """
+(defun fnn-dyn-bare () (setf *fnn-dyn-flag* 1))
+(defun fnn-dyn-start-c ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-bare)) :name "dyn c"))
+(defun fnn-dyn-start-d ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-bare)) :name "dyn d"))
+""")
+        self.assertTrue(found)
+
+    def test_a_thread_started_inside_the_binding_does_not_inherit_it(self):
+        found = self.r1b("""
+(defvar *fnn-dyn-flag* nil)
+(defun fnn-dyn-note () (setf *fnn-dyn-flag* t))
+(defun fnn-dyn-spawn ()
+  (let ((*fnn-dyn-flag* nil))
+    (sb-thread:make-thread (lambda () (fnn-dyn-note)) :name "dyn a")
+    (sb-thread:make-thread (lambda () (fnn-dyn-note)) :name "dyn b")))
+""")
+        self.assertTrue(found)
+
+    def test_a_lexical_variable_named_like_a_special_is_not_special(self):
+        found = self.r1b("""
+(defvar *fnn-dyn-flag* nil)
+(defun fnn-dyn-note () (setf *fnn-dyn-flag* t))
+(defun fnn-dyn-run (flag) (let ((flag 1)) (fnn-dyn-note) flag))
+(defun fnn-dyn-start-a ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-run 1)) :name "dyn a"))
+(defun fnn-dyn-start-b ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-run 2)) :name "dyn b"))
+""")
+        self.assertTrue(found)
+
+
+class R1bSynchronizedTable(unittest.TestCase):
+    """One gethash/remhash/clrhash/count on a :synchronized table is atomic in
+    the table's own lock; a bare mention (maphash, a read-modify-write of the
+    cell) or an unsynchronized table is not."""
+
+    HEAD = """
+(defvar *fnn-sync-memo* (make-hash-table :test 'eq :synchronized t))
+(defvar *fnn-plain-memo* (make-hash-table :test 'eq))
+"""
+    TAIL = """
+(defun fnn-sync-start-a ()
+  (sb-thread:make-thread (lambda () (fnn-sync-use 1)) :name "sync a"))
+(defun fnn-sync-start-b ()
+  (sb-thread:make-thread (lambda () (fnn-sync-use 2)) :name "sync b"))
+"""
+
+    def r1b(self, body, var="fnn-sync-memo"):
+        found = run(self.HEAD + body + self.TAIL, ["R1b"])
+        return [k for k in keys(found, "R1b") if var in k[1]]
+
+    def test_atomic_operations_on_a_synchronized_table_pass(self):
+        self.assertEqual(self.r1b("""
+(defun fnn-sync-use (k)
+  (or (gethash k *fnn-sync-memo*)
+      (setf (gethash k *fnn-sync-memo*) (list k)))
+  (remhash k *fnn-sync-memo*)
+  (hash-table-count *fnn-sync-memo*))
+"""), [])
+
+    def test_the_same_shape_on_an_unsynchronized_table_is_refused(self):
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-use (k)
+  (or (gethash k *fnn-plain-memo*)
+      (setf (gethash k *fnn-plain-memo*) (list k))))
+""", "fnn-plain-memo"))
+
+    def test_a_maphash_over_the_table_is_not_atomic(self):
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-use (k)
+  (setf (gethash k *fnn-sync-memo*) k)
+  (maphash (lambda (key v) (list key v)) *fnn-sync-memo*))
+"""))
+
+    def test_a_read_modify_write_of_the_cell_is_not_atomic(self):
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-use (k)
+  (push k (gethash k *fnn-sync-memo*)))
+"""))
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-use (k)
+  (incf (gethash k *fnn-sync-memo* 0))
+  (gethash k *fnn-sync-memo*))
+"""))
+
+    def test_passing_the_table_on_is_not_atomic(self):
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-poke (table k) (setf (gethash k table) k))
+(defun fnn-sync-use (k)
+  (fnn-sync-poke *fnn-sync-memo* k)
+  (setf (gethash k *fnn-sync-memo*) k))
+"""))
+
+
+class RealThreadRows(unittest.TestCase):
+    """The catchup spool worker and the developer REPL are declared threads:
+    their rows are checked against the real host, so a row whose registry,
+    join site or handler stops matching the code fails here."""
+
+    SPOOL = ("fnn-csp-worker-start", "fn catchup spool")
+    REPL = ("fnn-dev-repl-start", "fn trusted developer REPL")
+
+    @classmethod
+    def setUpClass(cls):
+        an, model, checker = ldc.analyze_tree(ROOT, ldc.load_contracts(
+            Path(os.environ.get("LMG_CONTRACTS", str(ROOT / "tools" / "lock_discipline_contracts.json")))))
+        cls.found = [f for f in checker.run({"R4"}) if f.rule == "R4"]
+
+    def about(self, function):
+        return [(f.key, f.message) for f in self.found if f.function == function]
+
+    def test_the_catchup_spool_thread_is_declared_and_its_row_holds(self):
+        self.assertEqual(self.about(self.SPOOL[0]), [])
+
+    def test_the_developer_repl_thread_is_declared_and_its_row_holds(self):
+        self.assertEqual(self.about(self.REPL[0]), [])
+
+    def test_the_rows_name_the_registry_and_join_the_code_has(self):
+        rows = CONTRACTS.raw["threads"]
+        self.assertEqual(rows[self.SPOOL[0]]["registry"], "fnn-csp-worker-thread")
+        self.assertEqual(rows[self.SPOOL[0]]["join"], "fnn-csp-worker-join-now")
+        self.assertEqual(rows[self.REPL[0]]["registry"], "fnn-control-state-accept-thread")
+        self.assertEqual(rows[self.REPL[0]]["join"], "fnn-dev-repl-close")
+
+    def test_a_thread_stored_nowhere_is_refused(self):
+        found = run("""
+(defun fnn-csp-worker-start (worker)
+  (sb-thread:make-thread (lambda () (fnn-csp-worker-loop worker)) :name "fn catchup spool"))
+(defun fnn-csp-worker-loop (worker)
+  (handler-case (fnn-fault "x") (serious-condition (c) c)))
+(defun fnn-csp-worker-join-now (worker) (sb-thread:join-thread (fnn-csp-worker-thread worker)))
+""", ["R4"])
+        self.assertIn(("fnn-csp-worker-start", "unregistered:fnn-csp-worker-thread"), keys(found, "R4"))
+
+    def test_a_join_site_that_never_joins_is_refused(self):
+        found = run("""
+(defun fnn-dev-repl-start (control)
+  (setf (fnn-control-state-accept-thread control)
+        (sb-thread:make-thread (lambda () (fnn-dev-repl-loop control)) :name "fn trusted developer REPL")))
+(defun fnn-dev-repl-loop (control)
+  (handler-case (fnn-fault "x") (serious-condition (c) c)))
+(defun fnn-dev-repl-close (control) (setf (fnn-control-state-stopping control) t))
+""", ["R4"])
+        self.assertIn(("fnn-dev-repl-start", "no-join:fnn-dev-repl-close"), keys(found, "R4"))
+
+    def test_a_thread_whose_loop_handles_nothing_is_refused(self):
+        found = run("""
+(defun fnn-dev-repl-start (control)
+  (setf (fnn-control-state-accept-thread control)
+        (sb-thread:make-thread (lambda () (fnn-dev-repl-loop control)) :name "fn trusted developer REPL")))
+(defun fnn-dev-repl-loop (control) (fnn-fault "x"))
+(defun fnn-dev-repl-close (control) (sb-thread:join-thread (fnn-control-state-accept-thread control)))
+""", ["R4"])
+        self.assertTrue(any(k[1].startswith("no-handler:") for k in keys(found, "R4")))
+
+
+class LeafLockRows(unittest.TestCase):
+    """XPWAKE (fnn-pull-runtime-wake-lock) and XTLSKX (*fnn-tls-kx-lock*) are
+    leaves: no order edge out of them, no blocking work under them."""
+
+    @classmethod
+    def setUpClass(cls):
+        an, model, checker = ldc.analyze_tree(ROOT, ldc.load_contracts(
+            Path(os.environ.get("LMG_CONTRACTS", str(ROOT / "tools" / "lock_discipline_contracts.json")))))
+        cls.found = [f for f in checker.run({"R2", "R5"}) if f.rule in ("R2", "R5")]
+
+    def test_every_region_of_both_locks_in_the_real_host_resolves_to_its_row(self):
+        names = ("fnn-pull-runtime-wake", "fnn-pull-wakes-seen", "fnn-tls-decide-key-exchange",
+                 "fnn-tls-key-exchange-observation", "fnn-tls-note-session")
+        self.assertEqual([(f.function, f.key) for f in self.found
+                          if f.function in names and f.key.startswith("unresolved:lock object")], [])
+
+    def test_no_real_region_of_either_lock_blocks_or_nests(self):
+        # the manual grab-mutex of fnn-pull-ready-wait stays unresolved (gap 10)
+        mine = [f for f in self.found if ("XPWAKE" in f.key or "XTLSKX" in f.key)
+                and not f.key.startswith("unresolved:manual grab-mutex")]
+        self.assertEqual([(f.function, f.key) for f in mine], [])
+
+    def test_the_rows_are_leaves(self):
+        order = CONTRACTS.raw["lock_order"]
+        for row in ("XPWAKE", "XTLSKX"):
+            self.assertIn(row, CONTRACTS.raw["locks"])
+            self.assertNotIn(row, order)
+            self.assertFalse(CONTRACTS.raw["locks"][row].get("io_ok"))
+            self.assertFalse(any(row in later for later in order.values()))
+        self.assertEqual(CONTRACTS.raw["locks"]["XPWAKE"]["match"], ["(fnn-pull-runtime-wake-lock)"])
+        self.assertEqual(CONTRACTS.raw["locks"]["XTLSKX"]["match"], ["*fnn-tls-kx-lock*"])
+
+    def test_io_under_the_tls_record_lock_is_refused(self):
+        found = run("""
+(defun fnn-tls-note-session (channel)
+  (sb-thread:with-mutex (*fnn-tls-kx-lock*)
+    (sb-posix:fsync channel)))
+""", ["R2"])
+        self.assertIn(("fnn-tls-note-session", "XTLSKX:sb-posix:fsync"), keys(found, "R2"))
+
+    def test_the_owner_mutex_under_the_wake_lock_is_an_undeclared_edge(self):
+        found = run("""
+(defun fnn-pull-runtime-wake (runtime service)
+  (sb-thread:with-mutex ((fnn-pull-runtime-wake-lock runtime))
+    (sb-thread:with-mutex ((fnn-owner-service-lock service))
+      (incf (fnn-pull-runtime-wakes runtime)))))
+""", ["R5"])
+        self.assertTrue(any("XPWAKE" in str(k[1]) for k in keys(found, "R5")), keys(found, "R5"))
+
+
+class R1bDeadThreadGuard(unittest.TestCase):
+    """A stop that runs only when the loop's thread is absent or no longer
+    running is ordered after that thread (contract dead_thread_guards)."""
+
+    def source(self, guard="(unless (and thread (sb-thread:thread-alive-p thread)) (fnn-mux-stop-loop loop))",
+               extra="", spawns=1):
+        second = ("""
+  (sb-thread:make-thread (lambda () (fnn-mux-idle loop)) :name "fn owner io")""" if spawns == 2 else "")
+        return f"""
+(defstruct fnn-mux-loop thread buffer)
+(defun fnn-mux-run (loop) (setf (fnn-mux-loop-buffer loop) 1))
+(defun fnn-mux-idle (loop) (fnn-mux-loop-thread loop))
+(defun fnn-mux-stop-loop (loop) (setf (fnn-mux-loop-buffer loop) nil))
+(defun fnn-mux-start (loop other ready)
+  (setf (fnn-mux-loop-thread loop)
+        (sb-thread:make-thread (lambda () (fnn-mux-run loop)) :name "fn owner io")){second}
+  (let* ((thread (fnn-mux-loop-thread loop)))
+    {guard}))
+{extra}"""
+
+    def r1b(self, source):
+        return [k for k in keys(run(source, ["R1b"]), "R1b") if "fnn-mux-loop-buffer" in k[1]]
+
+    def test_the_guarded_stop_is_ordered_after_the_thread(self):
+        self.assertEqual(self.r1b(self.source()), [])
+
+    def test_an_unguarded_stop_races_with_the_thread(self):
+        self.assertTrue(self.r1b(self.source(guard="(fnn-mux-stop-loop loop)")))
+
+    def test_the_wrong_polarity_races(self):
+        self.assertTrue(self.r1b(self.source(guard="(when (and thread (sb-thread:thread-alive-p thread)) (fnn-mux-stop-loop loop))")))
+
+    def test_a_stop_of_another_object_is_not_ordered(self):
+        self.assertTrue(self.r1b(self.source(
+            guard="(unless (and thread (sb-thread:thread-alive-p thread)) (fnn-mux-stop-loop other))")))
+
+    def test_an_unrelated_conjunct_leaves_the_thread_running(self):
+        self.assertTrue(self.r1b(self.source(
+            guard="(unless (and ready (sb-thread:thread-alive-p thread)) (fnn-mux-stop-loop loop))")))
+
+    def test_a_third_actor_keeps_the_finding(self):
+        self.assertTrue(self.r1b(self.source(extra="""
+(defun fnn-mux-adopt (loop) (setf (fnn-mux-loop-buffer loop) 2))
+(defun fnn-mux-acceptor (loop)
+  (sb-thread:make-thread (lambda () (fnn-mux-adopt loop)) :name "fn acceptor"))
+""")))
+
+    def test_two_threads_of_the_declared_name_void_the_row(self):
+        self.assertTrue(self.r1b(self.source(spawns=2)))
+
+
+class TestOnlyEntry(unittest.TestCase):
+    """contract test_only_entries: an uncalled host function that only a test
+    calls is not a main-thread actor; the row is checked against the host."""
+
+    HOST = """
+(defvar *fnn-tov-n* 0)
+(defun fnn-tov-work () (incf *fnn-tov-n*))
+(defun fnn-tov-guarded () (fnn-tov-work))
+(defun fnn-tov-start ()
+  (sb-thread:make-thread (lambda () (fnn-tov-work)) :name "tov"))
+"""
+    MOCK = "(fnn-tov-guarded)\n"
+
+    def analyze(self, host, mock, row=True, file="host/native/fixture.lisp"):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["test_only_entries"] = {"fnn-tov-guarded": {"file": file, "why": "fixture"}} if row else {}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "tests").mkdir()
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + host)
+            if mock is not None:
+                (root / "tests" / "mock.lisp").write_text(mock)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath), ["host/native/fixture.lisp"], {})
+            return [k for k in keys(checker.run({"R1b"}), "R1b") if "fnn-tov-n" in k[1]]
+
+    def test_the_declared_test_only_wrapper_is_not_an_actor(self):
+        self.assertEqual(self.analyze(self.HOST, self.MOCK), [])
+
+    def test_without_the_row_the_wrapper_races_with_the_thread(self):
+        self.assertTrue(self.analyze(self.HOST, self.MOCK, row=False))
+
+    def test_a_host_caller_makes_the_row_stale(self):
+        with self.assertRaisesRegex(ValueError, "called or referenced"):
+            self.analyze(self.HOST + "(defun fnn-tov-command () (fnn-tov-guarded))\n", self.MOCK)
+
+    def test_a_function_no_test_mentions_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "no file under tests"):
+            self.analyze(self.HOST, "(fnn-tov-other)\n")
+
+    def test_a_row_for_a_function_the_file_no_longer_defines_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "not a function"):
+            self.analyze(self.HOST.replace("fnn-tov-guarded", "fnn-tov-renamed"), self.MOCK)
+
+    def test_another_uncalled_function_stays_a_main_actor(self):
+        self.assertTrue(self.analyze(self.HOST + "(defun fnn-tov-command () (fnn-tov-work))\n", self.MOCK))
+
+
+class ManualGrabCriticalSection(unittest.TestCase):
+    """(grab-mutex L) directly followed by (unwind-protect BODY (when
+    (holding-mutex-p L) (release-mutex L))) is a critical section of L; the
+    re-grab after a timed wait is a no-op under the held model (gap 10)."""
+
+    def source(self, cleanup="(when (sb-thread:holding-mutex-p lock) (sb-thread:release-mutex lock))",
+               regrab="(unless (sb-thread:holding-mutex-p lock) (sb-thread:grab-mutex lock))",
+               grab_arg="lock"):
+        return f"""
+(defun fnn-feed-idle-wait (service queue)
+  (let ((lock (fnn-owner-service-wait-lock service)))
+    (sb-thread:grab-mutex {grab_arg})
+    (unwind-protect
+         (progn (sb-thread:condition-wait queue lock :timeout 1d0)
+                {regrab}
+                (fnn-owner-service-commits service))
+      {cleanup})))
+"""
+
+    def r5(self, **kw):
+        return [k for k in keys(run(self.source(**kw), ["R5"]), "R5")]
+
+    def test_the_paired_grab_is_a_critical_section_of_its_lock(self):
+        self.assertEqual(self.r5(), [])
+
+    def test_a_cleanup_releasing_another_lock_stays_unresolved(self):
+        bad = self.r5(cleanup="(when (sb-thread:holding-mutex-p lock) (sb-thread:release-mutex other))")
+        self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in bad), bad)
+
+    def test_a_cleanup_that_releases_unconditionally_stays_unresolved(self):
+        bad = self.r5(cleanup="(sb-thread:release-mutex lock)")
+        self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in bad), bad)
+
+    def test_a_grab_with_no_unwind_protect_stays_unresolved(self):
+        found = run("""
+(defun fnn-feed-idle-wait (service)
+  (let ((lock (fnn-owner-service-wait-lock service)))
+    (sb-thread:grab-mutex lock)
+    (fnn-owner-service-commits service)))
+""", ["R5"])
+        self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in keys(found, "R5")))
+
+    def test_the_paired_region_still_holds_the_lock_for_blocking_work(self):
+        found = run("""
+(defun fnn-feed-idle-wait (service)
+  (let ((lock (fnn-owner-service-lock service)))
+    (sb-thread:grab-mutex lock)
+    (unwind-protect (sb-posix:fsync 3)
+      (when (sb-thread:holding-mutex-p lock) (sb-thread:release-mutex lock)))))
+""", ["R2"])
+        self.assertTrue(any(k[1].endswith("sb-posix:fsync") for k in keys(found, "R2")), keys(found, "R2"))
+
+    def test_a_regrab_of_a_lock_not_held_is_not_waved_through(self):
+        found = run("""
+(defun fnn-feed-idle-wait (service)
+  (let ((lock (fnn-owner-service-wait-lock service)))
+    (unless (sb-thread:holding-mutex-p lock) (sb-thread:grab-mutex lock))))
+""", ["R5"])
+        self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in keys(found, "R5")))
+
+
+class DiagnosticSinkSwallow(unittest.TestCase):
+    """A handler that swallows only a diagnostic sink's own failure is exempt
+    from R7 (contract diagnostic_sinks), and only when the checker verifies the
+    sink and the handler's shape."""
+
+    SINKS = {"fnn-err": {"file": "host/native/fixture.lisp", "why": "test"}}
+
+    def run7(self, source, sinks=None):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["diagnostic_sinks"] = self.SINKS if sinks is None else sinks
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath),
+                                                  ["host/native/fixture.lisp"], {})
+            return [(f.function, f.key) for f in checker.run({"R7"}) if f.rule == "R7"]
+
+    BASE = """
+(defun fnn-err (control &rest args) (fnn-emit-line control args))
+(defun fnn-emit-line (control args) (fnn-fault control))
+(defun fnn-worker-start ()
+  (sb-thread:make-thread (lambda () (fnn-trace-it 1)) :name "w"))
+"""
+
+    def test_a_failure_swallowed_around_only_the_sink_is_exempt(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (fnn-err "x ~a" x) (serious-condition () nil)))
+""")
+        self.assertEqual(found, [])
+
+    def test_ignore_errors_around_only_the_sink_is_exempt(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x) (ignore-errors (fnn-err "x ~a" x)))
+""")
+        self.assertEqual(found, [])
+
+    def test_the_same_swallow_without_a_declared_sink_is_refused(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (fnn-err "x ~a" x) (serious-condition () nil)))
+""", sinks={})
+        self.assertTrue(any(k[1].startswith("swallow:") for k in found), found)
+
+    def test_a_protected_form_that_also_does_real_work_is_refused(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (progn (fnn-fault "x") (fnn-err "x ~a" x)) (serious-condition () nil)))
+""")
+        self.assertTrue(any(k[1].startswith("swallow:") for k in found), found)
+
+    def test_a_clause_that_does_work_is_refused(self):
+        found = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (fnn-err "x ~a" x) (serious-condition () (fnn-fault "y"))))
+""")
+        self.assertEqual([k for k in found if k[1].startswith("swallow:")], [], found)
+        found2 = self.run7(self.BASE + """
+(defun fnn-trace-it (x)
+  (handler-case (fnn-err "x ~a" x) (serious-condition () (fnn-close x))))
+""")
+        self.assertTrue(any(k[1].startswith("swallow:") for k in found2), found2)
+
+    def test_a_sink_that_reaches_a_descriptor_close_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7("""
+(defun fnn-err (control &rest args) (fnn-close args))
+(defun fnn-trace-it (x) (ignore-errors (fnn-err "x ~a" x)))
+""")
+
+
+class StatusRethrow(unittest.TestCase):
+    """A handler that hands an indeterminate condition on as a returned status
+    is a deferred rethrow when every caller converts that status back to a
+    signal on every path (contract status_rethrows, verified)."""
+
+    ROW = {"fnn-app-result": {"file": "host/native/fixture.lisp", "clause": "fnn-store-indeterminate",
+                              "status": ":uncertain", "why": "test"}}
+
+    def run7(self, source, row=None):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["status_rethrows"] = self.ROW if row is None else row
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath),
+                                                  ["host/native/fixture.lisp"], {})
+            return [(f.function, f.key) for f in checker.run({"R7"}) if f.rule == "R7"]
+
+    def src(self, caller_body, clause="(values :uncertain 0)", extra=""):
+        return f"""
+(defun fnn-indeterminate (control) (error 'fnn-store-indeterminate :message control))
+(defun fnn-app-core (view) (error 'fnn-store-indeterminate :message view))
+(defun fnn-app-result (view)
+  (handler-case (fnn-app-core view)
+    (fnn-store-indeterminate (e) {clause})))
+(defun fnn-app-step (view)
+  (multiple-value-bind (status detail) (fnn-app-result view)
+    {caller_body}))
+(defun fnn-app-start ()
+  (sb-thread:make-thread (lambda () (fnn-app-step 1)) :name "w"))
+{extra}
+"""
+
+    GOOD = """(when (eq status :uncertain) (fnn-indeterminate "uncertain"))
+    detail"""
+
+    def swallow(self, found):
+        return [k for k in found if k[0] == "fnn-app-result" and k[1].startswith("swallow:")]
+
+    def test_a_converted_status_is_a_deferred_rethrow(self):
+        self.assertEqual(self.swallow(self.run7(self.src(self.GOOD))), [])
+
+    def test_the_same_handler_without_the_row_is_a_swallow(self):
+        found = self.run7(self.src(self.GOOD), row={})
+        self.assertEqual(len(self.swallow(found)), 1, found)
+
+    def test_a_caller_that_drops_the_status_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src("detail"))
+
+    def test_an_early_return_before_the_conversion_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src("""(when (null detail) (return-from fnn-app-step nil))
+    (when (eq status :uncertain) (fnn-indeterminate "uncertain"))"""))
+
+    def test_a_conversion_that_may_return_normally_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src("""(when (eq status :uncertain) (when detail (fnn-indeterminate "u")))"""))
+
+    def test_a_second_caller_that_ignores_the_status_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(self.GOOD, extra="(defun fnn-other (v) (fnn-app-result v))"))
+
+    def test_a_clause_that_returns_another_status_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(self.GOOD, clause="(values :ok 0)"))
+
+
+class DeadCallArm(unittest.TestCase):
+    """The mux loop's step excludes the cold arm before it calls the shared
+    result function, so reached through that edge the arm's await is dead
+    (contract dead_call_arms, verified)."""
+
+    ROW = [{"function": "fnn-step", "call": "fnn-results", "file": "host/native/fixture.lisp",
+            "results_param": "results", "tag": ":cold", "arm_calls": ["fnn-cold-line"], "why": "test"}]
+
+    def run9(self, source, rows=None):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["dead_call_arms"] = self.ROW if rows is None else rows
+        raw["actors"] = {"mux-loop": {"roots": ["fnn-mux-run"], "no_await": True, "await_ok": [], "why": "t"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath),
+                                                  ["host/native/fixture.lisp"], {})
+            return [(f.function, f.key) for f in checker.run({"R9"}) if f.rule == "R9"]
+
+    def src(self, step_body=None, results_arm="(:cold (fnn-cold-line results))", extra="", mux="(fnn-step x)"):
+        step_body = step_body or """(let ((results (list (fnn-read x))))
+    (if (eq (first results) :cold)
+        (values :cold results)
+        (fnn-results x results)))"""
+        return f"""
+(defun fnn-wait-q (queue lock) (sb-thread:condition-wait queue lock))
+(defun fnn-cold-line (results) (fnn-wait-q results results))
+(defun fnn-read (x) x)
+(defun fnn-results (x results)
+  (case (first results)
+    {results_arm}
+    (t (fnn-other results x))))
+(defun fnn-other (results x) (fnn-cold-line (list results x)))
+(defun fnn-step (x)
+  {step_body})
+(defun fnn-mux-run (x) {mux})
+{extra}
+"""
+
+    def waits(self, found):
+        return [k for k in found if k[0] == "fnn-wait-q"]
+
+    def test_the_excluded_arm_is_not_a_blocking_path_of_the_mux_loop(self):
+        # fnn-results' other arm still reaches the wait through fnn-other: only the
+        # one call named in the row is dropped, and only inside fnn-results
+        found = self.waits(self.run9(self.src(results_arm="(:cold (fnn-cold-line results))")))
+        self.assertTrue(found)
+        self.assertEqual(self.waits(self.run9(self.src().replace("(t (fnn-other results x))", "(t (values results x))"))), [])
+
+    def test_without_the_row_the_mux_loop_is_charged_with_the_await(self):
+        self.assertTrue(self.waits(self.run9(self.src(), rows=[])))
+
+    def test_a_call_outside_the_else_branch_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run9(self.src(step_body="""(let ((results (list (fnn-read x))))
+    (fnn-results x results))"""))
+
+    def test_a_guard_on_the_then_branch_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run9(self.src(step_body="""(let ((results (list (fnn-read x))))
+    (if (eq (first results) :cold)
+        (fnn-results x results)
+        (values :other results)))"""))
+
+    def test_an_assigned_results_variable_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run9(self.src(step_body="""(let ((results (list (fnn-read x))))
+    (if (eq (first results) :cold)
+        (values :cold results)
+        (progn (setq results (list :cold)) (fnn-results x results))))"""))
+
+    def test_a_cold_call_outside_the_tag_arm_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run9(self.src(results_arm="(:warm (fnn-cold-line results))"))
+
+    def test_another_route_of_the_mux_loop_to_the_callee_keeps_the_arm(self):
+        found = self.run9(self.src(mux="(progn (fnn-step x) (fnn-results x (list :cold)))"))
+        self.assertTrue(self.waits(found), found)
+
+
+class DebtRethrow(unittest.TestCase):
+    """A cleanup failure captured into a debt slot while a primary escape may
+    be unwinding is a deferred rethrow when the checker verifies the whole
+    chain to the close hook that signals it (contract debt_rethrows)."""
+
+    ROW = {"fnn-w": {"file": "host/native/fixture.lisp", "clause": "serious-condition", "var": "failure",
+                     "slot": "fnn-rt-debt", "slot_keyword": ":debt", "closer": "fnn-rt-close",
+                     "registry": "*rts*", "registry_reader": "fnn-rt-get",
+                     "special": "*fnn-owner-close-hooks*", "hooks_reader": "fnn-svc-close-hooks",
+                     "why": "test"}}
+
+    def run7(self, source, row=None):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["debt_rethrows"] = self.ROW if row is None else row
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath),
+                                                  ["host/native/fixture.lisp"], {})
+            return [(f.function, f.key) for f in checker.run({"R7"}) if f.rule == "R7"]
+
+    def src(self, store="(when failure (setf (fnn-rt-debt rt) failure))",
+            closer_body="(when (fnn-rt-debt rt) (error (fnn-rt-debt rt)))",
+            binding="(list #'fnn-rt-close)", extra="", top="(fnn-run)",
+            stop_test="(unless joined (fnn-fault \"x\"))",
+            remover="(when (fnn-rt-debt rt) (fnn-fault \"x\"))"):
+        return f"""
+(defstruct (fnn-rt (:constructor %make-fnn-rt)) service (debt nil))
+(defstruct (fnn-svc (:constructor %make-fnn-svc)) close-hooks)
+(defvar *rts* (make-hash-table))
+(defvar *fnn-owner-close-hooks* nil)
+(defun fnn-rt-get (service) (gethash service *rts*))
+(defun fnn-w-core (x) (fnn-fault x))
+(defun fnn-w (rt primary)
+  (let ((failure nil))
+    (flet ((release (thunk)
+             (handler-case (funcall thunk)
+               (serious-condition (c) (unless failure (setq failure c))))))
+      (release (lambda () (fnn-w-core rt))))
+    {store}
+    (when (and failure (null primary)) (error failure))))
+(defun fnn-rt-close (service)
+  (let ((rt (fnn-rt-get service)))
+    (when rt
+      {closer_body}
+      (remhash service *rts*)))
+  nil)
+(defun fnn-rt-abort (service rt)
+  (unless (fnn-rt-debt rt) (remhash service *rts*)))
+(defun fnn-install () (%make-fnn-svc :close-hooks *fnn-owner-close-hooks*))
+(defun fnn-stop (svc)
+  (let ((joined t))
+    (dolist (hook (fnn-svc-close-hooks svc))
+      (handler-case (funcall hook svc) (serious-condition () (setq joined nil))))
+    {stop_test}))
+(defun fnn-run () (let ((svc (fnn-install))) (fnn-stop svc)))
+(defun fnn-top () (let ((*fnn-owner-close-hooks* {binding})) {top}))
+(defun fnn-other (service) service)
+(defun fnn-start () (sb-thread:make-thread (lambda () (fnn-w 1 nil)) :name "w"))
+{extra}
+"""
+
+    def swallow(self, found):
+        return [k for k in found if k[0] == "fnn-w" and k[1].startswith("swallow:")]
+
+    def test_the_verified_chain_makes_the_capture_a_deferred_rethrow(self):
+        self.assertEqual(self.swallow(self.run7(self.src())), [])
+
+    def test_the_same_capture_without_the_row_is_a_swallow(self):
+        self.assertEqual(len(self.swallow(self.run7(self.src(), row={}))), 1)
+
+    def test_a_slot_cleared_before_the_signal_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(closer_body="""(let ((d (fnn-rt-debt rt)))
+        (setf (fnn-rt-debt rt) nil)
+        (when d (error d)))"""))
+
+    def test_a_closer_that_is_not_a_close_hook_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(binding="(list #'fnn-other)"))
+
+    def test_a_signal_on_only_one_branch_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(closer_body="(when (fnn-rt-debt rt) (when service (error (fnn-rt-debt rt))))"))
+
+    def test_an_early_exit_before_the_signal_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(closer_body="""(when (null service) (return-from fnn-rt-close nil))
+      (when (fnn-rt-debt rt) (error (fnn-rt-debt rt)))"""))
+
+    def test_a_store_that_does_not_happen_on_the_spine_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(store="(when (and failure primary) (setf (fnn-rt-debt rt) failure))"))
+
+    def test_another_writer_of_the_slot_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(extra="(defun fnn-clear (rt) (setf (fnn-rt-debt rt) nil))"))
+
+    def test_a_registry_removal_that_ignores_the_debt_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(extra="(defun fnn-drop (service) (remhash service *rts*))"))
+
+    def test_a_stop_function_that_ignores_a_failed_hook_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(stop_test="nil"))
+
+    def test_a_binding_whose_body_never_reaches_the_stop_path_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(top="(fnn-other 1)"))

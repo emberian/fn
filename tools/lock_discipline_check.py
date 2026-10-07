@@ -635,6 +635,16 @@ class Event:
     line: int
     ctx: Ctx
     extra: object = None
+    # specials dynamically rebound (a `let' of a defvar) around this event,
+    # in its own defun: the access names this thread's binding, not the global
+    bound: frozenset = frozenset()
+    # one operation on a :synchronized table (gethash, remhash, clrhash,
+    # hash-table-count, setf of gethash): atomic in the table's own lock
+    atomic: bool = False
+    # (names the thread variable of an enclosing `unless (and T (thread-alive-p T))'
+    # is bound from) per such guard, and a call's first argument when it is a symbol
+    dead: tuple = ()
+    arg0: str = ""
 
 
 @dataclass
@@ -690,6 +700,8 @@ BUILTIN_PARENTS = {"error": ["serious-condition"], "serious-condition": ["condit
 
 
 SPECIAL_SKIP = {"declare", "quote", "go", "the-environment"}
+# head -> (position of the table argument in the form, access kind)
+SYNC_TABLE_OPS = {"gethash": (2, "r"), "remhash": (2, "w"), "clrhash": (1, "w"), "hash-table-count": (1, "r")}
 BINDING_FORMS = {"let", "let*", "sb-int:dx-let"}
 FUNCALLERS = {"funcall", "apply", "multiple-value-call"}
 # env value marking "this name is the current defun's parameter" (walk_if)
@@ -753,6 +765,8 @@ class Analyzer:
         self.run_targets: list = []   # (fn, param) of the argument position a walked closure was passed at
         self._writes_cache: dict = {}  # fn name -> frozenset of names its body writes
         self.cur_def = None
+        self.rebound: list = []       # specials let-bound around the form being walked
+        self.dead_guards: list = []   # thread-not-alive guards around the form being walked
         self.defer_vars: list = []    # variables whose captured conditions are rethrown on every exit path
         self.leaf_kinds = self._leaf_table()
         self.region_of = {}
@@ -1042,6 +1056,8 @@ class Analyzer:
         self.cur = info
         self.cur_def = d
         self.defer_vars = []
+        self.rebound = []
+        self.dead_guards = []
         self.recording = record
         if not record:
             self.pass1_name = name
@@ -1064,7 +1080,7 @@ class Analyzer:
             seen = set()
             unique = []
             for e in info.events:
-                k = (e.kind, e.name, e.line, e.ctx, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
+                k = (e.kind, e.name, e.line, e.ctx, e.bound, e.atomic, e.dead, e.arg0, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
                 if k not in seen:
                     seen.add(k)
                     unique.append(e)
@@ -1080,12 +1096,53 @@ class Analyzer:
             self.infos[name] = info
         return info
 
-    def ev(self, kind, name, line, ctx, extra=None):
+    def ev(self, kind, name, line, ctx, extra=None, atomic=False, arg0=""):
         if self.recording:
-            self.cur.events.append(Event(kind, name, line, ctx, extra))
+            self.cur.events.append(Event(kind, name, line, ctx, extra, frozenset(self.rebound), atomic,
+                                         tuple(self.dead_guards), arg0))
+
+    @staticmethod
+    def _holding_release_cleanup(cleanup, lockform) -> bool:
+        """CLEANUP is exactly (when (holding-mutex-p L) (release-mutex L)) for
+        the very lock expression the grab named."""
+        if not (isinstance(cleanup, list) and len(cleanup) == 3 and head(cleanup) == "when"):
+            return False
+        test, act = cleanup[1], cleanup[2]
+        want = render(lockform)
+        return (isinstance(test, list) and len(test) == 2 and head(test) == "sb-thread:holding-mutex-p"
+                and render(test[1]) == want
+                and isinstance(act, list) and len(act) == 2 and head(act) == "sb-thread:release-mutex"
+                and render(act[1]) == want)
 
     def walk_body(self, forms, ctx, env, line):
-        return sig_union([self.walk(f, ctx, env, line_of(f, line)) for f in forms])
+        parts = []
+        forms = list(forms)
+        i = 0
+        while i < len(forms):
+            f = forms[i]
+            # (grab-mutex L) directly followed by (unwind-protect BODY (when
+            # (holding-mutex-p L) (release-mutex L))) is a critical section of L:
+            # BODY runs holding L (a timed condition-wait may return without
+            # it; the re-grab is the (unless (holding-mutex-p L) (grab-mutex L))
+            # form, a no-op under the held model), and the cleanup releases
+            # exactly L.  Any other manual grab stays unresolved.
+            if (isinstance(f, list) and len(f) == 2 and head(f) == "sb-thread:grab-mutex"
+                    and i + 1 < len(forms)):
+                nxt = forms[i + 1]
+                if (isinstance(nxt, list) and len(nxt) == 3 and head(nxt) == "unwind-protect"
+                        and self._holding_release_cleanup(nxt[2], f[1])):
+                    lock = self.lock_of(f[1], env)
+                    ln = line_of(f, line)
+                    self.ev("acq", lock, ln, ctx, "sb-thread:with-mutex")
+                    if lock.startswith("?"):
+                        self.ev("unresolved", "lock object " + lock[1:], ln, ctx)
+                    inner = Ctx(ctx.locks | {lock}, ctx.noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond)
+                    parts.append(self.walk(nxt[1], inner, env, line_of(nxt, ln)))
+                    i += 2
+                    continue
+            parts.append(self.walk(f, ctx, env, line_of(f, line)))
+            i += 1
+        return sig_union(parts)
 
     def walk(self, form, ctx: Ctx, env: dict, line: int):
         if isinstance(form, Sym):
@@ -1104,6 +1161,24 @@ class Analyzer:
             return self.walk_body(form, ctx, env, line)
         if h in SPECIAL_SKIP:
             return EMPTY_SIG
+        if (h == "unless" and len(form) == 3 and isinstance(form[1], list) and len(form[1]) == 2
+                and head(form[1]) == "sb-thread:holding-mutex-p"
+                and isinstance(form[2], list) and len(form[2]) == 2
+                and head(form[2]) == "sb-thread:grab-mutex"
+                and render(form[1][1]) == render(form[2][1])
+                and self.lock_of(form[2][1], env) in ctx.locks):
+            # re-grab of a lock this region already holds, run only when it
+            # is not held: restores the held state the model assumes
+            return EMPTY_SIG
+        if h == "unless" and len(form) > 2 and self.dead_test(form[1]) is not None:
+            guard = self.dead_ties(self.dead_test(form[1]), env)
+            parts = [self.walk(form[1], ctx, env, line)]
+            self.dead_guards.append(guard)
+            try:
+                parts.append(self.walk_body(form[2:], ctx, env, line))
+            finally:
+                self.dead_guards.pop()
+            return sig_union(parts)
         if h == "function":
             target = sym(form[1]) if len(form) > 1 else None
             if target and target in self.tree.defs:
@@ -1120,6 +1195,12 @@ class Analyzer:
             return self.walk_gated_body(form, ctx, env, line)
         if h in BINDING_FORMS or h in ("multiple-value-bind", "destructuring-bind", "symbol-macrolet"):
             return self.walk_binding(form, h, ctx, env, line)
+        if h in SYNC_TABLE_OPS and len(form) > SYNC_TABLE_OPS[h][0]:
+            pos, kind = SYNC_TABLE_OPS[h]
+            table = form[pos]
+            if isinstance(table, Sym) and str(table) in self.tree.synchronized and str(table) not in env:
+                self.ev("acc", str(table), line, ctx, kind, True)
+                return sig_union([self.walk(x, ctx, env, line) for k, x in enumerate(form[1:], 1) if k != pos])
         if h in ("flet", "labels", "macrolet"):
             env2 = dict(env)
             parts = []
@@ -1341,6 +1422,36 @@ class Analyzer:
             scan(stmt)
         return uses
 
+    @staticmethod
+    def dead_test(test):
+        """T for a test `(thread-alive-p T)' or `(and T (thread-alive-p T))' (an
+        `unless' body then runs only when no thread T is running), else None."""
+        if isinstance(test, list) and head(test) == "and" and len(test) == 3 and isinstance(test[1], Sym) \
+                and test[1] == sym(test[2][1] if isinstance(test[2], list) and len(test[2]) > 1 else None):
+            test = test[2]
+        if isinstance(test, list) and head(test) == "sb-thread:thread-alive-p" and len(test) == 2 \
+                and isinstance(test[1], Sym):
+            return str(test[1])
+        return None
+
+    @staticmethod
+    def dead_ties(thread_var, env):
+        """THREAD-VAR and every name its binding forms mention, two bindings deep:
+        what the guarded thread is looked up from."""
+        def names(form, out):
+            if isinstance(form, Sym):
+                out.add(str(form))
+            elif isinstance(form, list):
+                for x in form:
+                    names(x, out)
+        out = {thread_var}
+        for _ in range(2):
+            for n in list(out):
+                init = env.get(n)
+                if isinstance(init, list):
+                    names(init, out)
+        return frozenset(out)
+
     def walk_flet_body(self, entry, ctx, env, line, bound=None):
         fparams, fbody = entry
         env2 = dict(env)
@@ -1355,6 +1466,7 @@ class Analyzer:
         parts = []
         noio = ctx.noio
         cond2 = ctx.cond
+        rebinds = []
         if h in BINDING_FORMS:
             for b in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
                 if isinstance(b, list) and b:
@@ -1364,7 +1476,7 @@ class Analyzer:
                     if name == "*fnn-extent-no-io*":
                         noio = not (init is None or (isinstance(init, Sym) and str(init) == "nil"))
                     elif name.startswith("*") and name in self.tree.globals:
-                        pass
+                        rebinds.append(name)
                     else:
                         env2[name] = init
                         if cond2 and cond2[0] == name:
@@ -1386,11 +1498,14 @@ class Analyzer:
             [str(b[0]) if isinstance(b, list) and b else str(b) for b in
              (form[1] if h in BINDING_FORMS and len(form) > 1 and isinstance(form[1], list) else [])], body)
         mark = len(self.defer_vars)
+        rmark = len(self.rebound)
         self.defer_vars.extend(deferred)
+        self.rebound.extend(rebinds)
         try:
             parts.append(self.walk_body(body, ctx2, env2, line))
         finally:
             del self.defer_vars[mark:]
+            del self.rebound[rmark:]
         return sig_union(parts)
 
     EXIT_HEADS = {"return-from", "return", "go", "throw"}
@@ -1591,7 +1706,7 @@ class Analyzer:
         if h in ("setq", "setf", "psetf", "psetq"):
             pairs = form[1:]
             for k in range(0, len(pairs) - 1, 2):
-                parts.append(self.note_place(pairs[k], ctx, env, line, value=pairs[k + 1]))
+                parts.append(self.note_place(pairs[k], ctx, env, line, value=pairs[k + 1], atomic_ok=True))
                 parts.append(self.walk(pairs[k + 1], ctx, env, line))
             return sig_union(parts)
         if h in ("push", "pushnew"):
@@ -1605,7 +1720,7 @@ class Analyzer:
             parts.extend(self.walk(x, ctx, env, line) for x in form[2:])
         return sig_union(parts)
 
-    def note_place(self, place, ctx, env, line, value=None, pushed=None):
+    def note_place(self, place, ctx, env, line, value=None, pushed=None, atomic_ok=False):
         if isinstance(place, Sym):
             name = str(place)
             if name in self.write_regions and name not in env:
@@ -1625,9 +1740,10 @@ class Analyzer:
             if h in ("gethash", "svref", "aref", "car", "cdr", "first", "second", "third", "nth",
                      "getf", "slot-value", "elt", "cadr", "cddr", "rest", "fourth", "fifth"):
                 parts = []
-                for x in place[1:]:
+                for k, x in enumerate(place[1:], 1):
                     if isinstance(x, Sym) and str(x) in self.tree.globals and str(x) not in env:
-                        self.ev("acc", str(x), line, ctx, "w")
+                        self.ev("acc", str(x), line, ctx, "w",
+                                atomic_ok and h == "gethash" and k == 2 and str(x) in self.tree.synchronized)
                     elif isinstance(x, list) and (head(x) in self.tree.structs):
                         self.ev("acc", head(x), line, ctx, "w")
                         parts.append(self.walk_body(x[1:], ctx, env, line))
@@ -1680,9 +1796,9 @@ class Analyzer:
             if self.recording:
                 lam = Def(rid, creator.path, line, [], [Node([fn[1]])], "lambda", "", creator.loaded)
                 lam.body[0].line = line
-                saved = (self.cur, self.recording)
+                saved = (self.cur, self.recording, self.rebound, self.defer_vars, self.dead_guards)
                 info = self.walk_def(rid, lam, True, thread_of=(creator.name, line, tname))
-                self.cur, self.recording = saved
+                self.cur, self.recording, self.rebound, self.defer_vars, self.dead_guards = saved
             self.ev("thread", rid, line, ctx, tname)
         else:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
@@ -1739,9 +1855,11 @@ class Analyzer:
             return rid
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
                 "lambda", "", self.cur.loaded)
-        saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None), self.defer_vars)
+        saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None), self.defer_vars,
+                 self.rebound, self.dead_guards)
         self.walk_def(rid, d, True, thread_of=thread_of, env={k: None for k in env})
-        self.cur, self.cur_def, self.recording, self.gate_class, self.defer_vars = saved
+        (self.cur, self.cur_def, self.recording, self.gate_class, self.defer_vars,
+         self.rebound, self.dead_guards) = saved
         return rid
 
     def walk_handler_case(self, form, ctx, env, line):
@@ -1898,7 +2016,7 @@ class Analyzer:
                 self.ev("call", quoted_symbol(target), line, ctx, "funcall")
                 parts.append(("u", frozenset(), (quoted_symbol(target),), ()))
         if h in self.tree.defs:
-            self.ev("call", h, line, ctx)
+            self.ev("call", h, line, ctx, arg0=str(args[0]) if args and isinstance(args[0], Sym) else "")
             parts.append(("u", frozenset(), (h,), ()))
             callee = self.tree.defs[h]
             cparams = lambda_params(callee.params)
@@ -2109,6 +2227,7 @@ class Model:
         self.declare_callback_contexts()
         self.roots = self.find_roots()
         self.check_callback_entries()
+        self.check_test_only_entries()
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()
@@ -2116,6 +2235,7 @@ class Model:
         self.compute_requirements()
         self.compute_actors()
         self.compute_mustheld()
+        self.compute_mustbound()
 
     def declare_callback_contexts(self) -> None:
         """contracts `callback_contexts': {LAMBDA-ID: {"runs_in": ENTRY, "why"}}.
@@ -2160,6 +2280,29 @@ class Model:
             self.infos[entry].events.append(edge)
             self.callers[lam].append((entry, edge))
             self.declared_callbacks[lam] = entry
+
+    def check_test_only_entries(self) -> None:
+        """A declared test-only entry is an uncalled host function that a test
+        under tests/ calls: it is not an actor of the running host.  The row
+        goes inert (the function is then an ordinary callee) the moment a host
+        function calls or references it."""
+        self.test_only = set()
+        rows = self.c.raw.get("test_only_entries", {})
+        texts = None
+        for name in sorted(rows):
+            if name not in self.infos:
+                if not (self.tree.root / rows[name]["file"]).exists():
+                    continue     # a fixture host without the file the row is about
+                raise ValueError(f"test_only_entries {name}: not a function of the analyzed host")
+            if self.roots.get(name) != "entry":
+                raise ValueError(f"test_only_entries {name}: is called or referenced by the host "
+                                 f"(root kind {self.roots.get(name)!r}); the row is stale")
+            if texts is None:
+                texts = [p.read_text(encoding="utf-8", errors="replace")
+                         for p in sorted((self.tree.root / "tests").rglob("*.lisp"))]
+            if not any(re.search(r"[(\s']" + re.escape(name) + r"[\s)]", t) for t in texts):
+                raise ValueError(f"test_only_entries {name}: no file under tests/ mentions it")
+            self.test_only.add(name)
 
     def check_callback_entries(self) -> None:
         """A declared callback's ENTRY is reached only from startup or entry
@@ -2464,19 +2607,58 @@ class Model:
     def compute_actors(self) -> None:
         """actors[f] = set of root names whose synchronous closure reaches F."""
         actors: dict[str, set] = collections.defaultdict(set)
+        post: dict[str, set] = collections.defaultdict(set)
+        guards = self.dead_guard_rows()
         for r, kind in self.roots.items():
             if kind not in ("thread", "serving", "async", "entry", "startup"):
                 continue
-            stack = [r]
-            seen = {r}
+            if kind == "entry" and r in self.test_only:
+                continue
+            stack = [(r, None)]
+            seen = {(r, None)}
             while stack:
-                n = stack.pop()
-                actors[n].add(r)
+                n, tag = stack.pop()
+                (actors[n].add(r) if tag is None else post[n].add((r, tag)))
                 for e in self.infos[n].events:
-                    if e.kind == "call" and e.name in self.infos and e.name not in seen:
-                        seen.add(e.name)
-                        stack.append(e.name)
+                    if e.kind == "call" and e.name in self.infos:
+                        nxt = (e.name, tag or guards.get((n, e.name, id(e))))
+                        if nxt not in seen:
+                            seen.add(nxt)
+                            stack.append(nxt)
         self.actors = actors
+        self.post_actors = post
+
+    def dead_guard_rows(self) -> dict:
+        """{(function, callee, id(call event)): the root of the thread that is
+        not running} for the guarded calls a contract row declares: the call
+        sits in an `unless (and T (thread-alive-p T))' body, T is looked up
+        from the very object the call's first argument names, and the
+        function starts exactly one thread of the declared name."""
+        out = {}
+        for row in self.c.raw.get("dead_thread_guards", []):
+            info = self.infos.get(row["function"])
+            if info is None:
+                continue
+            roots = [e.name for e in info.events if e.kind == "thread" and e.extra == row["thread_name"]]
+            if len(roots) != 1:
+                continue
+            for e in info.events:
+                if (e.kind == "call" and e.name == row["call"] and e.arg0
+                        and any(e.arg0 in ties for ties in e.dead)):
+                    out[(row["function"], e.name, id(e))] = roots[0]
+        return out
+
+    def collapse_dead(self, labels):
+        """Drop the actor labels `X|after|R' when R is the only other actor:
+        the stop that runs after the thread R is no longer running is ordered
+        after everything R did."""
+        out = set(labels)
+        for lab in list(out):
+            if "|after|" in lab:
+                tag = lab.split("|after|", 1)[1]
+                if tag in out and all(l == tag or l.endswith("|after|" + tag) for l in out):
+                    out = {tag}
+        return out
 
     def actor_of(self, root: str) -> str:
         kind = self.roots.get(root)
@@ -2511,6 +2693,34 @@ class Model:
                     held[name] = acc
                     changed = True
         self.mustheld = {n: (h if h is not None else frozenset()) for n, h in held.items()}
+
+    def compute_mustbound(self) -> None:
+        """mustbound[f]: the specials every call of F reaches it under a `let'
+        rebinding of (its callers' own, or their callers').  A root starts with
+        none: a thread sees the global value, not its spawner's binding."""
+        top = None
+        bound: dict[str, frozenset | None] = {n: top for n in self.infos}
+        for n in self.roots:
+            bound[n] = frozenset()
+        changed = True
+        rounds = 0
+        while changed and rounds < 50:
+            changed = False
+            rounds += 1
+            for name in self.infos:
+                if name in self.roots:
+                    continue
+                acc = None
+                for caller, e in self.callers.get(name, ()):
+                    b = bound.get(caller)
+                    if b is None:
+                        continue
+                    here = b | e.bound
+                    acc = here if acc is None else acc & here
+                if acc is not None and acc != bound[name]:
+                    bound[name] = acc
+                    changed = True
+        self.mustbound = {n: (b if b is not None else frozenset()) for n, b in bound.items()}
 
 
 # --------------------------------------------------------------------------
@@ -2619,8 +2829,13 @@ class Checker:
                 g = self.an.tree.globals.get(e.name)
                 if g and e.name.startswith("+"):
                     continue
+                if e.name in e.bound or e.name in self.m.mustbound.get(name, frozenset()):
+                    continue        # the access names a thread-local dynamic binding
                 held = e.ctx.locks | self.m.mustheld.get(name, frozenset())
+                if e.atomic:
+                    held = held | {"SYNC:" + e.name}    # the table's own lock covers this one operation
                 actors = {self.m.actor_of(r) for r in self.m.actors.get(name, ())}
+                actors |= {self.m.actor_of(r) + "|after|" + tag for r, tag in self.m.post_actors.get(name, ())}
                 if not actors or actors == {"startup"} or "STARTUP" in held:
                     continue
                 sites[e.name].append((info, e, held, actors - {"startup"}))
@@ -2628,7 +2843,7 @@ class Checker:
             writes = [r for r in rows if r[1].extra == "w"]
             if not writes:
                 continue
-            actors = set().union(*(r[3] for r in rows))
+            actors = self.m.collapse_dead(set().union(*(r[3] for r in rows)))
             if len(actors) < 2:
                 continue
             common = frozenset.intersection(*[r[2] for r in rows])
@@ -3262,8 +3477,170 @@ class Checker:
         core = (CLASS_TYPE["fault"], CLASS_TYPE["indet"])
         return all(any(self.m.subtype(x, t) for t in core) for x in c)
 
+    def verified_status_rethrows(self) -> dict:
+        """{function: handler clause type} for the declared value-routed
+        deferred rethrows (contract status_rethrows) that hold up against the
+        source.  FUNCTION's HANDLER clause hands the condition on as a returned
+        status: its last form is (values STATUS ...) and it never exits early.
+        Every reference to FUNCTION in the host is a call that is the value
+        form of a (multiple-value-bind (S ...) (FUNCTION ...) BODY...), and BODY
+        reaches, past forms that cannot leave BODY early (no return-from,
+        return, go or throw, even nested), a form (when (eq S STATUS) CALL)
+        whose CALL signals a fault or indeterminate condition on every path.
+        A row that does not verify is a loud error."""
+        out = {}
+        tree = self.an.tree
+        for name, row in sorted(self.c.raw.get("status_rethrows", {}).items()):
+            if name not in self.infos:
+                if not (tree.root / row["file"]).exists():
+                    continue
+                raise ValueError(f"status_rethrows {name}: not a function of the analyzed host")
+            status, clause_type = row["status"], row["clause"]
+
+            def fail(why, name=name):
+                raise ValueError(f"status_rethrows {name}: {why}")
+
+            exits = Analyzer.EXIT_HEADS
+
+            def has_exit(f):
+                stack = [f]
+                while stack:
+                    x = stack.pop()
+                    if isinstance(x, list) and x:
+                        if head(x) in ("quote", "lambda", "function"):
+                            continue
+                        if head(x) in exits:
+                            return True
+                        stack.extend(x)
+                return False
+
+            # the clause hands the condition on as the returned status
+            clauses = []
+            stack = list(tree.defs[name].body)
+            while stack:
+                x = stack.pop()
+                if isinstance(x, list) and x:
+                    if head(x) == "handler-case":
+                        clauses += [cl for cl in x[2:] if isinstance(cl, list) and cl and sym(cl[0]) == clause_type]
+                    stack.extend(x)
+            if not clauses:
+                fail(f"no handler-case clause {clause_type}")
+            for cl in clauses:
+                body = cl[2:]
+                last = body[-1] if body else None
+                if not (isinstance(last, list) and head(last) == "values" and len(last) > 1
+                        and sym(last[1]) == status):
+                    fail(f"the clause {clause_type} does not end in (values {status} ...)")
+                if any(has_exit(f) for f in body):
+                    fail(f"the clause {clause_type} can exit early")
+
+            def converts(forms, var):
+                for f in forms:
+                    if (isinstance(f, list) and head(f) == "when" and len(f) == 3
+                            and isinstance(f[1], list) and head(f[1]) == "eq" and len(f[1]) == 3
+                            and sym(f[1][1]) == var and sym(f[1][2]) == status
+                            and isinstance(f[2], list) and self._converts([f[2]])):
+                        return True
+                    if has_exit(f):
+                        return False
+                    if isinstance(f, list) and head(f) in ("let", "let*") and len(f) > 2:
+                        if any(has_exit(b) for b in (f[1] if isinstance(f[1], list) else [])):
+                            return False
+                        if converts(f[2:], var):
+                            return True
+                        return False
+                return False
+
+            seen = 0
+            for dname, d in tree.defs.items():
+                stack = [(f, None) for f in d.body]
+                while stack:
+                    x, parent = stack.pop()
+                    if isinstance(x, Sym) and str(x) == name and not (
+                            parent is not None and parent and parent[0] is x):
+                        if not (isinstance(parent, list) and parent and head(parent) == "multiple-value-bind"):
+                            if dname != name:
+                                fail(f"{dname} references {name} outside a multiple-value-bind value form")
+                    if not (isinstance(x, list) and x):
+                        continue
+                    if head(x) == name:
+                        fail(f"{dname} calls {name} outside a multiple-value-bind value form")
+                    if head(x) == "multiple-value-bind" and len(x) > 3:
+                        call = x[2]
+                        if isinstance(call, list) and head(call) == name:
+                            seen += 1
+                            vars_ = x[1] if isinstance(x[1], list) else []
+                            if not vars_ or not isinstance(vars_[0], Sym) or not converts(x[3:], str(vars_[0])):
+                                fail(f"{dname}: the status of the call is not converted past early exits")
+                            stack.extend((c, x) for c in call[1:])
+                            stack.extend((c, x) for c in x[3:])
+                            continue
+                    stack.extend((c, x) for c in x)
+            if seen == 0:
+                fail("no caller binds its status")
+            out[name] = clause_type
+        return out
+
+    @staticmethod
+    def _subforms(f):
+        stack = [f]
+        while stack:
+            x = stack.pop()
+            yield x
+            if isinstance(x, list):
+                stack.extend(x)
+
+    def verified_diagnostic_sinks(self) -> set:
+        """The declared diagnostic sinks (contract diagnostic_sinks) that hold
+        up against the source: a function of the analyzed host whose call
+        closure reaches no fence function and no descriptor open or close
+        primitive, so a failure inside it cannot alter custody or the node's
+        lifecycle.  A row whose function is absent is inert in a fixture host
+        without its file, and a loud error otherwise."""
+        forbidden = (set(self.c.raw.get("fence_functions", [])) | set(self.c.raw.get("close_primitives", []))
+                     | set(self.c.raw.get("open_primitives", [])))
+        out = set()
+        for name, row in sorted(self.c.raw.get("diagnostic_sinks", {}).items()):
+            if name not in self.infos:
+                if not (self.an.tree.root / row["file"]).exists():
+                    continue
+                raise ValueError(f"diagnostic_sinks {name}: not a function of the analyzed host")
+            hit = self.reaches(("u", frozenset(), (name,), ()), forbidden - {name})
+            if hit:
+                raise ValueError(f"diagnostic_sinks {name}: reaches {hit[-1]} ({' -> '.join(hit)}); "
+                                 f"a diagnostic sink cannot touch custody or the fence")
+            out.add(name)
+        return out
+
+    @staticmethod
+    def _sig_calls(sig) -> tuple:
+        """(every callee name in the SigX, whether any raw leaf signal is in it)."""
+        calls, leaves = set(), False
+        stack = [sig]
+        while stack:
+            s = stack.pop()
+            if s[0] == "u":
+                calls.update(s[2])
+                leaves = leaves or bool(s[1])
+                stack.extend(s[3])
+            else:
+                stack.append(s[1])
+                stack.extend(b for _, _, b in s[2])
+        return calls, leaves
+
+    def diagnostic_only(self, inner, clauses, sinks) -> bool:
+        """The protected form calls nothing but verified diagnostic sinks and
+        signals nothing of its own, and every clause body is empty (no call, no
+        rethrow): the swallowed condition is the sink's own failure."""
+        calls, leaves = self._sig_calls(inner)
+        return (bool(calls) and not leaves and calls <= sinks
+                and all(body == EMPTY_SIG for _, _, body, _, _, _ in clauses))
+
     def rule_R7(self):
         fences = set(self.c.raw.get("fence_functions", []))
+        sinks = self.verified_diagnostic_sinks()
+        status_routed = self.verified_status_rethrows()
+        debt_routed = self.verified_debt_rethrows()
         # classify-and-route functions (contract classifying_escape_functions):
         # a fault or indeterminate condition handed to one reaches the fence
         # or fault stop; any other kind is answered to the caller. They count
@@ -3276,6 +3653,8 @@ class Checker:
                 continue  # offline/command code: inventoried, not a served failure scope
             for (line, inner, clauses, ctx) in info.handlers:
                 can = set(self.m.eval_sig(inner, self.m.signals))
+                if sinks and self.diagnostic_only(inner, clauses, sinks):
+                    continue
                 row = scopes.get(f"{name}:{line}") or scopes.get(name)
                 scope = row["scope"] if isinstance(row, dict) else row
                 remaining = set(can)
@@ -3285,6 +3664,14 @@ class Checker:
                     if not caught:
                         continue
                     routes = rethrows or bool(names & fences)
+                    if status_routed.get(name) and spec == status_routed[name] and (caught & {"fault", "indet"}) == {"indet"}:
+                        continue    # handed on as a returned status the callers convert (verified)
+                    drow = debt_routed.get(name)
+                    if (drow and spec == drow["clause"] and any(
+                            isinstance(y, list) and head(y) == "setq" and len(y) == 3
+                            and sym(y[1]) == drow["var"] and isinstance(y[2], Sym)
+                            for f in forms for y in self._subforms(f))):
+                        continue    # captured into the verified debt slot (contract debt_rethrows)
                     core = caught & {"fault", "indet"}
                     local = caught & {"socket", "refusal", "connection"}
                     if core and not (routes or names & classifiers or self._converts(forms)) \
@@ -3342,21 +3729,334 @@ class Checker:
                              "push:" + e.name, [row.get("why", "")])
 
     # R9 ----------------------------------------------------------------------
+    def verified_debt_rethrows(self) -> dict:
+        """{function: row} for the declared cross-function debt rethrows
+        (contract debt_rethrows) that hold up against the source.  A handler
+        of FUNCTION captures a cleanup condition into the local VAR instead of
+        signalling it (a primary escape may be unwinding); the swallow is
+        deferred, not lost, when ALL of these hold:
+          1. a clause of CLAUSE type in FUNCTION assigns the condition to VAR
+             (setq VAR condition), VAR bound by a let to nil;
+          2. on that let's body, past forms that cannot leave early, comes
+             (when VAR (setf (SLOT R) VAR));
+          3. that store is the only write of SLOT in the host (no other
+             setf/setq/incf/push/pop of a (SLOT x) place, no :SLOT-keyword);
+          4. CLOSER, on its own spine and past no early exit, reaches
+             (when (SLOT R) (error (SLOT R))) for the R it got from the registry;
+             every other removal from REGISTRY is under an (unless ... (SLOT R)
+             ...) guard;
+          5. CLOSER is a close hook of the stop path: a binding of SPECIAL
+             names #'CLOSER, a constructor stores SPECIAL as its :close-hooks,
+             and a stop function funcalls each hook of the service's close-hooks
+             inside a handler whose clause clears a flag the same function then
+             tests; the constructor and the stop function are both reached from
+             inside that binding's body.
+        A row that does not verify is a loud error."""
+        out = {}
+        tree = self.an.tree
+        exits = Analyzer.EXIT_HEADS
+        mutators = {"setq", "setf", "psetq", "psetf", "incf", "decf", "push", "pushnew", "pop",
+                    "rotatef", "shiftf", "remf"}
+
+        def walk(forms):
+            stack = [(f, ()) for f in forms]
+            while stack:
+                x, anc = stack.pop()
+                yield x, anc
+                if isinstance(x, list):
+                    stack.extend((c, anc + ((x, k),)) for k, c in enumerate(x))
+
+        def has_exit(f):
+            stack = [f]
+            while stack:
+                x = stack.pop()
+                if isinstance(x, list) and x:
+                    if head(x) in ("quote", "lambda", "function"):
+                        continue
+                    if head(x) in exits:
+                        return True
+                    stack.extend(x)
+            return False
+
+        def spine(forms, goal):
+            """GOAL is reached on the spine of FORMS (descending let, let*, when,
+            unless bodies, progn) before any form that may leave early."""
+            for f in forms:
+                if goal(f):
+                    return True
+                if isinstance(f, list) and head(f) in ("let", "let*") and len(f) > 2:
+                    if any(has_exit(b) for b in (f[1] if isinstance(f[1], list) else [])):
+                        return False
+                    if spine(f[2:], goal):
+                        return True
+                if isinstance(f, list) and head(f) in ("when", "unless", "progn") and len(f) > 1:
+                    if head(f) != "progn" and has_exit(f[1]):
+                        return False
+                    if spine(f[(1 if head(f) == "progn" else 2):], goal):
+                        return True
+                if has_exit(f):
+                    return False
+            return False
+
+        for name, row in sorted(self.c.raw.get("debt_rethrows", {}).items()):
+            if name not in self.infos:
+                if not (tree.root / row["file"]).exists():
+                    continue
+                raise ValueError(f"debt_rethrows {name}: not a function of the analyzed host")
+            var, slot, closer = row["var"], row["slot"], row["closer"]
+            registry, special = row["registry"], row["special"]
+
+            def fail(why, name=name):
+                raise ValueError(f"debt_rethrows {name}: {why}")
+
+            # 1 + 2: the capture and the store
+            captured = False
+            store = None
+            for x, anc in walk(tree.defs[name].body):
+                if isinstance(x, list) and head(x) == "handler-case":
+                    for cl in x[2:]:
+                        if isinstance(cl, list) and cl and sym(cl[0]) == row["clause"]:
+                            for y, _ in walk(cl[2:]):
+                                if (isinstance(y, list) and head(y) == "setq" and len(y) == 3
+                                        and sym(y[1]) == var and isinstance(y[2], Sym)):
+                                    captured = True
+                if isinstance(x, list) and head(x) in ("let", "let*") and len(x) > 2 and isinstance(x[1], list):
+                    binds = [b for b in x[1] if isinstance(b, list) and b and sym(b[0]) == var]
+                    if binds and (len(binds[0]) == 1 or binds[0][1] is None or sym(binds[0][1]) == "nil"):
+                        def is_store(f):
+                            return (isinstance(f, list) and head(f) == "when" and len(f) == 3 and sym(f[1]) == var
+                                    and isinstance(f[2], list) and head(f[2]) == "setf" and len(f[2]) == 3
+                                    and isinstance(f[2][1], list) and head(f[2][1]) == slot
+                                    and len(f[2][1]) == 2 and sym(f[2][2]) == var)
+                        if spine(x[2:], is_store):
+                            store = next(f for f, _ in walk(x[2:]) if is_store(f))
+            if not captured:
+                fail(f"no {row['clause']} clause assigns the condition to {var}")
+            if store is None:
+                fail(f"{var} is not stored into {slot} past forms that cannot leave early")
+            # 3: the only write of the slot
+            for dname, d in tree.defs.items():
+                for x, anc in walk(d.body):
+                    if isinstance(x, Sym) and str(x).lower() == row["slot_keyword"]:
+                        fail(f"{dname} initialises the slot by keyword")
+                    if (isinstance(x, list) and len(x) > 1 and head(x) in mutators and x is not store[2]
+                            and isinstance(x[1], list) and x[1] and sym(x[1][0]) == slot):
+                        fail(f"{dname} writes {slot} other than the one store")
+            # 4: the closer
+            if closer not in self.infos:
+                fail(f"closer {closer} is not a function of the host")
+            cd = tree.defs[closer]
+            rvars = set()
+            for x, _ in walk(cd.body):
+                if (isinstance(x, list) and head(x) in ("let", "let*") and len(x) > 2 and isinstance(x[1], list)):
+                    for b in x[1]:
+                        if isinstance(b, list) and len(b) == 2 and isinstance(b[1], list) \
+                                and head(b[1]) == row["registry_reader"]:
+                            rvars.add(sym(b[0]))
+            if not rvars:
+                fail(f"{closer} does not take its runtime from {row['registry_reader']}")
+
+            def is_signal(f):
+                if not (isinstance(f, list) and head(f) == "when" and len(f) == 3):
+                    return False
+                t, a = f[1], f[2]
+                if not (isinstance(t, list) and len(t) == 2 and sym(t[0]) == slot and sym(t[1]) in rvars):
+                    return False
+                return (isinstance(a, list) and head(a) == "error" and len(a) == 2
+                        and isinstance(a[1], list) and len(a[1]) == 2 and sym(a[1][0]) == slot
+                        and sym(a[1][1]) == sym(t[1]))
+            if not spine(cd.body, is_signal):
+                fail(f"{closer} does not signal {slot} on its spine before any early exit")
+            for dname, d in tree.defs.items():
+                if dname == closer:
+                    continue
+                for x, anc in walk(d.body):
+                    if isinstance(x, list) and head(x) == "remhash" and len(x) > 2 and sym(x[2]) == registry:
+                        guarded = any(isinstance(f, list) and head(f) == "unless" and len(f) > 2
+                                      and any(isinstance(t, list) and len(t) == 2 and sym(t[0]) == slot
+                                              for t, _ in walk([f[1]]))
+                                      for f, _ in anc)
+                        if not guarded:
+                            fail(f"{dname} removes a runtime from {registry} without checking {slot}")
+            # 5: the closer is a close hook of the stop path
+            binders = []
+            for dname, d in tree.defs.items():
+                for x, anc in walk(d.body):
+                    if isinstance(x, list) and head(x) in ("let", "let*") and len(x) > 2 and isinstance(x[1], list):
+                        for bi, b in enumerate(x[1]):
+                            if (isinstance(b, list) and len(b) == 2 and sym(b[0]) == special
+                                    and any(isinstance(y, list) and head(y) == "function" and len(y) == 2
+                                            and sym(y[1]) == closer for y, _ in walk([b[1]]))):
+                                # the binding is in effect in the body and, for let*, in later inits
+                                later = [lb[1] for lb in x[1][bi + 1:]
+                                         if head(x) == "let*" and isinstance(lb, list) and len(lb) == 2]
+                                binders.append((dname, list(x[2:]) + later))
+            if not binders:
+                fail(f"no binding of {special} names #'{closer}")
+            ctors = {dname for dname, d in tree.defs.items()
+                     if any(isinstance(x, list) and ":close-hooks" in [str(t) for t in x if isinstance(t, Sym)]
+                            and any(str(x[k]) == ":close-hooks" and k + 1 < len(x) and sym(x[k + 1]) == special
+                                    for k in range(len(x) - 1) if isinstance(x[k], Sym))
+                            for x, _ in walk(d.body))}
+            stops = set()
+            for dname, d in tree.defs.items():
+                for x, anc in walk(d.body):
+                    if not (isinstance(x, list) and head(x) == "dolist" and len(x) > 2 and isinstance(x[1], list)
+                            and len(x[1]) >= 2 and isinstance(x[1][1], list) and len(x[1][1]) == 2
+                            and sym(x[1][1][0]) == row["hooks_reader"]):
+                        continue
+                    hv = sym(x[1][0])
+                    flag = None
+                    for y, _ in walk(x[2:]):
+                        if (isinstance(y, list) and head(y) == "handler-case" and len(y) > 2
+                                and isinstance(y[1], list) and head(y[1]) == "funcall" and len(y[1]) > 1
+                                and sym(y[1][1]) == hv):
+                            for cl in y[2:]:
+                                if (isinstance(cl, list) and len(cl) == 3 and isinstance(cl[2], list)
+                                        and head(cl[2]) == "setq" and len(cl[2]) == 3 and sym(cl[2][2]) == "nil"):
+                                    flag = sym(cl[2][1])
+                    if flag and any(isinstance(z, list) and (
+                            (head(z) == "unless" and len(z) > 2 and sym(z[1]) == flag) or
+                            (head(z) == "when" and len(z) > 2 and isinstance(z[1], list) and head(z[1]) == "and"
+                             and flag in [sym(t) for t in z[1][1:]]))
+                            for z, _ in walk(d.body)):
+                        stops.add(dname)
+            if not ctors:
+                fail(f"no constructor stores {special} as :close-hooks")
+            if not stops:
+                fail(f"no stop function funcalls each hook of ({row['hooks_reader']} ...) and tests the failure flag")
+            ok = False
+            for dname, forms in binders:
+                heads = set()
+                for f, _ in walk(forms):
+                    if isinstance(f, list) and f and isinstance(f[0], Sym):
+                        heads.add(str(f[0]))
+                heads &= set(self.infos)
+                if (self.reaches(("u", frozenset(), tuple(sorted(heads)), ()), ctors)
+                        and self.reaches(("u", frozenset(), tuple(sorted(heads)), ()), stops)):
+                    ok = True
+            if not ok:
+                fail(f"the binding of {special} does not reach both a constructor and a stop function")
+            out[name] = row
+        return out
+
+    def verified_dead_call_arms(self) -> dict:
+        """{(caller, callee): the callee calls that sit only in the arm CALLER
+        has excluded} for the declared edges (contract dead_call_arms) that hold
+        up against the source.  CALLER's call to CALLEE passes, as CALLEE's
+        RESULTS parameter, a local R that CALLER never assigns, and every such
+        call sits in the else branch of (if (eq (first R) TAG) ...).  In CALLEE,
+        every call to an ARM_CALLS function sits in the TAG clause of a
+        (case (first RESULTS) ...), and no ARM_CALLS function is referenced any
+        other way.  Then, reached through that edge, the arm's calls cannot run.
+        A row that does not verify is a loud error."""
+        out = {}
+        tree = self.an.tree
+        mutators = {"setq", "setf", "psetq", "psetf", "incf", "decf", "push", "pushnew", "pop", "rotatef", "shiftf"}
+        for row in self.c.raw.get("dead_call_arms", []):
+            caller, callee, tag = row["function"], row["call"], row["tag"]
+            arm_calls = set(row["arm_calls"])
+
+            def fail(why, caller=caller, callee=callee):
+                raise ValueError(f"dead_call_arms {caller} -> {callee}: {why}")
+
+            if caller not in self.infos or callee not in self.infos:
+                if not (tree.root / row["file"]).exists():
+                    continue
+                fail("not functions of the analyzed host")
+            params = lambda_params(tree.defs[callee].params)
+            if row["results_param"] not in params:
+                fail(f"{callee} has no parameter {row['results_param']}")
+            idx = params.index(row["results_param"])
+
+            def walk(forms, parents):
+                """(form, ancestors-with-branch-index) for every list form."""
+                stack = [(f, ()) for f in forms]
+                while stack:
+                    x, anc = stack.pop()
+                    yield x, anc
+                    if isinstance(x, list):
+                        stack.extend((c, anc + ((x, k),)) for k, c in enumerate(x))
+
+            def tag_clause(key):
+                return sym(key) == tag or (isinstance(key, list) and any(sym(k) == tag for k in key))
+
+            # CALLEE: the arm's calls live only in the TAG clause of (case (first RESULTS) ...)
+            for x, anc in walk(tree.defs[callee].body, ()):
+                if isinstance(x, Sym) and str(x) in arm_calls:
+                    parent = anc[-1][0] if anc else None
+                    if not (isinstance(parent, list) and parent and parent[0] is x):
+                        fail(f"{x} is referenced other than by a call in {callee}")
+                if isinstance(x, list) and x and head(x) in arm_calls:
+                    ok = False
+                    for k in range(len(anc) - 1):
+                        form, _ = anc[k]
+                        clause, _ = anc[k + 1]
+                        if (isinstance(form, list) and head(form) in ("case", "ecase") and len(form) > 2
+                                and isinstance(form[1], list) and head(form[1]) == "first"
+                                and len(form[1]) == 2 and sym(form[1][1]) == row["results_param"]
+                                and isinstance(clause, list) and clause and clause is not form[1]
+                                and any(clause is c for c in form[2:]) and tag_clause(clause[0])):
+                            ok = True
+                    if not ok:
+                        fail(f"a call to {head(x)} in {callee} is outside the {tag} clause of (case (first {row['results_param']}) ...)")
+            # CALLER: every call passes an unassigned local, in the else branch of the tag test
+            seen = 0
+            for x, anc in walk(tree.defs[caller].body, ()):
+                if isinstance(x, Sym) and str(x) == callee:
+                    parent = anc[-1][0] if anc else None
+                    if not (isinstance(parent, list) and parent and parent[0] is x):
+                        fail(f"{callee} is referenced other than by a call in {caller}")
+                if not (isinstance(x, list) and x and head(x) == callee):
+                    continue
+                seen += 1
+                arg = x[idx + 1] if len(x) > idx + 1 else None
+                if not isinstance(arg, Sym):
+                    fail(f"the RESULTS argument of a call in {caller} is not a variable")
+                var = str(arg)
+                ok = False
+                for k, (form, _) in enumerate(anc):
+                    if (isinstance(form, list) and head(form) == "if" and len(form) == 4
+                            and isinstance(form[1], list) and head(form[1]) in ("eq", "eql") and len(form[1]) == 3):
+                        a, b = form[1][1], form[1][2]
+                        if sym(b) == tag and isinstance(a, list) and head(a) == "first" and len(a) == 2 \
+                                and sym(a[1]) == var:
+                            child = anc[k + 1][0] if k + 1 < len(anc) else x
+                            if child is form[3]:
+                                ok = True
+                if not ok:
+                    fail(f"a call in {caller} is not in the else branch of (if (eq (first {var}) {tag}) ...)")
+                for y, _ in walk(tree.defs[caller].body, ()):
+                    if isinstance(y, list) and len(y) > 1 and head(y) in mutators and any(
+                            sym(t) == var or (isinstance(t, list) and t and sym(t[0]) == var)
+                            for t in y[1:2]):
+                        fail(f"{var} is assigned in {caller}")
+            if seen == 0:
+                fail(f"{caller} has no call to {callee}")
+            out[(caller, callee)] = frozenset(arm_calls)
+        return out
+
     def rule_R9(self):
         actors = self.c.raw.get("actors", {})
+        dead_arms = self.verified_dead_call_arms()
         for actor, row in actors.items():
             roots = [r for r in row["roots"] if r in self.infos]
-            reach: dict[str, list] = {}
-            stack = [(r, [r]) for r in roots]
+            reach: dict[tuple, list] = {}
+            stack = [((r, frozenset()), [r]) for r in roots]
             while stack:
-                n, trail = stack.pop()
-                if n in reach:
+                (n, excl), trail = stack.pop()
+                if (n, excl) in reach:
                     continue
-                reach[n] = trail
+                reach[(n, excl)] = trail
                 for e in self.infos[n].events:
-                    if e.kind == "call" and e.name in self.infos and e.name not in reach:
-                        stack.append((e.name, trail + [e.name]))
-            for n, trail in sorted(reach.items()):
+                    if e.kind == "call" and e.name in self.infos:
+                        if e.name in excl:
+                            continue
+                        # EXCL names calls of N itself, never of what N calls
+                        nxt = dead_arms.get((n, e.name), frozenset())
+                        if (e.name, nxt) not in reach:
+                            stack.append(((e.name, nxt), trail + [e.name]))
+            for (n, _excl), trail in sorted(reach.items(), key=lambda kv: (kv[0][0], sorted(kv[0][1]))):
                 info = self.infos[n]
                 for e in info.events:
                     if e.kind == "gate" and "gate_classes" in row:

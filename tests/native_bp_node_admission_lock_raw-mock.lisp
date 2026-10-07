@@ -130,7 +130,7 @@
 ;; the decision is fnn-bpnode-request-result-1 and a refusal prints ACL2's
 ;; line through fnn-bpnode-refusal-line: all three are the shipped bodies.
 (load-shipped "host/native/bp-node.lisp" '(defun)
-              '(fnn-bpnode-owner-read fnn-bpnode-source-decision fnn-bpnode-request-result
+              '(fnn-bpnode-source-decision fnn-bpnode-request-result
                 fnn-bpnode-request-result-1 fnn-bpnode-refusal-line
                 fnn-bpnode-receipt-observations fnn-bpnode-release-line
                 fnn-bpnode-check-detail fnn-bpnode-receipt-detail
