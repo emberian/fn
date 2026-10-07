@@ -5206,6 +5206,8 @@ def main(argv=None) -> int:
     ap.add_argument("--all-files", action="store_true", help="also report parked (unloaded) files")
     ap.add_argument("--write-baseline", action="store_true")
     ap.add_argument("--initial", action="store_true")
+    ap.add_argument("--cap", type=int, default=0,
+                    help="with --check: print at most N verdict lines (default 0: every line)")
     ap.add_argument("--lower-stale", action="store_true",
                     help="shrink-only: lower baseline rows whose findings dropped, remove rows at 0; "
                          "never adds a key or raises a count")
@@ -5341,14 +5343,30 @@ def main(argv=None) -> int:
         bad = (verdict["new"] or verdict["stale"] or verdict["enclave_baselined"]
                or realization_drift or audit_failures)
         if bad:
-            for why, f in verdict["new"][:40]:
-                print(f"lock_discipline_check: {why.upper()} {f.path}:{f.line} {f.rule} {f.function}: {f.message}")
-            for k in verdict["stale"][:40]:
-                print(f"lock_discipline_check: STALE baseline row (lower it with --lower-stale): {k}")
-            for k in verdict["enclave_baselined"]:
-                print(f"lock_discipline_check: an enclave finding cannot be baselined: {k}")
-            for why in audit_failures[:40]:
-                print("lock_discipline_check: CALLBACK-AUDIT " + why)
+            counted = weights(findings)
+            cap = args.cap or None
+            seen: dict = {}
+            for why, f in verdict["new"]:
+                seen.setdefault(f.baseline_key(), (why, f))
+            lines = []
+            for k in sorted(seen):
+                why, f = seen[k]
+                base = baseline.get(k, {}).get("count", 0)
+                lines.append(f"lock_discipline_check: {why.upper()} {k} (count {counted[k]}, baseline {base}) "
+                             f"{f.path}:{f.line} {f.rule} {f.function}: {f.message}")
+            stale = sorted(set(verdict["stale"]))
+            for k in stale:
+                lines.append(f"lock_discipline_check: STALE baseline row (lower it with --lower-stale): {k} "
+                             f"(count {counted.get(k, 0)}, baseline {baseline[k].get('count', 1)})")
+            for k in sorted(verdict["enclave_baselined"]):
+                lines.append(f"lock_discipline_check: an enclave finding cannot be baselined: {k}")
+            for why in audit_failures:
+                lines.append("lock_discipline_check: CALLBACK-AUDIT " + why)
+            for line in lines[:cap]:
+                print(line)
+            if cap and len(lines) > cap:
+                print(f"lock_discipline_check: {len(lines) - cap} more line(s) hidden by --cap {cap}")
+            print(f"lock_discipline_check: {len(seen)} new key(s), {len(stale)} stale")
             return 1
     return 0
 

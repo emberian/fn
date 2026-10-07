@@ -2490,3 +2490,42 @@ class DebtRethrow(unittest.TestCase):
     def test_a_binding_whose_body_never_reaches_the_stop_path_is_a_loud_error(self):
         with self.assertRaises(ValueError):
             self.run7(self.src(top="(fnn-other 1)"))
+
+
+class CheckPrintsEveryKey(unittest.TestCase):
+    """--check prints every NEW and STALE key (sorted, deduplicated, with counts),
+    not a window of 40, and ends with a count line; --cap N is the explicit human cap."""
+
+    def host(self, n):
+        return "\n".join(
+            f'(defun fnn-ck-io{i} (service) (sb-thread:with-mutex ((fnn-owner-service-lock service)) '
+            f'(write-sequence "x" *standard-output*)))' for i in range(n)) + "\n"
+
+    def run_check(self, n, *extra):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + self.host(n))
+            (root / "baseline.json").write_text('{"findings": []}')
+            raw = dict(CONTRACTS.raw, enclave={"functions": [], "files": []})
+            (root / "contracts.json").write_text(json.dumps(raw))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = ldc.main(["--root", str(root), "--contracts", str(root / "contracts.json"),
+                                 "--baseline", str(root / "baseline.json"), "--check", "--rule", "R2", "--all-files", *extra])
+            return code, out.getvalue().splitlines()
+
+    def test_more_than_forty_new_keys_are_all_printed(self):
+        code, lines = self.run_check(45)
+        new = [l for l in lines if " NEW " in l]
+        self.assertEqual(code, 1)
+        self.assertGreater(len(new), 40)
+        self.assertEqual(len(new), len({l.split(" NEW ")[1].split(" (count")[0] for l in new}))
+        self.assertEqual(new, sorted(new, key=lambda l: l.split(" NEW ")[1]))
+        self.assertRegex(lines[-1], rf"^lock_discipline_check: {len(new)} new key\(s\), \d+ stale$")
+        self.assertTrue(all("(count " in l and "baseline" in l for l in new))
+
+    def test_cap_is_an_explicit_flag(self):
+        code, lines = self.run_check(45, "--cap", "5")
+        self.assertEqual(len([l for l in lines if " NEW " in l]), 5)
+        self.assertTrue(any("hidden by --cap 5" in l for l in lines))
