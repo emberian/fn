@@ -538,7 +538,8 @@ observations back.  Nil when there is nothing to observe."
                                                 (fnn-bps-plan bp))
                                       names))
                 (ck (fnn-core 'fn-bpnr-checkpoint-of-event
-                              (fnn-bps-recovery-event bp) generation)))
+                              (fnn-bps-recovery-event bp) generation
+                              (fnn-bps-state bp))))
            ;; Finish a retirement a death or a failed step left (the
            ;; current selection's; fn-bpnr-retirement-cut-keeps-open-view).
            (let ((selected (fnn-core 'fn-bpnr-plan-generation (fnn-bps-plan bp))))

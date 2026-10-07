@@ -39,7 +39,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-bpnrd-duep st profile)
       (let ((g (fn-bpnr-next-generation selected names)))
-        (list :rotate g (fn-bpnr-checkpoint-of-event event g)))
+        (list :rotate g (fn-bpnr-checkpoint-of-event event g st)))
     nil))
 
 ; The rotation is due exactly when the threshold is reached from a quiescent
@@ -56,7 +56,7 @@
                        (< (nfix selected) (fn-bpn-nth 1 rot))
                        (equal (fn-bpn-nth 2 rot)
                               (fn-bpnr-checkpoint-of-event
-                               event (fn-bpn-nth 1 rot)))))))
+                               event (fn-bpn-nth 1 rot) st))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpnr-next-generation-exceeds-selected))
            :in-theory (union-theories
@@ -88,7 +88,9 @@
                                            (list domain))))
                     (fn-bpnr-replay-from (fn-bpnr-plan-checkpoint plan0) rows0
                                          (fn-bpnf-base st0))
-                    (len rows0))))
+                    (len rows0)
+                    (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+                    (fn-bpn-machine-state-next-token (fn-bpnf-base st)))))
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-bpnr-recover-event-shape
                              (st st0) (rows rows0) (plan plan0)))
@@ -201,6 +203,9 @@
                                                      sequence-ready rows0 plan0)
                                                     (list domain)))))
                             (covered (len rows0))
+                            (jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                            (next-token
+                             (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
                             (budget (fn-bpnr-depth-budget
                                      (fn-bpn-machine-state-max-jobs
                                       (fn-bpnf-base st))))))
