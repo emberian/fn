@@ -8515,14 +8515,12 @@ torn last entry follows.  Answers the offset the writer resumes at."
       (let* ((decided (fnn-owner-serialized
                        service nil
                        (lambda ()
-                         ;; The decision and the line it rendered leave the
-                         ;; section together: the global is read while the
-                         ;; owner is held, so the line written below is the
-                         ;; one this decision produced.
-                         (cons (fnn-owner-core 'fn-owner-log-reopen
-                                               (and *fnn-owner-log-path* t)
-                                               *fnn-owner-log-handled* requested)
-                               (fnn-global 'fn-owner-log-line)))))
+                         ;; (DECISION . LINE): ACL2 answers the decision and
+                         ;; the line it rendered as one value
+                         ;; (host/owner-host.lisp fn-owner-log-reopen).
+                         (fnn-owner-core 'fn-owner-log-reopen
+                                         (and *fnn-owner-log-path* t)
+                                         *fnn-owner-log-handled* requested))))
              (decision (car decided))
              (line (cdr decided)))
         (unless (and (consp decision)

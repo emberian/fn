@@ -3743,19 +3743,18 @@
 
 ;; PKT-101: whether a SIGHUP asks for a reopen of `[log] path'
 ;; (books/owner-log-reopen.lisp fn-olr-decide, KEYSTONE
-;; fn-olr-reopen-iff-requested), and on :reopen the line the reopened file
-;; starts with, left in `fn-owner-log-line' for host/native/owner.lisp
-;; fnn-owner-maybe-reopen-log.
+;; fn-olr-reopen-iff-requested), answered as (DECISION . LINE): LINE is the
+;; line the reopened file starts with on :reopen, NIL otherwise.  The line is
+;; this wrapper's result, not a state global, so host/native/owner.lisp
+;; fnn-owner-maybe-reopen-log writes the line this decision rendered.
 (defun fn-owner-log-reopen (configured handled requested state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (let* ((decision (fn-olr-decide configured handled requested))
-         (state (f-put-global 'fn-owner-log-line
-                              (if (equal (car decision) :reopen)
-                                  (fn-olr-line requested
-                                               (fn-own-clock (fn-owner-core state)))
-                                nil)
-                              state)))
-    (value decision)))
+  (let ((decision (fn-olr-decide configured handled requested)))
+    (value (cons decision
+                 (if (equal (car decision) :reopen)
+                     (fn-olr-line requested
+                                  (fn-own-clock (fn-owner-core state)))
+                   nil)))))
 
 ;; PKT-069: the gate host/native/owner.lisp fnn-owner-complete-bound-submission
 ;; asks before it calls a commit callback (books/owner-bound-commit.lisp
