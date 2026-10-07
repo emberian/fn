@@ -755,6 +755,10 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
     if not svars:
         raise Refuse("no-shape", "no formal advances")
     svars = order_svars(svars, ea, ":measure" in xa)
+    if ":measure" not in xa and not contains(
+            done, lambda x: isinstance(x, Lst) and is_call(x) and len(x.items) == 2
+            and x.items[0].low in ("atom", "endp", "consp") and flat_low(x.items[1]) == svars[0]):
+        raise Refuse("step-measure", "the done test does not test the list the default measure counts")
     spec = Spec("step", name, formals, svars[0])
     spec.svars = svars
     nxt = [ea[f] for f in svars]
@@ -913,6 +917,10 @@ def fold_spec(name, formals, logic, exe, lf, wrapper):
     if not svars:
         raise Refuse("no-shape", "no formal advances")
     svars = order_svars(svars, ra, ":measure" in xa)
+    if ":measure" not in xa and not contains(
+            done, lambda x: isinstance(x, Lst) and is_call(x) and len(x.items) == 2
+            and x.items[0].low in ("atom", "endp", "consp") and flat_low(x.items[1]) == svars[0]):
+        raise Refuse("step-measure", "the done test does not test the list the default measure counts")
     spec = Spec("fold", name, formals, svars[0])
     spec.svars = svars
     nxt = [ra[f] for f in svars]
@@ -1345,7 +1353,7 @@ def exported(text):
 
 def stmt_diff(old_text, new_text):
     o, n = exported(old_text), exported(new_text)
-    removed = [k for k in o if k not in n and not ("-loop-is-" in k or (o[k][0] == "defun" and k.endswith("-loop")))]
+    removed = [k for k in o if k not in n and not ("-loop-is-" in k or "-loop-of-" in k or (o[k][0] == "defun" and k.endswith("-loop")))]
     removed += [k for k in o if k in n and o[k][0] == "defun" and n[k] == ("defun", "def-loop") and False]
     added = [k for k in n if k not in o]
     changed = [k for k in o if k in n and o[k] != n[k] and o[k][0].startswith("defthm")]
