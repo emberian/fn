@@ -206,7 +206,6 @@
 ; Numeric startup admission is about the selected table/backing projection.
 ; It establishes no complete runtime/collector tariff.
 (encapsulate ()
- (local (include-book "arithmetic-5/top" :dir :system))
  (local (defthm fn-prstartup-capacity-stays-affordable
  (implies (and (natp lo) (natp hi) (natp fuel)
                (<= (fn-prstartup-required-heap lo workers root) (nfix available)))
@@ -214,7 +213,7 @@
        (fn-prstartup-affordable-capacity lo hi fuel available workers root) workers root)
       (nfix available)))
  :hints (("Goal" :induct (fn-prstartup-affordable-capacity lo hi fuel available workers root)
-  :in-theory (e/d (fn-prstartup-affordable-capacity) (fn-prstartup-required-heap))))))
+  :in-theory (e/d (fn-prstartup-affordable-capacity) (fn-prstartup-required-heap ceiling min max))))))
  (local (defthm fn-prstartup-capacity-in-range
  (implies (and (natp lo) (natp hi) (natp fuel) (<= lo hi))
   (and (natp (fn-prstartup-affordable-capacity lo hi fuel available workers root))
@@ -427,9 +426,7 @@
                    root workers (fn-heap-stack-octets profile)
                    *fn-heap-thread-runtime-octets* cache-limit fd-limit
                    (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))
- :hints (("Goal" :in-theory (e/d (fn-prstartup-default-plan)
-                               (fn-prstartup-plan fn-prstartup-protected
-                                fn-orv-policy-p fn-heap-stack-octets)))))
+ :hints (("Goal" :in-theory (union-theories '(fn-prstartup-default-plan) (theory 'minimal-theory)))))
 
 ; DEFAULT's fixed backing is a real launcher contribution. The existing base
 ; already reserves its direct-worker threads; add only the selected heap

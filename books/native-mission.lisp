@@ -89,7 +89,7 @@
    (defthm fn-native-mission-command-of-principal
      (equal (fn-native-operator-result-command (fn-nop-parse-principal argv config)) "principal")
      :hints (("Goal" :in-theory (e/d (fn-nop-parse-principal fn-nop-usage fn-nop-refused)
-                                     (fn-native-auth-admin-parse-argv
+                                     (fn-nop-parse-administration fn-native-auth-admin-parse-argv
                                       fn-native-auth-admin-plan-status
                                       fn-native-auth-admin-plan-reason)))))
 
