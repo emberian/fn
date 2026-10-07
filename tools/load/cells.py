@@ -41,8 +41,8 @@ def derive(workload, phases):
           "m1-durable": _durable, "smoke": _smoke}.get(workload)
     if fn:
         fn(phases, m, nm)
-    if workload == "rss-small-filled" and "rss_kib.vmrss" not in m:
-        nm["rss_kib.vmrss"] = "idle phase did not complete"
+    if workload == "rss-small-filled" and "rss_kib.hwm" not in m:
+        nm["rss_kib.hwm"] = nm["rss_kib.vmrss"] = "idle phase did not complete"
     out = {k: v for k, v in nm.items() if k != "*"}
     out.update(_expand(workload, nm))
     return m, out

@@ -12,7 +12,9 @@ and asserts the bar:
 * 1,000 POSTs of 2,048 octets;
 * 32 idle connections opened (8, then 24 more) and closed;
 * about 20 s idle after the close;
-* VmRSS of the owner process then is at most 128 MiB.
+* VmHWM of the owner process over the whole workload is at most 128 MiB
+  (ruling 16: a Pi kills on the peak); the at-rest VmRSS then is printed beside
+  it and not judged.
 
 The launch shape is the shipped one: the saved launcher's own SBCL options
 (tools/build_native_host.sh: --tls-limit 16384, the control stack
@@ -110,12 +112,14 @@ class ImageHeapBarTests(unittest.TestCase):
                 "posts": POSTS, "connections": len(held), "admitted": admitted, "image": str(IMAGE),
                 "launch": "{} --fn operator {} run".format(IMAGE, node.config),
                 "sbcl_user_args": SBCL_USER_ARGS, "bar_mb": BAR_MIB * 1.0,
-                "workload": "nmem3-clean"}
+                "workload": "nmem3-clean", "judged": "vmhwm"}
         print("FN_IMAGE_HEAP " + json.dumps(line), flush=True)
-        self.assertLessEqual(sample["VmRSS"], BAR_MIB * 1024,
-                             "VmRSS %.1f MB after %d POSTs, 32 idle connections closed and "
-                             "%d s idle exceeds the %d MiB bar (ruling 7)"
-                             % (mb(sample["VmRSS"]), POSTS, IDLE_SECONDS, BAR_MIB))
+        # Ruling 16: the bar is the whole-process PEAK (VmHWM over the workload); the at-rest
+        # VmRSS is printed beside it (the line above) and not judged.
+        self.assertLessEqual(sample["VmHWM"], BAR_MIB * 1024,
+                             "VmHWM %.1f MB over the workload (%d POSTs, 32 idle connections, %d s idle; "
+                             "at-rest VmRSS %.1f MB) exceeds the %d MiB bar (rulings 7 and 16)"
+                             % (mb(sample["VmHWM"]), POSTS, IDLE_SECONDS, mb(sample["VmRSS"]), BAR_MIB))
 
 
 if __name__ == "__main__":

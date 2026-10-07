@@ -33,21 +33,22 @@ class JudgeTests(unittest.TestCase):
     def rows(self, cr):
         return {r["bar"]: r for r in result.judge_cell(cr, self.bars)}
 
-    def test_rss_over_the_bar_fails_and_hwm_within_twice_passes(self):
-        rows = self.rows(cell_result())
-        self.assertEqual(rows["L-RSS"]["verdict"], "FAIL")
-        self.assertEqual(rows["L-HWM"]["verdict"], "PASS")
-
-    def test_rss_at_the_bar_passes(self):
+    def test_hwm_over_the_bar_fails_and_rss_is_only_reported(self):
+        rows = self.rows(cell_result())          # hwm 210000 > 131072
+        self.assertEqual(rows["L-HWM"]["verdict"], "FAIL")
+        self.assertEqual(rows["L-RSS"]["verdict"], "REPORTED")
         cr = cell_result()
-        cr["metrics"]["rss_kib.vmrss"] = 131072
-        self.assertEqual(self.rows(cr)["L-RSS"]["verdict"], "PASS")
-        cr["metrics"]["rss_kib.vmrss"] = 131073
-        self.assertEqual(self.rows(cr)["L-RSS"]["verdict"], "FAIL")
+        cr["metrics"]["rss_kib.hwm"] = 131072
+        cr["metrics"]["rss_kib.vmrss"] = 999999   # at-rest RSS is never judged
+        rows = self.rows(cr)
+        self.assertEqual(rows["L-HWM"]["verdict"], "PASS")
+        self.assertEqual(rows["L-RSS"]["verdict"], "REPORTED")
+        cr["metrics"]["rss_kib.hwm"] = 131073
+        self.assertEqual(self.rows(cr)["L-HWM"]["verdict"], "FAIL")
 
     def test_absent_metric_is_not_measured_with_its_reason(self):
-        cr = cell_result(metrics={}, not_measured={"rss_kib.vmrss": "idle phase did not complete"})
-        row = self.rows(cr)["L-RSS"]
+        cr = cell_result(metrics={}, not_measured={"rss_kib.hwm": "idle phase did not complete"})
+        row = self.rows(cr)["L-HWM"]
         self.assertEqual(row["verdict"], "NOT-MEASURED")
         self.assertIn("idle phase", row["reason"])
 
@@ -64,7 +65,7 @@ class JudgeTests(unittest.TestCase):
 
     def test_memory_bar_is_judged_on_a_loaded_box(self):
         cr = cell_result(box={"name": "hbox", "loadavg_start": [14.0, 13, 12]})
-        self.assertEqual(self.rows(cr)["L-RSS"]["verdict"], "FAIL")
+        self.assertEqual(self.rows(cr)["L-HWM"]["verdict"], "FAIL")
 
     def test_every_check_must_hold_and_a_fail_beats_a_missing_metric(self):
         cr = cell_result(cell="W1", workload="post-rate", metrics={"post.rate_c1": 5.0}, not_measured={})
@@ -77,7 +78,7 @@ class JudgeTests(unittest.TestCase):
 
     def test_incomplete_run_names_its_status(self):
         cr = cell_result(metrics={}, status="error")
-        self.assertIn("error", self.rows(cr)["L-RSS"]["reason"])
+        self.assertIn("error", self.rows(cr)["L-HWM"]["reason"])
 
     def test_every_bar_row_has_a_known_workload_and_cell(self):
         data = workloads.load()
@@ -88,8 +89,10 @@ class JudgeTests(unittest.TestCase):
 
     def test_bar_thresholds_are_the_program_numbers(self):
         by = {b["id"]: b for b in self.bars}
-        self.assertEqual(by["L-RSS"]["checks"][0]["threshold"], 128 * 1024)
-        self.assertEqual(by["L-HWM"]["checks"][0]["threshold"], 2 * 128 * 1024)
+        self.assertEqual(by["L-HWM"]["checks"][0]["threshold"], 128 * 1024)
+        self.assertEqual(by["L-HWM"]["checks"][0]["metric"], "rss_kib.hwm")
+        self.assertEqual(by["L-HWM"]["severity"], "high")
+        self.assertEqual(by["L-RSS"]["checks"][0]["cmp"], "report")
         self.assertEqual(by["L-LIN"]["checks"][0]["threshold"], 15.0)
         self.assertEqual(by["L-READ"]["checks"][0]["threshold"], 50)
         self.assertEqual({c["threshold"] for c in by["L-CATCHUP"]["checks"]}, {35})
@@ -190,7 +193,7 @@ class ReportAndItemTests(unittest.TestCase):
         text = result.report(self.res(), result.load_bars())
         first_table = text.index("| bar |")
         self.assertLess(first_table, text.index("| phase |"))
-        self.assertIn("L-RSS", text)
+        self.assertIn("L-HWM", text)
         self.assertIn("FAIL", text)
         self.assertIn("load [4.0, 4.0, 4.0]", text)
         self.assertIn("loopback", text)
@@ -205,7 +208,7 @@ class ReportAndItemTests(unittest.TestCase):
                     "refusals", "bar", "verdict"):
             self.assertIn(key, obj)
         self.assertEqual(obj["rss_kib"]["file"], 132000)
-        self.assertEqual(obj["bar"]["L-RSS"], "FAIL")
+        self.assertEqual(obj["bar"]["L-HWM"], "FAIL")
         self.assertEqual(obj["verdict"], "fail")
         self.assertEqual(obj["gc_s"], 0.12)
 
@@ -213,19 +216,19 @@ class ReportAndItemTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             res = self.res()
             written = result.file_items(res, result.load_bars(), items_dir=d, now="2026-10-07T00:00:00Z")
-            self.assertEqual([Path(p).name for p in written], ["LOAD-L-RSS-0b4d3b18385a.json"])
+            self.assertEqual([Path(p).name for p in written], ["LOAD-L-HWM-0b4d3b18385a.json"])
             item = json.loads(Path(written[0]).read_text())
             self.assertEqual(sorted(item), ["category", "detail", "file", "id", "line", "notes", "owner", "severity",
                                             "source", "state", "title", "updated"])
             self.assertEqual(item["state"], "open")
-            self.assertIn("160000", item["detail"])
+            self.assertIn("210000", item["detail"])
             # same run again: no duplicate, same file, no new note
             result.file_items(res, result.load_bars(), items_dir=d, now="2026-10-07T01:00:00Z")
             self.assertEqual(len(list(Path(d).glob("*.json"))), 1)
             self.assertEqual(json.loads(Path(written[0]).read_text())["notes"], [])
             # a re-run with a new figure updates the item and notes it
             res2 = self.res()
-            res2["cells"][0]["metrics"]["rss_kib.vmrss"] = 150000
+            res2["cells"][0]["metrics"]["rss_kib.hwm"] = 150000
             result.file_items(res2, result.load_bars(), items_dir=d, now="2026-10-07T02:00:00Z")
             item = json.loads(Path(written[0]).read_text())
             self.assertEqual(len(item["notes"]), 1)
@@ -234,7 +237,7 @@ class ReportAndItemTests(unittest.TestCase):
 
     def test_passes_and_not_measured_file_nothing(self):
         with tempfile.TemporaryDirectory() as d:
-            res = self.res(metrics={"rss_kib.vmrss": 100000, "rss_kib.hwm": 150000})
+            res = self.res(metrics={"rss_kib.vmrss": 100000, "rss_kib.hwm": 120000})
             self.assertEqual(result.file_items(res, result.load_bars(), items_dir=d), [])
             res = self.res(metrics={})
             self.assertEqual(result.file_items(res, result.load_bars(), items_dir=d), [])
