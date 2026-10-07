@@ -788,13 +788,21 @@ def plan(root: Path, roots: list[str]) -> list[str]:
     digests = closure_of(root, roots)
     report = green_check.audit(root, roots)
     runs = {run.run_id: run for run, _ in green_check.manifests(root)}
-    counts = report["counts"]
+    counts = report["standing_counts"]
     lines = [f"triage: {len(digests)} books under {len(roots)} root"
              f"{'' if len(roots) == 1 else 's'}; "
-             f"{counts['green']} green at their digest, {counts['red']} red, "
-             f"{counts['never']} never, {counts['absent']} absent."]
+             f"{counts.get('green', 0)} green at their digest and closure, "
+             f"{counts.get('stale', 0)} stale, {counts.get('unarchived', 0)} "
+             f"unarchived, {counts.get('red', 0)} red, "
+             f"{counts.get('never', 0)} never, {counts.get('absent', 0)} absent."]
     for book, entry in report["books_by_verdict"].items():
-        if entry["verdict"] == "green":
+        state = green_check.standing(entry)
+        if state in ("green", "unarchived"):
+            continue   # a local unfiled green is triage's own working state
+        if state == "stale":
+            lines.append(f"triage: {book}: stale -- own digest certified, "
+                         f"{len(entry['deps_moved_since'])} dependencies moved "
+                         f"since; recertify at the current closure")
             continue
         answer = substitution_for(root, report, runs, book, digests[book])
         if isinstance(answer, str):

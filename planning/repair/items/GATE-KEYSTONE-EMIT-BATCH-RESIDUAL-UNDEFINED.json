@@ -1,0 +1,12 @@
+{
+ "category": "checker-correctness",
+ "file": "tools/keystone_emit.py",
+ "id": "GATE-KEYSTONE-EMIT-BATCH-RESIDUAL-UNDEFINED",
+ "notes": "[\"keystone_emit --check lists fn-nnw-stream-batch-residual (planning/teeth-obligations.json / the registry) while grep over books/ finds only -append names (books/newnews-stream-cursor.lisp). Either a stale manifest entry for a renamed or deleted theorem, or a registry row for a macro-generated name the scanner cannot find. Owed: find the source of the name and either drop the obligation (with --write-manifest by its owner) or point the gate at the real theorem. Not a teeth debt of p-teeth.\"]",
+ "owner": "deputy-C",
+ "severity": "low",
+ "source": "p-teeth",
+ "state": "open",
+ "title": "tools/keystone_emit.py names fn-nnw-stream-batch-residual as a keystone owed teeth, but no such defthm exists in books/",
+ "updated": "2026-10-07T00:19:44Z"
+}

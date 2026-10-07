@@ -5,11 +5,13 @@
  "file": "tools/lock_discipline_check.py",
  "fix": "Checker lane: implement the fix direction per gap, re-run --check, and drop or re-baseline the listed keys. Not host defects; no host change implied.",
  "id": "LOCK-CHECKER-MODEL-GAPS",
- "notes": [],
+ "notes": [
+  "10-06 20:46 lmg2: cleared gap10 (ccfc2dec5: 5 R5 keys), R7 diagnostic-only (888d4afd6: fnn-log-physical-close, fnn-owner-custody-trace), R7 value-routed (4c80e9d81: fnn-bpnode-app-result), R9 dead-path (1edb31425). Open: gap1/2/3/5/7/8, R2 inspector binding, R7 actor-run escape; see CONTINUATION-lmg2.md"
+ ],
  "owner": "deputy-C",
  "severity": "medium",
  "source": "lock-ownership census on lane/lock-model-gaps + lock-host-fix-2 (checker --check --json)",
  "state": "open",
  "title": "Lock checker model gaps: NEW keys that are checker blind spots, grouped by gap with fix direction",
- "updated": "2026-10-07T00:34:01Z"
+ "updated": "2026-10-07T00:46:45Z"
 }

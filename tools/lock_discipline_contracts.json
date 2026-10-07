@@ -551,6 +551,46 @@
   "why": "lane lock-model-gaps: the guarded wrapper of the pull worker (host/native/pull-service.lisp:1196-1200). The running host never calls it: fnn-pull-service-start spawns (lambda () (fnn-pull-worker runtime)) under the def-actor starter's own escape (:1205-1222), and only tests/native_feed_credential_raw-mock.lisp:201 calls the wrapper. Without this row it counts as a second, main-thread actor of everything the pull worker touches."
   }
  },
+ "diagnostic_sinks": {
+  "fnn-err": {
+   "file": "host/native/io.lisp",
+   "why": "lane lock-model-gaps-2: the host's stderr diagnostic (host/native/io.lisp:1004). A handler whose protected form calls only a diagnostic sink and whose clause does nothing (ignore-errors, or a clause body that is empty or a constant) swallows the sink's own failure, which by construction carries no custody or classification: R7 does not ask it to reach the fence (fnn-log-physical-close :1101 after the debt is pushed under the queue mutex). The checker verifies that the sink's call closure reaches no fence function and no descriptor open or close primitive, and that each exempted handler's protected form calls nothing else."
+  }
+ },
+ "status_rethrows": {
+  "fnn-bpnode-app-result": {
+   "file": "host/native/bp-node.lisp",
+   "clause": "fnn-store-indeterminate",
+   "status": ":uncertain",
+   "why": "lane lock-model-gaps-2: host/native/bp-node.lisp:218-228 answers an indeterminate Store/FNRJ/FNWF result as (values :uncertain ...) and its only caller, fnn-bpnode-dispatch-one (:319-341), converts that status back to fnn-indeterminate (:339-341) after driving the delivery effects. The checker verifies the clause ends in (values :uncertain ...) without an early exit, that every reference to the function is a multiple-value-bind value form, and that the bound status reaches (when (eq STATUS :uncertain) (fnn-indeterminate ...)) past no return-from/return/go/throw. The R7 rule then reads the clause as a deferred rethrow, not a swallow."
+  }
+ },
+ "dead_call_arms": [
+  {
+   "function": "fnn-owner-handle-chunk-step",
+   "call": "fnn-owner-chunk-results",
+   "file": "host/native/owner.lisp",
+   "results_param": "results",
+   "tag": ":fnn-extent-cold",
+   "arm_calls": ["fnn-owner-cold-line"],
+   "why": "lane lock-model-gaps-2: the mux loop never waits for a cold page (owner.lisp:6310-6326). fnn-owner-handle-chunk-step answers (values :cold READ) when the read's first value is :fnn-extent-cold and calls fnn-owner-chunk-results only in the else branch (:6339-6343); chunk-results calls fnn-owner-cold-line, which awaits the page, only in its :fnn-extent-cold arm (:5698). Reached through that one edge the arm is dead, so R9 does not count the await. The checker verifies the guard, that the argument is an unassigned local, and that every call to cold-line in chunk-results sits in that arm; the other callers of chunk-results (fnn-owner-handle-chunk, fnn-owner-cold-line itself) are not pruned."
+  }
+ ],
+ "debt_rethrows": {
+  "fnn-pull-worker": {
+   "file": "host/native/pull-service.lisp",
+   "clause": "serious-condition",
+   "var": "failure",
+   "slot": "fnn-pull-runtime-cleanup-debt",
+   "slot_keyword": ":cleanup-debt",
+   "closer": "fnn-pull-service-close",
+   "registry": "*fnn-pull-runtimes*",
+   "registry_reader": "fnn-pull-runtime-get",
+   "special": "*fnn-owner-close-hooks*",
+   "hooks_reader": "fnn-owner-service-close-hooks",
+   "why": "lane lock-debt-rethrow (LOCK-R7-PULL-WORKER-DEBT-RETHROW): the release handler of fnn-pull-worker (pull-service.lisp:1181-1194) captures the first cleanup condition in FAILURE and, with a primary escape in flight, stores it in the runtime's cleanup-debt (:1192) rather than signalling, which would supersede the primary. fnn-pull-service-close signals it (:1259-1260), a retained debt blocks removal of the runtime (:1229), and the close runs as a close hook of the owner's stop path (operator-live.lisp:120-123, owner.lisp:1625, :8865-8868). The checker verifies each link: the capture, the store past no early exit, that the store is the only write of the slot, that the closer signals the slot on its spine before any early exit, that every other removal from the registry checks the slot, and that a binding of the close-hooks special names the closer, a constructor stores it as :close-hooks and a stop function funcalls each hook and tests its failure flag, both reached from inside that binding. Not verified: that the stop function's reaction to a failed hook (modules-joined nil, no clean exit) is itself the fence; that is owner.lisp's own logic."
+  }
+ },
  "dead_thread_guards": [
   {
    "function": "fnn-mux-start",

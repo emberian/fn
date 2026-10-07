@@ -3,6 +3,8 @@
 ; not the owed all-schedules/HM-to-native realization theorem (PRF-1254).
 (in-package "ACL2")
 (include-book "../../books/host-model-machine")
+(include-book "../../books/host-model")
+(include-book "../../books/defkeystone")
 
 (defun hmct-prefixes-okp (st sched)
   (declare (xargs :guard t :measure (acl2-count sched)))
@@ -215,3 +217,73 @@
         (not (fn-hmc-invp (car r)))
         (equal (cadr r) :refused)
         (equal (car r) broken))))
+
+; fn-hmc-do-job-result-keeps-invp and fn-hmc-do-return-preserves-invp (TEETH
+; CONTRACT v1).  Both claims are over mv-nth of the model's step, so the
+; witnesses are ground theorems (lemma debt, TEETH-OWED-MV-CLAIM).  The
+; removal is the corrupted-lock state above: not invariant, refused, and
+; the refusal keeps it that way.  The mutation is a step claimed never to
+; change the state, false where the step completes a job or returns a worker.
+(defconst *hmct-ready*
+  (fn-hmc-next-state *hmct-cancelled* '(:io-complete (0 7 1 0 10 7) :ok)))
+
+
+(defthm hmct-job-result-witness
+  (and (fn-hmc-invp *hmct-cancelled*)
+       (fn-hmc-invp (mv-nth 0 (fn-hmc-do-job-result *hmct-cancelled* '(:job-result 2 (0 7 1 0 10 7) :read)))))
+  :rule-classes nil)
+
+(defthm hmct-job-result-without-invp
+  (and (not (fn-hmc-invp (fn-hmc-set 0 :corrupted-locks (fn-hmc-init))))
+       (not (fn-hmc-invp (mv-nth 0 (fn-hmc-do-job-result (fn-hmc-set 0 :corrupted-locks (fn-hmc-init)) '(:job-result 2 (0 7 1 0 10 7) :error))))))
+  :rule-classes nil)
+
+(defthm hmct-job-result-mut1
+  (and (fn-hmc-invp *hmct-cancelled*)
+       (fn-hmc-invp (mv-nth 0 (fn-hmc-do-job-result *hmct-cancelled* '(:job-result 2 (0 7 1 0 10 7) :read))))
+       (not (equal (mv-nth 0 (fn-hmc-do-job-result *hmct-cancelled* '(:job-result 2 (0 7 1 0 10 7) :read))) *hmct-cancelled*)))
+  :rule-classes nil)
+
+(defteeth fn-hmc-do-job-result-keeps-invp
+  :claim (((invp (fn-hmc-invp st)))
+          (fn-hmc-invp (mv-nth 0 (fn-hmc-do-job-result st ev))))
+  :subject fn-hmc-do-job-result
+  :witness-lemma hmct-job-result-witness
+  :witness ((st *hmct-cancelled*) (ev '(:job-result 2 (0 7 1 0 10 7) :read)))
+  :breaks ((invp ((st (fn-hmc-set 0 :corrupted-locks (fn-hmc-init))) (ev '(:job-result 2 (0 7 1 0 10 7) :error))) :lemma hmct-job-result-without-invp))
+  :mutations ((state-never-changes
+               (:conclusion (equal (mv-nth 0 (fn-hmc-do-job-result st ev)) st))
+               ((st *hmct-cancelled*) (ev '(:job-result 2 (0 7 1 0 10 7) :read)))
+               :fault "a step that is claimed never to change the state"
+               :lemma hmct-job-result-mut1)))
+
+
+
+(defthm hmct-return-witness
+  (and (fn-hmc-invp *hmct-ready*)
+       (fn-hmc-invp (mv-nth 0 (fn-hmc-do-return *hmct-ready* '(:return 2 (0 7 1 0 10 7))))))
+  :rule-classes nil)
+
+(defthm hmct-return-without-invp
+  (and (not (fn-hmc-invp (fn-hmc-set 0 :corrupted-locks (fn-hmc-init))))
+       (not (fn-hmc-invp (mv-nth 0 (fn-hmc-do-return (fn-hmc-set 0 :corrupted-locks (fn-hmc-init)) '(:return 2 (0 7 1 0 10 7)))))))
+  :rule-classes nil)
+
+(defthm hmct-return-mut1
+  (and (fn-hmc-invp *hmct-ready*)
+       (fn-hmc-invp (mv-nth 0 (fn-hmc-do-return *hmct-ready* '(:return 2 (0 7 1 0 10 7)))))
+       (not (equal (mv-nth 0 (fn-hmc-do-return *hmct-ready* '(:return 2 (0 7 1 0 10 7)))) *hmct-ready*)))
+  :rule-classes nil)
+
+(defteeth fn-hmc-do-return-preserves-invp
+  :claim (((invp (fn-hmc-invp st)))
+          (fn-hmc-invp (mv-nth 0 (fn-hmc-do-return st ev))))
+  :subject fn-hmc-do-return
+  :witness-lemma hmct-return-witness
+  :witness ((st *hmct-ready*) (ev '(:return 2 (0 7 1 0 10 7))))
+  :breaks ((invp ((st (fn-hmc-set 0 :corrupted-locks (fn-hmc-init))) (ev '(:return 2 (0 7 1 0 10 7)))) :lemma hmct-return-without-invp))
+  :mutations ((state-never-changes
+               (:conclusion (equal (mv-nth 0 (fn-hmc-do-return st ev)) st))
+               ((st *hmct-ready*) (ev '(:return 2 (0 7 1 0 10 7))))
+               :fault "a step that is claimed never to change the state"
+               :lemma hmct-return-mut1)))

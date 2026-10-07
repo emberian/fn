@@ -136,6 +136,7 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
 DTN_RAW_REACH: dict[tuple[str, str], str] = {}
 
 LD = re.compile(r'^\s*\(ld\s+"([^"]+)"', re.M)
+HOST_EDGE = re.compile(r'^\s*\((ld|include-book)\s+"([^"]+)"', re.M)
 LOAD = re.compile(r'\(load\s+"([^"]+)"')
 DEF = re.compile(r'^\s*\((?:defun|defund|defmacro|defconst|defabbrev)\s+([^\s()]+)', re.M | re.I)
 
@@ -197,13 +198,23 @@ def raw_findings(root: Path, default_text: str, dtn_text: str,
 
 
 def ld_closure(root: Path, build_text: str) -> list[str]:
-    """Host files a session script `ld`s, transitively, relative to each file."""
+    """Host files a session script `ld`s, transitively, relative to each file.
+    A host sibling reached by an include-book (the certify-legal sibling
+    edge; the `ld` form is refused by certify-book) loads with its
+    certificate exactly where the include stands, so it is walked the same
+    way; books/ targets are not host files and stay out."""
     seen: list[str] = []
 
     def walk(text: str, base: str) -> None:
-        for target in LD.findall(strip_comments(text)):
+        code = strip_comments(text)
+        edges = [(m.group(1), m.group(2)) for m in HOST_EDGE.finditer(code)]
+        for kind, target in edges:
             path = os.path.normpath(os.path.join(base, target))
-            if path not in seen:
+            if kind == "include-book" and not path.startswith("host/"):
+                continue
+            if kind == "include-book" and not path.endswith(".lisp"):
+                path += ".lisp"
+            if path not in seen and (root / path).is_file():
                 seen.append(path)
                 walk((root / path).read_text(encoding="utf-8"), os.path.dirname(path))
 

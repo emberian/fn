@@ -266,3 +266,22 @@ groups = \"x\"
                ((missing t) (served t) (policy :hybrid-preferred))
                :fault "a TLS-serving node running on the system library pair in place of the pinned one")))
 ; TEETH-22 END
+
+; ---------------------------------------------------------------------------
+; fn-tlsk-hybrid-is-served-only-when-offered (TEETH CONTRACT v1).  The hybrid
+; mode is read off a serving decision, so dropping the served hypothesis drops
+; the mode one with it: neither has a removal witness of its own.  Both stay
+; inside the implication; the teeth are the positive witness and conclusion
+; mutations.
+(defteeth fn-tlsk-hybrid-is-served-only-when-offered
+  :claim (() (implies (and (fn-tlsk-servep (fn-tlsk-decide policy offered))
+                           (equal (fn-tlsk-serve-mode (fn-tlsk-decide policy offered)) :hybrid))
+                      offered))
+  :subject fn-tlsk-decide
+  :witness ((policy :hybrid-preferred) (offered t))
+  :mutations ((hybrid-served-without-an-offer
+               (:conclusion (implies (and (fn-tlsk-servep (fn-tlsk-decide policy offered))
+                                          (equal (fn-tlsk-serve-mode (fn-tlsk-decide policy offered)) :hybrid))
+                                     (not offered)))
+               ((policy :hybrid-preferred) (offered t))
+               :fault "a decision that serves the hybrid group only when the client did not offer it")))
