@@ -9,6 +9,11 @@
     python3 tools/host_check.py --alone FILE... # one file alone (a diagnosis, not a gate)
     python3 tools/host_check.py --read [FILE...] # static: every host/ file reads (half a second)
     python3 tools/host_check.py --books         # static: each book a host file calls into is in the world
+    python3 tools/host_check.py --loaded        # static: every host file is loaded by some build
+
+`--loaded` (Q7k, 2026-09-29; `make check` runs it): a host file no build loads
+is refused, so a theorem is never counted as hosted through a file no running
+server contains.  See the section above `loaded_findings`.
 
 `--books` (obstructions-9 item 83; `make check-fast` and `--forward`, hence
 hbox_native's pre-image host-forward step, run it): for each image build,
@@ -190,11 +195,11 @@ def raw_files() -> set[str]:
     return {name for name in RAW_LOAD.findall(text) if (ROOT / name).is_file()}
 
 
-def host_files() -> list[str]:
+def host_files(root: Path = ROOT) -> list[str]:
     found: list[str] = []
     for directory in HOST_DIRS:
-        for path in sorted((ROOT / directory).glob("*.lisp")):
-            found.append(path.relative_to(ROOT).as_posix())
+        for path in sorted((root / directory).glob("*.lisp")):
+            found.append(path.relative_to(root).as_posix())
     return found
 
 
@@ -1656,6 +1661,58 @@ def read_check(files: list[str]) -> list[str]:
     return findings
 
 
+# --- --loaded: a host file no build loads (Q7k, 2026-09-29) ------------------
+#
+# Protects the claim "this theorem is hosted": a file under host/ is a host
+# line only when a build loads it.  On 2026-09-29 fifteen host files were
+# loaded by none -- four the Python host's retirement (T5b) had deleted and a
+# merge brought back, three hosts of the retired BP labs, a page-store
+# prototype, a scenario catalog that belonged in tests/ -- and theorems were
+# counted as hosted through files no running server contains.  `--loaded`
+# takes reach_check.loaded_host_files over IMAGE_BUILDS and TEST_IMAGE_BUILDS
+# (the images, the extraction world, the store-test image, followed through
+# `ld' and raw `load') and refuses every host_files() entry outside it.
+#
+# The parked never-wired families (planning/host-parked.json, "parked": path
+# -> why, with family and owner) may stay unloaded; the list only shrinks: a
+# parked file that a build loads now, or that is gone, is red too (drop the
+# entry).  It does not follow include-book (COMPLETE-BEFORE N-REACH).
+PARKED = ROOT / "planning" / "host-parked.json"
+
+
+def load_known() -> dict[str, str]:
+    import json
+    if not PARKED.exists():
+        return {}
+    return dict(json.loads(PARKED.read_text(encoding="utf-8")).get("parked", {}))
+
+
+def loaded_findings(root: Path = ROOT, known: dict[str, str] | None = None) -> list[str]:
+    import reach_check
+    known = load_known() if known is None else known
+    builds = {**reach_check.IMAGE_BUILDS, **reach_check.TEST_IMAGE_BUILDS}
+    loaded = reach_check.loaded_host_files(builds, root)
+    present = sorted(host_files(root))
+    out = [f"{path}: no build loads it (reach_check IMAGE_BUILDS/TEST_IMAGE_BUILDS): "
+           "wire it into a build, move a test harness to tests/, or delete it and "
+           "list it in planning/retired-paths.json"
+           for path in present if path not in loaded and path not in known]
+    out += [f"{path}: KNOWN as unloaded but a build loads it now: drop its KNOWN entry"
+            for path in sorted(known) if path in loaded]
+    out += [f"{path}: KNOWN as unloaded but it is gone: drop its KNOWN entry"
+            for path in sorted(known) if path not in present]
+    return out
+
+
+def loaded_main() -> int:
+    found = loaded_findings()
+    for line in found:
+        print("host_check --loaded: " + line)
+    if not found:
+        print(f"host_check --loaded: every one of {len(host_files())} host files is loaded by a build")
+    return 1 if found else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1698,6 +1755,9 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--books", action="store_true",
                         help="static: every name an ld host file calls that a repository "
                              "book defines is in the image world (BUILD... default both)")
+    mode.add_argument("--loaded", action="store_true",
+                        help="static: every host/ file is loaded by some build, or is parked "
+                             "in planning/host-parked.json (shrink-only)")
     mode.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
@@ -1705,6 +1765,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.books:
         return books_main(args.files)
+    if args.loaded:
+        return loaded_main()
     if args.read:
         findings = read_check(args.files)
         for one in findings:
