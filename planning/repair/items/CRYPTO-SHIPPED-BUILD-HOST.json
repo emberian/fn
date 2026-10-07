@@ -1,0 +1,16 @@
+{
+ "category": "crypto-shipped",
+ "file": "host/native/build.lisp",
+ "id": "CRYPTO-SHIPPED-BUILD-HOST",
+ "line": "495",
+ "notes": [
+  "10-06 20:26 RULINGS-20261006 ruling 3, D59. SYSTEM-PATH: host/native/build.lisp:495-501 comment and (fnn-tls-initialize) check the system libssl pair (OpenSSL 3.0+ or LibreSSL 3+); tools/build_native_host.sh:96-102 FN_OPENSSL_PREFIX is optional, otherwise the system pair; :130-132 openssl_hint tells the operator the system needs OpenSSL 3.0+/LibreSSL 3+. Conversion: build requires the shipped 3.5.8 prefix (fail if unset or not 3.5.8), LD_LIBRARY_PATH prepend replaced by the explicit pair path, hint text updated."
+ ],
+ "owner": "deputy-N",
+ "refs": "RULINGS-20261006 ruling 3; D59",
+ "severity": "medium",
+ "source": "crypto-audit",
+ "state": "open",
+ "title": "native host build loads the system libssl at build time (SYSTEM-PATH)",
+ "updated": "2026-10-07T00:26:35Z"
+}
