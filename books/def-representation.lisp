@@ -448,7 +448,7 @@
         (let* (,@(adt-pg-fresh-body pcols pg '*adt-pg-rows*)) ,pg))
       (defthm ,(adt-sym fresh "-UNFOLDS")
         (equal (,fresh pg) (adt-pg-fresh 0 ,p *adt-pg-rows* pg))
-        :hints (("Goal" :in-theory (enable ,fresh adt-pg-fresh))))
+        :hints (("Goal" :in-theory (e/d (,fresh adt-pg-fresh-unroll adt-pg-fresh-done) (adt-pg-fresh)))))
       (defun ,pfresh (,pp)
         (declare (xargs :stobjs ,pp))
         (let* ((,pp (,(adt-sym-pre "RESIZE-" ppb) 0 ,pp))
@@ -456,7 +456,7 @@
           ,pp))
       (defthm ,(adt-sym pfresh "-UNFOLDS")
         (equal (,pfresh pp) (adt-pg-fresh 0 1 *adt-pg-octets* pp))
-        :hints (("Goal" :in-theory (enable ,pfresh adt-pg-fresh))))
+        :hints (("Goal" :in-theory (e/d (,pfresh adt-pg-fresh-unroll adt-pg-fresh-done) (adt-pg-fresh)))))
       (in-theory (disable ,fresh ,pfresh))
       ; A table page made ready: its pages emptied, then T fresh headers.
       (defun ,tready (,tp)
