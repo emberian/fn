@@ -300,6 +300,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/def-representation-lib \
 	books/def-representation-pages \
 	books/paged-checkpoint \
+	books/catalog-pages \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
 	tests/acl2/def-representation-pages-tests \
