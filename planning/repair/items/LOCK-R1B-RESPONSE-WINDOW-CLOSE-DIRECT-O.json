@@ -4,11 +4,14 @@
  "file": "host/native/owner.lisp",
  "fix": "Either declare the function in direct_owner_sites with that proof (ordering against the off-O batch job and the stop path), or route it through fnn-section-run.",
  "id": "LOCK-R1B-RESPONSE-WINDOW-CLOSE-DIRECT-O",
- "notes": [],
+ "notes": [
+  "Fixed at c064741c4: fnn-owner-response-window-close (owner.lisp) runs its body in fnn-quantum-mux-finish of the closing connection's class (mux.lisp callers pass fnn-mux-conn-class; web-host.lisp:199 takes the :reader default), instead of taking the owner mutex directly. Key R5|fnn-owner-response-window-close|direct-O gone from --check on lane/lock-owner-class at c064741c4, none added, no contract row. The (:cleanup :finish) section is admitted while stopping, so close still runs then. natives_owed: tests/test_native_over_window.py, tests/native_response_window_raw.lisp (response window close), tests/test_native_extent_identity.py."
+ ],
  "owner": "open",
  "severity": "medium",
+ "sha": "c064741c4",
  "source": "lock-triage-r1b-20261006",
- "state": "open",
+ "state": "ready",
  "title": "fnn-owner-response-window-close takes the owner mutex directly and is not a declared direct owner site (R5)",
- "updated": "2026-10-07T00:06:28Z"
+ "updated": "2026-10-07T05:27:05Z"
 }

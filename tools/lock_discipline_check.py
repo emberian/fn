@@ -242,8 +242,10 @@ class Tree:
     defs: dict = field(default_factory=dict)          # name -> Def (functions)
     macros: dict = field(default_factory=dict)        # name -> Def
     structs: dict = field(default_factory=dict)       # accessor -> (struct, slot)
+    struct_inits: dict = field(default_factory=dict)  # accessor -> the slot's initform (None: none)
     globals: dict = field(default_factory=dict)       # name -> (path, line, guarded-by or None)
     synchronized: set = field(default_factory=set)    # globals holding :synchronized tables
+    global_inits: dict = field(default_factory=dict)  # defvar name -> its init form (None when absent)
     conditions: dict = field(default_factory=dict)    # name -> [parents]
     aliens: set = field(default_factory=set)          # define-alien-routine lisp names
     raw_replaced: set = field(default_factory=set)    # ACL2 names the host replaces
@@ -437,6 +439,7 @@ def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
             if k > line - 1 and lines[k].lstrip().startswith("("):
                 break
         tree.globals[name] = (rel, line, guard)
+        tree.global_inits[name] = form[2] if len(form) >= 3 else None
         if len(form) >= 3 and isinstance(form[2], list) and head(form[2]) == "make-hash-table":
             if ":synchronized" in [str(x) for x in form[2] if isinstance(x, Sym)]:
                 tree.synchronized.add(name)
@@ -455,6 +458,8 @@ def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
             sl = slot[0] if isinstance(slot, list) and slot else slot
             if isinstance(sl, Sym):
                 tree.structs[conc + str(sl)] = (sname, str(sl))
+                tree.struct_inits[conc + str(sl)] = (
+                    slot[1] if isinstance(slot, list) and len(slot) > 1 else None)
         return
     if h == "define-condition" and len(form) >= 3 and isinstance(form[1], Sym):
         tree.conditions[str(form[1])] = [str(p) for p in form[2] if isinstance(p, Sym)] if isinstance(form[2], list) else []
@@ -747,14 +752,70 @@ STORE_HOFS = {"push", "pushnew", "setf", "setq", "list", "list*", "cons", "vecto
 WRITE_FORMS = {"setq", "setf", "psetf", "psetq", "incf", "decf", "push", "pushnew", "pop", "remf"}
 
 
+def verify_struct_slot_locks(tree, contracts) -> dict:
+    """contracts `locks'[NAME]["struct_slot"]: an accessor, one of the row's
+    `match' patterns, that names a mutex held in a struct slot.
+
+    A row whose struct this tree does not define matches nothing.
+    Every instance of the struct then has its own lock, and the accessor
+    applied to a variable is that lock, so a lock object `(ACCESSOR x)' is the
+    declared lock NAME.  The row is accepted only when the source shows:
+      (1) the accessor is a slot accessor of a defstruct the host defines;
+      (2) the slot's initform is a (sb-thread:make-mutex ...) call, so a
+          constructor that omits the slot makes a fresh mutex;
+      (3) no constructor call in the host passes the slot's keyword (no
+          instance gets a mutex made elsewhere, or none); and
+      (4) no form in any host function assigns the accessor (the mutex is
+          never replaced, so two threads cannot hold different locks for one
+          instance).
+    """
+    out = {}
+    for name, row in contracts.locks.items():
+        accessor = row.get("struct_slot")
+        if accessor is None:
+            continue
+        where = f"locks {name} struct_slot {accessor}"
+        if "(" + accessor + ")" not in row.get("match", []):
+            raise ValueError(f"{where}: the accessor is not one of the row's match patterns")
+        if accessor not in tree.structs:
+            if accessor in tree.defs:
+                raise ValueError(f"{where}: a function, not a struct slot accessor")
+            continue    # a row for a struct this tree does not define resolves nothing
+        init = tree.struct_inits.get(accessor)
+        if not (isinstance(init, list) and head(init) in ("sb-thread:make-mutex", "make-mutex")):
+            raise ValueError(f"{where}: the slot's initform is not a make-mutex call")
+        struct, slot = tree.structs[accessor]
+        kw = ":" + slot
+        for dd in tree.defs.values():
+            for f in _flat_nodes(dd.body):
+                if head(f) in ("%make-" + struct, "make-" + struct):
+                    if any(isinstance(x, Sym) and str(x).lower() == kw for x in f[1:]):
+                        raise ValueError(f"{where}: {dd.name} passes {kw} to a constructor of {struct} "
+                                         f"({dd.path}:{dd.line})")
+            for h in ("setf", "setq", "psetf", "psetq"):
+                for f in _call_forms(dd.body, h):
+                    for k in range(1, len(f) - 1, 2):
+                        if isinstance(f[k], list) and head(f[k]) == accessor:
+                            raise ValueError(f"{where}: {dd.name} assigns it ({dd.path}:{dd.line})")
+            for h in ("push", "pushnew", "incf", "decf", "pop"):
+                for f in _call_forms(dd.body, h):
+                    if any(isinstance(x, list) and head(x) == accessor for x in f[1:3]):
+                        raise ValueError(f"{where}: {dd.name} assigns it with {h} ({dd.path}:{dd.line})")
+        out[name] = accessor
+    return out
+
+
 class Analyzer:
     def __init__(self, tree: Tree, contracts: Contracts, realizer_reach: dict) -> None:
         self.tree = tree
         self.c = contracts
         self.reach = realizer_reach
         self.infos: dict[str, FnInfo] = {}
+        self.struct_slot_locks = verify_struct_slot_locks(tree, contracts)
         self.lock_patterns = []
         for lock, row in contracts.locks.items():
+            if "struct_slot" in row and lock not in self.struct_slot_locks:
+                continue    # unverified (absent from this tree): matches nothing
             for m in row["match"]:
                 self.lock_patterns.append((m, lock))
         self.templates = set(contracts.raw.get("expand_templates", []))
@@ -1565,6 +1626,13 @@ class Analyzer:
         # recorded failure, and signals otherwise: terminal like a fence call
         fences = set(self.c.raw.get("fence_functions", [])) | set(self.c.raw.get("dominated_escape_functions", {}))
         last = body[-1]
+        # a constant NIL after the escalation loop is its value, not a form
+        # that can leave the body
+        if (isinstance(last, Sym) and str(last).lower() == "nil" and len(body) > 1
+                and isinstance(body[-2], list) and head(body[-2]) == "dolist"):
+            return self._deferred_dolist_vars(names, body[:-2], body[-2])
+        if isinstance(last, list) and head(last) == "dolist":
+            return self._deferred_dolist_vars(names, body[:-1], last)
         if isinstance(last, list) and head(last) == "unwind-protect" and len(last) > 2:
             tail, between = last[-1], list(body[:-1]) + list(last[2:-1])
         else:
@@ -1591,6 +1659,62 @@ class Analyzer:
                     and isinstance(f[2], Sym) and str(f[2]) == "nil":
                 return set()
         return {var}
+
+    def _deferred_dolist_vars(self, names, between, loop) -> set:
+        """The let tail is (dolist (X V) ESCALATE) or (dolist (X (nreverse V))
+        ESCALATE) over the captured conditions V: every captured condition is
+        visited (nothing in the loop or before it leaves the body, V is never
+        reset), and each visit makes one terminal escalation of X: a
+        fence/dominated-escape call, or an escalation wrapper
+        (contract escalation_wrappers, verified) whose closure is
+        (lambda () (CLASSIFIER ... X ...)) with CLASSIFIER a
+        classifying_escape_function."""
+        spec = loop[1] if len(loop) > 1 else None
+        if not (isinstance(spec, list) and len(spec) == 2 and isinstance(spec[0], Sym)):
+            return set()
+        x = str(spec[0])
+        src = spec[1]
+        if isinstance(src, list) and head(src) in ("nreverse", "reverse") and len(src) == 2:
+            src = src[1]
+        if not (isinstance(src, Sym) and str(src) in names):
+            return set()
+        var = str(src)
+        body = loop[2:]
+        if len(body) != 1 or self._has_exit(body) or self._has_exit(between):
+            return set()
+        fences = set(self.c.raw.get("fence_functions", [])) | set(self.c.raw.get("dominated_escape_functions", {}))
+        if not self._terminal_escalation(body[0], x, fences):
+            return set()
+        for f in self._flat_forms(list(between) + list(body)):
+            if head(f) in ("setq", "setf") and len(f) == 3 and sym(f[1]) == var \
+                    and isinstance(f[2], Sym) and str(f[2]) == "nil":
+                return set()
+        return {var}
+
+    def _terminal_escalation(self, form, x, fences) -> bool:
+        if not isinstance(form, list) or not form:
+            return False
+        h = head(form)
+        if h in fences:
+            return True
+        wrappers = self._wrappers()
+        if h in wrappers:
+            # the wrapper's closure argument is the form's first argument
+            clo = form[1] if len(form) > 1 else None
+            if not (isinstance(clo, list) and head(clo) == "lambda" and len(clo) == 3
+                    and clo[1] == []):
+                return False
+            call = clo[2]
+            classifiers = set(self.c.raw.get("classifying_escape_functions", {}))
+            return (isinstance(call, list) and head(call) in classifiers
+                    and any(isinstance(a, Sym) and str(a) == x for a in call[1:]))
+        return False
+
+    def _wrappers(self) -> dict:
+        w = getattr(self, "_wrappers_cache", None)
+        if w is None:
+            w = self._wrappers_cache = verified_escalation_wrappers(self.tree, self.c)
+        return w
 
     @staticmethod
     def _flat_forms(forms):
@@ -2644,6 +2768,361 @@ def _call_forms(forms, name):
     return out
 
 
+def _ends_in_fence(form, fences) -> bool:
+    """FORM always finishes by calling a fence function: a fence call, or a
+    let/let*/progn whose last form does, or an if whose two arms both do."""
+    if not isinstance(form, list) or not form:
+        return False
+    h = head(form)
+    if h in fences:
+        return True
+    if h in ("let", "let*") and len(form) > 2:
+        return _ends_in_fence(form[-1], fences)
+    if h == "progn" and len(form) > 1:
+        return _ends_in_fence(form[-1], fences)
+    if h == "if" and len(form) == 4:
+        return _ends_in_fence(form[2], fences) and _ends_in_fence(form[3], fences)
+    return False
+
+
+def verified_escalation_wrappers(tree, contracts) -> dict:
+    """contracts `escalation_wrappers': {FUNCTION: {"param": P, "why"}}.
+
+    FUNCTION runs the escalation closure its parameter P names and, when that
+    closure itself signals, ends the process: its body's final form is a
+    (handler-case (funcall P) ... (serious-condition (V) ... FENCE)) whose
+    serious-condition clause ends in a fence function call (fence_functions),
+    and P is the only thing the protected form calls.  A call to FUNCTION whose
+    P argument is (lambda () (CLASSIFIER ... X ...)) with CLASSIFIER a
+    classifying_escape_function therefore escalates X or ends the process.
+    """
+    rows = contracts.raw.get("escalation_wrappers", {})
+    fences = set(contracts.raw.get("fence_functions", []))
+    out = {}
+    for name, row in rows.items():
+        where = f"escalation_wrappers {name}"
+        if name not in tree.defs:
+            continue    # a row for a function this tree does not define exempts nothing
+        if not row.get("why") or not row.get("param"):
+            raise ValueError(f"{where}: no why/param")
+        d = tree.defs[name]
+        param = row["param"]
+        if param not in lambda_params(d.params):
+            raise ValueError(f"{where}: {param} is not a parameter")
+        last = d.body[-1] if d.body else None
+        if not (isinstance(last, list) and head(last) == "handler-case" and len(last) > 2):
+            raise ValueError(f"{where}: its final form is not a handler-case")
+        protected = last[1]
+        if not (isinstance(protected, list) and head(protected) == "funcall" and len(protected) == 2
+                and isinstance(protected[1], Sym) and str(protected[1]) == param):
+            raise ValueError(f"{where}: the handler-case does not protect exactly (funcall {param})")
+        clauses = last[2:]
+        if len(clauses) != 1 or not (isinstance(clauses[0], list) and clauses[0]
+                                      and isinstance(clauses[0][0], Sym)
+                                      and str(clauses[0][0]) == "serious-condition"):
+            raise ValueError(f"{where}: its only clause is not serious-condition")
+        if not _ends_in_fence(clauses[0][-1], fences):
+            raise ValueError(f"{where}: its serious-condition clause does not end in a fence function")
+        out[name] = row
+    return out
+
+
+def _flat_nodes(forms):
+    """Every list node under FORMS (the forms themselves included), by identity."""
+    stack = list(forms)
+    while stack:
+        x = stack.pop()
+        if isinstance(x, list):
+            yield x
+            stack.extend(x)
+
+
+def _setq_pairs(forms, var):
+    """Every (setq VAR VALUE) / (setf VAR VALUE) form under FORMS, as (form, VALUE)."""
+    out = []
+    for h in ("setq", "setf"):
+        for f in _call_forms(forms, h):
+            out.extend((f, f[k + 1]) for k in range(1, len(f) - 1, 2)
+                       if isinstance(f[k], Sym) and str(f[k]) == var)
+    return out
+
+
+def verify_close_hook_fences(model) -> dict:
+    """contracts `close_hook_fences': {FUNCTION: {flag, hooks, action, exit_call,
+    exit_const, book, why}}.
+
+    A close hook that signals must leave the service's close NOT joined and the
+    process exit uncertain (exit 3), never a clean close.  The row is accepted
+    only when the source of FUNCTION shows every link:
+      (1) FLAG is bound once, to T, and its only assignment is (setq FLAG nil),
+          made by the serious-condition clause of a handler-case around
+          (funcall HOOK ...) in a dolist over (HOOKS ...);
+      (2) the clean-close block is a (when (and FLAG ...) ...) in the scope of
+          that binding, and every assignment of ACTION outside it is one of:
+          (fnn-core 'fn-ort-report-close-action nil ...) (the held value
+          before any hook runs), (fnn-owner-store-settlement service ACTION)
+          (answers held for a held ACTION, books text below), or
+          (fnn-owner-log-settlement) under (unless ACTION ...);
+      (3) the not-joined arm of (if (eq ACTION :joined) THEN ELSE) returns
+          from FUNCTION with (fnn-core 'EXIT_CALL ... EXIT_CONST ACTION);
+      (4) the ACL2 facts the chain leans on are in BOOK as text: EXIT_CALL's
+          not-joined theorem, fn-ort-report-close-action's :held arm, and
+          fn-ort-store-close-action's held first clause.
+    """
+    tree, rows = model.tree, model.c.raw.get("close_hook_fences", {})
+    fences_ok = {}
+    for fname, row in rows.items():
+        where = f"close_hook_fences {fname}"
+        if fname not in tree.defs:
+            continue    # a row for a function this tree does not define exempts nothing
+        for key in ("flag", "hooks", "action", "exit_call", "exit_const", "book", "why"):
+            if not row.get(key):
+                raise ValueError(f"{where}: no {key}")
+        d = tree.defs[fname]
+        flag, hooks, action = row["flag"], row["hooks"], row["action"]
+        body = d.body
+        # (1)
+        lets = [f for h in ("let", "let*") for f in _call_forms(body, h)
+                if any(isinstance(b, list) and len(b) == 2 and str(b[0]) == flag
+                       and isinstance(b[1], Sym) and str(b[1]).lower() == "t"
+                       for b in (f[1] if len(f) > 1 and isinstance(f[1], list) else []))]
+        if len(lets) != 1:
+            raise ValueError(f"{where}: {flag} is not bound to T by exactly one let")
+        let = lets[0]
+        assigns = _setq_pairs(body, flag)
+        if not assigns or any(not (isinstance(v, Sym) and str(v).lower() == "nil") for _, v in assigns):
+            raise ValueError(f"{where}: {flag} is assigned something other than NIL")
+        loops = [f for f in _call_forms(let[2:], "dolist")
+                 if isinstance(f[1], list) and len(f[1]) == 2 and isinstance(f[1][1], list)
+                 and head(f[1][1]) == hooks]
+        if len(loops) != 1:
+            raise ValueError(f"{where}: no single dolist over ({hooks} ...)")
+        loop = loops[0]
+        hook = str(loop[1][0])
+        if len(loop) != 3:
+            raise ValueError(f"{where}: the hook loop has more than one body form")
+        hc = loop[2]
+        ok = (isinstance(hc, list) and head(hc) == "handler-case" and len(hc) == 3
+              and isinstance(hc[1], list) and head(hc[1]) == "funcall" and len(hc[1]) >= 2
+              and isinstance(hc[1][1], Sym) and str(hc[1][1]) == hook
+              and isinstance(hc[2], list) and len(hc[2]) == 3 and str(hc[2][0]) == "serious-condition"
+              and isinstance(hc[2][2], list) and head(hc[2][2]) == "setq" and len(hc[2][2]) == 3
+              and str(hc[2][2][1]) == flag and str(hc[2][2][2]).lower() == "nil")
+        if not ok or len(assigns) != 1:
+            raise ValueError(f"{where}: the hook handler is not exactly (serious-condition ... (setq {flag} nil))"
+                             f" and the only assignment of {flag}")
+        # (2)
+        guards = [f for f in _call_forms(let[2:], "when")
+                  if isinstance(f[1], list) and head(f[1]) == "and" and len(f[1]) > 1
+                  and isinstance(f[1][1], Sym) and str(f[1][1]) == flag]
+        if len(guards) != 1:
+            raise ValueError(f"{where}: the clean-close block is not exactly one (when (and {flag} ...) ...)")
+        guard = guards[0]
+        inside = {id(f) for f in _call_forms(guard[2:], "setq")} | {id(f) for f in _call_forms(guard[2:], "setf")}
+        unless_logs = {id(f) for u in _call_forms(body, "unless")
+                       if len(u) > 1 and isinstance(u[1], Sym) and str(u[1]) == action
+                       for f in _call_forms(u[2:], "setq")}
+        svc = row.get("service", "service")
+        # the hooks run only for a SERVICE: the flag's let is inside (when SERVICE ...)
+        if not any(w[1] is not None and isinstance(w[1], Sym) and str(w[1]) == svc
+                   and any(x is let for x in _flat_nodes(w[2:])) for w in _call_forms(body, "when")):
+            raise ValueError(f"{where}: the hook loop is not inside (when {svc} ...)")
+        # an assignment of NIL under (when (and ... (null SERVICE)) ...): no service, no hooks
+        no_service = set()
+        for w in _call_forms(body, "when"):
+            t = w[1]
+            if isinstance(t, list) and head(t) == "and" and any(
+                    isinstance(c, list) and head(c) == "null" and len(c) == 2
+                    and isinstance(c[1], Sym) and str(c[1]) == svc for c in t[1:]):
+                for h in ("setq", "setf"):
+                    no_service |= {id(f) for f in _call_forms(w[2:], h)}
+        for f, v in _setq_pairs(body, action):
+            if id(f) in inside:
+                continue
+            if isinstance(v, list) and head(v) == "fnn-core" and len(v) >= 4 \
+                    and isinstance(v[1], list) and str(v[1][-1]) == "fn-ort-report-close-action" \
+                    and isinstance(v[2], Sym) and str(v[2]).lower() in ("nil", action.lower()):
+                continue    # :held for NIL, and for a held ACTION (joined only from a joined one)
+            if isinstance(v, list) and head(v) == "fnn-owner-store-settlement" and len(v) == 3 \
+                    and isinstance(v[2], Sym) and str(v[2]) == action:
+                continue
+            if id(f) in unless_logs and isinstance(v, list) and head(v) == "fnn-owner-log-settlement":
+                continue
+            if isinstance(v, Sym) and str(v).lower() == "nil" and id(f) in no_service:
+                continue    # no SERVICE exists: no hook ran, nothing is joined by the flag
+            raise ValueError(f"{where}: {action} is assigned outside the guarded block by a form "
+                             f"that is not a held-preserving one: {render(v, 100)}")
+        # (3)
+        exits = [f for f in _call_forms(body, "if")
+                 if len(f) == 4 and isinstance(f[1], list) and head(f[1]) == "eq" and len(f[1]) == 3
+                 and str(f[1][1]) == action and str(f[1][2]) == ":joined"
+                 and isinstance(f[3], list) and head(f[3]) == "return-from" and str(f[3][1]) == fname]
+        def exit_call(f):
+            return any(isinstance(c, list) and head(c) == "fnn-core" and len(c) >= 3
+                       and isinstance(c[1], list) and str(c[1][-1]) == row["exit_call"]
+                       and any(isinstance(a, Sym) and str(a) == row["exit_const"] for a in c[2:])
+                       and isinstance(c[-1], Sym) and str(c[-1]) == action
+                       for c in _call_forms([f[3]], "fnn-core"))
+        if not any(exit_call(f) for f in exits):
+            raise ValueError(f"{where}: no not-joined arm returns (fnn-core '{row['exit_call']} ... "
+                             f"{row['exit_const']} {action})")
+        # (4)
+        book = (tree.root / row["book"]).read_text()
+        compact = " ".join(book.split())
+        for needle in (
+                "(defthm fn-ort-log-close-held-is-uncertain (implies (not (equal action :joined)) "
+                "(equal (fn-ort-log-close-exit prior uncertain action) uncertain)))",
+                "(defun fn-ort-log-close-exit (prior uncertain action) "
+                "(declare (xargs :guard (and (integerp prior) (integerp uncertain)))) "
+                "(if (equal action :joined) prior uncertain))",
+                "(defun fn-ort-report-close-action (log-action journal-observation) (declare (xargs :guard t)) "
+                "(if (and (equal log-action :joined) (or (equal journal-observation :closed) "
+                "(equal journal-observation :absent))) :joined :held))",
+                "(defun fn-ort-store-close-action (settlement authority-presentp caller-fd-presentp) "
+                "(declare (xargs :guard t)) (cond ((not (equal settlement :joined)) :held)"):
+            if needle not in compact:
+                raise ValueError(f"{where}: {row['book']} no longer contains: {needle[:70]}...")
+        fences_ok[fname] = row
+    return fences_ok
+
+
+def verify_pipe_close_sites(model) -> dict:
+    """contracts `nonblocking_close_sites': {FUNCTION: {close_call, slots, pipe_call, why}}.
+
+    close(2) of a pipe descriptor does not block.  The row exempts FUNCTION's
+    CLOSE_CALL leaves from R2 only when the source shows the descriptor it
+    closes is always one of the pipe ends the loop made:
+      (1) every CLOSE_CALL in FUNCTION takes a variable that one let in FUNCTION
+          binds to a slot accessor of SLOTS, or to an if whose arms are such
+          accessors (nothing else reaches the call);
+      (2) every assignment to a slot accessor anywhere in the host stores NIL
+          or a variable bound by (multiple-value-bind (A B) (PIPE_CALL) ...) in
+          the same function; and
+      (3) no constructor call in the host passes a slot's keyword, so a loop
+          starts with NIL there.
+    """
+    tree, rows = model.tree, model.c.raw.get("nonblocking_close_sites", {})
+    out = {}
+    for fname, row in rows.items():
+        where = f"nonblocking_close_sites {fname}"
+        if fname not in tree.defs:
+            continue    # a row for a function this tree does not define exempts nothing
+        for key in ("close_call", "slots", "pipe_call", "why"):
+            if not row.get(key):
+                raise ValueError(f"{where}: no {key}")
+        slots, pipe, close_call = set(row["slots"]), row["pipe_call"], row["close_call"]
+        for a in slots:
+            if a not in tree.structs:
+                raise ValueError(f"{where}: {a} is not a struct slot accessor of the host")
+        d = tree.defs[fname]
+
+        def accessor_forms(v):
+            if isinstance(v, list) and head(v) in slots and len(v) == 2:
+                return True
+            return (isinstance(v, list) and head(v) == "if" and len(v) == 4
+                    and accessor_forms(v[2]) and accessor_forms(v[3]))
+        closes = _call_forms(d.body, close_call)
+        if not closes:
+            raise ValueError(f"{where}: {fname} has no {close_call}")
+        for c in closes:
+            arg = c[1] if len(c) > 1 else None
+            if not isinstance(arg, Sym):
+                raise ValueError(f"{where}: a {close_call} takes something other than a variable")
+            inits = [b[1] for h in ("let", "let*") for f in _call_forms(d.body, h)
+                     for b in (f[1] if len(f) > 1 and isinstance(f[1], list) else [])
+                     if isinstance(b, list) and len(b) == 2 and str(b[0]) == str(arg)]
+            if len(inits) != 1 or not accessor_forms(inits[0]):
+                raise ValueError(f"{where}: {arg} is not bound once to a slot accessor of {sorted(slots)}")
+            if _setq_pairs(d.body, str(arg)):
+                raise ValueError(f"{where}: {arg} is reassigned")
+        for dd in tree.defs.values():
+            mvb = {}
+            for f in _call_forms(dd.body, "multiple-value-bind"):
+                if len(f) > 2 and isinstance(f[1], list) and isinstance(f[2], list) and head(f[2]) == pipe:
+                    for v in f[1]:
+                        mvb[str(v)] = True
+            for f in _call_forms(dd.body, "setf") + _call_forms(dd.body, "setq"):
+                for k in range(1, len(f) - 1, 2):
+                    place, val = f[k], f[k + 1]
+                    if isinstance(place, list) and head(place) in slots:
+                        nil = isinstance(val, Sym) and str(val).lower() == "nil"
+                        if not (nil or (isinstance(val, Sym) and str(val) in mvb)):
+                            raise ValueError(f"{where}: {dd.name} stores something other than NIL or a "
+                                             f"{pipe} result in {head(place)} ({dd.path}:{dd.line})")
+        for slot in slots:
+            struct, sl = tree.structs[slot]
+            kw = ":" + sl
+            for dd in tree.defs.values():
+                for f in _flat_nodes(dd.body):
+                    if head(f) in ("%make-" + struct, "make-" + struct):
+                        if any(isinstance(x, Sym) and str(x).lower() == kw for x in f[1:]):
+                            raise ValueError(f"{where}: {dd.name} passes {kw} to a constructor of {struct}")
+        out[fname] = row
+    return out
+
+
+def verify_binding_only_specials(model) -> dict:
+    """contracts `binding_only_specials': {SPECIAL: why}.
+
+    A special that is only ever dynamically rebound, never assigned, names no
+    shared mutable cell: outside a rebinding it holds its global value, which
+    nothing writes (the defvar's constant NIL), and inside one it holds the
+    object the rebinding thread made for itself.  R1b therefore has no
+    cross-actor state to report on it.  The row is accepted only when the
+    source shows each part of that:
+      (1) the defvar's initial value is NIL (or absent) -- the global value;
+      (2) no form in any host function assigns the symbol itself (setq, setf,
+          psetq, psetf, push, pushnew, pop, incf, decf, set, symbol-value,
+          progv, makunbound), so the global value stays that NIL;
+      (3) every let/let* that rebinds it gives it a value made by that form's
+          thread: a lexical variable or a (list ...) / (cons ...) call, never
+          another global (which could alias a shared object).
+    The one premise it cannot check is that the rebound object is not handed
+    to another thread; a handoff would be a thread spawn or a queue push that
+    R4 and R8 see by their own rules.
+    """
+    tree, rows = model.tree, model.c.raw.get("binding_only_specials", {})
+    ok = {}
+    for name, why in rows.items():
+        where = f"binding_only_specials {name}"
+        if not why or not isinstance(why, str):
+            raise ValueError(f"{where}: no why")
+        if name not in tree.globals:
+            continue    # a row for a special this tree does not define exempts nothing
+        init = tree.global_inits.get(name)
+        if init is not None and not (isinstance(init, Sym) and str(init).lower() == "nil"):
+            raise ValueError(f"{where}: its defvar initial value is not NIL")
+        for d in tree.defs.values():
+            forms = d.body
+            for h in ("setq", "setf", "psetq", "psetf"):
+                for f in _call_forms(forms, h):
+                    if any(isinstance(f[k], Sym) and str(f[k]) == name for k in range(1, len(f) - 1, 2)):
+                        raise ValueError(f"{where}: {d.name} assigns it ({d.path}:{d.line})")
+            for h, k in (("push", 2), ("pushnew", 2), ("pop", 1), ("incf", 1), ("decf", 1),
+                         ("makunbound", 1)):
+                for f in _call_forms(forms, h):
+                    if len(f) > k and isinstance(f[k], Sym) and str(f[k]) == name:
+                        raise ValueError(f"{where}: {d.name} assigns it with {h} ({d.path}:{d.line})")
+            for h in ("set", "symbol-value", "progv"):
+                for f in _call_forms(forms, h):
+                    if any(name.lower() in str(x).lower() for x in f[1:2]):
+                        raise ValueError(f"{where}: {d.name} reaches it through {h} ({d.path}:{d.line})")
+            for h in ("let", "let*"):
+                for f in _call_forms(forms, h):
+                    for b in (f[1] if len(f) > 1 and isinstance(f[1], list) else []):
+                        if not (isinstance(b, list) and len(b) >= 1 and isinstance(b[0], Sym) and str(b[0]) == name):
+                            continue
+                        val = b[1] if len(b) > 1 else None
+                        fresh = (isinstance(val, Sym) and str(val) not in tree.globals
+                                 and str(val).lower() != "nil") or (
+                                 isinstance(val, list) and head(val) in ("list", "cons"))
+                        if not fresh:
+                            raise ValueError(f"{where}: {d.name} rebinds it to a value that is not a "
+                                             f"lexical variable or a fresh list ({d.path}:{d.line})")
+        ok[name] = why
+    return ok
+
+
 def _ancestors(model, name) -> set:
     seen, todo = {name}, [name]
     while todo:
@@ -2847,6 +3326,9 @@ class Model:
         self.check_callback_entries()
         self.check_test_only_entries()
         self.private_owner = verify_private_owner_commands(self)
+        self.binding_only = verify_binding_only_specials(self)
+        self.close_hook_fences = verify_close_hook_fences(self)
+        self.pipe_close_sites = verify_pipe_close_sites(self)
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()
@@ -2964,6 +3446,8 @@ class Model:
         at LINE, None at the leaf itself."""
         overrides = self.c.raw.get("effect_overrides", {})
         waiters = self.c.raw.get("condition_wait_wrappers", {})
+        nonblocking = self.c.raw.get("nonblocking_leaves", {})
+        pipe_closes = self.pipe_close_sites
         blk: dict = {}
         for flag in (False, True):
             for name in self.infos:
@@ -2973,7 +3457,9 @@ class Model:
             if name in overrides:
                 continue
             for e in info.events:
-                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket"):
+                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
+                        and e.name not in nonblocking \
+                        and not (name in pipe_closes and e.name == pipe_closes[name]["close_call"]):
                     for flag in (False, True):
                         if e.ctx.noio is not None and e.ctx.noio != flag:
                             continue  # the other arm of (if *fnn-extent-no-io* ...)
@@ -3452,6 +3938,8 @@ class Checker:
                     continue
                 if e.name in e.bound or e.name in self.m.mustbound.get(name, frozenset()):
                     continue        # the access names a thread-local dynamic binding
+                if e.name in self.m.binding_only:
+                    continue        # verified: only rebound, never assigned (verify_binding_only_specials)
                 held = e.ctx.locks | self.m.mustheld.get(name, frozenset())
                 if e.atomic:
                     held = held | {"SYNC:" + e.name}    # the table's own lock covers this one operation
@@ -3504,6 +3992,8 @@ class Checker:
         io_ok = {l for l, row in self.c.locks.items() if row.get("io_ok")}
         overrides = self.c.raw.get("effect_overrides", {})
         waiters = self.c.raw.get("condition_wait_wrappers", {})
+        nonblocking = self.c.raw.get("nonblocking_leaves", {})
+        pipe_closes = self.m.pipe_close_sites
         found: dict = {}
         for name, info in self.infos.items():
             for e in info.events:
@@ -3512,7 +4002,9 @@ class Checker:
                     continue
                 noio = e.ctx.noio if e.ctx.noio is not None else False
                 cands = []
-                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket"):
+                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
+                        and e.name not in nonblocking \
+                        and not (name in pipe_closes and e.name == pipe_closes[name]["close_call"]):
                     h2 = held - {e.extra[1]} if e.extra[0] == "await" and e.name == "sb-thread:condition-wait" else held
                     if h2:
                         cands.append((f"{name}:{e.line}:{e.name}", e.extra[0], h2,
