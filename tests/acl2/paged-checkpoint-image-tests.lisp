@@ -27,7 +27,8 @@
                  (equal (pgs-x-words 0 16384 (* 2048 (- (pgs-v-length pgs-mem) 8)) pgs-mem)
                         (append pw (adt-tp-zeros (- (* 2048 (- (pgs-v-length pgs-mem) 8)) (len pw)))))
                  (<= (+ 8 (floor (+ (len pw) wl 2047) 2048)) npn))
-            (pcks-res (len pw) (+ (len pw) wl) (pgs-x-grow-image npn pgs-mem)))))
+            (pcks-res (len pw) (+ (len pw) wl) (pgs-x-grow-image npn pgs-mem)))
+   :hints (("Goal" :do-not-induct t :in-theory (disable pcks-res-hi pcki-res pcki-prestate-res)))))
 
 (must-fail-checked
  (defthm pckit-nonzero-after-prefix
@@ -38,12 +39,13 @@
                  (equal (pgs-w-length pgs-mem) (* 2048 (pgs-v-length pgs-mem)))
                  (<= (+ (len pw) 1) (* 2048 (- (pgs-v-length pgs-mem) 8)))
                  (equal (pgs-x-words 0 16384 (* 2048 (- (pgs-v-length pgs-mem) 8)) pgs-mem)
-                        (append pw (cons 1 (adt-tp-zeros (- (* 2048 (- (pgs-v-length pgs-mem) 8)) (len pw) 1)))))
+                        (append pw (cons 1 (adt-tp-zeros (- (- (* 2048 (- (pgs-v-length pgs-mem) 8)) (len pw)) 1)))))
                  (<= (+ 8 (floor (+ (len pw) wl 2047) 2048)) npn))
             (let* ((cnt (len pw))
                    (tail (nthcdr (* 2048 (floor cnt 2048)) pw))
                    (d (pck-shift 8 (adt-tp-dirty-at cnt tail (adt-tp-zeros wl)))))
-              (equal (pgs-x-abs-dirty (pgs-dirty-lpages d) (pgs-x-grow-image npn pgs-mem)) d)))))
+              (equal (pgs-x-abs-dirty (pgs-dirty-lpages d) (pgs-x-grow-image npn pgs-mem)) d)))
+   :hints (("Goal" :do-not-induct t :in-theory (disable pcks-res-hi pcki-dirty-pos pcki-prestate-dirty fn-pck-x-prestate)))))
 
 (defconst *pckit-prefix* (cons '(1 . 2) '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17)))
 (defconst *pckit-delta* (cons '(3 . 4) '(9 8 7)))
