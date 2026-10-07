@@ -6,12 +6,15 @@
  "file": "host/native/tls.lisp",
  "fix": "Decide that XTLSINIT and XTLSRELOAD are io_ok (they serialize one-time I/O-bearing init and reload), with that justification in contracts; or hoist the candidate probe out of the locks.",
  "id": "LOCK-R2-TLS-PROBE-UNDER-INIT-LOCKS",
- "notes": [],
+ "notes": [
+  "10-06 20:23 Fixed: probe hoisted (fnn-tls-library-selection) before the init lock; reload initializes before its mutex; both R2 select-pair keys gone, none added; host_check read/load rc0; raw test red-before/green-after. Pending convergence natives: tests/native_tls_transport.lisp, test_native_starttls, test_native_implicit_tls, test_native_tls_handshake_budget (image/openssl)."
+ ],
  "owner": "unassigned",
  "scenario": "First TLS use, or a TLS reload.",
  "severity": "low",
+ "sha": "dd61beb18",
  "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
- "state": "open",
+ "state": "ready",
  "title": "TLS library selection probes the filesystem (probe-file) while holding the TLS init and reload mutexes",
- "updated": "2026-10-06T23:55:37Z"
+ "updated": "2026-10-07T00:23:30Z"
 }
