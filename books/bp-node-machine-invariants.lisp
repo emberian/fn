@@ -763,15 +763,6 @@
        true-listp zp (:type-prescription len))
      (theory 'minimal-theory)))))
 
-(defthm fn-bpn-key-memberp-of-resume-jobs
-  (equal (fn-bpn-job-key-memberp key (fn-bpn-resume-jobs jobs))
-         (fn-bpn-job-key-memberp key jobs))
-  :hints (("Goal"
-           :induct (fn-bpn-resume-jobs jobs)
-           :in-theory
-           (enable fn-bpn-resume-jobs fn-bpn-job-key-memberp
-                   fn-bpn-find-job fn-bpn-job-key-of-job-with-status))))
-
 (defthm fn-bpn-key-memberp-of-nil
   (not (fn-bpn-job-key-memberp key nil))
   :hints (("Goal" :in-theory (enable fn-bpn-job-key-memberp
@@ -784,33 +775,6 @@
               (fn-bpn-job-listp jobs)))
   :hints (("Goal" :expand ((fn-bpn-job-listp (cons job jobs)))
                    :in-theory (disable fn-bpn-jobp fn-bpn-job-key))))
-
-(defthm fn-bpn-resume-jobs-preserves-job-listp
-  (implies (fn-bpn-job-listp jobs)
-           (fn-bpn-job-listp (fn-bpn-resume-jobs jobs)))
-  :hints (("Goal"
-           :induct (fn-bpn-resume-jobs jobs)
-           :in-theory
-           (union-theories
-            '(fn-bpn-resume-jobs fn-bpn-job-listp fn-bpn-job-listp-of-cons
-              fn-bpn-job-with-status-is-a-job
-              fn-bpn-job-key-of-job-with-status
-              fn-bpn-key-memberp-of-resume-jobs
-              fn-bpn-key-memberp-of-nil
-              fn-bpn-jobp-components fn-bpn-job-statusp fn-bpn-member)
-            (theory 'minimal-theory)))))
-
-(defthm fn-bpn-len-of-resume-jobs
-  (equal (len (fn-bpn-resume-jobs jobs)) (len jobs))
-  :hints (("Goal" :induct (fn-bpn-resume-jobs jobs)
-                   :in-theory (enable fn-bpn-resume-jobs))))
-
-(defthm fn-bpn-jobs-octets-of-resume-jobs
-  (equal (fn-bpn-jobs-octets (fn-bpn-resume-jobs jobs))
-         (fn-bpn-jobs-octets jobs))
-  :hints (("Goal" :induct (fn-bpn-resume-jobs jobs)
-                   :in-theory (enable fn-bpn-resume-jobs
-                                      fn-bpn-jobs-octets))))
 
 (defthm fn-bpn-restart-state-with-preserves-machine-invariant
   (implies
@@ -873,6 +837,11 @@
 (defthm fn-bpn-effect-listp-of-singleton
   (equal (fn-bpn-effect-listp (list effect))
          (fn-bpn-effectp effect))
+  :hints (("Goal" :in-theory (enable fn-bpn-effect-listp))))
+
+(defthm fn-bpn-effect-listp-of-cons
+  (equal (fn-bpn-effect-listp (cons effect effects))
+         (and (fn-bpn-effectp effect) (fn-bpn-effect-listp effects)))
   :hints (("Goal" :in-theory (enable fn-bpn-effect-listp))))
 
 (defthm fn-bpn-effect-listp-of-nil
@@ -943,6 +912,79 @@
               car-cons cdr-cons true-listp)
             (theory 'minimal-theory)))))
 
+(defthm fn-bpn-find-attempting-is-a-job
+  (implies (and (fn-bpn-job-listp jobs)
+                (fn-bpn-find-attempting jobs))
+           (and (fn-bpn-jobp (fn-bpn-find-attempting jobs))
+                (equal (fn-bpn-job-status (fn-bpn-find-attempting jobs))
+                       :attempting)))
+  :hints (("Goal"
+           :induct (fn-bpn-find-attempting jobs)
+           :in-theory
+           (e/d (fn-bpn-find-attempting fn-bpn-job-listp)
+                (fn-bpn-jobp)))))
+
+(defthm fn-bpn-resolution-record-is-typed
+  (implies (and (fn-bpn-jobp job)
+                (fn-bpn-machine-u64p token))
+           (fn-bpn-lifecycle-recordp (fn-bpn-resolution-record token job)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-terminal-record-is-typed
+                            (key (fn-bpn-job-key job))
+                            (kind :requeued) (reason :uncertain))
+                 (:instance fn-bpn-job-key-is-typed))
+           :in-theory (e/d (fn-bpn-resolution-record fn-bpn-member)
+                           (fn-bpn-jobp fn-bpn-job-key
+                            fn-bpn-terminal-record-is-typed
+                            fn-bpn-job-key-is-typed)))))
+
+(defthm fn-bpn-resolve-orphans-step-preserves-machine-invariant
+  (implies (fn-bpn-machine-invariantp st)
+           (fn-bpn-machine-invariantp
+            (fn-bpn-answer-state (fn-bpn-resolve-orphans-step st))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-invariant-components)
+                 (:instance fn-bpn-machine-statep-components)
+                 (:instance fn-bpn-find-attempting-is-a-job
+                            (jobs (fn-bpn-machine-state-jobs st)))
+                 (:instance fn-bpn-resolution-record-is-typed
+                            (token (fn-bpn-machine-state-next-token st))
+                            (job (fn-bpn-find-attempting
+                                  (fn-bpn-machine-state-jobs st))))
+                 (:instance fn-bpn-propose-preserves-machine-invariant
+                            (record (fn-bpn-resolution-record
+                                     (fn-bpn-machine-state-next-token st)
+                                     (fn-bpn-find-attempting
+                                      (fn-bpn-machine-state-jobs st))))
+                            (success nil)
+                            (refusal *fn-bpn-resolution-refusal*)
+                            (uncertain *fn-bpn-resolution-uncertainty*)))
+           :in-theory
+           (union-theories
+            '(fn-bpn-resolve-orphans-step fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-nil fn-bpn-effectp fn-bpn-member
+              fn-bpn-machine-statep-components car-cons true-listp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-resolve-orphans-step-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-resolve-orphans-step st)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-propose-effects-are-typed
+                            (record (fn-bpn-resolution-record
+                                     (fn-bpn-machine-state-next-token st)
+                                     (fn-bpn-find-attempting
+                                      (fn-bpn-machine-state-jobs st))))
+                            (success nil)
+                            (refusal *fn-bpn-resolution-refusal*)
+                            (uncertain *fn-bpn-resolution-uncertainty*)))
+           :in-theory
+           (union-theories
+            '(fn-bpn-resolve-orphans-step fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-nil fn-bpn-effectp fn-bpn-member
+              car-cons true-listp)
+            (theory 'minimal-theory)))))
+
 (defthm fn-bpn-persist-result-step-effects-are-typed
   (implies (fn-bpn-machine-statep st)
            (fn-bpn-effect-listp
@@ -953,6 +995,7 @@
            :in-theory
            (union-theories
             '(fn-bpn-persist-result-step fn-bpn-answer-constructor-accessors
+              fn-bpn-resolve-orphans-step-effects-are-typed
               fn-bpn-effect-listp-of-singleton
               fn-bpn-effect-listp-of-nil
               fn-bpn-maybe-pendingp fn-bpn-pendingp)
@@ -993,7 +1036,8 @@
            :in-theory
            (union-theories
             '(fn-bpn-restart-step fn-bpn-answer-constructor-accessors
-              fn-bpn-effect-listp-of-singleton
+              fn-bpn-resolve-orphans-step-effects-are-typed
+              fn-bpn-effect-listp-of-singleton fn-bpn-effect-listp-of-cons
               fn-bpn-effectp fn-bpn-member car-cons cdr-cons
               true-listp)
             (theory 'minimal-theory)))))
@@ -1082,6 +1126,7 @@
     (union-theories
      '(fn-bpn-persist-result-step
        fn-bpn-apply-record-preserves-machine-invariant
+       fn-bpn-resolve-orphans-step-preserves-machine-invariant
        fn-bpn-apply-inapplicable-record-is-noop
        fn-bpn-answer-constructor-accessors fn-bpn-machine-boolp)
      (theory 'minimal-theory)))))
@@ -1172,25 +1217,14 @@
                            (fn-bpn-machine-state-max-jobs st)
                            (fn-bpn-machine-state-max-octets st))
                           records))))
-     (:instance fn-bpn-restart-state-with-preserves-machine-invariant
+     (:instance fn-bpn-resolve-orphans-step-preserves-machine-invariant
                 (st (nth 1
                          (fn-bpn-replay-records
                           (fn-bpn-initial-machine-state
                            (fn-bpn-machine-state-config st)
                            (fn-bpn-machine-state-max-jobs st)
                            (fn-bpn-machine-state-max-octets st))
-                          records)))
-                (jobs
-                 (fn-bpn-resume-jobs
-                  (fn-bpn-machine-state-jobs
-                   (nth 1
-                        (fn-bpn-replay-records
-                         (fn-bpn-initial-machine-state
-                          (fn-bpn-machine-state-config st)
-                          (fn-bpn-machine-state-max-jobs st)
-                          (fn-bpn-machine-state-max-octets st))
-                         records)))))
-                (fenced nil))
+                          records))))
      (:instance fn-bpn-restart-state-with-preserves-machine-invariant
                 (st (nth 1
                          (fn-bpn-replay-records
@@ -1215,8 +1249,7 @@
        fn-bpn-sequence-fault-state-has-invariant
        fn-bpn-restart-state-with-preserves-machine-invariant
        fn-bpn-next-token-of-initial-machine-state
-       fn-bpn-resume-jobs-preserves-job-listp
-       fn-bpn-len-of-resume-jobs fn-bpn-jobs-octets-of-resume-jobs
+       fn-bpn-resolve-orphans-step-preserves-machine-invariant
        fn-bpn-machine-boolp)
      (theory 'minimal-theory)))))
 
