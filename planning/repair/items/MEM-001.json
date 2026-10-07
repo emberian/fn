@@ -5,6 +5,7 @@
  "id": "MEM-001",
  "line": "37",
  "notes": [
+  "2026-10-06 N-MEM step 2: TRAIN-READY (launcher value). End to end on 3e53d7bc5, 1,000 POSTs + 32 idle connections opened and closed, idle-after-close: tls-limit 65536 RSS 133.0 / anon 35.7 MB; 16384 -> 120.0 / 23.1 (-13.0 RSS); 4096 -> 117.0 / 19.8 (-16.0); all served with no error. Evidence hbox:/tank/fn/scratch/n-mem/t16384, t4096, s2. Gate: world-deps check and the world-loading native modules, filtered.",
   "2026-10-07 N-MEMSET: READY on lane/memset. New profile row :run-tls-limit 16384 (books/profile-limits.lisp); host/native/build.lisp and build-dtn.lisp print it as FN_NATIVE_TLS_LIMIT, so tools/build_native_host.sh writes it into the saved launcher. The image-build row :tls-limit stays 65536 (hbox_native/cut_release/build_local_acl2 untouched). The TLS budget gate now holds against 16384*8: specs/host.md records the load at 4% of 65536 = 16% of 16384, under the 25% gate. Evidence: build/coordinator/MEMORY-20261006.md rows 5 and the -13 MB end-to-end row, run dirs hbox:/tank/fn/scratch/n-mem/t16384, t4096, s2. Local gates: test_build_native_host, test_profile_limits, test_resource_contract, host_check --load (0 findings). OWED AT CONVERGENCE: books/profile-limits.lisp is recertified with the batch; the runtime re-measure on a dev image, plus test_native_image_floor test_launcher_carries_the_profile_figures and the world-deps check and world-loading native modules (filtered) on a built image."
  ],
  "owner": "deputy-N",

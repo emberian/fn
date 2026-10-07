@@ -4,11 +4,13 @@
  "file": "host/native/strip-world.lisp",
  "id": "MEM-005",
  "line": "126",
- "notes": [],
+ "notes": [
+  "2026-10-06 N-MEM step 2: reachability walk joined to /proc/self/pagemap (S/s5/heap/heap-x0.txt): *UNDO-STACK* 8.3 MB (2.4 resident), world-key plists 6.3 (5.9), world alist 11.2 (3.0), ACL2-ARRAY 1.1 (0.2) = 26.9 MB in core, 11.5 MB resident. The strategist's 20 MB is right in the core and wrong in RSS. Needs an image build to confirm. Not train-ready."
+ ],
  "owner": "deputy-N",
  "severity": "low",
  "source": "n-mem",
  "state": "open",
- "title": "the production image keeps 9.3 MB of ACL2 undo-stack forms and a second copy of the kept world (131k triples): ~20 MB of file-backed core a node never reads",
- "updated": "2026-10-06T21:30:00Z"
+ "title": "the production image keeps 26.9 MB of ACL2 undo-stack forms and a doubled world; 11.5 MB of it is resident at start (not 20)",
+ "updated": "2026-10-06T23:00:00Z"
 }

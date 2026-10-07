@@ -1744,60 +1744,57 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 (defun acl2_*1*_acl2::fn-arena-stored (h fn-arena)
   (fn-arena-stored h fn-arena))
 
-;;; A-PGS-HOST-IO's page fill (books/assumptions.lisp `fn-pgs-fill-realize';
-;;; lane arena-store-7, 2026-09-28): the 2048 little-endian u64 words page
-;;; ADDR of the page file FILE holds, FILE a file id from
-;;; `fnn-extent-register'.  One pread of the 16 KiB page; a short read or an
-;;; unknown file is refused by name (history-page-read: a store fault, a
-;;; recovery event), never answered with made-up words.  Whether the words
-;;; are the page the committed table names is ACL2's digest check
-;;; (books/history-records-disk.lisp: the lazy decode of the committed
-;;; history image `fn-hrs-disk-history', and fn-hrecs's retry loop).
-(defun fn-pgs-fill-realize (file addr)
-  (multiple-value-bind (fd base)
-      (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-        (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0)))
-   (let ((octets (make-array 16384 :element-type '(unsigned-byte 8))))
-    (unless (and fd (integerp addr) (<= 0 addr))
-      (error 'fnn-extent-fault
-             :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
-    (let ((got (fnn-extent-pread fd octets (+ base (* addr 16384)))))
-      (unless (= got 16384)
-        (let ((path (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-                      (gethash file *fnn-extent-paths*))))
-          (error 'fnn-extent-fault
-                 :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
-                                  addr path got)))))
-    (let ((acc nil))
-      (declare (type (simple-array (unsigned-byte 8) (16384)) octets))
-      (loop for k of-type fixnum from 2047 downto 0 do
-        (let ((w 0) (base (* 8 k)))
-          (loop for b of-type fixnum from 7 downto 0 do
-            (setq w (logior (ash w 8) (aref octets (+ base b)))))
-          (push w acc)))
-      acc))))
+;;; A-PGS-HOST-IO's page fill, in place (books/assumptions-pgs-host-io.lisp
+;;; `fn-pgs-fill-frame'; lane arena-store-7 2026-09-28, in place since lane
+;;; s-frame-fill 2026-10-06).  Page ADDR of the page file FILE (a file id from
+;;; `fnn-extent-register') is read by ONE pread of its 16 KiB into the calling
+;;; thread's stationary page buffer, the generated octet buffer `fn-pgb'
+;;; (books/def-buffer.lisp), whose array is allocated once per thread and
+;;; reused for every fill; then ACL2's `fn-pgb-frame-put' stores the buffer's
+;;; 2048 little-endian words into the selected array of pgs-mem, a word at a
+;;; time from the buffer's array into the stobj's.  No list of the page's words
+;;; or of its octets is built; the word order is a theorem
+;;; (fn-pgb-frame-put-is-frame-put-of-words), not a promise of this file.  A
+;;; short read or an unknown file is refused by name (history-page-read: a
+;;; store fault, a recovery event), never answered with made-up words, and the
+;;; selector and range are checked before anything is read, so nothing is
+;;; written outside the range.  Whether the words are the page the committed
+;;; table names is ACL2's digest check (books/history-records-disk.lisp: the
+;;; lazy decode of the committed history image `fn-hrs-disk-history', and
+;;; fn-hrecs's retry loop).
+(defvar *fnn-pgb-table* (make-hash-table :test 'eq :weakness :key :synchronized t)
+  "thread -> its page buffer stobj (a live fn-pgb, array of 16384 octets)")
 
-(defun acl2_*1*_acl2::fn-pgs-fill-realize (file addr)
-  (fn-pgs-fill-realize file addr))
+(defun fnn-live-pgb ()
+  "The calling thread's page buffer, made on its first fill."
+  (let ((thread sb-thread:*current-thread*))
+    (or (gethash thread *fnn-pgb-table*)
+        (setf (gethash thread *fnn-pgb-table*)
+              ;; the concrete octet stobj's live object: a two-slot vector, the
+              ;; array and the fill (as fnn-with-octets-rd sets them)
+              (vector (make-array 16384 :element-type '(unsigned-byte 8)) 16384)))))
 
-;;; A-PGS-HOST-IO's frame form (books/assumptions-pgs-host-io.lisp
-;;; `fn-pgs-fill-frame', codex-pagefix): page ADDR of FILE into words BASE ..
-;;; BASE+2047 of the pgs-mem array SEL selects.  Until this definition the
-;;; image left the constrained function unattached, so every history-records
-;;; read (store export, fn-store-sco-image-open) faulted on it.  It is the
-;;; constraint's own right-hand side, `fn-pgs-frame-put' of the page's words,
-;;; over the one pread above (a short read or an unknown file refused by name
-;;; there; the guard's selector and range are ACL2's, checked here again so a
-;;; raw caller cannot write outside the range).  Forward (D27): pread straight
-;;; into the selected array's storage at word BASE (sb-sys:vector-sap,
-;;; A-PGS-LE) instead of through the 2048-word list.
 (defun fn-pgs-fill-frame (file addr sel base pgs-mem)
   (unless (and (member sel '(0 1 2)) (integerp base) (<= 0 base)
                (<= (+ base 2048) (fn-pgs-frame-len sel pgs-mem)))
     (error 'fnn-extent-fault
            :message (format nil "history-page-read: frame ~a at word ~a is outside the page store"
                             sel base)))
-  (fn-pgs-frame-put sel base (fn-pgs-fill-realize file addr) pgs-mem))
+  (multiple-value-bind (fd base-off)
+      (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+        (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0)))
+    (unless (and fd (integerp addr) (<= 0 addr))
+      (error 'fnn-extent-fault
+             :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
+    (let* ((st (fnn-live-pgb))
+           (got (fnn-extent-pread fd (svref st 0) (+ base-off (* addr 16384)))))
+      (unless (= got 16384)
+        (let ((path (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+                      (gethash file *fnn-extent-paths*))))
+          (error 'fnn-extent-fault
+                 :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
+                                  addr path got))))
+      (fn-pgb-frame-put sel base st pgs-mem))))
 
 (defun acl2_*1*_acl2::fn-pgs-fill-frame (file addr sel base pgs-mem)
   (fn-pgs-fill-frame file addr sel base pgs-mem))
@@ -1825,7 +1822,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 (defvar *fnn-extent-image-id* nil
   "The file id the history image was registered under at the open
 (host/native/io.lisp fnn-state-checkpoint-adopt-image, fnn-extent-register-at):
-fn-pgs-fill-realize preads it OFF the extent lock for the process's life, so
+fn-pgs-fill-frame preads it OFF the extent lock for the process's life, so
 it is never retired -- a CHECKED exclusion (fnn-owner-release-extents faults
 by name if it ever enters the retired set), the file resource's :excluded
 root history-image (books/page-read-direct.lisp, def-holder fn-pio-file-holds;

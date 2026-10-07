@@ -95,7 +95,7 @@
 ;   -by-definition: fn-hmc-close-is-refused-while-a-read-names-the-file,
 ;     fn-hmc-crash-ends-the-run (they restate the step; T1(b).1 is the claim).
 ;
-; NOT MODELLED (named): fn-pgs-fill-realize (host/native/extent.lisp), a
+; NOT MODELLED (named): fn-pgs-fill-frame (host/native/extent.lisp), a
 ; pread with no row and no lease -- it is no instance of any label here and
 ; is a counted LOCK-CHECK R3 baseline entry; the semantic owner state and its
 ; replies (T1(a)); the barrier ledger fn-otb; the reader view fn-ocvm; the

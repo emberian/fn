@@ -36,7 +36,7 @@
   (and (true-listp (hict-page file addr)) (equal (len (hict-page file addr)) 2048)
        (fn-pgs-u64-listp (hict-page file addr))))
 
-(defattach (fn-pgs-page-words hict-page) (fn-pgs-fill-realize hict-page))
+(defattach fn-pgs-page-words hict-page)
 ; the frame fill (A-PGS-HOST-IO's in-place form): the put of the same page
 (defattach fn-pgs-fill-frame fn-pgs-fill-frame-via-words)
 

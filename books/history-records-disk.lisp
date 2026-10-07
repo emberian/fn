@@ -6,7 +6,7 @@
 ; committed image's history followed by the suffix appended since.  A
 ; value cannot carry a ghost, so the image's history is a FUNCTION of a
 ; small handle: `fn-hrs-disk-history' HANDLE decodes the image the page
-; file holds, read through the host's page fill `fn-pgs-fill-realize'
+; file holds, read through the host's page words `fn-pgs-page-words'
 ; (A-PGS-HOST-IO; no new assumption).  It is the lazy full decode an
 ; unmigrated reader pays; readers move to `fn-hrecs-read' one at a time.
 ;
@@ -57,7 +57,7 @@
 
 ; -----------------------------------------------------------------------------
 ; B. The page store's open from the file: the directory run and every
-; table page, each filled through `fn-pgs-fill-realize' and checked.
+; table page, each filled through `fn-pgs-page-words' and checked.
 
 ; The page store's list put for SEL 1 and 2 is the frame's put
 ; (books/assumptions-pgs-host-io.lisp), and its length the frame's: what
@@ -99,7 +99,7 @@
                                        (:instance pgs-x-fill-is-frame-put (ws (fn-pgs-page-words file addr))))))))
   (if (zp k)
       pgs-mem
-    (let* ((pgs-mem (mbe :logic (let ((ws (fn-pgs-fill-realize file addr)))
+    (let* ((pgs-mem (mbe :logic (let ((ws (fn-pgs-page-words file addr)))
                                   (if (and (pgs-x-u64-listp ws) (<= (+ a (len ws)) (pgs-x-len sel pgs-mem)))
                                       (pgs-x-fill sel a ws pgs-mem)
                                     pgs-mem))
@@ -245,7 +245,7 @@
           (t (mv-let (fv fn-hrecs$c)
                ; the list form in the logic; the frame fill runs (the same
                ; term by fn-hrc-frame-fill's definition)
-               (mbe :logic (fn-hrc-fill (cadr v) (fn-pgs-fill-realize file (fn-hrc-phys (cadr v) fn-hrecs$c)) fn-hrecs$c)
+               (mbe :logic (fn-hrc-fill (cadr v) (fn-pgs-page-words file (fn-hrc-phys (cadr v) fn-hrecs$c)) fn-hrecs$c)
                     :exec (fn-hrc-frame-fill file (fn-hrc-phys (cadr v) fn-hrecs$c) (cadr v) fn-hrecs$c))
                (if (eq fv :ok)
                    (fn-hrc-get seq file (1- fuel) fn-hrecs$c)
@@ -320,8 +320,7 @@
          (let ((r (fn-hrc-get seq file fuel fn-hrecs$c)))
            (mv (mv-nth 0 r) (mv-nth 1 r) (cons x (mv-nth 2 r)))))
   :hints (("Goal" :induct (fn-hrc-get seq file fuel fn-hrecs$c)
-           :in-theory (disable fn-hrc-at fn-hrc-fill fn-hrc-phys fn-hrecs$cp fn-hrc-wfp fn-hrc-fill-shape fn-hrs-fill-pgs
-                               fn-pgs-fill-realize-is-page-words))))
+           :in-theory (disable fn-hrc-at fn-hrc-fill fn-hrc-phys fn-hrecs$cp fn-hrc-wfp fn-hrc-fill-shape fn-hrs-fill-pgs))))
 
 (defthm fn-hrc-get-keeps
   (implies (and (true-listp h) (fn-hrc-wfp fn-hrecs$c)

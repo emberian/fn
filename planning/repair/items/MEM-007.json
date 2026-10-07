@@ -1,0 +1,14 @@
+{
+ "category": "performance",
+ "detail": "Measured on 3e53d7bc5 production, small preset, 1,000 POSTs (13 automatic checkpoints), clean runs (no heap hook), peak read from a 50 ms /proc sampler: trigger 64 MiB peak anon 138.0 / 134.9 MB, peak RSS 237.4 / 234.2; trigger overridden to 8 MiB for the publication (encapsulating fnn-gc-nursery-octets) peak anon 92.6 / 95.6, peak RSS 191.6 / 194.4; 2 MiB peak anon 86.8, RSS 185.7. Steady end-of-run RSS unchanged within noise. Latency not established: hbox was at load 10-27 (76-175 ms/POST for one configuration); pair A 174.5 vs 164.5 ms. Not train-ready: the 64 is a book constant, so the heap-figure keystones (books/heap-open-nursery.lisp, heap-store-figure) re-prove and the reservation formula changes. Evidence hbox:/tank/fn/scratch/n-mem/s2 s4 s6 pA0 pApub8388608 (samples.csv, usage.txt).",
+ "file": "host/native/owner.lisp",
+ "id": "MEM-007",
+ "line": "7235",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem",
+ "state": "open",
+ "title": "publication collection trigger 64 MiB (profile-limits :gc-nursery-mib) puts a 40 MB spike on RSS and anon during checkpoints; 8 MiB removes it",
+ "updated": "2026-10-06T23:00:00Z"
+}
