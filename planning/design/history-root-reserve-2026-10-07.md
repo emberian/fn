@@ -200,3 +200,36 @@ articles (K1/K3). The reserve covers the stated two; a third generation is a nam
 3. The generation count (condition 2).
 4. `:history-root-tail` (`16 x record octets`), `-lease` (256) and `-read` credits still draw the pool while a reader pins.
 5. `fn-heap-store-need` (the store model) does not include the roots; the keystone that the figure holds every store is unchanged and silent about them.
+
+---
+
+## Phase 2b -- decision (3), 2026-10-07 (N4)
+
+**What the reserve covers and what it does not.** The reserve covers two generations' resident images at the profile's bound; it does not cover the
+per-event decode transient (`fn-hroot-event-transient`, 96 x (8 + tree octets)), which draws the article pool as an ops credit under
+`(:history-root-event . generation)`, is drawn before the decode and set to 0 after it, and is refused by name (`:memory-budget-exhausted`) when the pool is short;
+owed item 1 (event tree octets against the profile) now scopes to that credit only.
+
+Citation (the transient is ledgered): before this step it was folded into the generation credit (`fnn-owner-history-root-row`, host/native/history-root.lisp,
+funding `fn-hroot-event-demand` onto the generation key before `fn-his-row-begin`, and `fn-hroot-tail-demand` before each tail append), i.e. it drew whatever
+the generation key drew, and was never released after the decode (the next row's resize replaced it). After: `fn-owner-hroot-transient`
+(host/history-root-host.lisp) is a separate `fn-mcr-resize` on the event key; `fnn-owner-history-root-row` funds it before the row, after each `:grow-image`, and
+sets it to 0 at `:done`; the tail loop funds it before `fn-hist$p-append` and zeroes it after; `fn-owner-hroot-release-credit` zeroes it on abandon and retire.
+`fn-hroot-event-demand`, `-grow-demand`, `-tail-demand` are now resident-only (no tree term); `fn-hroot-event-transient` and `fn-hroot-grow-transient` are new.
+
+**Condition 1 table, re-done under (3)** (core 512 MiB, nursery 8 MiB, MB rounded up; hbox `init` budget 24,553 MB):
+
+| preset | before | after (reserve = images only) | reserve | within 24,553 MB |
+|---|---|---|---|---|
+| small | 924 | 978 | 54 MiB (56,760,640 octets) | yes -> yes |
+| development | 2,634 | 2,779 | 145 MiB | yes -> yes |
+| scale | 16,065 | 20,693 | 4,627 MiB | yes -> yes |
+| default | 61,545,747 | 69,306,734 | 7,760,987 MiB | no -> no (already ~2,500x over) |
+
+Operator-visible: under a 2,048 MB `init` budget the bare request now gets the 16 MiB history rung (it was 32 MiB), because the reserve scales with H; and `init --largest`
+on hbox still takes scale (20,831 MB at the test fixture's cores).
+
+**Condition 2 (owed, host unchanged).** `fn-owner-hroot-begin` refusing by name while a `:building` row exists would be a new outcome for both builders. The live refresh
+(`fnn-owner-history-root-refresh`) returns the refusal word and `fnn-owner-history-root-maintain` already treats that as "retained current representation": a skipped round.
+The reclaim pass (`fnn-owner-history-root-prepare-rows`, called inside the pass at host/native/owner.lisp) answers a refused begin with `fnn-refuse-io`, and the pass has no
+handler that defers on it, so a refusal there would fail the pass: that needs a deferred outcome, beyond "skip this round". Filed as owed; begin and the host are not changed.

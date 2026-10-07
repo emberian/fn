@@ -29,12 +29,25 @@
         (let ((state (fn-owner-put-credits (cadr r) state)))
           (mv :funded state))
       (mv r state))))
+;; The per-event decode transient of a generation under construction: an ops
+;; credit against the article pool (never the history-root reserve), drawn
+;; before the decode and set back to 0 after it.  Refused by name,
+;; :memory-budget-exhausted, when the pool is short.
+(defun fn-owner-hroot-transient (generation amount state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((r (fn-mcr-resize (fn-owner-credits state) (cons :history-root-event generation) amount)))
+    (if (eq (car r) :ok)
+        (let ((state (fn-owner-put-credits (cadr r) state)))
+          (mv :funded state))
+      (mv r state))))
 (defun fn-owner-hroot-release-credit (generation state)
   (declare (xargs :stobjs state :mode :program))
   (let ((r (fn-mcr-resize (fn-owner-credits state) (cons :history-root-tail generation) 0)))
     (if (not (eq (car r) :ok)) (mv r state)
       (let ((state (fn-owner-put-credits (cadr r) state)))
-        (fn-owner-hroot-resize generation 0 state)))))
+        (mv-let (word state) (fn-owner-hroot-transient generation 0 state)
+          (if (not (eq word :funded)) (mv word state)
+            (fn-owner-hroot-resize generation 0 state)))))))
 (defun fn-owner-hroot-begin (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((bound (boundp-global 'fn-owner-history-root-counter state))

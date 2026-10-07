@@ -16,11 +16,14 @@
 ;       two generations, each asking at most the bound, fit the reserve
 ;
 ; The premises are the profile's bounds on the root's SHAPE: its memory
-; (<= fn-heap-hroot-memory-bound), the ordinal and the row count (<= T) and the
-; tree octets of the event (<= 2 R).  They are not proved of the running root
-; here; each is OWED (planning/design/history-root-reserve-2026-10-07.md,
-; "Owed items"): the memory bound from the nested page store's array lengths
-; and the store budget, the tree bound from the event codec.
+; (<= fn-heap-hroot-memory-bound) and the ordinal and row count (<= T).  The
+; memory bound is not proved of the running root here; it is OWED
+; (planning/design/history-root-reserve-2026-10-07.md, "Owed items"): from
+; the nested page store's array lengths and the store budget.
+;
+; What the reserve covers: two generations' images at the profile's bound.
+; What it does not: the per-event decode transient
+; (fn-hroot-event-transient), which draws the article pool as an ops credit.
 (in-package "ACL2")
 (include-book "history-root-credit")
 (include-book "heap-store-figure")
@@ -58,9 +61,7 @@
 (defthm fn-hroot-event-demand-within-the-bound
   (implies (and (<= (fn-hroot-memory-octets c) (fn-heap-hroot-memory-bound profile))
                 (natp ordinal)
-                (<= ordinal (nfix (fn-bs-profile-max-transactions profile)))
-                (<= (fn-hroot-tree-octets ev)
-                    (* 2 (nfix (fn-bs-profile-max-record-octets profile)))))
+                (<= ordinal (nfix (fn-bs-profile-max-transactions profile))))
            (<= (fn-hroot-event-demand ev ordinal c) (fn-heap-hroot-demand-bound profile)))
   :rule-classes nil
   :hints (("Goal" :use fn-hroot-one-page-within-the-figures-image
@@ -86,9 +87,7 @@
                 (natp ordinal)
                 (<= ordinal (nfix (fn-bs-profile-max-transactions profile)))
                 (natp (cadr (fn-hpr-final-placement cursor)))
-                (<= (cadr (fn-hpr-final-placement cursor)) (fn-heap-hroot-npages profile))
-                (<= (fn-hroot-tree-octets (fn-hrc-sfxi (fn-hrc-lo c) c))
-                    (* 2 (nfix (fn-bs-profile-max-record-octets profile)))))
+                (<= (cadr (fn-hpr-final-placement cursor)) (fn-heap-hroot-npages profile)))
            (<= (fn-hroot-grow-demand cursor ordinal c) (fn-heap-hroot-demand-bound profile)))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-hroot-page-octets-within-the-figures-image
@@ -107,9 +106,7 @@
   (implies (and (<= (fn-hroot-memory-octets (fn-hist$p-root fn-hist$p))
                     (fn-heap-hroot-memory-bound profile))
                 (natp ordinal)
-                (<= ordinal (nfix (fn-bs-profile-max-transactions profile)))
-                (<= (fn-hroot-tree-octets ev)
-                    (* 2 (nfix (fn-bs-profile-max-record-octets profile)))))
+                (<= ordinal (nfix (fn-bs-profile-max-transactions profile))))
            (<= (fn-hroot-tail-demand ev ordinal fn-hist$p) (fn-heap-hroot-demand-bound profile)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-hroot-tail-demand fn-heap-hroot-demand-bound)
@@ -128,14 +125,12 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-heap-hroot-reserve-octets))))
 
-; TEETH.  The bound is reached: a root at the shape's memory, one event of the
-; most tree octets at the last ordinal, asks the tail demand, which is the
+; TEETH.  The bound is reached: a root at the shape's memory at the last ordinal, asks the tail demand, which is the
 ; bound less the page term -- the bound is not slack beyond that page.
 (defthm fn-hroot-bound-is-reached-by-the-tail-at-the-shape
   (equal (+ (fn-heap-hroot-image-octets (fn-heap-hroot-npages profile))
             (* 2 (fn-heap-hroot-memory-bound profile))
-            (* 64 (+ 1 (nfix (fn-bs-profile-max-transactions profile))))
-            (* 96 (+ 8 (* 2 (nfix (fn-bs-profile-max-record-octets profile))))))
+            (* 64 (+ 1 (nfix (fn-bs-profile-max-transactions profile)))))
          (fn-heap-hroot-demand-bound profile))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-heap-hroot-demand-bound)

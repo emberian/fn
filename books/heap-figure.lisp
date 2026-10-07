@@ -708,9 +708,9 @@
 ;; (831,202,954, 2026-09-30 to 2026-10-01), left with the view it charged:
 ;; books/owner-obligation-state.lisp parks the view until its reader lands.
 ;; The history roots' reserve (lane mem10-hroot, 2026-10-07: two generations
-;; of the P3 root at the profile's bounds, books/heap-store-figure.lisp
-;; fn-heap-hroot-reserve-octets, 132,259,648 octets for this profile) makes the
-;; base 417,121,098 octets (397.8 MiB).
+;; of the P3 root's images at the profile's bounds, books/heap-store-figure.lisp
+;; fn-heap-hroot-reserve-octets, 56,760,640 octets for this profile) makes the
+;; base 341,622,090 octets (325.8 MiB).
 ;; The run of an empty small store is accepted on every machine of at least
 ;; 1,536 MiB (OpenBSD's default login class) for any image up to 512 MiB of
 ;; dynamic content (fn-heap-small-profile-run-fits-a-small-machine: at most
@@ -718,7 +718,7 @@
 ;; 2,048 MiB too (the friend's machine has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 417121098))
+         (+ (fn-heap-core-dynamic core) 341622090))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

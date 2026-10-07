@@ -972,16 +972,16 @@
      (* 8 (nfix (fn-bs-profile-max-transactions profile)))
      4096))
 
-; The most one generation's credit asks: the tail demand (twice the root's
-; memory, beside one event) dominates the event, grow and retain demands.
-; The event's allowance is 96 x (8 + the event's tree octets), those at most
-; two a record octet (OWED: books/history-root-figure.lisp, the tree bound).
+;; The most one generation's RESIDENT credit asks: the tail demand (twice the
+;; root's memory) dominates the event, grow and retain demands.  The per-event
+;; decode transient (books/history-root-credit.lisp fn-hroot-event-transient) is
+;; NOT here: it is its own ops credit against the article pool, released after
+;; the decode, so the reserve is the two generations' images only.
 (defun fn-heap-hroot-demand-bound (profile)
   (declare (xargs :guard t))
   (+ (* 2 (fn-heap-hroot-memory-bound profile))
      (* 64 (+ 1 (nfix (fn-bs-profile-max-transactions profile))))
-     (fn-heap-hroot-image-octets (fn-heap-hroot-npages profile))
-     (* 96 (+ 8 (* 2 (nfix (fn-bs-profile-max-record-octets profile)))))))
+     (fn-heap-hroot-image-octets (fn-heap-hroot-npages profile))))
 
 ; The reserve: the retained generation and the candidate, each at the most
 ; its credit asks.
@@ -1073,16 +1073,14 @@
   (implies (and (<= (nfix (fn-bs-profile-max-history-octets p1))
                     (nfix (fn-bs-profile-max-history-octets p2)))
                 (<= (nfix (fn-bs-profile-max-transactions p1))
-                    (nfix (fn-bs-profile-max-transactions p2)))
-                (<= (nfix (fn-bs-profile-max-record-octets p1))
-                    (nfix (fn-bs-profile-max-record-octets p2))))
+                    (nfix (fn-bs-profile-max-transactions p2))))
            (<= (fn-heap-hroot-reserve-octets p1) (fn-heap-hroot-reserve-octets p2)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-heap-hroot-reserve-octets fn-heap-hroot-demand-bound
                                    fn-heap-hroot-memory-bound)
                                   (fn-heap-hroot-image-octets fn-heap-hroot-npages
                                    fn-bs-profile-max-history-octets
-                                   fn-bs-profile-max-transactions fn-bs-profile-max-record-octets))
+                                   fn-bs-profile-max-transactions))
            :use (fn-heap-hroot-npages-monotone
                  (:instance fn-heap-hroot-image-octets-monotone
                             (a (fn-heap-hroot-npages p1)) (b (fn-heap-hroot-npages p2)))))))
