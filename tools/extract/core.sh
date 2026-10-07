@@ -55,7 +55,7 @@ export SBCL_HOME
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
 rm -f "$OUT/core.json" "$OUT/core-world.lisp" "$OUT/packages.json" "$OUT/defs.lisp" \
-      "$OUT/packages.lisp" "$OUT/host-block.lisp" "$OUT/manifest.tsv" "$OUT/runtime.tsv" "$OUT/gaps.txt" \
+      "$OUT/packages.lisp" "$OUT/host-block.lisp" "$OUT/manifest.tsv" "$OUT/edges.tsv" "$OUT/runtime.tsv" "$OUT/gaps.txt" \
       "$OUT/defs.lisp.verified-sha256" "$OUT/export.log" "$OUT/verify.log" "$OUT/fn-core" "$OUT/fn-core.core" \
       "$OUT/$NAME" "$OUT/$NAME.core" "$OUT/source-revision" "$OUT/defs.fasl" "$OUT/clruntime.fasl"
 python3 "$X/host_tokens.py" "$TREE" "$OUT/tokens.lsp" "$BUILD"

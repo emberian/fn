@@ -539,7 +539,7 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
 
 ;;; ------------------------------------------------------------------------
 ;;; the closure
-(defstruct (fe-run (:conc-name fr-)) units order gaps rt-refs stobjs)
+(defstruct (fe-run (:conc-name fr-)) units order gaps rt-refs stobjs edges)
 
 (defun fe-stobj-closure (names)
   "NAMES plus the foundations of abstract stobjs and nested stobj field types (frontend.lisp)."
@@ -548,8 +548,10 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
 (defun fe-closure (roots stobj-names macro-names)
   "Walk from ROOTS (raw and *1* of each), the named stobjs and macros; return an fe-run."
   (let ((units (make-hash-table :test 'equal)) (order nil) (queue nil)
-        (gaps (make-hash-table :test 'equal)) (rt-refs (make-hash-table :test 'eq)) (stobj-set nil))
+        (gaps (make-hash-table :test 'equal)) (rt-refs (make-hash-table :test 'eq)) (stobj-set nil)
+        (edges (make-hash-table :test 'equal)))   ; unit id -> the unit ids its forms reference (edges.tsv)
     (labels ((enqueue (kind sym why) (push (list kind sym why) queue))
+             (edge (why tid) (when (stringp why) (pushnew tid (gethash why edges) :test #'string=)))
              (add-unit (id forms origin)
                (unless (gethash id units)
                  (setq *fe-last-unit* id)
@@ -566,19 +568,23 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                          (ref-fn impl id) (ref-fn (*1*-symbol impl) id)))))))
              (ref-fn (s why)
                (cond ((null s) nil)
-                     ((gethash s *fe-rt*) (setf (gethash s rt-refs) t))
+                     ((gethash s *fe-rt*) (setf (gethash s rt-refs) t) (edge why (fe-id :rt s)))
                      ((fe-star1-p s) (let ((b (fe-star1-of s)))
+                                       (edge why (fe-id :star1 b))
                                        (unless (gethash (fe-id :star1 b) units) (enqueue "star1" b why))))
                      ((fe-cl-or-sb-p s) nil)
                      (t (let ((src (gethash s *fe-src*)))
                           (if (and src (eq (car src) :struct-member))
-                              (unless (gethash (fe-id :struct (sixth src)) units) (enqueue "struct" (sixth src) why))
-                              (unless (gethash (fe-id :raw s) units) (enqueue "raw" s why)))))))
+                              (progn (edge why (fe-id :struct (sixth src)))
+                                     (unless (gethash (fe-id :struct (sixth src)) units) (enqueue "struct" (sixth src) why)))
+                              (progn (edge why (fe-id :raw s))
+                                     (unless (gethash (fe-id :raw s) units) (enqueue "raw" s why))))))))
              (ref-var (s why)
                (cond ((or (null s) (eq s t) (keywordp s)) nil)
-                     ((gethash s *fe-rt*) (setf (gethash s rt-refs) t))
+                     ((gethash s *fe-rt*) (setf (gethash s rt-refs) t) (edge why (fe-id :rt s)))
                      ((fe-cl-or-sb-p s) nil)
                      ((and (fe-earmuffed-p s) (or (gethash s *fe-consts*) (gethash s *fe-src*)))
+                      (edge why (fe-id :var s))
                       (unless (gethash (fe-id :var s) units) (enqueue "var" s why)))
                      ((and (fe-earmuffed-p s) (not (fe-star1-p s)) (not (gethash s *fe-stobj-live*)))
                       (setf (gethash (fe-id :var s) gaps) why))))
@@ -617,7 +623,7 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                          #'string< :key #'symbol-name)))
         (let ((d (fe-derive-unit "registry:" names)))
           (add-unit "registry:" (car d) (cdr d)))
-        (make-fe-run :units units :order order :gaps gaps :rt-refs rt-refs :stobjs names)))))
+        (make-fe-run :units units :order order :gaps gaps :rt-refs rt-refs :stobjs names :edges edges)))))
 
 ;;; ------------------------------------------------------------------------
 ;;; ordering and files
@@ -723,6 +729,14 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                                          (format nil "~a::~a~c~a~c~a" (fe-pkg s) (symbol-name s) #\Tab (gethash s *fe-rt*) #\Tab
                                                  (cond (src (fe-src-origin src)) ((gethash s *fe-defs*) "world:defuns") (t "host-only")))))
                                      rt))))
+    ; the reference graph, one line per unit: ID TAB the unit ids its forms reference (tools/extract/closure_why.py)
+    (fe-write-file (format nil "~a/edges.tsv" out-dir)
+                   (format nil "~{#root~c~a~%~}~{~a~%~}"
+                           (loop for r in (sort (copy-list roots) #'string< :key #'symbol-name)
+                                 append (list #\Tab (fe-id :raw r)))
+                           (loop for id in ids
+                                 collect (format nil "~a~c~{~a~^ ~}" id #\Tab
+                                                 (sort (copy-list (gethash id (fr-edges run))) #'string<)))))
     (let ((gaps (sort (loop for k being the hash-keys of (fr-gaps run) using (hash-value v) collect (format nil "~a~c~a" k #\Tab v)) #'string<)))
       (fe-write-file (format nil "~a/gaps.txt" out-dir) (format nil "~{~a~%~}" gaps))
       (format t "~&XT-FE units ~d roots ~d stobjs ~d macros ~d runtime-refs ~d gaps ~d~%"
