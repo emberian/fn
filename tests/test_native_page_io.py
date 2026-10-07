@@ -190,6 +190,7 @@ class PageIOObservationTests(unittest.TestCase):
 class PageIOTests(unittest.TestCase):
     image = DEVELOPER
     post_all = ExpiryMixin.post_all
+    reclaim_live = ExpiryMixin.reclaim_live  # D53: ExpiryMixin.node reads it
     filled = ExpiryMixin.filled
     owner_lines = ExpiryMixin.owner_lines
 
