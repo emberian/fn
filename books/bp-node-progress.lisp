@@ -1491,6 +1491,12 @@
        (equal (fn-bpnr-checkpoint-handoffs ck) (fn-bpnf-handoffs st))
        (equal (fn-bpnr-checkpoint-next-arrival ck) (fn-bpnf-next-arrival st))
        (equal (fn-bpnr-checkpoint-covered ck) (fn-bpnp-used st))
+       ;; The base machine's owed work travels in the checkpoint (S2): a
+       ;; checkpoint that drops an owed job is not this state's projection.
+       (equal (fn-bpnr-checkpoint-jobs ck)
+              (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+       (equal (fn-bpnr-checkpoint-next-token ck)
+              (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
        (let ((prior (fn-bpnr-checkpoint-prior ck)))
          (or (null prior)
              (and (consp prior) (natp (car prior)) (natp (fn-bpnf-epoch st))
@@ -1507,7 +1513,9 @@
                       (fn-bpnr-checkpoint-handoffs ck)
                       (cons epoch 0)
                       (fn-bpnr-checkpoint-next-arrival ck)
-                      (fn-bpnr-checkpoint-covered ck)))
+                      (fn-bpnr-checkpoint-covered ck)
+                      (fn-bpnr-checkpoint-jobs ck)
+                      (fn-bpnr-checkpoint-next-token ck)))
 
 (defun fn-bpnp-rotation-quiescentp (st)
   (declare (xargs :guard t))
@@ -1518,9 +1526,7 @@
        (fn-frame-natp (fn-bpnf-epoch st))
        (null (fn-bpnp-pending-image st))
        (let ((base (fn-bpnf-base st)))
-         (and (fn-bpn-machine-statep base)
-              (null (fn-bpn-machine-state-jobs base))
-              (equal (fn-bpn-machine-state-next-token base) 0)))))
+         (fn-bpn-machine-statep base))))
 
 (defun fn-bpnp-rotate-step (st generation ck)
   (declare (xargs :guard t))
