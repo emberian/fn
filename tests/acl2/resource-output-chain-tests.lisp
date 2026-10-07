@@ -318,3 +318,21 @@
           (wf ((ledger (update-fn-rl-count 99 (rcx-l1)))) :lemma rcx-fn-rlo-issue-keeps-representation-without-wf))
   :mutations ((not-wellformed (:conclusion (let ((after (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)))) (not (fn-rl-wfp after)))) ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1))) :fault "an operation that leaves the ledger ill-formed" :lemma rcx-fn-rlo-issue-keeps-representation-mutant-not-wellformed)))
 
+
+(defthm rcx-fn-rlo-output-keeps-representation-witness
+  (and (fn-resource-ledgerp (rcx-l2)) (fn-rl-wfp (rcx-l2)) (let ((after (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l2))))) (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+(defthm rcx-fn-rlo-output-keeps-representation-without-rep
+  (and (fn-rl-wfp nil) (not (fn-resource-ledgerp nil)) (not (let ((after (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded nil)))) (and (fn-resource-ledgerp after) (fn-rl-wfp after))))))
+(defthm rcx-fn-rlo-output-keeps-representation-without-wf
+  (and (fn-resource-ledgerp (update-fn-rl-count 99 (rcx-l2))) (not (fn-rl-wfp (update-fn-rl-count 99 (rcx-l2)))) (not (let ((after (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (update-fn-rl-count 99 (rcx-l2)))))) (and (fn-resource-ledgerp after) (fn-rl-wfp after))))))
+(defthm rcx-fn-rlo-output-keeps-representation-mutant-not-wellformed
+  (and (fn-resource-ledgerp (rcx-l2)) (fn-rl-wfp (rcx-l2)) (let ((after (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l2))))) (and (fn-resource-ledgerp after) (fn-rl-wfp after))) (not (let ((after (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l2))))) (not (fn-rl-wfp after))))))
+(defteeth fn-rlo-output-keeps-representation
+  :claim (((rep (fn-resource-ledgerp ledger)) (wf (fn-rl-wfp ledger))) (let ((after (mv-nth 1 (fn-rlo-output token operation-gen receipt ledger)))) (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+  :subject fn-rlo-output
+  :witness-lemma rcx-fn-rlo-output-keeps-representation-witness
+  :witness ((token (rcx-tok)) (operation-gen 8) (receipt :discarded) (ledger (rcx-l2)))
+  :breaks ((rep ((ledger nil)) :lemma rcx-fn-rlo-output-keeps-representation-without-rep)
+          (wf ((ledger (update-fn-rl-count 99 (rcx-l2)))) :lemma rcx-fn-rlo-output-keeps-representation-without-wf))
+  :mutations ((not-wellformed (:conclusion (let ((after (mv-nth 1 (fn-rlo-output token operation-gen receipt ledger)))) (not (fn-rl-wfp after)))) ((token (rcx-tok)) (operation-gen 8) (receipt :discarded) (ledger (rcx-l2))) :fault "an operation that leaves the ledger ill-formed" :lemma rcx-fn-rlo-output-keeps-representation-mutant-not-wellformed)))
+
