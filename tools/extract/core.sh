@@ -117,7 +117,13 @@ HEAP=$(opt --dynamic-space-size); STACK=$(opt --control-stack-size); TLS=$(opt -
 # the file the SBCL build compiles is the file xt-verify-defs verified
 [ "$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$OUT/defs.lisp")" = "$(cat "$OUT/defs.lisp.verified-sha256")" ] || {
     echo "core: defs.lisp changed after xt-verify-defs verified it" >&2; exit 1; }
-( cd "$TREE" && XL_OUT="$OUT/" XL_X="$X/" swarm-build "$SBCL" ${TLS:+--tls-limit $TLS} --dynamic-space-size "$HEAP" --control-stack-size "$STACK" \
+# The heap the core is SAVED under is a floor on SBCL's GC card table in every later run: measured
+# on hbox (SBCL 2.6.8), gc_card_table_nbits is the larger of the saved heap's and the launch heap's
+# (saved under 32000 MB and launched at 1068 MB: 25 bits, a 32 MB anonymous table; saved under 1068 MB:
+# 21 bits at 1068 MB, 25 at 32000 MB).  So the core is saved under the small preset's heap, 1068 MB
+# (extract-measure M0), and a larger launch heap still gets its own table.  FN_CORE_SAVE_HEAP overrides.
+SAVE_HEAP=${FN_CORE_SAVE_HEAP:-1068MB}
+( cd "$TREE" && XL_OUT="$OUT/" XL_X="$X/" swarm-build "$SBCL" ${TLS:+--tls-limit $TLS} --dynamic-space-size "$SAVE_HEAP" --control-stack-size "$STACK" \
       --non-interactive --no-userinit --load "$X/core-main.lisp" > "$OUT/sbcl.log" 2>&1 ) || {
     echo "core: the SBCL build failed; see $OUT/sbcl.log" >&2; tail -30 "$OUT/sbcl.log" >&2; exit 1; }
 [ -s "$OUT/fn-core.core" ] || { echo "core: no $OUT/fn-core.core" >&2; exit 1; }
