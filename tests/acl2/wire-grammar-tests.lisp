@@ -17,6 +17,16 @@
 ;   fn-wg-encode-of-decode
 ;     grammarp                 a :tag with a repeated name decodes two codes
 ;                              to one value, which re-encodes to one of them.
+;   :sized                    a 1-octet length then exactly that many octets, which
+;                              the inner grammar consumes whole: the positive
+;                              witness holds both keystones' antecedents; an
+;                              inner :rest makes the node delimited; a value
+;                              whose encoding is past HI is not a value (and
+;                              its encoding is refused), an inner grammar that
+;                              leaves octets over (overrun) and one that
+;                              needs more than the L octets (underrun) are
+;                              (:refused :malformed), and so are a declared
+;                              length past the octets present or under LO.
 ; and the named refusals: a frame with one trailer bit flipped answers
 ; (:refused :trailer); a truncated frame answers (:refused :malformed); a
 ; :where whose fields decode and whose checks fail answers (:refused :where),
@@ -124,3 +134,51 @@
         (not (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g xs)))
                                (fn-wg-rest (fn-wg-decode g xs)))
                     xs)))))
+
+; :sized.  Positive: both keystones' antecedents and conclusions, with a tail
+; node inside (the node is delimited, the inner :rest is not).
+(assert-event
+ (let* ((g '(:seq (:sized 1 2 8 (:seq (:uint 1 0 255) (:rest 1 7 :any))) (:uint 1 0 255)))
+        (v '((3 (4 5)) 9)) (r '(1 2 3))
+        (e (fn-wg-encode g v)))
+   (and (fn-wg-grammarp g) (fn-wg-valuep g v) (fn-wg-delimitedp g)
+        (not (fn-wg-delimitedp '(:rest 1 7 :any)))
+        (fn-cbor-octet-listp r)
+        (equal e '(3 3 4 5 9))
+        (equal (fn-wg-decode g (fn-wg-app e r)) (fn-wg-ok v '(1 2 3)))
+        (fn-wg-okp (fn-wg-decode g e))
+        (fn-wg-valuep g (fn-wg-value (fn-wg-decode g e)))
+        (equal (fn-wg-app (fn-wg-encode g (fn-wg-value (fn-wg-decode g e)))
+                          (fn-wg-rest (fn-wg-decode g e)))
+               e))))
+
+; :sized hypothesis witnesses and refusals.
+(assert-event
+ (let ((g '(:sized 1 2 4 (:seq (:uint 1 0 255) (:uint 1 0 255)))))
+   (and (fn-wg-grammarp g)
+        ; valuep: a value whose encoding is past HI (or under LO) is no value
+        (not (fn-wg-valuep (list :sized 1 3 4 '(:rest 0 9 :any)) '(1 2)))
+        (not (fn-wg-valuep '(:sized 1 2 4 (:rest 0 9 :any)) '(1 2 3 4 5)))
+        (equal (fn-wg-decode '(:sized 1 2 4 (:rest 0 9 :any))
+                             (fn-wg-encode '(:sized 1 2 4 (:rest 0 9 :any)) '(1 2 3 4 5)))
+               '(:refused :malformed))
+        ; the declared length is under LO: refused before the octets are read
+        (equal (fn-wg-decode '(:sized 1 2 4 (:rest 0 9 :any)) '(1 7))
+               '(:refused :malformed))
+        ; the declared length is past HI
+        (equal (fn-wg-decode g '(5 1 2 3 4 5)) '(:refused :malformed))
+        ; fewer octets present than declared
+        (equal (fn-wg-decode g '(4 1 2 3)) '(:refused :malformed))
+        ; overrun: the inner grammar leaves an octet of the L over
+        (equal (fn-wg-decode g '(3 1 2 3)) '(:refused :malformed))
+        ; exactly L octets, consumed whole
+        (equal (fn-wg-decode g '(2 1 2)) (fn-wg-ok '(1 2) nil))
+        ; underrun: the inner grammar needs more than the L octets
+        (equal (fn-wg-decode '(:sized 1 1 4 (:seq (:uint 1 0 255) (:uint 1 0 255))) '(1 9 8))
+               '(:refused :malformed))
+        ; the octets after the L are the rest
+        (equal (fn-wg-decode g '(2 1 2 9 9)) (fn-wg-ok '(1 2) '(9 9)))
+        ; an inner refusal is the answer
+        (equal (fn-wg-decode '(:sized 1 0 4 (:where (:seq (:uint 1 0 9) (:uint 1 0 9)) (:le 0 1)))
+                             '(2 5 4))
+               '(:refused :where)))))

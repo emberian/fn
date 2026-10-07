@@ -564,6 +564,26 @@ DICT (a list) to N octets: (:ok . OCTET-LIST) or ACL2's (:error WHY)."
         (sb-thread:with-mutex (*fnn-pzd-lock*)
           (push (list in win tab out pool) *fnn-pzd-pool*))))))
 
+(defun fnn-pzd-decode-into (dict c n receiver)
+  "The same decode as fnn-pzd-decode, but an :ok answer hands the OUTPUT
+BUFFER (an octet-buffer stobj holding the decoded payload) to RECEIVER and
+returns :ok; no octet list of the payload is built.  Any other answer is
+ACL2's (:error WHY).  The buffer set returns to the pool after RECEIVER."
+  (let* ((bufs (fnn-pzd-buffers))
+         (in (first bufs))
+         (m (length c)))
+    (fn-octets$c-reserve m in)
+    (replace (the fnn-octets (svref in 0)) c)
+    (setf (svref in 1) m)
+    (destructuring-bind (answer pool win tab out)
+        (fnn-call 'fn-zpl-decode-bufs (fifth bufs) dict m n in (second bufs) (third bufs)
+                  (fourth bufs))
+      (prog1 (if (and (consp answer) (eq (first answer) :ok))
+                 (progn (funcall receiver out) :ok)
+               answer)
+        (sb-thread:with-mutex (*fnn-pzd-lock*)
+          (push (list in win tab out pool) *fnn-pzd-pool*))))))
+
 ;;; ---------------------------------------------------------------------------
 ;;; The inbound stream of one connection: ACL2's inflater over private
 ;;; buffers.
