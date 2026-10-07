@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3071 |
-| Certification roots in the Makefile | 2576 |
-| Books inside the root closure | 2907 |
-| `defthm` and `defthmd` events | 41159 |
-| `defun` events | 26143 |
+| Books read | 3074 |
+| Certification roots in the Makefile | 2579 |
+| Books inside the root closure | 2910 |
+| `defthm` and `defthmd` events | 41263 |
+| `defun` events | 26166 |
 | Functions with verified guards | 4054 |
-| Functions declared `:verify-guards nil` and never verified | 3408 |
-| Functions left at the default with an explicit guard | 14478 |
-| Functions left at the default with no guard | 4203 |
-| `assert-event` checks | 28180 |
-| `must-fail` checks | 2729 |
+| Functions declared `:verify-guards nil` and never verified | 3409 |
+| Functions left at the default with an explicit guard | 14492 |
+| Functions left at the default with no guard | 4211 |
+| `assert-event` checks | 28201 |
+| `must-fail` checks | 2730 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
-| Theorems flagged SUSPECT by shape | 1496 |
-| Export-hygiene warnings | 424 |
+| Theorems flagged SUSPECT by shape | 1499 |
+| Export-hygiene warnings | 423 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 300 |
-| Include-hygiene warnings | 4121 |
-| Host-names warnings | 3659 |
+| Include-hygiene warnings | 4125 |
+| Host-names warnings | 3660 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -168,7 +168,7 @@ that `make certify` requests.
 | `books/article-work.lisp` | root | 25 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/article.lisp` | root | 38 | 61 | 50/0/11/0 | 0 | 0 | 1 |
 | `books/assumptions-durable.lisp` | closure | 7 | 6 | 0/0/0/6 | 0 | 0 | 0 |
-| `books/assumptions-pgs-host-io.lisp` | closure | 10 | 8 | 0/0/6/2 | 0 | 0 | 0 |
+| `books/assumptions-pgs-host-io.lisp` | closure | 28 | 11 | 0/0/10/1 | 0 | 0 | 0 |
 | `books/assumptions-publication.lisp` | root | 4 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/assumptions-recovery.lisp` | closure | 4 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/assumptions-stored.lisp` | closure | 1 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -593,7 +593,7 @@ that `make certify` requests.
 | `books/consumer-progress-carried.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/consumer-publication-budget.lisp` | closure | 5 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-publication-charge.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/consumer-reason.lisp` | root | 23 | 29 | 5/0/24/0 | 0 | 0 | 2 |
+| `books/consumer-reason.lisp` | root | 24 | 29 | 5/0/24/0 | 0 | 0 | 2 |
 | `books/consumer-remote-buffer.lisp` | root | 1 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/consumer-remote-codec.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 1 |
 | `books/consumer-remote-collection-buffer.lisp` | closure | 1 | 6 | 0/0/6/0 | 0 | 0 | 0 |
@@ -684,6 +684,7 @@ that `make certify` requests.
 | `books/decoded-worker-controller-trajectory.lisp` | closure | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-worker-controller.lisp` | closure | 0 | 7 | 6/0/1/0 | 0 | 0 | 0 |
 | `books/decoded-worker-job.lisp` | closure | 4 | 9 | 8/0/1/0 | 0 | 0 | 0 |
+| `books/def-buffer.lisp` | root | 0 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/def-carried-view.lisp` | root | 31 | 47 | 0/0/5/42 | 0 | 0 | 1 |
 | `books/def-carried-writer.lisp` | root | 0 | 49 | 0/0/0/49 | 0 | 0 | 0 |
 | `books/def-carried.lisp` | root | 2 | 73 | 0/0/0/73 | 0 | 0 | 0 |
@@ -1318,7 +1319,7 @@ that `make certify` requests.
 | `books/pagestore-reclaim.lisp` | root | 91 | 8 | 0/0/0/8 | 0 | 0 | 0 |
 | `books/pagestore-refine.lisp` | root | 70 | 16 | 0/6/6/4 | 0 | 0 | 0 |
 | `books/pagestore-words-blake3.lisp` | root | 27 | 5 | 1/0/3/1 | 0 | 0 | 0 |
-| `books/pagestore-words.lisp` | root | 33 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/pagestore-words.lisp` | root | 29 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/pagestore.lisp` | root | 11 | 75 | 5/2/67/1 | 0 | 0 | 0 |
 | `books/path-update-tail.lisp` | root | 67 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/path-update.lisp` | root | 83 | 33 | 10/0/22/1 | 0 | 0 | 0 |
@@ -1354,11 +1355,11 @@ that `make certify` requests.
 | `books/peer-carriage.lisp` | root | 50 | 23 | 0/1/21/1 | 0 | 0 | 4 |
 | `books/peer-catchup-effects.lisp` | root | 25 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `books/peer-catchup-serve.lisp` | root | 27 | 29 | 2/0/27/0 | 0 | 0 | 0 |
-| `books/peer-catchup-spool-body.lisp` | root | 88 | 9 | 0/2/4/3 | 0 | 0 | 2 |
+| `books/peer-catchup-spool-body.lisp` | root | 171 | 17 | 0/3/9/5 | 0 | 0 | 5 |
 | `books/peer-catchup-spool-framer.lisp` | root | 8 | 9 | 1/1/7/0 | 0 | 0 | 0 |
 | `books/peer-catchup-spool-hash.lisp` | root | 1 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/peer-catchup-spool-resources.lisp` | closure | 0 | 5 | 1/0/4/0 | 0 | 0 | 0 |
-| `books/peer-catchup-spool.lisp` | root | 107 | 61 | 1/0/60/0 | 0 | 0 | 3 |
+| `books/peer-catchup-spool.lisp` | root | 104 | 61 | 1/0/60/0 | 0 | 0 | 3 |
 | `books/peer-catchup.lisp` | root | 14 | 77 | 10/0/67/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 38 | 38 | 1/0/32/5 | 0 | 0 | 0 |
 | `books/peer-feed-counts.lisp` | closure | 28 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -1912,7 +1913,7 @@ that `make certify` requests.
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 4 |
 | `books/wildmat.lisp` | root | 20 | 44 | 44/0/0/0 | 0 | 0 | 0 |
 | `books/wire-export.lisp` | root | 2 | 44 | 0/12/32/0 | 0 | 0 | 0 |
-| `books/wire-family-consumer.lisp` | root | 94 | 10 | 0/0/6/4 | 0 | 0 | 0 |
+| `books/wire-family-consumer.lisp` | root | 102 | 10 | 0/0/6/4 | 0 | 0 | 0 |
 | `books/wire-family-control.lisp` | root | 40 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/wire-family-fnct.lisp` | root | 32 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/wire-family-fncu.lisp` | root | 31 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -2258,7 +2259,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-poll-index-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 5 | 1 | 0 |
 | `tests/acl2/consumer-poll-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 48 | 10 | 0 |
-| `tests/acl2/consumer-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 69 | 1 | 0 |
+| `tests/acl2/consumer-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 71 | 1 | 0 |
 | `tests/acl2/consumer-remote-buffer-tests.lisp` | root | 1 | 2 | 0/0/2/0 | 2 | 0 | 0 |
 | `tests/acl2/consumer-remote-client-contract-tests.lisp` | - | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/consumer-remote-collection-state-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -2337,6 +2338,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-worker-controller-trajectory-tests.lisp` | root | 8 | 10 | 0/0/0/10 | 0 | 0 | 0 |
 | `tests/acl2/decoded-worker-reuse-execution-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-worker-reuse-tests.lisp` | root | 14 | 3 | 0/0/0/3 | 0 | 0 | 0 |
+| `tests/acl2/def-buffer-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/def-carried-tests.lisp` | root | 42 | 74 | 0/0/34/40 | 84 | 22 | 0 |
 | `tests/acl2/def-carried-view-tests.lisp` | root | 44 | 53 | 0/0/53/0 | 61 | 1 | 0 |
 | `tests/acl2/def-carried-writer-tests.lisp` | root | 9 | 20 | 0/1/13/6 | 21 | 5 | 1 |
@@ -2736,7 +2738,7 @@ that `make certify` requests.
 | `tests/acl2/page-read-ownership-tests.lisp` | root | 0 | 5 | 0/0/4/1 | 21 | 0 | 0 |
 | `tests/acl2/page-read-resources-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/page-read-startup-host-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
-| `tests/acl2/page-read-startup-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 28 | 0 | 0 |
+| `tests/acl2/page-read-startup-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 31 | 0 | 0 |
 | `tests/acl2/page-window-admission-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
 | `tests/acl2/page-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/page-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
@@ -2772,7 +2774,7 @@ that `make certify` requests.
 | `tests/acl2/peer-catchup-serve-tariff-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 10 | 0 | 0 |
 | `tests/acl2/peer-catchup-spool-framer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/peer-catchup-spool-hash-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 9 | 0 | 0 |
-| `tests/acl2/peer-catchup-spool-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 51 | 0 | 0 |
+| `tests/acl2/peer-catchup-spool-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 63 | 0 | 0 |
 | `tests/acl2/peer-catchup-tests.lisp` | root | 1 | 12 | 0/2/0/10 | 40 | 6 | 0 |
 | `tests/acl2/peer-feed-red-capacity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/peer-feed-red-defer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
@@ -2797,6 +2799,7 @@ that `make certify` requests.
 | `tests/acl2/peer-set-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 43 | 0 | 0 |
 | `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 34 | 5 | 0 |
 | `tests/acl2/peer-transit-indexed-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 11 | 0 | 0 |
+| `tests/acl2/pgs-frame-fill-tests.lisp` | root | 1 | 6 | 0/0/5/1 | 0 | 1 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/post-admission-keyed-tests.lisp` | root | 1 | 6 | 0/0/0/6 | 10 | 1 | 0 |
 | `tests/acl2/post-fields-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 2 | 0 |
@@ -3149,7 +3152,7 @@ that `make certify` requests.
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
 | `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 0 | 0 |
 | `tests/acl2/wire-bounds-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 52 | 0 | 0 |
-| `tests/acl2/wire-family-consumer-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 28 | 0 | 0 |
+| `tests/acl2/wire-family-consumer-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 32 | 0 | 0 |
 | `tests/acl2/wire-family-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
 | `tests/acl2/wire-family-fncu-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/wire-grammar-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
@@ -3449,10 +3452,13 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-csi-initial-is-ready-by-definition` | `books/consumer-store-invariants.lisp` | 743 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-csi-invalid-crash-choice-is-no-op-by-definition` | `books/consumer-store-invariants.lisp` | 1396 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-crash and the conclusion is that arm's value |
 | `fn-csi-recover-outside-replaying-is-no-op-by-definition` | `books/consumer-store-invariants.lisp` | 1346 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-recover and the conclusion is that arm's value |
+| `fn-csp-at-end-of-symbol` | `books/peer-catchup-spool-body.lisp` | 1018 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-csp-body-inv-of-symbol` | `books/peer-catchup-spool-body.lisp` | 104 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-csp-conns-inv-of-symbol` | `books/peer-catchup-spool.lisp` | 1373 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-csp-conns-inv-of-symbol` | `books/peer-catchup-spool.lisp` | 1314 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-csp-drain-inv-of-symbol` | `books/peer-catchup-spool-body.lisp` | 778 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-csp-hash-effect-conns` | `books/peer-catchup-spool-body.lisp` | 629 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-csp-pull-list-of-non-list` | `books/peer-catchup-spool.lisp` | 899 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pull-list and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-pull-list and the conclusion is that branch's value |
+| `fn-csp-stream-inv-of-symbol` | `books/peer-catchup-spool-body.lisp` | 1241 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-csp-windowp-of-symbol` | `books/peer-catchup-spool.lisp` | 742 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cstp-topic-step-not-ok-is-identity` | `books/config-store-steps.lisp` | 1200 | arm-of-definition: the hypotheses select one IF/COND arm of fn-th-prefix-step and the conclusion is that arm's value |
 | `fn-ct-article-from-pending-msgid` | `books/container-invariants.lisp` | 403 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3668,8 +3674,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ncfg-opt-true-of-nil` | `books/native-config-show.lisp` | 844 | arm-of-definition: constant arguments select one IF/COND arm of fn-ncfg-opt-true and the conclusion is that arm's value |
 | `fn-ncfg-trim-left-noop` | `books/native-config-show.lisp` | 400 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-left and the conclusion is that arm's value |
 | `fn-ncfg-trim-right-rev-noop` | `books/native-config-show.lisp` | 400 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-right-rev and the conclusion is that arm's value |
-| `fn-ncr-cli-after-only-a-register-sends-more` | `books/consumer-reason.lisp` | 257 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-after and the conclusion is that arm's value |
-| `fn-ncr-cli-plan-without-the-flag-by-definition` | `books/consumer-reason.lisp` | 202 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-plan and the conclusion is that arm's value |
+| `fn-ncr-cli-after-only-a-register-sends-more` | `books/consumer-reason.lisp` | 267 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-after and the conclusion is that arm's value |
+| `fn-ncr-cli-plan-without-the-flag-by-definition` | `books/consumer-reason.lisp` | 212 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-plan and the conclusion is that arm's value |
 | `fn-ndh-cnode-of-non-cnode` | `books/number-durability-handles.lisp` | 476 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-cnode and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ndh-cnode and the conclusion is that branch's value |
 | `fn-ndh-event-held` | `books/number-durability-handles.lisp` | 385 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-event and the conclusion is that arm's value |
 | `fn-ndh-event-other` | `books/number-durability-handles.lisp` | 381 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-event and the conclusion is that arm's value |
