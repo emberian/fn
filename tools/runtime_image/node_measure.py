@@ -321,11 +321,20 @@ def stack_trial(image, work, heap, stack_kib, octets):
     """One article of OCTETS under a control stack of STACK_KIB per thread:
     POST, ARTICLE back, stop, reopen, ARTICLE back again."""
     env = env_for(heap)
-    env["SBCL_USER_ARGS"] = env.get("SBCL_USER_ARGS", "") + " --control-stack-size %dKB" % stack_kib
     try:
         config, port = fresh(image, work, env, ["--profile", "default"])
     except RuntimeError as e:
         return False, "init: %s" % str(e)[:200]
+    if heap is None:
+        # The dynamic space the launcher's own probe (`heap -- operator CONFIG run')
+        # decides for this store: what the installed launcher would pass.
+        probe = subprocess.run([str(image), "--fn", "heap", "--", "operator", str(config), "run"],
+                               env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        got = re.search(rb"heap=(\d+) MB", probe.stdout)
+        if not got:
+            return False, "heap probe: %r" % probe.stdout[-120:]
+        env = env_for(int(got.group(1)))
+    env["SBCL_USER_ARGS"] = env.get("SBCL_USER_ARGS", "") + " --control-stack-size %dKB" % stack_kib
     for phase in ("post", "reopen"):
         try:
             proc, _, err = r.start_owner(image, config, env, work / "owner.stderr", timeout=300)
@@ -479,7 +488,8 @@ def main():
     q = s.add_parser("stack-floor")
     q.add_argument("image"); q.add_argument("work")
     q.add_argument("--octets", type=int, default=32768)
-    q.add_argument("--heap", type=int, default=4096)
+    q.add_argument("--heap", type=lambda v: None if v == "decided" else int(v), default=4096,
+                   help="MB, or `decided': the launcher probe's figure for the store")
     q.add_argument("--lo", type=int, default=64)
     q.add_argument("--hi", type=int, default=65536)
     q.add_argument("--line-octets", type=int, default=0)
