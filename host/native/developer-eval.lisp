@@ -17,10 +17,11 @@
 (defvar *fnn-dev-admission-failed* nil)
 ;; ACL2's bound (books/developer-eval.lisp fn-deval-max-output-characters): the
 ;; reply frame is sized for it, so the host keeps no figure of its own.
-(defconstant +fnn-dev-output-characters+ (fnn-core 'fn-deval-max-output-characters))
+(defun fnn-dev-output-characters ()
+ (fnn-core 'fn-deval-max-output-characters))
 
 (defclass fnn-dev-output (sb-gray:fundamental-character-output-stream)
- ((text :initform (make-array +fnn-dev-output-characters+ :element-type 'character
+ ((text :initform (make-array (fnn-dev-output-characters) :element-type 'character
                              :fill-pointer 0) :reader fnn-dev-output-text)
   (truncated :initform nil :accessor fnn-dev-output-truncated)))
 (defmethod sb-gray:stream-write-char ((stream fnn-dev-output) char)
@@ -50,7 +51,7 @@
 (defun fnn-dev-evaluate (service text)
  "Read outside O, then evaluate one developer form in an actual owner quantum.
 Answers (values STATUS OUTPUT): STATUS :ok or :error, OUTPUT the printed values
-and everything the form wrote, at most +fnn-dev-output-characters+ characters.
+and everything the form wrote, at most (fnn-dev-output-characters) characters.
 Evaluation errors follow the owner's normal fault/fence boundary. Syntax errors
 never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid."
  (let ((out (make-instance 'fnn-dev-output)) (status :ok))

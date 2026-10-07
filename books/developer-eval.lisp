@@ -238,8 +238,10 @@
   (declare (xargs :guard t))
   *fn-deval-extra-kinds*)
 
-; The request is a read: it writes no Store, so a stalled disk's shed does
-; not answer it BUSY (the evaluator is how a developer looks at that disk).
+; INTENDED: the request is classified :read although a form may change owner
+; state. A :store word is shed BUSY while the disk is stalled, and a debugger
+; is most useful then (it is how a developer looks at that disk); the journal
+; entry (op 8) is what records that the run's decisions no longer replay.
 ; Logically the classifier still reads the constrained table; the attachment
 ; is what executes (tests/acl2/developer-eval-tests.lisp evaluates the
 ; classifier on a real request frame, and tests/acl2/native-control-kinds-tests
