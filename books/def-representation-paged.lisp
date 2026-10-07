@@ -376,13 +376,12 @@
   :hints (("Goal" :use ((:instance adt-pg-floor-mod (n (nfix n))))
            :cases ((natp n)))))
 
-(local
- (defthm adt-pg-floor-below
-   (implies (and (natp n) (posp r) (natp np) (< n (* r np)))
-            (< (floor n r) np))
-   :rule-classes :linear
-   :hints (("Goal" :use adt-pg-floor-mod :in-theory (disable adt-pg-floor-mod)
-            :nonlinearp t))))
+(defthm adt-pg-floor-below
+  (implies (and (natp n) (posp r) (natp np) (< n (* r np)))
+           (< (floor n r) np))
+  :rule-classes :linear
+  :hints (("Goal" :use adt-pg-floor-mod :in-theory (disable adt-pg-floor-mod)
+           :nonlinearp t)))
 
 ; -----------------------------------------------------------------------------
 ; 3. The page invariant and the paged correspondence.  The row part (M
@@ -625,8 +624,17 @@
 ; page and table sizes) is shifts and masks there, generic arithmetic
 ; past 2^60 (no stobj holds that many octets).  Both branches are BODY, so
 ; logically this is BODY.
+;; The sum of the naturals A and B, on the fixnum fast path when both are below
+;; 2^60 (the executable's offset plus index; logically (+ A B)).
+(defmacro adt-pg-add (a b)
+  `(let ((a ,a) (b ,b))
+     (if (and (integerp a) (<= 0 a) (< a 1152921504606846976)
+              (integerp b) (<= 0 b) (< b 1152921504606846976))
+         (+ (the (unsigned-byte 60) a) (the (unsigned-byte 60) b))
+       (+ a b))))
+
 (defmacro adt-pg-fast (n body)
-  `(if (< ,n 1152921504606846976)
+  `(if (and (integerp ,n) (<= 0 ,n) (< ,n 1152921504606846976))
        (let ((,n (the (unsigned-byte 60) ,n))) ,body)
      ,body))
 
@@ -1045,6 +1053,32 @@
            :use (adt-pg-view-of-pget
                  (:instance adt-pg1-pokp-fc (c (adt-pg-view c)))
                  (:instance adt-pg1-pget-is-nth (c (adt-pg-view c)))))))
+
+; The length of column CI of row page K in the directory (0 for no such page),
+; and of the octets of pool page K below: the bounds the executables' checks
+; read, and in a full image the page's R and Q.  An executable whose guard
+; says the index is below it can skip them.
+(defun adt-pg-rpage-len (ci k c)
+  (declare (xargs :verify-guards nil))
+  (let* ((dir (nth 0 c)) (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+    (if (< jt (len dir))
+        (if (< it (len (nth 0 (nth jt dir))))
+            (len (nth ci (nth it (nth 0 (nth jt dir)))))
+          0)
+      0)))
+
+(defthm adt-pg-rpage-len-full
+  (implies (and (adt-pg-rokp m r c) (natp ci) (< ci m) (natp k) (< k (nth 4 c)))
+           (equal (adt-pg-rpage-len ci k c) r))
+  :hints (("Goal" :in-theory (e/d (adt-pg-rpage-len adt-pg-rokp adt-pg1-rokp adt-pg-rtab adt-pg-view)
+                                  (floor mod adt-pg-pagefullp-nth-page adt-pg-pagefullp-nth))
+           :use ((:instance adt-pg-floor-mod (n k) (r *adt-pg-tpages*))
+                 (:instance adt-pg-dir-read-at (tsz *adt-pg-tpages*) (np (nth 4 c)) (dir (nth 0 c))
+                            (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+                 (:instance adt-pg-mod-below (n k) (r *adt-pg-tpages*))
+                 (:instance adt-pg-pagefullp-nth-page (k m) (np (nth 4 c)) (rt (adt-pg-dflat *adt-pg-tpages* (nth 4 c) (nth 0 c))) (kk k))
+                 (:instance adt-pg-pagefullp-nth (k m) (pg (nth k (adt-pg-dflat *adt-pg-tpages* (nth 4 c) (nth 0 c))))))
+           :do-not-induct t)))
 
 (defthm adt-pg-rokp-of-update
   (implies (and (natp k) (not (equal k 0)) (not (equal k 4)))
@@ -1800,6 +1834,19 @@
             (nth 0 (nth it (nth 0 (nth jt dir))))
           nil)
       nil)))
+
+(defthm adt-pg-page-len-full
+  (implies (and (adt-pg-pokp q c) (natp k) (< k (nth 5 c)))
+           (equal (len (adt-pg-page-bytes k c)) q))
+  :hints (("Goal" :in-theory (e/d (adt-pg-page-bytes adt-pg-pokp adt-pg1-pokp adt-pg-ptab adt-pg-view)
+                                  (floor mod adt-pg-pagefullp-nth-page adt-pg-pagefullp-nth))
+           :use ((:instance adt-pg-floor-mod (n k) (r *adt-pg-tpages*))
+                 (:instance adt-pg-dir-read-at (tsz *adt-pg-tpages*) (np (nth 5 c)) (dir (nth 1 c))
+                            (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+                 (:instance adt-pg-mod-below (n k) (r *adt-pg-tpages*))
+                 (:instance adt-pg-pagefullp-nth-page (k 1) (r q) (np (nth 5 c)) (rt (adt-pg-dflat *adt-pg-tpages* (nth 5 c) (nth 1 c))) (kk k))
+                 (:instance adt-pg-pagefullp-nth (k 1) (r q) (ci 0) (pg (nth k (adt-pg-dflat *adt-pg-tpages* (nth 5 c) (nth 1 c))))))
+           :do-not-induct t)))
 
 ; M zeros consed onto ACC.
 (defun adt-pg-zeros (m acc)

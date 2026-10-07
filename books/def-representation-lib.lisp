@@ -389,6 +389,39 @@
                  (:instance adt-pg-len-col-pokp (q *adt-pg-octets*)))
            :do-not-induct t)))
 
+; Every check the executables make on a row's way to its octets holds for a
+; row of the image and an octet of its payload: the row's page has the offset
+; and length columns past the row's index, and the pool page of the octet has
+; the octet's index.  (Corr gives full pages and the row lying in the pool.)
+(defthm adt-pg-corr-scalar-octets-row-in-pages
+  (implies (and (adt-pg-corr '((:octets)) *adt-pg-rows* *adt-pg-octets* c (adt-wrap1 a))
+                (natp h) (< h (len a))
+                (natp i) (< i (len (nth h a))))
+           (and (< (mod h *adt-pg-rows*) (adt-pg-rpage-len 0 (floor h *adt-pg-rows*) c))
+                (< (mod h *adt-pg-rows*) (adt-pg-rpage-len 1 (floor h *adt-pg-rows*) c))
+                (equal (nfix (adt-pg-rget 0 h *adt-pg-rows* c)) (adt-pg-rget 0 h *adt-pg-rows* c))
+                (< (mod (+ i (adt-pg-rget 0 h *adt-pg-rows* c)) *adt-pg-octets*)
+                   (len (adt-pg-page-bytes (floor (+ i (adt-pg-rget 0 h *adt-pg-rows* c)) *adt-pg-octets*) c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-corr adt-pg-okp)
+                                  (adt-corr adt-pg-rget adt-pg-pget adt-pg-rokp adt-pg-pokp adt-pg-flat
+                                   adt-pg-col adt-pg-rtab adt-pg-ptab adt-pg-rpage-len floor mod))
+           :use ((:instance adt-corr-scalar-octets-row (c (adt-pg-flat '((:octets)) c)))
+                 adt-pg-corr-count-bound
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 0))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 1))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 2))
+                 (:instance adt-pg-len-col-rokp (m 2) (r *adt-pg-rows*) (ci 0))
+                 (:instance adt-pg-len-col-pokp (q *adt-pg-octets*))
+                 (:instance adt-pg-corr-scalar-octets-row)
+                 (:instance adt-pg-floor-below (n h) (r *adt-pg-rows*) (np (nth 4 c)))
+                 (:instance adt-pg-floor-below (n (+ i (adt-pg-rget 0 h *adt-pg-rows* c))) (r *adt-pg-octets*) (np (nth 5 c)))
+                 (:instance adt-pg-mod-below (n h) (r *adt-pg-rows*))
+                 (:instance adt-pg-rpage-len-full (m 2) (r *adt-pg-rows*) (ci 0) (k (floor h *adt-pg-rows*)))
+                 (:instance adt-pg-rpage-len-full (m 2) (r *adt-pg-rows*) (ci 1) (k (floor h *adt-pg-rows*)))
+                 (:instance adt-pg-page-len-full (q *adt-pg-octets*) (k (floor (+ i (adt-pg-rget 0 h *adt-pg-rows* c)) *adt-pg-octets*)))
+                 (:instance adt-pg-mod-below (n (+ i (adt-pg-rget 0 h *adt-pg-rows* c))) (r *adt-pg-octets*)))
+           :do-not-induct t)))
+
 ;; The rule that collapses two writes to one position (books/proto/adt-lib.lisp)
 ;; is withdrawn from includers: it reaches every book above the arena
 ;; (payload-arena-bytes includes this library) and reshapes the nested
