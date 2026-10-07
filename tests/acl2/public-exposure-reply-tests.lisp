@@ -161,3 +161,79 @@
 ; keep this one.
 (assert-event (equal (car (fn-exp-idle (fn-exp-progress *pxr-two* 6 64000) *pxr-lim* 5 65000))
                      :close))
+
+; -----------------------------------------------------------------------------
+; The reply's tail (CONVERGE-2 row 20): fn-exp-idle-delivery.  The witness is
+; the measured slow-drain ARTICLE: a 12 MiB reply (12,582,912 octets) begun at
+; monotonic 0, its last octet handed at 110,000 ms with 3,383,427 still in
+; the kernel's queue, read at 38 KB/s.  The exposure clock: LAST at 64000
+; (the handoff's progress), idle limit 600 s, so the check at 664000 is past it.
+
+(defconst *pxr-reply* 12582912)
+(defconst *pxr-tail*
+  (fn-send-progress-next (fn-send-progress-begin 0 0) (list 110000 3383427 *pxr-reply*)))
+(assert-event (fn-send-state-p *pxr-tail*))
+(assert-event (equal (car (fn-exp-idle *pxr-progressed* *pxr-lim* 5 664000)) :close))
+
+; KEYSTONE fn-exp-idle-delivery-keeps-while-the-peer-reads.  POSITIVE: one
+; second on, the queue is 38,000 octets shorter: every hypothesis holds, the
+; check keeps where the bare idle check closes, and the tail goes on.
+(defconst *pxr-read* (list 111000 3345427 *pxr-reply*))
+(assert-event (fn-exp-tail-queued-p *pxr-tail* *pxr-read*))
+(assert-event (fn-send-progress-p *pxr-tail* *pxr-read*))
+(assert-event (equal (fn-send-progress-decide *pxr-tail* *pxr-read*) :continue))
+(assert-event
+ (let ((r (fn-exp-idle-delivery *pxr-progressed* *pxr-lim* 5 664000 *pxr-tail* *pxr-read*)))
+   (and (equal (car r) :keep)
+        (equal (fn-exp-entry-last (fn-exp-find 5 (fn-exp-conns (cadr r)))) 664000)
+        (equal (caddr r) (fn-send-progress-next *pxr-tail* *pxr-read*)))))
+; HYPOTHESIS REMOVAL: the same look with the queue unchanged (a pause inside
+; the stall window): no progress, the verdict continues, and the decision is
+; the bare idle check's (fn-exp-idle-delivery-is-idle-without-delivery).
+(defconst *pxr-paused* (list 115000 3383427 *pxr-reply*))
+(assert-event (not (fn-send-progress-p *pxr-tail* *pxr-paused*)))
+(assert-event (equal (fn-send-progress-decide *pxr-tail* *pxr-paused*) :continue))
+(assert-event
+ (equal (car (fn-exp-idle-delivery *pxr-progressed* *pxr-lim* 5 664000 *pxr-tail* *pxr-paused*))
+        :close))
+; MUTATION (labelled): crediting the shrink to another connection keeps the
+; other, and this one is still closed.
+(defconst *pxr-two-tail* (fn-exp-register *pxr-progressed* 6 '(:inet 127 0 0 3) 7000))
+(assert-event
+ (equal (car (fn-exp-idle-delivery *pxr-two-tail* *pxr-lim* 6 664000 *pxr-tail* *pxr-read*))
+        :keep))
+(assert-event (equal (car (fn-exp-idle (cadr (fn-exp-idle-delivery *pxr-two-tail* *pxr-lim* 6 664000
+                                                                    *pxr-tail* *pxr-read*))
+                                       *pxr-lim* 5 664000))
+                     :close))
+
+; KEYSTONE fn-exp-idle-delivery-keeps-at-delivery: the queue empty at
+; 200,000 ms: kept, and the tail ends.
+(defconst *pxr-empty* (list 200000 0 *pxr-reply*))
+(assert-event (fn-exp-tail-delivered-p *pxr-tail* *pxr-empty*))
+(assert-event
+ (equal (let ((r (fn-exp-idle-delivery *pxr-progressed* *pxr-lim* 5 664000 *pxr-tail* *pxr-empty*)))
+          (list (car r) (caddr r)))
+        '(:keep nil)))
+
+; KEYSTONE fn-exp-idle-delivery-refuses-what-the-send-verdict-refuses: a
+; reader that stops with the tail queued is refused :send-stalled at the
+; first look 10 s (the profile's :send-stall-seconds) after the handoff, the
+; exposure state untouched and the tail ended.
+(defconst *pxr-stopped* (list 120000 3383427 *pxr-reply*))
+(assert-event (equal (fn-send-progress-decide *pxr-tail* *pxr-stopped*) '(:refuse :send-stalled)))
+(assert-event
+ (equal (fn-exp-idle-delivery *pxr-progressed* *pxr-lim* 5 664000 *pxr-tail* *pxr-stopped*)
+        (list '(:refuse :send-stalled) *pxr-progressed* nil)))
+; HYPOTHESIS REMOVAL: one millisecond before the window it is not refused.
+(assert-event
+ (equal (car (fn-exp-idle-delivery *pxr-progressed* *pxr-lim* 5 600000 *pxr-tail*
+                                   (list 119999 3383427 *pxr-reply*)))
+        :keep))
+
+; KEYSTONE fn-exp-idle-delivery-is-idle-without-delivery: no tail is the bare
+; idle check, at both of its answers.
+(assert-event (equal (fn-exp-idle-delivery *pxr-progressed* *pxr-lim* 5 664000 nil *pxr-read*)
+                     (list :close (cdr (fn-exp-idle *pxr-progressed* *pxr-lim* 5 664000)) nil)))
+(assert-event (equal (car (fn-exp-idle-delivery *pxr-progressed* *pxr-lim* 5 65000 nil nil))
+                     :keep))

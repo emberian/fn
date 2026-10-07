@@ -6706,16 +6706,25 @@ EPIPE and the client saw a bare close)."
                      submitted))))))))
    class))
 
-(defun fnn-owner-exposure-idle (service cid &optional (class :reader))
+(defun fnn-owner-exposure-idle (service cid tail obs &optional (class :reader))
+  "RFC 3977 3.1's idle check of CID, with the reply's TAIL (its send state
+while the kernel still queues part of it, or NIL) observed as OBS: ACL2's
+(DECISION TAIL') (host/owner-host.lisp fn-owner-exposure-idle,
+books/public-exposure-reply.lisp fn-exp-idle-delivery).  DECISION is :keep,
+:close, or (:refuse REASON) for a tail the send verdict refuses."
   (let ((answer (fnn-owner-serialized
                  service cid
                  (lambda ()
                    (fnn-owner-advance-clock)
-                   (fnn-owner-action 'fn-owner-exposure-idle cid))
+                   (fnn-owner-core 'fn-owner-exposure-idle cid tail obs))
                  class)))
-    (unless (member answer '(:keep :close))
+    (unless (and (consp answer) (consp (cdr answer)) (null (cddr answer))
+                 (or (member (first answer) '(:keep :close))
+                     (and (consp (first answer)) (eq (car (first answer)) :refuse)
+                          (consp (cdr (first answer))) (keywordp (second (first answer)))))
+                 (listp (second answer)))
       (fnn-fault "owner returned a malformed idle decision"))
-    answer))
+    (values (first answer) (second answer))))
 
 (defun fnn-owner-exposure-progress (service cid &optional (class :reader))
   "The transport accepted the whole of CID's late-draining reply: ACL2 advances

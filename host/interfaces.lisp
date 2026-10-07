@@ -1697,7 +1697,11 @@
   :class ::program)
 
 (definterface fn-owner-exposure-idle
-  :class ::program)
+  :class ::program
+  :keystones ((fn-exp-idle-delivery-keeps-while-the-peer-reads :via fn-exp-idle-delivery)
+              (fn-exp-idle-delivery-keeps-at-delivery :via fn-exp-idle-delivery)
+              (fn-exp-idle-delivery-refuses-what-the-send-verdict-refuses :via fn-exp-idle-delivery)
+              (fn-exp-idle-delivery-is-idle-without-delivery :via fn-exp-idle-delivery)))
 
 (definterface fn-owner-exposure-install-set
   :class :common-lisp-compliant)
@@ -3751,6 +3755,9 @@
   :class :common-lisp-compliant
   :keystones (fn-heap-open-nursery-trigger-natp
               fn-heap-open-nursery-trigger-bounds))
+
+(definterface fn-exp-tail-start
+  :class :common-lisp-compliant)
 
 (definterface fn-send-progress-begin
   :class :common-lisp-compliant
