@@ -2285,6 +2285,11 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
                 elif held[dep] and origin not in held[dep]:
                     gap = gap or (f"{dep} (cached only under "
                                   + ", ".join(sorted(held[dep])) + ")")
+                elif not held[dep] and (root / f"{dep}.cert").is_file():
+                    # Nothing to place over it: the tree keeps this pair, and
+                    # no cache entry says which origin it was certified under.
+                    gap = gap or (f"{dep} (resident certificate of unknown origin, "
+                                  "no cached pair to replace it)")
                 else:
                     covered += 1
             if gap:
@@ -2301,7 +2306,17 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
         for dep in dependencies:
             if origin in held[dep]:
                 assigned[dep] = origin
-    for source in books:
+    # Every dependency a decision bound to an origin is placed from it, also
+    # when NAMES left it out of `books`: otherwise the tree keeps whatever pair
+    # it had, possibly from another origin than the book over it.
+    placing = list(books)
+    listed = {book_name(root, source) for source in books}
+    for dep in sorted(assigned):
+        source = (root / f"{dep}.lisp").resolve()
+        if dep not in listed and source.is_file():
+            placing.append(source)
+            closures[dep] = []
+    for source in placing:
         name = book_name(root, source)
         if name not in closures:
             continue
