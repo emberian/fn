@@ -1,0 +1,4 @@
+{
+ "about": "The shrink-only ceiling on keystones without teeth (tools/keystone_emit.py --write-ceiling; raising it needs an ACKS.md line, tools/ratchet.py).",
+ "toothless": 42
+}
