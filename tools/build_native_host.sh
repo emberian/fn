@@ -214,8 +214,9 @@ fi
 # load (batch AV, "Thread local storage exhausted"), so images build under
 # the 65536 wrapper (tools/hbox_native.sh; books/profile-limits.lisp
 # :tls-limit); the saved launcher RUNS at the profile's :run-tls-limit
-# (16384, MEM-001: every thread's storage is resident, 512 KiB at 65536;
-# -13 MB RSS end to end on the 14-thread owner), which the build prints
+# (20480: MEM-001 measured 16384 at -13 MB RSS end to end on the 14-thread
+# owner, every thread's storage being resident; 20480 keeps the image's own
+# TLS index under the 25% budget above), which the build prints
 # (FN_NATIVE_TLS_LIMIT, as it prints the stack below).  The TLS budget above
 # is held against that run limit.  The frozen launchers
 # (packaging/freeze-native-image.sh) copy this exec line.  FN_TLS_LIMIT
