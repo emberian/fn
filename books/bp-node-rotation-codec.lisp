@@ -342,14 +342,21 @@
 ;   covered       the received finals the checkpoint retires (the journal
 ;                 credit the old generation had consumed); evidence only,
 ;                 replay never reads it
-(defun fn-bpnr-checkpoint (generation held handoffs prior next-arrival covered)
+;   jobs          the base machine's owed jobs at the rotation, exactly
+;   next-token    the base machine's token counter at the rotation
+; A rotation therefore no longer needs the base machine to owe nothing: the
+; owed work is part of the published file, and fn-bpnr-checkpoint-of-statep
+; (books/bp-node-progress) refuses a checkpoint that drops it.
+(defun fn-bpnr-checkpoint (generation held handoffs prior next-arrival covered
+                                      jobs next-token)
   (declare (xargs :guard t))
-  (list :bpnr-checkpoint generation held handoffs prior next-arrival covered))
+  (list :bpnr-checkpoint generation held handoffs prior next-arrival covered
+        jobs next-token))
 (verify-guards fn-bpnr-checkpoint)
 
 (defun fn-bpnr-checkpointp (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 7)
+  (and (true-listp x) (equal (len x) 9)
        (equal (car x) :bpnr-checkpoint)
        (natp (nth 1 x))
        (true-listp (nth 2 x))
@@ -358,7 +365,9 @@
            (and (consp (nth 4 x)) (natp (car (nth 4 x)))
                 (natp (cdr (nth 4 x)))))
        (natp (nth 5 x))
-       (natp (nth 6 x))))
+       (natp (nth 6 x))
+       (true-listp (nth 7 x))
+       (natp (nth 8 x))))
 (verify-guards fn-bpnr-checkpointp)
 
 (defun fn-bpnr-checkpoint-generation (x) (declare (xargs :guard t)) (fn-bpn-nth 1 x))
@@ -367,12 +376,16 @@
 (defun fn-bpnr-checkpoint-prior (x) (declare (xargs :guard t)) (fn-bpn-nth 4 x))
 (defun fn-bpnr-checkpoint-next-arrival (x) (declare (xargs :guard t)) (fn-bpn-nth 5 x))
 (defun fn-bpnr-checkpoint-covered (x) (declare (xargs :guard t)) (fn-bpn-nth 6 x))
+(defun fn-bpnr-checkpoint-jobs (x) (declare (xargs :guard t)) (fn-bpn-nth 7 x))
+(defun fn-bpnr-checkpoint-next-token (x) (declare (xargs :guard t)) (fn-bpn-nth 8 x))
 (verify-guards fn-bpnr-checkpoint-generation)
 (verify-guards fn-bpnr-checkpoint-held)
 (verify-guards fn-bpnr-checkpoint-handoffs)
 (verify-guards fn-bpnr-checkpoint-prior)
 (verify-guards fn-bpnr-checkpoint-next-arrival)
 (verify-guards fn-bpnr-checkpoint-covered)
+(verify-guards fn-bpnr-checkpoint-jobs)
+(verify-guards fn-bpnr-checkpoint-next-token)
 
 (defun fn-bpnr-checkpoint-prefix (payload)
   (declare (xargs :guard t))
