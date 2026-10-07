@@ -16,6 +16,7 @@
 ; the BP machine both include it.
 (in-package "ACL2")
 (include-book "config")
+(include-book "def-loop")
 (include-book "bp-eid-shape")
 (include-book "native-admin-shape")
 (include-book "consumer-position")
@@ -51,27 +52,10 @@
 ; cap (D27), so a recursion one frame per row could exhaust the 1,024 KiB
 ; control stack.  Each is (mbe :logic <the recursion, unchanged> :exec <a
 ; loop>), equal by <f>-loop-is-rev-onto (books/rev-onto.lisp).
-(defun fn-bprt-strip-last-loop (cs acc)
-  (declare (xargs :guard t))
-  (if (or (atom cs) (atom (cdr cs))) (fn-ag-rev-onto acc nil)
-    (fn-bprt-strip-last-loop (cdr cs) (cons (car cs) acc))))
-
-(defun fn-bprt-strip-last (cs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (or (atom cs) (atom (cdr cs))) nil
-                (cons (car cs) (fn-bprt-strip-last (cdr cs))))
-       :exec (fn-bprt-strip-last-loop cs nil)))
-
-(defthm fn-bprt-strip-last-loop-is-rev-onto
-  (equal (fn-bprt-strip-last-loop cs acc)
-         (fn-ag-rev-onto acc (fn-bprt-strip-last cs)))
-  :hints (("Goal" :induct (fn-bprt-strip-last-loop cs acc)
-                  :in-theory (union-theories
-                              '(fn-bprt-strip-last-loop fn-bprt-strip-last
-                                fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bprt-strip-last)
+(def-loop fn-bprt-strip-last (cs)
+  :shape :map :over cs :elt c
+  :while (consp (cdr cs))
+  :body c)
 
 (defun fn-bprt-wildcardp (pattern)
   (declare (xargs :guard t))
@@ -141,63 +125,16 @@
 ; The decision.
 
 ; The routes whose pattern matches DEST, in table order.
-(defun fn-bprt-matching-loop (dest table acc)
-  (declare (xargs :guard t))
-  (if (atom table) (fn-ag-rev-onto acc nil)
-    (fn-bprt-matching-loop
-     dest (cdr table)
-     (if (fn-bprt-matchp (fn-bprt-route-pattern (car table)) dest)
-         (cons (car table) acc)
-       acc))))
-
-(defun fn-bprt-matching (dest table)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (atom table) nil
-                (if (fn-bprt-matchp (fn-bprt-route-pattern (car table)) dest)
-                    (cons (car table) (fn-bprt-matching dest (cdr table)))
-                  (fn-bprt-matching dest (cdr table))))
-       :exec (fn-bprt-matching-loop dest table nil)))
-
-(defthm fn-bprt-matching-loop-is-rev-onto
-  (equal (fn-bprt-matching-loop dest table acc)
-         (fn-ag-rev-onto acc (fn-bprt-matching dest table)))
-  :hints (("Goal" :induct (fn-bprt-matching-loop dest table acc)
-                  :in-theory (union-theories
-                              '(fn-bprt-matching-loop fn-bprt-matching
-                                fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bprt-matching)
+(def-loop fn-bprt-matching (dest table)
+  :shape :map :over table :elt r
+  :keep (fn-bprt-matchp (fn-bprt-route-pattern r) dest)
+  :body r)
 
 ; The routes whose boundary is one of LIVE.
-(defun fn-bprt-live-routes-loop (routes live acc)
-  (declare (xargs :guard t))
-  (if (atom routes) (fn-ag-rev-onto acc nil)
-    (fn-bprt-live-routes-loop
-     (cdr routes) live
-     (if (member-equal (fn-bprt-route-boundary (car routes)) (fix-true-list live))
-         (cons (car routes) acc)
-       acc))))
-
-(defun fn-bprt-live-routes (routes live)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (atom routes) nil
-                (if (member-equal (fn-bprt-route-boundary (car routes))
-                                  (fix-true-list live))
-                    (cons (car routes) (fn-bprt-live-routes (cdr routes) live))
-                  (fn-bprt-live-routes (cdr routes) live)))
-       :exec (fn-bprt-live-routes-loop routes live nil)))
-
-(defthm fn-bprt-live-routes-loop-is-rev-onto
-  (equal (fn-bprt-live-routes-loop routes live acc)
-         (fn-ag-rev-onto acc (fn-bprt-live-routes routes live)))
-  :hints (("Goal" :induct (fn-bprt-live-routes-loop routes live acc)
-                  :in-theory (union-theories
-                              '(fn-bprt-live-routes-loop fn-bprt-live-routes
-                                fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bprt-live-routes)
+(def-loop fn-bprt-live-routes (routes live)
+  :shape :map :over routes :elt r
+  :keep (member-equal (fn-bprt-route-boundary r) (fix-true-list live))
+  :body r)
 
 ; The least route under `lexorder', or nil for no route.  A right fold: the
 ; :exec folds the reversed list from the left, STARTED saying whether ACC
@@ -256,36 +193,10 @@
           :no-live-hop)))))
 
 ; The boundaries of the table that have a contact port.
-(defun fn-bprt-contactable-loop (table acc)
-  (declare (xargs :guard t))
-  (if (atom table) (fn-ag-rev-onto acc nil)
-    (fn-bprt-contactable-loop
-     (cdr table)
-     (if (and (natp (fn-bprt-route-port (car table)))
-              (< 0 (fn-bprt-route-port (car table))))
-         (cons (fn-bprt-route-boundary (car table)) acc)
-       acc))))
-
-(defun fn-bprt-contactable (table)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (atom table) nil
-                (let ((rest (fn-bprt-contactable (cdr table))))
-                  (if (and (natp (fn-bprt-route-port (car table)))
-                           (< 0 (fn-bprt-route-port (car table))))
-                      (cons (fn-bprt-route-boundary (car table)) rest)
-                    rest)))
-       :exec (fn-bprt-contactable-loop table nil)))
-
-(defthm fn-bprt-contactable-loop-is-rev-onto
-  (equal (fn-bprt-contactable-loop table acc)
-         (fn-ag-rev-onto acc (fn-bprt-contactable table)))
-  :hints (("Goal" :induct (fn-bprt-contactable-loop table acc)
-                  :in-theory (union-theories
-                              '(fn-bprt-contactable-loop fn-bprt-contactable
-                                fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bprt-contactable)
+(def-loop fn-bprt-contactable (table)
+  :shape :map :over table :elt r
+  :keep (and (natp (fn-bprt-route-port r)) (< 0 (fn-bprt-route-port r)))
+  :body (fn-bprt-route-boundary r))
 
 ; The host's outbound question: for a held bundle to DEST, which boundary
 ; does `bp-node serve' contact, at which port, and which node ID must that
@@ -493,35 +404,10 @@
 ; boundary (one "bp-trust" "network" row and one "transport-bp" row) enters
 ; no table: it routes nothing.
 
-(defun fn-bprt-slot-values-loop (rows name slot acc)
-  (declare (xargs :guard t))
-  (if (atom rows) (fn-ag-rev-onto acc nil)
-    (fn-bprt-slot-values-loop
-     (cdr rows) name slot
-     (if (and (equal (fn-cfg-row-a (car rows)) name)
-              (equal (fn-cfg-row-b (car rows)) slot))
-         (cons (car rows) acc)
-       acc))))
-
-(defun fn-bprt-slot-values (rows name slot)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (atom rows) nil
-                (if (and (equal (fn-cfg-row-a (car rows)) name)
-                         (equal (fn-cfg-row-b (car rows)) slot))
-                    (cons (car rows) (fn-bprt-slot-values (cdr rows) name slot))
-                  (fn-bprt-slot-values (cdr rows) name slot)))
-       :exec (fn-bprt-slot-values-loop rows name slot nil)))
-
-(defthm fn-bprt-slot-values-loop-is-rev-onto
-  (equal (fn-bprt-slot-values-loop rows name slot acc)
-         (fn-ag-rev-onto acc (fn-bprt-slot-values rows name slot)))
-  :hints (("Goal" :induct (fn-bprt-slot-values-loop rows name slot acc)
-                  :in-theory (union-theories
-                              '(fn-bprt-slot-values-loop fn-bprt-slot-values
-                                fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bprt-slot-values)
+(def-loop fn-bprt-slot-values (rows name slot)
+  :shape :map :over rows :elt r
+  :keep (and (equal (fn-cfg-row-a r) name) (equal (fn-cfg-row-b r) slot))
+  :body r)
 
 (defun fn-bprt-boundary-eid (rows boundary)
   (declare (xargs :guard t))

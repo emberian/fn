@@ -4,11 +4,13 @@
  "file": "tools/build_native_host.sh",
  "id": "MEM-002",
  "line": "251",
- "notes": [],
+ "notes": [
+  "2026-10-06 N-MEM step 2: TRAIN-READY (launcher default). Measured again: bare start 259 MB RSS at 32000, 34 MB at 1068/4096/256."
+ ],
  "owner": "deputy-N",
  "severity": "medium",
  "source": "n-mem",
  "state": "open",
  "title": "the published fn-host launcher defaults to --dynamic-space-size 32000: a start with no figure is 259 MB RSS, the same start at 1068 MB is 34 MB",
- "updated": "2026-10-06T21:30:00Z"
+ "updated": "2026-10-06T23:00:00Z"
 }

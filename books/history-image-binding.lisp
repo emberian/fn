@@ -234,16 +234,16 @@
 (defthm fn-hib-fill-rel
   (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (natp p)
                 (fn-hib-root-holds h c) (fn-hib-disk-bound file h c))
-           (let ((c2 (mv-nth 1 (fn-hrc-fill p (fn-pgs-fill-realize file (fn-hrc-phys p c)) c))))
+           (let ((c2 (mv-nth 1 (fn-hrc-fill p (fn-pgs-page-words file (fn-hrc-phys p c)) c))))
              (and (fn-hrc-wfp c2) (fn-hrs-rel h c2))))
   :hints (("Goal" :do-not-induct t
            :cases ((and (equal (fn-hrc-img c) 1) (< p (pgs-v-length (fn-hrc-pgs c)))
                         (not (equal (pgs-vi p (fn-hrc-pgs c)) 2)))))
-          ("Subgoal 2" :use ((:instance fn-hrc-fill-rel (fn-hrecs$c c) (words (fn-pgs-fill-realize file (fn-hrc-phys p c)))))
+          ("Subgoal 2" :use ((:instance fn-hrc-fill-rel (fn-hrecs$c c) (words (fn-pgs-page-words file (fn-hrc-phys p c)))))
            :in-theory (disable fn-hrc-fill-rel fn-hrc-fill fn-hrs-rel fn-hrc-wfp fn-hib-root-holds fn-hib-disk-bound))
           ("Subgoal 1" :use ((:instance fn-hrc-fill-rel (fn-hrecs$c c) (words (fn-hrs-image-page p h c)))
                              (:instance fn-hib-fill-img-ok (img (take (fn-hrc-nimg c) h))
-                                        (words (fn-pgs-fill-realize file (fn-hrc-phys p c))))
+                                        (words (fn-pgs-page-words file (fn-hrc-phys p c))))
                              (:instance fn-hib-tabs-page (p 0) (q p) (n (pgs-v-length (fn-hrc-pgs c))))
                              (:instance fn-hib-nc-page (p 0) (q p) (n (pgs-v-length (fn-hrc-pgs c)))))
            :in-theory (e/d (fn-hrs-rel fn-hib-root-holds fn-hib-disk-bound fn-hrc-phys fn-hrs-image-page)
@@ -306,10 +306,10 @@
 (defthm fn-hib-fill-keeps-all
   (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (natp p)
                 (fn-hib-root-holds h c) (fn-hib-disk-bound file h c))
-           (let ((c2 (mv-nth 1 (fn-hrc-fill p (fn-pgs-fill-realize file (fn-hrc-phys p c)) c))))
+           (let ((c2 (mv-nth 1 (fn-hrc-fill p (fn-pgs-page-words file (fn-hrc-phys p c)) c))))
              (and (fn-hrc-wfp c2) (fn-hrs-rel h c2) (fn-hib-root-holds h c2) (fn-hib-disk-bound file h c2))))
   :hints (("Goal" :use ((:instance fn-hib-fill-rel)
-                        (:instance fn-hib-root-holds-of-fill (words (fn-pgs-fill-realize file (fn-hrc-phys p c)))))
+                        (:instance fn-hib-root-holds-of-fill (words (fn-pgs-page-words file (fn-hrc-phys p c)))))
            :in-theory (theory 'minimal-theory))))
 
 (defthm fn-hib-get-keeps
@@ -408,7 +408,7 @@
           (mv-let (fv fn-hrecs$c)
             ; the list form in the logic; the frame fill runs (the same term
             ; by fn-hrc-frame-fill's definition; lane page-word-boundary)
-            (mbe :logic (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 fn-hrecs$c)) fn-hrecs$c)
+            (mbe :logic (fn-hrc-fill 0 (fn-pgs-page-words file (fn-hrc-phys 0 fn-hrecs$c)) fn-hrecs$c)
                  :exec (fn-hrc-frame-fill file (fn-hrc-phys 0 fn-hrecs$c) 0 fn-hrecs$c))
             (if (not (eq fv :ok))
                 (mv (if (consp fv) fv (list :refused :page0 fv)) fn-hrecs$c)
@@ -564,12 +564,12 @@
                 (equal (nth *pgs-vi* (fn-hrc-pgs c1)) (resize-list nil np 0))
                 (equal (pgs-v-length (fn-hrc-pgs c1)) np) (< 0 np)
                 (fn-hib-tw 0 np iw (fn-hrc-pgs c1)) (fn-hib-nw file 0 np iw (fn-hrc-pgs c1)))
-           (let ((m2 (fn-hrc-pgs (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 c1)) c1)))))
+           (let ((m2 (fn-hrc-pgs (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-page-words file (fn-hrc-phys 0 c1)) c1)))))
              (and (fn-hp-vhold 0 np m2 iw) (equal (pgs-v-length m2) np)
                   (fn-hib-tw 0 np iw m2) (fn-hib-nw file 0 np iw m2))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hib-fill-pgs-vhold (p 0) (m (fn-hrc-pgs c1)) (oct (fn-hrc-oct c1)) (txid (fn-hrc-txid c1))
-                            (w (fn-pgs-fill-realize file (fn-hrc-phys 0 c1))))
+                            (w (fn-pgs-page-words file (fn-hrc-phys 0 c1))))
                  (:instance fn-hib-vhold-none-verified (s 0) (n np) (m (fn-hrc-pgs c1)))
                  (:instance fn-hib-tw-page (p 0) (q 0) (n np) (m (fn-hrc-pgs c1)))
                  (:instance fn-hib-nw-page (p 0) (q 0) (n np) (m (fn-hrc-pgs c1))))
@@ -615,13 +615,13 @@
 (defthm fn-hib-adopt-shape
   (let* ((c1 (mv-nth 1 (fn-hib-open-root file rec c)))
          (np (pgs-rec-npages rec))
-         (c1f (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 c1)) c1)))
+         (c1f (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-page-words file (fn-hrc-phys 0 c1)) c1)))
          (hd (fn-hp-x-header np (fn-hrc-pgs c1f)))
          (r (fn-hib-adopt file rec salt count c)))
     (implies (not (mv-nth 0 r))
              (and (not (mv-nth 0 (fn-hib-open-root file rec c)))
                   (< 0 np)
-                  (equal (mv-nth 0 (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 c1)) c1)) :ok)
+                  (equal (mv-nth 0 (fn-hrc-fill 0 (fn-pgs-page-words file (fn-hrc-phys 0 c1)) c1)) :ok)
                   (equal (mv-nth 0 hd) :ok)
                   (fn-hib-headerp (mv-nth 1 hd))
                   (equal (nth 1 (mv-nth 1 hd)) count)
@@ -662,11 +662,11 @@
         (:instance fn-hib-open-root-pgs)
         (:instance fn-hib-open-root-wfp (fn-hrecs$c c))
         (:instance fn-hrc-fill-wfp (p 0) (fn-hrecs$c (mv-nth 1 (fn-hib-open-root file rec c)))
-                   (words (fn-pgs-fill-realize file (fn-hrc-phys 0 (mv-nth 1 (fn-hib-open-root file rec c))))))
+                   (words (fn-pgs-page-words file (fn-hrc-phys 0 (mv-nth 1 (fn-hib-open-root file rec c))))))
         (:instance fn-hib-adopt-fill-vhold (c1 (mv-nth 1 (fn-hib-open-root file rec c))) (np (pgs-rec-npages rec))
                    (iw (fn-hp-piw h salt starts (pgs-rec-npages rec))))
         (:instance fn-hp-x-header-is-placed (np (pgs-rec-npages rec))
-                   (pgs-mem (fn-hrc-pgs (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-fill-realize file (fn-hrc-phys 0 (mv-nth 1 (fn-hib-open-root file rec c))))
+                   (pgs-mem (fn-hrc-pgs (mv-nth 1 (fn-hrc-fill 0 (fn-pgs-page-words file (fn-hrc-phys 0 (mv-nth 1 (fn-hib-open-root file rec c))))
                                                                 (mv-nth 1 (fn-hib-open-root file rec c))))))))
   :in-theory (set-difference-theories (union-theories '(fn-hrs-rel fn-hrs-img-ok fn-hib-root-holds fn-hib-disk-bound fn-hib-tabs-is-tw fn-hib-nc-is-nw
                                fn-hib-adopt-fields fn-hib-adopt-wfp fn-hib-sfx-list-empty fn-hib-take-len fn-hib-nthcdr-len
@@ -743,7 +743,7 @@
                                                                      fn-hib-q-page fn-hib-q-phys fn-hib-entry-shape natp len
                                                                      (:e len) (:e natp))
                                                                    (theory 'minimal-theory))))))
-  (mbe :logic (fn-hib-complete q (fn-pgs-fill-realize file (fn-hib-q-phys q)) fn-hrecs$c)
+  (mbe :logic (fn-hib-complete q (fn-pgs-page-words file (fn-hib-q-phys q)) fn-hrecs$c)
        :exec (let ((p (fn-hib-q-page q)) (e (fn-hib-entry (fn-hib-q-page q) fn-hrecs$c)))
                (cond ((not (equal (fn-hib-q-root q) (fn-hrc-txid fn-hrecs$c)))
                       (mv (list :refused :stale-root (fn-hib-q-root q) (fn-hrc-txid fn-hrecs$c)) fn-hrecs$c))
@@ -776,13 +776,13 @@
 (defthm fn-hib-complete-keeps
   (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (fn-hib-root-holds h c) (fn-hib-disk-bound file h c)
                 (fn-hib-requestp q))
-           (let ((c2 (mv-nth 1 (fn-hib-complete q (fn-pgs-fill-realize file (fn-hib-q-phys q)) c))))
+           (let ((c2 (mv-nth 1 (fn-hib-complete q (fn-pgs-page-words file (fn-hib-q-phys q)) c))))
              (and (fn-hrc-wfp c2) (fn-hrs-rel h c2) (fn-hib-root-holds h c2) (fn-hib-disk-bound file h c2))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hib-complete-stale (words (fn-pgs-fill-realize file (fn-hib-q-phys q))))
+           :use ((:instance fn-hib-complete-stale (words (fn-pgs-page-words file (fn-hib-q-phys q))))
                  (:instance fn-hib-fill-rel (p (fn-hib-q-page q)))
                  (:instance fn-hib-root-holds-of-fill (p (fn-hib-q-page q))
-                            (words (fn-pgs-fill-realize file (fn-hib-q-phys q)))))
+                            (words (fn-pgs-page-words file (fn-hib-q-phys q)))))
            :in-theory (union-theories '(fn-hib-complete fn-hib-entry-phys fn-hib-requestp fn-hib-q-page fn-hib-q-root
                                         fn-hib-q-phys fn-hib-q-digest natp mv-nth car-cons cdr-cons)
                                       (theory 'minimal-theory)))))

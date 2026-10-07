@@ -29,6 +29,7 @@
 ; Prefix `fn-cll-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "rev-onto")
+(include-book "def-loop")
 
 ; "Cancel-Lock: sha256:"
 (defconst *fn-cll-lock-head*
@@ -58,41 +59,10 @@
 ; " sha256:K1 sha256:K2 ..." for the keys KEYS.
 ; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
 ; control-stack frame per element of data with no fixed cap (D27).
-(defun fn-cll-key-values-step (x rest)
-  (declare (xargs :guard t))
-  (fn-cll-append *fn-cll-key-word* (fn-cll-append x rest)))
-
-(defun fn-cll-key-values-loop (rev acc)
-  (declare (xargs :guard t))
-  (if (consp rev)
-      (fn-cll-key-values-loop (cdr rev) (fn-cll-key-values-step (car rev) acc))
-    acc))
-
-(defun fn-cll-key-values (keys)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp keys)
-           (fn-cll-append *fn-cll-key-word*
-                          (fn-cll-append (car keys) (fn-cll-key-values (cdr keys))))
-         nil)
-       :exec (fn-cll-key-values-loop (fn-ag-rev-onto keys nil) nil)))
-
-(defthm fn-cll-key-values-loop-of-rev-onto
-  (equal (fn-cll-key-values-loop (fn-ag-rev-onto keys zs) nil)
-         (fn-cll-key-values-loop zs (fn-cll-key-values keys)))
-  :hints (("Goal" :induct (fn-ag-rev-onto keys zs)
-                  :in-theory (union-theories
-                              '(fn-cll-key-values-loop fn-cll-key-values fn-cll-key-values-step fn-ag-rev-onto
-                                car-cons cdr-cons)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
-
-(verify-guards fn-cll-key-values
-  :hints (("Goal" :use ((:instance fn-cll-key-values-loop-of-rev-onto (zs nil)))
-                  :in-theory (union-theories
-                              '(fn-cll-key-values-loop fn-cll-key-values)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cll-key-values (keys)
+  :shape :foldr :over keys :elt k
+  :combine (fn-cll-append *fn-cll-key-word* (fn-cll-append k acc)) :init nil
+  :rev fn-ag-rev-onto)
 
 ; "Cancel-Key: sha256:K1 sha256:K2 ..." CRLF
 (defun fn-cll-key-line (keys)

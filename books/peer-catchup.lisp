@@ -44,6 +44,7 @@
 ;   fn-cu-decode-of-encode   an FNCU record round-trips
 (in-package "ACL2")
 (include-book "peer-pull-session")
+(include-book "def-loop")
 (include-book "peer-catchup-serve")
 
 ; -----------------------------------------------------------------------------
@@ -350,52 +351,14 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cu-obs-effects-loop (obs fc security round acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp obs)
-      (fn-cu-obs-effects-loop (cdr obs)
-                              fc
-                              security
-                              round
-                              (fn-ag-rev-onto (fn-cu-obs-effect (fn-fc-obs-kind (car obs))
-                                                                fc
-                                                                security
-                                                                round)
-                                              acc))
-    (revappend acc nil)))
-
-(defun fn-cu-obs-effects (obs fc security round)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp obs)
-           (append (fn-cu-obs-effect (fn-fc-obs-kind (car obs)) fc security round)
-                   (fn-cu-obs-effects (cdr obs) fc security round))
-         nil)
-       :exec (fn-cu-obs-effects-loop obs fc security round nil)))
+(def-loop fn-cu-obs-effects (obs fc security round)
+  :shape :concat :over obs :elt o
+  :body (fn-cu-obs-effect (fn-fc-obs-kind o) fc security round))
 
 (local
  (defthm fn-cu-obs-effects-loop-rev-onto-append
    (equal (revappend (fn-ag-rev-onto x acc) y)
           (revappend acc (append x y)))))
-
-(local
- (defthm fn-cu-obs-effects-loop-is-revappend
-   (equal (fn-cu-obs-effects-loop obs fc security round acc)
-          (revappend acc (fn-cu-obs-effects obs fc security round)))
-   :hints (("Goal" :induct (fn-cu-obs-effects-loop obs fc security round acc)
-                   :in-theory (union-theories '(fn-cu-obs-effects-loop fn-cu-obs-effects revappend car-cons cdr-cons fn-cu-obs-effects-loop-rev-onto-append)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cu-obs-effects-loop)
-
-(verify-guards fn-cu-obs-effects
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cu-obs-effects)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cu-obs-effects-loop-is-revappend (acc nil))))))
 
 (defun fn-cu-session-readyp (s)
   (declare (xargs :guard t))
@@ -522,43 +485,11 @@
 ; peers, operator data with no fixed cap (D27).  (mbe :logic <the recursion,
 ; unchanged> :exec <a loop>), equal by fn-cu-plans-of-loop-is-rev-onto
 ; (books/rev-onto.lisp).
-(defun fn-cu-plans-of-loop (names peers acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-cu-plans-of-loop
-       (cdr names) peers
-       (let ((plan (fn-cu-plan-of-rows (car names)
-                    (fn-cfg-rows-with-key peers (car names)))))
-         (if plan (cons plan acc) acc)))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cu-plans-of (names peers)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (let ((plan (fn-cu-plan-of-rows (car names)
-                        (fn-cfg-rows-with-key peers (car names)))))
-             (if plan
-                 (cons plan (fn-cu-plans-of (cdr names) peers))
-               (fn-cu-plans-of (cdr names) peers)))
-         nil)
-       :exec (fn-cu-plans-of-loop names peers nil)))
-
-(defthm fn-cu-plans-of-loop-is-rev-onto
-  (equal (fn-cu-plans-of-loop names peers acc)
-         (fn-ag-rev-onto acc (fn-cu-plans-of names peers)))
-  :hints (("Goal" :induct (fn-cu-plans-of-loop names peers acc)
-                  :in-theory (union-theories
-                              '(fn-cu-plans-of-loop fn-cu-plans-of
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cu-plans-of
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cu-plans-of fn-ag-rev-onto
-                                fn-cu-plans-of-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-cu-plans-of (names peers)
+  :shape :map :over names :elt n
+  :let ((plan (fn-cu-plan-of-rows n (fn-cfg-rows-with-key peers n))))
+  :keep plan
+  :body plan)
 
 ; KEYSTONE SUBJECT.  The peers this node catches up from
 ; (host/owner-host.lisp `fn-owner-catchup-plans').

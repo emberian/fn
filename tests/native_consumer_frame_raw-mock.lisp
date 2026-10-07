@@ -1,4 +1,4 @@
-;;; `fn consumer --frame status|position|ack': the shipped CLI adapter prints
+;;; `fn consumer --frame status|position|ack|poll': the shipped CLI adapter prints
 ;;; the reply frame the one exchange read, as hex, in place of the line; ACL2
 ;;; chose the plan ((:frame PLAN), books/consumer-reason.lisp), the exchange
 ;;; returned the frame octets, and the adapter adds no exchange and no octet
@@ -81,6 +81,51 @@
           '(:consumer-reply :accepted (9 9 9)) 
           '(70 78 67 84 1 5 0 0 0 4 1 2 3 4)
           '("ack" "control" "cursor") '(:ack))
+
+;; poll: the frame is printed in place of the line, and the report and cursor
+;; files are written exactly as without the flag, report first, cursor last.
+;; The frame is built here by hand in the kind-6 layout (header, status code,
+;; four-octet cursor length, cursor, four-octet report length, report, then a
+;; stand-in trailer); the host decodes nothing, ACL2 does, so REPLY is what
+;; the decode of that frame is.  That the cursor file's bytes are the frame's
+;; cursor field for every frame the encoder makes is
+;; fn-wf-cs-poll-cursor-file-is-the-frames-sized-field
+;; (books/wire-family-consumer.lisp).
+(defparameter +poll-cursor+ (loop for i from 1 to 31 collect i))
+(defparameter +poll-report+ '(200 201 202))
+(defparameter +poll-frame+
+  (append '(70 78 67 84 1 6) '(0 0 0 0)
+          '(0) (list 0 0 0 (length +poll-cursor+)) +poll-cursor+
+          (list 0 0 0 (length +poll-report+)) +poll-report+
+          '(9 9 9 9)))
+(defun poll-frame-cursor-field (frame)
+  "The octets behind the cursor's four-octet length, read off the frame."
+  (let* ((payload (nthcdr 10 frame))
+         (n (reduce (lambda (a b) (+ (* 256 a) b)) (subseq payload 1 5))))
+    (subseq payload 5 (+ 5 n))))
+(let ((*calls* nil) (*out* nil)
+      (*plan* '(:frame (:run :poll (99) (119) (111) (114))))
+      (*reply* (list :consumer-poll-reply :accepted +poll-cursor+ +poll-report+))
+      (*frame* +poll-frame+))
+  (let ((code (fnn-command-consumer-local "--frame" '("control" "worker" "cursor" "report"))))
+    (unless (eql code 0) (error "poll: exit ~s" code))
+    (unless (equal (reverse *out*) (list (fnn-hex +poll-frame+)))
+      (error "poll: printed ~s, not the frame's hex" (reverse *out*)))
+    (let ((requests (remove :write (reverse *calls*) :key #'first))
+          (writes (remove :request (reverse *calls*) :key #'first)))
+      (unless (equal (mapcar #'third requests) '(:poll))
+        (error "poll: exchanges ~s, wanted exactly one poll" requests))
+      (unless (equal (mapcar #'second writes) '("r" "o"))
+        (error "poll: files ~s, wanted report then cursor" writes))
+      (unless (equal (third (first writes)) +poll-report+)
+        (error "poll: report file holds ~s" (third (first writes))))
+      (unless (equal (third (second writes)) +poll-cursor+)
+        (error "poll: cursor file holds ~s" (third (second writes))))
+      (unless (equal (third (second writes)) (poll-frame-cursor-field +poll-frame+))
+        (error "poll: cursor file is not the frame's cursor field")))))
+(format t "native consumer --frame poll boundary passed~%")
+(format t "native consumer --frame poll files boundary passed~%")
+(format t "native consumer --frame poll cursor-field boundary passed~%")
 
 ;; Without the flag the plan is the command's own and the line is printed:
 ;; the frame is never printed.

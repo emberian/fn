@@ -42,6 +42,7 @@
 ; Prefix `fn-ncr-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "consumer-wait-codec")
+(include-book "def-loop")
 (include-book "native-control-reason")
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -179,15 +180,25 @@
 (defconst *fn-ncr-frame-flag* '(45 45 102 114 97 109 101)) ; --frame
 
 ; `fn consumer --frame COMMAND ...' is COMMAND's plan, for the commands whose
-; replies a client reads as frames (status, position, ack), wrapped as
+; replies a client reads as frames (status, position, ack, poll), wrapped as
 ; (:frame PLAN): the host prints the reply frame's octets as hex instead of
 ; the line.  Any other command, or a plan that is not a run, is (:usage :frame).
 (defun fn-ncr-frame-plan (plan)
   (declare (xargs :guard t))
   (if (and (consp plan) (equal (car plan) :run) (consp (cdr plan))
-           (member-equal (cadr plan) '(:status :position :ack)))
+           (member-equal (cadr plan) '(:status :position :ack :poll)))
       (list :frame plan)
     (list :usage :frame)))
+
+; A plan is wrapped only when it is a run of status, position, ack or poll;
+; every other plan (a usage, a help, a run of any other operation) is
+; (:usage :frame).
+(defthm fn-ncr-frame-plan-wraps-only-those-runs
+  (implies (equal (car (fn-ncr-frame-plan plan)) :frame)
+           (and (consp plan) (equal (car plan) :run) (consp (cdr plan))
+                (member-equal (cadr plan) '(:status :position :ack :poll))
+                (equal (fn-ncr-frame-plan plan) (list :frame plan))))
+  :rule-classes nil)
 
 (defun fn-ncr-cli-plan (command argv)
   (declare (xargs :guard t))
@@ -340,46 +351,14 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-ncr-json-escape-loop (octets acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp octets)
-      (fn-ncr-json-escape-loop (cdr octets)
-                               (fn-ag-rev-onto (fn-ncr-json-octet (car octets)) acc))
-    (revappend acc nil)))
-
-(defun fn-ncr-json-escape (octets)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp octets)
-           (append (fn-ncr-json-octet (car octets))
-                   (fn-ncr-json-escape (cdr octets)))
-         nil)
-       :exec (fn-ncr-json-escape-loop octets nil)))
+(def-loop fn-ncr-json-escape (octets)
+  :shape :concat :over octets :elt o
+  :body (fn-ncr-json-octet o))
 
 (local
  (defthm fn-ncr-json-escape-loop-rev-onto-append
    (equal (revappend (fn-ag-rev-onto x acc) y)
           (revappend acc (append x y)))))
-
-(local
- (defthm fn-ncr-json-escape-loop-is-revappend
-   (equal (fn-ncr-json-escape-loop octets acc)
-          (revappend acc (fn-ncr-json-escape octets)))
-   :hints (("Goal" :induct (fn-ncr-json-escape-loop octets acc)
-                   :in-theory (union-theories '(fn-ncr-json-escape-loop fn-ncr-json-escape revappend car-cons cdr-cons fn-ncr-json-escape-loop-rev-onto-append)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-ncr-json-escape-loop)
-
-(verify-guards fn-ncr-json-escape
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-ncr-json-escape)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-ncr-json-escape-loop-is-revappend (acc nil))))))
-
 
 (defun fn-ncr-decimal-aux (n acc)
   (declare (xargs :guard t :measure (nfix n)))
@@ -534,42 +513,13 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-ncr-hex-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-ncr-hex-loop (cdr rev)
-                       (list* (fn-ncr-hex-digit (floor (min (nfix (car rev)) 255) 16))
-                              (fn-ncr-hex-digit (mod (min (nfix (car rev)) 255) 16))
-                              acc))
-    acc))
-
-(defun fn-ncr-hex (octets)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp octets)
-           (list* (fn-ncr-hex-digit (floor (min (nfix (car octets)) 255) 16))
-                  (fn-ncr-hex-digit (mod (min (nfix (car octets)) 255) 16))
-                  (fn-ncr-hex (cdr octets)))
-         nil)
-       :exec (fn-ncr-hex-loop (fn-ag-rev-onto octets nil) nil)))
-
-(local
- (defthm fn-ncr-hex-loop-of-rev-onto
-   (equal (fn-ncr-hex-loop (fn-ag-rev-onto octets zs) nil)
-          (fn-ncr-hex-loop zs (fn-ncr-hex octets)))
-   :hints (("Goal" :induct (fn-ag-rev-onto octets zs)
-                   :in-theory (union-theories '(fn-ncr-hex-loop fn-ncr-hex fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-ncr-hex-loop)
-
-(verify-guards fn-ncr-hex
-  :hints (("Goal" :in-theory (union-theories '(fn-ncr-hex fn-ncr-hex-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-ncr-hex-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-ncr-hex (octets)
+  :shape :foldr :over octets :elt o
+  :combine (list* (fn-ncr-hex-digit (floor (min (nfix o) 255) 16))
+                  (fn-ncr-hex-digit (mod (min (nfix o) 255) 16))
+                  acc)
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-ncr-article-json (summary)
   (declare (xargs :guard t))

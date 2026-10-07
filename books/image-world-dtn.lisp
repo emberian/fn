@@ -23,6 +23,7 @@
 (include-book "peer-flight-startup")
 (include-book "peer-catchup-spool-resources")
 (include-book "peer-catchup-spool")
+(include-book "peer-catchup-spool-body")
 (include-book "peer-catchup-spool-hash")
 (include-book "store-config")
 (include-book "identity")

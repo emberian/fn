@@ -28,6 +28,7 @@
 ;; 2 the table pages (`pgs-x-len', `pgs-x-word').
 (in-package "ACL2")
 (include-book "blake3-stobj")
+(include-book "def-buffer")
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -233,48 +234,7 @@
 ; fn-octets (the served attempt's buffer and the log walk's are never
 ; touched by a page digest).
 
-(defabsstobj fn-octets-pg
-  :foundation fn-octets$c
-  :recognizer (fn-octets-pg-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-octets-pg :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-octets-pg-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-octets-pg-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-octets-pg-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-octets-pg-append-octet :logic fn-octets$a-append-octet
-                                       :exec fn-octets$c-append-octet :protect t)
-            (fn-octets-pg-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-octets-pg-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                                  :protect t)
-            (fn-octets-pg-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-octets-pg-from-list :logic fn-octets$a-from-list
-                                    :exec fn-octets$c-from-list :protect t)
-            (fn-octets-pg-append-list :logic fn-octets$a-append-list
-                                      :exec fn-oct-write-list :protect t)
-            (fn-octets-pg-append-back :logic fn-octets$a-append-back
-                                      :exec fn-octets$c-append-back :protect t)
-            (fn-octets-pg-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-octets-pg-append-word :logic fn-octets$a-append-word
-                                      :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
-
-(defthm pgs-oct-clear-is-nil
-  (equal (fn-octets-pg-clear fn-octets-pg) nil)
-  :hints (("Goal" :in-theory (enable fn-octets-pg-clear))))
-
-(defthm pgs-oct-append-word-is-append
-  (equal (fn-octets-pg-append-word w k fn-octets-pg)
-         (append fn-octets-pg (fn-oct-word-octets w k)))
-  :hints (("Goal" :in-theory (enable fn-octets-pg-append-word))))
-
-(defthm pgs-oct-list-is-identity
-  (equal (fn-octets-pg-list fn-octets-pg) fn-octets-pg)
-  :hints (("Goal" :in-theory (enable fn-octets-pg-list))))
-
-(defthm pgs-oct-p-is-octet-listp
-  (equal (fn-octets-pg-p x) (fn-cbor-octet-listp x))
-  :hints (("Goal" :in-theory (enable fn-octets-pg-p))))
-
-(in-theory (disable fn-octets-pg-p fn-octets-pg-clear fn-octets-pg-append-word fn-octets-pg-list))
+(def-buffer fn-octets-pg :view t)
 
 ; The buffer's concrete-array rules (books/octets-stobj.lisp) are about its
 ; foundation, never about the page store's lists, and backchaining through

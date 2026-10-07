@@ -297,9 +297,23 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defrecord-tests \
 	books/def-loop \
 	tests/acl2/def-loop-tests \
+	books/def-buffer \
+	tests/acl2/def-buffer-tests \
+	tests/acl2/pgs-frame-fill-tests \
 	books/def-representation-lib \
+	books/def-representation-pages \
+	books/paged-checkpoint \
+	books/catalog-pages \
+	books/paged-checkpoint-host \
+	books/paged-checkpoint-exec \
+	books/paged-checkpoint-stage \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-representation-pages-tests \
+	tests/acl2/paged-checkpoint-tests \
+	tests/acl2/paged-checkpoint-host-tests \
+	tests/acl2/paged-checkpoint-exec-tests \
+	tests/acl2/paged-checkpoint-stage-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
@@ -861,6 +875,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
 	books/recovery-refinement \
+	books/recovery-refinement-store \
 	tests/acl2/recovery-refinement-tests \
 	books/recovery-refinement-concurrent \
 	tests/acl2/recovery-refinement-concurrent-tests \
@@ -2046,8 +2061,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-header-query \
 	tests/acl2/legacy-header-query-tests \
 	tests/acl2/article-stream-server-tests \
+	books/article-select-index \
 	books/article-stream-owner \
+	books/article-stream-owner-bridge \
 	tests/acl2/article-stream-owner-tests \
+	tests/acl2/article-stream-owner-teeth-tests \
 	tests/acl2/catalog-availability-tests \
 	tests/acl2/catalog-availability-owner-load-tests \
 	tests/acl2/catalog-availability-paged-tests \
@@ -2666,6 +2684,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lock_discipline_check
 	@$(CHECK_STEP) $(PYTHON) tools/lanedump_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lanedump_check
+	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -2965,6 +2985,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/tls_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_tls_check
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/attach_order_check.py
 # A host macro used before its definition in load order compiles as a
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
 	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
@@ -3017,6 +3038,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/evidence_size_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_evidence_size_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_attach_order_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests

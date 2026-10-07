@@ -17,6 +17,7 @@
 ; no constant caps the data.  Parsing never calls the Lisp reader.
 (in-package "ACL2")
 (include-book "bp-fnbs-codec")
+(include-book "def-loop")
 (include-book "bp-primary-cbor")
 (include-book "article")
 (include-book "consumer-position")
@@ -37,52 +38,13 @@
 ; recursion took one control-stack frame per character (and, through `append',
 ; one per octet of every encoded car).  Each is (mbe :logic <the recursion,
 ; unchanged> :exec <loop>), equal by <f>-loop-is-rev-onto / fn-bpnr-enc-go-is-enc.
-(defun fn-bpnr-codes-loop (chars acc)
-  (declare (xargs :guard t :verify-guards t))
-  (if (atom chars) (fn-ag-rev-onto acc nil)
-    (fn-bpnr-codes-loop (cdr chars)
-                        (cons (if (characterp (car chars)) (char-code (car chars)) 0)
-                              acc))))
+(def-loop fn-bpnr-codes (chars)
+  :shape :map :over chars :elt c
+  :body (if (characterp c) (char-code c) 0))
 
-(defun fn-bpnr-codes (chars)
-  (declare (xargs :guard t))
-  (mbe :logic (if (atom chars) nil
-                (cons (if (characterp (car chars)) (char-code (car chars)) 0)
-                      (fn-bpnr-codes (cdr chars))))
-       :exec (fn-bpnr-codes-loop chars nil)))
-
-(defthm fn-bpnr-codes-loop-is-rev-onto
-  (equal (fn-bpnr-codes-loop chars acc)
-         (fn-ag-rev-onto acc (fn-bpnr-codes chars)))
-  :hints (("Goal" :induct (fn-bpnr-codes-loop chars acc)
-                  :in-theory (union-theories
-                              '(fn-bpnr-codes-loop fn-bpnr-codes fn-ag-rev-onto
-                                atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(defun fn-bpnr-chars-loop (codes acc)
-  (declare (xargs :guard t :verify-guards t))
-  (if (atom codes) (fn-ag-rev-onto acc nil)
-    (fn-bpnr-chars-loop (cdr codes)
-                        (cons (if (fn-cbor-octetp (car codes)) (code-char (car codes))
-                                (code-char 0))
-                              acc))))
-
-(defun fn-bpnr-chars (codes)
-  (declare (xargs :guard t))
-  (mbe :logic (if (atom codes) nil
-                (cons (if (fn-cbor-octetp (car codes)) (code-char (car codes)) (code-char 0))
-                      (fn-bpnr-chars (cdr codes))))
-       :exec (fn-bpnr-chars-loop codes nil)))
-
-(defthm fn-bpnr-chars-loop-is-rev-onto
-  (equal (fn-bpnr-chars-loop codes acc)
-         (fn-ag-rev-onto acc (fn-bpnr-chars codes)))
-  :hints (("Goal" :induct (fn-bpnr-chars-loop codes acc)
-                  :in-theory (union-theories
-                              '(fn-bpnr-chars-loop fn-bpnr-chars fn-ag-rev-onto
-                                atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-bpnr-chars (codes)
+  :shape :map :over codes :elt c
+  :body (if (fn-cbor-octetp c) (code-char c) (code-char 0)))
 
 (defun fn-bpnr-counted (tag codes)
   (declare (xargs :guard t))
@@ -179,16 +141,6 @@
                                 car-cons cdr-cons natp zp)
                               (theory 'minimal-theory)))))
 
-(verify-guards fn-bpnr-codes
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpnr-codes fn-ag-rev-onto fn-bpnr-codes-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
-(verify-guards fn-bpnr-chars
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpnr-chars fn-ag-rev-onto fn-bpnr-chars-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-bpnr-counted
   :hints (("Goal" :in-theory (disable fn-bpc-u64-bytes floor mod))))
 (verify-guards fn-bpnr-symbol-tag)

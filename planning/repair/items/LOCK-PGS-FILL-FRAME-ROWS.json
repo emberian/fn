@@ -1,0 +1,13 @@
+{
+ "category": "lock-discipline",
+ "detail": "Same two preads the baseline already counted under fn-pgs-fill-realize (R2|fn-pgs-fill-realize|O:fnn-extent-pread, count 53; R3|fn-pgs-fill-realize|naked:fnn-extent-pread, count 1), now attributed to the function that holds the pread after lane s-frame-fill deleted the realizer. lock_discipline_check --check lists the two old rows STALE; lowering them is the integrator's --lower-stale. The new fn-pgs-fill-frame keys (R2 pread under O/E, R3 naked pread: the descriptor is captured under the extent lock and used after it, as before) must be added as the rename, not as new debt.",
+ "file": "tools/lock_discipline_baseline.json",
+ "id": "LOCK-PGS-FILL-FRAME-ROWS",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "low",
+ "source": "lane s-frame-fill",
+ "state": "open",
+ "title": "lock-discipline baseline: rename the fn-pgs-fill-realize R2/R3 pread rows to fn-pgs-fill-frame (same preads, no new debt)",
+ "updated": "2026-10-07T04:00:00Z"
+}

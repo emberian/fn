@@ -38,29 +38,8 @@
 
 ; The BP open's own buffer.  The store owner's `fn-octets' is filled under
 ; the owner's mutex by served attempts; the BP open never shares it.
-(defabsstobj fn-octets-bp
-  :foundation fn-octets$c
-  :recognizer (fn-octets-bp-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-octets-bp :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-octets-bp-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-octets-bp-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-octets-bp-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-octets-bp-append-octet :logic fn-octets$a-append-octet
-                                       :exec fn-octets$c-append-octet :protect t)
-            (fn-octets-bp-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-octets-bp-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                                  :protect t)
-            (fn-octets-bp-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-octets-bp-from-list :logic fn-octets$a-from-list
-                                    :exec fn-octets$c-from-list :protect t)
-            (fn-octets-bp-append-list :logic fn-octets$a-append-list
-                                      :exec fn-oct-write-list :protect t)
-            (fn-octets-bp-append-back :logic fn-octets$a-append-back
-                                      :exec fn-octets$c-append-back :protect t)
-            (fn-octets-bp-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-octets-bp-append-word :logic fn-octets$a-append-word
-                                      :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
+(include-book "def-buffer")
+(def-buffer fn-octets-bp)
 
 (local
  (defthm fn-bpnrb-read-u64-of-slice
