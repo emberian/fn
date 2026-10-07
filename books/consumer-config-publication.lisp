@@ -17,7 +17,7 @@
          (fn-own-max-conns owner) (fn-own-pending owner)
          (fn-own-ledger-field owner) (fn-own-clock owner) (fn-own-facts owner)
          (fn-own-config owner) (fn-own-queue owner) (fn-own-inflight owner)
-         (fn-own-feeds owner) (fn-own-node-secret owner) (fn-own-refused owner)))))
+         (fn-own-feeds owner) (fn-own-node-secret owner) (fn-own-refused owner) (fn-own-proc owner)))))
 
 ; Bounded projection of the one existing configuration decision. :REFUSED
 ; after a reported durable write is recovery-required at this boundary too.

@@ -353,13 +353,13 @@
                                             (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                                             (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                                             (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                                            (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+                                            (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))
                  (:instance fn-own-refresh-view-is-kept-or-the-idle-node
                             (o (fn-own-make (fn-sn-finish (fn-own-store o)) (fn-own-view o) (fn-own-conns o)
                                             (fn-own-next-id o) (fn-own-max-conns o) nil
                                             (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion (fn-sn-files (fn-own-store o))))
                                             (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                                            (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                            (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 )
 
 (local (defthm fn-own-finish-keeps-store-configuration

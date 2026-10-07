@@ -73,7 +73,7 @@
                     (fn-own-feeds o)
                     (fn-own-sub-msgid sub) (fn-own-feed-stamp o))
                  (fn-own-feeds o))
-               (fn-own-node-secret o) (fn-own-refused o)))
+               (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
 
 (defun fn-oop-outcome (oc id word icar carry)
   (declare (xargs :guard t))
@@ -144,7 +144,7 @@
                    (fn-own-feed-durable o sub)
                  (fn-own-feeds o))
                (fn-own-node-secret o)
-               (fn-own-transit-refused o conn sub kind reason)))
+               (fn-own-transit-refused o conn sub kind reason) (fn-own-proc o)))
 
 (defun fn-oop-transit-outcome (oc id kind reason word)
   (declare (xargs :guard t))

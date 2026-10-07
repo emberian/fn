@@ -413,7 +413,7 @@
                             (fn-own-next-id o) (fn-own-max-conns o) id
                             (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                             (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
-                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
+                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))
              o)))
   :hints (("Goal" :in-theory '(fn-ocfg-step fn-ocfg-pass fn-own-step fn-own-begin
                                fn-pout-begin-admitsp fn-ocfg-with-owner
@@ -445,7 +445,7 @@
                             (fn-ag-append (fn-own-facts o)
                                           (list (fn-own-group-fact-make name (fn-own-clock o))))
                             (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
-                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
+                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))
              o)))
   :hints (("Goal" :in-theory '(fn-ocfg-step fn-ocfg-pass fn-own-step fn-own-declare-group
                                fn-pout-declare-group-admitsp fn-ocfg-with-owner
@@ -460,7 +460,7 @@
  (defthm fn-pout-grown-facts-are-another-owner
    (not (equal (fn-own-make store view conns next-id max-conns pending ledger clock
                             (append (fn-own-facts o) (list g))
-                            config queue inflight feeds node-secret refused)
+                            config queue inflight feeds node-secret refused proc)
                o))
    :hints (("Goal" :use ((:instance fn-own-facts-of-fn-own-make
                                     (facts (append (fn-own-facts o) (list g)))))

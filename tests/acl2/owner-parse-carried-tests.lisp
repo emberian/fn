@@ -384,7 +384,7 @@
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-               sub (fn-own-feeds o) secret (fn-own-refused o)))
+               sub (fn-own-feeds o) secret (fn-own-refused o) (fn-own-proc o)))
 (defconst *apc-g-taken* (apc-g-with-sub *own-taken* *apc-g-sub* *apc-g-secret*))
 (defconst *apc-g-stored* (fn-own-sub-stored-octets *osi-cfg* *apc-g-sub* *apc-g-secret*))
 (defconst *apc-g-wire* (osi-record-of-wire 2 2 *apc-g-sub* *apc-g-stored*))

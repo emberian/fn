@@ -251,14 +251,14 @@
                           (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                           (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                           (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
-                          (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
+                          (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))))
   :hints (("Goal" :in-theory (e/d (fn-onb-boundp) (fn-own-refresh fn-onb-store-boundp fn-nntp-nexts-boundedp))
            :use ((:instance fn-onb-boundp-of-refresh
                             (o (fn-own-make s (fn-own-view o)
                                             (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                                             (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                                             (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
-                                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 (defthm fn-onbj-store-boundp-when-boundp
   (implies (fn-onb-boundp o) (fn-onb-store-boundp (fn-own-store o)))
@@ -631,10 +631,10 @@
 (defthm fn-onbj-boundp-of-refresh-make
   (implies (and (fn-onb-store-boundp s)
                 (fn-nntp-nexts-boundedp (fn-state-nexts (fn-own-view-archive v))))
-           (fn-onb-boundp (fn-own-refresh (fn-own-make s v c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13))))
+           (fn-onb-boundp (fn-own-refresh (fn-own-make s v c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14))))
   :hints (("Goal" :in-theory (e/d (fn-onb-boundp) (fn-own-refresh fn-onb-store-boundp fn-nntp-nexts-boundedp))
            :use ((:instance fn-onb-boundp-of-refresh
-                            (o (fn-own-make s v c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13)))))))
+                            (o (fn-own-make s v c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14)))))))
 
 (defthm fn-onbj-boundp-of-own-complete
   (implies (fn-onb-boundp o)

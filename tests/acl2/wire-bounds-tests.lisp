@@ -248,7 +248,7 @@
                (fn-inj-make-config t (wb-o "fn.example.invalid")
                                    (list (wb-o "fn.letters"))
                                    *fn-record-max-payload*)
-               nil nil nil nil nil))
+               nil nil nil nil nil (fn-oproc-initial)))
 (defconst *wb-profile* *fn-bs-profile-defaults*)
 ; (mv-nth 1 (fn-osb-install o profile)), the theorem's O2
 (defun wb-install (o profile)
@@ -299,7 +299,7 @@
 (defconst *wb-full*
   (fn-own-make nil nil
                (list (list 7 0 0 (fn-wire-initial-state 510 *fn-record-max-payload*)))
-               8 1 nil nil nil nil (fn-own-config *wb-o2*) nil nil nil nil nil))
+               8 1 nil nil nil nil (fn-own-config *wb-o2*) nil nil nil nil nil (fn-oproc-initial)))
 ; O2 is an installed owner (the install of itself), under the admitted profile
 (assert-event (equal *wb-full* (wb-install *wb-full* *wb-profile*)))
 (assert-event (not (< (len (fn-own-conns *wb-full*)) (nfix (fn-own-max-conns *wb-full*)))))

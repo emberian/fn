@@ -575,7 +575,7 @@
                                              (fn-own-clock o) (fn-own-facts o)
                                              (fn-own-config o) (fn-own-queue o)
                                              (fn-own-inflight o) (fn-own-feeds o)
-                                             (fn-own-node-secret o) (fn-own-refused o))))))))
+                                             (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 (local
  (defthm fn-scjs-store-step-is-owner-with-store
@@ -617,7 +617,7 @@
                                        (fn-sf-completion (fn-sn-files (fn-own-store o))))
                            (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                            (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                           (fn-own-node-secret o) (fn-own-refused o)))
+                           (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
            o))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-own-complete))))
@@ -655,7 +655,7 @@
                                                          (fn-sf-completion (fn-sn-files (fn-own-store o))))
                                              (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                                              (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                                             (fn-own-node-secret o) (fn-own-refused o))))))))
+                                             (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 ; The configured owner's (:store (:finish)) event is the same store step.
 (defthm fn-scjs-store-step-finish-keeps-invp
@@ -912,7 +912,7 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal (fn-own-outcome-completion o word) :durable)
                                      (fn-own-feed-durable o (fn-own-inflight o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))
                  (:instance fn-scjs-seenp-of-same-fields
                             (o2 (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                  (fn-own-next-id o) (fn-own-max-conns o)
@@ -921,7 +921,7 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal (fn-own-outcome-completion o word) :durable)
                                      (fn-own-feed-durable o (fn-own-inflight o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))
                  ;; the durable arm advances the next owner (fn-own-outcome):
                  ;; stated, so the proof does not depend on which rules an
                  ;; includer's world happens to try first.
@@ -933,7 +933,7 @@
                                    (fn-own-config o) (fn-own-queue o) nil
                                    (if (equal (fn-own-outcome-completion o word) :durable)
                                        (fn-own-feed-durable o (fn-own-inflight o))
-                                     (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                     (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 (defthm fn-scjs-transit-outcome-keeps-invp
   (implies (fn-scj-invp o fn-arena fn-cat)
@@ -956,7 +956,7 @@
                                       (fn-own-feed-durable o (fn-own-inflight o))
                                     (fn-own-feeds o)) (fn-own-node-secret o)
                                   (fn-own-transit-refused o (fn-own-find-conn id (fn-own-conns o))
-                                                          (fn-own-inflight o) kind reason))))
+                                                          (fn-own-inflight o) kind reason) (fn-own-proc o))))
                  (:instance fn-scjs-seenp-of-same-fields
                             (o2 (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                   (fn-own-next-id o) (fn-own-max-conns o)
@@ -968,7 +968,7 @@
                                       (fn-own-feed-durable o (fn-own-inflight o))
                                     (fn-own-feeds o)) (fn-own-node-secret o)
                                   (fn-own-transit-refused o (fn-own-find-conn id (fn-own-conns o))
-                                                          (fn-own-inflight o) kind reason))))))))
+                                                          (fn-own-inflight o) kind reason) (fn-own-proc o))))))))
 
 ; host/owner-host.lisp fn-owner-outcome installs the carried outcome.
 (defthm fn-scjs-acar-own-outcome-keeps-invp
@@ -988,7 +988,7 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal (fn-own-outcome-completion o word) :durable)
                                      (fn-own-feed-durable o (fn-own-inflight o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))
                  (:instance fn-scjs-seenp-of-same-fields
                             (o2 (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                  (fn-own-next-id o) (fn-own-max-conns o)
@@ -997,7 +997,7 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal (fn-own-outcome-completion o word) :durable)
                                      (fn-own-feed-durable o (fn-own-inflight o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 ; -----------------------------------------------------------------------------
 ; The owners host/owner-host.lisp installs.
@@ -1296,7 +1296,7 @@
                                              (fn-own-clock o) (fn-own-facts o)
                                              (fn-own-config o) (fn-own-queue o)
                                              (fn-own-inflight o) (fn-own-feeds o)
-                                             (fn-own-node-secret o) (fn-own-refused o))))))))
+                                             (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 (defthm fn-scjs-store-step-keeps-versions
   (implies (and (fn-scjs-versionsp o)
@@ -1333,7 +1333,7 @@
                                                          (fn-sf-completion (fn-sn-files (fn-own-store o))))
                                              (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                                              (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                                             (fn-own-node-secret o) (fn-own-refused o))))))))
+                                             (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 (defthm fn-scjs-store-step-finish-keeps-versions
   (let ((s (fn-own-store o)))
@@ -1591,7 +1591,7 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal (fn-own-outcome-completion o word) :durable)
                                      (fn-own-feed-durable o (fn-own-inflight o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 (defthm fn-scjs-transit-outcome-keeps-versions
   (implies (fn-scjs-versionsp o)
@@ -1612,7 +1612,7 @@
                                       (fn-own-feed-durable o (fn-own-inflight o))
                                     (fn-own-feeds o)) (fn-own-node-secret o)
                                   (fn-own-transit-refused o (fn-own-find-conn id (fn-own-conns o))
-                                                          (fn-own-inflight o) kind reason))))))))
+                                                          (fn-own-inflight o) kind reason) (fn-own-proc o))))))))
 
 (defthm fn-scjs-acar-own-outcome-keeps-versions
   (implies (fn-scjs-versionsp o)
@@ -1630,7 +1630,7 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal (fn-own-outcome-completion o word) :durable)
                                      (fn-own-feed-durable o (fn-own-inflight o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 (in-theory (disable fn-scjs-seenp fn-scjs-store-seenp fn-scjs-seen-records fn-scjs-store-framep
                     fn-scjs-files-framep fn-scjs-historyp fn-scjs-versionsp))

@@ -573,7 +573,7 @@
                   (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
                   (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
                   (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
-                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
+                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))
      (fn-ocfg-config oc) (fn-ocfg-pins oc) (fn-ocfg-staged oc))))
 (assert-event (equal (cet-t2-exec *cet-t2-bad* *cet-t2-payloads* 2 2 nil)
                      (list (list nil t nil t t t t t t) (list nil nil t 1))))

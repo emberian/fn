@@ -463,7 +463,7 @@
                                                         (fn-sf-completion (fn-sn-files (fn-own-store o))))
                                             (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                                             (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                                            (fn-own-node-secret o) (fn-own-refused o)))
+                                            (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
                             (y (fn-crf-with-store o (fn-ccar-sn-finish-enabled (fn-own-store o)))))
                  (:instance fn-scj-own-refresh-store
                             (x (fn-own-make (fn-ccar-sn-finish-enabled (fn-own-store o)) (fn-own-view o)
@@ -472,7 +472,7 @@
                                                         (fn-sf-completion (fn-sn-files (fn-own-store o))))
                                             (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                                             (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                                            (fn-own-node-secret o) (fn-own-refused o))))))))
+                                            (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 ; KEYSTONE (step 2 at the host's call).  The same over the owner
 ; host/owner-host.lisp fn-owner-finish-submission installs

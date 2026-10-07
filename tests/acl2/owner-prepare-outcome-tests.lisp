@@ -217,7 +217,7 @@
                   (fn-own-next-id o) (fn-own-max-conns o) nil
                   (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                   (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)
-                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
+                  (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))))
 (defconst *pot-begin-nil* (in-arena-pot-begin *sr-arena* *pot-nil-oc* nil))
 (assert-event (fn-pout-begin-admitsp *pot-nil-oc* nil))
 (assert-event (equal (first *pot-begin-nil*) :begun))

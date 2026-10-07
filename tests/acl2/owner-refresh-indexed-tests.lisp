@@ -54,7 +54,7 @@
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)
-               (fn-own-refused o)))
+               (fn-own-refused o) (fn-own-proc o)))
 
 (defun ori-butlast (xs)
   (if (and (consp xs) (consp (cdr xs))) (cons (car xs) (ori-butlast (cdr xs))) nil))
@@ -134,14 +134,14 @@
 ; itself; the first snoc puts it in snoc form once.
 (assert-event
  (let ((o (fn-own-make (fn-own-store *ori-pre*) (fn-own-view *ori-pre*) nil 0 1 nil
-                       (list (cons 0 7)) nil nil nil nil nil nil nil nil)))
+                       (list (cons 0 7)) nil nil nil nil nil nil nil nil (fn-oproc-initial))))
    (and (equal (fn-own-ledger o) (list (cons 0 7)))
         (equal (fn-own-ledger-count o) 1)
         (equal (fn-sl-snoc (fn-own-ledger-field o) (cons 1 8))
                (list* :snoc 2 (cons 1 8) (list (cons 0 7))))
         (equal (fn-own-ledger (fn-own-make nil nil nil 0 1 nil
                                            (fn-sl-snoc (fn-own-ledger-field o) (cons 1 8))
-                                           nil nil nil nil nil nil nil nil))
+                                           nil nil nil nil nil nil nil nil (fn-oproc-initial)))
                (list (cons 0 7) (cons 1 8))))))
 
 ; Corrupted state (labelled): a snoc form whose count exceeds its reverse
@@ -149,7 +149,7 @@
 ; length, so the O(1) count and the model never disagree on any value.
 (assert-event
  (let ((o (fn-own-make nil nil nil 0 1 nil (list* :snoc 3 (list (cons 0 7)))
-                       nil nil nil nil nil nil nil nil)))
+                       nil nil nil nil nil nil nil nil (fn-oproc-initial))))
    (and (equal (fn-own-ledger o) (list nil nil (cons 0 7)))
         (equal (fn-own-ledger-count o) 3)
         (equal (fn-own-ledger-count o) (len (fn-own-ledger o))))))

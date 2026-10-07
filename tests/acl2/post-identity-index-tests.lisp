@@ -139,7 +139,7 @@
   (fn-own-make (fn-own-store o) v (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
 
 ; by specification: the flip -- the host's call reads the stored bytes
 ; through the arena by the article's handle, and its keystone's reference is
@@ -336,7 +336,7 @@
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-               (fn-own-node-secret o) (fn-own-refused o)))
+               (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
 
 
 

@@ -356,7 +356,7 @@
                   (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion (fn-sn-files s)))
                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                  (fn-own-node-secret o) (fn-own-refused o)) fn-hist)))
+                  (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)) fn-hist)))
 
 (defthm fn-irc-rix-own-complete-enabled-is-rix
   (implies (fn-prc-carryp carry)
@@ -490,7 +490,7 @@
                    (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                    (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                    (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                   (fn-own-node-secret o) (fn-own-refused o))))))
+                   (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))
 
 (defthm fn-irc-ocfg-prepare-identity-is-ccar
   (implies (fn-prc-carryp carry)

@@ -112,12 +112,12 @@
 ; fn-onb-boundp (fn-onb-open-okp-is-boundp-outside-a-transaction).
 (snbt-defconst *onbt-ready* (fn-sn-finish *ast-composite-completing*))
 (snbt-defconst *onbt-open-owner*
-  (fn-own-make *onbt-ready* nil nil 0 0 nil nil 0 nil nil nil nil nil nil nil))
+  (fn-own-make *onbt-ready* nil nil 0 0 nil nil 0 nil nil nil nil nil nil nil (fn-oproc-initial)))
 (snbt-defconst *onbt-open-owner-over*
   (fn-own-make (fn-sn-update *onbt-ready* (fn-sn-files *onbt-ready*)
                              (snbt-with-nexts (fn-sn-node *onbt-ready*)
                                               (list (cons "example" (+ 1 *fn-nntp-max-article-number*)))))
-               nil nil 0 0 nil nil 0 nil nil nil nil nil nil nil))
+               nil nil 0 0 nil nil 0 nil nil nil nil nil nil nil (fn-oproc-initial)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *onbt-ready*)) :ready))
 (assert-event (fn-onb-open-okp *onbt-open-owner*))
 (assert-event (not (fn-onb-open-okp *onbt-open-owner-over*)))

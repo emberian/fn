@@ -28,7 +28,7 @@
                 (fn-own-pending o) (fn-own-ledger-field o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))
 
 (verify-guards fn-opc-owner-prepare)
 
@@ -99,7 +99,7 @@
                  (fn-own-clock o) (fn-own-facts o)
                  (fn-own-config o) (fn-own-queue o)
                  (fn-own-inflight o) (fn-own-feeds o)
-                 (fn-own-node-secret o) (fn-own-refused o)))))
+                 (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))))
      :in-theory
      (e/d (fn-opc-owner-prepare fn-own-relation
                               fn-spc-prepare fn-spc-stage-record)

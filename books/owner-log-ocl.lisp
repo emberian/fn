@@ -57,7 +57,7 @@
                  (fn-ocfg-make
                   (fn-own-refresh
                    (fn-own-make st view conns next-id max-conns pending ledger
-                                clock facts config queue inflight feeds node-secret refused))
+                                clock facts config queue inflight feeds node-secret refused proc))
                   cfg pins staged))
                 (fn-snt-idle-phasep (fn-sf-phase (fn-sn-files st)))
                 (true-listp (fn-sf-records (fn-sn-files st))))
@@ -65,7 +65,7 @@
             (fn-ocfg-make
              (fn-own-refresh
               (fn-own-make st view conns next-id max-conns pending ledger
-                           clock facts config queue inflight feeds node-secret refused))
+                           clock facts config queue inflight feeds node-secret refused proc))
              cfg pins staged)))
   :rule-classes nil
   :hints (("Goal"

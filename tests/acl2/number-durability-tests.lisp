@@ -73,7 +73,7 @@
                               (fn-state-articles acc) nil nil)))
 (defun ndt-owner (live view)
   (fn-own-make (fn-sn-open-state (fn-cpo-open-observed *ndt-configs* *ndt-f* live))
-               view nil 0 0 nil nil nil nil nil nil nil nil nil nil))
+               view nil 0 0 nil nil nil nil nil nil nil nil nil nil (fn-oproc-initial)))
 (defconst *ndt-o* (ndt-owner *ndt-ys* (ndt-view-at 3 (fn-own-take 3 *ndt-ys*))))
 (defun ndt-recovered-articles (o recovered)
   (fn-state-articles (fn-node-acceptance

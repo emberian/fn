@@ -69,7 +69,7 @@
                                    (fn-ctl-subseq-diff (fn-state-articles prefix)
                                                        (fn-state-articles archive))
                                    nil))
-                                nil 0 max-conns nil nil nil nil nil nil nil nil nil nil)))))))
+                                nil 0 max-conns nil nil nil nil nil nil nil nil nil nil (fn-oproc-initial))))))))
 
 (defthm fn-scj-own-start-vvp
   (implies (fn-own-store-idlep store)

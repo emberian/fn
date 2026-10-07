@@ -94,7 +94,7 @@
                                             (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                                             (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
                                             (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)
-                                            (fn-own-refused o))))))))
+                                            (fn-own-refused o) (fn-own-proc o))))))))
 
 (defthm fn-sjh-vw-live-okp-of-finish
   (let ((c2 (mv-nth 2 (fn-sca-finish token pending idx targets fn-cat))))

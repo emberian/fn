@@ -755,7 +755,7 @@
              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                           (fn-own-next-id o) (fn-own-max-conns o) pending
                           (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
-                          config queue inflight feeds node-secret refused)))
+                          config queue inflight feeds node-secret refused proc)))
    :hints (("Goal" :in-theory (e/d (fn-own-relation)
                                    (fn-own-view-okp fn-own-conns-okp
                                     fn-snt-relation fn-own-ids-below-next-p
@@ -797,7 +797,7 @@
                                                        :durable)
                                                 (fn-own-feed-durable
                                                  o (fn-own-inflight o))
-                                                (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o)))))
+                                                (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))))
            :in-theory (e/d (fn-own-outcome)
                            (fn-own-relation fn-own-advance fn-own-conn-boundedp
                             fn-served-post-outcome fn-own-outcome-completion

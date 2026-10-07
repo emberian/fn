@@ -70,7 +70,7 @@
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                      (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                      (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                     (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
+                     (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
       o)))
 
 ; The two premises the refresh reads, from the Store's.
@@ -121,17 +121,17 @@
            (equal (fn-own-refresh-ix
                    (fn-own-make (fn-sn-finish s) view conns next-id max-conns pending
                                 ledger clock facts config queue inflight feeds
-                                node-secret refused)
+                                node-secret refused proc)
                    fn-hist)
                   (fn-own-refresh
                    (fn-own-make (fn-sn-finish s) view conns next-id max-conns pending
                                 ledger clock facts config queue inflight feeds
-                                node-secret refused))))
+                                node-secret refused proc))))
   :hints (("Goal" :use ((:instance fn-own-refresh-ix-is-own-refresh
                                    (o (fn-own-make (fn-sn-finish s) view conns next-id
                                                    max-conns pending ledger clock facts
                                                    config queue inflight feeds
-                                                   node-secret refused)))
+                                                   node-secret refused proc)))
                         fn-sn-finish-preserves-state
                         fn-snt-finish-keeps-records)
            :in-theory (e/d (fn-own-store-of-fn-own-make)
@@ -162,7 +162,7 @@
                   (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion (fn-sn-files s)))
                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-                  (fn-own-node-secret o) (fn-own-refused o)) fn-hist)))
+                  (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)) fn-hist)))
 
 (defthm fn-rix-own-complete-enabled-is-ccar
   (implies (and (fn-ccar-completion-enabledp (fn-own-store o))

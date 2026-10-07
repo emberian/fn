@@ -94,7 +94,7 @@
              (conn (fn-own-conn-make-indexed 0 34 nil (fn-wire-initial-state 512 4096)
                                             auth raw nil nil nil index))
              (view (fn-own-view-make-indexed 34 nil raw nil index))
-             (owner (fn-own-make (fn-sn-make-v6 (fn-state-groups raw) 0 nil nil nil nil 0 nil nil 0 nil nil nil nil) view (list conn) 1 1 nil nil nil nil nil nil nil nil nil nil))
+             (owner (fn-own-make (fn-sn-make-v6 (fn-state-groups raw) 0 nil nil nil nil 0 nil nil 0 nil nil nil nil) view (list conn) 1 1 nil nil nil nil nil nil nil nil nil nil (fn-oproc-initial)))
              (oc (fn-ocfg-make owner nil nil nil))
              (credits (fn-mcr-make 1048576 0 0 0 0 0 nil))
              (line (fn-nntp-string-octets "GROUP fn.available"))

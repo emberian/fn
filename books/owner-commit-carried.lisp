@@ -608,7 +608,7 @@
                   (fn-own-next-id o) (fn-own-max-conns o) nil
                   (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion (fn-sn-files s)))
                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
+                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))))
 
 (defun fn-ccar-own-complete (o)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
@@ -878,7 +878,7 @@
                    (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                    (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                    (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))))
+                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))
 ; KEYSTONE for the host line (PRF-144 part 2): host/owner-host.lisp
 ; fn-owner-prepare-identity installs this owner; it is the configured owner
 ; event the host used to issue, on every owner the maintained owner relation

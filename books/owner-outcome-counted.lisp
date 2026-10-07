@@ -21,7 +21,7 @@
                (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                (fn-own-config o) (fn-own-queue o) nil
                feeds
-               (fn-own-node-secret o) (fn-own-refused o)))
+               (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
 
 (defun fn-oct-outcome (oc id word icar carry pending)
   (declare (xargs :guard (and (acl2-numberp pending)
@@ -68,7 +68,7 @@
                (fn-own-config o) (fn-own-queue o) nil
                feeds
                (fn-own-node-secret o)
-               (fn-own-transit-refused o conn sub kind reason)))
+               (fn-own-transit-refused o conn sub kind reason) (fn-own-proc o)))
 
 (defun fn-oct-transit (oc id kind reason word pending)
   (declare (xargs :guard (and (acl2-numberp pending)
@@ -125,7 +125,7 @@
                          nil (fn-own-pending o))
                      (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                      (fn-own-config o) (fn-own-queue o) nil
-                     (car counted) (fn-own-node-secret o) (fn-own-refused o)) (cdr counted))))))
+                     (car counted) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)) (cdr counted))))))
 
 (defun fn-oct-bp-transit (o word pending)
   (declare (xargs :guard (and (acl2-numberp pending)

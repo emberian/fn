@@ -147,7 +147,7 @@
   (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
 (make-event
  `(defconst *ospt-off*
     ',(ospt-with-store *ospt-completing*
@@ -211,7 +211,7 @@
                    (fn-own-pending *ospt-completing*) (fn-own-ledger-field *ospt-completing*)
                    (fn-own-clock *ospt-completing*) (fn-own-facts *ospt-completing*)
                    (fn-own-config *ospt-completing*) (fn-own-queue *ospt-completing*)
-                   (fn-own-inflight *ospt-completing*) (fn-own-feeds *ospt-completing*) (fn-own-node-secret *ospt-completing*) (fn-own-refused *ospt-completing*))))
+                   (fn-own-inflight *ospt-completing*) (fn-own-feeds *ospt-completing*) (fn-own-node-secret *ospt-completing*) (fn-own-refused *ospt-completing*) (fn-own-proc *ospt-completing*))))
 (must-fail-checked (assert-event (in-arena-ospt-reader-verdict *sr-arena* *ospt-full*)))
 ; The other three hypotheses of the reader theorem are the finish theorem's:
 ; with the gate closed the reader's pin has no verdict for the Message-ID.
@@ -290,7 +290,7 @@
                 (fn-own-pending *ospt-taken*) (fn-own-ledger-field *ospt-taken*)
                 (fn-own-clock *ospt-taken*) (fn-own-facts *ospt-taken*)
                 (fn-own-config *ospt-taken*) (fn-own-queue *ospt-taken*)
-                (fn-own-inflight *ospt-taken*) (fn-own-feeds *ospt-taken*) (fn-own-node-secret *ospt-taken*) (fn-own-refused *ospt-taken*))
+                (fn-own-inflight *ospt-taken*) (fn-own-feeds *ospt-taken*) (fn-own-node-secret *ospt-taken*) (fn-own-refused *ospt-taken*) (fn-own-proc *ospt-taken*))
    *ospt-poster* :signature)))
 
 ; ---------------------------------------------------------------------------
@@ -392,7 +392,7 @@
                                   (fn-peer-make-submission
                                    "p" kind (fn-nntp-string-octets *ospt-msgid*)
                                    *tha-received*) nil)
-                 (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+                 (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))
 (defconst *ospt-transit* (ospt-with-transit *ospt-taken* :ihave))
 (assert-event (fn-own-transit-subp (fn-own-inflight *ospt-transit*)))
 (assert-event (not (fn-own-completion-consumedp *ospt-transit*)))
@@ -463,7 +463,7 @@
                 (fn-own-pending *ospt-transit*) (fn-own-ledger-field *ospt-transit*)
                 (fn-own-clock *ospt-transit*) (fn-own-facts *ospt-transit*)
                 (fn-own-config *ospt-transit*) (fn-own-queue *ospt-transit*)
-                (fn-own-inflight *ospt-transit*) (fn-own-feeds *ospt-transit*) (fn-own-node-secret *ospt-transit*) (fn-own-refused *ospt-transit*))
+                (fn-own-inflight *ospt-transit*) (fn-own-feeds *ospt-transit*) (fn-own-node-secret *ospt-transit*) (fn-own-refused *ospt-transit*) (fn-own-proc *ospt-transit*))
    *ospt-poster* :want :control-not-filed)))
 
 ; ---------------------------------------------------------------------------

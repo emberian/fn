@@ -80,7 +80,7 @@
 ; fn-ocfg-at-reader-view reads the capture; with nothing captured it is the
 ; owner itself.
 (defconst *orvt-oc* (fn-ocfg-make (fn-own-make 'st 'working nil 0 1 nil nil nil nil
-                                               nil nil nil nil nil nil)
+                                               nil nil nil nil nil nil (fn-oproc-initial))
                                   'cfg nil nil))
 (assert-event (equal (fn-own-view (fn-ocfg-owner (fn-ocfg-at-reader-view *orvt-oc* '(durable))))
                      'durable))

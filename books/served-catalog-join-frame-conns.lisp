@@ -252,7 +252,7 @@
                                   (fn-own-config o) (fn-own-queue o) nil
                                   (if (equal (fn-own-outcome-completion o word) :durable)
                                       (fn-own-feed-durable o (fn-own-inflight o))
-                                    (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                    (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))))))
 
 ; The configured owner's connection arms (books/owner-config.lisp fn-ocfg-step).
 (defthm fn-scj-invp-of-ocfg-open
@@ -463,7 +463,7 @@
                                   (fn-own-config o) (fn-own-queue o) nil
                                   (if (equal (fn-own-outcome-completion o word) :durable)
                                       (fn-own-feed-durable o (fn-own-inflight o))
-                                    (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o)))))
+                                    (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))))
            :in-theory (e/d (fn-scj-versions-okp fn-acar-own-outcome) (fn-acar-own-advance-result fn-own-outcome-completion fn-own-feed-durable fn-served-post-outcome fn-own-post-rendering fn-served-make-conn-group-indexed)))))
 
 (defthm fn-scj-versions-atmost-of-ocfg-open

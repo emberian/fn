@@ -32,7 +32,7 @@
 ; line followed by ` reason=unaffordable'.
 (defconst *ocpr-o*
   (fn-own-make nil nil nil 0 0 nil nil nil nil nil nil
-               (list *fn-own-control-id*) nil nil nil))
+               (list *fn-own-control-id*) nil nil nil (fn-oproc-initial)))
 (assert-event (fn-own-control-submissionp (fn-own-inflight *ocpr-o*)))
 (assert-event
  (and (equal (fn-own-control-outcome-result *ocpr-o* :unaffordable) :refused)

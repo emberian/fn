@@ -195,13 +195,13 @@
 (local
  (defthm fn-oah-owner-accessors-of-make
    (and (equal (fn-own-conns (fn-own-make store view conns next-id max-conns pending ledger clock
-                                          facts config queue inflight feeds node-secret refused))
+                                          facts config queue inflight feeds node-secret refused proc))
                conns)
         (equal (fn-own-queue (fn-own-make store view conns next-id max-conns pending ledger clock
-                                          facts config queue inflight feeds node-secret refused))
+                                          facts config queue inflight feeds node-secret refused proc))
                queue)
         (equal (fn-own-inflight (fn-own-make store view conns next-id max-conns pending ledger clock
-                                             facts config queue inflight feeds node-secret refused))
+                                             facts config queue inflight feeds node-secret refused proc))
                inflight))
    :hints (("Goal" :in-theory (enable fn-own-conns fn-own-queue fn-own-inflight fn-own-make)))))
 

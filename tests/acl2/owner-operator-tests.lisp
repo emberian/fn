@@ -472,7 +472,7 @@
                (if (eq pending 'same) (fn-own-pending o) pending)
                (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-own-queue o) (if (eq inflight 'same) (fn-own-inflight o) inflight)
-               (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
+               (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o)))
 (defconst *opt-pk-sub*
   (fn-own-sub-make-author 7 3 nil
                           (fn-inj-make-decision :injected nil (fn-nntp-string-octets "<pk@example.invalid>")

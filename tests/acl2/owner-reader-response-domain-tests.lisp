@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-reader-response-domain")
 (defconst *rrdt-owner*
- (fn-own-make nil nil nil 0 1 nil nil nil nil nil nil nil nil nil nil))
+ (fn-own-make nil nil nil 0 1 nil nil nil nil nil nil nil nil nil nil (fn-oproc-initial)))
 (defconst *rrdt-effects*
  (list (list :reply (fn-olog-post-refusal-reply :posting-disallowed))
        (list :reply (fn-olog-post-refusal-reply :oversize))))

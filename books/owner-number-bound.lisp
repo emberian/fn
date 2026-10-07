@@ -320,7 +320,7 @@
                                             (fn-own-clock o) (fn-own-facts o)
                                             (fn-own-config o) (fn-own-queue o)
                                             (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)
-                                            (fn-own-refused o))))
+                                            (fn-own-refused o) (fn-own-proc o))))
                  (:instance fn-onb-boundp (o (fn-own-make (fn-prc-spc-prepare (fn-own-store o) record (fn-own-view o) carry)
                                             (fn-own-view o) (fn-own-conns o)
                                             (fn-own-next-id o) (fn-own-max-conns o)
@@ -328,7 +328,7 @@
                                             (fn-own-clock o) (fn-own-facts o)
                                             (fn-own-config o) (fn-own-queue o)
                                             (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)
-                                            (fn-own-refused o))))
+                                            (fn-own-refused o) (fn-own-proc o))))
                  (:instance fn-onb-boundp)))))
 
 (defthm fn-onb-boundp-of-psrv-prepare
@@ -391,7 +391,7 @@
                                             (fn-own-clock (fn-ocfg-owner oc)) (fn-own-facts (fn-ocfg-owner oc))
                                             (fn-own-config (fn-ocfg-owner oc)) (fn-own-queue (fn-ocfg-owner oc))
                                             (fn-own-inflight (fn-ocfg-owner oc)) (fn-own-feeds (fn-ocfg-owner oc))
-                                            (fn-own-node-secret (fn-ocfg-owner oc)) (fn-own-refused (fn-ocfg-owner oc)))))
+                                            (fn-own-node-secret (fn-ocfg-owner oc)) (fn-own-refused (fn-ocfg-owner oc)) (fn-own-proc (fn-ocfg-owner oc)))))
                  (:instance fn-onb-boundp (o (fn-own-make (fn-ccar-sn-prepare-identity (fn-own-store (fn-ocfg-owner oc)) event)
                                             (fn-own-view (fn-ocfg-owner oc)) (fn-own-conns (fn-ocfg-owner oc))
                                             (fn-own-next-id (fn-ocfg-owner oc)) (fn-own-max-conns (fn-ocfg-owner oc))
@@ -399,7 +399,7 @@
                                             (fn-own-clock (fn-ocfg-owner oc)) (fn-own-facts (fn-ocfg-owner oc))
                                             (fn-own-config (fn-ocfg-owner oc)) (fn-own-queue (fn-ocfg-owner oc))
                                             (fn-own-inflight (fn-ocfg-owner oc)) (fn-own-feeds (fn-ocfg-owner oc))
-                                            (fn-own-node-secret (fn-ocfg-owner oc)) (fn-own-refused (fn-ocfg-owner oc)))))
+                                            (fn-own-node-secret (fn-ocfg-owner oc)) (fn-own-refused (fn-ocfg-owner oc)) (fn-own-proc (fn-ocfg-owner oc)))))
                  (:instance fn-onb-boundp (o (fn-ocfg-owner oc)))))))
 
 (defthm fn-onb-boundp-at-owner-prepare-identity

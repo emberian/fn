@@ -33,7 +33,7 @@
 ; as an owner is not idle; it is bound (the composite in flight fits), yet
 ; the open's check refuses it -- without the premise the equation fails.
 (snbt-defconst *onbjt-completing-owner*
-  (fn-own-make *ast-composite-completing* nil nil 0 0 nil nil 0 nil nil nil nil nil nil nil))
+  (fn-own-make *ast-composite-completing* nil nil 0 0 nil nil 0 nil nil nil nil nil nil nil (fn-oproc-initial)))
 (assert-event (not (fn-own-store-idlep (fn-own-store *onbjt-completing-owner*))))
 (assert-event (onbjt-boundp *onbjt-completing-owner*))
 (assert-event (not (fn-onb-open-okp *onbjt-completing-owner*)))

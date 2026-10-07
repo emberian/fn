@@ -445,7 +445,7 @@
                (fn-own-pending live) (fn-own-ledger-field live)
                (fn-own-clock live) (fn-own-facts live) (fn-own-config live)
                (fn-own-queue live) (fn-own-inflight live) (fn-own-feeds live)
-               (fn-own-node-secret live) (fn-own-refused live)))
+               (fn-own-node-secret live) (fn-own-refused live) (fn-own-proc live)))
 
 (defun fn-orcp-swapped-owner (live rebuilt)
   (declare (xargs :guard t :verify-guards nil))

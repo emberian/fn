@@ -1107,7 +1107,7 @@
                                       (fn-apc-submission-targets o icar carry)
                                       (fn-own-feeds o)
                                       (fn-own-sub-msgid sub) (fn-own-feed-stamp o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))
           (cons (fn-served-result-effects
                  (fn-served-post-outcome
                   (fn-served-make-conn-group-indexed (fn-own-conn-wire conn)

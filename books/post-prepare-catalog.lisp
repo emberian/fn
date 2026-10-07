@@ -309,7 +309,7 @@
                 (fn-own-pending o) (fn-own-ledger-field o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o) (fn-own-proc o))))
 
 (defcong iff equal (fn-ppc-opc-owner-prepare o record dup carry) 3
   :hints (("Goal" :in-theory (e/d (fn-ppc-opc-owner-prepare) (fn-own-refresh)))))

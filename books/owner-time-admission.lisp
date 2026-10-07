@@ -84,7 +84,7 @@
      oc (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                      (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                      (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                     (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) mem))))
+                     (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) mem (fn-own-proc o)))))
 
 ; The memory without the disk-slow posture's entries.
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one

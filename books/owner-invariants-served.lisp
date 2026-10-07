@@ -106,7 +106,7 @@
                                                 (fn-state-articles archive))
                                                nil))
                                             nil 0 max-conns nil nil nil nil
-                                            nil nil nil nil nil nil))))
+                                            nil nil nil nil nil nil (fn-oproc-initial)))))
            :in-theory (e/d (fn-own-relation fn-midx-correspondencep
                             fn-gidx-build)
                            (fn-own-view-make-group-indexed
