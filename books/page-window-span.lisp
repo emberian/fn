@@ -311,6 +311,23 @@
                   fn-ew-span))
   :hints (("Goal" :in-theory (enable fn-pwr-span-at))))
 
+; KEYSTONE (row 21, ARTICLE time ratio).  Below the window the scalar borrow's
+; word does not depend on the coordinate: for every payload coordinate I before
+; the window's start, fn-pwr-byte-at answers :unavailable when the job is
+; :ready and the job's own outcome word otherwise.  A host that has seen the
+; scalar refuse one coordinate below the window may therefore read every
+; coordinate below the same window as that same refusal, without a decision
+; each (the arena walks a payload from its start while the borrowed window is a
+; later one, and the earlier octets are served by the verified-window cache).
+(defthm fn-pwr-byte-at-below-the-window-is-the-outcome
+  (implies (and (natp i) (natp (fn-prl-nth 7 token)) (< i (fn-prl-nth 7 token)))
+           (equal (mv-nth 0 (fn-pwr-byte-at ledger worker token s file eoff elen poff plen
+                                            trailer i fn-ew-buffer))
+                  (if (equal (fn-pwr-outcome ledger worker token s) :ready)
+                      :unavailable
+                    (fn-pwr-outcome ledger worker token s))))
+  :hints (("Goal" :in-theory (enable fn-pwr-byte-at))))
+
 (in-theory (disable fn-pwr-span-at))
 
 ; The verified-window cache's span (fn-pwc-byte-at's join): the warm path read
