@@ -76,6 +76,14 @@ class Tools:
     variant: str = "default"
 
 
+def core_libraries(core_sh):
+    """The libraries core.sh hands fn-core: each `export FN_*_LIBRARY=$LIB/NAME.so', as NAME."""
+    names = re.findall(r"FN_[A-Z0-9_]+_LIBRARY=\$LIB/(libfn-[A-Za-z0-9-]+)\.so", Path(core_sh).read_text())
+    if not names:
+        raise SystemExit("gate: core.sh exports no FN_*_LIBRARY (%s)" % core_sh)
+    return names
+
+
 def sha256_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -381,15 +389,16 @@ class Gate:
 
     def foreign(self):
         """The libraries fn-core loads: build/core/lib must be the image's own
-        lib/ (A-SIG-NATIVE and the LZ4 encoder call the files beside the
-        image's core, not a second build of the same source)."""
+        lib/ (the native signature, digest and deflate code call the files beside
+        the image's core, not a second build of the same source).  Which files:
+        exactly those core.sh exports (CORE_LIBRARIES)."""
         k = self.tree / "build" / "core"
         image_lib = Path(os.path.realpath(self.image)).parent / "lib"
         core_lib = k / "lib"
         if os.path.realpath(core_lib) != os.path.realpath(image_lib):
             self.fail("the core's lib is %s, not the image's %s" % (os.path.realpath(core_lib), image_lib))
         found = {}
-        for want in ("libfn-blake3", "libfn-mldsa65", "libfn-lz4"):
+        for want in core_libraries(Path(__file__).with_name("core.sh")):
             path = next(iter(sorted(core_lib.glob(want + ".*"))), None)
             if path is None:
                 self.fail("the core's lib has no %s (%s)" % (want, core_lib))

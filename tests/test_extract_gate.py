@@ -29,6 +29,8 @@ sys.path.insert(0, str(ROOT / "tools" / "extract"))
 import gate  # noqa: E402
 
 PY = sys.executable
+# the libraries core.sh hands fn-core, which the gate requires beside the image's core
+CORE_LIBS = gate.core_libraries(ROOT / "tools" / "extract" / "core.sh")
 
 # --- the stand-ins ----------------------------------------------------------------
 # One script, dispatched on its first argument; FAKE_FAULT names the one fault.
@@ -198,8 +200,8 @@ class Fixture:
         self.image.write_text("#!/bin/sh\nexec %s %s sbcl --end-runtime-options \"$@\"\n" % (PY, self.standin))
         self.image.chmod(0o755)
         (t / "build" / "lib").mkdir()
-        for lib in ("libfn-blake3.so", "libfn-mldsa65.so", "libfn-lz4.so"):
-            (t / "build" / "lib" / lib).write_text("stand-in %s\n" % lib)
+        for lib in CORE_LIBS:
+            (t / "build" / "lib" / (lib + ".so")).write_text("stand-in %s\n" % lib)
         self.store = Path(self.tmp.name) / "store"
         self.store.mkdir()
         (self.store / "segment").write_text("stand-in store\n")
@@ -303,7 +305,7 @@ class ExtractGateTest(unittest.TestCase):
         self.assertEqual(len(m["admitted_world"]["digest"]), 64)
         self.assertEqual([e["path"] for e in m["admitted_world"]["entries"]],
                          ["tools/extract/world.lisp", "tools/extract/world-host.lisp", "books/a.cert", "host/h.lisp"])
-        self.assertEqual(set(m["foreign_libraries"]), {"libfn-blake3", "libfn-mldsa65", "libfn-lz4"})
+        self.assertEqual(set(m["foreign_libraries"]), set(CORE_LIBS))
         self.assertEqual(m["core"]["units"], 1)
         self.assertEqual(m["core"]["defs_sha256"], hashlib.sha256(b"(defun foo (x) x)\n").hexdigest())
 
@@ -400,6 +402,11 @@ class CheckShTest(unittest.TestCase):
         import subprocess
         r = subprocess.run(["sh", str(ROOT / "tools" / "extract" / "check.sh")], capture_output=True, text=True)
         self.assertEqual(r.returncode, 2)
+
+
+class CoreLibraries(unittest.TestCase):
+    def test_the_gate_requires_exactly_the_libraries_core_sh_exports(self):
+        self.assertEqual(sorted(CORE_LIBS), ["libfn-blake3", "libfn-deflate", "libfn-mldsa65"])
 
 
 if __name__ == "__main__":
