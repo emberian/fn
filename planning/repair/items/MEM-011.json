@@ -1,0 +1,14 @@
+{
+ "category": "bug",
+ "detail": "6679dae0e gate-4 developer image, small preset (--max-transactions 16384 --max-history-octets 8388608 --max-record-octets 196608 --max-groups-per-article 16 --max-open-suffix 128), SBCL_USER_ARGS '--dynamic-space-size 1068MB --tls-limit 16384', 1 connection, 1,000 POSTs x 2048 octets, 16G swarm-build cgroup, hbox load 4-5 (shared). Two of ten runs of the MEM-003 hook harness (hbox:/tank/fn/scratch/n-mem3/mem3.py, hook arm 0 and arm 1, which do not collect or allocate beyond logging) ended in `POST 575: 440 posting not permitted now; the articles in flight fill the memory, try again later` (dir dev-r1-a0, owner.err 607 accepted posts, last t17-000574) and `POST 807: 440 ...` (dir dev-r1-a1, last t17-000806). Both owner.err files carry `HISTORY root retained current representation: live history root allocation refused: (REFUSED MEMORY-BUDGET-EXHAUSTED)` (host/native/history-root.lisp:49 fnn-owner-history-root-fund, MEM-010's path) at the tail: dev-r1-a0 once at line 629 after the checkpoint at sequence 539 (segment 8, held=pending); dev-r1-a1 four times (lines 628, 729, 805, 870) with the 440 arriving after the 805 refusal. The 440 text is books/owner-article-slots.lisp:143 (the article-slot admission refusal, 400 at :147). So the same history-root funding refusal as MEM-010 precedes the admission refusal; here the client was answered 440 rather than left hanging. Not established from the logs: whether the refused funding leaves article slots held (the 440 follows the refusal in both runs), or whether the slot book refuses on its own budget. Runs on the 1,068 MB heap, 8 other identical runs (dev r2/r3, fn-core x4, smoke) completed 1,000 POSTs. No fix in lane N-MEM3. LATER RUNS (same harness, rerun of the lane arm): two more 440s on arm 0 (no collection): hbox:/tank/fn/scratch/n-mem3/lanedev-r1-a0 (gate-4 image, 440 at POST 468, owner.err has one REFUSED MEMORY-BUDGET-EXHAUSTED line) and hbox:/tank/fn/scratch/n-mem3/lanecore-r2-a0 (fn-core, 440 at POST 445, owner.err has NO history-root refusal line). So it is not only MEM-010's path: the article-slot admission refused on fn-core with no funding refusal in the log. Tally of the 440 by arm over 30 runs: arm 0 (none) 3 of 13, arm 1 (idle gen-1) 1 of 5, arm 2 (gen-1 after each publication) 0 of 2, arm 9 (probe) 0 of 2, arm 7 (the lane's idle full collection, which fires only after the burst) 0 of 8; box load 6-9; small n, a correlation only, and the 440s come before any idle.",
+ "file": "host/native/history-root.lisp",
+ "id": "MEM-011",
+ "line": "49",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem3",
+ "state": "open",
+ "title": "two of ten runs refused POSTs with 440 'articles in flight fill the memory' at 575 and 807 after live history root allocation refused (REFUSED MEMORY-BUDGET-EXHAUSTED)",
+ "updated": "2026-10-07T00:00:00Z"
+}

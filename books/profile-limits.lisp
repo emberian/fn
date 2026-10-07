@@ -54,6 +54,14 @@
      "SBCL's per-thread runtime beside its control stack (binding stack, alien stack, thread-local storage)")
     (:gc-nursery-mib 8 "MiB"
      "the collection trigger's cap: every dynamic space of 1 GiB or more collects after this much allocation")
+    (:idle-gc-generation 6 "generation"
+     "the generation the owner collects through when it has been idle (books/idle-collection.lisp): SBCL frees dead pages inside the heap at every collection but returns them to the OS only after a collection of a generation above 1 (runtime gencgc.c small_generation_limit), and 6 is its pseudo-static bound, a full collection")
+    (:idle-gc-quiet-ticks 3 "ticks"
+     "consecutive maintenance ticks (one second each) with no publication and under :idle-gc-activity-kib consed before the owner counts itself idle")
+    (:idle-gc-activity-kib 512 "KiB"
+     "what one maintenance tick may allocate and still be quiet: served commands and accepts allocate more, the tick's own work less")
+    (:idle-gc-floor-kib 8192 "KiB"
+     "what must be allocated since the last idle collection before another is worth its pause (the collection trigger's cap, :gc-nursery-mib, in KiB)")
     (:max-connections 32 "connections"
      "fn.toml's [server] max_connections when it names none")
     (:headroom-min-percent 10 "percent"

@@ -216,6 +216,9 @@
 ;; Lane f1-bisect: host/native/io.lisp fnn-open-nursery calls
 ;; fn-heap-open-nursery-trigger (the open's trigger sized to its history).
 (include-book "books/heap-open-nursery")
+;; MEM-003: host/native/owner.lisp fnn-owner-maybe-collect-idle asks the idle
+;; collection verdict of books/idle-collection.
+(include-book "books/idle-collection")
 (include-book "books/heap-reservation")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")
