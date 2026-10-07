@@ -331,6 +331,7 @@
           (let ((s2 (car (fn-csp-step s event))))
             (and (equal (fn-csp-window s2) w)
                  (equal (len (fn-csp-conns s2)) w)
+                 (< (nfix (fn-csp-slot s2)) w)
                  (<= (fn-csp-conns-bound (fn-csp-conns s2)) w))))
   :subject fn-csp-step
   :witness ((s *csp-v-s*) (w 2) (event '(:tick)))
