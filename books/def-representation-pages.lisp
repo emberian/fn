@@ -349,3 +349,285 @@
                  (:instance adt-tp-npages-subadd
                             (x (- (len w) (* *pgs-page-words* (floor (len w) *pgs-page-words*))))
                             (y (len n)))))))
+
+; -----------------------------------------------------------------------------
+; 3. The record codec over a schema.
+
+(defconst *adt-tp-w64* 18446744073709551616)
+
+(defun adt-tp-kind-ok (k)
+  ; Every value of kind K is one word.
+  (declare (xargs :verify-guards nil :guard t))
+  (and (adt-kindp k)
+       (case (car k)
+         (:nat (< (cadr k) *adt-tp-w64*))
+         (:enum (< (len (cdr k)) *adt-tp-w64*))
+         (otherwise t))))
+
+(defun adt-tp-schema-ok (s)
+  (declare (xargs :verify-guards nil :guard t))
+  (if (atom s) (null s) (and (adt-tp-kind-ok (car s)) (adt-tp-schema-ok (cdr s)))))
+
+; An octet list in words, eight to a word, little-endian, the last zero padded.
+(defun adt-tp-wd (o k)
+  (declare (xargs :verify-guards nil :guard t))
+  (if (or (zp k) (atom o)) 0 (+ (nfix (car o)) (* 256 (adt-tp-wd (cdr o) (1- k))))))
+
+(defun adt-tp-pack (o)
+  (declare (xargs :verify-guards nil :guard t :measure (len o)))
+  (if (atom o) nil (cons (adt-tp-wd o 8) (adt-tp-pack (nthcdr 8 o)))))
+
+(defun adt-tp-unw (k w)
+  ; The K octets of the word W, least significant first.
+  (declare (xargs :verify-guards nil :guard t))
+  (if (zp k) nil (cons (mod (nfix w) 256) (adt-tp-unw (1- k) (floor (nfix w) 256)))))
+
+(defun adt-tp-npk (n)
+  ; The words N octets take.
+  (declare (xargs :verify-guards nil :guard t :measure (nfix n)))
+  (if (zp n) 0 (+ 1 (adt-tp-npk (nfix (- n 8))))))
+
+(defun adt-tp-unpack (n ws)
+  (declare (xargs :verify-guards nil :guard t :measure (nfix n)))
+  (if (zp n) nil
+    (append (adt-tp-unw (min n 8) (car ws)) (adt-tp-unpack (nfix (- n 8)) (cdr ws)))))
+
+; A record: the tag 1, then each field.
+(defun adt-tp-fw (s rec)
+  (declare (xargs :verify-guards nil :guard t))
+  (cond ((atom s) nil)
+        ((adt-octets-kind-p (car s))
+         (cons (len (car rec)) (append (adt-tp-pack (car rec)) (adt-tp-fw (cdr s) (cdr rec)))))
+        (t (cons (adt-enc (car s) (car rec)) (adt-tp-fw (cdr s) (cdr rec))))))
+
+(defun adt-tp-rw (s rec)
+  (declare (xargs :verify-guards nil :guard t))
+  (cons 1 (adt-tp-fw s rec)))
+
+(defun adt-tp-seq-words (s a)
+  (declare (xargs :verify-guards nil :guard t))
+  (if (atom a) nil (append (adt-tp-rw s (car a)) (adt-tp-seq-words s (cdr a)))))
+
+(defun adt-tp-decf (s w)
+  ; The record the words W start with.
+  (declare (xargs :verify-guards nil :guard t))
+  (cond ((atom s) nil)
+        ((adt-octets-kind-p (car s))
+         (cons (adt-tp-unpack (car w) (cdr w))
+               (adt-tp-decf (cdr s) (nthcdr (adt-tp-npk (car w)) (cdr w)))))
+        (t (cons (adt-dec (car s) (car w)) (adt-tp-decf (cdr s) (cdr w))))))
+
+(defun adt-tp-restf (s w)
+  ; The words after the record the words W start with.
+  (declare (xargs :verify-guards nil :guard t))
+  (cond ((atom s) w)
+        ((adt-octets-kind-p (car s))
+         (adt-tp-restf (cdr s) (nthcdr (adt-tp-npk (car w)) (cdr w))))
+        (t (adt-tp-restf (cdr s) (cdr w)))))
+
+(defthm adt-tp-len-restf
+  (<= (len (adt-tp-restf s w)) (len w))
+  :rule-classes :linear)
+
+(defun adt-tp-dseq (s w)
+  (declare (xargs :verify-guards nil :guard t :measure (len w)))
+  (if (and (consp w) (equal (car w) 1))
+      (cons (adt-tp-decf s (cdr w)) (adt-tp-dseq s (adt-tp-restf s (cdr w))))
+    nil))
+
+(in-theory (disable adt-tp-wd adt-tp-unw adt-tp-pack adt-tp-unpack adt-tp-npk))
+
+(defun adt-tp-ind-uw (k o j)
+  (if (or (zp k) (atom o)) (list k o j) (adt-tp-ind-uw (1- k) (cdr o) (1- j))))
+
+(defthm adt-tp-unw-of-wd
+  (implies (and (adt-octetsp o) (natp k) (natp j) (<= k j) (<= k (len o)))
+           (equal (adt-tp-unw k (adt-tp-wd o j)) (adt-tp-take k o)))
+  :hints (("Goal" :induct (adt-tp-ind-uw k o j)
+           :in-theory (enable adt-tp-unw adt-tp-wd adt-tp-take))))
+
+(defthm adt-tp-len-pack
+  (equal (len (adt-tp-pack o)) (adt-tp-npk (len o)))
+  :hints (("Goal" :induct (adt-tp-pack o)
+           :in-theory (enable adt-tp-pack adt-tp-npk))))
+
+(defthm adt-tp-true-listp-pack
+  (true-listp (adt-tp-pack o))
+  :hints (("Goal" :in-theory (enable adt-tp-pack))))
+
+(defthm adt-tp-octetsp-nthcdr
+  (implies (adt-octetsp o) (adt-octetsp (nthcdr n o))))
+
+(defthm adt-tp-unpack-of-pack
+  (implies (adt-octetsp o)
+           (equal (adt-tp-unpack (len o) (append (adt-tp-pack o) r)) o))
+  :hints (("Goal" :induct (adt-tp-pack o)
+           :in-theory (enable adt-tp-pack adt-tp-unpack))))
+
+(defthm adt-tp-nthcdr-of-pack
+  (equal (nthcdr (adt-tp-npk (len o)) (append (adt-tp-pack o) x)) x)
+  :hints (("Goal" :use ((:instance adt-tp-len-pack))
+           :in-theory (disable adt-tp-len-pack))))
+
+(defthm adt-tp-fields-roundtrip
+  (implies (and (adt-tp-schema-ok s) (adt-rec-p s rec))
+           (and (equal (adt-tp-decf s (append (adt-tp-fw s rec) r)) rec)
+                (equal (adt-tp-restf s (append (adt-tp-fw s rec) r)) r)))
+  :hints (("Goal" :induct (adt-tp-fw s rec)
+           :in-theory (enable adt-dec-of-enc))))
+
+(defthm adt-tp-true-listp-fw
+  (true-listp (adt-tp-fw s rec)))
+
+(defthm adt-tp-true-listp-rw
+  (true-listp (adt-tp-rw s rec)))
+
+(defthm adt-tp-true-listp-seq-words
+  (true-listp (adt-tp-seq-words s a)))
+
+(defthm adt-tp-seq-words-of-append
+  (equal (adt-tp-seq-words s (append a b))
+         (append (adt-tp-seq-words s a) (adt-tp-seq-words s b))))
+
+(defthm adt-tp-seq-words-of-snoc
+  (equal (adt-tp-seq-words s (append a (list x)))
+         (append (adt-tp-seq-words s a) (adt-tp-rw s x))))
+
+(defthm adt-tp-seq-roundtrip
+  ; Reading a sequence's words, followed by anything that does not start a record.
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a)
+                (or (atom tail) (not (equal (car tail) 1))))
+           (equal (adt-tp-dseq s (append (adt-tp-seq-words s a) tail)) a))
+  :hints (("Goal" :induct (adt-tp-seq-words s a))))
+
+(defthm adt-tp-car-zeros
+  (or (atom (adt-tp-zeros n)) (not (equal (car (adt-tp-zeros n)) 1)))
+  :hints (("Goal" :in-theory (enable adt-tp-zeros))))
+
+; The page image of a sequence, the sequence of a page image, and the dirty
+; set of an append: the three the generator names.
+(defun adt-tp-pages-of (s a)
+  (declare (xargs :verify-guards nil :guard t))
+  (adt-tp-pages (adt-tp-seq-words s a)))
+
+(defun adt-tp-of-pages (s pages)
+  (declare (xargs :verify-guards nil :guard t))
+  (adt-tp-dseq s (adt-tp-flat pages)))
+
+(defun adt-tp-append-dirty (s a x)
+  (declare (xargs :verify-guards nil :guard t))
+  (adt-tp-dirty (adt-tp-seq-words s a) (adt-tp-rw s x)))
+
+(defun adt-tp-row-pages (s x)
+  ; The pages one row's words take: the whole of an append's dirty set but the
+  ; one page it may share with the rows before it.
+  (declare (xargs :verify-guards nil :guard t))
+  (adt-tp-npages (len (adt-tp-rw s x))))
+
+(defthm adt-tp-of-pages-of-pages-of
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a))
+           (equal (adt-tp-of-pages s (adt-tp-pages-of s a)) a))
+  :hints (("Goal" :in-theory (disable adt-tp-seq-roundtrip adt-tp-car-zeros)
+           :use ((:instance adt-tp-seq-roundtrip
+                            (tail (adt-tp-zeros (adt-tp-pad (len (adt-tp-seq-words s a))))))
+                 (:instance adt-tp-car-zeros (n (adt-tp-pad (len (adt-tp-seq-words s a)))))
+                 (:instance adt-tp-flat-of-pages (w (adt-tp-seq-words s a)))))))
+
+(defthm adt-tp-pages-of-append-is-apply-dirty
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (adt-rec-p s x))
+           (equal (pgs-apply-dirty (adt-tp-pages-of s a) (adt-tp-append-dirty s a x))
+                  (adt-tp-pages-of s (append a (list x)))))
+  :hints (("Goal" :in-theory (disable adt-tp-dirty-is-the-delta)
+           :use ((:instance adt-tp-dirty-is-the-delta
+                            (w (adt-tp-seq-words s a)) (n (adt-tp-rw s x)))))))
+
+(defthm adt-tp-append-dirty-bound
+  (<= (len (adt-tp-append-dirty s a x)) (+ 1 (adt-tp-row-pages s x)))
+  :hints (("Goal" :in-theory (disable adt-tp-dirty-bound)
+           :use ((:instance adt-tp-dirty-bound (w (adt-tp-seq-words s a)) (n (adt-tp-rw s x)))))))
+
+; -----------------------------------------------------------------------------
+; 4. The words are u64 (the shape the page store's host fill returns).  The
+; one premise is that no octet list has 2^64 octets or more.
+
+(defun adt-tp-u64s (w)
+  (declare (xargs :verify-guards nil :guard t))
+  (if (atom w) (null w) (and (unsigned-byte-p 64 (car w)) (adt-tp-u64s (cdr w)))))
+
+(defun adt-tp-rec-lens-ok (s rec)
+  (declare (xargs :verify-guards nil :guard t))
+  (cond ((atom s) t)
+        ((adt-octets-kind-p (car s))
+         (and (< (len (car rec)) *adt-tp-w64*) (adt-tp-rec-lens-ok (cdr s) (cdr rec))))
+        (t (adt-tp-rec-lens-ok (cdr s) (cdr rec)))))
+
+(defun adt-tp-seq-lens-ok (s a)
+  (declare (xargs :verify-guards nil :guard t))
+  (if (atom a) t (and (adt-tp-rec-lens-ok s (car a)) (adt-tp-seq-lens-ok s (cdr a)))))
+
+(defthm adt-tp-wd-bound
+  (implies (and (adt-octetsp o) (natp k))
+           (< (adt-tp-wd o k) (expt 256 k)))
+  :hints (("Goal" :induct (adt-tp-wd o k)
+           :in-theory (enable adt-tp-wd expt))))
+
+(defthm adt-tp-wd8-u64
+  (implies (adt-octetsp o) (unsigned-byte-p 64 (adt-tp-wd o 8)))
+  :hints (("Goal" :use ((:instance adt-tp-wd-bound (k 8)))
+           :in-theory (e/d (unsigned-byte-p) (adt-tp-wd-bound)))))
+
+(defthm adt-tp-u64s-pack
+  (implies (adt-octetsp o) (adt-tp-u64s (adt-tp-pack o)))
+  :hints (("Goal" :induct (adt-tp-pack o)
+           :in-theory (enable adt-tp-pack))))
+
+(defthm adt-tp-u64s-append
+  (equal (adt-tp-u64s (append a b))
+         (and (adt-tp-u64s (true-list-fix a)) (adt-tp-u64s b))))
+
+(defthm adt-tp-index-below-len
+  (implies (member-equal v l) (< (adt-index v l) (len l)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable adt-index))))
+
+(defthm adt-tp-enc-u64
+  (implies (and (adt-tp-kind-ok k) (not (adt-octets-kind-p k)) (adt-val-okp k v))
+           (unsigned-byte-p 64 (adt-enc k v)))
+  :hints (("Goal" :in-theory (enable adt-enc unsigned-byte-p))))
+
+(defthm adt-tp-u64s-fw
+  (implies (and (adt-tp-schema-ok s) (adt-rec-p s rec) (adt-tp-rec-lens-ok s rec))
+           (adt-tp-u64s (adt-tp-fw s rec)))
+  :hints (("Goal" :induct (adt-tp-fw s rec))))
+
+(defthm adt-tp-u64s-seq-words
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (adt-tp-seq-lens-ok s a))
+           (adt-tp-u64s (adt-tp-seq-words s a)))
+  :hints (("Goal" :induct (adt-tp-seq-words s a))))
+
+(defun adt-tp-pages-u64p (ps)
+  (declare (xargs :verify-guards nil :guard t))
+  (if (atom ps) (null ps) (and (adt-tp-u64s (car ps)) (adt-tp-pages-u64p (cdr ps)))))
+
+(defthm adt-tp-u64s-take
+  (implies (adt-tp-u64s w) (adt-tp-u64s (adt-tp-take n w)))
+  :hints (("Goal" :in-theory (enable adt-tp-take))))
+
+(defthm adt-tp-u64s-zeros
+  (adt-tp-u64s (adt-tp-zeros n))
+  :hints (("Goal" :in-theory (enable adt-tp-zeros))))
+
+(defthm adt-tp-u64s-nthcdr
+  (implies (adt-tp-u64s w) (adt-tp-u64s (nthcdr n w))))
+
+(defthm adt-tp-u64s-page
+  (implies (adt-tp-u64s w) (adt-tp-u64s (adt-tp-page w)))
+  :hints (("Goal" :in-theory (enable adt-tp-page))))
+
+(defthm adt-tp-pages-u64p-pages
+  (implies (adt-tp-u64s w) (adt-tp-pages-u64p (adt-tp-pages w)))
+  :hints (("Goal" :induct (adt-tp-pages w))))
+
+(defthm adt-tp-pages-of-u64p
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (adt-tp-seq-lens-ok s a))
+           (adt-tp-pages-u64p (adt-tp-pages-of s a))))
