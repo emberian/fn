@@ -865,6 +865,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
 	books/recovery-refinement \
+	books/recovery-refinement-store \
 	tests/acl2/recovery-refinement-tests \
 	books/recovery-refinement-concurrent \
 	tests/acl2/recovery-refinement-concurrent-tests \
