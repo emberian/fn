@@ -2160,7 +2160,7 @@
                 (equal (fn-wg-app e r) p))
            (equal e p))
   :rule-classes nil)
-(defthm fn-wg-sized-payload-octets-generic
+(defthmd fn-wg-sized-payload-octets-generic
   (implies (and (fn-cbor-octet-listp xs) (<= (nfix n) (len (fn-wg-drop w xs))))
            (fn-cbor-octet-listp (fn-wg-take n (fn-wg-drop w xs)))))
 (defthm fn-wg-sized-payload-octets

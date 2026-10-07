@@ -160,6 +160,10 @@
       ((equal op :where)
        (fn-wgx-array (list (fn-wgx-name op) (fn-wgx-grammar-json (fn-wg-arg 1 g))
                            (fn-wgx-array (fn-wgx-checks-json (fn-wg-where-checks g))))))
+      ((equal op :sized)
+       (fn-wgx-array (list (fn-wgx-name op) (fn-wgx-nat (fn-wg-arg 1 g))
+                           (fn-wgx-nat (fn-wg-arg 2 g)) (fn-wgx-nat (fn-wg-arg 3 g))
+                           (fn-wgx-grammar-json (fn-wg-arg 4 g)))))
       ((equal op :frame)
        (fn-wgx-array (list (fn-wgx-name op) (fn-wgx-hexq (fn-wg-arg 1 g))
                            (fn-wgx-nat (fn-wg-arg 2 g)) (fn-wgx-nat (fn-wg-arg 3 g))
@@ -199,6 +203,7 @@
       ((equal op :maybe)
        (fn-wgx-array (if (consp v) (list (fn-wgx-value-json (fn-wg-arg 1 g) (car v))) nil)))
       ((equal op :where) (fn-wgx-value-json (fn-wg-arg 1 g) v))
+      ((equal op :sized) (fn-wgx-value-json (fn-wg-arg 4 g) v))
       ((equal op :frame) (fn-wgx-value-json (fn-wg-arg 5 g) v))
       (t (fn-wgx-str "null")))))
  (defun fn-wgx-seq-value-json (g v)
@@ -232,7 +237,7 @@
 ;
 ; A family named conformance.* is on no wire: it exists so that the vectors
 ; exercise every node, class and check of the language (the wire families
-; use only const, uint, bytes, enum, seq, tag and frame).
+; use only const, uint, bytes, enum, seq, tag, sized and frame).
 
 (defconst *fn-wgx-fncu-values*
   (list (list nil '(1) (make-list 64 :initial-element 255) '(2 3) '(4) '(5 6 7)
