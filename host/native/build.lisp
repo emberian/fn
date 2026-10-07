@@ -439,6 +439,10 @@
 ; (class, the entry guard's kinds, keystones); a refuted one stops the build.
 (ld "host/interfaces.lisp" :ld-error-action :error)
 (ld "host/cost-host.lisp" :ld-error-action :error)
+; D40's raw-dispatch verdicts, judged in this world after its last
+; declaration (books/raw-dispatch-verdict.lisp): fnn-install-raw-dispatch
+; admits a raw dispatch only on one, here and in the extracted core.
+(ld "host/raw-dispatch-verdicts.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.

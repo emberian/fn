@@ -448,6 +448,7 @@
 (include-book "history-paged")
 (include-book "history-records")
 (include-book "resource-vector-exec")
+(include-book "raw-dispatch-verdict")
 (include-book "../host/page-read-host")
 (include-book "../host/page-window-executor-host")
 (include-book "../host/store-host")

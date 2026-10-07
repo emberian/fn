@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1814,
     "declared_and_dispatched": 1763,
-    "guard_verified": 1065,
+    "guard_verified": 1067,
     "with_keystone": 275,
     "with_fold_keystone_only": 3,
     "raw_dispatched": 20
@@ -1401,6 +1401,82 @@
         "host/native/heap.lisp"
       ],
       "applied_directly_in": []
+    },
+    {
+      "name": "fn-rdv-admit",
+      "subsystem": "nntp/served",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": "the install path's admission of a raw row over the world's verdicts (host/native/raw-trap.lisp fnn-install-raw-dispatch); a build-time decision, no client data",
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [],
+      "applied_directly_in": [
+        "host/native/raw-trap.lisp"
+      ]
+    },
+    {
+      "name": "fn-rdv-carried-problem",
+      "subsystem": "nntp/served",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": "the install path's check of the carried tables' row digests (host/native/raw-trap.lisp fnn-check-carried-tables); a load-time decision, no client data",
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [],
+      "applied_directly_in": [
+        "host/native/raw-trap.lisp"
+      ]
+    },
+    {
+      "name": "fn-rdv-raw-declared-p",
+      "subsystem": "nntp/served",
+      "declared_in": "host/interfaces.lisp",
+      "class": "program",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": "the install path's selection of the raw-declared rows (host/native/raw-trap.lisp); a build-time decision, no client data",
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [],
+      "applied_directly_in": [
+        "host/native/raw-trap.lisp"
+      ]
+    },
+    {
+      "name": "fn-rdv-row-digest",
+      "subsystem": "nntp/served",
+      "declared_in": "host/interfaces.lisp",
+      "class": "program",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": "the install path's digest of a row as the world gives it (host/native/raw-trap.lisp); a build-time decision, no client data",
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [],
+      "applied_directly_in": [
+        "host/native/raw-trap.lisp"
+      ]
     },
     {
       "name": "fn-octets$c-reserve",
@@ -30088,82 +30164,6 @@
         "host/native/bp-control-client.lisp"
       ],
       "applied_directly_in": []
-    },
-    {
-      "name": "fn-di-raw-with-problem",
-      "subsystem": "nntp/served",
-      "declared_in": "host/interfaces.lisp",
-      "class": "program",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": "Image-build declaration lint over the loaded world; no client data or served decision",
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [],
-      "applied_directly_in": [
-        "host/native/raw-trap.lisp"
-      ]
-    },
-    {
-      "name": "fn-di-raw-guarded-problem",
-      "subsystem": "nntp/served",
-      "declared_in": "host/interfaces.lisp",
-      "class": "program",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": "Image-build exact guard and stobj ABI validation over the exported ACL2 world",
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [],
-      "applied_directly_in": [
-        "host/native/raw-trap.lisp"
-      ]
-    },
-    {
-      "name": "fn-di-raw-guarded-target",
-      "subsystem": "nntp/served",
-      "declared_in": "host/interfaces.lisp",
-      "class": "program",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": "Image-build resolution of actual compiled callback or registered creator EXEC",
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [],
-      "applied_directly_in": [
-        "host/native/raw-trap.lisp"
-      ]
-    },
-    {
-      "name": "fn-di-raw-creatorp",
-      "subsystem": "nntp/served",
-      "declared_in": "host/interfaces.lisp",
-      "class": "program",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": "fnn-install-raw-dispatch identifies exact registered startup creators from the validated immutable image world",
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [],
-      "applied_directly_in": [
-        "host/native/raw-trap.lisp"
-      ]
     },
     {
       "name": "fn-bplc-step",

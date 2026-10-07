@@ -18,9 +18,6 @@
 ; outside the DTN image: fn-owner-prepare-topic :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-refuse-reservation :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 (definterface create-fn-hrecs$c :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$c)))
-(definterface fn-di-raw-with-problem :class :program :direct "Image-build declaration lint over the loaded world; no client data or served decision")
-(definterface fn-di-raw-guarded-problem :class :program :direct "Image-build exact guard and stobj ABI validation over the exported ACL2 world")
-(definterface fn-di-raw-guarded-target :class :program :direct "Image-build resolution of actual compiled callback or registered creator EXEC")
 (definterface create-fn-hrecs$s :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$s)))
 (definterface create-fn-hist$p :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hist$p)))
 (definterface fn-hroot-index-demand :class :common-lisp-compliant :kinds ((ordinal natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-root-is-physical))

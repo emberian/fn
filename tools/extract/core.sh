@@ -68,7 +68,7 @@ python3 "$X/world_binding.py" check "$FN_EXTRACT_WORLD_IMAGE" "$WORLD_KEY" "$VAR
   printf ') "%s/core.json" "%s/core-world.lisp" "%s/packages.json" state)\n' "$OUT" "$OUT" "$OUT"
 } > "$OUT/export.lsp"
 ( cd "$TREE" && swarm-build "$FN_EXTRACT_WORLD_IMAGE" < "$OUT/export.lsp" > "$OUT/export.log" 2>&1 )
-if grep -q "ACL2 Error" "$OUT/export.log" || [ ! -s "$OUT/core.json" ] || [ ! -s "$OUT/core-world.lisp" ]; then
+if grep -qE "ACL2 Error|HARD ACL2 ERROR" "$OUT/export.log" || [ ! -s "$OUT/core.json" ] || [ ! -s "$OUT/core-world.lisp" ]; then
     echo "core: the front end's export failed; see $OUT/export.log" >&2; exit 1
 fi
 python3 "$X/cl.py" "$OUT/core.json" --out "$OUT/defs.lisp" --inventory "$OUT/inventory.json" \
