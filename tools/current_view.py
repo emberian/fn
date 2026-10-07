@@ -392,9 +392,9 @@ def main(argv: list[str] | None = None) -> int:
         text = build()
     except green_check.CacheUnavailable as error:
         if args.check:
-            print(f"current view: UNKNOWN, not checked: no answer from the cert cache "
-                  f"({error}); pass --cache DIR for a local mirror", file=sys.stderr)
-            return 0
+            print(f"current view: UNKNOWN: no record cache reachable ({error}); "
+                  f"pass --cache DIR for a local mirror", file=sys.stderr)
+            return 3
         print(f"current view: no answer from the cert cache: {error}", file=sys.stderr)
         return 2
     except evidence_store.EvidenceError as error:

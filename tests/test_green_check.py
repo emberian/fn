@@ -449,7 +449,7 @@ class BoxTests(Fixture):
                 patch("sys.stderr"):
             self.assertEqual(green_check.main(["--summary"]), 2)
 
-    def test_unreachable_cache_reports_unknown_per_book_and_does_not_fail_a_summary(self):
+    def test_unreachable_cache_reports_unknown_per_book_and_exits_3_in_every_mode(self):
         book(self.root, "books/a", '(in-package "ACL2")')
         with patch.object(green_check.subprocess, "run", return_value=self.reply({}, code=255)):
             report = green_check.audit(self.root, roots=["books/a"],
@@ -462,9 +462,8 @@ class BoxTests(Fixture):
                 patch.object(green_check.ledger, "makefile_roots", return_value=["books/a"]), \
                 patch.object(green_check.subprocess, "run", return_value=self.reply({}, code=255)), \
                 patch("builtins.print", side_effect=lambda *a, **k: out.append(" ".join(map(str, a)))):
-            self.assertEqual(green_check.main(["--summary"]), 0)
-            self.assertEqual(green_check.main(["--strict"]), 1)
-        self.assertIn("1 unknown", out[0])
+            for mode in (["--summary"], ["--table"], ["--json"], ["--strict"]):
+                self.assertEqual(green_check.main(mode), 3, mode)
 
     def test_a_local_mirror_without_a_launcher_uses_the_record_identity(self):
         book(self.root, "books/a", '(in-package "ACL2")')

@@ -628,6 +628,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"green-check: cannot read this tree: {error}", file=sys.stderr)
         return 2
 
+    if any(entry.get("verdict") == "unknown"
+           for entry in report.get("books_by_verdict", {}).values()):
+        # Uncertain stays distinct from red (1) and from usage errors (2):
+        # an unreachable box never turns a certification step green.
+        print("green-check: UNKNOWN: no record cache reachable (tried hbox, persvati); "
+              "pass --cache DIR for a local mirror", file=sys.stderr)
+        return 3
+
     if args.profile:
         answer = profile_gate(report, args.profile, root=ROOT)
         print(json.dumps(answer, indent=1, sort_keys=True) if args.json
