@@ -1,5 +1,4 @@
 {
- "blocked_on": "decision: Deputy C: exception rows, or leaf classifier for shutdown/close on sockets and pipes",
  "category": "lock-discipline",
  "detail": "Keys and chains: (1) R2|fnn-owner-stop-service-locked|O:sb-bsd-sockets:socket-shutdown x2 -- fnn-owner-stop-service-locked (owner.lisp:2845) 'locked' = O held (e.g. fnn-owner-commit-complete-locked owner.lisp:4703 -> :2893 listener shutdown, :2902 client shutdown, each in ignore-errors). The comment at owner.lisp:2886-2890 states the design: shutdown (not close) so the accept loop observes STOPPING 'while this mutex is still held'. shutdown(2) does not block on a TCP socket. (2) R2|fnn-socket-shutdown|XCTL:sb-bsd-sockets:socket-shutdown -- fnn-dev-repl-stop (dev-repl.lisp:243): the dev REPL's control-state lock held while shutting its clients/listener; developer tool. (3) R2|fnn-mux-close-wake|M:sb-posix:close -- fnn-mux-close-wake (mux.lisp:1683) closes the loop's two wake pipe fds with fnn-mux-loop-lock held, recording a per-fd receipt before the call (so a failed close is never retried).\nHazard: each leaf is a non-blocking kernel call on a socket or pipe (EIO/EINTR possible on close); the lock exists to order the teardown with the lifecycle flag. Held and reachable, stalls improbable.",
  "disposition": "LOCAL",
@@ -8,13 +7,16 @@
  "fix": "Justify by design decision (the stop-service comment already does): declare these three sites as R2 exceptions in the contracts with the shutdown/close rationale, or mark the sockets/pipes non-blocking-leaf class in the checker's leaf classifier if Deputy C prefers. Low priority.",
  "id": "LOCK-R2-FD-TEARDOWN-UNDER-LOCK",
  "notes": [
-  "Not changed in lane/lock-owner-class. All three sites (fnn-owner-stop-service-locked socket-shutdown x2, fnn-socket-shutdown under the dev REPL control lock, fnn-mux-close-wake close under fnn-mux-loop-lock) are non-blocking leaf calls whose lock orders the teardown with a lifecycle flag; the item's fix is an R2 exception or leaf classification, which the lane rules allow only as a checker-verified model-gap row and the item text does not call a model gap. Left for Deputy C."
+  "Not changed in lane/lock-owner-class. All three sites (fnn-owner-stop-service-locked socket-shutdown x2, fnn-socket-shutdown under the dev REPL control lock, fnn-mux-close-wake close under fnn-mux-loop-lock) are non-blocking leaf calls whose lock orders the teardown with a lifecycle flag; the item's fix is an R2 exception or leaf classification, which the lane rules allow only as a checker-verified model-gap row and the item text does not call a model gap. Left for Deputy C.",
+  "Deputy C2 ruling 2026-10-07: (a) shutdown(2) does not wait (SO_LINGER governs close, not shutdown), so sb-bsd-sockets:socket-shutdown leaves R2's blocking-leaf set as a model correction (contracts nonblocking_leaves, read by compute_blocking and rule_R2; the leaf keeps its socket-error signal class for R7); (b) close(2) of a pipe fd does not block, accepted only with checker-verified provenance (contracts nonblocking_close_sites, verify_pipe_close_sites: every store into the wake slots is NIL or an sb-posix:pipe result, no constructor passes a slot keyword).",
+  "Fixed at 96fd09f81 (shutdown) and 56220aa56 (pipe close): keys R2|fnn-owner-stop-service-locked|O:sb-bsd-sockets:socket-shutdown, R2|fnn-socket-shutdown|XCTL:sb-bsd-sockets:socket-shutdown and R2|fnn-mux-close-wake|M:sb-posix:close gone from --check on lane/lock-owner-class, none added. Unit tests: R2NonblockingLeaf, R2PipeClose in tests/test_lock_discipline_check.py."
  ],
  "owner": "unassigned",
  "scenario": "Service stop, dev REPL stop, mux loop shutdown. A close/shutdown that hung would hold the lifecycle lock.",
  "severity": "low",
+ "sha": "56220aa56",
  "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
- "state": "open",
+ "state": "ready",
  "title": "Descriptor teardown (socket-shutdown, close) is issued under the lock that guards the lifecycle: stop-service (O), dev-repl-stop (XCTL), mux-close-wake (M)",
  "updated": "2026-10-06T23:55:37Z"
 }
