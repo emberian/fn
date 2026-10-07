@@ -354,3 +354,18 @@
           (wf ((ledger (update-fn-rl-count 99 (rcx-l2)))) :lemma rcx-fn-rlo-physical-keeps-representation-without-wf))
   :mutations ((not-wellformed (:conclusion (let ((after (mv-nth 1 (fn-rlo-physical token operation-gen receipt ledger)))) (not (fn-rl-wfp after)))) ((token (rcx-tok)) (operation-gen 8) (receipt :terminal) (ledger (rcx-l2))) :fault "an operation that leaves the ledger ill-formed" :lemma rcx-fn-rlo-physical-keeps-representation-mutant-not-wellformed)))
 
+
+(defthm rcx-fn-rlo-exhausted-settlement-keeps-free-head-witness
+  (and (<= *fn-rl-word-max* (fn-rl-gensi 2 (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5)))) (let ((after (mv-nth 1 (fn-rlo-settle-ready 2 (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5))))) (slot 2) (ledger (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5)))) (and (equal (fn-rl-next after) (fn-rl-next ledger)) (equal (fn-rl-gensi slot after) (fn-rl-gensi slot ledger))))))
+(defthm rcx-fn-rlo-exhausted-settlement-keeps-free-head-without-exhausted
+  (and (not (<= *fn-rl-word-max* (fn-rl-gensi 2 (rcx-l5)))) (not (let ((after (mv-nth 1 (fn-rlo-settle-ready 2 (rcx-l5)))) (slot 2) (ledger (rcx-l5))) (and (equal (fn-rl-next after) (fn-rl-next ledger)) (equal (fn-rl-gensi slot after) (fn-rl-gensi slot ledger)))))))
+(defthm rcx-fn-rlo-exhausted-settlement-keeps-free-head-mutant-head-moves
+  (and (<= *fn-rl-word-max* (fn-rl-gensi 2 (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5)))) (let ((after (mv-nth 1 (fn-rlo-settle-ready 2 (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5))))) (slot 2) (ledger (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5)))) (and (equal (fn-rl-next after) (fn-rl-next ledger)) (equal (fn-rl-gensi slot after) (fn-rl-gensi slot ledger)))) (not (let ((after (mv-nth 1 (fn-rlo-settle-ready 2 (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5))))) (ledger (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5)))) (not (equal (fn-rl-next after) (fn-rl-next ledger)))))))
+(defteeth fn-rlo-exhausted-settlement-keeps-free-head
+  :claim (((exhausted (<= *fn-rl-word-max* (fn-rl-gensi slot ledger)))) (let ((after (mv-nth 1 (fn-rlo-settle-ready slot ledger)))) (and (equal (fn-rl-next after) (fn-rl-next ledger)) (equal (fn-rl-gensi slot after) (fn-rl-gensi slot ledger)))))
+  :subject fn-rlo-settle-ready
+  :witness-lemma rcx-fn-rlo-exhausted-settlement-keeps-free-head-witness
+  :witness ((slot 2) (ledger (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5))))
+  :breaks ((exhausted ((ledger (rcx-l5))) :lemma rcx-fn-rlo-exhausted-settlement-keeps-free-head-without-exhausted))
+  :mutations ((head-moves (:conclusion (let ((after (mv-nth 1 (fn-rlo-settle-ready slot ledger)))) (not (equal (fn-rl-next after) (fn-rl-next ledger))))) ((slot 2) (ledger (update-fn-rl-gensi 2 *fn-rl-word-max* (rcx-l5)))) :fault "a settlement of an exhausted slot that pushes it back on the free head" :lemma rcx-fn-rlo-exhausted-settlement-keeps-free-head-mutant-head-moves)))
+
