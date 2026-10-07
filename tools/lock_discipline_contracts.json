@@ -65,6 +65,13 @@
    "io_ok": true,
    "why_io": "serializes spare preparers; creation, preallocation and the fence run under it by design, never under O (io.lisp:6333-6337)"
   },
+  "XDURABLE": {
+   "match": [
+    "(fnn-log-durable-lock)"
+   ],
+   "io_ok": true,
+   "why_io": "serializes the two callers of fnn-log-make-durable (the new segment's first fence and the publication) so a rotated segment's name is fenced once and a failed barrier is recorded once and never retried (io.lisp:8498-8541); the file and directory fsyncs under it are its whole purpose. It is taken in no other place, so it guards nothing but that fsync pair and one nested kernel update (K); a caller that holds O does so on its own and is reported under O"
+  },
   "Q": {
    "match": [
     "*fnn-log-queue-mutex*"
@@ -237,7 +244,11 @@
    "XOUTPUT",
    "XOBS",
    "XTRACE",
-   "XFJ"
+   "XFJ",
+   "XDURABLE"
+  ],
+  "XDURABLE": [
+   "K"
   ],
   "C": [
    "G",

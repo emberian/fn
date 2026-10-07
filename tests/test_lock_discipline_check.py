@@ -1035,6 +1035,36 @@ class Baseline(unittest.TestCase):
         self.assertTrue(all(":fn-a#" in n for n in names), names)
 
 
+class DurableLockRow(unittest.TestCase):
+    """XDURABLE (fnn-log-durable-lock): io_ok because its one acquisition is the fsync pair."""
+    SRC = """
+(defun fnn-log-make-durable (log)
+  (sb-thread:with-mutex ((fnn-log-durable-lock log))
+    (fnn-fsync-file (fnn-log-fd log))
+    (fnn-fsync-dir (fnn-log-dir-pending log))))
+(defun fnn-fsync-file (fd) (sb-posix:fsync fd))
+(defun fnn-fsync-dir (dir) (sb-posix:fsync (sb-posix:open dir 0)))
+(defun fnn-inline-fence (service log)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service)) (fnn-log-make-durable log)))
+"""
+
+    def test_the_lock_itself_is_not_blocked_on_but_a_holder_of_the_owner_still_is(self):
+        found = [f for f in run(self.SRC, ["R2"]) if f.rule == "R2"]
+        keys_ = sorted({f.key for f in found})
+        self.assertEqual(keys_, ["O:sb-posix:fsync", "O:sb-posix:open"])
+
+    def test_the_declared_lock_is_acquired_in_one_place_only(self):
+        hits = []
+        for path in sorted((ROOT / "host" / "native").glob("*.lisp")):
+            for n, line in enumerate(path.read_text().splitlines(), 1):
+                if "fnn-log-durable-lock" in line and not line.lstrip().startswith(";"):
+                    hits.append((path.name, line.strip()))
+        self.assertEqual(len(hits), 1, hits)   # the struct slot is implicit; one with-mutex
+        self.assertIn("with-mutex", hits[0][1])
+        self.assertTrue(CONTRACTS.raw["locks"]["XDURABLE"]["io_ok"])
+        self.assertEqual(CONTRACTS.raw["lock_order"]["XDURABLE"], ["K"])
+
+
 class R3OwnedFd(unittest.TestCase):
     """borrows kind owned-fd (the catchup spool worker's private temp-file descriptor)."""
     GOOD = """
