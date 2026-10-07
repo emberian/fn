@@ -401,6 +401,36 @@
                           lim id now)))
       (list (car r) (cdr r) nil))))
 
+; The idle check at the very instant of progress keeps, whatever the limits
+; (fn-exp-idle-keeps-after-progress at LATER = NOW, its idle limit zero
+; included).
+(defthm fn-exp-idle-keeps-at-its-own-progress
+  (equal (car (fn-exp-idle (fn-exp-progress xs id now) lim id now)) :keep)
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-exp-idle fn-exp-progress fn-exp-with fn-exp-idle-limit)
+                           (fn-exp-find fn-exp-replace fn-exp-entry fn-exp-entry-id
+                            fn-exp-entry-last fn-exp-entry-answered fn-exp-entry-address
+                            fn-exp-entry-principal fn-exp-entry-pending fn-exp-make
+                            fn-exp-conns fn-exp-rates fn-exp-fails fn-exp-posts
+                            fn-exp-counters fn-exp-counters-bump fn-exp-lim-idle
+                            fn-exp-lim-first)))))
+
+(local (defthm fn-exp-ids-of-replace-here
+  (equal (fn-exp-ids (fn-exp-replace e conns)) (fn-exp-ids conns))
+  :hints (("Goal" :in-theory (enable fn-exp-replace fn-exp-ids)))))
+
+(defthm fn-exp-progress-keeps-the-connection-ids
+  (equal (fn-exp-ids (fn-exp-conns (fn-exp-progress xs id now)))
+         (fn-exp-ids (fn-exp-conns xs)))
+  :hints (("Goal" :in-theory (e/d (fn-exp-progress fn-exp-with)
+                                  (fn-exp-replace fn-exp-ids fn-exp-entry fn-exp-find)))))
+
+(local (defthm fn-exp-tail-delivered-is-not-queued
+  (implies (fn-exp-tail-delivered-p st obs) (not (fn-exp-tail-queued-p st obs)))))
+
+(local (in-theory (disable fn-exp-idle fn-exp-progress fn-send-progress-decide fn-send-progress-p
+                           fn-send-progress-next fn-exp-tail-queued-p fn-exp-tail-delivered-p)))
+
 ; KEYSTONE (a reader that is still reading the tail is not idle).  A queued
 ; tail whose queue shrank since the last look, and that the send verdict
 ; lets continue, is kept.
@@ -441,4 +471,5 @@
 (defthm fn-exp-idle-delivery-keeps-the-connection-ids
   (implies (member-equal x (fn-exp-ids (fn-exp-conns xs)))
            (member-equal x (fn-exp-ids (fn-exp-conns
-                                        (cadr (fn-exp-idle-delivery xs lim id now st obs)))))))
+                                        (cadr (fn-exp-idle-delivery xs lim id now st obs))))))
+  :hints (("Goal" :in-theory (disable fn-exp-ids fn-exp-conns))))
