@@ -678,8 +678,8 @@ values (nil, nil, 0, nil, the first class, nil, nil, nil, nil). Because it
 is a state, not a separate projection record, a fixed-point statement over
 it is well typed (T6). Clearing every attempt and delivery marker, anchored
 or not, is the design's `clear-inflight`; as built, `fn-bpn-restart-step`
-applies `fn-bpn-resume-jobs`, which returns every `:attempting` job to
-`:queued`; `fn-bpn-reanchor st obs` is §4.5's
+applies `fn-bpn-resolve-orphans-step`, which resolves an `:attempting` job
+through the append path as a `:requeued` record with the `:uncertain` reason; `fn-bpn-reanchor st obs` is §4.5's
 re-anchoring. These three are the vocabulary of T6.
 
 ### 2.7 No whole-state revalidation on the served path
