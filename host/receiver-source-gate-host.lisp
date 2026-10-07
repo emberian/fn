@@ -1,6 +1,10 @@
 ; Actual installed source gate. CURRENT is the same retained control stobj;
 ; the runtime getter has no caller-supplied installation Boolean.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "runtime-receiver-source-host")
 (include-book "../books/connection-receiver-source")
 (include-book "../books/state-globals")

@@ -2,6 +2,9 @@
 ; Native callers hold the owner mutex. Capture ticket is issued by fn-osl;
 ; a maintenance token is borrowed, not issued or funded by this adapter.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
 (include-book "../books/payload-view-lease")
 (include-book "../books/snapshot-capture-lease")
 (include-book "../books/payload-view-arena")
