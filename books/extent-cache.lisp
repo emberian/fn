@@ -41,6 +41,12 @@
 ; ran under.  If the profile row ever grows into the hundreds the index is a
 ; keyed instance of def-representation, and the statements below do not change.
 ;
+; STATED INVARIANT (no pin column).  A cached row in the page-read ledger has
+; no reader pin.  Every borrow of a slot's vector runs under the host's extent
+; lock (*fnn-extent-lock*) from lookup to the last octet copied, and install,
+; yield and free run under the same lock: that is why an install cannot evict
+; a slot in use.  The host marks the borrow site with a comment naming this.
+;
 ; The clock saturates at 2^64-1 (a slot's stamp is a u64 column).  A
 ; saturated clock leaves ties, which the victim choice breaks by position:
 ; recency order is then approximate, every other statement is unaffected.
