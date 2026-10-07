@@ -747,9 +747,41 @@ PAIR_DB = "pair-facts.sqlite"
 PAIR_IMPORT_CHUNK = 64 * 1024 * 1024
 
 
-def _pair_index(cache: Path):
+PAIR_LOCK = "pair-facts.lock"
+
+
+class PairFactsBusy(Exception):
+    """A certify or install holds the cache's pair facts."""
+
+
+@contextmanager
+def pair_session_lock(cache: Path, exclusive: bool = False, wait: bool = True):
+    """Every user of the pair facts holds this shared for its session (the
+    log, its index); compact-pair-facts holds it exclusive.  A cache that
+    cannot take the lock file (unwritable) runs unlocked, as before."""
+    try:
+        Path(cache).mkdir(parents=True, exist_ok=True)
+        handle = (Path(cache) / PAIR_LOCK).open("a+b")
+    except OSError:
+        if exclusive:
+            raise
+        yield
+        return
+    with handle:
+        mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+        try:
+            fcntl.flock(handle, mode | (0 if wait else fcntl.LOCK_NB))
+        except BlockingIOError:
+            raise PairFactsBusy(f"{Path(cache) / PAIR_LOCK} is held by a certify or install")
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+def _pair_index(cache: Path, path: Path | None = None):
     import sqlite3
-    connection = sqlite3.connect(str(Path(cache) / PAIR_DB), timeout=900,
+    connection = sqlite3.connect(str(path or Path(cache) / PAIR_DB), timeout=900,
                                  isolation_level=None)
     connection.execute("PRAGMA busy_timeout=900000")
     with contextlib.suppress(sqlite3.DatabaseError):
@@ -827,12 +859,114 @@ def _pair_import(connection, log: Path) -> None:
             raise
 
 
+def live_cert_digests(cache: Path) -> set[str]:
+    """The certificate digests some cache entry still holds (its meta.json's
+    cert_sha256); a pair fact about any other certificate can never be
+    asked again."""
+    found: set[str] = set()
+    for meta_path in Path(cache).glob("*/*/meta.json"):
+        with contextlib.suppress(OSError, ValueError, AttributeError):
+            digest = json.loads(meta_path.read_text(encoding="utf-8")).get("cert_sha256")
+            if isinstance(digest, str):
+                found.add(digest)
+    return found
+
+
+def compact_pair_facts(cache: Path, apply: bool = False) -> dict:
+    """Rewrite the pair-facts log without duplicate facts and without facts
+    about certificates no cache entry holds, then rebuild its index from it.
+    A fact is a cached ACL2 verdict, so dropping one costs a re-probe, never
+    a wrong answer.  Dry run unless APPLY.  Refuses (PairFactsBusy) while any
+    certify or install holds the facts: nothing waits and nothing changes.
+    A process running a certs.py older than the session lock may still
+    append to the replaced log; that costs at most those lines."""
+    import sqlite3
+    cache = Path(cache)
+    store, index = cache / PAIR_FACTS, cache / PAIR_DB
+    report = {"cache": str(cache), "applied": False,
+              "log_bytes_before": store.stat().st_size if store.is_file() else 0,
+              "index_bytes_before": sum((cache / (PAIR_DB + suffix)).stat().st_size
+                                        for suffix in ("", "-wal", "-shm")
+                                        if (cache / (PAIR_DB + suffix)).is_file()),
+              "lines_before": 0, "kept": 0, "duplicates": 0, "dead": 0, "unreadable": 0}
+    with pair_session_lock(cache, exclusive=True, wait=False):
+        live = live_cert_digests(cache)
+        seen: set[tuple[str, str, str]] = set()
+        temporary = cache / (PAIR_FACTS + ".compact")
+        out = temporary.open("wb") if apply else None
+        kept_bytes = 0
+        try:
+            if store.is_file():
+                with store.open("rb") as handle:
+                    for raw in handle:
+                        report["lines_before"] += 1
+                        try:
+                            fact = json.loads(raw)
+                            key = (fact["acl2"], fact["parent"], fact["child"])
+                            if not all(isinstance(x, str) for x in key):
+                                raise TypeError
+                        except (ValueError, KeyError, TypeError):
+                            report["unreadable"] += 1
+                            continue
+                        if key in seen:
+                            report["duplicates"] += 1
+                            continue
+                        if key[1] not in live or key[2] not in live:
+                            report["dead"] += 1
+                            continue
+                        seen.add(key)
+                        line = raw if raw.endswith(b"\n") else raw + b"\n"
+                        kept_bytes += len(line)
+                        report["kept"] += 1
+                        if out is not None:
+                            out.write(line)
+            if out is not None:
+                out.flush()
+                os.fsync(out.fileno())
+        finally:
+            if out is not None:
+                out.close()
+        report["log_bytes_after"] = kept_bytes
+        if not apply:
+            return report
+        built = cache / (PAIR_DB + ".compact")
+        built.unlink(missing_ok=True)
+        connection = _pair_index(cache, built)
+        try:
+            data = temporary.read_bytes()
+            provers: dict[str, int] = {}
+            connection.execute("BEGIN IMMEDIATE")
+            connection.executemany("INSERT OR IGNORE INTO facts VALUES (?, ?, ?, ?, ?)",
+                                   _pair_rows(connection, data, provers))
+            connection.execute("INSERT OR REPLACE INTO meta VALUES ('log_offset', ?)",
+                               (str(len(data)),))
+            connection.execute("COMMIT")
+            with contextlib.suppress(sqlite3.Error):
+                connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        finally:
+            connection.close()
+        for suffix in ("-wal", "-shm"):
+            (cache / (PAIR_DB + ".compact" + suffix)).unlink(missing_ok=True)
+        os.replace(temporary, store)
+        os.replace(built, index)
+        for suffix in ("-wal", "-shm"):
+            (cache / (PAIR_DB + suffix)).unlink(missing_ok=True)
+        report["applied"] = True
+        report["index_bytes_after"] = index.stat().st_size
+    return report
+
+
 def memoized_pair_checker(cache: Path, checker=None):
     """CHECKER (default the ACL2 probe) with its verdicts kept in CACHE."""
     checker = checker or cert_alists.acl2_certificate_pairs
 
     def check(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path,
               root: Path) -> dict[tuple[int, int], tuple[bool, bool]]:
+        with pair_session_lock(cache):
+            return locked_check(paths, pairs, acl2, root)
+
+    def locked_check(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path,
+                     root: Path) -> dict[tuple[int, int], tuple[bool, bool]]:
         import sqlite3
         store = Path(cache) / PAIR_FACTS
         digests = [content_hash(Path(path)) if Path(path).is_file() else None
@@ -2529,6 +2663,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("publish", "install", "install-set",
                                            "install-partial", "install-umbrellas", "status", "prune",
+                                           "compact-pair-facts",
                                            "rekey"))
     parser.add_argument("books", nargs="*", default=None,
                         help="repository-relative book names without .lisp "
@@ -2565,6 +2700,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--keep-toolchain", default=None, metavar="ID[,ID...]",
                         help="for prune: the toolchain identities whose entries stay "
                              "(tools/acl2_toolchain.py identity LAUNCHER)")
+    parser.add_argument("--apply", action="store_true",
+                        help="for compact-pair-facts: rewrite the log and rebuild its "
+                             "index (default: dry run, sizes only)")
     parser.add_argument("--dry-run", action="store_true",
                         help="for prune: report what would be removed")
     parser.add_argument("--list-all", action="store_true",
@@ -2631,6 +2769,22 @@ def main(argv: list[str] | None = None) -> int:
         report = prune(cache, keep, dry_run=arguments.dry_run)
         if arguments.list_all:
             report.listed = len(report.unreadable)
+    elif arguments.action == "compact-pair-facts":
+        try:
+            facts = compact_pair_facts(cache, apply=arguments.apply)
+        except PairFactsBusy as error:
+            print(f"compact-pair-facts: REFUSED, nothing changed: {error}")
+            return 3
+        mode = "applied" if facts["applied"] else "dry run (--apply to write)"
+        print(f"compact-pair-facts: {mode}; cache {facts['cache']}")
+        print(f"  log {facts['log_bytes_before']} -> {facts['log_bytes_after']} bytes; "
+              f"lines {facts['lines_before']} -> {facts['kept']} "
+              f"(duplicates {facts['duplicates']}, about removed certificates {facts['dead']}, "
+              f"unreadable {facts['unreadable']})")
+        print(f"  index {facts['index_bytes_before']} bytes"
+              + (f" -> {facts['index_bytes_after']} bytes (rebuilt)" if facts["applied"]
+                 else " (rebuilt from the kept log on --apply)"))
+        return 0
     elif arguments.action == "rekey":
         report = rekey(root, cache, names)
     else:
