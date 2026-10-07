@@ -7074,21 +7074,29 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
           (let ((drop-ids (fnn-extent-ids-of-paths dropped-paths)))
             ;; The history image's file is never retired (its descriptor is
             ;; read off the lock for the process's life): refused by name
-            ;; before anything is retired, never a close under a pread.
-            (when (and *fnn-extent-image-id*
-                       (or (member *fnn-extent-image-id* drop-ids)
-                           (eql *fnn-extent-image-id* *fnn-extent-checkpoint-id*)))
-              (fnn-fault (format nil "the history image's file ~d would be retired"
-                                 *fnn-extent-image-id*)))
-            (fnn-owner-gated (service :control)
-              (setq *fnn-extent-retired*
-                    (sort (remove-duplicates
-                           (append drop-ids
-                                   (and *fnn-extent-checkpoint-id*
-                                        (list *fnn-extent-checkpoint-id*))
-                                   *fnn-extent-retired*))
-                          #'<)
-                    *fnn-extent-checkpoint-id* new-id)))
+            ;; before anything is retired, never a close under a pread.  The
+            ;; check reads *fnn-extent-checkpoint-id* in the same owner
+            ;; quantum that retires it and installs NEW-ID (its contract,
+            ;; host/native/extent.lisp; CONVERGE-2 row 31), so no other
+            ;; release can move it between the check and the write.  The
+            ;; fault is raised after the quantum, as before.
+            (let ((image-retired nil))
+              (fnn-owner-gated (service :control)
+                (if (and *fnn-extent-image-id*
+                         (or (member *fnn-extent-image-id* drop-ids)
+                             (eql *fnn-extent-image-id* *fnn-extent-checkpoint-id*)))
+                    (setq image-retired t)
+                  (setq *fnn-extent-retired*
+                        (sort (remove-duplicates
+                               (append drop-ids
+                                       (and *fnn-extent-checkpoint-id*
+                                            (list *fnn-extent-checkpoint-id*))
+                                       *fnn-extent-retired*))
+                              #'<)
+                        *fnn-extent-checkpoint-id* new-id)))
+              (when image-retired
+                (fnn-fault (format nil "the history image's file ~d would be retired"
+                                   *fnn-extent-image-id*)))))
           (dolist (f (reverse frames))
             (destructuring-bind (eoff elen handles) f
               ;; A fresh read (no descriptor names the frame yet): the frame

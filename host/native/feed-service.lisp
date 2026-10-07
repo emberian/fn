@@ -64,8 +64,8 @@
 ;;; a syscall or an ACL2 call.
 (defparameter *fnn-feed-runtime-lock*
   (sb-thread:make-mutex :name "fn outbound feed runtimes"))
-;; guarded-by: *fnn-feed-runtime-lock*
 (defparameter *fnn-feed-runtimes* (make-hash-table :test #'eq))
+(fnn-guarded-by *fnn-feed-runtimes* *fnn-feed-runtime-lock*)
 
 (defun fnn-feed-now ()
   "One monotonic observation, in the ACL2 feed port's milliseconds."

@@ -68,15 +68,20 @@ Missing wait/pin/other owner edges leave full PageIO replay unavailable."
                (fnn-native-observation-reason *fnn-native-observer*) :observer-fault)))))
 
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "fn extent realizer"))
-(defvar *fnn-extent-fds* (make-hash-table))   ; guarded-by: *fnn-extent-lock* (file id -> fd)
-(defvar *fnn-extent-paths* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> path)
+(defvar *fnn-extent-fds* (make-hash-table))   ; (file id -> fd)
+(fnn-guarded-by *fnn-extent-fds* *fnn-extent-lock*)
+(defvar *fnn-extent-paths* (make-hash-table)) ; (file id -> path)
+(fnn-guarded-by *fnn-extent-paths* *fnn-extent-lock*)
 (defvar *fnn-extent-incarnations* (make-hash-table))
-;; guarded-by: *fnn-extent-lock* (file id -> (device . inode) of the file opened)
-(defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
+(fnn-guarded-by *fnn-extent-incarnations* *fnn-extent-lock*)
+;; (file id -> (device . inode) of the file opened)
+(defvar *fnn-extent-bases* (make-hash-table)) ; (file id -> page 0's offset)
+(fnn-guarded-by *fnn-extent-bases* *fnn-extent-lock*)
 (defvar *fnn-extent-next-id* nil)
 (defvar *fnn-extent-cache* nil)
 (defvar *fnn-extent-cache-tokens* (make-hash-table :test #'eq))
-;; guarded-by: *fnn-extent-lock* (every reader and writer: fnn-extent-cache-
+(fnn-guarded-by *fnn-extent-cache-tokens* *fnn-extent-lock*)
+;; (every reader and writer: fnn-extent-cache-
 ;; forget/-store, both "Extent lock held", and the pool install under it).
 ;; Verified vector -> immutable charged token. Capacity is a static pool
 ;; allowance, not a per-entry credit that eviction pretends to reclaim.
@@ -84,14 +89,16 @@ Missing wait/pin/other owner edges leave full PageIO replay unavailable."
 ;; entries, each under the descriptor identity it was verified for
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
 (defvar *fnn-extent-issued* nil)
-;; guarded-by: *fnn-extent-lock*.  ACL2's issued table (books/page-read-direct.lisp
+(fnn-guarded-by *fnn-extent-issued* *fnn-extent-lock*)
+;; ACL2's issued table (books/page-read-direct.lisp
 ;; fn-pio-issuedp: an alist TOKEN -> ownership row, PRF-1057), kept exactly as
 ;; ACL2 returns it and written only through its helpers (fn-pio-issued-put /
 ;; -remove, fn-pio-direct-admit / -cancel / -settle); at most the worker count
 ;; long.  A row is removed only by actual worker completion, never a request's
 ;; timeout.
 (defvar *fnn-extent-file-holds* nil)
-;; guarded-by: *fnn-extent-lock*.  ACL2's holds table (def-holder fn-pio-file-holds,
+(fnn-guarded-by *fnn-extent-file-holds* *fnn-extent-lock*)
+;; ACL2's holds table (def-holder fn-pio-file-holds,
 ;; books/page-read-direct.lisp): per file incarnation the tokens of the direct
 ;; reads that pin it; fnn-extent-close asks fn-pio-direct-quiet-p of it (one
 ;; lookup) instead of walking the issued rows (KEYSTONE
@@ -625,7 +632,8 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ;;; quanta are shaped to); the oldest is evicted, and its exact :cached row
 ;;; released (fn-prl-evict), on insertion and when its file retires
 ;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW).
-(defvar *fnn-extent-window-cache* nil) ; guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-window-cache* nil)
+(fnn-guarded-by *fnn-extent-window-cache* *fnn-extent-lock*)
 (defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
 
 (defun fnn-extent-window-cache-insert (token plan window)
@@ -638,8 +646,10 @@ tokens of the entries evicted past the bound (the caller releases them)."
         (setq *fnn-extent-window-cache* (subseq *fnn-extent-window-cache* 0 limit))
         evicted))))
 
-(defvar *fnn-extent-cache-span* nil)  ; (entry key base len), guarded-by: *fnn-extent-lock*
-(defvar *fnn-extent-cache-span-dst* nil) ; the span's one buffer, guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-cache-span* nil)  ; (entry key base len)
+(fnn-guarded-by *fnn-extent-cache-span* *fnn-extent-lock*)
+(defvar *fnn-extent-cache-span-dst* nil) ; the span's one buffer
+(fnn-guarded-by *fnn-extent-cache-span-dst* *fnn-extent-lock*)
 
 (defun fnn-extent-window-cache-byte (file eoff elen poff plen trailer i)
   "A cached window's payload byte I of this exact descriptor, or NIL.  The
@@ -1498,7 +1508,8 @@ only observed worker relinquishment allows owner settlement/publication."
 ;;; count is ACL2's (fn-pio-direct-workers, a profile-limits row the
 ;;; launcher's thread reservation counts).
 (defvar *fnn-extent-direct-next* nil)
-;; guarded-by: *fnn-extent-lock* (the direct read counter, advanced only by
+(fnn-guarded-by *fnn-extent-direct-next* *fnn-extent-lock*)
+;; (the direct read counter, advanced only by
 ;; fn-pio-direct-admit)
 
 (defun fnn-extent-direct-start ()
@@ -1674,7 +1685,8 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;;; one caller, fn-arena$x-get (books/payload-arena-extent.lisp), has that
 ;;; guard.  RULING 1 (2026-10-06, RULINGS-20261006.md) authorises this edit to
 ;;; a forbidden-zone file.
-(defvar *fnn-extent-lz-buffer-key* nil)       ; (key . dict) fn-dlz holds, guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-lz-buffer-key* nil)       ; (key . dict) fn-dlz holds
+(fnn-guarded-by *fnn-extent-lz-buffer-key* *fnn-extent-lock*)
 (defvar *fnn-dlz* nil)
 
 (defun fnn-live-dlz ()
@@ -1824,14 +1836,17 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;;; drives it.
 
 (defvar *fnn-extent-retired* nil)
-;; guarded-by: the owner mutex (file ids not yet found quiet)
+(fnn-guarded-by *fnn-extent-retired* (fnn-owner-service-lock))
+;; (file ids not yet found quiet)
 (defvar *fnn-extent-pending* nil)
-;; guarded-by: the owner mutex ((S . IDS) ...: quiet file ids waiting for
+(fnn-guarded-by *fnn-extent-pending* (fnn-owner-service-lock))
+;; ((S . IDS) ...: quiet file ids waiting for
 ;; the readers pinned at or below the stamp S)
 (defvar *fnn-extent-checkpoint-id* nil)
-;; *fnn-extent-image-id* is declared in host/native/io.lisp, which sets it first and loads before this file.
-;; guarded-by: the owner mutex (the realizer id of the installed checkpoint
+(fnn-guarded-by *fnn-extent-checkpoint-id* (fnn-owner-service-lock))
+;; (the realizer id of the installed checkpoint
 ;; the last reseat pointed payloads at)
+;; *fnn-extent-image-id* is declared in host/native/io.lisp, which sets it first and loads before this file.
 
 (defun fnn-extent-ids-of-paths (paths)
   "The registered file ids whose path is one of PATHS."
