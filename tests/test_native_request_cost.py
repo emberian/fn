@@ -103,7 +103,8 @@ class RequestCostTests(unittest.TestCase):
         return run_raw({variable: str(path)})
 
     def test_mutation_tls_leaf_not_counted_turns_the_tls_tooth_red(self):
-        result = self.mutated('host/native/tls.lisp', '(fnn-io-count :write result)', 'nil',
+        result = self.mutated('host/native/tls.lisp',
+                              '(progn (fnn-io-count :write result)\n                   result)', 'result',
                               'FN_COST_TLS_SOURCE')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(at1_failures(result.stdout), ['ii-tls'])

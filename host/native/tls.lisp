@@ -857,7 +857,9 @@ after the handshake, signalled an I/O error, and dropped every link)."
         (fnn-%err-clear-error)
         (let ((result
                 (fnn-%ssl-read ssl (fnn-tls-pointer buffer) (length buffer))))
-          (when (> result 0) (return (subseq buffer 0 result)))
+          (when (> result 0)
+            (fnn-io-count :read result)
+            (return (subseq buffer 0 result)))
           (let ((disposition (fnn-tls-retry-direction ssl result)))
             (cond ((eq disposition :closed) (return (fnn-make-octets 0)))
                   ((member disposition '(:input :output))
@@ -884,6 +886,7 @@ pointer and length required by SSL_write's retry contract."
             (fnn-%err-clear-error)
             (let ((result (fnn-%ssl-write ssl (fnn-tls-pointer data offset) count)))
               (when (> result 0)
+                (fnn-io-count :write result)
                 (incf offset result)
                 (return))
               (let ((disposition (fnn-tls-retry-direction ssl result)))
