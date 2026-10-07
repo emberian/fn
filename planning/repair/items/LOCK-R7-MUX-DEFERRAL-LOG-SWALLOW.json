@@ -1,0 +1,13 @@
+{
+ "detail": "Key (NEW at 61ae00920): R7|fnn-mux-reserve|swallow:ignore-errors:fault at mux.lisp:1870-1872 (ignore-errors around fnn-log-line of ACL2's deferral line, in the accept thread outside the slot lock). A real swallow of a diagnostic write, but the identical pattern is baselined ten times in mux.lisp (fnn-mux-handshake-refused, fnn-mux-tls-log, fnn-mux-take-inbox ...). It changes no decision: the deferral is ACL2's, the line is only the record. Not fixed one-off: re-signalling as fnn-fault from an accept thread changes what a log failure does to the node and should be done uniformly for all mux log sinks.",
+ "file": "host/native/mux.lisp",
+ "fix": "Route the mux service-log writes through the verified diagnostic sink, or re-signal as fnn-fault uniformly, with host_check --load.",
+ "id": "LOCK-R7-MUX-DEFERRAL-LOG-SWALLOW",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "low",
+ "source": "lock-triage-sn-lock-20261007",
+ "state": "open",
+ "title": "fnn-mux-reserve swallows a failure of the once-per-episode deferral service-log line (R7)",
+ "updated": "2026-10-07T02:59:37Z"
+}
