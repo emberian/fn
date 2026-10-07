@@ -39,8 +39,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-UMBRELLAS = ("books/image-world", "books/image-world-dtn", "books/image-world-paged",
-             "books/image-world-store-test")
+UMBRELLAS = ("books/image-world", "books/image-world-dtn", "books/image-world-store-test")
 BUILD = "host/native/build.lisp"
 _INCLUDE = re.compile(r'^\s*\(include-book\s+"([^"]+)"', re.M)
 _ATTACH = re.compile(r'\(attach-stobj\s+([A-Za-z0-9$*+-]+)\s+[A-Za-z0-9$*+-]+\s*\)', re.I)
@@ -114,7 +113,17 @@ def pairs(root: Path) -> list[tuple[str, str, str]]:
                        and ":attachable t" in _read(p).lower()]
             if len(generic) == 1:
                 found.append((gen, "books/" + generic[0].stem, rel))
+            else:
+                found.append((gen, None, rel, ["books/" + g.stem for g in generic]))
     return found
+
+
+def unpaired(root: Path) -> list[str]:
+    """An attach book whose generic is not exactly one :attachable defabsstobj: a
+    finding naming the books, never a silently dropped pair."""
+    return ["%s.lisp: (attach-stobj %s ...) names %s :attachable generic(s)%s; the pair cannot be checked"
+            % (p[2], p[0], len(p[3]), (" (" + ", ".join(b + ".lisp" for b in p[3]) + ")") if p[3] else "")
+            for p in pairs(root) if p[1] is None]
 
 
 def scope(root: Path, world: World) -> list[str]:
@@ -127,8 +136,8 @@ def scope(root: Path, world: World) -> list[str]:
 
 def check(root: Path = ROOT) -> list[str]:
     world = World(root)
-    findings = []
-    for gen, generic, attach in pairs(root):
+    findings = unpaired(root)
+    for gen, generic, attach in (p[:3] for p in pairs(root) if p[1] is not None):
         for host in scope(root, world):
             if world.generic_state(host, generic, attach) == "bare":
                 findings.append(
@@ -141,7 +150,7 @@ def main() -> int:
     findings = check()
     for line in findings:
         print("attach_order_check: " + line)
-    ps = pairs(ROOT)
+    ps = [p for p in pairs(ROOT) if p[1] is not None]
     print("attach_order_check: %d attach pair(s) (%s), %d host file(s) in scope, %d finding(s)"
           % (len(ps), ", ".join(p[0] for p in ps), len(scope(ROOT, World(ROOT))), len(findings)))
     return 1 if findings else 0

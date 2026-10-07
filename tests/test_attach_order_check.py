@@ -49,6 +49,22 @@ class AttachOrder(unittest.TestCase):
         (d / "books/impl.lisp").write_text("(in-package \"ACL2\")\n(defabsstobj fn-x-impl\n  :attachable t)\n")
         self.assertEqual(len(aoc.check(d)), 1)
 
+    def test_ambiguous_generic_is_a_finding(self):
+        # Two books both declare :attachable fn-x: the pair is reported, not dropped.
+        d = tree('(include-book "../books/gen-attach")\n')
+        (d / "books/gen2.lisp").write_text("(in-package \"ACL2\")\n(defabsstobj fn-x\n  :attachable t)\n")
+        f = aoc.check(d)
+        self.assertEqual(len(f), 1)
+        self.assertIn("books/gen.lisp", f[0])
+        self.assertIn("books/gen2.lisp", f[0])
+
+    def test_attach_without_generic_is_a_finding(self):
+        d = tree("")
+        (d / "books/gen.lisp").write_text("(in-package \"ACL2\")\n")
+        f = aoc.check(d)
+        self.assertEqual(len(f), 1)
+        self.assertIn("books/gen-attach.lisp", f[0])
+
     def test_this_tree_is_clean(self):
         self.assertEqual(aoc.check(ROOT), [])
 
