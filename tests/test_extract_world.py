@@ -172,5 +172,27 @@ class HostPrologueTests(unittest.TestCase):
         self.assertIn("(value :fn-image-world-prologue-already-run)", text[prologue:first_ld])
 
 
+class DeveloperOnlyBooks(unittest.TestCase):
+    """RP-1: core.sh's world (and every umbrella) never includes books/developer-eval."""
+
+    def test_no_generated_world_names_it(self):
+        for variant in ("default",):
+            for path, text in world.render(variant).items():
+                self.assertNotIn("developer-eval", text, str(path))
+        for umbrella in world.UMBRELLAS:
+            books, _ = world.world_books(umbrella)
+            self.assertNotIn("books/developer-eval", books)
+
+    def test_a_root_that_names_it_is_refused_by_name(self):
+        saved = world.forms
+        try:
+            world.forms = lambda build: (["books/owner-log", "books/developer-eval"], [])
+            with self.assertRaises(SystemExit) as raised:
+                world.world_books("host/native/build.lisp")
+            self.assertIn("books/developer-eval", str(raised.exception))
+        finally:
+            world.forms = saved
+
+
 if __name__ == "__main__":
     unittest.main()

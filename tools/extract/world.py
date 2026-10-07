@@ -124,11 +124,22 @@ def host_books(hosts):
     return out
 
 
+# RP-1: books only a developer world includes (build.lisp includes them under a make-event on
+# FN_NATIVE_PROFILE).  The umbrella and the extractor's world are production worlds: fn-core would
+# carry the book's attachment (books/native-control-kinds.lisp fn-ctlk-extra-kinds), so a root that
+# names one is refused by name here.
+DEVELOPER_ONLY_BOOKS = ("books/developer-eval",)
+
+
 def world_books(build):
     books, hosts = forms(build)
     for b in host_books(hosts):
         if b not in books:
             books.append(b)
+    named = [b for b in books if b.removesuffix(".lisp") in DEVELOPER_ONLY_BOOKS]
+    if named:
+        raise SystemExit("world.py: %s names developer-only book(s) %s: the production world and "
+                         "fn-core must not include them (RP-1)" % (build, ", ".join(named)))
     return books, hosts
 
 
