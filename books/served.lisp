@@ -55,6 +55,7 @@
 
 (in-package "ACL2")
 (include-book "wire-invariants")
+(include-book "def-loop")
 (include-book "nntp-post")
 (include-book "nntp-auth")
 (include-book "group-bucket-index")
@@ -2063,63 +2064,20 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-served-reply-octets-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-served-reply-octets-loop (cdr rev)
-                                   (mbe :logic
-                                        (append (if (and (consp (car rev))
-                                                         (equal (car (car rev)) :reply)
-                                                         (consp (cdr (car rev))))
-                                                    (car (cdr (car rev)))
-                                                  nil)
-                                                acc)
-                                        :exec
-                                        (fn-ag-append (if (and (consp (car rev))
-                                                               (equal (car (car rev))
-                                                                      :reply)
-                                                               (consp (cdr (car rev))))
-                                                          (car (cdr (car rev)))
-                                                        nil)
-                                                      acc)))
-    acc))
-
-(defun fn-served-reply-octets (effects)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp effects)
-           (mbe :logic (append (if (and (consp (car effects))
-                                        (equal (car (car effects)) :reply)
-                                        (consp (cdr (car effects))))
-                                   (car (cdr (car effects)))
-                                 nil)
-                               (fn-served-reply-octets (cdr effects)))
-                :exec (fn-ag-append (if (and (consp (car effects))
-                                             (equal (car (car effects)) :reply)
-                                             (consp (cdr (car effects))))
-                                        (car (cdr (car effects)))
-                                      nil)
-                                    (fn-served-reply-octets (cdr effects))))
-         nil)
-       :exec (fn-served-reply-octets-loop (fn-ag-rev-onto effects nil) nil)))
-
-(local
- (defthm fn-served-reply-octets-loop-of-rev-onto
-   (equal (fn-served-reply-octets-loop (fn-ag-rev-onto effects zs) nil)
-          (fn-served-reply-octets-loop zs (fn-served-reply-octets effects)))
-   :hints (("Goal" :induct (fn-ag-rev-onto effects zs)
-                   :in-theory (union-theories '(fn-served-reply-octets-loop fn-served-reply-octets fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-served-reply-octets-loop)
-
-(verify-guards fn-served-reply-octets
-  :hints (("Goal" :in-theory (union-theories '(fn-served-reply-octets fn-served-reply-octets-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-served-reply-octets-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-served-reply-octets (effects)
+  :shape :foldr :over effects :elt e
+  :combine (mbe :logic
+                (append (if (and (consp e) (equal (car e) :reply) (consp (cdr e)))
+                            (car (cdr e))
+                            nil)
+                        acc)
+                :exec
+                (fn-ag-append (if (and (consp e) (equal (car e) :reply) (consp (cdr e)))
+                                  (car (cdr e))
+                                  nil)
+                              acc))
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-served-closingp (effects)
   (declare (xargs :guard t))

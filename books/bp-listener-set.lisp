@@ -15,6 +15,7 @@
 ; set.  The host binds `fn-bpaj-listener-ports'.
 (in-package "ACL2")
 (include-book "bp-session-admission")
+(include-book "def-loop")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpaj-listener-row-portp (port)
@@ -78,30 +79,9 @@
         (fn-bpaj-listener-rows rows rows))
     nil))
 
-(defun fn-bpaj-listener-port-list-loop (set acc)
-  (declare (xargs :guard t))
-  (if (consp set)
-      (fn-bpaj-listener-port-list-loop
-       (cdr set) (cons (if (consp (car set)) (car (car set)) nil) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-bpaj-listener-port-list (set)
-  (declare (xargs :guard t))
-  (mbe :logic (if (consp set)
-                  (cons (if (consp (car set)) (car (car set)) nil)
-                        (fn-bpaj-listener-port-list (cdr set)))
-                nil)
-       :exec (fn-bpaj-listener-port-list-loop set nil)))
-
-(defthm fn-bpaj-listener-port-list-loop-is-rev-onto
-  (equal (fn-bpaj-listener-port-list-loop set acc)
-         (fn-ag-rev-onto acc (fn-bpaj-listener-port-list set)))
-  :hints (("Goal" :induct (fn-bpaj-listener-port-list-loop set acc)
-                  :in-theory (union-theories
-                              '(fn-bpaj-listener-port-list-loop
-                                fn-bpaj-listener-port-list
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-bpaj-listener-port-list (set)
+  :shape :map :over set :elt s
+  :body (if (consp s) (car s) nil))
 
 ; The host's question: the ports `bp-node serve' binds.
 (defun fn-bpaj-listener-ports (cfg)
@@ -241,13 +221,6 @@
                                       fn-bpaj-loopback-candidates
                                       fn-bpaj-listener-row-portp))))
 (verify-guards fn-bpaj-listener-set)
-(verify-guards fn-bpaj-listener-port-list-loop)
-(verify-guards fn-bpaj-listener-port-list
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpaj-listener-port-list fn-ag-rev-onto
-                                fn-bpaj-listener-port-list-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-bpaj-listener-ports)
 (verify-guards fn-bpaj-listener-name)
 (verify-guards fn-bpaj-loopback-channel)

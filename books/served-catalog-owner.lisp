@@ -60,6 +60,7 @@
 (in-package "ACL2")
 
 (include-book "served-catalog-chain")
+(include-book "def-loop")
 (include-book "catalog-entries")
 (include-book "catalog-refresh")
 (include-book "store-intern")
@@ -202,44 +203,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-sca-targets-of-loop (cause ws acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp ws)
-      (if (and (fn-ctl-withdrawalp (car ws)) (equal (fn-ctl-w-cause (car ws)) cause))
-          (fn-sca-targets-of-loop cause (cdr ws) (cons (fn-ctl-w-target (car ws)) acc))
-        (fn-sca-targets-of-loop cause (cdr ws) acc))
-    (revappend acc nil)))
-
-(defun fn-sca-targets-of (cause ws)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ws)
-           (if (and (fn-ctl-withdrawalp (car ws))
-                    (equal (fn-ctl-w-cause (car ws)) cause))
-               (cons (fn-ctl-w-target (car ws)) (fn-sca-targets-of cause (cdr ws)))
-             (fn-sca-targets-of cause (cdr ws)))
-         nil)
-       :exec (fn-sca-targets-of-loop cause ws nil)))
-
-(local
- (defthm fn-sca-targets-of-loop-is-revappend
-   (equal (fn-sca-targets-of-loop cause ws acc)
-          (revappend acc (fn-sca-targets-of cause ws)))
-   :hints (("Goal" :induct (fn-sca-targets-of-loop cause ws acc)
-                   :in-theory (union-theories '(fn-sca-targets-of-loop fn-sca-targets-of revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-sca-targets-of-loop)
-
-(verify-guards fn-sca-targets-of
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-sca-targets-of)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-sca-targets-of-loop-is-revappend (acc nil))))))
-
+(def-loop fn-sca-targets-of (cause ws)
+  :shape :map :over ws :elt w
+  :keep (and (fn-ctl-withdrawalp w) (equal (fn-ctl-w-cause w) cause))
+  :body (fn-ctl-w-target w))
 
 (defun fn-sca-withdraw-targets (targets view-index by fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp by)))

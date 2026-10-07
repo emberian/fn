@@ -54,6 +54,7 @@
 ;                                              the view
 (in-package "ACL2")
 (include-book "peer-inbound")
+(include-book "def-loop")
 (include-book "nntp-invariants")
 (include-book "group-bucket-index")
 (include-book "control-served")
@@ -181,85 +182,19 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-gac-filter-groups-loop (text groups acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp groups)
-      (if (fn-gac-readablep text (car groups))
-          (fn-gac-filter-groups-loop text (cdr groups) (cons (car groups) acc))
-        (fn-gac-filter-groups-loop text (cdr groups) acc))
-    (revappend acc nil)))
-
-(defun fn-gac-filter-groups (text groups)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp groups)
-           (if (fn-gac-readablep text (car groups))
-               (cons (car groups) (fn-gac-filter-groups text (cdr groups)))
-             (fn-gac-filter-groups text (cdr groups)))
-         nil)
-       :exec (fn-gac-filter-groups-loop text groups nil)))
-
-(local
- (defthm fn-gac-filter-groups-loop-is-revappend
-   (equal (fn-gac-filter-groups-loop text groups acc)
-          (revappend acc (fn-gac-filter-groups text groups)))
-   :hints (("Goal" :induct (fn-gac-filter-groups-loop text groups acc)
-                   :in-theory (union-theories '(fn-gac-filter-groups-loop fn-gac-filter-groups revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-gac-filter-groups-loop)
-
-(verify-guards fn-gac-filter-groups
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-gac-filter-groups)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-gac-filter-groups-loop-is-revappend (acc nil))))))
-
+(def-loop fn-gac-filter-groups (text groups)
+  :shape :map :over groups :elt g
+  :keep (fn-gac-readablep text g)
+  :body g)
 
 ; Memberships (GROUP . NUMBER) and watermarks (GROUP . NEXT) alike.
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-gac-filter-pairs-loop (text pairs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp pairs)
-      (if (and (consp (car pairs)) (fn-gac-readablep text (car (car pairs))))
-          (fn-gac-filter-pairs-loop text (cdr pairs) (cons (car pairs) acc))
-        (fn-gac-filter-pairs-loop text (cdr pairs) acc))
-    (revappend acc nil)))
-
-(defun fn-gac-filter-pairs (text pairs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp pairs)
-           (if (and (consp (car pairs)) (fn-gac-readablep text (car (car pairs))))
-               (cons (car pairs) (fn-gac-filter-pairs text (cdr pairs)))
-             (fn-gac-filter-pairs text (cdr pairs)))
-         nil)
-       :exec (fn-gac-filter-pairs-loop text pairs nil)))
-
-(local
- (defthm fn-gac-filter-pairs-loop-is-revappend
-   (equal (fn-gac-filter-pairs-loop text pairs acc)
-          (revappend acc (fn-gac-filter-pairs text pairs)))
-   :hints (("Goal" :induct (fn-gac-filter-pairs-loop text pairs acc)
-                   :in-theory (union-theories '(fn-gac-filter-pairs-loop fn-gac-filter-pairs revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-gac-filter-pairs-loop)
-
-(verify-guards fn-gac-filter-pairs
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-gac-filter-pairs)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-gac-filter-pairs-loop-is-revappend (acc nil))))))
-
+(def-loop fn-gac-filter-pairs (text pairs)
+  :shape :map :over pairs :elt p
+  :keep (and (consp p) (fn-gac-readablep text (car p)))
+  :body p)
 
 ; -----------------------------------------------------------------------------
 ; The restricted view
@@ -274,47 +209,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-gac-restrict-articles-loop (text arts acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp arts)
-      (if (consp (fn-gac-filter-groups text (fn-article-groups (car arts))))
-          (fn-gac-restrict-articles-loop text
-                                         (cdr arts)
-                                         (cons (fn-gac-restrict-article text (car arts))
-                                               acc))
-        (fn-gac-restrict-articles-loop text (cdr arts) acc))
-    (revappend acc nil)))
-
-(defun fn-gac-restrict-articles (text arts)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp arts)
-           (if (consp (fn-gac-filter-groups text (fn-article-groups (car arts))))
-               (cons (fn-gac-restrict-article text (car arts))
-                     (fn-gac-restrict-articles text (cdr arts)))
-             (fn-gac-restrict-articles text (cdr arts)))
-         nil)
-       :exec (fn-gac-restrict-articles-loop text arts nil)))
-
-(local
- (defthm fn-gac-restrict-articles-loop-is-revappend
-   (equal (fn-gac-restrict-articles-loop text arts acc)
-          (revappend acc (fn-gac-restrict-articles text arts)))
-   :hints (("Goal" :induct (fn-gac-restrict-articles-loop text arts acc)
-                   :in-theory (union-theories '(fn-gac-restrict-articles-loop fn-gac-restrict-articles revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-gac-restrict-articles-loop)
-
-(verify-guards fn-gac-restrict-articles
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-gac-restrict-articles)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-gac-restrict-articles-loop-is-revappend (acc nil))))))
-
+(def-loop fn-gac-restrict-articles (text arts)
+  :shape :map :over arts :elt a
+  :keep (consp (fn-gac-filter-groups text (fn-article-groups a)))
+  :body (fn-gac-restrict-article text a))
 
 ; The store with every group outside TEXT absent.  Nothing in flight is
 ; part of what a reader sees, so the view carries no pending write.
@@ -363,37 +261,10 @@
 ; data with no fixed cap (D27), and the recursion took one control-stack frame
 ; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
 ; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
-(defun fn-gac-unpostable-octets-loop (text groups acc)
-  (declare (xargs :guard t))
-  (if (consp groups)
-      (fn-gac-unpostable-octets-loop text (cdr groups)
-       (if (not (fn-gac-readablep text (car groups))) (cons (fn-gac-text-octets (car groups)) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-gac-unpostable-octets (text groups)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp groups)
-           (if (fn-gac-readablep text (car groups))
-               (fn-gac-unpostable-octets text (cdr groups))
-             (cons (fn-gac-text-octets (car groups))
-                   (fn-gac-unpostable-octets text (cdr groups))))
-         nil)
-       :exec (fn-gac-unpostable-octets-loop text groups nil)))
-
-(defthm fn-gac-unpostable-octets-loop-is-rev-onto
-  (equal (fn-gac-unpostable-octets-loop text groups acc)
-         (fn-ag-rev-onto acc (fn-gac-unpostable-octets text groups)))
-  :hints (("Goal" :induct (fn-gac-unpostable-octets-loop text groups acc)
-                  :in-theory (union-theories
-                              '(fn-gac-unpostable-octets-loop fn-gac-unpostable-octets fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-gac-unpostable-octets
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-gac-unpostable-octets fn-ag-rev-onto fn-gac-unpostable-octets-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-gac-unpostable-octets (text groups)
+  :shape :map :over groups :elt g
+  :keep (fn-gac-readablep text g) :keep-order :skip-first
+  :body (fn-gac-text-octets g))
 
 ; A served group stays a group to the session when it may read it or post
 ; to it; a group it may do neither with is absent, so a POST naming it is
@@ -407,40 +278,13 @@
 ; data with no fixed cap (D27), and the recursion took one control-stack frame
 ; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
 ; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
-(defun fn-gac-servable-octets-loop (read post names acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-gac-servable-octets-loop read post (cdr names)
-       (if (or (null read) (null post)
-           (fn-gac-readablep read (fn-gac-octets-group (car names)))
-           (fn-gac-readablep post (fn-gac-octets-group (car names)))) (cons (car names) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-gac-servable-octets (read post names)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (if (or (null read) (null post)
-                   (fn-gac-readablep read (fn-gac-octets-group (car names)))
-                   (fn-gac-readablep post (fn-gac-octets-group (car names))))
-               (cons (car names) (fn-gac-servable-octets read post (cdr names)))
-             (fn-gac-servable-octets read post (cdr names)))
-         nil)
-       :exec (fn-gac-servable-octets-loop read post names nil)))
-
-(defthm fn-gac-servable-octets-loop-is-rev-onto
-  (equal (fn-gac-servable-octets-loop read post names acc)
-         (fn-ag-rev-onto acc (fn-gac-servable-octets read post names)))
-  :hints (("Goal" :induct (fn-gac-servable-octets-loop read post names acc)
-                  :in-theory (union-theories
-                              '(fn-gac-servable-octets-loop fn-gac-servable-octets fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-gac-servable-octets
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-gac-servable-octets fn-ag-rev-onto fn-gac-servable-octets-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-gac-servable-octets (read post names)
+  :shape :map :over names :elt n
+  :keep (or (null read)
+             (null post)
+             (fn-gac-readablep read (fn-gac-octets-group n))
+             (fn-gac-readablep post (fn-gac-octets-group n)))
+  :body n)
 
 ; A derived posting configuration carries its source's article bound and
 ; header limits as one post bound (books/injection.lisp `fn-inj-post-bound'):

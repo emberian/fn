@@ -235,33 +235,13 @@
 
 ; The host's call: the old handles of the positions whose row changed.
 ; Executes by a loop (the history's rows are store data).
-(defun fn-arf-changed-handles-loop (old new rev)
-  (declare (xargs :guard (true-listp rev)))
-  (cond ((or (atom old) (atom new)) (revappend rev nil))
-        ((or (equal (car old) (car new))
-             (not (fn-arf-row-handle (car old))))
-         (fn-arf-changed-handles-loop (cdr old) (cdr new) rev))
-        (t (fn-arf-changed-handles-loop (cdr old) (cdr new)
-                                        (cons (fn-arf-row-handle (car old)) rev)))))
-
-(defun fn-arf-changed-handles (old new)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (cond ((or (atom old) (atom new)) nil)
-             ((or (equal (car old) (car new))
-                  (not (fn-arf-row-handle (car old))))
-              (fn-arf-changed-handles (cdr old) (cdr new)))
-             (t (cons (fn-arf-row-handle (car old))
-                      (fn-arf-changed-handles (cdr old) (cdr new)))))
-       :exec (fn-arf-changed-handles-loop old new nil)))
-
-(defthm fn-arf-changed-handles-loop-is-changed-handles
-  (equal (fn-arf-changed-handles-loop old new rev)
-         (revappend rev (fn-arf-changed-handles old new)))
-  :hints (("Goal" :in-theory (disable fn-arf-row-handle))))
-
-(verify-guards fn-arf-changed-handles
-  :hints (("Goal" :in-theory (disable fn-arf-row-handle))))
+(def-loop fn-arf-changed-handles (old new)
+  :shape :step :over (old new)
+  :done (or (atom old) (atom new)) :elt o
+  :skip (or (equal o (car new)) (not (fn-arf-row-handle o))) :body (fn-arf-row-handle o)
+  :next ((cdr old) (cdr new))
+  :skip-next ((cdr old) (cdr new))
+  :guard-hints (("Goal" :in-theory (disable fn-arf-row-handle))))
 
 ; No element of XS is in YS.
 (defun fn-arf-disjointp (xs ys)

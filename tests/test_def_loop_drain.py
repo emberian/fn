@@ -92,20 +92,46 @@ class HandConversions(unittest.TestCase):
                       " (fn-record-string-octets login)))\n  :keep-order :skip-first\n  :body r)", out)
 
 
+class LateGuard(unittest.TestCase):
+    """A callee verified after the wrapper: the def-loop moves down past its
+    verify-guards when nothing between mentions the function, else that
+    verify-guards moves up above the wrapper."""
+
+    def conv(self, name):
+        (conv, resid), text = run(name)
+        self.assertEqual(resid, [])
+        return d.apply_text(text, conv)
+
+    def test_def_loop_moves_down_after_the_callee_guard(self):
+        out = self.conv("late-guard-down")
+        self.assertLess(out.index("(verify-guards fn-nntp-active-line)"), out.index("(def-loop"))
+        self.assertEqual(out.count("verify-guards"), 1)
+
+    def test_guard_moves_up_when_a_form_between_uses_the_function(self):
+        out = self.conv("late-guard-up")
+        self.assertLess(out.index("(verify-guards fn-nntp-active-line)"), out.index("(def-loop"))
+        self.assertLess(out.index("(def-loop"), out.index("fn-nntp-active-lines-true-listp"))
+        self.assertEqual(out.count("verify-guards"), 1)
+
+
 class Refusals(unittest.TestCase):
     def refused(self, name, why):
         (conv, resid), _ = run(name)
         self.assertEqual(conv, [])
         self.assertEqual([r[1] for r in resid], [why])
 
-    def test_late_guard(self):
-        self.refused("refuse-late-guard", "late-guard")
+    def test_late_guard_hints_naming_a_later_event_refuse(self):
+        self.refused("late-guard-refuse", "late-guard")
 
     def test_step_by_other_than_cdr(self):
         self.refused("refuse-step", "step")
 
-    def test_two_lists(self):
-        self.refused("refuse-two-list", "two-list")
+    def test_two_lists_are_a_step_over_both(self):
+        (conv, resid), _ = run("refuse-two-list")
+        self.assertEqual(resid, [])
+        self.assertEqual(conv[0]["spec"].shape, "step")
+        self.assertEqual(conv[0]["spec"].svars, ["old", "new"])
+        self.assertIn(":over (old new)", conv[0]["text"])
 
 
 class Reader(unittest.TestCase):
@@ -114,6 +140,39 @@ class Reader(unittest.TestCase):
         self.assertEqual(len(forms), 1)
         self.assertEqual(forms[0].name, "f")
         self.assertEqual(len(comments), 1)
+
+
+class GenVocabFixtures(unittest.TestCase):
+    """The gen-vocab hand conversions are the byte fixtures: each .in is the book's
+    pre-conversion text (git 1e190ff19), each .expect the def-loop form gen-vocab
+    wrote (git 4d2d53390).  The tool regenerates the form from the pre-image."""
+
+    def form_of(self, book, name):
+        text = (FIX / f"gv-{book}.in.lisp").read_text()
+        conv, resid = d.analyse(text, book, {})
+        self.assertEqual(resid, [])
+        c = [c for c in conv if c["name"] == name][0]
+        out = c["text"]
+        return out[out.index("(def-loop"):]
+
+    def expect(self, name):
+        return (FIX / f"gv-{name}.expect").read_text().rstrip("\n")
+
+    def test_foldr_forms_are_byte_identical(self):
+        self.assertEqual(self.form_of("stx-index", "fn-stx-index-of-store"), self.expect("fn-stx-index-of-store"))
+        self.assertEqual(self.form_of("replay-identity-index", "fn-rii-kbuild-releases"),
+                         self.expect("fn-rii-kbuild-releases"))
+        self.assertEqual(self.form_of("replay-identity-index", "fn-rii-kbuild-pins"),
+                         self.expect("fn-rii-kbuild-pins"))
+
+    def test_fold_form_with_lets_and_guard_hints_is_byte_identical(self):
+        self.assertEqual(self.form_of("payload-lz-replay", "fn-lzr-intern-events"),
+                         self.expect("fn-lzr-intern-events"))
+
+    def test_fold_form_differs_only_by_carried_guard_hints(self):
+        mine = self.form_of("store-intern", "fn-intern-events")
+        theirs = self.expect("fn-intern-events")
+        self.assertEqual(mine.replace('\n  :guard-hints (("Goal" :in-theory (disable fn-intern-event))))', ")"), theirs)
 
 
 class Ledger(unittest.TestCase):

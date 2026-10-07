@@ -103,45 +103,15 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-inj-split-at-loop (sep x cur acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp x)
-      (if (equal (car x) sep)
-          (fn-inj-split-at-loop sep (cdr x) nil (cons (fn-inj-rev cur nil) acc))
-        (fn-inj-split-at-loop sep (cdr x) (cons (car x) cur) acc))
-    (revappend acc (list (fn-inj-rev cur nil)))))
-
-(defun fn-inj-split-at (sep x cur)
-  ; The segments of x separated by `sep', in order; `cur' is the current
-  ; segment reversed.  One pass.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp x)
-           (if (equal (car x) sep)
-               (cons (fn-inj-rev cur nil) (fn-inj-split-at sep (cdr x) nil))
-             (fn-inj-split-at sep (cdr x) (cons (car x) cur)))
-         (list (fn-inj-rev cur nil)))
-       :exec (fn-inj-split-at-loop sep x cur nil)))
-
-(local
- (defthm fn-inj-split-at-loop-is-revappend
-   (equal (fn-inj-split-at-loop sep x cur acc)
-          (revappend acc (fn-inj-split-at sep x cur)))
-   :hints (("Goal" :induct (fn-inj-split-at-loop sep x cur acc)
-                   :in-theory (union-theories '(fn-inj-split-at-loop fn-inj-split-at revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-inj-split-at-loop)
-
-(verify-guards fn-inj-split-at
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-inj-split-at)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-inj-split-at-loop-is-revappend (acc nil))))))
-
+; The segments of x separated by `sep', in order; `cur' is the current
+; segment reversed.  One pass.
+(def-loop fn-inj-split-at (sep x cur)
+  :shape :step :over (x cur) :done (atom x) :elt e
+  :emit (equal e sep)
+  :body (fn-inj-rev cur nil)
+  :next ((cdr x) nil)
+  :skip-next ((cdr x) (cons e cur))
+  :tail (list (fn-inj-rev cur nil)))
 
 (defun fn-inj-drop-wsp (x)
   (declare (xargs :guard t))
