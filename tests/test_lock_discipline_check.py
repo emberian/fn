@@ -1788,3 +1788,64 @@ class TestOnlyEntry(unittest.TestCase):
 
     def test_another_uncalled_function_stays_a_main_actor(self):
         self.assertTrue(self.analyze(self.HOST + "(defun fnn-tov-command () (fnn-tov-work))\n", self.MOCK))
+
+
+class ManualGrabCriticalSection(unittest.TestCase):
+    """(grab-mutex L) directly followed by (unwind-protect BODY (when
+    (holding-mutex-p L) (release-mutex L))) is a critical section of L; the
+    re-grab after a timed wait is a no-op under the held model (gap 10)."""
+
+    def source(self, cleanup="(when (sb-thread:holding-mutex-p lock) (sb-thread:release-mutex lock))",
+               regrab="(unless (sb-thread:holding-mutex-p lock) (sb-thread:grab-mutex lock))",
+               grab_arg="lock"):
+        return f"""
+(defun fnn-feed-idle-wait (service queue)
+  (let ((lock (fnn-owner-service-wait-lock service)))
+    (sb-thread:grab-mutex {grab_arg})
+    (unwind-protect
+         (progn (sb-thread:condition-wait queue lock :timeout 1d0)
+                {regrab}
+                (fnn-owner-service-commits service))
+      {cleanup})))
+"""
+
+    def r5(self, **kw):
+        return [k for k in keys(run(self.source(**kw), ["R5"]), "R5")]
+
+    def test_the_paired_grab_is_a_critical_section_of_its_lock(self):
+        self.assertEqual(self.r5(), [])
+
+    def test_a_cleanup_releasing_another_lock_stays_unresolved(self):
+        bad = self.r5(cleanup="(when (sb-thread:holding-mutex-p lock) (sb-thread:release-mutex other))")
+        self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in bad), bad)
+
+    def test_a_cleanup_that_releases_unconditionally_stays_unresolved(self):
+        bad = self.r5(cleanup="(sb-thread:release-mutex lock)")
+        self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in bad), bad)
+
+    def test_a_grab_with_no_unwind_protect_stays_unresolved(self):
+        found = run("""
+(defun fnn-feed-idle-wait (service)
+  (let ((lock (fnn-owner-service-wait-lock service)))
+    (sb-thread:grab-mutex lock)
+    (fnn-owner-service-commits service)))
+""", ["R5"])
+        self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in keys(found, "R5")))
+
+    def test_the_paired_region_still_holds_the_lock_for_blocking_work(self):
+        found = run("""
+(defun fnn-feed-idle-wait (service)
+  (let ((lock (fnn-owner-service-lock service)))
+    (sb-thread:grab-mutex lock)
+    (unwind-protect (sb-posix:fsync 3)
+      (when (sb-thread:holding-mutex-p lock) (sb-thread:release-mutex lock)))))
+""", ["R2"])
+        self.assertTrue(any(k[1].endswith("sb-posix:fsync") for k in keys(found, "R2")), keys(found, "R2"))
+
+    def test_a_regrab_of_a_lock_not_held_is_not_waved_through(self):
+        found = run("""
+(defun fnn-feed-idle-wait (service)
+  (let ((lock (fnn-owner-service-wait-lock service)))
+    (unless (sb-thread:holding-mutex-p lock) (sb-thread:grab-mutex lock))))
+""", ["R5"])
+        self.assertTrue(any(k[1].startswith("unresolved:manual grab-mutex") for k in keys(found, "R5")))

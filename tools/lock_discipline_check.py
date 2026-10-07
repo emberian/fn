@@ -1101,8 +1101,48 @@ class Analyzer:
             self.cur.events.append(Event(kind, name, line, ctx, extra, frozenset(self.rebound), atomic,
                                          tuple(self.dead_guards), arg0))
 
+    @staticmethod
+    def _holding_release_cleanup(cleanup, lockform) -> bool:
+        """CLEANUP is exactly (when (holding-mutex-p L) (release-mutex L)) for
+        the very lock expression the grab named."""
+        if not (isinstance(cleanup, list) and len(cleanup) == 3 and head(cleanup) == "when"):
+            return False
+        test, act = cleanup[1], cleanup[2]
+        want = render(lockform)
+        return (isinstance(test, list) and len(test) == 2 and head(test) == "sb-thread:holding-mutex-p"
+                and render(test[1]) == want
+                and isinstance(act, list) and len(act) == 2 and head(act) == "sb-thread:release-mutex"
+                and render(act[1]) == want)
+
     def walk_body(self, forms, ctx, env, line):
-        return sig_union([self.walk(f, ctx, env, line_of(f, line)) for f in forms])
+        parts = []
+        forms = list(forms)
+        i = 0
+        while i < len(forms):
+            f = forms[i]
+            # (grab-mutex L) directly followed by (unwind-protect BODY (when
+            # (holding-mutex-p L) (release-mutex L))) is a critical section of L:
+            # BODY runs holding L (a timed condition-wait may return without
+            # it; the re-grab is the (unless (holding-mutex-p L) (grab-mutex L))
+            # form, a no-op under the held model), and the cleanup releases
+            # exactly L.  Any other manual grab stays unresolved.
+            if (isinstance(f, list) and len(f) == 2 and head(f) == "sb-thread:grab-mutex"
+                    and i + 1 < len(forms)):
+                nxt = forms[i + 1]
+                if (isinstance(nxt, list) and len(nxt) == 3 and head(nxt) == "unwind-protect"
+                        and self._holding_release_cleanup(nxt[2], f[1])):
+                    lock = self.lock_of(f[1], env)
+                    ln = line_of(f, line)
+                    self.ev("acq", lock, ln, ctx, "sb-thread:with-mutex")
+                    if lock.startswith("?"):
+                        self.ev("unresolved", "lock object " + lock[1:], ln, ctx)
+                    inner = Ctx(ctx.locks | {lock}, ctx.noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond)
+                    parts.append(self.walk(nxt[1], inner, env, line_of(nxt, ln)))
+                    i += 2
+                    continue
+            parts.append(self.walk(f, ctx, env, line_of(f, line)))
+            i += 1
+        return sig_union(parts)
 
     def walk(self, form, ctx: Ctx, env: dict, line: int):
         if isinstance(form, Sym):
@@ -1120,6 +1160,15 @@ class Analyzer:
                                  [self.walk(a, ctx, env, line) for a in form[1:]])
             return self.walk_body(form, ctx, env, line)
         if h in SPECIAL_SKIP:
+            return EMPTY_SIG
+        if (h == "unless" and len(form) == 3 and isinstance(form[1], list) and len(form[1]) == 2
+                and head(form[1]) == "sb-thread:holding-mutex-p"
+                and isinstance(form[2], list) and len(form[2]) == 2
+                and head(form[2]) == "sb-thread:grab-mutex"
+                and render(form[1][1]) == render(form[2][1])
+                and self.lock_of(form[2][1], env) in ctx.locks):
+            # re-grab of a lock this region already holds, run only when it
+            # is not held: restores the held state the model assumes
             return EMPTY_SIG
         if h == "unless" and len(form) > 2 and self.dead_test(form[1]) is not None:
             guard = self.dead_ties(self.dead_test(form[1]), env)
