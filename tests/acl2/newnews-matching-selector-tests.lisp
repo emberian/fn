@@ -202,3 +202,49 @@
                :fault "a step that answers the negation of the selection value"
                :lemma nnmt-decided-value-mutant-witness)))
 
+
+(defthm nnmt-progress-witness
+  (implies (and (fn-nnm-statep *nnmt-member*)
+                (or (posp (fn-nnm-group-remaining *nnmt-member*))
+                    (posp (fn-nnm-work-remaining *nnmt-member*))))
+           (let ((next (mv-nth 2 (fn-nnm-one *nnmt-member*))) (s *nnmt-member*))
+             (or (< (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                 (and (equal (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                      (< (fn-nnm-work-remaining next) (fn-nnm-work-remaining s)))))))
+(defthm nnmt-progress-mutant-witness
+  (and (implies (and (fn-nnm-statep *nnmt-member*)
+                     (or (posp (fn-nnm-group-remaining *nnmt-member*))
+                         (posp (fn-nnm-work-remaining *nnmt-member*))))
+                (let ((next (mv-nth 2 (fn-nnm-one *nnmt-member*))) (s *nnmt-member*))
+                  (or (< (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                      (and (equal (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                           (< (fn-nnm-work-remaining next) (fn-nnm-work-remaining s))))))
+       (not (implies (and (fn-nnm-statep *nnmt-member*)
+                          (or (posp (fn-nnm-group-remaining *nnmt-member*))
+                              (posp (fn-nnm-work-remaining *nnmt-member*))))
+                     (let ((next *nnmt-member*) (s *nnmt-member*))
+                       (or (< (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                           (and (equal (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                                (< (fn-nnm-work-remaining next) (fn-nnm-work-remaining s)))))))))
+(defteeth fn-nnm-one-progress
+  :claim (() (implies (and (fn-nnm-statep s)
+                           (or (posp (fn-nnm-group-remaining s))
+                               (posp (fn-nnm-work-remaining s))))
+                      (let ((next (mv-nth 2 (fn-nnm-one s))))
+                        (or (< (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                            (and (equal (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                                 (< (fn-nnm-work-remaining next) (fn-nnm-work-remaining s)))))))
+  :subject fn-nnm-one
+  :witness-lemma nnmt-progress-witness
+  :witness ((s *nnmt-member*))
+  :mutations ((step-is-identity
+               (:conclusion (implies (and (fn-nnm-statep s)
+                                          (or (posp (fn-nnm-group-remaining s))
+                                              (posp (fn-nnm-work-remaining s))))
+                                     (let ((next s))
+                                       (or (< (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                                           (and (equal (fn-nnm-group-remaining next) (fn-nnm-group-remaining s))
+                                                (< (fn-nnm-work-remaining next) (fn-nnm-work-remaining s)))))))
+               ((s *nnmt-member*))
+               :fault "a step that leaves the state unchanged"
+               :lemma nnmt-progress-mutant-witness)))
