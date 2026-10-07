@@ -2698,7 +2698,7 @@ def verify_private_owner_commands(model) -> dict:
                 continue                    # a fixture host without the runner's file
             raise ValueError(f"{where}: not a function of the analyzed host")
         for key in ("file", "lock", "owner", "thunk", "constructor", "commands", "dispatch", "registrars",
-                    "table_readers", "exempt_leaves", "why"):
+                    "table_readers", "exempt_leaves", "exempt_leaf_functions", "why"):
             if not row.get(key):
                 raise ValueError(f"{where}: no {key} (exempt_leaves is required: a row without it would "
                                  "exempt every leaf)")
@@ -2821,7 +2821,8 @@ def verify_private_owner_commands(model) -> dict:
         slot = exempt.setdefault(row["lock"], {"functions": set(), "rows": [], "scopes": []})
         slot["functions"] |= {runner} | set(row["commands"])
         slot["rows"].append(runner)
-        slot["scopes"].append((frozenset({runner} | set(row["commands"])), frozenset(row["exempt_leaves"]), runner))
+        slot["scopes"].append((frozenset({runner} | set(row["commands"])), frozenset(row["exempt_leaves"]),
+                               runner, frozenset(row["exempt_leaf_functions"])))
     return exempt
 
 
@@ -3531,8 +3532,9 @@ class Checker:
                     for lock in sorted(locks):
                         if leaf.split(":", 2)[2] in self.c.locks.get(lock, {}).get("io_leaves_ok", []):
                             continue   # this lock's declared non-blocking leaves
-                        hit = next((r for fns, leaves, r in self.m.private_owner.get(lock, {}).get("scopes", ())
-                                    if name in fns and leaf.split(":", 2)[2] in leaves), None)
+                        hit = next((r for fns, leaves, r, lfns in self.m.private_owner.get(lock, {}).get("scopes", ())
+                                    if name in fns and leaf.split(":", 2)[2] in leaves
+                                    and leaf.split(":", 2)[0] in lfns), None)
                         if hit is not None:
                             # a command whose owner the checker proved private (verify_private_owner_commands)
                             self.private_io[lock] = self.private_io.get(lock, 0) + 1

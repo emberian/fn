@@ -1902,7 +1902,7 @@ class PrivateOwnerCommands(unittest.TestCase):
         "file": "host/native/fixture.lisp", "lock": "O", "owner": "service", "thunk": "thunk",
         "constructor": "fnn-pv-install", "owner_makers": ["%make-fnn-owner-service"],
         "exempt_leaves": ["write-sequence", "finish-output", "sleep"], "exempt_sites": 2,
-        "commands": ["fnn-pv-command"], "dispatch": ["fnn-pv-dispatch"],
+        "exempt_leaf_functions": ["fnn-pv-command"], "commands": ["fnn-pv-command"], "dispatch": ["fnn-pv-dispatch"],
         "registrars": ["fnn-pv-register"], "table_writers": ["fnn-pv-register"],
         "table_readers": {"*fnn-pv-verbs*": ["fnn-pv-handler"]}, "why": "fixture",
     }
@@ -2048,6 +2048,16 @@ class PrivateOwnerCommands(unittest.TestCase):
         found = self.pin_findings(exempt_sites=3)
         self.assertEqual(len(found), 1)
         self.assertIn("lower exempt_sites", found[0].message)
+
+    def test_an_exempt_leaf_name_in_an_undeclared_function_is_not_exempt(self):
+        keys, private = self.analyze("(fnn-pv-pause)", extra="(defun fnn-pv-pause () (sleep 1))")
+        self.assertIn("O:sleep", keys)
+
+    def test_a_row_without_exempt_leaf_functions_is_refused(self):
+        row = dict(self.ROW)
+        del row["exempt_leaf_functions"]
+        with self.assertRaisesRegex(ValueError, "no exempt_leaf_functions"):
+            self.refused_row(row)
 
     def test_a_non_exempt_leaf_keeps_its_key_and_weight_with_and_without_the_row(self):
         def weights(row):
