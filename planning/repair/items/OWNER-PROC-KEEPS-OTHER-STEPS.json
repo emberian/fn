@@ -1,0 +1,12 @@
+{
+ "file": "books/owner-process-carry.lisp",
+ "id": "OWNER-PROC-KEEPS-OTHER-STEPS",
+ "note": "books/owner-process-carry.lisp proves fn-oproc-*-keeps-proc for the 20 transitions owner.lisp builds with one fn-own-make. Owed: the same for fn-own-read, fn-own-read-step, fn-own-control-submit, fn-own-legacy-control-submit, fn-own-bp-transit-submit, fn-own-operator-submit, fn-own-bp-transit-outcome, fn-own-feeds-reconfigure, fn-own-feed-connect, fn-own-feed-lost, fn-own-feed-recover, fn-own-tick, fn-own-tick-peer, fn-own-feed-reply, fn-own-fault (every site converted by tools/own_make_field.py carries (fn-own-proc o) or the initial record), then fn-own-step as one theorem (equal (fn-own-proc (fn-own-step o event fn-arena)) (fn-own-proc o)), and (fn-own-proc (fn-ock-install ...)) = (fn-oproc-initial) so the unbound-owner arm of fn-owner-carry-proc is a theorem.",
+ "notes": [],
+ "owner": "C",
+ "severity": "medium",
+ "source": "owner-globals-28 row 28",
+ "state": "open",
+ "title": "fn-own-proc is kept by the owner steps built outside owner.lisp and by fn-own-step as a whole (keystone (a) remainder), and fn-ock-install installs the initial record",
+ "updated": "2026-10-07T19:35:57Z"
+}

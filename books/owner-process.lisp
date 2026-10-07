@@ -21,9 +21,10 @@
 ; The record is not part of any served decision: every owner step copies it
 ; (books/owner.lisp, the field is carried like the node secret) and only the
 ; host writes it, through fn-own-with-proc.  A recovery builds a fresh owner
-; (fn-own-start: the initial record) and the installing wrapper carries the
-; PRIOR owner's record into it (books/owner-recovery-retain.lisp
-; fn-owner-install-extended).
+; (fn-own-start: the initial record) and the host wrapper carries the PRIOR
+; owner's record into it before the install (books/owner-state-accessors.lisp
+; fn-owner-carry-proc, called by host/owner-host.lisp fn-owner-recover-extended
+; and -from-store-open ahead of fn-owner-install-extended).
 ;
 ; This book owns the prefix `fn-oproc-' (docs/prefixes.md).
 

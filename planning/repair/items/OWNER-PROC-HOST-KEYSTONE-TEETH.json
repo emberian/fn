@@ -1,0 +1,12 @@
+{
+ "file": "host/owner-retain-host.lisp",
+ "id": "OWNER-PROC-HOST-KEYSTONE-TEETH",
+ "note": "defteeth witnesses cannot bind a live state; the four statements are in books/owner-recovery-retain.lisp, books/owner-process-carry.lisp and host/owner-retain-host.lisp with no teeth. Owed: a witness state (fn-owner-retain-witness-state, as books/owner-retain-carried.lisp uses) with mutants that reset the record, so the claims are false of the reset-to-initial mutant at an owner with serial 7 and the opt-in on. Also owed: a certified run of every statement (no box was available when they were written: persvati held for disk, hbox down).",
+ "notes": [],
+ "owner": "C",
+ "severity": "medium",
+ "source": "owner-globals-28 row 28",
+ "state": "open",
+ "title": "Teeth for the process-record keystones whose subjects take state: fn-owner-recovery-carries-proc, fn-owner-install-extended-installs-oc, fn-owner-sco-capture-serial-is-next, fn-owner-install-reclaim-live-reads-back",
+ "updated": "2026-10-07T19:35:57Z"
+}
