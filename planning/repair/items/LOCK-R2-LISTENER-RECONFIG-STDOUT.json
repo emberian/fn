@@ -7,7 +7,8 @@
  "fix": "Emit the BP NODE lines after the section returns (return the lines as data), and do the listener drive outside the owner section or justify it as a design decision; fnn-out under O is the baseline hazard of every site in the 13.",
  "id": "LOCK-R2-LISTENER-RECONFIG-STDOUT",
  "notes": [
-  "10-06 20:24 NOT FIXED, kept open (lane lock-host-fix-2); needs a DESIGN. (1) The key R2|fnn-emit|O:write-sequence/finish-output is reached from 13 sites under O (checker weight 13); moving this site only makes it 12, the key stays. (2) Moving fnn-bplc-reconfigure out of fnn-quantum-bp changes fencing: in the section a bind/retire/emit failure is classified by the envelope (fnn-owner-shared-action-locked, fn-fs-classify with the last durable step, fence before the mutex is released); outside it would have to go through fnn-owner-thread-escape, which classifies with a stale *fnn-section-step*, so an envelope-classified failure becomes a thread-escape with possibly different class. Needed: a design for an I/O-after-section escape that fences equivalently (the section returns the drive as data, and the post-section escape carries the durable-step context), plus a decision on the other 12 fnn-emit sites. Image-only natives (FN_BP_LISTENER_TEST_PAUSE_CUT) would gate it."
+  "10-06 20:24 NOT FIXED, kept open (lane lock-host-fix-2); needs a DESIGN. (1) The key R2|fnn-emit|O:write-sequence/finish-output is reached from 13 sites under O (checker weight 13); moving this site only makes it 12, the key stays. (2) Moving fnn-bplc-reconfigure out of fnn-quantum-bp changes fencing: in the section a bind/retire/emit failure is classified by the envelope (fnn-owner-shared-action-locked, fn-fs-classify with the last durable step, fence before the mutex is released); outside it would have to go through fnn-owner-thread-escape, which classifies with a stale *fnn-section-step*, so an envelope-classified failure becomes a thread-escape with possibly different class. Needed: a design for an I/O-after-section escape that fences equivalently (the section returns the drive as data, and the post-section escape carries the durable-step context), plus a decision on the other 12 fnn-emit sites. Image-only natives (FN_BP_LISTENER_TEST_PAUSE_CUT) would gate it.",
+  "10-06 20:39 DESIGN written: docs/design/listener-reconfig-off-lock.md (lane listener-design): drive after release, failure re-signalled in a settle fnn-quantum-bp so the envelope classifies; lines returned only for contended sections; 11 private-owner command sites declared as exceptions."
  ],
  "owner": "unassigned",
  "scenario": "BP configuration change through the BP control socket: stdout lines are emitted while O is held; a full stdout pipe blocks the owner.",
@@ -15,5 +16,5 @@
  "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
  "state": "open",
  "title": "BP listener reconfiguration writes stdout (fnn-out) and does listener bind/close inside the owner section",
- "updated": "2026-10-07T00:24:15Z"
+ "updated": "2026-10-07T00:39:07Z"
 }
