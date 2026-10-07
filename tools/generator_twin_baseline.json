@@ -1,138 +1,82 @@
 {
  "comment": "shrink-only; regenerate with tools/generator_twin_check.py --write-baseline (a raise needs an ACKS.md line)",
  "rows": {
-  "books/bp-node-rotation-buffer.lisp": {
-   "count": 1,
-   "kinds": [
-    "octet-clone"
-   ],
-   "reason": "octet clone predating def-buffer; owed to lane s-frame-fill (replace by (def-buffer NAME))"
-  },
   "books/catalog-dense-map.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "not generator-shaped (Deputy S 2026-10-07): a keyed map of pages, not a record sequence; one instance does not justify a keyed def-representation kind"
   },
   "books/catalog-logic.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "residual, drained by deletion (Deputy S 2026-10-07): fn-cat$c is the pre-paged catalog concrete; it leaves when phase 2b stops fn-cat$p nesting it (STORAGE-PROGRAM 3.4), not by conversion"
   },
   "books/catalog-paged.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "not generator-shaped (Deputy S 2026-10-07): fn-cat$p composes the generated fn-crow with the fn-mlh and fn-dmap foundations; its row column is already generated"
   },
-  "books/deflate-inflate.lisp": {
-   "count": 3,
-   "kinds": [
-    "octet-clone"
-   ],
-   "reason": "octet clone predating def-buffer; owed to lane s-frame-fill (replace by (def-buffer NAME))"
-  },
   "books/history-columns-foundation.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "vocabulary-blocked until lane s-vocab: untyped scalar plus salted hash (S-DRAIN-MAP FITS AFTER)"
   },
   "books/history-paged.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "not generator-shaped (permanent residual): nested page image (S-DRAIN-MAP verdict)"
   },
   "books/history-records.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "not generator-shaped (permanent residual): ghost (H . C), page fill/flush (S-DRAIN-MAP verdict)"
   },
   "books/incoming-copy-stobj.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "not generator-shaped (permanent residual): one controller record (S-DRAIN-MAP verdict)"
   },
-  "books/native-control-buffer.lisp": {
-   "count": 1,
-   "kinds": [
-    "octet-clone"
-   ],
-   "reason": "octet clone predating def-buffer; owed to lane s-frame-fill (replace by (def-buffer NAME))"
-  },
-  "books/owner-checkpoint-writer.lisp": {
-   "count": 1,
-   "kinds": [
-    "octet-clone"
-   ],
-   "reason": "octet clone predating def-buffer; owed to lane s-frame-fill (replace by (def-buffer NAME))"
-  },
   "books/payload-arena-bytes.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "vocabulary-blocked until lane s-vocab: inner-octet read, stobj-range seal (S-DRAIN-MAP FITS AFTER)"
   },
   "books/payload-arena-extent.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "not generator-shaped (Deputy S 2026-10-07): fn-arena$x is a controller nesting fn-arena-paged with extent, stage and file arrays (like history-paged)"
   },
   "books/payload-arena-paged.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "vocabulary-blocked until lane s-vocab: inner-octet read, stobj-range seal (S-DRAIN-MAP FITS AFTER)"
   },
   "books/payload-arena.lisp": {
-   "count": 1,
    "kinds": [
     "record-stobj"
    ],
+   "count": 1,
    "reason": "vocabulary-blocked until lane s-vocab: inner-octet read, stobj-range seal (S-DRAIN-MAP FITS AFTER)"
-  },
-  "books/payload-extent-read.lisp": {
-   "count": 1,
-   "kinds": [
-    "octet-clone"
-   ],
-   "reason": "octet clone predating def-buffer; owed to lane s-frame-fill (replace by (def-buffer NAME))"
-  },
-  "books/receive-octet-buffer.lisp": {
-   "count": 1,
-   "kinds": [
-    "octet-clone"
-   ],
-   "reason": "octet clone predating def-buffer; owed to lane s-frame-fill (replace by (def-buffer NAME))"
-  },
-  "books/store-log-buffer.lisp": {
-   "count": 1,
-   "kinds": [
-    "octet-clone"
-   ],
-   "reason": "octet clone predating def-buffer; owed to lane s-frame-fill (replace by (def-buffer NAME))"
-  },
-  "books/web-request.lisp": {
-   "count": 2,
-   "kinds": [
-    "octet-clone"
-   ],
-   "reason": "octet clone predating def-buffer; owed to lane s-frame-fill (replace by (def-buffer NAME))"
   }
  }
 }
