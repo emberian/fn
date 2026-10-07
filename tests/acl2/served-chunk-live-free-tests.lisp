@@ -55,3 +55,35 @@
                     *own-group-octets*)))
 (assert-event (not (equal (sclt-answer *own-group-octets* *own-after-post*)
                           (sclt-answer *own-group-octets* *own-taken*))))
+
+; A2: the owner-configuration premise has teeth (ACCESS-REVOKE-PINNED).  Reader
+; 2 of *own-c* is pinned where <one@example> is in its view.  *scla-o2* is
+; *own-c* with a live configuration whose anonymous read rule names another
+; group.  Every retained literal but the configuration holds and the chunk
+; selects nothing, yet the answer changes: STAT 223 under the owner's own
+; configuration, 430 under the revoking one (as served-access-revoke-tests).
+(defconst *scla-live-b*
+  (fn-inj-make-config-full t *own-agent*
+                           (list (fn-nntp-string-octets "fn.letters")
+                                 (fn-nntp-string-octets "fn.test"))
+                           32768
+                           (list nil nil *own-agent*
+                                 (fn-cfg-access-table
+                                  (list (fn-cfg-row-make "" "fn.nothing" "*" 3))))
+                           nil))
+(defconst *scla-o2* (fn-own-configure *own-c* *scla-live-b*))
+(defconst *scla-stat* (append (fn-nntp-string-octets "STAT <one@example>") '(13 10)))
+(defun scla-conn (o) (fn-own-find-conn 2 (fn-own-conns o)))
+(assert-event (scla-conn *own-c*))
+(assert-event (equal (scla-conn *scla-o2*) (scla-conn *own-c*)))
+(assert-event (equal (fn-own-clock *scla-o2*) (fn-own-clock *own-c*)))
+(assert-event (equal (fn-own-conn-live-session *scla-o2* (scla-conn *own-c*))
+                     (fn-own-conn-live-session *own-c* (scla-conn *own-c*))))
+(assert-event (not (equal (fn-own-config *scla-o2*) (fn-own-config *own-c*))))
+(assert-event (in-arena-fn-scl-counted-selects-nothing-p
+               *sr-arena* (fn-own-tls-served-conn *own-c* (scla-conn *own-c*)) *scla-stat*))
+(defun scla-code (o)
+  (let ((r (in-arena-fn-own-read-tls-prefix *sr-arena* o 2 *scla-stat*)))
+    (fn-own-take 3 (fn-served-reply-octets (fn-own-tls-result-effects r)))))
+(assert-event (equal (scla-code *own-c*) (fn-nntp-string-octets "223")))
+(assert-event (equal (scla-code *scla-o2*) (fn-nntp-string-octets "430")))
