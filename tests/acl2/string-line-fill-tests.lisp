@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/string-line-fill")
+(include-book "../../books/defkeystone")
 
 ; Literal positive witnesses for both unconditional exact-residual keystones
 ; and both byte bounds. No hypothesis-removal witness applies: there are no
@@ -41,3 +42,29 @@
                    (slf-witness-value "abc" 99 :unknown 9 nil)))
 (assert-event (and (eq (symbol-class 'fn-slf-loop (w state)) :common-lisp-compliant)
                    (eq (symbol-class 'fn-sl-fill (w state)) :common-lisp-compliant)))
+
+; fn-sl-step-residual (TEETH CONTRACT v1).  fn-sl-step returns several values, so the witnesses are ground theorems (:witness-lemma / :lemma; TEETH-OWED-MV-CLAIM lemma debt).  No hypotheses.
+(defthm slf-gl-step-residual-witness
+  (equal (append (car (fn-sl-step (fn-sl-make "abc" 0 :text) 2))
+                 (fn-sl-remaining (mv-nth 1 (fn-sl-step (fn-sl-make "abc" 0 :text) 2))))
+         (fn-sl-remaining (fn-sl-make "abc" 0 :text))))
+(defthm slf-gl-step-residual-mutant
+  (and (equal (append (car (fn-sl-step (fn-sl-make "abc" 0 :text) 2))
+                      (fn-sl-remaining (mv-nth 1 (fn-sl-step (fn-sl-make "abc" 0 :text) 2))))
+              (fn-sl-remaining (fn-sl-make "abc" 0 :text)))
+       (not (equal (append (car (fn-sl-step (fn-sl-make "abc" 0 :text) 2))
+                           (fn-sl-remaining (fn-sl-make "abc" 0 :text)))
+                   (fn-sl-remaining (fn-sl-make "abc" 0 :text))))))
+(defteeth fn-sl-step-residual
+  :claim (() (equal (append (car (fn-sl-step cur bytes))
+                            (fn-sl-remaining (mv-nth 1 (fn-sl-step cur bytes))))
+                    (fn-sl-remaining cur)))
+  :subject fn-sl-step
+  :witness-lemma slf-gl-step-residual-witness
+  :witness ((cur (fn-sl-make "abc" 0 :text)) (bytes 2))
+  :mutations ((emitted-bytes-lost
+               (:conclusion (equal (append (car (fn-sl-step cur bytes)) (fn-sl-remaining cur))
+                                   (fn-sl-remaining cur)))
+               ((cur (fn-sl-make "abc" 0 :text)) (bytes 2))
+               :fault "a step whose cursor never advances past the octets it emitted"
+               :lemma slf-gl-step-residual-mutant)))

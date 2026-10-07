@@ -852,6 +852,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-root-incarnation-tests \
 	tests/acl2/owner-reclaim-seal-tests \
 	books/handle-holds \
+	tests/acl2/handle-holds-tests \
 	books/owner-reclaim-instant \
 	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \
