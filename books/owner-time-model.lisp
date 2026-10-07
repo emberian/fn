@@ -535,6 +535,34 @@
   (declare (xargs :guard t))
   (list ocp d clock))
 
+; The held flag (ruling 19, books/owner-commit-held.lisp): whether the batch
+; in flight carries a caller's held submission.  It is the value's fourth
+; slot, present only while one is held; every entry below that rebuilds the
+; value from S keeps it (fn-otm-keep), and only the held commit's events
+; (books/owner-time-held.lisp) set or clear it.
+(defun fn-otm-held (s)
+  (declare (xargs :guard t))
+  (if (and (consp s) (consp (cdr s)) (consp (cddr s)) (consp (cdddr s)) (cadddr s)) t nil))
+
+(defun fn-otm-keep (s ocp d clock)
+  (declare (xargs :guard t))
+  (if (fn-otm-held s) (list ocp d clock t) (fn-otm-make ocp d clock)))
+
+(defthm fn-otm-of-keep
+  (and (equal (fn-otm-ocp (fn-otm-keep s ocp d c)) ocp)
+       (equal (fn-otm-disk (fn-otm-keep s ocp d c)) d)
+       (equal (fn-otm-clock (fn-otm-keep s ocp d c)) c)
+       (equal (fn-otm-held (fn-otm-keep s ocp d c)) (fn-otm-held s))))
+
+(defthm fn-otm-keep-unheld-is-make
+  (implies (not (fn-otm-held s))
+           (equal (fn-otm-keep s ocp d c) (fn-otm-make ocp d c))))
+
+(defthm fn-otm-held-of-make
+  (not (fn-otm-held (fn-otm-make ocp d c))))
+
+(in-theory (disable fn-otm-keep))
+
 (defun fn-otm-init ()
   (declare (xargs :guard t))
   (fn-otm-make (fn-ocp-init) (fn-otm-disk-init) (list 0 0 0 nil)))
@@ -544,17 +572,17 @@
 (defun fn-otm-next (s w)
   (declare (xargs :guard t))
   (mv-let (class ocp) (fn-ocp-next (fn-otm-ocp s) w)
-    (mv class (fn-otm-make ocp (fn-otm-disk s) (fn-otm-clock s)))))
+    (mv class (fn-otm-keep s ocp (fn-otm-disk s) (fn-otm-clock s)))))
 
 (defun fn-otm-observe (s class hold-ms wait-ms)
   (declare (xargs :guard t))
-  (fn-otm-make (fn-ocp-observe (fn-otm-ocp s) class hold-ms wait-ms) (fn-otm-disk s)
+  (fn-otm-keep s (fn-ocp-observe (fn-otm-ocp s) class hold-ms wait-ms) (fn-otm-disk s)
                (fn-otm-clock s)))
 
 (defun fn-otm-commit-event (s event)
   (declare (xargs :guard t))
   (mv-let (action ocp) (fn-ocp-commit-event (fn-otm-ocp s) event)
-    (mv action (fn-otm-make ocp (fn-otm-disk s) (fn-otm-clock s)))))
+    (mv action (fn-otm-keep s ocp (fn-otm-disk s) (fn-otm-clock s)))))
 
 (defun fn-otm-committer-wake (s returned queued w)
   (declare (xargs :guard t))
@@ -595,7 +623,7 @@
 (defun fn-otm-disk-event (s kind reading arg)
   (declare (xargs :guard t))
   (mv-let (word d2 c2) (fn-otm-dc-event (fn-otm-disk s) (fn-otm-clock s) kind reading arg)
-    (mv word (fn-otm-make (fn-otm-ocp s) d2 c2))))
+    (mv word (fn-otm-keep s (fn-otm-ocp s) d2 c2))))
 
 (defun fn-otm-full-p (s)
   (declare (xargs :guard t))
@@ -854,7 +882,7 @@
 (defthm fn-otm-disk-event-keeps-the-pipeline
   (equal (fn-otm-ocp (mv-nth 1 (fn-otm-disk-event s kind reading arg)))
          (fn-otm-ocp s))
-  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make)
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make fn-otm-of-keep)
                                               (theory 'minimal-theory)))))
 
 ;; The clock after any event, by name (the case split on the event's kind
@@ -873,7 +901,7 @@
                  (if regressed (+ 1 (fn-otm-c-regressions c)) (fn-otm-c-regressions c))
                  (+ 1 (fn-otm-c-jseq c))
                  (if (eq kind :space) (fn-otm-space-observe arg now) (fn-otm-c-space c)))))
-  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make)
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make fn-otm-of-keep)
                                               (theory 'minimal-theory)))))
 
 ;; KEYSTONE (the recorded time never goes backwards).  The recorded time is
@@ -930,7 +958,7 @@
          (if (eq kind :space)
              (fn-otm-space-observe arg (max (fn-otm-now s) (nfix reading)))
            (fn-otm-space s)))
-  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make fn-otm-of-keep
                                                 fn-otm-space-of-make fn-otm-c-of-list4
                                                 fn-otm-now fn-otm-space max nfix fn-otm-c-now)
                                               (theory 'minimal-theory)))))
@@ -949,7 +977,7 @@
 (defthm fn-otm-space-event-keeps-the-disk
   (equal (fn-otm-disk (mv-nth 1 (fn-otm-disk-event s :space reading arg)))
          (fn-otm-disk s))
-  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make)
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-make fn-otm-of-keep)
                                               (theory 'minimal-theory)))))
 
 ;; -----------------------------------------------------------------------------
