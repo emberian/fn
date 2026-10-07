@@ -184,3 +184,39 @@
                ((ledger (nth 0 (fn-dwrt-returned nil))) (worker (nth 1 (fn-dwrt-returned nil))) (token (nth 2 (fn-dwrt-returned nil))) (carry (nth 3 (fn-dwrt-returned nil))))
                :fault "a retirement that leaves the carry assigned"
                :lemma dwat-revokes-mut3)))
+
+(defthm dwat-refused-witness
+  (implies (not (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running)))) :reusable))
+           (equal (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running)))) (nth 3 (fn-dwrt-running))))
+  :rule-classes nil)
+
+(defthm dwat-refused-mut1
+  (and (implies (not (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running)))) :reusable))
+           (equal (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running)))) (nth 3 (fn-dwrt-running))))
+       (not (implies (not (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running)))) :reusable))
+           (equal (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running)))) (create-fn-pww-carry)))))
+  :rule-classes nil)
+
+(defthm dwat-refused-mut2
+  (and (implies (not (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil)))) :reusable))
+           (equal (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil)))) (nth 3 (fn-dwrt-returned nil))))
+       (not (implies t (equal (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil)))) (nth 3 (fn-dwrt-returned nil))))))
+  :rule-classes nil)
+
+(defteeth fn-dwa-refused-retirement-preserves-carry
+  :claim (() (implies (not (equal (mv-nth 0 (fn-dwa-retire ledger worker token carry)) :reusable))
+           (equal (mv-nth 1 (fn-dwa-retire ledger worker token carry)) carry)))
+  :subject fn-dwa-retire
+  :witness-lemma dwat-refused-witness
+  :witness ((ledger (nth 0 (fn-dwrt-running))) (worker (nth 1 (fn-dwrt-running))) (token (nth 2 (fn-dwrt-running))) (carry (nth 3 (fn-dwrt-running))))
+  :mutations ((refusal-wipes-the-carry
+               (:conclusion (implies (not (equal (mv-nth 0 (fn-dwa-retire ledger worker token carry)) :reusable))
+           (equal (mv-nth 1 (fn-dwa-retire ledger worker token carry)) (create-fn-pww-carry))))
+               ((ledger (nth 0 (fn-dwrt-running))) (worker (nth 1 (fn-dwrt-running))) (token (nth 2 (fn-dwrt-running))) (carry (nth 3 (fn-dwrt-running))))
+               :fault "a refused retirement that wipes the carry anyway"
+               :lemma dwat-refused-mut1)
+              (no-refusal-hypothesis
+               (:conclusion (implies t (equal (mv-nth 1 (fn-dwa-retire ledger worker token carry)) carry)))
+               ((ledger (nth 0 (fn-dwrt-returned nil))) (worker (nth 1 (fn-dwrt-returned nil))) (token (nth 2 (fn-dwrt-returned nil))) (carry (nth 3 (fn-dwrt-returned nil))))
+               :fault "a statement that the carry is unchanged even when the retirement succeeded"
+               :lemma dwat-refused-mut2)))
