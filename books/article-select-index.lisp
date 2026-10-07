@@ -120,16 +120,34 @@
   :hints (("Goal" :use ((:instance fn-asx-lp-equal (x (coerce a 'list)) (y (coerce b 'list)))))))
 
 ; the one-step lemmas
+; Fields of a constructed selection state, read without opening the
+; constructor or the accessor (the step lemmas below case-split far less).
+(local
+ (defthmd fn-ast-at-of-select-state
+   (and (equal (fn-ast-at 0 (fn-ast-select-state m g n r a mem row at ph)) :article-select)
+        (equal (fn-ast-at 1 (fn-ast-select-state m g n r a mem row at ph)) m)
+        (equal (fn-ast-at 2 (fn-ast-select-state m g n r a mem row at ph)) g)
+        (equal (fn-ast-at 3 (fn-ast-select-state m g n r a mem row at ph)) n)
+        (equal (fn-ast-at 4 (fn-ast-select-state m g n r a mem row at ph)) r)
+        (equal (fn-ast-at 5 (fn-ast-select-state m g n r a mem row at ph)) a)
+        (equal (fn-ast-at 6 (fn-ast-select-state m g n r a mem row at ph)) mem)
+        (equal (fn-ast-at 7 (fn-ast-select-state m g n r a mem row at ph)) row)
+        (equal (fn-ast-at 8 (fn-ast-select-state m g n r a mem row at ph)) at)
+        (equal (fn-ast-at 9 (fn-ast-select-state m g n r a mem row at ph)) ph))
+   :hints (("Goal" :in-theory (enable fn-ast-select-state fn-ast-at)))))
+
 (defthm fn-asx-select-one-good
   (implies (and (fn-asx-goodp it) (not (fn-ast-select-donep it)))
            (fn-asx-goodp (fn-ast-select-one it)))
-  :hints (("Goal" :in-theory (enable fn-ast-select-one fn-asx-goodp fn-ast-select-state fn-ast-at fn-ast-select-donep fn-article-memberships))))
+  :hints (("Goal" :in-theory (e/d (fn-ast-at-of-select-state fn-ast-select-one fn-asx-goodp fn-ast-select-donep fn-article-memberships)
+                                  (fn-ast-select-state fn-ast-at fn-ast-msgid-search-one fn-ast-msgid-local-done)))))
 
 (defthm fn-asx-select-one-meas
   (implies (and (fn-asx-goodp it) (not (fn-ast-select-donep it))
                 (not (fn-ast-select-donep (fn-ast-select-one it))))
            (o< (fn-asx-meas (fn-ast-select-one it)) (fn-asx-meas it)))
-  :hints (("Goal" :in-theory (enable fn-ast-select-one fn-asx-goodp fn-ast-select-state fn-ast-at fn-ast-select-donep fn-asx-meas))))
+  :hints (("Goal" :in-theory (e/d (fn-ast-at-of-select-state fn-ast-select-one fn-asx-goodp fn-ast-select-donep fn-asx-meas)
+                                  (fn-ast-select-state fn-ast-at fn-ast-msgid-search-one fn-ast-msgid-local-done)))))
 
 (local
  (defthm fn-asx-unequal-by-char
@@ -152,11 +170,22 @@
 (defthm fn-asx-select-one-spec
   (implies (and (fn-asx-goodp it) (not (fn-ast-select-donep it)))
            (equal (fn-asx-spec (fn-ast-select-one it)) (fn-asx-spec it)))
-  :hints (("Goal" :in-theory (enable fn-ast-select-one fn-asx-goodp fn-ast-select-state fn-ast-at fn-ast-select-donep fn-asx-spec fn-asx-first fn-asx-hitp fn-nntp-membership-number))))
+  :hints (("Goal" :in-theory (e/d (fn-ast-at-of-select-state fn-ast-select-one fn-asx-goodp fn-ast-select-donep fn-asx-spec fn-asx-first fn-asx-hitp fn-nntp-membership-number)
+                                  (fn-ast-select-state fn-ast-at fn-ast-msgid-search-one fn-ast-msgid-local-done)))))
+
+; The measure is an ordinal for every IT; with that and the one-step
+; decrease (fn-asx-select-one-meas), the termination proof opens nothing
+; (2.2M -> 10k steps).
+(local
+ (defthm fn-asx-meas-o-p
+   (o-p (fn-asx-meas it))
+   :hints (("Goal" :in-theory (enable fn-asx-meas)))))
 
 (defun-nx fn-asx-need (it)
   (declare (xargs :measure (fn-asx-meas it) :well-founded-relation o<
-                  :hints (("Goal" :use fn-asx-select-one-meas))))
+                  :hints (("Goal" :use fn-asx-select-one-meas
+                                  :in-theory (disable fn-ast-at fn-ast-select-one fn-asx-goodp
+                                                      fn-ast-select-donep fn-asx-meas)))))
   (if (or (not (fn-asx-goodp it)) (fn-ast-select-donep it))
       0
     (if (fn-ast-select-donep (fn-ast-select-one it))
@@ -168,7 +197,8 @@
            (and (equal (fn-ast-at 1 (fn-ast-select-one it)) (fn-ast-at 1 it))
                 (equal (fn-ast-at 2 (fn-ast-select-one it)) (fn-ast-at 2 it))
                 (equal (fn-ast-at 3 (fn-ast-select-one it)) (fn-ast-at 3 it))))
-  :hints (("Goal" :in-theory (enable fn-ast-select-one fn-asx-goodp fn-ast-select-state fn-ast-at fn-ast-select-donep))))
+  :hints (("Goal" :in-theory (e/d (fn-ast-at-of-select-state fn-ast-select-one fn-asx-goodp fn-ast-select-donep)
+                                  (fn-ast-select-state fn-ast-at fn-ast-msgid-search-one fn-ast-msgid-local-done)))))
 
 ;; The induction runs on the work still needed, with the slack held fixed.
 (local
