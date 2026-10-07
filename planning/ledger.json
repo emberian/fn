@@ -294,11 +294,15 @@
     "books/paged-checkpoint",
     "books/catalog-pages",
     "books/paged-checkpoint-host",
+    "books/paged-checkpoint-exec",
+    "books/paged-checkpoint-stage",
     "books/def-representation",
     "tests/acl2/def-representation-tests",
     "tests/acl2/def-representation-pages-tests",
     "tests/acl2/paged-checkpoint-tests",
     "tests/acl2/paged-checkpoint-host-tests",
+    "tests/acl2/paged-checkpoint-exec-tests",
+    "tests/acl2/paged-checkpoint-stage-tests",
     "tests/acl2/defkeystone-tests",
     "tests/acl2/definterface-tests",
     "tests/acl2/definterface-recognizer-tests",
@@ -2594,26 +2598,26 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3086,
-    "books_in_root_closure": 2921,
-    "roots": 2590,
-    "theorems": 41638,
-    "functions": 26372,
-    "assert_events": 28285,
-    "must_fails": 2772,
+    "books": 3088,
+    "books_in_root_closure": 2925,
+    "roots": 2594,
+    "theorems": 41730,
+    "functions": 26391,
+    "assert_events": 28286,
+    "must_fails": 2773,
     "prover_refusals": 0,
     "encapsulates": 257,
     "guards": {
       "verified": 4167,
-      "declared-off": 3489,
-      "default-guarded": 14437,
-      "default-unguarded": 4279
+      "declared-off": 3501,
+      "default-guarded": 14439,
+      "default-unguarded": 4284
     },
-    "suspect_theorems": 1512,
-    "export_hygiene_warnings": 430,
+    "suspect_theorems": 1514,
+    "export_hygiene_warnings": 433,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 312,
-    "include_hygiene_warnings": 3952,
+    "include_hygiene_warnings": 3954,
     "host_names_warnings": 3660,
     "hand_written_record_warnings": 19
   },
@@ -39020,8 +39024,8 @@
     },
     {
       "book": "books/paged-checkpoint-exec.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 15,
       "functions": 7,
       "guards": {
@@ -39076,6 +39080,39 @@
         "arithmetic/top"
       ],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/paged-checkpoint-stage.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 92,
+      "functions": 18,
+      "guards": {
+        "verified": 0,
+        "declared-off": 11,
+        "default-guarded": 2,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "paged-checkpoint-exec",
+        "pagestore-exec",
+        "pagestore-refine"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "pcks-res-step",
+        "pcks-stage-done"
+      ],
       "read_error": null
     },
     {
@@ -79691,8 +79728,8 @@
     },
     {
       "book": "tests/acl2/paged-checkpoint-exec-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 3,
       "guards": {
@@ -79739,6 +79776,35 @@
       "encapsulates": 0,
       "includes": [
         "../../books/paged-checkpoint-host",
+        "must-fail-checked"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/paged-checkpoint-stage-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/paged-checkpoint-stage",
         "must-fail-checked"
       ],
       "system_includes": [
@@ -103486,6 +103552,23 @@
       ]
     },
     {
+      "theorem": "pcks-res-step",
+      "book": "books/paged-checkpoint-stage.lisp",
+      "line": 238,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of pcks-res and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "pcks-stage-done",
+      "book": "books/paged-checkpoint-stage.lisp",
+      "line": 385,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-pck-x-stage-rows and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-pck-x-stage-rows and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "pgs-dcs-byte-step-outside-tail-is-page-step",
       "book": "books/pagestore-digest-cursor-semantics.lisp",
       "line": 212,
@@ -105173,6 +105256,24 @@
         "book": "books/paged-checkpoint-exec.lisp",
         "line": 143,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "pcks-pages-short",
+        "book": "books/paged-checkpoint-stage.lisp",
+        "line": 578,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "pcks-len-pages-of-tail-words",
+        "book": "books/paged-checkpoint-stage.lisp",
+        "line": 725,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "pcks-len-tail",
+        "book": "books/paged-checkpoint-stage.lisp",
+        "line": 833,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "pck-octet-listp-is-octetsp",
@@ -121076,6 +121177,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/paged-checkpoint-stage.lisp",
+        "line": 37,
+        "include": "paged-checkpoint-exec",
+        "included": "books/paged-checkpoint-exec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/paged-checkpoint.lisp",
         "line": 40,
         "include": "owner-checkpoint-open",
@@ -132817,6 +132925,13 @@
       {
         "book": "tests/acl2/paged-checkpoint-host-tests.lisp",
         "line": 15,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/paged-checkpoint-stage-tests.lisp",
+        "line": 14,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

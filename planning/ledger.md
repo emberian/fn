@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3086 |
-| Certification roots in the Makefile | 2590 |
-| Books inside the root closure | 2921 |
-| `defthm` and `defthmd` events | 41638 |
-| `defun` events | 26372 |
+| Books read | 3088 |
+| Certification roots in the Makefile | 2594 |
+| Books inside the root closure | 2925 |
+| `defthm` and `defthmd` events | 41730 |
+| `defun` events | 26391 |
 | Functions with verified guards | 4167 |
-| Functions declared `:verify-guards nil` and never verified | 3489 |
-| Functions left at the default with an explicit guard | 14437 |
-| Functions left at the default with no guard | 4279 |
-| `assert-event` checks | 28285 |
-| `must-fail` checks | 2772 |
+| Functions declared `:verify-guards nil` and never verified | 3501 |
+| Functions left at the default with an explicit guard | 14439 |
+| Functions left at the default with no guard | 4284 |
+| `assert-event` checks | 28286 |
+| `must-fail` checks | 2773 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
-| Theorems flagged SUSPECT by shape | 1512 |
-| Export-hygiene warnings | 430 |
+| Theorems flagged SUSPECT by shape | 1514 |
+| Export-hygiene warnings | 433 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 312 |
-| Include-hygiene warnings | 3952 |
+| Include-hygiene warnings | 3954 |
 | Host-names warnings | 3660 |
 | Hand-written-record warnings | 19 |
 
@@ -1307,8 +1307,9 @@ that `make certify` requests.
 | `books/page-window-read.lisp` | root | 8 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/page-window-span.lisp` | root | 25 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/page-window-worker-storage.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/paged-checkpoint-exec.lisp` | - | 15 | 7 | 0/4/0/3 | 0 | 0 | 0 |
+| `books/paged-checkpoint-exec.lisp` | root | 15 | 7 | 0/4/0/3 | 0 | 0 | 0 |
 | `books/paged-checkpoint-host.lisp` | root | 15 | 10 | 0/6/4/0 | 0 | 0 | 0 |
+| `books/paged-checkpoint-stage.lisp` | root | 92 | 18 | 0/11/2/5 | 0 | 0 | 2 |
 | `books/paged-checkpoint.lisp` | root | 59 | 28 | 0/21/4/3 | 0 | 0 | 1 |
 | `books/pagestore-digest-block-predicate.lisp` | root | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/pagestore-digest-byte-cursor.lisp` | root | 3 | 6 | 1/0/4/1 | 0 | 0 | 0 |
@@ -2753,8 +2754,9 @@ that `make certify` requests.
 | `tests/acl2/page-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/page-window-read-tests.lisp` | root | 10 | 14 | 0/1/0/13 | 0 | 0 | 0 |
 | `tests/acl2/page-window-span-tests.lisp` | root | 6 | 8 | 0/0/0/8 | 0 | 0 | 0 |
-| `tests/acl2/paged-checkpoint-exec-tests.lisp` | - | 0 | 3 | 0/3/0/0 | 1 | 2 | 0 |
+| `tests/acl2/paged-checkpoint-exec-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 1 | 2 | 0 |
 | `tests/acl2/paged-checkpoint-host-tests.lisp` | root | 1 | 9 | 0/3/3/3 | 8 | 7 | 0 |
+| `tests/acl2/paged-checkpoint-stage-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 1 | 1 | 0 |
 | `tests/acl2/paged-checkpoint-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 20 | 7 | 0 |
 | `tests/acl2/pagestore-digest-byte-cursor-tests.lisp` | root | 9 | 3 | 0/1/0/2 | 0 | 0 | 0 |
 | `tests/acl2/pagestore-digest-byte-domain-tests.lisp` | root | 9 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -4680,6 +4682,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `otjs-consume-consp` | `books/owner-time-journal-stream.lisp` | 482 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otjs-consume and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-otjs-consume and the conclusion is that branch's value |
 | `otjs-revonto-singleton` | `books/owner-time-journal-stream.lisp` | 207 | instance-corollary: the statement is otjs-revonto-is-append instantiated, discharging nothing |
 | `pck-disk-holds-facts` | `books/paged-checkpoint.lisp` | 554 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-pck-disk-holds |
+| `pcks-res-step` | `books/paged-checkpoint-stage.lisp` | 238 | arm-of-definition: the hypotheses select one IF/COND arm of pcks-res and the conclusion is that arm's value |
+| `pcks-stage-done` | `books/paged-checkpoint-stage.lisp` | 385 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pck-x-stage-rows and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-pck-x-stage-rows and the conclusion is that branch's value |
 | `pgs-dcs-byte-step-outside-tail-is-page-step` | `books/pagestore-digest-cursor-semantics.lisp` | 212 | arm-of-definition: the hypotheses select one IF/COND arm of pgs-dcb-step and the conclusion is that arm's value |
 | `pgs-dcs-split-work-unfolds` | `books/pagestore-digest-cursor-progress.lisp` | 111 | definition-restated: the conclusion is the body of pgs-dcs-split-work |
 | `pgs-g-install-is-reclaim` | `books/pagestore-gc.lisp` | 701 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
