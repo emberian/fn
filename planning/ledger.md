@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3082 |
-| Certification roots in the Makefile | 2588 |
-| Books inside the root closure | 2919 |
-| `defthm` and `defthmd` events | 41554 |
-| `defun` events | 26269 |
+| Books read | 3086 |
+| Certification roots in the Makefile | 2590 |
+| Books inside the root closure | 2921 |
+| `defthm` and `defthmd` events | 41595 |
+| `defun` events | 26304 |
 | Functions with verified guards | 4091 |
-| Functions declared `:verify-guards nil` and never verified | 3468 |
-| Functions left at the default with an explicit guard | 14475 |
-| Functions left at the default with no guard | 4235 |
-| `assert-event` checks | 28243 |
-| `must-fail` checks | 2745 |
+| Functions declared `:verify-guards nil` and never verified | 3489 |
+| Functions left at the default with an explicit guard | 14483 |
+| Functions left at the default with no guard | 4241 |
+| `assert-event` checks | 28252 |
+| `must-fail` checks | 2754 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
-| Theorems flagged SUSPECT by shape | 1510 |
-| Export-hygiene warnings | 428 |
+| Theorems flagged SUSPECT by shape | 1512 |
+| Export-hygiene warnings | 430 |
 | Enabled-projection warnings | 78 |
-| Teeth-form warnings | 307 |
-| Include-hygiene warnings | 4121 |
+| Teeth-form warnings | 310 |
+| Include-hygiene warnings | 4126 |
 | Host-names warnings | 3660 |
 | Hand-written-record warnings | 19 |
 
@@ -699,7 +699,7 @@ that `make certify` requests.
 | `books/def-loop.lisp` | root | 13 | 50 | 0/0/0/50 | 0 | 0 | 0 |
 | `books/def-representation-lib.lisp` | root | 22 | 6 | 0/1/5/0 | 0 | 0 | 1 |
 | `books/def-representation-paged.lisp` | closure | 221 | 63 | 0/54/2/7 | 0 | 0 | 3 |
-| `books/def-representation-pages.lisp` | root | 103 | 42 | 0/25/9/8 | 0 | 0 | 0 |
+| `books/def-representation-pages.lisp` | root | 111 | 44 | 0/26/10/8 | 0 | 0 | 2 |
 | `books/def-representation-tree-walk.lisp` | closure | 70 | 26 | 1/17/4/4 | 0 | 0 | 3 |
 | `books/def-representation-tree.lisp` | closure | 12 | 8 | 0/7/1/0 | 0 | 0 | 0 |
 | `books/def-representation.lisp` | root | 0 | 40 | 0/0/0/40 | 0 | 0 | 0 |
@@ -1307,7 +1307,9 @@ that `make certify` requests.
 | `books/page-window-read.lisp` | root | 8 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/page-window-span.lisp` | root | 25 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/page-window-worker-storage.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/paged-checkpoint.lisp` | root | 57 | 24 | 0/17/4/3 | 0 | 0 | 1 |
+| `books/paged-checkpoint-exec.lisp` | - | 15 | 7 | 0/4/0/3 | 0 | 0 | 0 |
+| `books/paged-checkpoint-host.lisp` | root | 15 | 10 | 0/6/4/0 | 0 | 0 | 0 |
+| `books/paged-checkpoint.lisp` | root | 59 | 28 | 0/21/4/3 | 0 | 0 | 1 |
 | `books/pagestore-digest-block-predicate.lisp` | root | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/pagestore-digest-byte-cursor.lisp` | root | 3 | 6 | 1/0/4/1 | 0 | 0 | 0 |
 | `books/pagestore-digest-byte-domain.lisp` | root | 20 | 2 | 0/2/0/0 | 0 | 0 | 0 |
@@ -2751,6 +2753,8 @@ that `make certify` requests.
 | `tests/acl2/page-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/page-window-read-tests.lisp` | root | 10 | 14 | 0/1/0/13 | 0 | 0 | 0 |
 | `tests/acl2/page-window-span-tests.lisp` | root | 6 | 8 | 0/0/0/8 | 0 | 0 | 0 |
+| `tests/acl2/paged-checkpoint-exec-tests.lisp` | - | 0 | 3 | 0/3/0/0 | 1 | 2 | 0 |
+| `tests/acl2/paged-checkpoint-host-tests.lisp` | root | 1 | 9 | 0/3/3/3 | 8 | 7 | 0 |
 | `tests/acl2/paged-checkpoint-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 20 | 7 | 0 |
 | `tests/acl2/pagestore-digest-byte-cursor-tests.lisp` | root | 9 | 3 | 0/1/0/2 | 0 | 0 | 0 |
 | `tests/acl2/pagestore-digest-byte-domain-tests.lisp` | root | 9 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -3185,6 +3189,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `adt-pg-set-c-is-room-then-set` | `books/def-representation-paged.lisp` | 2233 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `adt-pool-cputs-of-atom` | `books/def-representation-tree-walk.lisp` | 290 | arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-cputs and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-pool-cputs and the conclusion is that branch's value |
 | `adt-pool-puts-of-atom` | `books/def-representation-tree-walk.lisp` | 181 | arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-puts and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-pool-puts and the conclusion is that branch's value |
+| `adt-tp-dirty-at-is-dirty` | `books/def-representation-pages.lisp` | 687 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `adt-tp-extend-dirty-at-is-extend-dirty` | `books/def-representation-pages.lisp` | 697 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `bpcd-job-key-of-with-status` | `books/bp-node-contact-driver.lisp` | 61 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `bpgap-uncertain-issued-is-inert` | `books/bp-node-machine-gaps.lisp` | 104 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnp-step and the conclusion is that arm's value |
 | `bprsend-job-with-status-fields` | `books/bp-node-receipt-send.lisp` | 278 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -4673,7 +4679,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `otjs-consume-atom` | `books/owner-time-journal-stream.lisp` | 490 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otjs-consume and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-otjs-consume and the conclusion is that branch's value |
 | `otjs-consume-consp` | `books/owner-time-journal-stream.lisp` | 482 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otjs-consume and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-otjs-consume and the conclusion is that branch's value |
 | `otjs-revonto-singleton` | `books/owner-time-journal-stream.lisp` | 207 | instance-corollary: the statement is otjs-revonto-is-append instantiated, discharging nothing |
-| `pck-disk-holds-facts` | `books/paged-checkpoint.lisp` | 514 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-pck-disk-holds |
+| `pck-disk-holds-facts` | `books/paged-checkpoint.lisp` | 554 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-pck-disk-holds |
 | `pgs-dcs-byte-step-outside-tail-is-page-step` | `books/pagestore-digest-cursor-semantics.lisp` | 212 | arm-of-definition: the hypotheses select one IF/COND arm of pgs-dcb-step and the conclusion is that arm's value |
 | `pgs-dcs-split-work-unfolds` | `books/pagestore-digest-cursor-progress.lisp` | 111 | definition-restated: the conclusion is the body of pgs-dcs-split-work |
 | `pgs-g-install-is-reclaim` | `books/pagestore-gc.lisp` | 701 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
