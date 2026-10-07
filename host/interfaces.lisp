@@ -4920,6 +4920,7 @@
 (definterface fn-xc-init :class :common-lisp-compliant
   :keystones (fn-xc-init-initializes fn-xc-init-lookups-miss))
 (definterface fn-xc-lookup :class :common-lisp-compliant
+  :kinds ((from natp) (pos natp))
   :keystones (fn-xc-lookup-hit-is-the-descriptor fn-xc-lookup-miss-is-absent))
 (definterface fn-xc-touch :class :common-lisp-compliant
   :keystones (fn-xc-lookup-after-touch))
@@ -4933,10 +4934,13 @@
   :keystones (fn-xc-yield-an-entry
               (fn-xc-eviction-releases-exactly-the-slots-charge :via fn-xc-slot-token)))
 (definterface fn-xc-free :class :common-lisp-compliant
+  :kinds ((i natp))
   :keystones (fn-xc-freed-slot-matches-nothing))
 (definterface fn-xc-next-live :class :common-lisp-compliant
+  :kinds ((from natp))
   :keystones ((fn-xc-next-finds-every-held-slot :via fn-xc-next)))
-(definterface fn-xc-slot-token :class :common-lisp-compliant)
+(definterface fn-xc-slot-token :class :common-lisp-compliant
+  :kinds ((i natp)))
 (definterface fn-xc-holds :class :common-lisp-compliant)
 (definterface fn-pio-own-admitted-token
   :class :common-lisp-compliant
