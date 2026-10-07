@@ -103,9 +103,14 @@ class ProofCostTests(unittest.TestCase):
             root = Path(directory)
             self.fixture_book(root, "books/base", '(in-package "ACL2")\n')
             self.fixture_book(root, "books/top",
-                              '(in-package "ACL2")\n(include-book "base")\n')
+                              '(in-package "ACL2")\n(include-book "base")\n'
+                              '(defun top-f (x) x)\n')
+            self.fixture_book(root, "books/umbrella",
+                              '(in-package "ACL2")\n(include-book "top")\n')
             with mock.patch.object(proof_cost.ledger, "makefile_roots",
-                                   return_value=["books/top"]):
+                                   return_value=["books/umbrella"]):
+                # The umbrella's closure is read without a ledger; the umbrella
+                # itself (include-book forms only) is the image build's cost.
                 self.assertEqual(proof_cost.current_books(root),
                                  {"books/top", "books/base"})
 
