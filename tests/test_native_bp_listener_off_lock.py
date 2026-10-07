@@ -21,3 +21,16 @@ class NativeBpListenerOffLockTests(unittest.TestCase):
         output = result.stdout.decode("utf-8", "replace")
         self.assertEqual(result.returncode, 0, output)
         self.assertIn("native BP listener off lock: PASS", output)
+
+    def test_drive_stops_before_the_next_primitive_once_the_owner_is_stopping(self):
+        sbcl = shutil.which("sbcl")
+        if sbcl is None:
+            raise unittest.SkipTest("sbcl is not on PATH")
+        result = subprocess.run(
+            [sbcl, "--noinform", "--script",
+             "tests/native_bp_listener_stop_raw-mock.lisp"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=30, check=False)
+        output = result.stdout.decode("utf-8", "replace")
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("native BP listener stop: PASS", output)

@@ -89,7 +89,7 @@ released, as it did when the drive ran in the reconfiguration's own section."
   (handler-case
       (let ((*fnn-bplc-test-change* t))
         (fnn-bplc-cut (fnn-bpnc-listeners node) :configuration-published)
-        (fnn-bplc-drive (fnn-bpnc-listeners node)))
+        (fnn-bplc-drive (fnn-bpnc-listeners node) owner))
     (serious-condition (condition)
       (fnn-quantum-bp owner nil (lambda () (error condition))))))
 

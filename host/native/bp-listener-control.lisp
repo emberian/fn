@@ -28,9 +28,16 @@
       (finish-output)
       (loop (sleep 1)))))
 
-(defun fnn-bplc-drive (node)
-  "One observed primitive per ACL2 action; accept no session while changing."
+(defun fnn-bplc-drive (node &optional service)
+  "One observed primitive per ACL2 action; accept no session while changing.
+With SERVICE (the drive runs off the owner mutex) each primitive is admitted as
+a live section is: ACL2's fn-fs-section-admit over the service's stopping flag,
+refused with the section's own known refusal once the owner is stopping."
   (loop
+    (when (and service
+               (eq (fn-fs-section-admit :live (fnn-owner-service-stopping service))
+                   :refuse))
+      (fnn-refuse "owner service is stopping"))
     (let* ((action (fnn-core 'fn-bplc-action (fnn-bplc-model node)))
            (kind (first action)))
       (case kind

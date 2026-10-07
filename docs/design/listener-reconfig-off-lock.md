@@ -128,9 +128,7 @@ for soundness (it follows from `fn-bplc-turn-plan`'s :stable test).
 ## 6. Size and risks
 
 ~40 lines host (bp-control.lisp, bp-listener-control.lisp, bp-node.lisp), one raw test (~80 lines), baseline edits. One lane, small.
-Risks: (1) service stopping between release and drive: the drive binds on a stopping
-service; the existing `fnn-bplc-close-all` cleanup (bp-node.lisp:1278) closes it, but
-add a stopping check to the drive loop. (2) the case-3 claim "no co-tenant in a
+Risks: (1) closed: each drive primitive is admitted as a live section is (`fn-fs-section-admit :live` over `fnn-owner-service-stopping`, refused with the section's known refusal), pinned by a raw test where stop begins mid-drive; (2) the case-3 claim "no co-tenant in a
 command's owner" is read from `fnn-bpo-call-with-owner-journal`, not proved; the lane
 must confirm no worker thread waits on O in command mode. (3) the sibling item
 LOCK-R2-LIVE-RECONFIGURE-IO still holds O across the publish in the same section;

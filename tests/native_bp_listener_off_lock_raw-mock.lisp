@@ -36,8 +36,8 @@
 (defun fnn-bplc-reconfigure (node)   ; the pre-split entry, if still shipped
   (declare (ignore node)) (note :drive))
 (defun fnn-bplc-cut (node cut) (declare (ignore node cut)) (note :cut))
-(defun fnn-bplc-drive (node)
-  (declare (ignore node))
+(defun fnn-bplc-drive (node &optional service)
+  (declare (ignore node service))
   (note :drive)
   (when *drive-failure* (error 'fnn-store-indeterminate)))
 
