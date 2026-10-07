@@ -94,43 +94,11 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-lgs-indices-loop (names acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp names)
-      (let ((k (fn-lgs-segment-index (car names))))
-        (if k
-            (fn-lgs-indices-loop (cdr names) (cons k acc))
-          (fn-lgs-indices-loop (cdr names) acc)))
-    (revappend acc nil)))
-
-(defun fn-lgs-indices (names)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp names)
-           (let ((k (fn-lgs-segment-index (car names))))
-             (if k (cons k (fn-lgs-indices (cdr names))) (fn-lgs-indices (cdr names))))
-         nil)
-       :exec (fn-lgs-indices-loop names nil)))
-
-(local
- (defthm fn-lgs-indices-loop-is-revappend
-   (equal (fn-lgs-indices-loop names acc)
-          (revappend acc (fn-lgs-indices names)))
-   :hints (("Goal" :induct (fn-lgs-indices-loop names acc)
-                   :in-theory (union-theories '(fn-lgs-indices-loop fn-lgs-indices revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-lgs-indices-loop)
-
-(verify-guards fn-lgs-indices
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-lgs-indices)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-lgs-indices-loop-is-revappend (acc nil))))))
-
+(def-loop fn-lgs-indices (names)
+  :shape :map :over names :elt n
+  :let ((k (fn-lgs-segment-index n)))
+  :keep k
+  :body k)
 
 (defthm fn-lgs-true-listp-indices
   (true-listp (fn-lgs-indices names))
@@ -166,43 +134,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-lgs-below-loop (ks k acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp ks)
-      (if (and (natp (car ks)) (natp k) (< (car ks) k))
-          (fn-lgs-below-loop (cdr ks) k (cons (car ks) acc))
-        (fn-lgs-below-loop (cdr ks) k acc))
-    (revappend acc nil)))
-
-(defun fn-lgs-below (ks k)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ks)
-           (if (and (natp (car ks)) (natp k) (< (car ks) k))
-               (cons (car ks) (fn-lgs-below (cdr ks) k))
-             (fn-lgs-below (cdr ks) k))
-         nil)
-       :exec (fn-lgs-below-loop ks k nil)))
-
-(local
- (defthm fn-lgs-below-loop-is-revappend
-   (equal (fn-lgs-below-loop ks k acc)
-          (revappend acc (fn-lgs-below ks k)))
-   :hints (("Goal" :induct (fn-lgs-below-loop ks k acc)
-                   :in-theory (union-theories '(fn-lgs-below-loop fn-lgs-below revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-lgs-below-loop)
-
-(verify-guards fn-lgs-below
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-lgs-below)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-lgs-below-loop-is-revappend (acc nil))))))
-
+(def-loop fn-lgs-below (ks k)
+  :shape :map :over ks :elt e
+  :keep (and (natp e) (natp k) (< e k))
+  :body e)
 
 ; NAMES: journal/'s entries as the host listed them.  FIRST: the first suffix
 ; segment the selected checkpoint's F row names, or NIL when no checkpoint

@@ -148,6 +148,10 @@
        (or (equal value number) (member-equal value numbers)))
   :hints (("Goal" :induct (fn-nntp-insert-number number numbers)
            :in-theory (enable fn-nntp-insert-number))))
+(verify-guards fn-nntp-membership-number)
+
+(verify-guards fn-nntp-article-number)
+
 ; One pass over the committed articles.  The count, the water marks, NEXT, and
 ; LAST never build or sort a number list; only LISTGROUP does, and it sorts
 ; only the numbers inside the range its own argument names.
@@ -157,29 +161,11 @@
 ; ACTIVE stopped the owner at 1,024 KiB past ~30,000 articles.  The :logic is
 ; the recursion, unchanged; the :exec folds the reversed list (fn-ag-rev-onto)
 ; from the left with the same step, equal by a -loop-of-rev-onto lemma.
-(defun fn-nntp-group-count-loop (group rev acc)
-  (declare (xargs :guard (natp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-nntp-group-count-loop
-       group (cdr rev)
-       (if (posp (fn-nntp-article-number group (car rev))) (+ 1 acc) acc))
-    acc))
-
-(defun fn-nntp-group-count (group articles)
-  (mbe :logic
-       (if (consp articles)
-           (if (posp (fn-nntp-article-number group (car articles)))
-               (+ 1 (fn-nntp-group-count group (cdr articles)))
-             (fn-nntp-group-count group (cdr articles)))
-         0)
-       :exec (fn-nntp-group-count-loop group (fn-ag-rev-onto articles nil) 0)))
-
-(local
- (defthm fn-nntp-group-count-loop-of-rev-onto
-   (equal (fn-nntp-group-count-loop group (fn-ag-rev-onto xs zs) 0)
-          (fn-nntp-group-count-loop group zs (fn-nntp-group-count group xs)))
-   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-                   :in-theory (disable fn-nntp-article-number)))))
+(def-loop fn-nntp-group-count (group articles)
+  :shape :foldr :over articles :elt a
+  :combine (if (posp (fn-nntp-article-number group a)) (+ 1 acc) acc) :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (natp acc))
 
 (defthm fn-nntp-group-count-natp
   (natp (fn-nntp-group-count group articles))
@@ -504,10 +490,6 @@
                 (fn-nntp-single session (fn-proto-text * :syntax))))
           (fn-nntp-single session (fn-proto-text * :syntax)))))))
 
-(verify-guards fn-nntp-membership-number)
-
-(verify-guards fn-nntp-article-number)
-
 (verify-guards fn-nntp-find-group-number)
 
 (verify-guards fn-nntp-available-article)
@@ -519,12 +501,6 @@
                   :use ((:instance fn-nntp-insert-number-loop-is-revappend (prefix nil))))))
 
 (verify-guards fn-nntp-orderedp)
-
-(verify-guards fn-nntp-group-count-loop)
-
-(verify-guards fn-nntp-group-count
-  :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ag-rev-onto)
-                  :use ((:instance fn-nntp-group-count-loop-of-rev-onto (xs articles) (zs nil))))))
 
 (verify-guards fn-nntp-group-low-loop)
 

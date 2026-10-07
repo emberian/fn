@@ -15705,10 +15705,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnf-held-octets-loop-is-plus"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnf-zero-family-keys-loop-is-rev-onto"
         },
         {
@@ -15746,10 +15742,6 @@
         {
           "kind": "theorem",
           "name": "fn-bpnr-enc-go-is-enc"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnr-retired-names-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15954,14 +15946,6 @@
         {
           "kind": "theorem",
           "name": "fn-tlsr-split-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wildmat-step-character-aux-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wildmat-step-star-aux-loop-is-rev-onto"
         },
         {
           "kind": "theorem",

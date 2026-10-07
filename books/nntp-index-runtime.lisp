@@ -2,6 +2,7 @@
 ; Kept below books/nntp.lisp so the served pinned dispatcher can use it.
 (in-package "ACL2")
 (include-book "nntp-projection")
+(include-book "def-loop")
 (include-book "index")
 
 (defun fn-nntp-index-msgid-okp (text)
@@ -19,37 +20,17 @@
         number
       0)))
 
+(verify-guards fn-nntp-index-msgid-okp)
+
+(verify-guards fn-nntp-index-entry-available)
+
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nntp-index-numbers-loop (entries acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp entries)
-      (let ((number (fn-nntp-index-entry-available (fn-ag-car entries))))
-        (if (posp number)
-            (fn-nntp-index-numbers-loop (fn-ag-cdr entries) (cons number acc))
-          (fn-nntp-index-numbers-loop (fn-ag-cdr entries) acc)))
-    (revappend acc nil)))
-
-(defun fn-nntp-index-numbers (entries)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp entries)
-           (let ((number (fn-nntp-index-entry-available (fn-ag-car entries))))
-             (if (posp number)
-                 (cons number (fn-nntp-index-numbers (fn-ag-cdr entries)))
-               (fn-nntp-index-numbers (fn-ag-cdr entries))))
-         nil)
-       :exec (fn-nntp-index-numbers-loop entries nil)))
-
-(local
- (defthm fn-nntp-index-numbers-loop-is-revappend
-   (equal (fn-nntp-index-numbers-loop entries acc)
-          (revappend acc (fn-nntp-index-numbers entries)))
-   :hints (("Goal" :induct (fn-nntp-index-numbers-loop entries acc)
-                   :in-theory (union-theories '(fn-nntp-index-numbers-loop fn-nntp-index-numbers revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-index-numbers (entries)
+  :shape :step :done (atom entries) :emit (posp number)
+  :let ((number (fn-nntp-index-entry-available (fn-ag-car entries)))) :body number
+  :next (fn-ag-cdr entries) :skip-next (fn-ag-cdr entries))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
@@ -376,18 +357,6 @@
   (fn-nntp-numbers-sort
    (fn-nntp-index-numbers (fn-index-query-range index group low high))))
 
-(verify-guards fn-nntp-index-msgid-okp)
-(verify-guards fn-nntp-index-entry-available)
-(verify-guards fn-nntp-index-numbers-loop)
-
-(verify-guards fn-nntp-index-numbers
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-nntp-index-numbers)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-nntp-index-numbers-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-numbers-count-loop)
 
 (verify-guards fn-nntp-numbers-count
