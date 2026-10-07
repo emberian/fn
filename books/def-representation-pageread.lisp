@@ -221,3 +221,99 @@
   :hints (("Goal" :induct (adt-tp-npages w)
            :in-theory (e/d (adt-pr-span adt-tp-npages) (floor mod)))
           ("Subgoal *1/2" :use ((:instance adt-pr-floor-plus-small (x off) (y (+ -1 w)))))))
+
+; The record of W words at word OFF of the tape, decoded: (mv rec res fills).
+(defun adt-pr-read-rec (s off w pages res frames fills)
+  (declare (xargs :guard (and (natp off) (natp w)) :verify-guards nil))
+  (mv-let (ws res fills)
+    (adt-pr-read-words off (+ (nfix off) (nfix w)) pages res frames nil fills)
+    (mv (car (adt-tp-dseq s ws)) res fills)))
+
+(defthm adt-pr-append-take-nthcdr
+  (implies (and (true-listp a) (natp i) (<= i (len a)))
+           (equal (append (take i a) (nthcdr i a)) a)))
+
+(defthm adt-pr-nthcdr-of-append-len
+  (implies (and (true-listp p) (equal (len p) off))
+           (equal (nthcdr off (append p r)) r)))
+
+(defthm adt-pr-take-of-append-len
+  (implies (and (true-listp x) (equal (len x) w))
+           (equal (adt-tp-take w (append x r)) x))
+  :hints (("Goal" :use ((:instance adt-tp-take-of-append (n w) (a x) (b r))
+                        (:instance adt-tp-take-of-len (a x)))
+           :in-theory (disable adt-tp-take-of-append adt-tp-take-of-len))))
+
+(defthm adt-pr-seq-words-of-split
+  (implies (and (natp i) (< i (len a)) (true-listp a))
+           (equal (adt-tp-seq-words s a)
+                  (append (adt-tp-seq-words s (take i a))
+                          (append (adt-tp-rw s (nth i a))
+                                  (adt-tp-seq-words s (nthcdr (+ 1 i) a))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance adt-pr-append-take-nthcdr)
+                 (:instance adt-tp-seq-words-of-append (a (take i a)) (b (nthcdr i a)))
+                 (:instance adt-pr-nthcdr-cons (j i) (w a)))
+           :in-theory (disable adt-pr-append-take-nthcdr adt-tp-seq-words-of-append adt-pr-nthcdr-cons
+                               adt-tp-seq-words-of-snoc take nthcdr))))
+
+(defthm adt-pr-len-seq-words-split
+  (implies (and (natp i) (< i (len a)) (true-listp a))
+           (<= (+ (len (adt-tp-seq-words s (take i a))) (len (adt-tp-rw s (nth i a))))
+               (len (adt-tp-seq-words s a))))
+  :hints (("Goal" :use adt-pr-seq-words-of-split :in-theory (disable adt-pr-seq-words-of-split take nthcdr))))
+
+(defthm adt-pr-rec-p-of-nth
+  (implies (and (adt-seq-p s a) (natp i) (< i (len a)))
+           (adt-rec-p s (nth i a)))
+  :hints (("Goal" :in-theory (enable nth adt-seq-p))))
+
+(defthm adt-pr-seq-p-true-listp
+  (implies (adt-seq-p s a) (true-listp a))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable adt-seq-p))))
+
+(defthm adt-pr-dseq-of-rw
+  (implies (and (adt-tp-schema-ok s) (adt-rec-p s x))
+           (equal (car (adt-tp-dseq s (adt-tp-rw s x))) x))
+  :hints (("Goal" :use ((:instance adt-tp-seq-roundtrip (a (list x)) (tail nil)))
+           :in-theory (e/d (adt-seq-p) (adt-tp-seq-roundtrip)))))
+
+; Row I of a sequence, read from its page image through the pool: OFF its word
+; offset and W its width.
+(defthm adt-pr-read-rec-is-nth
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (natp i) (< i (len a))
+                (equal off (len (adt-tp-seq-words s (take i a))))
+                (equal w (len (adt-tp-rw s (nth i a)))))
+           (equal (mv-nth 0 (adt-pr-read-rec s off w (adt-tp-pages-of s a) res frames fills))
+                  (nth i a)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (adt-pr-read-rec adt-tp-pages-of)
+                           (adt-tp-pages adt-tp-seq-words adt-tp-rw adt-pr-read-words-words
+                            adt-pr-seq-words-of-split take nthcdr adt-tp-dseq adt-pr-dseq-of-rw
+                            adt-pr-len-seq-words-split adt-pr-take-of-append-len adt-pr-nthcdr-of-append-len))
+           :use ((:instance adt-pr-read-words-words (w (adt-tp-seq-words s a)) (j off) (end (+ off w))
+                            (acc nil))
+                 adt-pr-seq-words-of-split adt-pr-len-seq-words-split
+                 (:instance adt-pr-dseq-of-rw (x (nth i a)))
+                 (:instance adt-pr-nthcdr-of-append-len (p (adt-tp-seq-words s (take i a)))
+                            (r (append (adt-tp-rw s (nth i a)) (adt-tp-seq-words s (nthcdr (+ 1 i) a)))))
+                 (:instance adt-pr-take-of-append-len (x (adt-tp-rw s (nth i a)))
+                            (r (adt-tp-seq-words s (nthcdr (+ 1 i) a)))))))
+          )
+
+(defthm adt-pr-read-rec-fills
+  (implies (and (natp off) (natp w))
+           (<= (len (mv-nth 2 (adt-pr-read-rec s off w pages res frames fills)))
+               (+ (len fills) 1 (adt-tp-npages w))))
+  :hints (("Goal" :in-theory (disable adt-pr-read-words-fills adt-pr-span-of-record adt-pr-bnd)
+           :use ((:instance adt-pr-read-words-fills (j off) (end (+ off w)) (acc nil))
+                 (:instance adt-pr-span-of-record)))
+          ("Goal'" :in-theory (enable adt-pr-read-rec adt-pr-bnd))))
+
+(defthm adt-pr-read-rec-residency
+  (implies (<= (len res) (adt-pr-cap frames))
+           (<= (len (mv-nth 1 (adt-pr-read-rec s off w pages res frames fills)))
+               (adt-pr-cap frames)))
+  :hints (("Goal" :in-theory (e/d (adt-pr-read-rec) (adt-pr-read-words-residency adt-pr-cap))
+           :use ((:instance adt-pr-read-words-residency (j off) (end (+ (nfix off) (nfix w))) (acc nil))))))
