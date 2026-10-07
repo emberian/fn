@@ -47,11 +47,64 @@
 (defconst *fn-ctlk-read-kinds*
   (list *fn-tlsr-request-kind* *fn-wf-identity-request-kind*))
 
+;; The kinds an image adds to the two lists above: an alist (KIND . WORD),
+;; WORD :store or :read.  The table is constrained and attached to the empty
+;; one, so a world that includes no other book has no further kind and names
+;; none; the developer image's book re-attaches it with its own
+;; (books/developer-eval.lisp), which is the only way a kind reaches the
+;; classifier from outside this book.  The built-in lists are asked first, so
+;; an attachment can add a kind and never reclassify one of them
+;; (fn-ctlk-extra-kinds-never-reclassify-a-built-in-kind).
+(defun fn-ctlk-extra-kindsp (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (and (consp (car x)) (natp (car (car x)))
+           (member-eq (cdr (car x)) '(:store :read))
+           (fn-ctlk-extra-kindsp (cdr x)))
+    (null x)))
+
+(encapsulate
+  (((fn-ctlk-extra-kinds) => *))
+  (local (defun fn-ctlk-extra-kinds () nil))
+  (defthm fn-ctlk-extra-kinds-shape
+    (fn-ctlk-extra-kindsp (fn-ctlk-extra-kinds))))
+
+(defun fn-ctlk-no-extra-kinds ()
+  (declare (xargs :guard t))
+  nil)
+
+(defattach fn-ctlk-extra-kinds fn-ctlk-no-extra-kinds)
+
+(defun fn-ctlk-extra-word (kind extras)
+  (declare (xargs :guard (fn-ctlk-extra-kindsp extras)))
+  (let ((hit (assoc-equal kind extras)))
+    (if hit (cdr hit) nil)))
+
 (defun fn-ctlk-word (kind)
   (declare (xargs :guard t))
   (cond ((member-equal kind *fn-ctlk-store-kinds*) :store)
         ((member-equal kind *fn-ctlk-read-kinds*) :read)
-        (t nil)))
+        (t (fn-ctlk-extra-word kind (fn-ctlk-extra-kinds)))))
+
+; Every kind the classifier answers a word for in this image, in order: the
+; two built-in lists, then the attached table's kinds.  The build writes it
+; beside the image (IMAGE.surface, tools/build_native_host.sh).
+(defun fn-ctlk-extra-kind-list (extras)
+  (declare (xargs :guard t))
+  (if (consp extras)
+      (cons (if (consp (car extras)) (car (car extras)) nil)
+            (fn-ctlk-extra-kind-list (cdr extras)))
+    nil))
+
+(defun fn-ctlk-admitted-kinds ()
+  (declare (xargs :guard t))
+  (append *fn-ctlk-store-kinds* *fn-ctlk-read-kinds*
+          (fn-ctlk-extra-kind-list (fn-ctlk-extra-kinds))))
+
+(defthm fn-ctlk-extra-kinds-never-reclassify-a-built-in-kind
+  (implies (member-equal kind (append *fn-ctlk-store-kinds* *fn-ctlk-read-kinds*))
+           (equal (fn-ctlk-word kind)
+                  (if (member-equal kind *fn-ctlk-store-kinds*) :store :read))))
 
 ; The FNCT header's kind octet (offset 5, after the four magic octets and the
 ; version), or nil when the buffer holds no FNCT header.

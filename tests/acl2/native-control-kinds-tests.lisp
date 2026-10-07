@@ -93,3 +93,29 @@
 (ckt-is *ckt-flipped* :store)
 ; (c) Not FNCT magic: nil.
 (ckt-is (cons 0 (cdr *ckt-redecide*)) nil)
+
+; 4. The classifier in a world that includes no developer book (the production
+; world).  The extra-kinds table is attached to the empty one, so a frame of
+; the developer image's `eval' kind (40, books/developer-eval.lisp, which this
+; world does not include) is classified nil and the host never asks its chain
+; about it: it meets the refusal every unknown kind meets.  The same frame in
+; a world with the developer book is classified :read
+; (tests/acl2/developer-eval-tests.lisp).
+(defconst *ckt-eval-kind-frame*
+  (fn-nctrl-seal 40 (fn-frame-fields-octets (list (cons :blob 65536))
+                                           (list (fn-record-string-octets "(+ 1 2)")))))
+(assert-event (and (consp *ckt-eval-kind-frame*)
+                   (fn-cbor-octet-listp *ckt-eval-kind-frame*)))
+(ckt-is *ckt-eval-kind-frame* nil)
+(assert-event
+ (and (null (fn-ctlk-extra-kinds))
+      (null (fn-ctlk-word 40))
+      (not (member-equal 40 (fn-ctlk-admitted-kinds)))
+      (equal (fn-ctlk-admitted-kinds)
+             (append *fn-ctlk-store-kinds* *fn-ctlk-read-kinds*))))
+; Mutation witness (labelled): a table with the kind in it, for the classifier's
+; function applied to it, classifies it; the attachment is what keeps it out.
+(assert-event
+ (and (equal (fn-ctlk-extra-word 40 '((40 . :read))) :read)
+      (null (fn-ctlk-extra-word 40 '((41 . :read))))
+      (null (fn-ctlk-extra-word 40 nil))))

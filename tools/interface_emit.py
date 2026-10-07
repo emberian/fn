@@ -86,7 +86,10 @@ sys.path.insert(0, str(ROOT))
 
 from tools import ledger  # noqa: E402
 
-SOURCES = ("host/interfaces.lisp", "host/account-adoption-interfaces.lisp")
+SOURCES = ("host/interfaces.lisp", "host/account-adoption-interfaces.lisp",
+           # the developer image's own entries (RP-1): declared where they are defined, in
+           # the book only a developer world includes
+           "books/developer-eval.lisp")
 REGISTRY = ROOT / "planning" / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"

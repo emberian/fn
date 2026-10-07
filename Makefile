@@ -1982,6 +1982,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-invite-administrator-tests \
 	books/tls-reload \
 	tests/acl2/tls-reload-tests \
+	books/developer-eval \
+	tests/acl2/developer-eval-tests \
 	books/wire-grammar \
 	tests/acl2/wire-grammar-tests \
 	books/wire-family-fncu \

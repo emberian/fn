@@ -223,7 +223,7 @@
 ; The entries.  (SEQ OP READING A B C WORD), all naturals:
 ;   SEQ   the value's JSEQ after the event (0 for a start entry)
 ;   OP    0 start, 1 :clock, 2 :served, 3 :issue, 4 :return, 5 a note,
-;         6 :space (PRF-359)
+;         6 :space (PRF-359), 8 a developer-eval entry (below)
 ;   A B C :issue's limits (D H C); :served's wall ms and has-wall (1/0);
 ;         :space's free octets, need octets and has-free (1/0);
 ;         a note's two counts; else 0
@@ -240,7 +240,8 @@
   :otherwise 0
   :reserved ((0 :start "a start entry (SEQ 0): replay restarts from fn-otm-init")
              (5 :note "a note (fn-otm-note): the stall's release, with its two counts")
-             (7 :mark "a mark (*fn-otm-mark-entry*): entries were lost before the next"))
+             (7 :mark "a mark (*fn-otm-mark-entry*): entries were lost before the next")
+             (8 :developer-eval "a developer image evaluated a form by hand (fn-otm-eval-step): replay stops there"))
   :recorded ((reading "the host's monotonic clock reading at the event, taken outside every owner step")
              (a "a :served event's wall reading in ms; a :space event's observed free octets"))
   :encode fn-otm-op-of-kind
@@ -304,6 +305,26 @@
   (declare (xargs :guard t))
   (mv-let (s2 e) (fn-otm-note s a b) (list s2 (fn-otm-jline e))))
 
+; A developer image's evaluation of a form by hand (books/developer-eval.lisp;
+; RP-3).  The form may change anything the owner holds, so the journal records
+; that it happened, BEFORE the form runs: an entry that changes nothing in the
+; value (the value takes the same step a note does) and carries the peer's UID
+; and the form's length.  Replay stops at it (fn-otm-replay: (:hand-touched
+; SEQ)): the journal agrees with the decisions up to the entry, and says
+; nothing about those after it.  The host appends it only on a developer
+; image, so fn-otm-run-okp, whose runs the KEYSTONE
+; fn-otm-journal-determines-the-decisions covers, never contains it.
+(defun fn-otm-eval-mark (s uid form-octets)
+  (declare (xargs :guard t))
+  (mv-let (s2 e) (fn-otm-note s uid form-octets)
+    (mv s2 (list (car e) 8 (nth 2 e) (nth 3 e) (nth 4 e) 0 0))))
+
+; THE HOST'S CALL for it: (S' JOURNAL-LINE).
+(defun fn-otm-eval-step (s uid form-octets)
+  (declare (xargs :guard t))
+  (mv-let (s2 e) (fn-otm-eval-mark s uid form-octets)
+    (list s2 (fn-otm-jline e))))
+
 ; THE HOST'S CALL at a run's start (the gate made from fn-otm-init): the
 ; start entry.  A run is its own clock domain (lane time-bars, PRF-384): a
 ; monotonic reading means nothing in another process, so the entry records
@@ -353,6 +374,8 @@
                      (if (equal (fn-otm-word-code w) code)
                          (fn-otm-replay s2 (cdr entries))
                        (mv (list :diverged seq) s))))
+                  ((equal op 8)
+                   (mv (list :hand-touched seq) s))
                   ((equal op 5)
                    (mv-let (s2 e2) (fn-otm-note s a b)
                      (declare (ignore e2))
@@ -793,6 +816,29 @@
                             fn-otm-journal-read fn-otm-run-okp fn-otm-replay-of-run
                             fn-otm-run-entries-shape fn-otm-journal-read-of-jlines)))))
 
+;; A developer-eval entry (RP-3): the journal says state may have been changed
+;; by hand from there.  The replay of the entry is not an agreement: it stops
+;; at the entry's sequence number with the verdict (:hand-touched SEQ), whatever
+;; follows it (fn-otjs-report prints it as `replay=hand-touched-at-SEQ').
+(defthm fn-otm-replay-stops-at-the-developer-eval-entry
+  (implies (and (natp uid) (natp n))
+           (equal (fn-otm-replay r (cons (mv-nth 1 (fn-otm-eval-mark r uid n)) rest))
+                  (mv (list :hand-touched (+ 1 (fn-otm-jseq r))) r)))
+  :hints (("Goal" :in-theory (e/d (fn-otm-eval-mark fn-otm-note-entry-is)
+                                  (fn-otm-note fn-otm-now-natp))
+           :use ((:instance fn-otm-now-natp (s r)))
+           :expand ((fn-otm-replay r (cons (list* (+ 1 (fn-otm-jseq r)) 8 (fn-otm-now r)
+                                                 uid n '(0 0))
+                                           rest))))))
+
+;; The value takes the step a note takes (which changes neither the disk nor
+;; the clock, only the sequence number: fn-otm-note-seq and
+;; fn-otm-replay-of-note-entry above): the entry rides the gate exactly where a
+;; note rides it.
+(defthm fn-otm-eval-mark-is-a-note-step-with-its-own-entry
+  (equal (mv-nth 0 (fn-otm-eval-mark s uid n)) (mv-nth 0 (fn-otm-note s uid n)))
+  :hints (("Goal" :in-theory (enable fn-otm-eval-mark))))
+
 ;; ... and every decision the host asks of the value reads only that disk
 ;; and clock, so the replay reproduces each of them at its entry.
 (defthm fn-otm-decisions-read-only-the-journal-state
@@ -847,6 +893,7 @@
       (fn-osch-text "agrees")
     (append (fn-osch-text (cond ((and (consp verdict) (eq (car verdict) :gap)) "gap-at-")
                                 ((and (consp verdict) (eq (car verdict) :diverged)) "diverged-at-")
+                                ((and (consp verdict) (eq (car verdict) :hand-touched)) "hand-touched-at-")
                                 (t "malformed-at-")))
             (fn-osch-decimal (if (and (consp verdict) (consp (cdr verdict))) (cadr verdict) 0)))))
 

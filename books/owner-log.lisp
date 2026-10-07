@@ -542,6 +542,57 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
          (fn-olog-field "reason" (fn-olog-symbol-text reason)))))
 
 ; -----------------------------------------------------------------------------
+; A developer image's `eval' (books/developer-eval.lisp; RP-3 of
+; build/coordinator/OBSERVABILITY-PROGRAM-20261007.md).  Three lines, written
+; by host/native/developer-eval.lisp: BEGIN before the form is evaluated (so a
+; form that faults the owner leaves it), END after, and REFUSED for a request
+; the book did not admit.  UID is the peer's, FORM-OCTETS the form's length,
+; DIGEST the BLAKE3 digest of the form's octets as the buffer digest computes
+; it (the form is never an octet list on the host's side of the call), OBS the
+; owner's clock observation.  A production image renders none of them; the
+; lines are here because replay and the operator's tools read a developer
+; node's log.
+
+(defun fn-olog-digest-hex (digest)
+  (declare (xargs :guard t))
+  (if (and (consp digest) (fn-cbor-octet-listp digest))
+      (fn-id-hex-octets digest)
+    (fn-olog-text "none")))
+
+(defun fn-olog-developer-eval-begin-line (uid form-octets digest obs)
+  (declare (xargs :guard (fn-cbor-octet-listp digest)))
+  (fn-olog-join
+   (list (fn-olog-text "developer-eval") (fn-olog-text "begin")
+         (fn-olog-field "uid" (fn-olog-decimal uid))
+         (fn-olog-field "form-octets" (fn-olog-decimal form-octets))
+         (fn-olog-field "form-digest" (fn-olog-digest-hex digest))
+         (fn-olog-field "time" (fn-olog-time obs)))))
+
+; START-MS and END-MS are the host's two monotonic readings around the
+; evaluation; the duration is ACL2's difference (a reading that went back
+; reads 0).
+(defun fn-olog-developer-eval-duration (start-ms end-ms)
+  (declare (xargs :guard t))
+  (if (and (natp start-ms) (natp end-ms) (<= start-ms end-ms))
+      (- end-ms start-ms)
+    0))
+
+(defun fn-olog-developer-eval-end-line (status output-octets start-ms end-ms)
+  (declare (xargs :guard t))
+  (fn-olog-join
+   (list (fn-olog-text "developer-eval") (fn-olog-text "end")
+         (fn-olog-field "status" (fn-olog-text (if (equal status :ok) "ok" "error")))
+         (fn-olog-field "output-octets" (fn-olog-decimal output-octets))
+         (fn-olog-field "duration-ms"
+                        (fn-olog-decimal (fn-olog-developer-eval-duration start-ms end-ms))))))
+
+(defun fn-olog-developer-eval-refused-line (reason)
+  (declare (xargs :guard t))
+  (fn-olog-join
+   (list (fn-olog-text "developer-eval") (fn-olog-text "refused")
+         (fn-olog-field "reason" (fn-olog-symbol-text reason)))))
+
+; -----------------------------------------------------------------------------
 ; A line is one line
 
 (defun fn-olog-no-breakp (xs)
@@ -652,6 +703,19 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
   (fn-olog-no-breakp (fn-olog-bp-app-refusal-line result reason xfer-id))
   :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-bp-app-class-word
                                       fn-olog-symbol-text))))
+
+; Whatever the form, the peer's observations or the refusal reason held.
+(defthm fn-olog-developer-eval-begin-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-developer-eval-begin-line uid form-octets digest obs))
+  :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-digest-hex))))
+
+(defthm fn-olog-developer-eval-end-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-developer-eval-end-line status output-octets start-ms end-ms))
+  :hints (("Goal" :in-theory (disable fn-olog-join))))
+
+(defthm fn-olog-developer-eval-refused-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-developer-eval-refused-line reason))
+  :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-symbol-text))))
 
 ; -----------------------------------------------------------------------------
 ; The log says what the reply says
