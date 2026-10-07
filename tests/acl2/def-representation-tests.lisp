@@ -281,6 +281,49 @@
 (defthm drt-gen-get-is-nth (equal (drt-gen-get i a) (nth i a)))
 (defthm drt-gen-clear-is-nil (equal (drt-gen-clear a) nil))
 
+;; -----------------------------------------------------------------------------
+; 3b. The octet-sequence vocabulary (:scalar :octet-seq): the decoded payload
+;     of a compressed extent as a buffer.  The reader NTH, the bulk FILL-LIST
+;     (a def-loop :into over the append export), and the generated
+;     correspondence: fill, then read at I, is `(nth I XS)'.
+
+(def-representation drt-dec (octet :u8) :scalar :octet-seq)
+
+(defun drt-dec-run ()
+  (declare (xargs :guard t))
+  (with-local-stobj drt-dec
+    (mv-let (out drt-dec)
+      (let* ((drt-dec (drt-dec-fill-list '(7 8 9) drt-dec))
+             (before (list (drt-dec-count drt-dec) (drt-dec-nth 0 drt-dec) (drt-dec-nth 2 drt-dec)
+                           (drt-dec-nth 3 drt-dec) (drt-dec-nth 99 drt-dec)))
+             ; A second fill replaces the first, it does not append to it.
+             (drt-dec (drt-dec-fill-list '(1) drt-dec)))
+        (mv (list before (drt-dec-count drt-dec) (drt-dec-nth 0 drt-dec) (drt-dec-nth 1 drt-dec))
+            drt-dec))
+      out)))
+
+(assert! (equal (drt-dec-run) '((3 7 9 nil nil) 1 1 nil)))
+
+; The exported meanings and the correspondence, over the logical list.
+(defthm drt-dec-nth-meaning (equal (drt-dec-nth i a) (nth i a)))
+(defthm drt-dec-fill-nth-correspondence
+  (implies (and (true-listp xs) (natp i))
+           (equal (drt-dec-nth i (drt-dec-fill-list xs drt-dec)) (nth i xs)))
+  :rule-classes nil
+  :hints (("Goal" :use drt-dec-nth-of-fill-list)))
+
+(must-fail-checked
+ (defthm drt-dec-wrong-index
+   (implies (and (true-listp xs) (natp i))
+            (equal (drt-dec-nth i (drt-dec-fill-list xs drt-dec)) (nth (+ 1 i) xs))))
+ :unchecked "a fill read at I is not the list's octet at I+1")
+(must-fail-checked
+ (def-representation drt-r6 (id :u64) :scalar :octet-seq)
+ :unchecked "refused at expansion: :octet-seq needs a :u8 field")
+(must-fail-checked
+ (def-representation drt-r7 (octet :u8) :scalar :octet-seq :generic t)
+ :unchecked "refused at expansion: :octet-seq with :generic")
+
 ; -----------------------------------------------------------------------------
 ; 4. Teeth.
 
@@ -321,6 +364,8 @@
                      '(:def-representation :scalar t :generic nil :implementation drt-pay :invariant nil :trees nil :write-once nil :paged t)))
 (assert-event (equal (cdr (assoc-eq 'drt-gen (table-alist 'fn-generated (w state))))
                      '(:def-representation :scalar t :generic t :implementation drt-gen-cols :invariant nil :trees nil :write-once nil :paged t)))
+(assert-event (equal (cdr (assoc-eq 'drt-dec (table-alist 'fn-generated (w state))))
+                     '(:def-representation :scalar :octet-seq :generic nil :implementation drt-dec :invariant nil :trees nil :write-once nil :paged t)))
 
 ; -----------------------------------------------------------------------------
 ; 6. A TREE field (books/def-representation-tree.lisp, lane paged-catalog-3):

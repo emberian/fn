@@ -143,3 +143,11 @@
            :in-theory (e/d (adt-set-a) (adt-pg-corr-set)))))
 
 (in-theory (disable adt-wrap1 adt-scalar-seq-p))
+
+; The octet-sequence reader (books/def-representation.lisp, :scalar
+; :octet-seq): past the end of a list `nth' is NIL.  A defthmd: an instance
+; enables it for its own obligations, no other book sees a new rule.
+(defthmd adt-nth-beyond-len
+  (implies (and (natp i) (<= (len a) i))
+           (equal (nth i a) nil))
+  :hints (("Goal" :in-theory (enable nth))))
