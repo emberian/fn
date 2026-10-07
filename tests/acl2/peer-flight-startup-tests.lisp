@@ -132,8 +132,11 @@
        (fn-pfr-policy-p *pfrst-flight*)
        (equal (fn-prstartup-nth 0 *pfrst-wp-run*) :heap)
        ;; 1891 before the pool's read reserve (lane pool-refusal): the
-       ;; served run now also holds its workers' reads in flight.
-       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1893)
+       ;; served run now also holds its workers' reads in flight.  1895
+       ;; since window-read 390408000: the decoded worker's requested-window
+       ;; child is the profile's :read-window-octets (262144, was 16384),
+       ;; through fn-dwb-reusable-baseline-vector into the baseline heap.
+       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1895)
        (equal (fn-heap-core-file *pfrst-wp-owner-core*) (fn-heap-core-file *pfrst-wp-probe-core*))
        (<= (pfrst-wp-owner-need dyn *pfrst-wp-owner-core*) dyn)
        (fn-prstartup-planp plan)
