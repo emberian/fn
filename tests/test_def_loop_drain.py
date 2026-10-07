@@ -289,5 +289,62 @@ class Ledger(unittest.TestCase):
         self.assertFalse(d.LOOPISH.search("fn-x-is-sorted"))
 
 
+class VocabTwo(unittest.TestCase):
+    """Real loops of the second vocabulary lane, at the pre-conversion revision: a
+    :thread (a state threaded through spliced rows), a :foldr read through the
+    guard-free accessors, a countdown :step with the accumulator before a stobj, a
+    :map with the accumulator before a stobj.  The expected outputs are the tool's
+    own, each certified in its book on persvati (REGEN=1 rewrites them)."""
+
+    def check(self, tag, shape):
+        text = (FIX / f"vc2-{tag}.in.lisp").read_text()
+        conv, resid = d.analyse(text, tag, {})
+        self.assertEqual(resid, [])
+        self.assertEqual(len(conv), 1)
+        self.assertEqual(conv[0]["spec"].shape, shape)
+        out = d.apply_text(text, conv)
+        expected = FIX / f"vc2-{tag}.out.lisp"
+        if os.environ.get("REGEN"):
+            expected.write_text(out)
+        self.assertEqual(out, expected.read_text())
+        self.assertEqual(d.loop_count(out), 0)
+        return out
+
+    def test_thread_owner_feed_tick(self):
+        out = self.check("tick", "thread")
+        self.assertIn(":make (cons tbl dl-rows) :st-of (car dl-r) :rows-of (cdr dl-r)", out)
+
+    def test_thread_with_a_state_dependent_stop_and_stobj(self):
+        out = self.check("served-feed", "thread")
+        self.assertIn(":done (or", out)
+        self.assertIn(":stobjs fn-arena", out)
+
+    def test_foldr_through_ag_accessors(self):
+        self.check("ng-len", "foldr")
+
+    def test_countdown_step_with_acc_before_stobj(self):
+        out = self.check("words", "step")
+        self.assertIn(":measure (nfix k)", out)
+
+    def test_map_with_acc_before_stobj(self):
+        self.check("rewrite-rows", "map")
+
+    def refused(self, tag):
+        text = (FIX / f"vc2-refuse-{tag}.in.lisp").read_text()
+        conv, resid = d.analyse(text, tag, {})
+        self.assertEqual(conv, [])
+        return resid
+
+    def test_sum_with_a_state_thread_stays_refused_by_name(self):
+        (row,) = self.refused("fit-count")
+        self.assertEqual(row[0], "fn-lg-fit-count")
+        self.assertIn("a state thread", row[2])
+
+    def test_early_exit_thread_stays_refused_by_name(self):
+        (row,) = self.refused("restart-fold")
+        self.assertEqual(row[0], "fn-own-feed-port-restart-fold")
+        self.assertIn("a state thread", row[2])
+
+
 if __name__ == "__main__":
     unittest.main()

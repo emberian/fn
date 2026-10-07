@@ -432,6 +432,9 @@ class Spec:
     init: object = None
     rev: str | None = None
     loop_guard: object = None
+    make: object = None      # :thread
+    st_of: object = None
+    rows_of: object = None
 
 
 def formals_of(defun):
@@ -706,6 +709,20 @@ def rev_call_of(a, xs):
     return None
 
 
+def unag(n):
+    """N with the guard-free accessors fn-ag-car / fn-ag-cdr read as car / cdr
+    (their :logic is exactly that; def-loop :foldr emits the plain ones)."""
+    if isinstance(n, Pre):
+        return Pre(n.prefix, unag(n.node))
+    if isinstance(n, Lst):
+        items = [unag(i) for i in n.items]
+        if items and isinstance(items[0], Atom) and not isinstance(items[0], Str) \
+                and items[0].low in ("fn-ag-car", "fn-ag-cdr") and len(items) == 2:
+            items[0] = S(items[0].low[len("fn-ag-"):])
+        return Lst(items)
+    return n
+
+
 def foldr_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helpers=None):
     """:foldr -- the exec runs the loop over the REVERSED list: logic is
     (if (consp XS) COMBINE[(car XS), (NAME .. (cdr XS) ..)] INIT)."""
@@ -745,7 +762,7 @@ def foldr_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helper
         if f != xs and flat_low(a) != f:
             raise Refuse("no-shape", "exec changes a formal other than the reversed list")
     init = args[-1]
-    logic = cond_to_if(inline_rec_lets(logic, name))
+    logic = unag(cond_to_if(inline_rec_lets(logic, name)))
     if not (is_call(logic, "if") and len(logic.items) == 4):
         raise Refuse("no-shape", "logic is not an if")
     sp = split_test(logic.items[1], xs)
@@ -782,7 +799,7 @@ def foldr_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helper
         sp2 = split_test(lbody.items[1], lxs)
         step = lbody.items[2] if sp2 and sp2[0] else lbody.items[3]
         if is_call(step, loop):
-            new = cond_to_if(expand_helpers(step.items[-1], helpers, used_helpers))
+            new = unag(cond_to_if(expand_helpers(step.items[-1], helpers, used_helpers)))
             carl = lambda n: is_call(n, "car") and len(n.items) == 2 and flat_low(n.items[1]) == lxs
             new = subst(new, carl, S(spec.elt))
             if lacc != acc:
@@ -876,7 +893,9 @@ def step_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helpers
     fl = [f.low for f in formals.items]
     loop = name + "-loop"
     if not (is_call(exe, loop) and len(exe.items) == len(fl) + 2
-            and [flat_low(a) for a in exe.items[1:-1]] == fl and flat_low(exe.items[-1]) == "nil"):
+            and any(flat_low(exe.items[1 + i]) == "nil"
+                    and [flat_low(a) for a in exe.items[1:1 + i] + exe.items[2 + i:]] == fl
+                    for i in range(len(fl) + 1))):
         raise Refuse("no-shape", "exec is not (LOOP formals nil)")
     xa = xargs_of(wrapper)
     ph = xa.get(":hints")
@@ -940,8 +959,19 @@ def step_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helpers
     svars = [f for f in fl if flat_low(ea[f]) != f or (sa is not None and flat_low(sa[f]) != f)]
     if not svars:
         raise Refuse("no-shape", "no formal advances")
-    svars = order_svars(svars, ea, ":measure" in xa)
-    if ":measure" not in xa and not contains(
+    # a countdown (done on (zp V), advance (1- V)) carries its own measure (nfix V)
+    countdown = None
+    if ":measure" not in xa:
+        for v in svars:
+            if flat_low(ea[v]) in (f"(1- {v})", f"(- {v} 1)") and sa is None \
+                    and contains(done, lambda x, v=v: is_call(x, "zp") and flat_low(x.items[1]) == v):
+                countdown = v
+                break
+    if countdown is not None:
+        svars = [countdown] + [v for v in svars if v != countdown]
+    else:
+        svars = order_svars(svars, ea, ":measure" in xa)
+    if countdown is None and ":measure" not in xa and not contains(
             done, lambda x: isinstance(x, Lst) and is_call(x) and len(x.items) == 2
             and x.items[0].low in ("atom", "endp", "consp") and flat_low(x.items[1]) == svars[0]):
         raise Refuse("step-measure", "the done test does not test the list the default measure counts")
@@ -996,6 +1026,8 @@ def step_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helpers
     m = xa.get(":measure")
     if m is not None:
         spec.measure = m
+    elif countdown is not None:
+        spec.measure = L(S("nfix"), S(countdown))
     st = xa.get(":stobjs")
     if st is not None:
         spec.stobjs = [i.text for i in st.items] if isinstance(st, Lst) else [st.text]
@@ -1152,6 +1184,173 @@ def fold_spec(name, formals, logic, exe, lf, wrapper):
     return spec
 
 
+def unmbe(n):
+    """N with every inner (mbe :logic L :exec E) read as L."""
+    if isinstance(n, Pre):
+        return Pre(n.prefix, unmbe(n.node))
+    if isinstance(n, Lst):
+        if is_call(n, "mbe"):
+            kv = {n.items[i].low: n.items[i + 1] for i in range(1, len(n.items) - 1, 2)
+                  if isinstance(n.items[i], Atom)}
+            if ":logic" in kv:
+                return unmbe(kv[":logic"])
+        return Lst([unmbe(i) for i in n.items])
+    return n
+
+
+def thread_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helpers=None):
+    """:thread -- one formal ST threaded, the list advancing by CDR, each step
+    contributing a list of rows that are appended in element order:
+      (if DONE (F ST nil)
+        (let* (.. (T (NAME ..(cdr XS) .. NEXT ..))) (F (SEL1 T) (append ROW (SEL2 T)))))"""
+    fl = [f.low for f in formals.items]
+    loop = name + "-loop"
+    if not (is_call(exe, loop) and len(exe.items) == len(fl) + 2
+            and flat_low(exe.items[-1]) == "nil" and [flat_low(a) for a in exe.items[1:-1]] == fl):
+        raise Refuse("no-shape", "exec is not (LOOP formals nil)")
+    xa = xargs_of(wrapper)
+    logic = unmbe(cond_to_if(logic))
+    if "mv-let" in flat_low(logic) or "(mv " in flat_low(logic):
+        raise Refuse("mv")
+    if not (is_call(logic, "if") and len(logic.items) == 4):
+        raise Refuse("no-shape", "logic is not an if")
+    c, a, b = logic.items[1:]
+    ra, rb = any_rec(a, name), any_rec(b, name)
+    if ra == rb:
+        raise Refuse("no-shape", "thread: both or neither branch recurse")
+    if rb:
+        done, base, rest = c, a, b
+    else:
+        done = L(S("atom"), c.items[1]) if (is_call(c, "consp") and len(c.items) == 2) else negate(c)
+        base, rest = b, a
+    lets = []
+    while is_call(rest, "let") or is_call(rest, "let*"):
+        if len(rest.items) != 3 or not isinstance(rest.items[1], Lst):
+            raise Refuse("no-shape", "let form")
+        lets.extend(rest.items[1].items)
+        rest = rest.items[2]
+    rec_b = [b_ for b_ in lets if any_rec(b_.items[1], name)]
+    if len(rec_b) != 1 or not is_call(rec_b[0].items[1], name) or lets[-1] is not rec_b[0] and \
+            any(any_rec(x, name) for x in lets[lets.index(rec_b[0]) + 1:]):
+        raise Refuse("no-shape", "thread: the recursion result is not bound once")
+    tvar = rec_b[0].items[0].low
+    lets = [b_ for b_ in lets if b_ is not rec_b[0]]
+    rec = rec_b[0].items[1]
+    if not (isinstance(rest, Lst) and is_call(rest) and len(rest.items) == 3
+            and isinstance(rest.items[0], Atom)):
+        raise Refuse("no-shape", "thread: the result is not (MAKE ST ROWS)")
+    mk, sa, ra_ = rest.items[0], rest.items[1], rest.items[2]
+    if not (is_call(ra_, "append") and len(ra_.items) == 3):
+        raise Refuse("no-shape", "thread: the rows are not (append ROW (SEL T))")
+    row, rsel = ra_.items[1], ra_.items[2]
+    isT = lambda x: isinstance(x, Atom) and not isinstance(x, Str) and x.low == tvar
+    for sel in (sa, rsel):
+        if not (isinstance(sel, Lst) and is_call(sel) and len(sel.items) == 2 and isT(sel.items[1])):
+            raise Refuse("no-shape", "thread: not a selector of the recursion result")
+    if mentions(row, tvar) or any(mentions(b_.items[1], tvar) for b_ in lets):
+        raise Refuse("no-shape", "thread: the step reads the recursion result")
+    args = rec_args(rec, name, fl)
+    if args is None:
+        raise Refuse("no-shape", "thread: the recursion is not a direct call")
+    moved = [f for f in fl if flat_low(args[f]) != f]
+    xs = None
+    for f in moved:
+        if is_call(args[f], "cdr") and flat_low(args[f].items[1]) == f:
+            xs = f
+    others = [f for f in moved if f != xs]
+    if xs is None or len(others) != 1:
+        raise Refuse("fold", "thread: more than one state formal, or the list does not advance by cdr")
+    st = others[0]
+    nxt = args[st]
+    make = L(mk, S(st), S("dl-rows"))
+    if flat_low(base) != flat_low(L(mk, S(st), S("nil"))):
+        raise Refuse("exec-differs", "thread: the base is not (MAKE ST nil)")
+    st_of = Lst([sa.items[0], S("dl-r")])
+    rows_of = Lst([rsel.items[0], S("dl-r")])
+    spec = Spec("thread", name, formals, xs)
+    spec.st = st
+    # the hand loop: the recursion's rows are reversed onto the accumulator by REV
+    lbody = body_of(lf.node)
+    lfl = [f.low for f in formals_of(lf.node).items]
+    lacc = lfl[-1]
+    lcalls = list(walk_calls(lbody, loop))
+    if len(lcalls) != 1:
+        raise Refuse("no-shape", "thread: the loop recurses other than once")
+    last = lcalls[0].items[-1]
+    if not (isinstance(last, Lst) and is_call(last) and len(last.items) == 3
+            and isinstance(last.items[0], Atom) and isinstance(last.items[2], Atom)
+            and last.items[2].low == lacc):
+        raise Refuse("exec-differs", "thread: the loop's rows are not (REV ROW ACC)")
+    rev = last.items[0].low
+    if rev not in ("revappend", "fn-ag-rev-onto"):
+        raise Refuse("exec-differs", "thread: unknown reversal " + rev)
+    spec.rev = None if rev == "revappend" else rev
+    carx = lambda n: is_call(n, "car") and len(n.items) == 2 and flat_low(n.items[1]) == xs
+    parts_all = [done, row, nxt] + lets
+    used = set()
+    for q in parts_all:
+        atoms_of(q, used)
+    uses_car = any(contains(q, carx) for q in parts_all)
+    spec.elt = pick_elt(xs, formals, used) if uses_car else None
+    sub = (lambda n: subst(n, carx, S(spec.elt))) if uses_car else (lambda n: n)
+    spec.done, spec.row_term, spec.next = sub(done), sub(row), sub(nxt)
+    spec.lets = sub(Lst(lets)) if lets else None
+    spec.make, spec.st_of, spec.rows_of = make, st_of, rows_of
+    loop_flat = flat_low(loop_text(lf.node, helpers, used_helpers))
+    for part in [row, nxt]:
+        if not in_loop(part, loop_flat, lets):
+            raise Refuse("exec-differs", flat_low(part)[:60])
+    if not (in_loop(done, loop_flat) or in_loop(negate(done), loop_flat)
+            or (is_call(done, "atom") and flat_low(L(S("consp"), done.items[1])) in loop_flat)):
+        raise Refuse("exec-differs", "done test " + flat_low(done)[:50])
+    # the loop's result at the stop is the make over the reversed accumulator
+    want = L(mk, S(st), L(S(rev), S(lacc), S("nil")))
+    if not (in_loop(want, loop_flat) or flat_low(want) in flat_low(lf.node)):
+        raise Refuse("exec-differs", "thread: the loop's result is not " + flat_low(want)[:50])
+    g = xa.get(":guard")
+    if g is not None and not (isinstance(g, Atom) and g.low == "t"):
+        spec.guard = g
+    m = xa.get(":measure")
+    if m is not None:
+        spec.measure = m
+    stx = xa.get(":stobjs")
+    if stx is not None:
+        spec.stobjs = [i.text for i in stx.items] if isinstance(stx, Lst) else [stx.text]
+        if set(spec.stobjs) & {xs, st}:
+            raise Refuse("step-stobjs", "a stobj is part of the threaded state")
+    spec.progress_hints = xa.get(":hints")
+    return spec
+
+
+def render_thread(spec: Spec, hoisted) -> str:
+    first = f"  :shape :thread :over {spec.xs} :st {spec.st}"
+    if spec.elt:
+        first += f" :elt {spec.elt}"
+    chunks = []
+    if not (is_call(spec.done, "atom") and flat_low(spec.done.items[1]) == spec.xs):
+        chunks.append(Opt(":done", spec.done))
+    if spec.lets is not None:
+        chunks.append(Opt(":let", spec.lets))
+    chunks.append(Opt(":row", spec.row_term))
+    chunks.append(Opt(":next", spec.next))
+    chunks.append(Opt(":make", spec.make))
+    chunks.append(Opt(":st-of", spec.st_of))
+    chunks.append(Opt(":rows-of", spec.rows_of))
+    if spec.rev:
+        chunks.append(f":rev {spec.rev}")
+    if spec.measure is not None:
+        chunks.append(Opt(":measure", spec.measure))
+    if spec.guard is not None:
+        chunks.append(Opt(":guard", spec.guard))
+    if spec.stobjs:
+        chunks.append(":stobjs " + (spec.stobjs[0] if len(spec.stobjs) == 1 else "(" + " ".join(spec.stobjs) + ")"))
+    if spec.guard_hints is not None:
+        chunks.append(Opt(":guard-hints", spec.guard_hints))
+    lines = packed(chunks, [f"(def-loop {spec.name} {flat(spec.formals)}", first])
+    lines[-1] += ")"
+    return "".join(c.rstrip() + "\n" for c in hoisted) + "\n".join(lines)
+
+
 def render_fold(spec: Spec, hoisted) -> str:
     val = lambda n: pretty(n, 0)
     over = spec.svars[0] if len(spec.svars) == 1 else "(" + " ".join(spec.svars) + ")"
@@ -1242,6 +1441,8 @@ def render(spec: Spec, hoisted) -> str:
         return render_step(spec, hoisted)
     if spec.shape == "fold":
         return render_fold(spec, hoisted)
+    if spec.shape == "thread":
+        return render_thread(spec, hoisted)
     parts = [f"(def-loop {spec.name} {flat(spec.formals)}"]
     first = f"  :shape :{spec.shape} "
     if spec.shape == "take":
@@ -1405,8 +1606,12 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                         raise Refuse("no-shape")
                     args = exec_call.items[1:]
                     fl = [f.low for f in formals.items]
-                    if [flat_low(a) for a in args[:len(fl)]] != fl or len(args) != len(fl) + 1 \
-                            or flat_low(args[-1]) not in ("nil", "0"):
+                    # the accumulator's seat in the hand loop's formals is wherever the
+                    # literal nil / 0 sits (before a trailing stobj, say); def-loop puts it last
+                    if len(args) != len(fl) + 1 or not any(
+                            flat_low(args[i]) in ("nil", "0")
+                            and [flat_low(a) for a in args[:i] + args[i + 1:]] == fl
+                            for i in range(len(args))):
                         raise Refuse("no-shape")
                     spec = shape_of(name, formals, logic, wnode)
                 except Refuse as r:
@@ -1416,6 +1621,12 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                             spec = fold_spec(name, formals, logic, exe, lf, wnode)
                         except Refuse as r2:
                             if r2.reason in ("step-hints", "exec-differs"):
+                                raise r2
+                    if spec is None and r.reason in ("no-shape", "fold"):
+                        try:
+                            spec = thread_spec(name, formals, logic, exe, lf, wnode, helpers, used_helpers)
+                        except Refuse as r2:
+                            if r2.reason in ("exec-differs", "step-stobjs"):
                                 raise r2
                     if spec is None and r.reason in ("no-shape", "step", "two-list", "fold"):
                         try:
@@ -1462,7 +1673,7 @@ def analyse(text: str, book: str, other_text: dict | None = None):
             # the deletable forms
             kill = [lf]
             for f in forms:
-                if f.name and (f.name.startswith(name + "-loop-is-") or f.name.startswith(name + "-loop-of-")) \
+                if f.name and (f.name == name + "-loop-is" or f.name.startswith(name + "-loop-is-") or f.name.startswith(name + "-loop-of-")) \
                         and f.kind in ("defthm", "local-defthm", "defthmd"):
                     kill.append(f)
                 if f.kind == "verify-guards" and f.name in (name, name + "-loop"):
@@ -1479,7 +1690,7 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                     kill.append(hform)
                     kill.extend(own)
             killset = {id(k) for k in kill}
-            if spec.shape in ("foldr", "step", "fold"):
+            if spec.shape in ("foldr", "step", "fold", "thread"):
                 for k in kill:
                     if k.kind == "verify-guards" and k.name in (name, name + "-loop") and is_call(k.node) \
                             and spec.guard_hints is None:
@@ -1501,7 +1712,10 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                         raise Refuse("loop-referenced", f.name or "")
                     containers.setdefault(id(f), f)
             for other, otext in (other_text or {}).items():
-                if re.search(re.escape(name) + r"-loop", otext, re.I):
+                # another book may name the loop as a rune in a theory list (the generated loop
+                # keeps the name); a call of it, or one of its bridge lemmas, is a real use
+                if re.search(r"\(\s*" + re.escape(name) + r"-loop[\s)]|" + re.escape(name)
+                             + r"-loop-(is|of)", otext, re.I):
                     raise Refuse("loop-referenced", other)
             inner_comments = [c for c in wnode.comments]
             doc = [i for i in wnode.items[3:] if isinstance(i, Str)]
