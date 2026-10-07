@@ -92,8 +92,11 @@ class ImageHeapBarTests(unittest.TestCase):
                                     (i, first, final))
             held = []
             for count in IDLE_CONNECTIONS:
-                held.extend(Client(node.port, timeout=120) for _ in range(count))
+                held.extend(Client(node.port, timeout=120, greeting=None) for _ in range(count))
                 time.sleep(2)
+            # The shipped node refuses connections past its limit with a 400
+            # greeting; the workload still opens them, as m3.py and nmem3.py do.
+            admitted = sum(1 for c in held if c.greeting[:3] == b"200")
             for c in held:
                 c.close()
             time.sleep(IDLE_SECONDS)
@@ -102,7 +105,7 @@ class ImageHeapBarTests(unittest.TestCase):
             node.stop(expect=None, grace=120)
         line = {"vmrss": mb(sample["VmRSS"]), "rssanon": mb(sample["RssAnon"]),
                 "rssfile": mb(sample["RssFile"]), "vmhwm": mb(sample["VmHWM"]),
-                "posts": POSTS, "image": str(IMAGE),
+                "posts": POSTS, "connections": len(held), "admitted": admitted, "image": str(IMAGE),
                 "launch": "{} --fn operator {} run".format(IMAGE, node.config),
                 "sbcl_user_args": SBCL_USER_ARGS, "bar_mb": BAR_MIB * 1.0,
                 "workload": "nmem3-clean"}
