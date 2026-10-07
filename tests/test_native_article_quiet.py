@@ -31,7 +31,7 @@ class NativeArticleQuietTests(unittest.TestCase):
                 before = owner.stdout.end
                 status, served = client.multiline("ARTICLE <quiet@fn.invalid>")
                 self.assertTrue(status.startswith(b"220 "), status)
-                self.assertIn(b"..leading dot\r\n", served)
+                self.assertIn(b"\r\n.leading dot\r\n", served)
                 status, _ = client.multiline("BODY <quiet@fn.invalid>")
                 self.assertTrue(status.startswith(b"222 "), status)
             printed = owner.stdout.since(before)
