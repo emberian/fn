@@ -112,17 +112,35 @@ def host_function(text: str, name: str) -> str:
 
 
 class PublicationReaderCountTests(unittest.TestCase):
+    """The publication's arena pin is taken under the owner mutex before its
+    thread exists and returned exactly once.  69ae97404 (snapshot pin custody
+    through registered publication actors) moved the pin from
+    fnn-owner-maybe-publish-quantum into fnn-owner-snapshot-job-capture,
+    reached by fnn-owner-publisher-start inside the :control quantum, and the
+    returns into fnn-owner-snapshot-job-release (a thread never made returns
+    its pin at the terminal callback) and the thread's own cleanup."""
+
     def test_counted_under_the_mutex_before_the_thread_starts(self):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
         maybe = host_function(owner, "fnn-owner-maybe-publish-quantum")
+        start = host_function(owner, "fnn-owner-publisher-start")
+        capture = host_function(owner, "fnn-owner-snapshot-job-capture")
+        physical = host_function(owner, "fnn-owner-snapshot-job-physical")
+        release = host_function(owner, "fnn-owner-snapshot-job-release")
         publish = host_function(owner, "fnn-owner-publish-captured")
         incf = "(fnn-arena-pin)"
-        decf = "(fnn-arena-unpin pin)"
+        decf = "(fnn-arena-unpin (fnn-snapshot-job-pin job))"
         self.assertIn("(fnn-owner-gated (service :control)", maybe)
-        self.assertLess(maybe.index(incf), maybe.index("(sb-thread:make-thread"))
-        self.assertIn(decf, maybe)  # a thread never made returns its pin
+        self.assertIn("(fnn-owner-publisher-start service", maybe)
+        self.assertNotIn("(sb-thread:make-thread", maybe)
+        self.assertIn(incf, capture)
+        self.assertLess(start.index("(fnn-owner-snapshot-job-capture"),
+                        start.index("(fnn-owner-spawn-publisher"))
+        self.assertIn(decf, release)  # a thread never made returns its pin
+        self.assertIn("(fnn-owner-snapshot-job-release service job)", physical)
         self.assertNotIn(incf, publish)
-        self.assertEqual(len(re.findall(re.escape(decf), publish)), 1)
+        self.assertEqual(len(re.findall(re.escape("(fnn-owner-snapshot-pin-release service pin)"),
+                                        publish)), 1)
 
 
 if __name__ == "__main__":
