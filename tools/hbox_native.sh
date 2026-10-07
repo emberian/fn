@@ -599,6 +599,9 @@ step interfaces-check static_gate interfaces-check tools/interface_emit.py --che
 # A repository declaration is not evidence its book is in this image.
 # Reject a missing native entry before spending time on certification.
 step host-books static_gate host-books tools/host_check.py --books
+# A certified host file attaches the image's stobj implementation before the
+# generic it implements (CONVERGE-1 red 1; tools/attach_order_check.py).
+step attach-order static_gate attach-order tools/attach_order_check.py
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
@@ -607,7 +610,9 @@ step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CE
 # the incremental certify above installs what composes and certifies only the
 # misses, so this tree need not be a complete origin (2026-10-07: "none of the
 # 108 candidate artifact sets is complete", best 1062/1161).  When, and only
-# when, acquire says no set is complete, certify the whole closure of the
+# when, acquire exits 3 (proof_artifacts.NO_SET: no complete set could be
+# installed; it used to be recognised by its message, which changed and
+# silently disabled this retry), certify the whole closure of the
 # roots in THIS tree once (certify_books.py --closure publishes every book
 # under this tree as one origin) and acquire again.  acquire's coherence check
 # is unchanged; a second failure, or any other failure, stops the run.
@@ -618,7 +623,7 @@ acquire_step() {
     python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1
     rc=\$?
     echo "   \$name exit \$rc (\$L/\$name.log)"
-    if [ \$rc -eq 1 ] && [ \$ORIGIN_DONE -eq 0 ] && grep -Eq 'candidate artifact sets is complete|no current artifact set matches' \$L/\$name.log; then
+    if [ \$rc -eq 3 ] && [ \$ORIGIN_DONE -eq 0 ]; then
         ORIGIN_DONE=1
         echo "   \$name: no complete single-origin set in the cache; certifying the roots' closure in this tree (one coherent origin), then acquiring once more"
         mv \$L/\$name.log \$L/\$name-first.log
@@ -693,6 +698,12 @@ $ISTEP image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PRO
 BOX
         done
         [ "$ISTEP" != pstep ] || echo pwait
+        # The build's own provenance stamp (TREE_SHA, MANIFEST.json in
+        # build/): a composed fixture binds its launchers to it when the
+        # run tests images it does not publish (CONVERGE-20261007-1 red #3).
+        cat <<BOX
+step stamp-images python3 tools/image_set.py stamp \$T
+BOX
         if [ -n "$PUBLISH" ]; then
             cat <<BOX
 step publish python3 tools/image_set.py publish \$T $SOURCE_ID --base ${IMAGES_BASE:-/tank/fn/images}

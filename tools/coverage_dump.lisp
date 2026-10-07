@@ -15,8 +15,10 @@
 ;              at the top level), the function symbols of its hypotheses and
 ;              of its conclusions (the translated formula split on `implies'
 ;              and on conjunctions), its rule classes, the event kind
-;              `get-event' recorded, and every symbol in that event's :hints
-;              and :instructions (what the proof was told to open or use);
+;              `get-event' recorded, every symbol in that event's :hints
+;              and :instructions (what the proof was told to open or use),
+;              and var_lhs (below: the heads of its :rewrite rules whose
+;              left-hand side is a function of distinct variables only);
 ;   functions  every name with a `formals' property: its book, its
 ;              symbol-class (:program, :ideal, :common-lisp-compliant), the
 ;              function symbols of its `unnormalized-body' (BOTH sides of
@@ -114,6 +116,40 @@
 (defun cov-json-bool (x channel state)
   (princ$ (if x "true" "false") channel state))
 
+;; var_lhs: the head of every ENABLED :rewrite rule of NAME (enabled in the
+;; dumped world's global theory, what an includer inherits) whose left-hand
+;; side is that function applied to distinct variables only, (F V1 ... Vn):
+;; such a rule is tried on EVERY call of F in every consumer's proofs; a
+;; disabled one is not (P's conversion keeps each rule for its own book and
+;; exports it disabled) (2026-10-07,
+;; the attach-order stall: car/consp/member-equal rewrites of this shape in
+;; owner-queued-work and failure-scope, 13M rule attempts on one host
+;; guard).  tools/hazard_rules_check.py reads it.
+(defun cov-var-lhs-rules (rules acc)
+  (if (endp rules)
+      acc
+    (let* ((rule (car rules))
+           (lhs (and (weak-rewrite-rule-p rule)
+                     (not (eq (access rewrite-rule rule :subclass) 'meta))
+                     (access rewrite-rule rule :lhs))))
+      (cov-var-lhs-rules
+       (cdr rules)
+       (if (and (consp lhs) (symbolp (car lhs)) (not (eq (car lhs) 'quote))
+                (consp (cdr lhs)) (symbol-listp (cdr lhs))
+                (no-duplicatesp-eq (cdr lhs)))
+           (add-to-set-eq (car lhs) acc)
+         acc)))))
+
+(defun cov-var-lhs (pairs ens w acc)
+  (if (endp pairs)
+      acc
+    (let ((rune (cdar pairs)))
+      (cov-var-lhs (cdr pairs) ens w
+                   (if (and (consp rune) (eq (car rune) :rewrite)
+                            (enabled-runep rune ens w))
+                       (cov-var-lhs-rules (find-rules-of-rune rune w) acc)
+                     acc)))))
+
 (defun cov-json-thm (name book first channel state)
   (let* ((w (w state))
          (formula (getpropc name 'theorem nil w))
@@ -132,6 +168,10 @@
          (state (xt-json-symlist (cov-concl-fns parts nil) channel state))
          (state (princ$ ",\"classes\":" channel state))
          (state (xt-json-symlist classes channel state))
+         (state (princ$ ",\"var_lhs\":" channel state))
+         (state (xt-json-symlist (cov-var-lhs (getpropc name 'runic-mapping-pairs nil w)
+                                              (ens state) w nil)
+                                 channel state))
          (state (princ$ ",\"event\":" channel state))
          (state (if kind (xt-json-sym kind channel state) (princ$ "null" channel state)))
          (state (princ$ ",\"hinted\":" channel state))

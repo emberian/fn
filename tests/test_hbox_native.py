@@ -48,8 +48,10 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertIn("acquire_step acquire-dtn dtn", out)
         self.assertLess(out.index("step certify "), out.index("acquire_step acquire default"))
         function = re.search(r"^ORIGIN_DONE=0\nacquire_step\(\) \{.*?^\}\n", out, re.S | re.M).group(0)
-        # The decision, run against stubs: python3 acquire fails "no complete" until
-        # certify-origin has run; every call is logged.
+        # The decision, run against stubs: python3 acquire exits 3
+        # (proof_artifacts.NO_SET: no complete installable set) until
+        # certify-origin has run; every call is logged.  An ACL2 load that
+        # rejected a set exits 1 and must not trigger the closure certify.
         harness = """
 T=. L=$PWD/logs CACHE=c ACL2=a
 mkdir -p $L; echo books/x > $L/roots.txt
@@ -58,8 +60,9 @@ step() { name=$1; shift; echo "STEP $name $*"; touch $L/certified; }
 python3() {
     case "$*" in
       *acquire*) echo "ACQ $*" >> $L/calls
+          if [ "$MODE" = rejected ]; then echo "profile=default result=no complete current artifact set passed an ACL2 load rejected=1"; return 1; fi
           if [ "$MODE" = fast ] || [ -f $L/certified ] && [ "$MODE" != stillred ]; then echo ok; return 0; fi
-          echo "profile=default result=none of the 108 candidate artifact sets is complete rejected=0"; return 1;;
+          echo "profile=default result=none of the 2 complete candidate artifact sets could be installed rejected=0"; return 3;;
       *loadfail*) return 1;;
     esac
 }
@@ -84,10 +87,14 @@ echo REACHED
         self.assertIn("--closure", done.stdout)
         self.assertEqual(calls, 3, done.stdout)  # fail, retry ok, dtn ok
         done, calls = run("stillred")
-        self.assertIn("FINISH 1", done.stdout)
+        self.assertIn("FINISH 3", done.stdout)
         self.assertNotIn("REACHED", done.stdout)
         self.assertEqual(done.stdout.count("STEP certify-origin"), 1)
         self.assertEqual(calls, 2)
+        done, calls = run("rejected")
+        self.assertIn("FINISH 1", done.stdout)
+        self.assertNotIn("STEP certify-origin", done.stdout)
+        self.assertEqual(calls, 1)
 
     def test_default_prefix_does_not_require_unrequested_dtn_certificates(self):
         answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
@@ -144,6 +151,26 @@ echo REACHED
         self.assertIn("an image set holds", refused.stderr)
         self.assertEqual(dry("--image-set", "nope", "HEAD", "tests.test_native_owner")
                          .returncode, 2)
+
+    def test_a_built_batch_is_stamped_after_its_saves_and_a_linked_set_is_not(self):
+        """CONVERGE-20261007-1 red #3: a run that builds and tests without
+        publishing stamps build/ (tools/image_set.py stamp) after every save
+        and before any module, so a composed fixture binds its launchers."""
+        answer = dry("--box", "hbox", "--images", "developer,production", "HEAD",
+                     "tests.test_native_consumer_exchange_two_nodes")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        lines = answer.stdout.splitlines()
+        stamp = [i for i, line in enumerate(lines)
+                 if line == "step stamp-images python3 tools/image_set.py stamp $T"]
+        self.assertEqual(len(stamp), 1, answer.stdout)
+        saves = [i for i, line in enumerate(lines) if line.startswith(("step image-", "pstep image-"))]
+        waits = [i for i, line in enumerate(lines) if line == "pwait"]
+        tests = [i for i, line in enumerate(lines) if line.startswith("tstep test-")]
+        self.assertTrue(saves and tests and max(saves + waits) < stamp[0] < min(tests))
+        sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                             text=True, check=True).stdout.strip()
+        linked = dry("--image-set", sha, "--images", "developer", "HEAD", "tests.test_native_owner")
+        self.assertNotIn("stamp-images", linked.stdout)
 
     def test_overlay_plans_here_and_derives_cores_after_the_link(self):
         sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,

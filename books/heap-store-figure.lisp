@@ -185,7 +185,7 @@
 
 ; -----------------------------------------------------------------------------
 ; The collector's trigger in a dynamic space of D octets, NURSERY the host's
-; cap (+fnn-gc-nursery-octets+, 64 MiB).  The host sets exactly this.
+; cap (+fnn-gc-nursery-octets+, 8 MiB).  The host sets exactly this.
 
 (defconst *fn-heap-nursery-least-octets* (* 8 1024 1024))
 

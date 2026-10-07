@@ -11,7 +11,7 @@
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *hft-core* 389141032)              ; the 69046a76 fn-host.core
-(defconst *hft-nursery* (* 64 1024 1024))    ; +fnn-gc-nursery-octets+
+(defconst *hft-nursery* (* 64 1024 1024))    ; the pre-MEM-007 +fnn-gc-nursery-octets+, passed as the explicit argument
 (defconst *hft-2g* (* 2048 *fn-heap-mib*))
 
 ;; The production image's observation (hbox, 8ee846d9a): a 200,411,640-octet

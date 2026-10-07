@@ -234,7 +234,7 @@
 ; fn-octets (the served attempt's buffer and the log walk's are never
 ; touched by a page digest).
 
-(def-buffer fn-octets-pg)
+(def-buffer fn-octets-pg :view t)
 
 ; The buffer's concrete-array rules (books/octets-stobj.lisp) are about its
 ; foundation, never about the page store's lists, and backchaining through

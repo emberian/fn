@@ -1133,12 +1133,14 @@
 
 (verify-guards fn-rl-open)
 
+; Each column's read-type rule fires on its own case of fn-rl-ci; :use of
+; all nine at once split 2^9 ways (6.2 s -> 0.1 s).
 (local (defthm fn-rl-ci-type
  (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger)
                (natp i) (< i 9))
           (unsigned-byte-p 64 (fn-rl-ci i slot ledger)))
- :hints (("Goal" :use ((:instance fn-rl-c0i-type (i slot)) (:instance fn-rl-c1i-type (i slot)) (:instance fn-rl-c2i-type (i slot)) (:instance fn-rl-c3i-type (i slot)) (:instance fn-rl-c4i-type (i slot)) (:instance fn-rl-c5i-type (i slot)) (:instance fn-rl-c6i-type (i slot)) (:instance fn-rl-c7i-type (i slot)) (:instance fn-rl-c8i-type (i slot))) :in-theory (e/d (fn-rl-ci fn-rl-wfp fn-rl-slotp)
-              (fn-rl-c0i fn-rl-c0i-type fn-rl-c1i fn-rl-c1i-type fn-rl-c2i fn-rl-c2i-type fn-rl-c3i fn-rl-c3i-type fn-rl-c4i fn-rl-c4i-type fn-rl-c5i fn-rl-c5i-type fn-rl-c6i fn-rl-c6i-type fn-rl-c7i fn-rl-c7i-type fn-rl-c8i fn-rl-c8i-type unsigned-byte-p integer-range-p))))))
+ :hints (("Goal" :in-theory (e/d (fn-rl-ci fn-rl-wfp fn-rl-slotp)
+              (fn-rl-c0i fn-rl-c1i fn-rl-c2i fn-rl-c3i fn-rl-c4i fn-rl-c5i fn-rl-c6i fn-rl-c7i fn-rl-c8i unsigned-byte-p integer-range-p))))))
 
 (local (defthm fn-rl-ci-nat
  (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger) (natp i) (< i 9))
@@ -1749,7 +1751,17 @@
 ; or reconstructing a complete bank.
 (local (defthm fn-rl-resize-list-length (equal (len (resize-list xs n v)) (nfix n)) :hints (("Goal" :induct (resize-list xs n v) :in-theory (enable resize-list)))))
 
-(local (defthm fn-rl-resize-keeps-wfp (implies (natp n) (fn-rl-wfp (fn-rl-resize-all n ledger))) :hints (("Goal" :in-theory (enable fn-rl-resize-all fn-rl-wfp)))))
+; A resized column's length is the new size, said once, so the wfp proof
+; does not walk resize-list once per column (6 s -> under 0.1 s).
+(local (defthm fn-rl-len-resize-list (equal (len (resize-list lst n default)) (nfix n)) :hints (("Goal" :in-theory (enable resize-list)))))
+
+(local (defthm fn-rl-resize-keeps-wfp (implies (natp n) (fn-rl-wfp (fn-rl-resize-all n ledger))) :hints (("Goal" :in-theory (union-theories
+                                 '(fn-rl-resize-all fn-rl-wfp fn-rl-count update-fn-rl-count
+                                   fn-rl-phases-length resize-fn-rl-phases fn-rl-gens-length resize-fn-rl-gens fn-rl-c0-length resize-fn-rl-c0 fn-rl-c1-length resize-fn-rl-c1 fn-rl-c2-length resize-fn-rl-c2 fn-rl-c3-length resize-fn-rl-c3 fn-rl-c4-length resize-fn-rl-c4 fn-rl-c5-length resize-fn-rl-c5 fn-rl-c6-length resize-fn-rl-c6 fn-rl-c7-length resize-fn-rl-c7 fn-rl-c8-length resize-fn-rl-c8 fn-rl-ids-length resize-fn-rl-ids fn-rl-cids-length resize-fn-rl-cids fn-rl-files-length resize-fn-rl-files fn-rl-eoffs-length resize-fn-rl-eoffs fn-rl-elens-length resize-fn-rl-elens fn-rl-trailers-length resize-fn-rl-trailers
+                                   nth-update-nth fn-rl-len-resize-list nfix natp
+                                   (:executable-counterpart nfix) (:executable-counterpart equal)
+                                   (:executable-counterpart not))
+                                 (theory 'minimal-theory))))))
 
 (local (defthm fn-rl-budget-update-preserves-wfp (equal (fn-rl-wfp (update-fn-rl-budgeti i v ledger)) (fn-rl-wfp ledger)) :hints (("Goal" :in-theory (e/d (fn-rl-wfp update-nth-array) (update-nth))))))
 

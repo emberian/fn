@@ -45,29 +45,8 @@
 ; -----------------------------------------------------------------------------
 ; The control service's buffer.
 
-(defabsstobj fn-octets-ctl
-  :foundation fn-octets$c
-  :recognizer (fn-octets-ctl-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-octets-ctl :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-octets-ctl-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-octets-ctl-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-octets-ctl-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-octets-ctl-append-octet :logic fn-octets$a-append-octet
-                                        :exec fn-octets$c-append-octet :protect t)
-            (fn-octets-ctl-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-octets-ctl-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                                   :protect t)
-            (fn-octets-ctl-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-octets-ctl-from-list :logic fn-octets$a-from-list
-                                     :exec fn-octets$c-from-list :protect t)
-            (fn-octets-ctl-append-list :logic fn-octets$a-append-list
-                                       :exec fn-oct-write-list :protect t)
-            (fn-octets-ctl-append-back :logic fn-octets$a-append-back
-                                       :exec fn-octets$c-append-back :protect t)
-            (fn-octets-ctl-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-octets-ctl-append-word :logic fn-octets$a-append-word
-                                       :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
+(include-book "def-buffer")
+(def-buffer fn-octets-ctl)
 
 ; -----------------------------------------------------------------------------
 ; The decoded frame's record, read through its lemmas (frame-fields.lisp).

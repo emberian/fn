@@ -76,53 +76,10 @@
 ; -----------------------------------------------------------------------------
 ; The two buffers of the web thread.
 
-(defabsstobj fn-web-in
-  :foundation fn-octets$c
-  :recognizer (fn-web-in-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-web-in :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-web-in-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-web-in-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-web-in-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-web-in-append-octet :logic fn-octets$a-append-octet
-                                    :exec fn-octets$c-append-octet :protect t)
-            (fn-web-in-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-web-in-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                               :protect t)
-            (fn-web-in-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-web-in-from-list :logic fn-octets$a-from-list
-                                 :exec fn-octets$c-from-list :protect t)
-            (fn-web-in-append-list :logic fn-octets$a-append-list
-                                   :exec fn-oct-write-list :protect t)
-            (fn-web-in-append-back :logic fn-octets$a-append-back
-                                   :exec fn-octets$c-append-back :protect t)
-            (fn-web-in-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-web-in-append-word :logic fn-octets$a-append-word
-                                   :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
+(include-book "def-buffer")
+(def-buffer fn-web-in)
 
-(defabsstobj fn-web-out
-  :foundation fn-octets$c
-  :recognizer (fn-web-out-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-web-out :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-web-out-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-web-out-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-web-out-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-web-out-append-octet :logic fn-octets$a-append-octet
-                                     :exec fn-octets$c-append-octet :protect t)
-            (fn-web-out-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-web-out-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                                :protect t)
-            (fn-web-out-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-web-out-from-list :logic fn-octets$a-from-list
-                                  :exec fn-octets$c-from-list :protect t)
-            (fn-web-out-append-list :logic fn-octets$a-append-list
-                                    :exec fn-oct-write-list :protect t)
-            (fn-web-out-append-back :logic fn-octets$a-append-back
-                                    :exec fn-octets$c-append-back :protect t)
-            (fn-web-out-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-web-out-append-word :logic fn-octets$a-append-word
-                                    :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
+(def-buffer fn-web-out)
 
 (defthm fn-web-in-p-is-octet-listp
   (equal (fn-web-in-p x) (fn-cbor-octet-listp x))
