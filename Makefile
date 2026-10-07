@@ -298,8 +298,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/def-loop \
 	tests/acl2/def-loop-tests \
 	books/def-representation-lib \
+	books/def-representation-pages \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-representation-pages-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \

@@ -1,43 +1,51 @@
 ; fn: the PERSISTED page image of `def-representation' (lane s-pck, 2026-10-07;
 ; Phase 2a of build/coordinator/STORAGE-PROGRAM-20261006.md).
 ;
-; `def-representation ... :pages t' generates, per instance NAME, the three
-; functions that say what an instance's logical value looks like on the
-; copy-on-write page store of books/pagestore.lisp:
+; `def-representation ... :pages t' generates, per instance NAME,
 ;   NAME-pages-of      logical value -> the page store's CONTENTS (a list of
-;                      pages, each a list of 2048 words),
+;                      pages, each 2048 u64 words: books/pagestore.lisp's
+;                      `pgs-open' view),
 ;   NAME-of-pages      contents -> logical value,
 ;   NAME-append-dirty  the dirty alist (LPAGE . PAGE) that one append makes,
+;   NAME-rowp, NAME-pool-pages-of-row
 ; and the theorems about them (round trip, locality against
-; `pgs-apply-dirty', a bound with no term in the length of the value).  This
-; book proves each of them ONCE, over a schema variable; an instance is the
-; library theorem at the instance's schema constant, so no per-structure
-; proof exists.  The generator is books/def-representation.lisp
-; (`rep-pages-events').
+; `pgs-apply-dirty', a bound with no term in the length of the value, the
+; words being u64).  Every one is proved here ONCE, over a SCHEMA VARIABLE
+; (`adt-tp-of-pages-of-pages-of' and the rest below); an instance's theorem is
+; the library theorem at the instance's schema constant (the generator is
+; books/def-representation.lisp, `rep-pages-events'), so no per-structure proof
+; exists.  Instancing by the schema variable rather than by functional
+; instantiation of an abstract constrained function: the codec is a function of
+; the schema, so the schema variable IS the abstraction and the library theorem
+; the common theorem.
 ;
-; THE LAYOUT.  The contents is a TAPE: the words of the records, in order,
-; cut into pages of *pgs-page-words* words, the last page padded with zeros.
-; A record is its TAG word 1, then its fields in schema order:
-;   a scalar field   one word, `adt-enc' of its value (a bool is 0 or 1, an
-;                    enum its index);
+; THE LAYOUT.  The contents is a TAPE: the words of the records in order, cut
+; into pages of *pgs-page-words* words, the last page zero padded.  A record is
+; its TAG word 1, then its fields in schema order:
+;   a scalar field   one word, `adt-enc' of its value (a bool 0 or 1, an enum
+;                    its index, a :nat or :u8/:u32/:u64 itself);
 ;   an octets field  one word (the octet count) then the octets, eight to a
 ;                    word, little-endian, the last word zero padded.
 ; The tag makes the tape self-delimiting: after the last record the words are
-; zero padding (or nothing), and the decoder stops at a word that is not the
-; tag.  No count, fill or fence is stored, so an append rewrites the partial
-; last page and adds the pages its words spill into, and NOTHING ELSE
-; (`adt-tp-dirty'; bound `adt-tp-dirty-bound').  That is the whole content of
-; "O(delta)": the dirty set is independent of how many records came before.
+; zero padding, and the decoder stops at a word that is not the tag.  No count,
+; fill or fence is stored, so an append rewrites the partial last page and adds
+; the pages its words spill into, and NOTHING ELSE (`adt-tp-dirty'; bound
+; `adt-tp-dirty-bound').  That is the whole content of "O(delta)": the dirty
+; set is independent of how many records came before.  A :tree field is its
+; postfix program's octets, as in the paged foundation.
 ;
-; Scope, named.  One tape is one structure: pages are appended in tape
-; order, which the page store's own contiguity rule (`pgs-lpages-ok': a dirty
-; page number is at most the length reached so far; `pgs-apply-dirty' drops
-; any other) forces on any layout whose regions grow independently.  Two
-; structures that both grow (the catalog rows and the msgid table) therefore
-; cannot each own a region of one store without a page directory in the root
-; record; that directory is the next stage and is NOT in this book.  Random
-; access by row index likewise wants an index over the tape (the root's); the
-; decode here is sequential, which is what adopting the pages at open needs.
+; Scope, named.  (1) One tape is one structure.  The page store's contiguity
+; rule (`pgs-lpages-ok': a dirty page number is at most the length reached so
+; far; `pgs-apply-dirty' drops any other) forces pages in tape order, so two
+; structures that both grow (the catalog rows and the msgid table) cannot each
+; own a region of one store without a page directory in the root record; that
+; directory is the next stage and is NOT in this book.  (2) Decoding is
+; sequential, which is what adopting the pages at open needs; random access by
+; row index wants an index over the tape (the root's).  (3) The words are u64
+; (`adt-tp-pages-wordsp') only under the premise that no octet list has 2^64 or
+; more octets (`adt-tp-seq-lens-ok'); the round trip and the locality need no
+; such premise.  (4) The generator refuses, at expansion, a field that is not
+; one word (a :nat bound or an :enum count of 2^64 or more).
 
 (in-package "ACL2")
 (include-book "proto/adt-lib")
@@ -605,9 +613,13 @@
            (adt-tp-u64s (adt-tp-seq-words s a)))
   :hints (("Goal" :induct (adt-tp-seq-words s a))))
 
-(defun adt-tp-pages-u64p (ps)
+(defun adt-tp-pages-wordsp (ps)
+  ; Every page is 2048 u64 words: the shape the page store's host fill returns.
   (declare (xargs :verify-guards nil :guard t))
-  (if (atom ps) (null ps) (and (adt-tp-u64s (car ps)) (adt-tp-pages-u64p (cdr ps)))))
+  (if (atom ps)
+      (null ps)
+    (and (equal (len (car ps)) *pgs-page-words*) (adt-tp-u64s (car ps))
+         (adt-tp-pages-wordsp (cdr ps)))))
 
 (defthm adt-tp-u64s-take
   (implies (adt-tp-u64s w) (adt-tp-u64s (adt-tp-take n w)))
@@ -624,10 +636,12 @@
   (implies (adt-tp-u64s w) (adt-tp-u64s (adt-tp-page w)))
   :hints (("Goal" :in-theory (enable adt-tp-page))))
 
-(defthm adt-tp-pages-u64p-pages
-  (implies (adt-tp-u64s w) (adt-tp-pages-u64p (adt-tp-pages w)))
-  :hints (("Goal" :induct (adt-tp-pages w))))
+(defthm adt-tp-pages-wordsp-pages
+  (implies (adt-tp-u64s w) (adt-tp-pages-wordsp (adt-tp-pages w)))
+  :hints (("Goal" :induct (adt-tp-pages w)
+           :in-theory (disable adt-tp-len-page))
+          ("Subgoal *1/2" :use ((:instance adt-tp-len-page)))))
 
-(defthm adt-tp-pages-of-u64p
+(defthm adt-tp-pages-of-wordsp
   (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (adt-tp-seq-lens-ok s a))
-           (adt-tp-pages-u64p (adt-tp-pages-of s a))))
+           (adt-tp-pages-wordsp (adt-tp-pages-of s a))))
