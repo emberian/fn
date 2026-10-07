@@ -398,8 +398,6 @@ class LinkRunTests(unittest.TestCase):
             self.assertFalse((tree / "build" / "fn-host-developer").exists())
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class StampTests(unittest.TestCase):
@@ -460,3 +458,7 @@ class StampTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("did not build", err)
         self.assertFalse((other / "build" / "MANIFEST.json").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
