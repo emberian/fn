@@ -1179,13 +1179,28 @@
                             (natp h) (< h (len xs)))
                        (equal (,len-c h ,st) (len (nth h xs))))
               :hints (("Goal" :in-theory (e/d (,len-c ,@read-theory) (adt-pg-corr))
+                       :use ,read-use :do-not-induct t)))
+            ; The length cell itself (the guard of the executable inner-get,
+            ; which skips the checks, is stated on it).
+            (defthm ,(adt-sym rget1 "-IS-LEN")
+              (implies (and (adt-pg-corr ,schema-const *adt-pg-rows* *adt-pg-octets* ,st (adt-wrap1 xs))
+                            (natp h) (< h (len xs)))
+                       (equal (adt-pg-rget 1 h *adt-pg-rows* ,st) (len (nth h xs))))
+              :hints (("Goal" :in-theory (e/d ,read-theory (adt-pg-corr))
                        :use ,read-use :do-not-induct t)))))
      (and (member-eq 'inner-get roles)
-          `((defun ,iget-c (h i ,st)
-              (declare (xargs :stobjs ,st :guard (and (natp h) (natp i))))
-              (if (and (< h (nfix (,count-of ,st))) (< i (nfix (,rget1 h ,st))))
-                  (,pget (+ (nfix (,rget0 h ,st)) i) ,st)
-                0))
+          `(; The guard says the checks hold (the exported function's guard
+            ; does), so the executable skips them: one row lookup and one
+            ; octet lookup, where the logical definition also reads the
+            ; count and the length.
+            (defun ,iget-c (h i ,st)
+              (declare (xargs :stobjs ,st
+                              :guard (and (natp h) (natp i) (< h (nfix (,count-of ,st)))
+                                          (< i (nfix (,rget1 h ,st))))))
+              (mbe :logic (if (and (< h (nfix (,count-of ,st))) (< i (nfix (,rget1 h ,st))))
+                              (,pget (+ (nfix (,rget0 h ,st)) i) ,st)
+                            0)
+                   :exec (,pget (+ (nfix (,rget0 h ,st)) i) ,st)))
             (defthm ,(adt-sym iget-c "-IS-NTH")
               (implies (and (adt-pg-corr ,schema-const *adt-pg-rows* *adt-pg-octets* ,st (adt-wrap1 xs))
                             (natp h) (< h (len xs))
@@ -1531,6 +1546,8 @@
                              (list (adt-sym (adt-sym name "$C-LEN-OF") "-IS-LEN")))
                         (and (member-eq 'inner-get roles)
                              (list (adt-sym (adt-sym name "$C-INNER-GET") "-IS-NTH")))
+                        (and paged (member-eq 'inner-get roles)
+                             (list (adt-sym (adt-sym name "$C-RGET1") "-IS-LEN")))
                         slice-lemmas))
          (defabs
            `(defabsstobj ,name
