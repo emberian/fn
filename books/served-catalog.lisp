@@ -1633,11 +1633,29 @@
            :in-theory (disable fn-scat-range-numbers fn-nntp-group-range-numbers
                                fn-cat-view-articles fn-cnx-freshp))))
 
-; Raw compatibility low uses the retained-identity range pass. The actual
-; availability adapter has its own maintained fn-scat-available-low.
+(defthm fn-scat-group-low-pass-is-raw-first-p
+  (implies (natp v)
+           (equal (fn-scat-group-low-pass group v fn-cat)
+                  (fn-scat-raw-first-p group 1 (fn-cat-group-high group fn-cat) v fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-scat-view-list fn-scat-raw-first-p fn-scat-range-numbers)
+           :use ((:instance fn-scat-range-numbers-at-view)
+                 (:instance fn-scat-view-list-car (k 1) (top (fn-cat-group-high group fn-cat)))))))
+
+; Raw compatibility low is the retained-identity range pass (fn-scat-group-low-pass,
+; the specification); the availability adapter's maintained fn-scat-available-low
+; is a different value (it skips withdrawn and reclaimed rows).  The executable
+; reads the first retained number directly: fn-scat-raw-first-p probes numbers
+; 1, 2, ... and stops at the first kept one, so a GROUP costs the leading
+; non-kept numbers, not the whole range.
 (defun fn-scat-group-low (group v fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (fn-scat-group-low-pass group v fn-cat))
+  (declare (xargs :stobjs fn-cat :guard (natp v) :verify-guards nil))
+  (mbe :logic (fn-scat-group-low-pass group v fn-cat)
+       :exec (fn-scat-raw-first-p group 1 (nfix (- (fn-cat-group-next group fn-cat) 1))
+                                  v fn-cat)))
+
+(verify-guards fn-scat-group-low
+  :hints (("Goal" :use ((:instance fn-scat-group-low-pass-is-raw-first-p)))))
 
 (defthm fn-scat-group-low-by-definition
   (equal (fn-scat-group-low group v fn-cat)
