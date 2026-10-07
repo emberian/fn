@@ -4,11 +4,20 @@
  "file": "host/native/io.lisp",
  "fix": "Take S inside rotate's spare read, clear and discard, or run the reclaim's prepare-spare inside the publication-exclusive section; then declare the slot's protector.",
  "id": "LOCK-R1B-LOG-SPARE-SLOT-DUAL-ACTOR",
- "notes": [],
+ "natives_owed": [
+  "tests/test_native_checkpoint_auto.py",
+  "tests/test_native_log_compaction.py",
+  "tests/test_native_commit_log.py",
+  "tests/test_native_host_lifecycle.py"
+ ],
+ "notes": [
+  "Fixed at 217af5ba7: the spare slot and spare-close-debt are accessed only under the new leaf lock SL (fnn-log-spare-slot-lock, no I/O under it) via fnn-log-spare-peek/-install/-clear/-take; S stays the preparers' I/O lock and is not taken under O. Key R1b|fnn-log-discard-spare|fnn-log-spare-close-debt:unlocked-write gone, none added. natives_owed: tests/test_native_checkpoint_auto.py, tests/test_native_log_compaction.py, tests/test_native_commit_log.py, tests/test_native_host_lifecycle.py."
+ ],
  "owner": "open",
  "severity": "medium",
+ "sha": "217af5ba7",
  "source": "lock-triage-r1b-20261006",
- "state": "open",
+ "state": "ready",
  "title": "Log spare slot and fnn-log-spare-close-debt are guarded by S in prepare but by O only in rotate and discard (R1b)",
- "updated": "2026-10-07T00:05:48Z"
+ "updated": "2026-10-07T06:05:59Z"
 }

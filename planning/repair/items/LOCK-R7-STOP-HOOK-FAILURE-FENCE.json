@@ -2,11 +2,15 @@
  "detail": "Claim: when a close hook signals (fnn-pull-service-close re-signals a retained cleanup debt), the stop function at owner.lisp:8865-8868 catches it as (serious-condition () (setq modules-joined nil)); fnn-err names it at :8873/:8902 ('a close hook failed'); the final join block (:8903-8920, fnn-owner-feed-close-all, log settlement, journal close) runs only when modules-joined is true; so the log-close-action is not :joined and the exit is not clean. That is the fence for the debt: the condition is reduced to a flag, and the flag withholds clean close. Unverified: that modules-joined=nil forces a non-clean exit code (the path from log-close-action not :joined to the process exit code, owner.lisp after :8935), and that no other exit path ignores it. Would verify: a checker row naming the flag, requiring every dolist-funcall handler clause to clear it, that the clean-close block is guarded by it as a conjunct of the when test, and that the else path reaches a fence function or a non-zero exit (fence_functions). Or an ACL2/host test with a failing hook asserting exit code 3. Sequences after rl02 (owner.lisp claimed).",
  "file": "host/native/owner.lisp",
  "id": "LOCK-R7-STOP-HOOK-FAILURE-FENCE",
- "notes": [],
+ "notes": [
+  "Verified by source at lane/lock-owner-class (no code change needed): in fnn-owner-run (owner.lisp), a service stop sets log-close-action to fn-ort-report-close-action nil :unobserved = :held before the hooks; a failed close hook clears modules-joined, so the join block (fnn-owner-feed-close-all, fnn-owner-log-settlement, fnn-owner-journal-close) is skipped and log-close-action stays :held; fnn-owner-store-settlement answers :held (fn-ort-store-close-action, books/owner-retire-settlement.lisp:58, settlement /= :joined); the return-from then yields fn-ort-log-close-exit with action /= :joined = +fnn-exit-uncertain+ (exit 3; theorem fn-ort-log-close-held-is-uncertain). The unwind-protect cleanup does not re-settle because log-close-action is non-nil. The hook failure is therefore fenced as exit 3. Remaining: the checker has no row verifying this chain (the item's own 'would verify'); a checker change is outside this lane.",
+  "Verified by the checker at 85e2db17d: contracts close_hook_fences row for fnn-owner-run, checked against owner.lisp and books/owner-retire-settlement.lisp by verify_close_hook_fences (tools/lock_discipline_check.py); a failed close hook clears modules-joined, the clean-close block needs it, the not-joined arm returns fn-ort-log-close-exit with +fnn-exit-uncertain+ = exit 3. Any divergence of that source raises when the checker loads."
+ ],
  "owner": "deputy-C",
  "severity": "low",
+ "sha": "85e2db17d",
  "source": "lmg2 debt_rethrows: the one link the checker does not verify (contract row fnn-pull-worker)",
- "state": "open",
+ "state": "ready",
  "title": "Stop path: a failed close hook clears modules-joined; is that the fence?",
  "updated": "2026-10-07T00:54:17Z"
 }
