@@ -78,6 +78,7 @@
 
 (in-package "ACL2")
 (include-book "native-live-status")
+(include-book "def-loop")
 (include-book "outcome-class")
 ; PKT-220: the offline `store retention' figures.
 (include-book "retention-figures")
@@ -245,48 +246,9 @@ profile's."
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec adds onto an accumulator.
-(defun fn-nh-deferred-count-loop (xs acc)
-  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
-  (if (consp xs)
-      (fn-nh-deferred-count-loop (cdr xs)
-                                 (+ (if (and (equal (fn-feed-entry-state (car xs))
-                                                    :queued)
-                                             (posp (fn-feed-entry-attempts (car xs))))
-                                        1
-                                      0)
-                                    acc))
-    (+ acc 0)))
-
-(defun fn-nh-deferred-count (xs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp xs)
-           (+ (if (and (equal (fn-feed-entry-state (car xs)) :queued)
-                       (posp (fn-feed-entry-attempts (car xs))))
-                  1 0)
-              (fn-nh-deferred-count (cdr xs)))
-         0)
-       :exec (fn-nh-deferred-count-loop xs 0)))
-
-(local
- (defthm fn-nh-deferred-count-loop-is-plus
-   (implies (acl2-numberp acc)
-            (equal (fn-nh-deferred-count-loop xs acc)
-                   (+ acc (fn-nh-deferred-count xs))))
-   :hints (("Goal" :induct (fn-nh-deferred-count-loop xs acc)
-                   :in-theory (disable fn-feed-entry-attempts fn-feed-entry-state)))))
-
-(verify-guards fn-nh-deferred-count-loop)
-
-(verify-guards fn-nh-deferred-count
-  :hints (("Goal"
-           :in-theory
-           (disable fn-nh-deferred-count-loop
-                    fn-feed-entry-attempts
-                    fn-feed-entry-state)
-           :use
-           ((:instance fn-nh-deferred-count-loop-is-plus (acc 0))))))
-
+(def-loop fn-nh-deferred-count (xs)
+  :shape :sum :over xs :elt x
+  :body (if (and (equal (fn-feed-entry-state x) :queued) (posp (fn-feed-entry-attempts x))) 1 0))
 
 (defun fn-nh-feed-deferredp (f)
   (declare (xargs :guard t))
@@ -312,212 +274,39 @@ profile's."
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec adds onto an accumulator.
-(defun fn-nh-saturated-total-loop (tbl acc)
-  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
-  (if (consp tbl)
-      (fn-nh-saturated-total-loop (cdr tbl)
-                                  (+ (if (fn-nh-feed-saturatedp (fn-own-feed-entry-feed (car tbl)))
-                                         1
-                                       0)
-                                     acc))
-    (+ acc 0)))
-
-(defun fn-nh-saturated-total (tbl)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp tbl)
-           (+ (if (fn-nh-feed-saturatedp (fn-own-feed-entry-feed (car tbl))) 1 0)
-              (fn-nh-saturated-total (cdr tbl)))
-         0)
-       :exec (fn-nh-saturated-total-loop tbl 0)))
-
-(local
- (defthm fn-nh-saturated-total-loop-is-plus
-   (implies (acl2-numberp acc)
-            (equal (fn-nh-saturated-total-loop tbl acc)
-                   (+ acc (fn-nh-saturated-total tbl))))
-   :hints (("Goal" :induct (fn-nh-saturated-total-loop tbl acc)
-                   :in-theory (disable fn-nh-feed-saturatedp fn-own-feed-entry-feed)))))
-
-(verify-guards fn-nh-saturated-total-loop)
-
-(verify-guards fn-nh-saturated-total
-  :hints (("Goal"
-           :in-theory
-           (disable fn-nh-saturated-total-loop
-                    fn-nh-feed-saturatedp
-                    fn-own-feed-entry-feed)
-           :use
-           ((:instance fn-nh-saturated-total-loop-is-plus (acc 0))))))
-
+(def-loop fn-nh-saturated-total (tbl)
+  :shape :sum :over tbl :elt t0
+  :body (if (fn-nh-feed-saturatedp (fn-own-feed-entry-feed t0)) 1 0))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nh-stranded-peers-loop (tbl acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp tbl)
-      (if (< 0 (fn-nh-dropped-count (fn-own-feed-entry-feed (car tbl))))
-          (fn-nh-stranded-peers-loop (cdr tbl)
-                                     (cons (fn-own-feed-entry-name (car tbl)) acc))
-        (fn-nh-stranded-peers-loop (cdr tbl) acc))
-    (revappend acc nil)))
-
-(defun fn-nh-stranded-peers (tbl)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp tbl)
-           (if (< 0 (fn-nh-dropped-count (fn-own-feed-entry-feed (car tbl))))
-               (cons (fn-own-feed-entry-name (car tbl))
-                     (fn-nh-stranded-peers (cdr tbl)))
-             (fn-nh-stranded-peers (cdr tbl)))
-         nil)
-       :exec (fn-nh-stranded-peers-loop tbl nil)))
-
-(local
- (defthm fn-nh-stranded-peers-loop-is-revappend
-   (equal (fn-nh-stranded-peers-loop tbl acc)
-          (revappend acc (fn-nh-stranded-peers tbl)))
-   :hints (("Goal" :induct (fn-nh-stranded-peers-loop tbl acc)
-                   :in-theory (union-theories '(fn-nh-stranded-peers-loop fn-nh-stranded-peers revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-nh-stranded-peers-loop)
-
-(verify-guards fn-nh-stranded-peers
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-nh-stranded-peers)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-nh-stranded-peers-loop-is-revappend (acc nil))))))
-
+(def-loop fn-nh-stranded-peers (tbl)
+  :shape :map :over tbl :elt t0
+  :keep (< 0 (fn-nh-dropped-count (fn-own-feed-entry-feed t0)))
+  :body (fn-own-feed-entry-name t0))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec adds onto an accumulator.
-(defun fn-nh-stranded-count-loop (tbl acc)
-  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
-  (if (consp tbl)
-      (fn-nh-stranded-count-loop (cdr tbl)
-                                 (+ (fn-nh-dropped-count (fn-own-feed-entry-feed (car tbl)))
-                                    acc))
-    (+ acc 0)))
-
-(defun fn-nh-stranded-count (tbl)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp tbl)
-           (+ (fn-nh-dropped-count (fn-own-feed-entry-feed (car tbl)))
-              (fn-nh-stranded-count (cdr tbl)))
-         0)
-       :exec (fn-nh-stranded-count-loop tbl 0)))
-
-(local
- (defthm fn-nh-stranded-count-loop-is-plus
-   (implies (acl2-numberp acc)
-            (equal (fn-nh-stranded-count-loop tbl acc)
-                   (+ acc (fn-nh-stranded-count tbl))))
-   :hints (("Goal" :induct (fn-nh-stranded-count-loop tbl acc)
-                   :in-theory (disable fn-feed-queue fn-nh-dropped-count fn-own-feed-entry-feed)))))
-
-(verify-guards fn-nh-stranded-count-loop)
-
-(verify-guards fn-nh-stranded-count
-  :hints (("Goal"
-           :in-theory
-           (disable fn-nh-stranded-count-loop
-                    fn-feed-queue
-                    fn-nh-dropped-count
-                    fn-own-feed-entry-feed)
-           :use
-           ((:instance fn-nh-stranded-count-loop-is-plus (acc 0))))))
-
+(def-loop fn-nh-stranded-count (tbl)
+  :shape :sum :over tbl :elt t0
+  :body (fn-nh-dropped-count (fn-own-feed-entry-feed t0)))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec adds onto an accumulator.
-(defun fn-nh-deferred-total-loop (tbl acc)
-  (declare (xargs :guard (acl2-numberp acc) :verify-guards nil))
-  (if (consp tbl)
-      (fn-nh-deferred-total-loop (cdr tbl)
-                                 (+ (fn-nh-deferred-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
-                                    acc))
-    (+ acc 0)))
-
-(defun fn-nh-deferred-total (tbl)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp tbl)
-           (+ (fn-nh-deferred-count (fn-feed-queue (fn-own-feed-entry-feed (car tbl))))
-              (fn-nh-deferred-total (cdr tbl)))
-         0)
-       :exec (fn-nh-deferred-total-loop tbl 0)))
-
-(local
- (defthm fn-nh-deferred-total-loop-is-plus
-   (implies (acl2-numberp acc)
-            (equal (fn-nh-deferred-total-loop tbl acc)
-                   (+ acc (fn-nh-deferred-total tbl))))
-   :hints (("Goal" :induct (fn-nh-deferred-total-loop tbl acc)
-                   :in-theory (disable fn-feed-queue fn-nh-deferred-count fn-own-feed-entry-feed)))))
-
-(verify-guards fn-nh-deferred-total-loop)
-
-(verify-guards fn-nh-deferred-total
-  :hints (("Goal"
-           :in-theory
-           (disable fn-nh-deferred-total-loop
-                    fn-feed-queue
-                    fn-nh-deferred-count
-                    fn-own-feed-entry-feed)
-           :use
-           ((:instance fn-nh-deferred-total-loop-is-plus (acc 0))))))
-
+(def-loop fn-nh-deferred-total (tbl)
+  :shape :sum :over tbl :elt t0
+  :body (fn-nh-deferred-count (fn-feed-queue (fn-own-feed-entry-feed t0))))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nh-unavailable-peers-loop (tbl acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp tbl)
-      (if (fn-nh-feed-unavailablep (fn-own-feed-entry-feed (car tbl)))
-          (fn-nh-unavailable-peers-loop (cdr tbl)
-                                        (cons (fn-own-feed-entry-name (car tbl)) acc))
-        (fn-nh-unavailable-peers-loop (cdr tbl) acc))
-    (revappend acc nil)))
-
-(defun fn-nh-unavailable-peers (tbl)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp tbl)
-           (if (fn-nh-feed-unavailablep (fn-own-feed-entry-feed (car tbl)))
-               (cons (fn-own-feed-entry-name (car tbl))
-                     (fn-nh-unavailable-peers (cdr tbl)))
-             (fn-nh-unavailable-peers (cdr tbl)))
-         nil)
-       :exec (fn-nh-unavailable-peers-loop tbl nil)))
-
-(local
- (defthm fn-nh-unavailable-peers-loop-is-revappend
-   (equal (fn-nh-unavailable-peers-loop tbl acc)
-          (revappend acc (fn-nh-unavailable-peers tbl)))
-   :hints (("Goal" :induct (fn-nh-unavailable-peers-loop tbl acc)
-                   :in-theory (union-theories '(fn-nh-unavailable-peers-loop fn-nh-unavailable-peers revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-nh-unavailable-peers-loop)
-
-(verify-guards fn-nh-unavailable-peers
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-nh-unavailable-peers)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-nh-unavailable-peers-loop-is-revappend (acc nil))))))
-
+(def-loop fn-nh-unavailable-peers (tbl)
+  :shape :map :over tbl :elt t0
+  :keep (fn-nh-feed-unavailablep (fn-own-feed-entry-feed t0))
+  :body (fn-own-feed-entry-name t0))
 
 ; -----------------------------------------------------------------------------
 ; Fence reasons: what the host observed before it could open the Store
