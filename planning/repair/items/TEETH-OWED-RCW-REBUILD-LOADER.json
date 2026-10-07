@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/reclaim-chunked-seal.lisp",
+ "id": "TEETH-OWED-RCW-REBUILD-LOADER",
+ "notes": "[\"Loader defect (2026-10-07, persvati, proof_repl.py start rcs2 tests/acl2/reclaim-chunked-seal-tests --source-deps --ld-leak): with books/owner-reclaim-pass, owner-reclaim-seal and owner-reclaim-carry loaded from source first, books/served-catalog-owner stops at ACL2 Error [Failure] in (DEFTHM FN-CAT-PREPARE-SEALED-NAMES-THE-SEALED-HANDLE ...), Goal'4' (a :DO-NOT-INDUCT hint stops it). Key checkpoint: (IMPLIES (AND (FN-HELD-P (FN-INTERN-ROW-AT W KEYRING GENERATION (FN-ARENA-COUNT FN-ARENA))) (EQUAL (FN-HELD-WIRE-OF (FN-ORCS-HELD-OF W KEYRING GENERATION (FN-ARENA-COUNT FN-ARENA)) (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W) FN-ARENA)) W) (FN-RECORD-P W) (INTEGERP GENERATION) (<= 0 GENERATION)) (EQUAL (FN-HELD-WIRE-OF (FN-INTERN-ROW-AT W KEYRING GENERATION (FN-ARENA-COUNT FN-ARENA)) (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W) FN-ARENA)) W)); the fn-orcs-held-of / fn-intern-row-at equality (FN-ORCS-INTERN-LIST-IS-HELD-OF) is in the world but does not fire. Loaded alone, books/served-catalog-owner loads from source (117 forms), so the defect is the proof depending on the world the owner-reclaim books leave: a book-order/rule-visibility dependency that certification at the cached order hides. Keystone owed: fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open (books/reclaim-chunked-seal.lisp:191), whose draft defteeth is /tmp/p-teeth/g5-rcs1.lisp (lost on reboot). Full refusal: persvati ~/fn-gates/p-teeth-repl/build/proof-repl/rcs2/load-refusal.txt.\"]",
+ "owner": "teeth-gate",
+ "severity": "medium",
+ "source": "p-teeth",
+ "state": "open",
+ "title": "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open has no teeth, and books/served-catalog-owner fails to load from source after the owner-reclaim books",
+ "updated": "2026-10-07T00:19:44Z"
+}

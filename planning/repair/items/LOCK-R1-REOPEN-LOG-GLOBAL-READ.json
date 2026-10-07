@@ -1,0 +1,14 @@
+{
+ "category": "lock-discipline",
+ "detail": "Keys (NEW at lane head lock-triage-r1r7):\nR1|lambda@host/native/owner.lisp:fnn-owner-start-maintenance#lambda1|O:fnn-owner-log:fnn-global @ host/native/owner.lisp:8465 trail: lambda@host/native/owner.lisp:fnn-owner-start-maintenance#lambda1 (host/native/owner.lisp:8465) -> fnn-owner-maintenance-tick -> fnn-owner-maybe-reopen-log -> fnn-owner-log -> access fnn-global at fnn-owner-log:498\n\nHazard: owner.lisp:8399-8412: the decision comes from fnn-owner-serialized, then, outside it, (fnn-owner-log 'fn-owner-log-line) reads the global with fnn-global (owner.lisp:498). Another quantum can run between the section's return and the read and overwrite or race the live-state global, so the line written is not the one the reopen decision produced.",
+ "file": "host/native/owner.lisp",
+ "fix": "Return the rendered line from the serialized thunk (or call fnn-owner-log inside it) and write that value after the section.",
+ "id": "LOCK-R1-REOPEN-LOG-GLOBAL-READ",
+ "notes": [],
+ "owner": "open",
+ "severity": "low",
+ "source": "lock-triage-r1r7-20261006",
+ "state": "open",
+ "title": "fnn-owner-maybe-reopen-log reads the ACL2 log-line global after leaving the owner section (R1 on the maintenance thread)",
+ "updated": "2026-10-06T23:59:35Z"
+}

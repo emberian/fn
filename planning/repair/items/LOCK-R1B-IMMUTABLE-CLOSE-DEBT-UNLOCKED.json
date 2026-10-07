@@ -1,0 +1,14 @@
+{
+ "category": "lock-discipline",
+ "detail": "Key (NEW): R1b|fnn-immutable-close-handle|*fnn-immutable-close-debts*:unlocked-write @ host/native/io.lisp:5403.\n\nTrace: fnn-immutable-close-handle (io.lisp:5399-5405) pushes a debt vector with a bare push on the process-global; fnn-immutable-close-observation (io.lisp:5397) reads it. Callers io.lisp:4033, :4055 and immutable-publish.lisp:26 run on any actor that stages a write (24+ fnn-write-staged call sites across bp-service, bp-node, bp, auth-admin, consumer-local, tcpcl, peer-invite, workflow), no common lock.\n\nHazard: two threads failing a close at once can lose a debt (non-atomic push on a global), and a writer that passed the observation just before a push proceeds, so the rule 'once any close is uncertain stop all staged writes' is broken by one operation. The sibling *fnn-publication-close-debts* (io.lisp:5080-5120) has the same shape and was not flagged: check it in the same repair.",
+ "file": "host/native/io.lisp",
+ "fix": "Guard the debts list and the observation with one mutex (declare it in lock_discipline_contracts.json), or an atomic push (compare-and-swap) with the observation read in the same section as the open; apply to both globals.",
+ "id": "LOCK-R1B-IMMUTABLE-CLOSE-DEBT-UNLOCKED",
+ "notes": [],
+ "owner": "open",
+ "severity": "low",
+ "source": "lock-triage-r1b-20261006",
+ "state": "open",
+ "title": "*fnn-immutable-close-debts* is pushed and read with no lock from concurrent staged writers (R1b)",
+ "updated": "2026-10-07T00:05:48Z"
+}

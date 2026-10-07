@@ -1,0 +1,17 @@
+{
+ "category": "lock-discipline",
+ "detail": "Keys and chains: (1) R2|fnn-owner-stop-service-locked|O:sb-bsd-sockets:socket-shutdown x2 -- fnn-owner-stop-service-locked (owner.lisp:2845) 'locked' = O held (e.g. fnn-owner-commit-complete-locked owner.lisp:4703 -> :2893 listener shutdown, :2902 client shutdown, each in ignore-errors). The comment at owner.lisp:2886-2890 states the design: shutdown (not close) so the accept loop observes STOPPING 'while this mutex is still held'. shutdown(2) does not block on a TCP socket. (2) R2|fnn-socket-shutdown|XCTL:sb-bsd-sockets:socket-shutdown -- fnn-dev-repl-stop (dev-repl.lisp:243): the dev REPL's control-state lock held while shutting its clients/listener; developer tool. (3) R2|fnn-mux-close-wake|M:sb-posix:close -- fnn-mux-close-wake (mux.lisp:1683) closes the loop's two wake pipe fds with fnn-mux-loop-lock held, recording a per-fd receipt before the call (so a failed close is never retried).\nHazard: each leaf is a non-blocking kernel call on a socket or pipe (EIO/EINTR possible on close); the lock exists to order the teardown with the lifecycle flag. Held and reachable, stalls improbable.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/owner.lisp",
+ "fix": "Justify by design decision (the stop-service comment already does): declare these three sites as R2 exceptions in the contracts with the shutdown/close rationale, or mark the sockets/pipes non-blocking-leaf class in the checker's leaf classifier if Deputy C prefers. Low priority.",
+ "id": "LOCK-R2-FD-TEARDOWN-UNDER-LOCK",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "Service stop, dev REPL stop, mux loop shutdown. A close/shutdown that hung would hold the lifecycle lock.",
+ "severity": "low",
+ "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
+ "state": "open",
+ "title": "Descriptor teardown (socket-shutdown, close) is issued under the lock that guards the lifecycle: stop-service (O), dev-repl-stop (XCTL), mux-close-wake (M)",
+ "updated": "2026-10-06T23:55:37Z"
+}

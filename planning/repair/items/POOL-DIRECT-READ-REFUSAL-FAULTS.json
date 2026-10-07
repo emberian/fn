@@ -1,20 +1,21 @@
 {
+ "allow_forbidden": true,
  "category": "correctness",
  "detail": "fnn-extent-entry-direct (and the checkpoint publication callers fn-scka-srcs-n, fn-xrt-reseat-checkpoint-frame) asks fn-owner-page-read-admit; word :read-resources-unavailable is fnn-refuse'd inside the realizer callback; fnn-call turns any condition leaving a callback into an execution-boundary fault, so the owner stops (exit 4) under a write load. Measured on cloud1 over set 6107ceb56 (overlay, DIAG print): budget=(22512946 0 1024 4 2^64), a :DISCOVERY read of 195846 octets holds (391756 0 0 1 1) when a second read of 195846 is asked; the pool's headroom over its baseline is under 2 reads (the heap headroom after cold-start 2ce265ec8's protected allowance). Two causes: (1) the whole-extent and verified-window caches kept charge while a read was refused (fixed: fnn-extent-cache-yield-oldest, evict oldest, ask again), (2) two concurrent large reads exceed the pool's headroom, so refusal is real exhaustion and must refuse by name (abort the checkpoint publication, old checkpoint stays) rather than fault.",
- "disposition": "OPEN",
+ "disposition": "LOCAL",
  "exposure": "live",
  "file": "host/native/extent.lisp",
  "fix": "After the caches yield, refuse by a condition class the callback boundary passes as a refusal (checkpoint publication aborts, old checkpoint stays, retried), or serialize the checkpoint's reads behind the read that holds the pool; and size the pool's headroom to at least two max-record reads at startup (page-read-startup refusal by name).",
  "id": "POOL-DIRECT-READ-REFUSAL-FAULTS",
  "locus": "storage",
  "notes": [
-  "10-05 05:10 integrator3: allow_forbidden GRANTED at merge (carried by lane/feed-pace@3dbedc021 from lane/pool-refusal@671e54932, commit 94d8e6529), scope reviewed: host/native/extent.lisp fnn-extent-read-refused (new), fnn-extent-entry-direct, fnn-extent-entry-fresh; host/native/io.lisp fnn-extent-with-read-refusal (new), fnn-checkpoint-walk, fnn-checkpoint-write-arena-steps; host/native/owner.lisp fnn-section-envelope (one dynamic binding *fnn-extent-read-refusal*), fnn-owner-release-extents, fnn-owner-publish-captured. Native: peer_catchup red bq10050324-0132 (set ecf10066f) -> green bq10050400-0135 (set 3a9806784, persvati-built); integrator image batch owed."
+  "10-05 05:10 integrator3: allow_forbidden GRANTED at merge (carried by lane/feed-pace@3dbedc021 from lane/pool-refusal@671e54932, commit 94d8e6529), scope reviewed: host/native/extent.lisp fnn-extent-read-refused (new), fnn-extent-entry-direct, fnn-extent-entry-fresh; host/native/io.lisp fnn-extent-with-read-refusal (new), fnn-checkpoint-walk, fnn-checkpoint-write-arena-steps; host/native/owner.lisp fnn-section-envelope (one dynamic binding *fnn-extent-read-refusal*), fnn-owner-release-extents, fnn-owner-publish-captured. Native: peer_catchup red bq10050324-0132 (set ecf10066f) -> green bq10050400-0135 (set 3a9806784, persvati-built); integrator image batch owed.",
+  "10-06 10:39 close-out (cold-start-2 seat): landed on dev by 234b07446 (lane/feed-pace@3dbedc021 carrying lane/pool-refusal@671e54932): pool exhaustion is a refusal by name, never an owner fault \u2014 fnn-extent-read-refused throws only under the section envelope binding, fn-orln-read-refusal-outcome defers the publication (:defer-publication/:defer-frame), and page-read-startup reserves the workers reads (:default-pool-read-headroom-unavailable). The w-window \u00a7B steps are each covered: (1) the :DISCOVERY holder is the release per-frame lease held across the fnn-call while fn-arx-commit-place reads the old extent \u2014 a NESTED same-thread read, not concurrency; (2) the checkpoint publication survives exhaustion (old checkpoint stays); (3) startup refuses by name. Natives red bq10050324-0132 (set ecf10066f) -> green bq10050400-0135 (set 3a9806784). Integrator image batch re-verdict owed (already noted 10-05)."
  ],
  "owner": "w-window",
  "severity": "high",
  "source": "batch-6-peer-catchup-2026-10-04",
- "state": "ready",
+ "state": "landed",
  "title": "A synchronous funded read the pool cannot admit refuses inside an ACL2 callback, which the call boundary makes an owner fault (batch-6 peer_catchup: 1000 posts)",
- "updated": "2026-10-04T20:43:52Z",
- "allow_forbidden": true
+ "updated": "2026-10-06T14:39:46Z"
 }

@@ -1,0 +1,83 @@
+; Teeth for books/committer-actor.lisp (PRF-1255), TEETH CONTRACT v1, over the
+; reached schedule the book asserts: init -> observe (snapshot issued) ->
+; snapshot 1 captured (passing).  Not here (no counterexample to a
+; hypothesis, so a removal waits on a proof of the weakened theorem):
+;  fn-cmt-stop-observation-never-enters-a-pipeline -- its :observe hypothesis
+;    (only an :observe enters a pipeline: fn-cmt-pipeline-requires-its-captured-passes);
+;  fn-cmt-wrong-snapshot-ticket-faults -- its :snapshot-state and
+;    :snapshot-event hypotheses (every unexpected event faults in every state).
+(in-package "ACL2")
+(include-book "../../books/committer-actor")
+(include-book "../../books/defkeystone")
+
+(defconst *cmtt-issued* (car (fn-cmt-step (fn-cmt-init) '(:observe nil 1 nil))))
+(defconst *cmtt-captured* (car (fn-cmt-step *cmtt-issued* '(:snapshot 1 ((0 2))))))
+(assert-event (and (equal *cmtt-issued* '(:snapshot 1 nil nil))
+                   (equal *cmtt-captured* '(:passing 1 ((0 2)) nil))))
+
+(defteeth fn-cmt-step-state-is-valid
+  :claim (() (fn-cmt-invp (car (fn-cmt-step s event))))
+  :subject fn-cmt-step
+  :witness ((s *cmtt-issued*) (event '(:snapshot 1 ((0 2)))))
+  :mutations ((step-keeps-state
+               (:conclusion (equal (car (fn-cmt-step s event)) s))
+               ((s *cmtt-issued*) (event '(:snapshot 1 ((0 2)))))
+               :fault "a captured snapshot that leaves the actor where it was")))
+
+(defteeth fn-cmt-pipeline-requires-its-captured-passes
+  :claim (((pipeline (equal (car (cadr (fn-cmt-step s event))) :pipeline)))
+          (and (equal (fn-cmt-field 0 s) :passing)
+               (equal (fn-cmt-field 0 event) :observe)
+               (not (fn-cmt-field 1 event)) (fn-cmt-field 3 event)
+               (equal (fn-cmt-field 1 (cadr (fn-cmt-step s event)))
+                      (nfix (fn-cmt-field 1 s)))
+               (equal (fn-cmt-field 2 (cadr (fn-cmt-step s event)))
+                      (fn-cmt-field 2 s))))
+  :subject fn-cmt-step
+  :witness ((s *cmtt-captured*) (event '(:observe nil 1 t)))
+  :breaks ((pipeline ((s *cmtt-captured*) (event '(:observe nil 1 nil)))))
+  :mutations ((next-ticket
+               (:conclusion (and (equal (fn-cmt-field 0 s) :passing)
+                                 (equal (fn-cmt-field 0 event) :observe)
+                                 (not (fn-cmt-field 1 event)) (fn-cmt-field 3 event)
+                                 (equal (fn-cmt-field 1 (cadr (fn-cmt-step s event)))
+                                        (+ 1 (nfix (fn-cmt-field 1 s))))
+                                 (equal (fn-cmt-field 2 (cadr (fn-cmt-step s event)))
+                                        (fn-cmt-field 2 s))))
+               ((s *cmtt-captured*) (event '(:observe nil 1 t)))
+               :fault "the pipeline names the next ticket rather than the captured one")))
+
+; ---------------------------------------------------------------------------
+; fn-cmt-stop-observation-never-enters-a-pipeline and
+; fn-cmt-wrong-snapshot-ticket-faults with their teeth (TEETH CONTRACT v1).
+; Outside its scripted events the actor exits with a fault, so dropping the
+; phase or tag hypothesis of either keeps the conclusion true: those
+; hypotheses have no counterexample and stay inside the implication, and the
+; teeth are the positive witness and a conclusion mutation each.
+(defteeth fn-cmt-stop-observation-never-enters-a-pipeline
+  :claim (() (implies (and (equal (fn-cmt-field 0 event) :observe)
+                           (fn-cmt-field 1 event))
+                      (not (equal (car (cadr (fn-cmt-step s event))) :pipeline))))
+  :subject fn-cmt-step
+  :witness ((s *cmtt-captured*) (event '(:observe t 1 t)))
+  :mutations ((stop-starts-the-pipeline
+               (:conclusion (implies (and (equal (fn-cmt-field 0 event) :observe)
+                                          (fn-cmt-field 1 event))
+                                     (equal (car (cadr (fn-cmt-step s event))) :pipeline)))
+               ((s *cmtt-captured*) (event '(:observe t 1 t)))
+               :fault "an actor that runs the pipeline on a stop observation")))
+
+(defteeth fn-cmt-wrong-snapshot-ticket-faults
+  :claim (() (implies (and (equal (fn-cmt-field 0 s) :snapshot)
+                           (equal (fn-cmt-field 0 event) :snapshot)
+                           (not (equal (fn-cmt-field 1 event) (nfix (fn-cmt-field 1 s)))))
+                      (equal (cadr (fn-cmt-step s event)) '(:exit :fault))))
+  :subject fn-cmt-step
+  :witness ((s *cmtt-issued*) (event '(:snapshot 2 ((0 2)))))
+  :mutations ((wrong-ticket-accepted
+               (:conclusion (implies (and (equal (fn-cmt-field 0 s) :snapshot)
+                                          (equal (fn-cmt-field 0 event) :snapshot)
+                                          (not (equal (fn-cmt-field 1 event) (nfix (fn-cmt-field 1 s)))))
+                                     (equal (cadr (fn-cmt-step s event)) '(:again))))
+               ((s *cmtt-issued*) (event '(:snapshot 2 ((0 2)))))
+               :fault "an actor that takes the capture of a snapshot answered for another ticket")))

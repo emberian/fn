@@ -92,3 +92,42 @@
   (list :ok (fn-mcr-with l (fn-mcr-cache l) (fn-mcr-drawn l)
                          (fn-mcr-put id (cons (nfix u) (nfix r)) (fn-mcr-ops l)))))
 (assert! (not (fn-mcr-fundedp (cadr (mct-acquire-unchecked *mct-l47* 48 0 *mct-r*)))))
+
+;; BORROW and RETURN (lane reclaim-funding, K5).  From *mct-l47* (8 MiB of
+;; completion reserve, nothing drawn): the owner operation :reclaim borrows
+;; 5 MiB -- admitted, the reserve 3 MiB, :reclaim holds 5 MiB, the funded
+;; total and every article's credit unchanged, funded.
+(defconst *mct-b* (fn-mcr-borrow *mct-l47* :reclaim (* 5 *mct-mib*)))
+(assert! (equal (car *mct-b*) :ok))
+(assert! (fn-mcr-fundedp (cadr *mct-b*)))
+(assert! (equal (fn-mcr-total (cadr *mct-b*)) (fn-mcr-total *mct-l47*)))
+(assert! (equal (fn-mcr-completion (cadr *mct-b*)) (* 3 *mct-mib*)))
+(assert! (equal (fn-mcr-credit-of :reclaim (fn-mcr-ops (cadr *mct-b*))) (* 5 *mct-mib*)))
+(assert! (equal (fn-mcr-credit-of 3 (fn-mcr-ops (cadr *mct-b*)))
+                (fn-mcr-credit-of 3 (fn-mcr-ops *mct-l47*))))
+;; Refused by name, the ledger unchanged: past the reserve (exactly the
+;; reserve is admitted, one octet more is not), a second borrow by the same
+;; id, and a borrow beside what an overdraw drew.
+(assert! (equal (car (fn-mcr-borrow *mct-l47* :reclaim (* 8 *mct-mib*))) :ok))
+(assert! (equal (fn-mcr-borrow *mct-l47* :reclaim (1+ (* 8 *mct-mib*)))
+                '(:refused :completion-reserve-exhausted)))
+(assert! (equal (fn-mcr-borrow (cadr *mct-b*) :reclaim 1) '(:refused :operation-already-admitted)))
+(assert! (equal (fn-mcr-borrow (cadr *mct-o*) :reclaim 1) '(:refused :completion-reserve-exhausted)))
+;; Return: the round trip restores the reserve and the operations exactly.
+(defconst *mct-back* (cadr (fn-mcr-return (cadr *mct-b*) :reclaim)))
+(assert! (equal (fn-mcr-completion *mct-back*) (fn-mcr-completion *mct-l47*)))
+(assert! (equal (fn-mcr-ops *mct-back*) (fn-mcr-ops *mct-l47*)))
+(assert! (fn-mcr-fundedp *mct-back*))
+;; Mutation: a borrow that does not lower the reserve over-commits the ledger.
+(defun mct-borrow-unlowered (l id x)
+  (declare (xargs :mode :program))
+  (list :ok (fn-mcr-with l (fn-mcr-cache l) (fn-mcr-drawn l)
+                         (fn-mcr-put id (cons 0 (nfix x)) (fn-mcr-ops l)))))
+(assert! (not (fn-mcr-fundedp (cadr (mct-borrow-unlowered *mct-l47* :reclaim (* 5 *mct-mib*))))))
+;; The keystone's hypothesis is needed: from the unfunded *mct-over* a
+;; return leaves it unfunded.
+(assert! (not (fn-mcr-fundedp (cadr (fn-mcr-return *mct-over* :reclaim)))))
+(must-fail-checked
+ (defthm mct-return-keeps-funded-without-the-hypothesis
+   (fn-mcr-fundedp (cadr (fn-mcr-return l id))))
+ :step-limit 20000)

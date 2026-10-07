@@ -287,6 +287,33 @@ class LastGreenSourceTests(unittest.TestCase):
         self.assertIn("no commit in this repository", answer)
 
 
+class PlanStaleTests(unittest.TestCase):
+    """A book certified at its own bytes over a moved dependency is owed a
+    run: the plan must count it stale and list it, not skip it as green."""
+
+    def test_the_plan_lists_a_stale_book_and_does_not_count_it_green(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            books = root / "books"
+            books.mkdir()
+            old = '(in-package "ACL2")\n(defthm dep t)\n'
+            (books / "dep.lisp").write_text(old)
+            (books / "top.lisp").write_text(
+                '(in-package "ACL2")\n(include-book "dep")\n')
+            top = digest((books / "top.lisp").read_text())
+            write_manifest(root, "certify-20260921T090000Z-1",
+                           passed={"books/dep": digest(old), "books/top": top})
+            new = old + "; moved\n"
+            (books / "dep.lisp").write_text(new)
+            write_manifest(root, "certify-20260922T090000Z-2",
+                           passed={"books/dep": digest(new)})
+            lines = triage.plan(root, ["books/top"])
+            self.assertIn("1 stale", lines[0])
+            self.assertTrue(any(line.startswith("triage: books/top: stale")
+                                for line in lines), lines)
+            self.assertFalse(any("books/dep" in line for line in lines[1:]))
+
+
 # --------------------------------------------------------------------------
 # a whole triage, over a faked box
 # --------------------------------------------------------------------------

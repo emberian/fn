@@ -6,7 +6,11 @@
 (defconstant +fnn-o-nofollow+ sb-posix:o-nofollow)
 (defmacro fnn-posix (context &body body) (declare (ignore context)) `(progn ,@body))
 (defun fnn-fault (&rest args) (error "fixture fault ~s" args))
-(defun fnn-open (path flags mode) (sb-posix:open path flags mode))
+(define-condition fnn-os-error (error) ())
+(defun fnn-extent-read-stall ())
+(defun fnn-open (path flags mode)
+  (handler-case (sb-posix:open path flags mode)
+    (sb-posix:syscall-error () (error 'fnn-os-error))))
 (defun fnn-close (fd) (sb-posix:close fd))
 (defun fnn-unlink (path) (sb-posix:unlink path))
 (defun fnn-fstat (fd) (sb-posix:fstat fd))
@@ -101,6 +105,29 @@
     (sb-thread:with-mutex (gate) (setq release t) (sb-thread:condition-broadcast changed))
     (when worker (fnn-csp-worker-stop worker) (join-wait worker))
     (setf (symbol-function 'fnn-csp-worker-perform) perform)))
+;; A condition that is not an OS error is never a peer I/O status: take
+; re-signals it as a fault; an OS error stays status :error plus condition.
+(let* ((perform (symbol-function 'fnn-csp-worker-perform)) (worker nil))
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fnn-csp-worker-perform)
+               (lambda (w operation offset count)
+                 (declare (ignore w offset count))
+                 (if (eq operation :open) (error "not an os error") (error 'fnn-os-error))))
+         (setq worker (fnn-csp-worker-start nil '(31 37) (lambda (holder) (setq worker holder))))
+         (fnn-csp-worker-submit worker :open 0 0)
+         (let ((signalled nil))
+           (loop repeat 1000 until signalled do
+             (handler-case (when (fnn-csp-worker-take worker) (error "downgraded to status"))
+               (simple-error (c) (when (search "catchup spool worker fault" (princ-to-string c))
+                                   (setq signalled t))))
+             (sleep 0.001))
+           (assert signalled))
+         (fnn-csp-worker-submit worker :write 0 0)
+         (multiple-value-bind (status count condition) (take-wait worker)
+           (declare (ignore count)) (assert (eq status :error)) (assert (typep condition 'fnn-os-error))))
+    (setf (symbol-function 'fnn-csp-worker-perform) perform)
+    (when worker (fnn-csp-worker-stop worker) (join-wait worker))))
 (format t "CATCHUP SPOOL SOURCE PASSED~%")
 ; Constructor escape retains the object before any thread starts. There is
 ; no physical worker to wait for, and the observer must handle that exact cut.

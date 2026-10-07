@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/owner-time-journal-stream")
+(include-book "../../books/defkeystone")
 
 (defun otjs-test-splits (n xs)
   (declare (xargs :measure (nfix n)))
@@ -84,3 +85,58 @@
    (and (equal (fn-otjs-exit st) (fn-otm-journal-exit xs))
         (equal (fn-otjs-exit st) 1)
         (equal (fn-otjs-status st) :torn))))
+
+; ---------------------------------------------------------------------------
+; PRF-1275 keystones of books/owner-time-journal-stream.lisp with their teeth
+; (TEETH CONTRACT v1): a start line, a note, a line of an unknown kind (exit
+; 1), a note without its terminator (six fields pending).
+(defconst *otjs-start* (fn-otm-start-line 1700000000 t))
+(defconst *otjs-note* (fn-otm-jline '(1 5 0 1 2 0 0)))
+(defconst *otjs-unknown-journal* (append *otjs-start* (fn-otm-jline '(1 99 0 0 0 0 0))))
+(defconst *otjs-partial* (butlast *otjs-note* 1))
+; A stream state no consume builds: nine fields pending.
+(defconst *otjs-nine-fields* (update-nth 2 '(1 2 3 4 5 6 7 8 9) (fn-otjs-init)))
+
+(defteeth fn-otjs-consume-of-append
+  :claim (() (equal (fn-otjs-consume (append a b) st)
+                    (fn-otjs-consume b (fn-otjs-consume a st))))
+  :subject fn-otjs-consume
+  :witness ((a *otjs-start*) (b *otjs-note*) (st (fn-otjs-init)))
+  :mutations ((halves-swapped
+               (:conclusion (equal (fn-otjs-consume (append a b) st)
+                                   (fn-otjs-consume a (fn-otjs-consume b st))))
+               ((a *otjs-start*) (b *otjs-note*) (st (fn-otjs-init)))
+               :fault "a chunked read that consumes its chunks out of order")))
+
+(defteeth fn-otjs-consume-fields-bounded
+  :claim (((bounded (<= (len (fn-otjs-fields st)) 8)))
+          (<= (len (fn-otjs-fields (fn-otjs-consume octets st))) 8))
+  :subject fn-otjs-consume
+  :witness ((octets *otjs-partial*) (st (fn-otjs-init)))
+  :breaks ((bounded ((octets '(32)) (st *otjs-nine-fields*))))
+  :mutations ((partial-line-fieldless
+               (:conclusion (<= (len (fn-otjs-fields (fn-otjs-consume octets st))) 0))
+               ((octets *otjs-partial*) (st (fn-otjs-init)))
+               :fault "a line's fields dropped before its terminator arrives")))
+
+(defteeth fn-otjs-exit-refines-journal-exit
+  :claim (() (equal (fn-otjs-exit (fn-otjs-consume xs (fn-otjs-init)))
+                    (fn-otm-journal-exit xs)))
+  :subject fn-otjs-exit
+  :witness ((xs *otjs-unknown-journal*))
+  :mutations ((last-line-unterminated
+               (:conclusion (equal (fn-otjs-exit (fn-otjs-consume xs (fn-otjs-init)))
+                                   (fn-otm-journal-exit (butlast xs 1))))
+               ((xs *otjs-unknown-journal*))
+               :fault "the last line judged before its terminator (an unknown kind passes)")))
+
+(defteeth fn-otjs-report-refines-journal-report
+  :claim (() (equal (fn-otjs-report (fn-otjs-consume xs (fn-otjs-init)))
+                    (fn-otm-journal-report xs)))
+  :subject fn-otjs-report
+  :witness ((xs (append *otjs-start* *otjs-note*)))
+  :mutations ((first-octet-dropped
+               (:conclusion (equal (fn-otjs-report (fn-otjs-consume xs (fn-otjs-init)))
+                                   (fn-otm-journal-report (cdr xs))))
+               ((xs (append *otjs-start* *otjs-note*)))
+               :fault "the stream starts one octet into the journal")))

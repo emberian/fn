@@ -4,12 +4,13 @@
  "id": "SCEN-WALK-INSTALL-NO-OPENSSL",
  "native": "tests.test_native_operator_walk",
  "notes": [
-  "2026-10-05 INTEGRATOR-4: allow_forbidden GRANTED at the merge of lane/w-serve-2@94bbaa03d (the release batch), scope-reviewed: host/interfaces.lisp gains exactly 2 definterface rows, fn-tlsk-host-library-decide and fn-tlsk-host-library-line (D59 refusal scope e2301f288, which this release ships with the bundled OpenSSL 4d62d9f48). No other forbidden path touched."
+  "2026-10-05 INTEGRATOR-4: allow_forbidden GRANTED at the merge of lane/w-serve-2@94bbaa03d (the release batch), scope-reviewed: host/interfaces.lisp gains exactly 2 definterface rows, fn-tlsk-host-library-decide and fn-tlsk-host-library-line (D59 refusal scope e2301f288, which this release ships with the bundled OpenSSL 4d62d9f48). No other forbidden path touched.",
+  "2026-10-06 INTEGRATOR-7: source landed on dev at 4d62d9f48 (release bundling); state open->in-progress, verification owed."
  ],
  "owner": "unassigned",
  "severity": "high",
  "source": "feed-pace",
- "state": "open",
- "title": "operator_walk: 9 of 10 cases refuse every start, 'no OpenSSL libcrypto/libssl pair under <prefix>/libexec/fn/openssl', on the roll-up set ecf10066f (bq10050324-0132) and lane feed-pace's set 3a9806784 (bq10050400-0135): packaging/install-native.sh does not ship libexec/fn/openssl, which D59 (w-serve, PRF-1327) makes an installed node require. 7456b9f2c linked it for tests/native_harness.py's installed layout only; the walk installs through the real script. With it linked by hand (diag bq10050413-0136/-0137) 6 of 10 pass, including the three MODE STREAM feed cases. Owner: w-serve's owed release bundling of OpenSSL.",
- "updated": "2026-10-05T04:20:55Z"
+ "state": "in-progress",
+ "title": "operator_walk: the release ships its OpenSSL 3.5.8 in libexec/fn/openssl (4d62d9f48, dev); the 10-case walk verification on an installed node is owed. Original red: 9 of 10 cases refused every start, 'no OpenSSL libcrypto/libssl pair under <prefix>/libexec/fn/openssl', on the roll-up set ecf10066f (bq10050324-0132) and lane feed-pace's set 3a9806784 (bq10050400-0135); 7456b9f2c linked it for tests/native_harness.py's installed layout only.",
+ "updated": "2026-10-06T14:38:52Z"
 }

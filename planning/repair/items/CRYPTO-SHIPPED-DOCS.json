@@ -1,0 +1,16 @@
+{
+ "category": "crypto-shipped",
+ "file": "docs/install.md",
+ "id": "CRYPTO-SHIPPED-DOCS",
+ "line": "17",
+ "notes": [
+  "10-06 20:26 RULINGS-20261006 ruling 3, D59. DOC-ONLY: docs/install.md:17-20 (apt install libssl3 openssl sudo for minimal Debian 12), :23-31 fallback paragraph, :47 the system's TLS library; docs/operator-internals.md:820 TLS library is the system's, :824 the system's libssl (OpenSSL 3.0 or later), :849-851 OpenBSD LibreSSL and no OpenSSL, :2696-2698 requires system OpenSSL 3; planning/release-v6.6.0.md:340-341,357; CHANGELOG.md:14 crypto-deps entry; planning/decisions.md D35 (mark WITHDRAWN by ruling 3 per the D38 convention, do not rewrite history); specs/host.md:75 and :1086 table row (check against the new rule); comments in host/native/tls.lisp:85-98, host/native/build.lisp:495-501, host/native/io.lisp:9873, host/native/digest.lisp:6, tools/box_table.py:25, tools/native_env.py:28-31. Conversion: one pass after the SYSTEM-PATH items land, so text matches the code."
+ ],
+ "owner": "deputy-N",
+ "refs": "RULINGS-20261006 ruling 3; D59",
+ "severity": "low",
+ "source": "crypto-audit",
+ "state": "open",
+ "title": "docs still say the TLS library is the system's (DOC-ONLY)",
+ "updated": "2026-10-07T00:26:35Z"
+}

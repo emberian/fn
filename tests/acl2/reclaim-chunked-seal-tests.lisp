@@ -3,6 +3,7 @@
 ; (tests/acl2/reclaim-chunked-walk-tests.lisp: *rcw-new*, *rcw-c2*).
 (in-package "ACL2")
 (include-book "../../books/reclaim-chunked-seal")
+(include-book "../../books/defkeystone")
 (include-book "reclaim-chunked-walk-tests")
 
 (defconst *rcs-keyring* (fn-sn-keyring *rpt-s*))
@@ -56,3 +57,27 @@
 (must-fail-checked
  (assert-event (equal (in-arena-fn-rcw-srcs-steps *rpt-payloads* (reverse *rcw-c2*) nil nil)
                       *rcs-walk*)))
+
+; TEETH-62 BEGIN
+; fn-rcw-predict-acc-steps-is-predict with its teeth (TEETH CONTRACT v1).  Not here: fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open, whose two antecedents have no counterexample on a reached ledger (a negative h0 and a :bad chunk both leave the rebuild equal to the full open).
+(defteeth fn-rcw-predict-acc-steps-is-predict
+  :claim (((start-handle (natp h0)))
+          (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
+                                              keyring generation h0 nil))
+                 (all (fn-rcw-concat chunks)))
+             (and (equal (equal r :bad) (if (fn-orcs-has-bad all) t nil))
+                  (implies (not (equal r :bad))
+                           (and (equal (fn-rcw-acc-finish (car r))
+                                       (fn-sco-capture configs
+                                                       (car (fn-orcs-predict all keyring
+                                                                             generation h0))))
+                                (equal (caddr r)
+                                       (cadr (fn-orcs-predict all keyring generation h0)))
+                                (equal (cadr r) (+ h0 (len (caddr r)))))))))
+  :subject fn-rcw-predict-acc-steps
+  :witness ((configs *rcw-configs*) (chunks *rcw-c2*) (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 *rcs-h0*))
+  :breaks ((start-handle ((configs *rcw-configs*) (chunks *rcw-c2*) (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 -5)) :logical "a negative start handle is outside the guard (natp h0) of the walk"))
+  :mutations ((handle-not-advanced
+               (:conclusion (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks keyring generation h0 nil))) (equal (cadr r) h0)))
+               ((configs *rcw-configs*) (chunks *rcw-c2*) (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 *rcs-h0*))
+               :fault "the final handle left at the start handle")))

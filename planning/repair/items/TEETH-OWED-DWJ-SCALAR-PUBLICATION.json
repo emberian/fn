@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/decoded-worker-job.lisp",
+ "id": "TEETH-OWED-DWJ-SCALAR-PUBLICATION",
+ "notes": "[\"books/decoded-worker-job.lisp:172. A mutation must falsify the conclusion at a job whose scalar-byte reader answers :byte; such a job is only built by running the stobj decode (as tests/acl2/decoded-worker-reuse-execution-tests.lisp does), not as a ground value. Owed: a stobj-built witness (TEETH-OWED-STOBJ-WITNESS design, build/coordinator/P-DEFKEYSTONE-STOBJ-DESIGN.md) or a defun-nx job fixture, then its defteeth.\"]",
+ "owner": "teeth-gate",
+ "severity": "low",
+ "source": "p-teeth",
+ "state": "open",
+ "title": "fn-dwj-retired-job-refuses-scalar-publication has no teeth: a real mutation needs a job built by running the stobj decode",
+ "updated": "2026-10-07T00:19:44Z"
+}

@@ -227,6 +227,22 @@ rendering the resolved configuration for `fn-native-operator-run-at`. It
 cannot turn an explicit unsupported output policy into an absent default;
 the actual operator still receives the policy and refuses it by name.
 
+### Live reclaim opt-in
+
+`resources.reclaim_live` (D53) is a boolean; `true` asks for live reclaim,
+`false` and absence are the same configuration. The normalized record holds
+the flag as field 31 only when it is set (`fn-ncfg-with-reclaim-live`), so a
+configuration without it is the list it was before the key existed; `show`
+renders `reclaim_live = true` in the resources table only when set, and the
+round-trip keystones (`fn-native-config-show-round-trip`,
+`fn-native-config-loaded-show-round-trip`) cover it: the renderable invariant
+carries a boolean flag. Relative-path resolution preserves it. The accepted
+run plan projects it (`fn-native-operator-result-run-reclaim-live`) to the
+launcher's reservation (books/reclaim-reservation.lisp) and the running
+owner's connection budget; tests/acl2/native-config-show-tests.lisp holds the
+witnesses (on, off, beside cold and output) and the teeth (a non-boolean value
+refused, a non-boolean flag not renderable).
+
 ## Current operation observation
 
 `fn operator CONFIG operation` selects the existing authenticated local status

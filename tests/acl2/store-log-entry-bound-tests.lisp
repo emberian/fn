@@ -15,6 +15,7 @@
 ;       retained hypotheses, the omitted one false, the conclusion false.
 (in-package "ACL2")
 (include-book "store-log-stream-tests")
+(include-book "../../books/defkeystone")
 (include-book "../../books/store-log-entry-bound")
 
 (assert-event
@@ -98,3 +99,88 @@
         (not (equal (len e) (fn-lgw-entry-len h st0 short)))
         (not (equal (sleb-step e st0 c) (sleb-step nil st0 c))))))
 
+; TEETH-62 BEGIN
+; The two entry-len-bounded-is-entry-len keystones with their teeth (TEETH CONTRACT v1).  fn-lgw-entry-len-bounded-step and fn-lgdm-entry-len-bounded-step state `(equal (fn-lgw-step ...) (fn-lgw-step ...))` over multiple values and stay owed with the TEETH-OWED-MV-CLAIM class.
+(defteeth fn-lgw-entry-len-bounded-is-entry-len
+  :claim (((within-bound (fn-lgw-entry-len-bounded h st extent max)))
+          (equal (fn-lgw-entry-len-bounded h st extent max)
+                  (fn-lgw-entry-len h st extent)))
+  :subject fn-lgw-entry-len-bounded
+  :witness ((h (fn-bs-take 10 (sleb-seg))) (st (fn-lgw-start *fn-lg-genesis* 1)) (extent (sleb-extent)) (max (slw-max)))
+  :breaks ((within-bound ((h (fn-bs-take 10 (sleb-long))) (st (fn-lgw-start *fn-lg-genesis* 1)) (extent (sleb-extent)) (max (slw-max)))))
+  :mutations ((refuses-in-bound
+               (:conclusion (equal (fn-lgw-entry-len-bounded h st extent max) nil))
+               ((h (fn-bs-take 10 (sleb-seg))) (st (fn-lgw-start *fn-lg-genesis* 1)) (extent (sleb-extent)) (max (slw-max)))
+               :fault "the bounded length refusing a record that is within the bound")))
+
+(defteeth fn-lgdm-entry-len-bounded-is-entry-len
+  :claim (((within-bound (fn-lgdm-entry-len-bounded h ps extent max)))
+          (equal (fn-lgdm-entry-len-bounded h ps extent max)
+                  (fn-lgdm-entry-len h ps extent)))
+  :subject fn-lgdm-entry-len-bounded
+  :witness ((h (fn-bs-take 10 (sleb-seg))) (ps (fn-lgdm-start (fn-lgw-start *fn-lg-genesis* 1))) (extent (sleb-extent)) (max (slw-max)))
+  :breaks ((within-bound ((h (fn-bs-take 10 (sleb-long))) (ps (fn-lgdm-start (fn-lgw-start *fn-lg-genesis* 1))) (extent (sleb-extent)) (max (slw-max)))))
+  :mutations ((refuses-in-bound
+               (:conclusion (equal (fn-lgdm-entry-len-bounded h ps extent max) nil))
+               ((h (fn-bs-take 10 (sleb-seg))) (ps (fn-lgdm-start (fn-lgw-start *fn-lg-genesis* 1))) (extent (sleb-extent)) (max (slw-max)))
+               :fault "the bounded probe length refusing a record that is within the bound")))
+
+; ---------------------------------------------------------------------------
+; The two *-entry-len-bounded-step keystones with their teeth (TEETH CONTRACT
+; v1).  The kind-octet hypothesis (nth 5 e) = (nth 5 h) has no counterexample
+; (the step over an oversized entry equals the step over none whatever its
+; kind octet; checked for 0..255 at the long segment), so each claim keeps the
+; whole implication as its conclusion.
+;
+; fn-lgdm-entry-len-bounded-step: executable witnesses.  Besides the
+; conclusion mutation, the oversized and length hypotheses are removed as
+; conclusion mutations that drop them, at a segment where the dropped one
+; fails and the probe step over E differs from the step over none.
+;
+; fn-lgw-entry-len-bounded-step: fn-lgw-step returns three values, so its
+; witnesses are ground theorems (:witness-lemma / :lemma; TEETH-OWED-MV-CLAIM
+; lemma debt).  Only the oversized witness can be a ground theorem: the step
+; over a real entry calls fn-record-decode-exact, whose attachment proofs
+; ignore, so the dropped-hypothesis mutations (which need the step over a real
+; entry to differ) stay owed.
+(defconst *sleb-c* (sleb-long))
+(defconst *sleb-c-ok* (sleb-seg))
+(defconst *sleb-st* (fn-lgw-start *fn-lg-genesis* 1))
+(defconst *sleb-ps* (fn-lgdm-start (fn-lgw-start *fn-lg-genesis* 1)))
+(defconst *sleb-h* (fn-bs-take 10 *sleb-c*))
+(defconst *sleb-h-ok* (fn-bs-take 10 *sleb-c-ok*))
+(defconst *sleb-e* (fn-bs-take 5042 *sleb-c*))
+(defconst *sleb-e-ok* (fn-bs-take (fn-lgw-entry-len *sleb-h-ok* *sleb-st* 8192) *sleb-c-ok*))
+(defconst *sleb-max* (slw-max))
+(defconst *sleb-unit* (slw-unit))
+
+(defthm sleb-lgw-step-witness
+  (implies (and (not (fn-lgw-entry-len-bounded *sleb-h* *sleb-st* 8192 *sleb-max*)) (equal (len *sleb-e*) (fn-lgw-entry-len *sleb-h* *sleb-st* 8192)) (equal (nth 5 *sleb-e*) (nth 5 *sleb-h*))) (equal (fn-lgw-step *sleb-e* *sleb-st* *sleb-unit* *sleb-max* 8192) (fn-lgw-step nil *sleb-st* *sleb-unit* *sleb-max* 8192))))
+(defthm sleb-lgw-step-mutant-conclusion
+  (and (implies (and (not (fn-lgw-entry-len-bounded *sleb-h* *sleb-st* 8192 *sleb-max*)) (equal (len *sleb-e*) (fn-lgw-entry-len *sleb-h* *sleb-st* 8192)) (equal (nth 5 *sleb-e*) (nth 5 *sleb-h*))) (equal (fn-lgw-step *sleb-e* *sleb-st* *sleb-unit* *sleb-max* 8192) (fn-lgw-step nil *sleb-st* *sleb-unit* *sleb-max* 8192))) (not (implies (and (not (fn-lgw-entry-len-bounded *sleb-h* *sleb-st* 8192 *sleb-max*)) (equal (len *sleb-e*) (fn-lgw-entry-len *sleb-h* *sleb-st* 8192)) (equal (nth 5 *sleb-e*) (nth 5 *sleb-h*))) (not (equal (fn-lgw-step *sleb-e* *sleb-st* *sleb-unit* *sleb-max* 8192) (fn-lgw-step nil *sleb-st* *sleb-unit* *sleb-max* 8192)))))))
+(defteeth fn-lgw-entry-len-bounded-step
+  :claim (() (implies (and (not (fn-lgw-entry-len-bounded h st extent max)) (equal (len e) (fn-lgw-entry-len h st extent)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgw-step e st unit max extent) (fn-lgw-step nil st unit max extent))))
+  :subject fn-lgw-step
+  :witness-lemma sleb-lgw-step-witness
+  :witness ((h *sleb-h*) (st *sleb-st*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
+  :mutations ((step-told-apart
+               (:conclusion (implies (and (not (fn-lgw-entry-len-bounded h st extent max)) (equal (len e) (fn-lgw-entry-len h st extent)) (equal (nth 5 e) (nth 5 h))) (not (equal (fn-lgw-step e st unit max extent) (fn-lgw-step nil st unit max extent)))))
+               ((h *sleb-h*) (st *sleb-st*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
+               :fault "a step that tells an oversized entry from no entry"
+               :lemma sleb-lgw-step-mutant-conclusion)))
+(defteeth fn-lgdm-entry-len-bounded-step
+  :claim (() (implies (and (not (fn-lgdm-entry-len-bounded h ps extent max)) (equal (len e) (fn-lgdm-entry-len h ps extent)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max))))
+  :subject fn-lgdm-step
+  :witness ((h *sleb-h*) (ps *sleb-ps*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
+  :mutations ((step-told-apart
+               (:conclusion (implies (and (not (fn-lgdm-entry-len-bounded h ps extent max)) (equal (len e) (fn-lgdm-entry-len h ps extent)) (equal (nth 5 e) (nth 5 h))) (not (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max)))))
+               ((h *sleb-h*) (ps *sleb-ps*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
+               :fault "a probe step that tells an oversized entry from no entry")
+              (without-the-bound-hypothesis
+               (:conclusion (implies (and (equal (len e) (fn-lgdm-entry-len h ps extent)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max))))
+               ((h *sleb-h-ok*) (ps *sleb-ps*) (extent 8192) (max *sleb-max*) (e *sleb-e-ok*) (unit *sleb-unit*))
+               :fault "a claim that drops the oversized hypothesis: the real first entry is probed")
+              (without-the-length-hypothesis
+               (:conclusion (implies (and (not (fn-lgdm-entry-len-bounded h ps extent max)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max))))
+               ((h *sleb-h-ok*) (ps *sleb-ps*) (extent 20) (max *sleb-max*) (e *sleb-e-ok*) (unit *sleb-unit*))
+               :fault "a claim that drops the length hypothesis: the entry is not the one the length named")))

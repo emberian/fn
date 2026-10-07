@@ -147,7 +147,10 @@
                         ;; Same accepted plan as launcher reservation; never
                         ;; reparse configuration or grant cold/output twice.
                         (fnn-core 'fn-native-operator-host-result-run-cold-resources result)
-                        (fnn-core 'fn-native-operator-host-result-run-output-resources result))))
+                        (fnn-core 'fn-native-operator-host-result-run-output-resources result)
+                        ;; D53: the live-reclaim opt-in, the same accepted
+                        ;; plan's as the launcher's reservation.
+                        (fnn-core 'fn-native-operator-host-result-run-reclaim-live result))))
                 (setq run-code code)
                 ;; The owner's fault, when it stopped on one, is the
                 ;; result line's reason: the last line the service

@@ -3,11 +3,14 @@
  "detail": "375 unreachable total, 8 unbaselined. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
  "file": "books/resource-vector-tree.lisp",
  "id": "FILL-REACH-CHECK-8-UNBASELINED",
- "notes": [],
- "owner": "unowned",
+ "notes": [
+  "10-05 lane/baseline-reds 1badd2599: all 8 triaged via tools/reach_check.py --baseline (root-ruled dispositions). PRF-171 UNREACHABLE-IN-COMPOSITION (RETIRED HOST ARM, matrix-reds 2026-09-27); PRF-1182 x2 HOST TRIAGE OWED integration owner (fn-ich-event uncalled; hooks + runtime getter are the integration owner's work, carried on the coordinator future queue); PRF-1209 x5 HOST TRIAGE OWED deputy1/resource-ledger stage 6 (same as its six baselined fn-rv siblings; the output-tariff lane's fn-ocap-* seam does not host them). PRF-282 row dropped by the same regen (now hosted). reach_check --summary --strict: 0 unbaselined, exit 0.",
+  "10-06 19:38 2026-10-06 p-teeth audit: reopened. It was set landed, but the baseline row only records the 8 as triaged: the host still never calls fn-rt-* or fn-ich-rx-* (PRF-1182 x2, PRF-1209 x5) and PRF-171 is a retired arm. Landing needs the host calls: see HOST-OWED-PRF-1182-RX-SOURCE-HOOKS and HOST-OWED-PRF-1209-RESOURCE-TREE (planning/reach-baseline.json not edited)."
+ ],
+ "owner": "baseline-reds",
  "severity": "medium",
  "source": "fill-20261004",
- "state": "open",
+ "state": "in-progress",
  "title": "reach_check --strict: 8 NEW unreachable subjects (no host line reaches the function the event is about): PRF-171 checkpoint-publish fn-cpp-next-generation; PRF-1182 connection-receiver-source-invariants (fn-ich-rx-bind, fn-ich-rx-origin, fn-ich-row); PRF-1209 resource-vector-tree (fn-rt-step, fn-rt-run, fn-rt-root)",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-06T23:38:24Z"
 }
