@@ -826,7 +826,9 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
         spec.measure = m
     st = xa.get(":stobjs")
     if st is not None:
-        raise Refuse("step-stobjs", "def-loop :step does not thread :stobjs")
+        spec.stobjs = [i.text for i in st.items] if isinstance(st, Lst) else [st.text]
+        if set(spec.stobjs) & set(svars):
+            raise Refuse("step-stobjs", "a stobj is part of the advancing state")
     return spec
 
 
@@ -856,6 +858,8 @@ def render_step(spec: Spec, hoisted) -> str:
         chunks.append(Opt(":measure", spec.measure))
     if spec.guard is not None:
         chunks.append(Opt(":guard", spec.guard))
+    if spec.stobjs:
+        chunks.append(":stobjs " + (spec.stobjs[0] if len(spec.stobjs) == 1 else "(" + " ".join(spec.stobjs) + ")"))
     if spec.progress_hints is not None:
         chunks.append(Opt(":progress-hints", spec.progress_hints))
     if spec.guard_hints is not None:
