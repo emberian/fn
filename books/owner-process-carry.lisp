@@ -200,7 +200,7 @@
            (equal (fn-own-proc (fn-ocfg-owner (fn-owner-carry-proc oc state)))
                   (fn-own-proc (fn-ocfg-owner (f-get-global 'fn-owner state)))))
   :hints (("Goal" :in-theory (enable fn-owner-carry-proc fn-ocfg-with-owner
-                                     fn-own-with-proc fn-owner-core))))
+                                     fn-own-with-proc fn-owner-core fn-owner-ocfg))))
 
 (defthm fn-owner-carry-proc-keeps-store-and-view
   (and (equal (fn-own-store (fn-ocfg-owner (fn-owner-carry-proc oc state)))
