@@ -730,9 +730,26 @@ longer reach the callee's arithmetic (EXTRACTION-PROGRAM-20261007.md, extract-pr
         ((eql 0 (search "attach:" id)) 6)
         (t 7)))
 
+(defun fe-inline-raw-ids (run)
+  "The raw: ids of the functions a decl: unit proclaims inline.  SBCL records an inline expansion only
+when the declaim precedes the defun, and a caller compiled before that defun keeps a full call, so these
+definitions are emitted ahead of every other function (measured: with alphabetical order IFIX and ZP
+stayed full calls inside FN-B3-ADD although declaimed inline)."
+  (let ((out (make-hash-table :test 'equal)))
+    (maphash (lambda (id u)
+               (when (and (eql 0 (search "decl:" id))
+                          (some (lambda (f) (and (consp f) (eq (car f) 'declaim)
+                                                 (consp (cadr f)) (eq (car (cadr f)) 'inline)))
+                                (car u)))
+                 (setf (gethash (concatenate 'string "raw:" (subseq id 5)) out) t)))
+             (fr-units run))
+    out))
+
 (defun fe-sorted-ids (run)
-  (let ((ids (loop for k being the hash-keys of (fr-units run) collect k)))
-    (stable-sort (sort ids #'string<) #'< :key #'fe-unit-rank)))
+  (let ((ids (loop for k being the hash-keys of (fr-units run) collect k))
+        (inline (fe-inline-raw-ids run)))
+    (stable-sort (sort ids #'string<) #'<
+                 :key (lambda (id) (if (gethash id inline) 7/2 (fe-unit-rank id))))))
 
 (defun fe-write-file (path string)
   (with-open-file (o path :direction :output :if-exists :supersede :external-format :latin-1)
