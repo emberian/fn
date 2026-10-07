@@ -29,8 +29,10 @@
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
 ; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
 ; acknowledged record is recovered from every crash image of the host's run
-; of the active segment; the log's frame bound (fn-lgu-log-max).
-(include-book "../books/store-log-durable")
+; of the active segment; the log's frame bound (fn-lgu-log-max); the open's
+; copy (RL-01 A2: fn-lgrc-copy-verdict, fn-lgrc-copy-refusal-text), which
+; includes the former.
+(include-book "../books/store-log-recover-copy")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -360,6 +362,16 @@
 (definterface fn-fs-inbox-admit
   :class :common-lisp-compliant
   :direct "fnn-mux-adopt-place decides admission under the same inbox lock as closure")
+;; r71 F13 (books/mux-accept-slot.lisp): the pending-accept slot.  The mux's
+;; accept threads ask through the core dispatcher (fnn-core 'fn-mxa-reserve,
+;; fn-mxa-deferral-line), as the cursor quantum does fn-splan-cursor-resume-ms.
+(definterface fn-mxa-reserve
+  :class :common-lisp-compliant
+  :kinds ((loops true-listp))
+  :keystones (fn-mxa-reserve-grants-only-a-free-loop
+              fn-mxa-reservation-keeps-the-pending-bound))
+(definterface fn-mxa-deferral-line
+  :class :common-lisp-compliant)
 
 ;; Private committer control: immutable, guard-t values off the owner section.
 (definterface fn-cmt-init
@@ -456,9 +468,13 @@
 (definterface fn-lg-extent-okp
   :class :common-lisp-compliant)
 
-(definterface fn-lg-recover-tail
+(definterface fn-lgrc-copy-verdict
   :class :common-lisp-compliant
-  :kinds ((ks true-listp)))
+  :keystones (fn-lgrc-copy-verdict-copies-exactly-with-room
+              fn-lgrc-open-refuses-without-room-and-takes-no-step))
+
+(definterface fn-lgrc-copy-refusal-text
+  :class :common-lisp-compliant)
 
 (definterface fn-lg-workload-prefixp
   :class ::ideal)
@@ -525,7 +541,8 @@
 (definterface fn-lgu-acknowledge
   :class :common-lisp-compliant
   :kinds ((c true-listp) (n natp))
-  :keystones (fn-lgu-acknowledge-acknowledges-only-recoverable-records))
+  :keystones (fn-lgu-acknowledge-acknowledges-only-recoverable-records
+              fn-lgrc-acknowledge-from-the-copy))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant
@@ -654,7 +671,8 @@
 
 (definterface fn-lgs-open-plan
   :class :common-lisp-compliant
-  :keystones (fn-lgs-open-plan-scan-ignores-covered))
+  :keystones (fn-lgs-open-plan-scan-ignores-covered
+              fn-lgs-install-drop-covers-what-the-open-left))
 
 (definterface fn-lgs-segment-index
   :class :common-lisp-compliant)
@@ -1986,6 +2004,11 @@
   :class :common-lisp-compliant)
 
 
+; RL-02: the settlement of an abandoned capture (host/native/owner.lisp
+; fnn-owner-publish-captured's done quantum).
+(definterface fn-owner-sco-publication-abandoned
+  :class :common-lisp-compliant)
+
 (definterface fn-owner-sco-publication-done
   :class :common-lisp-compliant)
 
@@ -2311,7 +2334,11 @@
               (fn-csp-framer-window-accounts-for-every-octet :via fn-csp-framer-window)
               fn-csp-step-settles-one-verdict-exactly-once
               fn-csp-step-final-verdict-journals
-              fn-csp-window-bounds-in-flight))
+              fn-csp-window-bounds-in-flight
+              fn-csp-body-only-after-its-335
+              fn-csp-streaming-only-from-335
+              fn-csp-journals-only-a-settled-batch
+              fn-csp-at-most-one-streaming))
 
 (definterface fn-csp-done-p :class :common-lisp-compliant)
 (definterface fn-csp-close :class :common-lisp-compliant)
@@ -4799,10 +4826,11 @@
 (definterface fn-pgs-frame-len
   :class :common-lisp-compliant
   :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) reads the selected array's length to refuse a range outside it; SEL checked against 0, 1, 2 first")
-(definterface fn-pgs-frame-put
+(definterface fn-pgb-frame-put
   :class :common-lisp-compliant
   :kinds ((base natp))
-  :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) is the constraint's right-hand side, the put of fn-pgs-fill-realize's 2048 u64 words at BASE; the selector and range are checked first, the words are the realizer's")
+  :keystones (fn-pgb-frame-put-is-frame-put-of-words)
+  :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) stores the page buffer's little-endian words with it after one pread; the selector and range are checked first")
 
 ;; books/payload-extent-read.lisp
 

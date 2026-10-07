@@ -450,7 +450,8 @@ class SchedulePointTests(unittest.TestCase):
                           "native-checkpoint-state-checkpoint-staged-durable",
                           "native-checkpoint-state-checkpoint-replaced",
                           "native-checkpoint-state-checkpoint-durable",
-                          "native-recovery-log-truncated", "native-recovery-log-recovered",
+                          "native-recovery-log-copied", "native-recovery-log-copy-fenced",
+                          "native-recovery-log-swapped", "native-recovery-log-recovered",
                           "native-recovery-recovery-stage-unlinked",
                           "schedule-receipt-observed-duplicate",
                           "schedule-receipt-observed-lose-completion"})
@@ -507,7 +508,7 @@ class SchedulePointTests(unittest.TestCase):
                 self.assertEqual(validate(s, REGISTRY), [], s.id)
                 self.assertTrue(executable_on_native(s, REGISTRY), s.id)
                 self.assertEqual(Scenario.from_json(s.to_json()), s)
-        self.assertEqual(counts, {"post": 5, "recovery": 7, "served": 5,
+        self.assertEqual(counts, {"post": 5, "recovery": 9, "served": 5,
                                   "served-recovery": 3, "checkpoint": 5, "cross-route": 1})
 
 

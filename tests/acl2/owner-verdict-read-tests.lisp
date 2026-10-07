@@ -166,7 +166,8 @@
           (fn-nntp-keywordp (cadr tokens) ":FN-VERIFIED")
           (fn-nntp-message-id-tokenp (caddr tokens))
           (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens))))
-          (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
+          (not (fn-auth-access-restrictedp
+               as (fn-gac-config-with-live (fn-own-conn-config conn) (fn-own-config o))))
           (consp (fn-find-article (fn-nntp-token-string (caddr tokens))
                                   (fn-state-articles
                                    (fn-own-conn-archive conn))))

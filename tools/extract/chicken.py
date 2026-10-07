@@ -194,6 +194,7 @@ SHIMS = {
     "ACL2::FN-HX-OPEN-RW": "a-hx-open-rw", "ACL2::FN-HX-OPEN-RO": "a-hx-open-ro",
     "ACL2::FN-HX-CREATE-EXCL": "a-hx-create-excl", "ACL2::FN-HX-CLOSE": "a-hx-close",
     "ACL2::FN-HX-PWRITE": "a-hx-pwrite", "ACL2::FN-HX-PWRITE-ZEROS": "a-hx-pwrite-zeros",
+    "ACL2::FN-HX-PWRITE-BUF": "a-hx-pwrite-buf", "ACL2::FN-HX-FREE-OCTETS": "a-hx-free-octets",
     "ACL2::FN-HX-WRITE-ALL": "a-hx-write-all", "ACL2::FN-HX-READ-AT": "a-hx-read-at",
     "ACL2::FN-HX-FDATASYNC": "a-hx-fdatasync", "ACL2::FN-HX-FSYNC": "a-hx-fsync",
     "ACL2::FN-HX-PREALLOCATE": "a-hx-preallocate", "ACL2::FN-HX-UNLINK": "a-hx-unlink",

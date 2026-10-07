@@ -8,7 +8,8 @@ Four families, one scenario per cut, all run by the same recorder:
                    candidate is left (a death at log-written of a batch of
                    one), the real recovery is started and killed at a
                    RECOVERY_CUTS cut or at the log's own recover cuts
-                   (log-truncated, log-recovered), its writes are recorded
+                   (log-copied, log-copy-fenced, log-swapped, log-recovered:
+                   P-LOG-RECOVER-COPY), its writes are recorded
                    (the store's file listing before and after), recovery
                    runs again, and the original commitments are checked.
   served           the served owner killed at each POST_LOG_CUTS cut while
@@ -145,9 +146,10 @@ def scenario_for(cut, memberships: bool = False) -> Scenario:
 def recovery_cuts() -> list:
     """Where a recovery can be killed: fn-lg-open-program's cuts and the
     staging sweep's (RECOVERY_CUTS), and the log's own recover program's
-    (LOG_CUTS: log-truncated, log-recovered)."""
+    (LOG_CUTS of fn-lgrc-program: log-copied, log-copy-fenced, log-swapped,
+    log-recovered)."""
     return list(native_cuts.RECOVERY_CUTS) + [
-        c for c in native_cuts.LOG_CUTS if c.program == "fn-lg-recover-program"]
+        c for c in native_cuts.LOG_CUTS if c.program == "fn-lgrc-program"]
 
 
 def recovery_scenario_for(cut, memberships: bool = False) -> Scenario:

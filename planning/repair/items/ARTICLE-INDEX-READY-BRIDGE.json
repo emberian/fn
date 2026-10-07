@@ -1,0 +1,15 @@
+{
+ "acceptance": "a theorem equating fn-asto-ready-plan-step over a capture started by fn-asto-capture-selection with one started by the walk, under fn-scj-conn-pinp",
+ "category": "proof-owed",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "books/article-stream-owner.lisp",
+ "id": "ARTICLE-INDEX-READY-BRIDGE",
+ "notes": [],
+ "owner": "article-index",
+ "severity": "medium",
+ "source": "ARTICLE-INDEX",
+ "state": "open",
+ "title": "fn-asto-selection-ready/-missing/-finish read only the outcome fields (1,2,3,5,9) of a selection state; state that as a theorem so the number/current outcome-equality keystones carry the capture result (the keystones are at the selection start, not through the ready step), and prove the owner invariant fn-scj-conn-pinp discharges fn-scr-catalogp at fn-asto-capture",
+ "updated": "2026-10-07T02:45:19Z"
+}

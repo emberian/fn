@@ -593,8 +593,12 @@ another predecessor (`log-chain-broken`, never read as a torn tail). A death
 at any rotation or drop cut reopens to the same history: a spare staged but
 not renamed is a staging orphan the writable open sweeps (segment K stays the
 active one); after the rename and before `rotate-durable` the new segment is
-an interrupted rotation the writable open completes (a reader reads it as empty and writes nothing), holding nothing acknowledged; and a covered segment left by a drop is dropped again
-(`fn-lgs-open-plan-scan-ignores-covered`). The history the open replays after
+an interrupted rotation the writable open completes (a reader reads it as empty and writes nothing), holding nothing acknowledged; and a covered segment left by a drop is scanned past and kept
+(`fn-lgs-open-plan-scan-ignores-covered`): no open unlinks a segment
+(`fn-lgrc-open-unlinks-no-segment`; the checkpoint an open reads may be named
+only in the page cache after a failed root fence), and the next checkpoint
+install's drop, after its own root fence, covers it
+(`fn-lgs-install-drop-covers-what-the-open-left`). The history the open replays after
 the drop is the full chain's (T8, `fn-lgw-segment-drop-preserves-the-open`, over the streamed open).
 `store compact` on a `fn-store-9` store is a checkpoint with rotation
 followed by the drop; the owner's automatic checkpoint does the same. On a

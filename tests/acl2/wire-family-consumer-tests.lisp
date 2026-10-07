@@ -300,3 +300,123 @@
                                                       (fn-wf-cs-request-value :position first nil)))))
                ((kind :register) (first '(1)) (second '(2 3)))
                :fault "an encoder that answers every command with the position request")))
+
+; fnct.consumer.poll-reply (kind 6): every status, accepted with an empty and
+; a non-empty report.  The host's encoding is the grammar's, both decoders
+; accept it whole, and the host's answer is the grammar's value under
+; fn-wf-cs-poll-value.  Negatives, each refused by both decoders: a cursor
+; length past 346, one under 31 (the :sized bounds), a report length that
+; is not the octets present, an inner cursor the cursor grammar refuses, a
+; non-accepted status carrying a cursor, and the wrong FNCT kind; the encoder
+; refuses a cursor that does not decode and a status with a cursor (:bad), so
+; fn-wf-cs-poll-encode-agrees' hypothesis is not vacuous.
+(defun wfcp-agrees (status cursor report)
+  (let* ((x (fn-ncl-poll-reply-encode status cursor report))
+         (v (fn-wf-cs-poll-value status cursor report))
+         (w (fn-wg-decode *fn-wf-cs-poll-reply-grammar* x)))
+    (and (not (equal x :bad))
+         (equal x (fn-wg-encode *fn-wf-cs-poll-reply-grammar* v))
+         (equal (fn-ncl-poll-reply-decode x) (list :consumer-poll-reply status cursor report))
+         (equal w (fn-wg-ok v nil)))))
+
+(defun wfcp-both-refuse (x)
+  (and (equal (car (fn-ncl-poll-reply-decode x)) :refused)
+       (not (and (fn-wg-okp (fn-wg-decode *fn-wf-cs-poll-reply-grammar* x))
+                 (null (fn-wg-rest (fn-wg-decode *fn-wf-cs-poll-reply-grammar* x)))))))
+
+(defun wfcp-seal (payload)
+  (fn-ncl-poll-seal payload))
+
+(assert-event
+ (let ((cursor (fn-cp-cursor-encode
+                (list :cursor '(1) '(2) '(3) '(4) '(5) 0 0 1 7))))
+   (and (wfcp-agrees :accepted cursor nil)
+        (wfcp-agrees :accepted cursor '(1 2 3 4 5 6 7 8))
+        (wfcp-agrees :accepted cursor (make-list 1000 :initial-element 9))
+        (wfcp-agrees :refused nil nil)
+        (wfcp-agrees :uncertain nil nil)
+        (wfcp-agrees :fault nil nil)
+        (equal (fn-ncl-poll-reply-encode :accepted '(1 2 3) nil) :bad)
+        (equal (fn-ncl-poll-reply-encode :refused cursor nil) :bad)
+        (equal (fn-ncl-poll-reply-encode :refused nil '(1)) :bad))))
+
+; fn-wf-cs-poll-cursor-file-is-the-frames-sized-field: the cursor file's bytes
+; (third of the decoded reply) are the cursor the frame carries and the :sized
+; field's content; the report file's bytes are the :bytes field.  Removal: an
+; encoder-refused cursor (it does not decode) has no frame.  Mutations: a host
+; that writes the report where the cursor belongs, and one that writes the
+; cursor where the report belongs.
+(defconst *wfcp-cursor*
+  (fn-cp-cursor-encode (list :cursor '(1) '(2) '(3) '(4) '(5) 0 0 1 7)))
+
+(defteeth fn-wf-cs-poll-cursor-file-is-the-frames-sized-field
+  :claim (((encodes (not (equal (fn-ncl-poll-reply-encode :accepted cursor report) :bad))))
+          (let ((frame (fn-ncl-poll-reply-encode :accepted cursor report))
+                (value (fn-wf-cs-poll-value :accepted cursor report)))
+            (and (equal (third (fn-ncl-poll-reply-decode frame)) cursor)
+                 (equal (fn-wg-encode *fn-wf-fncu-grammar* (car (cadr value)))
+                        (third (fn-ncl-poll-reply-decode frame)))
+                 (equal (fourth (fn-ncl-poll-reply-decode frame))
+                        (cadr (cadr value))))))
+  :subject fn-ncl-poll-reply-decode
+  :witness ((cursor *wfcp-cursor*) (report '(1 2 3 4 5 6 7 8)))
+  :breaks ((encodes ((cursor '(1 2 3)) (report nil))))
+  :mutations ((cursor-file-holds-the-report
+               (:conclusion (let ((frame (fn-ncl-poll-reply-encode :accepted cursor report))
+                                  (value (fn-wf-cs-poll-value :accepted cursor report)))
+                              (and (equal (third (fn-ncl-poll-reply-decode frame)) report)
+                                   (equal (fn-wg-encode *fn-wf-fncu-grammar* (car (cadr value)))
+                                          (third (fn-ncl-poll-reply-decode frame)))
+                                   (equal (fourth (fn-ncl-poll-reply-decode frame))
+                                          (cadr (cadr value))))))
+               ((cursor *wfcp-cursor*) (report '(1 2 3 4 5 6 7 8)))
+               :fault "a host that writes the report octets to the cursor file")
+              (report-file-holds-the-cursor
+               (:conclusion (let ((frame (fn-ncl-poll-reply-encode :accepted cursor report))
+                                  (value (fn-wf-cs-poll-value :accepted cursor report)))
+                              (and (equal (third (fn-ncl-poll-reply-decode frame)) cursor)
+                                   (equal (fn-wg-encode *fn-wf-fncu-grammar* (car (cadr value)))
+                                          (third (fn-ncl-poll-reply-decode frame)))
+                                   (equal (fourth (fn-ncl-poll-reply-decode frame))
+                                          cursor))))
+               ((cursor *wfcp-cursor*) (report '(1 2 3 4 5 6 7 8)))
+               :fault "a host that writes the cursor octets to the report file")))
+
+(assert-event
+ (let* ((cursor (fn-cp-cursor-encode
+                 (list :cursor '(1) '(2) '(3) '(4) '(5) 0 0 1 7)))
+        (zero8 '(0 0 0 0 0 0 0 0))
+        (good (fn-ncl-poll-reply-encode :accepted cursor '(1 2 3)))
+        (kind (fn-wg-encode (list :frame '(70 78 67 84) 1 5 *fn-ncl-poll-max-payload*
+                                  *fn-wf-cs-poll-payload*)
+                            (fn-wf-cs-poll-value :accepted cursor '(1 2 3))))
+        ; a cursor length one past the cursor's octets: the :sized node reads
+        ; one octet of the report as cursor, the cursor grammar leaves it over
+        (long (wfcp-seal (append '(0) (fn-cbor-u32-bytes (+ 1 (len cursor))) cursor
+                                 (fn-cbor-u32-bytes 3) '(1 2 3))))
+        ; a cursor length past 346 octets, and one under 31
+        (past (wfcp-seal (append '(0) (fn-cbor-u32-bytes 347) (make-list 347 :initial-element 1)
+                                 (fn-cbor-u32-bytes 0))))
+        (under (wfcp-seal (append '(0) (fn-cbor-u32-bytes 30) (make-list 30 :initial-element 1)
+                                  (fn-cbor-u32-bytes 0))))
+        ; a report length that is not the octets present
+        (short (wfcp-seal (append '(0) (fn-cbor-u32-bytes (len cursor)) cursor
+                                  (fn-cbor-u32-bytes 4) '(1 2 3))))
+        (extra (wfcp-seal (append '(0) (fn-cbor-u32-bytes (len cursor)) cursor
+                                  (fn-cbor-u32-bytes 2) '(1 2 3))))
+        ; a refused status that carries a cursor
+        (carry (wfcp-seal (append '(1) (fn-cbor-u32-bytes (len cursor)) cursor
+                                  (fn-cbor-u32-bytes 0)))))
+   (and (not (equal good :bad))
+        (wfcp-both-refuse long)
+        (wfcp-both-refuse past)
+        (wfcp-both-refuse under)
+        (wfcp-both-refuse short)
+        (wfcp-both-refuse extra)
+        (wfcp-both-refuse carry)
+        (wfcp-both-refuse kind)
+        (wfcp-both-refuse (update-nth (1- (len good)) (logxor 1 (car (last good))) good))
+        (wfcp-both-refuse (append good '(0)))
+        (equal (fn-wg-decode *fn-wf-cs-poll-reply-grammar*
+                             (wfcp-seal (append '(1) zero8)))
+               (fn-wg-ok '(:refused nil) nil)))))

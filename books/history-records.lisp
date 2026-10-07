@@ -19,7 +19,7 @@
 ; exports are pure; a row whose page is not verified answers
 ; (:need-page P PHYS).  The ONE retry loop is `fn-hrecs-get' /
 ; `fn-hrecs-read': serve each need by one fill (`fn-hrecs-serve': the
-; host's byte primitive `fn-pgs-fill-realize' at the address the table
+; host's byte primitive `fn-pgs-page-words' at the address the table
 ; names for P, then the page store's digest check) and ask again.  A-PGS-
 ; HOST-IO (books/assumptions.lisp) enters there and nowhere else, with the
 ; relation `fn-hrecs-disk-faithful' (the page file holds the image's page
@@ -437,7 +437,7 @@
                                        (:instance fn-pgs-page-words-u64)
                                        (:instance fn-hp-u64-listp-is-fn-pgs-u64-listp (ws (fn-pgs-page-words file addr)))
                                        (:instance fn-hrs-put-is-frame-put (j (* 2048 p)) (ws (fn-pgs-page-words file addr))))))))
-  (mbe :logic (fn-hrs-fill-pgs p (fn-pgs-fill-realize file addr) txid pgs-mem fn-octets-pg)
+  (mbe :logic (fn-hrs-fill-pgs p (fn-pgs-page-words file addr) txid pgs-mem fn-octets-pg)
        :exec (cond ((not (and (< p (pgs-v-length pgs-mem)) (<= (* 2048 (+ 1 p)) (pgs-w-length pgs-mem))))
                     (mv (list :refused :fill-range) pgs-mem fn-octets-pg))
                    ((equal (pgs-vi p pgs-mem) 2) (mv :ok pgs-mem fn-octets-pg))
@@ -451,7 +451,7 @@
   (declare (xargs :stobjs fn-hrecs$c :guard (and (natp p) (fn-hrc-wfp fn-hrecs$c))
                   :guard-hints (("Goal" :in-theory (e/d (fn-hrc-fill fn-hrs-frame-fill-pgs)
                                                         (fn-hrs-fill-pgs))))))
-  (mbe :logic (fn-hrc-fill p (fn-pgs-fill-realize file addr) fn-hrecs$c)
+  (mbe :logic (fn-hrc-fill p (fn-pgs-page-words file addr) fn-hrecs$c)
        :exec (let ((txid (fn-hrc-txid fn-hrecs$c)))
                (stobj-let ((pgs-mem (fn-hrc-pgs fn-hrecs$c))
                            (fn-octets-pg (fn-hrc-oct fn-hrecs$c)))
@@ -1310,7 +1310,7 @@
   :rule-classes nil)
 
 ; No frame export of the abstract stobj: an export whose :logic reaches
-; fn-pgs-fill-realize makes fn-pgs-page-words an ancestor of an export, and
+; fn-pgs-page-words makes it an ancestor of an export, and
 ; ACL2 then forbids attaching to it (stobj-attachment-restrictions; the page
 ; file tests attach it).  The frame fill lives on the concrete fn-hrecs$c
 ; (fn-hrc-frame-fill), where the open, the retry loop and the completion run;
@@ -1539,7 +1539,7 @@
 ;
 ; A read that answers (:need-page P PHYS) is served by one fill of page P:
 ; its words come from the page file through the host's byte primitive,
-; `fn-pgs-fill-realize' (A-PGS-HOST-IO, books/assumptions.lisp: it answers
+; `fn-pgs-page-words' (A-PGS-HOST-IO, books/assumptions.lisp: it answers
 ; the words the page file holds at the address), at the address the
 ; table names for P (`fn-hrecs-phys'), then the read is asked again.  The
 ; fill keeps the history's faithfulness when the page file holds the
@@ -1575,7 +1575,7 @@
   ; (see the note before the defabsstobj), and nothing host-called reaches
   ; this composition; the concrete loop fn-hrc-get is the frame path.
   (declare (xargs :stobjs fn-hrecs :guard (natp p)))
-  (let ((words (fn-pgs-fill-realize file (fn-hrecs-phys p fn-hrecs))))
+  (let ((words (fn-pgs-page-words file (fn-hrecs-phys p fn-hrecs))))
     (fn-hrecs-fill p words fn-hrecs)))
 
 
@@ -1658,10 +1658,10 @@
                   (fn-hrecs-faithful st2)
                   (fn-hrecs-disk-faithful file st2))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hrecs-fill-keeps (words (fn-pgs-fill-realize file (fn-hrecs-phys p st))))
+           :use ((:instance fn-hrecs-fill-keeps (words (fn-pgs-page-words file (fn-hrecs-phys p st))))
                  (:instance fn-hrs-disk-ok-page (p 0) (q p) (n (pgs-v-length (fn-hrc-pgs (cdr st)))))
                  (:instance fn-hrs-disk-ok-after-fill (q 0) (n (pgs-v-length (fn-hrc-pgs (cdr st))))
-                            (words (fn-pgs-fill-realize file (fn-hrecs-phys p st)))))
+                            (words (fn-pgs-page-words file (fn-hrecs-phys p st)))))
            :in-theory (e/d (fn-hrecs-has-image)
                            (fn-hrecs-fill-keeps fn-hrs-disk-ok-page fn-hrs-disk-ok-after-fill fn-hrecs-fill
                             fn-hrecs-faithful fn-hrecs-list fn-hrecs-image-page fn-hrs-disk-ok pgs-x-get-entry
@@ -1728,7 +1728,7 @@
 (defthm fn-hrs-serve-ok-verifies
   (implies (and (natp p) (fn-hrecs-page-open p st) (equal (mv-nth 0 (fn-hrecs-serve p file st)) :ok))
            (not (fn-hrecs-page-open p (mv-nth 1 (fn-hrecs-serve p file st)))))
-  :hints (("Goal" :use ((:instance fn-hrs-fill-pgs-frame (words (fn-pgs-fill-realize file (fn-hrecs-phys p st)))
+  :hints (("Goal" :use ((:instance fn-hrs-fill-pgs-frame (words (fn-pgs-page-words file (fn-hrecs-phys p st)))
                                    (txid (fn-hrc-txid (cdr st))) (pgs-mem (fn-hrc-pgs (cdr st)))
                                    (fn-octets-pg (fn-hrc-oct (cdr st))) (q p)))
            :in-theory (disable fn-hrs-fill-pgs fn-hrs-fill-pgs-frame pgs-vi pgs-v-length))))
@@ -1756,7 +1756,7 @@
            :in-theory (disable fn-hrecs-page-open fn-hrecs-fill fn-hrs-open-after-fill fn-hrs-serve-ok-verifies))
           ("Subgoal *1/2" :cases ((equal q p))
            :use ((:instance fn-hrs-serve-ok-verifies)
-                 (:instance fn-hrs-open-count-above-fill (q (+ 1 p)) (words (fn-pgs-fill-realize file (fn-hrecs-phys p st))))))))
+                 (:instance fn-hrs-open-count-above-fill (q (+ 1 p)) (words (fn-pgs-page-words file (fn-hrecs-phys p st))))))))
 
 
 (defthm fn-hrs-vlen-after-serve

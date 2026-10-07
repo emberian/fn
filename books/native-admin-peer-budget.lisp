@@ -18,6 +18,7 @@
 (in-package "ACL2")
 (include-book "native-admin-peer")
 (include-book "consumer-position")
+(include-book "def-loop")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -164,39 +165,11 @@
 ; ("Control stack guard page unprotected", batch AZ,
 ; tests/test_native_peer_rows_growth.py).  Each :logic is the recursion,
 ; unchanged; each :exec is a loop, equal by the local lemma after it.
-(defun fn-napb-before-last-loop (line extra acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (consp line) (consp (cdr line)))
-      (fn-napb-before-last-loop (cdr line) extra (cons (car line) acc))
-    (fn-ag-rev-onto acc (append (true-list-fix extra) (true-list-fix line)))))
-
-(defun fn-napb-before-last (line extra)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (and (consp line) (consp (cdr line)))
-           (cons (car line) (fn-napb-before-last (cdr line) extra))
-         (append (true-list-fix extra) (true-list-fix line)))
-       :exec (fn-napb-before-last-loop line extra nil)))
-
-(local
- (defthm fn-napb-before-last-loop-is-rev-onto
-   (equal (fn-napb-before-last-loop line extra acc)
-          (fn-ag-rev-onto acc (fn-napb-before-last line extra)))
-   :hints (("Goal" :induct (fn-napb-before-last-loop line extra acc)
-                   :in-theory (union-theories
-                               '(fn-napb-before-last-loop fn-napb-before-last
-                                 fn-ag-rev-onto car-cons cdr-cons)
-                               (theory 'minimal-theory))))))
-
-(verify-guards fn-napb-before-last-loop)
-
-(verify-guards fn-napb-before-last
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-napb-before-last
-                                fn-napb-before-last-loop-is-rev-onto
-                                fn-ag-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-napb-before-last (line extra)
+  :shape :map :over line
+  :while (consp (cdr line))
+  :tail (append (true-list-fix extra) (true-list-fix line))
+  :body (car line))
 
 (defthm fn-napb-before-last-of-append-newline
   (implies (and (true-listp a) (true-listp extra))

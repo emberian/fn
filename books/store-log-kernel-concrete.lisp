@@ -870,11 +870,6 @@
                             (frontier (fn-lgc-frontier c))
                             (octets (fn-lgc-append-len c unit)))))))
 
-; Recovery's zeroing range read from the concrete kernel (host fnn-log-recover).
-(defthm fn-lg-recover-tail-of-abstraction
-  (equal (fn-lg-recover-tail (fn-lgc-of ks) extent) (fn-lg-recover-tail ks extent))
-  :hints (("Goal" :in-theory (enable fn-lgc-of fn-lgc-make))))
-
 (defthm fn-lgc-open-refines
   (mv-let (records c) (fn-lgc-open s genesis unit max floor)
     (and (equal records (fn-lgk-committed (fn-lg-open-kernel s genesis unit max floor)))

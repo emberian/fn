@@ -29,6 +29,7 @@ class NativeReclaimInFlight(unittest.TestCase):
     image = IMAGE
     setUp = expiry.ExpiryMixin.setUp
     node = expiry.ExpiryMixin.node
+    reclaim_live = expiry.ExpiryMixin.reclaim_live  # D53: node() reads it
     post_all = expiry.ExpiryMixin.post_all
     filled = expiry.ExpiryMixin.filled
     reclaim = expiry.ExpiryMixin.reclaim

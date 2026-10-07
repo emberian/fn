@@ -302,11 +302,11 @@
 
 ;; The verified-window cache (books/page-window-read.lisp fn-pwc-*).  KEEP is
 ;; what the cached buffer retains: the fixed window stobj's two arrays
-;; (16 KiB octets, its one count word) and the cache entry's conses (token
+;; (the profile's :read-window-octets, its one count word) and the cache entry's conses (token
 ;; 9, plan 14, entry and list cells) at 16 octets each; never a worker slot.
 (defun fn-owner-page-window-cache-keep ()
   (declare (xargs :guard t))
-  (list (+ (fn-crl-array-octets 16384 1) (fn-crl-array-octets 1 8) (* 16 32)) 0 0 0 0))
+  (list (+ (fn-crl-array-octets (fn-profile-limit :read-window-octets) 1) (fn-crl-array-octets 1 8) (* 16 32)) 0 0 0 0))
 
 (defun fn-owner-page-window-executor-cache (worker token plan fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool :guard (true-listp plan)))

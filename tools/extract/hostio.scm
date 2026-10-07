@@ -15,6 +15,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/statvfs.h>
 #ifdef __linux__
 #include <sys/vfs.h>
 #else
@@ -79,6 +80,12 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
   memset(buf, 0, 4096);
   return statfs(p, (void *) buf) == 0 ? 0 : -1;
 }
+/* fnn-statvfs-free-octets: f_bavail * f_frsize, -1 unobserved */
+static double fnx_free_octets(const char *p) {
+  struct statvfs v;
+  if (statvfs(p, &v) != 0) return -1;
+  return (double) v.f_bavail * (double) v.f_frsize;
+}
 ")
 
 (define %lstat (foreign-lambda long "fnx_lstat" c-string int))
@@ -91,6 +98,7 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
 (define %lock-shared (foreign-lambda long "fnx_lock_shared" c-string))
 (define %fsync-dir (foreign-lambda long "fnx_fsync_dir" c-string))
 (define %statfs (foreign-lambda int "fnx_statfs" c-string u8vector))
+(define %free-octets (foreign-lambda double "fnx_free_octets" c-string))
 (define %realpath (foreign-lambda* c-string* ((c-string p)) "C_return(realpath(p, NULL));"))
 (define %opendir (foreign-lambda c-pointer "opendir" c-string))
 (define %readdir-name
@@ -256,7 +264,7 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
     (let loop ((i (+ start plen -1)) (acc '()))
       (if (< i start) acc (loop (- i 1) (cons (u8vector-ref entry i) acc))))))
 
-;; A-PGS-HOST-IO's page fill (host/native/extent.lisp fn-pgs-fill-realize):
+;; A-PGS-HOST-IO's page fill, the list form the native host no longer builds (host/native/extent.lisp fn-pgs-fill-frame):
 ;; the 2048 little-endian u64 words page ADDR of the page file FILE holds
 ;; (FILE a handle), one pread; a short read refused by name.  ACL2's digest
 ;; check decides whether they are the page the committed table names.
@@ -488,6 +496,14 @@ int fn_lz4_compress_hc(const unsigned char *dict, int dict_len, const unsigned c
 (define (a-hx-pwrite h off octets)
   (let ((v (hx-list->u8 octets)))
     (let ((r (%write-at (hx-fd h) v (u8vector-length v) off 1))) (if (= r 0) kw-ok (hx-err (- r) #f)))))
+(define (a-hx-pwrite-buf h off buf)
+  ;; the log walk's buffer (slot 0 the array, slot 1 the fill): the open's
+  ;; copy of the entry it validated, from the same array
+  (let* ((v (vector-ref buf 0)) (n (vector-ref buf 1))
+         (r (%write-at (hx-fd h) v n off 1)))
+    (if (= r 0) kw-ok (hx-err (- r) #f))))
+(define (a-hx-free-octets path)
+  (let ((f (%free-octets path))) (if (< f 0) '() (inexact->exact (floor f)))))
 (define (a-hx-pwrite-zeros h off n)
   (let ((r (%write-at (hx-fd h) (make-u8vector n 0) n off 1))) (if (= r 0) kw-ok (hx-err (- r) #f))))
 (define (a-hx-write-all h octets)

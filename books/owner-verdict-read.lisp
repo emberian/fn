@@ -452,7 +452,12 @@
                   (fn-nntp-keywordp (cadr tokens) ":FN-VERIFIED")
                   (fn-nntp-message-id-tokenp (caddr tokens))
                   (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens))))
-                  (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
+                  ; the READ rule is the pinned rule AND the live rule (ACCESS-REVOKE-PINNED), so
+                  ; the unrestricted premise is over the configuration the served
+                  ; connection carries, the pin served with the live access beside it
+                  (not (fn-auth-access-restrictedp
+                        as (fn-gac-config-with-live (fn-own-conn-config conn)
+                                                    (fn-own-config o))))
                   (consp article))
              (equal (car (fn-own-read o id (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects

@@ -76,6 +76,9 @@
 ;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
 (include-book "books/served-plan-cursor")
 (include-book "books/served-plan-line-buffer")
+;; r71 F13: the pending-accept slot the mux's accept threads take (fnn-mux-
+;; reserve asks fn-mxa-reserve; fn-mxa-deferral-line names the deferral).
+(include-book "books/mux-accept-slot")
 (include-book "books/response-plan-pins")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
@@ -116,6 +119,9 @@
 ;; The record log's kernel, decode and programs (lane w6-log-core): the host
 ;; functions fnn-log-* in host/native/io.lisp call them (the `log' verb).
 (include-book "books/store-log-programs")
+;; The writable open's copy (RL-01 A2, P-LOG-RECOVER-COPY): fnn-log-recover
+;; calls fn-lgrc-copy-verdict and fn-lgrc-copy-refusal-text.
+(include-book "books/store-log-recover-copy")
 ;; Its segments, rotation and drop (lane log-recovery): fnn-recover-log,
 ;; fnn-log-rotate and fnn-log-drop call them.
 (include-book "books/store-log-segments")

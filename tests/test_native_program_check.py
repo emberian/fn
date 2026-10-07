@@ -157,10 +157,15 @@ class UnbalancedFormTests(unittest.TestCase):
         host = (ROOT / npc.HOST).read_text()
         # rep-wave-d-3's case: the defun loses its last close parenthesis.
         start = host.index("\n(defun fnn-state-checkpoint-plan ") + 1
-        end = host.index("\n(defun ", start)
-        body = host[start:end].rstrip()
+        # the defun ends where the next top-level definition begins (a defvar
+        # may sit between two defuns), not at the next defun.
+        end = host.index("\n(def", start + 1) + 1
+        lines = host[start:end].rstrip().split("\n")
+        while lines[-1].startswith(";") or not lines[-1].strip():
+            lines.pop()  # comments between this defun and the next form
+        body = "\n".join(lines)
         self.assertTrue(body.endswith(")"))
-        broken = npc.Text(host[:start] + body[:-1] + "\n" + host[end:], [(0, npc.HOST)])
+        broken = npc.Text(host[:start] + body[:-1] + host[start + len(body):], [(0, npc.HOST)])
         self.assertEqual(npc.balance(npc.Text(host, [(0, npc.HOST)])), [])
         problems = npc.balance(broken)
         self.assertEqual(len(problems), 1, problems)
@@ -235,11 +240,11 @@ class LogProgramListingTests(unittest.TestCase):
         self.assertEqual([(p, h) for p, h, _ in listing],
                          [("fn-lg-append-program", "fnn-log-append"),
                           ("fn-lg-fence-program", "fnn-log-fence"),
-                          ("fn-lg-recover-program", "fnn-log-recover"),
+                          ("fn-lgrc-program", "fnn-log-recover"),
                           ("fn-lg-extend-program", "fnn-log-ensure-extent")])
         self.assertEqual([c for _, _, c in listing],
                          [("log-written",), ("log-fenced",),
-                          ("log-truncated", "log-recovered"),
+                          ("log-copied", "log-copy-fenced", "log-swapped", "log-recovered"),
                           ("log-extended", "log-extent-fenced")])
 
     def test_a_missing_append_cut_fails(self):
@@ -349,7 +354,7 @@ runpy.run_path(sys.argv[0], run_name='__main__')
 (defun fnn-document-log-cuts () "(fnn-log-at :string-cut)" nil)
 '''})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("log cut inventory: PASS (13 cuts; 7 segment cuts)", result.stdout)
+        self.assertIn("log cut inventory: PASS (15 cuts; 7 segment cuts)", result.stdout)
 
 
 if __name__ == "__main__":

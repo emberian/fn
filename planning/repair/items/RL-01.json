@@ -10,7 +10,9 @@
  "locus": "log-recover",
  "notes": [
   "10-04 11:32 filed by read-life 2026-10-04",
-  "10-04 11:47 same class: an FNFD feed journal after a failed fsync (fnn-owner-feed-append-locked fences; the restart's fnn-owner-feed-open scans frames from cache and its fsync covers only dirty pages)"
+  "10-04 11:47 same class: an FNFD feed journal after a failed fsync (fnn-owner-feed-append-locked fences; the restart's fnn-owner-feed-open scans frames from cache and its fsync covers only dirty pages)",
+  "10-05 01:00 A2 (P-LOG-RECOVER-COPY) on lane/m1-durable-5 (8d6c5127f by m1-durable-4); block-layer native tools/power_loss.py rl01 (a5316c01a) pending a hbox image.",
+  "10-06 N-M1D5-AUDIT deletion record (lane m1-durable-5, vs origin/dev): fn-lg-recover-program (the in-place truncate-and-fence open step), fn-lg-open-suffix (renamed: fn-lg-open-program is now the old suffix, the seven barrier/cut steps), fn-lg-run-completep, fn-lg-run-final, fn-lg-run-last-when-complete, fn-lg-cut-stepp, fn-lg-run-of-append-when-complete, fn-lg-full-length-run-ending-in-a-cut-is-complete, fn-lg-open-suffix-keeps-the-relation, fn-lg-open-program-keeps-the-relation-at-every-cut, fn-lgob-recover-run-keeps-the-kernel, fn-lgob-recovered-segment-fence-is-identity. MAPPING: fn-lg-open-suffix-keeps-the-relation -> fn-lg-open-program-keeps-the-relation (same statement over the renamed program, books/store-log-route-programs.lisp:86); fn-lg-open-program-keeps-the-relation-at-every-cut -> fn-lgrc-open-keeps-the-relation-at-every-cut (books/store-log-recover-copy.lisp:2315: the copy's final state is R-related and every state of fn-lg-open-program is related; the copy's own cuts are fn-lgrc-attempt-keeps-the-invariant / fn-lgrc-world-keeps-the-invariant); the two run-composition lemmas and fn-lg-run-completep/final: NO referent, their only instance was fn-lg-recover-program ++ the suffix, removed with the in-place program (the copy is composed through fn-lgrc-final); no remaining caller in books/ host/ tests/ specs/; fn-lgob-recovered-segment-fence-is-identity / fn-lgob-recover-run-keeps-the-kernel -> fn-lgob-three-barrier-open-after-the-copy-is-the-five. Teeth dropped with them are owed as TEETH-OWED-LGRC-1..3. planning/proofs.json PRF-273 events and planning/proof-events.json still name the deleted theorems (stale ledger rows, to be re-pointed at the fn-lgrc-* keystones)."
  ],
  "owner": "read-life",
  "reviewer": "read-life (Opus reader), mental execution 2026-10-04; Linux writeback-error semantics (fsyncgate), not reproduced on hbox",
@@ -19,5 +21,5 @@
  "source": "read-life",
  "state": "open",
  "title": "recovery after a failed log barrier reads the batch from the page cache and re-fences nothing",
- "updated": "2026-10-04T15:47:42Z"
+ "updated": "2026-10-06T23:59:00Z"
 }

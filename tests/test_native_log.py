@@ -1,7 +1,7 @@
 """The record log through the native images (lane w6-log-core).
 
 `fn log append|recover` (developer image) drive host/native/io.lisp's
-fnn-log-* functions: recovery (fn-lg-recover-program), then batches of the
+fnn-log-* functions: recovery (fn-lgrc-program, the copy), then batches of the
 workload records, each appended (fn-lg-append-program), fenced
 (fn-lg-fence-program) and acknowledged, one `ACK` line per batch.  `fn log
 scan` reads a segment without writing, on both images.  The cut cases kill
@@ -135,7 +135,7 @@ class NativeLogTests(unittest.TestCase):
                 if os.path.exists(self.seg):
                     os.unlink(self.seg)
                 self.assertEqual(self.append(2, 3).returncode, 0)
-                if cut.program == "fn-lg-recover-program":
+                if cut.program == "fn-lgrc-program":
                     killed = run(DEVELOPER, "recover", *self.args(), fault=cut.name)
                     expect = {6}
                 else:

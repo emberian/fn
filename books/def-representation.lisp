@@ -64,6 +64,7 @@
 (include-book "proto/adt")
 (include-book "def-representation-lib")
 (include-book "def-representation-paged")
+(include-book "def-loop")
 
 (program)
 
@@ -734,7 +735,111 @@
         :hints (("Goal" :in-theory (enable ,(adt-sym name "$A-CLEAR") adt-pg-clear-c)))))))
 
 ; The scalar instance (its comment is at the top of this file).
-(defun rep-scalar-events (name fields invariant invariant-lemmas paged)
+;
+; The octet-sequence vocabulary (`:scalar :octet-seq', one :u8 field): the
+; decoded payload of a compressed extent as a buffer whose logical value is
+; the octet list.  NAME-NTH is the reader (logic `nth', exec one array read,
+; NIL past the end; the guard is a natural index, as `fn-arena$x-get''s is).
+; NAME-FILL-LIST is the bulk write: clear, then NAME-FILL-LOOP, a def-loop
+; :into over the NAME-APPEND export, so the per-octet loop is generated and
+; verified, never written in a host.  The correspondence is the generated
+; NAME-NTH-OF-FILL-LIST: fill, then read at I, is `(nth I XS)'.
+(defun rep-octet-seq-defs (st ap a nth-a nth-c count-of get-c paged)
+  `((defun ,nth-a (i ,a)
+      (declare (xargs :guard (and (,ap ,a) (natp i))))
+      (nth i ,a))
+    (defun ,nth-c (i ,st)
+      (declare (xargs :stobjs ,st :guard (natp i)))
+      ,(if paged
+           `(if (< i (nfix (,count-of ,st))) (,get-c i ,st) nil)
+         ; The flat foundation's read is one array access; its guard is the
+         ; array's own length (the correspondence puts the count inside it).
+         `(if (and (< i (nfix (,count-of ,st))) (,(adt-sym get-c "-OKP") i ,st))
+              (,get-c i ,st)
+            nil)))))
+
+(defun rep-octet-seq-thms (name nth-a ap)
+  (declare (ignore ap))
+  `((defthm ,(adt-sym name "-NTH-IS-NTH")
+      (equal (,(adt-sym name "-NTH") i ,name) (nth i ,name))
+      :hints (("Goal" :in-theory (enable ,nth-a))))))
+
+; After the defabsstobj: the identity list map the :into loop is stated
+; against, the loop, and the fill with its two theorems.
+(defun rep-octet-seq-p (x)
+  (or (eq x :octet-seq)
+      (and (consp x) (eq (car x) :octet-seq) (consp (cdr x)) (null (cddr x)))))
+
+; With (:octet-seq SRC), SRC an octet-buffer stobj (`fn-octets' and its
+; congruent clones: a decoder's output buffer), NAME-FILL-FROM makes the
+; instance hold SRC's octets with no list in between: an index loop of
+; NAME-APPEND over (SRC-GET i SRC), and NAME-FILL-FROM-IS-THE-BUFFER says the
+; instance's value is SRC's.  The loop's one induction is the instance's own
+; (a library shape for stobj-to-stobj copies is the named next item).  The
+; formal is named SRC itself so a congruent stobj may be passed.
+(defun rep-octet-seq-copy-events (name src)
+  (let ((lp (adt-sym name "-FILL-FROM-LOOP"))
+        (fr (adt-sym name "-FILL-FROM"))
+        (len (adt-sym src "-LEN"))
+        (get (adt-sym src "-GET"))
+        (app (adt-sym name "-APPEND")))
+    `((defun ,lp (i n ,src ,name)
+        (declare (xargs :stobjs (,src ,name)
+                        :guard (and (natp i) (natp n) (<= n (,len ,src)))
+                        :measure (nfix (- n i))
+                        :guard-hints (("Goal" :in-theory (enable adt-val-okp)))))
+        (if (and (natp i) (natp n) (< i n))
+            (let ((,name (,app (,get i ,src) ,name)))
+              (,lp (+ 1 i) n ,src ,name))
+          ,name))
+      (defthm ,(adt-sym lp "-IS-APPEND")
+        (implies (and (natp i) (natp n) (<= n (len ,src)) (true-listp ,name))
+                 (equal (,lp i n ,src ,name)
+                        (append ,name (adt-between i n ,src))))
+        :hints (("Goal" :induct (,lp i n ,src ,name)
+                        :in-theory (enable ,lp ,(adt-sym name "$A-APPEND") ,app
+                                           adt-between-done adt-between-step))))
+      (defun ,fr (,src ,name)
+        (declare (xargs :stobjs (,src ,name)))
+        (let ((,name (,(adt-sym name "-CLEAR") ,name)))
+          (,lp 0 (,len ,src) ,src ,name)))
+      (defthm ,(adt-sym fr "-IS-THE-BUFFER")
+        (implies (true-listp ,src) (equal (,fr ,src ,name) ,src))
+        :hints (("Goal" :use ((:instance ,(adt-sym lp "-IS-APPEND") (i 0) (n (len ,src)) (,name nil))
+                              (:instance adt-between-whole (a ,src)))
+                        :in-theory (enable ,fr ,(adt-sym name "-CLEAR") ,(adt-sym name "$A-CLEAR")
+                                           ,(adt-sym src "-LEN"))))))))
+
+(defun rep-octet-seq-fill-events (name kind src)
+  (let ((mp (adt-sym name "-FILL-MAP"))
+        (lp (adt-sym name "-FILL-LOOP"))
+        (fl (adt-sym name "-FILL-LIST"))
+        (app (adt-sym name "-APPEND"))
+        (append-a (adt-sym name "$A-APPEND")))
+    `((def-loop ,mp (xs) :shape :map :elt x :body x)
+      (def-loop ,lp (xs ,name)
+        :shape :into :into ,name :write ,app
+        :write-theory (,app ,append-a)
+        :map ,mp :elt x :body x
+        :guard (adt-scalar-seq-p ',kind xs)
+        :guard-hints (("Goal" :in-theory (enable adt-scalar-seq-p adt-val-okp))))
+      (defun ,fl (xs ,name)
+        (declare (xargs :stobjs ,name :guard (adt-scalar-seq-p ',kind xs)))
+        (let ((,name (,(adt-sym name "-CLEAR") ,name)))
+          (,lp xs ,name)))
+      (defthm ,(adt-sym fl "-IS-THE-LIST")
+        (implies (true-listp xs)
+                 (equal (,fl xs ,name) xs))
+        :hints (("Goal" :in-theory (enable ,fl ,(adt-sym name "-CLEAR") ,(adt-sym name "$A-CLEAR")
+                                           ,(adt-sym lp "-IS-APPEND") ,mp))))
+      ,@(and src (rep-octet-seq-copy-events name src))
+      (defthm ,(adt-sym name "-NTH-OF-FILL-LIST")
+        (implies (and (true-listp xs) (natp i))
+                 (equal (,(adt-sym name "-NTH") i (,fl xs ,name))
+                        (nth i xs)))
+        :hints (("Goal" :in-theory (disable ,fl)))))))
+
+(defun rep-scalar-events (name fields invariant invariant-lemmas paged octet-seq)
   (let* ((kind (cadr (car fields)))
          (schema-const (adt-sym-const name "-SCHEMA*"))
          (cols (adt-columns name fields))
@@ -757,6 +862,8 @@
          (append-c1 (adt-sym name "$C-APPEND1"))
          (clear-a (adt-sym name "$A-CLEAR"))
          (clear-c (adt-sym name "$C-CLEAR"))
+         (nth-a (adt-sym name "$A-NTH"))
+         (nth-c (adt-sym name "$C-NTH"))
          (defabs
            `(defabsstobj ,name
               :foundation ,st
@@ -771,9 +878,12 @@
                         ,@(and paged
                                `((,(adt-sym name "-RESERVE") :logic ,(adt-sym name "$A-RESERVE")
                                   :exec ,(adt-sym name "$C-RESERVE") :protect t)))
-                        (,(adt-sym name "-CLEAR") :logic ,clear-a :exec ,clear-c :protect t))))
+                        (,(adt-sym name "-CLEAR") :logic ,clear-a :exec ,clear-c :protect t)
+                        ,@(and octet-seq
+                               `((,(adt-sym name "-NTH") :logic ,nth-a :exec ,nth-c))))))
          (ob-hints `(("Goal" :in-theory (enable ,corr ,ap ,create-a ,count-a ,append-a ,get-a ,set-a
                                                  ,clear-a ,append-c1 adt-scalar-seq-p adt-val-okp
+                                                 ,@(and octet-seq (list nth-a nth-c 'adt-nth-beyond-len))
                                                  ,@(and paged (list count-of (adt-sym name "$A-RESERVE")))
                                                  ,@invariant-lemmas)))))
     `(encapsulate
@@ -814,6 +924,7 @@
        (defun ,clear-a (,a)
          (declare (xargs :guard (,ap ,a)) (ignore ,a))
          nil)
+       ,@(and octet-seq (rep-octet-seq-defs st ap a nth-a nth-c count-of get-c paged))
        ,@(and paged
               `((defun ,(adt-sym name "$A-RESERVE") (rows octets ,a)
                   (declare (xargs :guard (and (,ap ,a) (natp rows) (natp octets))) (ignore rows octets))
@@ -846,6 +957,8 @@
               `((defthm ,(adt-sym name "-RESERVE-IS-IDENTITY")
                   (equal (,(adt-sym name "-RESERVE") rows octets ,name) ,name)
                   :hints (("Goal" :in-theory (enable ,(adt-sym name "$A-RESERVE")))))))
+       ,@(and octet-seq (rep-octet-seq-thms name nth-a ap))
+       ,@(and octet-seq (rep-octet-seq-fill-events name kind (and (consp octet-seq) (cadr octet-seq))))
        (defthm ,(adt-sym recog "-IS-SCALAR-SEQ-P")
          (equal (,recog x) (and (adt-scalar-seq-p ',kind x)
                                 ,@(if invariant `((,invariant x)) nil)))
@@ -1233,7 +1346,7 @@
          (fields (adt-norm-fields fields0))
          (impl (if generic (adt-sym name "-COLS") name))
          (paged (if paged t nil))
-         (instance (cond (scalar (rep-scalar-events impl fields invariant invariant-lemmas paged))
+         (instance (cond (scalar (rep-scalar-events impl fields invariant invariant-lemmas paged (and (rep-octet-seq-p scalar) scalar)))
                          (paged (rep-pg-seq-events impl fields0 trees once))
                          (t (defadt-fn-trees-once impl fields0 trees once)))))
     `(progn
@@ -1279,6 +1392,16 @@
       (er soft ctx "~x0: :paged takes t or nil; ~x1 is neither." name paged))
      ((and invariant (not scalar))
       (er soft ctx "~x0: :invariant is supported with :scalar t in this stage." name))
+     ((and (rep-octet-seq-p scalar)
+           (not (and (equal (len fields0) 1) (equal (cadr (car fields0)) :u8) (not generic) (not invariant))))
+      (er soft ctx "~x0: :scalar :octet-seq needs exactly one :u8 field, no :generic and no :invariant." name))
+     ((not (or (member-eq scalar '(t nil)) (rep-octet-seq-p scalar)))
+      (er soft ctx "~x0: :scalar takes t, nil, :octet-seq or (:octet-seq SRC); ~x1 is none." name scalar))
+     ((and (consp scalar)
+           (not (and (symbolp (cadr scalar)) (cadr scalar)
+                     (function-symbolp (adt-sym (cadr scalar) "-LEN") wrld)
+                     (function-symbolp (adt-sym (cadr scalar) "-GET") wrld))))
+      (er soft ctx "~x0: (:octet-seq ~x1): SRC must be an octet-buffer stobj whose -LEN and -GET exports are in the world (include its book first)." name (cadr scalar)))
      ((not (booleanp pages))
       (er soft ctx "~x0: :pages takes t or nil; ~x1 is neither." name pages))
      ((and pages (or scalar generic))

@@ -1,0 +1,14 @@
+{
+ "category": "claim-gap",
+ "detail": "`status` prints `heap=664 MB` (empty) / 723 / 730 (filled) and `init` prints `reservation=1079 MB`; the 1068 figure matches no output on 3e53d7bc5. books/heap-figure.lisp:789,792 build the `heap=` line; planning/decisions.md D53/D65 and STRATEGY-20261006 quote 1068 as the memory figure. Resident measured on the same store: RSS 169 (peak 239) / anon 73.5 MB. Fix: label the line `reservation=` (and keep `heap=` out of operator vocabulary), docs/resource-contract.md section on the small preset states reservation vs resident as separate numbers with this lane's measurements, and decisions D53/D65 are corrected to cite them. The label is ACL2-owned (fn-heap-print-line); changing it changes tools that parse `heap=` (tools/fundamentals.py:595-596, tests/test_native_reclaim_walk.py:211): update those in the same batch.",
+ "file": "books/heap-figure.lisp",
+ "id": "MEM-008",
+ "line": "789",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "high",
+ "source": "n-mem",
+ "state": "open",
+ "title": "the status/health line prints `heap=N MB`, and decisions and the strategy quote it as the small preset's memory; it is a reservation. Say reservation, and stop quoting 1068",
+ "updated": "2026-10-06T23:00:00Z"
+}

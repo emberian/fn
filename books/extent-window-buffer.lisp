@@ -3,16 +3,24 @@
 ; publishes only after the entire protected prefix and trailer pass.
 (in-package "ACL2")
 (include-book "octets-stobj")
+(include-book "profile-limits")
 
-(defstobj fn-ew-buffer
-  (fn-ew-bytes :type (array (unsigned-byte 8) (16384)) :initially 0)
-  :inline t)
+; The window is the profile's row (books/profile-limits.lisp
+; :read-window-octets), expanded into DEFSTOBJ's literal array type as
+; books/recovery-profile-buffer.lisp expands its dimension.  Every bound
+; below and in the window books is that same literal.
+(defmacro fn-ew-define-buffer ()
+  `(defstobj fn-ew-buffer
+     (fn-ew-bytes :type (array (unsigned-byte 8) (,(fn-profile-limit :read-window-octets)))
+                  :initially 0)
+     :inline t))
+(fn-ew-define-buffer)
 
 (defun fn-ewb-copy (src count dst fn-octets fn-ew-buffer)
   (declare (xargs :stobjs (fn-octets fn-ew-buffer)
                   :guard (and (natp src) (natp count) (<= count 64)
                               (natp dst) (<= (+ src count) (fn-octets-len fn-octets))
-                              (<= (+ dst count) 16384))
+                              (<= (+ dst count) (fn-profile-limit :read-window-octets)))
                   :measure (nfix count)))
   (if (zp count) fn-ew-buffer
     (let ((fn-ew-buffer

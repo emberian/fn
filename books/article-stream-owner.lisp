@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "article-stream")
 (include-book "article-stream-server")
+(include-book "article-select-index")
 (include-book "owner-credits")
 (include-book "served-plan")
 (include-book "served-query-plan")
@@ -72,6 +73,275 @@
                                nil nil nil 0 :msgid-next))))
      (t nil))))
 
+; The same selection start for a session whose read is unrestricted, answered by
+; the catalog's two indexes at the connection's pinned view V: the number index
+; (fn-scat-number-article, one probe) and the Message-ID column
+; (fn-scat-msgid-article). The result is the state the walk above reaches (the
+; KEYSTONES below), with no archive-list traversal.
+(defun fn-asto-selection-start-cat (session v args fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let ((group (fn-nntp-session-group session)))
+    (cond
+     ((null args)
+      (let ((number (fn-nntp-session-current session)))
+        (and group (posp number) (<= number *fn-nntp-max-article-number*)
+             (fn-asx-done-state :current group number
+                                (and (stringp group)
+                                     (fn-scat-number-article group number v fn-arena fn-cat))))))
+     ((and group (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
+      (let ((number (fn-nntp-decimal-value (car args))))
+        (fn-asx-done-state :number group number
+                           (and (stringp group)
+                                (fn-scat-number-article group number v fn-arena fn-cat)))))
+     ((and (consp args) (null (cdr args))
+           (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args)))
+      (let* ((key (fn-nntp-token-string (car args)))
+             (article (fn-scat-msgid-article key v fn-arena fn-cat)))
+        (if (consp article) (fn-ast-msgid-local-start group article)
+          (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing))))
+     (t nil))))
+
+(local
+ (defthm fn-asto-start-number-unfolds
+   (implies (and (fn-nntp-session-group session)
+                 (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
+            (equal (fn-asto-selection-start session archive index args)
+                   (fn-ast-select-state :number (fn-nntp-session-group session)
+                                        (fn-nntp-decimal-value (car args))
+                                        (fn-state-articles archive) nil nil nil 0 :next)))
+   :hints (("Goal" :in-theory (e/d (fn-asto-selection-start) ())))))
+
+(local
+ (defthm fn-asto-start-cat-number-unfolds
+   (implies (and (fn-nntp-session-group session)
+                 (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
+            (equal (fn-asto-selection-start-cat session v args fn-arena fn-cat)
+                   (fn-asx-done-state :number (fn-nntp-session-group session)
+                                      (fn-nntp-decimal-value (car args))
+                                      (and (stringp (fn-nntp-session-group session))
+                                           (fn-scat-number-article (fn-nntp-session-group session)
+                                                                   (fn-nntp-decimal-value (car args))
+                                                                   v fn-arena fn-cat)))))
+   :hints (("Goal" :in-theory (e/d (fn-asto-selection-start-cat) ())))))
+
+(local
+ (defthm fn-nntp-number-token-value-posp
+   (implies (fn-nntp-number-tokenp token) (posp (fn-nntp-decimal-value token)))
+   :hints (("Goal" :in-theory (enable fn-nntp-number-tokenp)))))
+
+(local
+ (defthm fn-scr-catalogp-parts
+   (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
+            (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+                 (fn-cnx-freshp fn-cat)
+                 (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive))))
+   :hints (("Goal" :in-theory (enable fn-scr-catalogp)))))
+
+(defthm fn-asto-selection-start-cat-number
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat)
+                (fn-nntp-session-group session)
+                (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args))
+                (posp fuel)
+                (<= (fn-asx-need (fn-asto-selection-start session archive index args)) fuel))
+           (equal (fn-asx-outcome
+                   (fn-ast-select-step (fn-asto-selection-start session archive index args) fuel))
+                  (fn-asx-outcome (fn-asto-selection-start-cat session v args fn-arena fn-cat))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-asx-walk-is-lookup fn-asx-walk-nonstring fn-scat-number-article
+                               fn-scat-number-article-is-find-group-number fn-scr-catalogp
+                               fn-asx-first fn-asx-done-state fn-asx-outcome fn-asx-need)
+           :use ((:instance fn-scr-catalogp-parts)
+                 (:instance fn-asx-walk-nonstring (mode :number)
+                            (group (fn-nntp-session-group session))
+                            (number (fn-nntp-decimal-value (car args)))
+                            (articles (fn-state-articles archive)))
+                 (:instance fn-asx-walk-is-lookup (mode :number)
+                            (group (fn-nntp-session-group session))
+                            (number (fn-nntp-decimal-value (car args)))
+                            (articles (fn-state-articles archive)))
+                 (:instance fn-scat-number-article-is-find-group-number
+                            (group (fn-nntp-session-group session))
+                            (n (fn-nntp-decimal-value (car args)))
+                            (v v))
+                 (:instance fn-asx-first-number-is-find-group-number
+                            (group (fn-nntp-session-group session))
+                            (number (fn-nntp-decimal-value (car args)))
+                            (articles (fn-state-articles archive)))))))
+
+(local
+ (defthm fn-asto-start-current-unfolds
+   (implies (and (fn-nntp-session-group session) (null args)
+                 (posp (fn-nntp-session-current session))
+                 (<= (fn-nntp-session-current session) *fn-nntp-max-article-number*))
+            (equal (fn-asto-selection-start session archive index args)
+                   (fn-ast-select-state :current (fn-nntp-session-group session)
+                                        (fn-nntp-session-current session)
+                                        (fn-state-articles archive) nil nil nil 0 :next)))
+   :hints (("Goal" :in-theory (enable fn-asto-selection-start)))))
+
+(local
+ (defthm fn-asto-start-cat-current-unfolds
+   (implies (and (fn-nntp-session-group session) (null args)
+                 (posp (fn-nntp-session-current session))
+                 (<= (fn-nntp-session-current session) *fn-nntp-max-article-number*))
+            (equal (fn-asto-selection-start-cat session v args fn-arena fn-cat)
+                   (fn-asx-done-state :current (fn-nntp-session-group session)
+                                      (fn-nntp-session-current session)
+                                      (and (stringp (fn-nntp-session-group session))
+                                           (fn-scat-number-article (fn-nntp-session-group session)
+                                                                   (fn-nntp-session-current session)
+                                                                   v fn-arena fn-cat)))))
+   :hints (("Goal" :in-theory (enable fn-asto-selection-start-cat)))))
+
+(local
+ (defthm fn-asto-view-articles-uniq
+   (implies (and (fn-cnx-freshp fn-cat) group)
+            (fn-scat-uniq group (fn-cat-view-articles v fn-arena fn-cat)))
+   :hints (("Goal" :in-theory (e/d (fn-cat-view-articles) (fn-scat-uniq-of-view-below fn-cat-view-below))
+                   :use ((:instance fn-scat-uniq-of-view-below (i (fn-cat-count fn-cat))))))))
+
+(defthm fn-asto-selection-start-cat-current
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat)
+                (fn-nntp-session-group session) (null args)
+                (posp (fn-nntp-session-current session))
+                (<= (fn-nntp-session-current session) *fn-nntp-max-article-number*)
+                (posp fuel)
+                (<= (fn-asx-need (fn-asto-selection-start session archive index args)) fuel))
+           (equal (fn-asx-outcome
+                   (fn-ast-select-step (fn-asto-selection-start session archive index args) fuel))
+                  (fn-asx-outcome (fn-asto-selection-start-cat session v args fn-arena fn-cat))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-asx-walk-is-lookup fn-asx-walk-nonstring fn-scat-number-article
+                               fn-scat-number-article-is-find-group-number fn-scr-catalogp
+                               fn-asx-first fn-asx-done-state fn-asx-outcome fn-asx-need
+                               fn-asx-first-current-is-found fn-asto-view-articles-uniq)
+           :use ((:instance fn-scr-catalogp-parts)
+                 (:instance fn-asx-walk-nonstring (mode :current)
+                            (group (fn-nntp-session-group session))
+                            (number (fn-nntp-session-current session))
+                            (articles (fn-state-articles archive)))
+                 (:instance fn-asx-walk-is-lookup (mode :current)
+                            (group (fn-nntp-session-group session))
+                            (number (fn-nntp-session-current session))
+                            (articles (fn-state-articles archive)))
+                 (:instance fn-scat-number-article-is-find-group-number
+                            (group (fn-nntp-session-group session))
+                            (n (fn-nntp-session-current session))
+                            (v v))
+                 (:instance fn-asto-view-articles-uniq (group (fn-nntp-session-group session)) (v v))
+                 (:instance fn-asx-first-current-is-found
+                            (group (fn-nntp-session-group session))
+                            (number (fn-nntp-session-current session))
+                            (articles (fn-state-articles archive)))))))
+
+(local
+ (defthm fn-asto-message-id-token-is-no-number-token
+   (implies (fn-nntp-message-id-tokenp token)
+            (not (fn-nntp-number-tokenp token)))
+   :hints (("Goal" :in-theory (enable fn-nntp-message-id-tokenp fn-nntp-number-tokenp
+                                      fn-nntp-decimal-tokenp)))))
+
+; KEYSTONE (Message-ID, against the archive list): the catalog's answer starts the
+; selection at the article the archive-list scan finds.
+(defthm fn-asto-selection-start-cat-msgid-is-scan
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat)
+                (consp args) (null (cdr args))
+                (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args)))
+           (equal (fn-asto-selection-start-cat session v args fn-arena fn-cat)
+                  (let ((article (fn-find-article (fn-nntp-token-string (car args))
+                                                  (fn-state-articles archive))))
+                    (if (consp article)
+                        (fn-ast-msgid-local-start (fn-nntp-session-group session) article)
+                      (fn-ast-select-state :msgid (fn-nntp-session-group session)
+                                           (fn-nntp-token-string (car args))
+                                           nil nil nil nil 0 :missing)))))
+  :hints (("Goal" :in-theory (e/d (fn-asto-selection-start-cat fn-scr-catalogp
+                                   fn-scat-msgid-article-is-find-article)
+                                  (fn-scat-msgid-article fn-find-article fn-cat-view-articles
+                                   fn-midx-build fn-midx-lookup fn-midx-key-chars
+                                   fn-ast-msgid-local-start fn-nntp-token-string
+                                   fn-nntp-message-id-tokenp fn-octet-listp)))))
+
+; KEYSTONE (Message-ID, against the pinned trie walk): the same start state.
+(defthm fn-asto-selection-start-cat-msgid
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat)
+                (fn-gidx-pinp index)
+                (consp args) (null (cdr args))
+                (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args)))
+           (equal (fn-asto-selection-start session archive index args)
+                  (fn-asto-selection-start-cat session v args fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-asto-selection-start fn-asto-selection-start-cat
+                            fn-midx-correspondencep fn-scat-msgid-article-is-find-article
+                            fn-midx-lookup-of-build-is-find-article-for-nonempty)
+                           (fn-scat-msgid-article fn-find-article fn-cat-view-articles
+                            fn-midx-build fn-midx-lookup fn-midx-key-chars
+                            fn-ast-msgid-local-start fn-nntp-token-string
+                            fn-nntp-message-id-tokenp fn-octet-listp fn-scr-catalogp
+                            fn-nntp-number-tokenp))
+           :use ((:instance fn-scr-catalogp-parts)
+                 (:instance fn-nntp-message-id-token-has-nonempty-index-key (token (car args)))
+                 (:instance fn-asto-message-id-token-is-no-number-token (token (car args)))))))
+
+; KEYSTONE (Message-ID, archive with no trie): the walk over the archive list is
+; the catalog's start state preceded by the work the walk spends finding it.
+(defthm fn-asto-selection-start-cat-msgid-unpinned
+  (implies (and (fn-scr-catalogp archive index v fn-arena fn-cat)
+                (not (fn-gidx-pinp index))
+                (consp args) (null (cdr args))
+                (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args))
+                (natp e))
+           (equal (fn-ast-select-step
+                   (fn-asto-selection-start session archive index args)
+                   (+ (fn-asx-nc (fn-nntp-token-string (car args)) (fn-state-articles archive)) e))
+                  (fn-ast-select-step
+                   (fn-asto-selection-start-cat session v args fn-arena fn-cat) e)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-asto-selection-start fn-asto-selection-start-cat)
+                           (fn-asx-msgid-walk-is-lookup fn-scat-msgid-article fn-find-article
+                            fn-cat-view-articles fn-midx-build fn-midx-lookup fn-midx-key-chars
+                            fn-ast-msgid-local-start fn-nntp-token-string fn-asx-nc
+                            fn-nntp-message-id-tokenp fn-octet-listp fn-scr-catalogp
+                            fn-nntp-number-tokenp fn-ast-select-step fn-ast-select-state))
+           :use ((:instance fn-scr-catalogp-parts)
+                 (:instance fn-nntp-message-id-token-has-nonempty-index-key (token (car args)))
+                 (:instance fn-asto-message-id-token-is-no-number-token (token (car args)))
+                 (:instance fn-scat-msgid-article-is-find-article
+                            (msgid (fn-nntp-token-string (car args))))
+                 (:instance fn-asx-msgid-walk-is-lookup
+                            (group (fn-nntp-session-group session))
+                            (key (fn-nntp-token-string (car args)))
+                            (rem (fn-state-articles archive))
+                            (fuel (+ (fn-asx-nc (fn-nntp-token-string (car args))
+                                                (fn-state-articles archive)) e)))))))
+
+; The selection the owner's capture starts: a session under a read restriction is
+; answered over the view its rule projects (the catalog holds every article and
+; knows no projection); every other session by the catalog's indexes at the
+; connection's pinned view V. KEYSTONES: fn-asto-selection-start-cat-number,
+; -current, -msgid and -msgid-unpinned equate the unrestricted arm with the walk.
+(defun fn-asto-capture-selection (as config session va vi args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (if (fn-auth-access-read as config)
+      (fn-asto-selection-start session va vi args)
+    (fn-asto-selection-start-cat session v args fn-arena fn-cat)))
+
+(defthm fn-asto-view-of-unrestricted
+  (implies (not (fn-auth-access-read as config))
+           (and (equal (fn-auth-view-archive as config archive) archive)
+                (equal (fn-auth-view-index as config archive index) index)))
+  :hints (("Goal" :in-theory (enable fn-auth-view-archive fn-auth-view-index))))
+
+(defthm fn-asto-capture-selection-restricted
+  (implies (fn-auth-access-read as config)
+           (equal (fn-asto-capture-selection as config session va vi args v fn-arena fn-cat)
+                  (fn-asto-selection-start session va vi args))))
+
+(defthm fn-asto-capture-selection-unrestricted
+  (implies (not (fn-auth-access-read as config))
+           (equal (fn-asto-capture-selection as config session va vi args v fn-arena fn-cat)
+                  (fn-asto-selection-start-cat session v args fn-arena fn-cat))))
+
 ; Capture = (expected-conn auth-view-peer selection kind server scan
 ;            connection-configuration-pin withdrawn-articles). EXPECTED-CONN includes the installed
 ; post-command wire but its reader selection is unchanged until preflight.
@@ -83,8 +353,8 @@
         (fn-ast-refused-preflight source)
       (fn-ast-preflight source))))
 
-(defun fn-asto-capture (oc id w cache fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+(defun fn-asto-capture (oc id w cache fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (let* ((o (fn-ocfg-owner oc)) (conn (fn-own-find-conn id (fn-own-conns o)))
          (sc (and conn (fn-own-tls-served-conn o conn)))
          (as (fn-served-conn-session sc)) (config (fn-served-conn-config sc))
@@ -113,7 +383,9 @@
              (va (if view (fn-ag-car view) (fn-auth-view-archive as config archive)))
              (vi (if view (fn-ag-cdr view) (fn-auth-view-index as config archive index)))
              (ps (fn-auth-view-session as config))
-             (selection (fn-asto-selection-start (fn-peer-reader-session ps) va vi (cdr tokens))))
+             (selection (fn-asto-capture-selection as config (fn-peer-reader-session ps) va vi (cdr tokens)
+                                                   (fn-scr-view-of (fn-own-conn-version conn) fn-cat)
+                                                   fn-arena fn-cat)))
         (if (not (and selection
                      (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t)
                      (fn-nntp-session-projected (fn-peer-reader-session ps)))) nil
