@@ -27,6 +27,7 @@
 ; request grows by `peer carries NAME HEX ...' requests.
 (in-package "ACL2")
 (include-book "config")
+(include-book "def-loop")
 
 (defconst *fn-pcb-charge-slot* "carried-budget-charge")
 (defconst *fn-pcb-count-slot* "carried-budget-count")
@@ -260,41 +261,12 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks a peer's configuration rows, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-pcb-slot-superseded-rows-loop (existing new acc)
-  (declare (xargs :guard t))
-  (if (consp existing)
-      (fn-pcb-slot-superseded-rows-loop (cdr existing) new
-       (if (and (not (member-equal (car existing) (if (true-listp new) new nil)))
-            (fn-pcb-budget-slotp (fn-cfg-row-b (car existing)))
-            (fn-pcb-slot-memberp (fn-cfg-row-b (car existing)) new)) (cons (car existing) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-pcb-slot-superseded-rows (existing new)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp existing)
-           (if (and (not (member-equal (car existing) (if (true-listp new) new nil)))
-                    (fn-pcb-budget-slotp (fn-cfg-row-b (car existing)))
-                    (fn-pcb-slot-memberp (fn-cfg-row-b (car existing)) new))
-               (cons (car existing)
-                     (fn-pcb-slot-superseded-rows (cdr existing) new))
-             (fn-pcb-slot-superseded-rows (cdr existing) new))
-         nil)
-       :exec (fn-pcb-slot-superseded-rows-loop existing new nil)))
-
-(defthm fn-pcb-slot-superseded-rows-loop-is-rev-onto
-  (equal (fn-pcb-slot-superseded-rows-loop existing new acc)
-         (fn-ag-rev-onto acc (fn-pcb-slot-superseded-rows existing new)))
-  :hints (("Goal" :induct (fn-pcb-slot-superseded-rows-loop existing new acc)
-                  :in-theory (union-theories
-                              '(fn-pcb-slot-superseded-rows-loop fn-pcb-slot-superseded-rows fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-pcb-slot-superseded-rows
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-pcb-slot-superseded-rows fn-ag-rev-onto fn-pcb-slot-superseded-rows-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-pcb-slot-superseded-rows (existing new)
+  :shape :map :over existing :elt e
+  :keep (and (not (member-equal e (if (true-listp new) new nil)))
+              (fn-pcb-budget-slotp (fn-cfg-row-b e))
+              (fn-pcb-slot-memberp (fn-cfg-row-b e) new))
+  :body e)
 
 ; The deltas that extend NAME's group in PEERS by NEW, or nil when PEERS has
 ; no such peer (an extension never creates a peer).  Host:
