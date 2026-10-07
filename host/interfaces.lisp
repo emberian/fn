@@ -5737,6 +5737,8 @@
 (definterface create-fn-hist$p :class :common-lisp-compliant
  :raw-guarded (0 nil (fn-hist$p)))
 (definterface fn-hroot-event-demand :class :common-lisp-compliant :kinds ((ordinal natp)))
+(definterface fn-hroot-event-transient :class :common-lisp-compliant)
+(definterface fn-hroot-grow-transient :class :common-lisp-compliant)
 (definterface fn-hroot-grow-demand :class :common-lisp-compliant :kinds ((ordinal natp)))
 (definterface fn-hroot-retain-demand :class :common-lisp-compliant)
 (definterface fn-hroot-root-retain-demand :class :common-lisp-compliant)
@@ -5756,6 +5758,7 @@
 (definterface fn-hist$p-dispose :class :common-lisp-compliant)
 (definterface fn-hrecs$s-dispose :class :common-lisp-compliant)
 (definterface fn-owner-hroot-resize :class :program)
+(definterface fn-owner-hroot-transient :class :program)
 (definterface fn-owner-hroot-begin :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
 (definterface fn-owner-hroot-frontier-value :class :program)
