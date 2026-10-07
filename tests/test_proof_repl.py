@@ -1076,10 +1076,13 @@ class GraphTests(unittest.TestCase):
                 key = proof_repl.certs.closure_key(root, "books/base")[0]
                 entry = cache / key / "0123456789abcdef"
                 entry.mkdir(parents=True)
-                (entry / "meta.json").write_text(json.dumps({"toolchain_identity": "d5f2b9f0" * 8}))
+                (entry / "meta.json").write_text(json.dumps(
+                    {"toolchain_identity": "d5f2b9f0" * 8, "origin_host": "hbox",
+                     "origin_root": "/farm/base"}))
                 graph = proof_repl.include_graph(root, "books/mid")
                 text = "\n".join(proof_repl.diagnose(graph, ["books/base"], cache, "1b4169e9" * 8))
-        self.assertIn("only for ACL2 toolchain(s) d5f2b9f0, and this ACL2 is 1b4169e9", text)
+        self.assertIn("only for ACL2 toolchain(s) d5f2b9f0 (origin hbox:/farm/base), "
+                      "and this ACL2 is 1b4169e9", text)
 
 
 class UncompiledDiagnosisTests(unittest.TestCase):
@@ -1100,6 +1103,52 @@ class UncompiledDiagnosisTests(unittest.TestCase):
 
 class CacheStartupTests(unittest.TestCase):
     def test_incompatible_cached_parent_and_child_refuse_without_session(self):
+        # --cached-only keeps the refusal: no certification, no session.
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            older = worktree(str(base / "older"), certified=["books/base"])
+            parent = worktree(str(base / "parent"), certified=["books/mid"])
+            target = worktree(str(base / "target"), certified=["books/base", "books/mid"])
+            cache = base / "cache"
+            toolchain = proof_repl.certs.stable_identity(TEST_COMPATIBILITY)
+            for source, name, origin in (
+                    (older, "books/base", "/farm/base"),
+                    (parent, "books/mid", "/farm/parent")):
+                proof_repl.certs.publish(
+                    source, cache, [manifest_for(source, [name], write=False)],
+                    [name], origin=origin, origin_kind="run")
+            fake_acl2 = base / "acl2"
+            fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+            fake_acl2.chmod(0o755)
+            sessions = base / "sessions"
+            args = SimpleNamespace(name="bad-cache", book="tests/acl2/mid-tests", cached_only=True)
+            with mock.patch.object(proof_repl, "ROOT", target), \
+                 mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                 mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+                 mock.patch.object(proof_repl.certs, "cache_directory",
+                                   return_value=cache), \
+                 mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                                   return_value=SimpleNamespace(
+                                       qualified=True, identity=toolchain,
+                                       reason="")), \
+                 mock.patch.object(proof_repl.acl2_slots, "slot",
+                                   side_effect=lambda label: nullcontext()), \
+                 mock.patch.object(proof_repl.certs.cert_alists,
+                                   "acl2_certificate_pairs",
+                                   side_effect=lambda paths, pairs, acl2, root:
+                                       {pair: (True, False) for pair in pairs}), \
+                 mock.patch.object(proof_repl.subprocess, "run") as certify, \
+                 mock.patch.object(proof_repl.subprocess, "Popen") as launched:
+                self.assertEqual(proof_repl.start(args), 1)
+                launched.assert_not_called()
+                certify.assert_not_called()
+            self.assertFalse((sessions / "bad-cache").exists())
+            self.assertFalse((target / "books/base.cert").exists())
+            self.assertFalse((target / "books/mid.cert").exists())
+
+    def test_incompatible_cached_parent_and_child_certify_by_default(self):
+        # The new rule: without --cached-only the miss certifies (here the fake
+        # certify run fails, so no session starts), naming the books and origins.
         with tempfile.TemporaryDirectory() as temporary:
             base = pathlib.Path(temporary)
             older = worktree(str(base / "older"), certified=["books/base"])
@@ -1133,9 +1182,18 @@ class CacheStartupTests(unittest.TestCase):
                                    "acl2_certificate_pairs",
                                    side_effect=lambda paths, pairs, acl2, root:
                                        {pair: (True, False) for pair in pairs}), \
-                 mock.patch.object(proof_repl.subprocess, "Popen") as launched:
+                 mock.patch.object(proof_repl.subprocess, "run",
+                                   return_value=subprocess.CompletedProcess([], 1)) as certify, \
+                 mock.patch.object(proof_repl.subprocess, "Popen") as launched, \
+                 contextlib.redirect_stdout(io.StringIO()) as out:
                 self.assertEqual(proof_repl.start(args), 1)
                 launched.assert_not_called()
+                command = certify.call_args.args[0]
+                self.assertIn("--incremental", command)
+                self.assertTrue(any(word.startswith("books/") for word in command), command)
+                text = out.getvalue()
+                self.assertIn("certifying into this machine's cache", text)
+                self.assertIn("/farm/", text)
             self.assertFalse((sessions / "bad-cache").exists())
             self.assertFalse((target / "books/base.cert").exists())
             self.assertFalse((target / "books/mid.cert").exists())
