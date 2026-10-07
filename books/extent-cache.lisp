@@ -1319,3 +1319,73 @@
                   :cases ((fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
                                       trailer start fn-xcs)
                           (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))))
+
+; =============================================================================
+; What each outcome of an install does to the table and what it hands back.
+; In all three, every slot but the answered one is untouched.
+
+(defthm fn-xc-install-present
+  (implies (and (fn-xc-case-hyps)
+                (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                            trailer start fn-xcs))
+           (let ((v (fn-xc-install-result 1)))
+             (and (equal (fn-xc-install-result 0) :present)
+                  (equal (fn-xc-install-result 2) nil)
+                  (fn-xc-slot-matchp v t kind file eoff elen a b c d trailer start fn-xcs)
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (fn-xc-install-result 3)) (nth j fn-xcs))))))
+  :hints (("Goal" :in-theory (e/d (fn-xc-install-okp) (fn-xc-install-when-present))
+                  :use (fn-xc-install-when-present
+                        (:instance fn-xc-find-bounds (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
+                                   (exactp t) (pos start))
+                        (:instance fn-xc-find-matches (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
+                                   (exactp t) (pos start))
+                        (:instance fn-xc-matchp-is-live (exactp t) (pos start)
+                                   (i (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen
+                                                  a b c d trailer start fn-xcs)))
+                        (:instance fn-xc-touch-frame
+                                   (i (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen
+                                                  a b c d trailer start fn-xcs)))))))
+
+(defthm fn-xc-install-fills-a-free-slot
+  (implies (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))
+           (let ((v (fn-xc-install-result 1)))
+             (and (equal (fn-xc-install-result 0) :installed)
+                  (equal (fn-xc-install-result 2) nil)
+                  (equal (fn-xcs-get-kind v fn-xcs) 0)
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (fn-xc-install-result 3)) (nth j fn-xcs))))))
+  :hints (("Goal" :in-theory (e/d (fn-xc-install-okp fn-xc-write-okp) (fn-xc-install-when-free))
+                  :use (fn-xc-install-when-free fn-xc-tick-is-u64
+                        (:instance fn-xc-find-free-is-free (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc)))
+                        (:instance fn-xc-write-frame
+                                   (i (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))
+                                   (stamp (fn-xc-tick fn-xcc)))))))
+
+; KEYSTONE 4 (eviction).  A full region gives up its least recently used slot,
+; and hands back that slot's own token: the charge the caller releases.
+(defthm fn-xc-install-evicts-the-least-recently-used
+  (implies (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))
+           (let ((v (fn-xc-install-result 1)))
+             (and (equal (fn-xc-install-result 0) :replaced)
+                  (natp v) (<= (fn-xc-lo kind fn-xcc) v) (< v (fn-xc-hi kind fn-xcc))
+                  (not (equal (fn-xcs-get-kind v fn-xcs) 0))
+                  (equal (fn-xc-install-result 2) (fn-xc-slot-token v fn-xcs))
+                  ; every slot of the region was live, and none is older than the victim
+                  (implies (and (natp j) (<= (fn-xc-lo kind fn-xcc) j) (< j (fn-xc-hi kind fn-xcc)))
+                           (and (not (equal (fn-xcs-get-kind j fn-xcs) 0))
+                                (<= (fn-xcs-get-stamp v fn-xcs) (fn-xcs-get-stamp j fn-xcs))))
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (fn-xc-install-result 3)) (nth j fn-xcs))))))
+  :hints (("Goal" :in-theory (e/d (fn-xc-install-okp fn-xc-write-okp) (fn-xc-install-when-full))
+                  :use (fn-xc-install-when-full fn-xc-tick-is-u64
+                        (:instance fn-xc-lru-is-least (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
+                                   (best nil) (j (fn-xc-lo kind fn-xcc)))
+                        (:instance fn-xc-lru-is-least (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
+                                   (best nil))
+                        (:instance fn-xc-find-free-complete (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc)))
+                        (:instance fn-xc-write-frame
+                                   (i (fn-xc-lru (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) nil fn-xcs))
+                                   (stamp (fn-xc-tick fn-xcc)))))))
