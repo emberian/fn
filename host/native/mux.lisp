@@ -1909,7 +1909,10 @@ thread holds it."
           (push socket (fnn-owner-service-clients service))
           (if reserved
               (setq loop reserved)
-            (progn
+            ;; The cursor belongs to the slot lock, which fnn-mux-reserve-once
+            ;; holds for its own read and increment; the roster lock R is
+            ;; held here for LOOPS and nothing takes R under the slot lock.
+            (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
               (setq loop (nth (mod (fnn-owner-service-mux-next service) (length loops))
                               loops))
               (incf (fnn-owner-service-mux-next service)))))))
