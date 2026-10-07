@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3088 |
-| Certification roots in the Makefile | 2602 |
-| Books inside the root closure | 2933 |
-| `defthm` and `defthmd` events | 41775 |
-| `defun` events | 26401 |
-| Functions with verified guards | 4171 |
+| Books read | 3090 |
+| Certification roots in the Makefile | 2604 |
+| Books inside the root closure | 2935 |
+| `defthm` and `defthmd` events | 41814 |
+| `defun` events | 26407 |
+| Functions with verified guards | 4172 |
 | Functions declared `:verify-guards nil` and never verified | 3468 |
-| Functions left at the default with an explicit guard | 14462 |
-| Functions left at the default with no guard | 4300 |
-| `assert-event` checks | 28331 |
-| `must-fail` checks | 2796 |
+| Functions left at the default with an explicit guard | 14466 |
+| Functions left at the default with no guard | 4301 |
+| `assert-event` checks | 28339 |
+| `must-fail` checks | 2799 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
-| Theorems flagged SUSPECT by shape | 1514 |
+| Theorems flagged SUSPECT by shape | 1520 |
 | Export-hygiene warnings | 433 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 316 |
-| Include-hygiene warnings | 3700 |
-| Host-names warnings | 3419 |
+| Include-hygiene warnings | 3702 |
+| Host-names warnings | 3423 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -297,18 +297,18 @@ that `make certify` requests.
 | `books/bp-node-job-cursor.lisp` | root | 103 | 32 | 2/16/14/0 | 0 | 0 | 2 |
 | `books/bp-node-job-offer-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer-progress.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-node-job-offer.lisp` | root | 66 | 26 | 5/5/16/0 | 0 | 0 | 1 |
+| `books/bp-node-job-offer.lisp` | root | 67 | 26 | 5/5/16/0 | 0 | 0 | 1 |
 | `books/bp-node-listener-control.lisp` | root | 25 | 31 | 12/0/19/0 | 0 | 0 | 0 |
-| `books/bp-node-machine-authorization.lisp` | root | 30 | 4 | 0/4/0/0 | 0 | 0 | 1 |
+| `books/bp-node-machine-authorization.lisp` | root | 34 | 4 | 0/4/0/0 | 0 | 0 | 2 |
 | `books/bp-node-machine-codec.lisp` | root | 3 | 35 | 5/0/30/0 | 0 | 0 | 0 |
 | `books/bp-node-machine-gaps.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-node-machine-guards.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-node-machine-invariants.lisp` | root | 83 | 1 | 1/0/0/0 | 0 | 0 | 11 |
-| `books/bp-node-machine.lisp` | root | 76 | 101 | 58/3/40/0 | 0 | 0 | 3 |
+| `books/bp-node-machine-invariants.lisp` | root | 106 | 1 | 1/0/0/0 | 0 | 0 | 13 |
+| `books/bp-node-machine.lisp` | root | 75 | 102 | 59/3/40/0 | 0 | 0 | 3 |
 | `books/bp-node-profile-admission.lisp` | root | 8 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/bp-node-profile-replay.lisp` | root | 5 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/bp-node-profile.lisp` | root | 42 | 26 | 0/0/26/0 | 0 | 0 | 2 |
-| `books/bp-node-progress-bridge.lisp` | root | 19 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/bp-node-progress-bridge.lisp` | root | 21 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 36 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/bp-node-progress-premises.lisp` | root | 55 | 5 | 0/3/0/2 | 0 | 0 | 1 |
@@ -376,7 +376,7 @@ that `make certify` requests.
 | `books/bp-session-admission.lisp` | root | 34 | 35 | 34/0/1/0 | 0 | 0 | 0 |
 | `books/bp-session-profile.lisp` | closure | 9 | 22 | 0/0/22/0 | 0 | 0 | 1 |
 | `books/bp-session-received-source.lisp` | closure | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/bp-session-scheduler.lisp` | closure | 0 | 14 | 1/0/13/0 | 0 | 0 | 0 |
+| `books/bp-session-scheduler.lisp` | closure | 3 | 14 | 1/0/13/0 | 0 | 0 | 1 |
 | `books/bp-signed-binding.lisp` | root | 12 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/bp-signed-receipt.lisp` | closure | 2 | 11 | 4/0/7/0 | 0 | 0 | 1 |
 | `books/bp-status-report-invariants.lisp` | root | 53 | 5 | 0/5/0/0 | 0 | 0 | 0 |
@@ -891,6 +891,7 @@ that `make certify` requests.
 | `books/identity-invariants.lisp` | root | 43 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
 | `books/identity.lisp` | root | 2 | 20 | 4/0/16/0 | 0 | 0 | 0 |
+| `books/idle-collection.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -2081,7 +2082,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-listener-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 24 | 0 | 0 |
 | `tests/acl2/bp-node-machine-authorization-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 21 | 4 | 0 |
 | `tests/acl2/bp-node-machine-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 10 | 5 | 0 |
-| `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 51 | 4 | 0 |
+| `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 59 | 4 | 0 |
 | `tests/acl2/bp-node-profile-admission-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 17 | 6 | 0 |
 | `tests/acl2/bp-node-profile-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 32 | 6 | 0 |
 | `tests/acl2/bp-node-progress-premises-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
@@ -2486,6 +2487,7 @@ that `make certify` requests.
 | `tests/acl2/hybrid-store-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 4 | 8 | 0 |
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
+| `tests/acl2/idle-collection-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 3 | 0 |
 | `tests/acl2/index-backing-publication-row-carry-tests.lisp` | - | 19 | 8 | 0/2/0/6 | 0 | 0 | 0 |
 | `tests/acl2/index-backing-served-producer-tests.lisp` | - | 16 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `tests/acl2/index-reader-render-establishment-tests.lisp` | root | 3 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -3316,22 +3318,25 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpn-contact-step-is-noop-while-pending` | `books/bp-node-machine-invariants.lisp` | 63 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpn-contact-step and the conclusion is that arm's value |
 | `fn-bpn-job-key-accessors` | `books/bp-node-machine-invariants.lisp` | 283 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-job-key-of-job-with-status` | `books/bp-node-machine-invariants.lisp` | 270 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-bpn-job-status-of-job-with-status` | `books/bp-node-machine-invariants.lisp` | 1351 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-job-wire-of-job-with-status` | `books/bp-node-machine-invariants.lisp` | 289 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-machine-constructor-accessors` | `books/bp-node-machine.lisp` | 451 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-machine-invariant-components` | `books/bp-node-machine-invariants.lisp` | 574 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpn-machine-invariantp |
 | `fn-bpn-next-hop-count-increases` | `books/bp-node.lisp` | 687 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-payload-of-send-bundle` | `books/bp-node.lisp` | 601 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-pending-constructor-accessors` | `books/bp-node-machine-invariants.lisp` | 45 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-bpn-proposal-effectsp-of-metadata-state-with` | `books/bp-node-machine-authorization.lisp` | 143 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-bpn-proposal-effectsp-of-metadata-state-with` | `books/bp-node-machine-authorization.lisp` | 153 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-report-author-step-delegates-ordinary-events` | `books/bp-report-author.lisp` | 138 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpn-report-author-step and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-bpn-report-author-step and the conclusion is that branch's value |
 | `fn-bpn-report-outbox-view-requires-tombstone` | `books/bp-report-outbox.lisp` | 63 | reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-bpn-resume-job-keeps-wire-and-peer` | `books/bp-node-machine.lisp` | 1012 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-bpn-resolution-record-reason` | `books/bp-node-machine-authorization.lisp` | 452 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-bpn-restart-step-of-ready-replay` | `books/bp-node-machine-invariants.lisp` | 1558 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpn-restart-step and the conclusion is that arm's value |
+| `fn-bpn-resume-job-keeps-wire-and-peer` | `books/bp-node-machine.lisp` | 1055 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-send-bundle-destination` | `books/bp-node-machine-invariants.lisp` | 156 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-sf-crash-preserves-nonreuse` | `books/bp-sequence-fidelity.lisp` | 413 | preserves-no-subject-call: the statement never calls fn-bpn-sf-crash or a fn-bpn-sf-crash- transition |
 | `fn-bpn-sf-host-recover-is-core-recover` | `books/bp-sequence-fidelity.lisp` | 332 | definition-restated: the conclusion is the body of fn-bpn-sf-host-recover; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-sf-host-reserve-is-core-reserve` | `books/bp-sequence-fidelity.lisp` | 311 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-bpn-sf-host-reserve; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-state-with-accessors` | `books/bp-node-machine-invariants.lisp` | 20 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-bpn-step-emits-no-release` | `books/bp-node-machine.lisp` | 1001 | instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing |
+| `fn-bpn-step-emits-no-release` | `books/bp-node-machine.lisp` | 1044 | instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing |
 | `fn-bpnc-socket-open-run-by-definition` | `books/bp-node-control.lisp` | 125 | definition-restated: the conclusion is the body of fn-bpnc-socket-open-run |
 | `fn-bpnf-clock-domain-different-boot-fences` | `books/bp-clock-domain.lisp` | 340 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnf-clock-domain-plan and the conclusion is that arm's value |
 | `fn-bpnf-clock-domain-legacy-without-marker-fences` | `books/bp-clock-domain.lisp` | 354 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnf-clock-domain-plan and the conclusion is that arm's value |
@@ -3368,6 +3373,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bps-headslot-current-profile-by-definition` | `books/bpsec-asb-head-invariant.lisp` | 36 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-bps-asb-head-profilep; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bps-op-foreign-completion-preserves-rightful-state-by-definition` | `books/bpsec-operation.lisp` | 161 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bps-op-complete and the conclusion is that arm's value |
 | `fn-bpsc-invalid-releases-no-contact-event-by-definition` | `books/bp-contact-service.lisp` | 64 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpsc-contact-event and the conclusion is that arm's value |
+| `fn-bpsched-service-without-unreleased-custody-is-the-rotation` | `books/bp-session-scheduler.lisp` | 67 | arm-of-definition: constant arguments select one IF/COND arm of fn-bpsched-service and the conclusion is that arm's value |
 | `fn-bpsg-context-abort-retains-every-publication-debt-by-definition` | `books/bp-session-profile.lisp` | 181 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpsg-context-abort-plan and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-bpsg-context-abort-plan and the conclusion is that branch's value |
 | `fn-bpsr-adu-octets-of-unsigned` | `books/bp-signed-receipt.lisp` | 121 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpsr-adu-octets and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-bpsr-adu-octets and the conclusion is that branch's value |
 | `fn-brlc-ssr-of-bad` | `books/bp-receipt-log-crash.lisp` | 117 | arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value |
@@ -3602,6 +3608,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ideal-relay-of-fn-ideal-make-state` | `books/ideal.lisp` | 70 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ideal-result-effects-of-fn-ideal-make-result` | `books/ideal.lisp` | 113 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ideal-result-state-of-fn-ideal-make-result` | `books/ideal.lisp` | 110 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-idle-gc-verdict-collects-when-owed` | `books/idle-collection.lisp` | 90 | arm-of-definition: the hypotheses select one IF/COND arm of fn-idle-gc-verdict and the conclusion is that arm's value |
+| `fn-idle-gc-verdict-never-collects-during-a-publication` | `books/idle-collection.lisp` | 99 | arm-of-definition: constant arguments select one IF/COND arm of fn-idle-gc-verdict and the conclusion is that arm's value |
 | `fn-idr-consume-grant-unfolds` | `books/store-identity-reserve.lisp` | 79 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-idr-consume-grant |
 | `fn-index-entry-group-of-entry` | `books/nntp-index.lisp` | 87 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-index-entry-group-of-fn-index-entry` | `books/index.lisp` | 34 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
