@@ -4470,6 +4470,31 @@ def write_baseline(path: Path, findings: list[Finding], old: dict, initial: bool
     return []
 
 
+def lower_stale(path: Path, findings: list[Finding]) -> tuple[list[str], list[str]]:
+    """--lower-stale: shrink-only.  Lower each baseline row whose current count
+    (the same weights() the verdict uses) is below its count, drop it at 0;
+    never add a key, never raise a count, leave every other row untouched.
+    Returns (changes, raised); writes only when there is a change."""
+    data = json.loads(path.read_text())
+    counted = weights(findings)
+    changes, raised, rows = [], [], []
+    for row in data["findings"]:
+        k, n = row["key"], row.get("count", 1)
+        now = counted.get(k, 0)
+        if now > n:
+            raised.append(f"{k}: {n} -> {now} (not applied; a raise)")
+        if now >= n:
+            rows.append(row)
+        elif now == 0:
+            changes.append(f"removed {k} (was {n})")
+        else:
+            rows.append({**row, "count": now})
+            changes.append(f"lowered {k}: {n} -> {now}")
+    if changes:
+        path.write_text(json.dumps({**data, "findings": rows}, indent=1) + "\n")
+    return changes, raised
+
+
 def audit_callbacks(model: Model, raw: dict) -> list[str]:
     """--audit-callbacks: hold a why text's own-file line marker to its ordinal.
 
@@ -4541,6 +4566,9 @@ def main(argv=None) -> int:
     ap.add_argument("--all-files", action="store_true", help="also report parked (unloaded) files")
     ap.add_argument("--write-baseline", action="store_true")
     ap.add_argument("--initial", action="store_true")
+    ap.add_argument("--lower-stale", action="store_true",
+                    help="shrink-only: lower baseline rows whose findings dropped, remove rows at 0; "
+                         "never adds a key or raises a count")
     ap.add_argument("--emit-realization", action="store_true")
     ap.add_argument("--audit-callbacks", action="store_true",
                     help="standalone: print only the callback-ordinal audit (which --check's "
@@ -4592,6 +4620,22 @@ def main(argv=None) -> int:
         print("lock_discipline_check: enclave names a host file the tree does not read: "
               + ", ".join(missing_files))
         return 1
+    if args.lower_stale:
+        if args.rule or args.function:
+            print("lock_discipline_check: --lower-stale needs the whole finding set (no --rule/--function)")
+            return 1
+        try:
+            changes, raised = lower_stale(Path(args.baseline), findings)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+            print(f"lock_discipline_check: refusing: baseline unreadable: {e!r}")
+            return 1
+        for c in changes:
+            print("  " + c)
+        for r in raised:
+            print("  RAISE " + r)
+        print(f"lock_discipline_check: --lower-stale: {len(changes)} change(s)" if changes
+              else "lock_discipline_check: --lower-stale: nothing to lower")
+        return 0
     baseline = load_baseline(Path(args.baseline))
     if args.write_baseline:
         grown = write_baseline(Path(args.baseline), findings, baseline, args.initial)
@@ -4654,7 +4698,7 @@ def main(argv=None) -> int:
             for why, f in verdict["new"][:40]:
                 print(f"lock_discipline_check: {why.upper()} {f.path}:{f.line} {f.rule} {f.function}: {f.message}")
             for k in verdict["stale"][:40]:
-                print(f"lock_discipline_check: STALE baseline row (lower it with --write-baseline): {k}")
+                print(f"lock_discipline_check: STALE baseline row (lower it with --lower-stale): {k}")
             for k in verdict["enclave_baselined"]:
                 print(f"lock_discipline_check: an enclave finding cannot be baselined: {k}")
             for why in audit_failures[:40]:

@@ -1445,6 +1445,83 @@ class R2WaitWrapper(unittest.TestCase):
         self.assertIn("E:sb-thread:condition-wait", [f.key for f in found if f.rule == "R2"])
 
 
+class LowerStale(unittest.TestCase):
+    """--lower-stale is shrink-only: it never adds a key, never raises a count."""
+
+    A = ldc.Finding("R3", "violation", "fn-a", "x.lisp", 1, "m", "naked:p")
+    B = ldc.Finding("R2", "violation", "fn-b", "x.lisp", 2, "m", "O:leaf", weight=3)
+    C = ldc.Finding("R1", "violation", "fn-c", "x.lisp", 3, "m", "state:s")
+    D = ldc.Finding("R1", "violation", "fn-d", "x.lisp", 4, "m", "state:t")
+
+    def row(self, f, count, reason="why"):
+        return {"key": f.baseline_key(), "count": count, "rule": f.rule, "category": f.category,
+                "where": f"{f.path}:{f.line}", "reason": reason}
+
+    def lower(self, rows, findings):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "baseline.json"
+            path.write_text(json.dumps({"comment": "c", "findings": rows}, indent=1) + "\n")
+            before = path.read_bytes()
+            changes, raised = ldc.lower_stale(path, findings)
+            after = path.read_bytes()
+            return changes, raised, before, after, json.loads(after)["findings"]
+
+    def test_lowers_a_row_whose_count_dropped(self):
+        _, _, _, _, rows = self.lower([self.row(self.B, 5)], [self.B])
+        self.assertEqual([r["count"] for r in rows], [3])
+
+    def test_removes_a_row_at_zero(self):
+        changes, _, _, _, rows = self.lower([self.row(self.A, 1), self.row(self.B, 3)], [self.B])
+        self.assertEqual([r["key"] for r in rows], [self.B.baseline_key()])
+        self.assertEqual(len(changes), 1)
+
+    def test_never_adds_a_new_key(self):
+        changes, _, before, after, rows = self.lower([self.row(self.B, 5)], [self.B, self.C, self.D])
+        self.assertEqual([r["key"] for r in rows], [self.B.baseline_key()])
+        self.assertEqual(len(changes), 1)
+
+    def test_never_raises_a_grown_row(self):
+        grown = ldc.Finding("R2", "violation", "fn-b", "x.lisp", 2, "m", "O:leaf", weight=9)
+        changes, raised, before, after, rows = self.lower([self.row(self.B, 3)], [grown])
+        self.assertEqual(len(raised), 1)
+        self.assertEqual(changes, [])
+        self.assertEqual(before, after)
+
+    def test_other_rows_stay_byte_identical(self):
+        keep = self.row(self.A, 1, reason="unicode \u2014 reason")
+        _, _, before, after, rows = self.lower([keep, self.row(self.B, 5), self.row(self.C, 1)],
+                                               [self.A, self.B])
+        self.assertEqual(rows[0], keep)
+        self.assertEqual(list(rows[0]), list(keep))
+        self.assertEqual([r["key"] for r in rows], [self.A.baseline_key(), self.B.baseline_key()])
+        self.assertEqual(json.loads(after)["comment"], "c")
+
+    def test_a_no_op_writes_nothing(self):
+        changes, raised, before, after, _ = self.lower([self.row(self.A, 1), self.row(self.B, 3)],
+                                                       [self.A, self.B, self.C])
+        self.assertEqual((changes, raised), ([], []))
+        self.assertEqual(before, after)
+
+    def test_main_refuses_an_unreadable_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE)
+            contracts = root / "contracts.json"
+            contracts.write_text(json.dumps(dict(CONTRACTS.raw, enclave={"functions": [], "files": []})))
+            for body in ("{not json", None):
+                baseline = root / "baseline.json"
+                if body is None:
+                    baseline.unlink(missing_ok=True)
+                else:
+                    baseline.write_text(body)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    code = ldc.main(["--root", str(root), "--contracts", str(contracts),
+                                     "--baseline", str(baseline), "--lower-stale"])
+                self.assertEqual(code, 1)
+                self.assertEqual(baseline.exists(), body is not None)
+
+
 if __name__ == "__main__":
     unittest.main()
 
