@@ -35,27 +35,28 @@
   (<= (len (adt-pr-fill p res frames)) (adt-pr-cap frames))
   :hints (("Goal" :in-theory (enable adt-pr-fill))))
 
-; Word J (absolute) of the tape as the pool shows it: the word, or the verdict.
-(defun adt-pr-word (j pages res)
+; Word J (absolute) of the tape TAG as the pool shows it: the word, or the verdict.
+; A pool page is (TAG . PAGE): the catalog's tapes share one pool.
+(defun adt-pr-word (tag j pages res)
   (declare (xargs :guard (natp j) :verify-guards nil))
   (let ((p (floor (nfix j) *pgs-page-words*)))
-    (if (member p res)
+    (if (member (cons tag p) res)
         (nth (mod (nfix j) *pgs-page-words*) (nth p pages))
-      (list :need-page p))))
+      (list :need-page tag p))))
 
 ; Read words [J, END): a missing page is filled and the SAME word read again.
 ; (mv words res fills); FILLS the pages filled, most recent first.
-(defun adt-pr-read-words (j end pages res frames acc fills)
+(defun adt-pr-read-words (tag j end pages res frames acc fills)
   (declare (xargs :guard (and (natp j) (natp end) (true-listp acc))
                   :measure (+ (* 2 (nfix (- (nfix end) (nfix j))))
-                              (if (member (floor (nfix j) *pgs-page-words*) res) 0 1))
+                              (if (member (cons tag (floor (nfix j) *pgs-page-words*)) res) 0 1))
                   :verify-guards nil))
   (cond ((not (< (nfix j) (nfix end))) (mv (reverse acc) res fills))
-        ((member (floor (nfix j) *pgs-page-words*) res)
-         (adt-pr-read-words (+ 1 (nfix j)) end pages res frames
-                            (cons (adt-pr-word j pages res) acc) fills))
+        ((member (cons tag (floor (nfix j) *pgs-page-words*)) res)
+         (adt-pr-read-words tag (+ 1 (nfix j)) end pages res frames
+                            (cons (adt-pr-word tag j pages res) acc) fills))
         (t (let ((p (floor (nfix j) *pgs-page-words*)))
-             (adt-pr-read-words j end pages (adt-pr-fill p res frames) frames acc (cons p fills))))))
+             (adt-pr-read-words tag j end pages (adt-pr-fill (cons tag p) res frames) frames acc (cons (cons tag p) fills))))))
 
 ; The pages words [J, END) touch.
 (defun adt-pr-span (j end)
@@ -142,9 +143,9 @@
 ; pool holds and however small it is.
 (defthm adt-pr-read-words-words
   (implies (and (true-listp w) (natp j) (natp end) (<= j end) (<= end (len w)) (true-listp acc))
-           (equal (mv-nth 0 (adt-pr-read-words j end (adt-tp-pages w) res frames acc fills))
+           (equal (mv-nth 0 (adt-pr-read-words tag j end (adt-tp-pages w) res frames acc fills))
                   (revappend acc (adt-tp-take (- end j) (nthcdr j w)))))
-  :hints (("Goal" :induct (adt-pr-read-words j end (adt-tp-pages w) res frames acc fills)
+  :hints (("Goal" :induct (adt-pr-read-words tag j end (adt-tp-pages w) res frames acc fills)
            :in-theory (e/d (adt-pr-word) (adt-pr-nth-of-pages adt-tp-pages adt-pr-take-step floor mod)))
           ("Subgoal *1/2" :use ((:instance adt-pr-nth-of-pages (j j)) (:instance adt-pr-take-step)))))
 
@@ -178,25 +179,25 @@
                  adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j k))))))
 
 ; Pages still to fill: the pages of [J, END), less the current one if resident.
-(defun adt-pr-bnd (j end res)
+(defun adt-pr-bnd (tag j end res)
   (declare (xargs :guard (and (natp j) (natp end)) :verify-guards nil))
   (if (<= (nfix end) (nfix j))
       0
     (- (adt-pr-span j end)
-       (if (member (floor (nfix j) *pgs-page-words*) res) 1 0))))
+       (if (member (cons tag (floor (nfix j) *pgs-page-words*)) res) 1 0))))
 
 (defthm adt-pr-read-words-fills
   (implies (and (natp j) (natp end))
-           (<= (len (mv-nth 2 (adt-pr-read-words j end pages res frames acc fills)))
-               (+ (len fills) (adt-pr-bnd j end res))))
-  :hints (("Goal" :induct (adt-pr-read-words j end pages res frames acc fills)
+           (<= (len (mv-nth 2 (adt-pr-read-words tag j end pages res frames acc fills)))
+               (+ (len fills) (adt-pr-bnd tag j end res))))
+  :hints (("Goal" :induct (adt-pr-read-words tag j end pages res frames acc fills)
            :in-theory (e/d (adt-pr-bnd adt-pr-span) (floor mod adt-pr-fill)))))
 
 (defthm adt-pr-read-words-residency
   (implies (<= (len res) (adt-pr-cap frames))
-           (<= (len (mv-nth 1 (adt-pr-read-words j end pages res frames acc fills)))
+           (<= (len (mv-nth 1 (adt-pr-read-words tag j end pages res frames acc fills)))
                (adt-pr-cap frames)))
-  :hints (("Goal" :induct (adt-pr-read-words j end pages res frames acc fills)
+  :hints (("Goal" :induct (adt-pr-read-words tag j end pages res frames acc fills)
            :in-theory (disable floor mod adt-pr-fill adt-pr-cap))))
 
 (defthm adt-pr-floor-plus-page
@@ -223,10 +224,10 @@
           ("Subgoal *1/2" :use ((:instance adt-pr-floor-plus-small (x off) (y (+ -1 w)))))))
 
 ; The record of W words at word OFF of the tape, decoded: (mv rec res fills).
-(defun adt-pr-read-rec (s off w pages res frames fills)
+(defun adt-pr-read-rec (tag s off w pages res frames fills)
   (declare (xargs :guard (and (natp off) (natp w)) :verify-guards nil))
   (mv-let (ws res fills)
-    (adt-pr-read-words off (+ (nfix off) (nfix w)) pages res frames nil fills)
+    (adt-pr-read-words tag off (+ (nfix off) (nfix w)) pages res frames nil fills)
     (mv (car (adt-tp-dseq s ws)) res fills)))
 
 (defthm adt-pr-append-take-nthcdr
@@ -285,7 +286,7 @@
   (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (natp i) (< i (len a))
                 (equal off (len (adt-tp-seq-words s (take i a))))
                 (equal w (len (adt-tp-rw s (nth i a)))))
-           (equal (mv-nth 0 (adt-pr-read-rec s off w (adt-tp-pages-of s a) res frames fills))
+           (equal (mv-nth 0 (adt-pr-read-rec tag s off w (adt-tp-pages-of s a) res frames fills))
                   (nth i a)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (adt-pr-read-rec adt-tp-pages-of)
@@ -304,7 +305,7 @@
 
 (defthm adt-pr-read-rec-fills
   (implies (and (natp off) (natp w))
-           (<= (len (mv-nth 2 (adt-pr-read-rec s off w pages res frames fills)))
+           (<= (len (mv-nth 2 (adt-pr-read-rec tag s off w pages res frames fills)))
                (+ (len fills) 1 (adt-tp-npages w))))
   :hints (("Goal" :in-theory (disable adt-pr-read-words-fills adt-pr-span-of-record adt-pr-bnd)
            :use ((:instance adt-pr-read-words-fills (j off) (end (+ off w)) (acc nil))
@@ -313,7 +314,7 @@
 
 (defthm adt-pr-read-rec-residency
   (implies (<= (len res) (adt-pr-cap frames))
-           (<= (len (mv-nth 1 (adt-pr-read-rec s off w pages res frames fills)))
+           (<= (len (mv-nth 1 (adt-pr-read-rec tag s off w pages res frames fills)))
                (adt-pr-cap frames)))
   :hints (("Goal" :in-theory (e/d (adt-pr-read-rec) (adt-pr-read-words-residency adt-pr-cap))
            :use ((:instance adt-pr-read-words-residency (j off) (end (+ (nfix off) (nfix w))) (acc nil))))))
