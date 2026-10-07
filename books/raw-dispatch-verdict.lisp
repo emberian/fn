@@ -220,10 +220,13 @@
 
 (defun fn-rdv-table-problem (table carried alist)
   (declare (xargs :guard t))
-  ; nil, or (:row-missing|:row-added|:row-changed TABLE KEY): CARRIED is the
+  ; nil, or (:row-missing|:row-added|:row-changed TABLE KEY), or
+  ; (:digests-malformed TABLE TAIL) for a digest list that is not a list: CARRIED is the
   ; digests the world took, ALIST the table as the core holds it
   (cond ((atom carried)
-         (if (atom alist) nil (list :row-added table (fn-rdv-row-key (car alist)))))
+         (cond (carried (list :digests-malformed table carried))
+               ((atom alist) nil)
+               (t (list :row-added table (fn-rdv-row-key (car alist))))))
         ((atom alist) (list :row-missing table (fn-rdv-row-key (car carried))))
         ((not (equal (car carried) (fn-rdv-table-row-digest table (car alist))))
          (list :row-changed table (fn-rdv-row-key (car alist))))
