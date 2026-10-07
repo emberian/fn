@@ -251,7 +251,7 @@
   :hints (("Goal" :in-theory (enable fn-ssr-intern-step))))
 
 (defthm pcko-intern-cons
-  (implies (consp ts)
+  (implies (syntaxp (not (equal ts ''nil)))
    (equal (fn-ssr-intern-step acc (cons x ts) nil nil :resident nil fn-arena)
          (mv-let (mid fn-arena)
            (fn-ssr-intern-step acc (list x) nil nil :resident nil fn-arena)
@@ -286,3 +286,77 @@
            :expand ((pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets))
            :in-theory (e/d (pcko-x) (nth nthcdr adt-tp-unpack adt-tp-npk fn-scc-decode-tree
                                      pcko-copy pcko-tape nfix)))))
+
+(defthm pcko-tape-end
+  (implies (and (pcko-img w pgs-mem) (natp pos) (<= (len w) pos))
+           (equal (pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets)
+                  (mv :ok acc index reads fn-arena fn-octets)))
+  :hints (("Goal" :expand ((pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets)))))
+
+(defthm pcko-tape-not-a-tag
+  (implies (and (pcko-img w pgs-mem) (natp pos) (< pos (len w)) (not (equal (nth pos w) 1)))
+           (equal (pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets)
+                  (mv :ok acc index (+ reads 1) fn-arena fn-octets)))
+  :hints (("Goal" :expand ((pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets)))))
+
+(defthm pcko-unpack-nfix
+  (equal (adt-tp-unpack (nfix n) ws) (adt-tp-unpack n ws))
+  :hints (("Goal" :in-theory (enable adt-tp-unpack))))
+(defthm pcko-npk-nfix
+  (equal (adt-tp-npk (nfix n)) (adt-tp-npk n))
+  :hints (("Goal" :in-theory (enable adt-tp-npk))))
+
+(defthm pcko-cdr-nthcdr (implies (natp i) (equal (cdr (nthcdr i l)) (nthcdr (+ 1 i) l))))
+(defthm pcko-cadr-nthcdr (implies (natp i) (equal (cadr (nthcdr i l)) (nth (+ 1 i) l))))
+(defthm pcko-nthcdr-nthcdr2 (implies (and (natp i) (natp j)) (equal (nthcdr i (nthcdr j l)) (nthcdr (+ i j) l))))
+(defthm pcko-car-nthcdr2 (implies (natp i) (equal (car (nthcdr i l)) (nth i l))))
+(defthm pcko-consp-nthcdr (implies (natp i) (equal (consp (nthcdr i l)) (< i (len l)))))
+
+(defthm pcko-tape-stop
+  (implies (and (pcko-img w pgs-mem) (natp pos) (<= pos (len w))
+                (not (and (< pos (len w)) (equal (nth pos w) 1))))
+           (equal (pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets)
+                  (mv :ok acc index (if (< pos (len w)) (+ reads 1) reads) fn-arena fn-octets)))
+  :hints (("Goal" :cases ((< pos (len w)))
+           :in-theory (disable pcko-tape))))
+
+(defthm pcko-nfix-natp (implies (natp x) (equal (nfix x) x)))
+(defthm pcko-nfix-diff
+  (implies (and (natp a) (natp b) (<= b a)) (equal (nfix (+ a (- b))) (+ a (- b)))))
+
+(defun-nx pcko-ind2 (pos seq acc index reads fn-arena fn-octets w)
+  (declare (xargs :verify-guards nil :measure (nfix (- (len w) (nfix pos))))
+           (ignorable seq index reads fn-octets))
+  (if (and (natp pos) (< (+ pos 1) (len w)) (equal (nth pos w) 1)
+           (<= (+ pos 2 (adt-tp-npk (nth (+ pos 1) w))) (len w)))
+      (mv-let (acc2 fn-arena)
+        (fn-ssr-intern-step acc (list (pcko-x pos w)) nil nil :resident nil fn-arena)
+        (pcko-ind2 (+ pos 2 (adt-tp-npk (nth (+ pos 1) w))) (1+ seq) acc2
+                   (fn-cei-put seq (pcko-x pos w) index)
+                   (+ reads 2 (adt-tp-npk (nth (+ pos 1) w))) fn-arena
+                   (adt-tp-unpack (nfix (nth (+ pos 1) w)) (nthcdr (+ pos 2) w)) w))
+    (mv 0 fn-arena)))
+
+(defthm pcko-tape-is-the-fold
+  (implies (and (pcko-img w pgs-mem) (natp pos) (<= pos (len w)) (natp seq) (natp reads)
+                (pcko-wellp (nthcdr pos w))
+                (not (eq (mv-nth 0 (fn-ssr-intern-step acc (pcko-trees (nthcdr pos w))
+                                                       nil nil :resident nil fn-arena))
+                         :bad)))
+           (let ((ts (pcko-trees (nthcdr pos w))))
+             (and (equal (mv-nth 0 (pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets))
+                         :ok)
+                  (equal (mv-nth 1 (pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets))
+                         (mv-nth 0 (fn-ssr-intern-step acc ts nil nil :resident nil fn-arena)))
+                  (equal (mv-nth 2 (pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets))
+                         (fn-cei-build-aux ts seq index))
+                  (equal (mv-nth 3 (pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets))
+                         (+ reads (pcko-cost (nthcdr pos w))))
+                  (equal (mv-nth 4 (pcko-tape pos (len w) seq acc index reads pgs-mem fn-arena fn-octets))
+                         (mv-nth 1 (fn-ssr-intern-step acc ts nil nil :resident nil fn-arena))))))
+  :hints (("Goal" :induct (pcko-ind2 pos seq acc index reads fn-arena fn-octets w)
+           :do-not-induct t
+           :in-theory (disable nth nthcdr adt-tp-unpack adt-tp-npk fn-scc-decode-tree
+                               pcko-tape pcko-trees pcko-wellp pcko-cost nfix)
+           :expand ((pcko-trees (nthcdr pos w)) (pcko-wellp (nthcdr pos w))
+                    (pcko-cost (nthcdr pos w))))))
