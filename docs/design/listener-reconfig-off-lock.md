@@ -85,13 +85,13 @@ generated envelope touches every section, reorders stdout against `fnn-err`
   move the `fnn-out` (bp-node.lisp:202) to the caller after `fnn-quantum-bp`. It prints
   after the journal close instead of before; no test greps its position
   (`grep "release refused detail" tests` is empty).
-- the 11 command sites: NOT moved. The owner is private to a one-shot process
-  (`fnn-owner-install` per command), there is no co-tenant, and the lines are ordered
-  markers: `fnn-bpo-request-pause` prints a line then loops forever inside the
-  section for the process-death cuts (tests wait for it); a deferred line would never print.
-  Record that decision as `exceptions` rows in tools/lock_discipline_contracts.json
-  (rule R2, key `O:write-sequence`/`O:finish-output`, one per function, why = private
-  owner, marker order). Not a quick fix: it is the item's own "justify as a design decision".
+- the 11 command sites: NOT moved, and NOT declared as exceptions (Deputy C's
+  change). The owner is private to a one-shot process and the lines are ordered
+  markers (`fnn-bpo-request-pause` prints a line then loops forever inside the
+  section for the process-death cuts, so a deferred line would never print).
+  They stay as findings: the `R2|fnn-emit|O:*` keys remain at weight 11, owned by
+  LOCK-R2-OFFLINE-ONESHOT-HOLD. A checker-verified private-owner contract is that
+  item's job and needs mutants (a published owner, a second thread, a global store).
 Kept: per-line order within a thread, line-before-next-durable-step for commands,
 the listener's `BP NODE LISTENING` before `runtime line`. Lost: for the receipt
 refusal, order relative to the journal's close; for the listener, the old
@@ -100,7 +100,7 @@ guarantee that no other section ran between bind and its line (the point).
 ## 4. Verification
 
 Clears (baseline keys, all 1-site reasons): `R2|fnn-emit|O:write-sequence`,
-`...finish-output` (13 -> 0 violations, 11 become declared exceptions),
+`...finish-output` (weight 13 -> 11; the key stays for the command sites),
 `R2|fnn-bplc-cut|O:finish-output`, `|O:sleep`, `R2|fnn-bplc-drive|O:sb-bsd-sockets:socket-close`,
 `R2|fnn-listen|O:sb-bsd-sockets:{socket-bind,socket-listen,socket-name,sockopt-reuse-address}`,
 `R2|fnn-socket-shut|O:sb-bsd-sockets:socket-close`. Run
@@ -127,8 +127,7 @@ for soundness (it follows from `fn-bplc-turn-plan`'s :stable test).
 
 ## 6. Size and risks
 
-~40 lines host (bp-control.lisp, bp-listener-control.lisp, bp-node.lisp), ~16
-contract rows, one raw test (~80 lines), baseline edits. One lane, small.
+~40 lines host (bp-control.lisp, bp-listener-control.lisp, bp-node.lisp), one raw test (~80 lines), baseline edits. One lane, small.
 Risks: (1) service stopping between release and drive: the drive binds on a stopping
 service; the existing `fnn-bplc-close-all` cleanup (bp-node.lisp:1278) closes it, but
 add a stopping check to the drive loop. (2) the case-3 claim "no co-tenant in a
