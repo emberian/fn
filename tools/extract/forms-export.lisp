@@ -509,7 +509,7 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
   "The special variables the var: and stobj: units among IDS define (declared before any function is compiled)."
   (let ((out nil))
     (dolist (id ids)
-      (cond ((eql 0 (search "var:" id)) (push (cdr (fe-id-sym id)) out))
+      (cond ((or (eql 0 (search "var:" id)) (eql 0 (search "global:" id))) (push (cdr (fe-id-sym id)) out))
             ((eql 0 (search "attach:" id)) (push (*1*-symbol (cdr (fe-id-sym id))) out))
             ((eql 0 (search "stobj:" id)) (let ((c (find (cdr (fe-id-sym id)) *fe-stobj-cmds* :key #'cadr))) (when c (push (nth 2 c) out))))))
     (sort (remove-duplicates out) #'string< :key (lambda (s) (format nil "~a::~a" (fe-pkg s) (symbol-name s))))))
@@ -546,6 +546,22 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                                               "world:defconst,source:defvar"))
                                        ((string= id "decl:prologue") (cons (fe-prologue-forms) "acl2.lisp:2704-2705,*acl2-optimize-form*"))
                                        (t (cons (fe-derive-inline-decls sym) "world:inline-namep"))))
+          ((string= kind "global")
+           ;; the cell's value in the extraction world's session, as the image's LD has it at its
+           ;; :return-from-lp form.  A global the session has not bound (the host binds fn's own at
+           ;; run time) is declared and left unbound, as in the image.  The world itself is a gap.
+           (let ((g (fe-global-of sym)))
+             (cond ((eq g 'current-acl2-world) nil)
+                   ((boundp-global g *the-live-state*)
+                    (cons (list `(defparameter ,sym ',(f-get-global g *the-live-state*))) "world:state-global"))
+                   (t (cons (list `(defvar ,sym)) "world:state-global-unbound")))))
+          ((string= kind "table")
+           ;; a table an emitted form reads by name (ACL2's own code too: get-check-invariant-risk reads
+           ;; acl2-defaults-table), carried with its alist in this world; clruntime.lisp's table-alist
+           ;; reads it when the world snapshot (core-export.lisp) does not carry the table
+           ;; a table no event has written is NIL in ACL2 too (table-alist of an unset name)
+           (cons (list `(setf (gethash ',sym *xl-carried-tables*) ',(table-alist sym *fe-w*)))
+                 (if (eq (getpropc sym 'table-alist :none *fe-w*) :none) "world:table-alist-unset" "world:table-alist")))
           ((string= kind "guard")
            ;; the guard ACL2 prints when a primitive's *1* finds its guard false (guard-raw,
            ;; translate.lisp:7616), untranslated here in the world; clruntime.lisp's guard-raw reads it
@@ -571,6 +587,22 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
   "NAMES plus the foundations of abstract stobjs and nested stobj field types (frontend.lisp)."
   (xt-stobj-closure-1 names nil *fe-w*))
 
+(defun fe-global-symbol-p (s)
+  "S is a state global's cell, X's name in ACL2_GLOBAL_<pkg> (acl2-fns.lisp:75 global-symbol)."
+  (let ((p (fe-pkg s))) (and p (> (length p) 12) (string= (subseq p 0 12) "ACL2_GLOBAL_"))))
+
+(defun fe-global-of (s)
+  "The state global whose cell S is."
+  (intern (symbol-name s) (subseq (fe-pkg s) 12)))
+
+(defun fe-table-subjects (form fn)
+  "Call FN on T for each (table-alist (quote T) ...) inside FORM."
+  (cond ((atom form) nil)
+        ((and (eq (car form) 'table-alist) (consp (cdr form)) (consp (cadr form))
+              (eq (car (cadr form)) 'quote) (symbolp (cadr (cadr form))))
+         (funcall fn (cadr (cadr form))))
+        (t (loop for x on form while (consp x) do (fe-table-subjects (car x) fn)))))
+
 (defun fe-guard-raw-subjects (form fn)
   "Call FN on F for each (guard-raw (quote F) ...) inside FORM."
   (cond ((atom form) nil)
@@ -595,6 +627,9 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                    (dolist (f forms) (fe-calls (fe-walkable f) fns vars))
                    (maphash (lambda (s v) (declare (ignore v)) (ref-fn s id)) fns)
                    (maphash (lambda (s v) (declare (ignore v)) (ref-var s id)) vars)
+                   (dolist (f forms) (fe-table-subjects f (lambda (tb) (edge id (fe-id :table tb))
+                                                                (unless (gethash (fe-id :table tb) units)
+                                                                  (enqueue "table" tb id)))))
                    (dolist (f forms) (fe-guard-raw-subjects f (lambda (g) (edge id (fe-id :guard g))
                                                                     (unless (gethash (fe-id :guard g) units)
                                                                       (enqueue "guard" g id)))))
@@ -619,6 +654,10 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
              (ref-var (s why)
                (cond ((or (null s) (eq s t) (keywordp s)) nil)
                      ((gethash s *fe-rt*) (setf (gethash s rt-refs) t) (edge why (fe-id :rt s)))
+                     ;; a state global's cell: carried with the extraction session's value (global: units)
+                     ((fe-global-symbol-p s)
+                      (edge why (fe-id :global s))
+                      (unless (gethash (fe-id :global s) units) (enqueue "global" s why)))
                      ((fe-cl-or-sb-p s) nil)
                      ((and (fe-earmuffed-p s) (or (gethash s *fe-consts*) (gethash s *fe-src*)))
                       (edge why (fe-id :var s))
@@ -672,6 +711,7 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
         ((eql 0 (search "macro:" id)) 3)
         ((or (eql 0 (search "raw:" id)) (eql 0 (search "star1:" id))) 4)
         ((eql 0 (search "var:" id)) 5)
+        ((eql 0 (search "global:" id)) 5)
         ((eql 0 (search "stobj:" id)) 5)
         ((eql 0 (search "attach:" id)) 6)
         (t 7)))

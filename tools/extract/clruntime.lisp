@@ -69,12 +69,16 @@ Presence is distinct from a present NIL value; no classes are inferred here."
 (defun guard (sym ignored wrld)
   (declare (ignore ignored))
   (getpropc sym 'guard :missing-world-metadata wrld))
+;;; Tables: the world snapshot's (core-export.lisp, with X3's per-row digests), else a table an emitted
+;;; form reads by name, carried by defs.lisp's table: units (forms-export.lisp); any other is refused.
+(defvar *xl-carried-tables* (make-hash-table :test 'eq))
 (defun table-alist (sym wrld)
   (unless *xl-world-snapshot-loaded-p*
     (error "Selected ACL2 world snapshot is unavailable"))
-  (unless (assoc 'table-alist (gethash sym *xl-props*) :test #'eq)
-    (error "Selected ACL2 table metadata is unavailable for ~s" sym))
-  (getpropc sym 'table-alist nil wrld))
+  (cond ((assoc 'table-alist (gethash sym *xl-props*) :test #'eq)
+         (getpropc sym 'table-alist nil wrld))
+        (t (multiple-value-bind (alist found) (gethash sym *xl-carried-tables*)
+             (if found alist (error "Selected ACL2 table metadata is unavailable for ~s" sym))))))
 (defun get-stobj-creator (sym wrld)
   (getpropc sym :xl-stobj-creator nil wrld))
 (defun get-stobj-recognizer (sym wrld)
