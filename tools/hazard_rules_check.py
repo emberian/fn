@@ -36,13 +36,16 @@ ROOT = Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "hazard-rules-baseline.json"
 TOOL = "hazard_rules_check"
 
-# Functions called in nearly every term the prover sees; a rule on (F vars)
-# for one of these is a rule on everything.
+# Structural functions called in nearly every term the prover sees; a rule on
+# (F vars) for one of these is tried on everything and backchains through its
+# hypotheses there.  Type recognizers (true-listp, natp, stringp, ...) are
+# left out on purpose: a rule (implies (fn-x-listp x) (true-listp x)) is the
+# ordinary type-rule idiom, one cheap recognizer hypothesis, and gating it
+# would bury the hazards (152 rows with them, 2026-10-07 census; the measured
+# stalls were all car/consp/member-equal).
 HAZARD_HEADS = frozenset({
-    "car", "cdr", "consp", "atom", "endp", "nth", "len", "true-listp",
-    "member-equal", "assoc-equal", "equal", "not",
-    "natp", "integerp", "acl2-numberp", "rationalp", "symbolp", "stringp",
-    "booleanp", "keywordp", "<", "binary-+",
+    "car", "cdr", "consp", "nth", "len", "member-equal", "assoc-equal",
+    "equal", "<", "binary-+",
 })
 
 
