@@ -19,3 +19,6 @@ Base origin/lane/extract-b df0db93bc merged with origin/dev 1e190ff19 (d76fd37ac
 ## NEXT
 1. Gated core.sh run on hbox when Deputy E relays the dev-world image slot GO; report export log tail and whether fn-core identity passes load.
 2. Non-gating smoke against hbox:/tank/fn/scratch/extract-measure (scratch core.sh copy only), one mutated verdict row refusal output.
+
+## Smoke attempt (non-gating) 2026-10-07
+Against old world extract-cache/world-18bcd401: include-book of books/raw-dispatch-verdict fails (its dependencies' certs differ from that world's loaded books: store-events/store-intern/state-digest "Failure"), so the lane's export cannot run in it. The export needs a world image built at the lane tip (world_image.sh; image-slot job) -- the gated core.sh run. Log: hbox:/tank/fn/scratch/extract-c-smoke/export.log. fn-core identity: NOT reached (not run). X3 refusal-by-name is shown only by the bare-SBCL driver tests (tests/test_native_raw_dispatch_trap.py) so far.
