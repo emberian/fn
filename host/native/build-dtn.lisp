@@ -320,6 +320,8 @@
 ;; last two arrive through host/interfaces.lisp, which this image omits).
 (include-book "books/resource-output")
 (include-book "books/served-plan-line-buffer")
+;; r71 F13: the pending-accept slot (fnn-mux-reserve asks fn-mxa-reserve).
+(include-book "books/mux-accept-slot")
 (include-book "books/resource-syncer")
 (include-book "books/response-identity")
 ;; The log kernel's acknowledgement keystone (books/store-log-durable), as

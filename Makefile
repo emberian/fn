@@ -1035,6 +1035,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/decoded-window-span \
 	tests/acl2/page-window-executor-tests \
 	tests/acl2/page-window-read-tests \
+	books/mux-accept-slot \
+	tests/acl2/mux-accept-slot-tests \
 	tests/acl2/page-window-span-tests \
 	tests/acl2/page-window-admission-tests \
 	tests/acl2/page-window-lease-tests \

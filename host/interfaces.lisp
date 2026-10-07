@@ -362,6 +362,16 @@
 (definterface fn-fs-inbox-admit
   :class :common-lisp-compliant
   :direct "fnn-mux-adopt-place decides admission under the same inbox lock as closure")
+;; r71 F13 (books/mux-accept-slot.lisp): the pending-accept slot.  The mux's
+;; accept threads ask through the core dispatcher (fnn-core 'fn-mxa-reserve,
+;; fn-mxa-deferral-line), as the cursor quantum does fn-splan-cursor-resume-ms.
+(definterface fn-mxa-reserve
+  :class :common-lisp-compliant
+  :kinds ((loops true-listp))
+  :keystones (fn-mxa-reserve-grants-only-a-free-loop
+              fn-mxa-reservation-keeps-the-pending-bound))
+(definterface fn-mxa-deferral-line
+  :class :common-lisp-compliant)
 
 ;; Private committer control: immutable, guard-t values off the owner section.
 (definterface fn-cmt-init

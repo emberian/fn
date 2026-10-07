@@ -34,6 +34,7 @@
 (include-book "served-plan")
 (include-book "served-plan-cursor")
 (include-book "served-plan-line-buffer")
+(include-book "mux-accept-slot")
 (include-book "response-plan-pins")
 (include-book "owner-scheduler")
 (include-book "owner-commit-class")

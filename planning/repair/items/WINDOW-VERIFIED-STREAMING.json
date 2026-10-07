@@ -1,0 +1,18 @@
+{
+ "category": "design",
+ "detail": "Measured serve-next 2026-10-05 (lanedumps/serve-next.md): window job digest 110 ms at 1 MiB, 1.45 s at 12 MiB; each job reads the whole protected prefix in 64-octet effects (fnn-extent-window-run, books/extent-window-stream.lisp fn-ews-*). The 256 KiB :read-window-octets (bridge, root ruling 2026-10-05) divides the job count by 16; it stays quadratic.",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "host/native/extent.lisp",
+ "fix": "Root ruling (c), later Opus lane: FIRST state the BLAKE3 tree-decomposition theorem (the root of a left-balanced chunk tree equals the parent fold of the chaining values of its window-aligned power-of-two subtrees, books/blake3*.lisp over fn-blake3), then: the first pass of a response keeps the window CVs (32 octets per window, charged to the pool), later windows hash only their own octets and are published iff their CV equals the kept one (keystone: a published window is the durable octets, reducing to the trailer commitment). Retire the per-window whole-prefix digest.",
+ "id": "WINDOW-VERIFIED-STREAMING",
+ "locus": "extent-window-read",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "A reader requests a large stored article: time to the 220 grows with the square of its size (12 MiB: ~70 s per pass at 256 KiB windows; ~20 min at 16 KiB)",
+ "severity": "high",
+ "source": "serve-next",
+ "state": "open",
+ "title": "A protected window read re-digests the whole protected prefix per window: a payload read in order costs ELEN x PLEN / window digests (quadratic); verified streaming keeps window-granular BLAKE3 subtree chaining values so each window hashes only itself",
+ "updated": "2026-10-05T14:43:01Z"
+}
