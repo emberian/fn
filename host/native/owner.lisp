@@ -8514,7 +8514,10 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
 
 (defun fnn-owner-maybe-collect-idle (service)
   (let* ((consed (sb-ext:get-bytes-consed))
-         (publishing (not (fnn-owner-snapshot-jobs-drained-p service))))
+         (publishing (fnn-with-roster (service)
+                       (and (or (fnn-owner-service-publisher service)
+                                (fnn-owner-service-exporter service))
+                            t))))
     (unless *fnn-idle-gc-tick-mark*
       (setq *fnn-idle-gc-tick-mark* consed
             *fnn-idle-gc-collect-mark* consed))
