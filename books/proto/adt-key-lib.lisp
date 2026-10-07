@@ -57,6 +57,7 @@
 
 (defthm adt-len-when-rec-p
   (implies (adt-rec-p s r) (equal (len r) (len s)))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable adt-rec-p))))
 
 (defthm adt-car-nthcdr

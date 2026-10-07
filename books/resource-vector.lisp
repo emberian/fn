@@ -903,7 +903,8 @@
   :hints (("Goal" :in-theory (enable fn-rv-row-demand))))
 
 (defthm fn-rv-len-of-vector
-  (implies (fn-rv-vectorp v) (equal (len v) *fn-rv-k*)))
+  (implies (fn-rv-vectorp v) (equal (len v) *fn-rv-k*))
+ :rule-classes nil)
 
 (defthm fn-rv-row-fields-of-nth
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows)))

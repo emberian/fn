@@ -294,6 +294,7 @@
 (defthm fn-bprv-acceptable-implies-consp-record
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (consp record))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-bpr-request-acceptablep fn-record-p))))
 (defthm fn-bprv-derived-context-record-binds
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)

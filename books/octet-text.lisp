@@ -208,7 +208,8 @@
 
 (defthm fn-ot-nat-parse-accepts-only-digits
   (implies (fn-ot-nat-parse xs r max)
-           (and (consp xs) (fn-ot-digitsp xs r))))
+           (and (consp xs) (fn-ot-digitsp xs r)))
+ :rule-classes nil)
 
 ; The printer, tail-recursive from the least significant digit.
 (defun fn-ot-nat-digits (n radix acc)
@@ -322,7 +323,8 @@
 ; An accepted text is exactly two digits per octet: an odd length is refused.
 (defthm fn-ot-hex-decode-length
   (implies (not (mv-nth 0 (fn-ot-hex-decode xs)))
-           (equal (len xs) (* 2 (len (mv-nth 1 (fn-ot-hex-decode xs)))))))
+           (equal (len xs) (* 2 (len (mv-nth 1 (fn-ot-hex-decode xs))))))
+ :rule-classes nil)
 
 (local
  (defthm fn-ot-hex-split

@@ -29,7 +29,8 @@
 (defthm fn-member-of-subset
   (implies (and (fn-subsetp xs ys)
                 (member-equal x xs))
-           (member-equal x ys)))
+           (member-equal x ys))
+ :rule-classes nil)
 
 (defthm fn-retain-find-id-absent
   (implies (not (member-equal id (fn-retain-obligation-ids pins)))
@@ -51,6 +52,7 @@
   (implies (and (fn-subsetp xs ys)
                 (not (member-equal x ys)))
            (not (member-equal x xs)))
+ :rule-classes nil
   :hints (("Goal" :use fn-member-of-subset)))
 
 (defthm fn-node-new-msgid-not-bound

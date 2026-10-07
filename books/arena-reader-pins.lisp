@@ -348,6 +348,7 @@
   (implies (member-equal e (mv-nth 0 (fn-arpn-split pend pins)))
            (and (member-equal e pend)
                 (fn-arpn-clear-through-p (car e) pins)))
+ :rule-classes nil
   :hints (("Goal" :use (:instance fn-arpn-split-acc-released-member
                                   (rel nil) (keep nil))
                   :in-theory (disable fn-arpn-clear-through-p))))
@@ -394,7 +395,8 @@
   (implies (and (fn-arpn-pinsp pins)
                 (fn-arpn-clear-through-p s pins)
                 (< 0 (fn-arpn-pins-of h pins)))
-           (< s h)))
+           (< s h))
+ :rule-classes nil)
 
 ; ... and a stamp that is not clear has a live pin at or below it.
 (defthm fn-arpn-not-clear-has-a-pin-at-or-below

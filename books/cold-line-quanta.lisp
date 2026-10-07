@@ -159,6 +159,7 @@
 (defthm fn-clq-member-of-held-prefix
   (implies (member-equal x (take (fn-clq-held demand cache) demand))
            (member-equal x cache))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-clq-held demand cache))))
 
 (defthm fn-clq-run-keeps-members

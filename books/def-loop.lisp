@@ -198,7 +198,8 @@
   (local (defun fn-dl-mb-base (xs) (atom xs)))
   (local (defun fn-dl-mb-fixp () nil))
   (defthm fn-dl-mb-base-progress
-    (implies (not (fn-dl-mb-base xs)) (consp xs))))
+    (implies (not (fn-dl-mb-base xs)) (consp xs))
+ :rule-classes nil))
 
 (defun fn-dl-map-base (dl-xs)
   (if (fn-dl-mb-base dl-xs)

@@ -366,7 +366,8 @@
 
 (defthm adt-prefix-eq-nth
   (implies (and (adt-prefix-eq p q n) (natp j) (< j (nfix n)))
-           (equal (nth j q) (nth j p))))
+           (equal (nth j q) (nth j p)))
+ :rule-classes nil)
 
 (defthm adt-prefix-eq-refl (adt-prefix-eq p p n))
 
@@ -949,6 +950,7 @@
 
 (defthm adt-nth-of-atom
   (implies (atom x) (equal (nth n x) nil))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable nth))))
 
 (defthm adt-get-fields-of-corr

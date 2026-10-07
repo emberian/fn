@@ -1182,6 +1182,8 @@
                                    (fn-pull-local-code
                                     (fn-pull-event-octets event)))
                              (fn-pull-r-answers r)))))
+ :rule-classes nil
+ :rule-classes nil
   ;; 198,297 prover steps; 404,347 with the step's line helpers open.
   :hints (("Goal" :in-theory (e/d (fn-pull-step)
                                   (fn-pull-command fn-pull-local-code fn-pull-event-octets
@@ -1247,6 +1249,8 @@
                 (equal (fn-pull-r-unavailable (car (fn-pull-step r event)))
                        (cons (fn-pull-r-current r)
                              (fn-pull-list (fn-pull-r-unavailable r))))))
+ :rule-classes nil
+ :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-pull-step)
                                   (fn-pull-next fn-pull-record-answer fn-pull-fail
                                    fn-pull-drain fn-pull-list

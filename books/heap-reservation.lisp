@@ -321,6 +321,7 @@
                             (+ (* 1024 (fn-heap-reserve-stack-kib r))
                                *fn-heap-thread-runtime-octets*)))
                       (fn-heap-machine-octets observations)))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (union-theories
                               '(fn-heap-reserve-of fn-heap-reserve-storeless
                                 fn-heap-reservation-octets fn-heap-reserve-threads

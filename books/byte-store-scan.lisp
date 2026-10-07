@@ -914,7 +914,8 @@
 ; this book applies it to is an alist by fn-bs-alistp-of-dir-entries.
 (defthm fn-bs-assoc-of-name-in-entries
   (implies (and (alistp alist) (member-equal name (strip-cars alist)))
-           (assoc-equal name alist)))
+           (assoc-equal name alist))
+ :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
 ; 6. The record list of a prefix of the transaction namespace.

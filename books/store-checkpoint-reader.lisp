@@ -290,6 +290,7 @@
 (defthm fn-sccr-nth-is-cell
   (implies (and (fn-octets-p fn-octets) (natp i) (< i (len fn-octets)))
            (equal (nth i fn-octets) (fn-sccr-cell i fn-octets)))
+ :rule-classes nil
   :hints (("Goal" :use fn-sccr-cell-is-nth)))
 
 (defthm fn-sccr-cell-below-256

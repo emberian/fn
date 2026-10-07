@@ -287,5 +287,6 @@
                        (<= (len octets) *fn-pxy-max*)
                        (natp deadline) (natp now) (< now deadline)))
          (member-equal (car r) '(:more :header :refuse))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-pxy-step)
                   :use fn-pxy-step-reads-within-the-bound)))

@@ -100,7 +100,8 @@
 (defthm fn-bpn-lifecycle-record-bindingsp-pairs-the-records
   (implies (fn-bpn-lifecycle-record-bindingsp names records token)
            (and (true-listp records)
-                (equal (len records) (len names)))))
+                (equal (len records) (len names))))
+ :rule-classes nil)
 
 ; A completed replay advances the machine frontier once per record.
 (defthm fn-bpn-replay-records-ready-advances-the-frontier-per-record

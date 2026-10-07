@@ -1230,6 +1230,7 @@
                       path (fn-record-string-octets
                             (fn-cfg-peer-path-identity
                              (fn-own-feed-record-of name tbl)))))))
+ :rule-classes nil
   :hints (("Goal" :use (fn-own-feed-target-is-offerable
                         fn-own-feed-target-has-an-entry
                         (:instance fn-own-feed-find-is-typed (peer name)))

@@ -218,6 +218,7 @@
                 (and (fn-store-group-code-in name groups)
                      (member-equal (fn-store-group-code-in name groups)
                                    (fn-store-codes-from-groups names groups)))))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-store-codes-from-groups names groups))))
 
 ; Over a table parameter the inversion needs one hypothesis the compiled

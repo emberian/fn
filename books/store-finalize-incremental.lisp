@@ -735,6 +735,7 @@
 (defthm fn-sfi-carried-msgid-trie-is-the-rebuilt-trie
   (implies (fn-rii-okp ix node)
            (equal (car ix) (car (fn-rii-ix-of node))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-rii-okp fn-rii-ix-of)
                                   (fn-rii-known-okp fn-midx-build fn-mxc-build
                                    fn-rii-kbuild)))))

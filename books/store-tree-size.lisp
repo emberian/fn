@@ -155,6 +155,6 @@
            (and (true-listp cs) (equal (len cs) n) (fn-scs-carry-listp cs)))
   :hints (("Goal" :induct (fn-scs-fixed-carriesp n cs)
            :in-theory (enable fn-scs-carry-listp)))
-  :rule-classes (:rewrite (:forward-chaining
+  :rule-classes ((:forward-chaining
                            :trigger-terms ((fn-scs-fixed-carriesp n cs)))))
 (in-theory (disable fn-scs-fixed-carriesp))

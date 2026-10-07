@@ -62,6 +62,7 @@
   (implies (and (fn-bpf-bytes-agreep bytes offset payload)
                 (natp offset) (natp k) (< k (len bytes)))
            (equal (nth k bytes) (nth (+ offset k) payload)))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-bpf-agreep-nth-induction bytes offset k))))
 
 (defthm fn-bpf-cell-of-of-agreeing-fragment

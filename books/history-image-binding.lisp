@@ -657,6 +657,7 @@
                   (fn-hrs-rel h c2)
                   (fn-hib-root-holds h c2)
                   (fn-hib-disk-bound file h c2))))
+ :rule-classes nil
   :hints (("Goal" :do-not-induct t
   :use ((:instance fn-hib-adopt-shape)
         (:instance fn-hib-open-root-pgs)

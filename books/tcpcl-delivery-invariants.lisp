@@ -266,6 +266,7 @@
              (and (equal (car result) :accepted)
                   (equal (fn-tcl-delivery-plan-status plan) :accepted)
                   (fn-tcl-delivery-plan-progress-p plan))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-tcl-delivery-plan fn-tcl-delivery-plan-messages
                                      fn-tcl-delivery-plan-status
                                      fn-tcl-delivery-plan-progress-p))))

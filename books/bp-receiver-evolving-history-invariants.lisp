@@ -329,6 +329,7 @@
 (defthm fn-bprv-prefix-preserves-member
   (implies (and (fn-sf-prefixp h1 h2) (member-equal x h1))
            (member-equal x h2))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-sf-prefixp h1 h2)
            :in-theory (enable fn-sf-prefixp))))
 

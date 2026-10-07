@@ -153,6 +153,7 @@
               (and (fn-oqw-all-ok (take 5 words)) (<= 5 (len words))))
          (implies (equal (fn-oqw-final :batch (fn-oqw-start :batch) words) :done)
                   (equal trace (fn-oqw-phases :batch)))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-oqw-trace fn-oqw-final))))
 
 ; A failed effect ends the job: the step after a phase that answered

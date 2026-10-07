@@ -201,6 +201,7 @@
 
 (defthm fn-frame-not-consp-when-len-zero
   (implies (equal (len a) 0) (not (consp a)))
+ :rule-classes nil
   :hints (("Goal" :expand ((len a)))))
 
 (defthm fn-frame-split-of-append
@@ -214,12 +215,14 @@
 (defthm fn-frame-len-2-conses
   (implies (equal (len xs) 2)
            (and (consp xs) (consp (cdr xs))))
+ :rule-classes nil
   :hints (("Goal" :expand ((len xs) (len (cdr xs))))))
 
 (defthm fn-frame-len-4-conses
   (implies (equal (len xs) 4)
            (and (consp xs) (consp (cdr xs))
                 (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
+ :rule-classes nil
   :hints (("Goal" :expand ((len xs) (len (cdr xs)) (len (cdr (cdr xs)))
                            (len (cdr (cdr (cdr xs))))))))
 
@@ -227,6 +230,7 @@
   (implies (equal (len xs) 8)
            (and (consp xs) (consp (cdr xs))
                 (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
+ :rule-classes nil
   :hints (("Goal" :expand ((len xs) (len (cdr xs)) (len (cdr (cdr xs)))
                            (len (cdr (cdr (cdr xs))))))))
 

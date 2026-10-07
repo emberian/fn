@@ -1133,6 +1133,7 @@
     (and (no-duplicatesp-equal offers)
          (implies (member-equal k offers)
                   (not (member-equal k offered)))))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-bpnj-contact-offers sts peer routing offered)
            :in-theory (union-theories '(fn-bpnj-contact-offers member-equal no-duplicatesp-equal
                                         car-cons cdr-cons)

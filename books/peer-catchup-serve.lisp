@@ -475,6 +475,7 @@
                                                    quantum fn-arena)))
            (and (member-equal a articles)
                 (fn-cu-servedp a groups trie fn-arena)))
+ :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-cu-servedp fn-cu-select-aux fn-cu-drop fn-cu-rev
                                       fn-cu-first fn-cu-member-first)
            :use ((:instance fn-cu-select-aux-served-member

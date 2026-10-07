@@ -14,4 +14,5 @@
 
 (defthm fn-cpr-config-firstp-has-config
   (implies (fn-cpr-config-firstp configs events) (consp configs))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-cpr-config-firstp))))

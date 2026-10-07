@@ -166,6 +166,7 @@
 (defthm fn-help-nth-of-a-constant
   (implies (and (syntaxp (quotep n)) (posp n))
            (equal (nth n x) (nth (- n 1) (cdr x))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable))))
 
 (defthm fn-help-nth-0

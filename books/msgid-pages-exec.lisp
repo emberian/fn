@@ -1452,7 +1452,8 @@
 
 (defthm fn-mpxt-subsetp-member
   (implies (and (subsetp-equal a b) (member-equal s a))
-           (member-equal s b)))
+           (member-equal s b))
+ :rule-classes nil)
 (defthm fn-mpxt-scan-member
   (implies (and (member-equal s acc) (nat-listp acc))
            (member-equal s (fn-mpxt-scan tag p k acc fn-mpxt)))

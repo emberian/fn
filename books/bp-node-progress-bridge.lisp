@@ -466,6 +466,7 @@
           (fn-bpn-record-applicablep (fn-bpnf-base st) record)
           (equal (fn-bpnf-answer-effects (fn-bpnp-step st (list :base e)))
                  (fn-bpn-pending-success-effects pending)))))
+ :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpnp-step-base-event-refines-fn-bpn-step)
                  (:instance fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record

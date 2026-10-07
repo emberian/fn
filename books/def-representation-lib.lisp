@@ -150,6 +150,7 @@
 (defthmd adt-nth-beyond-len
   (implies (and (natp i) (<= (len a) i))
            (equal (nth i a) nil))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable nth))))
 
 ; The octets [I, N) of a list, for the stobj-to-stobj copy loop of

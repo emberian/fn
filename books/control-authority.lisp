@@ -872,6 +872,7 @@
 (defthm fn-ctl-authorize-execute-is-nonempty
   (implies (equal (car (fn-ctl-authorize verdict verb groups rows)) :execute)
            (consp groups))
+ :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
                                       fn-ctl-covers-every-p))))
 
@@ -1219,7 +1220,8 @@
 ; nothing and reorders nothing.
 (defthm fn-ctl-visible-filter-is-a-subset
   (implies (member-equal a (fn-ctl-visible-filter xs ws articles verdicts))
-           (member-equal a xs)))
+           (member-equal a xs))
+ :rule-classes nil)
 (defthm fn-cfg-namespace-patternp-is-a-label
   (implies (fn-cfg-namespace-patternp x) (fn-cfg-labelp x))
   :rule-classes :forward-chaining

@@ -826,6 +826,7 @@
            (fn-bpn-pending-success-effects pending)
            (fn-bpn-pending-refusal-effect pending)
            (fn-bpn-pending-uncertainty-effect pending)))))
+ :rule-classes nil
   :hints
   (("Goal"
     :use ((:instance fn-bpn-lifecycle-invariant-authorizes-pending))

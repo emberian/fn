@@ -146,6 +146,7 @@
 ; command names and the cursor the session keeps.
 (defthm fn-nntp-article-idp-is-consp
   (implies (fn-nntp-article-idp article) (consp article))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-nntp-article-idp fn-article-msgid))))
 
 ; As a rewrite rule it is tried on every consp test and backchains by opening

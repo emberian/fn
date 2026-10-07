@@ -161,6 +161,7 @@
 (defthm fn-bs-k8-name-absent-from-list-has-no-entry
   (implies (not (member-equal name (strip-cars alist)))
            (equal (assoc-equal name alist) nil))
+ :rule-classes nil
   :hints (("Goal" :induct (assoc-equal name alist))))
 
 (defthm fn-bs-k8-op-list-does-not-write-nil

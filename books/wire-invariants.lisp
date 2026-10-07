@@ -430,6 +430,7 @@
                 (fn-wire-octet-listp octets)
                 (fn-wire-next-event (fn-wire-next-loop wire-state octets)))
            (consp octets))
+ :rule-classes nil
   :hints (("Goal"
            :induct (fn-wire-next-loop wire-state octets)
            :in-theory (e/d (fn-wire-next-loop
@@ -444,6 +445,7 @@
                 (fn-wire-octet-listp octets)
                 (fn-wire-next-event (fn-wire-next wire-state octets)))
            (consp octets))
+ :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-wire-next-loop-event-needs-input))
            :in-theory (e/d (fn-wire-next)

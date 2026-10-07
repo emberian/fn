@@ -312,6 +312,7 @@
  (implies (and (fn-bprv-no-committed-decisionsp journal)
                (fn-bprv-entries-decidedp entries journal))
           (not (consp entries)))
+ :rule-classes nil
  :hints (("Goal" :in-theory (enable fn-bprv-entries-decidedp))))
 (defthm fn-bprv-no-committed-receipts-no-adu
  (implies (not (consp (fn-bpr-state-receipts st)))

@@ -720,6 +720,7 @@
                          :durable))
                 (fn-sn-committed-recordp (fn-sn-node next)
                                          (fn-sn-completion-record s)))))))
+ :rule-classes nil
   :hints (("Goal"
            :use fn-sn-new-success-requires-actual-matching-durable-node-completion
            :in-theory (e/d (fn-snrt-step fn-snt-step)

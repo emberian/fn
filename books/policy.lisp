@@ -52,7 +52,7 @@
 (defthm fn-pol-stmt-p-shape
   (implies (fn-stmt-p s)
            (and (true-listp s) (consp s)))
-  :rule-classes (:rewrite :forward-chaining)
+  :rule-classes (:forward-chaining)
   :hints (("Goal" :in-theory (enable fn-stmt-p))))
 
 (defconst *fn-pol-max-members* 64)

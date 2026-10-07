@@ -125,10 +125,12 @@
 
 (defthm fn-bs-keys-belowp-bounds-known-key
   (implies (and (fn-bs-keys-belowp x n) (assoc-equal k x))
-           (< k n)))
+           (< k n))
+ :rule-classes nil)
 (defthm fn-bs-keys-belowp-excludes-bound
   (implies (fn-bs-keys-belowp x n)
-           (not (assoc-equal n x))))
+           (not (assoc-equal n x)))
+ :rule-classes nil)
 (defthm fn-bs-keys-belowp-monotone
   (implies (and (fn-bs-keys-belowp x n) (natp m) (<= n m))
            (fn-bs-keys-belowp x m)))

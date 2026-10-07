@@ -200,6 +200,7 @@
            (and (member-equal name observed)
                 (fn-sn-staging-namep name)
                 (not (fn-sn-name-memberp name held))))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-sn-sweep-removals observed held))))
 
 (defthm fn-sn-final-namespace-name-is-not-a-staging-name
@@ -294,6 +295,7 @@
            (and (member-equal name observed)
                 (fn-sn-staging-namep name)
                 (not (fn-sn-name-memberp name held))))
+ :rule-classes nil
   :hints (("Goal" :use fn-sn-sweep-removes-only-unheld-staging-names
            :in-theory (disable fn-sn-sweep-removes-only-unheld-staging-names
                                fn-sn-sweep-staging fn-sn-staging-namep))))

@@ -798,6 +798,8 @@
                        (cons (fn-pull-r-current (fn-pull-s-round s))
                              (fn-pull-list (fn-pull-r-unavailable
                                             (fn-pull-s-round s)))))))
+ :rule-classes nil
+ :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-pull-session-step fn-pull-s-with-round)
                                   (fn-pull-step fn-pull-fail fn-pull-list
                                    fn-fc-drive fn-fc-drive-state fn-pull-obs-effects

@@ -107,6 +107,7 @@
 (defthm fn-scj-string-msgid-of-member
   (implies (and (fn-midx-string-article-listp v) (member-equal x v))
            (and (stringp (fn-article-msgid x)) (consp x)))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-midx-string-article-listp))))
 
 

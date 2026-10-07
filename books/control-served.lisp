@@ -79,11 +79,13 @@
 (defthm fn-ctl-visible-filter-is-subset-of-arts
   (implies (member-equal a (fn-ctl-visible-articles arts ws verdicts))
            (member-equal a arts))
+ :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-ctl-withdrawn-by-p))))
 
 (defthm fn-ctl-withdrawn-articles-is-subset-of-arts
   (implies (member-equal a (fn-ctl-withdrawn-articles arts ws verdicts))
            (member-equal a arts))
+ :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-ctl-withdrawn-by-p))))
 
 ; The merge: RAW with the subsequence VISIBLE removed, walking both once.

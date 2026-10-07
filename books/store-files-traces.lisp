@@ -500,6 +500,7 @@
   (implies (and (fn-sf-prefixp xs ys)
                 (member-equal x xs))
            (member-equal x ys))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-sf-prefixp xs ys)
            :in-theory (enable fn-sf-prefixp member-equal))))
 
@@ -620,6 +621,7 @@
                                              ghost-successes)
                 (member-equal pair externally-emitted))
            (member-equal pair ghost-successes))
+ :rule-classes nil
   :hints (("Goal" :induct
            (fn-sf-ghost-covers-emittedp externally-emitted
                                         ghost-successes))))

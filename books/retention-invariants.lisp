@@ -53,7 +53,8 @@
 (defthm fn-retain-release-disjoint-member
   (implies (and (not (intersection-equal xs ys))
                 (member-equal x xs))
-           (not (member-equal x ys))))
+           (not (member-equal x ys)))
+ :rule-classes nil)
 
 (defthm fn-retain-release-remove-preserves-disjointness
   (implies (and (fn-retain-no-duplicatesp (fn-retain-obligation-ids pins))

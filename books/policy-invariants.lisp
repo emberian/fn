@@ -52,6 +52,7 @@
 
 (defthm fn-pol-stmt-is-consp
   (implies (fn-stmt-p s) (consp s))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-stmt-p))))
 
 (defthm fn-pol-candidatep-implies-authority-stmt
@@ -168,7 +169,8 @@
 (defthm fn-pol-candidates-members-are-candidates
   (implies (member-equal p (fn-pol-candidates lace keyring group authority))
            (and (member-equal p lace)
-                (fn-pol-candidatep p keyring group authority))))
+                (fn-pol-candidatep p keyring group authority)))
+ :rule-classes nil)
 
 (defthm fn-pol-member-candidate-is-in-candidates
   (implies (and (member-equal p lace)

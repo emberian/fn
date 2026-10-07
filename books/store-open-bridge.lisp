@@ -542,6 +542,7 @@
                  (fn-cpo-open-observed configs
                                        (fn-bs-scan-frontier (fn-bs-scan-store image))
                                        (fn-bs-scanned-rows (fn-sn-files s) image arena)))))
+ :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-sweep-round-keeps-every-cut-reopenable
                  (:instance fn-cpo-open-observed-is-sn-open-observed-on-the-kernel

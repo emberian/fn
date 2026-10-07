@@ -181,7 +181,8 @@
                   (equal (cadr r) (fn-zdn-digest-of-dict (car stored)))
                   (cadr r)
                   (member-equal (cadr r) digests)
-                  (equal (fn-zdn-dict-of-digest (cadr r)) (car stored))))))
+                  (equal (fn-zdn-dict-of-digest (cadr r)) (car stored)))))
+ :rule-classes nil)
 
 (defthm fn-zdn-choose-complete
   (implies (and (consp stored)

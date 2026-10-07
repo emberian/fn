@@ -218,6 +218,7 @@
                 (natp seq) (< seq (len h))
                 (equal (mv-nth 0 (fn-his-check-row seq expected file c)) :ok))
            (equal (nth seq h) expected))
+ :rule-classes nil
   :hints (("Goal" :use ((:instance fn-hib-get-keeps (fuel (fn-hrc-vlen c))))
            :in-theory (set-difference-theories
                        (union-theories '(fn-his-check-row car-cons cdr-cons (:e equal) eq) (theory 'minimal-theory))

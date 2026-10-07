@@ -927,7 +927,8 @@
                                                         (nth 2 record)))
                 (fn-smid-same-filesystemp
                  (fn-smid-record-decode (nth 1 record) (nth 2 record))
-                 (fn-smid-observed-identity obs)))))
+                 (fn-smid-observed-identity obs))))
+ :rule-classes nil)
 
 ; KEYSTONE (PKT-648, the start).  On the filesystem it was recorded on, a
 ; store's owner start is refused by name exactly when its policy requires

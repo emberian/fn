@@ -726,7 +726,8 @@
 
 (defthm fn-article-nonempty-true-list-is-consp
   (implies (and (true-listp xs) xs)
-           (consp xs)))
+           (consp xs))
+ :rule-classes nil)
 
 (defthm fn-article-natp-one-less
   (implies (and (natp n) (not (zp n)))

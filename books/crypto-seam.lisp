@@ -74,7 +74,8 @@
   (implies (fn-digest-octetsp x)
            (and (fn-cbor-octet-listp x)
                 (true-listp x)
-                (equal (len x) 32))))
+                (equal (len x) 32)))
+ :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
 ; The digest.  Constraint: shape only.  The local witness is a constant, which

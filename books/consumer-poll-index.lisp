@@ -165,6 +165,7 @@
 (defthm fn-col-poll-nth-past-end-is-nil
   (implies (and (natp position) (<= (len events) position))
            (equal (nth position events) nil))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-col-poll-drop events position)
            :in-theory (enable nth len fn-col-poll-drop))))
 

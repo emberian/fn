@@ -143,6 +143,7 @@
 (defthm fn-hp-nth-col-sizes
   (implies (and (adt-col-sizes-ok ws n useds) (natp r) (< r (len ws)))
            (equal (nth r useds) (* (nfix (nth r ws)) (nfix n))))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-hp-r-ind r ws starts useds) :in-theory (enable nth))))
 
 (local

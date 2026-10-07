@@ -476,6 +476,7 @@
                   (fn-sn-groups s) (fn-sn-capacity s)
                   (fn-bs-scan-frontier (fn-bs-scan-store image))
                   (fn-bs-scanned-rows (fn-sn-files s) image arena)))))
+ :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-bs-recover-sweep-keeps-relation-at-every-cut
                             (ks (fn-sn-files s))

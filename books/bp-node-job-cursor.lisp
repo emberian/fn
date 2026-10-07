@@ -56,11 +56,13 @@
 
 (defthm fn-bpnjc-member-of-drop
   (implies (member-equal x (fn-bpnjc-drop n l))
-           (member-equal x l)))
+           (member-equal x l))
+ :rule-classes nil)
 
 (defthm fn-bpnjc-member-of-prefix
   (implies (member-equal x (fn-bpnjc-prefix n l))
-           (member-equal x l)))
+           (member-equal x l))
+ :rule-classes nil)
 
 ;; ---------------------------------------------------------------------
 ;; The head scan's two answers without the own-entry lookup (logic only:
@@ -264,7 +266,8 @@
 
 (defthm fn-bpnjc-disjoint-member
   (implies (and (member-equal a x) (not (intersectp-equal x y)))
-           (not (member-equal a y))))
+           (not (member-equal a y)))
+ :rule-classes nil)
 
 (defthm fn-bpnjc-intersectp-of-cons
   (iff (intersectp-equal y (cons a o))

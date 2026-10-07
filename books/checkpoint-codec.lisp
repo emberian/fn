@@ -1216,6 +1216,7 @@
   (implies (fn-cpc-result-okp
             (fn-cpc-decode octets groups capacity max-frontier max-sequence))
            (consp octets))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-cpc-read-bytes fn-cpc-read-item
                                      fn-cbor-octet-listp fn-cbor-at-mostp))))
 

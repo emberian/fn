@@ -286,6 +286,7 @@
                 (not (member f named))
                 (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x)))
                             f))))
+ :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-xrt-quiet-files fn-arena$xcorr fn-arx-file-count
                                fn-arx-files-unnamed-names-none fn-arx-file-count-is-files-get)

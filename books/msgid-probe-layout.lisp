@@ -165,7 +165,7 @@
                 (natp (nth 0 cursor)) (< (nth 0 cursor) pages)
                 (natp (nth 1 cursor))
                 (natp (nth 2 cursor)) (< (nth 2 cursor) *fn-mpxt-page-slots*)))
-  :rule-classes (:rewrite :forward-chaining)
+  :rule-classes (:forward-chaining)
   :hints (("Goal" :in-theory (enable fn-mpr-cursorp))))
 
 (defthm fn-mpl-place-preserves-existing-reachable
