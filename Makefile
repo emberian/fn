@@ -2753,7 +2753,7 @@ check:
 # so the cache is a shared cache to check_steps, not an input.
 	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 # The analysed tree (tools/ledger.py load_tree, persisted by its inputs'
-# digest under build/cache/ledger-tree) that check_scaffold, certified_claims,
+# digest under build/cache/ledger-tree) that check_scaffold,
 # current_view, depth_check, harness_check, interface_emit and spec_cite_check
 # read: about four minutes cold on persvati, 87% of it the whole-tree suspect
 # pass.  Analysed once here, while the steps that do not read it already run;
@@ -2797,14 +2797,9 @@ check:
 # encodings; the files that still carry a section sign are listed debt
 # (tools/ascii_debt.json, PKT-496) that may only shrink.
 	@$(CHECK_STEP) $(PYTHON) tools/ascii_check.py --strict
-# A certified registry row must name existing ACL2 events whose defining
-# books have source- and include-closure-compatible manifest evidence, and
-# must itself cite an archived manifest that certified each event book at its
-# current digest. Any warning fails; --explain PRF-xxx names the manifest.
-	@$(CHECK_STEP) $(PYTHON) tools/certified_claims.py
 # planning/current.md, the per-capability current view, is generated from
 # planning/current-view.json and the tree (host call lines, keystones, the
-# archived manifests, the tested and deployed images' source digests); this
+# record box's cert cache, the tested and deployed images' pinned source digests); this
 # fails when it is stale or names something absent.
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 # The fastest passed attempt at each current book/include closure, grouped by
@@ -3209,7 +3204,7 @@ model-test: certify
 # (PKT-305).  No module or test is over its budget.
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
-	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
+	    tests.test_evidence_manifests tests.test_green_check tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \

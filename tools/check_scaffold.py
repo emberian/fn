@@ -321,11 +321,15 @@ def main() -> int:
 
     for entries, statuses, advanced in [
         (requirements, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
-        (proofs, {"planned", "uncertified-at-current-digest", "certified"}, {"certified"}),
+        (proofs, None, set()),   # a proof's status is computed (green_check), never stored
         (scenarios, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
     ]:
         for ident, entry in entries.items():
-            if entry.get("status") not in statuses:
+            if statuses is None:
+                if "status" in entry:
+                    fail(f"{ident}: a proof target stores no status; it is computed "
+                         "from the cert cache (python3 tools/ledger.py --write drops it)")
+            elif entry.get("status") not in statuses:
                 fail(f"{ident}: invalid status")
             if entry.get("milestone") not in milestones:
                 fail(f"{ident}: unknown milestone")
@@ -352,8 +356,6 @@ def main() -> int:
         references(entry.get("assumptions", []), assumptions, ident)
         if not entry.get("statement"):
             fail(f"{ident}: missing proposed statement")
-        if entry.get("status") == "certified" and not entry.get("events"):
-            fail(f"{ident}: certification needs actual ACL2 event references")
         reverse = {r for r, value in requirements.items() if ident in value.get("proof_targets", [])}
         if reverse != set(entry.get("requirements", [])):
             fail(f"{ident}: requirement/proof links are not reciprocal "

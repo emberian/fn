@@ -431,17 +431,11 @@ class UnavailableIsDistinctTests(Sandbox):
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(evidence_manifests.cmd_sync(args), 3)
 
-    def test_F10_claim_tools_exit_3_on_unavailable_evidence(self):
-        import certified_claims
+    def test_F10_current_view_exits_3_on_unavailable_evidence(self):
         import current_view
-        import green_check
         boom = store.EvidenceUnavailable("object x did not arrive")
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
-            with mock.patch.object(green_check, "audit", side_effect=boom):
-                self.assertEqual(green_check.main(["--summary"]), 3)
-            with mock.patch.object(certified_claims, "audit", side_effect=boom):
-                self.assertEqual(certified_claims.main([]), 3)
             with mock.patch.object(current_view, "build", side_effect=boom):
                 self.assertEqual(current_view.main(["--check"]), 3)
         self.assertIn("UNAVAILABLE", out.getvalue())
@@ -779,17 +773,11 @@ class RefusedIsNotUnavailableTests(Sandbox):
         self.assertEqual(rc, 4, verdict)
         self.assertIn("VERDICT REFUSED at 05 x", verdict)
 
-    def test_F3_claim_tools_exit_4_on_refused_evidence(self):
-        import certified_claims
+    def test_F3_current_view_exits_4_on_refused_evidence(self):
         import current_view
-        import green_check
         boom = store.EvidenceMismatch("x: the working-tree file differs")
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
-            with mock.patch.object(green_check, "audit", side_effect=boom):
-                self.assertEqual(green_check.main(["--summary"]), 4)
-            with mock.patch.object(certified_claims, "audit", side_effect=boom):
-                self.assertEqual(certified_claims.main([]), 4)
             with mock.patch.object(current_view, "build", side_effect=boom):
                 self.assertEqual(current_view.main(["--check"]), 4)
         self.assertIn("REFUSED", out.getvalue())

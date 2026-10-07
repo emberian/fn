@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # One module under both names.  `from tools import ledger' (interface_emit,
-# harness_check, check_scaffold, ...) and `import ledger' (certified_claims,
+# harness_check, check_scaffold, ...) and `import ledger' (green_check,
 # depth_check, ...) made two module objects, so a tree cache entry pickled by
 # one (its classes named `ledger.Tree') failed the other's isinstance check
 # and was analysed again, four minutes on persvati, in three of make check's
@@ -4541,7 +4541,7 @@ def load_tree(*, lazy: bool = False) -> Tree:
         # Pickled classes are named by their module.  `python3 tools/ledger.py`
         # runs its main() from the imported module `ledger' (see the end of
         # this file), so a script run and every importer (teeth_check,
-        # certified_claims, ...) pickle and read the same ledger.Tree under
+        # green_check, ...) pickle and read the same ledger.Tree under
         # one key; before 2026-09-28 the key held __name__ and the two never
         # shared an entry (defkeystone).
         shared.update(_PICKLE_MODULE.encode() + b"\0")
@@ -4897,18 +4897,18 @@ def event_books(tree: Tree, curated: dict) -> dict[str, set[str]]:
 
 def derived_status(entry: dict, names: list[str], books: set[str],
                    state: dict, root: Path = ROOT) -> str:
-    """A proof target's ``status``: generated, never typed.
+    """A proof target's status, computed on demand and never stored.
 
     ``planned`` when the target cites no event; ``certified`` when every
-    event's defining book is green at these bytes
-    (tools/green_check.py ``green_at_these_bytes``: green_check's verdict at
-    the book's current digest and include closure, from an archived
-    manifest -- the one meaning of "certified", row R2); otherwise
+    event's defining book is green (tools/green_check.py
+    ``green_at_these_bytes``: the record box's cert cache holds an entry at
+    the book's current closure key made on the record toolchain -- the one
+    meaning of "certified", row R2); otherwise
     ``uncertified-at-current-digest``.  The row's ``evidence`` citations are
     provenance, not the rule.  The status speaks for the cited events only;
     the target's statement may say more than they prove.  STATE caches
-    green_check's report under ``"__green__"`` (apply_events fills it once
-    for every row's books).
+    green_check's report under ``"__green__"`` so a caller judging many rows
+    asks the cache once.
     """
     if not names:
         return "planned"
@@ -4921,8 +4921,7 @@ def derived_status(entry: dict, names: list[str], books: set[str],
     report = state.get("__green__") or {}
     records = report.get("books_by_verdict", {})
     if any(book not in records for book in books):
-        report = green_check.audit(root, roots=sorted(set(books) | set(records)),
-                                    include_local=False)
+        report = green_check.audit(root, roots=sorted(set(books) | set(records)))
         state["__green__"] = report
         records = report.get("books_by_verdict", {})
     if all(green_check.green_at_these_bytes(records.get(book)) for book in books):
@@ -4930,19 +4929,13 @@ def derived_status(entry: dict, names: list[str], books: set[str],
     return "uncertified-at-current-digest"
 
 
-def apply_events(regenerated: dict[str, list[str]],
-                 books: "dict[str, set[str]] | None" = None) -> str:
-    """``proofs.json`` with regenerated ``events`` and ``status``; the rest untouched."""
+def apply_events(regenerated: dict[str, list[str]]) -> str:
+    """``proofs.json`` with regenerated ``events``; the rest untouched.
+
+    A stored ``status`` is dropped: it is computed on demand
+    (``derived_status``), so the registry changes only when its content does.
+    """
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-    state: dict = {}
-    flipped: list[tuple[str, set[str]]] = []
-    if books is not None and any(books.values()):
-        here = str(Path(__file__).resolve().parent)
-        if here not in sys.path:
-            sys.path.insert(0, here)
-        import green_check
-        state["__green__"] = green_check.audit(
-            ROOT, roots=sorted(set().union(*books.values())), include_local=False)
     for entry in registry["proofs"]:
         names = regenerated.get(entry["id"], [])
         # proofs.json's events are GENERATED from planning/proof-events.json:
@@ -4959,58 +4952,8 @@ def apply_events(regenerated: dict[str, list[str]],
             entry["events"] = names
         else:
             entry.pop("events", None)
-        if books is not None:
-            before = entry.get("status")
-            entry["status"] = derived_status(entry, names, books.get(entry["id"], set()),
-                                             state)
-            if before == "certified" and entry["status"] != "certified":
-                flipped.append((entry["id"], books.get(entry["id"], set())))
-    if flipped:
-        for line in flip_lines(flipped, (state.get("__green__") or {}).get(
-                "books_by_verdict", {})):
-            print(line, file=sys.stderr)
+        entry.pop("status", None)
     return json.dumps(registry, indent=2, ensure_ascii=False) + "\n"
-
-
-def flip_lines(flipped: list[tuple[str, set[str]]], records: dict,
-               changed: "set[str] | None" = None) -> list[str]:
-    """Why each row this regen took from certified is no longer certified,
-    grouped by cause (obstructions-8 item 71: store-lineage-3's persvati regen
-    uncertified 16 rows, which read as a cache-key bug; it was the lane's own
-    books/store-log.lisp edit moving their closures -- right, and expected
-    until the runner certifies the branch).  A cause is a book of the row
-    whose own digest has no green run, or a dependency moved since its green;
-    each is marked `this branch' when `git diff origin/dev` changes it."""
-    if changed is None:
-        done = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "origin/dev",
-                               "--", "books", "tests/acl2"], capture_output=True, text=True,
-                              check=False)
-        changed = set(done.stdout.split()) if done.returncode == 0 else set()
-    causes: dict[str, list[str]] = {}
-    for ident, event_books in flipped:
-        found = False
-        for book in sorted(event_books):
-            record = records.get(book) or {}
-            moved = list(record.get("deps_moved_since") or [])
-            if record.get("verdict") != "green":
-                moved.append(f"{book}.lisp ({record.get('verdict', 'unjudged')})")
-            elif not record.get("certified_archived"):
-                moved.append(f"{book}.lisp (green only in an unarchived local run)")
-            for cause in moved:
-                causes.setdefault(cause, []).append(ident)
-                found = True
-        if not found:
-            causes.setdefault("(no cause recorded)", []).append(ident)
-    lines = [f"ledger: {len(flipped)} row(s) certified -> uncertified-at-current-digest "
-             "by this regen; by cause:"]
-    for cause, idents in sorted(causes.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-        path = cause.split(" ", 1)[0]
-        ours = "this branch changes it: expected until it is certified" if path in changed \
-            else "not changed by this branch vs origin/dev: investigate"
-        unique = sorted(set(idents))
-        lines.append(f"  {cause}: {len(unique)} row(s) ({ours}): {', '.join(unique[:8])}"
-                     + (" ..." if len(unique) > 8 else ""))
-    return lines
 
 
 # --------------------------------------------------------------------------
@@ -5075,8 +5018,7 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
     for path, expected in ((LEDGER_JSON, json.dumps(ledger, indent=2,
                                                     ensure_ascii=False) + "\n"),
                            (LEDGER_MD, ledger_markdown(ledger)),
-                           (PROOFS, apply_events(regenerated,
-                                                 event_books(tree, curated)))):
+                           (PROOFS, apply_events(regenerated))):
         relative = path.relative_to(ROOT).as_posix()
         if path != PROOFS and lane_generated(relative, expected):
             continue
@@ -5098,8 +5040,7 @@ def write_all() -> list[str]:
     LEDGER_JSON.write_text(json.dumps(ledger, indent=2, ensure_ascii=False) + "\n",
                            encoding="utf-8")
     LEDGER_MD.write_text(ledger_markdown(ledger), encoding="utf-8")
-    PROOFS.write_text(apply_events(regenerated, event_books(tree, curated)),
-                      encoding="utf-8")
+    PROOFS.write_text(apply_events(regenerated), encoding="utf-8")
     return problems
 
 

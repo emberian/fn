@@ -493,7 +493,7 @@ class Standing:
     pending: list[str] = field(default_factory=list)
     missing_proofs: list[str] = field(default_factory=list)
     missing_records: list[str] = field(default_factory=list)
-    proof_status: dict[str, str] = field(default_factory=dict)
+    proofs: list[str] = field(default_factory=list)   # cited ids the registry holds
     books: dict[str, dict] = field(default_factory=dict)   # green_check records
 
 
@@ -521,7 +521,7 @@ def standings(root: Path = ROOT, certification: dict | None = None) -> list[Stan
             (s.pending if row.landing else s.missing_theorems).append(what)
         for pid in row.proofs:
             if pid in proofs:
-                s.proof_status[pid] = proofs[pid]["status"]
+                s.proofs.append(pid)
             else:
                 (s.pending if row.landing else s.missing_proofs).append(pid)
         for rel in row.records:
@@ -609,7 +609,7 @@ def table(root: Path = ROOT, as_json: bool = False) -> int:
     if as_json:
         print(json.dumps([{
             "row": s.row.id, "title": s.row.title, "landing": s.row.landing,
-            "proofs": s.proof_status, "pending": s.pending,
+            "proofs": s.proofs, "pending": s.pending,
             "missing": s.missing_theorems + s.missing_proofs + s.missing_records,
             "books": {b: {"verdict": r["verdict"], "note": r["note"]}
                       for b, r in s.books.items()},
@@ -617,8 +617,8 @@ def table(root: Path = ROOT, as_json: bool = False) -> int:
         return 0
     for s in rows:
         print(f"{s.row.id}  {s.row.title}")
-        for pid, status in s.proof_status.items():
-            print(f"      {pid}: {status}")
+        for pid in s.proofs:
+            print(f"      {pid}")
         for book, record in s.books.items():
             print(f"      {book}: {record['verdict']}  {record['note']}")
         for what in s.pending:
