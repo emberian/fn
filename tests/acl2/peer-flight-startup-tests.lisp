@@ -132,8 +132,9 @@
        (fn-pfr-policy-p *pfrst-flight*)
        (equal (fn-prstartup-nth 0 *pfrst-wp-run*) :heap)
        ;; 1891 before the pool's read reserve (lane pool-refusal): the
-       ;; served run now also holds its workers' reads in flight.
-       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1893)
+       ;; served run now also holds its workers' reads in flight.  1893
+       ;; at the 64 MiB nursery; 1783 at 8 MiB (MEM-007).
+       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1783)
        (equal (fn-heap-core-file *pfrst-wp-owner-core*) (fn-heap-core-file *pfrst-wp-probe-core*))
        (<= (pfrst-wp-owner-need dyn *pfrst-wp-owner-core*) dyn)
        (fn-prstartup-planp plan)
@@ -142,8 +143,11 @@
                     plan *pfrst-flight* *pfrst-machine* *pfrst-fresh*))
               :hold))))
 ; Teeth: without the DEFAULT extension's launch floor the peer figure is
-; 6107ceb56's 1509, and the owner refuses it (it needs 1526); an owner core
-; with a larger file (the core-file hypothesis dropped) fails at 1893.
+; 6107ceb56's 1509.  At the 64 MiB nursery the owner refused it (it needed
+; 1526); at 8 MiB (MEM-007) it needs 1414 and 1509 holds, so this tooth now
+; bounds the owner's need from both sides instead (1414 holds, 1413 does not);
+; an owner core with a larger file (the core-file hypothesis dropped) fails
+; at 1783.
 (assert-event
  (let* ((old (fn-pfr-extend-operation-reservation *pfrst-wp-base* :run *pfrst-flight*
                                                    *pfrst-wp-probe-core* *pfrst-machine*))
@@ -151,7 +155,7 @@
         (dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-wp-run*))))
   (and (equal (fn-prstartup-nth 0 old) :heap)
        (equal (fn-prstartup-nth 1 old) 1509)
-       (not (<= (pfrst-wp-owner-need dyn-old *pfrst-wp-owner-core*) dyn-old))
-       (<= (pfrst-wp-owner-need (* 1048576 1526) *pfrst-wp-owner-core*) (* 1048576 1526))
-       (not (<= (pfrst-wp-owner-need (* 1048576 1525) *pfrst-wp-owner-core*) (* 1048576 1525)))
+       (<= (pfrst-wp-owner-need dyn-old *pfrst-wp-owner-core*) dyn-old)
+       (<= (pfrst-wp-owner-need (* 1048576 1414) *pfrst-wp-owner-core*) (* 1048576 1414))
+       (not (<= (pfrst-wp-owner-need (* 1048576 1413) *pfrst-wp-owner-core*) (* 1048576 1413)))
        (not (<= (pfrst-wp-owner-need dyn '(1615110568 . 1600000000)) dyn)))))

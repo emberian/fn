@@ -39,7 +39,7 @@
                                            '(83886080 . 67108864) '(8589934592) nil nil))
 (assert-event
  (and (equal (fn-prstartup-nth 0 *prst-launch*) :heap)
-      (equal (fn-prstartup-nth 1 *prst-launch*) 257)
+      (equal (fn-prstartup-nth 1 *prst-launch*) 259)
       (equal (fn-prstartup-nth 4 *prst-launch*) 1024)
       (equal (fn-prstartup-nth 5 *prst-launch*) 20)
       (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 *prst-launch*)
