@@ -1,8 +1,11 @@
-"""Source coordinates for a composed fixture using published native images.
+"""Source coordinates for a composed fixture using published or stamped native images.
 
 The runner verifies image_set SHA256SUMS before invoking the fixture.  This
-check binds each selected launcher to that published set and compares source
-coordinates; it does not certify images or rehash their large cores per case.
+check binds each selected launcher to the MANIFEST.json and TREE_SHA beside
+it -- a published set's, or the ones `tools/image_set.py stamp` writes into a
+run tree's own build from the images' `commit SHA` records (a convergence
+batch tests images it does not publish) -- and compares source coordinates;
+it does not certify images or rehash their large cores per case.
 """
 
 import hashlib
@@ -42,7 +45,7 @@ def assert_same_published_source(case, *images):
     """Require a same-source published NNTP/BP image pair before mutation.
 
     Symlinked launchers are resolved to their actual sets.  Environment labels
-    alone do not establish the pair's source.  Missing/unpublished launchers,
+    alone do not establish the pair's source.  Missing/unpublished-and-unstamped launchers,
     inconsistent manifests and mixed source commits fail the fixture.  The
     returned source commit is suitable for its observation record.
     """

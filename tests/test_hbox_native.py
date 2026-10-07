@@ -145,6 +145,26 @@ echo REACHED
         self.assertEqual(dry("--image-set", "nope", "HEAD", "tests.test_native_owner")
                          .returncode, 2)
 
+    def test_a_built_batch_is_stamped_after_its_saves_and_a_linked_set_is_not(self):
+        """CONVERGE-20261007-1 red #3: a run that builds and tests without
+        publishing stamps build/ (tools/image_set.py stamp) after every save
+        and before any module, so a composed fixture binds its launchers."""
+        answer = dry("--box", "hbox", "--images", "developer,production", "HEAD",
+                     "tests.test_native_consumer_exchange_two_nodes")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        lines = answer.stdout.splitlines()
+        stamp = [i for i, line in enumerate(lines)
+                 if line == "step stamp-images python3 tools/image_set.py stamp $T"]
+        self.assertEqual(len(stamp), 1, answer.stdout)
+        saves = [i for i, line in enumerate(lines) if line.startswith(("step image-", "pstep image-"))]
+        waits = [i for i, line in enumerate(lines) if line == "pwait"]
+        tests = [i for i, line in enumerate(lines) if line.startswith("tstep test-")]
+        self.assertTrue(saves and tests and max(saves + waits) < stamp[0] < min(tests))
+        sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                             text=True, check=True).stdout.strip()
+        linked = dry("--image-set", sha, "--images", "developer", "HEAD", "tests.test_native_owner")
+        self.assertNotIn("stamp-images", linked.stdout)
+
     def test_overlay_plans_here_and_derives_cores_after_the_link(self):
         sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
                              text=True, check=True).stdout.strip()
