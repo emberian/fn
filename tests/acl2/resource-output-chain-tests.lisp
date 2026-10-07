@@ -423,3 +423,18 @@
   :witness ((token (rcx-tok)) (operation-gen 8) (receipt :discarded) (ledger (rcx-l3)))
   :mutations ((bank-unchanged (:conclusion (equal (fn-rl-bank (mv-nth 1 (fn-rlo-output token operation-gen receipt ledger))) (fn-rl-bank ledger))) ((token (rcx-tok)) (operation-gen 8) (receipt :discarded) (ledger (rcx-l3))) :fault "a settling receipt that leaves the bank charged" :lemma rcx-fn-rlo-output-bank-correspondence-mutant-bank-unchanged)))
 
+
+(defthm rcx-fn-rlo-output-settled-token-is-not-live-witness
+  (and (eq (mv-nth 0 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l3))) :settled) (not (fn-rlo-livep (rcx-tok) 8 (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l3)))))))
+(defthm rcx-fn-rlo-output-settled-token-is-not-live-without-settled
+  (and (not (eq (mv-nth 0 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l2))) :settled)) (not (not (fn-rlo-livep (rcx-tok) 8 (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l2))))))))
+(defthm rcx-fn-rlo-output-settled-token-is-not-live-mutant-settled-token-stays-live
+  (and (eq (mv-nth 0 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l3))) :settled) (not (fn-rlo-livep (rcx-tok) 8 (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l3))))) (not (fn-rlo-livep (rcx-tok) 8 (mv-nth 1 (fn-rlo-output (rcx-tok) 8 :discarded (rcx-l3)))))))
+(defteeth fn-rlo-output-settled-token-is-not-live
+  :claim (((settled (eq (mv-nth 0 (fn-rlo-output token op receipt ledger)) :settled))) (not (fn-rlo-livep token op (mv-nth 1 (fn-rlo-output token op receipt ledger)))))
+  :subject fn-rlo-output
+  :witness-lemma rcx-fn-rlo-output-settled-token-is-not-live-witness
+  :witness ((token (rcx-tok)) (op 8) (receipt :discarded) (ledger (rcx-l3)))
+  :breaks ((settled ((ledger (rcx-l2))) :lemma rcx-fn-rlo-output-settled-token-is-not-live-without-settled))
+  :mutations ((settled-token-stays-live (:conclusion (fn-rlo-livep token op (mv-nth 1 (fn-rlo-output token op receipt ledger)))) ((token (rcx-tok)) (op 8) (receipt :discarded) (ledger (rcx-l3))) :fault "a settlement that leaves the token live" :lemma rcx-fn-rlo-output-settled-token-is-not-live-mutant-settled-token-stays-live)))
+
