@@ -1,0 +1,12 @@
+{
+ "file": "books/article-stream.lisp",
+ "id": "ARTICLE-RENDER-WALKS-FROM-WINDOW",
+ "note": "fix: the renderer asks for the span it needs (fn-pwr-span-at), with a theorem that the span renderer's result equals the per-byte renderer's (ownership checked once per span); then delete row21-span's below slot (host page-window span struct). Owner P when unparked, C until then.",
+ "notes": [],
+ "owner": "C",
+ "severity": "high",
+ "source": "CONVERGE-2 row 21, coordinator 2026-10-07 15:40",
+ "state": "open",
+ "title": "The ARTICLE renderer walks the payload from octet 0 while the borrowed window is the payload's last one, so every octet below the window start asks the wrong question; row21-span's below slot memoizes that answer",
+ "updated": "2026-10-07T18:20:18Z"
+}
