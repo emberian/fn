@@ -273,6 +273,7 @@ class Spec:
     st: str | None = None
     fail: object = None
     guard_hints: object = None
+    progress_hints: object = None
     done: object = None      # :step
     emit: object = None
     skip: object = None
@@ -706,8 +707,7 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
             and [flat_low(a) for a in exe.items[1:-1]] == fl and flat_low(exe.items[-1]) == "nil"):
         raise Refuse("no-shape", "exec is not (LOOP formals nil)")
     xa = xargs_of(wrapper)
-    if ":hints" in xa:
-        raise Refuse("step-hints", "the wrapper's termination carries :hints")
+    ph = xa.get(":hints")
     logic = cond_to_if(logic)
     if "mv-let" in flat_low(logic) or "(mv " in flat_low(logic):
         raise Refuse("mv")
@@ -731,6 +731,7 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
     if any(any_rec(bd, name) for bd in lets):
         raise Refuse("pair-result", "recursion result is bound")
     emit = skip = None
+    lets_for_done = False
     if is_call(rest, "cons") and len(rest.items) == 3:
         body, rec_e, rec_s = rest.items[1], rest.items[2], None
     elif is_call(rest, "if") and len(rest.items) == 4:
@@ -741,6 +742,19 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
         elif is_call(y, "cons") and len(y.items) == 3 and any_rec(y.items[2], name) and any_rec(x, name) \
                 and not any_rec(y.items[1], name):
             skip, body, rec_e, rec_s = t, y.items[1], y.items[2], x
+        elif is_call(x, "cons") and len(x.items) == 3 and any_rec(x.items[2], name) \
+                and not any_rec(y, name) and not any_rec(x.items[1], name) \
+                and flat_low(y) == flat_low(tail):
+            # (if T (cons F REC) TAIL): a failed T ends the walk with the tail, so it
+            # joins the done test (under the same lets)
+            stop = L(S("not"), t)
+            for b in reversed(lets):       # inline the lets (def-loop re-wraps :done in :let itself)
+                v = b.items[0].low
+                stop = subst(stop, lambda n, v=v: isinstance(n, Atom) and not isinstance(n, Str)
+                             and n.low == v, b.items[1])
+            done = L(S("or"), done, stop)
+            body, rec_e, rec_s = x.items[1], x.items[2], None
+            lets_for_done = True
         else:
             raise Refuse("no-shape", "step: not (if E (cons F REC) REC) in either order")
     else:
@@ -760,6 +774,7 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
             and x.items[0].low in ("atom", "endp", "consp") and flat_low(x.items[1]) == svars[0]):
         raise Refuse("step-measure", "the done test does not test the list the default measure counts")
     spec = Spec("step", name, formals, svars[0])
+    spec.progress_hints = ph
     spec.svars = svars
     nxt = [ea[f] for f in svars]
     snx = [sa[f] for f in svars] if sa is not None else None
@@ -796,7 +811,11 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
     for part in [body] + nxt + (snx or []) + ([] if tail is None else [tail]):
         if flat_low(part) not in loop_flat:
             raise Refuse("exec-differs", flat_low(part)[:60])
-    if flat_low(done) not in loop_flat and flat_low(negate(done)) not in loop_flat \
+    if lets_for_done:
+        chk = done.items[1]
+        if flat_low(chk) not in loop_flat and flat_low(negate(chk)) not in loop_flat:
+            raise Refuse("exec-differs", "done test " + flat_low(chk)[:50])
+    elif flat_low(done) not in loop_flat and flat_low(negate(done)) not in loop_flat \
             and not (is_call(done, "atom") and flat_low(L(S("consp"), done.items[1])) in loop_flat):
         raise Refuse("exec-differs", "done test " + flat_low(done)[:50])
     g = xa.get(":guard")
@@ -837,6 +856,8 @@ def render_step(spec: Spec, hoisted) -> str:
         chunks.append(Opt(":measure", spec.measure))
     if spec.guard is not None:
         chunks.append(Opt(":guard", spec.guard))
+    if spec.progress_hints is not None:
+        chunks.append(Opt(":progress-hints", spec.progress_hints))
     if spec.guard_hints is not None:
         chunks.append(Opt(":guard-hints", spec.guard_hints))
     lines = packed(chunks, [f"(def-loop {spec.name} {flat(spec.formals)}", first])
@@ -863,8 +884,7 @@ def fold_spec(name, formals, logic, exe, lf, wrapper):
     if len(eargs) != len(fl) + 1 or not any(eargs[:i] + eargs[i + 1:] == fl for i in nils):
         raise Refuse("no-shape", "exec is not (LOOP formals with nil for the accumulator)")
     xa = xargs_of(wrapper)
-    if ":hints" in xa:
-        raise Refuse("step-hints", "the wrapper's termination carries :hints")
+    ph = xa.get(":hints")
     logic = cond_to_if(logic)
     if not (is_call(logic, "if") and len(logic.items) == 4):
         raise Refuse("no-shape", "logic is not an if")
@@ -922,6 +942,7 @@ def fold_spec(name, formals, logic, exe, lf, wrapper):
             and x.items[0].low in ("atom", "endp", "consp") and flat_low(x.items[1]) == svars[0]):
         raise Refuse("step-measure", "the done test does not test the list the default measure counts")
     spec = Spec("fold", name, formals, svars[0])
+    spec.progress_hints = ph
     spec.svars = svars
     nxt = [ra[f] for f in svars]
     s1 = svars[0]
@@ -970,6 +991,8 @@ def render_fold(spec: Spec, hoisted) -> str:
         chunks.append(Opt(":measure", spec.measure))
     if spec.guard is not None:
         chunks.append(Opt(":guard", spec.guard))
+    if spec.progress_hints is not None:
+        chunks.append(Opt(":progress-hints", spec.progress_hints))
     if spec.guard_hints is not None:
         chunks.append(Opt(":guard-hints", spec.guard_hints))
     lines = packed(chunks, [f"(def-loop {spec.name} {flat(spec.formals)}", first])
