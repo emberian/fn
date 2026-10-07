@@ -91,6 +91,28 @@ class NativeReclaimWalkTests(unittest.TestCase):
         self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
         return node
 
+    # The owner's line that ends an automatic checkpoint publication, whatever
+    # its outcome (host/native/owner.lisp, the CHECKPOINT auto lines).
+    PUBLICATION_END = re.compile(rb"CHECKPOINT auto (sequence=|failed|abandoned|refused|done)")
+
+    def reclaim_live(self, node, owner, deadline=600.0):
+        """`store reclaim` once no publication holds the pass.  Posting fills
+        the log past the checkpoint cadence, so an automatic publication can be
+        running when the test asks; the owner then answers `queued` and starts
+        nothing (books/owner-reclaim.lisp fn-orc-request-word: a publication
+        runs), which the CLI exits REFUSED.  That is the protocol, not the
+        pass's verdict: ask again after the publication's own end line."""
+        end = time.monotonic() + deadline
+        while True:
+            ended = len(self.owner_lines(owner, self.PUBLICATION_END, 0, deadline=0))
+            done = self.reclaim(node, expect=None)
+            if b"queued" not in done.stdout or time.monotonic() > end:
+                self.assertEqual(done.returncode, EXIT.OK,
+                                 (done.stdout, done.stderr[-600:], owner.stderr.since(0)[-3000:]))
+                return done
+            self.owner_lines(owner, self.PUBLICATION_END, ended + 1,
+                             deadline=max(0.0, end - time.monotonic()))
+
     def group_line(self, client) -> bytes:
         return client.command("GROUP " + GROUP)
 
@@ -106,7 +128,7 @@ class NativeReclaimWalkTests(unittest.TestCase):
             c = Client(node.port, timeout=300, greeting=None)
             self.assertTrue(self.group_line(c).startswith(b"211 %d 1 %d " % (n, n)))
             self.assertTrue(c.command("STAT <xpy-%s@example.invalid>" % tag(1)).startswith(b"223"))
-            done = self.reclaim(node)
+            done = self.reclaim_live(node, owner)
             self.assertIn(b"installed", done.stdout, (done.stdout, owner.stderr.since(0)[-3000:]))
             line = self.owner_lines(owner, re.compile(rb"RECLAIM installed records="), 1)
             self.assertEqual(len(line), 1, owner.stderr.since(0)[-3000:])
@@ -155,7 +177,7 @@ class NativeReclaimWalkTests(unittest.TestCase):
         try:
             post_many(node, n, expired)
             node.operator("retention", "expire", GROUP, "purge", "30", expect=EXIT.OK)
-            done = self.reclaim(node)
+            done = self.reclaim_live(node, owner)
             self.assertIn(b"installed", done.stdout, (done.stdout, owner.stderr.since(0)[-3000:]))
             self.assertNotIn(b"reason=credit", owner.stderr.since(0))
             line = self.owner_lines(owner, re.compile(rb"RECLAIM installed records="), 1)
@@ -233,7 +255,7 @@ class NativeReclaimWalkTests(unittest.TestCase):
                 pid = owner.pid
                 before = rss_kib(pid)
                 started = time.monotonic()
-                done = self.reclaim(node)
+                done = self.reclaim_live(node, owner)
                 elapsed = time.monotonic() - started
                 after = rss_kib(pid)
                 self.assertIn(b"installed", done.stdout, done.stdout)

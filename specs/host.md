@@ -418,7 +418,9 @@ top-level `include-book` reloads the compiled files of its whole closure, and
 each load of a constrained or non-executable stub takes a thread-local-storage
 index SBCL never frees (planning/evidence/arena-store-8-tls.md): at ~600
 top-level includes the developer build used 60% of the saved launcher's
-`--tls-limit 65536`, loaded once 4%. The build prints `FN_NATIVE_TLS` and
+`--tls-limit 65536` (a build-time limit; the saved launcher runs at 16384,
+`:run-tls-limit`, so the same load is 16% of what it runs at), loaded once
+4%. The build prints `FN_NATIVE_TLS` and
 the script refuses an image over 25% (`FN_TLS_BUDGET_PERCENT`);
 `tools/tls_check.py` checks the scripts' shape in `make check`, and
 `--measure` names each compiled file's cost. `tools/fn_native.py`

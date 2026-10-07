@@ -350,7 +350,7 @@ def build(root: Path = ROOT) -> str:
         "The prose lines are hand-maintained and name their record. The history",
         "stays in [`evidence/`](evidence/), immutable.",
         "Every image above is the SBCL image. An EXTRACTED image (`tools/extract`:",
-        "the same world compiled to a CHICKEN program) is a different qualified",
+        "the same world's functions compiled by bare SBCL into fn-core) is a different qualified",
         "image: its qualification rests on A-EXTRACT ([failures](../specs/failures.md))",
         "and is `make extract-check` on hbox; none is qualified or deployed.",
         "",

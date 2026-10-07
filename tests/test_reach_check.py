@@ -750,9 +750,8 @@ class LoadedHostTests(unittest.TestCase):
                              ["PRF-T1:python-only-property"])
             self.assertEqual(findings[0].subjects, ["fn-python-only"])
 
-    def test_the_extraction_worlds_ports_are_host_lines(self):
+    def test_the_extraction_worlds_host_files_are_host_lines(self):
         graph = reach_check.Graph()
-        self.assertIn("host/store-open-host.lisp", graph.loaded_hosts)
         self.assertIn("host/owner-host.lisp", graph.loaded_hosts)
         self.assertNotIn("host/native/build-store-test.lisp", graph.loaded_hosts)
 
