@@ -1766,7 +1766,10 @@
                          (paged (rep-pg-seq-events impl fields0 trees once))
                          (t (defadt-fn-trees-once impl fields0 trees once)))))
     `(progn
-       ,instance
+       (encapsulate
+         ()
+         (local (in-theory (enable adt-update-nth-update-nth-same)))
+         ,instance)
        ,@(if generic (rep-generic-events name impl fields scalar paged) nil)
        (table fn-generated ',name
               '(:def-representation :scalar ,scalar :generic ,generic

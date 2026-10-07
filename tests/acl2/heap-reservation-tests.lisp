@@ -212,7 +212,7 @@
                                       (5 . 16) (7 . 128))))
 (assert! (equal (fn-heap-friend-candidate *hrt-bare* 67108864) *hrt-top*))
 (assert! (equal (hrt-init *hrt-bare* *hrt-hbox* nil)
-                (list :init *hrt-top* "custom" 3209 94464 :conservative t)))
+                (list :init *hrt-top* "custom" 3208 94464 :conservative t)))
 ; init --largest: the largest preset whose FULL store the budget
 ; holds -- scale since lane membership-budget: its memberships are charged
 ; to its 768 MiB history (at most H / 320 of them), so its full store's run
@@ -229,10 +229,10 @@
 (assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*))
                 (fn-heap-friend-candidate *hrt-bare* 33554432)))
 (assert! (equal (hrt-init *hrt-bare* (* 2 *hrt-gib*) nil)
-                (list :init (fn-heap-friend-candidate *hrt-bare* 16777216) "custom" 1367 1536
+                (list :init (fn-heap-friend-candidate *hrt-bare* 16777216) "custom" 1366 1536
                       :conservative t)))
 (assert! (equal (hrt-init *hrt-bare* (* 3 *hrt-gib*) nil)
-                (list :init (fn-heap-friend-candidate *hrt-bare* 33554432) "custom" 1982 2304
+                (list :init (fn-heap-friend-candidate *hrt-bare* 33554432) "custom" 1981 2304
                       :conservative t)))
 ; init --budget 4096 on hbox: development, within 4,096 MB.
 (assert! (equal (nth 4 (hrt-init *hrt-bare* *hrt-hbox* nil 4096)) 4096))
@@ -294,9 +294,9 @@
                 :refused))
 (assert! (equal (car (hrt-init '(:default ((2 . 4096))) *hrt-hbox* nil)) :refused))
 (assert! (equal (fn-heap-init-report-line (hrt-init *hrt-bare* (* 3 *hrt-gib*) nil))
-                "init: profile=custom sizing=conservative reservation=1982 MB budget=2304 MB within-budget=yes"))
+                "init: profile=custom sizing=conservative reservation=1981 MB budget=2304 MB within-budget=yes"))
 (assert! (equal (fn-heap-init-report-line (hrt-init *hrt-bare* (* 2 *hrt-gib*) nil))
-                "init: profile=custom sizing=conservative reservation=1367 MB budget=1536 MB within-budget=yes"))
+                "init: profile=custom sizing=conservative reservation=1366 MB budget=1536 MB within-budget=yes"))
 (assert! (equal (fn-heap-init-report-line (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*))
                 "refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=16203 MB budget=2048 MB"))
 (assert! (equal (fn-heap-init-report-line (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*
@@ -410,7 +410,7 @@
 ; H / 320 since lane membership-budget, where up to 4,096 groups a record
 ; made 11,383,456,834,754,682 octets).
 (assert! (equal (fn-heap-figure-octets *fn-bs-profile-defaults* 0 0)
-                64534855546714))
+                64534855301018))
 
 ; The keystone's teeth.  Hypotheses: the decision accepts, and says held.
 (defun hrt-init-conclusion (d core nursery physical limits budget-mb)
@@ -1197,7 +1197,7 @@
 ; The figure's parameters are the runtime's: the open's chunk is the streamed
 ; replay's work quantum, the arena's page the paged arena's.
 (assert! (equal *fn-heap-open-chunk-octets* *fn-srs-chunk-octets*))
-(assert! (equal *fn-heap-arena-page-octets* *fn-arp-page*))
+(assert! (equal *fn-heap-arena-page-octets* *adt-pg-octets*))
 
 ; The streamed open holds no copy of the history: over the scale preset's
 ; full store (H = 768 MiB, T = 4,096) the open's transient is 2,655 MB, under
@@ -1212,7 +1212,7 @@
             (* 16 *hrt-scale-h*)))
 
 ; The paged arena: a payload octet costs one octet, never three.
-(assert! (equal (fn-heap-arena-octets 8388608) (+ 8388608 262144 (* 32 33))))
+(assert! (equal (fn-heap-arena-octets 8388608) (+ 8388608 16384 (* 64 513))))
 (assert! (< (fn-heap-arena-octets 805306368) (* 2 805306368)))
 
 ; The per-record terms cover the measured live state a record, less its
@@ -1241,7 +1241,7 @@
   (fn-heap-store-state-octets p (fn-bs-profile-max-history-octets p)
                               (fn-bs-profile-max-transactions p)
                               (fn-heap-membership-bound p)))
-(assert! (equal (fn-heap-mb-of (hrt-state *hrt-gate*)) 16817))
+(assert! (equal (fn-heap-mb-of (hrt-state *hrt-gate*)) 16820))
 (assert! (equal (hrt-state *hrt-gate*) (hrt-state *hrt-gate-16*)))
 ; fn-heap-membership-term-is-at-most-twice-h, reachable: the gate's
 ; membership term is at most 2 H (1,536 MiB), where it was 2 x T x 320 x G.

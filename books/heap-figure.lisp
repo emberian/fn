@@ -702,7 +702,9 @@
 ;; lists; with heap-pool's header charge the base was 282,764,298 octets
 ;; (269.7 MiB); THE SWITCH (PRF-1037) adds the keyed Message-ID index's
 ;; 64 octets a record, twice for the collector, over the profile's 16,384
-;; records: 284,861,450 octets (271.7 MiB), the value ACL2 evaluates
+;; records: 284,861,450 octets (271.7 MiB); the generated paged arena's 16 KiB
+;; pool page and 64-octet page overhead (lane s-vocab, books/heap-store-figure.lisp)
+;; take 245,696 of them: 284,615,754 octets (271.4 MiB), the value ACL2 evaluates
 ;; (fn-heap-small-run-base-of-an-empty-store, the image's dynamic content
 ;; beside it).  W9's obligation-view reserve, 546,341,504 octets more
 ;; (831,202,954, 2026-09-30 to 2026-10-01), left with the view it charged:
@@ -710,11 +712,11 @@
 ;; The run of an empty small store is accepted on every machine of at least
 ;; 1,536 MiB (OpenBSD's default login class) for any image up to 512 MiB of
 ;; dynamic content (fn-heap-small-profile-run-fits-a-small-machine: at most
-;; 8/7 x (284,861,450 + 512 MiB), 896 MiB, with the nursery's room), and on
+;; 8/7 x (284,615,754 + 512 MiB), 896 MiB, with the nursery's room), and on
 ;; 2,048 MiB too (the friend's machine has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 284861450))
+         (+ (fn-heap-core-dynamic core) 284615754))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

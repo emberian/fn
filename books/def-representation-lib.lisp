@@ -339,3 +339,11 @@
                  (:instance adt-pg-nth-flat (s '((:octets))) (m 2))
                  (:instance adt-pg-len-col-pokp (q *adt-pg-octets*)))
            :do-not-induct t)))
+
+;; The rule that collapses two writes to one position (books/proto/adt-lib.lisp)
+;; is withdrawn from includers: it reaches every book above the arena
+;; (payload-arena-bytes includes this library) and reshapes the nested
+;; `f-put-global' terms the owner books' guard proofs read through
+;; `fn-sg-state-p1-of-put-global' (books/owner-connection-state.lisp).  The
+;; generator enables it for its own proofs (`rep-instance-events+').
+(in-theory (disable adt-update-nth-update-nth-same))
