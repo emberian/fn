@@ -468,3 +468,18 @@
   :witness ((token (rcx-tok)) (operation-gen 8) (receipt :terminal) (ledger (rcx-l4)))
   :mutations ((bank-unchanged (:conclusion (equal (fn-rl-bank (mv-nth 1 (fn-rlo-physical token operation-gen receipt ledger))) (fn-rl-bank ledger))) ((token (rcx-tok)) (operation-gen 8) (receipt :terminal) (ledger (rcx-l4))) :fault "a settling receipt that leaves the bank charged" :lemma rcx-fn-rlo-physical-bank-correspondence-mutant-bank-unchanged)))
 
+
+(defthm rcx-fn-rlo-physical-settled-token-is-not-live-witness
+  (and (eq (mv-nth 0 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4))) :settled) (not (fn-rlo-livep (rcx-tok) 8 (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4)))))))
+(defthm rcx-fn-rlo-physical-settled-token-is-not-live-without-settled
+  (and (not (eq (mv-nth 0 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l2))) :settled)) (not (not (fn-rlo-livep (rcx-tok) 8 (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l2))))))))
+(defthm rcx-fn-rlo-physical-settled-token-is-not-live-mutant-settled-token-stays-live
+  (and (eq (mv-nth 0 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4))) :settled) (not (fn-rlo-livep (rcx-tok) 8 (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4))))) (not (fn-rlo-livep (rcx-tok) 8 (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4)))))))
+(defteeth fn-rlo-physical-settled-token-is-not-live
+  :claim (((settled (eq (mv-nth 0 (fn-rlo-physical token op receipt ledger)) :settled))) (not (fn-rlo-livep token op (mv-nth 1 (fn-rlo-physical token op receipt ledger)))))
+  :subject fn-rlo-physical
+  :witness-lemma rcx-fn-rlo-physical-settled-token-is-not-live-witness
+  :witness ((token (rcx-tok)) (op 8) (receipt :terminal) (ledger (rcx-l4)))
+  :breaks ((settled ((ledger (rcx-l2))) :lemma rcx-fn-rlo-physical-settled-token-is-not-live-without-settled))
+  :mutations ((settled-token-stays-live (:conclusion (fn-rlo-livep token op (mv-nth 1 (fn-rlo-physical token op receipt ledger)))) ((token (rcx-tok)) (op 8) (receipt :terminal) (ledger (rcx-l4))) :fault "a settlement that leaves the token live" :lemma rcx-fn-rlo-physical-settled-token-is-not-live-mutant-settled-token-stays-live)))
+
