@@ -680,3 +680,85 @@
                            (fn-intern-event fn-arx-intern-event fn-lzr-intern-event
                             fn-replay-identity-step fn-ssr-publish fn-ssr-at fn-stxk-context-kind
                             pcko-intern-cons fn-rows-handles-inp fn-rows-wire-of pcko-handles-of-cons mv-nth)))))
+
+; -----------------------------------------------------------------------------
+; THE KEYSTONE: the exec open is the capture.
+
+(defthm pcko-rows-wire-of-append
+  (equal (fn-rows-wire-of (append a b) fn-arena)
+         (append (fn-rows-wire-of a fn-arena) (fn-rows-wire-of b fn-arena)))
+  :hints (("Goal" :induct (len a) :in-theory (enable fn-rows-wire-of))))
+
+(defthm pcko-rows-wire-of-rev
+  (equal (fn-rows-wire-of (rev a) fn-arena) (rev (fn-rows-wire-of a fn-arena)))
+  :hints (("Goal" :induct (len a) :in-theory (enable fn-rows-wire-of))))
+
+(defthm pcko-rows-wire-of-nil (equal (fn-rows-wire-of nil fn-arena) nil)
+  :hints (("Goal" :in-theory (enable fn-rows-wire-of))))
+
+(defthm pcko-rev-onto-is-revappend
+  (equal (fn-ag-rev-onto x acc) (revappend x acc)))
+
+(defthm pcko-wire-of-ssr-rows
+  (implies (not (eq acc :bad))
+           (equal (fn-rows-wire-of (fn-ssr-rows acc) fn-arena)
+                  (revappend (fn-rows-wire-of (fn-ssr-at 0 acc) fn-arena) nil)))
+  :hints (("Goal" :in-theory (e/d (fn-ssr-rows) (fn-ssr-at)))))
+
+(defthm pcko-sccb-listp-true-listp
+  (implies (fn-pck-sccb-listp recs) (true-listp recs))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-pck-sccb-listp))))
+
+(defthm pcko-npg-ok
+  (implies (fn-pck-root-fitsp configs recs)
+           (and (natp (len (fn-pck-pages configs recs)))
+                (<= 8 (len (fn-pck-pages configs recs)))))
+  :hints (("Goal" :in-theory (disable fn-pck-pages pcko-tw) :use pcko-len-pages))
+  :rule-classes nil)
+
+(defthm pcko-open-of-recs
+  (implies (and (fn-pck-recordsp configs recs)
+                (fn-pck-root-fitsp configs recs)
+                (equal npg (len (fn-pck-pages configs recs)))
+                (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem)
+                       (adt-tp-flat (fn-pck-pages configs recs)))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))
+                (not (eq (mv-nth 0 (fn-ssr-intern-step
+                                    (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs)))
+                                    recs nil nil :resident nil fn-arena))
+                         :bad)))
+           (let ((seed (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs))))
+                 (x (fn-pck-root-tree configs recs))
+                 (r (fn-pck-x-open npg pgs-mem fn-arena fn-octets)))
+             (and (equal (mv-nth 0 r) :ok)
+                  (equal (mv-nth 1 r)
+                         (fn-ssr-rows (mv-nth 0 (fn-ssr-intern-step seed recs nil nil :resident nil fn-arena))))
+                  (equal (mv-nth 2 r) (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x)))
+                  (equal (mv-nth 3 r) (fn-cei-build-aux recs 0 nil))
+                  (equal (mv-nth 5 r)
+                         (mv-nth 1 (fn-ssr-intern-step seed recs nil nil :resident nil fn-arena))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(pcko-img) (theory 'minimal-theory))
+           :use ((:instance pcko-len-w) (:instance pcko-w-root) (:instance pcko-w-tape-well)
+                 (:instance pcko-npg-ok)
+                 (:instance pcko-open-is-the-fold
+                            (w (adt-tp-flat (fn-pck-pages configs recs))))))))
+
+(defthm pcko-seed-rows
+  (equal (fn-ssr-at 0 (fn-ssr-seed identity)) nil)
+  :hints (("Goal" :in-theory (enable fn-ssr-seed fn-ssr-state fn-ssr-at))))
+
+(defthm pcko-capture-fields
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs))
+           (let ((c (fn-pck-capture-of-pages (fn-pck-pages configs recs)))
+                 (x (fn-pck-root-tree configs recs)))
+             (and (equal (fn-sco-records c) recs)
+                  (equal (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c))
+                         (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x)))
+                  (equal (fn-sco-event-index c) (fn-cei-build-aux recs 0 nil)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-root-tree fn-pck-root-tree-of-capture fn-sco-capture)
+                           (fn-pck-pages fn-pck-capture-of-pages pck-capture-of-pages))
+           :use ((:instance pck-capture-of-pages)
+                 (:instance pcko-sccb-listp-true-listp)))))
