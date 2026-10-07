@@ -1881,7 +1881,7 @@
    conn (fn-served-result-conn (fn-served-dispatch-events conn events fn-arena)))
   :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
            :in-theory (disable fn-served-dispatch fn-served-pin-old-or-live-p))
-          ("Subgoal *1/1" :use ((:instance fn-served-pin-old-or-live-p-transitive
+          ("Subgoal *1/2" :use ((:instance fn-served-pin-old-or-live-p-transitive
                                            (a conn)
                                            (b (fn-served-result-conn (fn-served-dispatch conn (car events) fn-arena)))
                                            (c (fn-served-result-conn

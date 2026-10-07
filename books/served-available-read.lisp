@@ -4,7 +4,6 @@
 ; the legacy raw-pinned route. All request decisions remain ACL2's.
 (in-package "ACL2")
 (include-book "owner-credits")
-(include-book "def-loop")
 (include-book "served-available-commands")
 
 (defun fn-av-scr-step (session archive index verdicts env wire-event v fn-arena fn-cat)
@@ -238,13 +237,34 @@
            (fn-served-result-effects r))))
     (fn-av-scr-dispatch-core conn event live trie lver arts cache fn-arena fn-cat)))
 
-(def-loop fn-av-scr-dispatch-events (conn events live trie lver arts cache fn-arena fn-cat)
-  :shape :thread :over events :st conn :elt e
-  :let ((here (fn-av-scr-dispatch conn e live trie lver arts cache fn-arena fn-cat)))
-  :row (fn-served-result-effects here) :next (fn-served-result-conn here)
-  :make (fn-served-make-result conn dl-rows) :st-of (fn-served-result-conn dl-r)
-  :rows-of (fn-served-result-effects dl-r) :rev fn-ag-rev-onto
-  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat) :stobjs (fn-arena fn-cat))
+(defun fn-av-scr-dispatch-events-loop (conn events live trie lver arts cache fn-arena fn-cat acc)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                  :verify-guards nil))
+  (if (consp events)
+      (let ((here (fn-av-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat)))
+        (fn-av-scr-dispatch-events-loop
+         (fn-served-result-conn here) (cdr events) live trie lver arts cache fn-arena fn-cat
+         (fn-ag-rev-onto (fn-served-result-effects here) acc)))
+    (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
+
+(defun fn-av-scr-dispatch-events (conn events live trie lver arts cache fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                  :verify-guards nil))
+  (mbe :logic
+  (if (consp events)
+      (let* ((here (fn-av-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat))
+             (tail (fn-av-scr-dispatch-events (fn-served-result-conn here)
+                                           (cdr events) live trie lver arts cache fn-arena fn-cat)))
+        (fn-served-make-result
+         (fn-served-result-conn tail)
+         (mbe :logic (append (fn-served-result-effects here)
+                             (fn-served-result-effects tail))
+              :exec (fn-ag-append (fn-served-result-effects here)
+                                  (fn-served-result-effects tail)))))
+    (fn-served-make-result conn nil))
+  :exec (fn-av-scr-dispatch-events-loop conn events live trie lver arts cache fn-arena fn-cat nil)))
 
 (defun fn-av-scr-feed-byte (conn byte live trie lver arts cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)

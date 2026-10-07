@@ -1668,16 +1668,23 @@ def analyse(text: str, book: str, other_text: dict | None = None):
             # guard that calls a function whose guards come later refuses there (wire's
             # fn-wire-lines-size, guard fn-wire-octet-linesp, verified at the book's end)
             for part in (spec.body, spec.keep, spec.stop, spec.stopval, spec.lets, spec.tail, spec.while_,
-                         spec.combine, spec.init, spec.done, spec.emit, spec.skip,
+                         spec.combine, spec.init, spec.done, spec.emit, spec.skip, spec.row_term,
+                         spec.make, spec.st_of, spec.rows_of,
                          getattr(spec, "guard", None), getattr(spec, "loop_guard", None)):
                 if part is not None:
                     fn_names(part, names)
-            for part in ([spec.next, spec.skip_next] if spec.shape == "step" else []):
+            for part in ([spec.next, spec.skip_next] if spec.shape in ("step", "fold", "thread") else []):
                 for t in (part if isinstance(part, list) else [part]):
                     if t is not None:
                         fn_names(t, names)
             late = sorted(c_ for c_ in names if c_ in noguards
                           and moved.get(c_, vg_pos.get(c_, -1)) > w.start)
+            # a book whose guards are owed (every form :verify-guards nil, none verified here)
+            # cannot take def-loop, which verifies the guards where it stands
+            owed = sorted(c_ for c_ in names if c_ in noguards and c_ not in vg_pos
+                          and c_ not in twin_names and c_ not in moved)
+            if owed and name not in vg_pos and name + "-loop" not in vg_pos:
+                raise Refuse("guards-owed", ", ".join(owed[:3]) + ": guards not verified in this book")
             place = pend = None
             if late:
                 place, pend = plan_late_guard(name, w, lf, late, forms, by_name, noguards,
