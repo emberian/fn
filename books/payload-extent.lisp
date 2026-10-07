@@ -31,6 +31,7 @@
 
 (in-package "ACL2")
 (include-book "payload-arena")
+(include-book "profile-limits") ; the cache figures are rows there
 (include-book "store-log")
 (include-book "store-intern")
 (include-book "store-recover-stream")
@@ -663,4 +664,9 @@
 ; holds for reads of extent handles.
 (defun fn-arx-read-cache-entries ()
   (declare (xargs :guard t))
-  8)
+  (fn-profile-limit :extent-cache-entries))
+
+; The verified-window slots beside them (raw and decoded windows together).
+(defun fn-arx-read-cache-windows ()
+  (declare (xargs :guard t))
+  (fn-profile-limit :extent-cache-windows))

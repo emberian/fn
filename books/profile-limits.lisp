@@ -79,7 +79,11 @@
     (:tls-handshake-ms 5000 "milliseconds"
      "a TLS handshake's deadline, and a socket's wait for a handshake slot (the time model's D)")
     (:tls-handshake-source-overrides 64 "entries"
-     "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")))
+     "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")
+    (:extent-cache-entries 8 "entries"
+     "the payload extent cache's whole-entry slots (books/extent-cache.lisp; read through fn-arx-read-cache-entries); at most 32 until the hash index lands (owed item EXT-CACHE-INDEX), a larger figure fails the certification of books/extent-cache.lisp")
+    (:extent-cache-windows 8 "windows"
+     "the payload extent cache's verified-window slots, raw and decoded together (books/extent-cache.lisp; read through fn-arx-read-cache-windows); the same bound")))
 
 ; The row's VALUE, at macroexpansion: (fn-profile-limit :stack-kib) is the
 ; literal 1024 wherever it appears, and an unknown KEY is refused there.

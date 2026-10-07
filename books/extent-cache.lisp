@@ -55,6 +55,7 @@
 (in-package "ACL2")
 (include-book "def-representation")
 (include-book "page-read-ledger")
+(include-book "profile-limits") ; the cache figures are rows there
 
 (local (in-theory (enable adt-val-okp)))
 
@@ -565,8 +566,19 @@
     (let ((fn-xcs (fn-xcs-append *fn-xc-free-row* fn-xcs)))
       (fn-xc-append-free (1- n) fn-xcs))))
 
-; At most this many slots of either kind: a profile figure beyond it is refused.
-(defconst *fn-xc-max-slots* 4096)
+; At most this many slots of either kind: a profile figure beyond it is
+; refused.  The scans are linear, so the bound is the size at which a scan
+; stops being cheaper than an index: past it the hash index (owed item
+; EXT-CACHE-INDEX) must land first.
+(defconst *fn-xc-max-slots* 32)
+
+; The profile's figures are within it, or this book does not certify.
+(defthm fn-xc-profile-figures-are-within-the-scan-bound
+  (and (natp (fn-profile-limit :extent-cache-entries))
+       (natp (fn-profile-limit :extent-cache-windows))
+       (<= (fn-profile-limit :extent-cache-entries) *fn-xc-max-slots*)
+       (<= (fn-profile-limit :extent-cache-windows) *fn-xc-max-slots*))
+  :rule-classes nil)
 
 (defun fn-xc-init (ne nw fn-xcs fn-xcc)
   (declare (xargs :stobjs (fn-xcs fn-xcc) :guard (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc))))
