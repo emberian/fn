@@ -399,3 +399,15 @@
   :breaks ((drawn ((cid -1)) :lemma rcx-fn-rlo-issue-drawn-bank-correspondence-without-drawn))
   :mutations ((bank-unchanged (:conclusion (equal (fn-rl-bank (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))) (fn-rl-bank ledger))) ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1))) :fault "an issue that draws a slot without charging the bank" :lemma rcx-fn-rlo-issue-drawn-bank-correspondence-mutant-bank-unchanged)))
 
+
+(defthm rcx-fn-rlo-issued-token-is-live-witness
+  (implies (and (fn-resource-ledgerp (rcx-l1)) (eq (mv-nth 0 (fn-rlo-issue 7 11 8 :issued (rcx-l1))) :drawn)) (fn-rlo-livep (mv-nth 1 (fn-rlo-issue 7 11 8 :issued (rcx-l1))) 8 (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1))))))
+(defthm rcx-fn-rlo-issued-token-is-live-mutant-live-at-the-next-operation
+  (and (implies (and (fn-resource-ledgerp (rcx-l1)) (eq (mv-nth 0 (fn-rlo-issue 7 11 8 :issued (rcx-l1))) :drawn)) (fn-rlo-livep (mv-nth 1 (fn-rlo-issue 7 11 8 :issued (rcx-l1))) 8 (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1))))) (not (implies (and (fn-resource-ledgerp (rcx-l1)) (eq (mv-nth 0 (fn-rlo-issue 7 11 8 :issued (rcx-l1))) :drawn)) (fn-rlo-livep (mv-nth 1 (fn-rlo-issue 7 11 8 :issued (rcx-l1))) (+ 1 8) (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1))))))))
+(defteeth fn-rlo-issued-token-is-live
+  :claim (() (implies (and (fn-resource-ledgerp ledger) (eq (mv-nth 0 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) :drawn)) (fn-rlo-livep (mv-nth 1 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) operation-gen (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)))))
+  :subject fn-rlo-issue
+  :witness-lemma rcx-fn-rlo-issued-token-is-live-witness
+  :witness ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1)))
+  :mutations ((live-at-the-next-operation (:conclusion (implies (and (fn-resource-ledgerp ledger) (eq (mv-nth 0 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) :drawn)) (fn-rlo-livep (mv-nth 1 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) (+ 1 operation-gen) (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))))) ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1))) :fault "a token live for an operation generation other than the one it was issued for" :lemma rcx-fn-rlo-issued-token-is-live-mutant-live-at-the-next-operation)))
+
