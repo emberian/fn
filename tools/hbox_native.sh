@@ -610,7 +610,9 @@ step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CE
 # the incremental certify above installs what composes and certifies only the
 # misses, so this tree need not be a complete origin (2026-10-07: "none of the
 # 108 candidate artifact sets is complete", best 1062/1161).  When, and only
-# when, acquire says no set is complete, certify the whole closure of the
+# when, acquire exits 3 (proof_artifacts.NO_SET: no complete set could be
+# installed; it used to be recognised by its message, which changed and
+# silently disabled this retry), certify the whole closure of the
 # roots in THIS tree once (certify_books.py --closure publishes every book
 # under this tree as one origin) and acquire again.  acquire's coherence check
 # is unchanged; a second failure, or any other failure, stops the run.
@@ -621,7 +623,7 @@ acquire_step() {
     python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1
     rc=\$?
     echo "   \$name exit \$rc (\$L/\$name.log)"
-    if [ \$rc -eq 1 ] && [ \$ORIGIN_DONE -eq 0 ] && grep -Eq 'candidate artifact sets is complete|no current artifact set matches' \$L/\$name.log; then
+    if [ \$rc -eq 3 ] && [ \$ORIGIN_DONE -eq 0 ]; then
         ORIGIN_DONE=1
         echo "   \$name: no complete single-origin set in the cache; certifying the roots' closure in this tree (one coherent origin), then acquiring once more"
         mv \$L/\$name.log \$L/\$name-first.log

@@ -1216,6 +1216,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     source bytes; when ``acl2`` is provided, the shared selector also checks
     actual certificate post-alists. Missing toolchain metadata remains visible
     only when no toolchain was requested; deployment supplies its identity.
+
     """
     needed = required_closure(root, roots, dependencies_only)
     required = tuple(sorted(needed))
@@ -1353,12 +1354,18 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          dependencies_only: bool = False,
                          acl2: Path | None = None,
                          pair_checker=None,
+                         candidate: ArtifactSet | None = None,
                          _attempt: int = 0) -> Report:
     """Install one complete set: one origin when one suffices, else composed.
 
     The selected set's actual ACL2 certificate alists must agree, including
     when all pairs came from one origin. ``require_origin`` constrains the
     origin but does not bypass this compatibility check.
+
+    CANDIDATE installs exactly that set, as `artifact_sets` enumerated and
+    checked it, instead of enumerating again: a caller that listed the sets
+    and chose one gets that one, not whatever a second enumeration over a
+    cache other trees publish into finds (proof_artifacts.acquire).
     """
     rejected = set(reject)
     if acl2 is None:
@@ -1375,9 +1382,10 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         report.toolchain_identity = stable_identity({
             "empty": True, "toolchain_identity": toolchain_identity})
         return report
-    candidates = [one for one in artifact_sets(
+    candidates = ([candidate] if candidate is not None else artifact_sets(
                       root, cache, roots, toolchain_identity,
-                      dependencies_only, acl2, pair_checker)
+                      dependencies_only, acl2, pair_checker))
+    candidates = [one for one in candidates
                   if one.identity not in rejected
                   and (require_origin is None
                        or one.origin_root == require_origin)]
@@ -1434,7 +1442,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         return install_artifact_set(root, cache, roots, toolchain_identity,
                                     reject, require_origin, purge_on_miss,
                                     dependencies_only, acl2, pair_checker,
-                                    _attempt + 1)
+                                    candidate=candidate, _attempt=_attempt + 1)
     return report
 
 
