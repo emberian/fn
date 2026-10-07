@@ -2049,6 +2049,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-header-query \
 	tests/acl2/legacy-header-query-tests \
 	tests/acl2/article-stream-server-tests \
+	books/article-select-index \
 	books/article-stream-owner \
 	tests/acl2/article-stream-owner-tests \
 	tests/acl2/catalog-availability-tests \
