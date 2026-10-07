@@ -365,6 +365,14 @@ def section_definition(form, line: int):
 # call to it is walked as a make-thread of THUNK under the declared thread
 # name, and rule R4 takes that thread's row from the declaration (its join
 # site and failure policy) instead of a hand-written `threads' contract.
+# The starter def-actor emits is (defun NAME (service custody thunk &optional
+# escape physical-callback before-start) (fnn-owner-actor-start service custody
+# thunk THREAD-NAME ROSTER escape physical-callback before-start)): argument
+# index 5 is before-start (owner.lisp:1833-1834).
+ACTOR_RUNNER = "fnn-owner-actor-start"
+ACTOR_BEFORE_START_ARG = 5
+
+
 def actor_declaration(form):
     """(kind, thread-name, roster, join, failure) of a (def-actor NAME :kind K
     :thread-name S :roster R :join J :failure F), or None without a thread
@@ -1156,7 +1164,7 @@ class Analyzer:
             return self.walk_handler_case(form, ctx, env, line)
         if h == "ignore-errors":
             inner = self.walk_body(form[1:], Ctx(ctx.locks, ctx.noio, ctx.scope, ctx.gated, True), env, line)
-            self.add_handler(line, inner, [(("error",), False, EMPTY_SIG, frozenset(), "ignore-errors")], ctx)
+            self.add_handler(line, inner, [(("error",), False, EMPTY_SIG, frozenset(), "ignore-errors", [])], ctx)
             return ("h", inner, ((("error",), False, EMPTY_SIG),))
         if h == "handler-bind":
             parts = []
@@ -1401,7 +1409,10 @@ class Analyzer:
         test is V itself, not a conjunction."""
         if not names or not body:
             return set()
-        fences = set(self.c.raw.get("fence_functions", []))
+        # a dominated-escape function (contract dominated_escape_functions)
+        # returns only when the escape already in flight outranks every
+        # recorded failure, and signals otherwise: terminal like a fence call
+        fences = set(self.c.raw.get("fence_functions", [])) | set(self.c.raw.get("dominated_escape_functions", {}))
         last = body[-1]
         if isinstance(last, list) and head(last) == "unwind-protect" and len(last) > 2:
             tail, between = last[-1], list(body[:-1]) + list(last[2:-1])
@@ -1657,7 +1668,22 @@ class Analyzer:
         actor's thread; the other arguments are walked as values (the escape
         and the physical callbacks run later, on that thread or its joiner)."""
         tname = self.tree.actors[actor][3]
-        parts = [self.walk(a, ctx, env, line) for k, a in enumerate(args) if k != 2]
+        parts = []
+        for k, a in enumerate(args):
+            if k == 2:
+                continue
+            if (k == ACTOR_BEFORE_START_ARG and isinstance(a, list) and head(a) == "lambda"):
+                # the starter funcalls BEFORE-START on the caller's thread,
+                # inside fnn-owner-actor-start's own critical section
+                # (owner.lisp:1778-1785): the callee's context for that
+                # parameter, not a stored callback
+                pctx = self.param_ctx.get((ACTOR_RUNNER, "before-start"))
+                extra = pctx if isinstance(pctx, Ctx) else Ctx()
+                inner = Ctx(ctx.locks | extra.locks, ctx.noio, extra.scope or ctx.scope,
+                            extra.gated or ctx.gated, ctx.ignore, ctx.cond)
+                parts.append(self.walk_lambda_inline(a, inner, env, line))
+                continue
+            parts.append(self.walk(a, ctx, env, line))
         if len(args) > 2:
             spawn = Node([Sym("sb-thread:make-thread"), args[2], Sym(":name"), tname])
             spawn.line = line_of(form, line)
@@ -1717,7 +1743,7 @@ class Analyzer:
                 if not rethrows and self.defer_vars:
                     rethrows = self._captures_deferred(cl[2:], var)
             clauses.append((types, rethrows, body))
-            recorded.append((types, rethrows, body, direct_symbols(cl[2:]), render(tspec, 60)))
+            recorded.append((types, rethrows, body, direct_symbols(cl[2:]), render(tspec, 60), cl[2:]))
         self.add_handler(line, inner, recorded, ctx)
         return ("h", inner, tuple(clauses))
 
@@ -3051,8 +3077,75 @@ class Checker:
                 self.add("R6", info, e.line, what + " on the fnn-call path", key, trail)
 
     # R7 ----------------------------------------------------------------------
+    def _always_signals(self) -> dict:
+        """defun name -> the condition classes it signals on EVERY path: its
+        final body form is (error 'CLASS ...) or a call to such a defun
+        (fnn-fault, fnn-indeterminate, ...), through progn/let/let*/an if
+        whose two arms both do."""
+        if hasattr(self, "_always"):
+            return self._always
+        defs = self.an.tree.defs
+        result: dict = {}
+
+        def classes(form):
+            if not isinstance(form, list) or not form:
+                return None
+            h = head(form)
+            if h in ("error", "signal") and len(form) > 1:
+                q = quoted_symbol(form[1])
+                return frozenset([q]) if q and h == "error" else None
+            if h in ("progn",) and len(form) > 1:
+                return classes(form[-1])
+            if h in ("let", "let*") and len(form) > 2:
+                return classes(form[-1])
+            if h == "if" and len(form) == 4:
+                a, b = classes(form[2]), classes(form[3])
+                return a | b if a is not None and b is not None else None
+            if h in result:
+                return result[h]
+            return None
+
+        changed = True
+        while changed:
+            changed = False
+            for name, d in defs.items():
+                if name in result or not d.body:
+                    continue
+                c = classes(d.body[-1])
+                if c is not None:
+                    result[name] = c
+                    changed = True
+        self._always = result
+        self._always_classes = classes
+        return result
+
+    def _converts(self, forms) -> bool:
+        """The clause body ends in a call that signals a fault or an
+        indeterminate condition on every path: the condition is converted
+        to one the fence takes, not consumed."""
+        self._always_signals()
+        stack = list(forms)
+        while stack:        # an early exit before the signal consumes the condition on that path
+            f = stack.pop()
+            if isinstance(f, list) and f:
+                if head(f) in ("quote", "lambda", "function"):
+                    continue
+                if head(f) in Analyzer.EXIT_HEADS:
+                    return False
+                stack.extend(f)
+        c = self._always_classes(Node([Sym("progn")] + list(forms))) if forms else None
+        if not c:
+            return False
+        core = (CLASS_TYPE["fault"], CLASS_TYPE["indet"])
+        return all(any(self.m.subtype(x, t) for t in core) for x in c)
+
     def rule_R7(self):
         fences = set(self.c.raw.get("fence_functions", []))
+        # classify-and-route functions (contract classifying_escape_functions):
+        # a fault or indeterminate condition handed to one reaches the fence
+        # or fault stop; any other kind is answered to the caller. They count
+        # as routing for fault/indet only, never as a fence for connection-local kinds.
+        classifiers = set(self.c.raw.get("classifying_escape_functions", {}))
         scopes = self.c.raw.get("failure_scopes", {})
         for name, info in self.infos.items():
             actors = {self.m.actor_of(r) for r in self.m.actors.get(name, ())}
@@ -3063,7 +3156,7 @@ class Checker:
                 row = scopes.get(f"{name}:{line}") or scopes.get(name)
                 scope = row["scope"] if isinstance(row, dict) else row
                 remaining = set(can)
-                for types, rethrows, body, names, spec in clauses:
+                for types, rethrows, body, names, spec, forms in clauses:
                     caught = {c for c in remaining if any(self.m.subtype(CLASS_TYPE[c], t) for t in types)}
                     remaining -= caught
                     if not caught:
@@ -3071,7 +3164,8 @@ class Checker:
                     routes = rethrows or bool(names & fences)
                     core = caught & {"fault", "indet"}
                     local = caught & {"socket", "refusal", "connection"}
-                    if core and not routes and scope not in ("private", "result", "converts", "fence"):
+                    if core and not (routes or names & classifiers or self._converts(forms)) \
+                            and scope not in ("private", "result", "converts", "fence"):
                         self.add("R7", info, line,
                                  f"handler clause {spec} consumes {sorted(core)} without routing it to the fence",
                                  f"swallow:{spec}:{','.join(sorted(core))}",

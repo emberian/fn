@@ -468,9 +468,168 @@ class R7DeferredRethrow(unittest.TestCase):
 """
         self.assertEqual([f for f in run(src, ["R7"]) if f.key.startswith("swallow")], [])
 
+    def test_a_declared_dominated_escape_call_is_a_terminal_arm(self):
+        src = """
+(defun fnn-actor (s)
+  (let ((completed nil) (failures nil) (primary nil))
+    (unwind-protect (fnn-out "x")
+      (handler-case (fnn-fault "x") (serious-condition (c) (push c failures)))
+      (when failures
+        (if completed (error (car (last failures))) (fnn-x-escape primary (reverse failures)))))))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s)) :name "t"))
+"""
+        raw = CONTRACTS.raw
+        self.assertTrue([f for f in run(src, ["R7"]) if f.key.startswith("swallow")])
+        raw["dominated_escape_functions"] = {"fnn-x-escape": "test"}
+        try:
+            self.assertEqual([f for f in run(src, ["R7"]) if f.key.startswith("swallow")], [])
+            # the declaration covers only that name
+            other = src.replace("fnn-x-escape", "fnn-y-escape")
+            self.assertTrue([f for f in run(other, ["R7"]) if f.key.startswith("swallow")])
+        finally:
+            del raw["dominated_escape_functions"]
+
     def test_a_lambda_walked_inside_the_let_does_not_lose_the_deferral(self):
         pre = "(handler-bind ((serious-condition (lambda (c) (setq spare c)))) (fnn-out \"x\"))"
         self.assertEqual(self.swallow("(when failure (error failure))", pre=pre), [])
+
+
+class ActorBeforeStart(unittest.TestCase):
+    """def-actor's starter funcalls its seventh argument (before-start) inside
+    the roster section of fnn-owner-actor-start (owner.lisp:1778-1785), on the
+    caller's thread: that lambda is not a stored callback."""
+    ACTOR = """
+(defun fnn-owner-actor-start (service custody thunk name rosterp escape &optional physical-callback before-start)
+  (sb-thread:with-mutex ((fnn-owner-service-roster service))
+    (when before-start (funcall before-start nil))))
+(def-actor fnn-x-spawn :kind :publisher :thread-name "fn x" :roster t :join fnn-x-join :failure :service)
+"""
+    BARE = """
+(defun fnn-owner-actor-start (service custody thunk name rosterp escape &optional physical-callback before-start)
+  (when before-start (funcall before-start nil)))
+(def-actor fnn-x-spawn :kind :publisher :thread-name "fn x" :roster t :join fnn-x-join :failure :service)
+"""
+
+    def r1(self, actor, args):
+        src = actor + """
+(defun fnn-start (service)
+  (fnn-x-spawn service nil (lambda () nil) %s))
+(defun fnn-go (s) (sb-thread:make-thread (lambda () (fnn-start s)) :name "t"))
+""" % args
+        return [f for f in run(src, ["R1"]) if f.rule == "R1" and "fnn-owner-service-publisher" in f.key]
+
+    TOUCH = "(lambda (worker) (setf (fnn-owner-service-publisher service) worker))"
+
+    def test_before_start_runs_under_the_roster(self):
+        self.assertEqual(self.r1(self.ACTOR, "nil nil " + self.TOUCH), [])
+
+    def test_the_starter_template_is_the_macro_s_expansion(self):
+        owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
+        macro = owner[owner.index("(defmacro def-actor"):]
+        macro = macro[:macro.index("\n(def", 1)]
+        self.assertIn("(defun ,name (service custody thunk &optional escape physical-callback before-start)", macro)
+        self.assertIn("(fnn-owner-actor-start service custody thunk ,thread-name ,roster escape physical-callback before-start)", macro)
+        self.assertEqual(ldc.ACTOR_RUNNER, "fnn-owner-actor-start")
+        self.assertEqual(ldc.ACTOR_BEFORE_START_ARG, 5)
+
+    def test_the_same_lambda_as_the_escape_stays_a_root(self):
+        self.assertTrue(self.r1(self.ACTOR, self.TOUCH + " nil nil"))
+
+    def test_the_same_lambda_as_the_physical_callback_stays_a_root(self):
+        self.assertTrue(self.r1(self.ACTOR, "nil " + self.TOUCH + " nil"))
+
+    def test_before_start_without_the_roster_still_fires(self):
+        self.assertTrue(self.r1(self.BARE, "nil nil " + self.TOUCH))
+
+
+class R7ClassifyingEscape(unittest.TestCase):
+    """contract classifying_escape_functions: fault/indet handed to the named
+    function reach the fence; it is not a fence for connection-local kinds."""
+    SRC = """
+(defun fnn-actor (s)
+  (handler-case (fnn-fault "x")
+    (serious-condition (e) (%s s e "label"))))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s)) :name "t"))
+"""
+    REFUSAL = """
+(defun fnn-actor (s)
+  (handler-case (error 'fnn-store-error)
+    (serious-condition (e) (%s s e "label"))))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s)) :name "t"))
+"""
+
+    def keys(self, src, name):
+        return [f.key for f in run(src % name, ["R7"]) if f.rule == "R7"]
+
+    def test_declared_classifier_routes_fault_and_indet(self):
+        raw = CONTRACTS.raw
+        self.assertTrue([k for k in self.keys(self.SRC, "fnn-x-classify") if k.startswith("swallow")])
+        raw["classifying_escape_functions"] = {"fnn-x-classify": "test"}
+        try:
+            self.assertEqual(self.keys(self.SRC, "fnn-x-classify"), [])
+            self.assertTrue([k for k in self.keys(self.SRC, "fnn-y-classify") if k.startswith("swallow")])
+        finally:
+            del raw["classifying_escape_functions"]
+
+    def test_declared_classifier_is_not_a_fence_for_a_refusal(self):
+        raw = CONTRACTS.raw
+        raw["classifying_escape_functions"] = {"fnn-x-classify": "test"}
+        try:
+            self.assertEqual([k for k in self.keys(self.REFUSAL, "fnn-x-classify") if k.startswith("overfence")], [])
+        finally:
+            del raw["classifying_escape_functions"]
+        raw["fence_functions"].append("fnn-x-classify")
+        try:
+            self.assertTrue([k for k in self.keys(self.REFUSAL, "fnn-x-classify") if k.startswith("overfence")])
+        finally:
+            raw["fence_functions"].remove("fnn-x-classify")
+
+
+class R7ConvertingClause(unittest.TestCase):
+    """a clause that ends in a call signalling a fault or indeterminate
+    condition on every path converts it; it does not consume it"""
+    HELPERS = """
+(defun fnn-indeterminate (control) (error 'fnn-store-indeterminate :message control))
+(defun fnn-refuse-x (control) (error 'fnn-store-error :message control))
+(defun fnn-die (control) (fnn-fault control))
+(defun fnn-maybe-die (control flag) (when flag (fnn-fault control)))
+"""
+
+    def swallows(self, clause_body):
+        src = self.HELPERS + """
+(defun fnn-actor (s flag)
+  (handler-case (fnn-fault "x")
+    (serious-condition (e) %s)))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s nil)) :name "t"))
+""" % clause_body
+        return [f for f in run(src, ["R7"]) if f.key.startswith("swallow")]
+
+    def test_a_clause_ending_in_fnn_indeterminate_converts(self):
+        self.assertEqual(self.swallows('(fnn-out "x") (fnn-indeterminate "y")'), [])
+
+    def test_a_clause_ending_in_fnn_fault_through_a_helper_converts(self):
+        self.assertEqual(self.swallows('(fnn-die "y")'), [])
+
+    def test_both_arms_of_an_if_converts(self):
+        self.assertEqual(self.swallows('(if flag (fnn-fault "a") (fnn-indeterminate "b"))'), [])
+
+    def test_a_conditional_signal_is_a_swallow(self):
+        self.assertTrue(self.swallows('(when flag (fnn-fault "y"))'))
+
+    def test_one_arm_of_an_if_is_a_swallow(self):
+        self.assertTrue(self.swallows('(if flag (fnn-fault "a") (fnn-out "b"))'))
+
+    def test_a_helper_that_signals_only_sometimes_is_a_swallow(self):
+        self.assertTrue(self.swallows('(fnn-maybe-die "y" flag)'))
+
+    def test_converting_to_a_refusal_is_a_swallow(self):
+        self.assertTrue(self.swallows('(fnn-refuse-x "y")'))
+
+    def test_an_early_return_before_the_signal_is_a_swallow(self):
+        self.assertTrue(self.swallows('(when flag (return-from fnn-actor nil)) (fnn-fault "y")'))
+
+    def test_a_signal_that_is_not_the_last_form_is_a_swallow(self):
+        self.assertTrue(self.swallows('(fnn-fault "y") (fnn-out "z")'))
 
 
 class CallbackContexts(unittest.TestCase):

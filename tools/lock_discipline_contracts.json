@@ -380,6 +380,12 @@
  "fence_boundaries": [
   "fnn-owner-shared-action-locked"
  ],
+ "dominated_escape_functions": {
+  "fnn-escape-cleanup-failed": "io.lisp:553-582: called by fnn-unwind-cleanups only when the body is escaping (the not-completed arm, io.lisp:603-604) and a cleanup failed. It records each failure in *fnn-escape-cleanup-debts*, escalates ACL2's fn-fs-stop-exit-escalate over the primary's code and every failure's code (each floored at a fault), and returns normally ONLY when that code equals the primary's own (io.lisp:575-577: the escape in flight already outranks every cleanup failure, and goes on as itself); otherwise it signals fnn-indeterminate or fnn-fault (io.lisp:580-582). A cleanup failure is therefore never converted into success."
+ },
+ "classifying_escape_functions": {
+  "fnn-owner-thread-escape": "owner.lisp:3025-3046: classifies the condition with ACL2's fn-fs-classify (fn-fs-classify-job with JOBP), books/failure-scope.lisp:92-112: an indeterminate class gives :indeterminate and calls fnn-owner-fence-service (3042); every fault class and any unknown serious condition gives :fault and calls fnn-owner-fault-service (3045); only refusal, usage and (JOBP, early OS error) job-failure kinds are answered to the caller unfenced (3044). A fault- or indeterminate-class condition handed to it therefore always reaches the fence or the fault stop."
+ },
  "fence_functions": [
   "fnn-owner-stop-service-locked",
   "fnn-owner-stop-service",
