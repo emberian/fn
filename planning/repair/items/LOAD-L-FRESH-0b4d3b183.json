@@ -1,0 +1,13 @@
+{
+ "category": "bug",
+ "detail": "CONVERGE-3 production image fn-host (dev 0b4d3b183), small preset (INIT_FLAGS of tests/test_native_image_heap.py), hbox load 23, ZFS /tank/fn/scratch, whole-process cgroup limit via systemd-run --user --scope -p MemoryMax=N -p MemorySwapMax=0, started through the installed launcher (heap probe). 256 MB: 'refused machine-cannot-hold-profile heap=497 MB machine=256 MB' (exit 1). 1024 MB: 'refused machine-cannot-hold-threads reservation=1030 MB machine=1024 MB' (exit 1). Neither limit reaches LISTENING, so no POST/ARTICLE. The bar (D35/D65, L-FRESH) requires a fresh node to start and serve under both. Evidence: planning/evidence/load/2026-10-07-bars-now/README.md; raw fresh-start.json. Tool: tools/load_fresh_start.py.",
+ "file": "books/heap-reservation.lisp",
+ "id": "LOAD-L-FRESH-0b4d3b183",
+ "notes": [],
+ "owner": "deputy-L",
+ "severity": "medium",
+ "source": "load-bars-now",
+ "state": "open",
+ "title": "fresh node refused at cold start under a 256 MB and a 1024 MB whole-process limit at the small preset (heap probe: machine-cannot-hold-profile heap=497 MB; machine-cannot-hold-threads reservation=1030 MB)",
+ "updated": "2026-10-07T00:00:00Z"
+}
