@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3088 |
+| Books read | 3087 |
 | Certification roots in the Makefile | 2594 |
 | Books inside the root closure | 2925 |
 | `defthm` and `defthmd` events | 41731 |
-| `defun` events | 26385 |
+| `defun` events | 26365 |
 | Functions with verified guards | 4171 |
-| Functions declared `:verify-guards nil` and never verified | 3501 |
-| Functions left at the default with an explicit guard | 14429 |
+| Functions declared `:verify-guards nil` and never verified | 3485 |
+| Functions left at the default with an explicit guard | 14425 |
 | Functions left at the default with no guard | 4284 |
 | `assert-event` checks | 28286 |
 | `must-fail` checks | 2773 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 433 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 312 |
-| Include-hygiene warnings | 3955 |
-| Host-names warnings | 3669 |
+| Include-hygiene warnings | 3953 |
+| Host-names warnings | 3634 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -339,7 +339,6 @@ that `make certify` requests.
 | `books/bp-receipt.lisp` | root | 47 | 57 | 3/5/7/42 | 0 | 0 | 3 |
 | `books/bp-receive-evidence.lisp` | root | 8 | 25 | 11/2/0/12 | 0 | 0 | 0 |
 | `books/bp-received-byte-storage.lisp` | root | 0 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/bp-received-raw-registry.lisp` | - | 0 | 20 | 0/16/4/0 | 0 | 0 | 0 |
 | `books/bp-received-raw-source.lisp` | - | 0 | 13 | 0/7/5/1 | 0 | 0 | 0 |
 | `books/bp-received-source-capture.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/1/0/3 | 0 | 0 | 0 |
