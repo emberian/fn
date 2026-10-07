@@ -115,6 +115,27 @@
                        (1+ (nfix quiet)))))
   :rule-classes nil)
 
+; The same at the entry the host calls (host/native/owner.lisp
+; fnn-owner-maybe-collect-idle): a tick that allocates under the profile's
+; :idle-gc-activity-kib grows the count, any other tick or a publication
+; restarts it.  tests/acl2/idle-collection-tests.lisp evaluates both sides of
+; the limit (524287 and 524288 octets).
+(defthm fn-idle-gc-quiet-counts-only-quiet-ticks-at-the-limit
+  (and (natp (fn-idle-gc-quiet quiet publishingp tick-octets))
+       (implies publishingp
+                (equal (fn-idle-gc-quiet quiet t tick-octets) 0))
+       (implies (and (natp tick-octets)
+                     (<= *fn-idle-gc-activity-octets* tick-octets))
+                (equal (fn-idle-gc-quiet quiet publishingp tick-octets) 0))
+       (implies (and (not publishingp) (natp tick-octets)
+                     (< tick-octets *fn-idle-gc-activity-octets*))
+                (equal (fn-idle-gc-quiet quiet publishingp tick-octets)
+                       (1+ (nfix quiet)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-idle-gc-quiet-counts-only-quiet-ticks
+                                   (activity-octets *fn-idle-gc-activity-octets*)))
+                  :in-theory (e/d (fn-idle-gc-quiet) (fn-idle-gc-quiet-next)))))
+
 (defthm fn-idle-gc-decide-never-collects-during-a-publication
   (equal (fn-idle-gc-decide quiet t consed-octets) :wait))
 

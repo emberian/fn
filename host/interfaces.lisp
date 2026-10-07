@@ -3729,12 +3729,12 @@
 
 (definterface fn-idle-gc-quiet
   :class :common-lisp-compliant
-  :keystones (fn-idle-gc-quiet-counts-only-quiet-ticks))
+  :keystones (fn-idle-gc-quiet-counts-only-quiet-ticks-at-the-limit))
 
 (definterface fn-idle-gc-decide
   :class :common-lisp-compliant
-  :keystones (fn-idle-gc-verdict-collects-only-when-owed
-              fn-idle-gc-verdict-collects-when-owed
+  :keystones ((fn-idle-gc-verdict-collects-only-when-owed :via fn-idle-gc-verdict)
+              (fn-idle-gc-verdict-collects-when-owed :via fn-idle-gc-verdict)
               fn-idle-gc-decide-never-collects-during-a-publication))
 
 (definterface fn-heap-operation-observes-p
