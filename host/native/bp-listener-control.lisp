@@ -88,9 +88,7 @@
         (ignore-errors (fnn-bplc-close-all node))
         (error condition)))))
 
-(defun fnn-bplc-reconfigure (node)
-  (let ((*fnn-bplc-test-change* t))
-    (setf (fnn-bplc-model node)
-          (fnn-owner-core 'fn-owner-bplc-begin (fnn-bplc-model node) (fnn-bplc-mode node)))
-    (fnn-bplc-cut node :configuration-published)
-    (fnn-bplc-drive node)))
+(defun fnn-bplc-begin-locked (node)
+  "Under the owner mutex: ACL2 begins the change of the model."
+  (setf (fnn-bplc-model node)
+        (fnn-owner-core 'fn-owner-bplc-begin (fnn-bplc-model node) (fnn-bplc-mode node))))
