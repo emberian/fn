@@ -18,26 +18,27 @@
 
 (defun fnn-consumer-local-exchange (control operation input argument)
   "One consumer command over the control socket CONTROL (octets): (values
-REPLY WORD).  PKT-709: a register the owner refused for want of the node's
+REPLY WORD FRAME), FRAME the octets of the last reply frame read (output only,
+for `--frame').  PKT-709: a register the owner refused for want of the node's
 consumer history (or an old owner refused with no reason) bootstraps it and
 registers once more (fn-ncr-cli-after, which reads the command and the step
 whose outcome it decides); the last reply is the command's.
 Also the `pattern' verb's register, wait and ack (host/native/pattern.lisp)."
-  (let ((reply nil) (word nil))
-    (multiple-value-setq (reply word)
+  (let ((reply nil) (word nil) (frame nil))
+    (multiple-value-setq (reply word frame)
       (fnn-control-consumer-local (fnn-octets control) operation input argument))
     (when (fnn-core 'fn-native-control-host-consumer-cli-after
                     operation operation (and (consp reply) (second reply)) word)
-      (multiple-value-setq (reply word)
+      (multiple-value-setq (reply word frame)
         (fnn-control-consumer-local (fnn-octets control) :bootstrap nil nil))
       ;; An uncertain bootstrap may have persisted.  Preserve its outcome
       ;; and stop; ACL2 permits registration only after acceptance.
       (when (fnn-core 'fn-native-control-host-consumer-cli-after
                       operation :bootstrap (and (consp reply) (second reply)) word)
-        (multiple-value-setq (reply word)
+        (multiple-value-setq (reply word frame)
           (fnn-control-consumer-local (fnn-octets control)
                                       operation input argument))))
-    (values reply word)))
+    (values reply word frame)))
 
 (defun fnn-command-consumer-local (command argv)
   (let* ((bounded
@@ -52,7 +53,10 @@ Also the `pattern' verb's register, wait and ack (host/native/pattern.lisp)."
              '(:usage :argv)))
          ;; PKT-709: `--json COMMAND ...' is (:json PLAN).
          (json (and (consp plan) (eq (first plan) :json)))
-         (plan (if json (second plan) plan))
+         ;; `--frame COMMAND ...' is (:frame PLAN) (ACL2's grammar): print the
+         ;; reply frame's octets as hex.
+         (frame-flag (and (consp plan) (eq (first plan) :frame)))
+         (plan (if (or json frame-flag) (second plan) plan))
          (tag (and (consp plan) (first plan))))
     (when (eq tag :help)
       (fnn-out "~a" (fnn-core 'fn-ncl-usage-text))
@@ -88,13 +92,15 @@ Also the `pattern' verb's register, wait and ack (host/native/pattern.lisp)."
                      ((eq operation :wait) seconds)
                      ((eq operation :bound-wait) (list seconds secret))
                      (t second)))
-             (reply nil) (word nil))
-        (multiple-value-setq (reply word)
+             (reply nil) (word nil) (frame nil))
+        (multiple-value-setq (reply word frame)
           (fnn-consumer-local-exchange control operation input argument))
         (let ((status (and (consp reply) (second reply)))
               (cursor (and (consp reply) (third reply))))
           (when (eq operation :status)
-            (cond (json
+            (cond ((and frame-flag frame)
+                   (fnn-out "~a" (fnn-hex frame)))
+                  (json
                    (fnn-consumer-say t operation status word
                                      (and (eq status :accepted)
                                           (list (third reply) (fourth reply)
@@ -138,12 +144,14 @@ Also the `pattern' verb's register, wait and ack (host/native/pattern.lisp)."
                  (fnn-octets-string (fnn-octets output)) (fnn-octets cursor))
               (error ()
                 (setq status :uncertain))))
-          (fnn-consumer-say
-           json operation status word nil
-           (and (eq status :accepted)
-                (member operation '(:poll :bound-poll :wait :bound-wait))
-                (fnn-core 'fn-native-control-host-consumer-report-summary
-                          (fourth reply))))
+          (if (and frame-flag frame)
+              (fnn-out "~a" (fnn-hex frame))
+            (fnn-consumer-say
+             json operation status word nil
+             (and (eq status :accepted)
+                  (member operation '(:poll :bound-poll :wait :bound-wait))
+                  (fnn-core 'fn-native-control-host-consumer-report-summary
+                            (fourth reply)))))
           (fnn-core 'fn-native-control-host-status-exit-code status))))))
 
 (fnn-register-verb "consumer" #'fnn-command-consumer-local)

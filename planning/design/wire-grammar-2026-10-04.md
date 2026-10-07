@@ -87,6 +87,7 @@ ACL2 form / JSON form / value / encoding:
 | `(:tag W (CODE NAME G)...)` | `["tag",W,[[CODE,"name",G],...]]` | `(NAME V)` / `["name",V]` | W-octet code, then the arm |
 | `(:maybe G)` | `["maybe",G]` | `nil` or `(V)` / `[]` or `[V]` | nothing, or G's octets (tail only; G's octets are never empty) |
 | `(:where G CHECK...)` | `["where",G,[CHECK,...]]` | G's value / same | G's, accepted only when every check holds on the `:seq` value |
+| `(:sized W LO HI G)` | `["sized",W,LO,HI,G]` | G's value / same | W-octet big-endian length L, LO ≤ L ≤ HI, then exactly L octets that G decodes and consumes entirely (a length outside LO..HI, fewer octets than L, or an inner grammar that leaves octets over is `malformed`; an inner refusal is the answer); delimited even when G is not (a `rest` inside is fine). Added 2026-10-07 for `fnct.consumer.poll-reply`'s length-prefixed cursor |
 | `(:frame MAGIC VERSION KIND MAX G)` | `["frame","HEX",VERSION,KIND,MAX,G]` | G's value / same | MAGIC(4) VERSION(1) KIND(1) LENGTH(u32 BE, ≤ MAX) PAYLOAD TRAILER(32); PAYLOAD is G's octets, all of them; TRAILER = BLAKE3-256 of everything before it (`fn-frame-digest`) |
 
 CHECKs over a `:seq` value's elements (0-based indices; each element named
@@ -121,14 +122,16 @@ Well-formedness (`fn-wg-grammarp`), exactly:
   `["diff",k,j,i]` with natural indices. A check holds only when every
   element it names is a natural number (an index past the end, or a
   non-number element, fails the check).
+- `sized`: W ∈ {1,2,4,8}; 0 ≤ LO ≤ HI < 256^W; G well formed (G need not
+  be delimited: the length delimits it).
 - `frame`: MAGIC 4 octets; VERSION and KIND octets; 0 ≤ MAX < 2^32; G well
   formed (G need not be delimited: the frame's length delimits it).
 
 Delimited (`fn-wg-delimitedp`): `const`, `uint`, `bytes`, `line`, `enum`,
-`frame` are; `rest`, `maybe`, `base64-lines` are not; a `seq` is when all its
+`sized`, `frame` are; `rest`, `maybe`, `base64-lines` are not; a `seq` is when all its
 elements are (the empty `seq` is); a `tag` when all its arms' grammars are;
 a `where` when its `seq` is. Non-empty (`fn-wg-nonemptyp`): `const` with
-octets, `uint`, `bytes`, `line`, `enum`, `frame`, `tag`; `rest` and
+octets, `uint`, `bytes`, `line`, `enum`, `sized`, `frame`, `tag`; `rest` and
 `base64-lines` with LO ≥ 1; a `seq` with a non-empty element; a `where` whose
 `seq` is; never `maybe`.
 

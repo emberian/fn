@@ -1,0 +1,17 @@
+{
+ "file": "books/owner-verdict-read.lisp",
+ "id": "DEV-RED-GAC-CONFIG-WITH-LIVE",
+ "notes": [
+  "2026-10-07 N-GAC: culprit lane/access-revoke (a73db83f0 'pinned AND live read rule per command', d4ff71272), landed on dev at bc105c904: fn-own-served-conn now serves (fn-gac-config-with-live (fn-own-conn-config conn) (fn-own-config o)) as the connection's config. Three owner keystones still spoke of the pinned configuration alone.",
+  "Red: hbox run-20261007T003459Z-396d / certify-20261007T003801Z-100621 (also run-20261006T235355Z-88fb); reproduced run-20261007T010333Z-3b88 / certify-20261007T010711Z-237205: books/owner-verdict-read (fn-own-read-hdr-fn-verified-is-the-pinned-verdict, Subgoal 8.2') and books/served-chunk-live-free (fn-scl-own-served-conn-is-with-live); the other books red only as include cascades. Lane gate then found books/owner-control-read (fn-own-read-archive-command-is-the-pinned-dispatcher) and books/owner-enrollment-read carry the same premise.",
+  "Fix (no hypothesis weakened): the unrestricted-access premise of the owner HDR :fn-verified, control-read (two) and enrollment-read keystones is restated over the configuration the served connection carries, (fn-gac-config-with-live pinned (fn-own-config o)); the pinned-only premise no longer implies it, because a live revocation now restricts the session at its next command (the access-revoke ruling). fn-scl-own-served-conn-is-with-live and the selecting-nothing-ignores-the-view keystone gain (equal (fn-own-config o2) (fn-own-config o)), discharged at its only caller by the already-proved fn-own-pinned-view-survives-other-post (writer events and another connection's outcome keep the owner config); the keystones' statements are otherwise unchanged. Tests' hypothesis vectors updated to match.",
+  "Green: run-20261007T011258Z-d50b / certify-20261007T011712Z-326969 (the two books); run-20261007T012800Z-54a9 / certify-20261007T013023Z-417567 (--lane --affected-by both: 7 roots incl. owner-control-read and tests). Manifests cited via evidence_manifests.py add.",
+  "2026-10-07 audit follow-up: A2 teeth witness for fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view written (tests/acl2/served-chunk-live-free-tests.lisp scla-*: same chunk, configs A and B, 223 vs 430), green run-20261007T014243Z-2c53 / certify-20261007T014314Z-452025. Inhabitation of the new premise in owner-verdict-read-tests and owner-enrollment-read-tests: the existing all-true hypothesis-vector asserts (fn-ovrt-hyps = all-but 28, fn-oert-hyps = all 16) now include it. No TEETH-OWED item remains."
+ ],
+ "owner": "N-GAC",
+ "severity": "high",
+ "source": "dev-red",
+ "state": "ready",
+ "title": "dev red: owner keystones' access premise over the pinned config only, after access-revoke served the pin with the live access (fn-gac-config-with-live)",
+ "updated": "2026-10-07T01:50:00Z"
+}

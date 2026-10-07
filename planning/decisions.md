@@ -1869,3 +1869,7 @@ Status: DECIDED (ember ruling 2026-10-06). Consequences:
   12. Crypto per D64: the shipped OpenSSL 3.5.8 in every image and preset (D59), post-quantum suites working.
   Not bar items: the zmq-pattern surface (D49 says it may be in 6.6.0; D50 and D57 scope it, competing consumers are outside).
 (4) SUPERSEDED. D37's naming; D39's and D49's bar lists (their items are items 1-5 and 10-11 above); the SOP's bar paragraph (items 1, 6-9); D35's system libssl (D64). `COMPLETE-BEFORE-6.6.0.md` remains item 1's list.
+
+### 2026-10-06: D68 — No migration or compatibility obligations (ember ruling)
+goal: Remove the compatibility duty from every store layout, schema version and wire format. Ruling source: `build/coordinator/RULINGS-20261006.md` (ruling 8).
+Status: DECIDED (ember ruling 2026-10-06, late). Consequences: fn has never been used by anyone but us, and every public node will be wiped and rebuilt, so old store layouts, schema versions and wire formats carry no compatibility duty. A lane may refuse an old layout by name or drop its reader outright, and delete the old-format code and its proofs rather than carry them; a new layout needs no in-place migration path. This applies to S's storage program (schema-3 stores: option b, or no reader at all) and to every deputy. Integration: a READY lane that carries compatibility code for an old layout or wire format goes back to its deputy citing D68; it is not merged.

@@ -7,7 +7,7 @@
 
 (defun fn-durable-realize-lz-octet
     (file eoff elen poff compressed trailer decoded dict i)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (natp i)))
   (fn-oct-nth i (fn-durable-realize-lz file eoff elen poff compressed
                                     trailer decoded dict)))
 
