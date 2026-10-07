@@ -13792,7 +13792,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/heap-breakdown.lisp",
         "tests/acl2/heap-breakdown-tests.lisp",
@@ -13818,7 +13818,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -21143,7 +21143,7 @@
       "id": "PRF-1210",
       "title": "One accounting: Codex's cold-read gate, the credit ledger, the heap reservation and the connection budget as projections of the resource vector",
       "statement": "books/resource-vector-relations.lisp: Codex's fn-prs 5-vector is the resource vector's prefix (fn-rv-prs-vector-is-the-prefix; fn-prs-plus and fn-prs-below agree with fn-rv-plus and fn-rv-below under the embedding); fn-prs-fundedp B U R C is exactly fn-rv-okp of the root bank whose rows are U (drawn), R (a sub-bank) and C (drawn) (fn-rv-prs-gate-is-a-funded-root); PRF-380's credit ledger is the :resident coordinate: a ledger is an okp bank whose rows are BASE, COMPLETION and RUNTIME (sub-banks), CACHE and one row an operation, every other coordinate 0, funded iff its total is within its budget BY CONSTRUCTION (fn-rv-credit-ledger-funded-by-definition, a projection identity, not a consistency keystone). NOT PROVED (Codex review r06 F5; NEXT): that a funded ledger is an okp bank (the row sum equals the total) and that Codex's release-the-reusable-coordinates is fn-rv-settle's split. books/resource-vector-relations-heap.lisp: PRF-198's accepted reservation is a funded root whose :resident coordinate is the reservation's octets against the machine's and whose :workers coordinate is the threads (fn-rv-heap-reservation-funds-the-root); PRF-223's held capacity is a funded root whose :resident coordinate is the resident figure of CAPACITY connections (fn-rv-connection-budget-funds-the-root). Not claimed: that the four budgets are one number (they are projections of different roots: the launcher's, the owner's, the cold pool's); their unification is the operation layer's.",
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "milestone": "M5",
       "requirements": [
         "HST-045",
@@ -23580,7 +23580,7 @@
         "PRF-1287"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [],
       "note": "Closes FILL-GROUP-ACCESS-PRIVATE-LEAK and FILL-MODERATION-ENVELOPE-READABLE (lane access-check). Discharges, for read-restricted sessions only, the 'selective owner refinement owed' of the generated av route (6a5427e9e); the unrestricted available projection's selective reference and the av route's guards remain owed (PRF-1287). The read-level hypothesis is per event: AUTHINFO may change the rule between events of one read. Native: developer-image overlay over set 6107ceb56; production at the next image batch.",
       "events": [
@@ -23605,7 +23605,7 @@
         "PRF-1328"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [],
       "note": "ACCESS-REVOKE-PINNED (coordinator ruling 2026-10-04; specs/reconfiguration.md 2.3 Readers). Nothing is written back into the pin. Per-command cost: one more rule lookup and one rule-text comparison.",
       "events": [

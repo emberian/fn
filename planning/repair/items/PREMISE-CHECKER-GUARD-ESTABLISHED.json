@@ -5,12 +5,13 @@
  "fix": "premise_audit: a premise R of theorem T is GUARD-ESTABLISHED when R is a conjunct of the guard of T's subject, the subject is guard-verified (world dump: coverage.py, not text), and every host path to it enters through a guard-verified function called through its executable counterpart (not :raw-with, where the carried conjuncts count only through their named preservation theorems, and not through a :program wrapper); report it as its own class, not a finding. Red-before/green-after fixture tests for verified, :program and :verify-guards nil subjects.",
  "id": "PREMISE-CHECKER-GUARD-ESTABLISHED",
  "notes": [
-  "10-07 C4: corrected after reading the io.lisp trust-boundary header: :raw-with entries and :program wrappers are excluded from guard-establishment."
+  "10-07 C4: corrected after reading the io.lisp trust-boundary header: :raw-with entries and :program wrappers are excluded from guard-establishment.",
+  "C6 2026-10-07 tree-wide run (hbox, lane d5860c656, remote_check --cmd; build/pa-after.{txt,json}): --strict NEW premises 533 before (HEAD~1 premise_audit) and 533 after. 2168 premises audited; 'established by a checked guard' = 1 (fn-smid-fieldp, not a NEW finding: its four assuming theorems are all held by fn-smid-field-encode's guard). 33 premises now carry at least one guard-established theorem, but each still has another hosted theorem that assumes it unestablished, so by design (R stays a finding while any other hosted theorem assumes it) none of the 44 candidate rows leaves the NEW list. Those 32 premises keep their class from the other theorems: established by a hosted entry 17 (already not findings), preserved only 5, established off the host path 5, never concluded 5. The checker gap this item names is closed; the count does not move."
  ],
  "owner": "deputy-C",
  "severity": "medium",
  "source": "Deputy C4, CONVERGE-2 row 29",
  "state": "open",
  "title": "premise_audit model gap: a premise that is a conjunct of a guard-verified subject's guard is established at the host entry",
- "updated": "2026-10-07T17:30:00Z"
+ "updated": "2026-10-07T22:05:00Z"
 }

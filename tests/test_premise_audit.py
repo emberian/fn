@@ -106,5 +106,100 @@ class Classification(unittest.TestCase):
         self.assertIn("2 established off the host path", line)
 
 
+def _defs(**forms):
+    return {name: ("books/g.lisp", reach_check.read_sexp(text)) for name, text in forms.items()}
+
+
+COMPLIANT = {"class": "common-lisp-compliant", "raw_with": [], "raw_guarded": None,
+             "applied_directly_in": []}
+
+
+class GuardEstablished(unittest.TestCase):
+    """PREMISE-CHECKER-GUARD-ESTABLISHED: a premise in the declared guard of
+    a subject that only checked native entries reach is held by the guard;
+    every other way in keeps it a finding."""
+
+    definitions = _defs(
+        **{"fn-serve": "(defun fn-serve (cfg s) (declare (xargs :guard (and (fn-cfgp cfg) (fn-inv s)))) (list cfg s))",
+           "fn-serve-program": "(defun fn-serve-program (s) (declare (xargs :mode :program :guard (fn-inv s))) s)",
+           "fn-serve-unverified": "(defun fn-serve-unverified (s) (declare (xargs :guard (fn-inv s) :verify-guards nil)) s)",
+           "fn-wrap": "(defun fn-wrap (s) (declare (xargs :guard (fn-inv s))) (fn-serve nil s))"})
+
+    def model(self, entries, mentions, edges=None, program_books=()):
+        edges = edges if edges is not None else {"fn-wrap": {"fn-serve"}}
+        return premise_audit.GuardModel(edges, entries, set(mentions), self.definitions,
+                                        set(program_books))
+
+    def conclusion(self, text="(equal (fn-serve cfg s) :ok)"):
+        return reach_check.read_sexp(text)
+
+    def test_checked_entry_guard_holds_the_premise(self):
+        m = self.model({"fn-wrap": COMPLIANT}, ["fn-wrap"])
+        self.assertEqual(m.establishes("fn-inv", "s", self.conclusion(), ["fn-serve"]), "fn-serve")
+        self.assertEqual(m.establishes("fn-cfgp", "cfg", self.conclusion(), ["fn-serve"]), "fn-serve")
+
+    def test_the_premise_must_be_at_the_guarded_formal(self):
+        m = self.model({"fn-wrap": COMPLIANT}, ["fn-wrap"])
+        # fn-inv is the guard of the SECOND formal; here s is the first argument
+        self.assertIsNone(m.establishes("fn-inv", "s", self.conclusion("(equal (fn-serve s cfg) :ok)"),
+                                        ["fn-serve"]))
+        self.assertIsNone(m.establishes("fn-other", "s", self.conclusion(), ["fn-serve"]))
+
+    def test_program_wrapper_entry_establishes_nothing(self):
+        m = self.model({"fn-wrap": {**COMPLIANT, "class": "program"}}, ["fn-wrap"])
+        self.assertIsNone(m.establishes("fn-inv", "s", self.conclusion(), ["fn-serve"]))
+
+    def test_ideal_entry_establishes_nothing(self):
+        m = self.model({"fn-wrap": {**COMPLIANT, "class": "ideal"}}, ["fn-wrap"])
+        self.assertIsNone(m.establishes("fn-inv", "s", self.conclusion(), ["fn-serve"]))
+
+    def test_raw_with_and_raw_guarded_entries_establish_nothing(self):
+        for row in ({**COMPLIANT, "raw_with": ["fn-inv-preserved"]},
+                    {**COMPLIANT, "raw_guarded": [0, "nil", ["fn-inv"]]},
+                    {**COMPLIANT, "applied_directly_in": ["host/native/owner.lisp"]}):
+            m = self.model({"fn-wrap": row}, ["fn-wrap"])
+            self.assertIsNone(m.establishes("fn-inv", "s", self.conclusion(), ["fn-serve"]), row)
+
+    def test_an_unchecked_path_beside_the_checked_one_keeps_the_finding(self):
+        # the native code also names fn-serve itself (not an entry: a raw call)
+        m = self.model({"fn-wrap": COMPLIANT}, ["fn-wrap", "fn-serve"])
+        self.assertIsNone(m.establishes("fn-inv", "s", self.conclusion(), ["fn-serve"]))
+
+    def test_program_and_unverified_subjects_are_never_credited(self):
+        entries = {"fn-serve-program": COMPLIANT, "fn-serve-unverified": COMPLIANT}
+        m = self.model(entries, list(entries), edges={})
+        for s in entries:
+            self.assertIsNone(m.establishes("fn-inv", "s", self.conclusion(f"(equal ({s} s) s)"), [s]), s)
+        m = self.model({"fn-wrap": COMPLIANT}, ["fn-wrap"], program_books=["books/g.lisp"])
+        self.assertIsNone(m.establishes("fn-inv", "s", self.conclusion(), ["fn-serve"]))
+
+    def test_audit_reports_the_class_not_a_finding(self):
+        class Graph(StubGraph):
+            def __init__(self):
+                super().__init__()
+                self.book_defs = {**self.book_defs, "fn-cfgp": 1}
+        forms = {"fn-serve-ok": ("books/b.lisp",
+                                 "(defthm fn-serve-ok (implies (fn-inv s) (equal (fn-serve cfg s) :ok)))")}
+        guard = self.model({"fn-wrap": COMPLIANT}, ["fn-wrap"])
+        original = (reach_check.theorem_forms, reach_check.record_definitions,
+                    reach_check.Subject.hosted)
+        reach_check.theorem_forms = lambda paths: dict(forms)
+        reach_check.record_definitions = lambda paths: {}
+        reach_check.Subject.hosted = lambda self, graph: True
+        try:
+            with_guard = premise_audit.Audit(Graph(), guard)
+            without = premise_audit.Audit(Graph())
+        finally:
+            (reach_check.theorem_forms, reach_check.record_definitions,
+             reach_check.Subject.hosted) = original
+        # red before: without the model fn-inv is never concluded, a finding
+        self.assertIn("fn-inv", without.findings())
+        # green after: held by fn-serve's checked guard, its own class
+        row = with_guard.premises()["fn-inv"]
+        self.assertEqual(row["class"], premise_audit.GUARD)
+        self.assertEqual(row["guard_established"], [("fn-serve-ok", "fn-serve")])
+        self.assertNotIn("fn-inv", with_guard.findings())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -101,7 +101,7 @@
 
 (defconst *pcrt-line-bytes* (append *pcrt-line* (quote (13 10))))
 
-(defconst *pcrt-credits* (fn-mcr-make 1000000 0 0 0 0 0 nil))
+(defconst *pcrt-credits* (fn-mcr-make 1000000 0 0 0 0 0 nil 0 nil))
 
 (assert-event (and (equal (fn-sn-open-kind *pcrt-open*) :ok) (fn-ocl-relation *pcrt-selected*)))
 
@@ -338,7 +338,7 @@
       (p
         (car
           (fn-mca-read-span
-            (fn-mcr-make 0 0 0 0 0 0 nil)
+            (fn-mcr-make 0 0 0 0 0 0 nil 0 nil)
             *pcrt-clocked-queued-selected*
             nil
             0
@@ -436,7 +436,7 @@
         (equal
           (car
             (fn-mcr-resize
-              (fn-mcr-make 0 0 0 0 0 0 nil)
+              (fn-mcr-make 0 0 0 0 0 0 nil 0 nil)
               (fn-mca-conn-key 0)
               (fn-mca-need
                 (fn-own-tls-result-owner
