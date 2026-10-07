@@ -602,7 +602,38 @@ step host-books static_gate host-books tools/host_check.py --books
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
-step acquire python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
+# acquire demands ONE complete origin in the cache.  The cache holds pairs
+# from many origins (runs before and after merges, partial recertifies), and
+# the incremental certify above installs what composes and certifies only the
+# misses, so this tree need not be a complete origin (2026-10-07: "none of the
+# 108 candidate artifact sets is complete", best 1062/1161).  When, and only
+# when, acquire says no set is complete, certify the whole closure of the
+# roots in THIS tree once (certify_books.py --closure publishes every book
+# under this tree as one origin) and acquire again.  acquire's coherence check
+# is unchanged; a second failure, or any other failure, stops the run.
+ORIGIN_DONE=0
+acquire_step() {
+    name=\$1; profile=\$2
+    echo "== \$name \$(date -u +%H:%M:%SZ)"
+    python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1
+    rc=\$?
+    echo "   \$name exit \$rc (\$L/\$name.log)"
+    if [ \$rc -eq 1 ] && [ \$ORIGIN_DONE -eq 0 ] && grep -Eq 'candidate artifact sets is complete|no current artifact set matches' \$L/\$name.log; then
+        ORIGIN_DONE=1
+        echo "   \$name: no complete single-origin set in the cache; certifying the roots' closure in this tree (one coherent origin), then acquiring once more"
+        mv \$L/\$name.log \$L/\$name-first.log
+        step certify-origin $WRAP python3 tools/certify_books.py --closure --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+        echo "== \$name-retry \$(date -u +%H:%M:%SZ)"
+        python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1
+        rc=\$?
+        echo "   \$name-retry exit \$rc (\$L/\$name.log)"
+    fi
+    if [ \$rc -ne 0 ]; then
+        tail -n 15 \$L/\$name.log | sed 's/^/   | /'
+        finish \$rc
+    fi
+}
+acquire_step acquire default
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 # The ld host files in the image's order, before any image build: statically
 # (a call before its definition, seconds), then through ACL2 in the certified
@@ -617,7 +648,7 @@ BOX
         if [ $DTN -eq 1 ]; then
             # hbox-image-build.sh's dtn acquire/validate, before a DTN image.
             cat <<BOX
-step acquire-dtn python3 tools/proof_artifacts.py acquire --profile dtn --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
+acquire_step acquire-dtn dtn
 step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step host-ld-dtn env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build-dtn.lisp --log \$L/host-translate-dtn.log
 BOX
