@@ -23,9 +23,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-receiver-repin-tests \
 	tests/acl2/connection-receiver-repin-state-tests \
 	books/obligation-view-cursor \
+	books/obligation-view-cursor-refinement \
+	tests/acl2/obligation-view-cursor-tests \
 	books/retention-obligation-view \
 	books/obligation-view-budget \
 	books/view-delta-cursor \
+	books/view-delta-cursor-refinement \
+	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
 	tests/acl2/index-reader-render-establishment-tests \

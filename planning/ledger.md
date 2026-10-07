@@ -11,9 +11,9 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 3087 |
-| Certification roots in the Makefile | 2594 |
-| Books inside the root closure | 2925 |
-| `defthm` and `defthmd` events | 41731 |
+| Certification roots in the Makefile | 2598 |
+| Books inside the root closure | 2929 |
+| `defthm` and `defthmd` events | 41734 |
 | `defun` events | 26365 |
 | Functions with verified guards | 4171 |
 | Functions declared `:verify-guards nil` and never verified | 3485 |
@@ -1116,7 +1116,7 @@ that `make certify` requests.
 | `books/number-durability.lisp` | root | 58 | 8 | 0/4/2/2 | 0 | 0 | 0 |
 | `books/obligation-subject-grammar.lisp` | closure | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/obligation-view-budget.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/obligation-view-cursor-refinement.lisp` | - | 6 | 2 | 0/0/2/0 | 0 | 0 | 2 |
+| `books/obligation-view-cursor-refinement.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 2 |
 | `books/obligation-view-cursor.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/octet-text.lisp` | root | 124 | 66 | 3/0/60/3 | 0 | 0 | 0 |
 | `books/octet-window.lisp` | root | 6 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -1895,7 +1895,7 @@ that `make certify` requests.
 | `books/transit-same-decision.lisp` | root | 31 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/utf8.lisp` | root | 5 | 21 | 21/0/0/0 | 0 | 0 | 0 |
 | `books/view-delta-concrete.lisp` | closure | 18 | 7 | 2/0/5/0 | 0 | 0 | 1 |
-| `books/view-delta-cursor-refinement.lisp` | - | 18 | 7 | 0/0/7/0 | 0 | 0 | 1 |
+| `books/view-delta-cursor-refinement.lisp` | root | 21 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/view-delta-cursor.lisp` | root | 2 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/view-delta.lisp` | closure | 25 | 11 | 1/0/10/0 | 0 | 0 | 0 |
 | `books/visibility-join.lisp` | root | 10 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -2617,7 +2617,7 @@ that `make certify` requests.
 | `tests/acl2/nov-row-facts-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 5 | 0 | 0 |
 | `tests/acl2/nov-span-window-tests.lisp` | root | 13 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/number-durability-tests.lisp` | root | 2 | 12 | 0/0/0/12 | 0 | 11 | 0 |
-| `tests/acl2/obligation-view-cursor-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
+| `tests/acl2/obligation-view-cursor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/octet-text-tests.lisp` | root | 0 | 13 | 0/1/5/7 | 30 | 1 | 0 |
 | `tests/acl2/octets-bulk-tests.lisp` | root | 18 | 4 | 0/0/0/4 | 3 | 11 | 0 |
 | `tests/acl2/octets-stobj-tests.lisp` | root | 31 | 16 | 0/5/1/10 | 24 | 20 | 0 |
@@ -3147,7 +3147,7 @@ that `make certify` requests.
 | `tests/acl2/transit-header-limits-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 38 | 9 | 0 |
 | `tests/acl2/transit-hygiene-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 92 | 3 | 0 |
 | `tests/acl2/transit-same-decision-tests.lisp` | root | 0 | 13 | 0/0/0/13 | 60 | 2 | 0 |
-| `tests/acl2/view-delta-cursor-tests.lisp` | - | 0 | 3 | 0/0/1/2 | 9 | 0 | 0 |
+| `tests/acl2/view-delta-cursor-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 9 | 0 | 0 |
 | `tests/acl2/visibility-join-tests.lisp` | root | 0 | 6 | 0/3/0/3 | 23 | 5 | 0 |
 | `tests/acl2/web-config-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 9 | 2 | 0 |
 | `tests/acl2/web-health-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 1 | 0 |
@@ -3863,8 +3863,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-otm-read-span-when-admitted-unfolds` | `books/owner-time-admission.lisp` | 201 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otm-read-span and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-otm-read-span and the conclusion is that branch's value |
 | `fn-otm-same-dc-reflexive` | `books/owner-time-journal.lisp` | 551 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-otm-with-refused-fields` | `books/owner-time-admission.lisp` | 298 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ovc-child-done-meaning-by-definition` | `books/obligation-view-cursor-refinement.lisp` | 20 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
-| `fn-ovc-done-meaning-by-definition` | `books/obligation-view-cursor-refinement.lisp` | 40 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ovc-meaning and the conclusion is that arm's value |
+| `fn-ovc-child-done-meaning-by-definition` | `books/obligation-view-cursor-refinement.lisp` | 19 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
+| `fn-ovc-done-meaning-by-definition` | `books/obligation-view-cursor-refinement.lisp` | 39 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ovc-meaning and the conclusion is that arm's value |
 | `fn-ovr-fields-of-with-wire` | `books/owner-verdict-read.lisp` | 212 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ovr-handshaking-of-with-wire` | `books/owner-verdict-read.lisp` | 157 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ovr-wire-of-with-wire` | `books/owner-verdict-read.lisp` | 155 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -4594,7 +4594,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-tlsk-library-tls-without-the-pinned-pair-refuses-by-definition` | `books/tls-key-exchange.lisp` | 236 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-library-decide and the conclusion is that arm's value |
 | `fn-tlsk-required-without-the-hybrid-refuses-by-definition` | `books/tls-key-exchange.lisp` | 136 | arm-of-definition: constant arguments select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value |
 | `fn-tlsk-unknown-policy-refuses` | `books/tls-key-exchange.lisp` | 174 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value |
-| `fn-vcu-done-meaning-by-definition` | `books/view-delta-cursor-refinement.lisp` | 152 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
+| `fn-vcu-done-meaning-by-definition` | `books/view-delta-cursor-refinement.lisp` | 174 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
 | `fn-vdc-put-nonstring-key-is-unchanged` | `books/view-delta-concrete.lisp` | 133 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vdc-put and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-vdc-put and the conclusion is that branch's value |
 | `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1327 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
 | `fn-wf-ctl-bad-of-error` | `books/wire-family-control.lisp` | 354 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncline-reply-payload-decode and the conclusion is that arm's value |
