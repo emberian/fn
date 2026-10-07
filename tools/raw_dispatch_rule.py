@@ -211,9 +211,9 @@ ALLOW: list[Allow] = [
            "binding, under a same-named slot symbol -- to show the trap faults; it "
            "passes NILs of the entry's arity and the trap refuses before the entry runs")
      for r in ("CALL", "MAKE", "NAMEVAR", "WORLD")] + [
-    Allow(r, "host/native/dev-repl.lisp", "*",
-          "the developer debugger (FN_NATIVE_DEV_REPL on a developer image, peer UID "
-          "checked): it reads and evals the developer's forms by design; a form that "
+    Allow(r, "host/native/developer-eval.lisp", "*",
+          "the developer debugger (`fn operator CONFIG eval' on a developer image, admitted by "
+          "books/developer-eval.lisp fn-deval-admit): it reads and evals the developer's forms by design; a form that "
           "calls a raw-dispatched function outside fnn-call meets the image trap "
           "(host/native/raw-trap.lisp), which this lint does not replace")
     for r in ("MAKE", "WORLD")] + [

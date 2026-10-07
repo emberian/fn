@@ -21,6 +21,8 @@ were built from):
     fn-host-dtn, fn-host-dtn.core              dtn
     fn-host-dtn-developer, ...core             dtn-developer
     *.world-deps                               beside their image, when built
+    *.surface                                  beside their image: the verbs, FNCT
+                                               kinds and selectors it was built with
     lib/                                       the image's foreign libraries
     TREE_SHA                                   SHA, one line
     MANIFEST.json                              sha, images (name -> launcher,
@@ -153,7 +155,8 @@ def not_built_here(build: Path, found: dict[str, str]) -> list[str]:
     if (build / "REUSED_SOURCE").exists():
         why.append("build/REUSED_SOURCE (its images were linked from an earlier run)")
     names = ["lib"] + [name for file in found.values()
-                       for name in (file, f"{file}.core", f"{file}.world-deps")]
+                       for name in (file, f"{file}.core", f"{file}.world-deps",
+                                    f"{file}.surface")]
     why += [f"{name} is a symlink to {os.readlink(build / name)}"
             for name in names if (build / name).is_symlink()]
     return why
@@ -225,8 +228,9 @@ def stamp(tree: Path) -> int:
         images[name] = {"launcher": file, "core": f"{file}.core",
                         "catalog": catalog_of(build, file), "source": f"commit {sha}"}
         files += [build / file, build / f"{file}.core"]
-        if (build / f"{file}.world-deps").is_file():
-            files.append(build / f"{file}.world-deps")
+        for beside in ("world-deps", "surface"):
+            if (build / f"{file}.{beside}").is_file():
+                files.append(build / f"{file}.{beside}")
     write_manifest(build, sha, images, tree, files, "stamped_utc")
     print(f"image_set: stamped {', '.join(sorted(images))} in {build} as commit {sha}")
     return 0
@@ -280,9 +284,10 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
         launcher = partial / file
         launcher.write_text(CORE.sub(lambda _: f'--core "{base / sha / core.name}"', text))
         launcher.chmod(0o755)
-        deps = build / f"{file}.world-deps"
-        if deps.is_file():
-            shutil.copy2(deps, partial / deps.name)
+        for beside in ("world-deps", "surface"):
+            kept = build / f"{file}.{beside}"
+            if kept.is_file():
+                shutil.copy2(kept, partial / kept.name)
         images[name] = {"launcher": file, "core": core.name, "catalog": catalogs[name],
                         "source": f"commit {sha}"}
     if (build / "lib").is_dir():
@@ -335,8 +340,9 @@ def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
     for name in wanted:
         file = manifest["images"][name]["launcher"]
         names += [file, f"{file}.core"]
-        if (directory / f"{file}.world-deps").is_file():
-            names.append(f"{file}.world-deps")
+        for beside in ("world-deps", "surface"):
+            if (directory / f"{file}.{beside}").is_file():
+                names.append(f"{file}.{beside}")
     place_links(directory, build, names)
     for name in wanted:
         record = build / f"{manifest['images'][name]['launcher']}.catalog"
@@ -391,8 +397,9 @@ def link_run(run: Path, tree: Path, wanted: list[str]) -> int:
     for name in wanted:
         file = IMAGES[name]
         names += [file, f"{file}.core"]
-        if (directory / f"{file}.world-deps").is_file():
-            names.append(f"{file}.world-deps")
+        for beside in ("world-deps", "surface"):
+            if (directory / f"{file}.{beside}").is_file():
+                names.append(f"{file}.{beside}")
     place_links(directory, build, names)
     for name in wanted:
         record = build / f"{IMAGES[name]}.catalog"

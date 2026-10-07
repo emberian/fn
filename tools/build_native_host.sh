@@ -97,7 +97,7 @@ openssl_hint() {
 }
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
 mkdir -p build
-rm -f "$IMAGE" "$IMAGE.core" "$IMAGE.world-deps" "$IMAGE.catalog" "$IMAGE.source"
+rm -f "$IMAGE" "$IMAGE.core" "$IMAGE.world-deps" "$IMAGE.catalog" "$IMAGE.source" "$IMAGE.surface"
 # A rebuilt image voids the directory's provenance stamp (tools/image_set.py
 # stamp writes it after a batch's builds; a stale one would bind a fixture to
 # the image this build replaces).
@@ -296,6 +296,19 @@ else
     esac
     echo "build_native_host: $BUILD prints no stack figure; the launcher keeps ACL2's 64 MiB (not a served image)" >&2
 fi
+# The image's surface, as the build read it from the image it saved
+# (host/native/build.lisp): profile, verbs, the subcommand words they add, the
+# FNCT kinds the control classifier answers for, the developer selectors it
+# honours.  tests/test_developer_surface_absent.py reads it; a build that
+# printed none is refused.
+case "$BUILD" in
+    host/native/build.lisp|host/native/build-dtn.lisp)
+        grep -a '^FN_NATIVE_SURFACE ' "$LOG" | sed 's/^FN_NATIVE_SURFACE //' > "$IMAGE.surface"
+        if ! grep -q "^profile $PROFILE\$" "$IMAGE.surface"; then
+            echo "build_native_host: IMAGE.surface does not name the $PROFILE profile; see $LOG" >&2
+            exit 1
+        fi ;;
+esac
 echo paged > "$IMAGE.catalog"
 echo "$SOURCE_RECORD" > "$IMAGE.source"
 echo "built $IMAGE profile=$PROFILE world=$WORLD catalog=paged source=$SOURCE_RECORD ($(du -h "$IMAGE.core" | cut -f1) core)"

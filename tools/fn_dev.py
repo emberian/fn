@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Interactive operator commands and an explicit trusted development REPL."""
+"""Interactive operator commands and a trusted development REPL into a running developer node."""
 import argparse
 import shlex
-import socket
 import subprocess
 import sys
 
@@ -11,37 +10,39 @@ try:
 except ImportError:
     pass
 
-MAX_CODE = 65536
-MAX_REPLY = 4 * 65536 + 1024
+# One form goes to a developer node as one `fn operator CONFIG eval' (host/native/developer-eval.lisp):
+# the form on standard input, the output on standard output.  ACL2 decides what is admitted
+# (books/developer-eval.lisp fn-deval-admit): the client computes no bound of its own.
+EVAL_OK, EVAL_FAILED, EVAL_REFUSED, EVAL_NO_REPLY = 0, 1, 2, 3
 
 
-def evaluate(path, source, timeout=None):
-    data = source.encode('utf-8')
-    if len(data) > MAX_CODE:
-        raise ValueError('developer form exceeds 65536 UTF-8 bytes; load a source file instead')
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-        sock.settimeout(timeout)
-        sock.connect(str(path))
-        sock.sendall(data)
-        sock.shutdown(socket.SHUT_WR)
-        reply = bytearray()
-        while True:
-            part = sock.recv(min(65536, MAX_REPLY + 1 - len(reply)))
-            if not part:
-                break
-            reply.extend(part)
-            if len(reply) > MAX_REPLY:
-                raise ValueError('developer reply exceeds bounded protocol output')
-    status, separator, text = reply.decode('utf-8').partition('\n')
-    if not separator or status not in ('OK', 'ERROR'):
-        raise ValueError('incomplete developer REPL reply; execution outcome is unknown')
-    return status == 'OK', text
+def evaluate(config, source, timeout=None, executable='fn'):
+    """Evaluate SOURCE in the node CONFIG names; (True, output), or (False, output) when the form
+    failed.  A refusal (by name) raises ValueError; so does a missing reply, whose form may have run.
+    EXECUTABLE is the developer image's command line (a word, or `IMAGE --fn')."""
+    command = shlex.split(executable) + ['operator', str(config), 'eval']
+    try:
+        done = subprocess.run(command, input=source.encode('utf-8'), capture_output=True,
+                              timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise ValueError('no answer in time; the form may still be running')
+    text = done.stdout.decode('utf-8', 'replace')
+    note = done.stderr.decode('utf-8', 'replace').strip()
+    if done.returncode == EVAL_OK:
+        return True, text
+    if done.returncode == EVAL_FAILED:
+        return False, text
+    if done.returncode == EVAL_REFUSED:
+        raise ValueError(note or 'refused')
+    if done.returncode == EVAL_NO_REPLY:
+        raise ValueError('no reply; execution outcome is unknown: ' + note)
+    raise ValueError('eval exited %d: %s' % (done.returncode, note))
 
 
 def repl(args):
-    """Each connection evaluates one form in the same running Lisp world."""
+    """Each request evaluates one form in the same running Lisp world."""
     if args.eval is not None:
-        ok, text = evaluate(args.socket, args.eval, args.timeout)
+        ok, text = evaluate(args.config, args.eval, args.timeout, args.executable)
         sys.stdout.write(text)
         return 0 if ok else 1
     print('Live developer Lisp; :help for commands. Forms execute in the owner quantum.')
@@ -97,7 +98,7 @@ def repl(args):
                 line = '(fnn-dev-admit-file ' + lisp_string(line[11:]) + f' :step-limit {args.prover_steps})'
             elif line.startswith(':acl2 '):
                 line = "(fnn-dev-admit '(" + line[6:] + f') :step-limit {args.prover_steps})'
-            ok, text = evaluate(args.socket, line, args.timeout)
+            ok, text = evaluate(args.config, line, args.timeout, args.executable)
             sys.stdout.write(text)
             if not ok:
                 print('[evaluation failed]', file=sys.stderr)
@@ -122,7 +123,7 @@ def shell(args):
                 return 0
             words = shlex.split(line)
             if words:
-                result = subprocess.run([args.executable, 'operator', args.config, *words])
+                result = subprocess.run([*shlex.split(args.executable), 'operator', args.config, *words])
                 if result.returncode:
                     print(f'[exit {result.returncode}]', file=sys.stderr)
         except EOFError:
@@ -140,8 +141,10 @@ def main(argv=None):
     p.add_argument('--executable', default='fn')
     p.add_argument('--config', required=True)
     p.set_defaults(run=shell)
-    p = sub.add_parser('repl', help='attach to an opted-in running developer process')
-    p.add_argument('--socket', required=True)
+    p = sub.add_parser('repl', help='evaluate forms in a running developer node (a developer image only)')
+    p.add_argument('--config', required=True, help='the node\'s fn.toml: its control socket is the channel')
+    p.add_argument('--executable', default='fn',
+                   help='the developer image\'s command line (default: fn; an image is "IMAGE --fn")')
     p.add_argument('--eval', help='evaluate one form without an interactive prompt')
     p.add_argument('--timeout', type=float, help='client observation timeout; does not cancel evaluation')
     p.add_argument('--prover-steps', type=int, default=200000,

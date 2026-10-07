@@ -1,27 +1,26 @@
-;;; Explicit trusted developer-code attachment, separate from every fn protocol.
-;;; Enabled only by FN_NATIVE_DEV_REPL=/absolute/private/path on a developer
-;;; process. The socket's peer UID must match. This is a debugger, not a store
-;;; interface or an ACL2 proof boundary; forms may deliberately change code/state.
+;;; The developer image's `eval': one Lisp form evaluated inside a running node's
+;;; owner quantum, asked over the node's existing control socket
+;;; (`fn operator CONFIG eval', tools/fn_dev.py repl --config).  Loaded by
+;;; host/native/build.lisp only when FN_NATIVE_PROFILE=developer, together with
+;;; books/developer-eval.lisp, which decides admission and renders the frames
+;;; (fn-deval-*), the service-log lines (fn-olog-developer-eval-*) and the
+;;; journal entry (fn-otm-eval-step).  A production image has neither this file
+;;; nor that book; tests/test_developer_surface_absent.py checks it.
+;;;
+;;; This is a debugger, not a store interface or an ACL2 proof boundary: a form
+;;; may deliberately change code and state.  Hence every use is logged before it
+;;; runs, and the journal says that the run's decisions can no longer be
+;;; replayed past it.
 (in-package "ACL2")
 
-;; Earlier loads registered function objects. Remove our old objects before
-;; DEFUN replaces them, then register symbols below so future reloads dedupe
-;; and call the current definitions. Leave every other owner's hook intact.
-(dolist (entry '((fnn-dev-repl-start *fnn-owner-start-hooks*)
-                 (fnn-dev-repl-stop *fnn-owner-stop-hooks*)
-                 (fnn-dev-repl-close *fnn-owner-close-hooks*)))
- (when (and (fboundp (first entry)) (boundp (second entry)))
-  (setf (symbol-value (second entry))
-        (remove (symbol-function (first entry)) (symbol-value (second entry))))))
-
-(defvar *fnn-dev-repl* nil)
 (defvar *fnn-dev-service* nil)
 (defvar *fnn-dev-admission-failed* nil)
-(defconstant +fnn-dev-repl-input+ 65536)
-(defconstant +fnn-dev-repl-output+ 65536)
+;; ACL2's bound (books/developer-eval.lisp fn-deval-max-output-characters): the
+;; reply frame is sized for it, so the host keeps no figure of its own.
+(defconstant +fnn-dev-output-characters+ (fnn-core 'fn-deval-max-output-characters))
 
 (defclass fnn-dev-output (sb-gray:fundamental-character-output-stream)
- ((text :initform (make-array +fnn-dev-repl-output+ :element-type 'character
+ ((text :initform (make-array +fnn-dev-output-characters+ :element-type 'character
                              :fill-pointer 0) :reader fnn-dev-output-text)
   (truncated :initform nil :accessor fnn-dev-output-truncated)))
 (defmethod sb-gray:stream-write-char ((stream fnn-dev-output) char)
@@ -50,9 +49,11 @@
 
 (defun fnn-dev-evaluate (service text)
  "Read outside O, then evaluate one developer form in an actual owner quantum.
+Answers (values STATUS OUTPUT): STATUS :ok or :error, OUTPUT the printed values
+and everything the form wrote, at most +fnn-dev-output-characters+ characters.
 Evaluation errors follow the owner's normal fault/fence boundary. Syntax errors
 never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid."
- (let ((out (make-instance 'fnn-dev-output)) (status "OK"))
+ (let ((out (make-instance 'fnn-dev-output)) (status :ok))
   (let ((*standard-output* out) (*error-output* out) (*trace-output* out)
         (*print-length* 64) (*print-level* 12) (*print-circle* t)
         (*package* (find-package "ACL2")) (*fnn-dev-service* service)
@@ -64,14 +65,15 @@ never enter O. *FNN-DEV-SERVICE* names this owner; nested owner entry is invalid
        (fnn-trace-span (:developer-eval)
         (dolist (value (multiple-value-list (eval form)))
          (write value :stream out :escape t) (terpri out)))) :inspect)
-     (when *fnn-dev-admission-failed* (setf status "ERROR")))
+     (when *fnn-dev-admission-failed* (setf status :error)))
     (serious-condition (condition)
-     (setf status "ERROR")
+     (setf status :error)
      (format out "~a~%" condition))))
-  (concatenate 'string status (string #\Newline)
-               (fnn-dev-output-text out)
-               (if (fnn-dev-output-truncated out)
-                   (format nil "~%[output truncated]~%") ""))))
+  (values status
+          (concatenate 'string
+                       (fnn-dev-output-text out)
+                       (if (fnn-dev-output-truncated out)
+                           (format nil "~%[output truncated]~%") "")))))
 
 (defun fnn-dev-admit (forms &key (step-limit 200000))
  "Admit ordinary ACL2 events. A controlled LD refusal reports failure without
@@ -166,95 +168,130 @@ normal fencing. Earlier evaluated/admitted forms are never rolled back."
  "Admit ordinary source events incrementally; read errors preserve the prefix."
  (fnn-dev-load-file path t step-limit))
 
-(defun fnn-dev-repl-loop (control service)
- (loop
-  (when (fnn-with-control (control) (fnn-control-state-stopping control)) (return))
-  (handler-case
-   (let ((socket (fnn-accept-observe (fnn-control-state-listener control) 1)))
-    (unless (eq socket :timeout)
-     (unwind-protect
-      (when (fnn-with-control (control)
-              (unless (fnn-control-state-stopping control)
-               (setf (fnn-control-state-clients control) (list socket)) t))
-       (when (fnn-control-peer-is-owner-p socket)
-        (let ((frame (fnn-control-read-frame socket +fnn-dev-repl-input+)))
-         (when (typep frame 'fnn-octets)
-          (let* ((text (sb-ext:octets-to-string frame :external-format :utf-8))
-                 (reply (fnn-dev-evaluate service text)))
-           (fnn-send-all (fnn-socket-fd socket)
-                         (sb-ext:string-to-octets reply :external-format :utf-8)
-                         +fnn-control-io-seconds+))))))
-      (fnn-with-control (control) (setf (fnn-control-state-clients control) nil))
-      (fnn-socket-shut socket))))
-   (serious-condition (condition)
-    (unless (fnn-with-control (control) (fnn-control-state-stopping control))
-     (fnn-err "developer REPL connection: ~a" condition))))))
+;;; ---------------------------------------------------------------------------
+;;; The server side: one more handler on the control socket's chain
+;;; (host/native/control.lisp *fnn-hybrid-control-handler*), asked only for a
+;;; frame ACL2's classifier names (books/native-control-kinds.lisp, with kind 40
+;;; added by books/developer-eval.lisp).
 
-(defun fnn-dev-listen (control)
- ;; Record ownership before chmod/listen can fail. START's one unwind closes
- ;; the descriptor and removes only this exact bound inode on partial startup.
- (let* ((path (fnn-control-state-path control))
-        (socket (make-instance 'sb-bsd-sockets:local-socket :type :stream :protocol 0)))
-  (setf (fnn-control-state-listener control) socket)
-  (let ((old (sb-posix:umask #o077)))
-   (unwind-protect (sb-bsd-sockets:socket-bind socket path) (sb-posix:umask old)))
-  (let ((info (fnn-lstat path)))
-   (unless (fnn-control-socket-path-p info) (error "Developer socket missing after bind"))
-   (setf (fnn-control-state-device control) (sb-posix:stat-dev info)
-         (fnn-control-state-inode control) (sb-posix:stat-ino info)))
-  (sb-posix:chmod path #o600)
-  (sb-bsd-sockets:socket-listen socket 1)
-  socket))
+(defun fnn-deval-journal (service uid octets)
+ "The developer-eval entry (books/owner-time-journal.lisp fn-otm-eval-step),
+offered to the journal writer under the gate mutex that numbers it, like
+fnn-owner-journal-note."
+ (let ((gate (fnn-owner-service-gate service)))
+  (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+   (destructuring-bind (sched jline)
+     (fnn-core 'fn-otm-eval-step (fnn-owner-gate-sched gate) uid octets)
+    (setf (fnn-owner-gate-sched gate) sched)
+    (fnn-journal-line jline)))))
 
-(defun fnn-dev-unlink-owned (control)
- (let ((info (fnn-lstat (fnn-control-state-path control))))
-  (when (and (fnn-control-socket-path-p info)
-             (eql (sb-posix:stat-dev info) (fnn-control-state-device control))
-             (eql (sb-posix:stat-ino info) (fnn-control-state-inode control)))
-   (fnn-unlink (fnn-control-state-path control)))))
+(defun fnn-deval-form-digest (octets)
+ "The BLAKE3 digest of the form's octets, from the control buffer in place
+(ACL2's buffer digest, as `blake3' digests a file)."
+ (fnn-with-control-buffer ()
+  (fnn-core 'fn-blake3-of-prefixed-buffer-any nil (fnn-octets-ctl-fill octets))))
 
-(defun fnn-dev-repl-start (service)
- (let ((path (fnn-developer-selector "FN_NATIVE_DEV_REPL")))
-  (when path
-   (unless (and (plusp (length path)) (char= (char path 0) #\/))
-    (fnn-refuse "FN_NATIVE_DEV_REPL must name an absolute private socket path"))
-   ;; Never remove another process's socket or any pre-existing file.
-   (when (fnn-lstat path) (fnn-refuse "developer REPL path already exists"))
-   (let ((control (%make-fnn-control-state :path path :service service)))
-    (setf *fnn-dev-repl* control)
-    (unwind-protect
-     (progn
-      (fnn-dev-listen control)
-      (setf (fnn-control-state-accept-thread control)
-            (sb-thread:make-thread (lambda () (fnn-dev-repl-loop control service))
-                                   :name "fn trusted developer REPL")))
-     (unless (fnn-control-state-accept-thread control)
-      (when (fnn-control-state-listener control)
-       (fnn-socket-shut (fnn-control-state-listener control)))
-      (fnn-dev-unlink-owned control)
-      (setf *fnn-dev-repl* nil)))))))
+(defun fnn-deval-reply (status output)
+ "ACL2's sealed reply frame for STATUS and the text OUTPUT, as a handler reply."
+ (let ((reply (fnn-core 'fn-deval-reply-encode status
+                        (fnn-octet-list
+                         (sb-ext:string-to-octets output :external-format :utf-8)))))
+  (unless (fnn-octet-list-p reply) (fnn-fault "ACL2 refused a developer-eval reply"))
+  (list :sealed-reply reply)))
 
-(defun fnn-dev-repl-stop (service)
- (declare (ignore service))
- (when *fnn-dev-repl*
-  (let ((control *fnn-dev-repl*))
-   (fnn-with-control (control)
-    (setf (fnn-control-state-stopping control) t)
-    (dolist (socket (fnn-control-state-clients control)) (fnn-socket-shutdown socket)))
-   (when (fnn-control-state-listener control)
-    (fnn-socket-shutdown (fnn-control-state-listener control))))))
+(defun fnn-deval-answer (service socket frame form)
+ (multiple-value-bind (peer-ok uid) (fnn-control-peer-is-owner-p socket)
+  (declare (ignore peer-ok))
+  (let ((verdict (fnn-core 'fn-deval-admit *fnn-image-profile* uid (sb-posix:geteuid)
+                           (length frame) (fnn-core 'fn-deval-max-frame-octets)
+                           (and (fnn-owner-service-stopping service) t))))
+   (if (not (eq verdict :admit))
+       (progn
+        (fnn-log-line (fnn-core 'fn-olog-developer-eval-refused-line (second verdict)))
+        (fnn-deval-reply (fnn-core 'fn-deval-refusal-status verdict) ""))
+     (let* ((vector (fnn-octets form))
+            ;; a form that is not UTF-8 reads with the replacement character and
+            ;; fails to read (or evaluates what it says): it never signals past
+            ;; this handler, whose escape would fault the owner
+            (text (sb-ext:octets-to-string vector :external-format '(:utf-8 :replacement #\?)))
+            ;; RP-3's labelled mutation: the begin line and the journal entry
+            ;; after the form, not before it.
+            (late (fnn-developer-selector "FN_NATIVE_TEST_EVAL_BEGIN_LATE")))
+      (flet ((begin ()
+               (fnn-log-line (fnn-core 'fn-olog-developer-eval-begin-line uid (length vector)
+                                       (fnn-deval-form-digest vector)
+                                       (fnn-store-prepare-observation)))
+               (fnn-deval-journal service uid (length vector))))
+       ;; Before the form runs: the log line (so a form that faults the owner
+       ;; leaves it) and the journal entry (so replay stops there).
+       (unless late (begin))
+       (let ((start (fnn-monotonic-ms)))
+        (multiple-value-bind (status output) (fnn-dev-evaluate service text)
+         (when late (begin))
+         (let ((octets (length (sb-ext:string-to-octets output :external-format :utf-8))))
+          (fnn-log-line (fnn-core 'fn-olog-developer-eval-end-line status octets
+                                  start (fnn-monotonic-ms)))
+          (fnn-deval-reply status output))))))))))
 
-(defun fnn-dev-repl-close (service)
- (fnn-dev-repl-stop service)
- (when *fnn-dev-repl*
-  (let ((control *fnn-dev-repl*))
-   (when (fnn-control-state-accept-thread control)
-    (sb-thread:join-thread (fnn-control-state-accept-thread control)))
-   (when (fnn-control-state-listener control)
-    (fnn-socket-shut (fnn-control-state-listener control)))
-   (fnn-dev-unlink-owned control))
-  (setf *fnn-dev-repl* nil)))
+(defvar *fnn-deval-next-handler* *fnn-hybrid-control-handler*)
 
-(pushnew 'fnn-dev-repl-start *fnn-owner-start-hooks*)
-(pushnew 'fnn-dev-repl-stop *fnn-owner-stop-hooks*)
-(pushnew 'fnn-dev-repl-close *fnn-owner-close-hooks*)
+(defun fnn-deval-control-handle (service frame)
+ (let ((form (and (typep frame 'fnn-octets)
+                  (fnn-core 'fn-deval-request-decode (fnn-control-frame-octet-list frame)))))
+  (if form
+      (fnn-deval-answer service *fnn-control-peer-socket* frame form)
+    (and *fnn-deval-next-handler*
+         (funcall *fnn-deval-next-handler* service frame)))))
+
+(setq *fnn-hybrid-control-handler* #'fnn-deval-control-handle)
+
+;;; ---------------------------------------------------------------------------
+;;; The client side: `fn operator CONFIG eval' reads one form from standard
+;;; input, sends it as ACL2's kind-40 frame to the node's control socket, and
+;;; prints the output of the kind-41 reply.  Exit: 0 evaluated, 1 the form
+;;; failed, 2 refused by name (the reason on standard error), 3 no reply (the
+;;; form may have run).
+
+(defun fnn-deval-control-path (config-path)
+ "The control socket the configuration names, from ACL2's plan of `status'."
+ (let* ((config-octets (fnn-operator-read-config
+                        config-path (fnn-core 'fn-native-config-host-max-octets)))
+        (result (fnn-operator-run-at config-path config-octets
+                                     (fnn-operator-argv-octets (list "status"))))
+        (path-list (fnn-core 'fn-native-operator-host-result-status-control-path-octets
+                             result)))
+  (unless (and (fnn-octet-list-p path-list) (consp path-list))
+   (error 'fnn-usage-error :message "the configuration names no control socket"))
+  (fnn-octets-string (fnn-octets path-list))))
+
+(defun fnn-deval-client (config-path)
+ (let* ((form (fnn-octet-list (fnn-read-bounded-fd 0 (ash 1 20))))
+        (request (fnn-core 'fn-deval-request-encode form)))
+  (unless (fnn-octet-list-p request)
+   (error 'fnn-usage-error :message "send one non-empty form of at most 65536 octets"))
+  (multiple-value-bind (frame stage)
+    (fnn-control-exchange (fnn-deval-control-path config-path) request nil 3600)
+   (declare (ignore stage))
+   (let ((read (and frame (fnn-core 'fn-deval-reply-read (fnn-octet-list frame)))))
+    (cond
+     ((not (consp read))
+      (fnn-err "developer eval: no reply; the form may have run")
+      3)
+     (t
+      (destructuring-bind (status output) read
+       (write-sequence (fnn-octets output) *fnn-stdout*)
+       (finish-output *fnn-stdout*)
+       (case status
+        (:ok 0)
+        (:error 1)
+        (otherwise (fnn-err "developer eval refused: ~(~a~)" status) 2)))))))))
+
+(push (list "operator" "eval") *fnn-verb-words*)
+
+(let ((next (fnn-verb-handler "operator")))
+ (fnn-unregister-verb "operator")
+ (fnn-register-verb "operator"
+                    (lambda (config-path argv)
+                     (if (equal argv '("eval"))
+                         (fnn-deval-client config-path)
+                       (funcall next config-path argv)))))

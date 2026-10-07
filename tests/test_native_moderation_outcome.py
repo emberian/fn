@@ -19,8 +19,7 @@ class NativeModerationOutcome(unittest.TestCase):
         keep_diagnostics(self, nodes)
         node = Node(self, IMAGE)
         nodes.append(node)
-        sock = node.root / 'developer.sock'
-        developer = {'FN_NATIVE_DEV_REPL': str(sock)}
+        developer = {}
         target = '<partial-withdrawal@example.invalid>'
         created = node.operator('init', '--budget', '2048', 'fn.test', 'control.cancel')
         self.assertEqual(created.returncode, 0, created.stderr.decode())
@@ -33,7 +32,7 @@ class NativeModerationOutcome(unittest.TestCase):
                  :withdraw nil (fn-record-string-octets %s)
                  (fn-record-string-octets "test"))))
                 (list (car plan) (null (cadr plan)))))""" % fn_dev.lisp_string(target)
-            ok, text = fn_dev.evaluate(sock, form, 10)
+            ok, text = fn_dev.evaluate(node.config, form, 10, '%s --fn' % IMAGE)
             self.assertTrue(ok, text)
             self.assertIn(text.strip(), ('(:WITHDRAW NIL)', '(:WITHDRAW T)'))
             return text.strip() == '(:WITHDRAW T)'

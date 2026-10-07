@@ -48,7 +48,7 @@ host/native/trace.lisp	ALL	every owner's trace
 host/native/digest.lisp	ALL	every store digest
 host/interfaces*.lisp	ALL	the definterface table every entry dispatches through
 host/cost-host.lisp	ALL	the cost seam
-host/native/dev-repl.lisp	NONE	the developer REPL socket; no native drives it
+host/native/developer-eval.lisp	NONE	the developer image's `operator CONFIG eval'; only tests/dev_repl_native.py (a developer owner) drives it
 # Families.
 host/native/bp*.lisp	BP	bundle protocol
 host/bp-*.lisp	BP	bundle protocol

@@ -41,8 +41,10 @@ IMAGE_ONLY_LOADS = {
     # `fn acl2 session' runs ACL2's LD over the image's world (ld-fn: ACL2's evaluator);
     # its `raw-traps' subcommand goes with it, so fn-core has no `acl2' developer verb.
     "host/native/acl2-session.lisp": "ACL2's read-eval-print loop over the image's world",
-    # FN_NATIVE_DEV_REPL: admits ACL2 events through ld-fn and the prover over the image's world
-    "host/native/dev-repl.lisp": "ACL2 event admission (LD and the prover) over the image's world",
+    # `fn operator CONFIG eval' (the developer image's evaluator): admits ACL2 events through
+    # ld-fn and the prover over the image's world, in an owner quantum (RP-1: no fn-deval- or
+    # fnn-dev- function reaches the core; closure_why.py's BANNED_PREFIXES refuses their units)
+    "host/native/developer-eval.lisp": "ACL2 event admission (LD and the prover) over the image's world",
 }
 IMAGE_ONLY_FORMS = {
     "(setq *print-startup-banner* nil)": "ACL2's startup banner variable",
@@ -51,7 +53,7 @@ IMAGE_ONLY_FORMS = {
 
 def product_raw_block(tree, build="host/native/build.lisp"):
     """raw_block without IMAGE_ONLY_LOADS and IMAGE_ONLY_FORMS.  A build may omit an image-only
-    load (build-dtn.lisp has no dev-repl) but never repeat one; every image-only form must be there once."""
+    load (build-dtn.lisp has no developer-eval) but never repeat one; every image-only form must be there once."""
     body = raw_block(tree, build)
     for rel in IMAGE_ONLY_LOADS:
         pat = re.compile(r'(?m)^[ \t]*\(load "' + re.escape(rel) + r'"\)[ \t]*\n')

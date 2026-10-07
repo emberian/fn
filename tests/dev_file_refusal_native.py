@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Check file refusal/recovery through an existing private developer owner.
+"""Check file refusal/recovery through an existing developer owner (`fn operator CONFIG eval').
 
-Run on the socket's host with its UID. --scratch must be a new private path.
+Run on the owner's host with its UID. --scratch must be a new private path.
 This attaches only: it never creates an owner, ACL2 world, image, or Store.
 Logs and trusted source fixtures remain at the scratch coordinate. Deliberate
 evaluation-fault fencing belongs to dev_repl_native.py's owned fault phase.
@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import fn_dev
 
 
-def run(socket, root, timeout=10):
+def run(config, command, root, timeout=10):
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=False, mode=0o700)
     name = 'fn-dev-file-' + uuid.uuid4().hex
@@ -44,7 +44,7 @@ def run(socket, root, timeout=10):
         # A timeout/incomplete envelope is unknown execution, not refusal.
         # Do not retry or send a followup in that case; leave the files/log.
         try:
-            ok, text = fn_dev.evaluate(socket, form, timeout)
+            ok, text = fn_dev.evaluate(config, form, timeout, command)
         except Exception as error:
             observations.append({'form': form, 'unknown': str(error)})
             raise
@@ -91,8 +91,10 @@ def run(socket, root, timeout=10):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--socket', type=Path, required=True)
+    parser.add_argument('--config', type=Path, required=True, help='the running developer node\'s fn.toml')
+    parser.add_argument('--executable', required=True,
+                        help='the developer image\'s command line, e.g. "build/fn-host-developer --fn"')
     parser.add_argument('--scratch', type=Path, required=True)
     parser.add_argument('--timeout', type=float, default=10)
     args = parser.parse_args()
-    run(args.socket, args.scratch, args.timeout)
+    run(args.config, args.executable, args.scratch, args.timeout)

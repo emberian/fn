@@ -837,7 +837,7 @@ def cmd_build(args) -> int:
 
 def cmd_live(args) -> int:
     """Start an owner from IMAGE on a scratch store with the developer REPL,
-    detached; print its socket, port and config.  `fn_dev.py repl --socket`
+    detached; print its control socket, port and config.  `fn_dev.py repl --config`
     attaches; `stop` ends it."""
     import socket as socketlib
     import time
@@ -861,11 +861,11 @@ def cmd_live(args) -> int:
             print(f"native_overlay: init exit {init.returncode}; {root / 'init.log'}", file=sys.stderr)
             return 1
     port = re.search(r"port = (\d+)", config.read_text()).group(1)
-    sock = root / "dev.sock"
+    sock = root / "control.sock"
     if sock.exists():
         print(f"native_overlay: {sock} exists: an owner is live (stop it first)", file=sys.stderr)
         return 2
-    env = dict(os.environ, FN_NATIVE_DEV_REPL=str(sock))
+    env = dict(os.environ)
     log = open(root / "owner.log", "a")
     started = time.monotonic()
     owner = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"], env=env,
@@ -873,16 +873,16 @@ def cmd_live(args) -> int:
     (root / "owner.pid").write_text(f"{owner.pid}\n")
     while not sock.exists():
         if owner.poll() is not None:
-            print(f"native_overlay: owner exited {owner.returncode} before its REPL listened; "
+            print(f"native_overlay: owner exited {owner.returncode} before its control socket listened; "
                   f"{root / 'owner.log'}", file=sys.stderr)
             return 1
         if time.monotonic() - started > args.timeout:
-            print("native_overlay: owner REPL did not appear", file=sys.stderr)
+            print("native_overlay: owner control socket did not appear", file=sys.stderr)
             return 1
         time.sleep(0.05)
     print(f"native_overlay: owner pid {owner.pid} live in {time.monotonic() - started:.1f}s; "
-          f"nntp 127.0.0.1:{port}; config {config}; repl {sock}")
-    print(f"  attach: python3 tools/fn_dev.py repl --socket {sock}")
+          f"nntp 127.0.0.1:{port}; config {config}; control {sock}")
+    print(f"  attach: python3 tools/fn_dev.py repl --config {config} --executable '{image} --fn'")
     return 0
 
 

@@ -857,12 +857,6 @@
    "join": "fnn-csp-worker-join-now",
    "fault_policy": "result",
    "why": "the catchup spool worker (catchup-spool.lisp:105-108): the thread is stored in the worker record before it is returned (the caller's retain, :105, publishes custody earlier); fnn-csp-worker-join-now (:143-151) joins it only once thread-alive-p is false; the loop turns a serious-condition from one operation into the status and condition the owner takes (:62, fnn-csp-worker-take :128-134), and a cleanup failure into cleanup-condition (:86) that join-now returns"
-  },
-  "fnn-dev-repl-start": {
-   "registry": "fnn-control-state-accept-thread",
-   "join": "fnn-dev-repl-close",
-   "fault_policy": "private",
-   "why": "the trusted developer REPL accept loop (dev-repl.lisp:216-235): the thread is stored in the control record, which *fnn-dev-repl* holds (:224), and fnn-dev-repl-close joins it (:247-256). It starts only when fnn-developer-selector finds FN_NATIVE_DEV_REPL, which is honoured only on a developer image (io.lisp:6958-6962), over a socket chmod 600 (dev-repl.lisp:205) whose peer must be the owner (:179); the loop prints a connection failure and keeps serving (:191), so a fault in an evaluation is the owner boundary's (fnn-dev-evaluate), never this thread's"
   }
  },
  "after_deregistration_ok": [

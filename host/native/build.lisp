@@ -24,6 +24,23 @@
 (assign fn-image-world-compiler (@ compiler-enabled))
 (set-compiler-enabled nil state)
 
+;; The developer image's own book (books/developer-eval.lisp, RP-1 of the
+;; observability program): the `eval' request's frames, its admission and the
+;; kind it adds to the control classifier.  Included ONLY when FN_NATIVE_PROFILE
+;; is `developer' (tools/build_native_host.sh always supplies one of the two
+;; values), so a production world has no `fn-deval-' symbol and its classifier
+;; answers nil for the kind.  The book is no member of the umbrella above
+;; (tools/extract/world.py reads only top-level include-book forms), and the
+;; world's book count is taken again after it, so the epilogue's check still
+;; says that nothing after the umbrella added a book except this one.
+(make-event
+ (mv-let (erp profile state) (getenv$ "FN_NATIVE_PROFILE" state)
+   (declare (ignore erp))
+   (value (if (equal profile "developer")
+              '(include-book "books/developer-eval" :load-compiled-file nil)
+            '(value-triple :production-world)))))
+(assign fn-image-world-books (len (global-val 'include-book-alist (w state))))
+
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 ;; The failure scope of every host boundary: ACL2 classifies a condition that
@@ -643,9 +660,14 @@
         (load "host/native/bp-control.lisp")
         (load "host/native/bp-session.lisp")
         (load "host/native/bp-node.lisp")
-        ; `acl2 session': developer images only (the test fixtures' ACL2).
-        (load "host/native/acl2-session.lisp")
-        (load "host/native/dev-repl.lisp")
+        ; `acl2 session' (the test fixtures' ACL2) and `operator CONFIG eval'
+        ; (host/native/developer-eval.lisp, with books/developer-eval above):
+        ; developer images only.  A production image does not load them, so it
+        ; has neither verb, neither file's functions nor the book's symbols.
+        (when (fnn-developer-image-p)
+          (load "host/native/acl2-session.lisp")
+          (load "host/native/developer-eval.lisp")
+          nil)
         ; Native anchor acquisition and its real primitive facility.  The
         ; anchor command calls fnn-crypto-startup in the restarted image, so
         ; it never trusts the serialized FFI readiness state.
@@ -665,6 +687,24 @@
         ; prepare form is present.
         ;; D40: every raw-dispatched target is still its trap after every
         ;; raw host file loaded (fnn-main checks again at every start).
+        ;; The image's surface, for tools/build_native_host.sh to write beside the
+        ;; image as IMAGE.surface (RP-1, tests/test_developer_surface_absent.py):
+        ;; the profile it is saved with, its verbs and the subcommand words it
+        ;; adds to them, the FNCT kinds the control classifier answers a word
+        ;; for, and the developer selectors it honours (none, on a production
+        ;; image).  Read from the image being built, not from a copy of what it
+        ;; should hold.
+        (format t "~&FN_NATIVE_SURFACE profile ~(~a~)~%" *fnn-image-profile*)
+        (dolist (verb (sort (mapcar #'car *fnn-verbs*) #'string<))
+          (format t "~&FN_NATIVE_SURFACE verb ~a~%" verb))
+        (dolist (entry *fnn-verb-words*)
+          (dolist (word (cdr entry))
+            (format t "~&FN_NATIVE_SURFACE verb-word ~a ~a~%" (car entry) word)))
+        (dolist (kind (fn-ctlk-admitted-kinds))
+          (format t "~&FN_NATIVE_SURFACE kind ~d~%" kind))
+        (when (fnn-developer-image-p)
+          (dolist (name +fnn-developer-selectors+)
+            (format t "~&FN_NATIVE_SURFACE selector ~a~%" name)))
         (fnn-raw-dispatch-traps-intact)
         (setq *print-startup-banner* nil))
 (defttag nil)

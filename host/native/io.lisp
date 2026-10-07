@@ -6830,6 +6830,11 @@ connection `fn-reader-reset' opens and projects with
   (push (cons verb handler) *fnn-verbs*)
   verb)
 
+(defvar *fnn-verb-words* nil
+  "Alist VERB -> the subcommand words this image adds to VERB beyond the grammar
+ACL2 decides (a developer image's `operator CONFIG eval').  Nil in a production
+image; the build prints it in IMAGE.surface.")
+
 (defun fnn-unregister-verb (verb)
   "Withdraw VERB while a build script constructs the image, before it is saved."
   (setq *fnn-verbs* (remove verb *fnn-verbs* :key #'car :test #'string=))
@@ -6928,7 +6933,7 @@ tree root), or stop the build."
 ;;; and no refusal can arrive in the middle of a request as an outcome it is
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
-  '("FN_NATIVE_DEV_REPL" "FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+  '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
     ;; lane join-f2-13: the OVER/XOVER cursor quantum (numbers per hold of
     ;; the owner mutex) for the natives; ACL2's fn-splan-cursor-window
     ;; decides the value (books/served-plan-cursor.lisp).
@@ -7028,7 +7033,12 @@ tree root), or stop the build."
     ;; Lane owner-offlock: a slow (MS per fsync) or stalled (while the file
     ;; exists) FNFD feed-journal device (host/native/owner.lisp
     ;; fnn-owner-feed-append-locked).
-    "FN_NATIVE_TEST_FEED_FSYNC_MS" "FN_NATIVE_TEST_FEED_STALL_FILE"))
+    "FN_NATIVE_TEST_FEED_FSYNC_MS" "FN_NATIVE_TEST_FEED_STALL_FILE"
+    ;; lane obs-dev-eval: a labelled MUTATION witness of RP-3 -- the developer
+    ;; evaluator writes its `begin' line and journal entry AFTER the form ran
+    ;; (host/native/developer-eval.lisp), so a form that faults the owner leaves
+    ;; none; tests/dev_repl_native.py's fault phase must fail on it.
+    "FN_NATIVE_TEST_EVAL_BEGIN_LATE"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."

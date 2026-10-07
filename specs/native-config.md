@@ -260,19 +260,25 @@ source route; PRF-1292 retains the pending guard/size-proof obligations.
 
 ## Trusted development attachment
 
-`FN_NATIVE_DEV_REPL` is a developer-only selector naming an absolute Unix socket
-path. Production selector validation refuses it before owner startup. The
-opted-in owner installs one local evaluator worker with same-UID authentication,
-0600 socket mode, one request at a time, bounded UTF-8 input and captured output,
-and inode/device-checked cleanup. It never removes a pre-existing path.
-Developer forms are explicitly trusted code, separate from all Store, NNTP, BP
-and operator wire grammars. They run through the owner serialization/fence
-boundary; this facility does not promise semantic invariants after arbitrary
-code edits or forceful cancellation of evaluation. `SCN-1121` exercises the
-actual socket evaluator and production selector, with named owner/I/O adapters;
-A separate real ACL2 worker-thread check covers successful/refused/subsequent
-admissions and bounded channel capture; full native owner composition remains
-a separate execution check. There is no new proof or image qualification claim.
+`fn operator CONFIG eval` is a request on the node's control socket (FNCT kind
+40, reply kind 41, `books/developer-eval.lisp`), served only by an image saved
+with the developer profile. A production image holds no handler, no `fn-deval-`
+symbol and no `eval` verb; its control classifier answers nil for the kind, so
+the frame meets the refusal every unknown kind meets. ACL2 decides admission
+(`fn-deval-admit`: the developer profile, the peer's UID equal to the node
+process's, a frame within bound, a node not stopping) and renders the frames,
+the three service-log lines (`developer-eval begin|end|refused`) and the
+journal entry (operation 8). The facility installs one local evaluator on the
+control socket's existing workers: one request at a time per worker, bounded
+UTF-8 input and captured output. Developer forms are explicitly trusted code,
+separate from all Store, NNTP, BP and operator wire grammars. They run through
+the owner serialization/fence boundary; this facility does not promise semantic
+invariants after arbitrary code edits or forceful cancellation of evaluation.
+`SCN-1121` exercises the evaluator in a bare SBCL, the book's teeth are
+`tests/acl2/developer-eval-tests.lisp`, and `tests/dev_repl_native.py` drives a
+real developer owner; a separate real ACL2 worker-thread check covers
+successful/refused/subsequent admissions and bounded channel capture. There is
+no new proof or image qualification claim.
 
 
 ## Local reply observation budget

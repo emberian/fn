@@ -16,6 +16,11 @@
 ;;; argument, so the handlers share it.
 (defvar *fnn-control-frame-list* nil)
 
+;;; The connected socket of the frame the handler chain is deciding (bound by
+;;; fnn-control-handle-client around the chain): a handler that must ask who is
+;;; on the other end (the OS's peer credentials) reads it here.
+(defvar *fnn-control-peer-socket* nil)
+
 (defun fnn-control-frame-octet-list (frame)
   (if (and (consp *fnn-control-frame-list*)
            (eq (car *fnn-control-frame-list*) frame))
@@ -377,7 +382,8 @@ ACL2 returns."
                    ;; handlers share one octet list of the frame
                    ;; (fnn-control-frame-octet-list).
                    ((and handler *fnn-hybrid-control-handler*
-                         (let ((*fnn-control-frame-list* nil))
+                         (let ((*fnn-control-frame-list* nil)
+                               (*fnn-control-peer-socket* socket))
                            (funcall *fnn-hybrid-control-handler* service frame))))
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))

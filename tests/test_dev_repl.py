@@ -1,108 +1,130 @@
-"""Actual developer REPL over Unix sockets; owner/transport are named fixture seams."""
+"""The developer evaluator: its semantics in a bare SBCL, its client, and (opt-in) real ACL2 admission.
+
+The wire path (`fn operator CONFIG eval` over the control socket, admission in books, the logged
+begin/end lines, the journal entry) is tests/dev_repl_native.py and tests/test_developer_eval_native.py
+against a developer image; the book's side is tests/acl2/developer-eval-tests.lisp.
+"""
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
-import sys
-import socket
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT/'tools'))
-import fn_dev
-from proof_repl import forms
 
-class DeveloperRepl(unittest.TestCase):
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tools'))
+import fn_dev
+
+SERVER_SIDE = ';;; The server side'
+
+
+def evaluation_half():
+    """host/native/developer-eval.lisp before its server side: the evaluator and its helpers."""
+    text = (ROOT / 'host/native/developer-eval.lisp').read_text()
+    assert SERVER_SIDE in text
+    return text.split(SERVER_SIDE)[0]
+
+
+class DeveloperEvaluator(unittest.TestCase):
     @unittest.skipUnless(shutil.which('sbcl'), 'SBCL required')
-    def test_live_forms_output_and_lifecycle(self):
+    def test_one_form_bounded_output_and_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             d = Path(directory)
-            sock = d/'debug.sock'
-            selected = []
-            for form in forms((ROOT/'host/native/control-transport.lisp').read_text()):
-                if any(form.lower().startswith(prefix) for prefix in (
-                    '(defstruct (fnn-control-state', '(defmacro fnn-with-control',
-                    '(defun fnn-control-peer-is-owner-p', '(defun fnn-control-socket-path-p')):
-                    selected.append(form)
-            for form in forms((ROOT/'host/native/io.lisp').read_text()):
-                if any(form.lower().startswith(prefix) for prefix in (
-                    '(defparameter +fnn-developer-selectors+', '(defconstant +fnn-developer-selectors+',
-                    '(defun fnn-developer-selector ', '(defun fnn-developer-selector-refusal ')):
-                    selected.append(form)
-            (d/'control.lisp').write_text('\n'.join(selected))
-            fixture = (ROOT/'tests/fixtures/dev_repl.lisp').read_text()
-            (d/'run.lisp').write_text(fixture.replace('__CONTROL__', str(d/'control.lisp')).replace('__REPL__', str(ROOT/'host/native/dev-repl.lisp')).replace('__TRACE__', str(ROOT/'host/native/trace.lisp')))
-            env = dict(os.environ, FN_NATIVE_DEV_REPL=str(sock))
-            with (d/'stderr').open('w') as err:
-                process = subprocess.Popen([shutil.which('sbcl'), '--noinform', '--disable-debugger', '--script', str(d/'run.lisp')], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err, text=True, env=env)
-                try:
-                    self.assertEqual(process.stdout.readline().strip(), 'READY', (d/'stderr').read_text())
-                    self.assertEqual(sock.stat().st_mode & 0o777, 0o600)  # private before accepting
-                    ok, text = fn_dev.evaluate(sock, '(+ 20 22)', 3)
-                    self.assertTrue(ok); self.assertEqual(text.strip(), '42')
-                    self.assertTrue(fn_dev.evaluate(sock, '(defparameter *dev-test-value* 17)', 3)[0])
-                    self.assertEqual(fn_dev.evaluate(sock, '*dev-test-value*', 3)[1].strip(), '17')
-                    ok, text = fn_dev.evaluate(sock, '(values 1 2 3)', 3)
-                    self.assertTrue(ok); self.assertEqual(text.splitlines(), ['1', '2', '3'])
-                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as invalid:
-                        invalid.settimeout(3); invalid.connect(str(sock))
-                        invalid.sendall(b'\xff'); invalid.shutdown(socket.SHUT_WR)
-                        self.assertEqual(invalid.recv(128), b'')
-                    self.assertFalse(fn_dev.evaluate(sock, '#.(error "reader eval")', 3)[0])
-                    self.assertFalse(fn_dev.evaluate(sock, '(+ 1 2) (+ 3 4)', 3)[0])
-                    self.assertTrue(fn_dev.evaluate(sock, '(+ 1 2)', 3)[0])
-                    ok, text = fn_dev.evaluate(sock, '(dotimes (i 70000) (write-char #\\x))', 3)
-                    self.assertTrue(ok); self.assertIn('[output truncated]', text)
-                    self.assertLess(len(text), 65700)
-                    self.assertFalse(fn_dev.evaluate(sock, '(error "evaluation failure")', 3)[0])
-                    self.assertTrue(fn_dev.evaluate(sock, '(progn (fnn-trace-start :allocation :process) :tracing)', 3)[0])
-                    self.assertTrue(fn_dev.evaluate(sock, '(+ 41 1)', 3)[0])
-                    ok, text = fn_dev.evaluate(sock, '(fnn-trace-report *standard-output*)', 3)
-                    self.assertTrue(ok)
-                    self.assertIn('\"phase\":\"developer-eval\"', text)
-                    self.assertIn('\"allocation_scope\":\"process\"', text)
-                    # An unauthorized connection must never reach the evaluator.
-                    self.assertTrue(fn_dev.evaluate(sock, "(setf (symbol-function 'fnn-control-peer-is-owner-p) (lambda (socket) (declare (ignore socket)) nil))", 3)[0])
-                    with self.assertRaises((ValueError, OSError)):
-                        fn_dev.evaluate(sock, '(error "must not evaluate")', 3)
-                    process.stdin.write('stop\n'); process.stdin.flush()
-                    process.wait(timeout=5)
-                    self.assertEqual(process.returncode, 0, (d/'stderr').read_text())
-                    self.assertFalse(sock.exists())
-                finally:
-                    if process.poll() is None:
-                        process.terminate(); process.wait(timeout=5)
-                    process.stdin.close(); process.stdout.close()
+            (d / 'evaluation.lisp').write_text(evaluation_half())
+            fixture = (ROOT / 'tests/fixtures/dev_repl.lisp').read_text()
+            (d / 'run.lisp').write_text(
+                fixture.replace('__TRACE__', str(ROOT / 'host/native/trace.lisp'))
+                       .replace('__EVAL__', str(d / 'evaluation.lisp')))
+            result = subprocess.run([shutil.which('sbcl'), '--noinform', '--disable-debugger',
+                                     '--script', str(d / 'run.lisp')],
+                                    capture_output=True, text=True, timeout=120)
+            self.assertIn('DEV-EVAL-FIXTURE-PASS', result.stdout, result.stdout + result.stderr)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_the_listener_and_its_selector_are_gone(self):
+        source = (ROOT / 'host/native/developer-eval.lisp').read_text()
+        for gone in ('fnn-dev-repl-start', 'fnn-dev-repl-stop', 'fnn-dev-repl-close',
+                     'fnn-dev-listen', 'fnn-dev-repl-loop', 'FN_NATIVE_DEV_REPL',
+                     'sb-bsd-sockets:socket-listen'):
+            self.assertNotIn(gone, source)
+        self.assertFalse((ROOT / 'host/native/dev-repl.lisp').exists())
+        io = (ROOT / 'host/native/io.lisp').read_text()
+        self.assertNotIn('FN_NATIVE_DEV_REPL', io)
 
     @unittest.skipUnless(os.environ.get('FN_DEV_REPL_ACL2') == '1', 'opt-in real ACL2 execution')
     def test_actual_acl2_admission_and_refusal(self):
         with tempfile.TemporaryDirectory() as directory:
             d = Path(directory)
-            source = (ROOT/'host/native/dev-repl.lisp').read_text().split('(defun fnn-dev-repl-loop')[0]
-            events = d/'events.lisp'
-            events.write_text((ROOT/'host/native/trace.lisp').read_text() + '\n' + source + '\n'
-                              + (ROOT/'tests/fixtures/dev_repl_acl2.lisp').read_text())
+            events = d / 'events.lisp'
+            events.write_text((ROOT / 'host/native/trace.lisp').read_text() + '\n'
+                              + evaluation_half() + '\n'
+                              + (ROOT / 'tests/fixtures/dev_repl_acl2.lisp').read_text())
             driver = (':q\n(setf sb-ext:*invoke-debugger-hook* '
                       '(lambda (condition hook) (declare (ignore hook)) '
                       '(format *error-output* "~a" condition) (sb-ext:exit :code 1)))\n'
                       '(load ' + fn_dev.lisp_string(str(events)) + ')\n(sb-ext:exit :code 0)\n')
-            result = subprocess.run([sys.executable, str(ROOT/'tools/acl2'), '--timeout', '60'],
+            result = subprocess.run([sys.executable, str(ROOT / 'tools/acl2'), '--timeout', '60'],
                                     input=driver, text=True, capture_output=True, timeout=75)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn('DEV-REPL-ACTUAL-LD-PASS', result.stdout)
             self.assertNotIn('debugger invoked', result.stdout + result.stderr)
 
-    def test_client_refuses_oversized_code_before_connect(self):
-        with self.assertRaises(ValueError):
-            fn_dev.evaluate('/missing', 'x'*65537)
+
+class Client(unittest.TestCase):
+    """fn_dev.evaluate against a stand-in `fn': the exit codes host/native/developer-eval.lisp
+    gives (0 evaluated, 1 the form failed, 2 refused by name, 3 no reply) are the client's whole contract."""
+
+    def stand_in(self, directory, code, out='', err=''):
+        script = Path(directory) / 'fn'
+        script.write_text('#!/bin/sh\ncat > "%s/stdin"\nprintf %%s "%s"\nprintf %%s "%s" >&2\nexit %d\n'
+                          % (directory, out, err, code))
+        script.chmod(script.stat().st_mode | stat.S_IEXEC)
+        return str(script)
+
+    def test_the_form_goes_in_on_stdin_and_the_config_names_the_node(self):
+        with tempfile.TemporaryDirectory() as d:
+            fn = self.stand_in(d, 0, '42\n')
+            self.assertEqual(fn_dev.evaluate('/x/fn.toml', '(+ 20 22)', 5, fn), (True, '42\n'))
+            self.assertEqual((Path(d) / 'stdin').read_text(), '(+ 20 22)')
+
+    def test_exit_codes(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(fn_dev.evaluate('c', 'x', 5, self.stand_in(d, 1, 'oops\n')), (False, 'oops\n'))
+            with self.assertRaisesRegex(ValueError, 'not-developer'):
+                fn_dev.evaluate('c', 'x', 5, self.stand_in(d, 2, '', 'developer eval refused: not-developer'))
+            with self.assertRaisesRegex(ValueError, 'unknown'):
+                fn_dev.evaluate('c', 'x', 5, self.stand_in(d, 3, '', 'developer eval: no reply'))
+            with self.assertRaisesRegex(ValueError, 'exited 5'):
+                fn_dev.evaluate('c', 'x', 5, self.stand_in(d, 5, '', 'usage'))
+
+    def test_the_client_computes_no_bound_of_its_own(self):
+        # ACL2 decides what is too large (fn-deval-admit, fn-deval-request-encode): a long form is sent
+        with tempfile.TemporaryDirectory() as d:
+            fn = self.stand_in(d, 0, 'ok\n')
+            self.assertEqual(fn_dev.evaluate('c', 'x' * 70000, 5, fn), (True, 'ok\n'))
+            self.assertEqual(len((Path(d) / 'stdin').read_text()), 70000)
+
+    def test_an_image_command_line_is_split(self):
+        with tempfile.TemporaryDirectory() as d:
+            fn = self.stand_in(d, 0, 'ok\n')
+            self.assertEqual(fn_dev.evaluate('c', 'x', 5, fn + ' --fn'), (True, 'ok\n'))
 
     def test_interactive_acl2_uses_selected_prover_allowance(self):
         with mock.patch('builtins.input', side_effect=[':acl2 (value-triple :ok)', ':quit']), \
              mock.patch.object(fn_dev, 'evaluate', return_value=(True, '')) as evaluate, \
              mock.patch('builtins.print'):
-            self.assertEqual(fn_dev.main(['repl', '--socket', '/unused', '--prover-steps', '37']), 0)
-        evaluate.assert_called_once_with('/unused',
-            "(fnn-dev-admit '((value-triple :ok)) :step-limit 37)", None)
+            self.assertEqual(fn_dev.main(['repl', '--config', '/unused/fn.toml',
+                                          '--prover-steps', '37']), 0)
+        evaluate.assert_called_once_with('/unused/fn.toml',
+            "(fnn-dev-admit '((value-triple :ok)) :step-limit 37)", None, 'fn')
 
-if __name__ == '__main__': unittest.main()
+    def test_the_socket_option_is_gone(self):
+        with self.assertRaises(SystemExit):
+            fn_dev.main(['repl', '--socket', '/unused'])
+
+
+if __name__ == '__main__':
+    unittest.main()

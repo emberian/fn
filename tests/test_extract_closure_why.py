@@ -105,6 +105,46 @@ class Check(unittest.TestCase):
         self.assertEqual(self.run_check(cut)[0], 0)
 
 
+class BannedPrefix(unittest.TestCase):
+    """RP-1: no unit of the developer-only book (FN-DEVAL-...) is in the closure."""
+    def run_check(self, edges):
+        return Check.run_check(self, edges)
+
+    def with_deval(self, caller):
+        cut = EDGES.replace("star1:ACL2::FN-A\traw:ACL2::THROW-RAW-EV-FNCALL", "star1:ACL2::FN-A\t")
+        return cut.replace("raw:ACL2::FN-C\traw:ACL2::BINARY-APPEND",
+                           "raw:ACL2::FN-C\traw:ACL2::BINARY-APPEND " + caller) \
+            + "raw:ACL2::FN-DEVAL-ADMIT\traw:ACL2::BINARY-APPEND\n" \
+            + "star1:ACL2::FN-DEVAL-ADMIT\t\n"
+
+    def test_the_prefix_names_the_units_of_the_developer_book_only(self):
+        graph = {"raw:ACL2::FN-DEVAL-ADMIT": [], "star1:ACL2::FN-DEVAL-ADMIT": [],
+                 "raw:ACL2::FN-DEVAL": [], "raw:ACL2::FN-DEVALUE": [], "raw:ACL2::FNN-DEV-ADMIT": [],
+                 "raw:ACL2::FN-OLOG-DEVAL-LINE": [], "table:ACL2::FN-DEVAL-X": []}
+        self.assertEqual(closure_why.banned_by_prefix(graph),
+                         ["raw:ACL2::FN-DEVAL-ADMIT", "star1:ACL2::FN-DEVAL-ADMIT",
+                          "table:ACL2::FN-DEVAL-X"])
+        self.assertEqual(closure_why.BANNED_PREFIXES, ("FN-DEVAL-",))
+
+    def test_a_reachable_developer_unit_is_refused_with_its_path(self):
+        rc, err = self.run_check(self.with_deval("raw:ACL2::FN-DEVAL-ADMIT"))
+        self.assertEqual(rc, 1)
+        self.assertIn("raw:ACL2::FN-DEVAL-ADMIT", err)
+
+    def test_the_same_graph_without_the_edge_passes(self):
+        # the unit is in the graph, no root reaches it: not in the served program
+        self.assertEqual(self.run_check(self.with_deval(""))[0], 0)
+
+    def test_mutation_without_the_prefix_rule_the_reachable_unit_passes(self):
+        # labelled mutation: the rule applied by exact unit ids only (the evaluator list) lets it by
+        saved = closure_why.BANNED_PREFIXES
+        try:
+            closure_why.BANNED_PREFIXES = ("NO-SUCH-PREFIX-",)
+            self.assertEqual(self.run_check(self.with_deval("raw:ACL2::FN-DEVAL-ADMIT"))[0], 0)
+        finally:
+            closure_why.BANNED_PREFIXES = saved
+
+
 # A table-reading unit, and a snapshot as core-export.lisp prints it (row keys of every printed shape).
 TABLE_EDGES = EDGES.replace("raw:ACL2::FN-C\traw:ACL2::BINARY-APPEND",
                             "raw:ACL2::FN-C\traw:ACL2::BINARY-APPEND table:ACL2::ACL2-DEFAULTS-TABLE table:FN-X::T2")

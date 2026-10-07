@@ -9359,29 +9359,29 @@
     },
     {
       "id": "SCN-1121",
-      "title": "Trusted live developer REPL preserves its world and bounds output",
+      "title": "Trusted live developer eval preserves its world, bounds output, and is logged",
       "requirements": [
         "HST-008"
       ],
-      "setup": "Actual developer socket evaluator, peer credentials, selector and trace module; named owner mutex and transport adapters.",
+      "setup": "Actual developer evaluator and trace module in a bare SBCL with a named owner mutex adapter; a real developer owner for the control-socket request, admission, log lines and journal entry.",
       "steps": [
-        "Connect to private socket; evaluate values and retain a definition across connections.",
+        "Evaluate values and retain a definition across requests (`fn operator CONFIG eval`).",
         "Reject reader evaluation and multiple top-level forms; capture oversized output.",
         "Enable process allocation trace, execute another form, and read trace rows.",
-        "Deny unauthorized peer and stop/join/close the owner attachment.",
+        "Read the begin/end service-log lines and the developer-eval journal entry of each form; fault the owner with a form and read the begin line it leaves.",
         "Admit an ACL2 batch under zero/default/explicit prover allowance; verify refusal stops later forms and following proof/Lisp work succeeds."
       ],
       "expected": [
-        "0600 socket and developer-only selector; same-world values survive.",
+        "Developer-image-only verb on the control socket; same-world values survive.",
         "Explicit errors and truncation; trace scope is process, never retained heap.",
-        "Unauthorized connections do not evaluate; owned socket is removed after shutdown.",
+        "A begin line before each form and an end line after; one op-8 journal entry per form; a faulting form leaves its begin line and no end line (and a begin line written late leaves none: the mutation).",
         "Ordinary proof-step limits preserve global allowance and the admitted world; no wall-time or arbitrary Lisp execution bound is implied."
       ],
       "implementation": {
         "test": "tests/test_dev_repl.py",
         "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending."
+      "execution_scope": "Evaluator semantics in a bare SBCL; the book half in tests/acl2/developer-eval-tests.lisp; a real native developer owner over the control socket (tests/dev_repl_native.py): admission/refusal continuation, logged begin/end, journal entry, normal shutdown and fault-fence exit4. The earlier socket-listener coordinates below are history (the listener and FN_NATIVE_DEV_REPL are gone). Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending."
     },
     {
       "id": "SCN-1123",

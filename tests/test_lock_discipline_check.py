@@ -1687,12 +1687,12 @@ class R1bSynchronizedTable(unittest.TestCase):
 
 
 class RealThreadRows(unittest.TestCase):
-    """The catchup spool worker and the developer REPL are declared threads:
-    their rows are checked against the real host, so a row whose registry,
-    join site or handler stops matching the code fails here."""
+    """The catchup spool worker is a declared thread (the developer evaluator's own
+    listener thread is gone with `FN_NATIVE_DEV_REPL': `eval' runs on the control
+    socket's workers): its row is checked against the real host, so a row whose
+    registry, join site or handler stops matching the code fails here."""
 
     SPOOL = ("fnn-csp-worker-start", "fn catchup spool")
-    REPL = ("fnn-dev-repl-start", "fn trusted developer REPL")
 
     @classmethod
     def setUpClass(cls):
@@ -1706,15 +1706,14 @@ class RealThreadRows(unittest.TestCase):
     def test_the_catchup_spool_thread_is_declared_and_its_row_holds(self):
         self.assertEqual(self.about(self.SPOOL[0]), [])
 
-    def test_the_developer_repl_thread_is_declared_and_its_row_holds(self):
-        self.assertEqual(self.about(self.REPL[0]), [])
+    def test_no_thread_row_remains_for_the_developer_listener(self):
+        self.assertNotIn("fnn-dev-repl-start", CONTRACTS.raw["threads"])
+        self.assertEqual(self.about("fnn-dev-repl-start"), [])
 
     def test_the_rows_name_the_registry_and_join_the_code_has(self):
         rows = CONTRACTS.raw["threads"]
         self.assertEqual(rows[self.SPOOL[0]]["registry"], "fnn-csp-worker-thread")
         self.assertEqual(rows[self.SPOOL[0]]["join"], "fnn-csp-worker-join-now")
-        self.assertEqual(rows[self.REPL[0]]["registry"], "fnn-control-state-accept-thread")
-        self.assertEqual(rows[self.REPL[0]]["join"], "fnn-dev-repl-close")
 
     def test_a_thread_stored_nowhere_is_refused(self):
         found = run("""
@@ -1728,22 +1727,22 @@ class RealThreadRows(unittest.TestCase):
 
     def test_a_join_site_that_never_joins_is_refused(self):
         found = run("""
-(defun fnn-dev-repl-start (control)
-  (setf (fnn-control-state-accept-thread control)
-        (sb-thread:make-thread (lambda () (fnn-dev-repl-loop control)) :name "fn trusted developer REPL")))
-(defun fnn-dev-repl-loop (control)
+(defun fnn-csp-worker-start (worker)
+  (setf (fnn-csp-worker-thread worker)
+        (sb-thread:make-thread (lambda () (fnn-csp-worker-loop worker)) :name "fn catchup spool")))
+(defun fnn-csp-worker-loop (worker)
   (handler-case (fnn-fault "x") (serious-condition (c) c)))
-(defun fnn-dev-repl-close (control) (setf (fnn-control-state-stopping control) t))
+(defun fnn-csp-worker-join-now (worker) (setf (fnn-csp-worker-stopping worker) t))
 """, ["R4"])
-        self.assertIn(("fnn-dev-repl-start", "no-join:fnn-dev-repl-close"), keys(found, "R4"))
+        self.assertIn(("fnn-csp-worker-start", "no-join:fnn-csp-worker-join-now"), keys(found, "R4"))
 
     def test_a_thread_whose_loop_handles_nothing_is_refused(self):
         found = run("""
-(defun fnn-dev-repl-start (control)
-  (setf (fnn-control-state-accept-thread control)
-        (sb-thread:make-thread (lambda () (fnn-dev-repl-loop control)) :name "fn trusted developer REPL")))
-(defun fnn-dev-repl-loop (control) (fnn-fault "x"))
-(defun fnn-dev-repl-close (control) (sb-thread:join-thread (fnn-control-state-accept-thread control)))
+(defun fnn-csp-worker-start (worker)
+  (setf (fnn-csp-worker-thread worker)
+        (sb-thread:make-thread (lambda () (fnn-csp-worker-loop worker)) :name "fn catchup spool")))
+(defun fnn-csp-worker-loop (worker) (fnn-fault "x"))
+(defun fnn-csp-worker-join-now (worker) (sb-thread:join-thread (fnn-csp-worker-thread worker)))
 """, ["R4"])
         self.assertTrue(any(k[1].startswith("no-handler:") for k in keys(found, "R4")))
 

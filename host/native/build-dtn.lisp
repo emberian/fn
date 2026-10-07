@@ -470,7 +470,9 @@
         (load "host/native/bp-session.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
-        (load "host/native/acl2-session.lisp")
+        (when (fnn-developer-image-p)
+          (load "host/native/acl2-session.lisp")
+          nil)
         ; What this image leaves out of the owner and operator it loaded:
         ; the NNTP service (TLS, auth, the feed service, the listener), the
         ; credential store and the control socket.  It does not load
@@ -485,6 +487,24 @@
         ; `model' verb writes reply octets to stdout and nothing else may.
         ;; D40: every raw-dispatched target is still its trap after every
         ;; raw host file loaded (fnn-main checks again at every start).
+        ;; The image's surface, for tools/build_native_host.sh to write beside the
+        ;; image as IMAGE.surface (RP-1, tests/test_developer_surface_absent.py):
+        ;; the profile it is saved with, its verbs and the subcommand words it
+        ;; adds to them, the FNCT kinds the control classifier answers a word
+        ;; for, and the developer selectors it honours (none, on a production
+        ;; image).  Read from the image being built, not from a copy of what it
+        ;; should hold.
+        (format t "~&FN_NATIVE_SURFACE profile ~(~a~)~%" *fnn-image-profile*)
+        (dolist (verb (sort (mapcar #'car *fnn-verbs*) #'string<))
+          (format t "~&FN_NATIVE_SURFACE verb ~a~%" verb))
+        (dolist (entry *fnn-verb-words*)
+          (dolist (word (cdr entry))
+            (format t "~&FN_NATIVE_SURFACE verb-word ~a ~a~%" (car entry) word)))
+        (dolist (kind (fn-ctlk-admitted-kinds))
+          (format t "~&FN_NATIVE_SURFACE kind ~d~%" kind))
+        (when (fnn-developer-image-p)
+          (dolist (name +fnn-developer-selectors+)
+            (format t "~&FN_NATIVE_SURFACE selector ~a~%" name)))
         (fnn-raw-dispatch-traps-intact)
         (setq *print-startup-banner* nil))
 (defttag nil)

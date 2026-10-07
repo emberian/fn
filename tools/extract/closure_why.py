@@ -39,6 +39,18 @@ BANNED = ("EV", "EV-W", "EV-REC", "EV-FNCALL", "EV-FNCALL-W", "LD-FN", "TRANS-EV
           "TRANSLATE11", "TRANSLATE11-LOCAL-DEF", "TRANSLATE1", "TRANSLATE")
 BANNED_IDS = tuple("%s:ACL2::%s" % (k, n) for n in BANNED for k in ("raw", "star1"))
 
+# RP-1 of the observability program: the developer image's `eval' is absent from production by
+# construction, so no unit whose symbol starts with one of these is ever in the closure.  Unlike
+# BANNED (exact units), a prefix names every unit of a book that only a developer world includes
+# (books/developer-eval.lisp); --check applies both.
+BANNED_PREFIXES = ("FN-DEVAL-",)
+
+
+def banned_by_prefix(graph) -> list[str]:
+    """The units of GRAPH whose symbol (after the last `::`) starts with a BANNED_PREFIXES entry."""
+    return sorted(u for u in graph
+                  if u.rpartition("::")[2].startswith(BANNED_PREFIXES))
+
 EVALUATOR = ("raw:ACL2::EV", "raw:ACL2::EV-W", "raw:ACL2::EV-REC", "raw:ACL2::LD-FN",
              "raw:ACL2::TRANS-EVAL", "raw:ACL2::TRANSLATE11", "raw:ACL2::TRANSLATE11-LOCAL-DEF",
              "raw:ACL2::FMT1",
@@ -244,11 +256,11 @@ def main(argv=None) -> int:
     roots, graph = read_edges(a.out / "edges.tsv")
     if a.check:
         all_roots = sorted(set(roots) | {"star1:" + r.split(":", 1)[1] for r in roots})
-        banned = {b for b in BANNED_IDS if b in graph}
+        banned = {b for b in BANNED_IDS if b in graph} | set(banned_by_prefix(graph))
         bad = [p for p in (shortest(graph, r, banned) for r in all_roots) if p]
         if bad:
             bad.sort(key=len)
-            print("closure_why: ACL2's evaluator is reachable from %d root(s); shortest: %s"
+            print("closure_why: a banned unit (ACL2's evaluator, or a BANNED_PREFIXES unit) is reachable from %d root(s); shortest: %s"
                   % (len(bad), " > ".join(bad[0])), file=sys.stderr)
             return 1
         print("closure_why: no banned unit reachable (%d banned ids present in the closure)" % len(banned))

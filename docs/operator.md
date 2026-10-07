@@ -1382,28 +1382,38 @@ Application evidence has its own client: `tools/fn_consumer.py` exposes status,
 operation inspection, paged table queries, evidence export and exact payload
 export (see that tool's help).
 
-A developer node can also expose its **actual running Lisp world**. Start it
-with `FN_NATIVE_DEV_REPL=/absolute/private/directory/fn-dev.sock`, then attach:
+`fn operator CONFIG eval` evaluates one Lisp form in a running **developer**
+node's actual Lisp world. It is a request on the node's control socket (the
+`[control]` path of `CONFIG`), so it needs no other listener and no environment
+variable; only an image built with `FN_NATIVE_PROFILE=developer` has the verb.
+A production image has no `eval` verb, no handler for the request and none of
+its code; `build/fn-host.surface` lists the verbs, FNCT kinds and selectors a
+build holds, and `tests/test_developer_surface_absent.py` checks the production
+image and `fn-core` for the request's absence.
 
 ```sh
-python3 tools/fn_dev.py repl --socket /absolute/private/directory/fn-dev.sock
+python3 tools/fn_dev.py repl --config fn.toml --executable 'build/fn-host-developer --fn'
 ```
 
-Use `:operation`, `:threads`, `:apropos NAME`, `:describe FORM`, or ordinary
-Common Lisp forms. `:paste` accepts multiline input ending with `:end`.
-Definitions survive connections. `:load PATH` loads a source file on the server;
+`--executable` is the developer image's command line (default `fn`). Use
+`:operation`, `:threads`, `:apropos NAME`, `:describe FORM`, or ordinary Common
+Lisp forms; `:paste` accepts multiline input ending with `:end`. Definitions
+survive between requests. `:load PATH` loads a source file on the server;
 `:acl2 FORM` submits an ordinary ACL2 event to the live logical world, where the
 loaded world's metadata must support admission. A refused event reports failure;
-earlier successful events in that batch remain admitted. `PROGN` batches Lisp forms.
-Admission allows 200,000 prover steps per submitted form by default. Use
+earlier successful events in that batch remain admitted. `PROGN` batches Lisp
+forms. Admission allows 200,000 prover steps per submitted form by default. Use
 `repl --prover-steps N` to change the allowance for interactive `:acl2` commands,
 or `(fnn-dev-admit '((defthm ...)) :step-limit N)` in Lisp. Exhaustion reports a
 controlled refusal and keeps the world available for the next command; it does
 not change the world's ordinary prover allowance. `:step-limit nil` explicitly
 uses that ordinary allowance. This limits ACL2 proof search, not elapsed time,
 arbitrary Lisp evaluation, source loading, or all event computation.
-`--eval '(+ 20 22)'` is the noninteractive form. The existing `fn acl2 session`
-starts a separate process; this socket attaches to an already running owner.
+`--eval '(+ 20 22)'` is the noninteractive form; `fn operator CONFIG eval` reads
+one form from standard input and exits 0 (evaluated), 1 (the form failed), 2
+(refused, the reason on standard error) or 3 (no reply: the form may have run).
+The existing `fn acl2 session` starts a separate process; `eval` attaches to an
+already running owner.
 
 `:trace on` starts bounded structured timing plus **process-wide allocation**
 sampling; `:trace timing` records only timing. Run work, use `:trace report`,
@@ -1411,17 +1421,32 @@ then `:trace off`. Allocation deltas include concurrent threads and nested
 spans; they do not measure retained heap. An active report may show incomplete
 spans. Output truncation and trace-buffer drops are reported separately.
 
-This is an explicit trusted debugger, enabled only on a developer process.
-The socket is mode 0600 and verifies the connecting UID; existing paths are
-never replaced. Forms execute serially inside the owner boundary, with
-`*fnn-dev-service*` bound to that owner. They can change code and state: do not
-nest owner entry or assume arbitrary edits preserve invariants. Evaluation
-errors follow the owner's normal fault/fence rules. A long-running form holds
-the owner; closing the client or its observation timeout does not cancel it.
-Inputs are limited to 65,536 UTF-8 bytes and captured output to 65,536 characters,
-with an explicit truncation marker. Reader evaluation (`#.`) is disabled.
-Production startup refuses this selector; ordinary protocol data never enters
-this evaluator.
+ACL2 decides admission (`fn-deval-admit`, `books/developer-eval.lisp`): the
+image was saved with the developer profile, the peer's UID (the operating
+system's observation on the control socket) is the node process's own UID, the
+request frame is at most 65,582 octets (a form of at most 65,536 octets), and the
+node is not stopping. A request that fails a condition is answered with its
+refusal by name (`not-developer`, `not-the-operator`, `too-large`, `stopping`)
+and nothing is evaluated.
+
+Every use is logged before it runs. The service log gets
+`developer-eval begin uid=UID form-octets=N form-digest=BLAKE3-HEX time=T`
+before the form is evaluated, then `developer-eval end status=ok|error
+output-octets=N duration-ms=N`; a refused request gets `developer-eval refused
+reason=REASON`. A form that faults the owner leaves its `begin` line and no
+`end` line. The decision journal gets an entry of operation 8 (`developer-eval`)
+before the form's effects; `fn-otm-replay` stops there with
+`replay=hand-touched-at-SEQ`, because from that entry the node's decisions may
+no longer follow from the journal.
+
+This is an explicit trusted debugger. Forms execute serially inside the owner
+boundary, with `*fnn-dev-service*` bound to that owner. They can change code and
+state: do not nest owner entry or assume arbitrary edits preserve invariants.
+Evaluation errors follow the owner's normal fault/fence rules. A long-running
+form holds the owner; closing the client or its observation timeout does not
+cancel it. Captured output is limited to 65,536 characters, with an explicit
+truncation marker. Reader evaluation (`#.`) is disabled. Ordinary protocol data
+never enters this evaluator.
 
 
 Large local submissions receive a reply observation budget that grows with the
