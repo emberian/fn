@@ -41,6 +41,7 @@
 ; Prefix `fn-ks-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "control-authority")
+(include-book "def-loop")
 (include-book "peer-authored-accept")
 (include-book "history-wire")
 
@@ -139,47 +140,15 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-ks-values-loop (prefix rev acc)
-  (declare (xargs :guard (consp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-ks-values-loop prefix
-                         (cdr rev)
-                         (let ((rest (fn-ks-prefix-rest prefix (car rev)))
-                               (more acc))
-                           (if (equal rest :no)
-                               more
-                             (cons t
-                                   (append (if (true-listp rest) rest nil) (cdr more))))))
-    acc))
-
-(defun fn-ks-values (prefix lines)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp lines)
-           (let ((rest (fn-ks-prefix-rest prefix (car lines)))
-                 (more (fn-ks-values prefix (cdr lines))))
-             (if (equal rest :no) more
-               (cons t (append (if (true-listp rest) rest nil) (cdr more)))))
-         (cons nil nil))
-       :exec (fn-ks-values-loop prefix (fn-ag-rev-onto lines nil) (cons nil nil))))
-
-(local
- (defthm fn-ks-values-loop-of-rev-onto
-   (equal (fn-ks-values-loop prefix (fn-ag-rev-onto lines zs) (cons nil nil))
-          (fn-ks-values-loop prefix zs (fn-ks-values prefix lines)))
-   :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-ks-values-loop fn-ks-values fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-ks-values-loop)
-
-(verify-guards fn-ks-values
-  :hints (("Goal" :in-theory (union-theories '(fn-ks-values fn-ks-values-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-ks-values-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-ks-values (prefix lines)
+  :shape :foldr :over lines :elt l
+  :combine (let ((rest (fn-ks-prefix-rest prefix l)) (more acc))
+                (if (equal rest :no)
+                    more
+                    (cons t (append (if (true-listp rest) rest nil) (cdr more)))))
+  :init (cons nil nil)
+  :rev fn-ag-rev-onto
+  :loop-guard (consp acc))
 
 (defun fn-ks-field (lines prefix)
   (declare (xargs :guard t))
