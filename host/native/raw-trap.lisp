@@ -96,12 +96,12 @@ for any caller to set: the counterpart evaluates the entry's whole guard.")
 (let* ((slot (make-symbol "FNN-RAW-EXTENT"))   ; the per-thread slot
        (slots (list slot))
        (on (list t))
-       (dispatch (make-hash-table :test 'eq))   ; entry name -> raw symbol
-       (creators (make-hash-table :test 'eq))   ; entry name -> t (startup creators)
-       (callbacks (make-hash-table :test 'eq))  ; entry name -> extent-entering closure
-       (captured (make-hash-table :test 'eq))   ; raw symbol -> function object
-       (traps (make-hash-table :test 'eq))      ; raw symbol -> its trap
-       (arities (make-hash-table :test 'eq))    ; raw symbol -> formals count, -1 unknown
+       (dispatch (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; entry name -> raw symbol
+       (creators (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; entry name -> t (startup creators)
+       (callbacks (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; entry name -> extent-entering closure
+       (captured (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> function object
+       (traps (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> its trap
+       (arities (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> formals count, -1 unknown
        (sealed nil)
        (session-p nil))
   (proclaim `(special ,slot))

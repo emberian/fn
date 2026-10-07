@@ -142,14 +142,14 @@ class GeneratedScannerTests(unittest.TestCase):
         self.assertNotIn('fn-read', {name for name, _, _ in spans})
 
     def test_generated_names_reach_book_and_protocol_indexes(self):
-        import build_lists_check
+        import host_check
         import protocol_emit
         import protocol_rows
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / 'books').mkdir()
             (root / 'books/toy.lisp').write_text(LOOP)
-            index = build_lists_check.BookIndex(root)
+            index = host_check.BookIndex(root)
             self.assertIn('fn-scan-loop', index.defs('books/toy.lisp'))
             with patch.object(protocol_emit, 'ROOT', root):
                 self.assertIn('fn-scan-loop', protocol_emit.defined_functions())
