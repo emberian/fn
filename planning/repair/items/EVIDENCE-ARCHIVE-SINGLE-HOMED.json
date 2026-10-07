@@ -1,0 +1,12 @@
+{
+ "file": "tools/evidence_store.py",
+ "id": "EVIDENCE-ARCHIVE-SINGLE-HOMED",
+ "note": "fix: a second archive location (persvati) that evidence_store.py put writes when hbox is unreachable; a reconcile step copies to hbox and verifies by hash when it returns; the index line (sha256, bytes, logical path) is the same either way. Observed: train 20's regen refused at cite (ssh exit 255 to hbox:/tank/fn/evidence); chain_schedule on persvati paid an ssh timeout per uncached manifest until the laptop cache was seeded.",
+ "notes": [],
+ "owner": "C",
+ "severity": "high",
+ "source": "2026-10-07 hbox outage (from ~14:20 EDT); coordinator ruling",
+ "state": "open",
+ "title": "The evidence archive is single-homed on hbox: while hbox is unreachable evidence_manifests add refuses (UNAVAILABLE), so no certify can be cited and every books merge stops",
+ "updated": "2026-10-07T19:26:12Z"
+}
