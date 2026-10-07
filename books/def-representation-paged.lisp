@@ -345,6 +345,27 @@
   :rule-classes :linear
   :hints (("Goal" :use adt-pg-floor-mod)))
 
+(defthm adt-pg-mod-nonneg
+  (implies (and (natp n) (posp r))
+           (<= 0 (mod n r)))
+  :rule-classes :linear
+  :hints (("Goal" :use adt-pg-floor-mod)))
+
+(defthm adt-pg-floor-nonneg
+  (implies (and (natp n) (posp r))
+           (<= 0 (floor n r)))
+  :rule-classes :linear
+  :hints (("Goal" :use adt-pg-floor-mod)))
+
+; The page a position lies in starts at or below it and ends above it
+; (the per-page loops' bounds).
+(defthm adt-pg-floor-bounds
+  (implies (and (natp n) (posp r))
+           (and (<= (* r (floor n r)) n)
+                (< n (+ r (* r (floor n r))))))
+  :rule-classes :linear
+  :hints (("Goal" :use adt-pg-floor-mod)))
+
 ; Exported type fact: an instance's guard needs the index in the page to be a
 ; number even in a caller's theory without arithmetic books (def-representation-
 ; tests' drt-held$c-addrow failed its guard there: (rationalp (mod np 64))).
@@ -598,6 +619,16 @@
 
 (defconst *adt-pg-tpages* 64)
 (defconst *adt-pg-dir-reserve* 256)
+
+; The body BODY with the natural N known to be a 60-bit fixnum on its fast
+; path: the executables' page arithmetic (division and remainder by the
+; page and table sizes) is shifts and masks there, generic arithmetic
+; past 2^60 (no stobj holds that many octets).  Both branches are BODY, so
+; logically this is BODY.
+(defmacro adt-pg-fast (n body)
+  `(if (< ,n 1152921504606846976)
+       (let ((,n (the (unsigned-byte 60) ,n))) ,body)
+     ,body))
 
 (defun adt-pg-dokp (tsz np dir)
   (declare (xargs :guard (and (natp tsz) (natp np)) :verify-guards nil :measure (nfix np)))
@@ -1772,10 +1803,13 @@
 
 ; M zeros consed onto ACC.
 (defun adt-pg-zeros (m acc)
-  (declare (xargs :measure (nfix m) :verify-guards nil))
+  (declare (xargs :measure (nfix m) :guard t :verify-guards t))
   (if (and (natp m) (< 0 m))
       (adt-pg-zeros (+ -1 m) (cons 0 acc))
     acc))
+
+(defthm adt-pg-true-listp-of-zeros
+  (implies (true-listp acc) (true-listp (adt-pg-zeros m acc))))
 
 ; The octets LO..P-1 of BYTES, consed onto ACC from the top (the order
 ; `adt-pg-poolr' conses in).
@@ -1784,6 +1818,9 @@
   (if (and (natp p) (natp lo) (< lo p))
       (adt-pg-pslice (+ -1 p) lo (cons (nth (+ -1 p) bytes) acc) bytes)
     acc))
+
+(defthm adt-pg-true-listp-of-pslice
+  (implies (true-listp acc) (true-listp (adt-pg-pslice p lo acc bytes))))
 
 ; The octets LO..P-1 of pool page K consed onto ACC: those below the
 ; length of the page's array are its elements, the rest zeros.
@@ -2097,6 +2134,13 @@
                             (q 16384))
                  (:instance adt-pg-poolw-in-page (k (floor i 16384)) (jo (mod i 16384))
                             (chunk (take (min (len bytes) (- 16384 (mod i 16384))) bytes)))))))
+
+; The page of a pool whose first column is non-empty is a cons (the loops
+; over one page's stobj, NAME$PP-COPY, are stated for a cons).
+(defthm adt-pg-consp-when-nth0-len-pos
+  (implies (< 0 (len (nth 0 x))) (consp x))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable nth))))
 
 (in-theory (disable adt-pg-poolw adt-pg-poolr))
 
