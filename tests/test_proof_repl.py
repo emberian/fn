@@ -1076,10 +1076,13 @@ class GraphTests(unittest.TestCase):
                 key = proof_repl.certs.closure_key(root, "books/base")[0]
                 entry = cache / key / "0123456789abcdef"
                 entry.mkdir(parents=True)
-                (entry / "meta.json").write_text(json.dumps({"toolchain_identity": "d5f2b9f0" * 8}))
+                (entry / "meta.json").write_text(json.dumps(
+                    {"toolchain_identity": "d5f2b9f0" * 8, "origin_host": "hbox",
+                     "origin_root": "/farm/base"}))
                 graph = proof_repl.include_graph(root, "books/mid")
                 text = "\n".join(proof_repl.diagnose(graph, ["books/base"], cache, "1b4169e9" * 8))
-        self.assertIn("only for ACL2 toolchain(s) d5f2b9f0, and this ACL2 is 1b4169e9", text)
+        self.assertIn("only for ACL2 toolchain(s) d5f2b9f0 (origin hbox:/farm/base), "
+                      "and this ACL2 is 1b4169e9", text)
 
 
 class UncompiledDiagnosisTests(unittest.TestCase):
@@ -1100,6 +1103,52 @@ class UncompiledDiagnosisTests(unittest.TestCase):
 
 class CacheStartupTests(unittest.TestCase):
     def test_incompatible_cached_parent_and_child_refuse_without_session(self):
+        # --cached-only keeps the refusal: no certification, no session.
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            older = worktree(str(base / "older"), certified=["books/base"])
+            parent = worktree(str(base / "parent"), certified=["books/mid"])
+            target = worktree(str(base / "target"), certified=["books/base", "books/mid"])
+            cache = base / "cache"
+            toolchain = proof_repl.certs.stable_identity(TEST_COMPATIBILITY)
+            for source, name, origin in (
+                    (older, "books/base", "/farm/base"),
+                    (parent, "books/mid", "/farm/parent")):
+                proof_repl.certs.publish(
+                    source, cache, [manifest_for(source, [name], write=False)],
+                    [name], origin=origin, origin_kind="run")
+            fake_acl2 = base / "acl2"
+            fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+            fake_acl2.chmod(0o755)
+            sessions = base / "sessions"
+            args = SimpleNamespace(name="bad-cache", book="tests/acl2/mid-tests", cached_only=True)
+            with mock.patch.object(proof_repl, "ROOT", target), \
+                 mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                 mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+                 mock.patch.object(proof_repl.certs, "cache_directory",
+                                   return_value=cache), \
+                 mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                                   return_value=SimpleNamespace(
+                                       qualified=True, identity=toolchain,
+                                       reason="")), \
+                 mock.patch.object(proof_repl.acl2_slots, "slot",
+                                   side_effect=lambda label: nullcontext()), \
+                 mock.patch.object(proof_repl.certs.cert_alists,
+                                   "acl2_certificate_pairs",
+                                   side_effect=lambda paths, pairs, acl2, root:
+                                       {pair: (True, False) for pair in pairs}), \
+                 mock.patch.object(proof_repl.subprocess, "run") as certify, \
+                 mock.patch.object(proof_repl.subprocess, "Popen") as launched:
+                self.assertEqual(proof_repl.start(args), 1)
+                launched.assert_not_called()
+                certify.assert_not_called()
+            self.assertFalse((sessions / "bad-cache").exists())
+            self.assertFalse((target / "books/base.cert").exists())
+            self.assertFalse((target / "books/mid.cert").exists())
+
+    def test_incompatible_cached_parent_and_child_certify_by_default(self):
+        # The new rule: without --cached-only the miss certifies (here the fake
+        # certify run fails, so no session starts), naming the books and origins.
         with tempfile.TemporaryDirectory() as temporary:
             base = pathlib.Path(temporary)
             older = worktree(str(base / "older"), certified=["books/base"])
@@ -1133,9 +1182,18 @@ class CacheStartupTests(unittest.TestCase):
                                    "acl2_certificate_pairs",
                                    side_effect=lambda paths, pairs, acl2, root:
                                        {pair: (True, False) for pair in pairs}), \
-                 mock.patch.object(proof_repl.subprocess, "Popen") as launched:
+                 mock.patch.object(proof_repl.subprocess, "run",
+                                   return_value=subprocess.CompletedProcess([], 1)) as certify, \
+                 mock.patch.object(proof_repl.subprocess, "Popen") as launched, \
+                 contextlib.redirect_stdout(io.StringIO()) as out:
                 self.assertEqual(proof_repl.start(args), 1)
                 launched.assert_not_called()
+                command = certify.call_args.args[0]
+                self.assertIn("--incremental", command)
+                self.assertTrue(any(word.startswith("books/") for word in command), command)
+                text = out.getvalue()
+                self.assertIn("certifying into this machine's cache", text)
+                self.assertIn("/farm/", text)
             self.assertFalse((sessions / "bad-cache").exists())
             self.assertFalse((target / "books/base.cert").exists())
             self.assertFalse((target / "books/mid.cert").exists())
@@ -2985,85 +3043,178 @@ class SameLaneTreeTests(unittest.TestCase):
         self.assertEqual(done.stdout.split(), ["s1"], done.stderr)
 
 
-class ChangedDependencyTests(unittest.TestCase):
-    """obstructions-9 item 82 (operability-7): a --host start on a book whose
-    closure holds a book this branch changed loads it from source, and says
-    so BEFORE the sync, instead of the box refusing after it."""
+class CertifyByDefaultTests(unittest.TestCase):
+    """A cache miss without source flags certifies into this machine's cache.
 
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.root = worktree(self.tmp.name + "/tree")
+    Before (item 82), a `--host` start forwarded every dependency this branch
+    changed as `--ld`, so a plain start died loading it from source; the
+    laptop and an uncached tree simply refused.  Now source loading happens
+    only when asked, and a miss certifies unless --cached-only.
+    """
 
-        def g(*words):
-            subprocess.run(["git", "-C", str(self.root), "-c", "commit.gpgsign=false",
-                            "-c", "user.name=t", "-c", "user.email=t@t", *words],
-                           check=True, capture_output=True)
-        g("init", "-q", "-b", "lane")
-        g("add", ".")
-        g("commit", "-q", "-m", "base")
-        g("update-ref", "refs/remotes/origin/dev", "HEAD")
-        (self.root / "books" / "base.lisp").write_text(
-            (self.root / "books" / "base.lisp").read_text() + "; changed on the lane\n")
-        self.patch = mock.patch.object(proof_repl, "ROOT", self.root)
-        self.patch.start()
+    FOREIGN = dict(TEST_COMPATIBILITY, core_sha256="9" * 64)
 
-    def tearDown(self):
-        self.patch.stop()
-        self.tmp.cleanup()
+    def run_install(self, temporary, foreign=(), local=(), auto="certify", ld=(),
+                    platform="linux"):
+        from tests.test_certs import SERIALIZED
+        root = worktree(temporary + "/tree", certified=sorted({*foreign, *local}))
+        cache = pathlib.Path(temporary) / "cache"
+        fake_acl2 = pathlib.Path(temporary) / "acl2"
+        fake_acl2.write_text("#!/bin/sh\nexit 0\n")
+        fake_acl2.chmod(0o755)
+        for names, compatibility, host in ((foreign, self.FOREIGN, "hbox"),
+                                           (local, TEST_COMPATIBILITY, "here")):
+            for name in names:
+                manifest = manifest_for(root, [name], write=False)
+                manifest["acl2_compatibility"] = compatibility
+                manifest["acl2_toolchain_identity"] = proof_repl.certs.stable_identity(
+                    compatibility)
+                manifest["compiled_digests_sha256"] = {
+                    name: proof_repl.certs.content_hash(root / f"{name}.fasl")}
+                proof_repl.certs.publish(root, cache, [manifest], [name],
+                                         origin=f"/{host}/run-{name}", origin_kind="run",
+                                         origin_host=host)
+        certified = []
 
-    def test_the_changed_dependency_is_named_and_a_named_one_is_not(self):
-        self.assertEqual(proof_repl.changed_dependencies("tests/acl2/mid-tests"), ["books/base"])
-        self.assertEqual(proof_repl.changed_dependencies("tests/acl2/mid-tests", ["base"]), [])
-        # The session's own book is never a dependency of itself.
-        self.assertEqual(proof_repl.changed_dependencies("books/base"), [])
+        def certify(command, cwd=None, stdout=None, stderr=None):
+            books = [word for word in command if word.startswith("books/")]
+            certified.extend(books)
+            for name in books:
+                (root / f"{name}.cert").write_bytes(SERIALIZED + name.encode())
+                (root / f"{name}.port").write_text("; port\n")
+                (root / f"{name}.fasl").write_bytes(b"FASL " + name.encode())
+                manifest = manifest_for(root, [name], write=False)
+                manifest["compiled_digests_sha256"] = {
+                    name: proof_repl.certs.content_hash(root / f"{name}.fasl")}
+                proof_repl.certs.publish(root, cache, [manifest], [name], origin=str(root))
+            return subprocess.CompletedProcess(command, 0)
 
-    def test_a_host_start_forwards_it_as_ld_before_syncing(self):
-        seen, events, real_run = [], [], subprocess.run
-        args = SimpleNamespace(command="start", name="s82", lane="l", remote_tree=None,
-                               host="hbox", book="tests/acl2/mid-tests", ld=[],
-                               source_deps=None, ld_missing=False, certify_missing=False,
-                               no_sync=False, acl2=None)
-        out = io.StringIO()
-        with mock.patch.object(proof_repl, "box_settings",
-                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
-                mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
-                mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
-                mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
-                mock.patch.object(proof_repl, "sync_to",
-                                  lambda host, tree, files: events.append(("sync", files)) or 0.0), \
-                mock.patch.object(proof_repl.subprocess, "run",
-                                  lambda command, **kw: real_run(command, **kw)
-                                  if command[0] == "git" else seen.append(command)
-                                  or SimpleNamespace(returncode=0)), \
-                contextlib.redirect_stdout(out):
-            proof_repl.run_remote(args, ["start", "s82", "tests/acl2/mid-tests",
-                                         "--host", "hbox"])
-        self.assertIn("1 dependency of tests/acl2/mid-tests changed on this branch (no box has "
-                      "their certificates): books/base; loading them from source", out.getvalue())
-        self.assertIn("books/base.lisp", events[0][1])
-        self.assertIn("--ld books/base", seen[-1][-1])
+        with mock.patch.object(proof_repl, "ROOT", root), \
+             mock.patch.dict(os.environ, {"FN_ACL2": str(fake_acl2)}), \
+             mock.patch.object(proof_repl.certs, "cache_directory", return_value=cache), \
+             mock.patch.object(proof_repl.sys, "platform", platform), \
+             mock.patch.object(proof_repl.acl2_toolchain, "fingerprint",
+                               return_value=SimpleNamespace(
+                                   qualified=True,
+                                   identity=proof_repl.certs.stable_identity(TEST_COMPATIBILITY),
+                                   reason="")), \
+             mock.patch.object(proof_repl.acl2_slots, "slot",
+                               side_effect=lambda label: nullcontext()), \
+             mock.patch.object(proof_repl.certs.cert_alists, "acl2_certificate_pairs",
+                               side_effect=lambda paths, pairs, acl2, root:
+                                   {pair: (True, True) for pair in pairs}), \
+             mock.patch.object(proof_repl.subprocess, "run", certify):
+            ok, detail, order = proof_repl.install_closure(
+                "tests/acl2/mid-tests", list(ld), auto)
+        return ok, detail, order, certified
 
-    def test_certify_missing_or_bare_source_deps_leave_it_to_the_box(self):
-        for extra in ({"certify_missing": True}, {"source_deps": "*"}, {"ld_missing": True}):
-            args = dict(source_deps=None, ld_missing=False, certify_missing=False)
-            args.update(extra)
-            seen = []
-            with mock.patch.object(proof_repl, "box_settings",
-                                   lambda host: {"acl2": "acl2", "cache": "/c"}), \
+    def args(self, **options):
+        base = dict(ld=[], source_deps=None, ld_missing=False, certify_missing=False,
+                    cached_only=False)
+        base.update(options)
+        return SimpleNamespace(**base)
+
+    def test_laptop_toolchain_mismatch_certifies_here_labelled_laptop_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ok, detail, _, certified = self.run_install(
+                temporary, foreign=["books/base", "books/mid"], platform="darwin")
+        self.assertTrue(ok, detail)
+        self.assertIn("books/base", certified)
+        self.assertIn("ACL2 toolchain(s) " + proof_repl.certs.stable_identity(
+            self.FOREIGN)[:8], detail)
+        self.assertIn("hbox", detail)
+        self.assertIn(proof_repl.certs.stable_identity(TEST_COMPATIBILITY)[:8], detail)
+        self.assertIn("LAPTOP-ONLY", detail)
+        self.assertIn("never evidence of record", detail)
+
+    def test_mixed_origin_cache_names_the_book_and_both_origins_and_certifies(self):
+        # mid certified here, its dependency base only by another toolchain.
+        with tempfile.TemporaryDirectory() as temporary:
+            ok, detail, _, certified = self.run_install(
+                temporary, foreign=["books/base"], local=["books/mid"])
+        self.assertTrue(ok, detail)
+        self.assertEqual(certified[0], "books/base")
+        self.assertIn("hbox", detail)
+        self.assertIn(proof_repl.certs.stable_identity(TEST_COMPATIBILITY)[:8], detail)
+        self.assertNotIn("LAPTOP-ONLY", detail)
+
+    def test_plain_miss_certifies_by_default_and_says_why(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ok, detail, _, certified = self.run_install(temporary)
+        self.assertTrue(ok, detail)
+        self.assertEqual(certified[0], "books/base")
+        self.assertIn("was ever published to this cache", detail)
+        self.assertIn("--cached-only refuses instead", detail)
+        self.assertEqual(proof_repl.start_auto(self.args()), "certify")
+
+    def test_cached_only_refuses_and_certifies_nothing(self):
+        auto = proof_repl.start_auto(self.args(cached_only=True))
+        self.assertIsNone(auto)
+        with tempfile.TemporaryDirectory() as temporary:
+            ok, detail, _, certified = self.run_install(temporary, auto=auto)
+        self.assertFalse(ok)
+        self.assertIn("REFUSED", detail)
+        self.assertEqual(certified, [])
+
+    def test_explicit_source_deps_still_load_from_source_and_certify_nothing(self):
+        for options in ({"source_deps": "books/base"}, {"ld": ["books/base"]}):
+            auto = proof_repl.start_auto(self.args(**options))
+            self.assertIsNone(auto, options)
+            with tempfile.TemporaryDirectory() as temporary:
+                ok, detail, order, certified = self.run_install(
+                    temporary, auto=auto, ld=["books/base"])
+            self.assertTrue(ok, detail)
+            self.assertEqual(order, ["books/base", "books/mid"])
+            self.assertEqual(certified, [])
+        self.assertEqual(proof_repl.start_auto(self.args(source_deps="*")), "ld")
+        self.assertEqual(proof_repl.start_auto(self.args(ld_missing=True)), "ld")
+
+    def test_start_passes_the_default_to_install_closure(self):
+        for options, expected in (({}, "certify"), ({"cached_only": True}, None),
+                                  ({"source_deps": "books/base"}, None)):
+            with tempfile.TemporaryDirectory() as tmp:
+                sessions = pathlib.Path(tmp)
+                fd = os.open(sessions / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+                args = self.args(name="dflt", book="books/example", **options)
+                with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                        mock.patch.object(proof_repl, "open_session_lock", return_value=fd), \
+                        mock.patch.object(proof_repl, "install_closure",
+                                          return_value=(False, "stop", [])) as install, \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    proof_repl._start(args)
+                self.assertEqual(install.call_args.args[2], expected, options)
+
+    def test_a_host_start_forwards_no_ld_for_books_this_branch_changed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = worktree(tmp + "/tree")
+            for words in (("init", "-q", "-b", "lane"), ("add", "."),
+                          ("commit", "-q", "-m", "base"),
+                          ("update-ref", "refs/remotes/origin/dev", "HEAD")):
+                subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false",
+                                "-c", "user.name=t", "-c", "user.email=t@t", *words],
+                               check=True, capture_output=True)
+            (root / "books" / "base.lisp").write_text(
+                (root / "books" / "base.lisp").read_text() + "; changed on the lane\n")
+            seen, real_run = [], subprocess.run
+            args = SimpleNamespace(command="start", name="dflt", lane="l", remote_tree=None,
+                                   host="hbox", book="tests/acl2/mid-tests", ld=[],
+                                   source_deps=None, ld_missing=False, certify_missing=False,
+                                   no_sync=False, acl2=None)
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "box_settings",
+                                      lambda host: {"acl2": "acl2", "cache": "/c"}), \
                     mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
                     mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
                     mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
                     mock.patch.object(proof_repl, "sync_to", lambda *a: 0.0), \
                     mock.patch.object(proof_repl.subprocess, "run",
-                                      lambda command, **kw: seen.append(command)
+                                      lambda command, **kw: real_run(command, **kw)
+                                      if command[0] == "git" else seen.append(command)
                                       or SimpleNamespace(returncode=0)), \
                     contextlib.redirect_stdout(io.StringIO()):
-                proof_repl.run_remote(SimpleNamespace(
-                    command="start", name="s82", lane="l", remote_tree=None, host="hbox",
-                    book="tests/acl2/mid-tests", ld=[], no_sync=False, acl2=None, **args),
-                    ["start", "s82", "tests/acl2/mid-tests", "--host", "hbox"])
-            self.assertNotIn("--ld books/base", seen[-1][-1], extra)
-
+                proof_repl.run_remote(args, ["start", "dflt", "tests/acl2/mid-tests",
+                                             "--host", "hbox"])
+        self.assertNotIn("--ld", seen[-1][-1])
 
 
 class CachedOnlyTests(unittest.TestCase):
@@ -3098,15 +3249,12 @@ class CachedOnlyTests(unittest.TestCase):
                 mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
                 mock.patch.object(proof_repl, "sync_files", return_value=[]), \
                 mock.patch.object(proof_repl, "sync_to", lambda *a: 0.0), \
-                mock.patch.object(proof_repl, "changed_dependencies",
-                                  return_value=["books/base"]) as changed, \
                 mock.patch.object(proof_repl.subprocess, "run",
                                   lambda command, **kw: seen.append(command)
                                   or SimpleNamespace(returncode=0)), \
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(proof_repl.run_remote(args,
                 ["start", "cached", "books/example", "--host", "hbox", "--cached-only"]), 0)
-        changed.assert_not_called()
         self.assertIn("--cached-only", seen[-1][-1])
         self.assertNotIn("--ld", seen[-1][-1])
 

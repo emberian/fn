@@ -60,7 +60,7 @@ HBOX_CMD = (
     "python3 tools/host_check.py --read && python3 tools/host_check.py --world"
 )
 
-GATES = ("ancestor", "ledger", "current_view", "host_load", "lock_delta", "secrets")
+GATES = ("ancestor", "ledger", "current_view", "main_last", "host_load", "lock_delta", "secrets")
 
 
 class TrainError(Exception):
@@ -366,6 +366,9 @@ def cmd_gate(t: Train, args) -> int:
     rec("ancestor", anc)
     rec("ledger", t.run("gate-ledger", [PY, "tools/ledger.py", "--check"]))
     rec("current_view", t.run("gate-current_view", [PY, "tools/current_view.py", "--check"]))
+    # check-fast's main_last_check: a test file whose __main__ block is not last
+    # silently skips every class after it (dev d67a244fa, tests/test_image_set.py)
+    rec("main_last", t.run("gate-main_last", [PY, "tools/main_last_check.py"]))
 
     host = git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "host").stdout.split()
     if host:
