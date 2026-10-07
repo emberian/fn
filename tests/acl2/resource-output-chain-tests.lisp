@@ -384,3 +384,18 @@
   :breaks ((installed ((policy nil)) :lemma rcx-fn-rlo-install-bank-correspondence-without-installed))
   :mutations ((grant-parts-swapped (:conclusion (let ((grant (fn-orv-startup-grant dynamic store-need cold policy slots))) (equal (fn-rl-bank (mv-nth 1 (fn-rlo-install dynamic store-need cold policy slots ledger))) (fn-rl-bank (mv-nth 1 (fn-rl-install (fn-rlo-resident-vector (nth 3 grant)) (fn-rlo-resident-vector (nth 1 grant)) (fn-rlo-resident-vector (nth 2 grant)) slots ledger)))))) ((dynamic 1073741824) (store-need 536870912) (cold nil) (policy '(16777216 1048576)) (slots 4) (ledger (rcx-l0))) :fault "an install that charges the store and dynamic grants the wrong way round" :lemma rcx-fn-rlo-install-bank-correspondence-mutant-grant-parts-swapped)))
 
+
+(defthm rcx-fn-rlo-issue-drawn-bank-correspondence-witness
+  (and (eq (mv-nth 0 (fn-rlo-issue 7 11 8 :issued (rcx-l1))) :drawn) (equal (fn-rl-bank (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1)))) (fn-rl-bank (mv-nth 2 (fn-rl-draw (fn-rl-next (rcx-l1)) (fn-rlo-resident-vector (fn-rl-file-limit (rcx-l1))) (rcx-l1)))))))
+(defthm rcx-fn-rlo-issue-drawn-bank-correspondence-without-drawn
+  (and (not (eq (mv-nth 0 (fn-rlo-issue -1 11 8 :issued (rcx-l1))) :drawn)) (not (equal (fn-rl-bank (mv-nth 2 (fn-rlo-issue -1 11 8 :issued (rcx-l1)))) (fn-rl-bank (mv-nth 2 (fn-rl-draw (fn-rl-next (rcx-l1)) (fn-rlo-resident-vector (fn-rl-file-limit (rcx-l1))) (rcx-l1))))))))
+(defthm rcx-fn-rlo-issue-drawn-bank-correspondence-mutant-bank-unchanged
+  (and (eq (mv-nth 0 (fn-rlo-issue 7 11 8 :issued (rcx-l1))) :drawn) (equal (fn-rl-bank (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1)))) (fn-rl-bank (mv-nth 2 (fn-rl-draw (fn-rl-next (rcx-l1)) (fn-rlo-resident-vector (fn-rl-file-limit (rcx-l1))) (rcx-l1))))) (not (equal (fn-rl-bank (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1)))) (fn-rl-bank (rcx-l1))))))
+(defteeth fn-rlo-issue-drawn-bank-correspondence
+  :claim (((drawn (eq (mv-nth 0 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)) :drawn))) (equal (fn-rl-bank (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))) (fn-rl-bank (mv-nth 2 (fn-rl-draw (fn-rl-next ledger) (fn-rlo-resident-vector (fn-rl-file-limit ledger)) ledger)))))
+  :subject fn-rlo-issue
+  :witness-lemma rcx-fn-rlo-issue-drawn-bank-correspondence-witness
+  :witness ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1)))
+  :breaks ((drawn ((cid -1)) :lemma rcx-fn-rlo-issue-drawn-bank-correspondence-without-drawn))
+  :mutations ((bank-unchanged (:conclusion (equal (fn-rl-bank (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger))) (fn-rl-bank ledger))) ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1))) :fault "an issue that draws a slot without charging the bank" :lemma rcx-fn-rlo-issue-drawn-bank-correspondence-mutant-bank-unchanged)))
+
