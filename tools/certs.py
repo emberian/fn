@@ -134,6 +134,7 @@ cache only moves its result to another worktree, where ACL2 checks it again.
 from __future__ import annotations
 
 import argparse
+import atexit
 import cert_alists
 import contextlib
 from contextlib import contextmanager
@@ -359,14 +360,85 @@ def kind_is_stated(origin_kind: str | None) -> bool:
 # re-hashed each entry's cert, port and fasl, and install-umbrellas
 # enumerates up to three times per run: on hbox's random-read-bound tank a
 # convergence-time install-umbrellas read 3 GB and ran past 20 minutes
-# (2026-10-07).  It never crosses processes.
+# (2026-10-07).
+#
+# Across processes (ruling 17, N-GATETIME's profile of a c3 gate on hbox at
+# load 17-23): every certs entry point -- the install step, the
+# incremental certify's install, acquire -- re-hashed the same ~20k closure
+# files in a fresh process; reads were 104 of 238 s in the first install and
+# ~300 s of the second, at ~13 ms a read under load.  Under
+# FN_CONTENT_HASH_FILE (tools/hbox_native.sh sets it to one file per run
+# tree) the memo is loaded from and merged back into that file, under the
+# same key, so a later process stats a file instead of reading it.  Without
+# the variable nothing is persisted (the laptop, the unit tests).
 _CONTENT_HASHES: dict[tuple, str] = {}
+CONTENT_HASH_FILE_ENV = "FN_CONTENT_HASH_FILE"
+_PERSISTED: dict = {"loaded": False, "new": {}}
+
+
+def _hash_file() -> Path | None:
+    value = os.environ.get(CONTENT_HASH_FILE_ENV)
+    return Path(value) if value else None
+
+
+def _key_text(key: tuple) -> str:
+    return ":".join(str(part) for part in key)
+
+
+def _load_persisted_hashes() -> None:
+    _PERSISTED["loaded"] = True
+    where = _hash_file()
+    if where is None:
+        return
+    try:
+        stored = json.loads(where.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(stored, dict):
+        return
+    for text, digest in stored.items():
+        parts = text.split(":")
+        if len(parts) == 5 and isinstance(digest, str) and len(digest) == 64:
+            try:
+                _CONTENT_HASHES.setdefault(tuple(int(p) for p in parts), digest)
+            except ValueError:
+                continue
+
+
+def flush_persisted_hashes() -> None:
+    """Merge this process's new digests into FN_CONTENT_HASH_FILE (locked,
+    atomic replace).  Registered at exit; harmless to call more than once."""
+    where, new = _hash_file(), _PERSISTED["new"]
+    if where is None or not new:
+        return
+    try:
+        where.parent.mkdir(parents=True, exist_ok=True)
+        with open(str(where) + ".lock", "a+b") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                merged = json.loads(where.read_text(encoding="utf-8"))
+                if not isinstance(merged, dict):
+                    merged = {}
+            except (OSError, ValueError):
+                merged = {}
+            merged.update({_key_text(k): v for k, v in new.items()})
+            temporary = where.with_name(where.name + f".{os.getpid()}.tmp")
+            temporary.write_text(json.dumps(merged, sort_keys=True), encoding="utf-8")
+            os.replace(temporary, where)
+        new.clear()
+    except OSError:
+        pass
+
+
+atexit.register(flush_persisted_hashes)
 
 
 def content_hash(path: Path) -> str:
     status = os.stat(path)
     key = (status.st_dev, status.st_ino, status.st_size, status.st_mtime_ns,
            status.st_ctime_ns)
+    if not _PERSISTED["loaded"]:
+        _load_persisted_hashes()
     known = _CONTENT_HASHES.get(key)
     if known is not None:
         return known
@@ -378,6 +450,8 @@ def content_hash(path: Path) -> str:
     after = os.stat(path)
     if (after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) == key[1:]:
         _CONTENT_HASHES[key] = digest  # unchanged while it was read
+        if _hash_file() is not None:
+            _PERSISTED["new"][key] = digest
     return digest
 
 

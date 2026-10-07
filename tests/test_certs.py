@@ -2315,5 +2315,45 @@ class InstallOncePerRunTests(unittest.TestCase):
             self.assertIsNone(self.install(target, cache, ["books/base"], self.TOOLCHAIN).reused_from)
             self.assertGreater(self.calls, calls)
 
+
+class PersistedContentHashTests(unittest.TestCase):
+    """FN_CONTENT_HASH_FILE: a digest one process computed is a stat, not a
+    read, in the next; a changed file is read again; no variable, no file."""
+
+    def setUp(self):
+        certs._CONTENT_HASHES.clear()
+        certs._PERSISTED.update(loaded=False, new={})
+
+    tearDown = setUp
+
+    def test_a_later_process_reuses_the_digest_and_a_change_is_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = Path(directory) / "hashes.json"
+            path = Path(directory) / "f"
+            path.write_bytes(b"one")
+            with mock.patch.dict(os.environ, {"FN_CONTENT_HASH_FILE": str(store)}):
+                first = certs.content_hash(path)
+                certs.flush_persisted_hashes()
+                self.assertTrue(store.is_file())
+                self.setUp()  # a fresh process: empty memo, file not yet loaded
+                certs._load_persisted_hashes()
+                with mock.patch.object(certs.hashlib, "sha256",
+                                       side_effect=AssertionError("hashed again")):
+                    self.assertEqual(certs.content_hash(path), first)
+                path.write_bytes(b"two")
+                self.assertEqual(certs.content_hash(path),
+                                 hashlib.sha256(b"two").hexdigest())
+
+    def test_without_the_variable_nothing_is_written(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "f"
+            path.write_bytes(b"one")
+            env = {k: v for k, v in os.environ.items() if k != "FN_CONTENT_HASH_FILE"}
+            with mock.patch.dict(os.environ, env, clear=True):
+                certs.content_hash(path)
+                certs.flush_persisted_hashes()
+            self.assertEqual(certs._PERSISTED["new"], {})
+            self.assertEqual(sorted(p.name for p in Path(directory).iterdir()), ["f"])
+
 if __name__ == "__main__":
     unittest.main()

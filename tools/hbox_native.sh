@@ -461,6 +461,9 @@ export FN_ACL2=\$ACL2 FN_CERT_CACHE=\$CACHE FN_CERT_ORIGIN_KIND=run
 # the incremental certify share this id, so the certify reuses the install
 # step's selection instead of running it again.
 export FN_INSTALL_RUN=\$S-\$\$
+# One content-hash memo per run tree (tools/certs.py content_hash): the
+# install, certify and acquire steps stat a file another step already read.
+export FN_CONTENT_HASH_FILE=\$T/build/.content-hashes.json
 # The book reader's per-text cache (tools/ledger.py), shared by this box's
 # runs: content-addressed, so a fresh tree reads only what changed.
 export FN_LEDGER_FORMS_CACHE=\${FN_LEDGER_FORMS_CACHE:-$BASE/.ledger-forms}
