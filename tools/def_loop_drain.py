@@ -1185,6 +1185,7 @@ def analyse(text: str, book: str, other_text: dict | None = None):
         return ":guard" not in xa and ":stobjs" not in xa
     noguards = {n for n, f in by_name.items() if unverified(f)}
     conv, resid = [], []
+    moved = {}  # callee -> where its verify-guards now sits (a moved-up form)
     twin_names = {lf.name[:-5] for lf in loop_defuns(forms)}
     containers = {}
     for lf in loop_defuns(forms):
@@ -1265,9 +1266,12 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                 for t in (part if isinstance(part, list) else [part]):
                     if t is not None:
                         fn_names(t, names)
-            for callee in names:
-                if callee in noguards and vg_pos.get(callee, -1) > w.start:
-                    raise Refuse("late-guard", callee)
+            late = sorted(c_ for c_ in names if c_ in noguards
+                          and moved.get(c_, vg_pos.get(c_, -1)) > w.start)
+            place = pend = None
+            if late:
+                place, pend = plan_late_guard(name, w, lf, late, forms, by_name, noguards,
+                                              vg_pos, moved, twin_names)
             # the deletable forms
             kill = [lf]
             for f in forms:
@@ -1307,8 +1311,16 @@ def analyse(text: str, book: str, other_text: dict | None = None):
             for d in doc:
                 hoisted += ["; " + ln.strip() for ln in d.text.strip('"').splitlines() if ln.strip()]
             hoisted += [c for c in inner_comments]
-            conv.append(dict(name=name, spec=spec, wrapper=w, kill=kill,
-                             text=render(spec, hoisted)))
+            c_new = dict(name=name, spec=spec, wrapper=w, kill=kill,
+                         text=render(spec, hoisted), after=None, pre="")
+            if place is not None:
+                c_new["after"] = place
+            if pend:
+                kill.extend(pend)
+                c_new["pre"] = "".join(pretext(text, f) + "\n\n" for f in pend)
+                for f in pend:
+                    moved[f.name] = w.start
+            conv.append(c_new)
         except Refuse as r:
             resid.append((name, r.reason, r.detail))
     # a shared (encapsulate () (local bridge)... (verify-guards ..)...) goes only
@@ -1335,11 +1347,78 @@ def analyse(text: str, book: str, other_text: dict | None = None):
     return conv, resid
 
 
+def pretext(text, f):
+    return text[f.start:f.end]
+
+
+def plan_late_guard(name, w, lf, late, forms, by_name, noguards, vg_pos, moved, twin_names):
+    """The body calls functions whose verify-guards come after the wrapper, and
+    def-loop verifies guards where it stands.  Two moves, tried in order:
+      DOWN  the def-loop goes to just after the last verify-guards it needs, when
+            no form in between mentions NAME (the old twin and its bridges, which
+            are deleted, excepted);
+      UP    each needed verify-guards goes to just before the wrapper, when its
+            function is defined before the wrapper, its :hints name nothing defined
+            after it, and the functions it calls have theirs before the wrapper
+            (or move up with it).
+    Returns (after-form or None, [verify-guards forms to move up])."""
+    vgf = {}
+    for f in forms:
+        if f.kind == "verify-guards" and f.name not in vgf:
+            vgf[f.name] = f
+    for c_ in late:
+        if c_ in twin_names or c_ not in vgf or c_ not in by_name:
+            raise Refuse("late-guard", c_)
+    last = max((vgf[c_] for c_ in late), key=lambda f: f.start)
+    own = {name + "-loop"}
+    between = [f for f in forms if f.start >= w.end and f.start < last.end
+               and not (f.name in own or (f.name or "").startswith((name + "-loop-is-", name + "-loop-of-"))
+                        or (f.kind == "verify-guards" and f.name in (name, name + "-loop")))]
+    if not any(mentions(f.node, name) or mentions(f.node, name + "-loop") for f in between):
+        return last, []
+    defs_after = {f.name for f in forms if f.name and f.start > w.start}
+    todo, seen = list(late), []
+    while todo:
+        c_ = todo.pop()
+        if c_ in seen:
+            continue
+        if c_ not in vgf or c_ not in by_name or by_name[c_].start > w.start or c_ in twin_names:
+            raise Refuse("late-guard", c_)
+        v = vgf[c_]
+        if v.start < w.start:
+            continue
+        if contains(v.node, lambda x: isinstance(x, Atom) and x.low in defs_after and x.low != c_):
+            raise Refuse("late-guard", f"{c_}: its verify-guards hints name a later event")
+        seen.append(c_)
+        deps = set()
+        fn_names(by_name[c_].node, deps)
+        for d_ in deps:
+            if d_ in noguards and d_ != c_ and moved.get(d_, vg_pos.get(d_, -1)) > w.start:
+                todo.append(d_)
+    return None, sorted((vgf[c_] for c_ in seen), key=lambda f: f.start)
+
+
 def apply_text(text: str, conv) -> str:
     edits = []
     for c in conv:
         w = c["wrapper"]
-        edits.append((w.start, w.end, c["text"]))
+        if c.get("after") is not None:
+            # the def-loop moves down to just after the last verify-guards it needs
+            m = re.match(r"[ \t]*\n(\s*\n)?", text[w.end:])
+            edits.append((w.start, w.end + (m.end() if m else 0), ""))
+            edits.append((c["after"].end, c["after"].end, "\n\n" + c["text"]))
+        else:
+            edits.append((w.start, w.end, c["text"]))
+            if c.get("pre"):
+                # the moved-up verify-guards go above the twin's own comment block
+                at = min(w.start, c["kill"][0].start)
+                while True:
+                    ls = text.rfind("\n", 0, at - 1) + 1 if at > 0 else 0
+                    if at > 0 and text[ls:at].lstrip().startswith(";") and text[ls:at].endswith("\n"):
+                        at = ls
+                    else:
+                        break
+                edits.append((at, at, c["pre"]))
         for k in c["kill"]:
             # a deleted form takes its trailing blank line with it
             m = re.match(r"[ \t]*\n(\s*\n)?", text[k.end:])

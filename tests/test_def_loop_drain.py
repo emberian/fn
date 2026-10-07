@@ -92,14 +92,36 @@ class HandConversions(unittest.TestCase):
                       " (fn-record-string-octets login)))\n  :keep-order :skip-first\n  :body r)", out)
 
 
+class LateGuard(unittest.TestCase):
+    """A callee verified after the wrapper: the def-loop moves down past its
+    verify-guards when nothing between mentions the function, else that
+    verify-guards moves up above the wrapper."""
+
+    def conv(self, name):
+        (conv, resid), text = run(name)
+        self.assertEqual(resid, [])
+        return d.apply_text(text, conv)
+
+    def test_def_loop_moves_down_after_the_callee_guard(self):
+        out = self.conv("late-guard-down")
+        self.assertLess(out.index("(verify-guards fn-nntp-active-line)"), out.index("(def-loop"))
+        self.assertEqual(out.count("verify-guards"), 1)
+
+    def test_guard_moves_up_when_a_form_between_uses_the_function(self):
+        out = self.conv("late-guard-up")
+        self.assertLess(out.index("(verify-guards fn-nntp-active-line)"), out.index("(def-loop"))
+        self.assertLess(out.index("(def-loop"), out.index("fn-nntp-active-lines-true-listp"))
+        self.assertEqual(out.count("verify-guards"), 1)
+
+
 class Refusals(unittest.TestCase):
     def refused(self, name, why):
         (conv, resid), _ = run(name)
         self.assertEqual(conv, [])
         self.assertEqual([r[1] for r in resid], [why])
 
-    def test_late_guard(self):
-        self.refused("refuse-late-guard", "late-guard")
+    def test_late_guard_hints_naming_a_later_event_refuse(self):
+        self.refused("late-guard-refuse", "late-guard")
 
     def test_step_by_other_than_cdr(self):
         self.refused("refuse-step", "step")
