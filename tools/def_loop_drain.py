@@ -670,6 +670,32 @@ def rec_args(call, name, fl):
     return dict(zip(fl, call.items[1:]))
 
 
+
+CDRISH = ("cdr", "cddr", "cdddr", "cddddr", "fn-ag-cdr")
+
+
+def cdrish_of(term, var):
+    """Is TERM a cdr/cddr/... (or nested cdr/fn-ag-cdr) chain over VAR?"""
+    while isinstance(term, Lst) and is_call(term) and len(term.items) == 2 and term.items[0].low in CDRISH:
+        term = term.items[1]
+    return isinstance(term, Atom) and term.low == var and not isinstance(term, Str) \
+        and flat_low(term) == var and term is not None and True
+
+
+def order_svars(svars, nexts_by_var, measure_given):
+    """The first state var drives the default measure (acl2-count): put a list var that
+    advances by a cdr chain first; refuse a state with none unless the wrapper
+    carries a :measure."""
+    def lead(v):
+        t = nexts_by_var[v]
+        return isinstance(t, Lst) and is_call(t) and len(t.items) == 2 and t.items[0].low in CDRISH \
+            and cdrish_of(t, v) and flat_low(t) != v
+    good = [v for v in svars if lead(v)]
+    if not good and not measure_given:
+        raise Refuse("step-measure", "no state var advances by a cdr chain and the wrapper has no :measure")
+    return good + [v for v in svars if v not in good] if good else list(svars)
+
+
 def step_spec(name, formals, logic, exe, lf, wrapper):
     """:step -- one state (the formals the recursion changes), a done test, an
     emit (or skip) test, and arbitrary advances.  Nothing is bound around the
@@ -728,6 +754,7 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
     svars = [f for f in fl if flat_low(ea[f]) != f or (sa is not None and flat_low(sa[f]) != f)]
     if not svars:
         raise Refuse("no-shape", "no formal advances")
+    svars = order_svars(svars, ea, ":measure" in xa)
     spec = Spec("step", name, formals, svars[0])
     spec.svars = svars
     nxt = [ea[f] for f in svars]
@@ -765,6 +792,9 @@ def step_spec(name, formals, logic, exe, lf, wrapper):
     for part in [body] + nxt + (snx or []) + ([] if tail is None else [tail]):
         if flat_low(part) not in loop_flat:
             raise Refuse("exec-differs", flat_low(part)[:60])
+    if flat_low(done) not in loop_flat and flat_low(negate(done)) not in loop_flat \
+            and not (is_call(done, "atom") and flat_low(L(S("consp"), done.items[1])) in loop_flat):
+        raise Refuse("exec-differs", "done test " + flat_low(done)[:50])
     g = xa.get(":guard")
     if g is not None and not (isinstance(g, Atom) and g.low == "t"):
         spec.guard = g
@@ -882,6 +912,7 @@ def fold_spec(name, formals, logic, exe, lf, wrapper):
     svars = [f for f in fl if f != st and flat_low(ra[f]) != f]
     if not svars:
         raise Refuse("no-shape", "no formal advances")
+    svars = order_svars(svars, ra, ":measure" in xa)
     spec = Spec("fold", name, formals, svars[0])
     spec.svars = svars
     nxt = [ra[f] for f in svars]
@@ -904,6 +935,9 @@ def fold_spec(name, formals, logic, exe, lf, wrapper):
     for part in [rowterm] + [ra[f] for f in svars]:
         if flat_low(part) not in loop_flat:
             raise Refuse("exec-differs", flat_low(part)[:60])
+    if flat_low(done) not in loop_flat and flat_low(negate(done)) not in loop_flat \
+            and not (is_call(done, "atom") and flat_low(L(S("consp"), done.items[1])) in loop_flat):
+        raise Refuse("exec-differs", "done test " + flat_low(done)[:50])
     g = xa.get(":guard")
     if g is not None and not (isinstance(g, Atom) and g.low == "t"):
         spec.guard = g
@@ -1354,7 +1388,7 @@ def tree_text_for_refs(skip):
     return out
 
 
-def check_book(book: str, ref="origin/dev", tree_refs=None, write=False):
+def check_book(book: str, ref="origin/dev", tree_refs=None, write=False, skip=()):
     path = ROOT / "books" / f"{book}.lisp"
     text = path.read_text()
     others = {}
@@ -1364,6 +1398,9 @@ def check_book(book: str, ref="origin/dev", tree_refs=None, write=False):
                 continue
             others[rel] = tree_refs[rel]
     conv, resid = analyse(text, book, others)
+    for c in [c for c in conv if c["name"] in skip]:
+        conv.remove(c)
+        resid.append((c["name"], "skipped", "by --skip"))
     new = apply_text(text, conv) if conv else text
     old = git_show(ref, f"books/{book}.lisp") or text
     removed, added, changed = stmt_diff(old, new)
@@ -1480,6 +1517,7 @@ def main(argv=None):
     ap.add_argument("--exclude-file", help="books/NAME.lisp per line: busy books, tagged excluded")
     ap.add_argument("--ledger", action="store_true",
                     help="only the proof-events.json citations (with --apply: re-point them)")
+    ap.add_argument("--skip", action="append", default=[], help="a twin NAME to leave unconverted (repeatable)")
     ap.add_argument("--plan", action="store_true", help="list books with take-now twins")
     a = ap.parse_args(argv)
     refs = load_refs()
@@ -1519,14 +1557,15 @@ def main(argv=None):
     rc = 0
     for b in a.books:
         b = b.removeprefix("books/").removesuffix(".lisp")
-        rep, _ = check_book(b, a.ref, refs, write=a.apply)
+        rep, _ = check_book(b, a.ref, refs, write=a.apply, skip=set(a.skip))
         print_report(rep)
     renames, unresolved = repoint_events(a.apply)
-    for ident, name, lib in renames:
-        print(f"  ledger {ident}: {name} -> {lib}" + ("" if a.apply else " (would re-point)"))
+    if a.apply or a.ledger or unresolved:
+        for ident, name, lib in renames:
+            print(f"  ledger {ident}: {name} -> {lib}" + ("" if a.apply else " (would re-point)"))
     for ident, name in unresolved:
         print(f"  DANGLING {EVENTS} {ident}: {name}: no theorem and no def-loop library bridge")
-    if unresolved or (renames and not a.apply):
+    if unresolved or (a.ledger and renames and not a.apply):
         rc = 1
     return rc
 
