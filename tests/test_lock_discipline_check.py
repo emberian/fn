@@ -1788,3 +1788,139 @@ class TestOnlyEntry(unittest.TestCase):
 
     def test_another_uncalled_function_stays_a_main_actor(self):
         self.assertTrue(self.analyze(self.HOST + "(defun fnn-tov-command () (fnn-tov-work))\n", self.MOCK))
+
+
+class PrivateOwnerCommands(unittest.TestCase):
+    """contract private_owner_commands: the checker proves, from the source, that
+    a one-shot command's owner is private, and only then exempts its R2 findings."""
+
+    HOST = """
+(defvar *fnn-pv-verbs* nil)
+(defvar *fnn-pv-escaped* nil)
+(defstruct (fnn-owner-service (:conc-name fnn-owner-service-)) lock store)
+(defstruct fnn-pv-box owner)
+(defun fnn-pv-register (verb handler) (push (cons verb handler) *fnn-pv-verbs*) verb)
+(defun fnn-pv-handler (verb) (cdr (assoc verb *fnn-pv-verbs*)))
+(defun fnn-pv-main (verb args) (funcall (fnn-pv-handler verb) args))
+(defun fnn-pv-install (root) (%make-fnn-owner-service :store root))
+(defun fnn-pv-note (service) (fnn-owner-service-store service))
+(defun fnn-pv-run (root thunk)
+  (let ((service nil))
+    (setq service (fnn-pv-install root))
+    (sb-thread:with-mutex ((fnn-owner-service-lock service))
+      (funcall thunk service))))
+(defun fnn-pv-command (root)
+  (fnn-pv-run root
+              (lambda (service)
+                (fnn-pv-note service)
+                @BODY@
+                (write-sequence "x" *standard-output*)
+                (finish-output *standard-output*)
+                0)))
+(defun fnn-pv-dispatch (args) (fnn-pv-command (first args)))
+(fnn-pv-register "pv" #'fnn-pv-dispatch)
+@EXTRA@
+"""
+    ROW = {
+        "file": "host/native/fixture.lisp", "lock": "O", "owner": "service", "thunk": "thunk",
+        "constructor": "fnn-pv-install", "owner_makers": ["%make-fnn-owner-service"],
+        "exempt_leaves": ["write-sequence", "finish-output", "sleep"],
+        "commands": ["fnn-pv-command"], "dispatch": ["fnn-pv-dispatch"],
+        "registrars": ["fnn-pv-register"], "table_writers": ["fnn-pv-register"],
+        "table_readers": {"*fnn-pv-verbs*": ["fnn-pv-handler"]}, "why": "fixture",
+    }
+
+    def analyze(self, body="", extra="", row=True, **changes):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["private_owner_commands"] = {"fnn-pv-run": dict(self.ROW, **changes)} if row else {}
+        src = PRELUDE + self.HOST.replace("@BODY@", body).replace("@EXTRA@", extra)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            found = [f for f in checker.run({"R2"}) if f.rule == "R2"]
+            return sorted(f.key for f in found), checker.private_io
+
+    def refused(self, pattern, **kw):
+        with self.assertRaisesRegex(ValueError, pattern):
+            self.analyze(**kw)
+
+    def test_a_private_owner_command_exempts_its_stdout_and_nothing_else(self):
+        keys, private = self.analyze("(sb-posix:open \"/x\" 0)")
+        self.assertEqual(keys, ["O:sb-posix:open"])
+        self.assertEqual(private, {"O": 2})
+
+    def test_without_the_row_the_stdout_writes_under_the_owner_are_findings(self):
+        keys, private = self.analyze(row=False)
+        self.assertEqual(keys, ["O:finish-output", "O:write-sequence"])
+        self.assertEqual(private, {})
+
+    def test_the_owner_published_to_a_global_is_refused(self):
+        self.refused("stored into the global \\*fnn-pv-escaped\\*", body="(setq *fnn-pv-escaped* service)")
+
+    def test_the_owner_pushed_onto_a_global_list_is_refused(self):
+        self.refused("global", body="(push service *fnn-pv-escaped*)")
+
+    def test_the_owner_stored_into_a_struct_slot_is_refused(self):
+        self.refused("stored into the place", body="(setf (fnn-pv-box-owner (make-fnn-pv-box)) service)")
+
+    def test_the_owner_stored_by_a_helper_it_is_passed_to_is_refused(self):
+        self.refused("global", body="(fnn-pv-keep service)",
+                     extra="(defun fnn-pv-keep (o) (setq *fnn-pv-escaped* o))")
+
+    def test_the_owner_passed_to_a_thread_start_is_refused(self):
+        self.refused("thread-start", body="(sb-thread:make-thread (lambda () (fnn-pv-note service)) :name \"t\")")
+
+    def test_a_closure_over_the_owner_held_by_a_helper_that_spawns_is_refused(self):
+        self.refused("thread-start", body="(fnn-pv-later (lambda () (fnn-pv-note service)))",
+                     extra="(defun fnn-pv-later (f) (sb-thread:make-thread f :name \"u\"))")
+
+    def test_an_actor_started_on_the_owner_is_refused(self):
+        self.refused("thread-start", body="(fnn-owner-start-pv service)",
+                     extra="(defun fnn-owner-start-pv (service) (fnn-pv-note service))")
+
+    def test_the_owner_passed_to_an_undefined_function_is_refused(self):
+        self.refused("neither a host function", body="(fnn-pv-elsewhere service)")
+
+    def test_a_second_owner_made_in_the_command_is_refused(self):
+        self.refused("second-owner", body="(fnn-pv-install \"other\")")
+
+    def test_a_second_owner_entered_outside_the_thunk_is_refused(self):
+        self.refused("entered outside the thunk", body="", extra="""
+(defun fnn-pv-command-two (root)
+  (fnn-pv-install root)
+  (fnn-pv-run root (lambda (service) service)))
+(defun fnn-pv-dispatch-two (args) (fnn-pv-command-two (first args)))
+(fnn-pv-register "pv2" #'fnn-pv-dispatch-two)""",
+                     commands=["fnn-pv-command", "fnn-pv-command-two"],
+                     dispatch=["fnn-pv-dispatch", "fnn-pv-dispatch-two"])
+
+    def test_the_command_reachable_from_a_served_thread_is_refused(self):
+        self.refused("reached from the root", extra="""
+(defun fnn-pv-serve ()
+  (sb-thread:make-thread (lambda () (fnn-pv-command "r")) :name "served"))""")
+
+    def test_the_command_reachable_from_a_serving_root_is_refused(self):
+        self.refused("reached from the root", extra='(defun fnn-owner-accept (r) (fnn-pv-command r))')
+
+    def test_a_dispatch_started_in_a_thread_is_refused(self):
+        self.refused("reached from the root", extra="""
+(defun fnn-pv-serve () (sb-thread:make-thread #'fnn-pv-dispatch :name "served"))""")
+
+    def test_a_table_reader_a_thread_reaches_is_refused(self):
+        self.refused("table reader", extra="""
+(defun fnn-pv-serve () (sb-thread:make-thread (lambda () (fnn-pv-main "pv" nil)) :name "served"))""")
+
+    def test_an_undeclared_table_reader_is_refused(self):
+        self.refused("is read by", extra="(defun fnn-pv-peek () (length *fnn-pv-verbs*))")
+
+    def test_a_dispatch_never_registered_is_refused(self):
+        self.refused("not registered", extra="", dispatch=["fnn-pv-dispatch", "fnn-pv-main"])
+
+    def test_an_undeclared_caller_of_the_runner_is_refused(self):
+        self.refused("callers", extra="(defun fnn-pv-command-two (root) (fnn-pv-run root (lambda (s) s)))")
+
+    def test_the_real_row_holds_on_the_real_tree(self):
+        an, model, checker = ldc.build(ROOT, ROOT / "tools" / "lock_discipline_contracts.json")
+        self.assertIn("fnn-carry-execute", model.private_owner["O"]["functions"])

@@ -2160,6 +2160,615 @@ class Analyzer:
 
 
 # --------------------------------------------------------------------------
+# private owner commands: the proof behind the contract row
+# --------------------------------------------------------------------------
+
+# forms whose arguments are ordinary statements: the owner passes through them
+# unchanged (nothing here stores or starts anything)
+_STATEMENT_FORMS = frozenset("""
+progn if when unless cond case ecase typecase etypecase and or not the
+block return-from return tagbody go catch throw unwind-protect
+multiple-value-prog1 prog1 prog2 ignore-errors handler-bind restart-case
+with-mutex sb-thread:with-mutex sb-thread:with-recursive-lock with-recursive-lock
+sb-thread:with-recursive-lock with-open-file with-output-to-string
+declare locally eval-when check-type assert incf decf
+""".split())
+_THREAD_STARTERS = frozenset(["sb-thread:make-thread", "make-thread"])
+_OWNER_STARTER = re.compile(r"^fnn-owner-(?:.*-)?(?:start|spawn)")
+
+
+def _strip_quasi(form):
+    while isinstance(form, list) and head(form) in ("quasiquote", "unquote", "unquote-splicing") and len(form) == 2:
+        form = form[1]
+    return form
+
+
+def _templates(form) -> list:
+    """The outermost quasiquote templates under FORM."""
+    if not isinstance(form, list):
+        return []
+    if head(form) == "quasiquote":
+        return [form]
+    out = []
+    for x in form:
+        out.extend(_templates(x))
+    return out
+
+
+def _mentions(form, names) -> bool:
+    form = _strip_quasi(form)
+    if isinstance(form, Sym):
+        return str(form) in names
+    if isinstance(form, list):
+        if head(form) == "quote":
+            return False
+        return any(_mentions(x, names) for x in form)
+    return False
+
+
+def _bind_lambda_list(params, args, nested=False) -> dict:
+    """{parameter name: [indices of the arguments it receives]} for an ordinary
+    or destructuring lambda list: required, &optional, &key, &rest/&body.  A
+    nested pattern against a list argument binds its names to that argument's
+    elements, addressed as (index, sub-index...)."""
+    out: dict = collections.defaultdict(list)
+    mode = "req"
+    pos = 0
+    for p in params:
+        if isinstance(p, Sym) and str(p).startswith("&"):
+            mode = str(p)
+            continue
+        if mode in ("&rest", "&body"):
+            name = str(p)
+            for k in range(pos, len(args)):
+                out[name].append((k,))
+            continue
+        if mode == "&key":
+            name = str(p[0]) if isinstance(p, list) else str(p)
+            for k in range(pos, len(args) - 1):
+                if isinstance(args[k], Sym) and str(args[k]).lower() == ":" + name.lower():
+                    out[name].append((k + 1,))
+            continue
+        if mode == "&aux":
+            continue
+        if isinstance(p, list) and p and mode in ("req", "&optional") and isinstance(p[0], Sym) and nested:
+            if pos < len(args) and isinstance(args[pos], list):
+                for name, idx in _bind_lambda_list(p, args[pos], True).items():
+                    out[name].extend((pos,) + i for i in idx)
+            pos += 1
+            continue
+        name = str(p[0]) if isinstance(p, list) else str(p)
+        if pos < len(args):
+            out[name].append((pos,))
+        pos += 1
+    return out
+
+
+def _arg_at(args, idx):
+    node = args
+    for i in idx:
+        if not isinstance(node, list) or i >= len(node):
+            return None
+        node = node[i]
+    return node
+
+
+class OwnerFlow:
+    """A flow-insensitive scan of how one owner value is used.  `scan_def'
+    follows it into every host function and macro it is handed to; a use that
+    could publish it, store it, hand it to another thread or leave the host's
+    sight is recorded as a problem.  Tainted names are never untainted
+    (shadowing can only add findings, never hide one)."""
+
+    def __init__(self, tree: Tree, row: dict) -> None:
+        self.tree = tree
+        self.row = row
+        self.problems: list[str] = []
+        self.memo: dict = {}
+        self.stack: list = []
+        self.pure = set(row.get("pure_callees", []))
+        self.custody = set(row.get("failure_custody", []))
+        self.makers = set(row.get("owner_makers", [])) | {row["constructor"]}
+        self.gates = set(tree.sections) | set(row.get("gate_callees", []))
+        self.starters = _THREAD_STARTERS | set(tree.actors) | {ACTOR_RUNNER}
+        self.thunk_calls: dict = {}
+        self.scanned: set = set()
+
+    def problem(self, kind, st, line, text) -> None:
+        where = " -> ".join(st["trail"])
+        self.problems.append(f"{kind}: {text} (at {st['path']}:{line}; via {where})")
+
+    def starter(self, h) -> bool:
+        return h in self.starters or bool(_OWNER_STARTER.match(h))
+
+    # entry points -------------------------------------------------------
+    def scan_def(self, name, tparams, trail=()):
+        """Scan host function or macro NAME with the parameters TPARAMS tainted;
+        True when its value may be the owner."""
+        d = self.tree.defs.get(name) or self.tree.macros.get(name)
+        key = (name, frozenset(tparams))
+        if key in self.memo:
+            return self.memo[key]
+        if key in self.stack:
+            return False
+        self.stack.append(key)
+        self.scanned.add(name)
+        st = {"tainted": set(tparams), "locals": set(), "dying": False, "ret": [], "runner": name,
+              "trail": tuple(trail) + (name,), "path": d.path, "localfns": {}}
+        params = d.params
+        pat = _flatten_names(params)
+        st["locals"].update(pat)
+        body = list(d.body)
+        if len(body) > 1 and isinstance(body[0], str) and not isinstance(body[0], Sym):
+            body = body[1:]
+        if d.kind == "macro":
+            # the macro's own code runs at expansion time; what runs later is
+            # what its quasiquote templates write
+            result = False
+            for template in _templates(body):
+                result = self.scan(template, st) or result
+        else:
+            result = self.scan_body(body, st)
+        result = result or any(st["ret"])
+        self.stack.pop()
+        self.memo[key] = result
+        return result
+
+    def scan_body(self, forms, st) -> bool:
+        last = False
+        for f in forms:
+            last = self.scan(f, st)
+        return last
+
+    # the walk -----------------------------------------------------------
+    def scan(self, form, st) -> bool:
+        if isinstance(form, Sym):
+            return str(form) in st["tainted"]
+        if not isinstance(form, list) or not form:
+            return False
+        h = head(form)
+        line = line_of(form, 0)
+        if h == "declare":
+            return False
+        if h in ("unquote", "unquote-splicing") and len(form) == 2:
+            if isinstance(form[1], Sym):
+                return str(form[1]) in st["tainted"]
+            for template in _templates(form[1]):    # an expansion-time computation: only
+                self.scan(template, st)             # the code templates inside it run later
+            return False
+        if h == "quasiquote" and len(form) == 2:
+            return self.scan(form[1], st)
+        if h is None:
+            if isinstance(form[0], list) and head(form[0]) == "lambda":
+                return self.scan_lambda_call(form[0], form[1:], st)
+            return any([self.scan(x, st) for x in form])
+        if h == "quote":
+            return False
+        if h == "function":
+            target = form[1] if len(form) > 1 else None
+            if isinstance(target, list) and head(target) == "lambda":
+                return self.scan_lambda_value(target, st)
+            return isinstance(target, Sym) and str(target) in st["tainted"]
+        if h == "lambda":
+            return self.scan_lambda_value(form, st)
+        if h in ("let", "let*"):
+            return self.scan_let(form, st)
+        if h in ("flet", "labels"):
+            for entry in form[1] if len(form) > 1 and isinstance(form[1], list) else []:
+                if isinstance(entry, list) and len(entry) >= 2:
+                    lam = Node([Sym("lambda"), entry[1]] + list(entry[2:]))
+                    lam.line = line_of(entry, line)
+                    st["localfns"][str(entry[0])] = lam
+                    if self.scan_lambda_value(lam, st):
+                        st["tainted"].add(str(entry[0]))
+            return self.scan_body(form[2:], st)
+        if h in ("setq", "setf", "psetq", "psetf"):
+            return self.scan_assign(form, st)
+        if h in ("push", "pushnew"):
+            value = self.scan(form[1], st) if len(form) > 1 else False
+            place = form[2] if len(form) > 2 else None
+            if len(form) > 2 and not isinstance(place, Sym):
+                self.scan(place, st)
+            if value:
+                self.store(place, st, line, h)
+            return False
+        if h == "handler-case":
+            result = self.scan(form[1], st) if len(form) > 1 else False
+            for clause in form[2:]:
+                if not isinstance(clause, list) or len(clause) < 2:
+                    continue
+                var = clause[1][0] if isinstance(clause[1], list) and clause[1] else None
+                body = clause[2:]
+                dying = bool(body) and isinstance(body[-1], list) and head(body[-1]) == "error" \
+                    and len(body[-1]) == 2 and isinstance(var, Sym) and body[-1][1] == var
+                if isinstance(var, Sym):
+                    st["locals"].add(str(var))
+                saved = st["dying"]
+                st["dying"] = saved or dying
+                self.scan_body(body, st)
+                st["dying"] = saved
+            return result
+        if h == "multiple-value-bind":
+            tainted = self.scan(form[2], st) if len(form) > 2 else False
+            for v in form[1] if len(form) > 1 and isinstance(form[1], list) else []:
+                st["locals"].add(str(v))
+                if tainted:
+                    st["tainted"].add(str(v))
+            return self.scan_body(form[3:], st)
+        if h in ("dolist", "dotimes"):
+            spec = form[1] if len(form) > 1 and isinstance(form[1], list) else []
+            tainted = self.scan(spec[1], st) if len(spec) > 1 else False
+            if spec:
+                st["locals"].add(str(spec[0]))
+                if tainted:
+                    st["tainted"].add(str(spec[0]))
+            self.scan_body(form[2:], st)
+            return False
+        if h == "loop":
+            return any([self.scan(x, st) for x in form[1:]])
+        if h == "cond":
+            out = False
+            for clause in form[1:]:
+                if isinstance(clause, list):
+                    out = self.scan_body(clause, st) or out
+            return out
+        if h in ("case", "ecase", "typecase", "etypecase"):
+            out = self.scan(form[1], st) if len(form) > 1 else False
+            for clause in form[2:]:
+                if isinstance(clause, list) and clause:
+                    out = self.scan_body(clause[1:], st) or out
+            return out
+        if h in ("funcall", "apply"):
+            return self.scan_funcall(form, st)
+        if h in _STATEMENT_FORMS:
+            return any([self.scan(x, st) for x in form[1:]])
+        return self.scan_call(form, h, st, line)
+
+    def scan_lambda_value(self, lam, st) -> bool:
+        """A lambda in value position: its body runs where it is called; True
+        when it captures the owner."""
+        params = lambda_params(lam[1] if len(lam) > 1 else [])
+        st["locals"].update(params)
+        self.scan_body(lam[2:], st)
+        return _mentions(lam, st["tainted"] - set(params)) or _mentions(lam, st["tainted"])
+
+    def scan_lambda_call(self, lam, args, st) -> bool:
+        flags = [self.scan(a, st) for a in args]
+        params = lambda_params(lam[1] if len(lam) > 1 else [])
+        st["locals"].update(params)
+        for p, tainted in zip(params, flags):
+            if tainted:
+                st["tainted"].add(p)
+        return self.scan_body(lam[2:], st)
+
+    def scan_let(self, form, st) -> bool:
+        for binding in form[1] if len(form) > 1 and isinstance(form[1], list) else []:
+            if isinstance(binding, list) and binding:
+                var = str(_strip_quasi(binding[0]))
+                st["locals"].add(var)
+                if len(binding) > 1 and self.scan(binding[1], st):
+                    st["tainted"].add(var)
+            elif isinstance(binding, Sym):
+                st["locals"].add(str(binding))
+        return self.scan_body(form[2:], st)
+
+    def store(self, place, st, line, how) -> None:
+        if isinstance(place, Sym):
+            name = str(place)
+            if name.startswith("*") or name in self.tree.globals or name not in st["locals"]:
+                self.problem("published", st, line, f"the owner is stored into the global {name}")
+            else:
+                st["tainted"].add(name)
+        else:
+            self.problem("published", st, line,
+                         f"the owner is stored into the place {render(place, 60)} ({how})")
+
+    def scan_assign(self, form, st) -> bool:
+        line = line_of(form, 0)
+        out = False
+        items = form[1:]
+        for k in range(0, len(items) - 1, 2):
+            place, value = items[k], items[k + 1]
+            tainted = self.scan(value, st)
+            if not isinstance(place, Sym):
+                self.scan(place, st)
+            if tainted:
+                self.store(place, st, line, head(form))
+            out = tainted
+        return out
+
+    def scan_funcall(self, form, st) -> bool:
+        line = line_of(form, 0)
+        fn = form[1] if len(form) > 1 else None
+        args = form[2:]
+        flags = [self.scan(a, st) for a in args]
+        if isinstance(fn, list):
+            target = fn[1] if head(fn) == "function" and len(fn) > 1 else None
+            if isinstance(target, Sym) and (str(target) in self.tree.defs):
+                return self.call_def(str(target), args, flags, st, line)
+            if head(fn) == "lambda" or (head(fn) == "function" and isinstance(target, list)):
+                lam = fn if head(fn) == "lambda" else target
+                return self.scan_lambda_call(lam, args, st)
+            self.scan(fn, st)
+        if not any(flags):
+            return False
+        if isinstance(fn, Sym) and str(fn) in st["tainted"]:
+            return False                        # calling a closure that holds the owner
+        if isinstance(fn, Sym) and str(fn) == self.row.get("thunk") and st["runner"] == self.row["runner"]:
+            self.thunk_calls.setdefault(st["runner"], set()).update(k for k, f in enumerate(flags) if f)
+            return False
+        self.problem("escaped", st, line,
+                     f"the owner is passed to the computed call {render(form, 60)}")
+        return False
+
+    def scan_call(self, form, h, st, line) -> bool:
+        args = form[1:]
+        flags = [self.scan(a, st) for a in args]
+        if h in self.makers:
+            if any(flags):
+                self.problem("escaped", st, line, f"{h} is handed the owner")
+            if st["runner"] not in (self.row["constructor"], self.row["runner"]):
+                self.problem("second-owner", st, line,
+                             f"{h} makes another owner outside the constructor and the runner")
+            return True
+        if h in self.gates and not (flags and flags[0]):
+            self.problem("second-owner", st, line,
+                         f"{h} is entered on a value other than the private owner")
+        if not any(flags):
+            return False
+        if self.starter(h):
+            self.problem("thread-start", st, line,
+                         f"the owner (or a closure over it) reaches {h}, a thread or actor start")
+            return False
+        if h in st["localfns"]:
+            lam = st["localfns"][h]
+            for p, tainted in zip(lambda_params(lam[1] if len(lam) > 1 else []), flags):
+                if tainted:
+                    st["tainted"].add(p)
+            return self.scan_body(lam[2:], st)
+        if h in self.custody:
+            fresh = all(not f or (isinstance(a, list) and head(a) in self.makers)
+                        for a, f in zip(args, flags))
+            if not st["dying"] and not fresh:
+                self.problem("published", st, line,
+                             f"{h} keeps the owner and is called outside a failing handler clause "
+                             "on anything but a freshly made throwaway")
+            return False
+        if h in self.tree.structs and flags[0]:
+            return False
+        if h in self.pure:
+            return False
+        if h in self.tree.defs or h in self.tree.macros:
+            return self.call_def(h, args, flags, st, line)
+        self.problem("escaped", st, line,
+                     f"the owner is passed to {h}, which is neither a host function nor a cleared primitive")
+        return False
+
+    def call_def(self, name, args, flags, st, line) -> bool:
+        macro = name in self.tree.macros and name not in self.tree.defs
+        d = self.tree.macros[name] if macro else self.tree.defs[name]
+        if macro:
+            binding = _bind_lambda_list(d.params, args, nested=True)
+            tparams = {p for p, idxs in binding.items()
+                       if any(_mentions(_arg_at(args, i), st["tainted"]) for i in idxs
+                              if _arg_at(args, i) is not None)}
+        else:
+            binding = _bind_lambda_list(d.params, args)
+            tparams = {p for p, idxs in binding.items() if any(flags[i[0]] for i in idxs if i[0] < len(flags))}
+            rest = [str(p) for k, p in enumerate(d.params) if k and isinstance(d.params[k - 1], Sym)
+                    and str(d.params[k - 1]) in ("&rest", "&body")]
+            if tparams & set(rest):
+                self.problem("escaped", st, line, f"the owner is collected into {name}'s &rest list")
+        if not tparams:
+            return False
+        result = self.scan_def(name, tparams, st["trail"])
+        return result
+
+
+def _flatten_names(params, mode="req") -> set:
+    out = set()
+    for p in params:
+        if isinstance(p, Sym):
+            if str(p).startswith("&"):
+                mode = str(p)
+            else:
+                out.add(str(p))
+        elif isinstance(p, list) and p:
+            if mode in ("&optional", "&key", "&aux"):
+                if isinstance(p[0], Sym):
+                    out.add(str(p[0]))
+            else:
+                out |= _flatten_names(p)
+    return out
+
+
+def _call_forms(forms, name):
+    """Every list form headed NAME anywhere under FORMS (lambdas included)."""
+    out = []
+    stack = list(forms)
+    while stack:
+        f = stack.pop()
+        if isinstance(f, list):
+            if head(f) == name:
+                out.append(f)
+            stack.extend(f)
+    return out
+
+
+def _ancestors(model, name) -> set:
+    seen, todo = {name}, [name]
+    while todo:
+        for caller, _ in model.callers.get(todo.pop(), []):
+            if caller not in seen:
+                seen.add(caller)
+                todo.append(caller)
+    return seen
+
+
+def _top_forms(tree: Tree):
+    for rel in sorted(tree.files):
+        text = (tree.root / rel).read_text(encoding="utf-8", errors="replace")
+        try:
+            for form, _ in read_forms(text):
+                yield rel, form
+        except ledger.ReadError:
+            continue
+
+
+def verify_private_owner_commands(model) -> dict:
+    """contracts `private_owner_commands': {RUNNER: row}.  RUNNER is a host
+    function that makes an owner for one command, runs the command's THUNK
+    inside the owner's section and closes it.  Everything the row claims is
+    checked here, and a failing check is a ValueError (a row is never
+    silently inert once its runner exists):
+
+      1. the owner is a `let' variable of RUNNER, assigned only from the
+         declared constructor, and RUNNER's callers are exactly `commands';
+      2. an owner flow scan (OwnerFlow) of the constructor, of RUNNER and of
+         each command's thunk, followed through every host function and macro
+         the owner is handed to: the owner is never stored into a global, a
+         struct slot or any place, never collected into a rest list, never
+         passed to a thread or actor start (or a closure over it), never
+         passed to a function the host does not define, never made a second
+         owner beside (a section or install entered on another value);
+      3. the commands are reached only from the declared one-shot dispatch
+         functions, each registered only through the registrars, whose tables
+         are read only by declared readers that no thread, serving or async
+         root reaches.
+
+    Returns {lock: {"functions": set, "rows": [...]}} for rule_R2, which
+    exempts the lock's findings in those functions as private-owner I/O."""
+    tree, infos, raw = model.tree, model.infos, model.c.raw
+    rows = raw.get("private_owner_commands", {})
+    exempt: dict = {}
+    for runner in sorted(rows):
+        row = dict(rows[runner], runner=runner)
+        where = f"private_owner_commands {runner}"
+        if runner not in infos:
+            if not (tree.root / row.get("file", "")).is_file() or not row.get("file"):
+                continue                    # a fixture host without the runner's file
+            raise ValueError(f"{where}: not a function of the analyzed host")
+        for key in ("file", "lock", "owner", "thunk", "constructor", "commands", "dispatch", "registrars",
+                    "table_readers", "why"):
+            if not row.get(key):
+                raise ValueError(f"{where}: no {key}")
+        if row["lock"] not in model.c.locks:
+            raise ValueError(f"{where}: lock {row['lock']} is not a declared lock")
+        for name in [row["constructor"]] + list(row["commands"]) + list(row["dispatch"]):
+            if name not in tree.defs:
+                raise ValueError(f"{where}: {name} is not a host function")
+        d = tree.defs[runner]
+        owner, thunk = row["owner"], row["thunk"]
+        # 1. the owner is a lexical variable of the runner, made only by the constructor
+        if owner in lambda_params(d.params) or thunk not in lambda_params(d.params):
+            raise ValueError(f"{where}: {owner} must be a local (not a parameter) and {thunk} a parameter")
+        bound = [b for f in _call_forms(d.body, "let") + _call_forms(d.body, "let*")
+                 for b in (f[1] if len(f) > 1 and isinstance(f[1], list) else [])
+                 if (isinstance(b, list) and b and str(b[0]) == owner) or (isinstance(b, Sym) and str(b) == owner)]
+        if len(bound) != 1:
+            raise ValueError(f"{where}: {owner} is not bound by exactly one let in {runner}")
+        assigns = [f for h in ("setq", "setf", "psetq", "psetf") for f in _call_forms(d.body, h)]
+        sets = [(f[k], f[k + 1]) for f in assigns for k in range(1, len(f) - 1, 2)
+                if isinstance(f[k], Sym) and str(f[k]) == owner]
+        if not sets or any(head(v) != row["constructor"] for _, v in sets):
+            raise ValueError(f"{where}: {owner} is assigned from something other than {row['constructor']}")
+        callers = {c for c, _ in model.callers.get(runner, [])}
+        if callers != set(row["commands"]):
+            raise ValueError(f"{where}: RUNNER's callers {sorted(callers)} differ from the declared "
+                             f"commands {sorted(row['commands'])}")
+        # 2. the flow scans
+        flow = OwnerFlow(tree, row)
+        flow.scan_def(row["constructor"], ())
+        flow.scan_def(runner, ())
+        positions = flow.thunk_calls.get(runner)
+        if not positions:
+            flow.problems.append(f"{runner} never calls {thunk} with the owner")
+        pidx = lambda_params(d.params).index(thunk) if thunk in lambda_params(d.params) else 0
+        for cmd in row["commands"]:
+            cd = tree.defs[cmd]
+            sites = _call_forms(cd.body, runner)
+            if not sites:
+                flow.problems.append(f"{cmd} does not call {runner}")
+            for site in sites:
+                arg = site[1 + pidx] if len(site) > 1 + pidx else None
+                if isinstance(arg, list) and head(arg) == "lambda":
+                    lparams = lambda_params(arg[1] if len(arg) > 1 else [])
+                    st = {"tainted": {lparams[p] for p in (positions or ()) if p < len(lparams)},
+                          "locals": set(lparams) | _flatten_names(cd.params), "dying": False, "ret": [],
+                          "runner": cmd, "trail": (cmd,), "path": cd.path, "localfns": {}}
+                    flow.scan_body(arg[2:], st)
+                elif isinstance(arg, list) and head(arg) == "function" and len(arg) > 1 and str(arg[1]) in tree.defs:
+                    td = tree.defs[str(arg[1])]
+                    tparams = lambda_params(td.params)
+                    flow.scan_def(str(arg[1]), {tparams[p] for p in (positions or ()) if p < len(tparams)},
+                                  (cmd,))
+                else:
+                    flow.problems.append(f"{cmd}: the thunk handed to {runner} is not a lambda or #'host-function "
+                                         f"({render(arg, 50)})")
+            outside = [f for h in flow.gates | {row["constructor"]} for f in _call_forms(cd.body, h)]
+            inside = {id(f) for site in sites for g in (flow.gates | {row["constructor"]})
+                      for f in _call_forms(site, g)}
+            for f in outside:
+                if id(f) not in inside:
+                    flow.problems.append(f"{cmd}: {head(f)} is entered outside the thunk handed to {runner}")
+        if flow.problems:
+            raise ValueError(f"{where}: the owner is not private to the command:\n  "
+                             + "\n  ".join(dict.fromkeys(flow.problems)))
+        # 3. reachability: one-shot dispatch only
+        dispatch = set(row["dispatch"])
+        registrars = set(row["registrars"])
+        closure = set()
+        for cmd in row["commands"]:
+            closure |= _ancestors(model, cmd)
+        for n in sorted(closure):
+            if n in model.roots and n not in dispatch:
+                raise ValueError(f"{where}: reached from the root {n} ({model.roots[n]}), which is not a "
+                                 "declared one-shot dispatch")
+        for dsp in sorted(dispatch):
+            if model.roots.get(dsp) != "entry":
+                raise ValueError(f"{where}: dispatch {dsp} is called or referenced by the host "
+                                 f"(root kind {model.roots.get(dsp)!r}), so it is not a registered one-shot entry")
+        names = set(row["commands"]) | dispatch | {runner}
+        allowed_defs = closure | set(row["commands"])
+        for name, dd in list(tree.defs.items()) + list(tree.macros.items()):
+            for target in names:
+                if name != target and name not in allowed_defs and _mentions(dd.body, {target}):
+                    raise ValueError(f"{where}: {name} mentions {target} but is not on its call path")
+        registered = set()
+        for rel, form in _top_forms(tree):
+            h = head(form)
+            if h in ("defun", "defmacro"):
+                continue
+            for target in dispatch:
+                if _mentions(form, {target}):
+                    if h in registrars:
+                        registered.add(target)
+                    else:
+                        raise ValueError(f"{where}: {rel}: a top-level {h} form mentions the dispatch {target}")
+        if registered != dispatch:
+            raise ValueError(f"{where}: dispatch {sorted(dispatch - registered)} is not registered through "
+                             f"{sorted(registrars)}")
+        for table, readers in row["table_readers"].items():
+            found = {name for name, dd in tree.defs.items() if _mentions(dd.body, {table})} - set(
+                row.get("table_writers", []))
+            if found != set(readers):
+                raise ValueError(f"{where}: table {table} is read by {sorted(found)}, not the declared "
+                                 f"{sorted(readers)}")
+            for reader in readers:
+                for n in _ancestors(model, reader):
+                    if model.roots.get(n) in ("thread", "serving", "async"):
+                        raise ValueError(f"{where}: table reader {reader} is reached from the "
+                                         f"{model.roots[n]} root {n}")
+        slot = exempt.setdefault(row["lock"], {"functions": set(), "rows": [], "scopes": []})
+        slot["functions"] |= {runner} | set(row["commands"])
+        slot["rows"].append(runner)
+        leaves = row.get("exempt_leaves")
+        slot["scopes"].append((frozenset({runner} | set(row["commands"])),
+                               None if leaves is None else frozenset(leaves)))
+    return exempt
+
+
+# --------------------------------------------------------------------------
 # summaries over the call graph
 # --------------------------------------------------------------------------
 
@@ -2179,6 +2788,7 @@ class Model:
         self.roots = self.find_roots()
         self.check_callback_entries()
         self.check_test_only_entries()
+        self.private_owner = verify_private_owner_commands(self)
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()
@@ -2703,6 +3313,7 @@ class Checker:
         self.c = model.c
         self.infos = model.infos
         self.findings: list[Finding] = []
+        self.private_io: dict = {}      # lock -> R2 (site, leaf) pairs exempted as private-owner I/O
         self.excepted = {(r["rule"], r["function"], r.get("key", "*")): r["why"]
                          for r in self.c.raw.get("exceptions", [])}
 
@@ -2862,6 +3473,11 @@ class Checker:
                     for lock in sorted(locks):
                         if leaf.split(":", 2)[2] in self.c.locks.get(lock, {}).get("io_leaves_ok", []):
                             continue   # this lock's declared non-blocking leaves
+                        if any(name in fns and (leaves is None or leaf.split(":", 2)[2] in leaves)
+                               for fns, leaves in self.m.private_owner.get(lock, {}).get("scopes", ())):
+                            # a command whose owner the checker proved private (verify_private_owner_commands)
+                            self.private_io[lock] = self.private_io.get(lock, 0) + 1
+                            continue
                         k = (lock, leaf)
                         row = found.get(k)
                         if row is None:
@@ -4088,6 +4704,9 @@ def main(argv=None) -> int:
         print(json.dumps({"seconds": round(elapsed, 2), "functions": len(an.infos),
                           "events": total_sites,
                           "findings": [f.__dict__ for f in findings],
+                          "private_owner_io": {"exempt_site_leaf_pairs": checker.private_io,
+                                               "runners": {l: sorted(v["functions"])
+                                                           for l, v in model.private_owner.items()}},
                           "new": [f.baseline_key() for _, f in verdict["new"]],
                           "stale": verdict["stale"]}, indent=1, default=str))
     else:
@@ -4107,6 +4726,9 @@ def main(argv=None) -> int:
         nb = len([1 for k, f in verdict["new"]])
         if realization_drift:
             print("  " + realization_drift)
+        for lock, n in sorted(checker.private_io.items()):
+            print(f"  private-owner I/O under {lock}: {n} R2 (site, leaf) pair(s) exempt in "
+                  f"{len(model.private_owner[lock]['functions'])} proved one-shot function(s)")
         print(f"  total {len(findings)}; baselined {len(baseline)} rows (weight "
               f"{sum(r.get('count', 1) for r in baseline.values())}); "
               f"new {nb}; stale baseline rows {len(verdict['stale'])}; enclave {len(enclave)} functions"
