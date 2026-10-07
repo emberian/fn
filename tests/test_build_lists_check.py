@@ -309,3 +309,56 @@ class DuplicateLoadTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class KeystoneClosureTests(unittest.TestCase):
+    """A definterface keystone defined in a book the image never includes:
+    dcece7415 (D26) moved K1 to books/peer-catchup-spool-body and no build
+    list included it; only host-ld, at convergence, refused (attach-order
+    gate 3, 2026-10-07)."""
+
+    def tree(self, temp: str, include_body: bool) -> Path:
+        root = Path(temp)
+        for rel, text in {
+            "books/spool.lisp": '(in-package "ACL2")\n(defthm k0 t)\n',
+            "books/spool-body.lisp": ('(in-package "ACL2")\n(include-book "spool")\n'
+                                      '(defthm k1 t)\n(local (defthm k-local t))\n'),
+            "host/interfaces.lisp": ('(in-package "ACL2")\n'
+                                     '(definterface f :class :program\n'
+                                     '  :keystones (k0 (k1 :via g) unknown-generated))\n'
+                                     '(definterface h :class :program)\n'),
+        }.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text)
+        build = '(include-book "books/spool")\n'
+        if include_body:
+            build += '(include-book "books/spool-body")\n'
+        build += '(ld "host/interfaces.lisp" :ld-error-action :error)\n'
+        (root / "build.lisp").write_text(build)
+        return root
+
+    def run_check(self, root: Path) -> list[str]:
+        text = (root / "build.lisp").read_text()
+        return check.keystone_findings(root, text, ["host/interfaces.lisp"])
+
+    def test_a_cited_keystone_outside_the_image_is_a_finding(self):
+        with tempfile.TemporaryDirectory() as temp:
+            found = self.run_check(self.tree(temp, include_body=False))
+        self.assertEqual(len(found), 1)
+        self.assertIn("definterface f cites k1, defined in books/spool-body.lisp", found[0])
+
+    def test_including_the_book_closes_it_and_unknown_names_are_left_to_host_ld(self):
+        with tempfile.TemporaryDirectory() as temp:
+            self.assertEqual(self.run_check(self.tree(temp, include_body=True)), [])
+
+    def test_keystone_entries_with_via_name_their_theorem(self):
+        lists = check.keystone_lists(
+            "(definterface f :keystones (a (b :via g)) :class :program)\n"
+            "(definterface h :class :program)\n"
+            "(definterface i :keystones (c))\n")
+        self.assertEqual(lists, [("f", ["a", "b"]), ("i", ["c"])])
+
+    def test_an_image_that_does_not_load_interfaces_is_not_checked(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.tree(temp, include_body=False)
+            self.assertEqual(check.keystone_findings(root, "", []), [])
