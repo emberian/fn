@@ -206,11 +206,12 @@ def defined_names() -> set:
             r"^\s*\(def-cursor(?:/output)?\s+([^\s()]+)", text, re.M | re.I)}
     # Named rows and sections a definer macro introduces by its first
     # argument: a carried relation, `(def-carried fn-owner-served-carried ...)'
-    # (books/def-carried.lisp), and a raw host section,
-    # `(def-section fnn-quantum-mux-finish ...)' (host/native/owner.lisp).
+    # (books/def-carried.lisp), a raw host section,
+    # `(def-section fnn-quantum-mux-finish ...)' (host/native/owner.lisp), and an
+    # octet buffer stobj, `(def-buffer fn-octets-ctl)' (books/def-buffer.lisp).
     for path in sorted((ROOT / "books").glob("*.lisp")) + sorted((ROOT / "host").rglob("*.lisp")):
         text = path.read_text(encoding="utf-8", errors="replace")
-        names |= set(re.findall(r"^\s*\(def-(?:carried|section)\s+([^\s()]+)", text, re.M | re.I))
+        names |= set(re.findall(r"^\s*\(def-(?:carried|section|buffer)\s+([^\s()]+)", text, re.M | re.I))
     # A raw host function defined inside a top-level LET over private state,
     # `(let* (...) (labels (...) (defun fnn-raw-dispatch-apply ...)))'
     # (host/native/raw-trap.lisp): ledger's host reading keeps top-level forms.

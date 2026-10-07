@@ -81,6 +81,10 @@ class SpecCiteCheckTests(unittest.TestCase):
 """), set())
         self.assertIn("fn-recovery-profile-buffer", scc.defined_names())
 
+    def test_a_def_buffer_stobj_is_defined(self):
+        # books/native-control-buffer.lisp: (def-buffer fn-octets-ctl)
+        self.assertIn("fn-octets-ctl", scc.defined_names())
+
     def test_the_tree_is_green_under_strict(self):
         self.assertEqual(scc.main(["--summary", "--strict"]), 0)
 
