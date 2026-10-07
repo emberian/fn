@@ -538,6 +538,12 @@
    "fnn-%ssl-shutdown"
   ]
  },
+ "condition_wait_wrappers": {
+  "fnn-observed-condition-wait": {
+   "mutex_arg": 1,
+   "why": "host/native/io.lisp:172: unchanged sb-thread:condition-wait on its (queue mutex) parameters plus observer rows; the checker verifies each condition-wait in the body waits on parameter MUTEX, so a call releases the lock its caller passes exactly as the primitive does"
+  }
+ },
  "leaf_prefixes": {
   "sb-posix:": "io",
   "sb-bsd-sockets:": "socket",

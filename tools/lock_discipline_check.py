@@ -809,6 +809,30 @@ class Analyzer:
                 hidden.add(name)
         return hidden
 
+    def wait_wrapper_problem(self, name: str, idx: int) -> str | None:
+        """None when every sb-thread:condition-wait in the declared wrapper NAME waits
+        on its own parameter number IDX (so the wrapper releases the mutex its
+        caller passes, exactly as the primitive does); else why not."""
+        d = self.tree.defs[name]
+        params = [str(p) for p in lambda_params(d.params)]
+        if idx >= len(params):
+            return "mutex_arg out of range"
+        waits = []
+
+        def scan(x):
+            if isinstance(x, list):
+                if head(x) == "sb-thread:condition-wait":
+                    waits.append(x)
+                for y in x:
+                    scan(y)
+        scan(d.body)
+        if not waits:
+            return "no condition-wait in its body"
+        for w in waits:
+            if len(w) < 3 or not isinstance(w[2], Sym) or str(w[2]) != params[idx]:
+                return "a condition-wait does not wait on parameter " + params[idx]
+        return None
+
     def lock_of(self, expr, env: dict) -> str:
         for _ in range(3):
             if isinstance(expr, Sym) and str(expr) in env and env[str(expr)] is not None:
@@ -1177,6 +1201,18 @@ class Analyzer:
             lock = self.lock_of(form[2], env) if len(form) > 2 else "?"
             self.ev("leaf", "sb-thread:condition-wait", line, ctx, ("await", lock))
             return self.walk_body(form[1:], ctx, env, line)
+        wrapper = self.c.raw.get("condition_wait_wrappers", {}).get(h)
+        if wrapper is not None and h in self.tree.defs:
+            idx = wrapper["mutex_arg"]
+            problem = self.wait_wrapper_problem(h, idx)
+            if problem:
+                self.ev("unresolved", "condition-wait wrapper " + h + ": " + problem, line, ctx)
+                lock = "?"
+            else:
+                lock = self.lock_of(form[idx + 1], env) if len(form) > idx + 1 else "?"
+            # the call edge stays (actors, lock context, the wrapper's other
+            # effects); the blocking closure drops the wrapper's own wait leaf
+            self.ev("leaf", "sb-thread:condition-wait", line, ctx, ("await", lock, "wrapper-site"))
         if h in ("sb-thread:grab-mutex",):
             lock = self.lock_of(form[1], env) if len(form) > 1 else "?"
             self.ev("acq", lock, line, ctx, "grab")
@@ -2026,6 +2062,7 @@ class Model:
         "function:line:leaf"; VIA is the callee (or core:SUBJECT->REALIZER)
         at LINE, None at the leaf itself."""
         overrides = self.c.raw.get("effect_overrides", {})
+        waiters = self.c.raw.get("condition_wait_wrappers", {})
         blk: dict = {}
         for flag in (False, True):
             for name in self.infos:
@@ -2067,6 +2104,9 @@ class Model:
                 mine = blk[caller_key]
                 grew = False
                 for leaf, (kind, _, _) in leaves.items():
+                    if key[0] in waiters and leaf.startswith(key[0] + ":") \
+                            and leaf.endswith(":sb-thread:condition-wait"):
+                        continue   # a wrapper's own wait: its call site carries the wait leaf, mutex released
                     if leaf not in mine:
                         mine[leaf] = (kind, line, via)
                         grew = True
@@ -2488,6 +2528,7 @@ class Checker:
         lock is held, reached from N lock regions (one path shown)."""
         io_ok = {l for l, row in self.c.locks.items() if row.get("io_ok")}
         overrides = self.c.raw.get("effect_overrides", {})
+        waiters = self.c.raw.get("condition_wait_wrappers", {})
         found: dict = {}
         for name, info in self.infos.items():
             for e in info.events:
@@ -2503,6 +2544,9 @@ class Checker:
                                       [f"{name} ({info.path}:{e.line}) -> {e.name}"]))
                 elif e.kind == "call" and e.name in self.infos and e.name not in overrides:
                     for leaf, (kind, _, _) in self.m.blk.get((e.name, noio), {}).items():
+                        if e.name in waiters and leaf.startswith(e.name + ":") \
+                                and leaf.endswith(":sb-thread:condition-wait"):
+                            continue   # the wrapper's own wait: the call-site wait leaf stands for it
                         cands.append((leaf, kind, held, (e.name, noio)))
                 elif e.kind == "core":
                     for r in sorted(self.an.reach.get(e.name, {})):
@@ -3036,6 +3080,8 @@ class Checker:
                                      f"actor {actor} enters the gate (class {cls}) and may wait behind a barrier",
                                      f"{actor}:gate", trail)
                     if e.kind == "leaf" and e.extra and e.extra[0] == "await" and row.get("no_await"):
+                        if len(e.extra) > 2:
+                            continue   # a wrapper call site: the wrapper's own wait leaf is reported
                         if e.name in row.get("await_ok", []) or n in row.get("await_ok_functions", []):
                             continue
                         self.add("R9", info, e.line, f"actor {actor} parks in {e.name}",

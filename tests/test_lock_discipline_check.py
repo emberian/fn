@@ -1035,5 +1035,53 @@ class Baseline(unittest.TestCase):
         self.assertTrue(all(":fn-a#" in n for n in names), names)
 
 
+class R2WaitWrapper(unittest.TestCase):
+    """A declared condition-wait wrapper (contracts condition_wait_wrappers) releases the
+    mutex its caller passes, exactly as sb-thread:condition-wait does."""
+    WRAPPER = """
+(defun fnn-observed-condition-wait (queue mutex label &key timeout)
+  (if (null *obs*)
+      (sb-thread:condition-wait queue mutex :timeout timeout)
+    (progn (note label) (sb-thread:condition-wait queue mutex :timeout timeout))))
+"""
+
+    def test_a_wrapper_wait_on_the_held_extent_lock_is_not_a_blocking_leaf(self):
+        src = self.WRAPPER + """
+(defun fnn-executor-wait (worker)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-observed-condition-wait (cold-ready worker) *fnn-extent-lock* :extent)))
+"""
+        found = [f for f in run(src, ["R2"]) if f.rule == "R2"]
+        self.assertEqual([f.key for f in found], [])
+
+    def test_a_wrapper_wait_still_blocks_every_other_held_lock(self):
+        src = self.WRAPPER + """
+(defun fnn-executor-wait (worker)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-observed-condition-wait (cold-ready worker) *fnn-extent-lock* :extent)))
+(defun fnn-wait-under-owner (service worker)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service)) (fnn-executor-wait worker)))
+(defun fnn-wait-on-the-other-lock (service worker)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+    (fnn-observed-condition-wait (cold-ready worker) *fnn-extent-lock* :extent)))
+"""
+        found = [f for f in run(src, ["R2"]) if f.rule == "R2"]
+        self.assertEqual(sorted({(f.function, f.key) for f in found}),
+                         [("fnn-executor-wait", "O:sb-thread:condition-wait"),
+                          ("fnn-wait-on-the-other-lock", "O:sb-thread:condition-wait")])
+        self.assertFalse(any(f.key == "E:sb-thread:condition-wait" for f in found))
+
+    def test_a_wrapper_that_waits_on_another_parameter_is_not_trusted(self):
+        src = """
+(defun fnn-observed-condition-wait (queue mutex label &key timeout)
+  (sb-thread:condition-wait queue label :timeout timeout))
+(defun fnn-executor-wait (worker)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-observed-condition-wait (cold-ready worker) *fnn-extent-lock* :extent)))
+"""
+        found = run(src, ["R2"])
+        self.assertIn("E:sb-thread:condition-wait", [f.key for f in found if f.rule == "R2"])
+
+
 if __name__ == "__main__":
     unittest.main()
