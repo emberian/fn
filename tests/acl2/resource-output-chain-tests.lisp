@@ -456,3 +456,15 @@
           (settled ((ledger (rcx-l2))) :lemma rcx-fn-rlo-output-settled-chain-without-settled))
   :mutations ((slot-not-freed (:conclusion (fn-rlo-free-chainp rows (mv-nth 1 (fn-rlo-output token opgen receipt ledger)))) ((rows '(3)) (token (rcx-tok)) (opgen 8) (receipt :discarded) (ledger (rcx-l3))) :fault "a settlement that does not push the slot on the free chain" :lemma rcx-fn-rlo-output-settled-chain-mutant-slot-not-freed)))
 
+
+(defthm rcx-fn-rlo-physical-bank-correspondence-witness
+  (equal (fn-rl-bank (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4)))) (if (and (fn-rlo-livep (rcx-tok) 8 (rcx-l4)) (member-eq :terminal '(:terminal :no-actor-created)) (equal (fn-rl-elensi (caddr (rcx-tok)) (rcx-l4)) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr (rcx-tok)) (fn-rl-gensi (caddr (rcx-tok)) (rcx-l4)) (rcx-l4)))) (fn-rl-bank (rcx-l4)))))
+(defthm rcx-fn-rlo-physical-bank-correspondence-mutant-bank-unchanged
+  (and (equal (fn-rl-bank (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4)))) (if (and (fn-rlo-livep (rcx-tok) 8 (rcx-l4)) (member-eq :terminal '(:terminal :no-actor-created)) (equal (fn-rl-elensi (caddr (rcx-tok)) (rcx-l4)) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr (rcx-tok)) (fn-rl-gensi (caddr (rcx-tok)) (rcx-l4)) (rcx-l4)))) (fn-rl-bank (rcx-l4)))) (not (equal (fn-rl-bank (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4)))) (fn-rl-bank (rcx-l4))))))
+(defteeth fn-rlo-physical-bank-correspondence
+  :claim (() (equal (fn-rl-bank (mv-nth 1 (fn-rlo-physical token operation-gen receipt ledger))) (if (and (fn-rlo-livep token operation-gen ledger) (member-eq receipt '(:terminal :no-actor-created)) (equal (fn-rl-elensi (caddr token) ledger) 1)) (fn-rl-bank (mv-nth 1 (fn-rl-settle (caddr token) (fn-rl-gensi (caddr token) ledger) ledger))) (fn-rl-bank ledger))))
+  :subject fn-rlo-physical
+  :witness-lemma rcx-fn-rlo-physical-bank-correspondence-witness
+  :witness ((token (rcx-tok)) (operation-gen 8) (receipt :terminal) (ledger (rcx-l4)))
+  :mutations ((bank-unchanged (:conclusion (equal (fn-rl-bank (mv-nth 1 (fn-rlo-physical token operation-gen receipt ledger))) (fn-rl-bank ledger))) ((token (rcx-tok)) (operation-gen 8) (receipt :terminal) (ledger (rcx-l4))) :fault "a settling receipt that leaves the bank charged" :lemma rcx-fn-rlo-physical-bank-correspondence-mutant-bank-unchanged)))
+
