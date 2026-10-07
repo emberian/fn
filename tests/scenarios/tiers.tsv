@@ -193,6 +193,7 @@ scale	module	tests.test_native_status_live_posts	LAT,BND,OPS	status after 60,000
 scale	module	tests.test_native_newnews_wildmat	BND,RDR	NEWNEWS over 1000 articles while another reader is served
 scale	module	tests.test_native_heap_from_profile	MEM,OPS	heap from profile; VmHWM under the limit
 scale	module	tests.test_native_image_floor	MEM,OPS	stripped image floors
+scale	module	tests.test_native_image_heap	MEM	the 128 MB bar: VmRSS after the nmem3-clean workload (FN_RUN_IMAGE_HEAP=1)
 scale	module	tests.test_native_served_line_stack	BND,RDR,DUR	2M-line and 4 MiB-line articles at a 1 MiB stack
 scale	module	tests.test_native_reader_index	RDR,DUR	pinned-view index over 10k similar ids (two hours)
 scale	module	tests.test_native_reclaim_walk	CKPT,RDR,MEM	live reclaim walk; RSS with the opt-in
@@ -201,6 +202,7 @@ scale	env	FN_OVER_COST_FIXTURES=n1k-2k:n10k-2k:syn100k-2k	BND	which fixtures the
 scale	env	FN_STATUS_SCALE_FIXTURES=/tank/fn/scratch/fixtures	OPS	status-scale fixtures
 scale	env	FN_RUN_NATIVE_READER_INDEX=1	RDR	the reader-index gate runs
 scale	env	FN_RUN_RECLAIM_RSS=1	MEM	the reclaim walk's resident-set measurement
+scale	env	FN_RUN_IMAGE_HEAP=1	MEM	the 128 MB bar's measurement (tests.test_native_image_heap)
 scale	tool	python3 tools/fundamentals.py run --tree $T --revision SHA --write	MEM,LAT,FSYNC,OPEN	F1-F8 judged against planning/release-v6.6.0.md section 2 (quiet hbox, 70 min; needs a tree whose build/ holds the four images)
 scale	tool	python3 tools/scale_curve.py run --image $IMAGES/fn-host-developer --tree $T	OPEN,MEM,LAT,CKPT	1k-100k curves (records only; fit flags never fail)
 scale	tool	python3 tools/throughput_gate.py run --image $IMAGES/fn-host-developer --revision SHA --label scen --wait-quiet 1800	LAT,MEM	throughput rows (cut gate 10)
