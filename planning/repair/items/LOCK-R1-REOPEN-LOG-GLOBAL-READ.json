@@ -1,10 +1,13 @@
 {
+ "blocked_on": "decision: accept key move R1b|fnn-owner-log -> R1b|fnn-owner-line-after-barrier (same defect group, baseline row follows), or make the checker see fnn-owner-line-after-barrier's O",
  "category": "lock-discipline",
  "detail": "Keys (NEW at lane head lock-triage-r1r7):\nR1|lambda@host/native/owner.lisp:fnn-owner-start-maintenance#lambda1|O:fnn-owner-log:fnn-global @ host/native/owner.lisp:8465 trail: lambda@host/native/owner.lisp:fnn-owner-start-maintenance#lambda1 (host/native/owner.lisp:8465) -> fnn-owner-maintenance-tick -> fnn-owner-maybe-reopen-log -> fnn-owner-log -> access fnn-global at fnn-owner-log:498\n\nHazard: owner.lisp:8399-8412: the decision comes from fnn-owner-serialized, then, outside it, (fnn-owner-log 'fn-owner-log-line) reads the global with fnn-global (owner.lisp:498). Another quantum can run between the section's return and the read and overwrite or race the live-state global, so the line written is not the one the reopen decision produced.",
  "file": "host/native/owner.lisp",
  "fix": "Return the rendered line from the serialized thunk (or call fnn-owner-log inside it) and write that value after the section.",
  "id": "LOCK-R1-REOPEN-LOG-GLOBAL-READ",
- "notes": [],
+ "notes": [
+  "Code fix written and verified to remove R1|lambda@...fnn-owner-start-maintenance#lambda1|O:fnn-owner-log:fnn-global (fnn-owner-maybe-reopen-log returns the rendered line from the serialized thunk and writes it with fnn-log-line after the swap), but NOT committed: removing maintenance's unlocked path to fnn-owner-log makes the checker re-report the existing R1b group *fnn-owner-deferred* unlocked-write at its other unlocked writer, as new key R1b|fnn-owner-line-after-barrier|*fnn-owner-deferred*:unlocked-write (owner.lisp fnn-owner-line-after-barrier, called under O from the key-statement path; the checker cannot see that lock). The baseline row is R1b|fnn-owner-log. Patch: /tmp/lock-owner-class-r1-final.patch (lane host, not durable)."
+ ],
  "owner": "open",
  "severity": "low",
  "source": "lock-triage-r1r7-20261006",
