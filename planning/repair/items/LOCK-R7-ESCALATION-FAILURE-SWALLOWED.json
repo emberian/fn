@@ -5,13 +5,14 @@
  "fix": "Do not discard the install failure: record it on the same ledger and make the actor boundary re-signal it, or last-resort stop the process with the fence exit code (fnn-exit 3 / 4) when the install fails. Keep the original condition in the record.",
  "id": "LOCK-R7-ESCALATION-FAILURE-SWALLOWED",
  "notes": [
-  "Fixed at 65b9a3077: fnn-owner-install-or-end (owner.lisp) ends the process with the original condition's ACL2 exit code when a fence/fault install signals; used at fnn-owner-publish-captured, fnn-owner-cold-settle (now classified by fnn-owner-thread-escape), fnn-mux-cleanup-attempt, fnn-mux-close-wake's escalation, fnn-web-cleanup. Keys gone from --check on lane/lock-owner-class at 65b9a3077: R7|fnn-owner-cold-settle, R7|fnn-owner-publish-captured, R7|fnn-mux-cleanup-attempt, R7|fnn-web-cleanup; none added. Remaining: R7|fnn-mux-close-wake (mux.lisp:1680 handler records the condition on the debt ledger via fnn-mux-cleanup-debt and escalates after the loop; the checker cannot see the deferred escalation, so the key needs a checker-verified failure-scope contract, outside this lane). natives_owed: tests/test_native_slow_disk.py (checkpoint publication), mux/web close paths via tests/test_native_outside_in.py."
+  "Fixed at 65b9a3077: fnn-owner-install-or-end (owner.lisp) ends the process with the original condition's ACL2 exit code when a fence/fault install signals; used at fnn-owner-publish-captured, fnn-owner-cold-settle (now classified by fnn-owner-thread-escape), fnn-mux-cleanup-attempt, fnn-mux-close-wake's escalation, fnn-web-cleanup. Keys gone from --check on lane/lock-owner-class at 65b9a3077: R7|fnn-owner-cold-settle, R7|fnn-owner-publish-captured, R7|fnn-mux-cleanup-attempt, R7|fnn-web-cleanup; none added. Remaining: R7|fnn-mux-close-wake (mux.lisp:1680 handler records the condition on the debt ledger via fnn-mux-cleanup-debt and escalates after the loop; the checker cannot see the deferred escalation, so the key needs a checker-verified failure-scope contract, outside this lane). natives_owed: tests/test_native_slow_disk.py (checkpoint publication), mux/web close paths via tests/test_native_outside_in.py.",
+  "Last key closed at b731f701e by a checker model fix, not a row for the site: _deferred_dolist_vars + contracts escalation_wrappers (fnn-owner-install-or-end, verified from source) let R7 see that fnn-mux-close-wake's post-loop dolist escalates every captured condition. Key R7|fnn-mux-close-wake|swallow:serious-condition:fault gone from --check on lane/lock-owner-class at b731f701e; all five original keys gone, none added."
  ],
  "owner": "open",
  "severity": "medium",
- "sha": "65b9a3077",
+ "sha": "b731f701e",
  "source": "lock-triage-r1r7-20261006",
- "state": "in-progress",
+ "state": "ready",
  "title": "the failure of the fence or fault install is itself swallowed (ignore-errors / handler-case around fnn-owner-fence-service, -fault-service, -thread-escape)",
  "updated": "2026-10-06T23:59:35Z"
 }
