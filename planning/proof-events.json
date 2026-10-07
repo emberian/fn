@@ -15721,15 +15721,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnp-forward-plan-rows-loop-is-rev-onto"
+          "name": "fn-dl-step-loop-is-revappend"
         },
         {
           "kind": "theorem",
           "name": "fn-bpnp-forward-result-replace-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-forward-unrouted-rows-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15817,15 +15813,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-intern-events-loop-is-rev-onto"
+          "name": "fn-dl-fold-loop-is-revappend"
         },
         {
           "kind": "theorem",
           "name": "fn-ipp-split-at-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lb-chunks-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15842,10 +15834,6 @@
         {
           "kind": "theorem",
           "name": "fn-lgw-unpack-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lzr-intern-events-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
