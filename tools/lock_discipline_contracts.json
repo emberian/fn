@@ -525,11 +525,7 @@
  "diagnostic_sinks": {
   "fnn-err": {
    "file": "host/native/io.lisp",
-   "why": "lane lock-model-gaps-2: the host's stderr diagnostic (host/native/io.lisp:1004). A handler whose protected form calls only a diagnostic sink and whose clause does nothing (ignore-errors, or a clause body that is empty or a constant) swallows the sink's own failure, which by construction carries no custody or classification: R7 does not ask it to reach the fence (fnn-log-physical-close :1101 after the debt is pushed under the queue mutex; fnn-owner-custody-trace owner.lisp:1892). The checker verifies that the sink's call closure reaches no fence function and no descriptor open or close primitive, and that each exempted handler's protected form calls nothing else."
-  },
-  "fnn-developer-selector": {
-   "file": "host/native/io.lisp",
-   "why": "lane lock-model-gaps-2: the developer-trace environment selector read by fnn-owner-custody-trace (owner.lisp:1892); same verification as fnn-err. It signals fnn-fault for a selector name that is not registered, a programming error of the trace's own literal that the trace swallows by design."
+   "why": "lane lock-model-gaps-2: the host's stderr diagnostic (host/native/io.lisp:1004). A handler whose protected form calls only a diagnostic sink and whose clause does nothing (ignore-errors, or a clause body that is empty or a constant) swallows the sink's own failure, which by construction carries no custody or classification: R7 does not ask it to reach the fence (fnn-log-physical-close :1101 after the debt is pushed under the queue mutex). The checker verifies that the sink's call closure reaches no fence function and no descriptor open or close primitive, and that each exempted handler's protected form calls nothing else."
   }
  },
  "status_rethrows": {
