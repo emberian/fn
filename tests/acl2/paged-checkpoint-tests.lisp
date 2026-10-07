@@ -164,3 +164,15 @@
 (assert-event (and (fn-pck-carriedp *pckt-wide-h*) (< 2048 (len (adt-tp-seq-words *fn-crow-schema* (fn-pck-crow-rows *pckt-wide-h*))))
                    (equal (pgs-apply-dirty (fn-pck-cat-pages *pckt-wide-h*) (fn-pck-cat-withdraw-dirty *pckt-wide-h* 10 5))
                           (fn-pck-cat-pages (fn-cat$a-withdraw 10 5 *pckt-wide-h*)))))
+
+; 5. The pages give back the catalog, for a carried catalog; an OVERFLOW row
+; (not a catalog row: the columns cannot carry it) is not given back.
+(assert-event (equal (fn-pck-held-of-crow-rows (fn-crow-of-pages (fn-pck-cat-pages *pckt-h*))) *pckt-h*))
+(defconst *pckt-ovf-h* (append *pckt-h* (list 7)))   ; 7 is no catalog row
+(assert-event (and (not (fn-pck-carriedp *pckt-ovf-h*))
+                   (not (equal (fn-pck-held-of-crow-rows (fn-crow-of-pages (fn-pck-cat-pages *pckt-ovf-h*)))
+                               *pckt-ovf-h*))))
+(must-fail-checked
+ (defthm pckt-decode-uncarried
+   (implies (true-listp h)
+            (equal (fn-pck-held-of-crow-rows (fn-crow-of-pages (fn-pck-cat-pages h))) h))))

@@ -192,9 +192,30 @@
                  (:instance fn-crow-set-dirty-bound (a (fn-pck-crow-rows h)) (i target)
                             (x (fn-cp-row-of (nth target (fn-cat$a-withdraw target by h)))))))))
 
+; The held rows the fn-crow rows decode to (fn-cp-row-held, books/catalog-paged.lisp).
+(defun fn-pck-held-of-crow-rows (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rows) (cons (fn-cp-row-held (car rows)) (fn-pck-held-of-crow-rows (cdr rows))) nil))
+
+; A carried row (a catalog row the overflow test passes) decodes from its columns.
+(defthm fn-pck-row-held-of-carried-row
+  (implies (and (fn-cat-rowp x) (not (fn-cp-overflow-of x)))
+           (equal (fn-cp-row-held (fn-cp-row-of x)) x))
+  :hints (("Goal" :use fn-cp-row-held-of-row-of
+           :in-theory (e/d (fn-cp-overflow-of) (fn-cp-row-of fn-cp-row-held fn-cat-rowp fn-sccb-treep fn-cp-tree-of fn-held-numbers)))))
+
+; The columns carry every row of a carried catalog exactly.
+(defthm fn-pck-held-of-crow-rows-of-crow-rows
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h))
+           (equal (fn-pck-held-of-crow-rows (fn-pck-crow-rows h)) h))
+  :hints (("Goal" :in-theory (disable fn-cp-row-of fn-cp-row-held fn-cp-overflow-of fn-cat-rowp)
+           :induct (fn-pck-crow-rows h))))
+
 (defthm fn-pck-adopt-is-the-catalog
   (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h))
            (and (equal (fn-crow-of-pages (fn-pck-cat-pages h)) (fn-pck-crow-rows h))
+                ; the pages give back the CATALOG: the held rows they decode to
+                (equal (fn-pck-held-of-crow-rows (fn-crow-of-pages (fn-pck-cat-pages h))) h)
                 (implies (fn-held-p row)
                          (and (equal (pgs-apply-dirty (fn-pck-cat-pages h)
                                                       (fn-pck-cat-commit-dirty h row))
@@ -214,5 +235,6 @@
   :hints (("Goal" :in-theory (disable fn-pck-cat-pages fn-pck-cat-commit-dirty fn-pck-cat-withdraw-dirty
                                       fn-cat$a-commit fn-cat$a-withdraw fn-cp-row-of fn-cat-assign
                                       fn-crow-pool-pages-of-row fn-cp-escapedp fn-cp-smallp)
-           :use (fn-pck-adopt-round-trip fn-pck-adopt-commit-image fn-pck-adopt-commit-bound
+           :use (fn-pck-adopt-round-trip fn-pck-held-of-crow-rows-of-crow-rows
+                 fn-pck-adopt-commit-image fn-pck-adopt-commit-bound
                  fn-pck-adopt-withdraw-image fn-pck-adopt-withdraw-bound))))
