@@ -13432,7 +13432,12 @@
       "subsystem": "peer/feed",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "window",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
