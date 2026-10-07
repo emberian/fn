@@ -1,0 +1,17 @@
+{
+ "category": "lock-discipline",
+ "detail": "fnn-tls-initialize (tls.lisp:372 with-mutex *fnn-tls-initialize-lock* = XTLSINIT) -> fnn-tls-load-libraries (tls.lisp:345 via 381) -> fnn-tls-select-pair (tls.lisp:143-144 probe-file per candidate pair). fnn-tls-owner-reload (tls-reload.lisp:148 with-mutex *fnn-tls-reload-mutex* = XTLSRELOAD) -> fnn-tls-server-candidate (tls.lisp:533, calls fnn-tls-initialize at 533+) -> the same select-pair.\nKeys: R2|fnn-tls-select-pair|XTLSINIT:probe-file, R2|fnn-tls-select-pair|XTLSRELOAD:probe-file (2 sites each). Neither lock is io_ok in tools/lock_discipline_contracts.json (lines 150-158) and both exist to serialize TLS init / reload, which already does dlopen and certificate loading under them.\nHazard: a stat of the OpenSSL library paths at init and reload; contention is only TLS init/reload itself, never O or E.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/tls.lisp",
+ "fix": "Decide that XTLSINIT and XTLSRELOAD are io_ok (they serialize one-time I/O-bearing init and reload), with that justification in contracts; or hoist the candidate probe out of the locks.",
+ "id": "LOCK-R2-TLS-PROBE-UNDER-INIT-LOCKS",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "First TLS use, or a TLS reload.",
+ "severity": "low",
+ "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
+ "state": "open",
+ "title": "TLS library selection probes the filesystem (probe-file) while holding the TLS init and reload mutexes",
+ "updated": "2026-10-06T23:55:37Z"
+}
