@@ -638,6 +638,20 @@
    "issue_core": "fn-owner-page-decoded-window-acquire-projected",
    "why": "lane lock-rows-2: the decoded window's one physical read, called only by fnn-extent-decoded-window-run, which fnn-extent-executor-job runs on the persistent worker activation (extent.lisp, the decodedp arm) for a token fnn-extent-issue-window admitted through the decoded acquire; the descriptor is fetched under E in fnn-extent-decoded-window-run and the worker's actual return is announced by the loop only after the job returns"
   },
+  "fnn-csp-worker-perform": {
+   "kind": "owned-fd",
+   "slot": "fnn-csp-worker-fd",
+   "open_in": "fnn-csp-worker-perform",
+   "open_call": "fnn-open",
+   "close_in": "fnn-csp-worker-loop",
+   "close_call": "fnn-close",
+   "constructor": "%make-fnn-csp-worker",
+   "slot_keyword": ":fd",
+   "thread_roots": [
+    "lambda@host/native/catchup-spool.lisp:fnn-csp-worker-start#lambda1"
+   ],
+   "why": "the :digest/:replay pread is on the catchup spool's own temporary file, not an extent-registry descriptor: the worker thread opens it (catchup-spool.lisp:20, O_CREAT|O_EXCL, fnn-open) and unlinks the name at once, nothing else reads the slot, and the same thread closes it in the loop's cleanup (catchup-spool.lisp:77-81, the slot retired before the close). The check verifies those facts over the source, so a second toucher of the slot, a store from anywhere but that open, or a second thread running the loop breaks the row"
+  },
   "fnn-snapshot-source-read-page": {
    "kind": "file-pin",
    "acquire_core": "fn-owner-page-file-pin-read",

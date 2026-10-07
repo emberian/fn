@@ -2663,7 +2663,86 @@ class Checker:
             if not self.in_unwind_protect(info.name, sink.line, row["release"]):
                 return "the read is not inside an unwind-protect whose cleanup releases the lease"
             return None
+        if kind == "owned-fd":
+            return self.owned_fd_problem(info, sink, row)
         return f"unknown borrow kind {kind}"
+
+    def owned_fd_problem(self, info, sink, row) -> str | None:
+        """owned-fd: the descriptor the sink reads is not an extent-registry descriptor.
+        It is a slot only a private worker thread touches, assigned once from an
+        fnn-open in OPEN_IN and retired by an fnn-close in CLOSE_IN.  Checked over
+        the source: (1) every SINK call in this function passes (SLOT x);
+        (2) SLOT is referenced in no function but this one, OPEN_IN and CLOSE_IN;
+        (3) every setf of SLOT stores nil or a variable bound to an OPEN_CALL;
+        (4) CONSTRUCTOR never passes the slot's keyword; (5) CLOSE_IN closes a
+        variable bound from SLOT; (6) the sink's function is called only from
+        CLOSE_IN and CLOSE_IN only from the declared THREAD_ROOTS."""
+        slot, oi, ci = row["slot"], row["open_in"], row["close_in"]
+        defs = self.an.tree.defs
+        if oi not in defs or ci not in defs:
+            return f"{oi} or {ci} is missing"
+
+        def walk(x):
+            st = [x]
+            while st:
+                y = st.pop()
+                if isinstance(y, list):
+                    yield y
+                    st.extend(y)
+
+        def binds(fname, var, test):
+            for f in walk(defs[fname].body):
+                if head(f) in ("let", "let*") and len(f) > 1 and isinstance(f[1], list):
+                    for b in f[1]:
+                        if isinstance(b, list) and len(b) >= 2 and str(b[0]) == var and test(b[1]):
+                            return True
+            return False
+
+        calls = [f for f in walk(defs[info.name].body) if head(f) == sink.name]
+        if not calls:
+            return f"{info.name} no longer calls {sink.name}"
+        for f in calls:
+            if len(f) < 2 or head(f[1]) != slot:
+                return f"{sink.name} at line {line_of(f, 0)} is not passed the {slot} slot"
+        for fname, d in defs.items():
+            uses = [f for f in walk(d.body) if head(f) == slot]
+            if uses and fname not in (info.name, oi, ci):
+                return f"{slot} is referenced in {fname}"
+        stores = []
+        for fname in (info.name, oi, ci):
+            for f in walk(defs[fname].body):
+                if head(f) in ("setf", "setq"):
+                    for place, value in zip(f[1::2], f[2::2]):
+                        if head(place) == slot:
+                            stores.append((fname, value))
+        opened = False
+        for fname, value in stores:
+            if isinstance(value, Sym) and str(value).lower() == "nil":
+                continue
+            if fname != oi or not isinstance(value, Sym) or not binds(
+                    fname, str(value), lambda init: head(init) == row["open_call"]):
+                return f"{slot} is stored from something other than a {row['open_call']} in {oi} ({fname})"
+            opened = True
+        if not opened:
+            return f"{oi} no longer stores a {row['open_call']} result in {slot}"
+        for d in defs.values():
+            for f in walk(d.body):
+                if head(f) == row["constructor"] and any(
+                        isinstance(a, Sym) and str(a).lower() == row["slot_keyword"] for a in f):
+                    return f"{row['constructor']} initialises {slot}"
+        closed = False
+        for f in walk(defs[ci].body):
+            if head(f) == row["close_call"] and len(f) > 1 and isinstance(f[1], Sym) and binds(
+                    ci, str(f[1]), lambda init: head(init) == slot):
+                closed = True
+        if not closed:
+            return f"{ci} does not {row['close_call']} a variable bound from {slot}"
+        callers_of = lambda n: {c for c, _ in self.m.callers.get(n, ())}
+        if callers_of(info.name) != {ci}:
+            return f"{info.name} is called from {sorted(callers_of(info.name))}, not only {ci}"
+        if not callers_of(ci) or not callers_of(ci) <= set(row["thread_roots"]):
+            return f"{ci} is called from {sorted(callers_of(ci))}; the declared thread roots are {row['thread_roots']}"
+        return None
 
     def in_unwind_protect(self, fname, sink_line, release) -> bool:
         d = self.an.tree.defs.get(fname)

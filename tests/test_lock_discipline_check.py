@@ -1035,6 +1035,101 @@ class Baseline(unittest.TestCase):
         self.assertTrue(all(":fn-a#" in n for n in names), names)
 
 
+class R3OwnedFd(unittest.TestCase):
+    """borrows kind owned-fd (the catchup spool worker's private temp-file descriptor)."""
+    GOOD = """
+(defstruct (fnn-csp-worker (:constructor %make-fnn-csp-worker)) lease path fd created lock)
+(defun fnn-csp-worker-perform (worker operation offset count)
+  (case operation
+    (:open (let ((fd (fnn-open (fnn-csp-worker-path worker) 66 384)))
+             (setf (fnn-csp-worker-fd worker) fd (fnn-csp-worker-created worker) t)
+             (values :ok 0)))
+    ((:digest :replay)
+     (fnn-extent-window-pread (fnn-csp-worker-fd worker) (make-array 2) offset count))))
+(defun fnn-csp-worker-loop (worker)
+  (unwind-protect (fnn-csp-worker-perform worker :open 0 0)
+    (when (fnn-csp-worker-fd worker)
+      (let ((fd (fnn-csp-worker-fd worker)))
+        (setf (fnn-csp-worker-fd worker) nil)
+        (fnn-close fd)))))
+(defun fnn-csp-worker-start (path)
+  (let ((worker (%make-fnn-csp-worker :path path)))
+    (sb-thread:make-thread (lambda () (fnn-csp-worker-loop worker)) :name "fn catchup spool")
+    worker))
+"""
+    ROOT_NAME = "lambda@host/native/fixture.lisp:fnn-csp-worker-start#lambda1"
+
+    def r3(self, src, root=None):
+        raw = dict(CONTRACTS.raw)
+        borrows = dict(raw["borrows"])
+        row = dict(borrows["fnn-csp-worker-perform"])
+        row["thread_roots"] = [root or self.ROOT_NAME]
+        borrows["fnn-csp-worker-perform"] = row
+        raw["borrows"] = borrows
+        with tempfile.TemporaryDirectory() as tmp:
+            r = Path(tmp)
+            (r / "host" / "native").mkdir(parents=True)
+            (r / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            an, model, checker = ldc.analyze_tree(r, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f for f in checker.run({"R3"}) if f.category != "exception"]
+
+    def test_the_declared_private_fd_is_accepted(self):
+        self.assertEqual([(f.function, f.key, f.message) for f in self.r3(self.GOOD)], [])
+
+    def test_without_the_row_the_pread_is_naked(self):
+        raw = dict(CONTRACTS.raw)
+        raw["borrows"] = {k: v for k, v in raw["borrows"].items() if k != "fnn-csp-worker-perform"}
+        with tempfile.TemporaryDirectory() as tmp:
+            r = Path(tmp)
+            (r / "host" / "native").mkdir(parents=True)
+            (r / "host" / "native" / "fixture.lisp").write_text(PRELUDE + self.GOOD)
+            an, model, checker = ldc.analyze_tree(r, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            found = checker.run({"R3"})
+        self.assertIn("naked:fnn-extent-window-pread", [f.key for f in found])
+
+    def broken(self, old, new, **kw):
+        self.assertIn(old, self.GOOD)
+        found = self.r3(self.GOOD.replace(old, new, 1), **kw)
+        self.assertEqual([f.key for f in found], ["borrow:fnn-extent-window-pread"],
+                         [(f.key, f.message) for f in found])
+        return found[0].message
+
+    def test_a_second_toucher_of_the_slot_breaks_the_row(self):
+        src = self.GOOD + "(defun fnn-csp-peek (w) (fnn-csp-worker-fd w))\n"
+        found = self.r3(src)
+        self.assertEqual([f.key for f in found], ["borrow:fnn-extent-window-pread"])
+        self.assertIn("referenced in fnn-csp-peek", found[0].message)
+
+    def test_a_store_that_is_not_an_open_breaks_the_row(self):
+        msg = self.broken("(setf (fnn-csp-worker-fd worker) fd (fnn-csp-worker-created worker) t)",
+                          "(setf (fnn-csp-worker-fd worker) (gethash 1 *fnn-extent-fds*) (fnn-csp-worker-created worker) t)")
+        self.assertIn("stored from something other", msg)
+
+    def test_a_constructor_that_seeds_the_slot_breaks_the_row(self):
+        msg = self.broken("(%make-fnn-csp-worker :path path)", "(%make-fnn-csp-worker :path path :fd 3)")
+        self.assertIn("initialises", msg)
+
+    def test_a_loop_that_never_closes_breaks_the_row(self):
+        msg = self.broken("(fnn-close fd)", "fd")
+        self.assertIn("does not fnn-close", msg)
+
+    def test_a_pread_of_another_descriptor_breaks_the_row(self):
+        msg = self.broken("(fnn-extent-window-pread (fnn-csp-worker-fd worker)",
+                          "(fnn-extent-window-pread (gethash 1 *fnn-extent-fds*)")
+        self.assertIn("is not passed", msg)
+
+    def test_a_second_caller_of_the_perform_breaks_the_row(self):
+        src = self.GOOD + "(defun fnn-csp-other (w) (fnn-csp-worker-perform w :digest 0 1))\n"
+        found = self.r3(src)
+        self.assertEqual([f.key for f in found], ["borrow:fnn-extent-window-pread"])
+        self.assertIn("called from", found[0].message)
+
+    def test_a_thread_root_that_is_not_declared_breaks_the_row(self):
+        msg = self.broken("(lambda () (fnn-csp-worker-loop worker))",
+                          "(lambda () (fnn-csp-worker-loop worker))", root="lambda@elsewhere#lambda9")
+        self.assertIn("thread roots", msg)
+
+
 class R2WaitWrapper(unittest.TestCase):
     """A declared condition-wait wrapper (contracts condition_wait_wrappers) releases the
     mutex its caller passes, exactly as sb-thread:condition-wait does."""
