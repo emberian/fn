@@ -1,0 +1,16 @@
+{
+ "category": "proof-owed",
+ "detail": "Intended statement: for every state reachable from fn-csp-begin(plan cursor credential limit W) (W posp) by fn-csp-step, (equal (len (fn-csp-conns s)) W) and the count of conns holding a (msgid . phase) binding is <= W, so the retained Message-IDs number at most W (one per slot). Needs an invariant preserved by fn-csp-step with the windowp family (:653-:796) as template; the conns-set indices come from fn-csp-free-conn / fn-csp-unopened-conn over the conns list, or the bound slot. Cites PRF-1335/1336 (the offer window; header of books/peer-catchup-spool.lisp). Needs defteeth (positive witness a reachable state built by fn-csp-begin plus steps, per-hypothesis breaks, a mutation) before it counts.",
+ "file": "books/peer-catchup-spool.lisp",
+ "id": "CSP-OWED-WINDOW-BOUNDS-IN-FLIGHT",
+ "notes": [
+  "10-06 20:25 proved: fn-csp-window-bounds-in-flight (books/peer-catchup-spool.lisp), teeth in tests/acl2/peer-catchup-spool-tests.lisp, keystone on the fn-csp-step definterface; persvati REPL green, certify pending"
+ ],
+ "owner": "catchup",
+ "severity": "high",
+ "slice": "peer-services",
+ "source": "catchup3",
+ "state": "ready",
+ "title": "Catch-up spool controller owes K2 fn-csp-window-bounds-in-flight: at most W records are in flight, W the begin argument (the operator's log-batch-records)",
+ "updated": "2026-10-07T00:25:49Z"
+}

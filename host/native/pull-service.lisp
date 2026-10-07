@@ -393,6 +393,11 @@ acceptance (the owner is stopping or fenced then)."
   ;; Catch-up only (books/peer-catchup-spool.lisp): the bank lease, its spool
   ;; worker, the private digest cursor and the one outstanding spool operation.
   lease worker hash hash-total hash-base spool-op
+  ;; Catch-up offer window (PRF-1335/1336): the logical transit connections
+  ;; the controller names by index j, as an alist (j . cid), and the index of
+  ;; the exchange in flight (CID is that connection's cid).  Nothing here is
+  ;; decided by the host: ACL2 names every j and the width of the window.
+  cids lj
   ;; S054/S067: the round's ACL2 deadline (fn-prd-round-deadline).
   round-deadline)
 
@@ -411,6 +416,7 @@ acceptance (the owner is stopping or fenced then)."
 (defun fnn-pull-flight-close-local (flight)
   "Revoke publication and attempt every local release, preserving first failure."
   (let ((cid (fnn-pull-flight-cid flight))
+        (others (mapcar #'cdr (fnn-pull-flight-cids flight)))
         (cold (fnn-pull-flight-cold flight))
         (service (fnn-pull-flight-service flight)) (await nil) (failure nil))
     ;; Invalidate the callback's captured await identity before owner calls.
@@ -418,6 +424,8 @@ acceptance (the owner is stopping or fenced then)."
     (sb-thread:with-mutex ((fnn-pull-runtime-lock (fnn-pull-flight-runtime flight)))
       (setq await (fnn-pull-flight-await flight))
       (setf (fnn-pull-flight-cid flight) nil
+            (fnn-pull-flight-cids flight) nil
+            (fnn-pull-flight-lj flight) nil
             (fnn-pull-flight-await flight) nil
             (fnn-pull-flight-completion flight) nil))
     (setf (fnn-pull-flight-cold flight) nil
@@ -428,12 +436,15 @@ acceptance (the owner is stopping or fenced then)."
              (handler-case (funcall thunk)
                (serious-condition (condition) (unless failure (setq failure condition))))))
       (when cold (release (lambda () (fnn-owner-cold-abandon (first cold)))))
-      (when cid
-        (when await (release (lambda () (fnn-owner-await-abandon service cid))))
-        (release (lambda () (fnn-owner-response-unpin service cid)))
+      ;; The exchange in flight's cid (it alone can hold an await), then
+      ;; every other window connection.
+      (dolist (c (if cid (adjoin cid others) others))
+        (when (and await (eql c cid))
+          (release (lambda () (fnn-owner-await-abandon service c))))
+        (release (lambda () (fnn-owner-response-unpin service c)))
         (release (lambda ()
                    (fnn-owner-transit-serialized
-                    service nil (lambda () (fnn-owner-action 'fn-owner-close cid)))))))
+                    service nil (lambda () (fnn-owner-action 'fn-owner-close c)))))))
     (when failure (error failure))))
 
 (defun fnn-pull-flight-dispose (flight)
@@ -472,7 +483,13 @@ acceptance (the owner is stopping or fenced then)."
                           :runtime runtime :plan plan :journal journal :kind kind
                           :key (fnn-core 'fn-prd-key kind peer) :peer peer :lease lease
                           :round-deadline (fnn-core 'fn-prd-round-deadline (fnn-pull-monotonic))))
-                 (begun (fnn-core 'fn-csp-begin plan cursor (fnn-pull-profile plan) limit)))
+                 ;; W: the operator's log-batch-records, read once from the live
+                 ;; configuration; the controller decides everything else.
+                 (window (fnn-owner-transit-serialized
+                          (fnn-pull-runtime-service runtime) nil
+                          (lambda () (first (fnn-owner-core 'fn-owner-log-bounds)))))
+                 (begun (fnn-core 'fn-csp-begin plan cursor (fnn-pull-profile plan)
+                                  limit window)))
             (setf (fnn-pull-flight-session flight) (first begun)
                   (fnn-pull-flight-effects flight) (second begun))
             flight))
@@ -510,11 +527,24 @@ acceptance (the owner is stopping or fenced then)."
         (and timed (fnn-core 'fn-prd-deadline (fnn-pull-monotonic)
                             (fnn-core 'fn-owner-feed-connect-timeout)))))
 
-(defun fnn-pull-flight-local-open (flight)
+(defun fnn-pull-local-event (flight octets)
+  "The local node's reply as the session's event: a catch-up round names the
+window connection J the exchange ran on (:local j . octets); a pull round has
+the one connection (:local . octets)."
+  (if (eq (fnn-pull-flight-kind flight) :catch-up)
+      (list* :local (fnn-pull-flight-lj flight) octets)
+    (cons :local octets)))
+
+(defun fnn-pull-flight-local-open (flight &optional j)
+  "Open a logical transit connection; J, from a catch-up round's (:open-local j),
+is the window slot it fills."
   (multiple-value-bind (cid greeting)
       (fnn-pull-local-open (fnn-pull-flight-service flight) (fnn-pull-flight-peer flight))
     (setf (fnn-pull-flight-cid flight) cid)
-    (fnn-pull-flight-event flight (cons :local (fnn-octet-list greeting)))))
+    (when j
+      (setf (fnn-pull-flight-lj flight) j)
+      (push (cons j cid) (fnn-pull-flight-cids flight)))
+    (fnn-pull-flight-event flight (fnn-pull-local-event flight (fnn-octet-list greeting)))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Catch-up spool I/O (books/peer-catchup-spool.lisp decides every offset,
@@ -689,13 +719,20 @@ acceptance (the owner is stopping or fenced then)."
            (fnn-pull-flight-end flight) nil)
      (unless (zerop (length (fnn-pull-flight-data flight)))
        (fnn-pull-flight-set-io flight :send t)))
-    (:open-local (fnn-pull-flight-local-open flight))
+    (:open-local (fnn-pull-flight-local-open flight (second effect)))
     (:reopen-local (fnn-pull-flight-close-local flight) (fnn-pull-flight-local-open flight))
     (:local
-     (setf (fnn-pull-flight-input flight) (fnn-octets (cdr effect))
-           (fnn-pull-flight-parts flight) nil
-           (fnn-pull-flight-closing flight) nil
-           (fnn-pull-flight-resume-at flight) nil)
+     ;; A catch-up round's effect is (:local j . octets): J picks the window
+     ;; connection the exchange runs on.
+     (let ((octets (if (eq (fnn-pull-flight-kind flight) :catch-up) (cddr effect) (cdr effect))))
+       (when (eq (fnn-pull-flight-kind flight) :catch-up)
+         (setf (fnn-pull-flight-lj flight) (second effect)
+               (fnn-pull-flight-cid flight)
+               (cdr (assoc (second effect) (fnn-pull-flight-cids flight)))))
+       (setf (fnn-pull-flight-input flight) (fnn-octets octets)
+             (fnn-pull-flight-parts flight) nil
+             (fnn-pull-flight-closing flight) nil
+             (fnn-pull-flight-resume-at flight) nil))
      (fnn-pull-flight-set-io flight :local))
     (:close nil)
     (:spool-write
@@ -787,12 +824,14 @@ a cold page), else :progress."
            (zerop (length (fnn-pull-flight-input flight))))
        (let ((reply (fnn-owner-join-octets (nreverse (fnn-pull-flight-parts flight)))))
          (cond ((> (length reply) 0)
-                (fnn-pull-flight-event flight (cons :local (fnn-octet-list reply))))
+                (fnn-pull-flight-event
+                 flight (fnn-pull-local-event flight (fnn-octet-list reply))))
                ;; A catch-up body window the local node took without a reply:
                ;; the controller's next window may follow.
                ((and (eq (fnn-pull-flight-kind flight) :catch-up)
                      (not (fnn-pull-flight-closing flight)))
-                (fnn-pull-flight-event flight (list :local-window)))))
+                (fnn-pull-flight-event
+                 flight (list :local-window (fnn-pull-flight-lj flight))))))
        (when (fnn-pull-flight-closing flight)
          (fnn-pull-flight-close-local flight)
          (fnn-pull-flight-event flight (list :lost :local)))
