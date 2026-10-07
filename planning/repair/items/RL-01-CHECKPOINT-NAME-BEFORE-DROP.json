@@ -9,7 +9,8 @@
  "line": "8761",
  "locus": "log-recover",
  "notes": [
-  "10-04 13:41 Platform caveat: books/byte-store.lisp's fn-bs-fsync-dir allows a failed directory fence to drop its entry ops; on ext4 a metadata write error usually aborts the journal (errors=remount-ro) rather than leaving a clean cached dentry, so real reachability is unverified. Config/profile checked at the same time: config.json and config/000001 are written only at init (fnn-publish-initial-file: stage, fsync, link, dir fsync; later configuration changes are log records), so no acknowledged record depends on them; a failed init fsync costs at most an open refusal after a power loss."
+  "10-04 13:41 Platform caveat: books/byte-store.lisp's fn-bs-fsync-dir allows a failed directory fence to drop its entry ops; on ext4 a metadata write error usually aborts the journal (errors=remount-ro) rather than leaving a clean cached dentry, so real reachability is unverified. Config/profile checked at the same time: config.json and config/000001 are written only at init (fnn-publish-initial-file: stage, fsync, link, dir fsync; later configuration changes are log records), so no acknowledged record depends on them; a failed init fsync costs at most an open refusal after a power loss.",
+  "10-05 01:00 m1-durable-5 5d3e78a52 (lane/m1-durable-5): coordinator ruling (b), the open never drops. Keystones fn-lgrc-open-unlinks-no-segment (fn-bsc, with :unlink) and fn-lgs-install-drop-covers-what-the-open-left; ground trace fn-lgrc-dropping-open-loses-a-checkpointed-history; host fnn-recover-log drops nothing; certify-20261005T041721Z-1947144. Native: test_native_log_compaction test_the_open_keeps_what_the_drop_left_for_the_next_install (pending a hbox image)."
  ],
  "owner": "m1-durable-2",
  "reviewer": "m1-durable-2 (Opus), mental execution of host order 2026-10-04 after the GPT-6 review's dependency-set point; not reproduced",
@@ -18,5 +19,5 @@
  "source": "m1-durable-2",
  "state": "open",
  "title": "the open's drop of covered segments trusts a checkpoint name a failed root fsync left only in the dentry cache",
- "updated": "2026-10-04T17:41:56Z"
+ "updated": "2026-10-05T05:00:58Z"
 }

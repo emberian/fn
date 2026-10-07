@@ -179,15 +179,25 @@
 (defconst *fn-ncr-frame-flag* '(45 45 102 114 97 109 101)) ; --frame
 
 ; `fn consumer --frame COMMAND ...' is COMMAND's plan, for the commands whose
-; replies a client reads as frames (status, position, ack), wrapped as
+; replies a client reads as frames (status, position, ack, poll), wrapped as
 ; (:frame PLAN): the host prints the reply frame's octets as hex instead of
 ; the line.  Any other command, or a plan that is not a run, is (:usage :frame).
 (defun fn-ncr-frame-plan (plan)
   (declare (xargs :guard t))
   (if (and (consp plan) (equal (car plan) :run) (consp (cdr plan))
-           (member-equal (cadr plan) '(:status :position :ack)))
+           (member-equal (cadr plan) '(:status :position :ack :poll)))
       (list :frame plan)
     (list :usage :frame)))
+
+; A plan is wrapped only when it is a run of status, position, ack or poll;
+; every other plan (a usage, a help, a run of any other operation) is
+; (:usage :frame).
+(defthm fn-ncr-frame-plan-wraps-only-those-runs
+  (implies (equal (car (fn-ncr-frame-plan plan)) :frame)
+           (and (consp plan) (equal (car plan) :run) (consp (cdr plan))
+                (member-equal (cadr plan) '(:status :position :ack :poll))
+                (equal (fn-ncr-frame-plan plan) (list :frame plan))))
+  :rule-classes nil)
 
 (defun fn-ncr-cli-plan (command argv)
   (declare (xargs :guard t))

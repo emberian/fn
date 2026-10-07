@@ -52,7 +52,7 @@ instantiation. No registry row cites them as assumptions.
 
 | Obligation | Stated | Used by | Discharged by |
 | --- | --- | --- | --- |
-| `fn-assume-log-sole-pending-writer` | while the log recovers, no store operation but the segment's own writes is pending | `fn-lgk-recover-establishes-relation` (`books/store-log-recover.lisp`) | `fn-owb-recover-establishes-relation` (a related state, `books/owner-batch.lisp`, PRF-254). `fn-lgob-recovered-segment-fence-is-identity` (PRF-273) used it until 2026-09-27; its weakened statement needs only the segment's inode. |
+| `fn-assume-log-sole-pending-writer` | while the log recovers, no store operation but the segment's own writes is pending | `fn-lgk-recover-establishes-relation` (`books/store-log-recover.lisp`) | `fn-owb-recover-establishes-relation` (a related state, `books/owner-batch.lisp`, PRF-254). The open's segment fence theorem (PRF-273) used it until 2026-09-27; since RL-01 A2 the open's copy leaves nothing pending (`fn-lgrc-attempt-makes-the-read-prefix-durable`), and `fn-lgob-duplicate-segment-fence-is-identity` needs only a related state with nothing in flight. |
 
 ## Parked code: trust notes
 

@@ -45,6 +45,7 @@
 (include-book "arena-reader-pins")
 (include-book "payload-arena")
 (include-book "held-record")
+(include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
 ; 1. The retirement's items and what the release does with them.
@@ -61,24 +62,9 @@
 
 ; The handles HS tagged, in order.  Executes by a loop (the reclaimed
 ; handles of a pass are store data).
-(defun fn-arf-tag-loop (hs rev)
-  (declare (xargs :guard (true-listp rev)))
-  (if (atom hs)
-      (revappend rev nil)
-    (fn-arf-tag-loop (cdr hs) (cons (list :forget (car hs)) rev))))
-
-(defun fn-arf-tag (hs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (atom hs)
-                  nil
-                (cons (list :forget (car hs)) (fn-arf-tag (cdr hs))))
-       :exec (fn-arf-tag-loop hs nil)))
-
-(defthm fn-arf-tag-loop-is-tag
-  (equal (fn-arf-tag-loop hs rev)
-         (revappend rev (fn-arf-tag hs))))
-
-(verify-guards fn-arf-tag)
+(def-loop fn-arf-tag (hs)
+  :shape :map :over hs :elt h
+  :body (list :forget h))
 
 (defthm fn-arf-tag-true-listp
   (true-listp (fn-arf-tag hs))

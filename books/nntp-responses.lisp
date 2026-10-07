@@ -4,6 +4,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-projection")
+(include-book "def-loop")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "article-fields")
 (include-book "clock")
@@ -450,46 +451,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nntp-newsgroup-lines-loop (groups acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp groups)
-      (fn-nntp-newsgroup-lines-loop (cdr groups)
-                                    (cons (fn-nntp-append-pieces (list (fn-nntp-string-octets (car groups))
-                                                                       (list 9)
-                                                                       (fn-nntp-string-octets "(no description)")))
-                                          acc))
-    (revappend acc nil)))
-
-(defun fn-nntp-newsgroup-lines (groups)
-  ; RFC 3977 section 7.6.6: the group name, one or more space or TAB (the
-  ; usual practice is a single TAB), then a short description.  fn's
-  ; configuration carries no description for a group -- the group table holds
-  ; names, policy ids and created/retired stamps only -- so the second field
-  ; is the fixed marker "(no description)", identical for every group.  That
-  ; fabricates nothing about any group: it is a statement about the server.
-  ;
-  ; The field is NOT empty, and that is a measured decision.  A bare
-  ; "name TAB" line is what section 7.6.6 permits, but Python nntplib strips
-  ; the line and then requires name + white space + text, so an empty
-  ; description makes the group VANISH from its descriptions() result rather
-  ; than appear with no text (measured against tests/interop_nntplib.py,
-  ; 2026-09-20).  See the LIST NEWSGROUPS row of specs/nntp-audit.md.
-  (mbe :logic
-       (if (consp groups)
-           (cons (fn-nntp-append-pieces
-                  (list (fn-nntp-string-octets (car groups)) (list 9)
-                        (fn-nntp-string-octets "(no description)")))
-                 (fn-nntp-newsgroup-lines (cdr groups)))
-         nil)
-       :exec (fn-nntp-newsgroup-lines-loop groups nil)))
-
-(local
- (defthm fn-nntp-newsgroup-lines-loop-is-revappend
-   (equal (fn-nntp-newsgroup-lines-loop groups acc)
-          (revappend acc (fn-nntp-newsgroup-lines groups)))
-   :hints (("Goal" :induct (fn-nntp-newsgroup-lines-loop groups acc)
-                   :in-theory (union-theories '(fn-nntp-newsgroup-lines-loop fn-nntp-newsgroup-lines revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
+(def-loop fn-nntp-newsgroup-lines (groups)
+  :shape :map :over groups :elt e
+  :body (fn-nntp-append-pieces (list (fn-nntp-string-octets e) (list 9) (fn-nntp-string-octets "(no description)"))))
 
 ; `patterns` is an internal successful `fn-wildmat-parse` result, never an
 ; externally supplied representation.  Group names are projection-guarded
@@ -1635,14 +1599,6 @@
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-counts-lines-loop-is-revappend (acc nil))))))
 
-(verify-guards fn-nntp-newsgroup-lines-loop)
-
-(verify-guards fn-nntp-newsgroup-lines
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-newsgroup-lines)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-newsgroup-lines-loop-is-revappend (acc nil))))))
-
 (verify-guards fn-nntp-group-matches-parsed-wildmatp)
 
 (verify-guards fn-nntp-filter-groups-by-wildmat-loop)
@@ -2746,38 +2702,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nntp-filter-facts-by-wildmat-loop (patterns facts acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp facts)
-      (if (and (fn-nntp-group-factp (car facts))
-               (fn-nntp-group-matches-parsed-wildmatp patterns
-                                                      (fn-nntp-fact-name (car facts))))
-          (fn-nntp-filter-facts-by-wildmat-loop patterns
-                                                (cdr facts)
-                                                (cons (car facts) acc))
-        (fn-nntp-filter-facts-by-wildmat-loop patterns (cdr facts) acc))
-    (revappend acc nil)))
-
-(defun fn-nntp-filter-facts-by-wildmat (patterns facts)
-  (mbe :logic
-       (if (consp facts)
-           (if (and (fn-nntp-group-factp (car facts))
-                    (fn-nntp-group-matches-parsed-wildmatp
-                     patterns (fn-nntp-fact-name (car facts))))
-               (cons (car facts)
-                     (fn-nntp-filter-facts-by-wildmat patterns (cdr facts)))
-             (fn-nntp-filter-facts-by-wildmat patterns (cdr facts)))
-         nil)
-       :exec (fn-nntp-filter-facts-by-wildmat-loop patterns facts nil)))
-
-(local
- (defthm fn-nntp-filter-facts-by-wildmat-loop-is-revappend
-   (equal (fn-nntp-filter-facts-by-wildmat-loop patterns facts acc)
-          (revappend acc (fn-nntp-filter-facts-by-wildmat patterns facts)))
-   :hints (("Goal" :induct (fn-nntp-filter-facts-by-wildmat-loop patterns facts acc)
-                   :in-theory (union-theories '(fn-nntp-filter-facts-by-wildmat-loop fn-nntp-filter-facts-by-wildmat revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-filter-facts-by-wildmat (patterns facts)
+  :shape :map :over facts :elt e
+  :keep (and (fn-nntp-group-factp e) (fn-nntp-group-matches-parsed-wildmatp patterns (fn-nntp-fact-name e)))
+  :body e)
 
 (defun fn-nntp-list-active-times (session env args)
   (if (null args)
@@ -2865,36 +2793,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nntp-described-lines-loop (groups descs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp groups)
-      (fn-nntp-described-lines-loop (cdr groups)
-                                    descs
-                                    (cons (fn-nntp-append-pieces (list (fn-nntp-string-octets (car groups))
-                                                                       (list 9)
-                                                                       (fn-nntp-description-field (car groups)
-                                                                                                  descs)))
-                                          acc))
-    (revappend acc nil)))
-
-(defun fn-nntp-described-lines (groups descs)
-  (mbe :logic
-       (if (consp groups)
-           (cons (fn-nntp-append-pieces
-                  (list (fn-nntp-string-octets (car groups)) (list 9)
-                        (fn-nntp-description-field (car groups) descs)))
-                 (fn-nntp-described-lines (cdr groups) descs))
-         nil)
-       :exec (fn-nntp-described-lines-loop groups descs nil)))
-
-(local
- (defthm fn-nntp-described-lines-loop-is-revappend
-   (equal (fn-nntp-described-lines-loop groups descs acc)
-          (revappend acc (fn-nntp-described-lines groups descs)))
-   :hints (("Goal" :induct (fn-nntp-described-lines-loop groups descs acc)
-                   :in-theory (union-theories '(fn-nntp-described-lines-loop fn-nntp-described-lines revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-described-lines (groups descs)
+  :shape :map :over groups :elt e
+  :body (fn-nntp-append-pieces (list (fn-nntp-string-octets e) (list 9) (fn-nntp-description-field e descs))))
 
 (defun fn-nntp-list-newsgroups-described (session archive descs args)
   ; The argument grammar of LIST NEWSGROUPS [wildmat], parsed once.
@@ -2917,36 +2818,10 @@
 ; data with no fixed cap (D27), and the recursion took one control-stack frame
 ; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
 ; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
-(defun fn-nntp-motd-lines-loop (lines acc)
-  (declare (xargs :guard t))
-  (if (consp lines)
-      (fn-nntp-motd-lines-loop (cdr lines)
-       (if (fn-nntp-description-textp (car lines)) (cons (car lines) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-nntp-motd-lines (lines)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp lines)
-           (if (fn-nntp-description-textp (car lines))
-               (cons (car lines) (fn-nntp-motd-lines (cdr lines)))
-             (fn-nntp-motd-lines (cdr lines)))
-         nil)
-       :exec (fn-nntp-motd-lines-loop lines nil)))
-
-(defthm fn-nntp-motd-lines-loop-is-rev-onto
-  (equal (fn-nntp-motd-lines-loop lines acc)
-         (fn-ag-rev-onto acc (fn-nntp-motd-lines lines)))
-  :hints (("Goal" :induct (fn-nntp-motd-lines-loop lines acc)
-                  :in-theory (union-theories
-                              '(fn-nntp-motd-lines-loop fn-nntp-motd-lines fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-nntp-motd-lines
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-nntp-motd-lines fn-ag-rev-onto fn-nntp-motd-lines-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-nntp-motd-lines (lines)
+  :shape :map :over lines :elt e
+  :keep (fn-nntp-description-textp e)
+  :body e)
 
 ; Section 2.5.2: "an argument MUST NOT be specified.  Otherwise, a 501
 ; response code MUST be returned", and "The motd MAY be empty": this server
@@ -3061,13 +2936,6 @@
                                                   (union-theories (theory 'minimal-theory)
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-nntp-active-times-lines-loop-is-revappend (acc nil))))))
-(verify-guards fn-nntp-filter-facts-by-wildmat-loop)
-
-(verify-guards fn-nntp-filter-facts-by-wildmat
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-filter-facts-by-wildmat)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-filter-facts-by-wildmat-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-active-times)
 (verify-guards fn-nntp-active-status-line)
 (verify-guards fn-nntp-active-status-lines-loop)
@@ -3079,13 +2947,6 @@
                   :use ((:instance fn-nntp-active-status-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-active-status)
 (verify-guards fn-nntp-list-status-response)
-(verify-guards fn-nntp-described-lines-loop)
-
-(verify-guards fn-nntp-described-lines
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-described-lines)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-described-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-list-newsgroups-described)
 (verify-guards fn-nntp-list-motd)
 (verify-guards fn-nntp-list-command)

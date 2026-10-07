@@ -1,0 +1,241 @@
+; Teeth for books/store-log-recover-copy (RL-01, option A2; lane m1-durable-3,
+; 2026-10-04): the adversarial witness of K2 (a failed journal/ fence, an
+; exit with the cache kept, a second attempt that reads the visible but not
+; durable replacement and copies it again, a power loss; and the variant
+; where the second attempt's journal/ fence fails too), RL-01 red on the
+; old in-place program and green under A2 on the same restart, and option
+; A's in-place rewrite violating the side condition and losing A.
+(in-package "ACL2")
+(include-book "../../books/store-log-recover-copy")
+(include-book "../../books/frame-trailer")
+(include-book "../../books/codec-attach")
+
+(defun lgrct-unit () (declare (xargs :guard t)) 4)
+(defun lgrct-max () (declare (xargs :guard t)) 4096)
+(defun lgrct-genesis () (declare (xargs :guard t :verify-guards nil)) *fn-lg-genesis*)
+(defun lgrct-r (i) (declare (xargs :guard t)) (list i (+ 1 (nfix i)) 7))
+; A: two records, acknowledged.  B: a third, its batch's barrier fails.
+; C: a fourth, appended and acknowledged after the restart.
+(defun lgrct-a () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-log (list (lgrct-r 1) (lgrct-r 2)) (lgrct-genesis) (lgrct-unit)))
+(defun lgrct-b () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-log (list (lgrct-r 3))
+             (fn-lg-scan-last (lgrct-a) (lgrct-genesis) (lgrct-unit) (lgrct-max)) (lgrct-unit)))
+(defun lgrct-c () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-log (list (lgrct-r 4))
+             (fn-lg-scan-last (append (lgrct-a) (lgrct-b)) (lgrct-genesis) (lgrct-unit) (lgrct-max))
+             (lgrct-unit)))
+(defun lgrct-extent () (declare (xargs :guard t)) 512)
+(defun lgrct-records (c) (declare (xargs :guard t :verify-guards nil))
+  (car (fn-lg-scan c (lgrct-genesis) (lgrct-unit) (lgrct-max))))
+(assert-event
+ (let ((a (lgrct-a)) (ab (append (lgrct-a) (lgrct-b))) (abc (append (lgrct-a) (lgrct-b) (lgrct-c))))
+   (and (fn-lgrc-completep a (lgrct-genesis) (lgrct-unit) (lgrct-max))
+        (fn-lgrc-completep ab (lgrct-genesis) (lgrct-unit) (lgrct-max))
+        (fn-lgrc-completep abc (lgrct-genesis) (lgrct-unit) (lgrct-max))
+        (equal (lgrct-records abc) (list (lgrct-r 1) (lgrct-r 2) (lgrct-r 3) (lgrct-r 4)))
+        (< (len abc) (lgrct-extent)))))
+
+; The store at the restart: journal/K names inode 0, which durably holds A
+; and zeros to the extent; nothing pending.
+(defun lgrct-s0 () (declare (xargs :guard t :verify-guards nil))
+  (fn-bsc-of (fn-bs-make (lgrct-unit)
+                         (list (cons 0 (append (lgrct-a) (fn-bs-zeros (- (lgrct-extent) (len (lgrct-a)))))))
+                         (list (list :journal (cons "K" 0)) (list :staging))
+                         nil 1)))
+; The world's events, from the failed barrier on.
+(defun lgrct-events (outs2) (declare (xargs :guard t :verify-guards nil))
+  (list (list :write 0 (len (lgrct-a)) (lgrct-b) :ok)          ; B appended, never acknowledged
+        (list :fsync-file 0 (cons :eio nil))                    ; its barrier fails: B clean, not durable
+        (list :exit)                                            ; restart with the cache kept
+        (list :attempt :staging "stage" (list :ok :ok :ok :ok (cons :eio nil) :ok)) ; journal/ fence fails
+        (list :exit)
+        (list :attempt :staging "stage" outs2)                  ; re-recovery
+        (list :lose-cache nil)))                                ; power loss
+(defun lgrct-world (outs2) (declare (xargs :guard t :verify-guards nil))
+  (fn-lgrc-world (lgrct-s0) (lgrct-events outs2) :journal "K" (lgrct-genesis) (lgrct-max) 0))
+(defun lgrct-bound-records (s) (declare (xargs :guard t :verify-guards nil))
+  (let ((bs (fn-bsc-bs s)))
+    (lgrct-records (fn-bs-durable-content bs (fn-bs-durable-entry bs :journal "K")))))
+
+; The keystone's hypotheses are inhabited, and every state keeps the invariant.
+(assert-event
+ (and (fn-lgrc-invp (lgrct-s0) :journal "K" (lgrct-a))
+      (fn-lgrc-world-okp (lgrct-s0) (lgrct-events nil) :journal "K" (lgrct-a) (lgrct-genesis) (lgrct-max) 0)
+      (fn-lgrc-all-invp (lgrct-world nil) :journal "K" (lgrct-a))
+      (fn-lgrc-world-okp (lgrct-s0) (lgrct-events (list :ok :ok :ok :ok (cons :eio nil)))
+                         :journal "K" (lgrct-a) (lgrct-genesis) (lgrct-max) 0)
+      (fn-lgrc-all-invp (lgrct-world (list :ok :ok :ok :ok (cons :eio nil))) :journal "K" (lgrct-a))))
+
+; After the first attempt's failed journal/ fence the replacement is
+; VISIBLE (inode 1) and not durable (journal/K still durably names 0): the
+; second attempt reads it, does not trust it, and copies it again (inode 2).
+(assert-event
+ (let* ((w (lgrct-world nil)) (after1 (nth 7 w)))
+   (and (equal (fn-bsc-lookup after1 :journal "K") 1)
+        (equal (fn-bs-durable-entry (fn-bsc-bs after1) :journal "K") 0)
+        (equal (len w) 16)
+        (equal (fn-bs-durable-entry (fn-bsc-bs (car (last w))) :journal "K") 2)
+        ;; the power loss leaves inode 2 bound: A and B's records
+        (equal (lgrct-bound-records (car (last w)))
+               (list (lgrct-r 1) (lgrct-r 2) (lgrct-r 3))))))
+
+; Variant: the second attempt's journal/ fence fails too.  The durable
+; binding is still inode 0, never written: A's records.
+(assert-event
+ (let ((w (lgrct-world (list :ok :ok :ok :ok (cons :eio nil)))))
+   (and (equal (fn-bs-durable-entry (fn-bsc-bs (car (last w))) :journal "K") 0)
+        (equal (lgrct-bound-records (car (last w))) (list (lgrct-r 1) (lgrct-r 2))))))
+
+; The restart's state: B readable (clean cache), not durable.
+(defun lgrct-restarted () (declare (xargs :guard t :verify-guards nil))
+  (nth 2 (lgrct-world nil)))
+(defun lgrct-ab () (declare (xargs :guard t :verify-guards nil)) (append (lgrct-a) (lgrct-b)))
+(defun lgrct-steps (s ops) (declare (xargs :guard t :verify-guards nil))
+  (if (consp ops) (mv-let (r s1) (fn-bsc-step s (car ops)) (declare (ignore r)) (lgrct-steps s1 (cdr ops))) s))
+; Serve C after recovery into whatever journal/K visibly names: the append
+; and its barrier, both :ok (C is acknowledged), then a power loss.
+(defun lgrct-serve-c-then-lose (s) (declare (xargs :guard t :verify-guards nil))
+  (let ((ino (fn-bsc-lookup s :journal "K")))
+    (lgrct-steps s (list (list :write ino (len (lgrct-ab)) (lgrct-c) :ok)
+                         (list :fsync-file ino :ok)
+                         (list :lose-cache nil)))))
+
+(assert-event
+ (let ((s (lgrct-restarted)))
+   (and (equal (fn-bs-take (len (lgrct-ab)) (fn-bsc-content s 0)) (lgrct-ab))   ; read: A and B
+        (equal (lgrct-records (fn-bs-durable-content (fn-bsc-bs s) 0))            ; durable: A only
+               (list (lgrct-r 1) (lgrct-r 2))))))
+
+; RL-01 RED on the OLD program (P-LOG-RECOVER: zero [F, end) in place, fence):
+; the open's kernel counts B as history; C is appended after it and
+; acknowledged; the power loss leaves a hole where B was read from cache,
+; and the open recovers 2 of the 4 records acknowledged.  The old program
+; keeps the invariant over A, but never establishes it over what it read.
+(defun lgrct-old-recovered () (declare (xargs :guard t :verify-guards nil))
+  (let ((s (lgrct-restarted)))
+    (lgrct-steps s (list (list :write 0 (len (lgrct-ab))
+                               (fn-bs-zeros (- (lgrct-extent) (len (lgrct-ab)))) :ok)
+                         (list :fsync-file 0 :ok)))))
+(assert-event
+ (let ((final (lgrct-serve-c-then-lose (lgrct-old-recovered))))
+   (and (fn-lgrc-invp (lgrct-old-recovered) :journal "K" (lgrct-a))
+        (not (fn-lgrc-invp (lgrct-old-recovered) :journal "K" (lgrct-ab)))
+        (equal (lgrct-bound-records final) (list (lgrct-r 1) (lgrct-r 2))))))
+
+; GREEN under A2: one attempt from the same restart establishes the
+; invariant over what it read (A and B), and the same service and power
+; loss recover all four records.
+(defun lgrct-a2-recovered () (declare (xargs :guard t :verify-guards nil))
+  (car (last (fn-lgrc-attempt (lgrct-restarted) :journal "K" :staging "stage"
+                              (lgrct-genesis) (lgrct-max) 0 nil))))
+(assert-event
+ (let ((final (lgrct-serve-c-then-lose (lgrct-a2-recovered))))
+   (and (fn-lgrc-invp (lgrct-a2-recovered) :journal "K" (lgrct-ab))
+        (equal (lgrct-bound-records final)
+               (list (lgrct-r 1) (lgrct-r 2) (lgrct-r 3) (lgrct-r 4))))))
+
+; A (rewrite the read prefix in place) violates the side condition, and its
+; crash image with the first unit landed as zeros recovers nothing: the
+; acknowledged A is lost.
+(assert-event
+ (let* ((s (lgrct-restarted))
+        (op (list :write 0 0 (fn-bs-take (len (lgrct-ab)) (fn-bsc-content s 0)) :ok))
+        (s1 (lgrct-steps s (list op)))
+        (s2 (lgrct-steps s1 (list (list :lose-cache (list (list :zero)))))))
+   (and (not (fn-lgrc-op-okp s op :journal "K" (lgrct-a)))
+        (fn-bs-crash-choicesp (list (list :zero)) (fn-bs-pending (fn-bsc-bs s1)) (lgrct-unit))
+        (equal (lgrct-bound-records s2) nil))))
+
+; K1 on the ground restart: the open's kernel is the read's (A and B), and
+; after A2's attempt the store is R-related to it through inode 1; after
+; the OLD program the same kernel is not R-related to the store (B's
+; octets are not durable).
+(defun lgrct-read-kernel () (declare (xargs :guard t :verify-guards nil))
+  (let ((s (lgrct-restarted)))
+    (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s :journal "K"))
+                    (lgrct-genesis) (lgrct-unit) (lgrct-max) 0)))
+(assert-event
+ (and (equal (fn-lgk-committed (lgrct-read-kernel)) (list (lgrct-r 1) (lgrct-r 2) (lgrct-r 3)))
+      (fn-lgk-relp (fn-bsc-bs (lgrct-a2-recovered)) (lgrct-read-kernel) 1 (lgrct-genesis) (lgrct-max))
+      (not (fn-lgk-relp (fn-bsc-bs (lgrct-old-recovered)) (lgrct-read-kernel) 0
+                        (lgrct-genesis) (lgrct-max)))))
+
+; K3 on the ground: the RL-01 trace through epochs under A2.  The first open
+; serves A; B's barrier fails (the service ends); the restart's open reads
+; B from the clean cache and serves A and B; C is fenced and acknowledged;
+; power loss.  Every state keeps the epoch invariant, and the final image
+; binds an inode whose scan reads all four records.
+(defun lgrct-epoch-events () (declare (xargs :guard t :verify-guards nil))
+  (list (list :open :staging "stage" nil)
+        (list :commit (lgrct-b) :ok (cons :eio nil))
+        (list :exit)
+        (list :open :staging "stage" nil)
+        (list :commit (lgrct-c) :ok :ok)
+        (list :ack)
+        (list :lose-cache nil)))
+(defun lgrct-epochs () (declare (xargs :guard t :verify-guards nil))
+  (fn-lgrc-epochs (lgrct-s0) (lgrct-a) (lgrct-a) nil (lgrct-epoch-events)
+                  :journal "K" (lgrct-genesis) (lgrct-max) 0))
+(assert-event
+ (let* ((w (lgrct-epochs)) (last (car (last w))))
+   (and (fn-lgrc-epochs-okp (lgrct-s0) (lgrct-a) (lgrct-a) nil (lgrct-epoch-events)
+                            :journal "K" (lgrct-genesis) (lgrct-max) 0)
+        (fn-lgrc-completep (append (lgrct-a) (lgrct-b) (lgrct-c)) (lgrct-genesis) (lgrct-unit) (lgrct-max))
+        (equal (cdr last) (append (lgrct-a) (lgrct-b) (lgrct-c)))     ; acknowledged: A, B, C
+        (equal (lgrct-bound-records (car last))
+               (list (lgrct-r 1) (lgrct-r 2) (lgrct-r 3) (lgrct-r 4))))))
+
+; No space: the restart's writable open needs the read's length (512) free.
+; With 511 it refuses by name and takes no step; with 512 it copies.
+(assert-event
+ (mv-let (v1 sts1) (fn-lgrc-open (lgrct-restarted) :journal "K" :staging "stage"
+                                 (lgrct-genesis) (lgrct-max) 0 511 nil)
+   (mv-let (v2 sts2) (fn-lgrc-open (lgrct-restarted) :journal "K" :staging "stage"
+                                   (lgrct-genesis) (lgrct-max) 0 512 nil)
+     (and (equal v1 :recover-copy-no-space) (null sts1)
+          (equal v2 :copy) (equal (len sts2) 6)))))
+;
+; -----------------------------------------------------------------------------
+; Section 10 (RL-01-CHECKPOINT-NAME-BEFORE-DROP).
+;
+; The unlink step: the name leaves the cache at once and the durable table
+; only at journal/'s fence; a name the cache does not hold is :enoent.
+(assert-event
+ (let ((s (fn-lgrc-rl01-checkpointed-store)))
+   (mv-let (r s1) (fn-bsc-step s '(:unlink :journal "000001.log" :ok))
+     (mv-let (r2 s2) (fn-bsc-step s '(:unlink :journal "000009.log" :ok))
+       (and (equal r :ok)
+            (null (fn-bsc-lookup s1 :journal "000001.log"))
+            (equal (fn-bs-durable-entry (fn-bsc-bs s1) :journal "000001.log") 1)
+            (equal (fn-bs-pending (fn-bsc-bs s1)) '((:del-entry :journal "000001.log")))
+            (equal r2 :enoent) (equal s2 s))))))
+
+; Premise inhabitation and the conclusion, ground: at the restart of the
+; RL-01-CHECKPOINT trace (the checkpoint named only in the cache) segment 1
+; satisfies the keystone's premise, and every state of the A2 open (the copy
+; of segment 2 and the three barriers, all succeeding) keeps it.  The open
+; that drops (the old program) does not: after its journal/ fence no image
+; binds segment 1.
+(assert-event
+ (let* ((s1 (fn-lgrc-rl01-restarted-store))
+        (a2 (fn-bsc-run s1 (fn-lgrc-rl01-open-ops nil)))
+        (old (fn-bsc-run s1 (fn-lgrc-rl01-open-ops t))))
+   (and (fn-lgrc-invp s1 :journal "000001.log" nil)
+        (equal (len a2) 9)
+        (fn-lgrc-all-invp a2 :journal "000001.log" nil)
+        (equal (fn-bs-durable-entry (fn-bsc-bs (car (last a2))) :journal "000001.log") 1)
+        (null (fn-bs-pending (fn-bsc-bs (car (last a2)))))
+        (equal (len old) 11)
+        (not (fn-lgrc-invp (car (last old)) :journal "000001.log" nil)))))
+
+; The restart's premise: the root's fence failed, so the checkpoint's name is
+; in the cache only; had the fence succeeded the name would be durable and
+; the old drop safe.  The keystone needs neither fact.
+(assert-event
+ (let ((ok (car (last (fn-bsc-run (fn-lgrc-rl01-checkpointed-store)
+                                  '((:rename :staging ".checkpoint-stage" :root "checkpoint" :ok)
+                                    (:fsync-dir :root :ok)
+                                    (:exit)))))))
+   (and (equal (fn-bs-durable-entry (fn-bsc-bs ok) :root "checkpoint") 5)
+        (null (fn-bs-durable-entry (fn-bsc-bs (fn-lgrc-rl01-restarted-store)) :root "checkpoint")))))
