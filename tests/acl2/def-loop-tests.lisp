@@ -771,3 +771,57 @@
 (must-fail-checked
  (def-loop dlt-map-with-row (xs) :shape :map :body (car xs) :row (car xs))
  :unchecked "refused at expansion: :row is a :fold option")
+
+; -----------------------------------------------------------------------------
+; 13. :foldr --- a right fold with a non-list accumulator, executed as a left
+; fold over the reversal.  One library theorem (`fn-dl-foldr-loop-is-foldr`).
+
+(defun dlt-fput (x trie) (declare (xargs :guard t)) (cons (fix x) trie))
+(defun dlt-rev (x y)
+  (declare (xargs :guard t))
+  (if (consp x) (dlt-rev (cdr x) (cons (car x) y)) y))
+
+; the order is observable: the fold of (1 2 3) puts 3 first
+(def-loop dlt-fold-put (xs base)
+  :shape :foldr :over xs :elt e :combine (dlt-fput e acc) :init base
+  :rev dlt-rev)
+
+(assert-event (equal (dlt-fold-put '(1 2 3) '(z)) '(1 2 3 z)))
+(assert-event (equal (dlt-fold-put nil '(z)) '(z)))
+(assert-event (equal (dlt-fold-put '(1 2 . 3) nil) '(1 2)))
+(assert-event (equal (dlt-fold-put-loop '(3 2 1) '(z) '(z)) '(1 2 3 z)))
+(assert-event (equal (cdr (assoc-eq 'dlt-fold-put (table-alist 'fn-generated (w state))))
+                     '(:def-loop :shape :foldr :loop dlt-fold-put-loop :bridge dlt-fold-put-loop-is-dlt-fold-put)))
+(assert-event (not (member-equal '(:rewrite fn-dl-foldr-loop-is-foldr) (current-theory-fn :here (w state)))))
+
+; a number accumulator, the default reverse (the guard supplies a true list)
+(def-loop dlt-fold-count (xs)
+  :shape :foldr :over xs :elt e :combine (+ 1 (nfix acc)) :init 0 :guard (true-listp xs))
+(assert-event (equal (dlt-fold-count '(a b c)) 3))
+
+; Mutations: a loop that folds the unreversed list (the accumulator order is
+; wrong) has no bridge, and a combine that is not the loop's step does not
+; either.
+(defun dlt-fold-put-bad-loop (xs base acc)
+  (declare (xargs :guard t) (ignorable xs base))
+  (if (consp xs) (dlt-fold-put-bad-loop (cdr xs) base (dlt-fput (car xs) acc)) acc))
+
+; @mutation-witness
+(must-fail-checked
+ (defthm dlt-fold-put-bad-loop-is-fold
+   (equal (dlt-fold-put-bad-loop xs base base) (dlt-fold-put xs base))
+   :hints (("Goal" :in-theory (enable dlt-fold-put dlt-fold-put-bad-loop)
+            :induct (dlt-fold-put xs base))))
+ :step-limit 20000)
+(assert-event (not (equal (dlt-fold-put-bad-loop '(1 2 3) '(z) '(z)) (dlt-fold-put '(1 2 3) '(z)))))
+
+; Refusals at expansion.
+(must-fail-checked
+ (def-loop dlt-foldr-no-combine (xs) :shape :foldr :elt e :init nil)
+ :unchecked "refused at expansion: :foldr needs :elt and :combine")
+(must-fail-checked
+ (def-loop dlt-foldr-with-body (xs) :shape :foldr :elt e :combine (cons e acc) :init nil :body e)
+ :unchecked "refused at expansion: :foldr takes :combine and :init, not :body")
+(must-fail-checked
+ (def-loop dlt-map-with-combine (xs) :shape :map :body (car xs) :combine (car xs))
+ :unchecked "refused at expansion: :combine is a :foldr option")
