@@ -1,0 +1,441 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 309,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [
+    {
+     "bar": "L-READ",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "article.p99_ms.R16",
+       "reason": "box loaded (load 16.1 > 8)",
+       "threshold": 50,
+       "value": 676.131
+      }
+     ],
+     "quantity": "ARTICLE p99 at 16 readers beside one poster (2 KiB articles, tmpfs)",
+     "reason": "box loaded (load 16.1 > 8)",
+     "source": "operator-internals 'What one node sustains'",
+     "verdict": "NOT-MEASURED"
+    },
+    {
+     "bar": "T-READ",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "article.p50_ms.R16",
+       "reason": "box loaded (load 16.11 at start, 16.87 at end; a time bar needs <= 4 at both)",
+       "threshold": 5,
+       "value": 139.894
+      },
+      {
+       "cmp": "le",
+       "metric": "article.p99_ms.R16",
+       "reason": "box loaded (load 16.11 at start, 16.87 at end; a time bar needs <= 4 at both)",
+       "threshold": 50,
+       "value": 676.131
+      },
+      {
+       "cmp": "le",
+       "metric": "article.p99_ratio_16_1",
+       "reason": "box loaded (load 16.11 at start, 16.87 at end; a time bar needs <= 4 at both)",
+       "threshold": 2,
+       "value": 6.49
+      }
+     ],
+     "quantity": "ARTICLE 2 KiB p50 / p99 at 16 readers beside one poster; p99(16) / p99(1)",
+     "reason": "box loaded (load 16.11 at start, 16.87 at end; a time bar needs <= 4 at both)",
+     "source": "ruling 17 (LOAD-PROGRAM 1a)",
+     "verdict": "NOT-MEASURED"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     16.87,
+     15.77,
+     12.95
+    ],
+    "loadavg_start": [
+     16.11,
+     15.39,
+     12.56
+    ],
+    "name": "persvati",
+    "pinned": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15
+    ]
+   },
+   "cell": "W2@10k",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "100000",
+    "--max-history-octets",
+    "268435456",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 5922MB --control-stack-size 1024KB"
+   },
+   "hook": null,
+   "image": {
+    "core_sha256": "5e342d1984b955a8d7e1be2e270202e4109c9d62f592de5340b05b42ca99ab01",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer --fn operator /dev/shm/fn-load-w2-psv3/W2_10k-image-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "article.max_ms.R1": 277.379,
+    "article.max_ms.R16": 992.196,
+    "article.max_ms.R4": 902.116,
+    "article.max_ms.R64": 1025.402,
+    "article.p50_ms.R1": 3.007,
+    "article.p50_ms.R16": 139.894,
+    "article.p50_ms.R4": 85.796,
+    "article.p50_ms.R64": 286.196,
+    "article.p95_ms.R1": 53.476,
+    "article.p95_ms.R16": 189.029,
+    "article.p95_ms.R4": 106.445,
+    "article.p95_ms.R64": 855.11,
+    "article.p99_ms.R1": 104.122,
+    "article.p99_ms.R16": 676.131,
+    "article.p99_ms.R4": 119.102,
+    "article.p99_ms.R64": 945.177,
+    "article.p99_ratio_16_1": 6.49,
+    "cpu_ms_per_op.R1": 14.597,
+    "cpu_ms_per_op.R16": 72.442,
+    "cpu_ms_per_op.R4": 56.796,
+    "cpu_ms_per_op.R64": 118.421,
+    "post.p50_ms.R1": 18.958,
+    "post.p50_ms.R16": 88.286,
+    "post.p50_ms.R4": 13.901,
+    "post.p50_ms.R64": 2492.801,
+    "posts.admitted": 309,
+    "posts.refused": 0,
+    "reads_per_s.R1": 104.6,
+    "reads_per_s.R16": 27.9,
+    "reads_per_s.R4": 44.0,
+    "reads_per_s.R64": 11.9,
+    "rss_kib.anon": 173888,
+    "rss_kib.file": 597408,
+    "rss_kib.hwm": 850308,
+    "rss_kib.vmrss": 771296,
+    "site.fdatasync_p50_ms": 0.002,
+    "site.fdatasync_p99_ms": 0.013
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 4.246,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 162368,
+      "file": 597652,
+      "hwm": 850308,
+      "vmrss": 760020
+     },
+     "name": "open",
+     "open_cpu_s": 4.23,
+     "open_s": 4.246,
+     "seconds": 4.246
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 277.379,
+       "n": 2110,
+       "p50_ms": 3.007,
+       "p95_ms": 53.476,
+       "p99_ms": 104.122
+      },
+      "POST": {
+       "max_ms": 410.703,
+       "n": 100,
+       "p50_ms": 18.958,
+       "p95_ms": 326.938,
+       "p99_ms": null
+      }
+     },
+     "counts": {
+      "admitted": 100,
+      "refused": 0
+     },
+     "cpu_ms_per_op": 14.597,
+     "cpu_s": 32.26,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      16.1,
+      15.44,
+      12.66
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 202832,
+      "file": 597664,
+      "hwm": 850308,
+      "peak_anon": 211844,
+      "peak_vmrss": 809508,
+      "pss": 796783,
+      "threads": 15,
+      "vmrss": 800496
+     },
+     "name": "R1",
+     "ops": 2210,
+     "rate": {
+      "article_per_s": 104.59
+     },
+     "readers": 1,
+     "seconds": 20.175,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 902.116,
+       "n": 887,
+       "p50_ms": 85.796,
+       "p95_ms": 106.445,
+       "p99_ms": 119.102
+      },
+      "POST": {
+       "max_ms": 34.822,
+       "n": 96,
+       "p50_ms": 13.901,
+       "p95_ms": 27.716,
+       "p99_ms": null
+      }
+     },
+     "counts": {
+      "admitted": 96,
+      "refused": 0
+     },
+     "cpu_ms_per_op": 56.796,
+     "cpu_s": 55.83,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      15.96,
+      15.44,
+      12.72
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 217408,
+      "file": 597408,
+      "hwm": 850308,
+      "peak_anon": 222484,
+      "peak_vmrss": 820148,
+      "pss": 810907,
+      "threads": 14,
+      "vmrss": 814816
+     },
+     "name": "R4",
+     "ops": 983,
+     "rate": {
+      "article_per_s": 44.02
+     },
+     "readers": 4,
+     "seconds": 20.149,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "bad_replies": {
+      "403-article-temporarily-unavailable-cold": 7033
+     },
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 992.196,
+       "n": 559,
+       "p50_ms": 139.894,
+       "p95_ms": 189.029,
+       "p99_ms": 676.131
+      },
+      "POST": {
+       "max_ms": 143.407,
+       "n": 88,
+       "p50_ms": 88.286,
+       "p95_ms": 124.129,
+       "p99_ms": null
+      }
+     },
+     "counts": {
+      "admitted": 88,
+      "refused": 0
+     },
+     "cpu_ms_per_op": 72.442,
+     "cpu_s": 46.87,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      16.86,
+      15.7,
+      12.86
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 150412,
+      "file": 597408,
+      "hwm": 850308,
+      "peak_anon": 225764,
+      "peak_vmrss": 823172,
+      "pss": 743910,
+      "threads": 14,
+      "vmrss": 747820
+     },
+     "name": "R16",
+     "ops": 647,
+     "rate": {
+      "article_per_s": 27.86
+     },
+     "readers": 16,
+     "seconds": 20.064,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "bad_replies": {
+      "403-article-temporarily-unavailable-cold": 5802
+     },
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 1025.402,
+       "n": 241,
+       "p50_ms": 286.196,
+       "p95_ms": 855.11,
+       "p99_ms": 945.177
+      },
+      "POST": {
+       "max_ms": 4514.756,
+       "n": 25,
+       "p50_ms": 2492.801,
+       "p95_ms": 4499.664,
+       "p99_ms": null
+      }
+     },
+     "counts": {
+      "admitted": 25,
+      "refused": 0
+     },
+     "cpu_ms_per_op": 118.421,
+     "cpu_s": 31.5,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      16.87,
+      15.77,
+      12.95
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 173888,
+      "file": 597408,
+      "hwm": 850308,
+      "peak_anon": 199300,
+      "peak_vmrss": 796708,
+      "pss": 767382,
+      "threads": 14,
+      "vmrss": 771296
+     },
+     "name": "R64",
+     "ops": 266,
+     "rate": {
+      "article_per_s": 11.94
+     },
+     "readers": 64,
+     "seconds": 20.178,
+     "status": "ok"
+    }
+   ],
+   "policy": {
+    "exposure-connections": [
+     0,
+     "accepted operator policy ACCEPTED"
+    ]
+   },
+   "preset": "filled",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 88.6,
+   "site": {
+    "fs": "tmpfs",
+    "n": 200,
+    "write4k_fdatasync": {
+     "max_ms": 0.028,
+     "n": 200,
+     "p50_ms": 0.002,
+     "p95_ms": 0.003,
+     "p99_ms": 0.013
+    }
+   },
+   "started_utc": "2026-10-07T23:28:33Z",
+   "status": "complete",
+   "store": {
+    "preloaded": 10000,
+    "source": "cache 5e342d1984b9-filled-10000-2048"
+   },
+   "target": "image",
+   "trace": null,
+   "workload": "readers"
+  }
+ ],
+ "evidence": null,
+ "label": "w2-psv3",
+ "rev": "0b4d3b18385a53209146a78296e282d06c17e573",
+ "schema": 1
+}

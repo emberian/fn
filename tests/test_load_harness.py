@@ -179,6 +179,24 @@ class SweepTests(unittest.TestCase):
         self.assertEqual(c["by_type"]["inst:FN-X"], 4000)
 
 
+class ProfTests(unittest.TestCase):
+    def test_parse_prof_window(self):
+        text = ("window_ms 5000.0 gc_ms 120.0 consed_mb 440.0\n"
+                "acl2-entry\tfn-post\t100\t900.5\nacl2-entry\tfn-x\t50\t10.0\nbarrier\tfdatasync\t100\t40.0\n"
+                "gate-hold\tfoo\t7\t3.0\n")
+        r = cells.parse_prof(text, 100)
+        self.assertEqual(r["calls_per_cmd"], 1.5)
+        self.assertEqual(r["sync_calls_per_cmd"], 1.0)
+        self.assertEqual(r["sync_ms_per_cmd"], 0.4)
+        self.assertEqual(r["consed_bytes_per_cmd"], round(440 * 1048576 / 100))
+
+    def test_alloc_exponent_flat_in_article_size(self):
+        ph = [{"name": "prof", "prof": {"ARTICLE_%dk" % k: {"calls_per_cmd": 3, "sync_calls_per_cmd": 0, "sync_ms_per_cmd": 0,
+                                                          "consed_bytes_per_cmd": 10_000_000 + k * 100} for k in (2, 8, 32, 128)}}]
+        m, nm = cells.derive("prof-ops", ph)
+        self.assertLess(m["alloc.article.exponent"], 0.1)
+
+
 class StatsTests(unittest.TestCase):
     def test_p99_is_null_under_200_samples(self):
         st = result.lat_stats([0.001] * 199)

@@ -212,6 +212,16 @@ def report(res, bars):
                 _fmt(st.get("p50_ms")), _fmt(st.get("p99_ms")), _fmt(rate), _fmt(mem.get("vmrss")),
                 _fmt(mem.get("anon")), _fmt(mem.get("file")), _fmt(mem.get("hwm")), _fmt(ph.get("cpu_s")),
                 _fmt(io.get("read_bytes")), _fmt(io.get("write_bytes")), _fmt(gc.get("count")), _fmt(gc.get("ms"))))
+        if cr.get("members"):
+            keys = [m.split("@", 1)[1] for m in cr["members"]]
+            mt = cr.get("metrics") or {}
+            base = sorted({k.rsplit("@", 1)[0] for k in mt if "@" in k and k.rsplit("@", 1)[1] in keys})
+            out += ["", "Metrics by store size (octets/KiB/seconds as named; exponent = fitted slope of log value on log n):", "",
+                    "| metric | " + " | ".join(keys) + " | exponent |", "|---|" + "---|" * (len(keys) + 1)]
+            for b in base:
+                if b.startswith(("posts.", "gc.", "anon.live", "anon.raw.type", "rss_kib.")):
+                    continue
+                out.append("| %s | %s | %s |" % (b, " | ".join(_fmt(mt.get("%s@%s" % (b, k))) for k in keys), _fmt(mt.get(b + ".exponent"))))
         if cr.get("refusals"):
             out += ["", "Refusals by name: " + ", ".join("%s x%d" % kv for kv in sorted(cr["refusals"].items()))]
         out += ["", "Conditions: box %s (%s cores), load %s at start and %s at end, ZFS ARC %s -> %s bytes, filesystem %s, "

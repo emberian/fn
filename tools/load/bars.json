@@ -427,6 +427,107 @@
    "file": "tools/load/bars.json",
    "owner": "deputy-L",
    "severity": "medium"
+  },
+  {
+   "id": "T-ALLOC",
+   "quantity": "bytes consed per command (process-wide, hooked window over 100 commands): POST 2 KiB, GROUP, ARTICLE 2/8/32/128 KiB; ARTICLE consing exponent in article size <= 0.1",
+   "cell": "T-OPS",
+   "workload": "prof-ops",
+   "checks": [
+    {
+     "metric": "alloc.article.exponent",
+     "cmp": "le",
+     "threshold": 0.1
+    },
+    {
+     "metric": "alloc.POST_2k",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "alloc.GROUP",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "alloc.ARTICLE_2k",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "alloc.ARTICLE_32k",
+     "cmp": "report",
+     "threshold": null
+    }
+   ],
+   "source": "LOAD-PROGRAM 1a (ratchet per sha; falls as S's fixes land)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-S",
+   "severity": "medium"
+  },
+  {
+   "id": "T-CALLS",
+   "quantity": "host-to-ACL2 calls per command (outermost fnn-call per thread, E's hook)",
+   "cell": "T-OPS",
+   "workload": "prof-ops",
+   "checks": [
+    {
+     "metric": "calls.POST_2k",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "calls.GROUP",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "calls.ARTICLE_2k",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "calls.ARTICLE_32k",
+     "cmp": "report",
+     "threshold": null
+    }
+   ],
+   "source": "LOAD-PROGRAM 1a (ratchet per sha; falls as S's fixes land)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-S",
+   "severity": "medium"
+  },
+  {
+   "id": "T-SYNC",
+   "quantity": "the owner's own fdatasync/fsync (fnn-durable-barrier, fnn-log-fdatasync) per POST and their wall time per POST (hooked), beside the site's 4 KiB write+fdatasync p50/p99",
+   "cell": "T-OPS",
+   "workload": "prof-ops",
+   "checks": [
+    {
+     "metric": "sync.own_calls_per_post",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "sync.own_ms_per_post",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "site.fdatasync_p50_ms",
+     "cmp": "report",
+     "threshold": null
+    },
+    {
+     "metric": "site.fdatasync_p99_ms",
+     "cmp": "report",
+     "threshold": null
+    }
+   ],
+   "source": "LOAD-PROGRAM 1a (ratchet per sha; falls as S's fixes land)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-S",
+   "severity": "medium"
   }
  ]
 }

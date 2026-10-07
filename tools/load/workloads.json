@@ -48,9 +48,23 @@
    "4294967296",
    "--max-article-octets",
    "16384"
+  ],
+  "big-articles": [
+   "--profile",
+   "development",
+   "--max-transactions",
+   "4096",
+   "--max-history-octets",
+   "536870912",
+   "--max-record-octets",
+   "1179648",
+   "--max-article-octets",
+   "1114112",
+   "--max-groups-per-article",
+   "16"
   ]
  },
- "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile.",
+ "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up).",
  "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384",
  "workloads": {
   "smoke": {
@@ -118,7 +132,7 @@
   },
   "article-sizes": {
    "about": "ARTICLE wall time, request to terminating dot, over sizes 4 KiB to 1 MiB in doubling steps (L-LIN). Sizes the preset refuses are recorded as refusals, not skipped silently.",
-   "preset": "development",
+   "preset": "big-articles",
    "groups": [
     "fn.letters",
     "fn.test"
@@ -196,10 +210,12 @@
     "preload": 1000,
     "octets": 2048
    },
-   "max_connections": 64
+   "policy": {
+    "exposure-connections": 64
+   }
   },
   "readers": {
-   "about": "Readers looping ARTICLE on a filled store (preloaded by POSTs, cached per image; the small preset holds only ~4000 2 KiB articles in its 8 MiB history bound, so this runs at the filled preset) beside one open-loop poster at 5 POSTs/s, at R = 1, 4, 16, 64 (L-READ). The variant R<n> runs one R. fn.toml [server] max_connections is written at 128 (the decided default is 32: books/profile-limits.lisp:65).",
+   "about": "Readers looping ARTICLE on a filled store (preloaded by POSTs, cached per image; the small preset holds only ~4000 2 KiB articles in its 8 MiB history bound, so this runs at the filled preset) beside one open-loop poster at 5 POSTs/s, at R = 1, 4, 16, 64 (L-READ). The variant R<n> runs one R. The connection cap is 32 by default (books/profile-limits.lisp:65); fn.toml has no max_connections key (the comment there is stale), so the cell tries `policy set exposure-connections 128` and records the verb result and the connections refused.",
    "preset": "filled",
    "groups": [
     "fn.letters",
@@ -258,7 +274,9 @@
      "measure": true
     }
    ],
-   "max_connections": 128
+   "policy": {
+    "exposure-connections": 128
+   }
   },
   "growth": {
    "about": "Store growth (L-GROW): the store at N articles (2 KiB, scale profile), open time by replay, POST and OVER-40 latency, a checkpoint, open from it, VmRSS and VmHWM at each N. N = 4000, 40000, 100000; the cell's store names N. A store comes from a POST preload within the preload budget.",
@@ -440,6 +458,58 @@
      "kind": "reopen"
     }
    ]
+  },
+  "conn-capacity": {
+   "about": "Connection capacity per preset (deputy L, from books/profile-limits.lisp:65): the decided default cap, the largest fn.toml [server] max_connections the image admits (doubling then bisection; a cold start that refuses is the end), RSS per held connection, the greeting past the cap.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 1,
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "capacity",
+     "kind": "conn_capacity",
+     "presets": [
+      "small",
+      "development",
+      "default"
+     ],
+     "max_try": 4096,
+     "measure": true
+    }
+   ]
+  },
+  "prof-ops": {
+   "about": "T-ALLOC / T-CALLS / T-SYNC through E's prof2.lisp hook (hooked: counts and bytes, not latency): per operation (POST 2 KiB, GROUP, ARTICLE at 2/8/32/128 KiB) a restarted owner and 100 commands in one hook window: host-to-ACL2 calls, the owner's own fnn-durable-barrier and fnn-log-fdatasync count and wall, bytes consed, GC time. Every cell carries the site's 4 KiB write+fdatasync probe beside.",
+   "preset": "big-articles",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "prof": true,
+   "store": {
+    "preload": 1000,
+    "octets": 2048
+   },
+   "phases": [
+    {
+     "name": "prof",
+     "kind": "prof",
+     "article_kib": [
+      2,
+      8,
+      32,
+      128
+     ],
+     "reps": 100,
+     "measure": true
+    }
+   ]
   }
  },
  "cells": {
@@ -453,7 +523,9 @@
   "W6a": "catchup",
   "L-FRESH": "fresh-start",
   "T-CMD": "commands",
-  "W15": "mem-vs-size"
+  "W15": "mem-vs-size",
+  "conn-capacity": "conn-capacity",
+  "T-OPS": "prof-ops"
  },
  "stores": {
   "1k": 1000,

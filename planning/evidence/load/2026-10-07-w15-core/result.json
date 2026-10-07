@@ -1,0 +1,1327 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 0,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     24.17,
+     22.58,
+     21.26
+    ],
+    "loadavg_start": [
+     25.0,
+     22.55,
+     21.21
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "W15@1k",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384"
+   ],
+   "git": null,
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 9486MB --control-stack-size 1024KB"
+   },
+   "hook": "w15-census.lisp",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w15-core/W15_1k-fn-core-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "max_connections": null,
+   "metrics": {
+    "open_cpu_s.replay": 0.57,
+    "open_s.checkpoint": 0.293,
+    "open_s.replay": 0.572,
+    "posts.admitted": 0,
+    "posts.refused": 0,
+    "publish.cpu_s": 1.027,
+    "publish.wall_s": 1.023,
+    "publish.write_octets": 5437555,
+    "rss.at_rest.anon": 41060,
+    "rss.at_rest.file": 121096,
+    "rss.at_rest.vmrss": 162156,
+    "rss.peak.anon": 52928,
+    "rss.peak.hwm": 244084,
+    "rss_kib.anon": 41060,
+    "rss_kib.file": 121096,
+    "rss_kib.hwm": 244084,
+    "rss_kib.vmrss": 162156,
+    "size.config.json": 175,
+    "size.config/#.cfg": 124,
+    "size.decisions/decisions.fnj": 168444,
+    "size.filesystem-identity.fnmi": 79,
+    "size.journal/#.log": 1048802,
+    "size.keys/node-secret.key": 61,
+    "size.peer-flight-profile": 52,
+    "size.store-checkpoint.fnsc": 4388979,
+    "size.writer.lock": 0,
+    "store.octets": 5606716
+   },
+   "noisy": false,
+   "not_measured": {
+    "anon.raw.dynamic_usage": "the owner carrier stobj is not in this image\n",
+    "publish.stall_max_s": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)"
+   },
+   "open_s": 0.572,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 52928,
+      "file": 121096,
+      "hwm": 244084,
+      "vmrss": 174024
+     },
+     "name": "open",
+     "open_cpu_s": 0.57,
+     "open_s": 0.572,
+     "seconds": 0.572
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.03,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      24.28,
+      22.57,
+      21.25
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 41060,
+      "file": 121096,
+      "hwm": 244084,
+      "peak_anon": 52928,
+      "peak_vmrss": 174024,
+      "pss": 136413,
+      "threads": 15,
+      "vmrss": 162156
+     },
+     "name": "at-rest",
+     "seconds": 20.0,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "census": null,
+     "census_error": "the owner carrier stobj is not in this image\n",
+     "census_file": "census-W15_1k.txt",
+     "census_s": 1.0,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.06,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "census",
+     "load": [
+      24.28,
+      22.57,
+      21.25
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 41444,
+      "file": 121096,
+      "hwm": 244084,
+      "peak_anon": 41060,
+      "peak_vmrss": 162156,
+      "pss": 136861,
+      "threads": 15,
+      "vmrss": 162540
+     },
+     "name": "census",
+     "seconds": 1.001,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "checkpoint_report": "checkpoint sequence=1000 octets=4388979 steps=16 segment=2 dropped=1 open=full-replay reason=absent",
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "gc": null,
+     "kind": "publish",
+     "load": [
+      24.17,
+      22.58,
+      21.26
+     ],
+     "measure": false,
+     "name": "publish",
+     "publish_cpu_s": 1.027,
+     "publish_touched_octets": 5437555,
+     "publish_wall_s": 1.023,
+     "seconds": 1.289,
+     "sizes_after": {
+      "config.json": 175,
+      "config/#.cfg": 124,
+      "decisions/decisions.fnj": 168444,
+      "filesystem-identity.fnmi": 79,
+      "journal/#.log": 1048802,
+      "keys/node-secret.key": 61,
+      "peer-flight-profile": 52,
+      "store-checkpoint.fnsc": 4388979,
+      "writer.lock": 0
+     },
+     "sizes_before": {
+      "config.json": 175,
+      "config/#.cfg": 124,
+      "decisions/decisions.fnj": 168444,
+      "filesystem-identity.fnmi": 79,
+      "journal/#.log": 4194530,
+      "keys/node-secret.key": 61,
+      "peer-flight-profile": 52,
+      "writer.lock": 0
+     },
+     "status": "ok",
+     "store_octets_after": 5606716,
+     "store_octets_before": 4363465
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": null,
+     "gc": null,
+     "io": null,
+     "kind": "reopen",
+     "load": [
+      24.17,
+      22.58,
+      21.26
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 42888,
+      "file": 120920,
+      "hwm": 182172,
+      "peak_anon": 0,
+      "peak_vmrss": 0,
+      "pss": 137999,
+      "threads": 15,
+      "vmrss": 163808
+     },
+     "name": "reopen-checkpoint",
+     "open_s": 0.293,
+     "seconds": 0.429,
+     "status": "ok"
+    }
+   ],
+   "preset": "scale-1m",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 27.6,
+   "started_utc": "2026-10-07T23:16:43Z",
+   "status": "complete",
+   "store": {
+    "group": "fn.test",
+    "preloaded": 1000,
+    "source": "fixture /tank/fn/scratch/fixtures-0b4d3b183/curve/n1000/store"
+   },
+   "sub": true,
+   "target": "fn-core",
+   "trace": null,
+   "workload": "mem-vs-size"
+  },
+  {
+   "admitted": {
+    "admitted": 0,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     23.12,
+     22.53,
+     21.3
+    ],
+    "loadavg_start": [
+     24.17,
+     22.58,
+     21.26
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "W15@10k",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384"
+   ],
+   "git": null,
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 9538MB --control-stack-size 1024KB"
+   },
+   "hook": "w15-census.lisp",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w15-core/W15_10k-fn-core-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "max_connections": null,
+   "metrics": {
+    "open_cpu_s.replay": 4.81,
+    "open_s.checkpoint": 1.71,
+    "open_s.replay": 4.786,
+    "posts.admitted": 0,
+    "posts.refused": 0,
+    "publish.cpu_s": 9.667,
+    "publish.wall_s": 9.644,
+    "publish.write_octets": 50793698,
+    "rss.at_rest.anon": 79024,
+    "rss.at_rest.file": 121268,
+    "rss.at_rest.vmrss": 200292,
+    "rss.peak.anon": 98240,
+    "rss.peak.hwm": 379592,
+    "rss_kib.anon": 79024,
+    "rss_kib.file": 121268,
+    "rss_kib.hwm": 379592,
+    "rss_kib.vmrss": 200292,
+    "size.config.json": 175,
+    "size.config/#.cfg": 124,
+    "size.decisions/decisions.fnj": 168450,
+    "size.filesystem-identity.fnmi": 79,
+    "size.journal/#.log": 1048802,
+    "size.keys/node-secret.key": 61,
+    "size.peer-flight-profile": 52,
+    "size.store-checkpoint.fnsc": 49745122,
+    "size.writer.lock": 0,
+    "store.octets": 50962865
+   },
+   "noisy": false,
+   "not_measured": {
+    "anon.raw.dynamic_usage": "the owner carrier stobj is not in this image\n",
+    "publish.stall_max_s": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)"
+   },
+   "open_s": 4.786,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 98240,
+      "file": 121268,
+      "hwm": 379592,
+      "vmrss": 219508
+     },
+     "name": "open",
+     "open_cpu_s": 4.81,
+     "open_s": 4.786,
+     "seconds": 4.786
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.05,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      23.62,
+      22.59,
+      21.3
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 79024,
+      "file": 121268,
+      "hwm": 379592,
+      "peak_anon": 98240,
+      "peak_vmrss": 219508,
+      "pss": 197011,
+      "threads": 15,
+      "vmrss": 200292
+     },
+     "name": "at-rest",
+     "seconds": 20.0,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "census": null,
+     "census_error": "the owner carrier stobj is not in this image\n",
+     "census_file": "census-W15_10k.txt",
+     "census_s": 0.5,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.09,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "census",
+     "load": [
+      23.33,
+      22.55,
+      21.29
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 79600,
+      "file": 121268,
+      "hwm": 379592,
+      "peak_anon": 79024,
+      "peak_vmrss": 200292,
+      "pss": 197443,
+      "threads": 15,
+      "vmrss": 200868
+     },
+     "name": "census",
+     "seconds": 0.5,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "checkpoint_report": "checkpoint sequence=10000 octets=49745122 steps=133 segment=2 dropped=1 open=full-replay reason=absent",
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "gc": null,
+     "kind": "publish",
+     "load": [
+      23.3,
+      22.55,
+      21.3
+     ],
+     "measure": false,
+     "name": "publish",
+     "publish_cpu_s": 9.667,
+     "publish_touched_octets": 50793698,
+     "publish_wall_s": 9.644,
+     "seconds": 9.859,
+     "sizes_after": {
+      "config.json": 175,
+      "config/#.cfg": 124,
+      "decisions/decisions.fnj": 168450,
+      "filesystem-identity.fnmi": 79,
+      "journal/#.log": 1048802,
+      "keys/node-secret.key": 61,
+      "peer-flight-profile": 52,
+      "store-checkpoint.fnsc": 49745122,
+      "writer.lock": 0
+     },
+     "sizes_before": {
+      "config.json": 175,
+      "config/#.cfg": 124,
+      "decisions/decisions.fnj": 168450,
+      "filesystem-identity.fnmi": 79,
+      "journal/#.log": 26214626,
+      "keys/node-secret.key": 61,
+      "peer-flight-profile": 52,
+      "writer.lock": 0
+     },
+     "status": "ok",
+     "store_octets_after": 50962865,
+     "store_octets_before": 26383567
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": null,
+     "gc": null,
+     "io": null,
+     "kind": "reopen",
+     "load": [
+      23.12,
+      22.53,
+      21.3
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 95192,
+      "file": 120756,
+      "hwm": 307392,
+      "peak_anon": 108440,
+      "peak_vmrss": 229388,
+      "pss": 213409,
+      "threads": 15,
+      "vmrss": 215948
+     },
+     "name": "reopen-checkpoint",
+     "open_s": 1.71,
+     "seconds": 1.842,
+     "status": "ok"
+    }
+   ],
+   "preset": "scale-1m",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 40.5,
+   "started_utc": "2026-10-07T23:17:10Z",
+   "status": "complete",
+   "store": {
+    "group": "fn.test",
+    "preloaded": 10000,
+    "source": "fixture /tank/fn/scratch/fixtures-0b4d3b183/curve/n10000/store"
+   },
+   "sub": true,
+   "target": "fn-core",
+   "trace": null,
+   "workload": "mem-vs-size"
+  },
+  {
+   "admitted": {
+    "admitted": 0,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     22.93,
+     22.48,
+     21.36
+    ],
+    "loadavg_start": [
+     23.12,
+     22.53,
+     21.3
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "W15@25k",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384"
+   ],
+   "git": null,
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 9631MB --control-stack-size 1024KB"
+   },
+   "hook": "w15-census.lisp",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w15-core/W15_25k-fn-core-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "max_connections": null,
+   "metrics": {
+    "open_cpu_s.replay": 11.46,
+    "open_s.checkpoint": 4.395,
+    "open_s.replay": 11.367,
+    "posts.admitted": 0,
+    "posts.refused": 0,
+    "publish.cpu_s": 25.391,
+    "publish.wall_s": 25.336,
+    "publish.write_octets": 116556822,
+    "rss.at_rest.anon": 142352,
+    "rss.at_rest.file": 121064,
+    "rss.at_rest.vmrss": 263416,
+    "rss.peak.anon": 174864,
+    "rss.peak.hwm": 488672,
+    "rss_kib.anon": 142352,
+    "rss_kib.file": 121064,
+    "rss_kib.hwm": 488672,
+    "rss_kib.vmrss": 263416,
+    "size.config.json": 175,
+    "size.config/#.cfg": 124,
+    "size.decisions/decisions.fnj": 168456,
+    "size.filesystem-identity.fnmi": 79,
+    "size.journal/#.log": 1048802,
+    "size.keys/node-secret.key": 61,
+    "size.peer-flight-profile": 52,
+    "size.store-checkpoint.fnsc": 115508246,
+    "size.writer.lock": 0,
+    "store.octets": 116725995
+   },
+   "noisy": false,
+   "not_measured": {
+    "anon.raw.dynamic_usage": "the owner carrier stobj is not in this image\n",
+    "publish.stall_max_s": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)"
+   },
+   "open_s": 11.367,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 174864,
+      "file": 121064,
+      "hwm": 488672,
+      "vmrss": 295928
+     },
+     "name": "open",
+     "open_cpu_s": 11.46,
+     "open_s": 11.367,
+     "seconds": 11.367
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.07,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      21.85,
+      22.25,
+      21.25
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 142352,
+      "file": 121064,
+      "hwm": 488672,
+      "peak_anon": 174864,
+      "peak_vmrss": 295928,
+      "pss": 260502,
+      "threads": 15,
+      "vmrss": 263416
+     },
+     "name": "at-rest",
+     "seconds": 20.0,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "census": null,
+     "census_error": "the owner carrier stobj is not in this image\n",
+     "census_file": "census-W15_25k.txt",
+     "census_s": 0.5,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.13,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "census",
+     "load": [
+      21.85,
+      22.25,
+      21.25
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 143120,
+      "file": 121064,
+      "hwm": 488672,
+      "peak_anon": 142352,
+      "peak_vmrss": 263416,
+      "pss": 261138,
+      "threads": 15,
+      "vmrss": 264184
+     },
+     "name": "census",
+     "seconds": 0.5,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "checkpoint_report": "checkpoint sequence=25000 octets=115508246 steps=326 segment=2 dropped=1 open=full-replay reason=absent",
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "gc": null,
+     "kind": "publish",
+     "load": [
+      23.01,
+      22.49,
+      21.36
+     ],
+     "measure": false,
+     "name": "publish",
+     "publish_cpu_s": 25.391,
+     "publish_touched_octets": 116556822,
+     "publish_wall_s": 25.336,
+     "seconds": 25.5,
+     "sizes_after": {
+      "config.json": 175,
+      "config/#.cfg": 124,
+      "decisions/decisions.fnj": 168456,
+      "filesystem-identity.fnmi": 79,
+      "journal/#.log": 1048802,
+      "keys/node-secret.key": 61,
+      "peer-flight-profile": 52,
+      "store-checkpoint.fnsc": 115508246,
+      "writer.lock": 0
+     },
+     "sizes_before": {
+      "config.json": 175,
+      "config/#.cfg": 124,
+      "decisions/decisions.fnj": 168456,
+      "filesystem-identity.fnmi": 79,
+      "journal/#.log": 65011938,
+      "keys/node-secret.key": 61,
+      "peer-flight-profile": 52,
+      "writer.lock": 0
+     },
+     "status": "ok",
+     "store_octets_after": 116725995,
+     "store_octets_before": 65180885
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": null,
+     "gc": null,
+     "io": null,
+     "kind": "reopen",
+     "load": [
+      22.93,
+      22.48,
+      21.36
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 186612,
+      "file": 121108,
+      "hwm": 584868,
+      "peak_anon": 371024,
+      "peak_vmrss": 492132,
+      "pss": 304842,
+      "threads": 15,
+      "vmrss": 307720
+     },
+     "name": "reopen-checkpoint",
+     "open_s": 4.395,
+     "seconds": 4.534,
+     "status": "ok"
+    }
+   ],
+   "preset": "scale-1m",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 65.5,
+   "started_utc": "2026-10-07T23:17:51Z",
+   "status": "complete",
+   "store": {
+    "group": "fn.test",
+    "preloaded": 25000,
+    "source": "fixture /tank/fn/scratch/fixtures-0b4d3b183/curve/n25000/store"
+   },
+   "sub": true,
+   "target": "fn-core",
+   "trace": null,
+   "workload": "mem-vs-size"
+  },
+  {
+   "admitted": {
+    "admitted": 0,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     20.48,
+     22.14,
+     21.39
+    ],
+    "loadavg_start": [
+     22.93,
+     22.48,
+     21.36
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "W15@50k",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384"
+   ],
+   "git": null,
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 9783MB --control-stack-size 1024KB"
+   },
+   "hook": "w15-census.lisp",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w15-core/W15_50k-fn-core-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "max_connections": null,
+   "metrics": {
+    "open_cpu_s.replay": 26.7,
+    "open_s.checkpoint": 7.979,
+    "open_s.replay": 26.493,
+    "posts.admitted": 0,
+    "posts.refused": 0,
+    "publish.cpu_s": 53.719,
+    "publish.wall_s": 53.618,
+    "publish.write_octets": 232032894,
+    "rss.at_rest.anon": 731320,
+    "rss.at_rest.file": 120848,
+    "rss.at_rest.vmrss": 852168,
+    "rss.peak.anon": 696952,
+    "rss.peak.hwm": 852168,
+    "rss_kib.anon": 731320,
+    "rss_kib.file": 120848,
+    "rss_kib.hwm": 852168,
+    "rss_kib.vmrss": 852168,
+    "size.config.json": 175,
+    "size.config/#.cfg": 124,
+    "size.decisions/decisions.fnj": 168493,
+    "size.filesystem-identity.fnmi": 79,
+    "size.journal/#.log": 1048802,
+    "size.keys/node-secret.key": 61,
+    "size.peer-flight-profile": 52,
+    "size.store-checkpoint.fnsc": 230984318,
+    "size.writer.lock": 0,
+    "store.octets": 232202104
+   },
+   "noisy": false,
+   "not_measured": {
+    "anon.raw.dynamic_usage": "the owner carrier stobj is not in this image\n",
+    "publish.stall_max_s": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)"
+   },
+   "open_s": 26.493,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 405360,
+      "file": 120848,
+      "hwm": 671640,
+      "vmrss": 526208
+     },
+     "name": "open",
+     "open_cpu_s": 26.7,
+     "open_s": 26.493,
+     "seconds": 26.493
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 20.85,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      23.64,
+      22.76,
+      21.52
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 731320,
+      "file": 120848,
+      "hwm": 852168,
+      "peak_anon": 696952,
+      "peak_vmrss": 817800,
+      "pss": 849729,
+      "threads": 16,
+      "vmrss": 852168
+     },
+     "name": "at-rest",
+     "seconds": 20.0,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "census": null,
+     "census_error": "the owner carrier stobj is not in this image\n",
+     "census_file": "census-W15_50k.txt",
+     "census_s": 1.0,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 1.08,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "census",
+     "load": [
+      23.64,
+      22.76,
+      21.52
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 415856,
+      "file": 120848,
+      "hwm": 864456,
+      "peak_anon": 382256,
+      "peak_vmrss": 503104,
+      "pss": 534277,
+      "threads": 16,
+      "vmrss": 536704
+     },
+     "name": "census",
+     "seconds": 1.001,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "checkpoint_report": "checkpoint sequence=50000 octets=230984318 steps=646 segment=2 dropped=1 open=full-replay reason=absent",
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "gc": null,
+     "kind": "publish",
+     "load": [
+      21.29,
+      22.35,
+      21.45
+     ],
+     "measure": false,
+     "name": "publish",
+     "publish_cpu_s": 53.719,
+     "publish_touched_octets": 232032894,
+     "publish_wall_s": 53.618,
+     "seconds": 53.683,
+     "sizes_after": {
+      "config.json": 175,
+      "config/#.cfg": 124,
+      "decisions/decisions.fnj": 168493,
+      "filesystem-identity.fnmi": 79,
+      "journal/#.log": 1048802,
+      "keys/node-secret.key": 61,
+      "peer-flight-profile": 52,
+      "store-checkpoint.fnsc": 230984318,
+      "writer.lock": 0
+     },
+     "sizes_before": {
+      "config.json": 175,
+      "config/#.cfg": 124,
+      "decisions/decisions.fnj": 168493,
+      "filesystem-identity.fnmi": 79,
+      "journal/#.log": 130023650,
+      "keys/node-secret.key": 61,
+      "peer-flight-profile": 52,
+      "writer.lock": 0
+     },
+     "status": "ok",
+     "store_octets_after": 232202104,
+     "store_octets_before": 130192634
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": null,
+     "gc": null,
+     "io": null,
+     "kind": "reopen",
+     "load": [
+      20.48,
+      22.14,
+      21.39
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 333104,
+      "file": 121176,
+      "hwm": 831104,
+      "peak_anon": 578792,
+      "peak_vmrss": 699968,
+      "pss": 451546,
+      "threads": 15,
+      "vmrss": 454280
+     },
+     "name": "reopen-checkpoint",
+     "open_s": 7.979,
+     "seconds": 8.1,
+     "status": "ok"
+    }
+   ],
+   "preset": "scale-1m",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 113.5,
+   "started_utc": "2026-10-07T23:18:56Z",
+   "status": "complete",
+   "store": {
+    "group": "fn.test",
+    "preloaded": 50000,
+    "source": "fixture /tank/fn/scratch/fixtures-0b4d3b183/curve/n50000/store"
+   },
+   "sub": true,
+   "target": "fn-core",
+   "trace": null,
+   "workload": "mem-vs-size"
+  },
+  {
+   "arm": null,
+   "bars": [
+    {
+     "bar": "T-OPEN",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "open_s.checkpoint@50k",
+       "reason": "box loaded (load 25.0 at start, 20.48 at end; a time bar needs <= 4 at both)",
+       "threshold": 10,
+       "value": 7.979
+      },
+      {
+       "cmp": "le",
+       "metric": "open_s.checkpoint.exponent",
+       "reason": "box loaded (load 25.0 at start, 20.48 at end; a time bar needs <= 4 at both)",
+       "threshold": 1.0,
+       "value": 0.845
+      },
+      {
+       "cmp": "le",
+       "metric": "open_s.replay.exponent",
+       "reason": "box loaded (load 25.0 at start, 20.48 at end; a time bar needs <= 4 at both)",
+       "threshold": 1.0,
+       "value": 0.965
+      }
+     ],
+     "quantity": "owner start to LISTENING from checkpoint at 50k (the fixture nearest F6's 40k, so stricter) and the exponent of open time against n (full replay and checkpoint)",
+     "reason": "box loaded (load 25.0 at start, 20.48 at end; a time bar needs <= 4 at both)",
+     "source": "ruling 17 (LOAD-PROGRAM 1a)",
+     "verdict": "NOT-MEASURED"
+    },
+    {
+     "bar": "T-PUB",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "publish.stall_max_s",
+       "reason": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)",
+       "threshold": 2.0,
+       "value": null
+      },
+      {
+       "cmp": "le",
+       "metric": "publish.write_octets.exponent",
+       "reason": "box loaded (load 25.0 at start, 20.48 at end; a time bar needs <= 4 at both)",
+       "threshold": 0.5,
+       "value": 0.957
+      }
+     ],
+     "quantity": "publication (checkpoint) wall at 40k; longest POST stall while it runs <= 2 s; octets written O(changed)",
+     "reason": "box loaded (load 25.0 at start, 20.48 at end; a time bar needs <= 4 at both); longest POST stall during an online publication needs W8 (POSTs while a publication runs)",
+     "source": "ruling 17 (LOAD-PROGRAM 1a)",
+     "verdict": "NOT-MEASURED"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     20.48,
+     22.14,
+     21.39
+    ],
+    "loadavg_start": [
+     25.0,
+     22.55,
+     21.21
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "W15",
+   "flags": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384"
+   ],
+   "git": null,
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 9486MB --control-stack-size 1024KB"
+   },
+   "hook": "w15-census.lisp",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w15-core/W15_1k-fn-core-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "max_connections": null,
+   "members": [
+    "W15@1k",
+    "W15@10k",
+    "W15@25k",
+    "W15@50k"
+   ],
+   "metrics": {
+    "open_cpu_s.replay.exponent": 0.968,
+    "open_cpu_s.replay@10k": 4.81,
+    "open_cpu_s.replay@1k": 0.57,
+    "open_cpu_s.replay@25k": 11.46,
+    "open_cpu_s.replay@50k": 26.7,
+    "open_s.checkpoint.exponent": 0.845,
+    "open_s.checkpoint@10k": 1.71,
+    "open_s.checkpoint@1k": 0.293,
+    "open_s.checkpoint@25k": 4.395,
+    "open_s.checkpoint@50k": 7.979,
+    "open_s.replay.exponent": 0.965,
+    "open_s.replay@10k": 4.786,
+    "open_s.replay@1k": 0.572,
+    "open_s.replay@25k": 11.367,
+    "open_s.replay@50k": 26.493,
+    "posts.admitted@10k": 0,
+    "posts.admitted@1k": 0,
+    "posts.admitted@25k": 0,
+    "posts.admitted@50k": 0,
+    "posts.refused@10k": 0,
+    "posts.refused@1k": 0,
+    "posts.refused@25k": 0,
+    "posts.refused@50k": 0,
+    "publish.cpu_s.exponent": 1.007,
+    "publish.cpu_s@10k": 9.667,
+    "publish.cpu_s@1k": 1.027,
+    "publish.cpu_s@25k": 25.391,
+    "publish.cpu_s@50k": 53.719,
+    "publish.wall_s.exponent": 1.008,
+    "publish.wall_s@10k": 9.644,
+    "publish.wall_s@1k": 1.023,
+    "publish.wall_s@25k": 25.336,
+    "publish.wall_s@50k": 53.618,
+    "publish.write_octets.exponent": 0.957,
+    "publish.write_octets@10k": 50793698,
+    "publish.write_octets@1k": 5437555,
+    "publish.write_octets@25k": 116556822,
+    "publish.write_octets@50k": 232032894,
+    "rss.at_rest.anon.exponent": 0.632,
+    "rss.at_rest.anon@10k": 79024,
+    "rss.at_rest.anon@1k": 41060,
+    "rss.at_rest.anon@25k": 142352,
+    "rss.at_rest.anon@50k": 731320,
+    "rss.at_rest.file.exponent": -0.0,
+    "rss.at_rest.file@10k": 121268,
+    "rss.at_rest.file@1k": 121096,
+    "rss.at_rest.file@25k": 121064,
+    "rss.at_rest.file@50k": 120848,
+    "rss.at_rest.vmrss.exponent": 0.342,
+    "rss.at_rest.vmrss@10k": 200292,
+    "rss.at_rest.vmrss@1k": 162156,
+    "rss.at_rest.vmrss@25k": 263416,
+    "rss.at_rest.vmrss@50k": 852168,
+    "rss.peak.anon.exponent": 0.573,
+    "rss.peak.anon@10k": 98240,
+    "rss.peak.anon@1k": 52928,
+    "rss.peak.anon@25k": 174864,
+    "rss.peak.anon@50k": 696952,
+    "rss.peak.hwm.exponent": 0.288,
+    "rss.peak.hwm@10k": 379592,
+    "rss.peak.hwm@1k": 244084,
+    "rss.peak.hwm@25k": 488672,
+    "rss.peak.hwm@50k": 852168,
+    "rss_kib.anon.exponent": 0.632,
+    "rss_kib.anon@10k": 79024,
+    "rss_kib.anon@1k": 41060,
+    "rss_kib.anon@25k": 142352,
+    "rss_kib.anon@50k": 731320,
+    "rss_kib.file.exponent": -0.0,
+    "rss_kib.file@10k": 121268,
+    "rss_kib.file@1k": 121096,
+    "rss_kib.file@25k": 121064,
+    "rss_kib.file@50k": 120848,
+    "rss_kib.hwm.exponent": 0.288,
+    "rss_kib.hwm@10k": 379592,
+    "rss_kib.hwm@1k": 244084,
+    "rss_kib.hwm@25k": 488672,
+    "rss_kib.hwm@50k": 852168,
+    "rss_kib.vmrss.exponent": 0.342,
+    "rss_kib.vmrss@10k": 200292,
+    "rss_kib.vmrss@1k": 162156,
+    "rss_kib.vmrss@25k": 263416,
+    "rss_kib.vmrss@50k": 852168,
+    "size.config.json.exponent": 0.0,
+    "size.config.json@10k": 175,
+    "size.config.json@1k": 175,
+    "size.config.json@25k": 175,
+    "size.config.json@50k": 175,
+    "size.config/#.cfg.exponent": 0.0,
+    "size.config/#.cfg@10k": 124,
+    "size.config/#.cfg@1k": 124,
+    "size.config/#.cfg@25k": 124,
+    "size.config/#.cfg@50k": 124,
+    "size.decisions/decisions.fnj.exponent": 0.0,
+    "size.decisions/decisions.fnj@10k": 168450,
+    "size.decisions/decisions.fnj@1k": 168444,
+    "size.decisions/decisions.fnj@25k": 168456,
+    "size.decisions/decisions.fnj@50k": 168493,
+    "size.filesystem-identity.fnmi.exponent": 0.0,
+    "size.filesystem-identity.fnmi@10k": 79,
+    "size.filesystem-identity.fnmi@1k": 79,
+    "size.filesystem-identity.fnmi@25k": 79,
+    "size.filesystem-identity.fnmi@50k": 79,
+    "size.journal/#.log.exponent": 0.0,
+    "size.journal/#.log@10k": 1048802,
+    "size.journal/#.log@1k": 1048802,
+    "size.journal/#.log@25k": 1048802,
+    "size.journal/#.log@50k": 1048802,
+    "size.keys/node-secret.key.exponent": 0.0,
+    "size.keys/node-secret.key@10k": 61,
+    "size.keys/node-secret.key@1k": 61,
+    "size.keys/node-secret.key@25k": 61,
+    "size.keys/node-secret.key@50k": 61,
+    "size.peer-flight-profile.exponent": 0.0,
+    "size.peer-flight-profile@10k": 52,
+    "size.peer-flight-profile@1k": 52,
+    "size.peer-flight-profile@25k": 52,
+    "size.peer-flight-profile@50k": 52,
+    "size.store-checkpoint.fnsc.exponent": 1.013,
+    "size.store-checkpoint.fnsc@10k": 49745122,
+    "size.store-checkpoint.fnsc@1k": 4388979,
+    "size.store-checkpoint.fnsc@25k": 115508246,
+    "size.store-checkpoint.fnsc@50k": 230984318,
+    "size.writer.lock@10k": 0,
+    "size.writer.lock@1k": 0,
+    "size.writer.lock@25k": 0,
+    "size.writer.lock@50k": 0,
+    "store.octets.exponent": 0.949,
+    "store.octets@10k": 50962865,
+    "store.octets@1k": 5606716,
+    "store.octets@25k": 116725995,
+    "store.octets@50k": 232202104
+   },
+   "noisy": false,
+   "not_measured": {
+    "anon.raw.dynamic_usage": "the owner carrier stobj is not in this image\n",
+    "anon.raw.dynamic_usage@10k": "the owner carrier stobj is not in this image\n",
+    "anon.raw.dynamic_usage@1k": "the owner carrier stobj is not in this image\n",
+    "anon.raw.dynamic_usage@25k": "the owner carrier stobj is not in this image\n",
+    "anon.raw.dynamic_usage@50k": "the owner carrier stobj is not in this image\n",
+    "publish.stall_max_s": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)",
+    "publish.stall_max_s@10k": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)",
+    "publish.stall_max_s@1k": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)",
+    "publish.stall_max_s@25k": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)",
+    "publish.stall_max_s@50k": "longest POST stall during an online publication needs W8 (POSTs while a publication runs)"
+   },
+   "phases": [],
+   "preset": "scale-1m",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 247.1,
+   "status": "complete",
+   "target": "fn-core",
+   "trace": null,
+   "workload": "mem-vs-size"
+  }
+ ],
+ "evidence": null,
+ "label": "w15-core",
+ "rev": null,
+ "schema": 1
+}

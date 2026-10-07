@@ -40,7 +40,7 @@ def derive(workload, phases):
         if p.get("status") == "not-implemented":
             nm.setdefault("*", p.get("reason"))
     fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers, "article-sizes": _sizes, "growth": _growth,
-          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh}.get(workload)
+          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "prof-ops": _prof}.get(workload)
     if fn:
         fn(phases, m, nm)
     if workload == "rss-small-filled" and "rss_kib.hwm" not in m:
@@ -71,6 +71,64 @@ def _fresh(phases, m, nm):
         if r.get("at_listening_kib"):
             m["fresh.%d.rss_kib_at_listening" % limit] = r["at_listening_kib"]
         m["fresh.%d.seconds_to_listening_or_exit" % limit] = r["seconds_to_listening_or_exit"]
+
+
+def _conncap(phases, m, nm):
+    ph = _phase(phases, "capacity")
+    for preset, r in ((ph or {}).get("capacity") or {}).items():
+        m["conn.%s.default_cap" % preset] = r["default_cap"]
+        if r["largest_ok"] is not None:
+            m["conn.%s.largest_ok" % preset] = r["largest_ok"]
+        if r["first_refused"] is not None:
+            m["conn.%s.first_refused" % preset] = r["first_refused"]
+        per = [t["kib_per_conn"] for t in r["trials"] if t.get("kib_per_conn")]
+        if per:
+            m["conn.%s.kib_per_conn" % preset] = per[-1]
+
+
+def parse_prof(text, k):
+    """timing.txt of E's prof2.lisp: a window line, then `kind name count ms` rows.  Per command: host-to-ACL2 calls
+    (sum of acl2-entry counts), the owner's own barrier/fdatasync count and wall, MB consed, GC ms."""
+    lines = text.splitlines()
+    w = re.search(r"window_ms ([\d.]+) gc_ms ([\d.]+) consed_mb ([\d.]+)", lines[0]) if lines else None
+    calls = 0
+    sync_n, sync_ms, entries = 0, 0.0, {}
+    for ln in lines[1:]:
+        f = ln.split("\t")
+        if len(f) < 4:
+            continue
+        kind, name, n, ms = f[0], f[1], int(f[2]), float(f[3])
+        if kind == "acl2-entry":
+            calls += n
+            entries[name] = n
+        elif kind == "barrier":
+            sync_n += n
+            sync_ms += ms
+    return {"calls_per_cmd": round(calls / k, 3), "entries": entries, "sync_calls_per_cmd": round(sync_n / k, 3),
+            "sync_ms_per_cmd": round(sync_ms / k, 3),
+            "consed_bytes_per_cmd": round(float(w.group(3)) * 1048576 / k) if w else None,
+            "gc_ms": float(w.group(2)) if w else None}
+
+
+def _prof(phases, m, nm):
+    ph = _phase(phases, "prof")
+    got = (ph or {}).get("prof") or {}
+    for name, r in got.items():
+        m["calls." + name] = r["calls_per_cmd"]
+        m["alloc." + name] = r["consed_bytes_per_cmd"]
+        m["sync.own_calls_per_cmd." + name] = r["sync_calls_per_cmd"]
+        m["sync.own_ms_per_cmd." + name] = r["sync_ms_per_cmd"]
+        if r.get("hooked_cpu_ms_per_cmd") is not None:
+            m["hooked_cpu_ms_per_cmd." + name] = r["hooked_cpu_ms_per_cmd"]
+    if "POST_2k" in got:
+        m["sync.own_calls_per_post"] = got["POST_2k"]["sync_calls_per_cmd"]
+        m["sync.own_ms_per_post"] = got["POST_2k"]["sync_ms_per_cmd"]
+    pts = [(int(k.split("_")[1][:-1]) * 1024, v["consed_bytes_per_cmd"]) for k, v in got.items() if k.startswith("ARTICLE_") and v.get("consed_bytes_per_cmd")]
+    e = fit_exponent(pts)
+    if e is not None:
+        m["alloc.article.exponent"] = e
+    else:
+        nm["alloc.article.exponent"] = "prof phase did not complete"
 
 
 def _smoke(phases, m, nm):

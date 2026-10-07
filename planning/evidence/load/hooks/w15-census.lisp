@@ -44,7 +44,9 @@ and the largest length; then the 12 biggest singly.  A stobj is a vector of arra
 reachable from each top-level slot, shared parts counted once.  Handles: host/native/io.lisp:431-462."
   (let ((seen (make-hash-table :test 'eq)))
     (dolist (spec '((cat fnn-live-cat) (arena fnn-live-arena) (hist fnn-live-hist) (owner fnn-live-owner-st)))
-      (let* ((fn (second spec)) (obj (and (fboundp fn) (funcall fn))))
+      (let* ((fn (second spec))
+             (obj (handler-case (and (fboundp fn) (funcall fn))
+                    (error (e) (format stream "OWNER-ERROR ~a ~a~%" (first spec) (substitute #\Space #\Newline (format nil "~a" e))) nil))))
         (if (not (simple-vector-p obj))
             (format stream "OWNER-MISSING ~a ~a~%" (first spec) (type-of obj))
             (loop for slot across obj for i from 0

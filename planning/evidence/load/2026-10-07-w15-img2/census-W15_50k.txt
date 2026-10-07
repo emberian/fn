@@ -1,0 +1,476 @@
+=== RAW dynamic-usage 890468544
+--- room
+Dynamic space usage is:   890,468,544 bytes.
+Immobile space usage is:   63,121,008 bytes (1,440 bytes overhead).
+Read-only space usage is:  53,955,152 bytes.
+Static space usage is:          2,832 bytes.
+Control stack usage is:         2,064 bytes.
+Binding stack usage is:           176 bytes.
+Control and binding stack usage is for the current thread only.
+Garbage collection is currently enabled.
+
+Summary of spaces: dynamic immobile static 
+
+CONS:
+    589,496,224 bytes, 36,843,514 objects, 100% dynamic.
+
+SIMPLE-CHARACTER-STRING:
+    118,518,720 bytes, 552,452 objects, 0% static, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-64:
+    75,020,640 bytes, 2,355 objects, 100% dynamic.
+
+CODE:
+    61,186,496 bytes, 85,426 objects, 100% immobile, 0% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-8:
+    31,065,328 bytes, 21,472 objects, 0% static, 100% dynamic.
+
+SIMPLE-VECTOR:
+    30,256,448 bytes, 82,248 objects, 0% static, 100% dynamic.
+
+INSTANCE:
+    13,839,344 bytes, 199,233 objects, 0% static, 1% immobile, 99% dynamic.
+
+SYMBOL:
+    12,030,016 bytes, 250,625 objects, 0% static, 15% immobile, 85% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-32:
+    9,168,960 bytes, 661 objects, 100% dynamic.
+
+SIMPLE-ARRAY-FIXNUM:
+    8,016,752 bytes, 5 objects, 100% dynamic.
+
+BIGNUM:
+    2,400,304 bytes, 50,007 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-FIXNUM:
+    2,101,536 bytes, 201 objects, 100% dynamic.
+
+CLOSURE:
+    691,984 bytes, 20,518 objects, 100% dynamic.
+
+SIMPLE-BASE-STRING:
+    373,888 bytes, 1,816 objects, 0% static, 100% dynamic.
+
+FDEFN:
+    143,456 bytes, 4,483 objects, 100% dynamic.
+
+FUNCALLABLE-INSTANCE:
+    116,000 bytes, 2,352 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-16:
+    74,816 bytes, 58 objects, 100% dynamic.
+
+SIMPLE-BIT-VECTOR:
+    21,312 bytes, 530 objects, 100% dynamic.
+
+ARRAY-HEADER:
+    4,368 bytes, 66 objects, 100% dynamic.
+
+DOUBLE-FLOAT:
+    1,632 bytes, 102 objects, 100% dynamic.
+
+VALUE-CELL:
+    352 bytes, 22 objects, 100% dynamic.
+
+WEAK-POINTER:
+    288 bytes, 18 objects, 100% dynamic.
+
+SAP:
+    224 bytes, 14 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-2:
+    48 bytes, 1 object, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-4:
+    32 bytes, 1 object, 100% dynamic.
+
+Summary total:
+    954,529,168 bytes, 38,118,180 objects.
+
+Top 10 dynamic instance types:
+  SB-IMPL::GENERAL-HASH-TABLE                  18,124,992 bytes,     116 objects (156249.94 per object).
+  SB-C::COMPILED-DEBUG-INFO                     8,370,464 bytes,  85,425 objects (97.99 per object).
+  COMMON-LISP:HASH-TABLE                        1,569,360 bytes,     114 objects (13766.32 per object).
+  SB-INT:PACKED-INFO                            1,521,008 bytes,  39,802 objects (38.21 per object).
+  SB-C::CORE-DEBUG-SOURCE                       1,179,984 bytes,  24,583 objects (48 per object).
+  SB-PCL::STRUCTURE-EFFECTIVE-SLOT-DEFINITION     491,184 bytes,   3,411 objects (144 per object).
+  SB-PCL::STRUCTURE-DIRECT-SLOT-DEFINITION        369,936 bytes,   2,569 objects (144 per object).
+  SB-C::VOP-INFO                                  319,680 bytes,   1,110 objects (288 per object).
+  SB-PCL::SLOT-INFO                               318,144 bytes,   4,971 objects (64 per object).
+  SB-C:DEFINITION-SOURCE-LOCATION                 261,024 bytes,   8,157 objects (32 per object).
+
+  Other types                                   2,353,424 bytes,  30,439 objects (77.32 per object).
+  Dynamic instance total                       34,879,200 bytes, 200,697 objects (173.79 per object).
+
+Top 10 immobile instance types:
+  SB-KERNEL:LAYOUT         118,784 bytes, 928 objects (128 per object).
+
+  Immobile instance total  118,784 bytes, 928 objects (128 per object).
+
+Top 10 static instance types:
+  SB-LOCKLESS::LIST-NODE  16 bytes, 1 object (16 per object).
+
+  Static instance total   16 bytes, 1 object (16 per object).
+--- instance-usage
+
+Top 80 dynamic instance types:
+  SB-IMPL::GENERAL-HASH-TABLE                       18,124,992 bytes,     116 objects (156249.94 per object).
+  SB-C::COMPILED-DEBUG-INFO                          8,370,464 bytes,  85,425 objects (97.99 per object).
+  COMMON-LISP:HASH-TABLE                             1,576,688 bytes,     113 objects (13952.99 per object).
+  SB-INT:PACKED-INFO                                 1,521,008 bytes,  39,802 objects (38.21 per object).
+  SB-C::CORE-DEBUG-SOURCE                            1,179,984 bytes,  24,583 objects (48 per object).
+  SB-PCL::STRUCTURE-EFFECTIVE-SLOT-DEFINITION          491,184 bytes,   3,411 objects (144 per object).
+  SB-PCL::STRUCTURE-DIRECT-SLOT-DEFINITION             369,936 bytes,   2,569 objects (144 per object).
+  SB-C::VOP-INFO                                       319,680 bytes,   1,110 objects (288 per object).
+  SB-PCL::SLOT-INFO                                    318,144 bytes,   4,971 objects (64 per object).
+  SB-C:DEFINITION-SOURCE-LOCATION                      261,024 bytes,   8,157 objects (32 per object).
+  SB-C::FUN-INFO                                       219,024 bytes,   1,053 objects (208 per object).
+  SB-KERNEL:DEFSTRUCT-SLOT-DESCRIPTION                 164,064 bytes,   3,418 objects (48 per object).
+  SB-DISASSEM:INSTRUCTION                              163,104 bytes,   1,699 objects (96 per object).
+  SB-KERNEL:FUN-TYPE                                   148,640 bytes,   1,858 objects (80 per object).
+  SB-PCL::FAST-METHOD-CALL                             138,672 bytes,   2,889 objects (48 per object).
+  SB-PCL::CONDITION-EFFECTIVE-SLOT-DEFINITION          127,616 bytes,     997 objects (128 per object).
+  COMMON-LISP:STANDARD-GENERIC-FUNCTION                 91,872 bytes,     522 objects (176 per object).
+  COMMON-LISP:STRUCTURE-CLASS                           89,856 bytes,     432 objects (208 per object).
+  COMMON-LISP:STANDARD-METHOD                           81,984 bytes,     732 objects (112 per object).
+  SB-MOP:STANDARD-EFFECTIVE-SLOT-DEFINITION             80,640 bytes,     560 objects (144 per object).
+  SB-C::DEBUG-SOURCE                                    70,608 bytes,   1,471 objects (48 per object).
+  SB-PCL::CONDITION-CLASS                               65,664 bytes,     342 objects (192 per object).
+  SB-KERNEL:DEFSTRUCT-DESCRIPTION                       62,352 bytes,     433 objects (144 per object).
+  SB-PCL::ARG-INFO                                      59,472 bytes,     531 objects (112 per object).
+  SB-KERNEL::CONDITION-SLOT                             54,144 bytes,     564 objects (96 per object).
+  SB-PCL::%METHOD-FUNCTION                              51,648 bytes,   1,076 objects (48 per object).
+  SB-C::TRANSFORM                                       50,640 bytes,   1,055 objects (48 per object).
+  SB-PCL::CLASS-EQ-SPECIALIZER                          44,160 bytes,     920 objects (48 per object).
+  SB-KERNEL::CONDITION-CLASSOID                         43,648 bytes,     341 objects (128 per object).
+  SB-KERNEL:STRUCTURE-CLASSOID                          33,920 bytes,     424 objects (80 per object).
+  SB-PCL::CONDITION-DIRECT-SLOT-DEFINITION              29,824 bytes,     233 objects (128 per object).
+  SB-KERNEL::CLASSOID-CELL                              29,408 bytes,     919 objects (32 per object).
+  SB-THREAD:MUTEX                                       22,624 bytes,     707 objects (32 per object).
+  SB-IMPL::EXTERNAL-FORMAT                              20,880 bytes,     145 objects (144 per object).
+  SB-PCL::METHOD-CALL                                   20,800 bytes,     650 objects (32 per object).
+  SB-KERNEL:VALUES-TYPE                                 17,856 bytes,     372 objects (48 per object).
+  SB-MOP:STANDARD-DIRECT-SLOT-DEFINITION                16,768 bytes,     131 objects (128 per object).
+  SB-PCL::CACHE                                         16,128 bytes,     252 objects (64 per object).
+  SB-MOP:STANDARD-READER-METHOD                         15,104 bytes,     118 objects (128 per object).
+  SB-SYS:FD-STREAM                                      14,784 bytes,      42 objects (352 per object).
+  SB-KERNEL::SLOT-MAPPER                                14,208 bytes,     296 objects (48 per object).
+  SB-PCL::GLOBAL-READER-METHOD                          14,208 bytes,     111 objects (128 per object).
+  SB-PCL::GLOBAL-WRITER-METHOD                          14,208 bytes,     111 objects (128 per object).
+  COMMON-LISP:STANDARD-CLASS                            14,080 bytes,      73 objects (192.88 per object).
+  SB-VM::CLOSURE-TRAMPOLINE                             13,920 bytes,     290 objects (48 per object).
+  COMMON-LISP:PACKAGE                                   13,312 bytes,     104 objects (128 per object).
+  SB-IMPL::SYMBOL-TABLE                                 13,248 bytes,     207 objects (64 per object).
+  COMMON-LISP:BUILT-IN-CLASS                            11,264 bytes,      64 objects (176 per object).
+  SB-FORMAT::FMT-CONTROL                                 8,576 bytes,     134 objects (64 per object).
+  SB-KERNEL:UNION-TYPE                                   8,560 bytes,     266 objects (32.18 per object).
+  SB-KERNEL:NUMERIC-UNION-TYPE                           8,096 bytes,     234 objects (34.60 per object).
+  SB-KERNEL:STANDARD-CLASSOID                            7,392 bytes,      77 objects (96 per object).
+  SB-MOP:STANDARD-WRITER-METHOD                          7,296 bytes,      57 objects (128 per object).
+  SB-PCL::PV-TABLE                                       6,784 bytes,     212 objects (32 per object).
+  SB-C::FUN-TYPE-ANNOTATION                              6,768 bytes,     141 objects (48 per object).
+  SB-KERNEL:BUILT-IN-CLASSOID                            6,720 bytes,      70 objects (96 per object).
+  SB-C:STORAGE-CLASS                                     6,480 bytes,      45 objects (144 per object).
+  SB-PCL::INITIAL                                        5,168 bytes,     323 objects (16 per object).
+  SB-IMPL::SYMTBL-MAGIC                                  5,088 bytes,     106 objects (48 per object).
+  SB-ALIEN-INTERNALS:ALIEN-RECORD-FIELD                  4,928 bytes,     154 objects (32 per object).
+  SB-KERNEL:ARRAY-TYPE                                   4,416 bytes,      92 objects (48 per object).
+  SB-KERNEL:KEY-INFO                                     4,416 bytes,     138 objects (32 per object).
+  SB-IMPL::COMMA                                         3,872 bytes,     121 objects (32 per object).
+  SB-INT:META-INFO                                       3,584 bytes,      56 objects (64 per object).
+  SB-PCL::CONSTANT-FAST-METHOD-CALL                      3,552 bytes,      74 objects (48 per object).
+  SB-PCL::GLOBAL-BOUNDP-METHOD                           3,456 bytes,      27 objects (128 per object).
+  COMMON-LISP:PATHNAME                                   3,328 bytes,      52 objects (64 per object).
+  SB-C:TN                                                2,992 bytes,      17 objects (176 per object).
+  SB-THREAD:THREAD                                       2,816 bytes,      16 objects (176 per object).
+  SB-C::DXABLE-ARGS                                      2,816 bytes,     176 objects (16 per object).
+  SB-X86-64-ASM::REG                                     2,752 bytes,     172 objects (16 per object).
+  SB-C:PRIMITIVE-TYPE                                    2,528 bytes,      79 objects (32 per object).
+  SB-KERNEL:CONSTANT-TYPE                                2,336 bytes,      73 objects (32 per object).
+  SB-ALIEN::ALIEN-TYPE-CLASS                             2,304 bytes,      16 objects (144 per object).
+  SB-KERNEL::TYPE-CLASS                                  2,304 bytes,      18 objects (128 per object).
+  SB-IMPL::ROBINHOOD-HASHSET-STORAGE                     2,112 bytes,      44 objects (48 per object).
+  SB-VM::SPECIALIZED-ARRAY-ELEMENT-TYPE-PROPERTIES       2,000 bytes,      25 objects (80 per object).
+  SB-ALIEN-INTERNALS:ALIEN-RECORD-TYPE                   1,984 bytes,      31 objects (64 per object).
+  SB-PCL::ONE-CLASS                                      1,968 bytes,      41 objects (48 per object).
+  SB-IMPL::BUFFER                                        1,968 bytes,      41 objects (48 per object).
+
+  Other types                                           56,832 bytes,   1,148 objects (49.51 per object).
+  Dynamic instance total                            34,883,648 bytes, 200,675 objects (173.83 per object).
+--- owner
+OWNER CAT slot 0 type T bytes 29786976
+OWNER CAT slot 1 type T bytes 2107920
+OWNER CAT slot 2 type T bytes 1225008
+OWNER CAT slot 3 type HASH-TABLE bytes 128
+OWNER CAT slot 4 type HASH-TABLE bytes 128
+OWNER CAT slot 5 type (INTEGER_0_4611686018427387903) bytes 0
+OWNER ARENA slot 0 type T bytes 1048688
+OWNER ARENA slot 1 type T bytes 524304
+OWNER ARENA slot 2 type T bytes 16
+OWNER ARENA slot 3 type T bytes 528
+OWNER HIST slot 0 type T bytes 524624
+OWNER HIST slot 1 type HASH-TABLE bytes 1376464
+OWNER HIST slot 2 type BIT bytes 0
+OWNER HIST slot 3 type (INTEGER_0_4611686018427387903) bytes 0
+OWNER HIST slot 4 type BIT bytes 0
+OWNER-ERROR OWNER the owner carrier stobj is not in this image
+OWNER-MISSING OWNER NULL
+--- large
+LARGE T count 15 bytes 16662976 maxlen 800003
+LARGE FIXNUM count 1 bytes 8000016 maxlen 1000000
+LARGE CHARACTER count 4 bytes 1172880 maxlen 87126
+LARGE (UNSIGNED-BYTE_8) count 8 bytes 3145856 maxlen 1048576
+LARGE (UNSIGNED-BYTE_32) count 6 bytes 7767296 maxlen 1048576
+LARGE (UNSIGNED-BYTE_64) count 1 bytes 70221840 maxlen 8777728
+LARGE1 (UNSIGNED-BYTE_64) bytes 70221840 len 8777728
+LARGE1 FIXNUM bytes 8000016 len 1000000
+LARGE1 T bytes 6400048 len 800003
+LARGE1 (UNSIGNED-BYTE_32) bytes 4194320 len 1048576
+LARGE1 T bytes 1600048 len 200003
+LARGE1 (UNSIGNED-BYTE_32) bytes 1600032 len 400001
+LARGE1 (UNSIGNED-BYTE_8) bytes 1048592 len 1048576
+LARGE1 (UNSIGNED-BYTE_32) bytes 1048592 len 262144
+LARGE1 T bytes 1024016 len 128000
+LARGE1 T bytes 1024016 len 128000
+LARGE1 T bytes 891328 len 111413
+LARGE1 T bytes 891328 len 111413
+=== LIVE dynamic-usage 853220304
+--- room
+Dynamic space usage is:   853,220,304 bytes.
+Immobile space usage is:   63,121,008 bytes (1,440 bytes overhead).
+Read-only space usage is:  53,955,152 bytes.
+Static space usage is:          2,832 bytes.
+Control stack usage is:         2,064 bytes.
+Binding stack usage is:           176 bytes.
+Control and binding stack usage is for the current thread only.
+Garbage collection is currently enabled.
+
+Summary of spaces: dynamic immobile static 
+
+CONS:
+    560,826,992 bytes, 35,051,687 objects, 100% dynamic.
+
+SIMPLE-CHARACTER-STRING:
+    118,516,800 bytes, 552,444 objects, 0% static, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-64:
+    75,020,640 bytes, 2,355 objects, 100% dynamic.
+
+CODE:
+    61,186,496 bytes, 85,426 objects, 100% immobile, 0% dynamic.
+
+SIMPLE-VECTOR:
+    30,089,568 bytes, 81,283 objects, 0% static, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-8:
+    28,090,224 bytes, 21,277 objects, 0% static, 100% dynamic.
+
+INSTANCE:
+    13,833,808 bytes, 199,100 objects, 0% static, 1% immobile, 99% dynamic.
+
+SYMBOL:
+    12,030,016 bytes, 250,625 objects, 0% static, 15% immobile, 85% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-32:
+    9,168,464 bytes, 659 objects, 100% dynamic.
+
+SIMPLE-ARRAY-FIXNUM:
+    8,016,752 bytes, 5 objects, 100% dynamic.
+
+BIGNUM:
+    2,400,304 bytes, 50,007 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-FIXNUM:
+    2,101,536 bytes, 201 objects, 100% dynamic.
+
+CLOSURE:
+    692,032 bytes, 20,519 objects, 100% dynamic.
+
+SIMPLE-BASE-STRING:
+    373,952 bytes, 1,818 objects, 0% static, 100% dynamic.
+
+FDEFN:
+    143,456 bytes, 4,483 objects, 100% dynamic.
+
+FUNCALLABLE-INSTANCE:
+    116,000 bytes, 2,352 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-16:
+    74,816 bytes, 58 objects, 100% dynamic.
+
+SIMPLE-BIT-VECTOR:
+    21,312 bytes, 530 objects, 100% dynamic.
+
+ARRAY-HEADER:
+    4,368 bytes, 66 objects, 100% dynamic.
+
+VALUE-CELL:
+    336 bytes, 21 objects, 100% dynamic.
+
+WEAK-POINTER:
+    288 bytes, 18 objects, 100% dynamic.
+
+SAP:
+    224 bytes, 14 objects, 100% dynamic.
+
+DOUBLE-FLOAT:
+    48 bytes, 3 objects, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-2:
+    48 bytes, 1 object, 100% dynamic.
+
+SIMPLE-ARRAY-UNSIGNED-BYTE-4:
+    32 bytes, 1 object, 100% dynamic.
+
+Summary total:
+    922,708,512 bytes, 36,324,953 objects.
+
+Top 10 dynamic instance types:
+  SB-IMPL::GENERAL-HASH-TABLE                  18,124,992 bytes,     116 objects (156249.94 per object).
+  SB-C::COMPILED-DEBUG-INFO                     8,370,464 bytes,  85,425 objects (97.99 per object).
+  COMMON-LISP:HASH-TABLE                        1,568,640 bytes,     113 objects (13881.77 per object).
+  SB-INT:PACKED-INFO                            1,521,008 bytes,  39,802 objects (38.21 per object).
+  SB-C::CORE-DEBUG-SOURCE                       1,179,984 bytes,  24,583 objects (48 per object).
+  SB-PCL::STRUCTURE-EFFECTIVE-SLOT-DEFINITION     491,184 bytes,   3,411 objects (144 per object).
+  SB-PCL::STRUCTURE-DIRECT-SLOT-DEFINITION        369,936 bytes,   2,569 objects (144 per object).
+  SB-C::VOP-INFO                                  319,680 bytes,   1,110 objects (288 per object).
+  SB-PCL::SLOT-INFO                               318,144 bytes,   4,971 objects (64 per object).
+  SB-C:DEFINITION-SOURCE-LOCATION                 261,024 bytes,   8,157 objects (32 per object).
+
+  Other types                                   2,348,176 bytes,  30,312 objects (77.47 per object).
+  Dynamic instance total                       34,873,232 bytes, 200,569 objects (173.87 per object).
+
+Top 10 immobile instance types:
+  SB-KERNEL:LAYOUT         118,784 bytes, 928 objects (128 per object).
+
+  Immobile instance total  118,784 bytes, 928 objects (128 per object).
+
+Top 10 static instance types:
+  SB-LOCKLESS::LIST-NODE  16 bytes, 1 object (16 per object).
+
+  Static instance total   16 bytes, 1 object (16 per object).
+--- instance-usage
+
+Top 80 dynamic instance types:
+  SB-IMPL::GENERAL-HASH-TABLE                       18,124,992 bytes,     116 objects (156249.94 per object).
+  SB-C::COMPILED-DEBUG-INFO                          8,370,464 bytes,  85,425 objects (97.99 per object).
+  COMMON-LISP:HASH-TABLE                             1,576,688 bytes,     113 objects (13952.99 per object).
+  SB-INT:PACKED-INFO                                 1,521,008 bytes,  39,802 objects (38.21 per object).
+  SB-C::CORE-DEBUG-SOURCE                            1,179,984 bytes,  24,583 objects (48 per object).
+  SB-PCL::STRUCTURE-EFFECTIVE-SLOT-DEFINITION          491,184 bytes,   3,411 objects (144 per object).
+  SB-PCL::STRUCTURE-DIRECT-SLOT-DEFINITION             369,936 bytes,   2,569 objects (144 per object).
+  SB-C::VOP-INFO                                       319,680 bytes,   1,110 objects (288 per object).
+  SB-PCL::SLOT-INFO                                    318,144 bytes,   4,971 objects (64 per object).
+  SB-C:DEFINITION-SOURCE-LOCATION                      261,024 bytes,   8,157 objects (32 per object).
+  SB-C::FUN-INFO                                       219,024 bytes,   1,053 objects (208 per object).
+  SB-KERNEL:DEFSTRUCT-SLOT-DESCRIPTION                 164,064 bytes,   3,418 objects (48 per object).
+  SB-DISASSEM:INSTRUCTION                              163,104 bytes,   1,699 objects (96 per object).
+  SB-KERNEL:FUN-TYPE                                   148,080 bytes,   1,851 objects (80 per object).
+  SB-PCL::FAST-METHOD-CALL                             138,576 bytes,   2,887 objects (48 per object).
+  SB-PCL::CONDITION-EFFECTIVE-SLOT-DEFINITION          127,616 bytes,     997 objects (128 per object).
+  COMMON-LISP:STANDARD-GENERIC-FUNCTION                 91,872 bytes,     522 objects (176 per object).
+  COMMON-LISP:STRUCTURE-CLASS                           89,856 bytes,     432 objects (208 per object).
+  COMMON-LISP:STANDARD-METHOD                           81,984 bytes,     732 objects (112 per object).
+  SB-MOP:STANDARD-EFFECTIVE-SLOT-DEFINITION             80,640 bytes,     560 objects (144 per object).
+  SB-C::DEBUG-SOURCE                                    70,608 bytes,   1,471 objects (48 per object).
+  SB-PCL::CONDITION-CLASS                               65,664 bytes,     342 objects (192 per object).
+  SB-KERNEL:DEFSTRUCT-DESCRIPTION                       62,352 bytes,     433 objects (144 per object).
+  SB-PCL::ARG-INFO                                      59,472 bytes,     531 objects (112 per object).
+  SB-KERNEL::CONDITION-SLOT                             54,144 bytes,     564 objects (96 per object).
+  SB-PCL::%METHOD-FUNCTION                              51,648 bytes,   1,076 objects (48 per object).
+  SB-C::TRANSFORM                                       50,640 bytes,   1,055 objects (48 per object).
+  SB-PCL::CLASS-EQ-SPECIALIZER                          44,160 bytes,     920 objects (48 per object).
+  SB-KERNEL::CONDITION-CLASSOID                         43,648 bytes,     341 objects (128 per object).
+  SB-KERNEL:STRUCTURE-CLASSOID                          33,920 bytes,     424 objects (80 per object).
+  SB-PCL::CONDITION-DIRECT-SLOT-DEFINITION              29,824 bytes,     233 objects (128 per object).
+  SB-KERNEL::CLASSOID-CELL                              29,408 bytes,     919 objects (32 per object).
+  SB-THREAD:MUTEX                                       22,624 bytes,     707 objects (32 per object).
+  SB-IMPL::EXTERNAL-FORMAT                              20,880 bytes,     145 objects (144 per object).
+  SB-PCL::METHOD-CALL                                   20,832 bytes,     651 objects (32 per object).
+  SB-MOP:STANDARD-DIRECT-SLOT-DEFINITION                16,768 bytes,     131 objects (128 per object).
+  SB-PCL::CACHE                                         16,064 bytes,     251 objects (64 per object).
+  SB-KERNEL:VALUES-TYPE                                 15,360 bytes,     320 objects (48 per object).
+  SB-MOP:STANDARD-READER-METHOD                         15,104 bytes,     118 objects (128 per object).
+  SB-SYS:FD-STREAM                                      14,784 bytes,      42 objects (352 per object).
+  SB-KERNEL::SLOT-MAPPER                                14,208 bytes,     296 objects (48 per object).
+  SB-PCL::GLOBAL-READER-METHOD                          14,208 bytes,     111 objects (128 per object).
+  SB-PCL::GLOBAL-WRITER-METHOD                          14,208 bytes,     111 objects (128 per object).
+  COMMON-LISP:STANDARD-CLASS                            14,080 bytes,      73 objects (192.88 per object).
+  SB-VM::CLOSURE-TRAMPOLINE                             13,920 bytes,     290 objects (48 per object).
+  COMMON-LISP:PACKAGE                                   13,312 bytes,     104 objects (128 per object).
+  SB-IMPL::SYMBOL-TABLE                                 13,248 bytes,     207 objects (64 per object).
+  COMMON-LISP:BUILT-IN-CLASS                            11,264 bytes,      64 objects (176 per object).
+  SB-FORMAT::FMT-CONTROL                                 8,576 bytes,     134 objects (64 per object).
+  SB-KERNEL:UNION-TYPE                                   8,144 bytes,     253 objects (32.19 per object).
+  SB-KERNEL:NUMERIC-UNION-TYPE                           7,616 bytes,     220 objects (34.62 per object).
+  SB-KERNEL:STANDARD-CLASSOID                            7,392 bytes,      77 objects (96 per object).
+  SB-MOP:STANDARD-WRITER-METHOD                          7,296 bytes,      57 objects (128 per object).
+  SB-PCL::PV-TABLE                                       6,784 bytes,     212 objects (32 per object).
+  SB-C::FUN-TYPE-ANNOTATION                              6,768 bytes,     141 objects (48 per object).
+  SB-KERNEL:BUILT-IN-CLASSOID                            6,720 bytes,      70 objects (96 per object).
+  SB-C:STORAGE-CLASS                                     6,480 bytes,      45 objects (144 per object).
+  SB-PCL::INITIAL                                        5,168 bytes,     323 objects (16 per object).
+  SB-IMPL::SYMTBL-MAGIC                                  5,088 bytes,     106 objects (48 per object).
+  SB-ALIEN-INTERNALS:ALIEN-RECORD-FIELD                  4,928 bytes,     154 objects (32 per object).
+  SB-KERNEL:KEY-INFO                                     4,416 bytes,     138 objects (32 per object).
+  SB-KERNEL:ARRAY-TYPE                                   4,368 bytes,      91 objects (48 per object).
+  SB-IMPL::COMMA                                         3,872 bytes,     121 objects (32 per object).
+  SB-INT:META-INFO                                       3,584 bytes,      56 objects (64 per object).
+  SB-PCL::CONSTANT-FAST-METHOD-CALL                      3,504 bytes,      73 objects (48 per object).
+  SB-PCL::GLOBAL-BOUNDP-METHOD                           3,456 bytes,      27 objects (128 per object).
+  COMMON-LISP:PATHNAME                                   3,328 bytes,      52 objects (64 per object).
+  SB-C:TN                                                2,992 bytes,      17 objects (176 per object).
+  SB-THREAD:THREAD                                       2,816 bytes,      16 objects (176 per object).
+  SB-C::DXABLE-ARGS                                      2,816 bytes,     176 objects (16 per object).
+  SB-X86-64-ASM::REG                                     2,752 bytes,     172 objects (16 per object).
+  SB-C:PRIMITIVE-TYPE                                    2,528 bytes,      79 objects (32 per object).
+  SB-KERNEL:CONSTANT-TYPE                                2,336 bytes,      73 objects (32 per object).
+  SB-ALIEN::ALIEN-TYPE-CLASS                             2,304 bytes,      16 objects (144 per object).
+  SB-KERNEL::TYPE-CLASS                                  2,304 bytes,      18 objects (128 per object).
+  SB-IMPL::ROBINHOOD-HASHSET-STORAGE                     2,112 bytes,      44 objects (48 per object).
+  SB-VM::SPECIALIZED-ARRAY-ELEMENT-TYPE-PROPERTIES       2,000 bytes,      25 objects (80 per object).
+  SB-ALIEN-INTERNALS:ALIEN-RECORD-TYPE                   1,984 bytes,      31 objects (64 per object).
+  SB-PCL::ONE-CLASS                                      1,968 bytes,      41 objects (48 per object).
+  SB-IMPL::BUFFER                                        1,968 bytes,      41 objects (48 per object).
+
+  Other types                                           55,568 bytes,   1,108 objects (50.15 per object).
+  Dynamic instance total                            34,878,208 bytes, 200,545 objects (173.92 per object).
+--- owner
+OWNER CAT slot 0 type T bytes 29786976
+OWNER CAT slot 1 type T bytes 2107920
+OWNER CAT slot 2 type T bytes 1225008
+OWNER CAT slot 3 type HASH-TABLE bytes 128
+OWNER CAT slot 4 type HASH-TABLE bytes 128
+OWNER CAT slot 5 type (INTEGER_0_4611686018427387903) bytes 0
+OWNER ARENA slot 0 type T bytes 1048688
+OWNER ARENA slot 1 type T bytes 524304
+OWNER ARENA slot 2 type T bytes 16
+OWNER ARENA slot 3 type T bytes 528
+OWNER HIST slot 0 type T bytes 524624
+OWNER HIST slot 1 type HASH-TABLE bytes 1376464
+OWNER HIST slot 2 type BIT bytes 0
+OWNER HIST slot 3 type (INTEGER_0_4611686018427387903) bytes 0
+OWNER HIST slot 4 type BIT bytes 0
+OWNER-ERROR OWNER the owner carrier stobj is not in this image
+OWNER-MISSING OWNER NULL
+--- large
+LARGE T count 15 bytes 16662976 maxlen 800003
+LARGE FIXNUM count 1 bytes 8000016 maxlen 1000000
+LARGE CHARACTER count 4 bytes 1172880 maxlen 87126
+LARGE (UNSIGNED-BYTE_8) count 6 bytes 2359392 maxlen 1048576
+LARGE (UNSIGNED-BYTE_32) count 6 bytes 7767296 maxlen 1048576
+LARGE (UNSIGNED-BYTE_64) count 1 bytes 70221840 maxlen 8777728
+LARGE1 (UNSIGNED-BYTE_64) bytes 70221840 len 8777728
+LARGE1 FIXNUM bytes 8000016 len 1000000
+LARGE1 T bytes 6400048 len 800003
+LARGE1 (UNSIGNED-BYTE_32) bytes 4194320 len 1048576
+LARGE1 T bytes 1600048 len 200003
+LARGE1 (UNSIGNED-BYTE_32) bytes 1600032 len 400001
+LARGE1 (UNSIGNED-BYTE_8) bytes 1048592 len 1048576
+LARGE1 (UNSIGNED-BYTE_32) bytes 1048592 len 262144
+LARGE1 T bytes 1024016 len 128000
+LARGE1 T bytes 1024016 len 128000
+LARGE1 T bytes 891328 len 111413
+LARGE1 T bytes 891328 len 111413

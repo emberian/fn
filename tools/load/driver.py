@@ -53,6 +53,7 @@ HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
 HOOK = HOOKS / "w13-idle-gc.lisp"
 CENSUS_HOOK = HOOKS / "w15-census.lisp"
 FIXTURES = "/tank/fn/scratch/fixtures-0b4d3b183"
+PROF_HOOK = Path("/tank/fn/scratch/extract-prof/prof2.lisp")      # E's deterministic encapsulate hook (same path on hbox and persvati)
 CLK = os.sysconf("SC_CLK_TCK") if hasattr(os, "sysconf") else 100
 
 
@@ -214,7 +215,7 @@ class Node:
         with socket.socket() as s:
             s.bind(("127.0.0.1", 0))
             self.port = s.getsockname()[1]
-        server = "[server]\nmax_connections = %d\n" % self.max_connections if self.max_connections else ""
+        server = ""        # fn.toml has no [server] table (books/native-config.lisp: key-allowedp); the cap is policy, see apply_policy
         self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n%s'
                                % (self.store, self.port, self.work / "c.sock", server))
 
@@ -236,6 +237,10 @@ class Node:
         out = p.stdout.decode("utf-8", "replace")
         heap, stack = re.search(r"heap=(\d+) MB", out), re.search(r"stack=(\d+) KB", out)
         if p.returncode != 0 or not (heap and stack):
+            if self.target.kind == "fn-core":      # the core's launcher has no heap probe: its declared launch stands
+                self.decided = self.env["SBCL_USER_ARGS"]
+                self.heap_probe_failed = out[-200:]
+                return self.decided
             raise CellError("heap probe exit %d: %s" % (p.returncode, out[-300:]))
         self.decided = "--dynamic-space-size %sMB --control-stack-size %sKB" % (heap.group(1), stack.group(1))
         self.env["SBCL_USER_ARGS"] = self.decided
@@ -280,6 +285,12 @@ class Node:
             rc = self.proc.wait(60)
         self.last_exit, self.proc, self.pid = rc, None, None
         return rc
+
+    def policy_set(self, key, value):
+        """`operator CONFIG policy set KEY VALUE` against the live owner: (exit code, output tail)."""
+        p = subprocess.run(self.argv("policy", "set", key, str(value)), env=self.env, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, timeout=120)
+        return p.returncode, p.stdout.decode("utf-8", "replace").strip()[-300:]
 
     def verb(self, *argv):
         """An offline `store ROOT ...` verb, timed (the owner must be stopped)."""
@@ -366,6 +377,29 @@ def components(files):
     for k, (size, _) in files.items():
         out[re.sub(r"[0-9a-f]{8,}|\d+", "#", k)] += size
     return dict(out)
+
+
+def site_probe(directory, n=200):
+    """4 KiB write + fdatasync loop in the store's filesystem: p50/p99 ms.  Reported with every cell, so a ZFS site's
+    sync cost is never read as the node's (T-SYNC)."""
+    path = Path(directory) / "site-probe.bin"
+    buf = b"\x5a" * 4096
+    ts = []
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT, 0o600)
+        try:
+            for _ in range(n):
+                t0 = time.perf_counter()
+                os.write(fd, buf)
+                os.fdatasync(fd)
+                ts.append(time.perf_counter() - t0)
+        finally:
+            os.close(fd)
+            os.unlink(path)
+    except OSError as e:
+        return {"error": repr(e)}
+    st = res_mod.lat_stats(ts)
+    return {"fs": fs_type(directory), "write4k_fdatasync": st, "n": n}
 
 
 def mid(x):
@@ -545,8 +579,7 @@ class Run:
                         d, rep, _ = timed_cmd(c, "OVER %d-%d" % win)
                         good = rep.startswith(b"224")
                     else:
-                        mid = mid(known[(j * 7919) % len(known)])
-                        d, rep, _ = timed_cmd(c, "ARTICLE %s" % mid)
+                        d, rep, _ = timed_cmd(c, "ARTICLE %s" % mid(known[(j * 7919) % len(known)]))
                         good = rep.startswith(b"220")
                     j += readers if readers > 1 else 1
                     if good:
@@ -860,6 +893,135 @@ class Run:
             results.append(r)
         return {"results": results}
 
+    def phase_prof(self, ph):
+        """T-CALLS / T-ALLOC / T-SYNC through E's deterministic hook (prof2.lisp, one window per process): per operation, a
+        restarted owner, `start`, K commands, `stop`; the hook reports host-to-ACL2 calls (outermost fnn-call), the owner's own
+        fnn-durable-barrier / fnn-log-fdatasync count and wall, bytes consed and GC time, all process-wide.  The hook costs
+        about 40% of wall: these rows are counts and bytes, not latency, and are labelled hooked."""
+        m, r = _clients()
+        K = ph.get("reps", 100)
+        pdir = Path(self.node.work) / "prof"
+        ids = {}
+        c = self.conn()
+        for kib in ph["article_kib"]:
+            ids[kib] = []
+            for _ in range(3):
+                i = self.ctr.next_id()
+                c.line("POST")
+                c.stream.write(r.article(i, kib * 1024) + b".\r\n")
+                if c.readline().startswith(b"240"):
+                    ids[kib].append(i)
+                    self.ctr.ok(i)
+        c.close()
+        ops = [("POST_2k", None)] + [("GROUP", None)] + [("ARTICLE_%dk" % k, k) for k in ph["article_kib"]]
+        res = {}
+        for name, kib in ops:
+            self.node.stop()
+            shutil.rmtree(pdir, ignore_errors=True)
+            pdir.mkdir(parents=True)
+            self.node.env["XL_PROF_DIR"] = str(pdir)
+            self.node.start()
+            time.sleep(2)
+            c = self.conn()
+            cpu0 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
+            (pdir / "start").write_text("")
+            time.sleep(0.5)
+            t0 = time.perf_counter()
+            for k in range(K):
+                if name == "POST_2k":
+                    post_one(c, self.ctr, 2048)
+                elif name == "GROUP":
+                    c.line("GROUP fn.test")
+                else:
+                    timed_cmd(c, "ARTICLE %s" % mid(ids[kib][k % len(ids[kib])]))
+            wall = time.perf_counter() - t0
+            (pdir / "stop").write_text("")
+            t1 = time.monotonic()
+            while not (pdir / "done").exists():
+                if time.monotonic() - t1 > 120:
+                    raise CellError("prof hook did not finish (is prof2.lisp loaded?)")
+                time.sleep(0.2)
+            cpu1 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
+            c.close()
+            res[name] = cells_mod.parse_prof((pdir / "timing.txt").read_text(), K)
+            res[name]["hooked_wall_ms_per_cmd"] = round(wall * 1000 / K, 3)
+            if cpu0 is not None and cpu1 is not None:
+                res[name]["hooked_cpu_ms_per_cmd"] = round((cpu1 - cpu0) * 1000 / K, 3)
+        return {"prof": res, "reps": K, "hooked": True}
+
+    def phase_conn_capacity(self, ph):
+        """Per preset: the decided default cap (no key in fn.toml), then the largest `[server] max_connections` the image
+        admits (doubling, then 3 bisection steps), the RSS per held connection and the refusal line past the cap."""
+        m, _ = _clients()
+        data = self.args.data
+        image_node = self.node
+        out = {}
+
+        def trial(preset, mc):
+            d = Path(image_node.work) / ("cc-%s-%s" % (preset, mc or "default"))
+            shutil.rmtree(d, ignore_errors=True)
+            d.mkdir(parents=True)
+            node = Node(image_node.target, d, wl.init_flags(data, preset), ["fn.test"], image_node.env["SBCL_USER_ARGS"], [],
+                        d / "gc.log", {}, 1.0, "decided", mc)
+            node.init()
+            t = {"max_connections": mc, "preset": preset}
+            try:
+                try:
+                    node.start(180)
+                except CellError as e:
+                    t.update(started=False, refusal=str(e)[-300:])
+                    return t
+                if mc:
+                    t["policy_set"] = node.policy_set("exposure-connections", mc)
+                time.sleep(1)
+                base = (proc_snapshot(node.pid) or {}).get("vmrss")
+                want = (mc or 32) + 1
+                held, greetings = [], collections.Counter()
+                for _ in range(want):
+                    c = m.Conn(node.port)
+                    held.append(c)
+                    greetings[c.greeting[:3].decode("latin-1")] += 1
+                admitted = greetings.get("200", 0)
+                last = held[-1].greeting.decode("latin-1").strip()
+                after = (proc_snapshot(node.pid) or {}).get("vmrss")
+                t.update(started=True, admitted=admitted, past_cap_greeting=last if admitted < want else None,
+                         vmrss_base_kib=base, vmrss_held_kib=after,
+                         kib_per_conn=round((after - base) / admitted, 2) if admitted and base and after else None,
+                         heap=node.decided)
+                for c in held:
+                    with contextlib.suppress(Exception):
+                        c.sock.close()
+            finally:
+                node.stop(60)
+            return t
+        for preset in ph["presets"]:
+            trials = [trial(preset, None)]
+            good, bad, mc = None, None, 64
+            while mc <= ph.get("max_try", 4096):
+                t = trial(preset, mc)
+                trials.append(t)
+                if t.get("started") and t.get("admitted") == mc:
+                    good = mc
+                    mc *= 2
+                else:
+                    bad = mc
+                    break
+            for _ in range(3):
+                if good is None or bad is None or bad - good <= 1:
+                    break
+                mid_ = (good + bad) // 2
+                t = trial(preset, mid_)
+                trials.append(t)
+                if t.get("started") and t.get("admitted") == mid_:
+                    good = mid_
+                else:
+                    bad = mid_
+            out[preset] = {"default_cap": trials[0].get("admitted"), "largest_ok": good, "first_refused": bad, "trials": trials}
+            for t in trials:
+                if t.get("refusal"):
+                    self.ctr.refusals["conn-capacity-%s-%s" % (preset, refusal_name(t["refusal"].encode()))] += 1
+        return {"capacity": out}
+
     def phase_unimplemented(self, ph):
         return {"status": "not-implemented", "reason": ph["reason"]}
 
@@ -939,13 +1101,16 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
     use_hook = bool(arm) or args.gc_hook
     hooks = [HOOK] if use_hook else []
     env_extra = {"FN_LOAD_IDLE_GC": "off"} if arm == "A" else {}
+    if spec.get("prof"):
+        hooks.append(PROF_HOOK)
+        env_extra["XL_PROF_DIR"] = str(work / "prof")
     if spec.get("census"):
         hooks.append(CENSUS_HOOK)
         (work / "census").mkdir()
         env_extra["FN_LOAD_CENSUS_DIR"] = str(work / "census")
     node = Node(target, work, wl.init_flags(data, spec["preset"]), spec["groups"], args.sbcl_user_args or data["sbcl_user_args"],
                 hooks, work / "gc.log", env_extra, spec.get("sampler_s", 1.0),
-                spec.get("heap", "decided"), spec.get("max_connections"))
+                spec.get("heap", "decided"), None)
     ctr = Counters()
     run = Run(node, spec, ctr, args)
     run.cell_id = cell.id
@@ -953,7 +1118,7 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
           "preset": spec["preset"], "flags": node.flags, "git": args.rev, "status": "running",
           "image": {"path": str(target.path), "core_sha256": target.core_sha256, "tree_sha": target.tree_sha},
           "hook": ("+".join(h.name for h in hooks) + (" idle-gc-off" if arm == "A" else "")) if hooks else None,
-          "max_connections": spec.get("max_connections"),
+          "policy": spec.get("policy"),
           "launch": "%s --fn operator %s run (SBCL_USER_ARGS=%r)" % (node.launcher, node.config, node.env["SBCL_USER_ARGS"]),
           "started_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "phases": [],
           "box": {"name": args.box, "cores": len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count(),
@@ -979,12 +1144,16 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         return d
     try:
         cr["heap"] = {"mode": node.heap_mode}
+        cr["site"] = site_probe(work)
+        write()
         if spec.get("own_nodes"):        # the phases start their own nodes (fresh-start)
             cr["store"] = {}
         else:
             info = prepare_store(node, run, spec, args.cache, (target.core_sha256 or "x")[:12] + "-" + spec["preset"])
             cr["store"] = info
             cr["heap"]["sbcl_user_args"] = node.env["SBCL_USER_ARGS"]
+            if spec.get("policy"):
+                cr["policy"] = {k: node.policy_set(k, v) for k, v in spec["policy"].items()}
             spec["_preloaded"] = info.get("preloaded", 0)
             node.sampler.start()
             time.sleep(spec.get("settle_s", 3))
@@ -1027,6 +1196,8 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
     except Exception as e:      # noqa: BLE001 - the cell's own failure is a result
         cr["status"] = "error"
         cr["error"] = "%s: %s" % (type(e).__name__, e)
+        import traceback
+        cr["traceback"] = traceback.format_exc()[-900:]
     finally:
         node.sampler.stop_ev.set()
         with contextlib.suppress(Exception):
@@ -1038,6 +1209,11 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         cr["box"]["arc_bytes_end"] = arc_size()
         cr["noisy"] = (cr["box"]["loadavg_start"][0] > 2 * cr["box"]["cores"]) if cr["box"]["cores"] else False
         cr["metrics"], cr["not_measured"] = cells_mod.derive(cell.workload, cr["phases"])
+        st = (cr.get("site") or {}).get("write4k_fdatasync") or {}
+        if st.get("p50_ms") is not None:
+            cr["metrics"]["site.fdatasync_p50_ms"], cr["metrics"]["site.fdatasync_p99_ms"] = st["p50_ms"], st.get("p99_ms")
+            if st.get("p99_ms") is None:
+                cr["not_measured"]["site.fdatasync_p99_ms"] = "fewer than 200 probe samples"
         cr["bars"] = [] if sub else res_mod.judge_cell(cr, args.bars)
         with contextlib.suppress(OSError):
             (work / "samples.json").write_text(json.dumps(node.sampler.series))
@@ -1065,6 +1241,7 @@ def run_sweep(cell_id, cell, target, arm, rep, args, data, res, write):
 def cmd_run(args):
     data = wl.load()
     args.bars = res_mod.load_bars()
+    args.data = data
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     args.work = args.work or ("/dev/shm/fn-load-%s" % args.label)
@@ -1094,6 +1271,9 @@ def cmd_run(args):
     try:
         for cell_id in args.cell.split(","):
             cell = wl.resolve(cell_id, data)
+            if args.sweep and cell.spec.get("sweep"):
+                data["workloads"][cell.workload]["sweep"] = args.sweep.split(",")
+                cell = wl.resolve(cell_id, data)
             arms = args.arms.split(",") if args.arms else ([cell.arm] if cell.arm else arms_default)
             for rep in range(1, args.repeat + 1):
                 for target in targets:
@@ -1126,7 +1306,7 @@ def ssh(host, script, timeout=120):
 
 def cmd_box(args):
     host = {"hbox": "hbox", "persvati": "persvati"}[args.box]
-    base = BOX_BASE if args.box == "hbox" else "~/fn-load"
+    base = BOX_BASE
     ship = "%s/ship/%s" % (base, args.label)
     runs = "%s/runs/%s" % (base, args.label)
     ssh(host, "mkdir -p %s/tests %s/books %s/packaging %s/host/native %s/planning/evidence/load/hooks %s" % (ship, ship, ship, ship, ship, runs))
@@ -1143,7 +1323,7 @@ def cmd_box(args):
     for core in args.fn_core:
         inner += ["--fn-core", core]
     for flag, val in (("--arms", args.arms), ("--rev", args.rev), ("--sbcl-user-args", args.sbcl_user_args),
-                      ("--work", args.work), ("--cores", args.cores)):
+                      ("--work", args.work), ("--cores", args.cores), ("--sweep", getattr(args, "sweep", None))):
         if val:
             inner += [flag, val]
     if args.gc_hook:
@@ -1151,7 +1331,10 @@ def cmd_box(args):
     if args.box == "hbox":
         wrap = "SWARM_MEM_MAX=%s swarm-build" % args.mem
     else:
-        wrap = "systemd-run --user --scope -p MemoryMax=%s" % args.mem
+        wrap = "systemd-run --user --scope -p MemoryMax=%s taskset -c 0-15" % args.mem
+        if not args.cores:
+            inner += ["--cores", "0-15"]
+            script_cores = True
     script = ("cd %s && %s timeout %d %s > %s/run.log 2>&1 < /dev/null" % (ship, wrap, args.timeout, " ".join(shlex.quote(a) for a in inner), runs))
     launch = "cd %s && setsid nohup sh -c %s > /dev/null 2>&1 < /dev/null & echo $! > %s/pid; cat %s/pid" % (ship, shlex.quote(script), runs, runs)
     p = ssh(host, launch)
@@ -1160,7 +1343,7 @@ def cmd_box(args):
 
 
 def cmd_fetch(args):
-    host = "hbox"
+    host = args.box
     runs = "%s/runs/%s" % (BOX_BASE, args.label)
     st = ssh(host, "cat %s/status 2>&1; tail -n 3 %s/run.log" % (runs, runs)).stdout
     print(st.strip())
@@ -1200,6 +1383,7 @@ def main(argv=None):
         q.add_argument("--label", required=True)
         q.add_argument("--box", default="local")
         q.add_argument("--work", default=None, help="work dir (default /dev/shm/fn-load-LABEL: tmpfs); a path on ZFS for the disk rows")
+        q.add_argument("--sweep", default=None, help="a sweep cell's store sizes, e.g. 1k,10k,25k,50k")
         q.add_argument("--cores", default=None, help="pin the run to these cores, e.g. 0-7 (a time cell needs its own cores)")
     r = sub.add_parser("run")
     common(r)
@@ -1215,6 +1399,7 @@ def main(argv=None):
     f = sub.add_parser("fetch")
     f.add_argument("label")
     f.add_argument("--force", action="store_true")
+    f.add_argument("--box", default="hbox")
     sub.add_parser("list")
     a = p.parse_args(argv)
     return {"run": cmd_run, "box": cmd_box, "fetch": cmd_fetch, "list": cmd_list}[a.cmd](a)

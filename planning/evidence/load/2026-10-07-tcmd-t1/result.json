@@ -1,0 +1,231 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 0,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [
+    {
+     "bar": "T-CMD",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "cmd.p99_ms.max",
+       "reason": "box loaded (load 18.25 at start, 19.56 at end; a time bar needs <= 4 at both)",
+       "threshold": 50,
+       "value": 1432.908
+      },
+      {
+       "cmp": "le",
+       "metric": "cmd.p99_exponent.max",
+       "reason": "metric absent from the run",
+       "threshold": 0.2,
+       "value": null
+      }
+     ],
+     "quantity": "per-command p99 for GROUP, OVER-40, STAT, HEAD, LIST, greeting at 1k/10k/40k, and its exponent against n",
+     "reason": "box loaded (load 18.25 at start, 19.56 at end; a time bar needs <= 4 at both); metric absent from the run",
+     "source": "ruling 17 (LOAD-PROGRAM 1a)",
+     "verdict": "NOT-MEASURED"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     19.56,
+     18.94,
+     20.27
+    ],
+    "loadavg_start": [
+     18.25,
+     21.45,
+     21.62
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "T-CMD@1k",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "scale",
+    "--max-transactions",
+    "1048576",
+    "--max-history-octets",
+    "4294967296",
+    "--max-article-octets",
+    "16384"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 9979MB --control-stack-size 1024KB"
+   },
+   "hook": null,
+   "image": {
+    "core_sha256": "5e342d1984b955a8d7e1be2e270202e4109c9d62f592de5340b05b42ca99ab01",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer --fn operator /dev/shm/fn-load-tcmd-t1/T_CMD_1k-image-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "max_connections": null,
+   "metrics": {
+    "cmd.cpu_ms_per_op.GROUP": 26.2,
+    "cmd.cpu_ms_per_op.HEAD": 3.533,
+    "cmd.cpu_ms_per_op.LIST": 158.6,
+    "cmd.cpu_ms_per_op.OVER40": 9.3,
+    "cmd.cpu_ms_per_op.STAT": 1.2,
+    "cmd.cpu_ms_per_op.greeting": 4.767,
+    "cmd.p50_ms.GROUP": 24.262,
+    "cmd.p50_ms.HEAD": 2.972,
+    "cmd.p50_ms.LIST": 1212.303,
+    "cmd.p50_ms.OVER40": 8.197,
+    "cmd.p50_ms.STAT": 2.948,
+    "cmd.p50_ms.greeting": 4.897,
+    "cmd.p99_ms.GROUP": 30.344,
+    "cmd.p99_ms.HEAD": 8.401,
+    "cmd.p99_ms.LIST": 1432.908,
+    "cmd.p99_ms.OVER40": 10.506,
+    "cmd.p99_ms.STAT": 6.33,
+    "cmd.p99_ms.greeting": 7.508,
+    "cmd.p99_ms.max": 1432.908,
+    "posts.admitted": 0,
+    "posts.refused": 0,
+    "rss_kib.anon": 147256,
+    "rss_kib.file": 563472,
+    "rss_kib.hwm": 847312,
+    "rss_kib.vmrss": 710728
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.497,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 55756,
+      "file": 563472,
+      "hwm": 689100,
+      "vmrss": 619228
+     },
+     "name": "open",
+     "open_s": 0.497,
+     "seconds": 0.497
+    },
+    {
+     "arc_bytes": null,
+     "bad_replies": null,
+     "cmd": {
+      "GROUP": {
+       "max_ms": 36.189,
+       "n": 300,
+       "p50_ms": 24.262,
+       "p95_ms": 26.692,
+       "p99_ms": 30.344
+      },
+      "HEAD": {
+       "max_ms": 14.738,
+       "n": 300,
+       "p50_ms": 2.972,
+       "p95_ms": 6.711,
+       "p99_ms": 8.401
+      },
+      "LIST": {
+       "max_ms": 1456.367,
+       "n": 300,
+       "p50_ms": 1212.303,
+       "p95_ms": 1381.449,
+       "p99_ms": 1432.908
+      },
+      "OVER40": {
+       "max_ms": 18.043,
+       "n": 300,
+       "p50_ms": 8.197,
+       "p95_ms": 9.944,
+       "p99_ms": 10.506
+      },
+      "STAT": {
+       "max_ms": 6.461,
+       "n": 300,
+       "p50_ms": 2.948,
+       "p95_ms": 5.176,
+       "p99_ms": 6.33
+      },
+      "greeting": {
+       "max_ms": 8.661,
+       "n": 300,
+       "p50_ms": 4.897,
+       "p95_ms": 6.112,
+       "p99_ms": 7.508
+      }
+     },
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_ms_per_op": 33.933,
+     "cpu_ms_per_op_by_cmd": {
+      "GROUP": 26.2,
+      "HEAD": 3.533,
+      "LIST": 158.6,
+      "OVER40": 9.3,
+      "STAT": 1.2,
+      "greeting": 4.767
+     },
+     "cpu_s": 61.08,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "commands",
+     "load": [
+      19.56,
+      18.94,
+      20.27
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 147256,
+      "file": 563472,
+      "hwm": 847312,
+      "peak_anon": 283264,
+      "peak_vmrss": 846736,
+      "pss": 617633,
+      "threads": 14,
+      "vmrss": 710728
+     },
+     "name": "commands",
+     "ops": 1800,
+     "seconds": 387.135,
+     "status": "ok"
+    }
+   ],
+   "preset": "scale-1m",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 391.1,
+   "started_utc": "2026-10-07T23:02:46Z",
+   "status": "complete",
+   "store": {
+    "group": "fn.test",
+    "preloaded": 1000,
+    "source": "fixture /tank/fn/scratch/fixtures-0b4d3b183/curve/n1000/store"
+   },
+   "target": "image",
+   "trace": null,
+   "workload": "commands"
+  }
+ ],
+ "evidence": null,
+ "label": "tcmd-t1",
+ "rev": "0b4d3b18385a53209146a78296e282d06c17e573",
+ "schema": 1
+}
