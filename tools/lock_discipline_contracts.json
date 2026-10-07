@@ -877,6 +877,7 @@
   "stop": [],
   "allowed": {
    "*fnn-entry-guard-specs*": "read-mostly guard-spec cache, filled once per entry name (io.lisp:1278); F6: to move to image build time",
+   "*fnn-counterparts*": "read-mostly *1* symbol cache, filled once per entry name (io.lisp fnn-counterpart; ruling 17)",
    "*fnn-trailing-stobjs*": "read-mostly trailing-stobj cache (io.lisp:352-379); same disposition"
   }
  },

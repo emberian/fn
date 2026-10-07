@@ -1372,11 +1372,18 @@ offered to the writer while the owner runs (PKT-508), else written here."
 ;;; wrapper, exactly as the interpreted bridge evaluates it -- or, for an
 ;;; entry declared `:raw-with' (D40), the guard-verified definition itself.
 
+;; NAME -> its *1* symbol, found once (ruling 17: find-symbol by name on
+;; every raw-dispatched fnn-call was ~2% of an ARTICLE's samples).  Only a
+;; found, fbound counterpart is kept; a missing one faults every time.
+;; Filled lazily from any calling thread, so synchronized.
+(defvar *fnn-counterparts* (make-hash-table :test 'eq :synchronized t))
+
 (defun fnn-counterpart (name)
-  (let ((symbol (find-symbol (symbol-name name) "ACL2_*1*_ACL2")))
-    (unless (and symbol (fboundp symbol))
-      (fnn-fault "ACL2 executable counterpart missing: ~a" name))
-    symbol))
+  (or (gethash name *fnn-counterparts*)
+      (let ((symbol (find-symbol (symbol-name name) "ACL2_*1*_ACL2")))
+        (unless (and symbol (fboundp symbol))
+          (fnn-fault "ACL2 executable counterpart missing: ~a" name))
+        (setf (gethash name *fnn-counterparts*) symbol))))
 
 ;;; RAW DISPATCH (D40, lane depth-debt-9).  The executable counterpart
 ;;; (*1*) of a guard-verified entry evaluates the entry's whole guard and
@@ -7030,11 +7037,29 @@ tree root), or stop the build."
     ;; fnn-owner-feed-append-locked).
     "FN_NATIVE_TEST_FEED_FSYNC_MS" "FN_NATIVE_TEST_FEED_STALL_FILE"))
 
+;; Each selector's value, read once per process (ruling 17: the lookup ran on
+;; every extent pread and window observation, ~5% of an ARTICLE's samples on
+;; E's profile: a string= scan of the registry and a fresh getenv string each
+;; call).  The environment does not change after start (no host code sets
+;; it), so the first read stands.  Cleared by an init hook, so a value read
+;; while the image is built never reaches a started node.  Filled lazily by
+;; whichever thread asks first, so the table is synchronized.
+(defvar *fnn-developer-selector-values* (make-hash-table :test 'equal :synchronized t))
+
+(defun fnn-developer-selector-reset ()
+  (clrhash *fnn-developer-selector-values*))
+(pushnew 'fnn-developer-selector-reset sb-ext:*init-hooks*)
+
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
-  (unless (member name +fnn-developer-selectors+ :test #'string=)
-    (fnn-fault "~a is not a registered developer selector" name))
-  (and (fnn-developer-image-p) (sb-ext:posix-getenv name)))
+  (multiple-value-bind (value found) (gethash name *fnn-developer-selector-values*)
+    (if found
+        value
+      (progn
+        (unless (member name +fnn-developer-selectors+ :test #'string=)
+          (fnn-fault "~a is not a registered developer selector" name))
+        (setf (gethash name *fnn-developer-selector-values*)
+              (and (fnn-developer-image-p) (sb-ext:posix-getenv name)))))))
 
 (defun fnn-store-post-fault-argument (argv)
   "The positional FAULT of `store ROOT post MSGID PAYLOAD CHARGE FAULT ...'."
