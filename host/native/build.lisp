@@ -47,6 +47,10 @@
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
 (include-book "books/history-paged-attach")
+;; The paged catalog is the catalog: books/catalog-paged-attach attaches fn-cat-paged
+;; to the generic fn-cat.  After the history attachment (its closure defines
+;; fn-hist), before the first book that introduces fn-cat.
+(include-book "books/catalog-paged-attach")
 ;; The peer flight books reach `fn-arena' (heap-store-figure includes
 ;; owner-checkpoint-pipeline), so they follow the arena attachment.
 (include-book "books/peer-flight-profile")
@@ -54,6 +58,7 @@
 (include-book "books/peer-flight-startup")
 (include-book "books/peer-catchup-spool-resources")
 (include-book "books/peer-catchup-spool")
+(include-book "books/peer-catchup-spool-body") ; K1 (D26 split): host/interfaces cites its keystones
 (include-book "books/peer-catchup-spool-hash")
 (include-book "books/store-config")
 (include-book "books/identity")
@@ -76,6 +81,9 @@
 ;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
 (include-book "books/served-plan-cursor")
 (include-book "books/served-plan-line-buffer")
+;; r71 F13: the pending-accept slot the mux's accept threads take (fnn-mux-
+;; reserve asks fn-mxa-reserve; fn-mxa-deferral-line names the deferral).
+(include-book "books/mux-accept-slot")
 (include-book "books/response-plan-pins")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
@@ -116,6 +124,9 @@
 ;; The record log's kernel, decode and programs (lane w6-log-core): the host
 ;; functions fnn-log-* in host/native/io.lisp call them (the `log' verb).
 (include-book "books/store-log-programs")
+;; The writable open's copy (RL-01 A2, P-LOG-RECOVER-COPY): fnn-log-recover
+;; calls fn-lgrc-copy-verdict and fn-lgrc-copy-refusal-text.
+(include-book "books/store-log-recover-copy")
 ;; Its segments, rotation and drop (lane log-recovery): fnn-recover-log,
 ;; fnn-log-rotate and fnn-log-drop call them.
 (include-book "books/store-log-segments")
@@ -209,6 +220,12 @@
 ;; Lane f1-bisect: host/native/io.lisp fnn-open-nursery calls
 ;; fn-heap-open-nursery-trigger (the open's trigger sized to its history).
 (include-book "books/heap-open-nursery")
+;; CONVERGE-2 row 20: host/native/mux.lisp asks the send verdict of
+;; books/send-progress.
+(include-book "books/send-progress")
+;; MEM-003: host/native/owner.lisp fnn-owner-maybe-collect-idle asks the idle
+;; collection verdict of books/idle-collection.
+(include-book "books/idle-collection")
 (include-book "books/heap-reservation")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")
@@ -439,6 +456,10 @@
 ; (class, the entry guard's kinds, keystones); a refuted one stops the build.
 (ld "host/interfaces.lisp" :ld-error-action :error)
 (ld "host/cost-host.lisp" :ld-error-action :error)
+; D40's raw-dispatch verdicts, judged in this world after its last
+; declaration (books/raw-dispatch-verdict.lisp): fnn-install-raw-dispatch
+; admits a raw dispatch only on one, here and in the extracted core.
+(ld "host/raw-dispatch-verdicts.lisp" :ld-error-action :error)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -652,10 +673,10 @@
 ;; tools/build_native_host.sh writes it into the saved launcher, so a run of
 ;; the image outside the installed launcher has the deployed stack (PKT-876).
 (value-triple (prog2$ (cw "FN_NATIVE_STACK_KIB ~x0~%" (fn-heap-stack-kib nil)) :stack))
-;; Every thread's thread-local storage, the profile's row
-;; (books/profile-limits.lisp :tls-limit): tools/build_native_host.sh writes it
+;; Every thread's thread-local storage at run time, the profile's row
+;; (books/profile-limits.lisp :run-tls-limit): tools/build_native_host.sh writes it
 ;; into the saved launcher as --tls-limit.
-(value-triple (prog2$ (cw "FN_NATIVE_TLS_LIMIT ~x0~%" (fn-profile-limit :tls-limit)) :tls))
+(value-triple (prog2$ (cw "FN_NATIVE_TLS_LIMIT ~x0~%" (fn-profile-limit :run-tls-limit)) :tls))
 
 :q
 ;; The thread-local storage the build used (tools/build_native_host.sh

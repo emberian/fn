@@ -45,11 +45,21 @@
    (if row (list :event-before-query row (fn-cp-nth 5 scanner))
      (list :unavailable :history (fn-cp-nth 5 scanner))) state))
 
+; The step's guard needs only that the read-begin call returns a state; the
+; definitions underneath it stay closed (1.9M -> 1k guard steps).
+(local (defthm fn-owner-history-read-begin-state-p1
+ (implies (state-p1 state)
+          (state-p1 (mv-nth 1 (fn-owner-history-read-begin token ordinal fn-history-backing state))))
+ :hints (("Goal" :in-theory (enable fn-owner-history-read-begin)))))
+
 ; At most one backing read action OR one bounded group comparison per call.
 ; The semantic key comes only from the internal authenticated current-source
 ; span; it is not a public supplied freshness Boolean or constructor grant.
 (defun fn-owner-remote-scan-step-internal (token current-key fuel fn-history-backing state)
- (declare (xargs :stobjs (fn-history-backing state) :guard t))
+ (declare (xargs :stobjs (fn-history-backing state) :guard t
+                 :guard-hints (("Goal" :in-theory (disable fn-owner-history-read-begin fn-hep-capture-livep
+                                                           fn-owner-history-recheck fn-owner-history-capture-slot
+                                                           fn-owner-history-read-slot fn-crps-tick fn-crt-holder)))))
  (let* ((held (fn-owner-remote-scan-read state)) (scanner (fn-cp-nth 3 held))
         (source (fn-hhc-at 3 (fn-owner-history-capture-slot state))))
   (cond

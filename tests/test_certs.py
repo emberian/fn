@@ -9,6 +9,7 @@ is the closure's hash: same book bytes over a changed dependency is a
 different key, not a cache hit ACL2 would then refuse.
 """
 
+import hashlib
 import importlib.util
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -122,6 +123,17 @@ def worktree(directory: str, books: dict[str, str] | None = None,
         # Certification compiles: the cache files a pair only with its fasl.
         (root / f"{name}.fasl").write_bytes(b"FASL " + name.encode())
     return root
+
+
+def agree(paths, pairs, acl2, root):
+    """A pair checker for which every post-alist entry agrees (ACL2 not run)."""
+    return {p: (True, True) for p in pairs}
+
+
+def install(root, cache, names=None, pair_checker=agree):
+    """certs.install with the fixture toolchain and an ACL2 stand-in."""
+    return certs.install(root, cache, names, Path("/fixture/acl2"),
+                         certs.stable_identity(TEST_COMPATIBILITY), pair_checker)
 
 
 def manifest_for(root: Path, certified: list[str], status: str = "passed",
@@ -586,6 +598,10 @@ class InstallTests(unittest.TestCase):
     FARM = "/tank/fn/no-such-tree"
 
     def published(self, directory: str, books: list[str]) -> tuple[Path, Path]:
+        # A pair installs only over installed pairs its post-alist agrees
+        # with (certs.install, ACL2's criterion), so mid is published with
+        # the base it was certified over.
+        books = sorted(set(books) | ({"books/base"} if "books/mid" in books else set()))
         root = worktree(directory, certified=books)
         manifest_for(root, books)
         cache = root / "cache"
@@ -596,13 +612,12 @@ class InstallTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             _, cache = self.published(one, ["books/mid"])
             target = worktree(two)
-            report = certs.install(target, cache)
-            self.assertEqual((report.installed, report.kept), (1, 0))
-            self.assertCountEqual(report.uncached,
-                                  ["books/base", "tests/acl2/mid-tests"])
+            report = install(target, cache)
+            self.assertEqual((report.installed, report.kept), (2, 0))
+            self.assertCountEqual(report.uncached, ["tests/acl2/mid-tests"])
             self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
             self.assertTrue((target / "books/mid.port").is_file())
-            self.assertEqual(certs.install(target, cache).kept, 1)
+            self.assertEqual(install(target, cache).kept, 2)
 
     def test_a_deleted_include_is_a_finding_not_an_abort(self):
         """FILL-CERTS-INSTALL-DELETED-BOOK: a parked book whose include a
@@ -615,10 +630,10 @@ class InstallTests(unittest.TestCase):
             (target / "books/parked.lisp").write_text(
                 '(in-package "ACL2")\n(include-book "gone")\n')
             try:
-                report = certs.install(target, cache)
+                report = install(target, cache)
             except FileNotFoundError:
                 self.fail("install aborted on a deleted include")
-            self.assertEqual(report.installed, 1)
+            self.assertEqual(report.installed, 2)
             self.assertIn("books/parked: books/gone.lisp: missing",
                           report.unreadable)
             self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
@@ -630,7 +645,12 @@ class InstallTests(unittest.TestCase):
                 mock.patch("sys.stdout"):
             _, cache = self.published(one, ["books/mid"])
             target = worktree(two)
-            argv = ["--root", str(target), "--cache", str(cache), "install"]
+            argv = ["--root", str(target), "--cache", str(cache), "--acl2", "/fixture/acl2",
+                    "--toolchain-identity", certs.stable_identity(TEST_COMPATIBILITY),
+                    "install"]
+            checker = mock.patch.object(certs, "memoized_pair_checker", lambda cache: agree)
+            checker.start()
+            self.addCleanup(checker.stop)
             self.assertEqual(certs.main(argv), 0)
             (target / "books/parked.lisp").write_text(
                 '(in-package "ACL2")\n(include-book "gone")\n')
@@ -642,7 +662,7 @@ class InstallTests(unittest.TestCase):
             target = worktree(two)
             (target / "books/base.lisp").write_text(
                 '(in-package "ACL2")\n(defun fn-b (x) (+ 1 x))\n')
-            report = certs.install(target, cache)
+            report = install(target, cache)
             self.assertEqual(report.installed, 0)
             self.assertIn("books/mid", report.uncached)
             self.assertFalse((target / "books/mid.cert").exists())
@@ -653,8 +673,8 @@ class InstallTests(unittest.TestCase):
             target = worktree(two)
             (target / "books/base.lisp").write_text(
                 '(in-package "ACL2")\n; explained at last\n(defun fn-b (x) x)\n')
-            report = certs.install(target, cache)
-            self.assertEqual(report.installed, 1)
+            report = install(target, cache)
+            self.assertEqual(report.installed, 2)
             self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
 
     def test_rekey_files_a_byte_keyed_entry_under_its_form_key(self):
@@ -669,11 +689,13 @@ class InstallTests(unittest.TestCase):
             meta["closure"] = certs.closure_listing(certs.closure(root, "books/mid"))
             (old / "meta.json").write_text(json.dumps(meta))
             target = worktree(two)
-            self.assertEqual(certs.install(target, cache).installed, 0)
+            install(target, cache)
+            self.assertFalse((target / "books/mid.cert").exists())
             report = certs.rekey(target, cache)
             self.assertEqual((report.rekeyed, report.already), (1, 0))
             self.assertEqual(certs.rekey(target, cache).already, 1)
-            self.assertEqual(certs.install(target, cache).installed, 1)
+            install(target, cache)
+            self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
             # A tree whose bytes differ from the old key's is not rekeyed.
             (target / "books/base.lisp").write_text(
                 '(in-package "ACL2")\n(defun fn-b (x) (+ 1 x))\n')
@@ -684,7 +706,7 @@ class InstallTests(unittest.TestCase):
             _, cache = self.published(one, ["books/mid"])
             target = worktree(two)
             (target / "books/mid.cert").write_bytes(SERIALIZED + b"unverified local")
-            self.assertEqual(certs.install(target, cache).installed, 1)
+            self.assertEqual(install(target, cache).installed, 2)
             self.assertNotIn(b"unverified local",
                              (target / "books/mid.cert").read_bytes())
 
@@ -697,7 +719,7 @@ class InstallTests(unittest.TestCase):
             certs.publish(root, cache, origin=self.FARM)
             target = worktree(two)
             (target / "books/mid.port").write_text("; left over\n")
-            certs.install(target, cache)
+            install(target, cache)
             self.assertFalse((target / "books/mid.port").exists())
 
 
@@ -1068,8 +1090,8 @@ class OriginTests(unittest.TestCase):
 
     def publish_from(self, directory: str, origin: Path | None = None,
                      host: str | None = None) -> tuple[Path, Path]:
-        root = worktree(directory, certified=["books/mid"])
-        manifest_for(root, ["books/mid"])
+        root = worktree(directory, certified=["books/base", "books/mid"])
+        manifest_for(root, ["books/base", "books/mid"])
         cache = root / "cache"
         certs.publish(root, cache, origin=str(origin) if origin else None,
                       origin_host=host)
@@ -1094,9 +1116,9 @@ class OriginTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             source, cache = self.publish_from(one)
             target = worktree(two)
-            report = certs.install(target, cache)
+            report = install(target, cache)
             self.assertEqual(report.installed, 0)
-            self.assertEqual(report.foreign_local, ["books/mid"])
+            self.assertEqual(report.foreign_local, ["books/base", "books/mid"])
             self.assertFalse((target / "books/mid.cert").exists())
             self.assertTrue(source.exists())  # the origin is why it was refused
 
@@ -1104,8 +1126,8 @@ class OriginTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             _, cache = self.publish_from(one, origin=Path("/tank/fn/no-such-tree"))
             target = worktree(two)
-            report = certs.install(target, cache)
-            self.assertEqual((report.installed, report.foreign_local), (1, []))
+            report = install(target, cache)
+            self.assertEqual((report.installed, report.foreign_local), (2, []))
             self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
 
     def test_this_worktrees_own_entry_wins_over_a_relocatable_one(self):
@@ -1119,7 +1141,7 @@ class OriginTests(unittest.TestCase):
             chosen = certs.choose_entry(certs.cached_entries(cache, key),
                                         str(target))
             self.assertEqual(chosen[1]["origin_root"], str(target))
-            self.assertEqual(certs.install(target, cache).kept, 1)
+            self.assertEqual(install(target, cache).kept, 1)
 
     def test_a_pair_installed_from_a_live_worktree_earlier_is_removed(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
@@ -1129,9 +1151,10 @@ class OriginTests(unittest.TestCase):
             (target / "books/mid.cert").write_bytes(
                 (source / "books/mid.cert").read_bytes())
             (target / "books/mid.port").write_text("; foreign\n")
-            report = certs.install(target, cache)
-            self.assertEqual((report.removed_foreign, report.installed), (1, 0))
-            self.assertEqual(report.foreign_local, ["books/mid"])
+            report = install(target, cache)
+            # The cert and the port each count as one removed artifact.
+            self.assertEqual((report.removed_foreign, report.installed), (2, 0))
+            self.assertEqual(report.foreign_local, ["books/base", "books/mid"])
             self.assertFalse((target / "books/mid.cert").exists())
             self.assertFalse((target / "books/mid.port").exists())
 
@@ -1140,8 +1163,8 @@ class OriginTests(unittest.TestCase):
             _, cache = self.publish_from(one)
             target = worktree(two)
             report = certs.status(target, cache)
-            self.assertEqual(report.foreign_local, ["books/mid"])
-            self.assertTrue(any("foreign-local 1" in line for line in report.lines()))
+            self.assertEqual(report.foreign_local, ["books/base", "books/mid"])
+            self.assertTrue(any("foreign-local 2" in line for line in report.lines()))
 
 
 class SnapshotOriginTests(unittest.TestCase):
@@ -1157,8 +1180,8 @@ class SnapshotOriginTests(unittest.TestCase):
     """
 
     def gate(self, directory: str, kind: str | None = "gate") -> tuple[Path, Path]:
-        root = worktree(directory, certified=["books/mid"])
-        manifest_for(root, ["books/mid"])
+        root = worktree(directory, certified=["books/base", "books/mid"])
+        manifest_for(root, ["books/base", "books/mid"])
         cache = root / "cache"
         certs.publish(root, cache, origin_kind=kind)
         return root, cache
@@ -1170,11 +1193,11 @@ class SnapshotOriginTests(unittest.TestCase):
                 certs.read_meta(entry(cache, gate, "books/mid"))["origin_kind"],
                 "gate")
             target = worktree(two)
-            report = certs.install(target, cache)
+            report = install(target, cache)
             # The same publish without the kind is `test_an_entry_from_another
             # _live_worktree_is_refused`: one field is the whole difference.
             self.assertTrue(gate.is_dir())
-            self.assertEqual((report.installed, report.foreign_local), (1, []))
+            self.assertEqual((report.installed, report.foreign_local), (2, []))
             self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
 
     def test_this_worktrees_own_entry_still_wins_over_a_snapshot(self):
@@ -1198,11 +1221,11 @@ class SnapshotOriginTests(unittest.TestCase):
             # a snapshot.  Nothing is copied; the classification changes.
             again = certs.publish(root, cache, origin_kind="run")
             self.assertEqual((again.published, again.already, again.relabelled),
-                             (0, 1, 1))
+                             (0, 2, 2))
             self.assertEqual(
                 certs.read_meta(entry(cache, root, "books/mid"))["origin_kind"],
                 "run")
-            self.assertEqual(certs.install(worktree(two), cache).installed, 1)
+            self.assertEqual(install(worktree(two), cache).installed, 2)
 
     def test_a_default_republish_keeps_a_snapshot_label(self):
         """The lane that certified with FN_CERT_ORIGIN_KIND=run and then ran
@@ -1213,9 +1236,9 @@ class SnapshotOriginTests(unittest.TestCase):
             kind = lambda: certs.read_meta(entry(cache, root, "books/mid"))["origin_kind"]
             again = certs.publish(root, cache)
             self.assertEqual((again.published, again.already, again.relabelled),
-                             (0, 1, 0))
+                             (0, 2, 0))
             self.assertEqual(kind(), "run")
-            self.assertEqual(certs.install(worktree(two), cache).installed, 1)
+            self.assertEqual(install(worktree(two), cache).installed, 2)
             # Saying so is still how a snapshot becomes a live tree again.
             certs.publish(root, cache, origin_kind="worktree")
             self.assertEqual(kind(), "worktree")
@@ -2035,6 +2058,30 @@ class InstallUmbrellasTests(unittest.TestCase):
                                                     lambda roots: SimpleReport(None))
             self.assertEqual(chosen, [])
             self.assertIn("NOT installed", lines[-1])
+            self.assertIn("cause not reported", lines[-1])
+
+    def test_a_miss_names_what_the_cache_lacks(self):
+        # The hbox line said only "NOT installed as one set"; the installer's
+        # uncached list was dropped.  The umbrella's own missing certificate
+        # and its missing dependencies are now named, each try and overall.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "books").mkdir()
+            for stem in ("image-world", "image-world-dtn"):
+                (root / "books" / f"{stem}.lisp").write_text("")
+            missing = ["books/image-world", "books/a", "books/b"]
+            chosen, lines = certs.install_umbrellas(
+                root, root / "cache", root / "acl2",
+                lambda roots: SimpleReport(None, missing))
+            self.assertEqual(chosen, [])
+            self.assertIn("no usable certificate for the umbrella itself: books/image-world",
+                          lines[0])
+            self.assertIn("2 dependencies without a usable certificate: books/a books/b",
+                          lines[0])
+            self.assertIn("NOT installed", lines[-1])
+            self.assertIn("umbrella itself: books/image-world", lines[-1])
+            many = [f"books/d{i}" for i in range(11)]
+            self.assertIn("(+3 more)", certs.umbrella_miss(["books/image-world"], many))
 
     def test_remote_check_runs_it_after_the_per_book_install(self):
         text = (TOOLS / "remote_check.sh").read_text()
@@ -2054,8 +2101,9 @@ class InstallUmbrellasTests(unittest.TestCase):
 
 
 class SimpleReport:
-    def __init__(self, artifact_set):
+    def __init__(self, artifact_set, uncached=()):
         self.artifact_set = artifact_set
+        self.uncached = list(uncached)
 
 
 class ScopedManifestAndGraphTests(unittest.TestCase):
@@ -2089,6 +2137,107 @@ class ScopedManifestAndGraphTests(unittest.TestCase):
             with patch.object(certs.ledger, "analyze_book", side_effect=AssertionError("whole book analysis")):
                 self.assertEqual(certs.book_facts(source)[1], expected)
             self.assertEqual(expected, ["dep", "local", "nested"])
+
+
+
+class PairFactsCompactTests(unittest.TestCase):
+    """compact-pair-facts: duplicates and facts about certificates no entry
+    holds go; the rebuilt index still answers what was kept; it refuses
+    while a certify or install holds the facts (hbox 2026-10-07: a 3.6 GB
+    log and 1.1 GB index under every convergence-time install)."""
+
+    def fixture(self, temp):
+        cache = Path(temp) / "cache"
+        certs_dir = Path(temp) / "certs"
+        certs_dir.mkdir()
+        files = []
+        for name in ("a", "b"):
+            path = certs_dir / f"{name}.cert"
+            path.write_bytes(SERIALIZED + name.encode())
+            entry = cache / f"key{name}" / "origin"
+            entry.mkdir(parents=True)
+            (entry / "meta.json").write_text(
+                json.dumps({"cert_sha256": certs.content_hash(path)}))
+            files.append(path)
+        prover = str(Path("/fixture/acl2").resolve())
+        a, b = (certs.content_hash(f) for f in files)
+        dead = "0" * 64
+        fact = lambda p, c: json.dumps({"acl2": prover, "parent": p, "child": c,
+                                        "required": True, "equal": True}, sort_keys=True)
+        (cache / certs.PAIR_FACTS).write_text(
+            "\n".join([fact(a, b), fact(a, b), fact(a, dead), "{torn"]) + "\n")
+        return cache, files
+
+    def test_dry_run_reports_and_changes_nothing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cache, _ = self.fixture(temp)
+            before = (cache / certs.PAIR_FACTS).read_bytes()
+            report = certs.compact_pair_facts(cache)
+            self.assertFalse(report["applied"])
+            self.assertEqual((report["lines_before"], report["kept"], report["duplicates"],
+                              report["dead"], report["unreadable"]), (4, 1, 1, 1, 1))
+            self.assertLess(report["log_bytes_after"], report["log_bytes_before"])
+            self.assertEqual((cache / certs.PAIR_FACTS).read_bytes(), before)
+            self.assertFalse((cache / certs.PAIR_DB).exists())
+
+    def test_apply_keeps_the_live_fact_and_the_index_answers_it(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cache, files = self.fixture(temp)
+            report = certs.compact_pair_facts(cache, apply=True)
+            self.assertTrue(report["applied"])
+            self.assertEqual(len((cache / certs.PAIR_FACTS).read_text().splitlines()), 1)
+
+            def never(*args):
+                raise AssertionError("the kept fact was probed again")
+
+            check = certs.memoized_pair_checker(cache, never)
+            found = check(files, [(0, 1)], Path("/fixture/acl2"), Path(temp))
+            self.assertEqual(found, {(0, 1): (True, True)})
+            self.assertEqual(check.hits, 1)
+
+    def test_refuses_while_a_session_holds_the_facts(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cache, _ = self.fixture(temp)
+            before = (cache / certs.PAIR_FACTS).read_bytes()
+            with certs.pair_session_lock(cache):
+                with self.assertRaises(certs.PairFactsBusy):
+                    certs.compact_pair_facts(cache, apply=True)
+                with mock.patch("sys.stdout"):
+                    self.assertEqual(
+                        certs.main(["--cache", str(cache), "compact-pair-facts", "--apply"]), 3)
+            self.assertEqual((cache / certs.PAIR_FACTS).read_bytes(), before)
+
+
+class ContentHashMemoTests(unittest.TestCase):
+    """content_hash reads a file once per identity in a process, and a
+    changed file is read again (the convergence-time install-umbrellas
+    re-read every cache entry per enumeration)."""
+
+    def test_unchanged_file_is_read_once_and_a_rewrite_is_read_again(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "book.cert"
+            path.write_bytes(b"one")
+            opened = []
+            real_open = Path.open
+
+            def counting(self, *args, **kwargs):
+                if self == path:
+                    opened.append(self)
+                return real_open(self, *args, **kwargs)
+
+            with mock.patch.object(Path, "open", counting):
+                first = certs.content_hash(path)
+                second = certs.content_hash(path)
+                self.assertEqual(first, second)
+                self.assertEqual(len(opened), 1)
+                time.sleep(0.01)
+                replacement = Path(temp) / "new"
+                replacement.write_bytes(b"two")
+                os.replace(replacement, path)
+                third = certs.content_hash(path)
+            self.assertNotEqual(third, first)
+            self.assertEqual(third, hashlib.sha256(b"two").hexdigest())
+            self.assertEqual(len(opened), 2)
 
 
 if __name__ == "__main__":

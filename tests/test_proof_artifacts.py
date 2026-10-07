@@ -1,5 +1,6 @@
 """Set-level proof artifacts: declared profiles and ACL2 load rejection."""
 from pathlib import Path
+import json
 import subprocess
 import sys
 import tempfile
@@ -167,6 +168,42 @@ class AcquisitionTests(unittest.TestCase):
                             for line in result.considered), result.considered)
         self.assertFalse(empty.ok)
         self.assertIn("no candidate set at all", "\n".join(empty.considered))
+        # Exit 1 (a set was loaded and rejected) vs NO_SET (none to load):
+        # hbox_native's closure-certify retry keys on NO_SET, not on prose.
+        self.assertFalse(result.no_set)
+        self.assertTrue(empty.no_set)
+
+    def test_acquire_installs_the_set_it_enumerated(self):
+        # Attach-order gate, 2026-10-07: acquire listed a complete composed
+        # set, then install_artifact_set enumerated again over a cache other
+        # trees had published into, found none complete, and acquire gave up
+        # with "complete, not tried".  The install must take the listed set.
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            cache = base / "cache"
+            target = worktree(str(base / "target"))
+            acl2 = self.acl2(target)
+            fingerprint = proof_artifacts.acl2_toolchain.fingerprint(acl2)
+            source = worktree(str(base / "source-1"), certified=["books/base", "books/mid"])
+            self.publish_set(source, cache, "/farm/run-1", fingerprint)
+            real = certs.artifact_sets
+            calls = []
+
+            def first_listing_only(*args, **kwargs):
+                calls.append(1)
+                return real(*args, **kwargs) if len(calls) == 1 else []
+
+            def fake_run(*args, **kwargs):
+                return subprocess.CompletedProcess(args[0], 0, b"FN_ARTIFACT_SET_LOADED\n", b"")
+            with mock.patch.object(proof_artifacts, "profile_roots",
+                                   return_value=["books/mid"]), \
+                 mock.patch.object(certs, "artifact_sets", side_effect=first_listing_only), \
+                 mock.patch.object(certs.cert_alists, "acl2_certificate_pairs",
+                                   side_effect=lambda paths, pairs, acl2, root:
+                                       {pair: (True, True) for pair in pairs}):
+                result = proof_artifacts.acquire(target, cache, acl2, "default", run=fake_run)
+        self.assertTrue(result.ok, (result.reason, result.considered))
+        self.assertEqual(len(calls), 1)
 
     def test_books_in_no_set_are_named_with_their_cache_story(self):
         from types import SimpleNamespace

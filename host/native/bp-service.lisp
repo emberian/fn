@@ -1369,15 +1369,21 @@ again and releases neither on a failure (HELD's owner does)."
                 (setf (fnn-bps-recovery-event service) event)
                 (setf (fnn-bps-stages service)
                       (fnn-core 'fn-bpn-host-lifecycle-recovery-stages recovery))
-                (fnn-bps-drive-effects
-                 service (fnn-bps-foundation-step service event))
-                (fnn-out "BP queue recovered jobs=~d"
-                         (fnn-core 'fn-bpnf-base-job-count
-                                   (fnn-bps-state service)))
-                (unless (eq (fnn-core 'fn-bpn-host-lifecycle-recovery-agrees-p
-                                      recovery (fnn-bps-base service)) t)
-                  (fnn-indeterminate
-                   "bp-service: recovered namespace and machine frontier disagree"))
+                ;; The restart may answer a :persist effect after
+                ;; :restart-ready (the durable resolution of an orphan
+                ;; :attempting job).  Driving it appends the record and
+                ;; advances the frontier, so the agreement with the recovered
+                ;; namespace is read from the machine as the restart left it.
+                (let* ((effects (fnn-bps-foundation-step service event))
+                       (restarted (fnn-bps-base service)))
+                  (fnn-bps-drive-effects service effects)
+                  (fnn-out "BP queue recovered jobs=~d"
+                           (fnn-core 'fn-bpnf-base-job-count
+                                     (fnn-bps-state service)))
+                  (unless (eq (fnn-core 'fn-bpn-host-lifecycle-recovery-agrees-p
+                                        recovery restarted) t)
+                    (fnn-indeterminate
+                     "bp-service: recovered namespace and machine frontier disagree")))
                 (unless (eq (fnn-core 'fn-bpn-machine-invariantp
                                       (fnn-bps-base service)) t)
                   (fnn-indeterminate

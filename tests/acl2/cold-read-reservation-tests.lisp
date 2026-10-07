@@ -13,7 +13,7 @@
 (defconst *crvt-machine* '(4294967296))
 (defconst *crvt-result*
   (fn-crv-extend-reservation *crvt-base* *crvt-policy* *crvt-core* *crvt-machine*))
-(assert! (equal *crvt-result* '(:heap 586 :development 4096 1024 14)))
+(assert! (equal *crvt-result* '(:heap 576 :development 4096 1024 14)))
 ; Complete literal positive for observed machine and dynamic allowance.
 (assert!
  (and (fn-crv-policy-p *crvt-policy*)

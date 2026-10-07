@@ -132,7 +132,10 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # The decision's due half and the budget's derivation are ACL2's, on
         # the due path; the space is observed once and handed to both.
         due = native_cuts.host_function(owner_host, "fn-owner-sco-due")
-        self.assertIn("(fn-ock-publication-blockedp", due)
+        # RL-02: the blocked rule is books/owner-publication-lifecycle.lisp's
+        # fn-opl-blockedp (the budget/space rule for a budget or space deferral,
+        # the abandonment's eligibility by the clock otherwise).
+        self.assertIn("(fn-opl-blockedp", due)
         self.assertIn("(fn-owner-sco-budget override profile)", due)
         self.assertIn("(fn-ockp-space free)", due)
         capture = native_cuts.host_function(owner_host, "fn-owner-sco-capture")
@@ -254,8 +257,8 @@ class AutoCheckpointTests(AutoCheckpointFixture):
     def test_the_owner_publishes_after_half_k_and_the_file_reopens_as_the_full_replay(self):
         self.init_development()
         # the segments the publication will drop (T8) stay readable
-        self.keep_log()
         owner = self.node.start()
+        self.keep_log()
         self.ids = self.post_batch(0, 64)
         line = self.owner_line(owner, CHECKPOINT_AUTO)
         self.assertIsNotNone(line, "no automatic publication within the deadline")
@@ -570,8 +573,8 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # a second request finds nothing to compact; a death in the
         # publication's first batch reopens with the store as it was.
         self.init_development()
-        self.keep_log()
         owner = self.node.start()
+        self.keep_log()
         self.ids = self.post_batch(0, 10)
         asked = self.op("store", "compact")
         self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())

@@ -1,0 +1,13 @@
+{
+ "category": "correctness",
+ "file": "books/catalog-dense-map.lisp",
+ "id": "CATALOG-DENSE-MAP-PAGE-TABLE-DOUBLING",
+ "note": "A put allocates at most one 6 KiB page but the page table (an equal hash table keyed (g . page index)) and the page array still grow by doubling in one step, Theta(pages) work; pages are one per (group . 256-block), so G sparse groups make G pages, never freed on rem. Flat only for dense groups (N/256 words). Header names a two-level directory as the open fix. Phase 2 of planning STORAGE-PROGRAM (pages on the copy-on-write store with a frame pool) is the natural home.",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "source": "books/catalog-dense-map.lisp header (Codex r44)",
+ "state": "open",
+ "title": "Dense map: page table and page array double in one scheduling step, and pages are never freed on rem (Codex r44 F1)",
+ "updated": "2026-10-06T00:00:00Z"
+}

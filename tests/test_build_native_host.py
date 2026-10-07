@@ -7,6 +7,7 @@ Every path is in a temporary directory: FN_NATIVE_IMAGE and FN_NATIVE_LOG.
 """
 import os
 import pathlib
+import re
 import subprocess
 import tempfile
 import sys
@@ -15,7 +16,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools import profile_limits  # noqa: E402
-TLS = profile_limits.get("tls-limit")
+TLS = profile_limits.get("run-tls-limit")
 SCRIPT = ROOT / "tools" / "build_native_host.sh"
 FAKE = """#!/bin/sh
 cat > /dev/null
@@ -23,9 +24,18 @@ printf '%s\\n' "$FAKE_LINE"
 echo "mldsa=$FN_MLDSA_LIBRARY openssl=${FN_OPENSSL_PREFIX:-unset}"
 echo FN_NATIVE_BUILD_LOADED
 echo "FN_NATIVE_TLS_LIMIT $FAKE_TLS"
+echo "FN_NATIVE_STACK_KIB 1024"
 echo FN_NATIVE_WORLD_STRIPPED
 echo 'fn-world-deps 2' > "$FN_NATIVE_IMAGE.world-deps"
-printf '#!/bin/sh\\nexec "/sbcl" --tls-limit 16384 --dynamic-space-size 32000 --core "c"\\n' > "$FN_NATIVE_IMAGE"
+cat > "$FN_NATIVE_IMAGE" <<'IMG'
+#!/bin/sh
+if [ "$1" = --fn ]; then
+    echo "$SBCL_USER_ARGS $*" > "$0.probe"
+    echo "init: profile=small sizing=explicit reservation=1068 MB budget=1068 MB within-budget=yes"
+    exit 0
+fi
+exec "/sbcl" --tls-limit 16384 --dynamic-space-size 32000 --control-stack-size 64 --core "c"
+IMG
 chmod +x "$FN_NATIVE_IMAGE"
 echo core > "$FN_NATIVE_IMAGE.core"
 exit "${FAKE_EXIT:-0}"
@@ -48,7 +58,6 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
                    "FN_NATIVE_BUILD": str(base / "build.lisp"),
                    "FN_NATIVE_IMAGE": str(base / "fn-host-test"),
                    "FN_NATIVE_LOG": str(base / "build.log")}
-            env.pop("FN_NATIVE_CATALOG", None)
             env.update({k: (v.replace("$BASE", str(base))) for k, v in extra.items()})
             env.pop("FN_OPENSSL_PREFIX", None)
             env.pop("FN_TLS_LIMIT", None)
@@ -58,6 +67,8 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
             library = [p for p in (base / "lib").glob("libfn-mldsa65.*")]
             launcher = base / "fn-host-test"
             self.launcher_text = launcher.read_text() if launcher.exists() else ""
+            probe = base / "fn-host-test.probe"
+            self.probe_text = probe.read_text() if probe.exists() else ""
             record = base / "fn-host-test.catalog"
             self.catalog_text = record.read_text() if record.exists() else None
             record = base / "fn-host-test.source"
@@ -90,10 +101,18 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(answer.returncode, 0, answer.stdout + answer.stderr)
         self.assertIn("built ", answer.stdout)
         # The saved launcher runs at the profile's TLS limit, which the build
-        # printed (FN_NATIVE_TLS_LIMIT), not ACL2's 16384.
+        # printed (FN_NATIVE_TLS_LIMIT: :run-tls-limit, MEM-001; the image
+        # build's own :tls-limit stays 65536).
         launcher = self.launcher_text
         self.assertIn("--tls-limit {} ".format(TLS), launcher)
-        self.assertNotIn("--tls-limit 16384", launcher)
+        self.assertEqual(TLS, 20480)
+        self.assertLess(TLS, profile_limits.get("tls-limit"))
+        # MEM-002: the launcher's default heap is the small preset's figure
+        # the image's own init probe printed, not ACL2's 32000, and the probe
+        # named the preset's fields (books/heap-figure.lisp).
+        self.assertIn("--dynamic-space-size 1068 ", launcher)
+        self.assertNotIn("--dynamic-space-size 32000", launcher)
+        self.assertIn("--max-history-octets 8388608", self.probe_text)
         # HST-016: the ML-DSA-65 library is built into lib/ beside the image
         # and named to the build; no OpenSSL prefix is needed.
         self.assertEqual(len(library), 1, answer.stderr)
@@ -102,7 +121,7 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(os.path.realpath(named), os.path.realpath(library[0]))
         self.assertEqual(openssl, "unset")
         # The catalog is recorded beside the image (tools/image_set.py reads it).
-        self.assertEqual(self.catalog_text, "old\n")
+        self.assertEqual(self.catalog_text, "paged\n")
         # So is the source the image was built from (S057): this checkout's
         # HEAD, `commit` only when nothing differs from it.
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
@@ -112,6 +131,19 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(self.source_text,
                          (f"commit {head}" if clean else f"worktree {head}+dirty") + "\n")
 
+    def test_the_probe_names_the_small_preset_of_the_heap_book(self):
+        """The script's probe flags are books/heap-figure.lisp's
+        *fn-heap-small-request*, one preset read twice."""
+        book = (ROOT / "books" / "heap-figure.lisp").read_text()
+        request = book[book.index("(defconst *fn-heap-small-request*"):]
+        request = request[:request.index("(defconst *fn-heap-small-profile*")]
+        figures = [int(x) for x in re.findall(r"\*fn-bs-pf-[a-z-]+\* (\d+)", request)]
+        script = SCRIPT.read_text()
+        flags = [int(x) for x in re.findall(
+            r"--max-(?:transactions|history-octets|record-octets|groups-per-article|open-suffix) (\d+)",
+            script)]
+        self.assertEqual(sorted(figures), sorted(flags))
+
     def test_a_failed_acl2_names_its_real_exit_status(self):
         """S142: inside `if ! cmd; then`, $? is the negation's 0, so every
         failed build said 'acl2 exited with status 0'."""
@@ -119,36 +151,6 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(answer.returncode, 1, answer.stdout + answer.stderr)
         self.assertIn("acl2 exited with status 137", answer.stderr)
         self.assertIsNone(self.source_text)
-
-    def test_old_catalog_refuses_paged_build_by_name_before_running_acl2(self):
-        answer, log, _, _ = self.build(
-            "ACL2 !>", FN_NATIVE_CATALOG="old",
-            FN_NATIVE_BUILD="build/native-build-paged.lisp", FN_NATIVE_IMAGE="build/fn-host")
-        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
-        self.assertIn("build/native-build-paged.lisp is a paged build script", answer.stderr)
-        self.assertEqual(log, "")
-        self.assertIsNone(self.catalog_text)
-
-    def test_old_catalog_refuses_paged_build_by_content_before_running_acl2(self):
-        answer, log, _, _ = self.build(
-            "ACL2 !>", build_text='(include-book "books/image-world-paged")\n(value :q)\n',
-            FN_NATIVE_CATALOG="old")
-        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
-        self.assertIn("build.lisp includes books/image-world-paged", answer.stderr)
-        self.assertEqual(log, "")
-        self.assertIsNone(self.catalog_text)
-
-    def test_the_image_name_says_its_catalog(self):
-        # Codex r21 F2: a paged core is never built under the old name, and
-        # an old one never under a -paged name.
-        answer, _log, _, _ = self.build("ACL2 !>", FN_NATIVE_CATALOG="paged",
-                                        FN_NATIVE_BUILD="host/native/build.lisp")
-        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
-        self.assertIn("builds an image named *-paged", answer.stderr)
-        self.assertNotIn("built ", answer.stdout)
-        answer, _log, _, _ = self.build("ACL2 !>", FN_NATIVE_IMAGE="$BASE/fn-host-x-paged")
-        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
-        self.assertIn("a paged image's name", answer.stderr)
 
 
 if __name__ == "__main__":

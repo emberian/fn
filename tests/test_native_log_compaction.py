@@ -16,8 +16,16 @@ segments it covers.  The cases, each over a store the served node filled:
   FN_NATIVE_LOG_FAULT = rotate-created | rotate-fenced | rotate-renamed | rotate-headed |
   rotate-durable | drop-unlinked | drop-durable): the next writable open
   (`store recover`) serves every article as before, sweeps a spare that was
-  never renamed, finishes an interrupted drop, and a later compaction
-  succeeds;
+  never renamed, and a later compaction succeeds;
+* the open never drops (RL-01-CHECKPOINT-NAME-BEFORE-DROP, coordinator ruling
+  2026-10-05; books/store-log-recover-copy.lisp
+  fn-lgrc-open-unlinks-no-segment): a death after the checkpoint's install
+  (cut state-checkpoint-durable) and before its drop leaves the covered
+  segment, which the writable open scans past and KEEPS -- the checkpoint an
+  open reads may be named only in the page cache after a failed root fence,
+  and a drop would outlive that name across a power loss -- and the next
+  compaction's drop, after its own root fence, takes it
+  (books/store-log-segments.lisp fn-lgs-install-drop-covers-what-the-open-left);
 * content reclamation: `store reclaim` under released-by-all-holders
   rewrites the history (books/store-log-reclaim.lisp), checkpoints it with
   the log rotated and drops the covered segment: no file of the store holds
@@ -235,7 +243,9 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
                 # the genesis survives every rotation and drop cut
                 self.assertTrue(genesis_kept(node.store_path), cut)
                 if row.surviving == "next-only":
-                    # the checkpoint was installed: the recover finished the drop
+                    # the checkpoint was installed and the drop's one unlink
+                    # ran before the death: no covered segment is left (the
+                    # open would keep one; see the test below)
                     self.assertEqual(present, ["000002.log"], cut)
                 elif row.surviving == "old-active":
                     # the spare was staged, never named: segment 1 is still
@@ -251,6 +261,29 @@ class DeveloperLogCompactionTests(LogCompactionMixin, unittest.TestCase):
                 self.assertEqual(again.returncode, 0, (cut, again.stderr[-800:]))
                 self.assertEqual(self.inspect_all(node, range(8)), before, cut)
                 self.assertEqual(len(segments(node.store_path)), 1, cut)
+
+    def test_the_open_keeps_what_the_drop_left_for_the_next_install(self):
+        node = self.filled(0, 8)
+        before = self.inspect_all(node, range(8))
+        killed = self.compact(node, env={"FN_NATIVE_STATE_CHECKPOINT_FAULT":
+                                         "state-checkpoint-durable:kill"})
+        self.assertEqual(killed.returncode, -9, (killed.stdout, killed.stderr[-600:]))
+        # the checkpoint names segment 2; segment 1 is covered and not dropped
+        self.assertEqual(segments(node.store_path), ["000001.log", "000002.log"])
+        recovered = node.invoke("store", str(node.store_path), "recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
+        # the writable open scans segment 2 from the checkpoint and keeps 1
+        self.assertEqual(segments(node.store_path), ["000001.log", "000002.log"])
+        self.assertEqual(self.inspect_all(node, range(8)), before)
+        again = self.compact(node)
+        self.assertEqual(again.returncode, 0, again.stderr[-800:])
+        # the next install's drop takes segment 1 with whatever its own
+        # checkpoint covers: one segment remains, and it is not segment 1
+        left = segments(node.store_path)
+        self.assertEqual(len(left), 1, left)
+        self.assertNotIn("000001.log", left)
+        self.assertTrue(genesis_kept(node.store_path))
+        self.assertEqual(self.inspect_all(node, range(8)), before)
 
 
 @unittest.skipUnless(PRODUCTION, "FN_NATIVE_HOST names the production image")

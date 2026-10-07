@@ -362,7 +362,10 @@ class TwinsTests(unittest.TestCase):
 
     def git(self, root, *args):
         import subprocess
-        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+        # Hermetic: a global commit.gpgsign (1Password signing on the
+        # laptop) made the fixture's commit exit 128 (CONVERGE-2 row 12).
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t",
+                        "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", *args],
                        cwd=root, check=True, capture_output=True)
 
     def test_a_diff_that_changes_one_side_of_a_pair_is_flagged(self):
@@ -560,9 +563,17 @@ class LoadOnlyTests(unittest.TestCase):
             self.assertNotEqual(host["load_acl2"], host["image_acl2"], box)
 
     def test_only_load_sessions_name_it(self):
+        # tools/box_table.py is where the box rows' fields are declared
+        # (FARM_FIELDS, the rented-box table that copies farm HOSTS' fields);
+        # it names the field and launches nothing.  The sessions that LAUNCH
+        # the load-only ACL2 are coverage.py's dump and farm.py's run.
         users = subprocess.run(["git", "grep", "-lF", '"load_acl2"', "--", "tools"],
                                cwd=ROOT, capture_output=True, text=True).stdout.split()
-        self.assertEqual(sorted(users), ["tools/coverage.py", "tools/farm.py"])
+        self.assertEqual(sorted(users),
+                         ["tools/box_table.py", "tools/coverage.py", "tools/farm.py"])
+        # The declaration site launches nothing.
+        self.assertNotIn("subprocess",
+                         (ROOT / "tools" / "box_table.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,15 @@
+(in-package "ACL2")
+(include-book "def-loop-fixture-dep")
+(include-book "def-loop")
+
+(def-loop fn-nntp-newnews-scan-cat (groups threshold articles horizon fn-arena fn-cat)
+  :shape :step :over (articles horizon) :done (not (consp articles))
+  :emit (and (fn-nntp-newnews-candidatep groups article)
+             (not (fn-scol-tombstonep article fn-arena fn-cat))
+             (fn-nntp-newnews-newp threshold stamp horizon))
+  :let ((article (fn-ag-car articles)) (stamp (fn-article-stamp article)))
+  :body (fn-nntp-string-octets (fn-article-msgid article))
+  :next ((fn-ag-cdr articles) (if (natp stamp) stamp horizon))
+  :skip-next ((fn-ag-cdr articles) (if (natp stamp) stamp horizon)) :measure (acl2-count articles)
+  :stobjs (fn-arena fn-cat))
+

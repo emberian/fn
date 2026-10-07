@@ -507,8 +507,25 @@ as at 7aad444ce."
         (fnn-log-line line)))))
 
 
+(defun fnn-owner-arena-identity-check ()
+  "Refuse to start when the owner's compiled ACL2 path and the host read
+different arenas.  fn-owner-arena-count (host/owner-host.lisp) is what the
+owner's POST reads for the held row; fn-arena-count is the image's.  Both are
+applied to the live arena, so they agree exactly when the certified owner-host
+was compiled over the same arena representation the image attached
+(tools/attach_order_check.py).  A disagreement is the CONVERGE-1 NOT-SEALED
+stop, caught before the first POST instead of at the second."
+  (let ((arena (fnn-live-arena)))
+    (let ((owner (car (fnn-call 'fn-owner-arena-count arena)))
+          (host (car (fnn-call 'fn-arena-count arena))))
+      (unless (eql owner host)
+        (fnn-refuse "owner startup refused: arena identity (the owner's compiled path reads arena count ~a, the host's reads ~a); host/owner-host was certified without the image's arena attachment (tools/attach_order_check.py)"
+                    owner host))
+      :accepted)))
+
 (defun fnn-owner-run-startup-hooks (service)
   "Run ACL2-backed lifecycle adapters after recovery and before listen."
+  (fnn-owner-arena-identity-check)
   (dolist (hook *fnn-owner-startup-hooks*)
     (unless (eq (funcall hook service) :accepted)
       (fnn-refuse "owner startup hook refused")))
@@ -1631,6 +1648,7 @@ one ring, so the table's key and the served boundary's are one source."
                      :batching (fnn-store-logp store)
                      :stopping nil))
               (fnn-owner-history-root-maintain service)
+              (fnn-owner-history-sync-first service)
               (progn
                 (setf (fnn-owner-service-feeds service)
                       (fnn-owner-feed-open-all service configured))
@@ -1891,11 +1909,13 @@ failed/timed-out join fault the service and retain registration and custody."
 
 (defun fnn-owner-custody-trace (control &rest observations)
   "Existing developer pipeline selector: literal producer/receipt values only.
-A diagnostic failure does not alter custody, classification or settlement."
-  (handler-case
-      (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
-        (apply #'fnn-err control observations))
-    (serious-condition () nil)))
+A failure of the stderr write does not alter custody, classification or
+settlement; the selector read is outside that guard, so an unregistered
+selector name faults (fnn-developer-selector) instead of silently disabling
+the trace."
+  (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
+    (handler-case (apply #'fnn-err control observations)
+      (serious-condition () nil))))
 
 (defun fnn-owner-syncer-install (service threads stack)
   "Called only inside the actual startup :hold producer's owner section."
@@ -6109,21 +6129,30 @@ owner, as a late store fault does on the whole-extent line."
       (error condition))
     t))
 
-(defun fnn-owner-response-window-close (service capture)
+(defun fnn-owner-response-window-close (service capture &optional (class :reader))
   "Whole response stopped issuing, its final scalar activation has returned.
-Cancel now; release only after independent physical return."
+Cancel now; release only after independent physical return.  One
+fnn-quantum-mux-finish quantum of CLASS (the closing connection's gate class;
+a reader's :reader by default), so the cold window's settlement and the
+pending-extent release are ordered by the scheduler against the batch job
+and run, as a connection's close does, whether or not the service is
+stopping."
   (when capture
-    (sb-thread:with-mutex ((fnn-owner-service-lock service))
-      (let ((read (fnn-response-capture-window-read capture)))
-        (when read
-          (setf (fnn-owner-cold-read-abandonedp read) t)
-          (unless (fnn-owner-cold-read-settledp read)
-            ;; A borrowed window returned verified and was read: it is
-            ;; released as published.  Any other is cancelled first.
-            (unless (fnn-owner-cold-read-borrowedp read)
-              (fnn-extent-window-cancel (fnn-owner-cold-read-worker read) (fnn-owner-cold-read-token read)))
-            (fnn-owner-cold-window-result-locked service read))
-          (setf (fnn-response-capture-window-read capture) nil)))))
+    (fnn-quantum-mux-finish
+     service nil
+     (lambda ()
+       (let ((read (fnn-response-capture-window-read capture)))
+         (when read
+           (setf (fnn-owner-cold-read-abandonedp read) t)
+           (unless (fnn-owner-cold-read-settledp read)
+             ;; A borrowed window returned verified and was read: it is
+             ;; released as published.  Any other is cancelled first.
+             (unless (fnn-owner-cold-read-borrowedp read)
+               (fnn-extent-window-cancel (fnn-owner-cold-read-worker read)
+                                         (fnn-owner-cold-read-token read)))
+             (fnn-owner-cold-window-result-locked service read))
+           (setf (fnn-response-capture-window-read capture) nil))))
+     class))
   :window-closed)
 
 (defun fnn-owner-cold-result-locked (service read)
@@ -6184,6 +6213,20 @@ before exact settlement releases a charge. Owner->extent serializes it."
     (when (or (null (fnn-owner-cold-read-token read)) (fnn-owner-cold-ready-p read))
       (fnn-owner-cold-result-locked service read))))
 
+(defun fnn-owner-install-or-end (install original label)
+  "Run INSTALL, the off-mutex installation of the fence or the fault stop
+that ORIGINAL decided.  An installation that itself signals leaves the
+service not known to be fenced: both conditions are named and the process
+ends with ORIGINAL's exit, ACL2's fn-fs-exit-code (fnn-exit-code-for) floored
+at the fault exit, never continuing unfenced (R7)."
+  (handler-case (funcall install)
+    (serious-condition (failure)
+      (let ((code (let ((c (fnn-exit-code-for original)))
+                    (if (eql c +fnn-exit-uncertain+) c +fnn-exit-fault+))))
+        (fnn-err "~a: installing the stop failed (~a); original condition: ~a; process ends with exit ~d"
+                 label failure original code)
+        (fnn-exit code)))))
+
 (defun fnn-owner-cold-settle (service read &optional (class :control))
   "A returned job, not a timeout, can transfer its result and release credit.
 CLASS: the gate class of the read this page belongs to.  A served read's
@@ -6196,7 +6239,9 @@ injected disk stall.  The reaper's settlement is maintenance (:control)."
       (fnn-owner-serialized service nil
                             (lambda () (fnn-owner-cold-settle-locked service read)) class)
     (serious-condition (condition)
-      (ignore-errors (fnn-owner-fault-service service nil condition))
+      (fnn-owner-install-or-end
+       (lambda () (fnn-owner-thread-escape service condition "cold settle"))
+       condition "cold settle")
       condition)))
 
 (defun fnn-owner-cold-reap (service)
@@ -6311,6 +6356,32 @@ LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
                (or cold-since since)))
       (:unavailable (fnn-owner-unavailable-line service cid incoming since now limit class))
       (otherwise (fnn-owner-resource-unavailable-line service cid incoming word class)))))
+
+;;; The peer feed reply's article read (LOCK-R2-FEED-REPLY-PAYLOAD-PREAD),
+;;; the served read's protocol (row A4) for a caller with no connection.  The
+;;; reply chunk commits the consumed framer state, so it cannot be abandoned
+;;; and re-run; ACL2's pure probe (host/owner-host.lisp
+;;; fn-owner-feed-reply-article) reads the article first.  Here it runs with
+;;; the extent realizer in its no-I/O mode: a payload extent not in the cache
+;;; throws the entry it needs and nothing is committed.  The history refresh
+;;; that precedes it (fn-owner-feed-reply-sync, a different item's reads)
+;;; stays outside that mode.  The cold read is issued here, under the owner
+;;; mutex that excludes file retirement (fnn-owner-cold-issue-locked, CID 0
+;;; as fnn-extent-entry-direct's synchronous admission passes), and awaited by
+;;; the caller on its own thread holding no lock (fnn-owner-cold-await, ACL2's
+;;; dependency and line deadlines).
+(defun fnn-owner-feed-reply-probe-locked (service peer-octets octets)
+  "Owner held.  (values :warm ARTICLE): the article (NIL for a reply that
+sends none), read warm, nothing committed; or (values :cold READ): the entry
+needed was not in memory, its read issued for fnn-owner-cold-await."
+  (fnn-core-arena-state 'fn-owner-feed-reply-sync)
+  (let ((got (catch 'fnn-extent-cold
+               (let ((*fnn-extent-no-io* t))
+                 (list :warm (fnn-core-arena-state 'fn-owner-feed-reply-article
+                                                   peer-octets octets))))))
+    (if (eq (car got) :warm)
+        (values :warm (second got))
+      (values :cold (fnn-owner-cold-issue-locked service 0 got)))))
 
 ;;; r71 F7 (lane served-live): an I/O loop never waits for a cold page.
 ;;; fnn-owner-handle-chunk awaits the page on the calling thread
@@ -7003,21 +7074,29 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
           (let ((drop-ids (fnn-extent-ids-of-paths dropped-paths)))
             ;; The history image's file is never retired (its descriptor is
             ;; read off the lock for the process's life): refused by name
-            ;; before anything is retired, never a close under a pread.
-            (when (and *fnn-extent-image-id*
-                       (or (member *fnn-extent-image-id* drop-ids)
-                           (eql *fnn-extent-image-id* *fnn-extent-checkpoint-id*)))
-              (fnn-fault (format nil "the history image's file ~d would be retired"
-                                 *fnn-extent-image-id*)))
-            (fnn-owner-gated (service :control)
-              (setq *fnn-extent-retired*
-                    (sort (remove-duplicates
-                           (append drop-ids
-                                   (and *fnn-extent-checkpoint-id*
-                                        (list *fnn-extent-checkpoint-id*))
-                                   *fnn-extent-retired*))
-                          #'<)
-                    *fnn-extent-checkpoint-id* new-id)))
+            ;; before anything is retired, never a close under a pread.  The
+            ;; check reads *fnn-extent-checkpoint-id* in the same owner
+            ;; quantum that retires it and installs NEW-ID (its contract,
+            ;; host/native/extent.lisp; CONVERGE-2 row 31), so no other
+            ;; release can move it between the check and the write.  The
+            ;; fault is raised after the quantum, as before.
+            (let ((image-retired nil))
+              (fnn-owner-gated (service :control)
+                (if (and *fnn-extent-image-id*
+                         (or (member *fnn-extent-image-id* drop-ids)
+                             (eql *fnn-extent-image-id* *fnn-extent-checkpoint-id*)))
+                    (setq image-retired t)
+                  (setq *fnn-extent-retired*
+                        (sort (remove-duplicates
+                               (append drop-ids
+                                       (and *fnn-extent-checkpoint-id*
+                                            (list *fnn-extent-checkpoint-id*))
+                                       *fnn-extent-retired*))
+                              #'<)
+                        *fnn-extent-checkpoint-id* new-id)))
+              (when image-retired
+                (fnn-fault (format nil "the history image's file ~d would be retired"
+                                   *fnn-extent-image-id*)))))
           (dolist (f (reverse frames))
             (destructuring-bind (eoff elen handles) f
               ;; A fresh read (no descriptor names the frame yet): the frame
@@ -7245,11 +7324,14 @@ the crash keystone) and serving continues."
   (unwind-protect
   (fnn-with-history-image
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
-                        base-payloads ident)
+                        base-payloads ident serial)
       captured
-    (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
           (payloads nil) (dropped-paths nil) (image nil)
+          ;; RL-02: what ended this publication without a durable checkpoint
+          ;; or a deferral by name, for ACL2's classification
+          ;; (books/owner-publication-lifecycle.lisp fn-opl-classify)
+          (failure nil)
           ;; this thread's boundary: the last durable step it completed
           (*fnn-section-step* nil)
           ;; the payload frames the arena run writes, for the reseat after
@@ -7294,6 +7376,7 @@ the crash keystone) and serving continues."
                 (setq verdict (first setup))
                 (cond
                   ((eq verdict :unencodable)
+                   (setq failure '(:unencodable))
                    (fnn-err "CHECKPOINT auto refused=unencodable sequence=~d" sequence))
                   ((and (consp verdict) (eq (first verdict) :deferred)
                         (= (length verdict) 4) (keywordp (second verdict))
@@ -7349,6 +7432,7 @@ the crash keystone) and serving continues."
                        ;; below, which fences (sweep S019: both were logged
                        ;; here and serving went on).
                        (fnn-store-io-refusal (e)
+                         (setq failure '(:io-refusal))
                          (fnn-err "CHECKPOINT auto failed sequence=~d: ~a" sequence e)))))
                   (t (fnn-fault "owner returned a malformed checkpoint verdict")))))
           ;; GEN: def-actor publisher :failure :private-job -- one arm; ACL2
@@ -7359,9 +7443,16 @@ the crash keystone) and serving continues."
           ;; the fence, a core/store fault the fault, both before the cleanup
           ;; below; a known refusal is logged, serving continues.
           (serious-condition (e)
-            (when (member (fnn-owner-thread-escape service e "CHECKPOINT auto" t)
-                          '(:refusal :usage :job-failure))
-              (fnn-err "CHECKPOINT auto failed: ~a" e)))))
+            (let ((kind (fnn-owner-thread-escape service e "CHECKPOINT auto" t)))
+              ;; RL-02: the outcome the settlement classifies
+              (setq failure
+                    (typecase e
+                      (fnn-history-image-refusal
+                       (list :image-refused (fnn-history-image-refusal-verdict e)))
+                      (fnn-store-io-refusal '(:io-refusal))
+                      (t (list :job-failure kind))))
+              (when (member kind '(:refusal :usage :job-failure))
+                (fnn-err "CHECKPOINT auto failed: ~a" e))))))
       (unwind-protect
            (progn
            (handler-case
@@ -7372,6 +7463,22 @@ the crash keystone) and serving continues."
                (fnn-owner-serialized
                 service nil
                 (lambda ()
+                  ;; RL-02: a capture that ended neither durable nor
+                  ;; deferred by name settles its own slot first, keyed by
+                  ;; its count and serial, and ACL2 records the outcome as
+                  ;; a deferral classified by what could make another attempt
+                  ;; meaningful (fn-owner-sco-publication-abandoned).  An
+                  ;; ending nothing observed is settled as unclassified,
+                  ;; retried under the backoff: the slot is never left set.
+                  (unless (or durablep
+                              (and (consp verdict) (eq (first verdict) :deferred)))
+                    (let ((d (fnn-owner-core 'fn-owner-sco-publication-abandoned
+                                             count serial (or failure '(:unobserved))
+                                             (fnn-owner-monotonic-ms))))
+                      (if (and (consp d) (= (length d) 8))
+                          (fnn-err "CHECKPOINT auto abandoned sequence=~d reason=~(~a~) class=~(~a~) attempts=~d not-before-ms=~d"
+                                   count (second d) (fifth d) (sixth d) (seventh d))
+                        (fnn-err "CHECKPOINT auto abandoned sequence=~d: ~(~a~)" count d))))
                   (when next
                     (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
                                                 next payloads durablep verdict)))
@@ -7410,13 +7517,19 @@ the crash keystone) and serving continues."
     (handler-case (fnn-owner-maybe-publish service)
       (fnn-store-indeterminate (e)
         (fnn-err "CHECKPOINT auto uncertain; the store needs recovery: ~a" e)
-        (ignore-errors (fnn-owner-fence-service service)))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fence-service service))
+         e "checkpoint publication"))
       (fnn-store-fault (e)
-        (ignore-errors (fnn-owner-fault-service service nil e)))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fault-service service nil e))
+         e "checkpoint publication"))
       (fnn-store-error (e)
         (fnn-err "CHECKPOINT auto failed: ~a" e))
       (serious-condition (e)
-        (ignore-errors (fnn-owner-fault-service service nil e))))))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fault-service service nil e))
+         e "checkpoint publication")))))
     ;; The slot can be released here; actor/worker registration survives the
     ;; complete unwind until the parent's independent physical join.
     (fnn-owner-publisher-release service)))
@@ -7452,7 +7565,7 @@ or the spare of ACL2's next segment is prepared."
   (let* ((log (fnn-store-log store))
          (ks (fnn-log-kernel log)))
     (or (not (fnn-core 'fn-lgc-rotate-needed-p ks))
-        (let ((spare (fnn-log-spare log)))
+        (let ((spare (fnn-log-spare-peek log)))
           (and spare (eql (first spare)
                           (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))))))
 
@@ -7488,7 +7601,10 @@ reads run as a :control quantum; the thread's registration is the roster's."
       ;; capture, so both see one budget.
       (progn
         (when (eq (fnn-owner-core 'fn-owner-sco-due
-                                  (fnn-checkpoint-budget-test-override nil) free)
+                                  (fnn-checkpoint-budget-test-override nil) free
+                                  ;; RL-02: an abandonment's backoff is by the
+                                  ;; monotonic clock (fn-opl-eligiblep)
+                                  (fnn-owner-monotonic-ms))
                   :due)
           ;; The capture rotates the log (fnn-log-rotate, under
           ;; the owner mutex: no batch is open in a :control quantum), so
@@ -7511,7 +7627,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                                 (fnn-checkpoint-budget-test-override nil)
                                                 free (fnn-checkpoint-revision)))))
             (unless (or (eq position :failed)
-                        (and (true-listp captured) (= (length captured) 12)))
+                        (and (true-listp captured) (= (length captured) 13)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             ;; The publication reads the live arena outside the mutex, so it
             ;; pins the generation as such a reader here, under the mutex,
@@ -8396,27 +8512,44 @@ torn last entry follows.  Answers the offset the writer resumes at."
     (fnn-indeterminate "service log physical return remains unobserved"))
   (let ((requested *fnn-sighup-count*))
     (unless (= requested *fnn-owner-log-handled*)
-      (let ((decision (fnn-owner-serialized
+      (let* ((decided (fnn-owner-serialized
                        service nil
                        (lambda ()
-                         (fnn-owner-core 'fn-owner-log-reopen
-                                         (and *fnn-owner-log-path* t)
-                                         *fnn-owner-log-handled* requested)))))
+                         ;; The decision and the line it rendered leave the
+                         ;; section together: the global is read while the
+                         ;; owner is held, so the line written below is the
+                         ;; one this decision produced.
+                         (cons (fnn-owner-core 'fn-owner-log-reopen
+                                               (and *fnn-owner-log-path* t)
+                                               *fnn-owner-log-handled* requested)
+                               (fnn-global 'fn-owner-log-line)))))
+             (decision (car decided))
+             (line (cdr decided)))
         (unless (and (consp decision)
                      (member (first decision) '(:reopen :ignore :none))
                      (integerp (second decision)))
           (fnn-fault "owner returned malformed log reopen ~a" decision))
         (when (eq (first decision) :reopen)
-          (handler-case
-              (let ((fd (fnn-owner-open-log *fnn-owner-log-path*)))
-                ;; PKT-508: through the writer's queue while it runs, so
-                ;; the swap never waits on a write in progress.
-                (fnn-log-swap-fd fd)
-                (fnn-owner-log 'fn-owner-log-line))
-            (error (condition)
-              ;; Before transfer the old descriptor stays; after transfer a
-              ;; close fault is retained by the log debt ledger.
-              (fnn-err "service log reopen failed: ~a" condition))))
+          ;; Only the open's refusal is an ordinary outcome: nothing was
+          ;; transferred, the old descriptor stays, and the failure is
+          ;; named.  The swap's and the line's failures (a fault, an
+          ;; indeterminate custody, a close debt the ledger retains) leave
+          ;; this tick for the maintenance actor's boundary, which fences
+          ;; or stops the service.
+          (let ((fd (handler-case (fnn-owner-open-log *fnn-owner-log-path*)
+                      (fnn-os-error (condition)
+                        (fnn-err "service log reopen failed: ~a" condition)
+                        nil))))
+            (when fd
+              ;; PKT-508: through the writer's queue while it runs, so
+              ;; the swap never waits on a write in progress.
+              (fnn-log-swap-fd fd)
+              (unless (fnn-octet-list-p line)
+                (fnn-fault "owner returned a malformed log line"))
+              ;; No commit quantum is open on the maintenance thread
+              ;; (*fnn-owner-deferred* is rebound only inside one), so the
+              ;; line is written directly, as fnn-owner-log does outside one.
+              (fnn-log-line line))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
 (def-actor fnn-owner-spawn-listener :kind :accept :thread-name "fn owner accept" :roster t
@@ -8448,7 +8581,55 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
   (fnn-owner-cold-reap service)
   (fnn-owner-maybe-publish service)
   (fnn-owner-maybe-reopen-log service)
-  (fnn-owner-maybe-retire service))
+  (fnn-owner-maybe-retire service)
+  (fnn-owner-maybe-collect-idle service))
+
+;;; MEM-003: the collection while the owner is idle.  SBCL returns freed pages
+;;; to the OS only after a collection of a generation above 1, and the nursery
+;;; trigger's collections are generation 0 and 1, so a burst's garbage stays
+;;; resident until something collects higher.  ACL2 decides when
+;;; (books/idle-collection.lisp fn-idle-gc-quiet, fn-idle-gc-decide); this
+;;; observes the two facts the decision reads and makes the one call it
+;;; names.  The marks are the allocation counter at the previous tick and at
+;;; the last collection; the first tick takes the current counter for both
+;;; (the open's own full collection is the last one before it).
+(defvar *fnn-idle-gc-lock* (sb-thread:make-mutex :name "fn idle collection"))
+(defvar *fnn-idle-gc-tick-mark* nil)
+(fnn-guarded-by *fnn-idle-gc-tick-mark* *fnn-idle-gc-lock*)
+(defvar *fnn-idle-gc-collect-mark* nil)
+(fnn-guarded-by *fnn-idle-gc-collect-mark* *fnn-idle-gc-lock*)
+(defvar *fnn-idle-gc-quiet* 0)
+(fnn-guarded-by *fnn-idle-gc-quiet* *fnn-idle-gc-lock*)
+
+;;; The tick runs on the maintenance worker, or on the accept loop of a
+;;; one-connection run (fnn-owner-maybe-collect-idle's two callers through
+;;; fnn-owner-maintenance-tick), and the marks are per process; the lock
+;;; makes the count and the verdict one step whichever thread ticks.  The
+;;; collection itself runs outside it (a collection stops the world; nothing
+;;; else waits on this lock).
+(defun fnn-owner-maybe-collect-idle (service)
+  (let* ((consed (sb-ext:get-bytes-consed))
+         (publishing (fnn-with-roster (service)
+                       (and (or (fnn-owner-service-publisher service)
+                                (fnn-owner-service-exporter service))
+                            t)))
+         (verdict
+           (sb-thread:with-mutex (*fnn-idle-gc-lock*)
+             (unless *fnn-idle-gc-tick-mark*
+               (setq *fnn-idle-gc-tick-mark* consed
+                     *fnn-idle-gc-collect-mark* consed))
+             (setq *fnn-idle-gc-quiet*
+                   (fnn-core 'fn-idle-gc-quiet *fnn-idle-gc-quiet* publishing
+                             (- consed *fnn-idle-gc-tick-mark*))
+                   *fnn-idle-gc-tick-mark* consed)
+             (fnn-core 'fn-idle-gc-decide *fnn-idle-gc-quiet* publishing
+                       (- consed *fnn-idle-gc-collect-mark*)))))
+    (when (consp verdict)
+      (sb-ext:gc :gen (second verdict))
+      (let ((after (sb-ext:get-bytes-consed)))
+        (sb-thread:with-mutex (*fnn-idle-gc-lock*)
+          (setq *fnn-idle-gc-tick-mark* after
+                *fnn-idle-gc-collect-mark* after))))))
 
 ;;; r71 F8 (lane served-live): the primary accept loop ran the maintenance
 ;;; quanta itself, each waiting at the owner's scheduling gate (:control or

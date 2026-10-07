@@ -1,0 +1,13 @@
+{
+ "category": "correctness",
+ "file": "books/catalog-dense-map.lisp",
+ "id": "CATALOG-DENSE-MAP-ESCAPE-NOT-PROVED-EMPTY",
+ "note": "Keys that are not (g . posint) and values at or above 2^64 - 1 go to the escape table, an equal hash table that rehashes as it grows. The composed catalog should only escape a sequence reaching 2^64 - 1 (the count is unbounded); no theorem proves the escape stays empty under the catalog's reachable states, so the Theta(N) rehash step is not excluded. Owed: either an emptiness invariant over fn-cat$pcorr states (with teeth: a state that does escape) or a bound on its size.",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "source": "books/catalog-dense-map.lisp header (Codex r44)",
+ "state": "open",
+ "title": "Dense map: the escape table is not proved empty on the composed catalog (Codex r44 F2)",
+ "updated": "2026-10-06T00:00:00Z"
+}

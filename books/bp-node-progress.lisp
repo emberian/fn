@@ -3,6 +3,7 @@
 ; recovery clears them and a later progress event re-evaluates the held rows.
 (in-package "ACL2")
 (include-book "bp-report-author")
+(include-book "def-loop")
 (include-book "bp-app-handoff-time")
 (include-book "bp-node-receive-boundary")
 (include-book "bp-node-debt")
@@ -154,38 +155,10 @@
 ; The session table holds a row per BP boundary, operator data with no
 ; fixed cap (D27): the walk executes by a loop (lane depth-debt, PRF-919),
 ; (mbe :logic <the recursion, unchanged> :exec <a loop>).
-(defun fn-bpnp-remove-peer-session-loop (peer sessions acc)
-  (declare (xargs :guard t :measure (acl2-count sessions)))
-  (if (atom sessions) (fn-ag-rev-onto acc nil)
-    (fn-bpnp-remove-peer-session-loop
-     peer (cdr sessions)
-     (if (equal (fn-bpn-nth 1 (car sessions)) peer) acc (cons (car sessions) acc)))))
-
-(defun fn-bpnp-remove-peer-session (peer sessions)
-  (declare (xargs :guard t :measure (acl2-count sessions)))
-  (mbe :logic (if (atom sessions) nil
-                (if (equal (fn-bpn-nth 1 (car sessions)) peer)
-                    (fn-bpnp-remove-peer-session peer (cdr sessions))
-                  (cons (car sessions)
-                        (fn-bpnp-remove-peer-session peer (cdr sessions)))))
-       :exec (fn-bpnp-remove-peer-session-loop peer sessions nil)))
-
-(defthm fn-bpnp-remove-peer-session-loop-is-rev-onto
-  (equal (fn-bpnp-remove-peer-session-loop peer sessions acc)
-         (fn-ag-rev-onto acc (fn-bpnp-remove-peer-session peer sessions)))
-  :hints (("Goal" :induct (fn-bpnp-remove-peer-session-loop peer sessions acc)
-                  :in-theory (union-theories
-                              '(fn-bpnp-remove-peer-session-loop fn-bpnp-remove-peer-session
-                                fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bpnp-remove-peer-session-loop)
-(verify-guards fn-bpnp-remove-peer-session
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpnp-remove-peer-session fn-ag-rev-onto
-                                fn-bpnp-remove-peer-session-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-bpnp-remove-peer-session (peer sessions)
+  :shape :map :over sessions :elt s
+  :keep (equal (fn-bpn-nth 1 s) peer) :keep-order :skip-first
+  :body s)
 
 (defun fn-bpnp-open-session (sessions peer session mru)
   (declare (xargs :guard t))

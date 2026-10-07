@@ -39,7 +39,10 @@
                                            '(83886080 . 67108864) '(8589934592) nil nil))
 (assert-event
  (and (equal (fn-prstartup-nth 0 *prst-launch*) :heap)
-      (equal (fn-prstartup-nth 1 *prst-launch*) 257)
+      ; 259: the decoded worker's requested-window child is the profile's
+      ; :read-window-octets (262144) since window-read 390408000, in
+      ; fn-dwb-reusable-baseline-vector via fn-prstartup-baseline-heap.
+      (equal (fn-prstartup-nth 1 *prst-launch*) 259)
       (equal (fn-prstartup-nth 4 *prst-launch*) 1024)
       (equal (fn-prstartup-nth 5 *prst-launch*) 20)
       (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 *prst-launch*)
@@ -87,12 +90,15 @@
 ; DEFAULT-extended figure is admitted; with the unobserved bound (what every
 ; launched node of d5b0b9100 carried) the same heap is refused, by name.
 (defconst *prst-run-core* '(615110568 . 517243296))
+; The host trigger the figures are taken at: books/profile-limits.lisp's :gc-nursery-mib
+; (+fnn-gc-nursery-octets+), not a copy of its value.
+(defconst *prst-nursery* (* 1048576 (fn-profile-limit :gc-nursery-mib)))
 (defconst *prst-fresh* '(0 . 0))
 (defconst *prst-run-machine* (list (* 24 1073741824)))
 (defconst *prst-run*
  (fn-prstartup-extend-operation-reservation
   (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* *prst-run-core*
-                                    (* 64 1048576) *prst-run-machine* 32 *prst-fresh*)
+                                    *prst-nursery* *prst-run-machine* 32 *prst-fresh*)
   :run nil "/tmp/store" 4 8 *prst-run-core* *prst-run-machine*
   *fn-bs-profile-development* *prst-fresh*))
 (assert-event
@@ -100,10 +106,10 @@
   (and (equal (fn-prstartup-nth 0 *prst-run*) :heap)
        (fn-prstartup-planp
         (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
-                                   *prst-run-core* (* 64 1048576) nil nil 32 "/tmp/store" 4 8 1024
+                                   *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
                                    *prst-fresh*))
        (equal (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
-                                         *prst-run-core* (* 64 1048576) nil nil 32 "/tmp/store" 4 8 1024
+                                         *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
                                          nil)
               '(:refused :default-pool-heap-not-held))
        (stringp (fn-prstartup-refusal-line '(:refused :default-pool-heap-not-held))))))
@@ -128,11 +134,11 @@
                 dyn)))))
 (assert-event
  (let* ((base (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* '(615110568 . 300000000)
-                                                (* 64 1048576) *prst-run-machine* 32 *prst-fresh*))
+                                                *prst-nursery* *prst-run-machine* 32 *prst-fresh*))
         (dyn (* 1048576 (fn-prstartup-nth 1 base))))
   (and (equal (fn-prstartup-nth 0 base) :heap)
        (not (<= (fn-prstartup-protected *fn-bs-profile-development* *prst-owner-core*
-                  (fn-heap-nursery-trigger dyn (* 64 1048576)) nil 32 *prst-fresh*)
+                  (fn-heap-nursery-trigger dyn *prst-nursery*) nil 32 *prst-fresh*)
                 dyn)))))
 
 ; THE READS IN FLIGHT (lane pool-refusal, 2026-10-05).  KEYSTONES
@@ -219,22 +225,46 @@
                :fault "the bound read against an unobserved machine")))
 
 (defteeth fn-prstartup-admitted-capacity-is-funded
-  :claim (() (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit))) (implies (equal (fn-prstartup-nth 0 plan) :admitted) (and (natp (fn-prstartup-file-capacity plan))
+  :claim (() (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve))) (implies (equal (fn-prstartup-nth 0 plan) :admitted) (and (natp (fn-prstartup-file-capacity plan))
         (<= (max 8 (+ 1 (nfix cache-limit))) (fn-prstartup-file-capacity plan))
         (<= (fn-prstartup-file-capacity plan) (nfix fd-limit))
-        (<= (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root)
-            (nfix (- (nfix dynamic) (max (nfix occupied) (nfix protected)))))))))
+        (<= (+ (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root) reserve)
+            (fn-prstartup-available dynamic occupied protected))))))
   :subject fn-prstartup-plan
-  :witness ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256))
+  :witness ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256) (reserve (fn-prstartup-read-reserve 196677 4)))
   :mutations ((without-admitted
-               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit))) (and (natp (fn-prstartup-file-capacity plan))
+               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve))) (and (natp (fn-prstartup-file-capacity plan))
         (<= (max 8 (+ 1 (nfix cache-limit))) (fn-prstartup-file-capacity plan))
         (<= (fn-prstartup-file-capacity plan) (nfix fd-limit))
-        (<= (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root)
-            (nfix (- (nfix dynamic) (max (nfix occupied) (nfix protected))))))))
-               ((dynamic 1024) (occupied 0) (protected 0) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256))
+        (<= (+ (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root) reserve)
+            (fn-prstartup-available dynamic occupied protected)))))
+               ((dynamic 1024) (occupied 0) (protected 0) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256) (reserve (fn-prstartup-read-reserve 196677 4)))
                :fault "the antecedent dropped: (equal (fn-prstartup-nth 0 plan) :admitted)")
               (capacity-by-cache-limit
-               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit))) (<= (fn-prstartup-file-capacity plan) (nfix cache-limit))))
-               ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256))
-               :fault "the file capacity bounded by the cache limit, not the descriptor limit")))
+               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve))) (<= (fn-prstartup-file-capacity plan) (nfix cache-limit))))
+               ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256) (reserve (fn-prstartup-read-reserve 196677 4)))
+               :fault "the file capacity bounded by the cache limit, not the descriptor limit")
+              (capacity-strictly-below-fd-limit
+               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve))) (implies (equal (fn-prstartup-nth 0 plan) :admitted) (and (natp (fn-prstartup-file-capacity plan))
+        (<= (max 8 (+ 1 (nfix cache-limit))) (fn-prstartup-file-capacity plan))
+        (< (fn-prstartup-file-capacity plan) (nfix fd-limit))
+        (<= (+ (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root) reserve)
+            (fn-prstartup-available dynamic occupied protected))))))
+               ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256) (reserve (fn-prstartup-read-reserve 196677 4)))
+               :fault "the descriptor-limit bound made strict: the plan takes the whole limit")
+              (floor-one-above-minimum
+               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve))) (implies (equal (fn-prstartup-nth 0 plan) :admitted) (and (natp (fn-prstartup-file-capacity plan))
+        (<= (max 9 (+ 2 (nfix cache-limit))) (fn-prstartup-file-capacity plan))
+        (<= (fn-prstartup-file-capacity plan) (nfix fd-limit))
+        (<= (+ (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root) reserve)
+            (fn-prstartup-available dynamic occupied protected))))))
+               ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 9) (reserve 0))
+               :fault "the capacity floor raised by one: the minimum plan at fd-limit 9 is admitted at 9")
+              (reserve-counted-twice
+               (:conclusion (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve))) (implies (equal (fn-prstartup-nth 0 plan) :admitted) (and (natp (fn-prstartup-file-capacity plan))
+        (<= (max 8 (+ 1 (nfix cache-limit))) (fn-prstartup-file-capacity plan))
+        (<= (fn-prstartup-file-capacity plan) (nfix fd-limit))
+        (<= (+ (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) workers root) reserve reserve)
+            (fn-prstartup-available dynamic occupied protected))))))
+               ((dynamic 536870912) (occupied 67108864) (protected 268435456) (root "/tmp/store") (workers 4) (stack 1048576) (runtime 4194304) (cache-limit 8) (fd-limit 256) (reserve 200000000))
+               :fault "the read reserve charged twice against the available heap")))

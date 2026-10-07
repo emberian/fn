@@ -2,7 +2,7 @@
 ; (lane arena-store-7, 2026-09-28, milestone (b1)).
 ;
 ; The page file is data here: FILE is an alist (PHYS . WORDS), and the host's
-; page fill (A-PGS-HOST-IO's fn-pgs-page-words / fn-pgs-fill-realize) is
+; page fill (A-PGS-HOST-IO's fn-pgs-page-words) is
 ; attached to its lookup, so the decode EXECUTES over a committed image.  A
 ; history is loaded and flushed into an image (fn-hrc-flush-one), the image
 ; committed as a fresh page file's first transaction (pgs-x-commit), the
@@ -42,7 +42,7 @@
   (and (true-listp (hrdt-page file addr)) (equal (len (hrdt-page file addr)) 2048)
        (fn-pgs-u64-listp (hrdt-page file addr))))
 
-(defattach (fn-pgs-page-words hrdt-page) (fn-pgs-fill-realize hrdt-page))
+(defattach fn-pgs-page-words hrdt-page)
 ; the frame fill (A-PGS-HOST-IO's in-place form): the put of the same page
 (defattach fn-pgs-fill-frame fn-pgs-fill-frame-via-words)
 

@@ -91,48 +91,12 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-index-membership-entries-loop (msgid memberships acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp memberships)
-      (fn-index-membership-entries-loop msgid
-                                        (fn-ag-cdr memberships)
-                                        (cons (fn-index-entry (fn-ag-car (fn-ag-car memberships))
-                                                              (fn-ag-cdr (fn-ag-car memberships))
-                                                              msgid)
-                                              acc))
-    (revappend acc nil)))
-
-(defun fn-index-membership-entries (msgid memberships)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp memberships)
-           (cons (fn-index-entry
-                  (fn-ag-car (fn-ag-car memberships))
-                  (fn-ag-cdr (fn-ag-car memberships))
-                  msgid)
-                 (fn-index-membership-entries msgid
-                                              (fn-ag-cdr memberships)))
-         nil)
-       :exec (fn-index-membership-entries-loop msgid memberships nil)))
-
-(local
- (defthm fn-index-membership-entries-loop-is-revappend
-   (equal (fn-index-membership-entries-loop msgid memberships acc)
-          (revappend acc (fn-index-membership-entries msgid memberships)))
-   :hints (("Goal" :induct (fn-index-membership-entries-loop msgid memberships acc)
-                   :in-theory (union-theories '(fn-index-membership-entries-loop fn-index-membership-entries revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-index-membership-entries-loop)
-
-(verify-guards fn-index-membership-entries
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-index-membership-entries)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-index-membership-entries-loop-is-revappend (acc nil))))))
+(def-loop fn-index-membership-entries (msgid memberships)
+  :shape :step :over memberships :done (atom memberships)
+  :body (fn-index-entry (fn-ag-car (fn-ag-car memberships))
+                        (fn-ag-cdr (fn-ag-car memberships))
+                        msgid)
+  :next (fn-ag-cdr memberships))
 
 (defun fn-index-article-entries (article)
   (declare (xargs :guard t :verify-guards nil))
@@ -144,31 +108,10 @@
 ; Executes by a loop (PKT-876, lane open-depth): one control-stack frame per
 ; retained article on the owner's open.  The :logic is the recursion,
 ; unchanged; the :exec is a loop, equal by the guard proof.
-(defun fn-index-build-loop (rev acc)
-  (declare (xargs :guard t))
-  (if (consp rev)
-      (fn-index-build-loop (cdr rev) (append (fn-index-article-entries (car rev)) acc))
-    acc))
-
-(defun fn-index-build (articles)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp articles)
-           (append (fn-index-article-entries (car articles))
-                   (fn-index-build (cdr articles)))
-         nil)
-       :exec (fn-index-build-loop (fn-ag-rev-onto articles nil) nil)))
-
-(encapsulate ()
-  (local
-   (defthm fn-index-build-loop-of-rev-onto
-     (equal (fn-index-build-loop (fn-ag-rev-onto xs zs) nil)
-            (fn-index-build-loop zs (fn-index-build xs)))
-     :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-                     :in-theory (disable fn-index-article-entries)))))
-  (verify-guards fn-index-build
-    :hints (("Goal" :in-theory (disable fn-index-article-entries fn-ag-rev-onto)
-                    :use ((:instance fn-index-build-loop-of-rev-onto (xs articles) (zs nil)))))))
+(def-loop fn-index-build (articles)
+  :shape :foldr :over articles :elt a
+  :combine (append (fn-index-article-entries a) acc) :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-index-rebuild (st)
   (declare (xargs :guard (fn-statep st) :verify-guards nil))

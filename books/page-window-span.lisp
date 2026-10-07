@@ -8,12 +8,18 @@
 (include-book "page-window-read")
 
 ; The caller's buffer.  Its own stobj, independent of the window's: its size
-; is the longest span a caller may ask for, not a property of the window.
-(defstobj fn-ew-span
-  (fn-ew-span-bytes :type (array (unsigned-byte 8) (16384)) :initially 0)
-  :inline t)
+; is the longest span a caller may ask for.  A span is a range of the window,
+; so the longest is the window itself: the profile's row, expanded into
+; DEFSTOBJ's literal array type exactly as books/extent-window-buffer.lisp
+; expands the window's dimension.
+(defmacro fn-ew-define-span ()
+  `(defstobj fn-ew-span
+     (fn-ew-span-bytes :type (array (unsigned-byte 8) (,(fn-profile-limit :read-window-octets)))
+                       :initially 0)
+     :inline t))
+(fn-ew-define-span)
 
-(defconst *fn-ew-span-capacity* 16384)
+(defconst *fn-ew-span-capacity* (fn-profile-limit :read-window-octets))
 
 (local
  (defthm fn-pwr-span-bytesp-nth
@@ -30,8 +36,8 @@
 (defun fn-pwr-span-copy (src count dst fn-ew-buffer fn-ew-span)
   (declare (xargs :stobjs (fn-ew-buffer fn-ew-span)
                   :guard (and (natp src) (natp count) (natp dst)
-                              (<= (+ src count) 16384)
-                              (<= (+ dst count) 16384))
+                              (<= (+ src count) (fn-profile-limit :read-window-octets))
+                              (<= (+ dst count) (fn-profile-limit :read-window-octets)))
                   :measure (nfix count)))
   (if (zp count) fn-ew-span
     (let ((fn-ew-span
@@ -66,7 +72,7 @@
   (if (and (fn-pwx-boundp ledger worker token :returned)
            (fn-pwr-plan-matches-token s token)
            (fn-ewp-publication s)
-           (natp (nth 5 s)) (<= (nth 5 s) 16384) (<= j (nth 5 s)))
+           (natp (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets)) (<= j (nth 5 s)))
       (let ((fn-ew-span (fn-pwr-span-copy i (- j i) 0 fn-ew-buffer fn-ew-span)))
         (mv :span fn-ew-span))
     (mv :unavailable fn-ew-span)))
@@ -76,7 +82,7 @@
    (implies (equal (mv-nth 0 (fn-pwr-byte ledger worker token s i fn-ew-buffer)) :byte)
             (and (fn-pwx-boundp ledger worker token :returned)
                  (fn-pwr-plan-matches-token s token) (fn-ewp-publication s)
-                 (natp i) (natp (nth 5 s)) (<= (nth 5 s) 16384) (< i (nth 5 s))
+                 (natp i) (natp (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets)) (< i (nth 5 s))
                  (equal (mv-nth 1 (fn-pwr-byte ledger worker token s i fn-ew-buffer))
                         (nth i (nth 0 fn-ew-buffer)))))
    :rule-classes nil
@@ -86,7 +92,7 @@
  (defthm fn-pwr-span-byte-is-byte
    (implies (and (fn-pwx-boundp ledger worker token :returned)
                  (fn-pwr-plan-matches-token s token) (fn-ewp-publication s)
-                 (natp i) (natp (nth 5 s)) (<= (nth 5 s) 16384) (< i (nth 5 s)))
+                 (natp i) (natp (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets)) (< i (nth 5 s)))
             (equal (fn-pwr-byte ledger worker token s i fn-ew-buffer)
                    (mv :byte (fn-ew-bytesi i fn-ew-buffer))))
    :hints (("Goal" :in-theory (enable fn-pwr-byte)))))
@@ -305,6 +311,23 @@
                   fn-ew-span))
   :hints (("Goal" :in-theory (enable fn-pwr-span-at))))
 
+; KEYSTONE (row 21, ARTICLE time ratio).  Below the window the scalar borrow's
+; word does not depend on the coordinate: for every payload coordinate I before
+; the window's start, fn-pwr-byte-at answers :unavailable when the job is
+; :ready and the job's own outcome word otherwise.  A host that has seen the
+; scalar refuse one coordinate below the window may therefore read every
+; coordinate below the same window as that same refusal, without a decision
+; each (the arena walks a payload from its start while the borrowed window is a
+; later one, and the earlier octets are served by the verified-window cache).
+(defthm fn-pwr-byte-at-below-the-window-is-the-outcome
+  (implies (and (natp i) (natp (fn-prl-nth 7 token)) (< i (fn-prl-nth 7 token)))
+           (equal (mv-nth 0 (fn-pwr-byte-at ledger worker token s file eoff elen poff plen
+                                            trailer i fn-ew-buffer))
+                  (if (equal (fn-pwr-outcome ledger worker token s) :ready)
+                      :unavailable
+                    (fn-pwr-outcome ledger worker token s))))
+  :hints (("Goal" :in-theory (enable fn-pwr-byte-at))))
+
 (in-theory (disable fn-pwr-span-at))
 
 ; The verified-window cache's span (fn-pwc-byte-at's join): the warm path read
@@ -324,7 +347,7 @@
                         (fn-prl-nth 6 token) (fn-prl-nth 8 token)))
            (natp plen) (<= j plen)
            (natp (fn-prl-nth 7 token)) (<= (fn-prl-nth 7 token) i)
-           (natp (nth 5 s)) (<= (nth 5 s) 16384)
+           (natp (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets))
            (<= (- j (fn-prl-nth 7 token)) (nth 5 s)))
       (let ((fn-ew-span (fn-pwr-span-copy (- i (fn-prl-nth 7 token)) (- j i) 0
                                           fn-ew-buffer fn-ew-span)))
@@ -344,7 +367,7 @@
                               (fn-prl-nth 6 token) (fn-prl-nth 8 token)))
                  (natp i) (natp plen) (< i plen)
                  (natp (fn-prl-nth 7 token)) (<= (fn-prl-nth 7 token) i)
-                 (natp (nth 5 s)) (<= (nth 5 s) 16384)
+                 (natp (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets))
                  (< (- i (fn-prl-nth 7 token)) (nth 5 s))
                  (equal (mv-nth 1 (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer i
                                                   fn-ew-buffer))
@@ -362,7 +385,7 @@
                               (fn-prl-nth 6 token) (fn-prl-nth 8 token)))
                  (natp i) (natp plen) (< i plen)
                  (natp (fn-prl-nth 7 token)) (<= (fn-prl-nth 7 token) i)
-                 (natp (nth 5 s)) (<= (nth 5 s) 16384)
+                 (natp (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets))
                  (< (- i (fn-prl-nth 7 token)) (nth 5 s)))
             (equal (fn-pwc-byte-at ledger token s file eoff elen poff plen trailer i fn-ew-buffer)
                    (mv :byte (nth (- i (fn-prl-nth 7 token)) (nth 0 fn-ew-buffer)))))

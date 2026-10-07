@@ -108,7 +108,7 @@ class ProductionTests(unittest.TestCase):
         text = Path(IMAGE).read_text(errors="replace")
         tls = re.findall(r"--tls-limit (\d+) ", text)
         stack = re.findall(r"--control-stack-size (\d+)KB ", text)
-        self.assertEqual(tls, [str(profile_limits.get("tls-limit"))], text)
+        self.assertEqual(tls, [str(profile_limits.get("run-tls-limit"))], text)
         self.assertEqual(stack, [str(profile_limits.get("stack-kib"))], text)
 
     def test_production_refuses_guard_probe(self):
@@ -212,9 +212,9 @@ class DeepInputStackTests(unittest.TestCase):
         """The init budget (MB) the small preset's own figure needs, from ACL2's
         refusal, never a constant: init under a budget no preset fits is
         refused by name with the floor's (the small preset's) reservation R;
-        R - 1 is refused by name the same way, and R is the budget the tests
-        init under (the mechanism: a budget at least the figure is accepted,
-        one below it refused).  The bar "the small profile fits 1.5 GB" is
+        the budgets from R - 1 up are refused the same way until the smallest
+        one init accepts, which is the budget the tests init under (the
+        mechanism: a budget at least that is accepted, one below it refused).  The bar "the small profile fits 1.5 GB" is
         the fundamentals F8 scoreboard's, recorded UNMET there, not assumed
         here (lane heap-bounds, row B2: the records' term derived from the
         profile's limits)."""
@@ -227,20 +227,41 @@ class DeepInputStackTests(unittest.TestCase):
             node = Node(self, IMAGE, root=self.tmp / name, control=False, env=NO_STACK)
             return node, node.operator("init", "--budget", str(budget), "--profile", "default",
                                        "local.test")
-        probe, low = attempt("budget-probe", 100)
+        def named(done):
+            found = refused.search((done.stdout + done.stderr).decode(errors="replace"))
+            self.assertIsNotNone(found, done.stderr)
+            return int(found.group(1)), int(found.group(2))
+        asked = 100
+        probe, low = attempt("budget-probe", asked)
         self.assertEqual(low.returncode, 1, low.stderr)
-        found = refused.search((low.stdout + low.stderr).decode(errors="replace"))
-        self.assertIsNotNone(found, low.stderr)
-        figure = int(found.group(1))
+        figure, reported = named(low)
         self.assertFalse(Path(probe.store_path).exists())
-        _node, below = attempt("budget-below", figure - 1)
-        self.assertEqual(below.returncode, 1, below.stderr)
-        found = refused.search((below.stdout + below.stderr).decode(errors="replace"))
-        self.assertIsNotNone(found, below.stderr)
-        self.assertEqual((int(found.group(1)), int(found.group(2))), (figure, figure - 1))
-        print("NATIVE-DEEP small figure={} MB (1,500 before lane heap-bounds)".format(figure))
-        type(self)._small_budget = figure
-        return figure
+        # init decides against the request less the default peer flight's launch
+        # reserve L (books/peer-flight-default.lisp fn-pfd-init-limits), so a refusal
+        # names budget = request - L, and its reservation moves by a MB with the
+        # request; L is read off this refusal, never a constant.
+        self.assertTrue(0 < reported < asked, (asked, reported))
+        launch = asked - reported
+        # The smallest budget init accepts, searched upward from one below the
+        # figure through the figure plus L plus a few MB of rounding: every budget
+        # under it is refused by name, naming a reservation within a few MB of the
+        # first and a budget under the request.
+        found = None
+        for budget in range(figure - 1, figure + launch + 6):
+            _node, done = attempt("budget-%d" % budget, budget)
+            if done.returncode == 0:
+                found = budget
+                break
+            self.assertEqual(done.returncode, 1, done.stderr)
+            again, held = named(done)
+            self.assertLessEqual(abs(again - figure), 3, (figure, again))
+            self.assertTrue(0 < held <= budget, (budget, held))
+        self.assertIsNotNone(found, "init accepted no budget up to %d MB" % (figure + launch + 5))
+        self.assertGreaterEqual(found, figure, (found, figure))
+        print("NATIVE-DEEP small figure={} MB, launch reserve {} MB: init accepts from {} MB "
+              "(1,500 before lane heap-bounds)".format(figure, launch, found))
+        type(self)._small_budget = found
+        return found
 
     def store(self, name, flags, budget=None):
         """`init --budget MB FLAGS local.test`; BUDGET "small" is the small

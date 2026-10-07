@@ -29,7 +29,10 @@ class BootstrapBuilderTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             tree = Path(directory)
             build = tree / "selected.lisp"
-            build.write_text("(progn! (set-raw-mode t)\n" + body + ")\n")
+            # Every real build carries core_build.IMAGE_ONLY_FORMS exactly once; the
+            # product block strips them, so the expected outputs below are unchanged.
+            build.write_text("(progn! (set-raw-mode t)\n" + body
+                             + "".join(BUILDER.IMAGE_ONLY_FORMS) + ")\n")
             before = build.read_bytes()
             result = BUILDER.product_block(tree, "selected.lisp")
             self.assertEqual(build.read_bytes(), before)

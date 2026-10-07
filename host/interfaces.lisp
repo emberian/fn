@@ -5,8 +5,8 @@
 ; built: its class (guard-verified or not), the kinds the host entry guard
 ; evaluates (host/native/io.lisp fnn-entry-guard), its keystones.  A
 ; declaration the world refutes stops the build.  tools/interface_emit.py
-; reads these forms (and host/interfaces-extract.lisp's) without evaluating
-; them and generates planning/interfaces.json and tools/extract/roots.sh
+; reads these forms without evaluating them
+; and generates planning/interfaces.json and tools/extract/roots.sh
 ; (the extractor's ROOTS and EXTRA), and gives tools/harness_check.py its
 ; exempt formals; its host-binding check reads the raw host for the
 ; dispatch sites.
@@ -25,12 +25,16 @@
 (include-book "../books/bp-handoff-report")
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
+(include-book "../books/peer-catchup-spool-body")
+(include-book "../books/raw-dispatch-verdict")
 (include-book "../books/response-identity")
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
 ; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
 ; acknowledged record is recovered from every crash image of the host's run
-; of the active segment; the log's frame bound (fn-lgu-log-max).
-(include-book "../books/store-log-durable")
+; of the active segment; the log's frame bound (fn-lgu-log-max); the open's
+; copy (RL-01 A2: fn-lgrc-copy-verdict, fn-lgrc-copy-refusal-text), which
+; includes the former.
+(include-book "../books/store-log-recover-copy")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -145,9 +149,6 @@
   :class :common-lisp-compliant
   :kinds ((f natp))
   :root :extract)
-
-; fn-xo-open-store: host/interfaces-extract.lisp (the image does not load
-; host/store-open-host.lisp).
 
 (definterface fn-reader-use-store
   :class :common-lisp-compliant
@@ -280,6 +281,24 @@
 ; -----------------------------------------------------------------------------
 ; Applied by the raw host directly, not through fnn-call's entry guard.
 
+; D40/X3: the raw install path (host/native/raw-trap.lisp) applies the
+; verdict book's decisions directly; the image and the extracted core run the
+; same ones over the world's rows and the core's carried rows.
+(definterface fn-rdv-admit
+  :class :common-lisp-compliant
+  :kinds ()
+  :direct "the install path's admission of a raw row over the world's verdicts (host/native/raw-trap.lisp fnn-install-raw-dispatch); a build-time decision, no client data")
+(definterface fn-rdv-carried-problem
+  :class :common-lisp-compliant
+  :kinds ()
+  :direct "the install path's check of the carried tables' row digests (host/native/raw-trap.lisp fnn-check-carried-tables); a load-time decision, no client data")
+(definterface fn-rdv-raw-declared-p
+  :class :program
+  :direct "the install path's selection of the raw-declared rows (host/native/raw-trap.lisp); a build-time decision, no client data")
+(definterface fn-rdv-row-digest
+  :class :program
+  :direct "the install path's digest of a row as the world gives it (host/native/raw-trap.lisp); a build-time decision, no client data")
+
 (definterface fn-octets$c-reserve
   :class :common-lisp-compliant
   :kinds ((n natp))
@@ -365,6 +384,16 @@
 (definterface fn-fs-inbox-admit
   :class :common-lisp-compliant
   :direct "fnn-mux-adopt-place decides admission under the same inbox lock as closure")
+;; r71 F13 (books/mux-accept-slot.lisp): the pending-accept slot.  The mux's
+;; accept threads ask through the core dispatcher (fnn-core 'fn-mxa-reserve,
+;; fn-mxa-deferral-line), as the cursor quantum does fn-splan-cursor-resume-ms.
+(definterface fn-mxa-reserve
+  :class :common-lisp-compliant
+  :kinds ((loops true-listp))
+  :keystones (fn-mxa-reserve-grants-only-a-free-loop
+              fn-mxa-reservation-keeps-the-pending-bound))
+(definterface fn-mxa-deferral-line
+  :class :common-lisp-compliant)
 
 ;; Private committer control: immutable, guard-t values off the owner section.
 (definterface fn-cmt-init
@@ -461,9 +490,13 @@
 (definterface fn-lg-extent-okp
   :class :common-lisp-compliant)
 
-(definterface fn-lg-recover-tail
+(definterface fn-lgrc-copy-verdict
   :class :common-lisp-compliant
-  :kinds ((ks true-listp)))
+  :keystones (fn-lgrc-copy-verdict-copies-exactly-with-room
+              fn-lgrc-open-refuses-without-room-and-takes-no-step))
+
+(definterface fn-lgrc-copy-refusal-text
+  :class :common-lisp-compliant)
 
 (definterface fn-lg-workload-prefixp
   :class ::ideal)
@@ -530,7 +563,8 @@
 (definterface fn-lgu-acknowledge
   :class :common-lisp-compliant
   :kinds ((c true-listp) (n natp))
-  :keystones (fn-lgu-acknowledge-acknowledges-only-recoverable-records))
+  :keystones (fn-lgu-acknowledge-acknowledges-only-recoverable-records
+              fn-lgrc-acknowledge-from-the-copy))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant
@@ -659,7 +693,8 @@
 
 (definterface fn-lgs-open-plan
   :class :common-lisp-compliant
-  :keystones (fn-lgs-open-plan-scan-ignores-covered))
+  :keystones (fn-lgs-open-plan-scan-ignores-covered
+              fn-lgs-install-drop-covers-what-the-open-left))
 
 (definterface fn-lgs-segment-index
   :class :common-lisp-compliant)
@@ -1743,9 +1778,16 @@
 (definterface fn-owner-feed-reconcile-apply
   :class ::program)
 
+(definterface fn-owner-feed-reply-article
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
+
 (definterface fn-owner-feed-reply-chunk
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
+
+(definterface fn-owner-feed-reply-sync
+  :class ::program)
 
 (definterface fn-owner-feed-security
   :class ::program
@@ -1773,6 +1815,9 @@
 
 (definterface fn-owner-hybrid-snapshots
   :class :common-lisp-compliant)
+
+(definterface fn-owner-arena-count
+  :class ::program)
 
 (definterface fn-owner-identity-publication-verdict
   :class ::program)
@@ -1991,6 +2036,11 @@
   :class :common-lisp-compliant)
 
 
+; RL-02: the settlement of an abandoned capture (host/native/owner.lisp
+; fnn-owner-publish-captured's done quantum).
+(definterface fn-owner-sco-publication-abandoned
+  :class :common-lisp-compliant)
+
 (definterface fn-owner-sco-publication-done
   :class :common-lisp-compliant)
 
@@ -2106,13 +2156,14 @@
 
 
 ; Shared ARTICLE/HEAD/BODY plans consumed by native NNTP and Web. Predicates
-; have guard T. The retained renderer still uses its logical counterpart:
-; complete renderer source guards and host/reference refinement remain owed.
+; have guard T. The renderer is guard-verified (ARTICLE-PATH-UNVERIFIED-GUARDS):
+; the host runs its executable, not the logical counterpart; host/reference
+; refinement remains owed.
 (definterface fn-asto-plan-articlep :class :common-lisp-compliant)
 (definterface fn-asto-plan-cursorp :class :common-lisp-compliant)
 (definterface fn-asto-preflight-planp :class :common-lisp-compliant)
 (definterface fn-asto-plan-render-window
-  :class :ideal
+  :class :common-lisp-compliant
   :keystones ((fn-ast-render-window-byte-bound :via fn-ast-render-window)))
 
 
@@ -2318,7 +2369,9 @@
               fn-csp-step-final-verdict-journals
               fn-csp-window-bounds-in-flight
               fn-csp-body-only-after-its-335
-              fn-csp-streaming-only-from-335))
+              fn-csp-streaming-only-from-335
+              fn-csp-journals-only-a-settled-batch
+              fn-csp-at-most-one-streaming))
 
 (definterface fn-csp-done-p :class :common-lisp-compliant)
 (definterface fn-csp-close :class :common-lisp-compliant)
@@ -3704,6 +3757,31 @@
   :keystones (fn-heap-open-nursery-trigger-natp
               fn-heap-open-nursery-trigger-bounds))
 
+(definterface fn-send-progress-begin
+  :class :common-lisp-compliant
+  :keystones (fn-send-progress-begin-continues))
+
+(definterface fn-send-progress-next
+  :class :common-lisp-compliant
+  :keystones (fn-send-progress-next-state))
+
+(definterface fn-send-progress-decide
+  :class :common-lisp-compliant
+  :keystones ((fn-send-progress-draining-reader-continues :via fn-send-progress-verdict)
+              (fn-send-progress-stalled-refused :via fn-send-progress-verdict)
+              (fn-send-progress-too-slow-refused :via fn-send-progress-verdict)
+              (fn-send-progress-verdict-answers :via fn-send-progress-verdict)))
+
+(definterface fn-idle-gc-quiet
+  :class :common-lisp-compliant
+  :keystones (fn-idle-gc-quiet-counts-only-quiet-ticks-at-the-limit))
+
+(definterface fn-idle-gc-decide
+  :class :common-lisp-compliant
+  :keystones ((fn-idle-gc-verdict-collects-only-when-owed :via fn-idle-gc-verdict)
+              (fn-idle-gc-verdict-collects-when-owed :via fn-idle-gc-verdict)
+              fn-idle-gc-decide-never-collects-during-a-publication))
+
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)
 
@@ -4806,10 +4884,11 @@
 (definterface fn-pgs-frame-len
   :class :common-lisp-compliant
   :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) reads the selected array's length to refuse a range outside it; SEL checked against 0, 1, 2 first")
-(definterface fn-pgs-frame-put
+(definterface fn-pgb-frame-put
   :class :common-lisp-compliant
   :kinds ((base natp))
-  :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) is the constraint's right-hand side, the put of fn-pgs-fill-realize's 2048 u64 words at BASE; the selector and range are checked first, the words are the realizer's")
+  :keystones (fn-pgb-frame-put-is-frame-put-of-words)
+  :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) stores the page buffer's little-endian words with it after one pread; the selector and range are checked first")
 
 ;; books/payload-extent-read.lisp
 
@@ -5216,22 +5295,6 @@
 
 (definterface fn-bpnc-status-unavailable
   :class :common-lisp-compliant)
-; Called directly only while installing dispatch from the loaded image world.
-(definterface fn-di-raw-with-problem
-  :class :program
-  :direct "Image-build declaration lint over the loaded world; no client data or served decision")
-
-; Actual world ABI/guard and creator-EXEC checks at image installation.
-(definterface fn-di-raw-guarded-problem
-  :class :program
-  :direct "Image-build exact guard and stobj ABI validation over the exported ACL2 world")
-(definterface fn-di-raw-guarded-target
-  :class :program
-  :direct "Image-build resolution of actual compiled callback or registered creator EXEC")
-(definterface fn-di-raw-creatorp
-  :class :program
-  :direct "fnn-install-raw-dispatch identifies exact registered startup creators from the validated immutable image world")
-
 ; Serialized BP listener installation and actual owner configuration control.
 (definterface fn-bplc-step
   :class :common-lisp-compliant

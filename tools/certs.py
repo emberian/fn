@@ -59,8 +59,9 @@ worktree that still exists on this machine is still not drawn from.  The
 measurement found nothing that requires this exclusion; it stays because no
 run needs a live tree's pairs when the farm publishes every certified book
 from a snapshot.  ``--require-origin`` keeps the single-origin rule for
-a caller that asks for it.  ``install`` remains the legacy per-book
-inspection and recovery command; native builds use ``install-set``.
+a caller that asks for it.  ``install`` is ``install-partial`` over every
+book here (or the named books' closures): one selection, ACL2's alist
+equality, for every installer; native builds use ``install-set``.
 
 **A run need not find its whole closure cached.**  ``install-partial`` is
 what an incremental certification uses (``certify_books.py --incremental``,
@@ -144,6 +145,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -347,12 +349,33 @@ def kind_is_stated(origin_kind: str | None) -> bool:
     return origin_kind is not None or os.environ.get("FN_CERT_ORIGIN_KIND") in ORIGIN_KINDS
 
 
+# content_hash's memo: one digest per file identity in this process.  The key
+# is (device, inode, size, mtime_ns, ctime_ns): a rewrite or a rename into
+# place changes the inode or ctime, so a hit is the same bytes.  It exists
+# because every cache enumeration (cached_entries -> entry_matches_meta)
+# re-hashed each entry's cert, port and fasl, and install-umbrellas
+# enumerates up to three times per run: on hbox's random-read-bound tank a
+# convergence-time install-umbrellas read 3 GB and ran past 20 minutes
+# (2026-10-07).  It never crosses processes.
+_CONTENT_HASHES: dict[tuple, str] = {}
+
+
 def content_hash(path: Path) -> str:
+    status = os.stat(path)
+    key = (status.st_dev, status.st_ino, status.st_size, status.st_mtime_ns,
+           status.st_ctime_ns)
+    known = _CONTENT_HASHES.get(key)
+    if known is not None:
+        return known
     hasher = hashlib.sha256()
-    with path.open("rb") as source:
+    with Path(path).open("rb") as source:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             hasher.update(chunk)
-    return hasher.hexdigest()
+    digest = hasher.hexdigest()
+    after = os.stat(path)
+    if (after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) == key[1:]:
+        _CONTENT_HASHES[key] = digest  # unchanged while it was read
+    return digest
 
 
 def book_sources(root: Path, names: list[str] | None = None) -> list[Path]:
@@ -745,9 +768,41 @@ PAIR_DB = "pair-facts.sqlite"
 PAIR_IMPORT_CHUNK = 64 * 1024 * 1024
 
 
-def _pair_index(cache: Path):
+PAIR_LOCK = "pair-facts.lock"
+
+
+class PairFactsBusy(Exception):
+    """A certify or install holds the cache's pair facts."""
+
+
+@contextmanager
+def pair_session_lock(cache: Path, exclusive: bool = False, wait: bool = True):
+    """Every user of the pair facts holds this shared for its session (the
+    log, its index); compact-pair-facts holds it exclusive.  A cache that
+    cannot take the lock file (unwritable) runs unlocked, as before."""
+    try:
+        Path(cache).mkdir(parents=True, exist_ok=True)
+        handle = (Path(cache) / PAIR_LOCK).open("a+b")
+    except OSError:
+        if exclusive:
+            raise
+        yield
+        return
+    with handle:
+        mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+        try:
+            fcntl.flock(handle, mode | (0 if wait else fcntl.LOCK_NB))
+        except BlockingIOError:
+            raise PairFactsBusy(f"{Path(cache) / PAIR_LOCK} is held by a certify or install")
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+def _pair_index(cache: Path, path: Path | None = None):
     import sqlite3
-    connection = sqlite3.connect(str(Path(cache) / PAIR_DB), timeout=900,
+    connection = sqlite3.connect(str(path or Path(cache) / PAIR_DB), timeout=900,
                                  isolation_level=None)
     connection.execute("PRAGMA busy_timeout=900000")
     with contextlib.suppress(sqlite3.DatabaseError):
@@ -825,12 +880,114 @@ def _pair_import(connection, log: Path) -> None:
             raise
 
 
+def live_cert_digests(cache: Path) -> set[str]:
+    """The certificate digests some cache entry still holds (its meta.json's
+    cert_sha256); a pair fact about any other certificate can never be
+    asked again."""
+    found: set[str] = set()
+    for meta_path in Path(cache).glob("*/*/meta.json"):
+        with contextlib.suppress(OSError, ValueError, AttributeError):
+            digest = json.loads(meta_path.read_text(encoding="utf-8")).get("cert_sha256")
+            if isinstance(digest, str):
+                found.add(digest)
+    return found
+
+
+def compact_pair_facts(cache: Path, apply: bool = False) -> dict:
+    """Rewrite the pair-facts log without duplicate facts and without facts
+    about certificates no cache entry holds, then rebuild its index from it.
+    A fact is a cached ACL2 verdict, so dropping one costs a re-probe, never
+    a wrong answer.  Dry run unless APPLY.  Refuses (PairFactsBusy) while any
+    certify or install holds the facts: nothing waits and nothing changes.
+    A process running a certs.py older than the session lock may still
+    append to the replaced log; that costs at most those lines."""
+    import sqlite3
+    cache = Path(cache)
+    store, index = cache / PAIR_FACTS, cache / PAIR_DB
+    report = {"cache": str(cache), "applied": False,
+              "log_bytes_before": store.stat().st_size if store.is_file() else 0,
+              "index_bytes_before": sum((cache / (PAIR_DB + suffix)).stat().st_size
+                                        for suffix in ("", "-wal", "-shm")
+                                        if (cache / (PAIR_DB + suffix)).is_file()),
+              "lines_before": 0, "kept": 0, "duplicates": 0, "dead": 0, "unreadable": 0}
+    with pair_session_lock(cache, exclusive=True, wait=False):
+        live = live_cert_digests(cache)
+        seen: set[tuple[str, str, str]] = set()
+        temporary = cache / (PAIR_FACTS + ".compact")
+        out = temporary.open("wb") if apply else None
+        kept_bytes = 0
+        try:
+            if store.is_file():
+                with store.open("rb") as handle:
+                    for raw in handle:
+                        report["lines_before"] += 1
+                        try:
+                            fact = json.loads(raw)
+                            key = (fact["acl2"], fact["parent"], fact["child"])
+                            if not all(isinstance(x, str) for x in key):
+                                raise TypeError
+                        except (ValueError, KeyError, TypeError):
+                            report["unreadable"] += 1
+                            continue
+                        if key in seen:
+                            report["duplicates"] += 1
+                            continue
+                        if key[1] not in live or key[2] not in live:
+                            report["dead"] += 1
+                            continue
+                        seen.add(key)
+                        line = raw if raw.endswith(b"\n") else raw + b"\n"
+                        kept_bytes += len(line)
+                        report["kept"] += 1
+                        if out is not None:
+                            out.write(line)
+            if out is not None:
+                out.flush()
+                os.fsync(out.fileno())
+        finally:
+            if out is not None:
+                out.close()
+        report["log_bytes_after"] = kept_bytes
+        if not apply:
+            return report
+        built = cache / (PAIR_DB + ".compact")
+        built.unlink(missing_ok=True)
+        connection = _pair_index(cache, built)
+        try:
+            data = temporary.read_bytes()
+            provers: dict[str, int] = {}
+            connection.execute("BEGIN IMMEDIATE")
+            connection.executemany("INSERT OR IGNORE INTO facts VALUES (?, ?, ?, ?, ?)",
+                                   _pair_rows(connection, data, provers))
+            connection.execute("INSERT OR REPLACE INTO meta VALUES ('log_offset', ?)",
+                               (str(len(data)),))
+            connection.execute("COMMIT")
+            with contextlib.suppress(sqlite3.Error):
+                connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        finally:
+            connection.close()
+        for suffix in ("-wal", "-shm"):
+            (cache / (PAIR_DB + ".compact" + suffix)).unlink(missing_ok=True)
+        os.replace(temporary, store)
+        os.replace(built, index)
+        for suffix in ("-wal", "-shm"):
+            (cache / (PAIR_DB + suffix)).unlink(missing_ok=True)
+        report["applied"] = True
+        report["index_bytes_after"] = index.stat().st_size
+    return report
+
+
 def memoized_pair_checker(cache: Path, checker=None):
     """CHECKER (default the ACL2 probe) with its verdicts kept in CACHE."""
     checker = checker or cert_alists.acl2_certificate_pairs
 
     def check(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path,
               root: Path) -> dict[tuple[int, int], tuple[bool, bool]]:
+        with pair_session_lock(cache):
+            return locked_check(paths, pairs, acl2, root)
+
+    def locked_check(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path,
+                     root: Path) -> dict[tuple[int, int], tuple[bool, bool]]:
         import sqlite3
         store = Path(cache) / PAIR_FACTS
         digests = [content_hash(Path(path)) if Path(path).is_file() else None
@@ -1214,6 +1371,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     source bytes; when ``acl2`` is provided, the shared selector also checks
     actual certificate post-alists. Missing toolchain metadata remains visible
     only when no toolchain was requested; deployment supplies its identity.
+
     """
     needed = required_closure(root, roots, dependencies_only)
     required = tuple(sorted(needed))
@@ -1351,12 +1509,18 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          dependencies_only: bool = False,
                          acl2: Path | None = None,
                          pair_checker=None,
+                         candidate: ArtifactSet | None = None,
                          _attempt: int = 0) -> Report:
     """Install one complete set: one origin when one suffices, else composed.
 
     The selected set's actual ACL2 certificate alists must agree, including
     when all pairs came from one origin. ``require_origin`` constrains the
     origin but does not bypass this compatibility check.
+
+    CANDIDATE installs exactly that set, as `artifact_sets` enumerated and
+    checked it, instead of enumerating again: a caller that listed the sets
+    and chose one gets that one, not whatever a second enumeration over a
+    cache other trees publish into finds (proof_artifacts.acquire).
     """
     rejected = set(reject)
     if acl2 is None:
@@ -1373,9 +1537,10 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         report.toolchain_identity = stable_identity({
             "empty": True, "toolchain_identity": toolchain_identity})
         return report
-    candidates = [one for one in artifact_sets(
+    candidates = ([candidate] if candidate is not None else artifact_sets(
                       root, cache, roots, toolchain_identity,
-                      dependencies_only, acl2, pair_checker)
+                      dependencies_only, acl2, pair_checker))
+    candidates = [one for one in candidates
                   if one.identity not in rejected
                   and (require_origin is None
                        or one.origin_root == require_origin)]
@@ -1432,7 +1597,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         return install_artifact_set(root, cache, roots, toolchain_identity,
                                     reject, require_origin, purge_on_miss,
                                     dependencies_only, acl2, pair_checker,
-                                    _attempt + 1)
+                                    candidate=candidate, _attempt=_attempt + 1)
     return report
 
 
@@ -1652,6 +1817,7 @@ def install_umbrellas(root: Path, cache: Path, acl2: Path,
         if candidate and candidate not in tries:
             tries.append(candidate)
     lines: list[str] = []
+    last_missing: list[str] = []
     for candidate in tries:
         try:
             report = installer(candidate)
@@ -1660,9 +1826,29 @@ def install_umbrellas(root: Path, cache: Path, acl2: Path,
             continue
         if report.artifact_set is not None:
             return candidate, lines + [f"umbrellas installed as one set: {' '.join(candidate)}"]
-        lines.append(f"umbrellas {' '.join(candidate)}: no coherent set in {cache}")
+        missing = list(getattr(report, "uncached", None) or [])
+        lines.append(f"umbrellas {' '.join(candidate)}: no coherent set in {cache}"
+                     + (f"; {umbrella_miss(candidate, missing)}" if missing else ""))
+        last_missing = missing
+    cause = umbrella_miss(roots, last_missing) if tries and last_missing else "cause not reported"
     return [], lines + ["umbrellas: NOT installed as one set (include-book of the "
-                        "umbrella may fail on a certificate here)"]
+                        f"umbrella may fail on a certificate here): {cause}"]
+
+
+def umbrella_miss(candidate: list[str], missing: list[str]) -> str:
+    """Name what the cache lacks: the umbrellas' own certificates for these
+    source bytes (they are certified by the image build, not before), or
+    dependencies that have no usable certificate here."""
+    own = [name for name in candidate if name in missing]
+    deps = [name for name in missing if name not in candidate]
+    parts = []
+    if own:
+        parts.append(f"no usable certificate for the umbrella itself: {' '.join(own)}")
+    if deps:
+        shown = " ".join(deps[:8]) + (f" (+{len(deps) - 8} more)" if len(deps) > 8 else "")
+        parts.append(f"{len(deps)} dependenc{'y' if len(deps) == 1 else 'ies'} "
+                     f"without a usable certificate: {shown}")
+    return "; ".join(parts)
 
 
 @scoped_closures
@@ -1716,16 +1902,24 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
         if usable and not compiled and name not in recertify:
             report.uncompiled.append(name)
         usable = compiled
-        own = [entry for entry in usable if entry[1].get("origin_root") == target]
         if name in recertify:
             options[name] = []
             continue
-        options[name] = ((own[:1] + sorted(
-            [entry for entry in usable if entry not in own],
-            key=lambda entry: (str(entry[1].get("published_at", "")), str(entry[0])),
-            reverse=True)) if own else sorted(
-                usable, key=lambda entry: (str(entry[1].get("published_at", "")),
-                                           str(entry[0])), reverse=True))
+        # The search starts each book at the pair already resident here, by
+        # content (the certificate this tree's own certify or last install
+        # left), then this tree's own entry, then the newest: a newer pair
+        # published from another tree must not displace the one the resident
+        # parents were certified over (acquire 1159/1173, 2026-10-07).
+        resident = root / f"{name}.cert"
+        digest = content_hash(resident) if resident.is_file() else None
+        newest_first = sorted(
+            usable, key=lambda entry: (str(entry[1].get("published_at", "")),
+                                       str(entry[0])), reverse=True)
+        options[name] = sorted(
+            newest_first,
+            key=lambda entry: (digest is None
+                               or content_hash(entry[0] / "book.cert") != digest,
+                               entry[1].get("origin_root") != target))
     if acl2 is None:
         raise ValueError("install-partial needs an ACL2 executable for exact "
                          "certificate-alist compatibility")
@@ -2200,56 +2394,64 @@ def write_text_atomic(target: Path, value: str) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
-    """Copy in every cached pair whose closure key matches a book here."""
-    report = Report(action="install", cache=str(cache))
+def install(root: Path, cache: Path, names: list[str] | None = None,
+            acl2: Path | None = None, toolchain_identity: str | None = None,
+            pair_checker=None) -> Report:
+    """Install every book of NAMES' closure (default: every book here) whose
+    cached pair agrees with the pairs installed under it.
+
+    **The criterion is ACL2's own, not an origin label.**  A book's
+    certificate is installable iff, for every dependency, the entry its
+    post-alist requires (familiar name, certificate annotations, book-hash)
+    equals that dependency's installed certificate's own entry: exactly what
+    include-book checks (``include-book-alist-subsetp``; measured 2026-09-23,
+    see the module docstring, it ignores the full path).  So a pair
+    certified in this tree over dependencies installed from other trees
+    installs when the hashes agree (train 10, 2026-10-07: the one-origin rule
+    deleted such a fresh books/wire-export pair), and a pair over a different
+    version of a dependency does not, whatever its origin.  Origins are
+    provenance only.  This is ``install_partial``'s selection
+    (``compatible_partial_choices`` over ``cert_alists``), one implementation
+    for every installer; a book left out loses any local pair, so the next
+    certify step certifies it.
+
+    ACL2 is required (``--acl2`` or FN_ACL2): without it there is no way to
+    compare certificate alists, and installing on anything weaker is the
+    proxy this replaced.
+    """
+    if acl2 is None:
+        raise ValueError("install needs an ACL2 executable (--acl2 or FN_ACL2) to "
+                         "compare certificate alists; nothing installed")
+    if toolchain_identity is None:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import acl2_toolchain
+        found = acl2_toolchain.fingerprint(Path(acl2))
+        if not found.qualified or found.identity is None:
+            raise ValueError(f"install: unqualified ACL2 launcher {acl2}: {found.reason}")
+        toolchain_identity = found.identity
+    roots, unreadable = [], []
     for source in book_sources(root, names):
         if not source.is_file():
             continue
-        report.books += 1
         name = book_name(root, source)
         try:
-            entries = book_entries(root, cache, name)
+            closure(root, name)
         except UnreadableBook as error:
-            report.unreadable.append(f"{name}: {error}")
+            unreadable.append(f"{name}: {error}")
             continue
-        cert = source.with_suffix(".cert")
-        chosen = choose_entry(entries, str(root.resolve()))
-        if chosen is None:
-            if entries:
-                # Every cached pair belongs to a worktree that still exists
-                # here.  Installing one would make this worktree include that
-                # worktree's books.  Remove a local pair that is provably one
-                # of them, so a tree poisoned by an earlier install recovers.
-                report.foreign_local.append(name)
-                if cert.is_file() and any(
-                        content_hash(cert) == content_hash(entry / "book.cert")
-                        for entry, _ in entries):
-                    cert.unlink()
-                    source.with_suffix(".port").unlink(missing_ok=True)
-                    source.with_suffix(".fasl").unlink(missing_ok=True)
-                    report.removed_foreign += 1
-            else:
-                report.uncached.append(name)
-            continue
-        port = source.with_suffix(".port")
-        for attempt in range(ENTRY_ATTEMPTS):
-            directory, meta = chosen
-            try:
-                moved = install_entry(directory, meta, cert, port, report)
-                break
-            except EntryChanged:
-                if attempt == ENTRY_ATTEMPTS - 1:
-                    raise
-                entry_backoff(attempt)
-                chosen = choose_entry(book_entries(root, cache, name),
-                                      str(root.resolve()))
-                if chosen is None:
-                    raise EntryChanged(f"cache entry vanished for {name}")
-        if moved:
-            report.installed += 1
-        else:
-            report.kept += 1
+        roots.append(name)
+    report = install_partial(root, cache, roots, toolchain_identity, Path(acl2),
+                             pair_checker)
+    report.action = "install"
+    report.unreadable.extend(unreadable)
+    # Diagnosis, not a decision: a book left out whose only cached pairs were
+    # made in a worktree that still exists here (usable_origin's rule).
+    target = str(root.resolve())
+    report.foreign_local = [name for name in report.uncached
+                            if any(not usable_origin(meta, target)
+                                   for _, meta in book_entries(root, cache, name))
+                            and not any(usable_origin(meta, target)
+                                        for _, meta in book_entries(root, cache, name))]
     return report
 
 
@@ -2482,6 +2684,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("publish", "install", "install-set",
                                            "install-partial", "install-umbrellas", "status", "prune",
+                                           "compact-pair-facts",
                                            "rekey"))
     parser.add_argument("books", nargs="*", default=None,
                         help="repository-relative book names without .lisp "
@@ -2518,6 +2721,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--keep-toolchain", default=None, metavar="ID[,ID...]",
                         help="for prune: the toolchain identities whose entries stay "
                              "(tools/acl2_toolchain.py identity LAUNCHER)")
+    parser.add_argument("--apply", action="store_true",
+                        help="for compact-pair-facts: rewrite the log and rebuild its "
+                             "index (default: dry run, sizes only)")
     parser.add_argument("--dry-run", action="store_true",
                         help="for prune: report what would be removed")
     parser.add_argument("--list-all", action="store_true",
@@ -2537,7 +2743,13 @@ def main(argv: list[str] | None = None) -> int:
             mirror(cache, arguments.remote)
             report.mirrored = remote_target(arguments.remote)
     elif arguments.action == "install":
-        report = install(root, cache, names)
+        if not arguments.acl2:
+            parser.error("install needs --acl2 (or FN_ACL2) to compare certificate alists")
+        try:
+            report = install(root, cache, names, Path(arguments.acl2).resolve(),
+                             arguments.toolchain_identity)
+        except ValueError as error:
+            parser.error(str(error))
     elif arguments.action == "install-set":
         if not names:
             parser.error("install-set needs one or more root books")
@@ -2578,6 +2790,22 @@ def main(argv: list[str] | None = None) -> int:
         report = prune(cache, keep, dry_run=arguments.dry_run)
         if arguments.list_all:
             report.listed = len(report.unreadable)
+    elif arguments.action == "compact-pair-facts":
+        try:
+            facts = compact_pair_facts(cache, apply=arguments.apply)
+        except PairFactsBusy as error:
+            print(f"compact-pair-facts: REFUSED, nothing changed: {error}")
+            return 3
+        mode = "applied" if facts["applied"] else "dry run (--apply to write)"
+        print(f"compact-pair-facts: {mode}; cache {facts['cache']}")
+        print(f"  log {facts['log_bytes_before']} -> {facts['log_bytes_after']} bytes; "
+              f"lines {facts['lines_before']} -> {facts['kept']} "
+              f"(duplicates {facts['duplicates']}, about removed certificates {facts['dead']}, "
+              f"unreadable {facts['unreadable']})")
+        print(f"  index {facts['index_bytes_before']} bytes"
+              + (f" -> {facts['index_bytes_after']} bytes (rebuilt)" if facts["applied"]
+                 else " (rebuilt from the kept log on --apply)"))
+        return 0
     elif arguments.action == "rekey":
         report = rekey(root, cache, names)
     else:

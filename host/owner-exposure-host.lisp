@@ -2,6 +2,11 @@
 ; certified host book (moved from host/owner-host.lisp, which includes it, so
 ; that host/index-reader-request-host names what it calls).
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach")
 (include-book "../books/owner-state-accessors")
 (include-book "../books/owner-connection-state")
 (include-book "../books/owner-connection-callbacks")

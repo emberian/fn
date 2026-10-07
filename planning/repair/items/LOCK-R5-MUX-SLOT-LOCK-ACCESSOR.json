@@ -1,0 +1,17 @@
+{
+ "detail": "Key pair (NEW at 61ae00920): R5|fnn-mux-reserve-once|unresolved:lock object (fnn-owner-service-mux-slot-lock) and R5|fnn-mux-reserve-once|?(fnn-owner-service-mux-slot-lock)->M (edge to the loop lock M via fnn-mux-slot-observation, mux.lisp:1819-1824, called under the slot lock). MODEL GAP, not a host defect: the lock object is a defstruct accessor applied to the service, which the checker does not resolve to a named lock. Order is slot lock then loop lock M; no path takes M then the slot lock. Same family as the baselined fnn-mux-reserve, fnn-mux-slot-signal and fnn-mux-unreserve rows.",
+ "file": "tools/lock_discipline_check.py",
+ "fix": "Resolve struct-accessor lock objects through the declared struct slot and declare slot lock -> M in tools/lock_discipline_contracts.json once the checker verifies it; do not hand-add baseline rows.",
+ "id": "LOCK-R5-MUX-SLOT-LOCK-ACCESSOR",
+ "natives_owed": [],
+ "notes": [
+  "Fixed at cedf7f26c: locks[XMUXSLOT].struct_slot, verified by verify_struct_slot_locks (accessor is a defstruct slot accessor in the row's match, initform make-mutex, no constructor passes the keyword, never assigned); edge XMUXSLOT->M declared. Both keys gone from --check, none added. Baseline rows now stale (owed to the coordinator --lower-stale): R5|fnn-mux-reserve|unresolved:lock object (fnn-owner-service-mux-slot-lock), R5|fnn-mux-reserve|?(fnn-owner-service-mux-slot-lock)->M, R5|fnn-mux-slot-signal|unresolved:..., R5|fnn-mux-unreserve|unresolved:.... Unit tests R5StructSlotLock. natives_owed: none (checker only)."
+ ],
+ "owner": "deputy-C",
+ "severity": "low",
+ "sha": "cedf7f26c",
+ "source": "lock-triage-sn-lock-20261007",
+ "state": "ready",
+ "title": "Checker cannot resolve the struct-accessor lock object (fnn-owner-service-mux-slot-lock service) (R5 model gap)",
+ "updated": "2026-10-07T06:12:55Z"
+}

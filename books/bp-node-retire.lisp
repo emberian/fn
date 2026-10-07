@@ -18,6 +18,7 @@
 ; the removal.
 (in-package "ACL2")
 (include-book "bp-node-rotation")
+(include-book "def-loop")
 
 (defun fn-bpnr-stage-prefix ()
   (declare (xargs :guard t))
@@ -47,37 +48,13 @@
 ; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
 ; control-stack frame per element of the journal root's listing (data, not a bound).  The :logic is
 ; the recursion, unchanged; the :exec is a loop, equal by fn-bpnr-retired-names-loop-is-rev-onto.
-(defun fn-bpnr-retired-names-loop (names selected acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (atom names)
-      (fn-ag-rev-onto acc nil)
-    (fn-bpnr-retired-names-loop
-     (cdr names) selected
-     (if (fn-bpnr-retired-namep (car names) selected) (cons (car names) acc) acc))))
-
-(defun fn-bpnr-retired-names (names selected)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (atom names)
-                  nil
-                (if (fn-bpnr-retired-namep (car names) selected)
-                    (cons (car names) (fn-bpnr-retired-names (cdr names) selected))
-                  (fn-bpnr-retired-names (cdr names) selected)))
-       :exec (fn-bpnr-retired-names-loop names selected nil)))
-
 (verify-guards fn-bpnr-selection-name)
 (verify-guards fn-bpnr-retired-namep)
-(verify-guards fn-bpnr-retired-names-loop)
 
-(defthm fn-bpnr-retired-names-loop-is-rev-onto
-  (equal (fn-bpnr-retired-names-loop names selected acc)
-         (fn-ag-rev-onto acc (fn-bpnr-retired-names names selected)))
-  :hints (("Goal" :induct (fn-bpnr-retired-names-loop names selected acc)
-                  :in-theory (union-theories
-                              '(fn-bpnr-retired-names-loop fn-bpnr-retired-names fn-ag-rev-onto atom not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bpnr-retired-names)
-
+(def-loop fn-bpnr-retired-names (names selected)
+  :shape :map :over names :elt n
+  :keep (fn-bpnr-retired-namep n selected)
+  :body n)
 ; The removal program.  LISTINGS maps a retired directory to the entry
 ; names the host observed in it (bounded by the namespace's work bound); a
 ; retired name with no listing is a root file.  A directory's files go
@@ -85,42 +62,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpnr-retire-dir-ops-loop (dir files acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (atom files)
-      (revappend acc (list (list :rmdir dir)))
-    (fn-bpnr-retire-dir-ops-loop dir
-                                 (cdr files)
-                                 (cons (list :unlink-in dir (car files)) acc))))
-
-(defun fn-bpnr-retire-dir-ops (dir files)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom files)
-           (list (list :rmdir dir))
-         (cons (list :unlink-in dir (car files))
-               (fn-bpnr-retire-dir-ops dir (cdr files))))
-       :exec (fn-bpnr-retire-dir-ops-loop dir files nil)))
-
-(local
- (defthm fn-bpnr-retire-dir-ops-loop-is-revappend
-   (equal (fn-bpnr-retire-dir-ops-loop dir files acc)
-          (revappend acc (fn-bpnr-retire-dir-ops dir files)))
-   :hints (("Goal" :induct (fn-bpnr-retire-dir-ops-loop dir files acc)
-                   :in-theory (union-theories '(fn-bpnr-retire-dir-ops-loop fn-bpnr-retire-dir-ops revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpnr-retire-dir-ops-loop)
-
-(verify-guards fn-bpnr-retire-dir-ops
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpnr-retire-dir-ops)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpnr-retire-dir-ops-loop-is-revappend (acc nil))))))
-
+(def-loop fn-bpnr-retire-dir-ops (dir files)
+  :shape :map :over files :elt f
+  :tail (list (list :rmdir dir))
+  :body (list :unlink-in dir f))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;

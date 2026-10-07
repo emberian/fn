@@ -171,7 +171,8 @@
                 fn-owner-feed-journal-prefix-size fn-owner-feed-journal-scan
                 fn-owner-feed-lost fn-owner-feed-peers fn-owner-feed-port
                 fn-owner-feed-reconcile-apply fn-owner-feed-reconcile-next
-                fn-owner-feed-reply-chunk fn-owner-feed-restart
+                fn-owner-feed-reply-article fn-owner-feed-reply-chunk
+                fn-owner-feed-reply-sync fn-owner-feed-restart
                 fn-owner-feed-security fn-owner-feed-tick
                 fn-owner-feed-tls-established fn-owner-finish
                 fn-owner-finish-identity fn-owner-finish-submission
@@ -231,6 +232,7 @@
                 fn-owner-runtime-operation-binding-install-internal
                 fn-owner-sasl-context fn-owner-sco-capture fn-owner-sco-due
                 fn-owner-sco-note-base-payloads fn-owner-sco-note-durable
+                fn-owner-sco-publication-abandoned
                 fn-owner-sco-publication-done fn-owner-sco-request
                 fn-owner-served-carried-word fn-owner-served-post-word
                 fn-owner-set-auth-config fn-owner-shed-outcome

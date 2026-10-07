@@ -9211,7 +9211,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lg-recover-program-establishes-the-relation"
+          "name": "fn-lgrc-attempt-makes-the-read-prefix-durable"
         },
         {
           "kind": "theorem",
@@ -9742,19 +9742,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lg-open-suffix-keeps-the-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+          "name": "fn-lg-open-program-keeps-the-relation"
         },
         {
           "kind": "theorem",
           "name": "fn-lgob-duplicate-segment-fence-is-identity"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-recovered-segment-fence-is-identity"
         },
         {
           "kind": "theorem",
@@ -9786,11 +9778,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgob-recovered-state-meets-the-segment-hypothesis"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-three-barrier-open-after-recovery-is-the-five"
+          "name": "fn-lgob-three-barrier-open-after-the-copy-is-the-five"
         },
         {
           "kind": "theorem",
@@ -9802,11 +9790,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgob-two-barriers-without-root-lose-a-checkpointed-history"
+          "name": "fn-lgrc-dropping-open-loses-a-checkpointed-history"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgob-three-barriers-keep-the-checkpoint"
+          "name": "fn-lgrc-open-unlinks-no-segment"
         },
         {
           "kind": "theorem",
@@ -9817,13 +9805,7 @@
           "name": "fn-lgob-three-barriers-keep-the-imported-store"
         },
         {
-          "name": "fn-lg-run-of-append-when-complete"
-        },
-        {
-          "name": "fn-lg-full-length-run-ending-in-a-cut-is-complete"
-        },
-        {
-          "name": "fn-lg-open-program-keeps-the-relation-at-every-cut"
+          "name": "fn-lgrc-open-keeps-the-relation-at-every-cut"
         }
       ]
     },
@@ -13112,11 +13094,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-cfg-rows-with-key-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-peer-names-loop-is-rev-onto"
+          "name": "fn-dl-map-loop-is-revappend"
         }
       ]
     },
@@ -14022,11 +14000,15 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-open-run-acknowledges-only-recoverable-records"
+          "name": "fn-lgrc-acknowledge-from-the-copy"
         },
         {
           "kind": "theorem",
           "name": "fn-lgu-host-kernel-acknowledges-only-recoverable-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgu-acknowledge-acknowledges-only-recoverable-records"
         },
         {
           "kind": "theorem",
@@ -14046,7 +14028,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-recover-program-establishes-the-relation"
+          "name": "fn-lgrc-attempt-makes-the-read-prefix-durable"
         }
       ]
     },
@@ -15655,11 +15637,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-auth-account-creds-loop-is-rev-onto"
+          "name": "fn-dl-map-loop-is-revappend"
         },
         {
           "kind": "theorem",
-          "name": "fn-auth-principal-peer-count-loop-is-plus"
+          "name": "fn-dl-sum-loop-is-plus"
         },
         {
           "kind": "theorem",
@@ -15667,27 +15649,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpaj-boundary-slot-count-loop-is-plus"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-enrolled-source-names-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-listener-port-list-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-listener-rows-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-loopback-candidates-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-record-for-msgid-loop-is-rev-onto"
+          "name": "fn-dl-foldr-loop-is-foldr"
         },
         {
           "kind": "theorem",
@@ -15695,35 +15657,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpfw-head-cell-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-append-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-close-contact-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-jobs-octets-loop-is-plus"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-ready-peers-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-replace-job-loop-is-rev-onto"
+          "name": "fn-dl-map-skip-loop-is-revappend"
         },
         {
           "kind": "theorem",
           "name": "fn-bpn-report-apply-delete-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-resume-jobs-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15747,15 +15685,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnf-held-octets-loop-is-plus"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnf-zero-family-keys-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnjc-table-with-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15767,7 +15697,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnp-forward-plan-rows-loop-is-rev-onto"
+          "name": "fn-dl-step-loop-is-revappend"
         },
         {
           "kind": "theorem",
@@ -15775,15 +15705,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnp-forward-unrouted-rows-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnp-prune-waits-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-remove-peer-session-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15799,19 +15721,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnr-chars-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnr-codes-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnr-enc-go-is-enc"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnr-retired-names-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15827,19 +15737,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bprt-contactable-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bprt-least-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bprt-live-routes-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bprt-matching-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15847,35 +15745,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bprt-slot-values-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bprt-strip-last-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cev-scope-words-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-access-table-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-closed-filter-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-moderator-logins-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-moderator-rows-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-name-line-octets-loop-is-plus"
         },
         {
           "kind": "theorem",
@@ -15887,71 +15757,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cfg-row-logins-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-row-replace-key-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-row-upsert-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-rows-deleting-account-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-rows-without-access-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-rows-without-binding-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-rows-without-consumer-bind-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-rows-without-key-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-rows-without-members-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-rows-without-moderation-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-rows-without-pair-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cll-key-values-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cnode-extend-nexts-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cnx-walk-range-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cp-remove-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ctl-grant-scope-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cu-plans-of-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15959,35 +15765,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-exp-cidrs-of-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-fc-table-remove-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-feed-backoff-loop-is-delay"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-fps-live-names-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-fps-other-slot-rows-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gac-servable-octets-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gac-unpostable-octets-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-gidx-put-all-loop-of-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15995,35 +15773,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-intern-events-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ipp-codes-loop-is-rev-onto"
+          "name": "fn-dl-fold-loop-is-revappend"
         },
         {
           "kind": "theorem",
           "name": "fn-ipp-split-at-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lb-chunks-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lb-config-bindings-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lb-pairs-deltas-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lb-sync-binds-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lb-sync-unbinds-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16039,23 +15793,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgw-unpack-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lzr-intern-events-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lzr-nats-text-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-mod-hidden-queues-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-mod-session-entries-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16063,31 +15801,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-native-auth-admin-insert-credential-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-auth-admin-public-report-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-auth-admin-rebind-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-auth-admin-serialize-creds-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-auth-admin-sort-credentials-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-auth-admin-upsert-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-native-auth-butlast-two-loop-is-rev-onto"
+          "name": "fn-dl-concat-loop-is-revappend"
         },
         {
           "kind": "theorem",
@@ -16095,43 +15809,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ncfg-listener-plan-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nls-connection-lines-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nntp-motd-lines-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-nntp-xpat-join-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oag-descs-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oag-group-facts-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oag-group-octets-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oag-login-octets-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oag-moderation-entries-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ores-sealed-plan-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16151,51 +15829,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-own-feed-distribution-targets-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-forget-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-intent-records-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-names-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-new-targets-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cfg-peer-names-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-own-feed-port-restart-fold-loop-is-fold"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-put-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-resolution-records-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-restart-all-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-scope-all-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-feed-targets-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16203,31 +15837,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-own-replay-facts-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pa-carried-sources-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pcb-slot-superseded-rows-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-pull-pending-envelope-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pull-plans-of-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rcl-cursors-at-zero-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sched-pull-put-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16255,10 +15865,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-smid-codes-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-store-codes-from-groups-loop-of-rev-onto"
         },
         {
@@ -16279,15 +15885,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sxp-chars-octets-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-tcl-drive-loop-is-drive"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-take-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16303,27 +15901,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-wildmat-false-row-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wildmat-step-character-aux-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wildmat-step-star-aux-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-wr-group-rows-loop-of-rev-onto"
         },
         {
           "kind": "theorem",
           "name": "fn-wrq-join-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wss-active-rows-loop-is-rev-onto"
         },
         {
           "kind": "theorem",

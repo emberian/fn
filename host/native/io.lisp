@@ -95,6 +95,12 @@
 ;; 1, like its parent), and the owner relays its kind as :storage-failed so
 ;; the wire names the reason (books/nntp-post.lisp fn-post-store-refusal-line).
 (define-condition fnn-store-io-refusal (fnn-store-error) ())
+;; RL-02: the history image of a checkpoint publication refused by name
+;; (fnn-history-image-build, fnn-history-image-row-run).  VERDICT is ACL2's
+;; word, which books/owner-publication-lifecycle.lisp fn-opl-classify reads
+;; (a pending suffix waits for the history to advance; any other blocks).
+(define-condition fnn-history-image-refusal (fnn-store-io-refusal)
+  ((verdict :initarg :verdict :initform nil :reader fnn-history-image-refusal-verdict)))
 (define-condition fnn-usage-error (fnn-store-error) ())
 ;; A Store open ACL2 refused by name (books/store-open-pre-c1.lisp): a
 ;; refusal (exit 1) that recovery passes through unchanged, never the
@@ -141,6 +147,17 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
   (error 'fnn-store-indeterminate :message (apply #'format nil control args)))
 (defun fnn-os-fail (errno &optional path)
   (error 'fnn-os-error :errno errno :path path))
+
+(defmacro fnn-guarded-by (var lock)
+  "Declare that every access to the global VAR holds LOCK: a lock global
+(*fnn-extent-lock*) or the form that reaches a service's lock
+((fnn-owner-service-lock) for the owner mutex).  The contract names its
+variable, so moving a defvar cannot re-target it, as a `guarded-by:' comment
+bound by position did (CONVERGE-2 row 31).  tools/lock_discipline_check.py
+reads these forms and refuses a comment contract; at load time the form
+expands to nothing."
+  (declare (ignore var lock))
+  nil)
 
 ;;; Shared observation-only primitive declaration precedes extent compilation.
 ;;; Its collector/runtime functions are installed by owner before workers run.
@@ -2891,6 +2908,15 @@ in *fnn-checkpoint-load-io-error*."
                (progn (fnn-octets-release)
                       (values (if (equal answer '(:refused :arena)) :arena :refused) 0))))))))
 
+(defvar *fnn-extent-image-id* nil
+  "The file id the history image was registered under at the open
+(host/native/io.lisp fnn-state-checkpoint-adopt-image, fnn-extent-register-at):
+fn-pgs-fill-frame preads it OFF the extent lock for the process's life, so
+it is never retired -- a CHECKED exclusion (fnn-owner-release-extents faults
+by name if it ever enters the retired set), the file resource's :excluded
+root history-image (books/page-read-direct.lisp, def-holder fn-pio-file-holds;
+c05 finding F1).")
+
 (defun fnn-state-checkpoint-adopt-image (store s)
   "The checkpoint's history image adopted (host/store-node-host.lisp
 fn-store-sco-image-open over the live fn-hrecs$c: the binding checked against
@@ -2904,7 +2930,7 @@ checked; the last row compared with the checkpoint's last record): (values
     (let* ((file (fnn-extent-register-at path base))
            (answer (progn
                      ;; the image's id is excluded from retirement for the
-                     ;; process's life (fn-pgs-fill-realize preads it off the
+                     ;; process's life (fn-pgs-fill-frame preads it off the
                      ;; lock): fnn-owner-release-extents checks it
                      (setq *fnn-extent-image-id* file)
                      (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
@@ -3038,6 +3064,21 @@ and names both."
             (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BUDGET_TEST (expected a natural)"))
           value)
       budget)))
+
+(defun fnn-checkpoint-image-refusal-test (answer)
+  "Developer-only FN_NATIVE_CHECKPOINT_IMAGE_REFUSAL=WORD, a labelled
+MUTATION witness of RL-02 (tests/test_native_checkpoint_abandon.py): the
+history image's finished ANSWER with its verdict replaced by (:refused WORD),
+as fn-his-build-finish answers a refusal by name, so the publication's
+abandonment path runs on a real store.  WORD is pending-suffix (the dependency
+class) or image-count (the blocked class).  Else ANSWER."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_CHECKPOINT_IMAGE_REFUSAL")))
+    (cond ((null raw) answer)
+          ((not (member raw '("pending-suffix" "image-count") :test #'string=))
+           (fnn-fault "invalid FN_NATIVE_CHECKPOINT_IMAGE_REFUSAL (expected pending-suffix or image-count)"))
+          ((consp answer)
+           (cons (list :refused (intern (string-upcase raw) :keyword)) (rest answer)))
+          (t answer))))
 
 (defun fnn-state-checkpoint-test-fault ()
   "Developer-only FN_NATIVE_STATE_CHECKPOINT_FAULT=MODEL-CUT:eio|kill selector
@@ -3293,7 +3334,12 @@ file is no cap)."
     cap))
 
 (defun fnn-disk-free-octets (store)
-  (let* ((free (fnn-statvfs-free-octets (fnn-store-root store)))
+  (fnn-disk-free-octets-at (fnn-store-root store)))
+
+(defun fnn-disk-free-octets-at (path)
+  "The free octets of PATH's filesystem (statvfs), the developer cap
+FN_NATIVE_DISK_FREE applied; NIL when unobserved."
+  (let* ((free (fnn-statvfs-free-octets path))
          (raw (fnn-developer-selector "FN_NATIVE_DISK_FREE"))
          (cap (and raw (fnn-disk-free-cap-text raw))))
     (if (and free cap)
@@ -3756,7 +3802,8 @@ Growth is explicit and remains within the publication's prepaid image budget."
         (when (eq verdict :done) (return t))
         (let ((grow (and (consp verdict) (eq (car verdict) :grow-image))))
           (unless (or (eq verdict :yield) grow)
-            (fnn-refuse-io "history image row refused by name: ~a" verdict))
+            (error 'fnn-history-image-refusal :verdict verdict
+                   :message (format nil "history image row refused by name: ~a" verdict)))
           (fnn-checkpoint-yield "history-pages" ordinal)
           (sb-thread:thread-yield)
           (setq answer (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step)
@@ -3778,15 +3825,17 @@ WRITES); with no position, (values POSITION NIL): no binding, no image."
                           (fnn-checkpoint-yield "history" ordinal)
                           (sb-thread:thread-yield))
                         (fnn-history-image-row-run ev ordinal))
-                (fnn-call 'fn-his-build-finish
-                          (fnn-core 'fn-his-build-source-count records)
-                          *fnn-checkpoint-image-custody*))))
+                (fnn-checkpoint-image-refusal-test
+                 (fnn-call 'fn-his-build-finish
+                           (fnn-core 'fn-his-build-source-count records)
+                           *fnn-checkpoint-image-custody*)))))
         (unless (and (consp answer) (>= (length answer) 3))
           (fnn-fault "ACL2 returned a malformed history image"))
         (destructuring-bind (verdict rec writes count &rest ignored) answer
           (declare (ignore ignored))
           (unless (eq verdict :ok)
-            (fnn-refuse-io "history image refused by name: ~a" verdict))
+            (error 'fnn-history-image-refusal :verdict verdict
+                   :message (format nil "history image refused by name: ~a" verdict)))
           (let ((binding (fnn-core 'fn-his-binding node salt count (second position) rec))
                 (np (fnn-core 'fn-his-np writes 0)))
             (unless (and (integerp np) (> np 0))
@@ -5077,19 +5126,27 @@ caller does not know."
               :exists
             (fnn-os-fail errno new)))))))
 
+(defvar *fnn-close-debts-lock* (sb-thread:make-mutex :name "fn close debts"))
+
 (defvar *fnn-publication-close-debts* nil
   "Publication lock descriptor identities with unobserved physical return.
 These records retain evidence; they never authorize retry of a consumed fd.")
+(fnn-guarded-by *fnn-publication-close-debts* *fnn-close-debts-lock*)
 
 (defvar *fnn-publication-lock-roots* nil
   "Roots of locally owned publication lock descriptors until physical return.")
 
+(defun fnn-publication-close-debts-p ()
+  (sb-thread:with-mutex (*fnn-close-debts-lock*)
+    (and *fnn-publication-close-debts* t)))
+
 (defun fnn-publication-close-observation ()
-  (if *fnn-publication-close-debts* :uncertain :closed))
+  (if (fnn-publication-close-debts-p) :uncertain :closed))
 
 (defun fnn-publication-unlock (fd)
   (when fd
-    (when (assoc fd *fnn-publication-close-debts*)
+    (when (sb-thread:with-mutex (*fnn-close-debts-lock*)
+            (assoc fd *fnn-publication-close-debts*))
       (fnn-indeterminate "publication lock return remains unobserved"))
     (let ((root (cdr (assoc fd *fnn-publication-lock-roots*))))
       ;; Consume custody before issuing return; a descriptor number is never
@@ -5101,7 +5158,8 @@ These records retain evidence; they never authorize retry of a consumed fd.")
             (fnn-flock fd +fnn-lock-un+)
             (fnn-close fd))
         (serious-condition (condition)
-          (push (list fd root condition) *fnn-publication-close-debts*)
+          (sb-thread:with-mutex (*fnn-close-debts-lock*)
+            (push (list fd root condition) *fnn-publication-close-debts*))
           (fnn-indeterminate "publication lock physical return unobserved: ~a" condition))))))
 
 (defun fnn-publication-lock (root-path)
@@ -5117,7 +5175,7 @@ on Linux, where renameat2(RENAME_NOREPLACE) refuses any existing ROOT."
   #+linux nil
   #-linux
   (let ((fd nil) (returned nil))
-    (when *fnn-publication-close-debts*
+    (when (fnn-publication-close-debts-p)
       (fnn-indeterminate "publication lock return remains unobserved"))
     (fnn-unwind-cleanups
         ((setq fd (fnn-open (fnn-concat root-path ".lock")
@@ -5392,16 +5450,20 @@ its name (fnn-archive-entry), never a host fault."
 
 (defvar *fnn-immutable-close-debts* nil
   "Exact #(FD STAGE FINAL OPERATION PUBLICATION CONDITION) return debts.")
+(fnn-guarded-by *fnn-immutable-close-debts* *fnn-close-debts-lock*)
 
 (defun fnn-immutable-close-observation ()
-  (if *fnn-immutable-close-debts* :uncertain :closed))
+  (if (sb-thread:with-mutex (*fnn-close-debts-lock*)
+        (and *fnn-immutable-close-debts* t))
+      :uncertain :closed))
 
 (defun fnn-immutable-close-handle (fd stage final operation publication)
   "The caller consumed its owning FD slot; retain ambiguity, never retry."
   (handler-case (fnn-close fd)
     (serious-condition (condition)
-      (push (vector fd stage final operation publication condition)
-            *fnn-immutable-close-debts*)
+      (sb-thread:with-mutex (*fnn-close-debts-lock*)
+        (push (vector fd stage final operation publication condition)
+              *fnn-immutable-close-debts*))
       (error condition))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
@@ -5904,6 +5966,10 @@ report is never rendered behind an owner."
                     (fnn-bridge-pin-count) (fnn-bridge-reserved))
            +fnn-exit-ok+))
       (fnn-store-close store))))
+
+(defvar *fnn-lz-tally* nil
+  "ACL2's tally of the records the last full replay read (fn-lzr-read-step):
+what `store ROOT compression' reports.")
 
 (defun fnn-command-compression (root)
   "`store ROOT compression': the profile's compression threshold and ACL2's
@@ -6876,6 +6942,8 @@ tree root), or stop the build."
     ;; S045: one octet of the staged state checkpoint flipped after its
     ;; fence, before the read-back (fnn-state-checkpoint-stage).
     "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP"
+    ;; RL-02: the history image refused by name (fnn-checkpoint-image-refusal-test).
+    "FN_NATIVE_CHECKPOINT_IMAGE_REFUSAL"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_HOLDER_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
     ;; lane arena-forget: a labelled MUTATION witness of the reclaim seal
@@ -7155,8 +7223,8 @@ with its depth, and the rows under it name the path that called it."
 ;;; decides every value the host writes or tests: the extent
 ;;; (fn-lg-extent-okp), the kernel at open from the segment's bytes
 ;;; (fnn-log-stream-segment: one entry at a time, books/store-log-stream.lisp),
-;;; recovery's zeroing range
-;;; (fn-lg-recover-tail), each record's admission (fn-lgc-t-prepare, fn-lgc-take:
+;;; the open's copy (fn-lgrc-copy-verdict, books/store-log-recover-copy.lisp),
+;;; each record's admission (fn-lgc-t-prepare, fn-lgc-take:
 ;;; only at the kernel's next txid), the extension (fn-lgc-extension-needed-p,
 ;;; fn-lgc-extension-target), the append's admission and octets
 ;;; (fn-lgc-append-admitsp, fn-lgc-frontier, fn-lgc-append-octets) and the
@@ -7171,12 +7239,14 @@ with its depth, and the rows under it name the path that called it."
 ;;; streamed to the replay one entry at a time (fnn-log-stream-segment, KEYSTONE
 ;;; fn-lgw-run-is-the-open).  The host reads,
 ;;; writes and fences, in the order of
-;;; fn-lg-recover-program, fn-lg-append-program and fn-lg-fence-program
+;;; fn-lgrc-program, fn-lg-append-program and fn-lg-fence-program
 ;;; (tests/campaign/native_cuts.py LOG_CUTS, verify_log_cut_map).  No owner
 ;;; path calls these yet: lane w6-log-owner moves the commit onto them.
 
 (defparameter +fnn-log-model-cuts+
-  '("log-written" "log-fenced" "log-truncated" "log-recovered"
+  '("log-written" "log-fenced"
+    ;; books/store-log-recover-copy.lisp fn-lgrc-program (fnn-log-recover).
+    "log-copied" "log-copy-fenced" "log-swapped" "log-recovered"
     ;; books/store-log-extend.lisp fn-lg-extend-program (fnn-log-ensure-extent).
     "log-extended" "log-extent-fenced"))
 
@@ -7235,7 +7305,13 @@ with its depth, and the rows under it name the path that called it."
   ;; serializes preparers; it is never taken under the owner mutex.
   (reseat-custody nil)
   (active-close-debt nil)
+  ;; SPARE and SPARE-CLOSE-DEBT are the slot shared by the two preparers
+  ;; (under SPARE-LOCK) and the rotation (under the owner mutex): every
+  ;; access is under SPARE-SLOT-LOCK, a leaf that never covers I/O
+  ;; (fnn-log-spare-peek, fnn-log-spare-take, fnn-log-spare-install,
+  ;; fnn-log-spare-clear).
   (spare nil) (spare-close-debt nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
+  (spare-slot-lock (sb-thread:make-mutex :name "fn log spare slot"))
   ;; journal/'s path while the rotated-to segment's name is not yet durable:
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
   ;; that names it (fnn-owner-publish-captured) fence journal/ first
@@ -7398,10 +7474,6 @@ record's (FILE . PLACE), PLACE ACL2's (START N ROFF RLEN); else NIL.")
   "While a log stream hands a record to its sink: the octets the log holds
 for it (a compressed record's frame, or the record itself).")
 
-(defvar *fnn-lz-tally* nil
-  "ACL2's tally of the records the last full replay read (fn-lzr-read-step):
-what `store ROOT compression' reports.")
-
 (defvar *fnn-lz-dicts* nil)
 (defvar *fnn-lz-current* nil)
 
@@ -7529,6 +7601,13 @@ txids over 1, which the replay took from its one decode of each record
 books/store-log-walk-once.lisp KEYSTONE fn-lgw-run-nf-then-fold-is-run.
 NIL otherwise: the step folds (fn-lgw-step-buf).")
 
+(defvar *fnn-log-stream-copy* nil
+  "While the writable open recovers the active segment (fnn-log-recover): a
+function of (POS E STEP) the stream calls for each entry its step TOOK, E the
+octets the step validated (the walk's buffer's array) at POS, STEP the
+offset to the next entry (E and its padding); it copies them into the staged
+segment.  NIL otherwise.")
+
 (defun fnn-log-stream-segment (fd extent unit max genesis sink &optional label writable)
   "The segment's decode from GENESIS as a stream of entries
 (books/store-log-stream.lisp): at the state's offset the header octets ACL2
@@ -7572,6 +7651,11 @@ the open proceeds on (:complete, :torn or :repaired)."
                    (svref buf 1) (length e))
              (destructuring-bind (took records next)
                  (fnn-call (if finish 'fn-lgw-step-buf-nf 'fn-lgw-step-buf) st unit max extent buf)
+               ;; The copy of what the step validated, from the same array
+               ;; (never a second read of the entry: books/store-log-recover-
+               ;; copy.lisp, P-LOG-RECOVER-COPY).
+               (when (and took *fnn-log-stream-copy*)
+                 (funcall *fnn-log-stream-copy* pos e (- (fnn-nat (fnn-core 'fn-lgw-pos next)) pos)))
                (when took
                  (if *fnn-extent-file*
                      ;; The full replay's extent seals (PRF-294): each record's
@@ -7661,48 +7745,98 @@ the records, ACL2's octet lists): for the log rig's oracle, never the open."
                                      (lambda (r) (push r records)))))
     (values (nreverse records) ks)))
 
-(defconstant +fnn-log-zero-chunk+ 1048576
-  "The octets of zeros one write of the recovered tail carries: a bound on
-the buffer, not on the tail (fnn-log-recover).")
+;; P-LOG-RECOVER-COPY (RL-01, option A2; books/store-log-recover-copy.lisp).
+;; After a failed barrier Linux keeps the unwritten pages clean and readable,
+;; so what the open reads may hold a batch that was never durable.  The open
+;; never writes the inode it read: it copies the validated prefix into a
+;; fresh file and swaps it in by name.
 
-(defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*) (sink #'identity))
-  "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode
-from GENESIS, each record handed to SINK as it is read (fnn-log-stream-
-segment), then the tail [F, EXTENT) zeroed (the program's one write, from a
-bounded buffer) and fenced.  The
-kernel is R-related to the segment at log-recovered
-(fn-lg-recover-program-establishes-the-relation)."
+(defun fnn-log-recover-stage-path (stage-dir path)
+  "STAGE-DIR/.stage-recover-NAME: the copy of segment PATH while it is
+written.  A `.stage-' name, so a writable open's staging sweep removes one a
+death left (books/store-sweep.lisp fn-sn-staging-namep), and never a segment
+name (fn-lgs-indices keeps only NNNNNN.log names)."
+  (fnn-join stage-dir (concatenate 'string ".stage-recover-" (file-namestring path))))
+
+(defun fnn-log-copy-entry (out fd pos e step)
+  "The copy's write of one entry the stream validated: E, the walk's buffer's
+octets, at POS of the staged segment OUT, then the entry's padding
+[POS+|E|, POS+STEP) as the segment FD holds it (unit padding is not part of
+the entry's validation; fn-lgrc-copy-octets copies the read's prefix [0, F)
+octet for octet)."
+  (fnn-log-pwrite out pos e)
+  (let ((at (+ pos (length e))) (pad (- step (length e))))
+    (when (plusp pad)
+      (fnn-log-pwrite out at (fnn-log-pread fd at pad)))))
+
+(defun fnn-log-recover (path extent unit max stage-dir &optional (genesis *fn-lg-genesis*) (sink #'identity)
+                                                                places)
+  "P-LOG-RECOVER-COPY (books/store-log-recover-copy.lisp fn-lgrc-program):
+the free octets of STAGE-DIR's filesystem against the segment's EXTENT
+(fn-lgrc-copy-verdict: without the room the writable open refuses
+recover-copy-no-space before any write; no fallback rewrites in place), then
+STAGE-DIR/.stage-recover-NAME created (a dead attempt's stage of the name
+removed first: the writer lock is held) and preallocated to EXTENT (the
+zeros past the frontier, A-HOST), the segment's decode from GENESIS
+(fnn-log-stream-segment, each record to SINK) copying each entry the stream
+validates from the same buffer (fnn-log-copy-entry), cut log-copied; the
+copy fenced, cut log-copy-fenced; renamed over PATH, cut log-swapped;
+journal/ and STAGE-DIR fenced, cut log-recovered.  The inode PATH named is
+never written.  The log's descriptor is the copy's: the inode PATH names
+now; with PLACES (the full replay) the records' places name an extent
+realizer id over the copy (fnn-extent-register of PATH opening the stage:
+the read inode's pages past its durable frontier may be evicted and reread
+as something else once it has no name).  Keystones: fn-lgrc-attempt-makes-the-read-prefix-durable (the store
+is R-related to the kernel of what was read), fn-lgrc-attempt-keeps-the-
+invariant (every cut, any outcomes: every inode journal/K can name holds
+the acknowledged prefix durably), fn-lgrc-open-refuses-without-room-and-
+takes-no-step.  A failure before the rename removes the stage; any failure
+is the open's (the store is not served)."
   (let* ((fd (fnn-log-open-segment path extent unit))
-         (ks (handler-case
-                 (multiple-value-bind (ks verdict)
-                     (fnn-log-stream-segment fd extent unit max genesis sink
-                                             (file-namestring path) t)
-                   ;; A confirmed repair (fn-lgdm-effective :repaired): the
-                   ;; segment's octets are kept before the tail is zeroed.
-                   (let ((name (fnn-core 'fn-lgdm-quarantine-name verdict (file-namestring path))))
-                     (when (stringp name) (fnn-log-quarantine path fd extent name)))
-                   ks)
-               (error (e) (fnn-close fd) (error e)))))
-    ;; fn-lg-recover-tail-of-abstraction: the range read from the
-    ;; concrete kernel is the logical kernel's.  The program's one write of
-    ;; zeros over [OFFSET, OFFSET+COUNT) is written from one reusable buffer
-    ;; of at most +fnn-log-zero-chunk+ octets (sweep S047, codex r72 F8: it
-    ;; was one vector of the whole tail, GiBs after the extent doubled):
-    ;; the same octets at the same places, the allocation bounded.  A
-    ;; failure here or at the fence closes FD before it is passed on.
-    (handler-case
-        (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
-          (let ((zeros (fnn-make-octets (min count +fnn-log-zero-chunk+)))
-                (end (+ offset count)))
-            (loop for at from offset below end by +fnn-log-zero-chunk+ do
-              (fnn-log-pwrite fd at (if (<= (+ at (length zeros)) end)
-                                        zeros
-                                        (subseq zeros 0 (- end at))))))
-          (fnn-log-at :log-truncated)
-          (fnn-log-fdatasync fd)
-          (fnn-log-at :log-recovered))
-      (error (e) (fnn-close fd) (error e)))
-    (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent)))
+         (stage (fnn-log-recover-stage-path stage-dir path))
+         (out nil)
+         (done nil)
+         (renamed nil))
+    (fnn-unwind-cleanups
+        ((let ((free (fnn-disk-free-octets-at stage-dir)))
+           (unless (eq (fnn-core 'fn-lgrc-copy-verdict free extent) :copy)
+             (error 'fnn-store-open-refusal
+                    :message (fnn-core 'fn-lgrc-copy-refusal-text free extent (file-namestring path))))
+           (when (fnn-lstat stage) (fnn-unlink stage))
+           (setq out (fnn-open stage (logior sb-posix:o-rdwr sb-posix:o-creat sb-posix:o-excl
+                                             +fnn-o-nofollow+)))
+           (fnn-log-preallocate out extent)
+           (let ((ks (let ((*fnn-log-stream-copy*
+                             (lambda (pos e step) (fnn-log-copy-entry out fd pos e step)))
+                           (*fnn-extent-file* (and places (fnn-extent-register path stage))))
+                       (multiple-value-bind (ks verdict)
+                           (fnn-log-stream-segment fd extent unit max genesis sink
+                                                   (file-namestring path) t)
+                         ;; A confirmed repair (fn-lgdm-effective :repaired): the
+                         ;; segment's octets are kept before the copy replaces it.
+                         (let ((name (fnn-core 'fn-lgdm-quarantine-name verdict (file-namestring path))))
+                           (when (stringp name) (fnn-log-quarantine path fd extent name)))
+                         ks))))
+             (fnn-log-at :log-copied)
+             (fnn-fsync-file out)
+             (fnn-log-at :log-copy-fenced)
+             (fnn-replace stage path)
+             (setq renamed t)
+             (fnn-log-at :log-swapped)
+             (fnn-fsync-dir (fnn-log-parent path))
+             (fnn-fsync-dir stage-dir)
+             (fnn-log-at :log-recovered)
+             (prog1 (%make-fnn-log :path path :fd out :kernel ks :unit unit :max max :extent extent)
+               (setq done t)))))
+      ;; Every cleanup is attempted and none is dropped: a close of the read
+      ;; descriptor, or of a copy that was not published, that fails is
+      ;; surfaced (fnn-unwind-cleanups: signalled after a normal return,
+      ;; recorded and escalated through the failure scope while escaping).
+      (fnn-close fd)
+      (unless done
+        (when out (fnn-close out)))
+      (unless (or done renamed)
+        (when (fnn-lstat stage) (fnn-unlink stage))))))
 
 (defun fnn-log-prepare (log record)
   "The checked prepare: RECORD joins the open batch only at the kernel's
@@ -8260,15 +8394,18 @@ replay."
         (+ s (length suffix))))))
 
 (defun fnn-store-recovery-barriers (store)
-  "The open's recovery barriers' thunks after P-LOG-RECOVER's segment fence,
+  "The open's recovery barriers' thunks after P-LOG-RECOVER-COPY's fences,
 in the model's order (books/store-log-route-programs.lisp fn-lg-open-program;
 *fn-sf-recovery-barrier-count* 3): journal/ (a create or unlink a death in
 P-ROTATE, P-DROP or init left pending), the root (a checkpoint renamed before
-its root fence, ahead of the open's drop) and the root's parent (an import
-at import-published).  The config file's and the segment's second fence are
-gone: both are the identity at the open (books/store-log-open-barriers.lisp
-fn-lgob-three-barrier-open-after-recovery-is-the-five); none of the three can
-go (the same book's fn-lgob-two-barriers-without-* counterexamples)."
+its root fence) and the root's parent (an import at import-published).  The
+config file's and the segment's second fence are gone: both are the identity
+at the open (books/store-log-open-barriers.lisp
+fn-lgob-three-barrier-open-after-the-copy-is-the-five); journal/'s and the
+parent's cannot go (the same book's fn-lgob-two-barriers-without-*
+counterexamples).  The root's counterexample was the open's drop, which is
+gone (RL-01-CHECKPOINT-NAME-BEFORE-DROP); the barrier stays until its removal
+is proved."
   (list (lambda () (fnn-fsync-dir (fnn-journal-dir store)))
         (lambda () (fnn-fsync-dir (fnn-store-root store)))
         (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
@@ -8332,8 +8469,13 @@ zeros from offset 0, which over committed records would destroy them)."
   "P-DROP (design 2026-09-27 storage-log section 6): unlink each covered
 segment of INDICES (a checkpoint names a later first suffix segment and is
 installed), cut drop-unlinked after each, then fence journal/, cut
-drop-durable.  A death between unlinks leaves covered segments the next
-open's plan names again (fn-lgs-open-plan's DROP), never a segment it scans."
+drop-durable.  Called only after the install's own root fence succeeded in
+this run (fnn-state-checkpoint-write raises otherwise).  A death between
+unlinks leaves covered segments the next open scans past and keeps: the open
+never unlinks a segment (RL-01-CHECKPOINT-NAME-BEFORE-DROP; books/store-log-
+recover-copy.lisp fn-lgrc-open-unlinks-no-segment), and the next install's
+drop names them with its own (books/store-log-segments.lisp
+fn-lgs-install-drop-covers-what-the-open-left)."
   (when indices
     (dolist (k indices)
       (let ((path (fnn-segment-path-at store k)))
@@ -8362,15 +8504,38 @@ removes one a death left, and the open's segment listing never sees it
           (setf (fnn-log-active-close-debt log) (list fd condition))
           (error condition))))))
 
+(defun fnn-log-spare-peek (log)
+  "The spare slot's value, (INDEX PATH FD) or NIL."
+  (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+    (fnn-log-spare log)))
+
+(defun fnn-log-spare-install (log spare)
+  "Put SPARE in the slot, the candidate's custody."
+  (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+    (setf (fnn-log-spare log) spare)))
+
+(defun fnn-log-spare-clear (log)
+  "Empty the slot once its descriptor has moved to the active slot."
+  (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+    (setf (fnn-log-spare log) nil)))
+
+(defun fnn-log-spare-take (log)
+  "Take the spare out of the slot, atomically: the one caller that gets it
+owns its descriptor.  A close debt a failed discard left is signalled and
+nothing is taken."
+  (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+    (when (fnn-log-spare-close-debt log)
+      (error (second (fnn-log-spare-close-debt log))))
+    (let ((spare (fnn-log-spare log)))
+      (setf (fnn-log-spare log) nil)
+      spare)))
+
 (defun fnn-log-discard-spare (log)
   "Close and unlink a spare that will not be renamed (another index, or the
 store closing).  Removing a staged name is never uncertain for the history:
 the open ignores and sweeps it."
-  (when (fnn-log-spare-close-debt log)
-    (error (second (fnn-log-spare-close-debt log))))
-  (let ((spare (fnn-log-spare log)))
+  (let ((spare (fnn-log-spare-take log)))
     (when spare
-      (setf (fnn-log-spare log) nil)
       (destructuring-bind (index path fd) spare
         (declare (ignore index))
         (handler-case
@@ -8378,7 +8543,8 @@ the open ignores and sweeps it."
               (fnn-close fd)
               (when (fnn-lstat path) (fnn-unlink path)))
           (serious-condition (condition)
-            (setf (fnn-log-spare-close-debt log) (list spare condition))
+            (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+              (setf (fnn-log-spare-close-debt log) (list spare condition)))
             (error condition)))))))
 
 (defun fnn-log-prepare-spare (store)
@@ -8393,7 +8559,7 @@ of the checkpoint that wanted the rotation (serving continues)."
   (let ((log (fnn-store-log store)))
     (sb-thread:with-mutex ((fnn-log-spare-lock log))
       (let ((next (fnn-core 'fn-lgs-next-segment (fnn-log-index log)))
-            (spare (fnn-log-spare log)))
+            (spare (fnn-log-spare-peek log)))
         (unless (and spare (eql (first spare) next))
           (fnn-log-discard-spare log)
           (unless next
@@ -8409,7 +8575,7 @@ of the checkpoint that wanted the rotation (serving continues)."
                                                   sb-posix:o-excl +fnn-o-nofollow+)))
                   ;; Install candidate custody before any preparation/cut
                   ;; can escape; failed prepare cannot strand a local fd.
-                  (setf (fnn-log-spare log) (list next path fd))
+                  (fnn-log-spare-install log (list next path fd))
                   (fnn-log-preallocate fd extent)
                   (fnn-log-at :rotate-created)
                   (fnn-fsync-file fd)
@@ -8454,7 +8620,7 @@ be in journal/ while the closed segment would take more records)."
         (list (fnn-log-index log) (fnn-core 'fn-lgc-last ks))))
     (unless next
       (fnn-refuse "rotation refused reason=segment-index-exhausted"))
-    (let ((spare (fnn-log-spare log)))
+    (let ((spare (fnn-log-spare-peek log)))
       (unless (and spare (eql (first spare) next))
         (fnn-refuse "rotation refused reason=spare-unprepared"))
       ;; The spare remains the candidate's physical custody across rename
@@ -8489,8 +8655,8 @@ be in journal/ while the closed segment would take more records)."
             ;; Transfer physical custody before any fallible semantic call;
             ;; shutdown must see the candidate in exactly one fd slot.
             (setf (fnn-log-path log) path
-                  (fnn-log-fd log) fd
-                  (fnn-log-spare log) nil)
+                  (fnn-log-fd log) fd)
+            (fnn-log-spare-clear log)
             (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
                   (fnn-log-index log) next
                   (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)
@@ -8585,7 +8751,7 @@ is the store's ancestry and changes only when the log does."
 (defun fnn-log-head-segment (store log)
   "An active segment K >= 2 the scan read to nothing (frontier 0): a rotation
 died between the rename and the head (cut rotate-renamed), or its torn head
-was truncated by P-LOG-RECOVER (cut log-truncated).  The writable open
+was zeroed past its frontier by P-LOG-RECOVER-COPY (fnn-log-recover).  The writable open
 completes the rotation: the rotation entry from the chain the scan carried
 (fn-lgc-rotation-octets of the recovered kernel, whose LAST is that chain
 value) at offset 0, the file fenced, journal/ fenced, the kernel the
@@ -8614,7 +8780,7 @@ entry's octets at a time).  The closed segments are read only (the fold's step,
 books/store-log-stream.lisp fn-lgw-open-chain-records / -last over one
 segment, T8's subject, fn-lgw-segment-drop-preserves-the-open); the active one
 is recovered (a
-writable open: P-LOG-RECOVER) or read.  Returns the active segment's log.
+writable open: P-LOG-RECOVER-COPY, the copy staged in staging/) or read.  Returns the active segment's log.
 With PLACES (the full replay), each segment gets an extent realizer id
 (host/native/extent.lisp fnn-extent-register: a read-only descriptor held for
 the process's life) and the stream binds each record's place for SINK
@@ -8637,10 +8803,13 @@ the process's life) and the stream binds each record's place for SINK
                 (fnn-close fd)))
           (progn
             (fnn-log-complete-rotation store path)
-            (let* ((*fnn-extent-file* (and places (fnn-extent-register path)))
-                   (log (if (fnn-store-writable store)
-                            (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis sink)
-                          (fnn-log-open-read-only path unit max genesis sink))))
+            (let ((log (if (fnn-store-writable store)
+                           ;; the copy's realizer id is registered over the
+                           ;; copy itself (fnn-log-recover)
+                           (fnn-log-recover path (fnn-log-observed-extent path) unit max
+                                            (fnn-staging store) genesis sink places)
+                         (let ((*fnn-extent-file* (and places (fnn-extent-register path))))
+                           (fnn-log-open-read-only path unit max genesis sink)))))
               (setf (fnn-log-index log) k
                     (fnn-log-genesis log) genesis)
               ;; An unheaded segment (a rotation that died before its head):
@@ -8749,18 +8918,22 @@ refused by name."
 the log's suffix starts (books/store-log-segments.lisp: the first suffix
 segment and its genesis) and the txid frontier at S.  ACL2's plan over
 journal/ (fn-lgs-open-plan) names the segments to scan and the covered ones
-to drop, or refuses by name (history-short-of-checkpoint,
+it covers, or refuses by name (history-short-of-checkpoint,
 checkpoint-damaged).  The segments are scanned with the chain carried across
-them (fnn-log-scan-segments: P-LOG-RECOVER on the active one, cuts
-log-truncated and log-recovered), the frontier derived (fn-store-log-next-txid
+them (fnn-log-scan-segments: P-LOG-RECOVER-COPY on the active one, cuts
+log-copied, log-copy-fenced, log-swapped and log-recovered), the frontier derived (fn-store-log-next-txid
 over the scanned records, floored at the checkpoint's), then the replay: over
 the checkpoint when its F row names a position, else the per-file open's
 choice (fnn-recover-log-from-state-checkpoint or the full replay); then the
-three recovery barriers the per-file open runs, and a writable open finishes
-an interrupted drop.  Answers the history's record COUNT, as `fnn-recover'
+three recovery barriers the per-file open runs.  The open unlinks no segment,
+not even the covered ones an interrupted drop left: the checkpoint it read
+may be named only in the page cache (a failed root fence), and its drop would
+outlive that name across a power loss (RL-01-CHECKPOINT-NAME-BEFORE-DROP,
+books/store-log-recover-copy.lisp fn-lgrc-open-unlinks-no-segment).  The next
+install's drop, after its own root fence, takes them.  Answers the history's record COUNT, as `fnn-recover'
 does, and records how the log holds the history (fnn-store-log-history) for
 `fnn-log-history-records'."
-  (let ((count nil) (drop nil))
+  (let ((count nil))
     (handler-case
         (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
           (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
@@ -8771,7 +8944,6 @@ does, and records how the log holds the history (fnn-store-log-history) for
             (unless (and (consp plan) (member (first plan) '(:scan :refused)))
               (fnn-fault "ACL2 returned a malformed log open plan"))
             (fnn-log-open-plan-check store plan log-position)
-            (setq drop (third plan))
             ;; The records arrive one at a time (fnn-log-scan-segments), each
             ;; folded into the next txid (one past the largest txid of every
             ;; record the log holds, of every event kind: fn-store-log-next-
@@ -8918,12 +9090,6 @@ does, and records how the log holds the history (fnn-store-log-history) for
       ((or fnn-store-fault fnn-store-indeterminate) (e)
         (setf (fnn-store-fenced store) t)
         (error e)))
-    ;; An interrupted drop: the covered segments the plan named go now.
-    (when (and drop (fnn-store-writable store))
-      (handler-case (fnn-log-drop store drop)
-        (fnn-os-error (e)
-          (setf (fnn-store-fenced store) t)
-          (fnn-indeterminate "the drop of covered log segments is uncertain: ~a" e))))
     (setf (fnn-store-fenced store) nil)
     count))
 
@@ -9104,6 +9270,7 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
          (log (fnn-log-recover path (fnn-log-observed-extent path) (fnn-store-log-unit)
                                (fnn-nat (fnn-core 'fn-lgu-log-max
                                                   (fnn-core 'fn-store-profile-max-record-octets values)))
+                               (fnn-staging store)
                                ;; format 10: segment 1 chains from the stage's genesis
                                (fnn-genesis-open store values))))
     (setf (fnn-store-log store) log
@@ -9406,7 +9573,8 @@ segment' (tests/test_native_topic_local.py)."
                             size)
            (fnn-close fd))))
       (t
-       (let ((log (fnn-log-recover path extent unit max)))
+       ;; A bare segment's copy is staged beside it (a `.stage-' name).
+       (let ((log (fnn-log-recover path extent unit max (fnn-log-parent path))))
          (unwind-protect
               (progn
                 (fnn-log-rig-line "RECOVERED" log size)

@@ -750,11 +750,97 @@ class LoadedHostTests(unittest.TestCase):
                              ["PRF-T1:python-only-property"])
             self.assertEqual(findings[0].subjects, ["fn-python-only"])
 
-    def test_the_extraction_worlds_ports_are_host_lines(self):
+    def test_the_extraction_worlds_host_files_are_host_lines(self):
         graph = reach_check.Graph()
-        self.assertIn("host/store-open-host.lisp", graph.loaded_hosts)
         self.assertIn("host/owner-host.lisp", graph.loaded_hosts)
         self.assertNotIn("host/native/build-store-test.lisp", graph.loaded_hosts)
+
+class WorldEdgeTests(unittest.TestCase):
+    """The call graph from the certified world: where text and world disagree
+    the world is the call (tools/coverage.py's dump, `world_edges')."""
+
+    def graph(self, functions, text, exports=(), bodies=None):
+        import coverage
+        records = [{"name": name, "book": "/x/books/a.lisp", "class": ":ideal",
+                    "callees": calls, "guard_callees": guards, "attachment": None,
+                    "formals": [], "alias": None, "mbe": []}
+                   for name, (calls, guards) in functions.items()]
+        graph = reach_check.Graph.__new__(reach_check.Graph)
+        graph.world = coverage.World({"functions": records, "theorems": []})
+        graph.edges = {name: set(edges) for name, edges in text.items()}
+        graph.known = set(text) | {"a-macro"}
+        graph.export_of = {name: "st" for name in exports}
+        graph.bodies = bodies or {}
+        return graph
+
+    def test_a_quoted_global_named_like_a_function_is_no_call(self):
+        body = ["defun", "slot", ["state"], ["if", ["boundp-global", ["quote", "cap"], "state"], "nil", "nil"]]
+        graph = self.graph({"slot": ([], []), "cap": ([], [])},
+                           {"slot": {"cap"}, "cap": set()}, bodies={"slot": body})
+        self.assertEqual(graph.world_edges(graph.bodies)["slot"], set())
+
+    def test_a_quoted_symbol_outside_a_global_accessor_is_code_it_emits(self):
+        graph = self.graph({"build": ([], [])}, {"build": {"target"}, "target": set()})
+        self.assertEqual(graph.world_edges(graph.bodies)["build"], {"target"})
+
+    def test_a_guard_call_is_a_call(self):
+        graph = self.graph({"f": ([], ["rowsp"]), "rowsp": ([], [])},
+                           {"f": {"rowsp"}, "rowsp": set()})
+        self.assertEqual(graph.world_edges(graph.bodies)["f"], {"rowsp"})
+
+    def test_a_world_call_the_text_misses_is_kept(self):
+        graph = self.graph({"f": (["g"], []), "g": ([], [])}, {"f": set(), "g": set()})
+        self.assertEqual(graph.world_edges(graph.bodies)["f"], {"g"})
+
+    def test_a_macro_mention_stays(self):
+        graph = self.graph({"f": ([], [])}, {"f": {"a-macro"}})
+        self.assertEqual(graph.world_edges(graph.bodies)["f"], {"a-macro"})
+
+    def test_an_export_keeps_its_text_edges_for_the_exec_side(self):
+        graph = self.graph({"export": (["logic"], []), "logic": ([], []), "exec": ([], [])},
+                           {"export": {"logic", "exec"}, "logic": set(), "exec": set()},
+                           exports=["export"])
+        self.assertEqual(graph.world_edges(graph.bodies)["export"], {"logic", "exec"})
+
+    def test_a_function_the_world_lacks_keeps_its_text_edges(self):
+        graph = self.graph({"g": ([], [])}, {"hostfn": {"g"}, "g": set()})
+        self.assertEqual(graph.world_edges(graph.bodies)["hostfn"], {"g"})
+
+    def test_world_none_is_the_text_reader(self):
+        self.assertIsNone(reach_check.load_world("none"))
+        self.assertIsNone(reach_check.load_world(None))
+
+
+
+class ProseIsNotReachTests(unittest.TestCase):
+    """CONVERGE-2 row 14: a docstring that cites a book program is prose, not
+    a call; a crash campaign naming a program in code is a tie, not a host."""
+
+    def test_code_only_drops_comments_blocks_and_strings_and_keeps_code(self):
+        import reach_check as r
+        text = ('(defun f (x)\n  "Runs fn-doc-only (see fn-cited)." ; fn-comment\n'
+                '  #| fn-block |# (g (quote fn-quoted) #\\" x))\n')
+        symbols = {s.lower() for s in r.SYMBOL.findall(r.code_only(text))}
+        self.assertIn("fn-quoted", symbols)
+        self.assertIn("g", symbols)
+        for prose in ("fn-doc-only", "fn-cited", "fn-comment", "fn-block"):
+            self.assertNotIn(prose, symbols)
+
+    def test_campaign_names_reads_code_strings_not_docstrings(self):
+        import reach_check as r
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            (directory / "native_x.py").write_text(
+                '"""Judges cuts with fn-doc-program."""\n'
+                'PROGRAMS = {"open": "fn-lg-open-program"}\n'
+                'def run():\n    """Uses fn-fn-doc."""\n    return "fn-lgrc-program"\n')
+            (directory / "test_native_x.py").write_text('X = "fn-test-only"\n')
+            with patch.object(r, "ROOT", directory):
+                names = r.campaign_names(directory)
+        self.assertEqual(set(names), {"open", "fn-lg-open-program", "fn-lgrc-program"})
+        self.assertNotIn("fn-doc-program", names)
+        self.assertNotIn("fn-test-only", names)
+
 
 if __name__ == "__main__":
     unittest.main()

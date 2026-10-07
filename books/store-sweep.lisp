@@ -23,6 +23,7 @@
 (in-package "ACL2")
 
 (include-book "store-node-traces")
+(include-book "def-loop")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -163,45 +164,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-sn-sweep-removals-loop (observed held acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp observed)
-      (if (and (fn-sn-staging-namep (car observed))
-               (not (fn-sn-name-memberp (car observed) held)))
-          (fn-sn-sweep-removals-loop (cdr observed) held (cons (car observed) acc))
-        (fn-sn-sweep-removals-loop (cdr observed) held acc))
-    (revappend acc nil)))
-
-(defun fn-sn-sweep-removals (observed held)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp observed)
-           (if (and (fn-sn-staging-namep (car observed))
-                    (not (fn-sn-name-memberp (car observed) held)))
-               (cons (car observed) (fn-sn-sweep-removals (cdr observed) held))
-             (fn-sn-sweep-removals (cdr observed) held))
-         nil)
-       :exec (fn-sn-sweep-removals-loop observed held nil)))
-
-(local
- (defthm fn-sn-sweep-removals-loop-is-revappend
-   (equal (fn-sn-sweep-removals-loop observed held acc)
-          (revappend acc (fn-sn-sweep-removals observed held)))
-   :hints (("Goal" :induct (fn-sn-sweep-removals-loop observed held acc)
-                   :in-theory (union-theories '(fn-sn-sweep-removals-loop fn-sn-sweep-removals revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-sn-sweep-removals-loop)
-
-(verify-guards fn-sn-sweep-removals
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-sn-sweep-removals)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-sn-sweep-removals-loop-is-revappend (acc nil))))))
-
+(def-loop fn-sn-sweep-removals (observed held)
+  :shape :map :over observed :elt o
+  :keep (and (fn-sn-staging-namep o) (not (fn-sn-name-memberp o held)))
+  :body o)
 
 ; The kernel gate.  :ready is the phase at which no file operation is
 ; outstanding and no record is staged; fn-sf-record-candidate is the record
@@ -546,3 +512,9 @@
     fn-sn-sweep-staging fn-sn-sweep-round fn-sn-sweep-rounds))
 
 (in-theory (disable fn-sn-sweep-vocabulary))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-sn-sweep-removes-only-unheld-staging-names
+                    fn-sn-sweep-round-removes-only-unheld-staging-names))

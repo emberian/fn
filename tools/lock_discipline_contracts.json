@@ -65,6 +65,22 @@
    "io_ok": true,
    "why_io": "serializes spare preparers; creation, preallocation and the fence run under it by design, never under O (io.lisp:6333-6337)"
   },
+  "SL": {
+   "match": [
+    "(fnn-log-spare-slot-lock)"
+   ]
+  },
+  "XCLOSEDEBT": {
+   "match": [
+    "*fnn-close-debts-lock*"
+   ]
+  },
+  "XMUXSLOT": {
+   "match": [
+    "(fnn-owner-service-mux-slot-lock)"
+   ],
+   "struct_slot": "fnn-owner-service-mux-slot-lock"
+  },
   "XDURABLE": {
    "match": [
     "(fnn-log-durable-lock)"
@@ -230,10 +246,19 @@
     "*fnn-tls-kx-lock*"
    ],
    "why": "lane lock-model-gaps: the decided key exchange record *fnn-tls-kx* (host/native/tls-reload.lisp:68). A leaf with three regions (:72 a copy-list, :91 the decision's setq of the group list and record, :131 one tally bump through a pure ACL2 core call); ACL2's session-line core call and the log write at :130 run before it is taken, never under it."
+  },
+  "XIDLEGC": {
+   "match": [
+    "*fnn-idle-gc-lock*"
+   ],
+   "guard_names": [
+    "*fnn-idle-gc-lock*"
+   ],
+   "why": "CONVERGE-2 row 34: the idle collection's three per-process marks (host/native/owner.lisp *fnn-idle-gc-tick-mark*, -collect-mark, -quiet), ticked by the maintenance worker or by a one-connection run's accept loop. A leaf: two in-memory regions in fnn-owner-maybe-collect-idle, the count and verdict (two pure ACL2 core calls, fn-idle-gc-quiet and fn-idle-gc-decide) and the marks after the collection; the collection runs between them, never under the lock."
   }
  },
  "lock_order": {
-  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue).",
+  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); O -> SL and S -> SL (SL, fnn-log-spare-slot-lock, guards only the log's spare slot and its close debt, held for no I/O: the rotation under O and the preparers under S meet there); O -> XCLOSEDEBT and E -> XCLOSEDEBT (XCLOSEDEBT, *fnn-close-debts-lock*, guards the two close-debt lists *fnn-immutable-close-debts* and *fnn-publication-close-debts*, a leaf held for no I/O: any writer that stages a file pushes or observes there, so the edge is declared from the two holders the check reaches); R -> XMUXSLOT (fnn-mux-adopt reads and increments the round-robin cursor under the slot lock inside the roster section, for the once client) and XMUXSLOT -> M (fnn-mux-slot-observation reads each loop under the loop lock, called under the service's slot lock, a defstruct-slot mutex the check verifies: locks XMUXSLOT struct_slot); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue).",
   "O": [
    "G",
    "R",
@@ -257,10 +282,15 @@
    "XOBS",
    "XTRACE",
    "XFJ",
-   "XDURABLE"
+   "XDURABLE",
+   "SL",
+   "XCLOSEDEBT"
   ],
   "XDURABLE": [
    "K"
+  ],
+  "XMUXSLOT": [
+   "M"
   ],
   "C": [
    "G",
@@ -278,7 +308,8 @@
    "M",
    "Q",
    "J",
-   "XOBS"
+   "XOBS",
+   "XMUXSLOT"
   ],
   "K": [
    "E",
@@ -292,7 +323,8 @@
    "XPZD",
    "J",
    "XOBS",
-   "XCRYPTO"
+   "XCRYPTO",
+   "XCLOSEDEBT"
   ],
   "A": [
    "Q",
@@ -324,7 +356,8 @@
    "Q"
   ],
   "S": [
-   "Q"
+   "Q",
+   "SL"
   ],
   "XSYNCER": [
    "Q"
@@ -437,7 +470,6 @@
   "fn-durable-realize-octets",
   "fn-durable-realize-lz",
   "fn-durable-realize-lz-octet",
-  "fn-pgs-fill-realize",
   "fn-pgs-fill-frame",
   "fn-arena-stored"
  ],
@@ -499,7 +531,8 @@
  "slots": {
   "fnn-owner-service-workers": "R",
   "fnn-owner-service-clients": "R",
-  "fnn-owner-service-publisher": "R"
+  "fnn-owner-service-publisher": "R",
+  "fnn-owner-service-mux-next": "XMUXSLOT"
  },
  "shared_structs": [
   "fnn-owner-service",
@@ -935,6 +968,37 @@
   "fnn-app-journal-close": "the application journal's lock fd (fnn-app-journal-lock-fd), consumed here before the close (workflow.lisp:34); unlocked and closed once, custody of an ambiguous return retained via fnn-app-retain-close-debt"
  },
  "unlocked_publication": {},
+ "escalation_wrappers": {
+  "fnn-owner-install-or-end": {
+   "param": "install",
+   "why": "host/native/owner.lisp: runs the off-mutex escalation closure it is given and, when that closure signals, ends the process with ACL2's exit code (fnn-exit). The checker verifies the body ends in (handler-case (funcall install) (serious-condition ... fnn-exit)); a caller's closure must call a classifying_escape_function on the condition it escalates (checked at the escalation loop of fnn-mux-close-wake)."
+  }
+ },
+ "close_hook_fences": {
+  "fnn-owner-run": {
+   "flag": "modules-joined",
+   "hooks": "fnn-owner-service-close-hooks",
+   "action": "log-close-action",
+   "exit_call": "fn-ort-log-close-exit",
+   "exit_const": "+fnn-exit-uncertain+",
+   "book": "books/owner-retire-settlement.lisp",
+   "why": "A close hook that signals (fnn-pull-service-close re-signals a retained cleanup debt) clears modules-joined; the clean-close block needs it, so log-close-action stays the held value set before the hooks ran, and the not-joined arm returns fn-ort-log-close-exit with +fnn-exit-uncertain+, i.e. exit 3 (theorem fn-ort-log-close-held-is-uncertain). verify_close_hook_fences checks each link against owner.lisp and the book text."
+  }
+ },
+ "nonblocking_leaves": {
+  "sb-bsd-sockets:socket-shutdown": "shutdown(2) on a socket does not wait: it marks the half-connection closed and wakes blocked peers; SO_LINGER governs close(2), not shutdown(2). It still signals socket-error, which the failure rules (R7) see through the leaf's signal class. Deputy C2 ruling 2026-10-07."
+ },
+ "nonblocking_close_sites": {
+  "fnn-mux-close-wake": {
+   "close_call": "sb-posix:close",
+   "slots": ["fnn-mux-loop-wake-read", "fnn-mux-loop-wake-write"],
+   "pipe_call": "sb-posix:pipe",
+   "why": "close(2) of a pipe end does not block (Deputy C2 ruling 2026-10-07). verify_pipe_close_sites checks that the descriptor closed here is a let-bound read of the two wake slots, that every store into those slots in the host is NIL or a result of (sb-posix:pipe) (fnn-mux-start), and that no constructor call passes a slot keyword, so the slots hold only pipe ends."
+  }
+ },
+ "binding_only_specials": {
+  "*fnn-owner-deferred*": "host/native/owner.lisp: the commit quantum's deferred list. It is bound only by let (fnn-owner-commit-start-locked, the next-batch seal in fnn-owner-commit-complete) to a fresh list; the checker verifies that no host form assigns the symbol, that its defvar value is NIL, and that every rebinding is a lexical variable or a list. Outside a quantum it is the constant NIL, so fnn-owner-log, fnn-owner-line-after-barrier and fnn-owner-feed-flush-after-barrier take their direct branch there (the open's key-statement recovery, an offline command)."
+ },
  "exceptions": [],
  "enclave": {
   "comment": "PROPOSED to the coordinator: the cold-read ownership protocol (books/page-read-direct.lisp) and the snapshot page lease -- the code already migrated onto issued rows/leases. Strict: no violation or unresolved site, no baseline rows.",

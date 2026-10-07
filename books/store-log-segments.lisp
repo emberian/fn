@@ -9,11 +9,16 @@
 ; the checkpoint names it), so its last entry's trailer is the next segment's
 ; genesis (fn-lgs-chain-*).  A checkpoint whose F row names its first suffix
 ; segment K and that segment's genesis G covers every segment below K; after
-; the checkpoint's install those are unlinked (the drop), and the open
-; is the checkpoint's capture followed by the scan of K, K+1, ... from G.
+; the checkpoint's install, once the install's own root fence succeeded,
+; those are unlinked (the drop), and the open is the checkpoint's capture
+; followed by the scan of K, K+1, ... from G.  The open itself unlinks
+; nothing (RL-01-CHECKPOINT-NAME-BEFORE-DROP): the checkpoint it reads may
+; be named only in the cache, so a segment an interrupted drop left stays
+; until the next install's drop, which covers it
+; (fn-lgs-install-drop-covers-what-the-open-left).
 ;
 ; ACL2 decides: the segment names (fn-lgs-segment-name, fn-lgs-segment-index),
-; which segments the open scans and which it drops (fn-lgs-open-plan, by name
+; which segments the open scans and which are covered (fn-lgs-open-plan, by name
 ; `history-short-of-checkpoint' and `checkpoint-damaged' otherwise), whether a
 ; scan's stop is a torn tail or a splice (fn-lgs-chain-broken-p: an entry that
 ; validates under another predecessor is refused `log-chain-broken', never read
@@ -32,6 +37,7 @@
 ; and the replay of that split is the full replay
 ; (fn-sn-recover-from-checkpoint-equals-full-recover).
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "store-log-programs")
 
 ; -----------------------------------------------------------------------------
@@ -88,43 +94,11 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-lgs-indices-loop (names acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp names)
-      (let ((k (fn-lgs-segment-index (car names))))
-        (if k
-            (fn-lgs-indices-loop (cdr names) (cons k acc))
-          (fn-lgs-indices-loop (cdr names) acc)))
-    (revappend acc nil)))
-
-(defun fn-lgs-indices (names)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp names)
-           (let ((k (fn-lgs-segment-index (car names))))
-             (if k (cons k (fn-lgs-indices (cdr names))) (fn-lgs-indices (cdr names))))
-         nil)
-       :exec (fn-lgs-indices-loop names nil)))
-
-(local
- (defthm fn-lgs-indices-loop-is-revappend
-   (equal (fn-lgs-indices-loop names acc)
-          (revappend acc (fn-lgs-indices names)))
-   :hints (("Goal" :induct (fn-lgs-indices-loop names acc)
-                   :in-theory (union-theories '(fn-lgs-indices-loop fn-lgs-indices revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-lgs-indices-loop)
-
-(verify-guards fn-lgs-indices
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-lgs-indices)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-lgs-indices-loop-is-revappend (acc nil))))))
-
+(def-loop fn-lgs-indices (names)
+  :shape :map :over names :elt n
+  :let ((k (fn-lgs-segment-index n)))
+  :keep k
+  :body k)
 
 (defthm fn-lgs-true-listp-indices
   (true-listp (fn-lgs-indices names))
@@ -141,42 +115,13 @@
   :rule-classes :type-prescription)
 
 ; FROM, FROM+1, ..., TO.
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-lgs-range-loop (from to acc)
-  (declare (xargs :measure (nfix (- (+ 1 (nfix to)) (nfix from))) :guard (and (and (natp from) (natp to)) (true-listp acc)) :verify-guards nil))
-  (if (and (natp from) (natp to) (<= from to))
-      (fn-lgs-range-loop (1+ from) to (cons from acc))
-    (revappend acc nil)))
-
-(defun fn-lgs-range (from to)
-  (declare (xargs :verify-guards nil :guard (and (natp from) (natp to))
-                  :measure (nfix (- (+ 1 (nfix to)) (nfix from)))))
-  (mbe :logic
-       (if (and (natp from) (natp to) (<= from to))
-           (cons from (fn-lgs-range (1+ from) to))
-         nil)
-       :exec (fn-lgs-range-loop from to nil)))
-
-(local
- (defthm fn-lgs-range-loop-is-revappend
-   (equal (fn-lgs-range-loop from to acc)
-          (revappend acc (fn-lgs-range from to)))
-   :hints (("Goal" :induct (fn-lgs-range-loop from to acc)
-                   :in-theory (union-theories '(fn-lgs-range-loop fn-lgs-range revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-lgs-range-loop)
-
-(verify-guards fn-lgs-range
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-lgs-range)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-lgs-range-loop-is-revappend (acc nil))))))
+; Executes by a loop (def-loop :step: the state is the counter, the measure
+; the distance to TO).
+(def-loop fn-lgs-range (from to)
+  :shape :step :done (not (and (natp from) (natp to) (<= from to)))
+  :body from :next (1+ from)
+  :measure (nfix (- (+ 1 (nfix to)) (nfix from)))
+  :guard (and (natp from) (natp to)))
 
 
 (defun fn-lgs-all-present (ks present)
@@ -189,43 +134,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-lgs-below-loop (ks k acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp ks)
-      (if (and (natp (car ks)) (natp k) (< (car ks) k))
-          (fn-lgs-below-loop (cdr ks) k (cons (car ks) acc))
-        (fn-lgs-below-loop (cdr ks) k acc))
-    (revappend acc nil)))
-
-(defun fn-lgs-below (ks k)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ks)
-           (if (and (natp (car ks)) (natp k) (< (car ks) k))
-               (cons (car ks) (fn-lgs-below (cdr ks) k))
-             (fn-lgs-below (cdr ks) k))
-         nil)
-       :exec (fn-lgs-below-loop ks k nil)))
-
-(local
- (defthm fn-lgs-below-loop-is-revappend
-   (equal (fn-lgs-below-loop ks k acc)
-          (revappend acc (fn-lgs-below ks k)))
-   :hints (("Goal" :induct (fn-lgs-below-loop ks k acc)
-                   :in-theory (union-theories '(fn-lgs-below-loop fn-lgs-below revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-lgs-below-loop)
-
-(verify-guards fn-lgs-below
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-lgs-below)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-lgs-below-loop-is-revappend (acc nil))))))
-
+(def-loop fn-lgs-below (ks k)
+  :shape :map :over ks :elt e
+  :keep (and (natp e) (natp k) (< e k))
+  :body e)
 
 ; NAMES: journal/'s entries as the host listed them.  FIRST: the first suffix
 ; segment the selected checkpoint's F row names, or NIL when no checkpoint
@@ -383,7 +295,7 @@
            (equal (fn-lgs-all-present ks (append x y)) (fn-lgs-all-present ks y)))))
 ; P-DROP's cuts: a death between two unlinks leaves covered segments beside
 ; the remaining ones; the open's plan scans the same segments and refuses the
-; same stores (the covered ones are only dropped again).
+; same stores (the covered ones stay until the next install's drop).
 (defthm fn-lgs-open-plan-scan-ignores-covered
   (implies (and (posp first)
                 (fn-lgs-all-below-p (fn-lgs-indices covered) first))
@@ -393,6 +305,38 @@
                        (cadr (fn-lgs-open-plan names first)))))
   :hints (("Goal" :in-theory (disable fn-lgs-range fn-lgs-all-present fn-lgs-below
                                       fn-lgs-indices))))
+
+(local
+ (defthm fn-lgs-member-of-below-iff
+   (iff (member-equal x (fn-lgs-below ks k))
+        (and (member-equal x ks) (natp x) (natp k) (< x k)))))
+(local
+ (defthm fn-lgs-below-grows
+   (implies (and (subsetp-equal ks ks2) (natp k) (natp k2) (<= k k2))
+            (subsetp-equal (fn-lgs-below ks k) (fn-lgs-below ks2 k2)))
+   :hints (("Goal" :induct (fn-lgs-below ks k)))))
+
+; KEYSTONE (RL-01-CHECKPOINT-NAME-BEFORE-DROP, the install's half).  The
+; open drops nothing (books/store-log-recover-copy.lisp
+; fn-lgrc-open-unlinks-no-segment), so the segments its plan names as
+; covered (DROP) stay in journal/.  The next checkpoint install's drop
+; (host/native/io.lisp fnn-log-covered-indices: the plan's DROP over
+; journal/ as that run lists it, under the first suffix segment its own
+; checkpoint names) covers every one of them, when nothing unlinked a
+; segment in between (NAMES2 lists every index NAMES did) and the install's
+; first is at or past the open's.  The capture names the active segment,
+; rotated to when it held a record (fn-lgs-rotate-needed-p), which is at or
+; past the active segment the open scanned, the last of its SCAN, which is
+; at or past the open's FIRST.
+(defthm fn-lgs-install-drop-covers-what-the-open-left
+  (implies (and (equal (car (fn-lgs-open-plan names first)) :scan)
+                (equal (car (fn-lgs-open-plan names2 first2)) :scan)
+                (subsetp-equal (fn-lgs-indices names) (fn-lgs-indices names2))
+                (posp first2) (<= first first2))
+           (subsetp-equal (caddr (fn-lgs-open-plan names first))
+                          (caddr (fn-lgs-open-plan names2 first2))))
+  :hints (("Goal" :in-theory (disable fn-lgs-range fn-lgs-all-present fn-lgs-below
+                                      fn-lgs-indices fn-lgs-max-index))))
 
 ; -----------------------------------------------------------------------------
 ; Rotation.  The active segment is closed where its kernel stands (no batch

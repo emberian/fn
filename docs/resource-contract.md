@@ -791,8 +791,10 @@ class and quotes what has been measured with its scope.
   barrier `:ok` or failed after landing the environment's selection, the
   acknowledgements), the first records the log kernel acknowledged are the
   first records the open recovers from every admissible crash image, with
-  no trailer assumption (`fn-lgu-acknowledged-records-are-recovered-at-every-cut`,
-  `fn-lgu-open-run-acknowledges-only-recoverable-records`; every pending
+  no trailer assumption (`fn-lgu-acknowledge-acknowledges-only-recoverable-records`,
+  the host-entry keystone; `fn-lgu-acknowledged-records-are-recovered-at-every-cut`;
+  from the open, which copies what it read into a fresh inode before it
+  serves, `fn-lgrc-acknowledge-from-the-copy`; every pending
   write is at or above the frontier and the scan reads a complete prefix's
   entries first). One segment, no rotation. ACKED is the log kernel's
   acknowledged count, advanced in the COMPLETE before any of the batch's
@@ -1024,7 +1026,7 @@ not on this tree yet; its citations are checked once they land.
 | D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length`; `books/bp-carry-waiver`: `fn-bpcw-waiver-releases-exactly-once` | PRF-138, PRF-119, PRF-950 | none |  |
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
-| D4 | `books/store-log-durable`: `fn-lgu-acknowledged-records-are-recovered-at-every-cut`, `fn-lgu-open-run-acknowledges-only-recoverable-records`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent`; `books/store-log`: `fn-lg-rotation-entry-len`; `books/store-log-lineage`: `fn-lgl-open-of-rotated-segment` | PRF-936, PRF-244, PRF-268, PRF-979 | `planning/evidence/byte-model-2026-09-29.md` |  |
+| D4 | `books/store-log-durable`: `fn-lgu-acknowledge-acknowledges-only-recoverable-records`, `fn-lgu-acknowledged-records-are-recovered-at-every-cut`; `books/store-log-recover-copy`: `fn-lgrc-acknowledge-from-the-copy`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent`; `books/store-log`: `fn-lg-rotation-entry-len`; `books/store-log-lineage`: `fn-lgl-open-of-rotated-segment` | PRF-936, PRF-244, PRF-268, PRF-979 | `planning/evidence/byte-model-2026-09-29.md` |  |
 | D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` |  |
 | X1 | `books/refusal-effect`: `fn-rfx-unserved-prepare-is-unchanged-by-definition`, `fn-rfx-unaffordable-prepare-is-unchanged-by-definition`, `fn-rfx-refused-reconfigure-is-unchanged-by-definition`, `fn-rfx-refused-post-keeps-records`, `fn-rfx-refused-post-keeps-configuration`, `fn-rfx-refused-post-consumes-one-txid`, `fn-rfx-config-record-txid-is-the-node-next-by-definition` | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
 | X2 | none (measured or open) | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
@@ -1047,6 +1049,7 @@ Constants the rows quote, read from the books that define them.
 | `*fn-otm-cadence-default-ms*` | 1,000 | ms, the committer's clock cadence | `books/owner-time-model.lisp` |
 | `:stack-kib` | 1,024 | KiB, every thread's control stack | `books/profile-limits.lisp` |
 | `:tls-limit` | 65,536 | symbols, SBCL thread-local storage (not Transport Layer Security) | `books/profile-limits.lisp` |
+| `:run-tls-limit` | 16,384 | symbols, SBCL thread-local storage the saved launcher runs at | `books/profile-limits.lisp` |
 | `:max-connections` | 32 | served connections, default | `books/profile-limits.lisp` |
 | `:control-clients` | 16 | control clients | `books/profile-limits.lisp` |
 | `:gc-nursery-mib` | 64 | MiB, the collector's nursery | `books/profile-limits.lisp` |
@@ -1077,7 +1080,7 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 0 debt entries (data-sized recursion on a host-called path with no bound), 199 bounded.
+- Depth lint baseline (tools/depth_baseline.json): 0 debt entries (data-sized recursion on a host-called path with no bound), 200 bounded.
 - Named assumptions: 25 `A-*` rows in specs/failures.md, 12 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 

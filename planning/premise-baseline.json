@@ -714,8 +714,6 @@
     "fn-prof-soundp": "preserved only; no one has said which host entry establishes it",
     "fn-prof-witness": "established off the host path; no one has said which host entry establishes it",
     "fn-profile-replay-within-boundp": "established off the host path; no one has said which host entry establishes it",
-    "fn-proto-dispatch-not-any": "never concluded; no one has said which host entry establishes it",
-    "fn-proto-not-any-row": "never concluded; no one has said which host entry establishes it",
     "fn-prov-diagnosticp": "established off the host path; no one has said which host entry establishes it",
     "fn-prov-durablep": "never concluded; no one has said which host entry establishes it",
     "fn-prov-encodablep": "never concluded; no one has said which host entry establishes it",

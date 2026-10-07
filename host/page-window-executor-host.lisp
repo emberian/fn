@@ -1,5 +1,9 @@
 ; Exact typed window lease and persistent worker transitions.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "page-read-host")
 (include-book "../books/page-window-executor")
 (include-book "../books/cold-read-window")
@@ -292,6 +296,22 @@
            :use (:instance fn-pwr-span-at-answers-when-its-ends-do
                            (ledger (fn-owner-page-read-ledger fn-page-read-pool)) (s plan)))))
 
+; Row 21 (books/page-window-span.lisp fn-pwr-byte-at-below-the-window-is-the-outcome):
+; below the borrowed window's start the scalar borrow's word is one word for
+; every coordinate, so a host that was refused one coordinate there reads the
+; rest of that range as the same refusal until the job's ledger row changes.
+(defthm fn-owner-page-window-byte-at-below-the-window-is-one-word
+  (implies (and (natp i) (natp i2) (natp (fn-prl-nth 7 token))
+                (< i (fn-prl-nth 7 token)) (< i2 (fn-prl-nth 7 token)))
+           (equal (mv-nth 0 (fn-owner-page-window-byte-at worker token plan file eoff elen
+                                                          poff plen trailer i
+                                                          fn-ew-buffer fn-page-read-pool))
+                  (mv-nth 0 (fn-owner-page-window-byte-at worker token plan file eoff elen
+                                                          poff plen trailer i2
+                                                          fn-ew-buffer fn-page-read-pool))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-owner-page-window-byte-at))))
+
 (defun fn-owner-page-window-outcome (worker token plan fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool :guard (true-listp plan)))
   (fn-pwr-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token plan))
@@ -302,11 +322,11 @@
 
 ;; The verified-window cache (books/page-window-read.lisp fn-pwc-*).  KEEP is
 ;; what the cached buffer retains: the fixed window stobj's two arrays
-;; (16 KiB octets, its one count word) and the cache entry's conses (token
+;; (the profile's :read-window-octets, its one count word) and the cache entry's conses (token
 ;; 9, plan 14, entry and list cells) at 16 octets each; never a worker slot.
 (defun fn-owner-page-window-cache-keep ()
   (declare (xargs :guard t))
-  (list (+ (fn-crl-array-octets 16384 1) (fn-crl-array-octets 1 8) (* 16 32)) 0 0 0 0))
+  (list (+ (fn-crl-array-octets (fn-profile-limit :read-window-octets) 1) (fn-crl-array-octets 1 8) (* 16 32)) 0 0 0 0))
 
 (defun fn-owner-page-window-executor-cache (worker token plan fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool :guard (true-listp plan)))

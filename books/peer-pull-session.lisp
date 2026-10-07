@@ -32,6 +32,7 @@
 ; (:tls-up) only after a verified handshake, (:local . octets) and (:lost).
 (in-package "ACL2")
 (include-book "peer-pull")
+(include-book "def-loop")
 (include-book "feed-connection-invariants")
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -238,51 +239,14 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-pull-obs-effects-loop (obs fc security acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp obs)
-      (fn-pull-obs-effects-loop (cdr obs)
-                                fc
-                                security
-                                (fn-ag-rev-onto (fn-pull-obs-effect (fn-fc-obs-kind (car obs))
-                                                                    fc
-                                                                    security)
-                                                acc))
-    (revappend acc nil)))
-
-(defun fn-pull-obs-effects (obs fc security)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp obs)
-           (append (fn-pull-obs-effect (fn-fc-obs-kind (car obs)) fc security)
-                   (fn-pull-obs-effects (cdr obs) fc security))
-         nil)
-       :exec (fn-pull-obs-effects-loop obs fc security nil)))
+(def-loop fn-pull-obs-effects (obs fc security)
+  :shape :concat :over obs :elt o
+  :body (fn-pull-obs-effect (fn-fc-obs-kind o) fc security))
 
 (local
  (defthm fn-pull-obs-effects-loop-rev-onto-append
    (equal (revappend (fn-ag-rev-onto x acc) y)
           (revappend acc (append x y)))))
-
-(local
- (defthm fn-pull-obs-effects-loop-is-revappend
-   (equal (fn-pull-obs-effects-loop obs fc security acc)
-          (revappend acc (fn-pull-obs-effects obs fc security)))
-   :hints (("Goal" :induct (fn-pull-obs-effects-loop obs fc security acc)
-                   :in-theory (union-theories '(fn-pull-obs-effects-loop fn-pull-obs-effects revappend car-cons cdr-cons fn-pull-obs-effects-loop-rev-onto-append)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-pull-obs-effects-loop)
-
-(verify-guards fn-pull-obs-effects
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-pull-obs-effects)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-pull-obs-effects-loop-is-revappend (acc nil))))))
-
 
 ; Every observation is one the preamble goes on from.
 (defun fn-pull-pre-okp (obs)
@@ -1046,3 +1010,8 @@
           (if (stringp peer) (fn-record-string-octets peer) nil)
           (fn-record-string-octets " connection=failed")
           (fn-peer-failure-words (list (fn-peer-lost-word cause) nil nil))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-pull-session-step-marks-unavailable-only-on-the-peers-reply))

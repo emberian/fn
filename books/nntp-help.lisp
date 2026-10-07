@@ -269,3 +269,8 @@
 
 ; The reconstruction facts are general rewrites; they leave the theory here.
 (in-theory (disable fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-seven-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-help-nth-of-a-constant))

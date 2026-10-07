@@ -81,29 +81,8 @@
 ; The publication buffer: the second abstract stobj congruent to
 ; `fn-octets' (owner-checkpoint-stream, moved here; the stream book goes).
 
-(defabsstobj fn-octets-pub
-  :foundation fn-octets$c
-  :recognizer (fn-octets-pub-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-octets-pub :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-octets-pub-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-octets-pub-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-octets-pub-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-octets-pub-append-octet :logic fn-octets$a-append-octet
-                                        :exec fn-octets$c-append-octet :protect t)
-            (fn-octets-pub-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-octets-pub-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                                   :protect t)
-            (fn-octets-pub-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-octets-pub-from-list :logic fn-octets$a-from-list
-                                     :exec fn-octets$c-from-list :protect t)
-            (fn-octets-pub-append-list :logic fn-octets$a-append-list
-                                       :exec fn-oct-write-list :protect t)
-            (fn-octets-pub-append-back :logic fn-octets$a-append-back
-                                       :exec fn-octets$c-append-back :protect t)
-            (fn-octets-pub-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-octets-pub-append-word :logic fn-octets$a-append-word
-                                       :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
+(include-book "def-buffer")
+(def-buffer fn-octets-pub)
 
 ; -----------------------------------------------------------------------------
 ; The budget (STO-024, kept): the file bound the open refuses a checkpoint

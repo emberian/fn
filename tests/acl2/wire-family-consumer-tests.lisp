@@ -340,6 +340,48 @@
         (equal (fn-ncl-poll-reply-encode :refused cursor nil) :bad)
         (equal (fn-ncl-poll-reply-encode :refused nil '(1)) :bad))))
 
+; fn-wf-cs-poll-cursor-file-is-the-frames-sized-field: the cursor file's bytes
+; (third of the decoded reply) are the cursor the frame carries and the :sized
+; field's content; the report file's bytes are the :bytes field.  Removal: an
+; encoder-refused cursor (it does not decode) has no frame.  Mutations: a host
+; that writes the report where the cursor belongs, and one that writes the
+; cursor where the report belongs.
+(defconst *wfcp-cursor*
+  (fn-cp-cursor-encode (list :cursor '(1) '(2) '(3) '(4) '(5) 0 0 1 7)))
+
+(defteeth fn-wf-cs-poll-cursor-file-is-the-frames-sized-field
+  :claim (((encodes (not (equal (fn-ncl-poll-reply-encode :accepted cursor report) :bad))))
+          (let ((frame (fn-ncl-poll-reply-encode :accepted cursor report))
+                (value (fn-wf-cs-poll-value :accepted cursor report)))
+            (and (equal (third (fn-ncl-poll-reply-decode frame)) cursor)
+                 (equal (fn-wg-encode *fn-wf-fncu-grammar* (car (cadr value)))
+                        (third (fn-ncl-poll-reply-decode frame)))
+                 (equal (fourth (fn-ncl-poll-reply-decode frame))
+                        (cadr (cadr value))))))
+  :subject fn-ncl-poll-reply-decode
+  :witness ((cursor *wfcp-cursor*) (report '(1 2 3 4 5 6 7 8)))
+  :breaks ((encodes ((cursor '(1 2 3)) (report nil))))
+  :mutations ((cursor-file-holds-the-report
+               (:conclusion (let ((frame (fn-ncl-poll-reply-encode :accepted cursor report))
+                                  (value (fn-wf-cs-poll-value :accepted cursor report)))
+                              (and (equal (third (fn-ncl-poll-reply-decode frame)) report)
+                                   (equal (fn-wg-encode *fn-wf-fncu-grammar* (car (cadr value)))
+                                          (third (fn-ncl-poll-reply-decode frame)))
+                                   (equal (fourth (fn-ncl-poll-reply-decode frame))
+                                          (cadr (cadr value))))))
+               ((cursor *wfcp-cursor*) (report '(1 2 3 4 5 6 7 8)))
+               :fault "a host that writes the report octets to the cursor file")
+              (report-file-holds-the-cursor
+               (:conclusion (let ((frame (fn-ncl-poll-reply-encode :accepted cursor report))
+                                  (value (fn-wf-cs-poll-value :accepted cursor report)))
+                              (and (equal (third (fn-ncl-poll-reply-decode frame)) cursor)
+                                   (equal (fn-wg-encode *fn-wf-fncu-grammar* (car (cadr value)))
+                                          (third (fn-ncl-poll-reply-decode frame)))
+                                   (equal (fourth (fn-ncl-poll-reply-decode frame))
+                                          cursor))))
+               ((cursor *wfcp-cursor*) (report '(1 2 3 4 5 6 7 8)))
+               :fault "a host that writes the cursor octets to the report file")))
+
 (assert-event
  (let* ((cursor (fn-cp-cursor-encode
                  (list :cursor '(1) '(2) '(3) '(4) '(5) 0 0 1 7)))

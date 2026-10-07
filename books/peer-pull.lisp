@@ -52,6 +52,7 @@
 ; NEWNEWS again (`fn-pull-recovery-asks-the-dead-rounds-newnews').
 (in-package "ACL2")
 (include-book "feed-journal")
+(include-book "def-loop")
 (include-book "scheduler-peers")
 (include-book "nntp-responses")
 (include-book "peer-carriage-rows")
@@ -722,49 +723,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-pull-next-pending-loop (ids pending acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp ids)
-      (if (fn-pull-msgidp (car ids))
-          (fn-pull-next-pending-loop (cdr ids)
-                                     pending
-                                     (cons (cons (car ids)
-                                                 (+ 1
-                                                    (fn-pull-count-of (car ids) pending)))
-                                           acc))
-        (fn-pull-next-pending-loop (cdr ids) pending acc))
-    (revappend acc nil)))
-
-(defun fn-pull-next-pending (ids pending)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ids)
-           (if (fn-pull-msgidp (car ids))
-               (cons (cons (car ids) (+ 1 (fn-pull-count-of (car ids) pending)))
-                     (fn-pull-next-pending (cdr ids) pending))
-             (fn-pull-next-pending (cdr ids) pending))
-         nil)
-       :exec (fn-pull-next-pending-loop ids pending nil)))
-
-(local
- (defthm fn-pull-next-pending-loop-is-revappend
-   (equal (fn-pull-next-pending-loop ids pending acc)
-          (revappend acc (fn-pull-next-pending ids pending)))
-   :hints (("Goal" :induct (fn-pull-next-pending-loop ids pending acc)
-                   :in-theory (union-theories '(fn-pull-next-pending-loop fn-pull-next-pending revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-pull-next-pending-loop)
-
-(verify-guards fn-pull-next-pending
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-pull-next-pending)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-pull-next-pending-loop-is-revappend (acc nil))))))
-
+(def-loop fn-pull-next-pending (ids pending)
+  :shape :map :over ids :elt i
+  :keep (fn-pull-msgidp i)
+  :body (cons i (+ 1 (fn-pull-count-of i pending))))
 
 ; Some unavailable id has not yet been unavailable BOUND consecutive rounds.
 (defun fn-pull-holdingp (ids pending bound)
@@ -810,43 +772,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-pull-dropped-of-loop (ids pending bound acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp ids)
-      (if (equal (+ 1 (fn-pull-count-of (car ids) pending)) (fn-pull-bound-of bound))
-          (fn-pull-dropped-of-loop (cdr ids) pending bound (cons (car ids) acc))
-        (fn-pull-dropped-of-loop (cdr ids) pending bound acc))
-    (revappend acc nil)))
-
-(defun fn-pull-dropped-of (ids pending bound)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ids)
-           (if (equal (+ 1 (fn-pull-count-of (car ids) pending)) (fn-pull-bound-of bound))
-               (cons (car ids) (fn-pull-dropped-of (cdr ids) pending bound))
-             (fn-pull-dropped-of (cdr ids) pending bound))
-         nil)
-       :exec (fn-pull-dropped-of-loop ids pending bound nil)))
-
-(local
- (defthm fn-pull-dropped-of-loop-is-revappend
-   (equal (fn-pull-dropped-of-loop ids pending bound acc)
-          (revappend acc (fn-pull-dropped-of ids pending bound)))
-   :hints (("Goal" :induct (fn-pull-dropped-of-loop ids pending bound acc)
-                   :in-theory (union-theories '(fn-pull-dropped-of-loop fn-pull-dropped-of revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-pull-dropped-of-loop)
-
-(verify-guards fn-pull-dropped-of
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-pull-dropped-of)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-pull-dropped-of-loop-is-revappend (acc nil))))))
-
+(def-loop fn-pull-dropped-of (ids pending bound)
+  :shape :map :over ids :elt i
+  :keep (equal (+ 1 (fn-pull-count-of i pending)) (fn-pull-bound-of bound))
+  :body i)
 
 (defun fn-pull-dropped (r)
   (declare (xargs :guard t))
@@ -1992,43 +1921,11 @@
 ; peers, operator data with no fixed cap (D27).  (mbe :logic <the recursion,
 ; unchanged> :exec <a loop>), equal by fn-pull-plans-of-loop-is-rev-onto
 ; (books/rev-onto.lisp).
-(defun fn-pull-plans-of-loop (names peers acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-pull-plans-of-loop
-       (cdr names) peers
-       (let ((plan (fn-pull-plan-of-rows (car names)
-                    (fn-cfg-rows-with-key peers (car names)))))
-         (if plan (cons plan acc) acc)))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-pull-plans-of (names peers)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (let ((plan (fn-pull-plan-of-rows (car names)
-                        (fn-cfg-rows-with-key peers (car names)))))
-             (if plan
-                 (cons plan (fn-pull-plans-of (cdr names) peers))
-               (fn-pull-plans-of (cdr names) peers)))
-         nil)
-       :exec (fn-pull-plans-of-loop names peers nil)))
-
-(defthm fn-pull-plans-of-loop-is-rev-onto
-  (equal (fn-pull-plans-of-loop names peers acc)
-         (fn-ag-rev-onto acc (fn-pull-plans-of names peers)))
-  :hints (("Goal" :induct (fn-pull-plans-of-loop names peers acc)
-                  :in-theory (union-theories
-                              '(fn-pull-plans-of-loop fn-pull-plans-of
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-pull-plans-of
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-pull-plans-of fn-ag-rev-onto
-                                fn-pull-plans-of-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-pull-plans-of (names peers)
+  :shape :map :over names :elt n
+  :let ((plan (fn-pull-plan-of-rows n (fn-cfg-rows-with-key peers n))))
+  :keep plan
+  :body plan)
 
 ; KEYSTONE SUBJECT.  The pulled peers of a configuration's peer rows
 ; (host/owner-host.lisp `fn-owner-pull-plans').
@@ -2234,42 +2131,10 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-pull-dropped-words-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-pull-dropped-words-loop (cdr rev)
-                                  (append (fn-record-string-octets " dropped=")
-                                          (fn-pull-list (car rev))
-                                          acc))
-    acc))
-
-(defun fn-pull-dropped-words (ids)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ids)
-           (append (fn-record-string-octets " dropped=")
-                   (fn-pull-list (car ids))
-                   (fn-pull-dropped-words (cdr ids)))
-         nil)
-       :exec (fn-pull-dropped-words-loop (fn-ag-rev-onto ids nil) nil)))
-
-(local
- (defthm fn-pull-dropped-words-loop-of-rev-onto
-   (equal (fn-pull-dropped-words-loop (fn-ag-rev-onto ids zs) nil)
-          (fn-pull-dropped-words-loop zs (fn-pull-dropped-words ids)))
-   :hints (("Goal" :induct (fn-ag-rev-onto ids zs)
-                   :in-theory (union-theories '(fn-pull-dropped-words-loop fn-pull-dropped-words fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-pull-dropped-words-loop)
-
-(verify-guards fn-pull-dropped-words
-  :hints (("Goal" :in-theory (union-theories '(fn-pull-dropped-words fn-pull-dropped-words-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-pull-dropped-words-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-pull-dropped-words (ids)
+  :shape :foldr :over ids :elt i
+  :combine (append (fn-record-string-octets " dropped=") (fn-pull-list i) acc) :init nil
+  :rev fn-ag-rev-onto)
 
 ; The owner log line of a closed round: the peer, how it ended, whether the
 ; cursor moved, how many listed ids the peer could not produce, and each id
@@ -2300,3 +2165,9 @@
                     (:definition fn-pull-done-p)
                     (:definition fn-pull-terminal-codep)
                     (:rewrite fn-pull-close-advances-only-past-a-fully-answered-round)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-pull-step-answers-only-from-the-local-node
+                    fn-pull-step-marks-unavailable-only-on-the-peers-reply))

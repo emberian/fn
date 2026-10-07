@@ -2,11 +2,14 @@
  "detail": "owner.lisp:~1892 wraps (fnn-developer-selector ...) and the fnn-err write in one handler-case serious-condition -> nil. fnn-developer-selector signals fnn-fault for an unregistered name (io.lisp:6958), so a typo'd literal silently disables the trace. Fix: keep only the fnn-err stderr write inside ignore-errors; let the selector read fault, or validate the literal against +fnn-developer-selectors+ at load time or in a test. owner.lisp is claimed by rl02, so not edited by lmg2.",
  "file": "host/native/owner.lisp",
  "id": "LOCK-R7-CUSTODY-TRACE-SELECTOR-SWALLOW",
- "notes": [],
+ "notes": [
+  "Fixed at e4ab72ed0: fnn-owner-custody-trace (owner.lisp) reads FN_NATIVE_OWNER_TEST_PIPELINE_TRACE outside the handler; only the fnn-err write is guarded. Key R7|fnn-owner-custody-trace|swallow:serious-condition:fault gone from --check on lane/lock-owner-class at e4ab72ed0, none added. natives_owed: none specific: the selector is registered in +fnn-developer-selectors+ (io.lisp); any native run with FN_NATIVE_OWNER_TEST_PIPELINE_TRACE set."
+ ],
  "owner": "deputy-C",
  "severity": "low",
+ "sha": "e4ab72ed0",
  "source": "deputy-C review of lmg2 diagnostic_sinks; key R7|fnn-owner-custody-trace|swallow:serious-condition:fault",
- "state": "open",
+ "state": "ready",
  "title": "fnn-owner-custody-trace swallows the selector read's fnn-fault",
- "updated": "2026-10-07T00:47:50Z"
+ "updated": "2026-10-07T05:28:27Z"
 }

@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-dwj-retired-job-refuses-scalar-publication; books/decoded-worker-job.lisp:172; statement: (implies (equal (mv-nth 0 (fn-dwj-retire ledger worker token job)) :reusable) (not (equal (mv-nth 0 (fn-dwj-byte-at query-ledger query-worker query-token file eoff elen poff compressed trailer decoded ...; owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/decoded-worker-job.lisp",
+ "id": "TEETH-OWED-FN-DWJ-RETIRED-JOB-REFUSES-SCALAR-PUBLICATION",
+ "keystone": "fn-dwj-retired-job-refuses-scalar-publication",
+ "line": 172,
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-dwj-retired-job-refuses-scalar-publication is a new registry keystone with no generated teeth: declare (defteeth fn-dwj-retired-job-refuses-scalar-publication ...) in a tests/acl2 book",
+ "updated": "2026-10-07T16:49:45Z"
+}

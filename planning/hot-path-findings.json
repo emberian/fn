@@ -390,12 +390,6 @@
       "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
       "packet": "PKT-448 (c)"
     },
-    "fn-nntp-newnews-scan-loop recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-nntp-newnews-scan recursion N', same traversal, same class]",
-      "packet": "PKT-448 (c)"
-    },
     "fn-node-binding-ids-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
@@ -684,11 +678,6 @@
       "packet": "PKT-308",
       "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
     },
-    "fn-ag-rev-onto recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308",
-      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
-    },
     "fn-bpah-apply-delivery-loop recursion F": {
       "class": "unexpected",
       "packet": "PKT-308",
@@ -724,11 +713,6 @@
       "packet": "PKT-308",
       "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
     },
-    "fn-bpn-resume-jobs-loop recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308",
-      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
-    },
     "fn-bpnf-held-octets-loop recursion F": {
       "class": "unexpected",
       "packet": "PKT-308",
@@ -738,16 +722,6 @@
       "class": "unexpected",
       "packet": "PKT-308 (1), (5)",
       "note": "E7 union fc12333a actual fragment-effects/foundation-step reach: retained fragment candidate/family planning walk. The 70-fragment and 10 MiB criteria remain open; no resumable scheduling classification or measured bound claimed."
-    },
-    "fn-bpnp-forward-plan-rows-loop recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-504 (b)",
-      "note": "E7 union fc12333a actual fnn-bpnode-forward-contact reach exposes the loop implementation of the already tracked forward scan. PKT-808 retains the per-session scan and 1,000-bundle drain evidence; no completion claim."
-    },
-    "fn-bpnp-forward-unrouted-rows-loop recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-504 (b)",
-      "note": "E7 union fc12333a actual fnn-bpnode-forward-contact reach exposes the loop implementation of the already tracked forward scan. PKT-808 retains the per-session scan and 1,000-bundle drain evidence; no completion claim."
     },
     "fn-bpfc-ordered reverse F": {
       "class": "unexpected",

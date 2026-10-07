@@ -9,7 +9,7 @@
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *lim-t-core* 389141032)              ; the 69046a76 fn-host.core
-(defconst *lim-t-nursery* (* 64 1024 1024))    ; +fnn-gc-nursery-octets+
+(defconst *lim-t-nursery* (* 64 1024 1024))    ; the pre-MEM-007 +fnn-gc-nursery-octets+, passed as the explicit argument
 (defconst *lim-t-machine* (list (* 65536 *fn-heap-mib*)))
 (defconst *lim-t-p* *fn-bs-profile-development*)
 (defconst *lim-t-use* '(100 1000000))          ; 100 transactions, 1 MB charged

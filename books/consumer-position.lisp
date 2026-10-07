@@ -4,6 +4,7 @@
 ; components only until their durable codec and authenticated host path land.
 (in-package "ACL2")
 (include-book "cbor-invariants")
+(include-book "def-loop")
 (include-book "consumer-position-fields")
 (include-book "rev-onto") ; the loop twins' step
 
@@ -145,27 +146,11 @@
 ; data with no fixed cap (D27), and the recursion took one control-stack frame
 ; per element.  (mbe :logic <the recursion, unchanged> :exec <a loop>), equal
 ; by the lemma after it (books/rev-onto.lisp fn-ag-rev-onto).
-(defun fn-cp-remove-loop (consumer entries acc)
-  (if (not (consp entries)) (fn-ag-rev-onto acc nil)
-    (if (equal consumer (fn-cp-nth 1 (car entries)))
-        (fn-ag-rev-onto acc (cdr entries))
-      (fn-cp-remove-loop consumer (cdr entries) (cons (car entries) acc)))))
-
-(defun fn-cp-remove (consumer entries)
-  (declare (xargs :verify-guards nil))
-  (mbe :logic (if (not (consp entries)) nil
-                (if (equal consumer (fn-cp-nth 1 (car entries))) (cdr entries)
-                  (cons (car entries) (fn-cp-remove consumer (cdr entries)))))
-       :exec (fn-cp-remove-loop consumer entries nil)))
-
-(defthm fn-cp-remove-loop-is-rev-onto
-  (equal (fn-cp-remove-loop consumer entries acc)
-         (fn-ag-rev-onto acc (fn-cp-remove consumer entries)))
-  :hints (("Goal" :induct (fn-cp-remove-loop consumer entries acc)
-                  :in-theory (union-theories
-                              '(fn-cp-remove-loop fn-cp-remove fn-ag-rev-onto not
-                                car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-cp-remove (consumer entries)
+  :shape :map :over entries :elt e
+  :stop (equal consumer (fn-cp-nth 1 e))
+  :stop-value (cdr entries)
+  :body e)
 
 ; State: (:consumer-state history incarnation committed-frontier next-epoch
 ;         entries authority). next-epoch is one scalar, so unregister does not need an
@@ -601,12 +586,6 @@
   :hints (("Goal" :in-theory (disable fn-cp-read-fields))))
 (verify-guards fn-cp-entry)
 (verify-guards fn-cp-find)
-(verify-guards fn-cp-remove-loop)
-(verify-guards fn-cp-remove
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cp-remove fn-ag-rev-onto fn-cp-remove-loop-is-rev-onto car-cons cdr-cons)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-cp-authority-find)
 (verify-guards fn-cp-authority-rowp)
 (verify-guards fn-cp-authority-rowsp)

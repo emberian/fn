@@ -38,6 +38,7 @@
 ; host installs the operator's keyring afterwards through
 ; fn-store-set-keyring, which recontexts every row through the arena.
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "catalog-record")
 (include-book "store-node")
 (include-book "store-reclaim")
@@ -61,48 +62,14 @@
         (t (mv :bad fn-arena))))
 
 ; The events in order; :bad if any is refused (a composite whose article does
-; not decode, or a value the codec does not produce).
-; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
-; control-stack frame per element of data with no fixed cap.  The :logic is
-; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
-(defun fn-intern-events-loop (ws keyring generation acc fn-arena)
-  (declare (xargs :stobjs fn-arena
-                  :guard (and (fn-prin-keyringp keyring) (natp generation))))
-  (if (atom ws)
-      (mv (fn-ag-rev-onto acc nil) fn-arena)
-    (mv-let (row fn-arena)
-      (fn-intern-event (car ws) keyring generation fn-arena)
-      (if (eq row :bad)
-          (mv :bad fn-arena)
-        (fn-intern-events-loop (cdr ws) keyring generation (cons row acc) fn-arena)))))
-
-(defun fn-intern-events (ws keyring generation fn-arena)
-  (declare (xargs :stobjs fn-arena
-                  :guard (and (fn-prin-keyringp keyring) (natp generation))
-                  :verify-guards nil))
-  (mbe :logic
-       (if (atom ws)
-           (mv nil fn-arena)
-         (mv-let (row fn-arena)
-           (fn-intern-event (car ws) keyring generation fn-arena)
-           (if (eq row :bad)
-               (mv :bad fn-arena)
-             (mv-let (rest fn-arena)
-               (fn-intern-events (cdr ws) keyring generation fn-arena)
-               (if (eq rest :bad)
-                   (mv :bad fn-arena)
-                 (mv (cons row rest) fn-arena))))))
-       :exec (fn-intern-events-loop ws keyring generation nil fn-arena)))
-
-(defthm fn-intern-events-loop-is-rev-onto
-  (equal (fn-intern-events-loop ws keyring generation acc fn-arena)
-         (mv-let (r a) (fn-intern-events ws keyring generation fn-arena)
-           (mv (if (eq r :bad) :bad (fn-ag-rev-onto acc r)) a)))
-  :hints (("Goal" :induct (fn-intern-events-loop ws keyring generation acc fn-arena)
-                  :in-theory (disable fn-intern-event))))
-
-(verify-guards fn-intern-events
-  :hints (("Goal" :in-theory (disable fn-intern-event))))
+; not decode, or a value the codec does not produce).  Executes by a loop (lane
+; depth-debt, PRF-919): the recursion took one control-stack frame per element
+; of data with no fixed cap.  The :logic is the recursion, the :exec the loop
+; (def-loop :fold; its bridge is the generated NAME-LOOP-IS-REVAPPEND).
+(def-loop fn-intern-events (ws keyring generation fn-arena)
+  :shape :fold :over ws :st fn-arena :done (atom ws) :elt w
+  :row (fn-intern-event w keyring generation fn-arena) :next (cdr ws)
+  :guard (and (fn-prin-keyringp keyring) (natp generation)))
 
 ; -----------------------------------------------------------------------------
 ; 2. ALPHA.  A row's bytes (total: a handle outside the arena reads as no

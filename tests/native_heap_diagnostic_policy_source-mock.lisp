@@ -29,6 +29,8 @@
   (fn-oadl-accounting-line (push (list :accounting (first args)) *calls*) "|accounting")
   (otherwise (apply *before-diagnostic-core* entry args))))
 (defun fnn-filesystem-durability-warn (&rest args) (declare (ignore args)) nil)
+; PRF-1327: no running owner, so no key-exchange line after the report.
+(defvar *fnn-operator-live-owner* nil)
 (defun fnn-operator-status-once (&rest args) (declare (ignore args)) 0)
 (defun fnn-operator-emit-status (&rest args) (declare (ignore args)) nil)
 (defun fnn-operator-status-of-exit-code (code) (assert (= code 0)) :accepted)
@@ -50,11 +52,14 @@
    (assert (equal (third output-call) output))
    (assert (equal (assoc :accounting *calls*) (list :accounting output))))
   (assert (= *captured-core* *captured-machine* 1))))
-; Final trigger-growth pricing: the 16 MiB output backing also enlarges
-; collector nursery protection. DEFAULT257/explicit256 become276/275,
-; respectively; the old273/272 figures omitted that growth.
+; The DEFAULT run (259 MiB before output: tests/native_heap_default_source-mock.lisp)
+; and the explicit-cold one (256) each add the 16 MiB output backing: 275 and
+; 272.  At the 8 MiB collection-trigger cap (books/profile-limits.lisp
+; :gc-nursery-mib, MEM-007) the output backing no longer enlarges the
+; collector's nursery protection, which at the former 64 MiB cap added 3 MiB
+; (the former 276/275).
 (dolist (command '("status" "health"))
- (policy-case command nil '(16777216 1048576) "(:HEAP 276 :SMALL 8192 1024 16)|accounting")
+ (policy-case command nil '(16777216 1048576) "(:HEAP 275 :SMALL 8192 1024 16)|accounting")
  (policy-case command '(67108864 4 256 256 256) '(16777216 1048576)
-              "(:HEAP 275 :SMALL 8192 1024 16)|accounting"))
+              "(:HEAP 272 :SMALL 8192 1024 16)|accounting"))
 (format t "SOURCE NEXT-RUN POLICY DIAGNOSTICS PASSED~%")

@@ -32,6 +32,14 @@ the difference explicit instead:
               first fix for the store-init failure loaded checkpoint-host and
               the image then failed on `fnn-checkpoint-name-result`, which
               io.lisp called and only checkpoint.lisp defined;
+  keystone    every keystone a `definterface` in host/interfaces.lisp (which
+              build.lisp `ld`s) cites, when a tree book defines it, is in a
+              book build.lisp's image includes: its own includes and those of
+              the host files it `ld`s, closed over non-local includes.
+              definterface refuses "keystone ... is not a theorem in this
+              world" only at host-ld, which waits for convergence; dcece7415
+              (D26) moved K1 into books/peer-catchup-spool-body and put that
+              book in no build list (attach-order gate 3, 2026-10-07);
   included    every `fn-` name a host file in build-dtn.lisp's `ld` closure
               calls or names in `:stobjs` that a book defines is defined in a
               book the DTN image has included by the time that file is `ld`ed
@@ -61,6 +69,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import ledger  # noqa: E402
+import lisp_source  # noqa: E402
 DEFAULT_BUILD = "host/native/build.lisp"
 DTN_BUILD = "host/native/build-dtn.lisp"
 
@@ -142,28 +151,14 @@ DEF = re.compile(r'^\s*\((?:defun|defund|defmacro|defconst|defabbrev)\s+([^\s()]
 
 
 def strip_comments(text: str) -> str:
-    return re.sub(r";[^\n]*", "", text)
+    """Lisp without comments or #| |# blocks; string literals kept."""
+    return lisp_source.code_only(text, strings=None)
 
 
 def strip_code(text: str) -> str:
-    """Raw Lisp without comments, strings or #| |# blocks (character literals kept)."""
-    out, i, n = [], 0, len(text)
-    while i < n:
-        c = text[i]
-        if c == "#" and text.startswith("#\\", i):
-            out.append(text[i:i + 3]); i += 3
-        elif c == "#" and text.startswith("#|", i):
-            j = text.find("|#", i + 2); i = n if j < 0 else j + 2
-        elif c == ";":
-            j = text.find("\n", i); i = n if j < 0 else j
-        elif c == '"':
-            i += 1
-            while i < n and text[i] != '"':
-                i += 2 if text[i] == "\\" else 1
-            i += 1; out.append('""')
-        else:
-            out.append(c); i += 1
-    return "".join(out)
+    """Raw Lisp without comments, #| |# blocks or string contents (each
+    literal read as \"\"); character literals kept (tools/lisp_source.py)."""
+    return lisp_source.code_only(text, strings='""')
 
 
 RAW_DEF = re.compile(r"\((?:defun|defmacro)\s+([^\s()]+)", re.I)
@@ -295,6 +290,78 @@ def findings(root: Path = ROOT, default_text: str | None = None,
     out.extend(raw_findings(root, default_text, dtn_text,
                             DTN_RAW_REACH if reach is None else reach))
     out.extend(include_findings(root, dtn_text))
+    out.extend(keystone_findings(root, default_text, default))
+    return out
+
+
+INTERFACES = "host/interfaces.lisp"
+THEOREM_DEF = re.compile(r"^[ \t]*\((?:defthm|defthmd|defrule|defkeystone|defaxiom)\s+"
+                         r"([^\s()]+)", re.I | re.M)
+
+
+def read_list(code: str, start: int) -> list:
+    """The s-expression list opening at CODE[START] as nested Python lists of
+    atom strings (no strings or quotes appear in a :keystones list)."""
+    stack: list[list] = [[]]
+    for token in re.finditer(r"\(|\)|[^\s()]+", code[start:]):
+        text = token.group(0)
+        if text == "(":
+            stack.append([])
+        elif text == ")":
+            done = stack.pop()
+            stack[-1].append(done)
+            if len(stack) == 1:
+                return stack[0][0]
+        else:
+            stack[-1].append(text)
+    raise ValueError("unbalanced :keystones list")
+
+
+def keystone_lists(text: str) -> list[tuple[str, list[str]]]:
+    """(interface, keystone names) for each definterface with :keystones; an
+    entry `(NAME :via F)' names NAME."""
+    code = strip_comments(text)
+    out = []
+    heads = list(re.finditer(r"\(definterface\s+([^\s()]+)", code, re.I))
+    for n, match in enumerate(heads):
+        end = heads[n + 1].start() if n + 1 < len(heads) else len(code)
+        at = code.find(":keystones", match.end(), end)
+        if at < 0:
+            continue
+        items = read_list(code, code.index("(", at))
+        out.append((match.group(1).lower(),
+                    [(item[0] if isinstance(item, list) else item).lower()
+                     for item in items if item]))
+    return out
+
+
+def keystone_findings(root: Path, build_text: str, ld_files: list[str],
+                      index: BookIndex | None = None) -> list[str]:
+    if INTERFACES not in ld_files or not (root / INTERFACES).is_file():
+        return []
+    index = index or BookIndex(root)
+    available: set[str] = set()
+    starts = []
+    for text, base in [(build_text, ".")] + [
+            ((root / path).read_text(encoding="utf-8"), os.path.dirname(path))
+            for path in ld_files]:
+        for target, rest in INCLUDE.findall(strip_code_keep_strings(text)):
+            if ":dir" not in rest.lower():
+                starts.append(os.path.normpath(os.path.join(base, target)) + ".lisp")
+    index.close(available, starts)
+    theorems: dict[str, set[str]] = {}
+    for path in sorted((root / "books").rglob("*.lisp")):
+        rel = path.relative_to(root).as_posix()
+        for name in THEOREM_DEF.findall(strip_comments(path.read_text(encoding="utf-8"))):
+            theorems.setdefault(name.lower(), set()).add(rel)
+    out = []
+    for interface, names in keystone_lists((root / INTERFACES).read_text(encoding="utf-8")):
+        for name in names:
+            books = theorems.get(name)
+            if books and not books & available:
+                out.append(f"keystone: {INTERFACES} definterface {interface} cites {name}, "
+                           f"defined in {', '.join(sorted(books))}, which {DEFAULT_BUILD}'s "
+                           f"image does not include")
     return out
 
 
@@ -362,8 +429,7 @@ class BookIndex:
 
 def strip_code_keep_strings(text: str) -> str:
     """Lisp without comments or #| |# blocks; string literals kept (include targets)."""
-    text = re.sub(r"#\|.*?\|#", "", text, flags=re.S)
-    return re.sub(r';[^\n]*', "", text)
+    return strip_comments(text)
 
 
 def host_uses(text: str) -> set[str]:

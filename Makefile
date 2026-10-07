@@ -23,9 +23,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-receiver-repin-tests \
 	tests/acl2/connection-receiver-repin-state-tests \
 	books/obligation-view-cursor \
+	books/obligation-view-cursor-refinement \
+	tests/acl2/obligation-view-cursor-tests \
 	books/retention-obligation-view \
 	books/obligation-view-budget \
 	books/view-delta-cursor \
+	books/view-delta-cursor-refinement \
+	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
 	tests/acl2/index-reader-render-establishment-tests \
@@ -297,12 +301,28 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defrecord-tests \
 	books/def-loop \
 	tests/acl2/def-loop-tests \
+	books/def-buffer \
+	tests/acl2/def-buffer-tests \
+	tests/acl2/pgs-frame-fill-tests \
 	books/def-representation-lib \
+	books/def-representation-pages \
+	books/paged-checkpoint \
+	books/catalog-pages \
+	books/paged-checkpoint-host \
+	books/paged-checkpoint-exec \
+	books/paged-checkpoint-stage \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-representation-pages-tests \
+	tests/acl2/paged-checkpoint-tests \
+	tests/acl2/paged-checkpoint-host-tests \
+	tests/acl2/paged-checkpoint-exec-tests \
+	tests/acl2/paged-checkpoint-stage-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
+	books/raw-dispatch-verdict \
+	tests/acl2/raw-dispatch-verdict-tests \
 	tests/acl2/defevent-tests \
 	tests/acl2/def-carried-tests \
 	books/def-holder \
@@ -621,6 +641,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/heap-figure \
 	books/heap-open-nursery \
 	tests/acl2/heap-open-nursery-tests \
+	books/send-progress \
+	tests/acl2/send-progress-tests \
+	books/idle-collection \
+	tests/acl2/idle-collection-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
 	books/cold-read-reservation \
@@ -861,6 +885,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
 	books/recovery-refinement \
+	books/recovery-refinement-store \
 	tests/acl2/recovery-refinement-tests \
 	books/recovery-refinement-concurrent \
 	tests/acl2/recovery-refinement-concurrent-tests \
@@ -1035,6 +1060,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/decoded-window-span \
 	tests/acl2/page-window-executor-tests \
 	tests/acl2/page-window-read-tests \
+	books/mux-accept-slot \
+	tests/acl2/mux-accept-slot-tests \
 	tests/acl2/page-window-span-tests \
 	tests/acl2/page-window-admission-tests \
 	tests/acl2/page-window-lease-tests \
@@ -2044,8 +2071,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-header-query \
 	tests/acl2/legacy-header-query-tests \
 	tests/acl2/article-stream-server-tests \
+	books/article-select-index \
 	books/article-stream-owner \
+	books/article-stream-owner-bridge \
 	tests/acl2/article-stream-owner-tests \
+	tests/acl2/article-stream-owner-teeth-tests \
 	tests/acl2/catalog-availability-tests \
 	tests/acl2/catalog-availability-owner-load-tests \
 	tests/acl2/catalog-availability-paged-tests \
@@ -2156,7 +2186,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-route-programs-tests \
 	books/store-log-open-barriers \
 	tests/acl2/store-log-open-barriers-tests \
+	books/store-log-recover-copy \
+	tests/acl2/store-log-recover-copy-tests \
 	books/store-log-rotate-spare \
+	books/owner-publication-lifecycle \
+	tests/acl2/owner-publication-lifecycle-tests \
 	books/owner-compact-request \
 	tests/acl2/owner-compact-request-tests \
 	books/bp-carry-frame \
@@ -2391,7 +2425,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
-	books/image-world-paged \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
     books/pagestore-digest-block-predicate \
@@ -2461,6 +2494,8 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-bootstrap-export-tests \
     tests/acl2/allocation-turn-body-authority-tests \
     tests/acl2/allocation-turn-slots-tests \
+    tests/acl2/allocation-turn-source-cost-tests \
+    tests/acl2/consumer-remote-client-contract-tests \
     books/page-read-counter-transaction \
     books/page-read-issue-source-cost \
     books/recovery-prs-install \
@@ -2544,6 +2579,7 @@ ACL2_BOOKS ?= books/defrecord \
     books/owner-report-owner-accessors \
     books/allocation-turn-body-authority \
     books/allocation-turn-slots \
+    books/allocation-turn-source-cost \
     books/index-backing-writer-step \
     books/index-backing-table-seal \
     books/index-backing-reinsert \
@@ -2597,9 +2633,9 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/records-shape books/statement books/statement-invariants
 
 # The extraction differential (A-EXTRACT, specs/failures.md; lane extract-2):
-# the world extracted to a CHICKEN program and compared with the developer
-# image -- the served transcripts, the boundary probes, a real store's replies
-# and the per-function differential -- on hbox (tools/extract/check.sh; from
+# the world extracted to fn-core (bare SBCL) and compared with the developer
+# image -- the served transcripts, the boundary probes, a real store's replies,
+# the stateful and owner differentials -- on hbox (tools/extract/check.sh; from
 # elsewhere tools/extract/remote_check.sh ships the tree with hbox_native.sh).
 EXTRACT_REV ?= .
 extract-check:
@@ -2661,6 +2697,11 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lock_discipline_check
 	@$(CHECK_STEP) $(PYTHON) tools/lanedump_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lanedump_check
+	@$(CHECK_STEP) $(PYTHON) tools/unhooked.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_unhooked
+	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_proof_repl_smoke
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:
@@ -2960,6 +3001,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/tls_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_tls_check
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/attach_order_check.py
 # A host macro used before its definition in load order compiles as a
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
 	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
@@ -3012,6 +3054,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/evidence_size_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_evidence_size_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_attach_order_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests

@@ -35,7 +35,9 @@
 
 (defconst *fn-profile-limits*
   '((:tls-limit 65536 "symbols"
-     "SBCL's thread-local storage per thread (--tls-limit): the served world passed SBCL's default 16384 at load, so images build and run at this")
+     "SBCL's thread-local storage per thread (--tls-limit) the image BUILD runs at: the served world passed SBCL's default 16384 at load (batch AV), so images build at this")
+    (:run-tls-limit 20480 "symbols"
+     "SBCL's thread-local storage per thread (--tls-limit) the saved launcher RUNS at: every thread's storage is resident (SBCL's dynamic_values_bytes is 16 octets a symbol: 320 KiB at 20480, 1 MiB at 65536). 16384 serves (MEM-001), but the image's own symbols take TLS index 33,140 of the 131,072 a thread holds at 16384 (25.3%, over tools/build_native_host.sh's 25% budget, nwt/mem-batch 54409d7a9); at 20480 they take 20.2% of 163,840. A thread can index half of that area: a 4096 run exhausts at TLS index 32,724 of its 65,536 octets (hbox probe, 2026-10-07)")
     (:stack-kib 1024 "KiB"
      "every thread's control stack (--control-stack-size), whatever the store profile")
     (:default-stack-kib 2048 "KiB"
@@ -50,8 +52,16 @@
      "concurrent control-socket clients the owner serves")
     (:thread-runtime-mib 4 "MiB"
      "SBCL's per-thread runtime beside its control stack (binding stack, alien stack, thread-local storage)")
-    (:gc-nursery-mib 64 "MiB"
+    (:gc-nursery-mib 8 "MiB"
      "the collection trigger's cap: every dynamic space of 1 GiB or more collects after this much allocation")
+    (:idle-gc-generation 6 "generation"
+     "the generation the owner collects through when it has been idle (books/idle-collection.lisp): SBCL frees dead pages inside the heap at every collection but returns them to the OS only after a collection of a generation above 1 (runtime gencgc.c small_generation_limit), and 6 is its pseudo-static bound, a full collection")
+    (:idle-gc-quiet-ticks 3 "ticks"
+     "consecutive maintenance ticks (one second each) with no publication and under :idle-gc-activity-kib consed before the owner counts itself idle")
+    (:idle-gc-activity-kib 512 "KiB"
+     "what one maintenance tick may allocate and still be quiet: served commands and accepts allocate more, the tick's own work less")
+    (:idle-gc-floor-kib 8192 "KiB"
+     "what must be allocated since the last idle collection before another is worth its pause (the collection trigger's cap, :gc-nursery-mib, in KiB)")
     (:max-connections 32 "connections"
      "fn.toml's [server] max_connections when it names none")
     (:headroom-min-percent 10 "percent"
@@ -78,12 +88,18 @@
      "TLS handshakes in progress at once on the node, and the most it starts in one second")
     (:tls-handshake-ms 5000 "milliseconds"
      "a TLS handshake's deadline, and a socket's wait for a handshake slot (the time model's D)")
+    (:read-window-octets 262144 "octets"
+     "the payload window one protected window read verifies and publishes (books/extent-window-plan.lisp fn-ewp-begin): each job digests the whole protected prefix, so a payload of P octets costs P / this many prefix digests per pass")
     (:tls-handshake-source-overrides 64 "entries"
      "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")
     (:extent-cache-entries 8 "entries"
      "the payload extent cache's whole-entry slots (books/extent-cache.lisp; read through fn-arx-read-cache-entries); at most 32 until the hash index lands (owed item EXT-CACHE-INDEX), a larger figure fails the certification of books/extent-cache.lisp")
     (:extent-cache-windows 8 "windows"
-     "the payload extent cache's verified-window slots, raw and decoded together (books/extent-cache.lisp; read through fn-arx-read-cache-windows); the same bound, and at most the entries figure (the resource plan sizes the cache's charge by the entries alone)")))
+     "the payload extent cache's verified-window slots, raw and decoded together (books/extent-cache.lisp; read through fn-arx-read-cache-windows); the same bound, and at most the entries figure (the resource plan sizes the cache's charge by the entries alone)")
+    (:send-stall-seconds 10 "seconds"
+     "how long a queued reply may go with no octet leaving the kernel's send queue and none accepted into it before the owner refuses the send by name, send-stalled (books/send-progress.lisp); today's fixed 10 s, now a no-progress window instead of a total deadline")
+    (:send-min-octets-per-second 4096 "octets per second"
+     "the least pace, over a whole reply that leaves a backlog in the kernel's send queue, at which a reader may drain before the owner refuses it by name, reader-too-slow (books/send-progress.lisp); 4096 admits the slowest reader the native tests name (38 KB/s, 1 MiB per 27.4 s) nine times over, and an operator tightens it against a slow-read attack")))
 
 ; The row's VALUE, at macroexpansion: (fn-profile-limit :stack-kib) is the
 ; literal 1024 wherever it appears, and an unknown KEY is refused there.

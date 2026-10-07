@@ -12,6 +12,7 @@
 
 (in-package "ACL2")
 (include-book "bp-node")
+(include-book "def-loop")
 (include-book "defrecord")
 (include-book "frame-fields")
 
@@ -48,33 +49,10 @@
 ; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
 ; node's held-bundle or job queue, data with no fixed cap (D27), one
 ; control-stack frame per row before.
-(defun fn-bpn-append-loop (xs ys acc)
-  (declare (xargs :guard t))
-  (if (atom xs)
-      (fn-ag-rev-onto acc ys)
-    (fn-bpn-append-loop (cdr xs) ys (cons (car xs) acc))))
-
-(defun fn-bpn-append (xs ys)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (atom xs)
-           ys
-         (cons (car xs) (fn-bpn-append (cdr xs) ys)))
-       :exec (fn-bpn-append-loop xs ys nil)))
-
-(defthm fn-bpn-append-loop-is-rev-onto
-  (equal (fn-bpn-append-loop xs ys acc)
-         (fn-ag-rev-onto acc (fn-bpn-append xs ys)))
-  :hints (("Goal" :induct (fn-bpn-append-loop xs ys acc)
-                  :in-theory (union-theories
-                              '(fn-bpn-append-loop fn-bpn-append fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bpn-append
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpn-append fn-ag-rev-onto fn-bpn-append-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-bpn-append (xs ys)
+  :shape :map :over xs :elt x
+  :tail ys
+  :body x)
 
 (defun fn-bpn-nth (n xs)
   (declare (xargs :guard t))
@@ -149,64 +127,18 @@
 ; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
 ; node's held-bundle or job queue, data with no fixed cap (D27), one
 ; control-stack frame per row before.
-(defun fn-bpn-replace-job-loop (key replacement jobs acc)
-  (declare (xargs :guard t))
-  (if (atom jobs)
-      (fn-ag-rev-onto acc nil)
-    (if (equal key (fn-bpn-job-key (car jobs)))
-        (fn-ag-rev-onto acc (cons replacement (cdr jobs)))
-      (fn-bpn-replace-job-loop key replacement (cdr jobs) (cons (car jobs) acc)))))
-
-(defun fn-bpn-replace-job (key replacement jobs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (atom jobs)
-           nil
-         (if (equal key (fn-bpn-job-key (car jobs)))
-             (cons replacement (cdr jobs))
-           (cons (car jobs) (fn-bpn-replace-job key replacement (cdr jobs)))))
-       :exec (fn-bpn-replace-job-loop key replacement jobs nil)))
-
-(defthm fn-bpn-replace-job-loop-is-rev-onto
-  (equal (fn-bpn-replace-job-loop key replacement jobs acc)
-         (fn-ag-rev-onto acc (fn-bpn-replace-job key replacement jobs)))
-  :hints (("Goal" :induct (fn-bpn-replace-job-loop key replacement jobs acc)
-                  :in-theory (union-theories
-                              '(fn-bpn-replace-job-loop fn-bpn-replace-job fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bpn-replace-job
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpn-replace-job fn-ag-rev-onto fn-bpn-replace-job-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-bpn-replace-job (key replacement jobs)
+  :shape :map :over jobs :elt j
+  :stop (equal key (fn-bpn-job-key j))
+  :stop-value (cons replacement (cdr jobs))
+  :body j)
 
 ; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
 ; node's held-bundle or job queue, data with no fixed cap (D27), one
 ; control-stack frame per row before.
-(defun fn-bpn-jobs-octets-loop (jobs acc)
-  (declare (xargs :guard (acl2-numberp acc)))
-  (if (atom jobs)
-      acc
-    (fn-bpn-jobs-octets-loop (cdr jobs) (+ acc (len (fn-bpn-job-wire (car jobs)))))))
-
-(defun fn-bpn-jobs-octets (jobs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (atom jobs)
-           0
-         (+ (len (fn-bpn-job-wire (car jobs)))
-            (fn-bpn-jobs-octets (cdr jobs))))
-       :exec (fn-bpn-jobs-octets-loop jobs 0)))
-
-(defthm fn-bpn-jobs-octets-loop-is-plus
-  (implies (acl2-numberp acc)
-           (equal (fn-bpn-jobs-octets-loop jobs acc)
-                  (+ acc (fn-bpn-jobs-octets jobs))))
-  :hints (("Goal" :induct (fn-bpn-jobs-octets-loop jobs acc)
-                  :in-theory (disable fn-bpn-job-wire))))
-
-(verify-guards fn-bpn-jobs-octets)
+(def-loop fn-bpn-jobs-octets (jobs)
+  :shape :sum :over jobs :elt j
+  :body (len (fn-bpn-job-wire j)))
 
 (defun fn-bpn-contact-listp (contacts)
   (declare (xargs :guard t))
@@ -227,38 +159,10 @@
 ; The contact set is one entry per configured BP boundary, operator data
 ; with no fixed cap (D27): the walk executes by a loop (lane depth-debt,
 ; PRF-919), (mbe :logic <the recursion, unchanged> :exec <a loop>).
-(defun fn-bpn-close-contact-loop (peer contacts acc)
-  (declare (xargs :guard t))
-  (if (atom contacts)
-      (fn-ag-rev-onto acc nil)
-    (fn-bpn-close-contact-loop
-     peer (cdr contacts)
-     (if (equal peer (car contacts)) acc (cons (car contacts) acc)))))
-
-(defun fn-bpn-close-contact (peer contacts)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (atom contacts)
-                  nil
-                (if (equal peer (car contacts))
-                    (fn-bpn-close-contact peer (cdr contacts))
-                  (cons (car contacts) (fn-bpn-close-contact peer (cdr contacts)))))
-       :exec (fn-bpn-close-contact-loop peer contacts nil)))
-
-(defthm fn-bpn-close-contact-loop-is-rev-onto
-  (equal (fn-bpn-close-contact-loop peer contacts acc)
-         (fn-ag-rev-onto acc (fn-bpn-close-contact peer contacts)))
-  :hints (("Goal" :induct (fn-bpn-close-contact-loop peer contacts acc)
-                  :in-theory (union-theories
-                              '(fn-bpn-close-contact-loop fn-bpn-close-contact
-                                fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bpn-close-contact
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpn-close-contact fn-ag-rev-onto
-                                fn-bpn-close-contact-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-bpn-close-contact (peer contacts)
+  :shape :map :over contacts :elt c
+  :keep (equal peer c) :keep-order :skip-first
+  :body c)
 
 ; Contact-list closure is needed by the contact step guard.
 (defthm fn-bpn-open-contact-preserves-contact-listp
@@ -677,6 +581,53 @@
            :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
                                fn-bpn-state-field-types-for-guard))))
 
+;; A restart finds every :attempting job (the replayed log's last record for
+;; that job is its :attempting) unresolved: the process that wrote it died
+;; before its outcome record.  The machine's own restart therefore resolves
+;; each such job through the one append path, as a :requeued record with the
+;; :uncertain reason the lifecycle already defines, before any new :attempting
+;; record for it is proposed.  A replay accepts :attempting only for a :queued
+;; job (fn-bpn-record-applicablep), so a log with an orphan :attempting
+;; followed by a second :attempting is not a valid prefix.
+(defun fn-bpn-find-attempting (jobs)
+  (declare (xargs :guard t))
+  (if (atom jobs)
+      nil
+    (if (equal (fn-bpn-job-status (car jobs)) :attempting)
+        (car jobs)
+      (fn-bpn-find-attempting (cdr jobs)))))
+
+(verify-guards fn-bpn-find-attempting)
+
+(defconst *fn-bpn-resolution-refusal* '(:restart-fault :resolution-refused))
+(defconst *fn-bpn-resolution-uncertainty* '(:restart-fault :resolution-persistence))
+
+; The record that resolves JOB at the machine's next token.
+(defun fn-bpn-resolution-record (token job)
+  (declare (xargs :guard t))
+  (let ((key (fn-bpn-job-key job)))
+    (list :requeued token (nth 0 key) (nth 1 key) (nth 2 key)
+          :uncertain :requeued)))
+
+(verify-guards fn-bpn-resolution-record)
+
+; Propose the resolution of the first :attempting job, or answer nothing when
+; there is none.  The pending operation carries *fn-bpn-resolution-uncertainty*
+; as its uncertainty effect: that is how fn-bpn-persist-result-step knows a
+; durable record of this proposal is to be followed by the next resolution.
+(defun fn-bpn-resolve-orphans-step (st)
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
+  (let ((job (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st))))
+    (if (or (not job) (fn-bpn-machine-state-fenced st)
+            (fn-bpn-machine-state-pending st))
+        (fn-bpn-answer st nil)
+      (fn-bpn-propose st (fn-bpn-resolution-record
+                          (fn-bpn-machine-state-next-token st) job)
+                      nil *fn-bpn-resolution-refusal*
+                      *fn-bpn-resolution-uncertainty*))))
+
+(verify-guards fn-bpn-resolve-orphans-step)
+
 (defun fn-bpn-job-exactp (job sequence route peer bundle wire)
   (declare (xargs :guard t))
   (and (equal (fn-bpn-job-sequence job) sequence)
@@ -754,50 +705,14 @@
 ; node's held-bundle or job queue, data with no fixed cap (D27), one
 ; control-stack frame per row before.
 ; A right fold: the :exec folds the reversed jobs from the left.
-(defun fn-bpn-ready-peers-step (job rest)
-  (declare (xargs :guard t))
-  (if (and (equal (fn-bpn-job-status job) :queued)
-           (not (fn-bpn-member (fn-bpn-job-peer job) rest)))
-      (cons (fn-bpn-job-peer job) rest)
-    rest))
-
-(defun fn-bpn-ready-peers-loop (rev acc)
-  (declare (xargs :guard t))
-  (if (atom rev)
-      acc
-    (fn-bpn-ready-peers-loop (cdr rev) (fn-bpn-ready-peers-step (car rev) acc))))
-
-(defun fn-bpn-ready-peers (jobs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (atom jobs)
-           nil
-         (let ((rest (fn-bpn-ready-peers (cdr jobs))))
-           (if (and (equal (fn-bpn-job-status (car jobs)) :queued)
-                    (not (fn-bpn-member (fn-bpn-job-peer (car jobs)) rest)))
-               (cons (fn-bpn-job-peer (car jobs)) rest)
-             rest)))
-       :exec (fn-bpn-ready-peers-loop (fn-ag-rev-onto jobs nil) nil)))
-
-(defthm fn-bpn-ready-peers-loop-of-rev-onto
-  (equal (fn-bpn-ready-peers-loop (fn-ag-rev-onto jobs zs) nil)
-         (fn-bpn-ready-peers-loop zs (fn-bpn-ready-peers jobs)))
-  :hints (("Goal" :induct (fn-ag-rev-onto jobs zs)
-                  :in-theory (union-theories
-                              '(fn-bpn-ready-peers-loop fn-bpn-ready-peers
-                                fn-bpn-ready-peers-step fn-ag-rev-onto atom
-                                car-cons cdr-cons)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
-
-(verify-guards fn-bpn-ready-peers-step)
-(verify-guards fn-bpn-ready-peers-loop)
-(verify-guards fn-bpn-ready-peers
-  :hints (("Goal" :use ((:instance fn-bpn-ready-peers-loop-of-rev-onto (zs nil)))
-                  :in-theory (union-theories
-                              '(fn-bpn-ready-peers-loop fn-bpn-ready-peers atom)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-bpn-ready-peers (jobs)
+  :shape :foldr :over jobs :elt j
+  :combine (if (and (equal (fn-bpn-job-status j) :queued)
+                    (not (fn-bpn-member (fn-bpn-job-peer j) acc)))
+               (cons (fn-bpn-job-peer j) acc)
+               acc)
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-bpn-start-one (st peer)
   (declare (xargs :guard (fn-bpn-machine-statep st)))
@@ -873,7 +788,13 @@
                                   (fn-bpn-machine-state-contacts st) nil t
                                   (fn-bpn-machine-state-next-token st))
                (list (fn-bpn-pending-uncertainty-effect pending)))
-            (fn-bpn-answer next (fn-bpn-pending-success-effects pending)))))
+            ; Only a restart's resolution carries the marker; the state check
+            ; is paid once per orphan, never on an ordinary publication.
+            (if (and (equal (fn-bpn-pending-uncertainty-effect pending)
+                            *fn-bpn-resolution-uncertainty*)
+                     (fn-bpn-machine-statep next))
+                (fn-bpn-resolve-orphans-step next)
+              (fn-bpn-answer next (fn-bpn-pending-success-effects pending))))))
        ((equal outcome :refused)
         (fn-bpn-answer
          (fn-bpn-state-with st (fn-bpn-machine-state-jobs st)
@@ -1003,48 +924,6 @@
            :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
                                fn-bpn-state-field-types-for-guard))))
 
-; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
-; node's held-bundle or job queue, data with no fixed cap (D27), one
-; control-stack frame per row before.
-(defun fn-bpn-resume-jobs-loop (jobs acc)
-  (declare (xargs :guard t))
-  (if (atom jobs)
-      (fn-ag-rev-onto acc nil)
-    (fn-bpn-resume-jobs-loop
-     (cdr jobs)
-     (cons (if (equal (fn-bpn-job-status (car jobs)) :attempting)
-               (fn-bpn-job-with-status (car jobs) :queued
-                                       (fn-bpn-job-last-token (car jobs)))
-             (car jobs))
-           acc))))
-
-(defun fn-bpn-resume-jobs (jobs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (atom jobs)
-           nil
-         (cons (if (equal (fn-bpn-job-status (car jobs)) :attempting)
-                   (fn-bpn-job-with-status (car jobs) :queued
-                                           (fn-bpn-job-last-token (car jobs)))
-                 (car jobs))
-               (fn-bpn-resume-jobs (cdr jobs))))
-       :exec (fn-bpn-resume-jobs-loop jobs nil)))
-
-(defthm fn-bpn-resume-jobs-loop-is-rev-onto
-  (equal (fn-bpn-resume-jobs-loop jobs acc)
-         (fn-ag-rev-onto acc (fn-bpn-resume-jobs jobs)))
-  :hints (("Goal" :induct (fn-bpn-resume-jobs-loop jobs acc)
-                  :in-theory (union-theories
-                              '(fn-bpn-resume-jobs-loop fn-bpn-resume-jobs fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bpn-resume-jobs-loop)
-(verify-guards fn-bpn-resume-jobs
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpn-resume-jobs fn-ag-rev-onto fn-bpn-resume-jobs-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
-
 (defun fn-bpn-replay-records (st records)
   (declare (xargs :guard
                   (and (fn-bpn-machine-statep st)
@@ -1075,13 +954,12 @@
       (let ((replay (fn-bpn-replay-records base records)))
         (if (equal (car replay) :ready)
             (let* ((replayed (nth 1 replay))
-                   (resumed (fn-bpn-state-with
-                             replayed
-                             (fn-bpn-resume-jobs (fn-bpn-machine-state-jobs replayed))
-                             nil nil nil (fn-bpn-machine-state-next-token replayed))))
-              (fn-bpn-answer resumed
-                             (list (list :restart-ready
-                                         (len (fn-bpn-machine-state-jobs resumed))))))
+                   (resolved (fn-bpn-resolve-orphans-step replayed)))
+              (fn-bpn-answer
+               (fn-bpn-answer-state resolved)
+               (cons (list :restart-ready
+                           (len (fn-bpn-machine-state-jobs replayed)))
+                     (fn-bpn-answer-effects resolved))))
           (let ((prefix (nth 1 replay)))
             (fn-bpn-answer
              (fn-bpn-state-with prefix (fn-bpn-machine-state-jobs prefix)

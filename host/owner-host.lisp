@@ -25,6 +25,11 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach")
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
@@ -821,7 +826,7 @@
 ; any suffix, never a second in flight, never past a deferral.  A decision
 ; made with nothing in flight that is not :due ends the request (there was
 ; nothing left to compact, or a deferral blocks it and says so itself).
-(defun fn-owner-sco-due (override free state)
+(defun fn-owner-sco-due (override free now state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
     (if (not profile)
@@ -830,12 +835,17 @@
                    (fn-owner-sco-global 'fn-owner-sco-durable state)
                    (fn-owner-sco-count state)
                    (fn-bs-profile-max-open-suffix profile)
-                   (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                   (fn-opl-attempted (fn-owner-sco-deferred state)
+                                     (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                                     (fn-owner-sco-count state)
+                                     now)
                    (fn-owner-sco-global 'fn-owner-sco-inflight state)
-                   (fn-ock-publication-blockedp
+                   (fn-opl-blockedp
                     (fn-owner-sco-deferred state)
                     (fn-owner-sco-budget override profile)
-                    (fn-ockp-space free))
+                    (fn-ockp-space free)
+                    (fn-owner-sco-count state)
+                    now)
                    (fn-owner-sco-global 'fn-owner-sco-requested state))))
         (cond ((eq next :coalesce)
                (let ((state (f-put-global 'fn-owner-sco-pending t state)))
@@ -855,7 +865,7 @@
 ; statvfs the host took before the quantum); :requested and :coalesced leave
 ; the request standing for the next decisions, :blocked and
 ; :nothing-to-compact leave nothing.
-(defun fn-owner-sco-request (override free state)
+(defun fn-owner-sco-request (override free now state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
     (if (not profile)
@@ -863,12 +873,17 @@
       (let ((word (fn-ock-request-word
                    (fn-owner-sco-global 'fn-owner-sco-durable state)
                    (fn-owner-sco-count state)
-                   (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                   (fn-opl-attempted (fn-owner-sco-deferred state)
+                                     (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                                     (fn-owner-sco-count state)
+                                     now)
                    (fn-owner-sco-global 'fn-owner-sco-inflight state)
-                   (fn-ock-publication-blockedp
+                   (fn-opl-blockedp
                     (fn-owner-sco-deferred state)
                     (fn-owner-sco-budget override profile)
-                    (fn-ockp-space free)))))
+                    (fn-ockp-space free)
+                    (fn-owner-sco-count state)
+                    now))))
         (let ((state (f-put-global 'fn-owner-sco-requested
                                    (and (member-eq word '(:requested :coalesced)) t)
                                    state)))
@@ -905,6 +920,11 @@
          (state (f-put-global 'fn-owner-sco-attempted count state))
          ; the publication in flight, bound to the count it captures
          (state (f-put-global 'fn-owner-sco-inflight count state))
+         ; RL-02: the capture's identity, its serial
+         ; (books/owner-publication-lifecycle.lisp fn-opl-next-serial): the
+         ; count alone is not one (a :backoff retry recaptures it)
+         (serial (fn-opl-next-serial (fn-owner-sco-global 'fn-owner-sco-serial state)))
+         (state (f-put-global 'fn-owner-sco-serial serial state))
          ; PKT-868: the capture answers a standing request.
          (state (f-put-global 'fn-owner-sco-requested nil state)))
     (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
@@ -926,7 +946,10 @@
                    (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v)))
                              (fn-gen-node (cadr v))
                            nil)
-                         (fn-gen-verdict-salt v)))))))
+                         (fn-gen-verdict-salt v)))
+                 ; RL-02: the serial the settlement of an abandonment names
+                 ; (fn-owner-sco-publication-abandoned)
+                 serial))))
 
 ; Row S3b (lane operability-7): `store export DIR' on the running owner
 ; (host/native/owner.lisp fnn-owner-export-request).  fn-owner-oex-capture,
@@ -1049,12 +1072,51 @@
          (state (if durablep
                     (f-put-global 'fn-owner-sco-durable (fn-sco-sequence next) state)
                   state))
+         ; RL-02: a durable checkpoint ends every deferral; a verdict that is
+         ; one replaces it; any other non-durable ending leaves a standing
+         ; deferral (the abandonment's, recorded by
+         ; fn-owner-sco-publication-abandoned) as it is.
          (state (f-put-global 'fn-owner-sco-deferred
-                              (if (and (consp verdict) (eq (car verdict) :deferred))
-                                  verdict
-                                nil)
+                              (cond ((and (consp verdict) (eq (car verdict) :deferred))
+                                     verdict)
+                                    (durablep nil)
+                                    (t (fn-owner-sco-global 'fn-owner-sco-deferred state)))
                               state)))
     (value (if durablep (fn-sco-sequence next) :none))))
+
+; RL-02 (books/owner-publication-lifecycle.lisp): a publication that captured
+; and ended without a durable checkpoint and without a budget or space deferral
+; settles its own capture here, under the owner mutex, in the host's done
+; quantum.  COUNT and SERIAL are the capture's (the slot's key and the capture's
+; identity, the last two values fn-owner-sco-capture handed over), OUTCOME what
+; the thread observed ((:unencodable), (:image-refused VERDICT), (:io-refusal),
+; (:job-failure CLASS)), NOW the owner's monotonic clock in milliseconds.  ACL2
+; (fn-opl-settle) decides: the capture that holds the slot frees it and the
+; outcome is recorded as the owner's deferral, classified by what could make
+; another attempt meaningful; one that does not hold it (settled already, or
+; the slot is another capture's) changes nothing.  Answers the recorded
+; deferral (its reason, class and attempts are what the host logs), or :stale
+; for a capture that did not hold the slot.
+(defun fn-owner-sco-publication-abandoned (count serial outcome now state)
+  ; Guard in the minimal theory: under the attach-first include order the
+  ; global car/consp rewrites of books/owner-queued-work and
+  ; books/failure-scope are tried first and the rewriter runs past 900 s.
+  (declare (xargs :stobjs state :guard t
+                  :guard-hints (("Goal" :in-theory (union-theories
+                    '(fn-opl-settle fn-orc-release-slot
+                      state-p not mv-nth put-global update-global-table global-table
+                      (:executable-counterpart symbolp) (:executable-counterpart equal)
+                      fn-sg-state-p1-of-put-global
+                      state-p-implies-and-forward-to-state-p1)
+                    (theory 'minimal-theory))))))
+  (let* ((pass (fn-owner-sco-global 'fn-owner-orc-pass state))
+         (inflight (fn-owner-sco-global 'fn-owner-sco-inflight state))
+         (current (fn-owner-sco-global 'fn-owner-sco-serial state))
+         (deferred (fn-owner-sco-global 'fn-owner-sco-deferred state))
+         (r (fn-opl-settle count serial outcome now pass inflight current deferred))
+         (state (f-put-global 'fn-owner-sco-inflight (cadr r) state))
+         (state (f-put-global 'fn-owner-sco-deferred (caddr r) state)))
+    (value (if (fn-opl-holdsp count serial pass inflight current) (caddr r) :stale))))
 
 ;; Q16 (lane online-reclaim): `store reclaim' on a running owner
 ;; (books/owner-reclaim.lisp).  The pass runs on its own thread
@@ -1087,7 +1149,7 @@
 ; installs, books/owner-reclaim-pass.lisp) and `store reclaim', which first
 ; records the instant at the clock through the live reconfiguration
 ; (fn-owner-orc-instant-stage) and then runs the same pass over it.
-(defun fn-owner-orc-request (mode override free state)
+(defun fn-owner-orc-request (mode override free now state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((profile (fn-owner-store-profile state))
          (dry (eq mode :dry-run))
@@ -1102,9 +1164,11 @@
             (fn-owner-orc-pass state)
             (and (not dry) (fn-owner-sco-global 'fn-owner-sco-inflight state))
             (and (not dry) profile
-                 (fn-ock-publication-blockedp (fn-owner-sco-deferred state)
-                                              (fn-owner-sco-budget override profile)
-                                              (fn-ockp-space free)))
+                 (fn-opl-blockedp (fn-owner-sco-deferred state)
+                                  (fn-owner-sco-budget override profile)
+                                  (fn-ockp-space free)
+                                  (fn-owner-sco-count state)
+                                  now))
             (or dry (eq mode :reclaim) (fn-rci-recordedp v))))))))
 
 (defun fn-owner-orc-request-status (word)
@@ -2131,6 +2195,16 @@
 ; fn-pidx-existing-action-is-store-existing-action) and the payload sealed
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
+
+; The arena count as the owner's own compiled code reads it.  Startup compares
+; it with the host's reading (host/native/owner.lisp
+; fnn-owner-arena-identity-check): fn-owner-prepare-buffer below feeds exactly
+; this read to the held row, and a certified world without the image's arena
+; attachment (the attach book precedes the generic: tools/attach_order_check.py)
+; reads a different arena representation than the host seals into.
+(defun fn-owner-arena-count (fn-arena)
+  (declare (xargs :stobjs (fn-arena) :mode :program))
+  (fn-arena-count fn-arena))
 
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
@@ -4503,7 +4577,7 @@
  (let* ((readerOC (fn-ocfg-at-reader-view oc views))
         (w (fn-asto-first-event readerOC id start end fn-octets))
         (stop (if w (fn-wsp-next w) end))
-        (capture (and w (fn-asto-capture readerOC id w cache fn-arena))))
+        (capture (and w (fn-asto-capture readerOC id w cache fn-arena fn-cat))))
   (if (not capture)
       (fn-av-mca-read-span credits oc views id start stop cache sched slots reserve fn-octets fn-arena fn-cat)
     (let* ((result (fn-asto-captured-result oc capture (- stop start)))
@@ -5203,30 +5277,27 @@ written within SECONDS."
 
 ; One reply line from one peer.  The article of a 335/238 is the row's bytes
 ; read through the arena (books/owner-feed-article.lisp fn-ofa-feed-article,
-; fn-ofa-feed-article-is-the-feed-article-over-alpha), never its handle.
-(defun fn-owner-feed-octets (peer-octets line monotonic fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+; fn-ofa-feed-article-is-the-feed-article-over-alpha), never its handle.  This
+; step does NOT read the arena: the article arrives as an argument, read first
+; by fn-owner-feed-reply-article (a pure probe), so that an arena read the host
+; must suspend (a payload extent not in memory) happens before anything of the
+; reply chunk is committed (LOCK-R2-FEED-REPLY-PAYLOAD-PREAD).
+(defun fn-owner-feed-reply-msgid (peer owner)
+  "The Message-ID of PEER's in-flight offer."
+  (declare (xargs :mode :program))
+  (let* ((entry (fn-own-feed-entry-of peer (fn-own-feeds owner)))
+         (feed (fn-own-feed-entry-feed entry)))
+    (fn-own-feed-inflight-msgid (fn-feed-queue feed))))
+
+(defun fn-owner-feed-octets (peer-octets line monotonic article state)
+  (declare (xargs :stobjs (state) :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value (fn-owner-feed-word-publication nil nil nil))
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (entry (fn-own-feed-entry-of peer (fn-own-feeds owner)))
-             (feed (fn-own-feed-entry-feed entry))
-             (msgid (fn-own-feed-inflight-msgid (fn-feed-queue feed)))
-             (response (fn-own-feed-parse-response line msgid))
-             ; The record's bytes by Message-ID, read once and only for a
-             ; reply that sends them (335/238; books/peer-feed
-             ; fn-feed-observe ignores ARTICLE for every other code): its
-             ; handle through the history stobj (R holds: the entry
-             ; fn-owner-feed-reply-chunk refreshed it)
-             ; (fn-apr-feed-article-is-own-feed-article,
-             ; books/acceptance-payload-ref.lisp) read through the arena
-             ; (fn-ofa-feed-article-is-the-feed-article-over-alpha).  Since
-             ; the records flip the row holds a handle; handing it to the
-             ; port sent an empty command (lane feed-fault).
-             (article (and response (fn-ofa-send-codep response)
-                           (fn-ofa-feed-article owner msgid fn-arena fn-hist))))
+             (msgid (fn-owner-feed-reply-msgid peer owner))
+             (response (fn-own-feed-parse-response line msgid)))
         (cond
          ((null response)
           (value (fn-ores-feed-port-publication :quiet nil nil nil nil)))
@@ -5266,12 +5337,15 @@ it is :CONNECTION-REFUSED and the raw adapter must close this peer without
 flushing the previous peer's pending projection."
   (if (equal (fn-fc-kind step) :refused) :connection-refused (fn-fc-kind step)))
 
-(defun fn-owner-feed-reply-chunk-synced (peer-octets octets monotonic fn-arena fn-hist state)
+(defun fn-owner-feed-reply-chunk-synced (peer-octets octets monotonic article fn-arena state)
   "Consume one ACL2 connection/reply event; nil drains retained input.
 
 Greeting and MODE replies stay inside fn-fc.  A normal feed reply reaches the
-existing port only after fn-fc has made this connection ready."
-  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
+existing port only after fn-fc has made this connection ready.  ARTICLE is the
+reply's article, read beforehand by fn-owner-feed-reply-article: this step
+commits (the framer table, the stop table) and never reads the payload arena
+itself."
+  (declare (xargs :stobjs (state fn-arena) :mode :program
                   :guard (and (fn-cbor-octet-listp octets)
                               (fn-cbor-octet-listp peer-octets))))
   (let ((peer (fn-store-octets->string peer-octets)))
@@ -5335,7 +5409,7 @@ existing port only after fn-fc has made this connection ready."
                                                                 (and (equal word :ok) fallback-line))))))
                   (:reply
                    (fn-owner-feed-octets peer-octets (fn-fc-line step)
-                                         monotonic fn-arena fn-hist state))
+                                         monotonic article state))
                   (:streaming-refused
                    (value (fn-owner-feed-word-publication :streaming-refused nil stop-line)))
                   (:need-input
@@ -5348,16 +5422,73 @@ existing port only after fn-fc has made this connection ready."
                            kind nil (fn-peer-feed-failure-line peer input step octets))))
                   (otherwise (value (fn-owner-feed-word-publication :fault nil nil))))))))))
 
+;;; The feed reply, in two halves so a payload read the host must suspend
+;;; commits nothing (LOCK-R2-FEED-REPLY-PAYLOAD-PREAD).  The committing half,
+;;; fn-owner-feed-reply-chunk-synced, f-put-globals the consumed framer state;
+;;; its :reply arm used to read the article afterwards, so a cold read could
+;;; not be abandoned and re-run (the octets would reach the framer twice).
+;;; The read is now fn-owner-feed-reply-article, which returns no state: the
+;;; host runs it first, with the extent realizer in its no-I/O mode, and
+;;; fetches a cold extent off every lock before it runs the committing half
+;;; warm.  The committing half calls no arena read (fn-ofa-feed-article occurs
+;;; only in the probe below).
+
+; The history stobj refreshed against the owner's Store (host/store-node-host.lisp
+; fn-host-hist-sync; R by fn-hist-refresh-is-the-history), alone: the probe's
+; precondition (R holds at its read), run by the host outside the no-I/O mode.
+(defun fn-owner-feed-reply-sync (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv nil t fn-hist state)))
+
+; The article this reply sends, from the connection's CURRENT framer state and
+; the owner's in-flight offer, committing nothing: the same pure framer step
+; fn-owner-feed-reply-chunk-synced takes (fn-fc-table-lookup, fn-fc-step,
+; fn-fc-line), then the same rule as fn-owner-feed-octets for which replies
+; send the bytes (a :reply line whose response is a send code, 335/238;
+; books/peer-feed fn-feed-observe ignores ARTICLE for every other code): its
+; handle through the history stobj (fn-apr-feed-article-is-own-feed-article,
+; books/acceptance-payload-ref.lisp) read through the arena
+; (fn-ofa-feed-article-is-the-feed-article-over-alpha).  Since the records
+; flip the row holds a handle; handing it to the port sent an empty command
+; (lane feed-fault).  NIL when the reply sends nothing.  It takes the state
+; only to read and returns none, so a throw out of the arena read leaves
+; everything as it was.
+(defun fn-owner-feed-reply-article (peer-octets octets fn-arena fn-hist state)
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
+                  :guard (and (fn-cbor-octet-listp octets)
+                              (fn-cbor-octet-listp peer-octets))))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
+        (mv nil nil state)
+      (let ((input (fn-fc-table-lookup peer (f-get-global 'fn-owner-feed-inputs state))))
+        (if (not (fn-fc-statep input))
+            (mv nil nil state)
+          (let* ((step (fn-fc-step input octets))
+                 (stop (fn-fc-streaming-refusal-p input step))
+                 (kind (if stop :streaming-refused
+                         (fn-owner-feed-connection-result-kind step))))
+            (if (not (equal kind :reply))
+                (mv nil nil state)
+              (let* ((owner (fn-owner-core state))
+                     (msgid (fn-owner-feed-reply-msgid peer owner))
+                     (response (fn-own-feed-parse-response (fn-fc-line step) msgid)))
+                (mv nil
+                    (and response (fn-ofa-send-codep response)
+                         (fn-ofa-feed-article owner msgid fn-arena fn-hist))
+                    state)))))))))
+
 ; The feed reply entry: the history stobj refreshed against the owner's Store
 ; first (host/store-node-host.lisp fn-host-hist-sync; R by
-; fn-hist-refresh-is-the-history), then the reply read through it.
-(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic fn-arena fn-hist state)
+; fn-hist-refresh-is-the-history), then the reply committed with the article
+; fn-owner-feed-reply-article read for it in the same owner quantum.
+(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic article fn-arena fn-hist state)
   (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
                   :guard (and (fn-cbor-octet-listp octets)
                               (fn-cbor-octet-listp peer-octets))))
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
     (mv-let (erp val state)
-      (fn-owner-feed-reply-chunk-synced peer-octets octets monotonic fn-arena fn-hist state)
+      (fn-owner-feed-reply-chunk-synced peer-octets octets monotonic article fn-arena state)
       (mv erp val fn-hist state))))
 
 

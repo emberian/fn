@@ -6,12 +6,15 @@
  "file": "host/native/admin.lisp",
  "fix": "Make the deciding quantum refuse-and-retry (return to the observation loop, off the mutexes) instead of observing under them when the carry moved; the ACL2 decision then runs only on a history observed over the carried profile. If instead kept, declare it as an exception citing the race-only reachability.",
  "id": "LOCK-R2-LIMIT-HISTORY-REOBSERVE",
- "notes": [],
+ "notes": [
+  "Fixed: deciding quantum returns :carry-moved and the loop re-observes off O/E; fnn-lim-decision history now required. Removed opendir/readdir/closedir E keys; lstat E remains (live-reconfigure chain). natives_owed: tests/test_native_limits_live.py, tests/test_native_public_limits.py (concurrent store limit), tests/test_native_admin.py."
+ ],
  "owner": "unassigned",
  "scenario": "Two operators change the limit concurrently; the loser's deciding quantum finds values != seen and walks the journal directory while holding O and E.",
  "severity": "medium",
+ "sha": "1073cdd61",
  "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
- "state": "open",
+ "state": "ready",
  "title": "`store limit' re-observes the journal directory (lstat/opendir/readdir/closedir) under the owner and extent mutexes when the carried profile moved",
- "updated": "2026-10-06T23:55:36Z"
+ "updated": "2026-10-07T05:15:48Z"
 }

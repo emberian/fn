@@ -92,7 +92,8 @@ def mutate(kind, **kw):
 POST_CUTS = ("frontier-reserved", "record-completing", "finish-consumed", "finish-durable",
              "log-written", "log-fenced")
 RECOVERY_CUTS = ("recover-replayed", "recover-barrier-1", "recover-barrier-2", "recover-barrier-3")
-LOG_CUTS = ("log-written", "log-fenced", "log-truncated", "log-recovered", "log-extended", "log-extent-fenced")
+LOG_CUTS = ("log-written", "log-fenced", "log-copied", "log-copy-fenced", "log-swapped", "log-recovered",
+            "log-extended", "log-extent-fenced")
 
 
 def cases():
@@ -133,7 +134,7 @@ def cases():
                                      [post(1), post(2, fault=fault), recover(), post(3)])
     for cut in LOG_CUTS:
         steps = [post(1)]
-        if cut in ("log-truncated", "log-recovered"):
+        if cut in ("log-copied", "log-copy-fenced", "log-swapped", "log-recovered"):
             steps += [recover(env={"FN_NATIVE_LOG_FAULT": cut}), recover(), post(2)]
         elif cut.startswith("log-exten"):
             steps += [dict(post(2), payloads={"big": article(2, size=400000, msgid="<big@x.invalid>")},
@@ -227,9 +228,8 @@ class Case:
         return ws
 
     def program_argv(self):
-        # the Common Lisp product takes the image's CLI (`--fn ...'); the
-        # CHICKEN program its own verbs
-        return [str(self.program), "--fn"] if CORE else [str(self.program)]
+        # fn-core takes the image's CLI (`--fn ...')
+        return [str(self.program), "--fn"]
 
     def run_one(self, argv, env):
         try:
@@ -312,19 +312,13 @@ class Case:
         return {"case": self.name, "verdict": "DIFFER", "step": label, "reason": reason, "steps": steps}
 
 
-CORE = False
-
-
 def main(argv):
-    global CORE
     only = []
     args = []
     it = iter(argv[1:])
     for a in it:
         if a == "--only":
             only.append(next(it))
-        elif a == "--core":
-            CORE = True
         else:
             args.append(a)
     image, program, out = Path(args[0]).resolve(), Path(args[1]).resolve(), Path(args[2]).resolve()

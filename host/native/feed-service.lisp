@@ -64,8 +64,8 @@
 ;;; a syscall or an ACL2 call.
 (defparameter *fnn-feed-runtime-lock*
   (sb-thread:make-mutex :name "fn outbound feed runtimes"))
-;; guarded-by: *fnn-feed-runtime-lock*
 (defparameter *fnn-feed-runtimes* (make-hash-table :test #'eq))
+(fnn-guarded-by *fnn-feed-runtimes* *fnn-feed-runtime-lock*)
 
 (defun fnn-feed-now ()
   "One monotonic observation, in the ACL2 feed port's milliseconds."
@@ -375,53 +375,102 @@ waits on (:input, or :output for a TLS WANT), the ACL2 framer state untouched."
                      command)
                  (fnn-make-octets 0)))))))
 
+(defconstant +fnn-feed-reply-cold-attempts+ 4
+  "At most this many cold reads of one feed reply's article before the link
+is dropped: ACL2's line deadline (fn-otb-line-dependency-step) normally ends
+the wait first; this bounds the re-runs when the realizer's cache evicts the
+page between its read and the warm re-run.")
+
 (defun fnn-feed-reply-step (service link octets now)
-  "Apply one ACL2-framed reply event, never a host-parsed line."
-  (fnn-owner-transit-serialized
-   service nil
-   (lambda ()
-     (let* ((publication (fnn-owner-feed-arena-step 'fn-owner-feed-reply-chunk
-                                                    (fnn-feed-link-peer-octets link)
-                                                    (fnn-octet-list octets) now))
-            (word (fnn-feed-checked-word
-                  (fnn-owner-feed-word publication)
-                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :lost :refused :unsendable :connection-refused :streaming-refused :need-input :closed :invalid :fault)
-                  'fn-owner-feed-reply-chunk)))
-       (when (eq word :fault)
-         (fnn-fault "feed reply framer state is malformed"))
-       ;; Only a complete post-ready :line reaches the feed port and replaces
-       ;; its FNFD projection.  MODE is a connection-phase command, not a
-       ;; delivery effect, and :ready has no socket bytes.
-       ;; :unsendable (fn-ofa-publication-command-words-have-octets): the
-       ;; port moved and its records are flushed like a :send's; the line
-       ;; names ACL2's reason and fnn-feed-consume drops the link, so
-       ;; fn-feed-lost requeues the offer.  Never an owner stop.
-       ;; :lost (books/owner-feed.lisp fn-own-feed-reply-word): ACL2 took the
-       ;; reply as a loss and moved the port; its records are flushed like a
-       ;; :quiet's and fnn-feed-consume drops the link.
-       (when (member word '(:send :quiet :lost :refused :unsendable))
-         (fnn-owner-feed-flush service publication)
-         ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
-         ;; line: a peer's refusal or deferral is never silent.
-         (fnn-owner-feed-log publication))
-       ;; friend-path-2: a refused, closed or unreadable connection names
-       ;; why, in ACL2's line (fn-peer-feed-failure-line).
-       (when (member word '(:connection-refused :closed :invalid))
-         (fnn-owner-feed-log publication))
-       ;; The peer refused MODE STREAM: ACL2 recorded the stop and its line.
-       (when (eq word :streaming-refused)
-         (fnn-owner-feed-log publication))
-       ;; Ready: after a 500/501 to MODE STREAM ACL2 rendered the IHAVE
-       ;; fallback line (PRF-207) into the publication; otherwise there is none.
-       (when (eq word :ready)
-         (fnn-owner-feed-log publication))
-       (values word
-               (if (member word '(:starttls :auth-user :auth-pass :mode :send))
-                   (let ((command (fnn-owner-feed-command publication)))
-                     (when (zerop (length command))
-                       (fnn-fault "feed connection/reply authorized an empty command"))
-                     command)
-                 (fnn-make-octets 0)))))))
+  "Apply one ACL2-framed reply event, never a host-parsed line.
+
+The article a 335/238 sends is read BEFORE the reply is committed, by ACL2's
+pure probe (fn-owner-feed-reply-article) inside the owner quantum with the
+extent realizer in its no-I/O mode.  Warm, the committing step runs in that
+same quantum with the article.  Cold, nothing was committed: the quantum is
+left, the page is read holding neither the owner nor the extent mutex (the
+served read's issue and await, fnn-owner-cold-await), and the event runs
+again.  A page ACL2's deadline gives up on drops the link, as a lost reply
+does (fn-feed-lost requeues the offer)."
+  (let ((peer-octets (fnn-feed-link-peer-octets link))
+        (octet-list (fnn-octet-list octets))
+        (cold-since nil))
+    (dotimes (attempt +fnn-feed-reply-cold-attempts+)
+      (declare (ignorable attempt))
+      (let ((step (fnn-owner-transit-serialized
+                   service nil
+                   (lambda ()
+                     (multiple-value-bind (state article-or-read)
+                         (fnn-owner-feed-reply-probe-locked service peer-octets octet-list)
+                       (if (eq state :warm)
+                           (list :done
+                                 (multiple-value-list
+                                  (fnn-feed-reply-commit service peer-octets octet-list
+                                                         now article-or-read)))
+                         (list :cold article-or-read)))))))
+        (when (eq (first step) :done)
+          (return-from fnn-feed-reply-step (values-list (second step))))
+        (multiple-value-bind (word since)
+            (fnn-owner-cold-await service (second step) cold-since :transit)
+          (unless cold-since (setq cold-since since))
+          (unless (eq word :serve)
+            (return-from fnn-feed-reply-step
+              (fnn-feed-reply-unavailable peer-octets word))))))
+    (fnn-feed-reply-unavailable peer-octets :attempts)))
+
+(defun fnn-feed-reply-unavailable (peer-octets word)
+  "The article could not be had within ACL2's deadline (WORD: :unavailable,
+ACL2's refusal word, or :attempts): nothing of the reply was committed, so the
+link is lost (:lost, no command) and fn-feed-lost requeues the offer."
+  (fnn-err "feed reply article unavailable for peer ~a: ~s"
+           (map 'string #'code-char peer-octets) word)
+  (values :lost (fnn-make-octets 0)))
+
+(defun fnn-feed-reply-commit (service peer-octets octets now article)
+  "The committing step, owner quantum held: ACL2's reply chunk with the article
+the probe read, then the publication's effects.  It reads no payload."
+  (let* ((publication (fnn-owner-feed-arena-step 'fn-owner-feed-reply-chunk
+                                                 peer-octets
+                                                 octets now article))
+         (word (fnn-feed-checked-word
+               (fnn-owner-feed-word publication)
+               '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :lost :refused :unsendable :connection-refused :streaming-refused :need-input :closed :invalid :fault)
+               'fn-owner-feed-reply-chunk)))
+    (when (eq word :fault)
+      (fnn-fault "feed reply framer state is malformed"))
+    ;; Only a complete post-ready :line reaches the feed port and replaces
+    ;; its FNFD projection.  MODE is a connection-phase command, not a
+    ;; delivery effect, and :ready has no socket bytes.
+    ;; :unsendable (fn-ofa-publication-command-words-have-octets): the
+    ;; port moved and its records are flushed like a :send's; the line
+    ;; names ACL2's reason and fnn-feed-consume drops the link, so
+    ;; fn-feed-lost requeues the offer.  Never an owner stop.
+    ;; :lost (books/owner-feed.lisp fn-own-feed-reply-word): ACL2 took the
+    ;; reply as a loss and moved the port; its records are flushed like a
+    ;; :quiet's and fnn-feed-consume drops the link.
+    (when (member word '(:send :quiet :lost :refused :unsendable))
+      (fnn-owner-feed-flush service publication)
+      ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
+      ;; line: a peer's refusal or deferral is never silent.
+      (fnn-owner-feed-log publication))
+    ;; friend-path-2: a refused, closed or unreadable connection names
+    ;; why, in ACL2's line (fn-peer-feed-failure-line).
+    (when (member word '(:connection-refused :closed :invalid))
+      (fnn-owner-feed-log publication))
+    ;; The peer refused MODE STREAM: ACL2 recorded the stop and its line.
+    (when (eq word :streaming-refused)
+      (fnn-owner-feed-log publication))
+    ;; Ready: after a 500/501 to MODE STREAM ACL2 rendered the IHAVE
+    ;; fallback line (PRF-207) into the publication; otherwise there is none.
+    (when (eq word :ready)
+      (fnn-owner-feed-log publication))
+    (values word
+            (if (member word '(:starttls :auth-user :auth-pass :mode :send))
+                (let ((command (fnn-owner-feed-command publication)))
+                  (when (zerop (length command))
+                    (fnn-fault "feed connection/reply authorized an empty command"))
+                  command)
+              (fnn-make-octets 0)))))
 
 (defun fnn-feed-lost (service link now)
   "Record one peer-local loss before closing or retrying its socket."

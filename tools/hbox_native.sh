@@ -189,7 +189,6 @@ PUBLISH=
 IMAGE_SET=
 REUSE=
 OVERLAY=
-CATALOG=old
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 # status / attach LABEL: read the record this worktree's start wrote.
 attach_run() {
@@ -232,15 +231,6 @@ while [ $# -gt 0 ]; do
         --label) LABEL=$2; shift 2 ;;
         --images) IMAGES=$2; IMAGES_GIVEN=1; shift 2 ;;
         --mem) MEM=$2; shift 2 ;;
-        # --catalog paged (lane paged-catalog-4): the developer and production
-        # images built with FN_NATIVE_CATALOG=paged (tools/build_native_host.sh:
-        # books/image-world-paged, the catalog on typed columns and a byte
-        # pool), and that umbrella added to the certified roots.  An --env
-        # FN_NATIVE_CATALOG=... never reached the image step, which runs
-        # under its own env list.  Default: old.
-        --catalog)
-            case $2 in old|paged) CATALOG=$2 ;; *) echo "hbox_native: --catalog takes old or paged" >&2; exit 2 ;; esac
-            shift 2 ;;
         --jobs)
             case $2 in ''|*[!0-9]*|0) echo "hbox_native: --jobs takes a positive integer" >&2; exit 2 ;; esac
             MODULE_JOBS=$2; shift 2 ;;
@@ -357,9 +347,6 @@ if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
         esac
     done
 fi
-if [ "$CATALOG" = paged ] && { [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; }; then
-    echo "hbox_native: --catalog paged builds its images; a published set or an earlier run's images are the old catalog's" >&2; exit 2
-fi
 if [ -n "$IMAGE_SET" ]; then
     IMAGE_SET=$(git -C "$HERE" rev-parse --verify --quiet "$IMAGE_SET^{commit}" || echo "$IMAGE_SET")
     case $IMAGE_SET in *[!0-9a-f]*) exit 2 ;; esac
@@ -370,23 +357,6 @@ if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
 fi
 # What each module reads, against what this run builds (PKT-437 (2)).
 ENVARGS=
-# --catalog paged: the modules' image variables name the -paged images
-# (an --env given for the same variable wins).
-if [ "$CATALOG" = paged ]; then
-    # only for the images this run builds (an unset variable keeps its module's fallback)
-    for image in $(echo "$IMAGES" | tr ',' ' '); do
-        case $image in
-            production) pairs=FN_NATIVE_HOST=fn-host-paged ;;
-            developer) pairs="FN_NATIVE_DEVELOPER_HOST=fn-host-developer-paged FN_NATIVE_CRASH_HOST=fn-host-developer-paged" ;;
-            reference) pairs=FN_NATIVE_REFERENCE_HOST=fn-host-reference-paged ;;
-            developer-stripped) pairs=FN_NATIVE_DEVELOPER_STRIPPED_HOST=fn-host-developer-stripped-paged ;;
-            *) pairs= ;;
-        esac
-        for pair in $pairs; do
-            case " $ENVS" in *" ${pair%%=*}="*) ;; *) ENVS="$ENVS ${pair%%=*}=\$T/build/${pair#*=}" ;; esac
-        done
-    done
-fi
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
 if [ -n "$BUILD_ONLY" ]; then PLAN=
 else PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2; fi
@@ -567,11 +537,6 @@ BOX
         cat <<BOX
 python3 tools/proof_artifacts.py roots --profile default > \$L/roots.txt || finish 13
 BOX
-        if [ "$CATALOG" = paged ]; then
-            cat <<BOX
-echo books/image-world-paged >> \$L/roots.txt
-BOX
-        fi
         if [ $DTN -eq 1 ]; then
             # The dtn profile's roots are not a subset of default's
             # (books/records-concrete at 804896a1): certify their union.
@@ -599,10 +564,46 @@ step interfaces-check static_gate interfaces-check tools/interface_emit.py --che
 # A repository declaration is not evidence its book is in this image.
 # Reject a missing native entry before spending time on certification.
 step host-books static_gate host-books tools/host_check.py --books
+# A certified host file attaches the image's stobj implementation before the
+# generic it implements (CONVERGE-1 red 1; tools/attach_order_check.py).
+step attach-order static_gate attach-order tools/attach_order_check.py
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
-step acquire python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
+# acquire demands ONE complete origin in the cache.  The cache holds pairs
+# from many origins (runs before and after merges, partial recertifies), and
+# the incremental certify above installs what composes and certifies only the
+# misses, so this tree need not be a complete origin (2026-10-07: "none of the
+# 108 candidate artifact sets is complete", best 1062/1161).  When, and only
+# when, acquire exits 3 (proof_artifacts.NO_SET: no complete set could be
+# installed; it used to be recognised by its message, which changed and
+# silently disabled this retry), certify the whole closure of the
+# roots in THIS tree once (certify_books.py --closure publishes every book
+# under this tree as one origin) and acquire again.  acquire's coherence check
+# is unchanged; a second failure, or any other failure, stops the run.
+ORIGIN_DONE=0
+acquire_step() {
+    name=\$1; profile=\$2
+    echo "== \$name \$(date -u +%H:%M:%SZ)"
+    python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1
+    rc=\$?
+    echo "   \$name exit \$rc (\$L/\$name.log)"
+    if [ \$rc -eq 3 ] && [ \$ORIGIN_DONE -eq 0 ]; then
+        ORIGIN_DONE=1
+        echo "   \$name: no complete single-origin set in the cache; certifying the roots' closure in this tree (one coherent origin), then acquiring once more"
+        mv \$L/\$name.log \$L/\$name-first.log
+        step certify-origin $WRAP python3 tools/certify_books.py --closure --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+        echo "== \$name-retry \$(date -u +%H:%M:%SZ)"
+        python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1
+        rc=\$?
+        echo "   \$name-retry exit \$rc (\$L/\$name.log)"
+    fi
+    if [ \$rc -ne 0 ]; then
+        tail -n 15 \$L/\$name.log | sed 's/^/   | /'
+        finish \$rc
+    fi
+}
+acquire_step acquire default
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 # The ld host files in the image's order, before any image build: statically
 # (a call before its definition, seconds), then through ACL2 in the certified
@@ -617,7 +618,7 @@ BOX
         if [ $DTN -eq 1 ]; then
             # hbox-image-build.sh's dtn acquire/validate, before a DTN image.
             cat <<BOX
-step acquire-dtn python3 tools/proof_artifacts.py acquire --profile dtn --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
+acquire_step acquire-dtn dtn
 step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step host-ld-dtn env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build-dtn.lisp --log \$L/host-translate-dtn.log
 BOX
@@ -652,16 +653,17 @@ BOX
                 dtn) profile=production build=host/native/build-dtn.lisp out=build/fn-host-dtn world=stripped ;;
                 dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer world=full ;;
             esac
-            # The catalog is always explicit, never inherited from the box's
-            # environment, and a paged image is built under its own -paged
-            # name (tools/build_native_host.sh refuses any other; Codex r21 F2).
-            catalog_env=FN_NATIVE_CATALOG=old
-            if [ "$CATALOG" = paged ]; then case $image in developer|production|reference|developer-stripped) catalog_env=FN_NATIVE_CATALOG=paged out=$out-paged ;; esac; fi
             cat <<BOX
-$ISTEP image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
+$ISTEP image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
 BOX
         done
         [ "$ISTEP" != pstep ] || echo pwait
+        # The build's own provenance stamp (TREE_SHA, MANIFEST.json in
+        # build/): a composed fixture binds its launchers to it when the
+        # run tests images it does not publish (CONVERGE-20261007-1 red #3).
+        cat <<BOX
+step stamp-images python3 tools/image_set.py stamp \$T
+BOX
         if [ -n "$PUBLISH" ]; then
             cat <<BOX
 step publish python3 tools/image_set.py publish \$T $SOURCE_ID --base ${IMAGES_BASE:-/tank/fn/images}
@@ -696,8 +698,6 @@ BOX
     # --env, else build/fn-host, when the tree holds it; an --env below
     # still wins.
     identity_image=build/fn-host
-    developer_suffix=
-    [ "$CATALOG" = old ] || developer_suffix=-paged
     for assignment in $ENVS; do
         case $assignment in FN_NATIVE_HOST=*) identity_image=${assignment#FN_NATIVE_HOST=} ;; esac
     done
@@ -705,8 +705,8 @@ BOX
 if [ -x "$identity_image" ]; then
     eval "\$(python3 tools/native_env.py identity --image "$identity_image" --source $SOURCE_ID --export)"
 fi
-if [ -x build/fn-host-developer$developer_suffix ]; then
-    eval "\$(python3 tools/native_env.py identity --image build/fn-host-developer$developer_suffix --prefix FN_NATIVE_DEVELOPER_ --export)"
+if [ -x build/fn-host-developer ]; then
+    eval "\$(python3 tools/native_env.py identity --image build/fn-host-developer --prefix FN_NATIVE_DEVELOPER_ --export)"
 fi
 BOX
     for assignment in $ENVS; do
@@ -839,9 +839,6 @@ if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
             dtn) needed=build/fn-host-dtn ;;
             dtn-developer) needed=build/fn-host-dtn-developer ;;
         esac
-        if [ "$CATALOG" = paged ]; then
-            case $image in developer|production|reference|developer-stripped) needed=$needed-paged ;; esac
-        fi
         [ -z "$needed" ] || NEEDED="$NEEDED $needed"
     done
     if [ -n "$NEEDED" ]; then

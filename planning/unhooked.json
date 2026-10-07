@@ -1,0 +1,176 @@
+{
+  "schema": "fn-unhooked-v1",
+  "about": "Books a recorded decision took out of the certify roots (tools/unhooked.py). Each names its decision, a heading in planning/decisions.md. certify_books --lane and green_check --gate report these as unhooked, not red.",
+  "books": [
+    {
+      "book": "books/acceptance-binding-held-gate",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/account-adoption-turn-continuation",
+      "decision": "D46",
+      "why": "it is the account-adoption continuation, the producer D46 waits for (completion item 1); its fn-act-suspend guard is part of that completion"
+    },
+    {
+      "book": "books/admission-semantic-node",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    },
+    {
+      "book": "books/consumer-authority-carried-fold",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    },
+    {
+      "book": "books/consumer-configured-authority-replay",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    },
+    {
+      "book": "books/consumer-configured-control-event",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    },
+    {
+      "book": "books/index-backing-publication-row-carry",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/index-backing-row-carry",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/index-backing-served-producer-carry",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-agent-join",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-classification",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-digest-block",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-groups-refinement",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-hash-choice",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-hash-domain",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-hash-entry",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-hash-refinement",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-holder",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-payload-refinement",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-refinement",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-source-completion",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-source-context",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-source-continuation",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-source-pair-context",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-source-parser-context",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "books/post-identity-captured-source-trace",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "tests/acl2/admission-semantic-node-tests",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    },
+    {
+      "book": "tests/acl2/consumer-configured-authority-event-tests",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    },
+    {
+      "book": "tests/acl2/consumer-control-row-cursor-tests",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    },
+    {
+      "book": "tests/acl2/consumer-remote-store-category-tests",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    },
+    {
+      "book": "tests/acl2/index-backing-publication-row-carry-tests",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "tests/acl2/index-backing-served-producer-tests",
+      "decision": "D43",
+      "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "tests/acl2/store-binding-stage-routing-tests",
+      "decision": "D46",
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+    }
+  ]
+}
