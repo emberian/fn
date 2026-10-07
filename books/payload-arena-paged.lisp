@@ -453,6 +453,38 @@
 ; The concrete recognizer, field by field (forward), and its preservation
 ; by each field's update.
 
+; The handle arrays' recognizers: a cell is a natural; a write of a natural
+; and a resize keep them (they were the byte array's, in
+; books/payload-arena-bytes.lisp, which this book's offset and size columns
+; shared the recognizers of).
+(defthm fn-arn-offp-cell
+  (implies (and (fn-arena$p-offp off) (natp k) (< k (len off)))
+           (natp (nth k off)))
+  :hints (("Goal" :in-theory (enable nth))))
+
+(defthm fn-arn-sizep-cell
+  (implies (and (fn-arena$p-sizep size) (natp k) (< k (len size)))
+           (natp (nth k size)))
+  :hints (("Goal" :in-theory (enable nth))))
+
+(defthm fn-arn-offp-of-update-nth
+  (implies (and (fn-arena$p-offp off) (natp k) (< k (len off)) (natp v))
+           (fn-arena$p-offp (update-nth k v off)))
+  :hints (("Goal" :in-theory (enable update-nth))))
+
+(defthm fn-arn-sizep-of-update-nth
+  (implies (and (fn-arena$p-sizep size) (natp k) (< k (len size)) (natp v))
+           (fn-arena$p-sizep (update-nth k v size)))
+  :hints (("Goal" :in-theory (enable update-nth))))
+
+(defthm fn-arn-offp-of-resize-list
+  (implies (fn-arena$p-offp off)
+           (fn-arena$p-offp (resize-list off m 0))))
+
+(defthm fn-arn-sizep-of-resize-list
+  (implies (fn-arena$p-sizep size)
+           (fn-arena$p-sizep (resize-list size m 0))))
+
 (defthm fn-arp-pp-fields
   (implies (fn-arena$pp fn-arena$p)
            (and (true-listp fn-arena$p)

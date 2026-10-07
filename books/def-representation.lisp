@@ -1629,7 +1629,7 @@
                               ,(adt-sym name "-PAGES-SCHEMA-OK"))
                  :in-theory (e/d (,ap ,pages-of) (adt-tp-pages-of-wordsp))))))))
 
-(defun rep-instance-events (name fields1 scalar generic invariant invariant-lemmas once paged exports source model lemmas)
+(defun rep-instance-events+ (name fields1 scalar generic invariant invariant-lemmas once paged exports source model lemmas)
   (let* ((trees (rep-tree-names fields1))
          (fields0 (rep-untree fields1))
          (fields (adt-norm-fields fields0))
@@ -1652,6 +1652,10 @@
                 ,@(and source (list :source source))
                 ,@(and model (list :model model))
                 ,@(and lemmas (list :lemmas lemmas)))))))
+
+; The instance without the :octets vocabulary (the form the tests call).
+(defun rep-instance-events (name fields1 scalar generic invariant invariant-lemmas once paged)
+  (rep-instance-events+ name fields1 scalar generic invariant invariant-lemmas once paged nil nil nil nil))
 
 ; The refusals of the scalar :octets vocabulary (:exports, :source, :model,
 ; :lemmas): a message, or nil.
@@ -1805,7 +1809,7 @@
      ((rep-exports-error name exports scalar generic paged invariant source model lemmas wrld)
       (er soft ctx "~x0: ~s1" name (rep-exports-error name exports scalar generic paged invariant source model lemmas wrld)))
      (t
-      (let ((events (rep-instance-events name fields0 scalar generic invariant invariant-lemmas once
+      (let ((events (rep-instance-events+ name fields0 scalar generic invariant invariant-lemmas once
                                          (not (eq paged nil)) exports source model lemmas)))
         (value (if pages
                    ; the instance's events, then its page image and the row marking it
