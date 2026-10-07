@@ -462,3 +462,38 @@
                 (eq (fn-csp-mode (car (fn-csp-step s event))) :drain))
                ((s *csp-v-s*) (event (list* :local *csp-v-j* *csp-v-235*)))
                :fault "a controller that journals the cursor but stays in :drain, so the batch would be journaled again")))
+
+; Teeth: fn-csp-at-most-one-streaming.  The witness is the reachable
+; replay-body state of the K1 teeth: conn 0 streams its record, and the tick
+; sends the body window (mode :local-write), so the bound is attained.
+(assert-event (and (fn-csp-stream-inv *csp-k1-body*) (fn-csp-stream-inv *csp-k1-term*)
+                   (fn-csp-stream-inv *csp-k1-offer*)
+                   (equal (fn-csp-conns-phase-count (fn-csp-conns *csp-k1-body*) :streaming) 1)))
+
+(defteeth fn-csp-at-most-one-streaming
+  :claim (((body (fn-csp-body-inv s))
+           (stream (fn-csp-stream-inv s)))
+          (let ((s2 (car (fn-csp-step s event))))
+            (and (<= (fn-csp-conns-phase-count (fn-csp-conns s2) :streaming) 1)
+                 (implies (not (member-eq (fn-csp-mode s2)
+                                          '(:local-write :terminator :replay-body)))
+                          (equal (fn-csp-conns-phase-count (fn-csp-conns s2) :streaming) 0))
+                 (implies (and (eq (fn-csp-mode s2) :replay-body) (fn-csp-skip s2))
+                          (equal (fn-csp-conns-phase-count (fn-csp-conns s2) :streaming) 0)))))
+  :subject fn-csp-step
+  :witness ((s *csp-k1-body*) (event '(:tick)))
+  :breaks ((body ((s (fn-csp-with *csp-k1-body* :mode :local-write :resume :header))
+                   (event '(:local-window 0))))
+           (stream ((s (fn-csp-with *csp-k1-body* :conns
+                                    (list (cons *csp-k1-msgid* :streaming)
+                                          (cons *csp-k1-msgid* :streaming)))))))
+  :mutations ((nothing-streams
+               (:conclusion
+                (equal (fn-csp-conns-phase-count (fn-csp-conns (car (fn-csp-step s event))) :streaming) 0))
+               ((s *csp-k1-body*) (event '(:tick)))
+               :fault "a model in which no connection ever streams, so the body of a record could never reach the local node")
+              (streams-past-the-record
+               (:conclusion
+                (equal (fn-csp-mode (car (fn-csp-step s event))) :header))
+               ((s *csp-k1-body*) (event '(:tick)))
+               :fault "a controller whose mode leaves the body modes while the connection still streams")))

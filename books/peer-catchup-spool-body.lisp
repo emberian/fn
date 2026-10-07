@@ -1211,3 +1211,299 @@
                   (fn-csp-conns-idlep (fn-csp-conns s2)))))
   :hints (("Goal" :in-theory (e/d (fn-csp-jok fn-csp-at-end) (fn-csp-step fn-csp-step-jok))
                   :use (:instance fn-csp-step-jok (at-end (fn-csp-at-end s))))))
+
+;; -----------------------------------------------------------------------------
+;; K4: at most one connection streams (PRF-1335/1336).  The streaming
+;; invariant: the number of :streaming bindings is at most one, zero outside
+;; the modes that fill a record's body, zero for a skipped record.
+
+(defun fn-csp-stream-inv-of (mode skip conns)
+  ; At most one connection streams its record's body to the local node, and
+  ; it does so only while the controller fills that record: from the 335
+  ; (:offer to a body mode) to the terminator, which turns the binding into
+  ; (msgid . :verdict).  A 435 record's skipped body streams nowhere.
+  (declare (xargs :guard t))
+  (let ((n (fn-csp-conns-phase-count conns :streaming)))
+    (and (<= n 1)
+         (implies (not (member-eq mode '(:local-write :terminator :replay-body)))
+                  (equal n 0))
+         (implies (and (eq mode :replay-body) skip) (equal n 0)))))
+
+(defun fn-csp-stream-inv (s)
+  (declare (xargs :guard t))
+  (fn-csp-stream-inv-of (fn-csp-mode s) (fn-csp-skip s) (fn-csp-conns s)))
+
+(local (defthm fn-csp-stream-inv-of-state
+  (equal (fn-csp-stream-inv (list a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19))
+         (fn-csp-stream-inv-of a0 a16 a18))
+  :hints (("Goal" :in-theory (enable fn-csp-stream-inv fn-csp-mode fn-csp-skip fn-csp-conns)))))
+
+(local (defthm fn-csp-stream-inv-of-symbol
+  (implies (syntaxp (symbolp s))
+           (equal (fn-csp-stream-inv s)
+                  (fn-csp-stream-inv-of (fn-pull-at 0 s) (fn-pull-at 16 s) (fn-pull-at 18 s))))
+  :hints (("Goal" :in-theory (enable fn-csp-stream-inv fn-csp-mode fn-csp-skip fn-csp-conns)))))
+
+(local (in-theory (disable fn-csp-stream-inv)))
+
+(local (defun fn-csp-ph-is (c ph) (if (and (consp c) (eq (cdr c) ph)) 1 0)))
+
+(local (defthm fn-csp-phase-count-of-conns-set
+  ; One binding replaced: the count loses the old entry's phase and gains the
+  ; new one's.
+  (equal (fn-csp-conns-phase-count (fn-csp-conns-set conns j c) ph)
+         (+ (fn-csp-conns-phase-count conns ph)
+            (fn-csp-ph-is c ph)
+            (- (fn-csp-ph-is (fn-pull-at (nfix j) conns) ph))))
+  :hints (("Goal" :in-theory (enable fn-csp-conns-set fn-csp-conns-phase-count fn-pull-at nfix)
+                  :induct (fn-csp-conns-set conns j c)))))
+
+(local (defthm fn-csp-phase-count-of-conns-of
+  (implies (not (and (consp c) (eq (cdr c) ph)))
+           (equal (fn-csp-conns-phase-count (fn-csp-conns-of n c) ph) 0))
+  :hints (("Goal" :in-theory (enable fn-csp-conns-of fn-csp-conns-phase-count)))))
+
+(local (defthm fn-csp-fail-keeps-stream-inv
+  (fn-csp-stream-inv (car (fn-csp-fail s reason)))
+  :hints (("Goal" :use fn-csp-fail-mode
+           :in-theory (e/d (fn-csp-fail fn-csp-stream-inv-of-symbol)
+                           (fn-csp-fail-mode fn-csp-stream-inv fn-csp-session-with-round))))))
+
+(local (defthm fn-csp-ph-is-natp (natp (fn-csp-ph-is c ph)) :rule-classes (:rewrite :type-prescription)))
+
+(local (defthm fn-csp-ph-is-of-cons
+  (equal (fn-csp-ph-is (cons a b) ph) (if (eq b ph) 1 0))
+  :hints (("Goal" :in-theory (enable fn-csp-ph-is)))))
+
+(local (defthm fn-csp-ph-is-of-atom
+  (implies (not (consp c)) (equal (fn-csp-ph-is c ph) 0))
+  :hints (("Goal" :in-theory (enable fn-csp-ph-is)))))
+
+(local (in-theory (disable fn-csp-ph-is)))
+
+(local (defthm fn-csp-body-inv-of-local-write-no-skip
+  (implies (fn-csp-body-inv-of :local-write skip resume msgid slot conns)
+           (not skip))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-csp-body-inv-of)))))
+
+(local (defun fn-csp-pk-ind (k conns)
+  (declare (xargs :measure (nfix k)))
+  (if (or (zp k) (atom conns)) conns (fn-csp-pk-ind (1- k) (cdr conns)))))
+
+(local (defthm fn-csp-ph-is-at-most-count
+  ; An entry of the table is part of the table's count.
+  (<= (fn-csp-ph-is (fn-pull-at k conns) ph) (fn-csp-conns-phase-count conns ph))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-pull-at fn-csp-conns-phase-count fn-csp-ph-is)
+                  :induct (fn-csp-pk-ind k conns)))))
+
+(local (defthm fn-csp-stream-inv-of-resume
+  ; A spool write in flight streams nothing, so the mode it resumes (:hash or
+  ; :body, outside the streaming modes) is in order over the same table.
+  (implies (and (fn-csp-stream-inv-of :write skip conns)
+                (member-eq resume '(:hash :body)))
+           (fn-csp-stream-inv-of resume skip conns))
+  :hints (("Goal" :in-theory (enable fn-csp-stream-inv-of)))))
+
+(local (defthm fn-csp-stream-inv-of-quiet-move
+  ; Between two modes that stream nothing the invariant is the table's alone.
+  (implies (and (fn-csp-stream-inv-of mode skip conns)
+                (not (member-eq mode '(:local-write :terminator :replay-body)))
+                (not (member-eq mode2 '(:local-write :terminator :replay-body))))
+           (fn-csp-stream-inv-of mode2 skip conns))
+  :hints (("Goal" :in-theory (enable fn-csp-stream-inv-of)))))
+
+(local (defthm fn-csp-stream-inv-of-small
+  ; With no streaming connection every mode is in order.
+  (implies (<= (fn-csp-conns-phase-count conns :streaming) 0)
+           (fn-csp-stream-inv-of mode skip conns))))
+
+(local (defthm fn-csp-stream-inv-of-mono
+  ; The same mode and skip over conns that stream no more.
+  (implies (and (fn-csp-stream-inv-of mode skip conns)
+                (<= (fn-csp-conns-phase-count conns2 :streaming)
+                    (fn-csp-conns-phase-count conns :streaming)))
+           (fn-csp-stream-inv-of mode skip conns2))))
+
+(local (defthm fn-csp-phase-count-natp
+  (natp (fn-csp-conns-phase-count conns ph))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :in-theory (enable fn-csp-conns-phase-count)))))
+
+(local (defthm fn-csp-idlep-no-streaming
+  (implies (fn-csp-conns-idlep conns)
+           (equal (fn-csp-conns-phase-count conns ph) 0))
+  :hints (("Goal" :in-theory (enable fn-csp-conns-idlep fn-csp-conns-phase-count)))))
+
+(local (defthm fn-csp-conns-set-no-streaming-mono
+  ; Binding anything but a :streaming entry never raises the count.
+  (implies (not (and (consp c) (eq (cdr c) :streaming)))
+           (<= (fn-csp-conns-phase-count (fn-csp-conns-set conns j c) :streaming)
+               (fn-csp-conns-phase-count conns :streaming)))
+  :hints (("Goal" :in-theory (disable fn-csp-phase-count-of-conns-set)
+                  :use fn-csp-phase-count-of-conns-set))))
+
+(local (defthm fn-csp-stream-inv-small
+  ; A state with no streaming connection satisfies the invariant.
+  (implies (<= (fn-csp-conns-phase-count (fn-pull-at 18 x) :streaming) 0)
+           (fn-csp-stream-inv x))
+  :hints (("Goal" :in-theory (enable fn-csp-stream-inv fn-csp-conns)))))
+
+(local (defthm fn-csp-batch-finish-keeps-stream-inv
+  (implies (fn-csp-conns-idlep (fn-pull-at 18 s))
+           (fn-csp-stream-inv (car (fn-csp-batch-finish s))))
+  :hints (("Goal" :in-theory (disable fn-csp-batch-finish fn-csp-stream-inv fn-csp-idlep-no-streaming)
+                  :use ((:instance fn-csp-batch-finish-conns (s s))
+                        (:instance fn-csp-idlep-no-streaming (conns (fn-pull-at 18 s)) (ph :streaming)))))))
+
+(local (defthm fn-csp-record-done-keeps-stream-inv
+  (implies (equal (fn-csp-conns-phase-count (fn-pull-at 18 s) :streaming) 0)
+           (fn-csp-stream-inv (car (fn-csp-record-done s))))
+  :hints (("Goal" :in-theory (disable fn-csp-record-done fn-csp-stream-inv)
+                  :use (:instance fn-csp-record-done-conns (s s))))))
+
+(local (defthm fn-csp-write-keeps-stream-inv
+  (implies (equal (fn-csp-conns-phase-count (fn-pull-at 18 s) :streaming) 0)
+           (fn-csp-stream-inv (car (fn-csp-write s emission resume))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-write) (fn-csp-fail fn-csp-stream-inv))
+                  :use fn-csp-fail-keeps-stream-inv))))
+
+(local (defthm fn-csp-try-offer-keeps-stream-inv
+  (implies (equal (fn-csp-conns-phase-count (fn-pull-at 18 s) :streaming) 0)
+           (fn-csp-stream-inv (car (fn-csp-try-offer s))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-try-offer fn-csp-conns) (fn-csp-stream-inv fn-csp-stream-inv-of))))))
+
+(local (defthm fn-csp-hash-effect-keeps-stream-inv
+  (implies (fn-csp-stream-inv s) (fn-csp-stream-inv (car (fn-csp-hash-effect s))))
+  :hints (("Goal" :in-theory (enable fn-csp-hash-effect)))))
+
+(local (defthm fn-csp-read-replay-keeps-stream-inv
+  (implies (fn-csp-stream-inv s) (fn-csp-stream-inv (car (fn-csp-read-replay s))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-read-replay fn-csp-stream-inv-of-symbol)
+                                  (fn-csp-record-done fn-csp-fail fn-csp-stream-inv))
+                  :use (fn-csp-record-done-keeps-stream-inv
+                        (:instance fn-csp-fail-keeps-stream-inv (reason :short-spool)))))))
+
+(local (defthm fn-csp-after-header-keeps-stream-inv
+  (implies (equal (fn-csp-conns-phase-count (fn-pull-at 18 s) :streaming) 0)
+           (fn-csp-stream-inv (car (fn-csp-after-header s line rest used))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-after-header fn-csp-stream-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-write fn-csp-try-offer fn-csp-stream-inv
+                                   fn-csp-stream-inv-of binary-append fn-csp-session-with-round
+                                   fn-cu-parse-status fn-cu-parse-header fn-cu-batch-end
+                                   fn-cu-batch-next fn-cu-batch-morep fn-cu-batch-claim
+                                   fn-cu-u64-hex fn-record-string-octets
+                                   fn-cu-hex fn-cu-unhex fn-cu-u64-octets-aux fn-cu-words-aux))
+                  :use (fn-csp-fail-keeps-stream-inv)))))
+
+(local (defthm fn-csp-local-window-keeps-stream-inv
+  (implies (and (fn-csp-body-inv s) (fn-csp-stream-inv s))
+           (fn-csp-stream-inv (car (fn-csp-local-window s j))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-window fn-csp-conn fn-csp-body-inv-of-symbol fn-csp-stream-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-body-inv fn-csp-stream-inv fn-csp-body-inv-of))
+                  :use (:instance fn-csp-fail-keeps-stream-inv (reason :local-refused))))))
+
+(local (defthm fn-csp-local-opened-keeps-stream-inv
+  (implies (and (fn-csp-stream-inv s) (equal conns (fn-pull-at 18 s)))
+           (fn-csp-stream-inv (car (fn-csp-local-opened s j code conns))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-opened fn-csp-stream-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-stream-inv nfix))
+                  :use (:instance fn-csp-fail-keeps-stream-inv (reason :local-refused))))))
+
+(local (defthm fn-csp-local-verdict-keeps-stream-inv
+  (implies (and (fn-csp-stream-inv s) (equal conns (fn-pull-at 18 s)))
+           (fn-csp-stream-inv (car (fn-csp-local-verdict s j code conns round))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-verdict fn-csp-stream-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-stream-inv fn-csp-batch-finish
+                                   fn-csp-session-with-round fn-cu-count nfix))
+                  :use ((:instance fn-csp-fail-keeps-stream-inv (reason :local-refused))
+                        (:instance fn-csp-fail-keeps-stream-inv (reason :local-deferred)))))))
+
+(local (defthm fn-csp-local-await335-keeps-stream-inv
+  (implies (and (fn-csp-body-inv s) (fn-csp-stream-inv s)
+                (equal conns (fn-pull-at 18 s))
+                (equal c (fn-pull-at (nfix j) conns))
+                (consp c) (eq (cdr c) :await335)
+                (eq (fn-csp-mode s) :offer) (equal (fn-csp-slot s) (nfix j)))
+           (fn-csp-stream-inv (car (fn-csp-local-await335 s j code c conns round))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-await335 fn-csp-stream-inv-of-symbol fn-csp-body-inv-of-symbol
+                                   fn-csp-conns)
+                                  (fn-csp-fail fn-csp-stream-inv fn-csp-body-inv fn-csp-record-done
+                                   fn-csp-session-with-round fn-cu-count nfix))
+                  :use ((:instance fn-csp-fail-keeps-stream-inv (reason :local-refused))
+                        (:instance fn-csp-fail-keeps-stream-inv (reason :local-deferred))
+                        (:instance fn-csp-record-done-keeps-stream-inv
+                          (s (fn-csp-with (fn-csp-session-with-round
+                                            s (fn-cu-with round :counts
+                                                          (fn-cu-count (fn-cu-r-counts round) 1)))
+                                          :conns (fn-csp-conns-set conns j :free) :slot nil))))))))
+
+(local (defthm fn-csp-with-session-keeps-stream-inv
+  (implies (fn-csp-stream-inv s)
+           (fn-csp-stream-inv (fn-csp-with s :session x)))
+  :hints (("Goal" :in-theory (e/d (fn-csp-stream-inv-of-symbol) (fn-csp-stream-inv))))))
+
+(local (defthm fn-csp-local-keeps-stream-inv
+  (implies (and (fn-csp-body-inv s) (fn-csp-stream-inv s))
+           (fn-csp-stream-inv (car (fn-csp-local s j octets))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local fn-csp-conn)
+                                  (fn-csp-fail fn-csp-local-opened fn-csp-local-await335
+                                   fn-csp-local-verdict fn-csp-stream-inv fn-csp-body-inv nfix))
+                  :use ((:instance fn-csp-fail-keeps-stream-inv (reason :local-refused))
+                        (:instance fn-csp-local-opened-keeps-stream-inv
+                          (code (fn-pull-local-code octets)) (conns (fn-csp-conns s)))
+                        (:instance fn-csp-local-await335-keeps-stream-inv
+                          (code (fn-pull-local-code octets)) (conns (fn-csp-conns s))
+                          (c (fn-csp-conn j s)) (round (fn-cu-s-round (fn-csp-session s))))
+                        (:instance fn-csp-local-verdict-keeps-stream-inv
+                          (code (fn-pull-local-code octets)) (conns (fn-csp-conns s))
+                          (round (fn-cu-s-round (fn-csp-session s)))))))))
+
+(local (defthm fn-csp-next-keeps-stream-inv
+  (implies (and (fn-csp-body-inv s) (fn-csp-stream-inv s))
+           (fn-csp-stream-inv (car (fn-csp-next s))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-next fn-csp-stream-inv-of-symbol fn-csp-body-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-write fn-csp-after-header
+                                   fn-csp-read-replay fn-csp-hash-effect fn-csp-header-window
+                                   fn-csp-framer-window fn-csp-framer-window-accounts-for-every-octet
+                                   fn-csp-record-done fn-csp-try-offer fn-csp-session-with-round
+                                   fn-csp-stream-inv fn-csp-body-inv fn-csp-body-inv-of nfix))))))
+
+(defthm fn-csp-step-keeps-stream-inv
+  ; The streaming invariant, preserved by every step event (given K1's body
+  ; invariant).
+  (implies (and (fn-csp-body-inv s) (fn-csp-stream-inv s))
+           (fn-csp-stream-inv (car (fn-csp-step s event))))
+  :hints (("Goal" :in-theory (e/d (fn-csp-step fn-csp-stream-inv-of-symbol fn-csp-body-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-next fn-csp-local fn-csp-local-window
+                                   fn-cu-session-step-pair fn-cu-session-readyp
+                                   fn-blake3-stobj fn-cu-chainp fn-pull-event-octets
+                                   fn-csp-session fn-csp-session-with-round fn-csp-stream-inv fn-csp-stream-inv-of
+                                   fn-csp-body-inv fn-csp-body-inv-of nfix)))))
+
+(defthm fn-csp-begin-establishes-stream-inv
+  (fn-csp-stream-inv (car (fn-csp-begin plan cursor credential limit window)))
+  :hints (("Goal" :in-theory (e/d (fn-csp-begin fn-csp-stream-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-stream-inv fn-cu-session-begin-pair
+                                   fn-cu-cursor-chain fn-csp-conns-of nfix)))))
+
+(defthm fn-csp-at-most-one-streaming
+  ; KEYSTONE (PRF-1335/1336, K1's companion).  At most one connection of the
+  ; window streams a body to the local node, and it does so only while the
+  ; controller fills that record: from the 335 reply (mode :offer to a body
+  ; mode) until the terminator turns the binding into (msgid . :verdict).
+  ; Outside the body modes -- and for a 435 record, whose body is skipped
+  ; through the spool -- no connection streams.  The one filling record is
+  ; what keeps the spool cursor sequential while up to W verdicts await.
+  (implies (and (fn-csp-body-inv s) (fn-csp-stream-inv s))
+           (let ((s2 (car (fn-csp-step s event))))
+             (and (<= (fn-csp-conns-phase-count (fn-csp-conns s2) :streaming) 1)
+                  (implies (not (member-eq (fn-csp-mode s2)
+                                           '(:local-write :terminator :replay-body)))
+                           (equal (fn-csp-conns-phase-count (fn-csp-conns s2) :streaming) 0))
+                  (implies (and (eq (fn-csp-mode s2) :replay-body) (fn-csp-skip s2))
+                           (equal (fn-csp-conns-phase-count (fn-csp-conns s2) :streaming) 0)))))
+  :hints (("Goal" :use fn-csp-step-keeps-stream-inv
+                  :in-theory (e/d (fn-csp-stream-inv fn-csp-conns fn-csp-mode fn-csp-skip)
+                                  (fn-csp-step fn-csp-step-keeps-stream-inv)))))
