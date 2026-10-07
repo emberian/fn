@@ -96,8 +96,8 @@ def write_baseline(root: Path = ROOT, limit: int = LIMIT) -> None:
     oversized = {path.relative_to(root).as_posix() for path in tracked_files(root)
                  if path.exists() and line_count(path) > limit}
     path = root / BASELINE
-    if path.exists():
-        old = read_baseline(root)
+    old = ratchet.old_rows("evidence_size_check", path, lambda: {n: 1 for n in read_baseline(root)})
+    if old is not None:
         allowed = ratchet.acked()
         oversized = {n for n in oversized
                      if n in old or ratchet.token("evidence_size_check", n) in allowed}

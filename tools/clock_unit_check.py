@@ -219,7 +219,7 @@ def main(argv=None):
                 print("{}:{}: ({} ... fn-clock-...)".format(rel, line, op))
     if args.write_baseline:
         if ratchet.report("clock_unit_check", ratchet.refused(
-                "clock_unit_check", baseline if os.path.exists(baseline_path) else None,
+                "clock_unit_check", ratchet.old_rows("clock_unit_check", baseline_path, lambda: baseline),
                 {rel: len(v) for rel, v in found.items()})):
             return 1
         doc = ("tools/clock_unit_check.py: raw arithmetic on a clock observation's "

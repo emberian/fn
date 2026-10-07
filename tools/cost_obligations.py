@@ -344,7 +344,7 @@ def main(argv=None) -> int:
         names = sorted(r["name"] for r in doc["entries"]
                        if r["claim"] == "none" and r["class"] == "common-lisp-compliant")
         if ratchet.report("cost_obligations", ratchet.refused(
-                "cost_obligations", {n: 1 for n in old} if BASELINE.is_file() else None,
+                "cost_obligations", ratchet.old_rows("cost_obligations", BASELINE, lambda: {n: 1 for n in old}),
                 {n: 1 for n in names})):
             return 1
         BASELINE.write_text(json.dumps({"description": "guard-verified dispatched entries with "

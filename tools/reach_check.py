@@ -1437,7 +1437,8 @@ def unresolved_failures(unresolved, triaged: dict) -> list[str]:
 def baseline_raise_refused(findings) -> bool:
     """A --baseline rewrite may drop orphans, never add one without an ACKS.md
     ratchet line (tools/ratchet.py); prints the refusal and returns True."""
-    old = {k: 1 for k in load_baseline().get("accepted", {})} if BASELINE.exists() else None
+    old = ratchet.old_rows("reach_check", BASELINE,
+                           lambda: {k: 1 for k in load_baseline().get("accepted", {})})
     return ratchet.report("reach_check", ratchet.refused(
         "reach_check", old, {f.key(): 1 for f in findings}))
 

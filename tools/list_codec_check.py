@@ -174,7 +174,7 @@ def main(argv=None) -> int:
     for s in errors:
         print(f"list_codec_check: cannot read {s['file']}: {s['error']}")
     if args.write:
-        if ratchet.report("list_codec_check", ratchet.refused("list_codec_check", base["sites"], now)):
+        if ratchet.report("list_codec_check", ratchet.refused("list_codec_check", ratchet.old_rows("list_codec_check", BASELINE, lambda: base["sites"]), now)):
             return 1
         base["sites"] = now
         base["total"] = total

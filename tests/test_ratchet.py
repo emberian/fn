@@ -76,6 +76,59 @@ class Helper(Base):
         self.assertNotIn("{scaling_ratio_target}", why)
 
 
+class DeletedBaseline(Base):
+    """`git rm` a baseline, then --write any numbers: refused unless the path has
+    never had history, or an ACKS.md *initial line says so."""
+
+    def repo(self):
+        import subprocess
+        root = self.dir / "r"
+        (root / "tools").mkdir(parents=True)
+        run = lambda *a: subprocess.run(["git", "-C", str(root), *a], check=True, capture_output=True)
+        run("init", "-q")
+        run("config", "user.email", "t@t")
+        run("config", "user.name", "t")
+        (root / "tools/b.json").write_text("{}")
+        run("add", "-f", "tools/b.json")
+        run("commit", "-qm", "b")
+        (root / "tools/b.json").unlink()
+        p = mock.patch.object(ratchet, "ROOT", root)
+        p.start()
+        self.addCleanup(p.stop)
+        return root
+
+    def test_deleted_then_rewritten_is_refused_but_a_never_tracked_path_is_not(self):
+        root = self.repo()
+        self.assertFalse(ratchet.initial_ok("t", root / "tools/b.json", self.acks))
+        self.assertEqual(ratchet.old_rows("t", root / "tools/b.json", dict), {})
+        self.assertNotEqual(ratchet.refused("t", ratchet.old_rows("t", root / "tools/b.json", dict),
+                                            {"a": 5}, self.acks), [])
+        self.assertTrue(ratchet.initial_ok("t", root / "tools/never.json", self.acks))
+        self.assertIsNone(ratchet.old_rows("t", root / "tools/never.json", dict))
+
+    def test_an_initial_ack_reopens_the_capture(self):
+        root = self.repo()
+        self.ack("t", "*initial")
+        self.assertTrue(ratchet.initial_ok("t", root / "tools/b.json", self.acks))
+
+    def test_a_tool_refuses_a_deleted_baseline_rewrite(self):
+        root = self.repo()
+        (root / "tools/loop_call_baseline.json").write_text(json.dumps({"total": 3, "sites": {"f": 3}}))
+        import subprocess
+        for a in (["add", "-f", "tools/loop_call_baseline.json"], ["commit", "-qm", "l"]):
+            subprocess.run(["git", "-C", str(root), *a], check=True, capture_output=True)
+        path = root / "tools/loop_call_baseline.json"
+        path.unlink()
+        with mock.patch.object(loop_call_check, "BASELINE", path), \
+                mock.patch.object(loop_call_check, "scan", return_value=[]), \
+                mock.patch.object(loop_call_check, "counts", return_value={"f": 99}):
+            self.assertEqual(self.quiet(loop_call_check.main, ["--write"]), 1)
+            self.assertFalse(path.exists())
+            self.ack("loop_call_check", "*initial")
+            self.ack("loop_call_check", "f")
+            self.assertEqual(self.quiet(loop_call_check.main, ["--write"]), 0)
+
+
 class ListCodec(Base):
     def test_triad(self):
         path = self.dir / "b.json"

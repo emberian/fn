@@ -10,7 +10,8 @@ planning/repair/ACKS.md carries a line naming it:
 baseline row key (a file path, a book, a name; spaces written as ``_``).  The
 ACK is the written decision; the same commit that raises the baseline adds it,
 because the tool reads the tree it is run in.  No baseline file yet (``old is
-None``) is the one initial capture and is allowed.  Semantics follow
+None``) is the one initial capture and is allowed only for a path with no git
+history, or with a ``ratchet:<tool>:*initial`` ACK (``old_rows``).  Semantics follow
 tools/lock_discipline_check.py's write_baseline (``grown``), which refuses to
 raise; the ACK line is the only way past, never a flag.
 
@@ -19,6 +20,7 @@ the token that would let it through.  ``scaling_limit`` is the same rule for
 tools/scaling_baseline.json: the declared target is the ceiling, and a
 ceiling above it needs an ACK.
 """
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -42,6 +44,34 @@ def acked(acks=None):
         if len(parts) == 3 and all(parts) and parts[0].startswith("ratchet:") and " " not in parts[0]:
             out.add(parts[0])
     return out
+
+
+def initial_ok(tool, path, acks=None):
+    """May a baseline absent at `path` be captured fresh?  Only when the path
+    has no history in the repo (never existed) or an ACKS.md line
+    ``ratchet:<tool>:*initial`` says so; otherwise deleting a baseline and
+    re-writing it would be a way past the ratchet.  Fail closed on a git error."""
+    p = Path(path)
+    if p.exists():
+        return False
+    if token(tool, "*initial") in acked(acks):
+        return True
+    try:
+        rel = p.resolve().relative_to(Path(ROOT).resolve())
+    except ValueError:
+        return True  # outside the repo: no history to lose
+    run = subprocess.run(["git", "-C", str(ROOT), "log", "--oneline", "-1", "--", str(rel)],
+                         capture_output=True, text=True)
+    return run.returncode == 0 and not run.stdout.strip()
+
+
+def old_rows(tool, path, load):
+    """The rows to compare a write against: ``load()`` when the baseline file
+    exists, None (initial capture) when it may be captured fresh, else {} so
+    every row is an add."""
+    if Path(path).exists():
+        return load()
+    return None if initial_ok(tool, path) else {}
 
 
 def refused(tool, old, new, acks=None):

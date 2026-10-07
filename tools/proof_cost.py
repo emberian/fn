@@ -918,12 +918,14 @@ def row_steps(row: dict) -> float:
     return float(row.get("steps") if row.get("steps") is not None else row.get("seconds", 0))
 
 
-def allowance_refused(baseline: dict[str, dict], entries: dict[str, dict]) -> bool:
+def allowance_refused(baseline: dict[str, dict], entries: dict[str, dict],
+                      path: Path | None = None) -> bool:
     """--allow-regression adds or raises rows only with an ACKS.md ratchet line
     per row (tools/ratchet.py); prints the refusal and returns True."""
+    old = (ratchet_rule.old_rows("proof_cost", path, lambda: {b: row_steps(r) for b, r in baseline.items()})
+           if path is not None else {b: row_steps(r) for b, r in baseline.items()})
     return ratchet_rule.report("proof_cost", ratchet_rule.refused(
-        "proof_cost", {b: row_steps(r) for b, r in baseline.items()},
-        {b: row_steps(r) for b, r in entries.items()}))
+        "proof_cost", old, {b: row_steps(r) for b, r in entries.items()}))
 
 
 def write_baseline(path: Path, entries: dict[str, dict], threshold: float,
@@ -1034,7 +1036,7 @@ def main(argv: list[str] | None = None) -> int:
                     computed[0], args.threshold if near is None else min(near, args.threshold)))
                 # The allowance is a decision, written down: each added or
                 # raised book needs its ratchet line in planning/repair/ACKS.md.
-                if allowance_refused(baseline, entries):
+                if allowance_refused(baseline, entries, args.baseline):
                     return 1
             elif verdict.failing:
                 print(f"proof_cost: refusing to write {args.baseline}: "

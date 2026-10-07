@@ -119,7 +119,7 @@ def main(argv=None) -> int:
     for s in errors:
         print(f"loop_call_check: cannot read {s['file']}: {s['error']}")
     if args.write:
-        old = json.loads(BASELINE.read_text())["sites"] if BASELINE.exists() else None
+        old = ratchet.old_rows("loop_call_check", BASELINE, lambda: json.loads(BASELINE.read_text())["sites"])
         if ratchet.report("loop_call_check", ratchet.refused("loop_call_check", old, now)):
             return 1
         BASELINE.write_text(json.dumps({"_doc": __doc__.splitlines()[0], "total": total,

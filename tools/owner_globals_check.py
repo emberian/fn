@@ -160,7 +160,7 @@ def main(argv=None):
         raised = [(p, len(n), baseline.get(p)) for p, n in found.items()
                   if p not in baseline or len(n) > baseline[p]]
         if ratchet.report("owner_globals_check", ratchet.refused(
-                "owner_globals_check", baseline if baseline_path.exists() else None,
+                "owner_globals_check", ratchet.old_rows("owner_globals_check", baseline_path, lambda: baseline),
                 {p: len(n) for p, n in found.items()})):
             return 1
         if raised:
