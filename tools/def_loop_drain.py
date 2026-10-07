@@ -690,7 +690,10 @@ def render(spec: Spec, hoisted) -> str:
         opt(":while", spec.while_)
     if spec.tail is not None:
         opt(":tail", spec.tail)
-    opt(":body", spec.body)
+    if isinstance(spec.body, Atom) and spec.body.low == "nil":
+        parts.append("  :body 'nil")  # def-loop reads a bare NIL :body as absent
+    else:
+        opt(":body", spec.body)
     parts[-1] += ")"
     head_comments = "".join(c.rstrip() + "\n" for c in hoisted)
     return head_comments + "\n".join(parts)
