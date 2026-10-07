@@ -3,6 +3,7 @@
 ; the decoded bounded fields and makes every workflow decision through fn-bp-step.
 (in-package "ACL2")
 (include-book "bp-workflow")
+(include-book "def-loop")
 
 (defun fn-bp-journal-textp (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -305,39 +306,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bp-work-ids-loop (works acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp works)
-      (fn-bp-work-ids-loop (cdr works) (cons (fn-bp-work-id (car works)) acc))
-    (revappend acc nil)))
-
-(defun fn-bp-work-ids (works)
- (declare (xargs :verify-guards nil :guard t))
- (mbe :logic
-       (if (consp works)
-           (cons (fn-bp-work-id (car works)) (fn-bp-work-ids (cdr works)))
-         nil)
-       :exec (fn-bp-work-ids-loop works nil)))
-
-(local
- (defthm fn-bp-work-ids-loop-is-revappend
-   (equal (fn-bp-work-ids-loop works acc)
-          (revappend acc (fn-bp-work-ids works)))
-   :hints (("Goal" :induct (fn-bp-work-ids-loop works acc)
-                   :in-theory (union-theories '(fn-bp-work-ids-loop fn-bp-work-ids revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bp-work-ids-loop)
-
-(verify-guards fn-bp-work-ids
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bp-work-ids)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bp-work-ids-loop-is-revappend (acc nil))))))
-
+(def-loop fn-bp-work-ids (works)
+  :shape :map :over works :elt w
+  :body (fn-bp-work-id w))
 
 ; member-equal would put (true-listp recovered) in this book's guards, and
 ; nothing else here carries a guard other than t; the list is also an opaque
