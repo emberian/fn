@@ -172,6 +172,26 @@
                              :fault "a two that answers x twice"))
   :must-fail t)
 
+;; The bridge's unused-formal shapes (a lambda formal the bridged body no
+;; longer uses): a variable or constant actual goes; a call actual stays and
+;; its formal is declared IGNORABLE, so the term still translates.  Each pin
+;; is the exact output; the last is that output run, with a call actual.
+(assert-event
+ (equal (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 z) (w state))
+        '((lambda (x) (mv-nth '0 (mv-list '2 (fn-dkt-two x)))) '3)))
+(assert-event
+ (equal (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2)) (w state))
+        '((lambda (x y) (declare (ignorable y)) (mv-nth '0 (mv-list '2 (fn-dkt-two x))))
+          '3 (cons '1 '2))))
+(assert-event
+ (equal (fn-dt-bridge '((lambda (x y w) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2) (len q)) (w state))
+        '((lambda (x y w) (declare (ignorable y w)) (mv-nth '0 (mv-list '2 (fn-dkt-two x))))
+          '3 (cons '1 '2) (len q))))
+(assert-event
+ (let ((tm (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2)) (w state))))
+   (mv-let (bad term) (fn-dt-translate tm (w state))
+     (and (not bad) (consp term)))))
+
 ; ---------------------------------------------------------------------------
 ; 3. Refusals, each by name (world-free).
 

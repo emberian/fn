@@ -853,6 +853,24 @@
               (t (mv (cons (car formals) kf)
                      (cons (car actuals) ka))))))))
 
+(defun fn-dt-unused-formals (formals body)
+  (declare (xargs :mode :program))
+  (cond ((atom formals) nil)
+        ((member-eq (car formals) (all-vars body))
+         (fn-dt-unused-formals (cdr formals) body))
+        (t (cons (car formals) (fn-dt-unused-formals (cdr formals) body)))))
+
+(defun fn-dt-lambda (formals body)
+  (declare (xargs :mode :program))
+  ; the lambda for the kept FORMALS: one whose body no longer uses a kept
+  ; formal (its actual is a call, kept for its effect on the term's shape)
+  ; declares it IGNORABLE, as the let it came from did -- a source lambda
+  ; may not name an unused formal otherwise.  Identity on the value.
+  (let ((unused (fn-dt-unused-formals formals body)))
+    (if unused
+        (list 'lambda formals (list 'declare (cons 'ignorable unused)) body)
+      (list 'lambda formals body))))
+
 (mutual-recursion
  (defun fn-dt-bridge (x w)
    (declare (xargs :mode :program))
@@ -871,11 +889,11 @@
           ; actuals; a let's lambda body may itself hold the mv calls.  A
           ; formal the body no longer uses, with a variable or constant
           ; actual, goes: source lambdas name no unused formal.
-          (let* ((body (fn-dt-bridge (caddr (car x)) w))
+          (let* ((body (fn-dt-bridge (car (last (car x))) w))
                  (actuals (fn-dt-bridge-lst (cdr x) w)))
             (mv-let (formals* actuals*)
               (fn-dt-keep-used (cadr (car x)) actuals body)
-              (cons (list 'lambda formals* body) actuals*))))
+              (cons (fn-dt-lambda formals* body) actuals*))))
          (t (let ((k (fn-dt-mv-outputs (car x) w)))
               (if k
                   (list 'mv-list k
