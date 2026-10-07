@@ -32,6 +32,7 @@
 ; and the replay of that split is the full replay
 ; (fn-sn-recover-from-checkpoint-equals-full-recover).
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "store-log-programs")
 
 ; -----------------------------------------------------------------------------
@@ -141,42 +142,13 @@
   :rule-classes :type-prescription)
 
 ; FROM, FROM+1, ..., TO.
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-lgs-range-loop (from to acc)
-  (declare (xargs :measure (nfix (- (+ 1 (nfix to)) (nfix from))) :guard (and (and (natp from) (natp to)) (true-listp acc)) :verify-guards nil))
-  (if (and (natp from) (natp to) (<= from to))
-      (fn-lgs-range-loop (1+ from) to (cons from acc))
-    (revappend acc nil)))
-
-(defun fn-lgs-range (from to)
-  (declare (xargs :verify-guards nil :guard (and (natp from) (natp to))
-                  :measure (nfix (- (+ 1 (nfix to)) (nfix from)))))
-  (mbe :logic
-       (if (and (natp from) (natp to) (<= from to))
-           (cons from (fn-lgs-range (1+ from) to))
-         nil)
-       :exec (fn-lgs-range-loop from to nil)))
-
-(local
- (defthm fn-lgs-range-loop-is-revappend
-   (equal (fn-lgs-range-loop from to acc)
-          (revappend acc (fn-lgs-range from to)))
-   :hints (("Goal" :induct (fn-lgs-range-loop from to acc)
-                   :in-theory (union-theories '(fn-lgs-range-loop fn-lgs-range revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-lgs-range-loop)
-
-(verify-guards fn-lgs-range
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-lgs-range)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-lgs-range-loop-is-revappend (acc nil))))))
+; Executes by a loop (def-loop :step: the state is the counter, the measure
+; the distance to TO).
+(def-loop fn-lgs-range (from to)
+  :shape :step :done (not (and (natp from) (natp to) (<= from to)))
+  :body from :next (1+ from)
+  :measure (nfix (- (+ 1 (nfix to)) (nfix from)))
+  :guard (and (natp from) (natp to)))
 
 
 (defun fn-lgs-all-present (ks present)
