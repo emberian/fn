@@ -2685,6 +2685,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lock_discipline_check
 	@$(CHECK_STEP) $(PYTHON) tools/lanedump_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lanedump_check
+	@$(CHECK_STEP) $(PYTHON) tools/unhooked.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_unhooked
 	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
 	@$(CHECK_EXECUTE)
