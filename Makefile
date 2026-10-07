@@ -1913,6 +1913,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	tests/acl2/peer-catchup-serve-tariff-tests \
 	books/peer-catchup-spool-framer \
 	books/peer-catchup-spool-hash \
 	books/peer-catchup-spool \
