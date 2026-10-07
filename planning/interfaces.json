@@ -13478,6 +13478,12 @@
         },
         {
           "theorem": "fn-csp-window-bounds-in-flight"
+        },
+        {
+          "theorem": "fn-csp-body-only-after-its-335"
+        },
+        {
+          "theorem": "fn-csp-streaming-only-from-335"
         }
       ],
       "extraction": null,
