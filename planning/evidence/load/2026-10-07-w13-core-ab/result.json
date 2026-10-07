@@ -1,0 +1,2048 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 1000,
+    "refused": 0
+   },
+   "arm": "A",
+   "bars": [
+    {
+     "bar": "L-RSS",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.vmrss",
+       "ok": false,
+       "threshold": 131072,
+       "value": 187888
+      }
+     ],
+     "quantity": "owner VmRSS, whole process (file-backed core pages included), 20 s idle after the workload",
+     "reason": null,
+     "source": "ruling 7; D69; tests/test_native_image_heap.py",
+     "verdict": "FAIL"
+    },
+    {
+     "bar": "L-HWM",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.hwm",
+       "ok": true,
+       "threshold": 262144,
+       "value": 202296
+      }
+     ],
+     "quantity": "owner VmHWM over the same workload (red item if above twice the L-RSS bar)",
+     "reason": null,
+     "source": "MEM-004/007",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     25.51,
+     22.31,
+     17.54
+    ],
+    "loadavg_start": [
+     24.93,
+     21.79,
+     17.17
+    ],
+    "name": "hbox"
+   },
+   "cell": "W13",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "declared",
+    "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384"
+   },
+   "hook": "w13-idle-gc.lisp idle-gc-off",
+   "image": {
+    "core_sha256": "5e342d1984b955a8d7e1be2e270202e4109c9d62f592de5340b05b42ca99ab01",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/dev/shm/fn-load-w13-core-ab/W13-image-A-r1/hooked/fn-host-developer --fn operator /dev/shm/fn-load-w13-core-ab/W13-image-A-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "gc.count": 858,
+    "gc.ms": 2857.7,
+    "posts.admitted": 1000,
+    "posts.refused": 0,
+    "rss_kib.anon": 54248,
+    "rss_kib.file": 133640,
+    "rss_kib.hwm": 202296,
+    "rss_kib.vmrss": 187888
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.15,
+   "phases": [
+    {
+     "gc": {
+      "count": 3,
+      "ms": 24.3
+     },
+     "kind": "open",
+     "mem": {
+      "anon": 14232,
+      "file": 119220,
+      "hwm": 151476,
+      "vmrss": 133452
+     },
+     "name": "open",
+     "open_s": 0.15,
+     "seconds": 0.15
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 202.499,
+       "n": 1000,
+       "p50_ms": 8.075,
+       "p95_ms": 20.576,
+       "p99_ms": 50.753
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 1000,
+      "refused": 0
+     },
+     "cpu_s": 13.2,
+     "gc": {
+      "count": 709,
+      "ms": 2377.0
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      25.12,
+      21.98,
+      17.31
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 54472,
+      "file": 132788,
+      "hwm": 196160,
+      "peak_anon": 58956,
+      "peak_vmrss": 191744,
+      "pss": 122344,
+      "threads": 15,
+      "vmrss": 187260
+     },
+     "name": "fill",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 96.926
+     },
+     "seconds": 10.318,
+     "status": "ok"
+    },
+    {
+     "admitted_connections": 31,
+     "arc_bytes": null,
+     "connection_refusals": {
+      "400-too-many-connections-try": 1
+     },
+     "connections": 32,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 2.39,
+     "gc": {
+      "count": 146,
+      "ms": 456.4
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "hold",
+     "load": [
+      25.19,
+      22.05,
+      17.36
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 54248,
+      "file": 133640,
+      "hwm": 202296,
+      "peak_anon": 57840,
+      "peak_vmrss": 191480,
+      "pss": 122660,
+      "threads": 14,
+      "vmrss": 187888
+     },
+     "name": "idle-connections",
+     "seconds": 4.533,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.03,
+     "gc": {
+      "count": 0,
+      "ms": 0.0
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      25.51,
+      22.31,
+      17.54
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 54248,
+      "file": 133640,
+      "hwm": 202296,
+      "peak_anon": 54248,
+      "peak_vmrss": 187888,
+      "pss": 122659,
+      "threads": 14,
+      "vmrss": 187888
+     },
+     "name": "idle",
+     "seconds": 20.0,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 38.2,
+   "started_utc": "2026-10-07T22:41:12Z",
+   "status": "complete",
+   "store": {},
+   "target": "image",
+   "trace": null,
+   "workload": "rss-small-filled"
+  },
+  {
+   "admitted": {
+    "admitted": 1000,
+    "refused": 0
+   },
+   "arm": "B",
+   "bars": [
+    {
+     "bar": "L-RSS",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.vmrss",
+       "ok": false,
+       "threshold": 131072,
+       "value": 155316
+      }
+     ],
+     "quantity": "owner VmRSS, whole process (file-backed core pages included), 20 s idle after the workload",
+     "reason": null,
+     "source": "ruling 7; D69; tests/test_native_image_heap.py",
+     "verdict": "FAIL"
+    },
+    {
+     "bar": "L-HWM",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.hwm",
+       "ok": true,
+       "threshold": 262144,
+       "value": 200412
+      }
+     ],
+     "quantity": "owner VmHWM over the same workload (red item if above twice the L-RSS bar)",
+     "reason": null,
+     "source": "MEM-004/007",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     26.88,
+     23.05,
+     17.97
+    ],
+    "loadavg_start": [
+     25.51,
+     22.31,
+     17.54
+    ],
+    "name": "hbox"
+   },
+   "cell": "W13",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "declared",
+    "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384"
+   },
+   "hook": "w13-idle-gc.lisp",
+   "image": {
+    "core_sha256": "5e342d1984b955a8d7e1be2e270202e4109c9d62f592de5340b05b42ca99ab01",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/dev/shm/fn-load-w13-core-ab/W13-image-B-r1/hooked/fn-host-developer --fn operator /dev/shm/fn-load-w13-core-ab/W13-image-B-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "gc.count": 747,
+    "gc.ms": 2530.9,
+    "posts.admitted": 1000,
+    "posts.refused": 0,
+    "rss_kib.anon": 21804,
+    "rss_kib.file": 133512,
+    "rss_kib.hwm": 200412,
+    "rss_kib.vmrss": 155316
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.147,
+   "phases": [
+    {
+     "gc": {
+      "count": 3,
+      "ms": 23.8
+     },
+     "kind": "open",
+     "mem": {
+      "anon": 14388,
+      "file": 119236,
+      "hwm": 151300,
+      "vmrss": 133624
+     },
+     "name": "open",
+     "open_s": 0.147,
+     "seconds": 0.147
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 223.478,
+       "n": 1000,
+       "p50_ms": 7.668,
+       "p95_ms": 14.947,
+       "p99_ms": 35.604
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 1000,
+      "refused": 0
+     },
+     "cpu_s": 11.78,
+     "gc": {
+      "count": 608,
+      "ms": 2054.3
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      26.66,
+      22.66,
+      17.71
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 48252,
+      "file": 133264,
+      "hwm": 200412,
+      "peak_anon": 53420,
+      "peak_vmrss": 186108,
+      "pss": 116501,
+      "threads": 15,
+      "vmrss": 181516
+     },
+     "name": "fill",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 112.111
+     },
+     "seconds": 8.92,
+     "status": "ok"
+    },
+    {
+     "admitted_connections": 31,
+     "arc_bytes": null,
+     "connection_refusals": {
+      "400-too-many-connections-try": 1
+     },
+     "connections": 32,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 2.16,
+     "gc": {
+      "count": 135,
+      "ms": 427.5
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "hold",
+     "load": [
+      27.17,
+      22.83,
+      17.79
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 54744,
+      "file": 133512,
+      "hwm": 200412,
+      "peak_anon": 54744,
+      "peak_vmrss": 188256,
+      "pss": 123633,
+      "threads": 14,
+      "vmrss": 188256
+     },
+     "name": "idle-connections",
+     "seconds": 4.355,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.04,
+     "gc": {
+      "count": 1,
+      "ms": 25.3
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      26.88,
+      23.05,
+      17.97
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 21804,
+      "file": 133512,
+      "hwm": 200412,
+      "peak_anon": 54744,
+      "peak_vmrss": 188256,
+      "pss": 90181,
+      "threads": 14,
+      "vmrss": 155316
+     },
+     "name": "idle",
+     "seconds": 20.0,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 36.7,
+   "started_utc": "2026-10-07T22:41:50Z",
+   "status": "complete",
+   "store": {},
+   "target": "image",
+   "trace": null,
+   "workload": "rss-small-filled"
+  },
+  {
+   "admitted": {
+    "admitted": 1000,
+    "refused": 0
+   },
+   "arm": "A",
+   "bars": [
+    {
+     "bar": "L-RSS",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.vmrss",
+       "ok": true,
+       "threshold": 131072,
+       "value": 107392
+      }
+     ],
+     "quantity": "owner VmRSS, whole process (file-backed core pages included), 20 s idle after the workload",
+     "reason": null,
+     "source": "ruling 7; D69; tests/test_native_image_heap.py",
+     "verdict": "PASS"
+    },
+    {
+     "bar": "L-HWM",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.hwm",
+       "ok": true,
+       "threshold": 262144,
+       "value": 128364
+      }
+     ],
+     "quantity": "owner VmHWM over the same workload (red item if above twice the L-RSS bar)",
+     "reason": null,
+     "source": "MEM-004/007",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     25.46,
+     23.24,
+     18.28
+    ],
+    "loadavg_start": [
+     26.97,
+     23.13,
+     18.03
+    ],
+    "name": "hbox"
+   },
+   "cell": "W13",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "declared",
+    "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384"
+   },
+   "hook": "w13-idle-gc.lisp idle-gc-off",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w13-core-ab/W13-fn-core-A-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "gc.count": 928,
+    "gc.ms": 2601.4,
+    "posts.admitted": 1000,
+    "posts.refused": 0,
+    "rss_kib.anon": 49552,
+    "rss_kib.file": 57840,
+    "rss_kib.hwm": 128364,
+    "rss_kib.vmrss": 107392
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.171,
+   "phases": [
+    {
+     "gc": {
+      "count": 3,
+      "ms": 19.7
+     },
+     "kind": "open",
+     "mem": {
+      "anon": 12976,
+      "file": 52808,
+      "hwm": 84680,
+      "vmrss": 65784
+     },
+     "name": "open",
+     "open_s": 0.171,
+     "seconds": 0.171
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 214.178,
+       "n": 1000,
+       "p50_ms": 8.487,
+       "p95_ms": 20.773,
+       "p99_ms": 99.876
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 1000,
+      "refused": 0
+     },
+     "cpu_s": 15.05,
+     "gc": {
+      "count": 764,
+      "ms": 2158.9
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      26.46,
+      23.21,
+      18.13
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 57832,
+      "file": 57456,
+      "hwm": 122368,
+      "peak_anon": 58632,
+      "peak_vmrss": 115456,
+      "pss": 113745,
+      "threads": 15,
+      "vmrss": 115288
+     },
+     "name": "fill",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 89.418
+     },
+     "seconds": 11.184,
+     "status": "ok"
+    },
+    {
+     "admitted_connections": 31,
+     "arc_bytes": null,
+     "connection_refusals": {
+      "400-too-many-connections-try": 1
+     },
+     "connections": 32,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 2.8,
+     "gc": {
+      "count": 161,
+      "ms": 422.8
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "hold",
+     "load": [
+      26.5,
+      23.27,
+      18.18
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 49552,
+      "file": 57840,
+      "hwm": 128364,
+      "peak_anon": 63000,
+      "peak_vmrss": 120840,
+      "pss": 106525,
+      "threads": 14,
+      "vmrss": 107392
+     },
+     "name": "idle-connections",
+     "seconds": 4.478,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.01,
+     "gc": {
+      "count": 0,
+      "ms": 0.0
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      25.46,
+      23.24,
+      18.28
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 49552,
+      "file": 57840,
+      "hwm": 128364,
+      "peak_anon": 49552,
+      "peak_vmrss": 107392,
+      "pss": 106524,
+      "threads": 14,
+      "vmrss": 107392
+     },
+     "name": "idle",
+     "seconds": 20.0,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 39.2,
+   "started_utc": "2026-10-07T22:42:30Z",
+   "status": "complete",
+   "store": {},
+   "target": "fn-core",
+   "trace": null,
+   "workload": "rss-small-filled"
+  },
+  {
+   "admitted": {
+    "admitted": 1000,
+    "refused": 0
+   },
+   "arm": "B",
+   "bars": [
+    {
+     "bar": "L-RSS",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.vmrss",
+       "ok": true,
+       "threshold": 131072,
+       "value": 79164
+      }
+     ],
+     "quantity": "owner VmRSS, whole process (file-backed core pages included), 20 s idle after the workload",
+     "reason": null,
+     "source": "ruling 7; D69; tests/test_native_image_heap.py",
+     "verdict": "PASS"
+    },
+    {
+     "bar": "L-HWM",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.hwm",
+       "ok": true,
+       "threshold": 262144,
+       "value": 122660
+      }
+     ],
+     "quantity": "owner VmHWM over the same workload (red item if above twice the L-RSS bar)",
+     "reason": null,
+     "source": "MEM-004/007",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     25.47,
+     23.47,
+     18.54
+    ],
+    "loadavg_start": [
+     25.46,
+     23.24,
+     18.28
+    ],
+    "name": "hbox"
+   },
+   "cell": "W13",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "declared",
+    "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384"
+   },
+   "hook": "w13-idle-gc.lisp",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w13-core-ab/W13-fn-core-B-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "gc.count": 810,
+    "gc.ms": 2357.6,
+    "posts.admitted": 1000,
+    "posts.refused": 0,
+    "rss_kib.anon": 20672,
+    "rss_kib.file": 58492,
+    "rss_kib.hwm": 122660,
+    "rss_kib.vmrss": 79164
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.169,
+   "phases": [
+    {
+     "gc": {
+      "count": 3,
+      "ms": 19.0
+     },
+     "kind": "open",
+     "mem": {
+      "anon": 13156,
+      "file": 52924,
+      "hwm": 84988,
+      "vmrss": 66080
+     },
+     "name": "open",
+     "open_s": 0.169,
+     "seconds": 0.169
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 257.372,
+       "n": 1000,
+       "p50_ms": 7.921,
+       "p95_ms": 15.45,
+       "p99_ms": 63.355
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 1000,
+      "refused": 0
+     },
+     "cpu_s": 13.56,
+     "gc": {
+      "count": 664,
+      "ms": 1910.8
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      25.08,
+      23.23,
+      18.33
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 50416,
+      "file": 57916,
+      "hwm": 118508,
+      "peak_anon": 53064,
+      "peak_vmrss": 110540,
+      "pss": 106945,
+      "threads": 15,
+      "vmrss": 108332
+     },
+     "name": "fill",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 100.435
+     },
+     "seconds": 9.957,
+     "status": "ok"
+    },
+    {
+     "admitted_connections": 31,
+     "arc_bytes": null,
+     "connection_refusals": {
+      "400-too-many-connections-try": 1
+     },
+     "connections": 32,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 2.34,
+     "gc": {
+      "count": 142,
+      "ms": 401.6
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "hold",
+     "load": [
+      25.15,
+      23.28,
+      18.37
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 46336,
+      "file": 58492,
+      "hwm": 122660,
+      "peak_anon": 63592,
+      "peak_vmrss": 122084,
+      "pss": 103138,
+      "threads": 14,
+      "vmrss": 104828
+     },
+     "name": "idle-connections",
+     "seconds": 4.317,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.05,
+     "gc": {
+      "count": 1,
+      "ms": 26.2
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      25.47,
+      23.47,
+      18.54
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 20672,
+      "file": 58492,
+      "hwm": 122660,
+      "peak_anon": 46528,
+      "peak_vmrss": 105020,
+      "pss": 77323,
+      "threads": 14,
+      "vmrss": 79164
+     },
+     "name": "idle",
+     "seconds": 20.0,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 37.7,
+   "started_utc": "2026-10-07T22:43:09Z",
+   "status": "complete",
+   "store": {},
+   "target": "fn-core",
+   "trace": null,
+   "workload": "rss-small-filled"
+  },
+  {
+   "admitted": {
+    "admitted": 1000,
+    "refused": 0
+   },
+   "arm": "A",
+   "bars": [
+    {
+     "bar": "L-RSS",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.vmrss",
+       "ok": false,
+       "threshold": 131072,
+       "value": 181788
+      }
+     ],
+     "quantity": "owner VmRSS, whole process (file-backed core pages included), 20 s idle after the workload",
+     "reason": null,
+     "source": "ruling 7; D69; tests/test_native_image_heap.py",
+     "verdict": "FAIL"
+    },
+    {
+     "bar": "L-HWM",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.hwm",
+       "ok": true,
+       "threshold": 262144,
+       "value": 194972
+      }
+     ],
+     "quantity": "owner VmHWM over the same workload (red item if above twice the L-RSS bar)",
+     "reason": null,
+     "source": "MEM-004/007",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     26.05,
+     23.93,
+     18.93
+    ],
+    "loadavg_start": [
+     25.47,
+     23.47,
+     18.54
+    ],
+    "name": "hbox"
+   },
+   "cell": "W13",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "declared",
+    "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384"
+   },
+   "hook": "w13-idle-gc.lisp idle-gc-off",
+   "image": {
+    "core_sha256": "5e342d1984b955a8d7e1be2e270202e4109c9d62f592de5340b05b42ca99ab01",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/dev/shm/fn-load-w13-core-ab/W13-image-A-r2/hooked/fn-host-developer --fn operator /dev/shm/fn-load-w13-core-ab/W13-image-A-r2/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "gc.count": 911,
+    "gc.ms": 3311.7,
+    "posts.admitted": 1000,
+    "posts.refused": 0,
+    "rss_kib.anon": 48324,
+    "rss_kib.file": 133464,
+    "rss_kib.hwm": 194972,
+    "rss_kib.vmrss": 181788
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.125,
+   "phases": [
+    {
+     "gc": {
+      "count": 3,
+      "ms": 21.4
+     },
+     "kind": "open",
+     "mem": {
+      "anon": 14556,
+      "file": 119420,
+      "hwm": 151868,
+      "vmrss": 133976
+     },
+     "name": "open",
+     "open_s": 0.125,
+     "seconds": 0.125
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 204.508,
+       "n": 1000,
+       "p50_ms": 11.89,
+       "p95_ms": 25.074,
+       "p99_ms": 83.265
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 1000,
+      "refused": 0
+     },
+     "cpu_s": 15.81,
+     "gc": {
+      "count": 742,
+      "ms": 2729.7
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      26.27,
+      23.78,
+      18.75
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 48344,
+      "file": 133212,
+      "hwm": 191988,
+      "peak_anon": 56528,
+      "peak_vmrss": 188916,
+      "pss": 97027,
+      "threads": 15,
+      "vmrss": 181556
+     },
+     "name": "fill",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 69.688
+     },
+     "seconds": 14.35,
+     "status": "ok"
+    },
+    {
+     "admitted_connections": 31,
+     "arc_bytes": null,
+     "connection_refusals": {
+      "400-too-many-connections-try": 1
+     },
+     "connections": 32,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 2.83,
+     "gc": {
+      "count": 166,
+      "ms": 560.6
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "hold",
+     "load": [
+      26.25,
+      23.82,
+      18.79
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 48324,
+      "file": 133464,
+      "hwm": 194972,
+      "peak_anon": 48132,
+      "peak_vmrss": 181596,
+      "pss": 96704,
+      "threads": 14,
+      "vmrss": 181788
+     },
+     "name": "idle-connections",
+     "seconds": 4.502,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.01,
+     "gc": {
+      "count": 0,
+      "ms": 0.0
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      26.05,
+      23.93,
+      18.93
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 48324,
+      "file": 133464,
+      "hwm": 194972,
+      "peak_anon": 48324,
+      "peak_vmrss": 181788,
+      "pss": 96705,
+      "threads": 14,
+      "vmrss": 181788
+     },
+     "name": "idle",
+     "seconds": 20.001,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 2,
+   "seconds": 42.3,
+   "started_utc": "2026-10-07T22:43:47Z",
+   "status": "complete",
+   "store": {},
+   "target": "image",
+   "trace": null,
+   "workload": "rss-small-filled"
+  },
+  {
+   "admitted": {
+    "admitted": 1000,
+    "refused": 0
+   },
+   "arm": "B",
+   "bars": [
+    {
+     "bar": "L-RSS",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.vmrss",
+       "ok": false,
+       "threshold": 131072,
+       "value": 155892
+      }
+     ],
+     "quantity": "owner VmRSS, whole process (file-backed core pages included), 20 s idle after the workload",
+     "reason": null,
+     "source": "ruling 7; D69; tests/test_native_image_heap.py",
+     "verdict": "FAIL"
+    },
+    {
+     "bar": "L-HWM",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.hwm",
+       "ok": true,
+       "threshold": 262144,
+       "value": 203124
+      }
+     ],
+     "quantity": "owner VmHWM over the same workload (red item if above twice the L-RSS bar)",
+     "reason": null,
+     "source": "MEM-004/007",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     25.78,
+     24.15,
+     19.22
+    ],
+    "loadavg_start": [
+     26.05,
+     23.93,
+     18.93
+    ],
+    "name": "hbox"
+   },
+   "cell": "W13",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "declared",
+    "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384"
+   },
+   "hook": "w13-idle-gc.lisp",
+   "image": {
+    "core_sha256": "5e342d1984b955a8d7e1be2e270202e4109c9d62f592de5340b05b42ca99ab01",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/dev/shm/fn-load-w13-core-ab/W13-image-B-r2/hooked/fn-host-developer --fn operator /dev/shm/fn-load-w13-core-ab/W13-image-B-r2/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "gc.count": 958,
+    "gc.ms": 3362.7,
+    "posts.admitted": 1000,
+    "posts.refused": 0,
+    "rss_kib.anon": 22484,
+    "rss_kib.file": 133408,
+    "rss_kib.hwm": 203124,
+    "rss_kib.vmrss": 155892
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.152,
+   "phases": [
+    {
+     "gc": {
+      "count": 3,
+      "ms": 23.6
+     },
+     "kind": "open",
+     "mem": {
+      "anon": 14232,
+      "file": 119196,
+      "hwm": 151068,
+      "vmrss": 133428
+     },
+     "name": "open",
+     "open_s": 0.152,
+     "seconds": 0.152
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 199.634,
+       "n": 1000,
+       "p50_ms": 10.435,
+       "p95_ms": 26.149,
+       "p99_ms": 69.846
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 1000,
+      "refused": 0
+     },
+     "cpu_s": 15.81,
+     "gc": {
+      "count": 798,
+      "ms": 2796.5
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      26.23,
+      24.08,
+      19.06
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 52056,
+      "file": 132168,
+      "hwm": 195624,
+      "peak_anon": 50540,
+      "peak_vmrss": 182708,
+      "pss": 100298,
+      "threads": 15,
+      "vmrss": 184224
+     },
+     "name": "fill",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 74.135
+     },
+     "seconds": 13.489,
+     "status": "ok"
+    },
+    {
+     "admitted_connections": 31,
+     "arc_bytes": null,
+     "connection_refusals": {
+      "400-too-many-connections-try": 1
+     },
+     "connections": 32,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 2.6,
+     "gc": {
+      "count": 156,
+      "ms": 515.5
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "hold",
+     "load": [
+      26.45,
+      24.16,
+      19.12
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 60256,
+      "file": 133408,
+      "hwm": 203124,
+      "peak_anon": 59680,
+      "peak_vmrss": 193088,
+      "pss": 107705,
+      "threads": 14,
+      "vmrss": 193664
+     },
+     "name": "idle-connections",
+     "seconds": 4.592,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.04,
+     "gc": {
+      "count": 1,
+      "ms": 27.1
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      25.78,
+      24.15,
+      19.22
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 22484,
+      "file": 133408,
+      "hwm": 203124,
+      "peak_anon": 60256,
+      "peak_vmrss": 193664,
+      "pss": 69769,
+      "threads": 14,
+      "vmrss": 155892
+     },
+     "name": "idle",
+     "seconds": 20.0,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 2,
+   "seconds": 41.5,
+   "started_utc": "2026-10-07T22:44:29Z",
+   "status": "complete",
+   "store": {},
+   "target": "image",
+   "trace": null,
+   "workload": "rss-small-filled"
+  },
+  {
+   "admitted": {
+    "admitted": 1000,
+    "refused": 0
+   },
+   "arm": "A",
+   "bars": [
+    {
+     "bar": "L-RSS",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.vmrss",
+       "ok": true,
+       "threshold": 131072,
+       "value": 104096
+      }
+     ],
+     "quantity": "owner VmRSS, whole process (file-backed core pages included), 20 s idle after the workload",
+     "reason": null,
+     "source": "ruling 7; D69; tests/test_native_image_heap.py",
+     "verdict": "PASS"
+    },
+    {
+     "bar": "L-HWM",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.hwm",
+       "ok": true,
+       "threshold": 262144,
+       "value": 126264
+      }
+     ],
+     "quantity": "owner VmHWM over the same workload (red item if above twice the L-RSS bar)",
+     "reason": null,
+     "source": "MEM-004/007",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     25.67,
+     24.32,
+     19.49
+    ],
+    "loadavg_start": [
+     25.78,
+     24.15,
+     19.22
+    ],
+    "name": "hbox"
+   },
+   "cell": "W13",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "declared",
+    "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384"
+   },
+   "hook": "w13-idle-gc.lisp idle-gc-off",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w13-core-ab/W13-fn-core-A-r2/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "gc.count": 955,
+    "gc.ms": 2890.1,
+    "posts.admitted": 1000,
+    "posts.refused": 0,
+    "rss_kib.anon": 45540,
+    "rss_kib.file": 58556,
+    "rss_kib.hwm": 126264,
+    "rss_kib.vmrss": 104096
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.171,
+   "phases": [
+    {
+     "gc": {
+      "count": 3,
+      "ms": 20.1
+     },
+     "kind": "open",
+     "mem": {
+      "anon": 13256,
+      "file": 53020,
+      "hwm": 85084,
+      "vmrss": 66276
+     },
+     "name": "open",
+     "open_s": 0.171,
+     "seconds": 0.171
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 197.112,
+       "n": 1000,
+       "p50_ms": 10.865,
+       "p95_ms": 23.679,
+       "p99_ms": 102.549
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 1000,
+      "refused": 0
+     },
+     "cpu_s": 16.46,
+     "gc": {
+      "count": 796,
+      "ms": 2399.7
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      25.46,
+      24.16,
+      19.3
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 31908,
+      "file": 57488,
+      "hwm": 126264,
+      "peak_anon": 56400,
+      "peak_vmrss": 113888,
+      "pss": 87122,
+      "threads": 15,
+      "vmrss": 89396
+     },
+     "name": "fill",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 73.783
+     },
+     "seconds": 13.554,
+     "status": "ok"
+    },
+    {
+     "admitted_connections": 31,
+     "arc_bytes": null,
+     "connection_refusals": {
+      "400-too-many-connections-try": 1
+     },
+     "connections": 32,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 2.84,
+     "gc": {
+      "count": 156,
+      "ms": 470.3
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "hold",
+     "load": [
+      25.82,
+      24.26,
+      19.36
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 44964,
+      "file": 58556,
+      "hwm": 126264,
+      "peak_anon": 64360,
+      "peak_vmrss": 122916,
+      "pss": 101398,
+      "threads": 14,
+      "vmrss": 103520
+     },
+     "name": "idle-connections",
+     "seconds": 4.762,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.02,
+     "gc": {
+      "count": 0,
+      "ms": 0.0
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      25.67,
+      24.32,
+      19.49
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 45540,
+      "file": 58556,
+      "hwm": 126264,
+      "peak_anon": 45540,
+      "peak_vmrss": 104096,
+      "pss": 101881,
+      "threads": 14,
+      "vmrss": 104096
+     },
+     "name": "idle",
+     "seconds": 20.0,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 2,
+   "seconds": 41.7,
+   "started_utc": "2026-10-07T22:45:11Z",
+   "status": "complete",
+   "store": {},
+   "target": "fn-core",
+   "trace": null,
+   "workload": "rss-small-filled"
+  },
+  {
+   "admitted": {
+    "admitted": 1000,
+    "refused": 0
+   },
+   "arm": "B",
+   "bars": [
+    {
+     "bar": "L-RSS",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.vmrss",
+       "ok": true,
+       "threshold": 131072,
+       "value": 79012
+      }
+     ],
+     "quantity": "owner VmRSS, whole process (file-backed core pages included), 20 s idle after the workload",
+     "reason": null,
+     "source": "ruling 7; D69; tests/test_native_image_heap.py",
+     "verdict": "PASS"
+    },
+    {
+     "bar": "L-HWM",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "rss_kib.hwm",
+       "ok": true,
+       "threshold": 262144,
+       "value": 126424
+      }
+     ],
+     "quantity": "owner VmHWM over the same workload (red item if above twice the L-RSS bar)",
+     "reason": null,
+     "source": "MEM-004/007",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     27.79,
+     25.08,
+     19.98
+    ],
+    "loadavg_start": [
+     25.67,
+     24.32,
+     19.49
+    ],
+    "name": "hbox"
+   },
+   "cell": "W13",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "declared",
+    "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384"
+   },
+   "hook": "w13-idle-gc.lisp",
+   "image": {
+    "core_sha256": "2d0a0e443ea524c44413ed48e15f567b54eccecf957c724daef57d1770a94b54",
+    "path": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core",
+    "tree_sha": null
+   },
+   "launch": "/tank/fn/scratch/extract-core/tree4/build/core/fn-core --fn operator /dev/shm/fn-load-w13-core-ab/W13-fn-core-B-r2/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "gc.count": 1034,
+    "gc.ms": 3282.3,
+    "posts.admitted": 1000,
+    "posts.refused": 0,
+    "rss_kib.anon": 20644,
+    "rss_kib.file": 58368,
+    "rss_kib.hwm": 126424,
+    "rss_kib.vmrss": 79012
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.176,
+   "phases": [
+    {
+     "gc": {
+      "count": 3,
+      "ms": 20.2
+     },
+     "kind": "open",
+     "mem": {
+      "anon": 13220,
+      "file": 52928,
+      "hwm": 84992,
+      "vmrss": 66148
+     },
+     "name": "open",
+     "open_s": 0.176,
+     "seconds": 0.176
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 220.509,
+       "n": 1000,
+       "p50_ms": 13.447,
+       "p95_ms": 29.834,
+       "p99_ms": 116.252
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 1000,
+      "refused": 0
+     },
+     "cpu_s": 19.44,
+     "gc": {
+      "count": 911,
+      "ms": 2893.4
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      27.22,
+      24.74,
+      19.73
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 50520,
+      "file": 57312,
+      "hwm": 123848,
+      "peak_anon": 64156,
+      "peak_vmrss": 121468,
+      "pss": 106879,
+      "threads": 16,
+      "vmrss": 107832
+     },
+     "name": "fill",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 58.774
+     },
+     "seconds": 17.015,
+     "status": "ok"
+    },
+    {
+     "admitted_connections": 31,
+     "arc_bytes": null,
+     "connection_refusals": {
+      "400-too-many-connections-try": 1
+     },
+     "connections": 32,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 1.95,
+     "gc": {
+      "count": 119,
+      "ms": 341.4
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "hold",
+     "load": [
+      27.28,
+      24.8,
+      19.77
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 66072,
+      "file": 58368,
+      "hwm": 126424,
+      "peak_anon": 67864,
+      "peak_vmrss": 126232,
+      "pss": 122880,
+      "threads": 14,
+      "vmrss": 124440
+     },
+     "name": "idle-connections",
+     "seconds": 4.403,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.03,
+     "gc": {
+      "count": 1,
+      "ms": 27.3
+     },
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "idle",
+     "load": [
+      27.79,
+      25.08,
+      19.98
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 20644,
+      "file": 58368,
+      "hwm": 126424,
+      "peak_anon": 66072,
+      "peak_vmrss": 124440,
+      "pss": 67309,
+      "threads": 14,
+      "vmrss": 79012
+     },
+     "name": "idle",
+     "seconds": 20.0,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 2,
+   "seconds": 44.9,
+   "started_utc": "2026-10-07T22:45:52Z",
+   "status": "complete",
+   "store": {},
+   "target": "fn-core",
+   "trace": null,
+   "workload": "rss-small-filled"
+  }
+ ],
+ "evidence": null,
+ "label": "w13-core-ab",
+ "rev": "0b4d3b18385a53209146a78296e282d06c17e573",
+ "schema": 1
+}

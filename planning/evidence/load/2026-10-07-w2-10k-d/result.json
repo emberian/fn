@@ -1,0 +1,354 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 290,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [
+    {
+     "bar": "L-READ",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "article.p99_ms.R16",
+       "reason": "box loaded (load 27.0 > 8)",
+       "threshold": 50,
+       "value": 377.486
+      }
+     ],
+     "quantity": "ARTICLE p99 at 16 readers beside one poster (2 KiB articles, tmpfs)",
+     "reason": "box loaded (load 27.0 > 8)",
+     "source": "operator-internals 'What one node sustains'",
+     "verdict": "NOT-MEASURED"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     39.15,
+     29.34,
+     22.13
+    ],
+    "loadavg_start": [
+     26.99,
+     25.3,
+     20.29
+    ],
+    "name": "hbox"
+   },
+   "cell": "W2@10k",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "100000",
+    "--max-history-octets",
+    "268435456",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 5917MB --control-stack-size 1024KB"
+   },
+   "hook": null,
+   "image": {
+    "core_sha256": "5e342d1984b955a8d7e1be2e270202e4109c9d62f592de5340b05b42ca99ab01",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host-developer --fn operator /dev/shm/fn-load-w2-10k-d/W2_10k-image-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "article.max_ms.R1": 197.459,
+    "article.max_ms.R16": 518.437,
+    "article.max_ms.R4": 894.811,
+    "article.max_ms.R64": 816.291,
+    "article.p50_ms.R1": 5.432,
+    "article.p50_ms.R16": 86.768,
+    "article.p50_ms.R4": 67.698,
+    "article.p50_ms.R64": 99.258,
+    "article.p95_ms.R1": 25.346,
+    "article.p95_ms.R16": 109.499,
+    "article.p95_ms.R4": 145.418,
+    "article.p95_ms.R64": 158.498,
+    "article.p99_ms.R1": 112.932,
+    "article.p99_ms.R16": 377.486,
+    "article.p99_ms.R4": 231.297,
+    "article.p99_ms.R64": 398.061,
+    "post.p50_ms.R1": 24.09,
+    "post.p50_ms.R16": 56.133,
+    "post.p50_ms.R4": 10.195,
+    "posts.admitted": 290,
+    "posts.refused": 0,
+    "reads_per_s.R1": 99.9,
+    "reads_per_s.R16": 46.7,
+    "reads_per_s.R4": 49.8,
+    "reads_per_s.R64": 41.0,
+    "rss_kib.anon": 179296,
+    "rss_kib.file": 563228,
+    "rss_kib.hwm": 821808,
+    "rss_kib.vmrss": 742524
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 4.295,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 161016,
+      "file": 563228,
+      "hwm": 799836,
+      "vmrss": 724244
+     },
+     "name": "open",
+     "open_s": 4.295,
+     "seconds": 4.295
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 197.459,
+       "n": 2002,
+       "p50_ms": 5.432,
+       "p95_ms": 25.346,
+       "p99_ms": 112.932
+      },
+      "POST": {
+       "max_ms": 177.252,
+       "n": 100,
+       "p50_ms": 24.09,
+       "p95_ms": 119.258,
+       "p99_ms": null
+      }
+     },
+     "counts": {
+      "admitted": 100,
+      "refused": 0
+     },
+     "cpu_s": 24.33,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      27.33,
+      25.51,
+      20.5
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 182324,
+      "file": 563228,
+      "hwm": 799836,
+      "peak_anon": 205408,
+      "peak_vmrss": 768636,
+      "pss": 660480,
+      "threads": 15,
+      "vmrss": 745552
+     },
+     "name": "R1",
+     "rate": {
+      "article_per_s": 99.92
+     },
+     "readers": 1,
+     "seconds": 20.037,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 894.811,
+       "n": 999,
+       "p50_ms": 67.698,
+       "p95_ms": 145.418,
+       "p99_ms": 231.297
+      },
+      "POST": {
+       "max_ms": 95.998,
+       "n": 96,
+       "p50_ms": 10.195,
+       "p95_ms": 59.04,
+       "p99_ms": null
+      }
+     },
+     "counts": {
+      "admitted": 96,
+      "refused": 0
+     },
+     "cpu_s": 52.77,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      31.86,
+      26.65,
+      20.98
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 212064,
+      "file": 563228,
+      "hwm": 799836,
+      "peak_anon": 223116,
+      "peak_vmrss": 786344,
+      "pss": 714147,
+      "threads": 14,
+      "vmrss": 775292
+     },
+     "name": "R4",
+     "rate": {
+      "article_per_s": 49.8
+     },
+     "readers": 4,
+     "seconds": 20.059,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "bad_replies": {
+      "403-article-temporarily-unavailable-cold": 12116
+     },
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 518.437,
+       "n": 937,
+       "p50_ms": 86.768,
+       "p95_ms": 109.499,
+       "p99_ms": 377.486
+      },
+      "POST": {
+       "max_ms": 82.169,
+       "n": 94,
+       "p50_ms": 56.133,
+       "p95_ms": 76.719,
+       "p99_ms": null
+      }
+     },
+     "counts": {
+      "admitted": 94,
+      "refused": 0
+     },
+     "cpu_s": 56.6,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      38.91,
+      28.57,
+      21.73
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 176980,
+      "file": 563228,
+      "hwm": 804076,
+      "peak_anon": 232860,
+      "peak_vmrss": 796088,
+      "pss": 679327,
+      "threads": 14,
+      "vmrss": 740208
+     },
+     "name": "R16",
+     "rate": {
+      "article_per_s": 46.68
+     },
+     "readers": 16,
+     "seconds": 20.074,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "bad_replies": {
+      "403-article-temporarily-unavailable-cold": 15097
+     },
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 816.291,
+       "n": 822,
+       "p50_ms": 99.258,
+       "p95_ms": 158.498,
+       "p99_ms": 398.061
+      }
+     },
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 48.4,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      39.15,
+      29.34,
+      22.13
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 179296,
+      "file": 563228,
+      "hwm": 821808,
+      "peak_anon": 247444,
+      "peak_vmrss": 810672,
+      "pss": 681519,
+      "threads": 14,
+      "vmrss": 742524
+     },
+     "name": "R64",
+     "rate": {
+      "article_per_s": 40.98
+     },
+     "readers": 64,
+     "seconds": 20.058,
+     "status": "ok"
+    }
+   ],
+   "preset": "filled",
+   "refusals": {
+    "conn-400-too-many-connections-try": 34
+   },
+   "rep": 1,
+   "seconds": 87.9,
+   "started_utc": "2026-10-07T22:47:19Z",
+   "status": "complete",
+   "store": {
+    "preloaded": 10000,
+    "source": "cache 5e342d1984b9-filled-10000-2048"
+   },
+   "target": "image",
+   "trace": null,
+   "workload": "readers"
+  }
+ ],
+ "evidence": null,
+ "label": "w2-10k-d",
+ "rev": "0b4d3b18385a53209146a78296e282d06c17e573",
+ "schema": 1
+}

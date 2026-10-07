@@ -5,8 +5,11 @@
   "small": ["--profile", "development", "--max-transactions", "16384", "--max-history-octets", "8388608", "--max-record-octets", "196608", "--max-groups-per-article", "16", "--max-open-suffix", "128"],
   "development": ["--profile", "development"],
   "scale": ["--profile", "scale"],
-  "default": []
+  "default": [],
+  "filled": ["--profile", "development", "--max-transactions", "100000", "--max-history-octets", "268435456", "--max-record-octets", "196608", "--max-groups-per-article", "16", "--max-open-suffix", "128"],
+  "scale-1m": ["--profile", "scale", "--max-transactions", "1048576", "--max-history-octets", "4294967296", "--max-article-octets", "16384"]
  },
+ "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile.",
  "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384",
  "workloads": {
   "smoke": {
@@ -35,7 +38,7 @@
   },
   "post-rate": {
    "about": "Closed-loop POSTs/s at 1 and 8 connections (L-POST). The variant names the preset: post-rate/small, /development, /default.",
-   "preset": "small", "groups": ["fn.letters", "fn.test"], "sampler_s": 1.0, "settle_s": 3,
+   "preset": "filled", "groups": ["fn.letters", "fn.test"], "sampler_s": 1.0, "settle_s": 3,
    "variants": ["small", "development", "default"],
    "phases": [
     {"name": "c1", "kind": "post", "duration_s": 20, "octets": 2048, "connections": 1},
@@ -43,8 +46,8 @@
    ]
   },
   "readers": {
-   "about": "Readers looping ARTICLE on a filled store (preloaded by POSTs, cached per image; the small preset holds only ~4000 2 KiB articles in its 8 MiB history bound, so this runs at the development preset) beside one open-loop poster at 5 POSTs/s, at R = 1, 4, 16, 64 (L-READ). The variant R<n> runs one R.",
-   "preset": "development", "groups": ["fn.letters", "fn.test"], "sampler_s": 1.0, "settle_s": 3,
+   "about": "Readers looping ARTICLE on a filled store (preloaded by POSTs, cached per image; the small preset holds only ~4000 2 KiB articles in its 8 MiB history bound, so this runs at the filled preset) beside one open-loop poster at 5 POSTs/s, at R = 1, 4, 16, 64 (L-READ). The variant R<n> runs one R.",
+   "preset": "filled", "groups": ["fn.letters", "fn.test"], "sampler_s": 1.0, "settle_s": 3,
    "store": {"preload": 10000, "octets": 2048},
    "phases": [
     {"name": "R1", "kind": "read", "readers": 1, "duration_s": 20, "cmd": "ARTICLE", "poster": {"rate_per_s": 5, "octets": 2048}},
@@ -55,7 +58,7 @@
   },
   "growth": {
    "about": "Store growth (L-GROW): the store at N articles (2 KiB, scale profile), open time by replay, POST and OVER-40 latency, a checkpoint, open from it, VmRSS and VmHWM at each N. N = 4000, 40000, 100000; the cell's store names N. A store comes from a POST preload within the preload budget.",
-   "preset": "scale", "groups": ["fn.test"], "sampler_s": 1.0, "settle_s": 3,
+   "preset": "scale-1m", "groups": ["fn.test"], "sampler_s": 1.0, "settle_s": 3,
    "store": {"preload": 4000, "octets": 2048},
    "phases": [
     {"name": "post", "kind": "post", "count": 200, "octets": 2048, "connections": 1},
@@ -66,7 +69,7 @@
   },
   "m1-durable": {
    "about": "4000 POSTs, a live reclaim pass, reopen, every article byte-identical (L-DURABLE).",
-   "preset": "small", "groups": ["fn.letters", "fn.test"], "sampler_s": 1.0, "settle_s": 3,
+   "preset": "filled", "groups": ["fn.letters", "fn.test"], "sampler_s": 1.0, "settle_s": 3,
    "phases": [
     {"name": "post", "kind": "post", "count": 4000, "octets": 2048, "connections": 1},
     {"name": "reclaim", "kind": "unimplemented", "reason": "the live reclaim verb is not driven yet; the lane that owns L-DURABLE names it"},

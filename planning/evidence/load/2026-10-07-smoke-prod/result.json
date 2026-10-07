@@ -1,0 +1,223 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 50,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [
+    {
+     "bar": "L-SMOKE",
+     "checks": [
+      {
+       "cmp": "ge",
+       "metric": "smoke.articles",
+       "ok": true,
+       "threshold": 50,
+       "value": 50
+      },
+      {
+       "cmp": "ge",
+       "metric": "posts.admitted",
+       "ok": true,
+       "threshold": 50,
+       "value": 50
+      },
+      {
+       "cmp": "eq",
+       "metric": "posts.refused",
+       "ok": true,
+       "threshold": 0,
+       "value": 0
+      }
+     ],
+     "quantity": "the smoke workload completes: 50 POSTs admitted, 50 ARTICLEs read by 1 reader, no refusals",
+     "reason": null,
+     "source": "LOAD-PROGRAM section 2 (the driver is tested by a smoke workload)",
+     "verdict": "PASS"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     25.39,
+     21.53,
+     16.94
+    ],
+    "loadavg_start": [
+     25.34,
+     21.46,
+     16.89
+    ],
+    "name": "hbox"
+   },
+   "cell": "smoke",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 607MB --control-stack-size 1024KB"
+   },
+   "hook": null,
+   "image": {
+    "core_sha256": "fc94e5059e8211e5fd03e3c049bd7e3323fa07a8cd76b12d5cac7ad0f48d8efc",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host --fn operator /dev/shm/fn-load-smoke-prod/smoke-image-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "posts.admitted": 50,
+    "posts.refused": 0,
+    "rss_kib.anon": 28860,
+    "rss_kib.file": 105524,
+    "rss_kib.hwm": 136860,
+    "rss_kib.vmrss": 134384,
+    "smoke.articles": 50
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.125,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 15208,
+      "file": 100956,
+      "hwm": 132388,
+      "vmrss": 116164
+     },
+     "name": "open",
+     "open_s": 0.125,
+     "seconds": 0.125
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "POST": {
+       "max_ms": 8.077,
+       "n": 50,
+       "p50_ms": 4.375,
+       "p95_ms": 7.679,
+       "p99_ms": null
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 50,
+      "refused": 0
+     },
+     "cpu_s": 0.29,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      25.39,
+      21.53,
+      16.94
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 30184,
+      "file": 103748,
+      "hwm": 133932,
+      "peak_anon": 15208,
+      "peak_vmrss": 116164,
+      "pss": 130765,
+      "threads": 14,
+      "vmrss": 133932
+     },
+     "name": "post",
+     "octets": 2048,
+     "rate": {
+      "post_per_s": 159.177
+     },
+     "seconds": 0.314,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "cmd": {
+      "ARTICLE": {
+       "max_ms": 11.363,
+       "n": 50,
+       "p50_ms": 4.591,
+       "p95_ms": 7.753,
+       "p99_ms": null
+      }
+     },
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "cpu_s": 0.2,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "read",
+     "load": [
+      25.39,
+      21.53,
+      16.94
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 28860,
+      "file": 105524,
+      "hwm": 136860,
+      "peak_anon": 0,
+      "peak_vmrss": 0,
+      "pss": 131389,
+      "threads": 14,
+      "vmrss": 134384
+     },
+     "name": "read",
+     "rate": {
+      "article_per_s": 183.36
+     },
+     "readers": 1,
+     "seconds": 0.273,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 4.2,
+   "started_utc": "2026-10-07T22:40:36Z",
+   "status": "complete",
+   "store": {},
+   "target": "image",
+   "trace": null,
+   "workload": "smoke"
+  }
+ ],
+ "evidence": null,
+ "label": "smoke-prod",
+ "rev": "0b4d3b18385a53209146a78296e282d06c17e573",
+ "schema": 1
+}

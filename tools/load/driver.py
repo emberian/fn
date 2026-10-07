@@ -233,7 +233,7 @@ class Node:
 
     def start(self, timeout=1800):
         import select
-        if self.heap_mode == "decided" and self.decided is None:
+        if self.heap_mode == "decided":
             self.decide_heap()
         self.err_n += 1
         errp = self.work / ("owner.%d.err" % self.err_n)
