@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3062 |
 | Certification roots in the Makefile | 2567 |
 | Books inside the root closure | 2897 |
-| `defthm` and `defthmd` events | 40749 |
+| `defthm` and `defthmd` events | 40755 |
 | `defun` events | 26034 |
 | Functions with verified guards | 4054 |
 | Functions declared `:verify-guards nil` and never verified | 3377 |
 | Functions left at the default with an explicit guard | 14416 |
 | Functions left at the default with no guard | 4187 |
-| `assert-event` checks | 28057 |
+| `assert-event` checks | 28066 |
 | `must-fail` checks | 2718 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 297 |
 | Include-hygiene warnings | 4104 |
-| Host-names warnings | 3648 |
+| Host-names warnings | 3649 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -177,7 +177,7 @@ that `make certify` requests.
 | `books/auth-secret.lisp` | root | 21 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/blake3-stobj.lisp` | root | 53 | 15 | 2/2/8/3 | 0 | 0 | 6 |
 | `books/blake3-string.lisp` | root | 60 | 12 | 0/1/9/2 | 0 | 0 | 6 |
-| `books/blake3-tree.lisp` | root | 118 | 24 | 0/10/14/0 | 0 | 0 | 5 |
+| `books/blake3-tree.lisp` | root | 124 | 24 | 0/10/14/0 | 0 | 0 | 5 |
 | `books/blake3.lisp` | root | 42 | 44 | 8/0/36/0 | 0 | 0 | 0 |
 | `books/body-chunks-span.lisp` | closure | 14 | 5 | 2/0/3/0 | 0 | 0 | 1 |
 | `books/body-chunks.lisp` | closure | 107 | 37 | 2/0/32/3 | 0 | 0 | 1 |
@@ -1972,7 +1972,7 @@ that `make certify` requests.
 | `tests/acl2/blake3-stobj-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 38 | 0 | 0 |
 | `tests/acl2/blake3-string-tests.lisp` | root | 2 | 17 | 0/0/17/0 | 72 | 0 | 0 |
 | `tests/acl2/blake3-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 35 | 0 | 0 |
-| `tests/acl2/blake3-tree-tests.lisp` | root | 0 | 2 | 0/0/1/1 | 18 | 0 | 0 |
+| `tests/acl2/blake3-tree-tests.lisp` | root | 0 | 2 | 0/0/1/1 | 27 | 0 | 0 |
 | `tests/acl2/body-chunks-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 20 | 0 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 27 | 0 | 0 |
 | `tests/acl2/bp-app-handoff-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 38 | 8 | 0 |
