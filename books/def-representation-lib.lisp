@@ -299,3 +299,16 @@
                   :in-theory (enable adt-octetsp adt-so-nth-is-car-nthcdr adt-so-nthcdr-add1
                                      adt-so-octetsp-car-nthcdr)
                   :expand ((take n (nthcdr a x))))))
+
+; A payload of a scalar :octets sequence is an octet list, so a true list
+; (the guard of `nth' into it).
+(defthm adt-octetsp-of-nth-of-scalar-seq
+  (implies (and (adt-scalar-seq-p '(:octets) a) (natp h) (< h (len a)))
+           (adt-octetsp (nth h a)))
+  :hints (("Goal" :in-theory (enable adt-scalar-seq-p adt-val-okp nth))))
+
+(defthm adt-true-listp-of-nth-of-scalar-seq
+  (implies (and (adt-scalar-seq-p '(:octets) a) (natp h) (< h (len a)))
+           (true-listp (nth h a)))
+  :hints (("Goal" :use adt-octetsp-of-nth-of-scalar-seq
+                  :in-theory (disable adt-octetsp-of-nth-of-scalar-seq))))
