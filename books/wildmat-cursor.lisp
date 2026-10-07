@@ -349,84 +349,84 @@
                          '(fn-wm-match-codepoints-work fn-wm-rightmost-match-work fn-wm-pattern-match-work fn-wm-pattern-row-work fn-wm-initial-row-work fn-wm-false-row-work fn-wm-step-character-work fn-wm-step-character-aux-work fn-wm-step-star-work fn-wm-step-star-aux-work fn-wm-row-last-work)
                          keep)))))))))
 
-(fn-wmc-pres fn-wmc-pres-decode
+(local (fn-wmc-pres fn-wmc-pres-decode
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode) (natp (fn-wmc-at 3 (fn-wmc-at 0 s))))
-  (fn-wm-match-codepoints-work fn-wm-rightmost-match-work fn-wm-pattern-match-work fn-wmc-char-nth fn-wmc-octets-cons))
-(fn-wmc-pres fn-wmc-pres-reverse
+  (fn-wm-match-codepoints-work fn-wm-rightmost-match-work fn-wm-pattern-match-work fn-wmc-char-nth fn-wmc-octets-cons)))
+(local (fn-wmc-pres fn-wmc-pres-reverse
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :reverse))
-  ())
-(fn-wmc-pres fn-wmc-pres-match
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-match
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :match))
-  (fn-wm-match-codepoints-work))
-(fn-wmc-pres fn-wmc-pres-right
+  (fn-wm-match-codepoints-work)))
+(local (fn-wmc-pres fn-wmc-pres-right
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :right))
-  (fn-wm-rightmost-match-work))
-(fn-wmc-pres fn-wmc-pres-pattern
+  (fn-wm-rightmost-match-work)))
+(local (fn-wmc-pres fn-wmc-pres-pattern
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :pattern))
-  (fn-wm-pattern-match-work))
-(fn-wmc-pres fn-wmc-pres-initial
+  (fn-wm-pattern-match-work)))
+(local (fn-wmc-pres fn-wmc-pres-initial
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :initial))
-  (fn-wm-initial-row-work))
-(fn-wmc-pres fn-wmc-pres-false
+  (fn-wm-initial-row-work)))
+(local (fn-wmc-pres fn-wmc-pres-false
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :false))
-  (fn-wm-false-row-work))
-(fn-wmc-pres fn-wmc-pres-row
+  (fn-wm-false-row-work)))
+(local (fn-wmc-pres fn-wmc-pres-row
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :row))
-  (fn-wm-pattern-row-work fn-wm-step-star-work fn-wm-step-character-work))
-(fn-wmc-pres fn-wmc-pres-star
+  (fn-wm-pattern-row-work fn-wm-step-star-work fn-wm-step-character-work)))
+(local (fn-wmc-pres fn-wmc-pres-star
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star))
-  (fn-wm-step-star-work))
-(fn-wmc-pres fn-wmc-pres-star-aux
+  (fn-wm-step-star-work)))
+(local (fn-wmc-pres fn-wmc-pres-star-aux
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star-aux))
-  (fn-wm-step-star-aux-work))
-(fn-wmc-pres fn-wmc-pres-character
+  (fn-wm-step-star-aux-work)))
+(local (fn-wmc-pres fn-wmc-pres-character
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :character))
-  (fn-wm-step-character-work))
-(fn-wmc-pres fn-wmc-pres-char-aux
+  (fn-wm-step-character-work)))
+(local (fn-wmc-pres fn-wmc-pres-char-aux
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :char-aux))
-  (fn-wm-step-character-aux-work))
-(fn-wmc-pres fn-wmc-pres-last
+  (fn-wm-step-character-aux-work)))
+(local (fn-wmc-pres fn-wmc-pres-last
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :last))
-  (fn-wm-row-last-work))
-(fn-wmc-pres fn-wmc-pres-other
+  (fn-wm-row-last-work)))
+(local (fn-wmc-pres fn-wmc-pres-other
   ((not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :reverse)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :match)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :right)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :pattern)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :initial)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :false)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :row)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star-aux)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :character)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :char-aux)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :last)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-done
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-done
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (not (consp (fn-wmc-at 1 s))))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-cons
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-cons
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :cons))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-match
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-match
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :match))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-right
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-right
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right))
-  (fn-wm-rightmost-match-work fn-wm-pattern-match-work fn-wm-initial-row-work fn-wm-false-row-work fn-wm-pattern-row-work fn-wm-row-last-work fn-wm-step-character-work fn-wm-step-character-aux-work fn-wm-step-star-work fn-wm-step-star-aux-work fn-wm-match-codepoints-work))
-(fn-wmc-pres fn-wmc-pres-return-right-pattern
+  (fn-wm-rightmost-match-work fn-wm-pattern-match-work fn-wm-initial-row-work fn-wm-false-row-work fn-wm-pattern-row-work fn-wm-row-last-work fn-wm-step-character-work fn-wm-step-character-aux-work fn-wm-step-star-work fn-wm-step-star-aux-work fn-wm-match-codepoints-work)))
+(local (fn-wmc-pres fn-wmc-pres-return-right-pattern
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right-pattern))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-initial-pattern
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-initial-pattern
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :initial-pattern))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-pattern-row
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-pattern-row
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-row))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-pattern-last
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-pattern-last
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-last))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-row-step
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-row-step
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-step))
-  (fn-wm-pattern-row-work fn-wm-step-star-work fn-wm-step-character-work))
-(fn-wmc-pres fn-wmc-pres-return-row-tail
+  (fn-wm-pattern-row-work fn-wm-step-star-work fn-wm-step-character-work)))
+(local (fn-wmc-pres fn-wmc-pres-return-row-tail
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-tail))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-last
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-last
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :last))
-  ())
-(fn-wmc-pres fn-wmc-pres-return-other
+  ()))
+(local (fn-wmc-pres fn-wmc-pres-return-other
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :cons)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :match)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right-pattern)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :initial-pattern)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-row)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-last)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-step)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-tail)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :last)))
-  ())
+  ()))
 
 (defthm fn-wmc-core-one-preserves-result
   (implies (or (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode))
@@ -706,106 +706,106 @@
                          '(fn-wm-match-codepoints-work fn-wm-rightmost-match-work fn-wm-pattern-match-work fn-wm-pattern-row-work fn-wm-initial-row-work fn-wm-false-row-work fn-wm-step-character-work fn-wm-step-character-aux-work fn-wm-step-star-work fn-wm-step-star-aux-work fn-wm-row-last-work)
                          keep)))))))))
 
-(fn-wmc-prog fn-wmc-progress-decode
+(local (fn-wmc-prog fn-wmc-progress-decode
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode))
   ()
-  nil)
-(fn-wmc-prog fn-wmc-progress-reverse
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-reverse
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :reverse))
   ()
-  nil)
-(fn-wmc-prog fn-wmc-progress-match
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-match
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :match))
   (fn-wm-match-codepoints-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-right
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-right
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :right))
   (fn-wm-rightmost-match-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-pattern
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-pattern
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :pattern))
   (fn-wm-pattern-match-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-initial
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-initial
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :initial))
   (fn-wm-initial-row-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-false
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-false
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :false))
   (fn-wm-false-row-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-row
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-row
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :row))
   (fn-wm-pattern-row-work fn-wm-step-star-work fn-wm-step-character-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-star
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-star
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star))
   (fn-wm-step-star-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-star-aux
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-star-aux
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star-aux))
   (fn-wm-step-star-aux-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-character
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-character
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :character))
   (fn-wm-step-character-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-char-aux
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-char-aux
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :char-aux))
   (fn-wm-step-character-aux-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-last
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-last
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :last))
   (fn-wm-row-last-work)
-  nil)
-(fn-wmc-prog fn-wmc-progress-other
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-other
   ((not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :reverse)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :match)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :right)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :pattern)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :initial)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :false)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :row)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star-aux)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :character)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :char-aux)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :last)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)))
   ()
-  nil)
-(fn-wmc-prog fn-wmc-progress-return-cons
+  nil))
+(local (fn-wmc-prog fn-wmc-progress-return-cons
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :cons))
   ()
-  t)
-(fn-wmc-prog fn-wmc-progress-return-match
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-match
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :match))
   ()
-  t)
-(fn-wmc-prog fn-wmc-progress-return-right
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-right
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right))
   (fn-wm-match-codepoints-work fn-wm-rightmost-match-work fn-wm-pattern-match-work fn-wm-pattern-row-work fn-wm-initial-row-work fn-wm-false-row-work fn-wm-step-character-work fn-wm-step-character-aux-work fn-wm-step-star-work fn-wm-step-star-aux-work fn-wm-row-last-work)
-  t)
-(fn-wmc-prog fn-wmc-progress-return-right-pattern
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-right-pattern
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right-pattern))
   ()
-  t)
-(fn-wmc-prog fn-wmc-progress-return-initial-pattern
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-initial-pattern
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :initial-pattern))
   ()
-  t)
-(fn-wmc-prog fn-wmc-progress-return-pattern-row
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-pattern-row
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-row))
   ()
-  t)
-(fn-wmc-prog fn-wmc-progress-return-pattern-last
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-pattern-last
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-last))
   ()
-  t)
-(fn-wmc-prog fn-wmc-progress-return-row-step
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-row-step
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-step))
   (fn-wm-pattern-row-work fn-wm-step-star-work fn-wm-step-character-work)
-  t)
-(fn-wmc-prog fn-wmc-progress-return-row-tail
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-row-tail
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-tail))
   ()
-  t)
-(fn-wmc-prog fn-wmc-progress-return-last
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-last
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :last))
   ()
-  t)
-(fn-wmc-prog fn-wmc-progress-return-other
+  t))
+(local (fn-wmc-prog fn-wmc-progress-return-other
   ((eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return) (consp (fn-wmc-at 1 s)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :cons)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :match)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right-pattern)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :initial-pattern)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-row)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-last)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-step)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-tail)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :last)))
   ()
-  t)
+  t))
 
 (defthm fn-wmc-core-one-progress
   (implies (and (fn-wmc-core-shapedp s) (not (fn-wmc-decidedp s)))
