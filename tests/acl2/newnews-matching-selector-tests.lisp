@@ -166,3 +166,39 @@
                ((s *nnmt-mid*))
                :fault "a step that flips the selection value"
                :lemma nnmt-preserves-value-mutant-witness)))
+
+; ---------------------------------------------------------------------------
+; fn-nnm-one-decided-value and fn-nnm-one-progress (TEETH CONTRACT v1).
+; fn-nnm-one answers three values, so the witnesses are ground theorems
+; (:witness-lemma, :lemma), each the conjunction the entry would assert at its
+; bindings (TEETH-OWED-MV-CLAIM lemma debt, as for fn-nnm-one-preserves-value).
+; Decided-value: the drained state is decided; *nnmt-mid* is not, and its
+; matched answer (nil) differs from its value (t).  Progress: statep has no
+; counterexample whose `or' hypothesis also holds (a non-state has nothing
+; remaining), so the claim keeps the hypotheses inside the implication and the
+; teeth are conclusion mutations at the member state.
+(defconst *nnmt-drained* (nnmt-drain *nnmt-start* 2000))
+
+(defthm nnmt-decided-value-witness
+  (and (mv-nth 0 (fn-nnm-one *nnmt-drained*))
+       (equal (mv-nth 1 (fn-nnm-one *nnmt-drained*)) (fn-nnm-value *nnmt-drained*))))
+(defthm nnmt-decided-value-without-decided
+  (and (not (mv-nth 0 (fn-nnm-one *nnmt-mid*)))
+       (not (equal (mv-nth 1 (fn-nnm-one *nnmt-mid*)) (fn-nnm-value *nnmt-mid*)))))
+(defthm nnmt-decided-value-mutant-witness
+  (and (mv-nth 0 (fn-nnm-one *nnmt-drained*))
+       (equal (mv-nth 1 (fn-nnm-one *nnmt-drained*)) (fn-nnm-value *nnmt-drained*))
+       (not (equal (mv-nth 1 (fn-nnm-one *nnmt-drained*)) (not (fn-nnm-value *nnmt-drained*))))))
+(defteeth fn-nnm-one-decided-value
+  :claim (((decided (mv-nth 0 (fn-nnm-one s))))
+          (equal (mv-nth 1 (fn-nnm-one s)) (fn-nnm-value s)))
+  :subject fn-nnm-one
+  :witness-lemma nnmt-decided-value-witness
+  :witness ((s *nnmt-drained*))
+  :breaks ((decided ((s *nnmt-mid*)) :lemma nnmt-decided-value-without-decided))
+  :mutations ((value-negated
+               (:conclusion (equal (mv-nth 1 (fn-nnm-one s)) (not (fn-nnm-value s))))
+               ((s *nnmt-drained*))
+               :fault "a step that answers the negation of the selection value"
+               :lemma nnmt-decided-value-mutant-witness)))
+
