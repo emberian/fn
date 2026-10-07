@@ -54,13 +54,33 @@ WHAT IS DELIBERATELY NOT COUNTED.  Recognizers a record macro generates
 constructor's theorem) and ACL2 primitives (natp, true-listp: not book
 definitions).  A premise applied to a term (`(R (fn-sn-node s))') rather
 than a variable is counted separately (`--all`), since the entry's state is
-not what it is assumed of.  Guards: a guard is checked at the call, not
-established by a theorem; a theorem whose hypothesis is only its subject's
-guard is still counted, because the guard of a host-called function is the
-host's premise too, and the host does not verify guards (AGENTS.md: "a
-theorem about a branch the composed machine cannot reach").  The baseline
-is per predicate: one hosted establishment clears every theorem that
-assumes R.
+not what it is assumed of.  The baseline is per predicate: one hosted establishment clears every
+theorem that assumes R.
+
+GUARD-ESTABLISHED (PREMISE-CHECKER-GUARD-ESTABLISHED).  A premise (R v) of
+theorem T is GUARD-ESTABLISHED when T's conclusion applies a subject S of T
+to v at formal f, `(R f)' is a conjunct of S's declared `:guard', and every
+way the native host reaches S is CHECKED.  The saved image runs with
+guard-checking-on t (host/native/io.lisp faults otherwise), so fnn-call of a
+:common-lisp-compliant entry through its executable counterpart checks the
+entry's guard, and the entry's guard verification proves the guard of every
+call its executed body makes, transitively (ec-call included; an mbe's
+:logic is not executed).  So at every call of S that starts at a checked
+entry, R holds of S's argument.  A native mention of a name is CHECKED only
+when planning/interfaces.json declares it an entry of class
+common-lisp-compliant that is neither `:raw-with' nor `:raw-guarded' (both
+run the raw definition with the carried conjuncts held by preservation
+theorems, not evaluated; host/native/io.lisp RAW DISPATCH) and is applied
+directly nowhere.  Every other name the native code mentions -- a :program
+or :ideal entry (a :program wrapper runs raw and establishes none of its
+callees' guards), a raw-dispatched entry, a book function the native code
+calls raw -- is UNCHECKED, and S is guard-established only when nothing
+unchecked reaches it (the text call graph over-approximates the calls, so
+an extra edge can only keep a premise a finding).  A subject declared
+`:mode :program' or `:verify-guards nil', or defined in a book with a
+`(program)' region, is never credited.  A guard-established theorem is
+reported as its own class, never as a finding; R stays a finding while any
+other hosted theorem assumes it without an establishment.
 
 Repo-wide: run on a box (tools/remote_check.sh BOX --cmd '...'), never on
 the laptop.
@@ -84,6 +104,8 @@ NEVER, PRESERVED, OFF_HOST, HOSTED = (
     "never concluded", "preserved only", "established off the host path",
     "established by a hosted entry")
 FINDING_CLASSES = (NEVER, PRESERVED, OFF_HOST)
+GUARD = "established by a checked guard"
+INTERFACES = ROOT / "planning" / "interfaces.json"
 
 
 def conjuncts(term) -> list:
@@ -157,9 +179,154 @@ def statement(form: str):
     return hyps, _substitute(term, env)
 
 
+
+def _xargs(form) -> dict:
+    """keyword -> [values] of every `(declare (xargs ...))' of a definition
+    FORM (a callgraph form: Sym and str leaves, lists)."""
+    out = collections.defaultdict(list)
+    if not isinstance(form, list):
+        return out
+    for item in form[3:]:
+        if not (isinstance(item, list) and item and item[0] == "declare"):
+            continue
+        for spec in item[1:]:
+            if isinstance(spec, list) and spec and spec[0] == "xargs":
+                for i in range(1, len(spec) - 1, 2):
+                    if isinstance(spec[i], str):
+                        out[spec[i].lower()].append(spec[i + 1])
+    return out
+
+
+def _plain(term):
+    """A callgraph term as reach_check's reader writes one: lowercase symbol
+    strings and lists."""
+    if isinstance(term, list):
+        return [_plain(t) for t in term]
+    return term.lower() if isinstance(term, str) else term
+
+
+class GuardModel:
+    """Which book functions only CHECKED native entries reach (the
+    GUARD-ESTABLISHED paragraph of the module docstring)."""
+
+    def __init__(self, edges: dict, entries: dict, native_mentions: set,
+                 definitions: dict, program_books: set) -> None:
+        self.entries = entries
+        self.definitions = definitions
+        self.program_books = program_books
+        self.checked_seeds = {n for n in native_mentions if self.checked_entry(n)}
+        self.unchecked_seeds = set(native_mentions) - self.checked_seeds
+        self.unchecked = self.closure(edges, self.unchecked_seeds)
+        self.checked = self.closure(edges, self.checked_seeds)
+
+    def checked_entry(self, name: str) -> bool:
+        row = self.entries.get(name)
+        return bool(row and row.get("class") == "common-lisp-compliant"
+                    and not row.get("raw_with") and not row.get("raw_guarded")
+                    and not row.get("applied_directly_in"))
+
+    @staticmethod
+    def closure(edges: dict, seeds) -> set:
+        seen, work = set(seeds), list(seeds)
+        while work:
+            for nxt in edges.get(work.pop(), ()):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    work.append(nxt)
+        return seen
+
+    def only_checked(self, name: str) -> bool:
+        return name in self.checked and name not in self.unchecked
+
+    def guard_conjuncts(self, name: str):
+        """(formals, [(R, formal)]) of NAME's declared guard, or None when it
+        is not credited (no definition, :program, :verify-guards nil, a book
+        with a (program) region)."""
+        found = self.definitions.get(name)
+        if not found:
+            return None
+        book, form = found
+        if book in self.program_books or not isinstance(form, list) or len(form) < 4:
+            return None
+        if not (isinstance(form[0], str) and form[0].lower() in
+                ("defun", "defund", "defun-inline", "defund-inline")):
+            return None
+        xargs = _xargs(form)
+        if any(str(v).lower() == ":program" for v in xargs.get(":mode", ())):
+            return None
+        if any(str(v).lower() == "nil" for v in xargs.get(":verify-guards", ())):
+            return None
+        formals = [str(f).lower() for f in form[2]] if isinstance(form[2], list) else []
+        apps = []
+        for guard in xargs.get(":guard", ()):
+            for conjunct in conjuncts(_plain(guard)):
+                app = predicate_application(conjunct)
+                if app and isinstance(app[1], str) and app[1] in formals:
+                    apps.append(app)
+        return formals, apps
+
+    def establishes(self, r: str, var: str, conclusion, subjects) -> str | None:
+        """The subject whose checked guard holds (R VAR) at T's conclusion,
+        or None."""
+        for s in subjects:
+            if not self.only_checked(s):
+                continue
+            found = self.guard_conjuncts(s)
+            if not found:
+                continue
+            formals, apps = found
+            wanted = {f for rr, f in apps if rr == r}
+            if not wanted:
+                continue
+            for call in _applications(conclusion, s):
+                for i, arg in enumerate(call[1:]):
+                    if arg == var and i < len(formals) and formals[i] in wanted:
+                        return s
+        return None
+
+
+def _applications(term, name):
+    """Every application `(NAME ...)' inside TERM."""
+    out, work = [], [term]
+    while work:
+        t = work.pop()
+        if isinstance(t, list) and t:
+            if t[0] == "quote":
+                continue
+            if t[0] == name:
+                out.append(t)
+            work.extend(t)
+    return out
+
+
+def native_guard_model(graph) -> GuardModel:
+    """The model over the tree: the native files the image loads, the
+    declared entries, the host ACL2 files' definitions."""
+    entries = {}
+    if INTERFACES.exists():
+        entries = {row["name"]: row for row in
+                   json.loads(INTERFACES.read_text())["entries"]}
+    acl2_hosts = [p for p in graph.hosts if "/native/" not in str(p)
+                  and str(p.relative_to(ROOT)) in graph.loaded_hosts]
+    host_defs = graph.read_definitions(acl2_hosts)
+    known = set(graph.book_defs) | set(host_defs)
+    mentions = set()
+    for path in graph.hosts:
+        rel = str(path.relative_to(ROOT))
+        if "/native/" not in rel or rel not in graph.loaded_hosts:
+            continue
+        mentions |= graph.code_symbols(path.read_text(encoding="utf-8", errors="replace")) & known
+    program_books = {str(p.relative_to(ROOT)) for p in graph.books
+                     if any(line.strip() == "(program)" for line in
+                            p.read_text(encoding="utf-8", errors="replace").splitlines())}
+    definitions = {**graph.book_defs, **host_defs}
+    return GuardModel(graph.edges, entries, mentions, definitions, program_books)
+
+
 class Audit:
-    def __init__(self, graph: reach_check.Graph) -> None:
+    def __init__(self, graph: reach_check.Graph, guard: "GuardModel | None" = None) -> None:
         self.graph = graph
+        self.guard = guard
         self.book_defs = set(graph.book_defs)
         self.generated = set(reach_check.record_definitions(graph.books))
         self.theorems = reach_check.theorem_forms(graph.books)
@@ -167,7 +334,8 @@ class Audit:
         self.concluded: dict[str, list] = collections.defaultdict(list)
         # R -> [theorem]: concluded under its own assumption (a preservation)
         self.preserving: dict[str, list] = collections.defaultdict(list)
-        # R -> [(theorem, book, subject-hosted?, bare-variable?)]
+        # R -> [(theorem, book, subject-hosted?, bare-variable?,
+        #        the subject whose checked guard holds R there, or None)]
         self.assumed: dict[str, list] = collections.defaultdict(list)
         self.subjects: dict[str, reach_check.Subject] = {}
         self.scan()
@@ -213,7 +381,10 @@ class Audit:
                         continue
                     r, arg = app
                     bare = isinstance(arg, str) and arg not in self.book_defs
-                    self.assumed[r].append((name, book, hosted_subject, bare))
+                    guarded = (self.guard.establishes(r, arg, conclusion, subject.functions)
+                               if self.guard is not None and bare and hosted_subject
+                               else None)
+                    self.assumed[r].append((name, book, hosted_subject, bare, guarded))
 
     def classify(self, r: str) -> str:
         rows = self.concluded.get(r, [])
@@ -228,12 +399,18 @@ class Audit:
         R assumed at a hosted entry."""
         out = {}
         for r, rows in self.assumed.items():
-            entries = [(t, b) for t, b, hosted, bare in rows
-                       if hosted and (bare or all_arguments)]
-            if not entries:
+            hosted_rows = [(t, b, guarded) for t, b, hosted, bare, guarded in rows
+                           if hosted and (bare or all_arguments)]
+            if not hosted_rows:
                 continue
-            out[r] = {"class": self.classify(r),
+            entries = [(t, b) for t, b, guarded in hosted_rows if not guarded]
+            by_guard = sorted({(t, guarded) for t, _, guarded in hosted_rows if guarded})
+            cls = self.classify(r)
+            if cls in FINDING_CLASSES and not entries:
+                cls = GUARD
+            out[r] = {"class": cls,
                       "theorems": sorted(set(entries)),
+                      "guard_established": by_guard,
                       "establishments": sorted({t for t, _, _, h in self.concluded.get(r, []) if h}),
                       "unhosted_establishments": sorted(
                           {t for t, _, _, h in self.concluded.get(r, []) if not h}),
@@ -277,6 +454,8 @@ def summary_line(findings: dict, premises: dict, baseline: dict) -> str:
             f"{len(findings)} unestablished ({theorems} theorems): "
             f"{counts[NEVER]} never concluded, {counts[PRESERVED]} preserved only, "
             f"{counts[OFF_HOST]} established off the host path; "
+            f"{sum(1 for row in premises.values() if row['class'] == GUARD)} established "
+            f"by a checked guard only; "
             f"baseline {len(baseline.get('accepted', {}))}")
 
 
@@ -316,7 +495,7 @@ def main(argv=None) -> int:
     arguments = parser.parse_args(argv)
 
     graph = reach_check.Graph()
-    audit = Audit(graph)
+    audit = Audit(graph, native_guard_model(graph))
 
     if arguments.explain:
         r = arguments.explain.lower()
@@ -324,9 +503,10 @@ def main(argv=None) -> int:
         for t, b, heads, hosted in audit.concluded.get(r, []):
             print(f"  concluded by {t} ({b}) of {', '.join(heads) or 'a variable'}: "
                   f"{'HOSTED' if hosted else 'not hosted'}")
-        for t, b, hosted, bare in audit.assumed.get(r, []):
+        for t, b, hosted, bare, guarded in audit.assumed.get(r, []):
             print(f"  assumed by {t} ({b}): subject {'hosted' if hosted else 'not hosted'}, "
-                  f"of {'a bare variable' if bare else 'a term'}")
+                  f"of {'a bare variable' if bare else 'a term'}"
+                  + (f", held by the checked guard of {guarded}" if guarded else ""))
         return 0
 
     premises = audit.premises(all_arguments=arguments.all)
@@ -362,6 +542,8 @@ def main(argv=None) -> int:
             print(f"{r}: {row['class']}{mark}")
             for t, b in row["theorems"]:
                 print(f"    {t} ({b})")
+            for t, s in row["guard_established"]:
+                print(f"    {t}: held by the checked guard of {s}")
             for t in row["unhosted_establishments"]:
                 print(f"    established (unhosted) by {t}")
         print(line)
