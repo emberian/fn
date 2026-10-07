@@ -3,7 +3,7 @@
 # with fn's functions and host/native, and nothing of ACL2 (ember 2026-09-28;
 # A-TARGET-COMPILER).  The functions are the forms ACL2 itself installed,
 # re-derived from the extraction world and ACL2's sources and macroexpanded by
-# the image's SBCL (forms-export.lisp; X1/X2): not translated, not CHICKEN.  Writes TREE/build/core/:
+# the image's SBCL (forms-export.lisp; X1/X2): not translated.  Writes TREE/build/core/:
 # FN_CORE_OUT overrides the output directory (default build/core);
 # FN_CORE_NAME selects the launcher/core basename (default fn-core). DTN
 # names select build-dtn.lisp, its host roots and its extraction world/cache.

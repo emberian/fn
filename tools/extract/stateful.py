@@ -227,9 +227,8 @@ class Case:
         return ws
 
     def program_argv(self):
-        # the Common Lisp product takes the image's CLI (`--fn ...'); the
-        # CHICKEN program its own verbs
-        return [str(self.program), "--fn"] if CORE else [str(self.program)]
+        # fn-core takes the image's CLI (`--fn ...')
+        return [str(self.program), "--fn"]
 
     def run_one(self, argv, env):
         try:
@@ -312,19 +311,13 @@ class Case:
         return {"case": self.name, "verdict": "DIFFER", "step": label, "reason": reason, "steps": steps}
 
 
-CORE = False
-
-
 def main(argv):
-    global CORE
     only = []
     args = []
     it = iter(argv[1:])
     for a in it:
         if a == "--only":
             only.append(next(it))
-        elif a == "--core":
-            CORE = True
         else:
             args.append(a)
     image, program, out = Path(args[0]).resolve(), Path(args[1]).resolve(), Path(args[2]).resolve()

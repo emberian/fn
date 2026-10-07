@@ -1,18 +1,17 @@
 """The extraction gate's own tests (tools/extract/gate.py, check.sh), no ACL2.
 
-The gate (lane extract-gate) must fail closed: GPT-6's 2026-09-28 review ran
-the old check.sh with a stand-in function-test binary that exited 73 before
-producing results, and it printed PASS.  Here every external program the
-gate runs -- build.sh, the SBCL image, the extracted program, ACL2, csc, the
-fcheck program, ldd -- is a stand-in in a scratch tree, and each test breaks
-one of them: a stage killed or exiting nonzero, an output emptied or
-truncated, a vector file removed, an expected result corrupted, a mismatch
-induced.  Each must FAIL the gate with a named reason, status.json must say
-FAIL, and the clean run must PASS with its extraction manifest written.  The
-real gate code runs (gate.py, fcheck.py gen/scheme/report, transcripts.py,
-compare.sh, probes.py); only the programs are stand-ins.
+The gate must fail closed: GPT-6's 2026-09-28 review ran the old check.sh with
+a stand-in function-test binary that exited 73 before producing results, and
+it printed PASS.  Here every external program the gate runs -- core.sh, the
+SBCL image, fn-core, the stateful and owner drivers -- is a stand-in in a
+scratch tree, and each test breaks one of them: a stage killed or exiting
+nonzero, an output emptied or truncated, a mismatch induced.  Each must FAIL
+the gate with a named reason, status.json must say FAIL, and the clean run
+must PASS with its extraction manifest written.  The real gate code runs
+(gate.py, transcripts.py, probes.py); only the programs are stand-ins.
 """
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -44,44 +43,7 @@ def transcript(path, verb):
     out = b"200 stand-in\r\n" + hashlib.sha256(data).hexdigest().encode() + b"\r\n"
     return out
 
-if role == "build":
-    tree = args[0]
-    e = os.path.join(tree, "build", "extract")
-    os.makedirs(os.path.join(e, "lib"), exist_ok=True)
-    if FAULT == "build-exit":
-        print("stand-in build failing"); sys.exit(2)
-    fn = lambda name, guard=["q", ["y", "COMMON-LISP::T"]]: {
-        "name": name, "kind": "defun", "class": "common-lisp-compliant", "formals": ["ACL2::X"],
-        "stobjs_in": [None], "stobjs_out": [None], "predefined": False, "invariant_risk": False,
-        "guard": guard, "body": ["v", "ACL2::X"]}
-    ir = {"roots": ["ACL2::FOO"], "boundary": [{"name": "ACL2::FOO"}],
-          "functions": [fn("ACL2::FOO"), fn("ACL2::BAR"), fn("ACL2::UNCOV"),
-                        {"name": "ACL2::ATT", "kind": "alias", "formals": [], "stobjs_in": [],
-                         "stobjs_out": [], "target": "ACL2::FOO", "via": "attachment"}],
-          "stobjs": []}
-    if FAULT == "build-undeclared-blocker":
-        ir["functions"].append({"name": "ACL2::NEWBLOCK", "kind": "blocker", "reason": "no body"})
-    open(os.path.join(e, "served.json"), "w").write("" if FAULT == "build-empty-ir" else json.dumps(ir))
-    blockers = [{"name": f["name"], "reason": f["reason"]} for f in ir["functions"] if f["kind"] == "blocker"]
-    json.dump({"defun": 3, "shim": [{"name": "ACL2::HARD-ERROR", "why": "raw-only error"}],
-               "blocker": blockers, "data_model": {"target": "stand-in"}},
-              open(os.path.join(e, "inventory.json"), "w"))
-    json.dump([{"fn": "ACL2::FOO", "erased": "generic-arithmetic dispatch and overflow promotion"}],
-              open(os.path.join(e, "erased.json"), "w"))
-    for n in ("served.scm", "fntable.scm", "runtime.scm", "native.scm", "hostio.scm", "served-main.scm"):
-        open(os.path.join(e, n), "w").write(";; stand-in\n")
-    open(os.path.join(e, "lib", "libfn-blake3.so"), "w").write("stand-in blake3\n")
-    open(os.path.join(e, "csc-served.args"), "w").write("csc -O3 served-main.scm -o served\n")
-    open(os.path.join(e, "link.args"), "w").write("-L%s/lib -lfn-blake3\n" % e)
-    open(os.path.join(e, "extract.lsp"), "w").write(
-        "(xt-extract-with (quote (FOO)) (quote (CREATE-X)) \"build/extract/served.json\" state)\n")
-    if FAULT != "build-no-served":
-        p = os.path.join(e, "served")
-        open(p, "w").write("#!/bin/sh\nexec %s %s served \"$@\"\n" % (sys.executable, os.path.abspath(__file__)))
-        os.chmod(p, 0o755)
-    print("extract: built (stand-in)")
-
-elif role == "sbcl":
+if role == "sbcl":
     # the image: `--fn model F S', `--fn store S rebind-filesystem', or
     # image_command's `--eval (load ...)' for the probes
     if "--fn" in args:
@@ -96,6 +58,8 @@ elif role == "sbcl":
                 sys.exit(0)
             if FAULT == "image-model-exit" and not os.environ.get("FAKE_CORE"):
                 sys.exit(5)
+            if FAULT == "core-store-exit" and os.environ.get("FAKE_CORE") and rest[1:] and rest[1] != "-":
+                sys.exit(3)
             out = transcript(rest[0], "model")
             if os.environ.get("FAKE_CORE") and FAULT == "core-differ":
                 out += b"core differs\r\n"
@@ -106,114 +70,10 @@ elif role == "sbcl":
         sys.exit(6)
     sys.path.insert(0, os.environ["FAKE_EXTRACT_DIR"])
     import probes
-    for label, entry, a in probes.PROBES:
+    ps = probes.PROBES[:-1] if os.environ.get("FAKE_CORE") and FAULT == "core-probe-truncated" else probes.PROBES
+    for label, entry, a in ps:
         print("PROBE %s %s" % (label, "returned 1" if os.environ.get("FAKE_CORE") and FAULT == "core-probe-differ"
                                 else "returned 0"))
-
-elif role == "served":
-    verb = args[0]
-    if verb in ("model", "socket"):
-        if FAULT == "model-empty":
-            sys.exit(0)
-        if FAULT == "served-socket-killed" and verb == "socket":
-            os.kill(os.getpid(), signal.SIGKILL)
-        out = transcript(args[1], verb)
-        if FAULT == "served-model-differ" and verb == "model":
-            out += b"extra\r\n"
-        if FAULT == "store-served-exit" and len(args) > 2:
-            sys.exit(3)
-        if FAULT == "store-differ" and len(args) > 2:
-            out = b"500 different\r\n"
-        sys.stdout.buffer.write(out); sys.exit(0)
-    if verb == "probe":
-        sys.path.insert(0, os.environ["FAKE_EXTRACT_DIR"])
-        import probes
-        ps = probes.PROBES[:-1] if FAULT == "probe-truncated" else probes.PROBES
-        for label, entry, a in ps:
-            print("PROBE %s returned 0" % label)
-        if FAULT == "probe-served-exit":
-            sys.exit(7)
-
-elif role == "acl2":
-    # reads the fcheck session from stdin; for each (xt-fcheck "IN" "OUT"
-    # state) writes one vector per candidate (FOO: x, BAR: 2x) and the trailer
-    if FAULT == "acl2-exit":
-        sys.exit(1)
-    calls = re.findall(r'\(xt-fcheck "([^"]+)" "([^"]+)" state\)', sys.stdin.read())
-    for n, (inp, out) in enumerate(calls):
-        if FAULT == "acl2-missing-vec" and n == 1:
-            continue
-        cands = [l for l in open(inp) if l.startswith("((:y")]
-        ok = gf = 0
-        with open(out, "w") as h:
-            for k, c in enumerate(cands):
-                codes = re.match(r'\(\(:y "ACL2" \(([\d ]+)\)\)', c).group(1)
-                name = "ACL2::" + "".join(chr(int(x)) for x in codes.split())
-                if name == "ACL2::UNCOV" or FAULT == "acl2-all-guard-false":
-                    gf += 1
-                    continue
-                result = k * 2 if name == "ACL2::BAR" else k
-                if FAULT == "acl2-corrupt-result" and n == 0 and ok == 3:
-                    result += 1
-                h.write(json.dumps({"fn": name, "args": [k], "result": result}) + "\n")
-                ok += 1
-            if FAULT == "acl2-no-trailer" and n == 0:
-                continue
-            cand = len(cands) - (1 if FAULT == "acl2-short" and n == 0 else 0)
-            h.write(json.dumps({"done": 1, "candidates": cand, "ok": ok, "guard_false": gf, "error": 0}) + "\n")
-
-elif role == "csc":
-    if args and args[0] == "-version":
-        print("Version 5.4.0 (stand-in)"); sys.exit(0)
-    if FAULT == "csc-exit":
-        print("csc: error"); sys.exit(1)
-    out = args[args.index("-o") + 1]
-    open(out, "w").write("#!/bin/sh\nexec %s %s fcheck \"$@\"\n" % (sys.executable, os.path.abspath(__file__)))
-    os.chmod(out, 0o755)
-    if FAULT == "tamper-vectors":
-        v = os.path.join(os.getcwd(), "check", "vectors.scm")
-        open(v, "a").write(";; tampered\n")
-
-elif role == "fcheck":
-    # the extracted functions, for the stand-in: FOO(x) = x, BAR(x) = 2x
-    if FAULT == "fcheck-exit73":
-        sys.exit(73)
-    if FAULT == "fcheck-empty":
-        sys.exit(0)
-    lines = [l for l in open(args[0]) if l.startswith("(")]
-    print("FCHECK-BEGIN", flush=True)
-    for i, l in enumerate(lines):
-        m = re.match(r'^\((\d+) "([^"]+)" \((\S*)\) (\S+) (\d+)\)$', l.strip())
-        cid, name, x, expected = m.group(1), m.group(2), int(m.group(3)), int(m.group(4))
-        if FAULT in ("fcheck-truncated", "fcheck-killed") and i == len(lines) // 2:
-            sys.stdout.flush()
-            if FAULT == "fcheck-killed":
-                os.kill(os.getpid(), signal.SIGKILL)
-            sys.exit(0)
-        got = 2 * x if name == "ACL2::BAR" else x
-        if FAULT == "fcheck-differ" and i == 2:
-            got += 1
-        if FAULT == "fcheck-skip" and i == 1:
-            continue
-        if FAULT == "fcheck-unknown-id" and i == 0:
-            cid = "999999"
-        if FAULT == "fcheck-raise" and i == 0:
-            print("RAISE\t%s\t%s\t(%d)\t(exn)" % (cid, name, x)); continue
-        if FAULT == "fcheck-hang" and i == 0:
-            print("HANG\t%s\t%s\t(%d)" % (cid, name, x)); continue
-        if got == expected:
-            print("AGREE\t%s\t%s" % (cid, name))
-        else:
-            print("DIFFER\t%s\t%s\t(%d)\t%d\t%d" % (cid, name, x, expected, got))
-        if FAULT == "fcheck-duplicate" and i == 0:
-            print("AGREE\t%s\t%s" % (cid, name))
-    if FAULT == "fcheck-no-newline":
-        sys.stdout.write("FCHECK-COMPLETE\t%d" % len(lines)); sys.exit(0)
-    print("FCHECK-COMPLETE\t%d" % len(lines))
-    if FAULT == "fcheck-after-complete":
-        print("AGREE\t0\tACL2::FOO")
-    if FAULT == "fcheck-exit-after":
-        sys.exit(9)
 
 elif role == "core":
     # stand-in for tools/extract/core.sh TREE: a core that answers as the image
@@ -224,10 +84,28 @@ elif role == "core":
               open(os.path.join(k, "build-env.json"), "w"))
     if FAULT == "core-build-exit":
         print("stand-in core build failing"); sys.exit(3)
-    for n in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "fn-core.core"):
+    if os.path.exists(os.path.join(k, "gaps.txt")):
+        os.unlink(os.path.join(k, "gaps.txt"))
+    for n in ("core.json", "packages.lisp", "core-world.lisp", "host-block.lisp", "fn-core.core", "tokens.lsp"):
         open(os.path.join(k, n), "w").write("stand-in\n")
-    json.dump({"defun": 3, "star1": 1, "stobj-prim": 0, "host-defined": ["ACL2::FN-SIG-VERIFY"]},
-              open(os.path.join(k, "inventory.json"), "w"))
+    defs = b"(defun foo (x) x)\n"
+    open(os.path.join(k, "defs.lisp"), "wb").write(defs)
+    sha = hashlib.sha256(defs).hexdigest()
+    if FAULT == "core-defs-tampered":
+        sha = "0" * 64
+    open(os.path.join(k, "defs.lisp.verified-sha256"), "w").write(sha + "\n")
+    open(os.path.join(k, "manifest.tsv"), "w").write("#world_key\tstand-in\n" + ("" if FAULT == "core-no-units" else "ACL2::FOO\t" + "a" * 64 + "\tworld\n"))
+    open(os.path.join(k, "runtime.tsv"), "w").write("ACL2::HARD-ERROR\thost-only\n")
+    if FAULT == "core-gaps":
+        open(os.path.join(k, "gaps.txt"), "w").write("ACL2::NOWHERE\n")
+    lib = os.path.join(args[0], "build", "lib")
+    if FAULT == "core-other-lib":
+        lib = os.path.join(args[0], "build", "other-lib")
+        os.makedirs(lib, exist_ok=True)
+    link = os.path.join(k, "lib")
+    if os.path.lexists(link):
+        os.unlink(link)
+    os.symlink(lib, link)
     exe = os.path.join(k, "fn-core")
     open(exe, "w").write("#!/bin/sh\nFAKE_CORE=1 exec %s %s sbcl \"$@\"\n" % (sys.executable, os.path.abspath(__file__)))
     os.chmod(exe, 0o755)
@@ -285,20 +163,9 @@ elif role == "stateful":
     print("stand-in stateful")
     sys.exit(7 if FAULT == "stateful-exit" else 0)
 
-elif role == "ldd":
-    e = os.path.dirname(args[0])
-    print("\tlibfn-blake3.so => %s/lib/libfn-blake3.so (0x0)" % e)
-    # the image's ML-DSA-65 library (TREE/build/lib), or a second copy
-    mldsa = os.path.join(e, "lib") if FAULT == "ldd-other-mldsa" else os.path.join(os.path.dirname(e), "lib")
-    print("\tlibfn-mldsa65.so => %s/libfn-mldsa65.so (0x0)" % mldsa)
-    print("\tlibfn-lz4.so => %s/libfn-lz4.so (0x0)" % os.path.join(os.path.dirname(e), "lib"))
-    if FAULT != "ldd-no-libcrypto":
-        print("\tlibcrypto.so.3 => %s (0x0)" % os.environ["FAKE_LIBCRYPTO"])
-    print("\tlibchicken.so.11 => %s (0x0)" % os.environ["FAKE_LIBCRYPTO"])
 '''
 
-LINKED = ("fcheck.py", "chicken.py", "probes.py", "transcripts.py", "compare.sh",
-          "fcheck-main.scm", "declared-blockers.json", "sig-vectors.json")
+LINKED = ("probes.py", "transcripts.py", "sig-vectors.json")
 
 
 class Fixture:
@@ -321,7 +188,7 @@ class Fixture:
         bin_.mkdir()
         self.standin = bin_ / "standin.py"
         self.standin.write_text(STANDIN)
-        for role in ("sbcl", "acl2", "csc", "ldd"):
+        for role in ("sbcl", "acl2"):
             p = bin_ / role
             p.write_text("#!/bin/sh\nexec %s %s %s \"$@\"\n" % (PY, self.standin, role))
             p.chmod(p.stat().st_mode | stat.S_IEXEC)
@@ -330,30 +197,18 @@ class Fixture:
         # image_command reads the runtime words from the launcher's exec line
         self.image.write_text("#!/bin/sh\nexec %s %s sbcl --end-runtime-options \"$@\"\n" % (PY, self.standin))
         self.image.chmod(0o755)
-        # The stand-in libcrypto lives outside chicken_lib: the gate puts
-        # chicken_lib on LD_LIBRARY_PATH, and on hbox a text file named
-        # libcrypto.so.3 there shadowed the real one for every Python child
-        # (the stand-ins import hashlib and ssl), so the test failed on hbox only.
-        fakelib = Path(self.tmp.name) / "fakelib"
-        fakelib.mkdir()
-        (fakelib / "libcrypto.so.3").write_text("stand-in libcrypto\n")
         (t / "build" / "lib").mkdir()
-        (t / "build" / "lib" / "libfn-mldsa65.so").write_text("stand-in ML-DSA-65\n")
-        (t / "build" / "lib" / "libfn-lz4.so").write_text("stand-in LZ4\n")
-        (t / "build" / "extract" / "lib").mkdir(parents=True)
-        (t / "build" / "extract" / "lib" / "libfn-mldsa65.so").write_text("a second ML-DSA-65 build\n")
+        for lib in ("libfn-blake3.so", "libfn-mldsa65.so", "libfn-lz4.so"):
+            (t / "build" / "lib" / lib).write_text("stand-in %s\n" % lib)
         self.store = Path(self.tmp.name) / "store"
         self.store.mkdir()
         (self.store / "segment").write_text("stand-in store\n")
-        self.tools = gate.Tools(acl2=[str(bin_ / "acl2")], csc=str(bin_ / "csc"), chicken_lib=str(bin_),
-                                swarm=[], build=[PY, str(self.standin), "build", str(t)],
-                                ldd=[str(bin_ / "ldd")], cc=["echo", "cc stand-in"],
+        self.tools = gate.Tools(acl2=[str(bin_ / "acl2")],
                                 stateful=[PY, str(self.standin), "stateful"],
                                 owner=[PY, str(self.standin), "owner"],
                                 core=[PY, str(self.standin), "core", str(t)],
-                                store=str(self.store), per=400, source="stand-in")
+                                store=str(self.store), source="stand-in")
         self.env = {"FAKE_EXTRACT_DIR": str(ROOT / "tools" / "extract"),
-                    "FAKE_LIBCRYPTO": str(fakelib / "libcrypto.so.3"),
                     "PYTHONPATH": str(ROOT / "tools" / "extract")}
 
     def run(self, fault=""):
@@ -391,14 +246,6 @@ class ExtractGateTest(unittest.TestCase):
         self.assertIn(reason, status["reason"])
         return out, status
 
-    def test_the_gate_environment_leaves_pythons_own_libraries_alone(self):
-        g = gate.Gate(self.fx.tree, self.fx.image, self.fx.tools)
-        lib = Path(g.env["LD_LIBRARY_PATH"])
-        self.assertEqual(sorted(one.name for one in lib.glob("lib*.so*")), [])
-        done = subprocess.run([PY, "-c", "import hashlib, ssl; hashlib.sha256(b'')"],
-                              env=g.env, capture_output=True, text=True)
-        self.assertEqual(done.returncode, 0, done.stderr)
-
     def test_dtn_gate_uses_only_dtn_world_in_every_stage(self):
         fx = Fixture()
         try:
@@ -413,10 +260,6 @@ class ExtractGateTest(unittest.TestCase):
             self.assertEqual(manifest["variant"], "dtn")
             paths = [e["path"] for e in manifest["admitted_world"]["entries"]]
             self.assertEqual(paths[:2], ["tools/extract/world-dtn.lisp", "tools/extract/world-host-dtn.lisp"])
-            program = (g.c / "fcheck.lsp").read_text()
-            self.assertIn('(ld "tools/extract/world-dtn.lisp")', program)
-            self.assertIn('(ld "tools/extract/world-host-dtn.lisp")', program)
-            self.assertNotIn('(ld "tools/extract/world.lisp")', program)
             env = json.loads((fx.tree / "build/core/build-env.json").read_text())
             self.assertEqual(env, {"FN_CORE_NAME": "fn-core", "FN_NATIVE_PROFILE": "developer",
                                   "FN_CORE_OUT": str(fx.tree.resolve() / "build/core"),
@@ -424,7 +267,7 @@ class ExtractGateTest(unittest.TestCase):
         finally:
             fx.close()
 
-    def test_unknown_variant_refuses_before_build_children(self):
+    def test_unknown_variant_refuses_before_any_child(self):
         fx = Fixture()
         try:
             fx.tools.variant = "unknown"
@@ -446,48 +289,90 @@ class ExtractGateTest(unittest.TestCase):
             with self.subTest(fault=fault):
                 self.assertFails(fault, "owner", reason)
 
-    def test_clean_run_passes_with_manifests(self):
+    def test_clean_run_passes_with_manifest(self):
         rc, out, status, g = self.fx.run("")
         self.assertEqual(rc, 0, out)
         self.assertIn("extract-check: PASS", out)
         self.assertEqual(status["status"], "PASS")
         self.assertTrue(all(c["status"] == 0 for c in status["children"]), status["children"])
-        report = json.loads((g.c / "fcheck.json").read_text())
-        self.assertEqual(report["status"], "PASS")
-        self.assertGreater(report["executed_vectors"], 0)
-        self.assertEqual(report["executed_vectors"], report["manifest_vectors"])
-        # UNCOV had only guard-false candidates: listed, not folded into agreement
-        self.assertEqual(report["uncovered"], ["ACL2::UNCOV"])
-        self.assertEqual(report["uncovered_count"], 1)
-        self.assertIn("UNCOVERED 1", out)
+        for step in ("core", "transcripts", "probes", "store", "stateful", "owner"):
+            self.assertIn(step, {c["step"] for c in status["children"]})
         m = json.loads((g.c / "extraction-manifest.json").read_text())
-        for key in ("admitted_world", "extraction_roots", "resolved_attachments", "target_data_model",
-                    "erased_checks", "runtime_shims", "compiler", "foreign_libraries"):
+        for key in ("admitted_world", "foreign_libraries", "core", "toolchain", "image"):
             self.assertIn(key, m)
         self.assertEqual(len(m["admitted_world"]["digest"]), 64)
         self.assertEqual([e["path"] for e in m["admitted_world"]["entries"]],
                          ["tools/extract/world.lisp", "tools/extract/world-host.lisp", "books/a.cert", "host/h.lisp"])
-        self.assertEqual(m["extraction_roots"], ["FOO"])
-        self.assertEqual(m["resolved_attachments"], [{"name": "ACL2::ATT", "target": "ACL2::FOO", "via": "attachment"}])
-        self.assertEqual(set(m["foreign_libraries"]), {"libfn-blake3", "libfn-mldsa65", "libfn-lz4", "libcrypto", "libchicken"})
-        self.assertTrue(m["compiler"]["fcheck"].startswith("csc -O2"))
+        self.assertEqual(set(m["foreign_libraries"]), {"libfn-blake3", "libfn-mldsa65", "libfn-lz4"})
+        self.assertEqual(m["core"]["units"], 1)
+        self.assertEqual(m["core"]["defs_sha256"], hashlib.sha256(b"(defun foo (x) x)\n").hexdigest())
 
-    # The Common Lisp product (lane extract-writable): built, and held to the
-    # image's replies on every transcript, probe and store read.
+    # 1 core: the build and its products
     def test_core_build_exit(self):
         self.assertFails("core-build-exit", "core", "core.sh exited 3")
 
+    def test_core_closure_gaps(self):
+        self.assertFails("core-gaps", "core", "names nothing provides")
+
+    def test_core_defs_not_the_verified_file(self):
+        self.assertFails("core-defs-tampered", "core", "not the file xt-verify-defs verified")
+
+    def test_core_manifest_lists_no_units(self):
+        self.assertFails("core-no-units", "core", "manifest.tsv lists no units")
+
+    def test_uncertified_world(self):
+        cert = self.fx.tree / "books" / "a.cert"
+        text = cert.read_text()
+        cert.unlink()
+        try:
+            self.assertFails("", "manifest", "has no certificate")
+        finally:
+            cert.write_text(text)
+
+    # A-SIG-NATIVE: a second build of the verifier is not the image's library.
+    def test_other_lib_directory_fails(self):
+        self.assertFails("core-other-lib", "manifest", "not the image's")
+
+    def test_missing_library(self):
+        lib = self.fx.tree / "build" / "lib" / "libfn-blake3.so"
+        text = lib.read_text()
+        lib.unlink()
+        try:
+            self.assertFails("", "manifest", "has no libfn-blake3")
+        finally:
+            lib.write_text(text)
+
+    # 2 transcripts
     def test_core_transcript_differ(self):
         self.assertFails("core-differ", "transcripts", "the core's reply differs")
+
+    def test_transcript_image_exit(self):
+        self.assertFails("image-model-exit", "transcripts", "the image exited 5")
+
+    def test_transcripts_empty(self):
+        self.assertFails("model-empty", "transcripts", "is empty")
+
+    # 3 probes
+    def test_probe_sbcl_exit(self):
+        self.assertFails("probe-sbcl-exit", "probes", "probes.py run-sbcl exited 6")
 
     def test_core_probe_differ(self):
         self.assertFails("core-probe-differ", "probes", "probes.py compare core")
 
+    def test_core_probe_output_truncated(self):
+        self.assertFails("core-probe-truncated", "probes", "probes.py compare core exited 1")
+
+    # 4 store
+    def test_store_rebind_exit(self):
+        self.assertFails("rebind-exit", "store", "image rebind-filesystem exited 4")
+
+    def test_core_store_exit(self):
+        self.assertFails("core-store-exit", "store", "the core exited 3")
+
     def test_core_store_differ(self):
         self.assertFails("core-store-differ", "store", "the core's reply differs")
 
-    # The stateful differential (lane extract-writable): every way its report
-    # can fall short fails the gate at `stateful'.
+    # 5 stateful: every way its report can fall short fails the gate
     def test_stateful_differ(self):
         self.assertFails("stateful-differ", "stateful", "core: interrupted DIFFER at 01 post")
 
@@ -508,136 +393,6 @@ class ExtractGateTest(unittest.TestCase):
 
     def test_stateful_nonzero_exit(self):
         self.assertFails("stateful-exit", "stateful", "exited 7")
-
-    # GPT-6's witness: the function-test binary exits 73 before any result.
-    def test_gpt6_exit_73_standin_fails(self):
-        out, status = self.assertFails("fcheck-exit73", "functions", "the fcheck program exited 73")
-        self.assertIn("no FCHECK-BEGIN", out)
-        self.assertTrue(any(c["what"] == "fcheck" and c["status"] == 73 for c in status["children"]))
-
-    # 1 build
-    def test_build_exit(self):
-        self.assertFails("build-exit", "build", "build.sh exited 2")
-
-    def test_build_without_program(self):
-        self.assertFails("build-no-served", "build", "no executable")
-
-    def test_build_empty_ir(self):
-        self.assertFails("build-empty-ir", "build", "served.json is empty")
-
-    def test_undeclared_blocker(self):
-        self.assertFails("build-undeclared-blocker", "build", "undeclared extractor blocker ACL2::NEWBLOCK")
-
-    def test_uncertified_world(self):
-        cert = self.fx.tree / "books" / "a.cert"
-        text = cert.read_text()
-        cert.unlink()
-        try:
-            self.assertFails("", "manifest", "has no certificate")
-        finally:
-            cert.write_text(text)
-
-    def test_missing_libcrypto(self):
-        self.assertFails("ldd-no-libcrypto", "manifest", "does not resolve libcrypto")
-
-    # A-SIG-NATIVE: a second build of the verifier is not the image's library.
-    def test_other_mldsa_library_fails(self):
-        self.assertFails("ldd-other-mldsa", "manifest", "not the image's")
-
-    # 2 transcripts
-    def test_transcript_mismatch(self):
-        self.assertFails("served-model-differ", "transcripts", "DIFFER")
-
-    def test_transcript_stage_killed(self):
-        self.assertFails("served-socket-killed", "transcripts", "DIFFER")
-
-    def test_transcript_image_exit(self):
-        self.assertFails("image-model-exit", "transcripts", "DIFFER")
-
-    def test_transcripts_empty_on_both_sides(self):
-        self.assertFails("model-empty", "transcripts", "is empty")
-
-    # 3 probes
-    def test_probe_sbcl_exit(self):
-        self.assertFails("probe-sbcl-exit", "probes", "probes.py run-sbcl exited 6")
-
-    def test_probe_served_exit(self):
-        self.assertFails("probe-served-exit", "probes", "served probe exited 7")
-
-    def test_probe_output_truncated(self):
-        self.assertFails("probe-truncated", "probes", "probes.py compare exited 1")
-
-    # 4 store
-    def test_store_rebind_exit(self):
-        self.assertFails("rebind-exit", "store", "image rebind-filesystem exited 4")
-
-    def test_store_program_exit(self):
-        self.assertFails("store-served-exit", "store", "program exited 3")
-
-    def test_store_mismatch(self):
-        self.assertFails("store-differ", "store", "store-read DIFFER")
-
-    # 5 functions: ACL2's side
-    def test_acl2_exit(self):
-        self.assertFails("acl2-exit", "functions", "ACL2 fcheck exited 1")
-
-    def test_vector_file_removed(self):
-        self.assertFails("acl2-missing-vec", "functions", "missing vector file")
-
-    def test_vector_file_truncated(self):
-        self.assertFails("acl2-no-trailer", "functions", "no completion trailer")
-
-    def test_vector_counts_do_not_add_up(self):
-        self.assertFails("acl2-short", "functions", "gen wrote")
-
-    def test_zero_vectors(self):
-        self.assertFails("acl2-all-guard-false", "functions", "zero vectors")
-
-    def test_corrupted_expected_result(self):
-        self.assertFails("acl2-corrupt-result", "functions", "DIFFER ACL2::")
-
-    def test_vectors_tampered_after_manifest(self):
-        self.assertFails("tamper-vectors", "functions", "is not the file the manifest names")
-
-    def test_csc_exit(self):
-        self.assertFails("csc-exit", "functions", "csc fcheck-main exited 1")
-
-    # 5 functions: the extracted program's side
-    def test_fcheck_empty_output(self):
-        self.assertFails("fcheck-empty", "functions", "no FCHECK-BEGIN")
-
-    def test_fcheck_truncated_output(self):
-        self.assertFails("fcheck-truncated", "functions", "no FCHECK-COMPLETE")
-
-    def test_fcheck_killed(self):
-        self.assertFails("fcheck-killed", "functions", "killed by signal 9")
-
-    def test_fcheck_missing_case(self):
-        self.assertFails("fcheck-skip", "functions", "have no verdict (first: case 1")
-
-    def test_fcheck_duplicate_case(self):
-        self.assertFails("fcheck-duplicate", "functions", "duplicate case id 0")
-
-    def test_fcheck_unknown_case(self):
-        self.assertFails("fcheck-unknown-id", "functions", "case id 999999 is not in the manifest")
-
-    def test_fcheck_mismatch(self):
-        self.assertFails("fcheck-differ", "functions", "DIFFER ACL2::")
-
-    def test_fcheck_raise(self):
-        self.assertFails("fcheck-raise", "functions", "RAISE ACL2::FOO")
-
-    def test_fcheck_hang(self):
-        self.assertFails("fcheck-hang", "functions", "HANG ACL2::FOO")
-
-    def test_fcheck_output_after_completion(self):
-        self.assertFails("fcheck-after-complete", "functions", "a verdict after FCHECK-COMPLETE")
-
-    def test_fcheck_last_line_without_newline(self):
-        self.assertFails("fcheck-no-newline", "functions", "truncated")
-
-    def test_fcheck_nonzero_exit_after_complete_output(self):
-        self.assertFails("fcheck-exit-after", "functions", "the fcheck program exited 9")
 
 
 class CheckShTest(unittest.TestCase):

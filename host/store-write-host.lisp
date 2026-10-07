@@ -23,8 +23,8 @@
 ; CALLS INTO ACL2.  io.lisp calls each ACL2 entry through fnn-call (the entry
 ; guard, then the *1* function under guard-checking t).  The extractor treats
 ; a call from a function of this file (and store-open-host.lisp) to an fn-
-; core function the same way: a boundary call (tools/extract/chicken.py,
-; `port' callers; the front end adds those callees to the boundary).
+; core function the same way: a boundary call (the front end's port callers
+; add those callees to the boundary; tools/extract/frontend.lisp).
 ;
 ; RESULTS.  A step answers (:ok . VALUES) or (CLASS TEXT) with CLASS one of
 ; :fault, :refused, :open-refusal, :indeterminate, :usage, :internal, or
@@ -42,7 +42,7 @@
 (in-package "ACL2")
 
 ; ---------------------------------------------------------------------------
-; The host primitives this file adds (stubs; tools/extract/hostio.scm).
+; The host primitives this file adds (stubs; their realizer, tools/extract/hostio.scm, went with the CHICKEN extractor, D63).
 ; Answers of a syscall: :ok, (:ok VALUE ...), or (:error ERRNO TEXT) with
 ; TEXT fnn-os-error's report of it ("[Errno N] STRERROR" and ": 'PATH'" where
 ; io.lisp's fnn-posix names the path).

@@ -2599,9 +2599,9 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/records-shape books/statement books/statement-invariants
 
 # The extraction differential (A-EXTRACT, specs/failures.md; lane extract-2):
-# the world extracted to a CHICKEN program and compared with the developer
-# image -- the served transcripts, the boundary probes, a real store's replies
-# and the per-function differential -- on hbox (tools/extract/check.sh; from
+# the world extracted to fn-core (bare SBCL) and compared with the developer
+# image -- the served transcripts, the boundary probes, a real store's replies,
+# the stateful and owner differentials -- on hbox (tools/extract/check.sh; from
 # elsewhere tools/extract/remote_check.sh ships the tree with hbox_native.sh).
 EXTRACT_REV ?= .
 extract-check:

@@ -17,7 +17,7 @@ the same forms with the ledger's non-evaluating reader and GENERATES:
   counterpart; the top-level `raw_dispatched` lists those entries), and the
   raw host files that dispatch it;
 * tools/extract/roots.sh -- the extractor's default ROOTS and EXTRA
-  (tools/extract/build.sh sources it), in declaration order;
+  (tools/depth_check.py reads it), in declaration order;
 * the subsystem each entry is filed under (SUBSYSTEMS below: a name prefix,
   else the dispatching host file), a column of the registry.
   planning/interfaces-gaps.md is tools/coverage.py's: what the certified

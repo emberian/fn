@@ -1,6 +1,6 @@
 ;;; tools/extract/core-main.lisp -- build the Common Lisp product in a BARE
 ;;; SBCL (no ACL2): the image's packages, the hand runtime, the extracted
-;;; definitions (cl.py), the image's state and world values the code reads
+;;; definitions (defs.lisp, forms-export.lisp), the image's state and world values the code reads
 ;;; (core-world.lisp), then host/native exactly as host/native/build.lisp
 ;;; loads it (core_build.py), saved as one executable.  Run from the tree's
 ;;; root; XL_OUT names build/core/.  tools/extract/core.sh runs it.

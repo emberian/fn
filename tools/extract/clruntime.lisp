@@ -1,8 +1,8 @@
 ;;; tools/extract/clruntime.lisp -- the hand runtime of the Common Lisp
 ;;; product (lane extract-writable; A-TARGET-COMPILER, specs/failures.md):
-;;; the few ACL2 runtime names the extracted definitions (tools/extract/cl.py)
+;;; the few ACL2 runtime names the extracted definitions (tools/extract/forms-export.lisp)
 ;;; and host/native's raw Lisp call, over this process's own objects.  No
-;;; ACL2: no world, no prover, no *1* machinery beyond what cl.py emits.
+;;; ACL2: no world, no prover, no *1* machinery beyond the forms ACL2 installed.
 ;;; Everything here is in the trust boundary beside the compiler.
 (in-package "ACL2")
 
@@ -87,7 +87,7 @@ Presence is distinct from a present NIL value; no classes are inferred here."
   (declare (ignore wrld))
   (getpropc fn 'stobjs-in nil))
 
-;;; --- the live stobjs (cl.py's xl-make-live-stobjs fills this at start) ----
+;;; --- the live stobjs (forms-export.lisp's xl-make-live-stobjs fills this at start) ----
 (defvar *xl-user-stobj-alist* nil)
 (defvar *xl-live-stobjs-initialized-p* nil)
 (defvar *xl-stobj-table-keys* (make-hash-table :test 'eq))
