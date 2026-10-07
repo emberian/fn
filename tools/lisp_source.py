@@ -20,7 +20,9 @@ the text names, not what a Lisp would build from it).
 """
 from __future__ import annotations
 
+import bisect
 import sys
+from dataclasses import dataclass
 
 # A token ends at whitespace or one of these (CL's terminating macro chars).
 _TERMINATORS = frozenset("()\";'`,")
@@ -90,10 +92,11 @@ def _atom_end(text: str, i: int) -> int:
     return n
 
 
-def tokens(text: str):
-    """(kind, start, end) over TEXT, kind one of open, close, quote (', `, ,
-    ,@), string, comment, atom.  Whitespace yields nothing."""
-    i, n = 0, len(text)
+def tokens(text: str, start: int = 0):
+    """(kind, start, end) over TEXT from offset START, kind one of open,
+    close, quote (', `, , ,@, #', #.), string, comment, atom.  Whitespace
+    yields nothing."""
+    i, n = start, len(text)
     while i < n:
         c = text[i]
         if c in _WHITESPACE:
@@ -131,7 +134,7 @@ def tokens(text: str):
         elif c == "#" and text.startswith("#(", i):
             # A vector literal: its `(' is the open token.
             i += 1
-        elif c == "#" and text.startswith("#'", i):
+        elif c == "#" and (text.startswith("#'", i) or text.startswith("#.", i)):
             yield ("quote", i, i + 2)
             i += 2
         else:
@@ -182,14 +185,17 @@ def forms(text: str) -> list[str]:
     return [text[s:e] for s, e in form_spans(text)]
 
 
+_MARKS = {"'": "quote", "#'": "function", "`": "quasiquote",
+          ",": "unquote", ",@": "unquote-splicing", "#.": "read-eval"}
+
+
 def read_sexp(text: str):
     """The first s-expression of TEXT as nested lists of lower-cased atom
     strings, strings and comments dropped.  A quote mark reads as the Lisp
     reader reads it: 'x is ["quote", x], #'f is ["function", f], `x
     ["quasiquote", x], ,x ["unquote", x], ,@x ["unquote-splicing", x].
     None if TEXT has no atom or list."""
-    marks = {"'": "quote", "#'": "function", "`": "quasiquote",
-             ",": "unquote", ",@": "unquote-splicing"}
+    marks = _MARKS
     stack: list[list] = [[]]
     pending: list[list] = [[]]   # per level: quote marks awaiting their datum
 
@@ -217,6 +223,111 @@ def read_sexp(text: str):
             if len(stack) == 1:
                 return stack[0][0]
     return stack[0][0] if stack[0] else None
+
+
+@dataclass(frozen=True)
+class Atom:
+    """A symbol, number or character literal, as its source spelling."""
+    text: str
+    start: int
+    end: int
+    marks: tuple = ()   # quote marks before it, outermost first ("'", ",@", ...)
+
+
+@dataclass(frozen=True)
+class Str:
+    """A string literal; TEXT is the source spelling with its quotes
+    (`string_value' resolves the escapes)."""
+    text: str
+    start: int
+    end: int
+    marks: tuple = ()
+
+
+@dataclass(frozen=True)
+class List:
+    """A parenthesized list; START is its `(', END just past its `)' (the end
+    of the text if it never closed)."""
+    items: tuple
+    start: int
+    end: int
+    marks: tuple = ()
+
+
+class ReadError(ValueError):
+    """Unbalanced text, in strict mode.  KIND is "close" (a `)' with no open
+    list, OFFSET at it) or "open" (a list never closed, OFFSET at the
+    outermost unclosed `(')."""
+
+    def __init__(self, kind: str, offset: int):
+        super().__init__(f"unbalanced {kind} paren at offset {offset}")
+        self.kind, self.offset = kind, offset
+
+
+def read_all(text: str, start: int = 0, first_only: bool = False,
+             strict: bool = False) -> list:
+    """The data of TEXT from offset START as positioned nodes (Atom, Str,
+    List), quote marks carried on the datum they precede, comments dropped.
+    Atoms keep their source case.  FIRST_ONLY stops after the first datum.
+    Lenient (the default): a stray `)' is skipped and an unclosed list ends at
+    the end of the text; STRICT raises ReadError for either."""
+    top: list = []
+    frames: list = []          # (open offset, marks, items) of each open list
+    pending: list = [[]]       # per level: quote marks awaiting their datum
+
+    def put(node):
+        (frames[-1][2] if frames else top).append(node)
+
+    for kind, s, e in tokens(text, start):
+        if kind == "quote":
+            pending[-1].append(text[s:e])
+        elif kind in ("atom", "string"):
+            marks, pending[-1] = tuple(pending[-1]), []
+            put((Atom if kind == "atom" else Str)(text[s:e], s, e, marks))
+        elif kind == "open":
+            frames.append((s, tuple(pending[-1]), []))
+            pending[-1] = []
+            pending.append([])
+        elif kind == "close":
+            if not frames:
+                if strict:
+                    raise ReadError("close", s)
+                continue
+            opened, marks, items = frames.pop()
+            pending.pop()
+            put(List(tuple(items), opened, e, marks))
+        else:
+            continue
+        if first_only and top and not frames:
+            return top
+    if frames:
+        if strict:
+            raise ReadError("open", frames[0][0])
+        while frames:
+            opened, marks, items = frames.pop()
+            put(List(tuple(items), opened, len(text), marks))
+    return top
+
+
+def string_value(literal: str) -> str:
+    """The characters a string literal (with its quotes) denotes: each
+    backslash is dropped and the character after it kept.  An unterminated
+    literal reads to the end of the text."""
+    body = literal[1:-1] if len(literal) > 1 and literal.endswith('"') else literal[1:]
+    out, i = [], 0
+    while i < len(body):
+        if body[i] == "\\" and i + 1 < len(body):
+            i += 1
+        out.append(body[i])
+        i += 1
+    return "".join(out)
+
+
+def line_numberer(text: str):
+    """A function from offset to 1-based line, O(log n) per call (`line_of'
+    is O(n), too slow to ask of every node of a file)."""
+    starts = [0] + [i + 1 for i, c in enumerate(text) if c == "\n"]
+    return lambda offset: bisect.bisect_right(starts, offset)
 
 
 def line_of(text: str, offset: int) -> int:
