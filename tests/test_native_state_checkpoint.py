@@ -311,6 +311,13 @@ class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
     # appends to a segment, and the drop unlinks journal/'s name), shows
     # the refusal, then links them back.
     def keep_log(self):
+        """Hard-link journal/'s segments under kept-log/ so the ones a
+        checkpoint drops stay readable.  Call it once the owner has opened
+        the store, never before: a writable open replaces the active segment
+        with its recovery copy (host/native/io.lisp fnn-log-recover,
+        books/store-log-recover-copy.lisp), a new inode, so a link taken
+        before the open keeps the pre-open file and none of what the owner
+        appends (CONVERGE-2 row 18)."""
         kept = self.root / "kept-log"
         kept.mkdir(exist_ok=True)
         for segment in (self.store / "journal").iterdir():

@@ -75,9 +75,9 @@ class PublicationBoundaryTests(auto.AutoCheckpointFixture):
 
     def test_an_uncertain_checkpoint_install_in_the_publication_fences_the_owner(self):
         self.init_development()
-        self.keep_log()
         owner = self.node.start(env={"FN_NATIVE_STATE_CHECKPOINT_FAULT":
                                      "state-checkpoint-replaced:eio"})
+        self.keep_log()
         self.ids = self.post_batch(0, 6)  # Below automatic publication's threshold.
         with self.node.session() as client:
             expected = [client.article(mid) for mid in self.ids]

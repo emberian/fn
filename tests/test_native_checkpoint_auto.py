@@ -257,8 +257,8 @@ class AutoCheckpointTests(AutoCheckpointFixture):
     def test_the_owner_publishes_after_half_k_and_the_file_reopens_as_the_full_replay(self):
         self.init_development()
         # the segments the publication will drop (T8) stay readable
-        self.keep_log()
         owner = self.node.start()
+        self.keep_log()
         self.ids = self.post_batch(0, 64)
         line = self.owner_line(owner, CHECKPOINT_AUTO)
         self.assertIsNotNone(line, "no automatic publication within the deadline")
@@ -573,8 +573,8 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         # a second request finds nothing to compact; a death in the
         # publication's first batch reopens with the store as it was.
         self.init_development()
-        self.keep_log()
         owner = self.node.start()
+        self.keep_log()
         self.ids = self.post_batch(0, 10)
         asked = self.op("store", "compact")
         self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())

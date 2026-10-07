@@ -107,7 +107,8 @@ class NativeReclaimWalkTests(unittest.TestCase):
             ended = len(self.owner_lines(owner, self.PUBLICATION_END, 0, deadline=0))
             done = self.reclaim(node, expect=None)
             if b"queued" not in done.stdout or time.monotonic() > end:
-                self.assertEqual(done.returncode, EXIT.OK, (done.stdout, done.stderr[-600:]))
+                self.assertEqual(done.returncode, EXIT.OK,
+                                 (done.stdout, done.stderr[-600:], owner.stderr.since(0)[-3000:]))
                 return done
             self.owner_lines(owner, self.PUBLICATION_END, ended + 1,
                              deadline=max(0.0, end - time.monotonic()))
