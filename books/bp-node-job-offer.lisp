@@ -674,6 +674,17 @@
     (or (and (equal (fn-cbor-ag-car (car effects)) :transport)
              (equal (fn-bpn-nth 4 (car effects)) :forwarded))
         (fn-bpnj-forwarded-transport-p (cdr effects)))))
+;; The restart's resolution of an orphan :attempting job answers only its
+;; :persist proposal or a restart fault: it reports no forwarded transport.
+(defthm fn-bpnj-resolve-orphans-step-reports-no-forwarded-transport
+  (not (fn-bpnj-forwarded-transport-p
+        (fn-bpn-answer-effects (fn-bpn-resolve-orphans-step st))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-bpn-resolve-orphans-step fn-bpn-propose
+                            fn-bpnj-forwarded-transport-p fn-cbor-ag-car
+                            fn-bpn-answer-constructor-accessors)
+                           (fn-bpn-find-attempting fn-bpn-resolution-record)))))
+
 (defthm fn-bpnj-forwarded-success-is-a-finished-proposal
   (implies (and (fn-bpn-proposal-effectsp st record success refusal uncertain)
                 (fn-bpnj-forwarded-transport-p success))
@@ -731,7 +742,9 @@
        fn-bpn-start-one fn-bpn-persist-result-step
        fn-bpn-forward-result-step fn-bpn-clock-step fn-bpn-restart-step
        fn-bpn-propose fn-bpn-apply-record
-       fn-bpnj-forwarded-transport-p fn-bpn-answer-constructor-accessors
+       fn-bpnj-forwarded-transport-p
+       fn-bpnj-resolve-orphans-step-reports-no-forwarded-transport
+       fn-bpn-answer-constructor-accessors
        fn-bpn-pending-authorizedp fn-bpn-lifecycle-invariantp
        fn-bpn-member fn-cbor-ag-car fn-bpn-nth car-cons cdr-cons true-listp nth zp)
      (theory 'minimal-theory))))

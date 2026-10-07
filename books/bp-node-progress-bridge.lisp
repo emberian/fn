@@ -150,6 +150,22 @@
                               (theory 'minimal-theory))))))
 
 (local
+ (defthm bpnpb-effect-listp-of-cdr
+  (implies (fn-bpn-effect-listp effects)
+           (fn-bpn-effect-listp (cdr effects)))
+  :hints (("Goal" :in-theory (enable fn-bpn-effect-listp)))))
+
+(local
+ (defthm bpnpb-restart-step-effects-cdr-confined
+  (fn-bpnpb-effects-confinedp
+   (cdr (fn-bpn-answer-effects (fn-bpn-restart-step st records ready))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(bpnpb-confined-of-typed
+                                bpnpb-effect-listp-of-cdr
+                                fn-bpn-restart-step-effects-are-typed)
+                              (theory 'minimal-theory))))))
+
+(local
  (defthm bpnpb-confined-of-literals
   (and (fn-bpnpb-effects-confinedp nil)
        (equal (fn-bpnpb-effects-confinedp (cons a b))
@@ -166,6 +182,7 @@
   (union-theories
    '(bpnpb-base-of-slot-writers bpnpb-confined-of-literals
      bpnpb-propose-confined bpnpb-bpn-step-confined bpnpb-restart-step-confined
+     bpnpb-restart-step-effects-cdr-confined
      car-cons cdr-cons (:e fn-cbor-ag-car) (:e member-equal) (:e car)
      (:e fn-bpnpb-effects-confinedp))
    (theory 'minimal-theory))))

@@ -68,21 +68,31 @@
  (equal (nth 5 (car (fn-bpn-answer-effects *bpna-duplicate*))) :duplicate))
 
 ; A crash after the durable :attempting record and before a transport result
-; requeues the same exact send context.  The theorem subject is fn-bpn-step.
+; requeues the same exact send context: the restart proposes the durable
+; :requeued record, and its durable result makes the job :queued again.  The
+; theorem subject is fn-bpn-step.
 (defconst *bpna-restart-after-lost-send*
   (fn-bpn-step *bpna-s0*
                (list :restart (list *bpna-r0* *bpna-r1*) :ready)))
+(defconst *bpna-resolved-after-lost-send*
+  (fn-bpn-step (fn-bpn-answer-state *bpna-restart-after-lost-send*)
+               '(:persist-result 2 :durable)))
 (defconst *bpna-original-job*
   (fn-bpn-find-job *bpna-key* (fn-bpn-machine-state-jobs *bpna-s-queued*)))
 (defconst *bpna-restarted-job*
   (fn-bpn-find-job
    *bpna-key*
    (fn-bpn-machine-state-jobs
-    (fn-bpn-answer-state *bpna-restart-after-lost-send*))))
+    (fn-bpn-answer-state *bpna-resolved-after-lost-send*))))
 
 (defthm fn-bpn-reachable-lost-send-restart-keeps-exact-context
   (and (fn-bpn-lifecycle-invariantp
         (fn-bpn-answer-state *bpna-restart-after-lost-send*))
+       (fn-bpn-lifecycle-invariantp
+        (fn-bpn-answer-state *bpna-resolved-after-lost-send*))
+       (equal (car (cadr (fn-bpn-answer-effects
+                          *bpna-restart-after-lost-send*)))
+              :persist)
        (equal (fn-bpn-job-status *bpna-restarted-job*) :queued)
        (equal (fn-bpn-job-peer *bpna-restarted-job*)
               (fn-bpn-job-peer *bpna-original-job*))

@@ -53,16 +53,26 @@
      ((equal kind :requeued)
       (and job
            (equal (fn-bpn-job-status job) :attempting)
-           (equal success
-                  (list (list :transport work attempt generation :attempted)
-                        (list :forward-refused work attempt generation
-                              (nth 5 record))))
-           (equal refusal
-                  (list :bundle-queue-refused work attempt generation
-                        :result-persistence-refused))
-           (equal uncertain
-                  (list :bundle-queue-uncertain work attempt generation
-                        :result-persistence))))
+           (or
+            (and
+             (equal success
+                    (list (list :transport work attempt generation :attempted)
+                          (list :forward-refused work attempt generation
+                                (nth 5 record))))
+             (equal refusal
+                    (list :bundle-queue-refused work attempt generation
+                          :result-persistence-refused))
+             (equal uncertain
+                    (list :bundle-queue-uncertain work attempt generation
+                          :result-persistence)))
+            ; The restart's resolution of an orphan :attempting job
+            ; (fn-bpn-resolve-orphans-step): no outcome is reported, only a
+            ; restart fault if its record is refused or not known durable.
+            (and
+             (equal (nth 5 record) :uncertain)
+             (equal success nil)
+             (equal refusal *fn-bpn-resolution-refusal*)
+             (equal uncertain *fn-bpn-resolution-uncertainty*)))))
      ((equal kind :finished)
       (and job
            (equal (fn-bpn-job-status job) :attempting)
@@ -439,6 +449,69 @@
        fn-bpn-answer-constructor-accessors)
      (theory 'minimal-theory)))))
 
+(defthm fn-bpn-resolution-record-reason
+  (equal (nth 5 (fn-bpn-resolution-record token job)) :uncertain)
+  :hints (("Goal" :in-theory (enable fn-bpn-resolution-record))))
+
+(defthm fn-bpn-resolution-proposal-is-authorized
+  (implies
+   (and (fn-bpn-machine-invariantp st)
+        (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))
+   (fn-bpn-proposal-effectsp
+    st
+    (fn-bpn-resolution-record
+     (fn-bpn-machine-state-next-token st)
+     (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))
+    nil *fn-bpn-resolution-refusal* *fn-bpn-resolution-uncertainty*))
+  :hints
+  (("Goal"
+    :use ((:instance fn-bpn-machine-invariant-components)
+          (:instance fn-bpn-machine-statep-components)
+          (:instance fn-bpn-find-attempting-is-a-job
+                     (jobs (fn-bpn-machine-state-jobs st)))
+          (:instance fn-bpn-find-job-of-find-attempting
+                     (jobs (fn-bpn-machine-state-jobs st))))
+    :in-theory
+    (e/d (fn-bpn-proposal-effectsp)
+         (fn-bpn-jobp fn-bpn-job-key fn-bpn-lifecycle-recordp
+          fn-bpn-resolution-record fn-bpn-find-job fn-bpn-find-attempting
+          fn-bpn-machine-statep fn-bpn-machine-invariantp
+          fn-bpn-find-attempting-is-a-job
+          fn-bpn-find-job-of-find-attempting)))))
+
+(defthm fn-bpn-resolve-orphans-step-preserves-lifecycle-invariant
+  (implies
+   (fn-bpn-lifecycle-invariantp st)
+   (fn-bpn-lifecycle-invariantp
+    (fn-bpn-answer-state (fn-bpn-resolve-orphans-step st))))
+  :hints
+  (("Goal"
+    :use
+    ((:instance fn-bpn-lifecycle-invariant-implies-machine-invariant)
+     (:instance fn-bpn-machine-invariant-components)
+     (:instance fn-bpn-machine-statep-components)
+     (:instance fn-bpn-find-attempting-is-a-job
+                (jobs (fn-bpn-machine-state-jobs st)))
+     (:instance fn-bpn-resolution-record-is-typed
+                (token (fn-bpn-machine-state-next-token st))
+                (job (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st))))
+     (:instance fn-bpn-resolution-record-is-applicable-to-orphan)
+     (:instance fn-bpn-resolution-proposal-is-authorized)
+     (:instance fn-bpn-propose-preserves-lifecycle-invariant
+                (record (fn-bpn-resolution-record
+                         (fn-bpn-machine-state-next-token st)
+                         (fn-bpn-find-attempting
+                          (fn-bpn-machine-state-jobs st))))
+                (success nil)
+                (refusal *fn-bpn-resolution-refusal*)
+                (uncertain *fn-bpn-resolution-uncertainty*)))
+    :in-theory
+    (union-theories
+     '(fn-bpn-resolve-orphans-step fn-bpn-answer-constructor-accessors
+       fn-bpn-effect-listp-of-nil fn-bpn-effectp fn-bpn-member
+       car-cons true-listp)
+     (theory 'minimal-theory)))))
+
 (defthm fn-bpn-persist-result-step-preserves-lifecycle-invariant
   (implies
    (fn-bpn-lifecycle-invariantp st)
@@ -449,7 +522,19 @@
   (("Goal"
     :use
     ((:instance fn-bpn-lifecycle-invariant-implies-machine-invariant)
-     (:instance fn-bpn-persist-result-step-preserves-machine-invariant))
+     (:instance fn-bpn-persist-result-step-preserves-machine-invariant)
+     (:instance fn-bpn-machine-invariant-components)
+     (:instance fn-bpn-apply-record-preserves-machine-invariant
+                (record (fn-bpn-pending-record
+                         (fn-bpn-machine-state-pending st))))
+     (:instance fn-bpn-lifecycle-invariant-without-pending
+                (st (fn-bpn-apply-record
+                     st (fn-bpn-pending-record
+                         (fn-bpn-machine-state-pending st)))))
+     (:instance fn-bpn-resolve-orphans-step-preserves-lifecycle-invariant
+                (st (fn-bpn-apply-record
+                     st (fn-bpn-pending-record
+                         (fn-bpn-machine-state-pending st))))))
     :in-theory
     (union-theories
      '(fn-bpn-persist-result-step
@@ -470,10 +555,48 @@
   (("Goal"
     :use
     ((:instance fn-bpn-lifecycle-invariant-implies-machine-invariant)
-     (:instance fn-bpn-restart-step-preserves-machine-invariant))
+     (:instance fn-bpn-restart-step-preserves-machine-invariant)
+     (:instance fn-bpn-machine-invariant-components)
+     (:instance fn-bpn-machine-statep-components)
+     (:instance fn-bpn-initial-machine-state-has-invariant
+                (config (fn-bpn-machine-state-config st))
+                (max-jobs (fn-bpn-machine-state-max-jobs st))
+                (max-octets (fn-bpn-machine-state-max-octets st)))
+     (:instance fn-bpn-next-token-of-initial-machine-state
+                (config (fn-bpn-machine-state-config st))
+                (max-jobs (fn-bpn-machine-state-max-jobs st))
+                (max-octets (fn-bpn-machine-state-max-octets st)))
+     (:instance fn-bpn-initial-machine-state-is-quiescent
+                (config (fn-bpn-machine-state-config st))
+                (max-jobs (fn-bpn-machine-state-max-jobs st))
+                (max-octets (fn-bpn-machine-state-max-octets st)))
+     (:instance fn-bpn-replay-ready-state-is-quiescent
+                (st (fn-bpn-initial-machine-state
+                     (fn-bpn-machine-state-config st)
+                     (fn-bpn-machine-state-max-jobs st)
+                     (fn-bpn-machine-state-max-octets st))))
+     (:instance fn-bpn-replay-records-preserves-machine-invariant
+                (st (fn-bpn-initial-machine-state
+                     (fn-bpn-machine-state-config st)
+                     (fn-bpn-machine-state-max-jobs st)
+                     (fn-bpn-machine-state-max-octets st))))
+     (:instance fn-bpn-lifecycle-invariant-without-pending
+                (st (nth 1 (fn-bpn-replay-records
+                            (fn-bpn-initial-machine-state
+                             (fn-bpn-machine-state-config st)
+                             (fn-bpn-machine-state-max-jobs st)
+                             (fn-bpn-machine-state-max-octets st))
+                            records))))
+     (:instance fn-bpn-resolve-orphans-step-preserves-lifecycle-invariant
+                (st (nth 1 (fn-bpn-replay-records
+                            (fn-bpn-initial-machine-state
+                             (fn-bpn-machine-state-config st)
+                             (fn-bpn-machine-state-max-jobs st)
+                             (fn-bpn-machine-state-max-octets st))
+                            records)))))
     :in-theory
     (union-theories
-     '(fn-bpn-restart-step fn-bpn-replay-records
+     '(fn-bpn-restart-step
        fn-bpn-lifecycle-invariant-without-pending
        fn-bpn-state-with-accessors fn-bpn-answer-constructor-accessors)
      (theory 'minimal-theory)))))
@@ -799,6 +922,21 @@
      '(fn-bpn-lifecycle-invariantp fn-bpn-pending-authorizedp)
      (theory 'minimal-theory)))))
 
+;; The resolution of an orphan reports only its :persist proposal, or a restart
+;; fault: no other effect kind (never a convergence-layer send, a queue
+;; acceptance or a transport result) comes out of it.
+(defthm fn-bpn-resolve-orphans-step-effect-kinds
+  (implies (and (not (equal kind :persist))
+                (not (equal kind :restart-fault)))
+           (not (fn-bpn-effect-kind-memberp
+                 kind
+                 (fn-bpn-answer-effects (fn-bpn-resolve-orphans-step st)))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-bpn-resolve-orphans-step fn-bpn-propose
+                            fn-bpn-effect-kind-memberp
+                            fn-bpn-answer-constructor-accessors)
+                           (fn-bpn-find-attempting fn-bpn-resolution-record)))))
+
 ; The two effect theorems below keep nth and zp closed: the event's fields
 ; are named by nth in the statement and the step alike, and opening nth
 ; doubled the case split (1.8 s to 0.8 s each).
@@ -837,6 +975,7 @@
        fn-bpn-propose fn-bpn-apply-record fn-bpn-proposal-effectsp
        fn-bpn-effect-kind-memberp fn-bpn-answer-constructor-accessors
        fn-bpn-pending-authorizedp fn-bpn-lifecycle-invariantp
+       fn-bpn-resolve-orphans-step-effect-kinds
        fn-bpn-member fn-cbor-ag-car car-cons cdr-cons true-listp)
      (theory 'minimal-theory)))))
 
@@ -899,6 +1038,7 @@
        fn-bpn-propose fn-bpn-apply-record fn-bpn-proposal-effectsp
        fn-bpn-effect-kind-memberp fn-bpn-answer-constructor-accessors
        fn-bpn-pending-authorizedp fn-bpn-lifecycle-invariantp
+       fn-bpn-resolve-orphans-step-effect-kinds
        fn-bpn-member fn-cbor-ag-car car-cons cdr-cons true-listp)
      (theory 'minimal-theory)))))
 

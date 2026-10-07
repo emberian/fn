@@ -581,6 +581,53 @@
            :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
                                fn-bpn-state-field-types-for-guard))))
 
+;; A restart finds every :attempting job (the replayed log's last record for
+;; that job is its :attempting) unresolved: the process that wrote it died
+;; before its outcome record.  The machine's own restart therefore resolves
+;; each such job through the one append path, as a :requeued record with the
+;; :uncertain reason the lifecycle already defines, before any new :attempting
+;; record for it is proposed.  A replay accepts :attempting only for a :queued
+;; job (fn-bpn-record-applicablep), so a log with an orphan :attempting
+;; followed by a second :attempting is not a valid prefix.
+(defun fn-bpn-find-attempting (jobs)
+  (declare (xargs :guard t))
+  (if (atom jobs)
+      nil
+    (if (equal (fn-bpn-job-status (car jobs)) :attempting)
+        (car jobs)
+      (fn-bpn-find-attempting (cdr jobs)))))
+
+(verify-guards fn-bpn-find-attempting)
+
+(defconst *fn-bpn-resolution-refusal* '(:restart-fault :resolution-refused))
+(defconst *fn-bpn-resolution-uncertainty* '(:restart-fault :resolution-persistence))
+
+; The record that resolves JOB at the machine's next token.
+(defun fn-bpn-resolution-record (token job)
+  (declare (xargs :guard t))
+  (let ((key (fn-bpn-job-key job)))
+    (list :requeued token (nth 0 key) (nth 1 key) (nth 2 key)
+          :uncertain :requeued)))
+
+(verify-guards fn-bpn-resolution-record)
+
+; Propose the resolution of the first :attempting job, or answer nothing when
+; there is none.  The pending operation carries *fn-bpn-resolution-uncertainty*
+; as its uncertainty effect: that is how fn-bpn-persist-result-step knows a
+; durable record of this proposal is to be followed by the next resolution.
+(defun fn-bpn-resolve-orphans-step (st)
+  (declare (xargs :guard (fn-bpn-machine-statep st)))
+  (let ((job (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st))))
+    (if (or (not job) (fn-bpn-machine-state-fenced st)
+            (fn-bpn-machine-state-pending st))
+        (fn-bpn-answer st nil)
+      (fn-bpn-propose st (fn-bpn-resolution-record
+                          (fn-bpn-machine-state-next-token st) job)
+                      nil *fn-bpn-resolution-refusal*
+                      *fn-bpn-resolution-uncertainty*))))
+
+(verify-guards fn-bpn-resolve-orphans-step)
+
 (defun fn-bpn-job-exactp (job sequence route peer bundle wire)
   (declare (xargs :guard t))
   (and (equal (fn-bpn-job-sequence job) sequence)
@@ -741,7 +788,13 @@
                                   (fn-bpn-machine-state-contacts st) nil t
                                   (fn-bpn-machine-state-next-token st))
                (list (fn-bpn-pending-uncertainty-effect pending)))
-            (fn-bpn-answer next (fn-bpn-pending-success-effects pending)))))
+            ; Only a restart's resolution carries the marker; the state check
+            ; is paid once per orphan, never on an ordinary publication.
+            (if (and (equal (fn-bpn-pending-uncertainty-effect pending)
+                            *fn-bpn-resolution-uncertainty*)
+                     (fn-bpn-machine-statep next))
+                (fn-bpn-resolve-orphans-step next)
+              (fn-bpn-answer next (fn-bpn-pending-success-effects pending))))))
        ((equal outcome :refused)
         (fn-bpn-answer
          (fn-bpn-state-with st (fn-bpn-machine-state-jobs st)
@@ -871,15 +924,6 @@
            :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-recordp
                                fn-bpn-state-field-types-for-guard))))
 
-; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
-; node's held-bundle or job queue, data with no fixed cap (D27), one
-; control-stack frame per row before.
-(def-loop fn-bpn-resume-jobs (jobs)
-  :shape :map :over jobs :elt j
-  :body (if (equal (fn-bpn-job-status j) :attempting)
-             (fn-bpn-job-with-status j :queued (fn-bpn-job-last-token j))
-             j))
-
 (defun fn-bpn-replay-records (st records)
   (declare (xargs :guard
                   (and (fn-bpn-machine-statep st)
@@ -910,13 +954,12 @@
       (let ((replay (fn-bpn-replay-records base records)))
         (if (equal (car replay) :ready)
             (let* ((replayed (nth 1 replay))
-                   (resumed (fn-bpn-state-with
-                             replayed
-                             (fn-bpn-resume-jobs (fn-bpn-machine-state-jobs replayed))
-                             nil nil nil (fn-bpn-machine-state-next-token replayed))))
-              (fn-bpn-answer resumed
-                             (list (list :restart-ready
-                                         (len (fn-bpn-machine-state-jobs resumed))))))
+                   (resolved (fn-bpn-resolve-orphans-step replayed)))
+              (fn-bpn-answer
+               (fn-bpn-answer-state resolved)
+               (cons (list :restart-ready
+                           (len (fn-bpn-machine-state-jobs replayed)))
+                     (fn-bpn-answer-effects resolved))))
           (let ((prefix (nth 1 replay)))
             (fn-bpn-answer
              (fn-bpn-state-with prefix (fn-bpn-machine-state-jobs prefix)
