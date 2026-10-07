@@ -473,9 +473,8 @@ def stobj_attachments(paths) -> dict[str, set[str]]:
 
 # The builds whose loads are the running server's host lines, each with the
 # directory ACL2 runs it from: the two images, and the extraction world the
-# served product (the SBCL core) is extracted from, which adds the FN-XO
-# ports (host/store-open-host.lisp, store-write-host.lisp,
-# interfaces-extract.lisp).  A host file no build loads is not a host line
+# served product (the SBCL core) is extracted from, which loads the image's
+# host files (tools/extract/world.py).  A host file no build loads is not a host line
 # and seeds nothing (PKT-412); tools/host_loaded_check.py refuses one (Q7k).
 IMAGE_BUILDS = {"host/native/build.lisp": ".",
                 "host/native/build-dtn.lisp": ".",

@@ -5,8 +5,8 @@
 ; built: its class (guard-verified or not), the kinds the host entry guard
 ; evaluates (host/native/io.lisp fnn-entry-guard), its keystones.  A
 ; declaration the world refutes stops the build.  tools/interface_emit.py
-; reads these forms (and host/interfaces-extract.lisp's) without evaluating
-; them and generates planning/interfaces.json and tools/extract/roots.sh
+; reads these forms without evaluating them
+; and generates planning/interfaces.json and tools/extract/roots.sh
 ; (the extractor's ROOTS and EXTRA), and gives tools/harness_check.py its
 ; exempt formals; its host-binding check reads the raw host for the
 ; dispatch sites.
@@ -142,9 +142,6 @@
   :class :common-lisp-compliant
   :kinds ((f natp))
   :root :extract)
-
-; fn-xo-open-store: host/interfaces-extract.lisp (the image does not load
-; host/store-open-host.lisp).
 
 (definterface fn-reader-use-store
   :class :common-lisp-compliant
