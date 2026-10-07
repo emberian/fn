@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/peer-flight-reservation")
+(include-book "../../books/defkeystone")
 (include-book "std/testing/assert-bang" :dir :system)
 (defconst *pfr-policy* '(32768 65536 2 1 32768 20))
 (assert-event (and (fn-pfr-policy-p *pfr-policy*)
@@ -76,3 +77,30 @@
 (assert-event
  (and (not (equal (fn-pfr-at 0 (fn-pfr-startup-grant 1 0 *pfr-policy*)) :hold))
       (not (<= (+ (nfix 0) (nfix (fn-pfr-at 0 *pfr-policy*))) (nfix 1)))))
+
+; TEETH-62 BEGIN
+; The two PRF peer-flight-reservation keystones with their teeth (TEETH CONTRACT v1).
+(defteeth fn-pfr-accepted-launch-fits-machine
+  :claim (((policy policy) (accepted (equal (fn-pfr-at 0 (fn-pfr-extend-reservation base policy core observations)) :heap)))
+          (let ((d (fn-pfr-extend-reservation base policy core observations)))
+   (<= (fn-heap-reservation-octets (fn-pfr-at 1 d) core (fn-pfr-at 4 d) (fn-pfr-at 5 d))
+       (fn-heap-machine-octets observations))))
+  :subject fn-pfr-extend-reservation
+  :witness ((base *pfr-base*) (policy *pfr-policy*) (core 100) (observations '(8589934592)))
+  :breaks ((policy ((base *pfr-base*) (policy nil) (core 100) (observations nil)))
+           (accepted ((base *pfr-base*) (policy *pfr-policy*) (core 100) (observations nil))))
+  :mutations ((bounded-by-core
+               (:conclusion (let ((d (fn-pfr-extend-reservation base policy core observations))) (<= (fn-heap-reservation-octets (fn-pfr-at 1 d) core (fn-pfr-at 4 d) (fn-pfr-at 5 d)) core)))
+               ((base *pfr-base*) (policy *pfr-policy*) (core 100) (observations '(8589934592)))
+               :fault "the reservation bounded by the core heap alone")))
+
+(defteeth fn-pfr-held-startup-fits-capture
+  :claim (((hold (equal (fn-pfr-at 0 (fn-pfr-startup-grant dynamic protected p)) :hold)))
+          (<= (+ (nfix protected) (nfix (fn-pfr-at 0 p))) (nfix dynamic)))
+  :subject fn-pfr-startup-grant
+  :witness ((dynamic 65536) (protected 32768) (p *pfr-policy*))
+  :breaks ((hold ((dynamic 1) (protected 0) (p *pfr-policy*))))
+  :mutations ((two-quanta
+               (:conclusion (<= (+ (nfix protected) (* 2 (nfix (fn-pfr-at 0 p)))) (nfix dynamic)))
+               ((dynamic 65536) (protected 32768) (p *pfr-policy*))
+               :fault "two output quanta reserved against the dynamic budget")))

@@ -160,7 +160,8 @@ exposure admission decides (the id, or NIL when it refused)."
         (fnn-web-conn-page-cursor conn) nil (fnn-web-conn-page-response conn) nil
         (fnn-web-conn-reply-scan conn) nil (fnn-web-conn-captured-plans conn) nil
         (fnn-web-conn-replay-plans conn) nil (fnn-web-conn-replay-plan conn) nil
-        (fnn-web-conn-replay-return conn) nil (fnn-web-conn-replay-tail conn) nil))
+        (fnn-web-conn-replay-return conn) nil (fnn-web-conn-replay-tail conn) nil)
+  (fnn-web-replay-forget conn))
 
 (defun fnn-web-dispose-semantic (face conn)
   ;; Claim the whole disposal, not just each effect. Concurrent shutdown or
@@ -474,6 +475,7 @@ exposure admission decides (the id, or NIL when it refused)."
                      (and (fnn-core 'fn-web-host-stream-p next)
                           (fnn-core 'fn-web-host-stream-start next))
                      (fnn-web-conn-captured-plans conn) nil)
+               (fnn-web-replay-forget conn)
                (fnn-web-fill (fnn-web-conn-in conn) (fnn-make-octets 0))))
       (:close (destructuring-bind (cid next) (rest action)
                 (fnn-web-cleanup face conn (list :close cid)
@@ -665,7 +667,66 @@ exposure admission decides (the id, or NIL when it refused)."
                      (fnn-web-conn-cold-word conn)
                      (and (eq mode :feed) (list word since now limit (fnn-web-conn-line-since conn)))))))))
 
+;;; The reply octets the replay has already rendered, kept per connection:
+;;; a contiguous [base, base+len) span of the virtual reply.  The immutable
+;;; captured plans render deterministically (the premise the replay itself
+;;; rests on), so a covered span needs no re-render.  Transient per
+;;; connection, bounded by the flow's admitted article (the same admission
+;;; that bounds the reply's render work), dropped where captured-plans is.
+;;; A synchronized table, not a record slot: the reactor and the semantic
+;;; worker both reach these boundaries, and a slot would change the
+;;; connection record's layout (an overlay cannot carry that).
+(defparameter *fnn-web-replay-retained* (make-hash-table :test #'eq :synchronized t))
+
+(defun fnn-web-replay-retain (conn part base)
+  "Keep the rendered PART at reply offset BASE for the spans still to come:
+  contiguous growth extends the retained reply, a re-rendered prefix is
+  already kept, anything else restarts the retention at the part."
+  (let* ((kept (gethash conn *fnn-web-replay-retained*))
+         (cache (first kept)) (cbase (second kept)) (clen (third kept))
+         (plen (length part)))
+    (cond ((and cache (= base (+ cbase clen)))
+           (when (< (length cache) (+ clen plen))
+             (let ((grown (make-array (fnn-core 'fn-web-host-reserve-size
+                                              (+ clen plen) (length cache))
+                                      :element-type '(unsigned-byte 8))))
+               (replace grown cache) (setq cache grown)))
+           (replace cache part :start1 clen)
+           (setf (gethash conn *fnn-web-replay-retained*) (list cache cbase (+ clen plen))))
+          ((and cache (<= cbase base) (<= (+ base plen) (+ cbase clen)))
+           nil)
+          (t
+           (let ((fresh (make-array (fnn-core 'fn-web-host-reserve-size plen 0)
+                                    :element-type '(unsigned-byte 8))))
+             (replace fresh part)
+             (setf (gethash conn *fnn-web-replay-retained*) (list fresh base plen)))))))
+
+(defun fnn-web-replay-retained-window (conn need)
+  "The retained reply octets of NEED's span, or NIL when not covered."
+  (let* ((kept (gethash conn *fnn-web-replay-retained*))
+         (cache (first kept)) (cbase (second kept)) (clen (third kept)))
+    ;; The offsets are computed only under the cache: an empty entry has no
+    ;; base, and (- need nil) is a type error, not a miss.
+    (when cache
+      (let ((from (- (car need) cbase)) (to (- (cdr need) cbase)))
+        (and (<= 0 from) (<= to clen)
+             (subseq cache from to))))))
+
+(defun fnn-web-replay-forget (conn)
+  (remhash conn *fnn-web-replay-retained*))
+
 (defun fnn-web-replay-start (conn need return-phase)
+  ;; A span the replay has already rendered is served from the retained
+  ;; reply: no plan walk, no re-render from zero.  The page cursor sees
+  ;; the same window (IN holding exactly [base, need-end) octets) either
+  ;; way; only the source of those octets differs.
+  (let ((window (fnn-web-replay-retained-window conn need)))
+    (when window
+      (fnn-web-fill (fnn-web-conn-in conn) window)
+      (setf (fnn-web-conn-window-base conn) (car need)
+            (fnn-web-conn-replay-need conn) nil
+            (fnn-web-conn-phase conn) return-phase)
+      (return-from fnn-web-replay-start nil)))
   (let ((forward (and (fnn-web-conn-replay-tail conn)
                       (fnn-core 'fn-web-host-replay-forward-p need
                                 (fnn-web-conn-replay-tail-base conn) (fnn-web-conn-replay-at conn)))))
@@ -709,6 +770,7 @@ exposure admission decides (the id, or NIL when it refused)."
     (cond (read (fnn-web-cold-start conn read :replay))
           (t
            (let ((base (fnn-web-conn-replay-at conn)))
+             (fnn-web-replay-retain conn part base)
              (setf (fnn-web-conn-replay-tail conn) part (fnn-web-conn-replay-tail-base conn) base
                    (fnn-web-conn-replay-at conn) (fnn-web-replay-part conn part base)
                    (fnn-web-conn-replay-plan conn) (unless done rest)))

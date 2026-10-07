@@ -89,6 +89,10 @@ not in it is new; a baseline row no longer found must be removed
     python3 tools/lock_discipline_check.py --root DIR      # another checkout (a pre-fix commit)
     python3 tools/lock_discipline_check.py --write-baseline [--initial]
     python3 tools/lock_discipline_check.py --emit-realization  # planning/host-realization.json
+    python3 tools/lock_discipline_check.py --audit-callbacks  # standalone: print only the
+                           # callback-ordinal audit (a callback_contexts why text that names
+                           # its own file must name the line its ordinal resolves to); the
+                           # audit is part of --check's verdict either way
 """
 from __future__ import annotations
 
@@ -608,6 +612,12 @@ class Ctx:
     scope: str | None = None          # "shared" inside the fence boundary
     gated: str | None = None          # gate class of the innermost gated body
     ignore: bool = False              # inside ignore-errors
+    # (param name, wants_truthy): this subtree was reached through the
+    # corresponding arm of (if PARAM ...) / (if (not PARAM) ...) in the
+    # current defun, so everything under it runs only when PARAM has that
+    # truthiness at entry.  A route so tagged can be ruled out for a call
+    # site that passes a literal for PARAM; it stays live otherwise.
+    cond: tuple | None = None
 
 
 @dataclass
@@ -674,6 +684,39 @@ BUILTIN_PARENTS = {"error": ["serious-condition"], "serious-condition": ["condit
 SPECIAL_SKIP = {"declare", "quote", "go", "the-environment"}
 BINDING_FORMS = {"let", "let*", "sb-int:dx-let"}
 FUNCALLERS = {"funcall", "apply", "multiple-value-call"}
+# env value marking "this name is the current defun's parameter" (walk_if)
+PARAM_MARKER = ("param",)
+# env value ("flet-lambda", form): this flet parameter is a lambda the flet
+# funcalls synchronously. The form is not a free variable of that lambda.
+# forms that can change a variable's value: if the tested parameter is
+# written anywhere in its defun, its if-arms are not tagged (the value the
+# test reads may not be the value the caller passed)
+WRITE_HEADS = {"setq", "setf", "psetf", "psetq", "multiple-value-setq", "incf", "decf",
+               "push", "pushnew", "pop", "rotatef", "shiftf"}
+
+
+def _literal_params(cparams: list, args: list) -> dict:
+    """Map callee parameter names to their literal truthiness where the
+    argument is self-evaluating (t, nil, keywords, numbers, strings).
+    Anything else is unknown and stays out: an unknown discriminator
+    keeps every conditional run route live (conservative)."""
+    lits: dict = {}
+    for k, a in enumerate(args):
+        if k >= len(cparams):
+            break
+        if isinstance(a, Sym):
+            s = str(a)
+            if s in ("t", "nil"):
+                lits[cparams[k]] = (s == "t")
+            elif s.startswith(":"):
+                lits[cparams[k]] = True
+        elif isinstance(a, bool):
+            lits[cparams[k]] = a
+        elif isinstance(a, (int, float)):
+            lits[cparams[k]] = True
+        elif isinstance(a, str) and not isinstance(a, Sym):
+            lits[cparams[k]] = True
+    return lits
 SYNC_HOFS = {"mapc", "mapcar", "mapcan", "maplist", "mapl", "mapcon", "maphash", "remove-if",
              "remove-if-not", "delete-if", "delete-if-not", "find-if", "find-if-not", "position-if",
              "count-if", "some", "every", "notany", "notevery", "sort", "stable-sort", "reduce",
@@ -697,6 +740,11 @@ class Analyzer:
         self.templates = set(contracts.raw.get("expand_templates", []))
         self.unknown_macros = self._macros_hiding_primitives()
         self.param_ctx: dict = {}     # (fn, param) -> Ctx (the context its funcall runs in) | "async"
+        self.param_routes: dict = {}  # (fn, param) -> [(locks, gated, scope, cond)] per run site
+        self.flet_scopes: list = []   # active flet/labels scopes (innermost last)
+        self.run_targets: list = []   # (fn, param) of the argument position a walked closure was passed at
+        self._writes_cache: dict = {}  # fn name -> frozenset of names its body writes
+        self.cur_def = None
         self.leaf_kinds = self._leaf_table()
         self.region_of = {}
         for region, row in contracts.regions.items():
@@ -959,12 +1007,16 @@ class Analyzer:
         info = FnInfo(name, d.path, d.line, d.loaded, params=lambda_params(d.params))
         info.thread_of = thread_of
         self.cur = info
+        self.cur_def = d
         self.recording = record
         if not record:
             self.pass1_name = name
         env = dict(env or {})
         for p in info.params:
-            env[p] = None
+            # the marker lets walk_if see that a tested symbol IS this
+            # defun's parameter and not a shadowing local: every other
+            # binding form stores None, an init form, or a flet entry
+            env[p] = PARAM_MARKER
         parts = []
         body = d.body
         if body and isinstance(body[0], str) and not isinstance(body[0], Sym) and len(body) > 1:
@@ -1037,13 +1089,38 @@ class Analyzer:
         if h in ("flet", "labels", "macrolet"):
             env2 = dict(env)
             parts = []
+            entries = {}
             for fdef in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
                 if isinstance(fdef, list) and len(fdef) >= 2:
-                    e3 = dict(env2)
-                    for p in lambda_params(fdef[1]):
-                        e3[p] = None
-                    parts.append(self.walk_body(fdef[2:], ctx, e3, line))
-            parts.append(self.walk_body(form[2:], ctx, env2, line))
+                    fname = sym(fdef[0])
+                    if fname and fname not in entries:
+                        entries[fname] = (fdef[1] if isinstance(fdef[1], list) else [], fdef[2:])
+            body_forms = form[2:]
+            # A per-reference flet (name -> (params, body)) is walked once at
+            # EACH reference instead of once at its definition, so its run
+            # sites record the context of the site that reaches them.  Names
+            # that are referenced from a sibling definition (labels-style
+            # recursion), passed as #'NAME to anything but a known defun, or
+            # never referenced keep today's definition-site walk: scope[name]
+            # is None for them.
+            scope = dict.fromkeys(entries, None)
+            if h != "macrolet":
+                refs = self._flet_references(entries, body_forms)
+                for fname in entries:
+                    r = refs.get(fname)
+                    if r and not r["sibling"] and r["dirty"] == 0 and (r["head"] or r["clean"]):
+                        scope[fname] = entries[fname]
+            self.flet_scopes.append(scope)
+            try:
+                for fname, entry in entries.items():
+                    if scope[fname] is None:
+                        e3 = dict(env2)
+                        for p in lambda_params(entry[0]):
+                            e3[p] = None
+                        parts.append(self.walk_body(entry[1], ctx, e3, line))
+                parts.append(self.walk_body(body_forms, ctx, env2, line))
+            finally:
+                self.flet_scopes.pop()
             return sig_union(parts)
         if h in ("dolist", "dotimes", "do-symbols"):
             spec = form[1] if len(form) > 1 else []
@@ -1129,22 +1206,123 @@ class Analyzer:
             env2[p] = None
         return self.walk_body(lam[2:], ctx, env2, line_of(lam, line))
 
+    def _flet_references(self, entries: dict, body_forms) -> dict:
+        """Count, per flet name, how the scope body and the sibling
+        definitions reference it: head position (a direct call), #'NAME in
+        an argument position of a known defun (clean), #'NAME anywhere else
+        (dirty: stored, funcalled, passed to an unknown function), and any
+        reference from a sibling definition's body."""
+        names = set(entries)
+        refs = {n: {"head": 0, "clean": 0, "dirty": 0, "sibling": False} for n in names}
+
+        def scan(f, parent_head, in_fdef):
+            if not isinstance(f, list) or not f:
+                return
+            h = head(f)
+            if h in names:
+                if in_fdef:
+                    refs[h]["sibling"] = True
+                else:
+                    refs[h]["head"] += 1
+            if h == "function" and len(f) > 1 and isinstance(f[1], Sym) and str(f[1]) in names:
+                n = str(f[1])
+                if in_fdef:
+                    refs[n]["sibling"] = True
+                elif parent_head in self.tree.defs and parent_head not in FUNCALLERS:
+                    refs[n]["clean"] += 1
+                else:
+                    refs[n]["dirty"] += 1
+            if h not in SPECIAL_SKIP:
+                for el in f:
+                    if isinstance(el, list):
+                        scan(el, h, in_fdef)
+
+        for stmt in body_forms:
+            scan(stmt, None, False)
+        for entry in entries.values():
+            for stmt in entry[1]:
+                scan(stmt, None, True)
+        return refs
+
+    def _lookup_flet(self, name: str):
+        """The per-reference closure of NAME from the innermost flet scope
+        that binds it, or None when absent or when that scope walks the
+        definition in place (shadowing still stops the search)."""
+        for sc in reversed(self.flet_scopes):
+            if name in sc:
+                return sc[name]
+        return None
+
+    def _flet_param_uses(self, params: list, body_forms) -> dict:
+        """How an flet body uses each parameter: 'sync' when every mention is
+        the operator of funcall/apply (the argument runs at that funcall, on
+        this call), 'escapes' when the parameter is stored, returned, passed
+        on or bound over, 'dead' when it is not mentioned. Only a 'sync'
+        parameter's lambda is inlined; an escaping one stays a stored
+        callback with a fresh lockset."""
+        names = set(params)
+        uses = {p: "dead" for p in params}
+
+        def note(name: str, kind: str) -> None:
+            if uses[name] == "escapes":
+                return
+            if kind == "escapes" or uses[name] == "dead":
+                uses[name] = kind
+
+        def scan(f) -> None:
+            if isinstance(f, Sym):
+                n = str(f)
+                if n in names:
+                    note(n, "escapes")
+                return
+            if not isinstance(f, list) or not f:
+                return
+            h = head(f)
+            if h in SPECIAL_SKIP:
+                return
+            if h in FUNCALLERS and len(f) > 1 and isinstance(f[1], Sym) and str(f[1]) in names:
+                note(str(f[1]), "sync")
+                for el in f[2:]:
+                    scan(el)
+                return
+            if h == "function" and len(f) > 1 and isinstance(f[1], Sym) and str(f[1]) in names:
+                note(str(f[1]), "escapes")
+                return
+            for el in f:
+                scan(el)
+
+        for stmt in body_forms:
+            scan(stmt)
+        return uses
+
+    def walk_flet_body(self, entry, ctx, env, line, bound=None):
+        fparams, fbody = entry
+        env2 = dict(env)
+        for p in lambda_params(fparams):
+            env2[p] = None
+        for name, form in (bound or {}).items():
+            env2[name] = ("flet-lambda", form)
+        return self.walk_body(fbody, ctx, env2, line)
+
     def walk_binding(self, form, h, ctx, env, line):
         env2 = dict(env)
         parts = []
         noio = ctx.noio
+        cond2 = ctx.cond
         if h in BINDING_FORMS:
             for b in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
                 if isinstance(b, list) and b:
                     name = str(b[0])
                     init = b[1] if len(b) > 1 else None
-                    parts.append(self.walk(init, ctx if h != "let*" else Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore), env2 if h == "let*" else env, line))
+                    parts.append(self.walk(init, ctx if h != "let*" else Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond), env2 if h == "let*" else env, line))
                     if name == "*fnn-extent-no-io*":
                         noio = not (init is None or (isinstance(init, Sym) and str(init) == "nil"))
                     elif name.startswith("*") and name in self.tree.globals:
                         pass
                     else:
                         env2[name] = init
+                        if cond2 and cond2[0] == name:
+                            cond2 = None      # the binding shadows the tested parameter
                 elif isinstance(b, Sym):
                     env2[str(b)] = None
             body = form[2:]
@@ -1152,21 +1330,77 @@ class Analyzer:
             vars_ = form[1] if len(form) > 1 else []
             for v in (lambda_params(vars_) if isinstance(vars_, list) else []):
                 env2[v] = None
+                if cond2 and cond2[0] == v:
+                    cond2 = None
             if len(form) > 2:
                 parts.append(self.walk(form[2], ctx, env, line))
             body = form[3:]
-        ctx2 = Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore)
+        ctx2 = Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore, cond2)
         parts.append(self.walk_body(body, ctx2, env2, line))
         return sig_union(parts)
+
+    def _retag(self, ctx: Ctx, cond: tuple) -> Ctx:
+        """The innermost test governs: entering an arm of (if PARAM ...)
+        replaces any outer arm condition (sound: a route is excluded only
+        by a literal contradicting its own arm's test, and an arm's test
+        implies every enclosing test it sits under)."""
+        return Ctx(ctx.locks, ctx.noio, ctx.scope, ctx.gated, ctx.ignore, cond)
+
+    def _written_names(self) -> frozenset:
+        d = self.cur_def
+        if d is None:
+            return frozenset()
+        cached = self._writes_cache.get(d.name)
+        if cached is None:
+            names: set = set()
+
+            def scan(f):
+                if isinstance(f, list) and f:
+                    if head(f) in WRITE_HEADS:
+                        for el in f[1:]:
+                            if isinstance(el, Sym):
+                                names.add(str(el))
+                            elif isinstance(el, list) and (head(f) == "multiple-value-setq"
+                                                           or head(el) == "values"):
+                                # (multiple-value-setq (a b) ...) / (setf (values a b) ...)
+                                names.update(str(x) for x in el if isinstance(x, Sym))
+                    if head(f) != "quote":
+                        for el in f:
+                            scan(el)
+
+            for stmt in (d.body or []):
+                scan(stmt)
+            cached = frozenset(names)
+            self._writes_cache[d.name] = cached
+        return cached
 
     def walk_if(self, form, ctx, env, line):
         test = form[1] if len(form) > 1 else None
         if isinstance(test, Sym) and str(test) == "*fnn-extent-no-io*":
             parts = []
             if ctx.noio is not False and len(form) > 2:
-                parts.append(self.walk(form[2], Ctx(ctx.locks, True, ctx.scope, ctx.gated, ctx.ignore), env, line))
+                parts.append(self.walk(form[2], Ctx(ctx.locks, True, ctx.scope, ctx.gated, ctx.ignore, ctx.cond), env, line))
             if ctx.noio is not True and len(form) > 3:
-                parts.append(self.walk_body(form[3:], Ctx(ctx.locks, False, ctx.scope, ctx.gated, ctx.ignore), env, line))
+                parts.append(self.walk_body(form[3:], Ctx(ctx.locks, False, ctx.scope, ctx.gated, ctx.ignore, ctx.cond), env, line))
+            return sig_union(parts)
+        # (if PARAM ...) / (if (not PARAM) ...): each arm runs only under
+        # that truthiness of the defun's PARAMETER.  A call site that passes
+        # a literal for PARAM can rule the contradicted arm's routes out
+        # (this only ever REMOVES routes from consideration, never adds a
+        # lock).  No tag when the parameter is written anywhere in the
+        # defun, or when the tested symbol is a shadowing local.
+        tag = None
+        if isinstance(test, Sym) and env.get(str(test)) is PARAM_MARKER:
+            tag = (str(test), True)
+        elif (isinstance(test, list) and head(test) == "not" and len(test) > 1
+              and isinstance(test[1], Sym) and env.get(str(test[1])) is PARAM_MARKER):
+            tag = (str(test[1]), False)
+        if tag and tag[0] not in self._written_names():
+            parts = []
+            if len(form) > 2:
+                parts.append(self.walk(form[2], self._retag(ctx, tag), env, line))
+            if len(form) > 3:
+                parts.append(self.walk_body(form[3:], self._retag(ctx, (tag[0], not tag[1])), env, line))
             return sig_union(parts)
         return self.walk_body(form[1:], ctx, env, line)
 
@@ -1252,12 +1486,12 @@ class Analyzer:
         self.ev("acq", lock, line, ctx, head(form))
         if lock.startswith("?"):
             self.ev("unresolved", "lock object " + lock[1:], line, ctx)
-        inner = Ctx(ctx.locks | {lock}, ctx.noio, ctx.scope, ctx.gated, ctx.ignore)
+        inner = Ctx(ctx.locks | {lock}, ctx.noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond)
         return self.walk_body(form[2:], inner, env, line)
 
     def walk_gated_body(self, form, ctx, env, line):
         cls = self.gate_class
-        inner = Ctx(ctx.locks, ctx.noio, None, cls, ctx.ignore)
+        inner = Ctx(ctx.locks, ctx.noio, None, cls, ctx.ignore, ctx.cond)
         sig = self.walk_body(form[1:], inner, env, line)
         # a gated macro declared "fenced" wraps its body in the shared-action
         # boundary by its own template (fnn-section-envelope): the body runs
@@ -1332,9 +1566,9 @@ class Analyzer:
             return rid
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
                 "lambda", "", self.cur.loaded)
-        saved = (self.cur, self.recording, getattr(self, "gate_class", None))
+        saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None))
         self.walk_def(rid, d, True, thread_of=thread_of, env={k: None for k in env})
-        self.cur, self.recording, self.gate_class = saved
+        self.cur, self.cur_def, self.recording, self.gate_class = saved
         return rid
 
     def walk_handler_case(self, form, ctx, env, line):
@@ -1425,6 +1659,26 @@ class Analyzer:
     def walk_call(self, form, h, ctx, env, line):
         args = form[1:]
         parts = []
+        # a locally defined flet fn walked per reference (see the flet branch
+        # of walk): its body runs here, under the call site's context.
+        # A lambda passed to a parameter the flet only funcalls is not a
+        # stored callback: walking it with walk() would spawn an async root
+        # and attribute the body to a thread that does not exist.
+        if h not in self.tree.defs:
+            fl = self._lookup_flet(h)
+            if fl is not None:
+                fparams = lambda_params(fl[0])
+                uses = self._flet_param_uses(fparams, fl[1])
+                bound = {}
+                for i, a in enumerate(args):
+                    pname = fparams[i] if i < len(fparams) else None
+                    if (pname and uses.get(pname) == "sync" and isinstance(a, list)
+                            and head(a) == "lambda"):
+                        bound[pname] = a
+                        continue
+                    parts.append(self.walk(a, ctx, env, line))
+                parts.append(self.walk_flet_body(fl, ctx, env, line, bound))
+                return sig_union(parts)
         # an ACL2 core call: a quoted subject in first position
         subject = quoted_symbol(args[0]) if args else None
         if subject and (h in self.c.core_callers or subject in self.reach):
@@ -1441,9 +1695,26 @@ class Analyzer:
         if h in FUNCALLERS and args:
             target = args[0]
             if isinstance(target, Sym) and str(target) in env:
+                bound_form = env[str(target)]
+                if (isinstance(bound_form, tuple) and len(bound_form) == 2
+                        and bound_form[0] == "flet-lambda"):
+                    # the lambda runs at this funcall. Its free variables are
+                    # the caller's, not the flet parameters bound to lambdas.
+                    outer = {k: v for k, v in env.items()
+                             if not (isinstance(v, tuple) and len(v) == 2 and v[0] == "flet-lambda")}
+                    parts.append(self.walk_lambda_inline(bound_form[1], ctx, outer, line))
+                    parts.extend(self.walk(a, ctx, env, line) for a in args[1:])
+                    return sig_union(parts)
                 pname = str(target)
                 if not self.recording and pname in self.cur.params:
-                    self.param_sites.setdefault((self.pass1_name, pname), []).append(("run", ctx))
+                    # a run site lexically inside a closure that was passed
+                    # at argument position (FN, PARAM) also runs under that
+                    # callee's own context for that parameter (solve joins
+                    # it, exactly like a "pass" row)
+                    row = ("run", ctx)
+                    if self.run_targets and isinstance(self.run_targets[-1], tuple):
+                        row = ("run", ctx, self.run_targets[-1])
+                    self.param_sites.setdefault((self.pass1_name, pname), []).append(row)
                 elif self.recording and pname not in self.cur.params:
                     self.ev("callback", pname, line, ctx)
                 elif self.recording:
@@ -1456,27 +1727,52 @@ class Analyzer:
             parts.append(("u", frozenset(), (h,), ()))
             callee = self.tree.defs[h]
             cparams = lambda_params(callee.params)
+            # literal argument values, for resolving conditional run routes
+            lits = _literal_params(cparams, args)
             for k, a in enumerate(args):
                 pname = cparams[k] if k < len(cparams) else None
                 if isinstance(a, list) and head(a) == "lambda":
-                    pctx = self.param_ctx.get((h, pname)) if pname else None
+                    pctx = self.resolve_param_ctx(h, pname, lits) if pname else None
                     if pctx == "async" or pctx is None and self.recording and not self.runs_param(h, pname):
                         rid = self.spawn_lambda(a, line, None, env)
                         self.ev("async", rid, line, ctx, h)
                     else:
                         extra = pctx if isinstance(pctx, Ctx) else Ctx()
                         inner = Ctx(ctx.locks | extra.locks, ctx.noio, extra.scope or ctx.scope,
-                                    self.resolve_class(extra.gated, callee, args) or ctx.gated, ctx.ignore)
-                        parts.append(self.walk_lambda_inline(a, inner, env, line))
+                                    self.resolve_class(extra.gated, callee, args) or ctx.gated, ctx.ignore, ctx.cond)
+                        if pname:
+                            self.run_targets.append((h, pname))
+                        try:
+                            parts.append(self.walk_lambda_inline(a, inner, env, line))
+                        finally:
+                            if pname:
+                                self.run_targets.pop()
                     continue
-                if isinstance(a, list) and head(a) == "function" and sym(a[1]) in self.tree.defs:
-                    pctx = self.param_ctx.get((h, pname)) if pname else None
+                if isinstance(a, list) and head(a) == "function" and isinstance(a[1], Sym) \
+                        and sym(a[1]) in self.tree.defs:
+                    pctx = self.resolve_param_ctx(h, pname, lits) if pname else None
                     extra = pctx if isinstance(pctx, Ctx) else Ctx()
                     inner = Ctx(ctx.locks | extra.locks, ctx.noio, extra.scope or ctx.scope,
-                                extra.gated or ctx.gated, ctx.ignore)
+                                extra.gated or ctx.gated, ctx.ignore, ctx.cond)
                     self.ev("call", sym(a[1]), line, inner, "ref")
                     parts.append(("u", frozenset(), (sym(a[1]),), ()))
                     continue
+                if isinstance(a, list) and head(a) == "function" and isinstance(a[1], Sym):
+                    # a per-reference flet closure passed at PARAM: its body
+                    # runs under this site's context joined with the
+                    # callee's context for PARAM
+                    fl = self._lookup_flet(str(a[1]))
+                    if fl is not None and pname:
+                        pctx = self.resolve_param_ctx(h, pname, lits)
+                        extra = pctx if isinstance(pctx, Ctx) else Ctx()
+                        inner = Ctx(ctx.locks | extra.locks, ctx.noio, extra.scope or ctx.scope,
+                                    extra.gated or ctx.gated, ctx.ignore, ctx.cond)
+                        self.run_targets.append((h, pname))
+                        try:
+                            parts.append(self.walk_flet_body(fl, inner, env, line))
+                        finally:
+                            self.run_targets.pop()
+                        continue
                 if not self.recording and isinstance(a, Sym) and str(a) in self.cur.params and pname:
                     self.param_sites.setdefault((self.pass1_name, str(a)), []).append(("pass", ctx, h, pname))
                 parts.append(self.walk(a, ctx, env, line))
@@ -1534,7 +1830,16 @@ class Analyzer:
                 ctxs = []
                 for row in rows:
                     if row[0] == "run":
-                        ctxs.append(row[1])
+                        ctx = row[1]
+                        if len(row) == 3:
+                            # the run site is inside a closure that was
+                            # passed at (fn, param): it also runs under that
+                            # callee's context for the parameter
+                            sub = result.get(row[2])
+                            if isinstance(sub, Ctx):
+                                ctx = Ctx(ctx.locks | sub.locks, None, sub.scope or ctx.scope,
+                                          sub.gated or ctx.gated, cond=ctx.cond)
+                        ctxs.append(ctx)
                     else:
                         _, ctx, callee, cparam = row
                         sub = result.get((callee, cparam))
@@ -1558,6 +1863,56 @@ class Analyzer:
                     if isinstance(old, Ctx):
                         result[(name, p)] = Ctx(old.locks, None, "shared", old.gated)
         self.param_ctx = result
+        # per-route rows for call-site liveness resolution: exactly the
+        # contexts whose intersection is param_ctx above, one per run/pass
+        # site, with each site's arm condition (Ctx.cond) attached
+        routes: dict = {}
+        for key, rows in sites.items():
+            entries = []
+            for row in rows:
+                if row[0] == "run":
+                    ctx = row[1]
+                    if len(row) == 3:
+                        sub = result.get(row[2])
+                        if isinstance(sub, Ctx):
+                            ctx = Ctx(ctx.locks | sub.locks, None, sub.scope or ctx.scope,
+                                      sub.gated or ctx.gated, cond=ctx.cond)
+                    entries.append((ctx.locks, ctx.gated, ctx.scope, ctx.cond))
+                else:
+                    _, ctx, callee, cparam = row
+                    sub = result.get((callee, cparam))
+                    if isinstance(sub, Ctx):
+                        entries.append((ctx.locks | sub.locks, sub.gated, sub.scope or ctx.scope, ctx.cond))
+            if entries:
+                routes[key] = entries
+        self.param_routes = routes
+
+    def resolve_param_ctx(self, fn: str, pname: str | None, literals: dict):
+        """The context a closure passed at (FN, PNAME) runs in AT A CALL
+        SITE whose literal argument values are LITERALS.  A run route
+        whose arm condition is contradicted by a literal cannot reach this
+        site and drops out of the intersection; every other route stays,
+        so the answer is never wider than the conservative param_ctx."""
+        if pname is None:
+            return None
+        key = (fn, pname)
+        routes = self.param_routes.get(key)
+        cur = self.param_ctx.get(key)
+        if not routes:
+            return cur
+        live = []
+        for locks, gated, scope, cond in routes:
+            if cond is not None:
+                lv = literals.get(cond[0])
+                if lv is not None and lv is not cond[1]:
+                    continue
+            live.append((locks, gated, scope))
+        if not live:
+            return cur
+        locks = frozenset.intersection(*[row[0] for row in live])
+        gated = live[0][1] if all(r[1] == live[0][1] for r in live) else None
+        scope = live[0][2] if all(r[2] == live[0][2] for r in live) else None
+        return Ctx(locks, None, scope, gated)
 
 
 # --------------------------------------------------------------------------
@@ -3083,6 +3438,47 @@ def write_baseline(path: Path, findings: list[Finding], old: dict, initial: bool
     return []
 
 
+def audit_callbacks(model: Model, raw: dict) -> list[str]:
+    """--audit-callbacks: hold a why text's own-file line marker to its ordinal.
+
+    declare_callback_contexts refuses a MISSING ordinal, never a MOVED one:
+    a lambda inserted before a declared callback silently re-targets the row,
+    and the declaration then masks a different function than its text
+    describes (found live in fnn-bpnode-passive-begin, 2026-10-05: three rows
+    had drifted onto other lambdas).  A why text that names the callback's own
+    file with `file.lisp:NNN' claims that line for the ordinal; this audit
+    fails every such marker that disagrees with the line the ordinal resolves
+    to.  A row without an own-file marker is not audited and never an error:
+    only rows that claim a line are held to it (a marker naming ANOTHER file
+    -- a funcall site elsewhere -- is context, not an ordinal claim).
+    """
+    failures = []
+    for lam, row in raw.get("callback_contexts", {}).items():
+        info = model.an.infos.get(lam)
+        if info is None:
+            continue  # a run over other files (a fixture) does not see it
+        base = re.escape(Path(info.path).name)
+        for mark in re.finditer(rf"\b({base}):(\d+)", row.get("why", "")):
+            if int(mark.group(2)) != info.line:
+                failures.append(
+                    f"callback_contexts {lam}: its why text names {mark.group(0)} but the "
+                    f"ordinal resolves to {info.path}:{info.line} -- a lambda insert moved "
+                    f"it: re-declare the row (declare_callback_contexts cannot see a move)")
+    return failures
+
+
+def audit_summary(model: Model, raw: dict, failures: list[str]) -> str:
+    marked = 0
+    for lam in model.declared_callbacks:
+        info = model.an.infos.get(lam)
+        why = raw.get("callback_contexts", {}).get(lam, {}).get("why", "")
+        if info is not None and re.search(rf"\b{re.escape(Path(info.path).name)}:\d+", why):
+            marked += 1
+    return (f"lock_discipline_check: callback-ordinal audit: {len(model.declared_callbacks)} "
+            f"declared row(s), {marked} with an own-file line marker, "
+            f"{len(failures)} disagreeing marker(s)")
+
+
 def analyze_tree(root: Path, contracts: Contracts, files: list[str] | None = None,
                  reach: dict | None = None) -> tuple[Analyzer, Model, Checker]:
     tree = collect_tree(root, files)
@@ -3114,11 +3510,23 @@ def main(argv=None) -> int:
     ap.add_argument("--write-baseline", action="store_true")
     ap.add_argument("--initial", action="store_true")
     ap.add_argument("--emit-realization", action="store_true")
+    ap.add_argument("--audit-callbacks", action="store_true",
+                    help="standalone: print only the callback-ordinal audit (which --check's "
+                         "verdict already includes) and exit on its failures: a "
+                         "callback_contexts why text that names its own file (file.lisp:NNN) "
+                         "must name the line the ordinal resolves to; a row without such a "
+                         "marker is not audited")
     ap.add_argument("--summary", action="store_true")
     args = ap.parse_args(argv)
     started = time.time()
     root = Path(args.root).resolve()
     an, model, checker = build(root, Path(args.contracts))
+    audit_failures = audit_callbacks(model, checker.c.raw)
+    if args.audit_callbacks:
+        for why in audit_failures:
+            print("lock_discipline_check: " + why)
+        print(audit_summary(model, checker.c.raw, audit_failures))
+        return 1 if audit_failures else 0
     findings = checker.run(set(args.rule) if args.rule else None)
     if not args.rule or "R3" in args.rule:
         check_realization(checker)
@@ -3205,8 +3613,11 @@ def main(argv=None) -> int:
               f"{sum(r.get('count', 1) for r in baseline.values())}); "
               f"new {nb}; stale baseline rows {len(verdict['stale'])}; enclave {len(enclave)} functions"
               f" + {len(enclave_files)} files ({sum(len(v) for v in excepted.values())} excepted)")
+        if args.summary:
+            print(audit_summary(model, checker.c.raw, audit_failures))
     if args.check:
-        bad = verdict["new"] or verdict["stale"] or verdict["enclave_baselined"] or realization_drift
+        bad = (verdict["new"] or verdict["stale"] or verdict["enclave_baselined"]
+               or realization_drift or audit_failures)
         if bad:
             for why, f in verdict["new"][:40]:
                 print(f"lock_discipline_check: {why.upper()} {f.path}:{f.line} {f.rule} {f.function}: {f.message}")
@@ -3214,6 +3625,8 @@ def main(argv=None) -> int:
                 print(f"lock_discipline_check: STALE baseline row (lower it with --write-baseline): {k}")
             for k in verdict["enclave_baselined"]:
                 print(f"lock_discipline_check: an enclave finding cannot be baselined: {k}")
+            for why in audit_failures[:40]:
+                print("lock_discipline_check: CALLBACK-AUDIT " + why)
             return 1
     return 0
 

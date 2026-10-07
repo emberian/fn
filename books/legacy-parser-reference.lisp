@@ -169,7 +169,8 @@
               (if (equal (fn-lpc-at 5 s) 4)
                   (fn-lpc-body-byte (fn-lpc-at 6 s) byte) (fn-lpc-at 6 s))))
   :hints (("Goal" :in-theory
-    (union-theories '(fn-lpc-byte fn-lpc-at fn-ag-car fn-ag-cdr car-cons cdr-cons)
+    (union-theories '(fn-lpc-byte fn-lpc-byte-names fn-lpc-at fn-ag-car fn-ag-cdr
+                      car-cons cdr-cons)
                     (union-theories (theory 'minimal-theory)
                                     (executable-counterpart-theory :here)))))))
 

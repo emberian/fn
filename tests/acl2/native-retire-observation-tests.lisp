@@ -1,6 +1,7 @@
 ; PRF-1263 reachable operator decision witnesses, no owner-stop claim.
 (in-package "ACL2")
 (include-book "../../books/native-retire")
+(include-book "../../books/defkeystone")
 
 (defconst *nrot-request* (fn-nret-request-argv 10))
 (assert-event (equal (fn-nret-observation-budget-ticks *nrot-request* 1000) 70000))
@@ -81,3 +82,35 @@
 (assert-event (equal (fn-nret-observation-step *nrot-request* 100 100 0 :offline) :fault))
 (assert-event (equal (fn-nret-observation-step *nrot-request* 100 99 1000 :offline) :fault))
 (assert-event (equal (fn-nret-observation-step *nrot-request* 100 100 1000 :unknown) :fault))
+
+; TEETH-62 BEGIN
+; The two PRF-1263 keystones of books/native-retire.lisp with their teeth (TEETH CONTRACT v1).
+(defteeth fn-nret-observation-expiry-is-uncertain
+  :claim (((request (fn-nret-request argv)) (start (natp start)) (now (natp now)) (rate (posp rate)) (live (member-equal liveness '(:live :held))) (expired (<= (fn-nret-observation-budget-ticks argv rate)
+                    (- now start))))
+          (equal (fn-nret-observation-step argv start now rate liveness)
+                  :uncertain))
+  :subject fn-nret-observation-step
+  :witness ((argv *nrot-request*) (start 100) (now 70100) (rate 1000) (liveness :live))
+  :breaks ((request ((argv nil) (start 100) (now 70100) (rate 1000) (liveness :live)))
+           (start ((argv *nrot-request*) (start -100) (now 70000) (rate 1000) (liveness :live)))
+           (now ((argv *nrot-request*) (start 100) (now 140201/2) (rate 1000) (liveness :live)))
+           (rate ((argv *nrot-request*) (start 100) (now 70100) (rate 0) (liveness :live)))
+           (live ((argv *nrot-request*) (start 100) (now 70100) (rate 1000) (liveness :offline)))
+           (expired ((argv *nrot-request*) (start 100) (now 70099) (rate 1000) (liveness :live))))
+  :mutations ((expired-waits
+               (:conclusion (equal (fn-nret-observation-step argv start now rate liveness) :wait))
+               ((argv *nrot-request*) (start 100) (now 70100) (rate 1000) (liveness :live))
+               :fault "an observation past its deadline told to wait on")))
+
+(defteeth fn-nret-observation-report-requires-stopped
+  :claim (((report (equal (fn-nret-observation-step argv start now rate liveness)
+                  :report)))
+          (member-equal liveness '(:offline :stale)))
+  :subject fn-nret-observation-step
+  :witness ((argv *nrot-request*) (start 100) (now 100) (rate 1000) (liveness :stale))
+  :breaks ((report ((argv *nrot-request*) (start 100) (now 100) (rate 1000) (liveness :live))))
+  :mutations ((only-offline
+               (:conclusion (equal liveness :offline))
+               ((argv *nrot-request*) (start 100) (now 100) (rate 1000) (liveness :stale))
+               :fault "only an offline owner counted as stopped, a stale lock not")))

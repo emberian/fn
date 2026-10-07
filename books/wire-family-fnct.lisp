@@ -370,3 +370,155 @@
                           (fn-frame-trailer (fn-frame-protected (list 70 78 67 84) 1 k p)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-nctrl-seal) (fn-frame-protected fn-frame-trailer)))))
+
+; -----------------------------------------------------------------------------
+; A family's decoder, once: the interpreter accepts a whole FNCT frame at
+; (:frame FNCT 1 K MX G) exactly when the host opens it (any cap HM >= MX)
+; with FNCT, version 1 and kind K, its payload is at most MX octets and G
+; accepts the payload whole -- and then with G's value.  So a family's
+; decode agreement is a statement about its payload alone.
+
+(defthm fn-wf-fnct-decode-ok-is-frame-ok
+  (implies (fn-frame-result-okp (fn-frame-decode x digest mx))
+           (equal (fn-frame-decode x digest mx)
+                  (fn-frame-ok (fn-frame-result-magic (fn-frame-decode x digest mx))
+                               (fn-frame-result-version (fn-frame-decode x digest mx))
+                               (fn-frame-result-kind (fn-frame-decode x digest mx))
+                               (fn-frame-result-payload (fn-frame-decode x digest mx)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-frame-decode) (fn-frame-head-fields fn-cbor-u32-from fn-frame-split)))))
+(defthm fn-wf-fnct-wg-whole-is-ok
+  (implies (and (fn-wg-okp (fn-wg-decode g xs)) (null (fn-wg-rest (fn-wg-decode g xs))))
+           (equal (fn-wg-decode g xs) (fn-wg-ok (fn-wg-value (fn-wg-decode g xs)) nil)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-wg-decode-answers
+           :in-theory (e/d (fn-wg-okp fn-wg-ok fn-wg-rest fn-wg-value fn-wg-refused fn-wg-arg) (fn-wg-decode)))))
+
+(defthm fn-wf-fnct-whole-decode-backward
+  (let ((r (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm)))
+    (implies (and (fn-wg-grammarp g) (fn-cbor-octetp k) (natp mx) (< mx 4294967296)
+                  (fn-frame-result-okp r)
+                  (equal (fn-frame-result-magic r) (list 70 78 67 84))
+                  (equal (fn-frame-result-version r) 1)
+                  (equal (fn-frame-result-kind r) k)
+                  (<= (len (fn-frame-result-payload r)) mx)
+                  (fn-wg-okp (fn-wg-decode g (fn-frame-result-payload r)))
+                  (null (fn-wg-rest (fn-wg-decode g (fn-frame-result-payload r)))))
+             (equal (fn-wg-decode (list :frame (list 70 78 67 84) 1 k mx g) x)
+                    (fn-wg-ok (fn-wg-value (fn-wg-decode g (fn-frame-result-payload r))) nil))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-fnct-wg-whole-is-ok
+                            (xs (fn-frame-result-payload
+                                 (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm))))
+                 (:instance fn-wf-fnct-decode-ok-is-frame-ok (digest (fn-frame-trailer (fn-frame-protected-prefix x))) (mx hm))
+                 (:instance fn-wf-fnct-host-open-is-wg-accept
+                            (p (fn-frame-result-payload
+                                (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm)))
+                            (v (fn-wg-value (fn-wg-decode g (fn-frame-result-payload
+                                                             (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm)))))))
+           :in-theory (union-theories '(natp fn-cbor-octetp) (theory 'minimal-theory)))))
+
+(defthm fn-wf-fnct-whole-decode-of-ok
+  (implies (and (fn-wg-grammarp g) (fn-cbor-octetp k) (natp mx) (natp hm) (<= mx hm) (<= hm 4294967295)
+                (fn-cbor-octet-listp x)
+                (equal (fn-wg-decode (list :frame (list 70 78 67 84) 1 k mx g) x) (fn-wg-ok v nil)))
+           (let* ((r (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm))
+                  (p (fn-frame-result-payload r)))
+             (and (fn-frame-result-okp r)
+                  (equal (fn-frame-result-magic r) (list 70 78 67 84))
+                  (equal (fn-frame-result-version r) 1)
+                  (equal (fn-frame-result-kind r) k)
+                  (<= (len p) mx)
+                  (equal (fn-wg-decode g p) (fn-wg-ok v nil)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-wf-fnct-wg-accept-is-host-open
+                 (:instance fn-wf-fnct-whole-accept-is-encoding (f (list :frame (list 70 78 67 84) 1 k mx g)))
+                 fn-wf-fnct-frame-facts
+                 fn-wg-decode-of-encode-whole)
+           :in-theory (union-theories '(natp fn-cbor-octetp fn-frame-result-okp-of-ok fn-frame-result-magic-of-ok
+                                        fn-frame-result-version-of-ok fn-frame-result-kind-of-ok
+                                        fn-frame-result-payload-of-ok)
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-wf-fnct-whole-decode
+  (implies (and (fn-wg-grammarp g) (fn-cbor-octetp k) (natp mx) (natp hm) (<= mx hm) (<= hm 4294967295)
+                (fn-cbor-octet-listp x))
+           (let* ((r (fn-frame-decode x (fn-frame-trailer (fn-frame-protected-prefix x)) hm))
+                  (p (fn-frame-result-payload r))
+                  (w (fn-wg-decode (list :frame (list 70 78 67 84) 1 k mx g) x)))
+             (and (iff (and (fn-wg-okp w) (null (fn-wg-rest w)))
+                       (and (fn-frame-result-okp r)
+                            (equal (fn-frame-result-magic r) (list 70 78 67 84))
+                            (equal (fn-frame-result-version r) 1)
+                            (equal (fn-frame-result-kind r) k)
+                            (<= (len p) mx)
+                            (fn-wg-okp (fn-wg-decode g p))
+                            (null (fn-wg-rest (fn-wg-decode g p)))))
+                  (implies (and (fn-wg-okp w) (null (fn-wg-rest w)))
+                           (equal (fn-wg-value w) (fn-wg-value (fn-wg-decode g p)))))))
+  :hints (("Goal" :do-not-induct t
+           :do-not '(fertilize eliminate-destructors generalize)
+           :use ((:instance fn-wf-fnct-wg-whole-is-ok (g (list :frame (list 70 78 67 84) 1 k mx g)) (xs x))
+                 (:instance fn-wf-fnct-whole-decode-of-ok
+                            (v (fn-wg-value (fn-wg-decode (list :frame (list 70 78 67 84) 1 k mx g) x))))
+                 fn-wf-fnct-whole-decode-backward)
+           :in-theory (union-theories '(fn-wg-result-accessors natp fn-cbor-octetp)
+                                      (theory 'minimal-theory)))))
+
+; The empty sequence, which a status arm without fields carries.
+(defthm fn-wf-wg-decode-empty-seq
+  (equal (fn-wg-decode '(:seq) xs) (fn-wg-ok nil xs))
+  :hints (("Goal" :in-theory (enable fn-wg-decode-opener-seq))))
+(defthm fn-wf-wg-encode-empty-seq
+  (and (equal (fn-wg-encode '(:seq) v) nil)
+       (equal (fn-wg-valuep '(:seq) v) (null v)))
+  :hints (("Goal" :in-theory (enable fn-wg-encode-opener-seq fn-wg-valuep-opener-seq))))
+(in-theory (disable fn-wf-wg-decode-empty-seq fn-wf-wg-encode-empty-seq))
+
+; One- and two-element sequences, read and written without opening the
+; elements (a family's arm is often (:seq FIELD) or (:seq FIELD FIELD)).
+(defthm fn-wf-wg-decode-seq1
+  (equal (fn-wg-decode (list :seq a) xs)
+         (let ((r (fn-wg-decode a xs)))
+           (if (fn-wg-okp r) (fn-wg-ok (list (fn-wg-value r)) (fn-wg-rest r)) r)))
+  :hints (("Goal" :in-theory (enable fn-wg-decode-opener-seq fn-wf-wg-decode-empty-seq fn-wg-next
+                                     fn-wg-arg fn-wg-op))))
+(defthm fn-wf-wg-decode-seq2
+  (equal (fn-wg-decode (list :seq a b) xs)
+         (let ((r1 (fn-wg-decode a xs)))
+           (if (fn-wg-okp r1)
+               (let ((r2 (fn-wg-decode b (fn-wg-rest r1))))
+                 (if (fn-wg-okp r2)
+                     (fn-wg-ok (list (fn-wg-value r1) (fn-wg-value r2)) (fn-wg-rest r2))
+                   r2))
+             r1)))
+  :hints (("Goal" :in-theory (enable fn-wg-decode-opener-seq fn-wg-next fn-wg-arg fn-wg-op)
+           :use ((:instance fn-wf-wg-decode-seq1 (a b)
+                            (xs (fn-wg-rest (fn-wg-decode a xs))))))))
+(defthm fn-wf-wg-encode-seq1
+  (and (equal (fn-wg-encode (list :seq a) v) (fn-wg-app (fn-wg-encode a (car v)) nil))
+       (equal (fn-wg-valuep (list :seq a) v)
+              (and (consp v) (fn-wg-valuep a (car v)) (null (cdr v)))))
+  :hints (("Goal" :in-theory (enable fn-wg-encode-opener-seq fn-wg-valuep-opener-seq fn-wf-wg-encode-empty-seq
+                                     fn-wg-next fn-wg-arg fn-wg-op))))
+(defthm fn-wf-wg-encode-seq2
+  (and (equal (fn-wg-encode (list :seq a b) v)
+              (fn-wg-app (fn-wg-encode a (car v)) (fn-wg-app (fn-wg-encode b (cadr v)) nil)))
+       (equal (fn-wg-valuep (list :seq a b) v)
+              (and (consp v) (fn-wg-valuep a (car v)) (consp (cdr v)) (fn-wg-valuep b (cadr v))
+                   (null (cddr v)))))
+  :hints (("Goal" :in-theory (enable fn-wg-encode-opener-seq fn-wg-valuep-opener-seq
+                                     fn-wg-next fn-wg-arg fn-wg-op)
+           :use ((:instance fn-wf-wg-encode-seq1 (a b) (v (cdr v)))))))
+(in-theory (disable fn-wf-wg-decode-seq1 fn-wf-wg-decode-seq2 fn-wf-wg-encode-seq1 fn-wf-wg-encode-seq2))
+
+(encapsulate ()
+(local (include-book "arithmetic-5/top" :dir :system))
+(defthm fn-wf-be-bytes-2
+  (implies (and (natp n) (< n 65536))
+           (equal (fn-wg-be-bytes 2 n) (list (floor n 256) (mod n 256))))
+  :hints (("Goal" :in-theory (enable fn-wg-be-bytes fn-wg-rev)
+           :expand ((fn-wg-le-bytes 2 n) (fn-wg-le-bytes 1 (floor n 256))
+                    (fn-wg-le-bytes 0 (floor (floor n 256) 256)))))))

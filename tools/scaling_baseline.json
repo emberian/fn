@@ -1,0 +1,5 @@
+{
+ "_doc": "The scaling gate's ratio ceiling (tests/test_native_scaling.py): the ARTICLE time at 8N over N. The ceiling only shrinks. 2026-10-05: opened at 15.0 with the span-borrow batch landed, because one superlinear term is known and owed -- the per-window re-digest of the whole protected prefix (PERF-REGRESSION-20261005.md item 5, the verified-streaming lane), measured 13.1x at 92bcb4d96f2e (64 KiB 0.253 s, 512 KiB 3.305 s, hbox load ~4). The target is 10.0x; when verified streaming lands, drop the ceiling to it. Calibrated for the default N (64 KiB / 512 KiB); an FN_SCALING_N override re-calibrates nothing.",
+ "article_ratio_ceiling": 15.0,
+ "article_ratio_target": 10.0
+}

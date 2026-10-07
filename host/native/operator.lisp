@@ -817,7 +817,10 @@ Run-only accessors intentionally return NIL for these commands."
     (fnn-heap-print-store-line
      (fnn-core 'fn-native-operator-host-result-store-root result)
      (fnn-core 'fn-native-config-cold-resources config)
-     (fnn-core 'fn-native-config-output-resources config))
+     (fnn-core 'fn-native-config-output-resources config)
+     ;; D53: the next run's figure holds the live reclaim's reserve only
+     ;; when the configuration opts in.
+     (and (fnn-core 'fn-native-config-reclaim-livep config) t))
     (fnn-out "~a" (fnn-core 'fn-oadl-accounting-line
                             (fnn-core 'fn-native-config-output-resources config)))))
 

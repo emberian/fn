@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/output-reservation")
+(include-book "../../books/defkeystone")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *orvt-base* '(:heap 512 :development 4096 1024 12))
@@ -86,3 +87,46 @@
 (assert! (equal (fn-ncfg-output-resources
                  (list (list "resources" "output_heap_octets" (list :nat (expt 2 64)))
                        (list "resources" "output_quantum_heap_octets" '(:nat 1048576)))) :bad))
+
+; TEETH-62 BEGIN
+; The three PRF output-reservation keystones with their teeth (TEETH CONTRACT v1).
+(defteeth fn-orv-accepted-launch-fits-observed-machine
+  :claim (((policy (fn-orv-policy-p policy)) (accepted (equal (fn-crv-nth 0 (fn-orv-extend-reservation base policy core observations)) :heap)))
+          (let ((d (fn-orv-extend-reservation base policy core observations)))
+             (<= (fn-heap-reservation-octets (fn-crv-nth 1 d) core
+                                             (fn-crv-nth 4 d) (fn-crv-nth 5 d))
+                 (fn-heap-machine-octets observations))))
+  :subject fn-orv-extend-reservation
+  :witness ((base *orvt-base*) (policy *orvt-policy*) (core *orvt-core*) (observations *orvt-machine*))
+  :breaks ((policy ((base *orvt-base*) (policy nil) (core *orvt-core*) (observations '(536870912))))
+           (accepted ((base *orvt-base*) (policy *orvt-policy*) (core *orvt-core*) (observations '(134217728)))))
+  :mutations ((bounded-by-core
+               (:conclusion (let ((d (fn-orv-extend-reservation base policy core observations))) (<= (fn-heap-reservation-octets (fn-crv-nth 1 d) core (fn-crv-nth 4 d) (fn-crv-nth 5 d)) core)))
+               ((base *orvt-base*) (policy *orvt-policy*) (core *orvt-core*) (observations *orvt-machine*))
+               :fault "the reservation bounded by the core heap alone, ignoring the output allowance")))
+
+(defteeth fn-orv-accepted-launch-funds-output-dynamic-allowance
+  :claim (((accepted (equal (fn-crv-nth 0 (fn-orv-extend-reservation base policy core observations)) :heap)))
+          (<= (+ (* *fn-heap-mib* (nfix (fn-crv-nth 1 base)))
+                  (nfix (fn-crv-nth 0 policy)))
+               (* *fn-heap-mib* (nfix (fn-crv-nth 1 (fn-orv-extend-reservation base policy core observations))))))
+  :subject fn-orv-extend-reservation
+  :witness ((base *orvt-base*) (policy *orvt-policy*) (core *orvt-core*) (observations *orvt-machine*))
+  :breaks ((accepted ((base *orvt-base*) (policy *orvt-policy*) (core *orvt-core*) (observations '(134217728)))))
+  :mutations ((allowance-twice
+               (:conclusion (<= (+ (* *fn-heap-mib* (nfix (fn-crv-nth 1 base))) (* 2 (nfix (fn-crv-nth 0 policy)))) (* *fn-heap-mib* (nfix (fn-crv-nth 1 (fn-orv-extend-reservation base policy core observations))))))
+               ((base *orvt-base*) (policy *orvt-policy*) (core *orvt-core*) (observations *orvt-machine*))
+               :fault "twice the dynamic allowance claimed as funded")))
+
+(defteeth fn-orv-startup-hold-protects-owner-and-one-quantum
+  :claim (((hold (equal (car (fn-orv-startup-grant dynamic store-need cold policy slots)) :hold)))
+          (and (<= (+ store-need (nfix (fn-crv-nth 0 cold)) (fn-crv-nth 0 policy)) dynamic)
+                (<= (+ (fn-orv-bookkeeping-octets slots) (* 2 (fn-crv-nth 1 policy)))
+                    (fn-crv-nth 0 policy))))
+  :subject fn-orv-startup-grant
+  :witness ((dynamic 637534208) (store-need 536870912) (cold *orvt-cold*) (policy *orvt-policy*) (slots 34))
+  :breaks ((hold ((dynamic 536870912) (store-need 536870912) (cold *orvt-cold*) (policy *orvt-policy*) (slots 34))))
+  :mutations ((cold-pool-twice
+               (:conclusion (<= (+ store-need (* 2 (nfix (fn-crv-nth 0 cold))) (fn-crv-nth 0 policy)) dynamic))
+               ((dynamic 637534208) (store-need 536870912) (cold *orvt-cold*) (policy *orvt-policy*) (slots 34))
+               :fault "the cold pool counted twice against the dynamic budget")))

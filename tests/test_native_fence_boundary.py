@@ -118,7 +118,8 @@ class ReclaimInstallFenceTests(expiry.ExpiryMixin, unittest.TestCase):
         return base
 
     def copy_of(self, base, name):
-        copy = Node(self, self.image, root=self.root / name)
+        copy = Node(self, self.image, root=self.root / name,
+                    extra=expiry.reclaim_extra(self.reclaim_live))
         shutil.rmtree(copy.store_path, ignore_errors=True)
         shutil.copytree(base.store_path, copy.store_path)
         return copy

@@ -301,6 +301,24 @@
                 (and done (fn-splan-rest-donep (cdr rest))))))
       (mv :ordinary nil plan nil))))
 
+;; The ARTICLE quantum: how many payload octets one hold of the owner mutex
+;; scans (preflight fuel) or renders (window), and so how many octets one
+;; write carries.  It was the OVER cursor's 256 (a NOV line's worth of
+;; work), which made a 1 MiB ARTICLE 4096 quanta, each a mutex round, a write
+;; and a scheduling turn.  An article octet costs about a microsecond, so
+;; 16384 (the verified window) holds the mutex for milliseconds, the same
+;; order a 256-line OVER quantum does; every bound over the quantum is
+;; parametric (fn-ast-render-window-byte-bound, fn-ast-scan-work-bounded).
+(defconst *fn-asto-quantum* 16384)
+
+(defun fn-asto-quantum (override)
+  (declare (xargs :guard t))
+  (if (posp override) override *fn-asto-quantum*))
+
+(defthm fn-asto-quantum-posp
+  (posp (fn-asto-quantum override))
+  :rule-classes (:rewrite :type-prescription))
+
 (defun fn-asto-plan-render-window (plan window fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((rest (fn-splan-rest plan)))

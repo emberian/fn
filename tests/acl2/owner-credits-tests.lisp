@@ -191,12 +191,14 @@
 ; 3,441,664 octets, 32 reserves and not 33; under A = 4 MiB seven
 ; (the native case, tests/test_native_article_slots.py; lane chunked-body-2).
 (defconst *mcat-core* '(200411640 . 114644864))
-(defconst *mcat-small* (fn-mca-initial *fn-heap-small-profile* *mcat-core* nil))
+; Without the opt-in (D53; `[resources] reclaim_live' absent): the figure is
+; the store's, as before lane reclaim-funding.
+(defconst *mcat-small* (fn-mca-initial *fn-heap-small-profile* *mcat-core* nil nil))
 (assert-event (fn-mcr-fundedp *mcat-small*))
 (assert-event (equal (fn-mcr-budget *mcat-small*)
                      (fn-heap-figure-octets *fn-heap-small-profile* *mcat-core* nil)))
 (assert-event (equal (- (fn-mcr-budget *mcat-small*) (fn-mcr-total *mcat-small*)) 3441664))
-(assert-event (equal (fn-mcr-completion *mcat-small*) (fn-mca-open-octets *fn-heap-small-profile*)))
+(assert-event (equal (fn-mcr-completion *mcat-small*) (fn-mca-owner-octets *fn-heap-small-profile* nil)))
 (defun mcat-admit-n (l n r)
   (declare (xargs :mode :program))
   (if (zp n) l
@@ -204,11 +206,59 @@
       (if (equal (car d) :ok) (mcat-admit-n (cadr d) (1- n) r) :refused))))
 (assert-event (fn-mcr-fundedp (mcat-admit-n *mcat-small* 32 *mcat-r*)))
 (assert-event (equal (mcat-admit-n *mcat-small* 33 *mcat-r*) :refused))
-(defconst *mcat-a4* (fn-mca-initial *oast-a4* *mcat-core* nil))
+(defconst *mcat-a4* (fn-mca-initial *oast-a4* *mcat-core* nil nil))
 (defconst *mcat-a4-r* (fn-heap-article-reserve-octets *oast-a4*))
 ; A = 4 MiB: seven (one before lane chunked-body-2's packed reserve).
 (assert-event (fn-mcr-fundedp (mcat-admit-n *mcat-a4* 7 *mcat-a4-r*)))
 (assert-event (equal (mcat-admit-n *mcat-a4* 8 *mcat-a4-r*) :refused))
+; The owner's work reserve (lane reclaim-funding): with the opt-in, at the
+; small preset the live reclaim's demand at the bounds, 358,006,784, exceeds
+; the open's transient, 130,023,424, so the reserve is the demand; without
+; it the reserve is the open's transient alone.
+(assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile* t) 358006784))
+(assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile* nil) 130023424))
+(assert-event (equal (fn-heap-store-open-octets *fn-heap-small-profile* 8388608 16384) 130023424))
+
+; KEYSTONE fn-mca-served-steps-keep-pass-free (K2), with
+; fn-mca-initial-is-pass-free: the run's ledger is pass-free, and 32 articles
+; admitted, one taken, sealed and completed, and a close keep it so.
+(assert-event (fn-mca-pass-free-p *mcat-small* *fn-heap-small-profile* nil))
+(defconst *mcat-small-busy*
+  (fn-mca-close (fn-mca-batch-done (fn-mca-seal (fn-mca-take (mcat-admit-n *mcat-small* 32 *mcat-r*)
+                                                             5 *mcat-r*)))
+                9))
+(assert-event (fn-mca-pass-free-p *mcat-small-busy* *fn-heap-small-profile* nil))
+(assert-event (equal (fn-mcr-completion *mcat-small-busy*) (fn-mcr-completion *mcat-small*)))
+; Corrupted state (labelled): a ledger whose completion reserve was overdrawn
+; is not pass-free, nor one where :reclaim already holds an entry.
+(assert-event (equal (car (fn-mcr-overdraw (mcat-admit-n *mcat-small* 32 *mcat-r*)
+                                           (fn-mca-conn-key 1) 1))
+                     :ok))
+(assert-event (not (fn-mca-pass-free-p (cadr (fn-mcr-overdraw (mcat-admit-n *mcat-small* 32 *mcat-r*)
+                                                              (fn-mca-conn-key 1) 1))
+                                       *fn-heap-small-profile* nil)))
+(assert-event (equal (car (fn-mcr-borrow *mcat-small* :reclaim 1)) :ok))
+(assert-event (not (fn-mca-pass-free-p (cadr (fn-mcr-borrow *mcat-small* :reclaim 1))
+                                       *fn-heap-small-profile* nil)))
+
+; With the opt-in (fn-mca-figure-on-is-the-live-figure,
+; fn-mca-figure-off-is-the-store-figure): the figure grows by exactly the
+; reserve's excess, 227,983,360 = 358,006,784 - 130,023,424; the articles'
+; pool is the same 32 reserves; the run's ledger is pass-free for a live pass.
+(defconst *mcat-small-live* (fn-mca-initial *fn-heap-small-profile* *mcat-core* nil t))
+(assert-event (fn-mcr-fundedp *mcat-small-live*))
+(assert-event (equal (fn-mca-figure-octets *fn-heap-small-profile* *mcat-core* nil nil)
+                     (fn-heap-figure-octets *fn-heap-small-profile* *mcat-core* nil)))
+(assert-event (equal (- (fn-mcr-budget *mcat-small-live*) (fn-mcr-budget *mcat-small*)) 227983360))
+(assert-event (equal (- (fn-mcr-budget *mcat-small-live*) (fn-mcr-total *mcat-small-live*))
+                     (- (fn-mcr-budget *mcat-small*) (fn-mcr-total *mcat-small*))))
+(assert-event (equal (fn-mcr-completion *mcat-small-live*) 358006784))
+(assert-event (fn-mca-pass-free-p *mcat-small-live* *fn-heap-small-profile* t))
+(assert-event (fn-mcr-fundedp (mcat-admit-n *mcat-small-live* 32 *mcat-r*)))
+(assert-event (equal (mcat-admit-n *mcat-small-live* 33 *mcat-r*) :refused))
+; Mutation: the off ledger read as a live one is not pass-free (the reserve
+; is absent, not merely unused).
+(assert-event (not (fn-mca-pass-free-p *mcat-small* *fn-heap-small-profile* t)))
 
 ; PKT-887 (lane credits-stall): a poster whose short article is queued
 ; behind a barrier holds that article's charge, not a whole reserve, so its

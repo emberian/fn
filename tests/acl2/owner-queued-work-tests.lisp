@@ -5,6 +5,7 @@
 ; fn-oqw-receipt on the time-bars ledger it issued the job under.
 (in-package "ACL2")
 (include-book "../../books/owner-queued-work")
+(include-book "../../books/defkeystone")
 
 ; --- The batch job, every effect returned: five phases in order, :done.
 (assert-event (equal (fn-oqw-start :batch) :intents))
@@ -99,3 +100,82 @@
 (assert-event (equal (car (fn-oqw-receipt *oqwt-done* 1 :done nil)) :consumed))
 (assert-event (equal (car (fn-oqw-receipt *oqwt-l* 3 :done nil)) :stale))
 (assert-event (equal (car (fn-oqw-receipt *oqwt-l* 1 :uncertain nil)) :failed))
+
+; TEETH-62 BEGIN
+; The three PRF owner-queued-work keystones with their teeth (TEETH CONTRACT v1).  The batch and receipt keystones state no antecedent outside their `let'; the receipt removals are mutations that drop one antecedent of an `iff' conjunct.
+(defteeth fn-oqw-a-failed-effect-ends-the-job
+  :claim (((not-terminal (not (fn-oqw-terminalp phase))) (not-ok (not (equal word :ok))))
+          (and (equal (fn-oqw-step kind phase word)
+                       (if (equal word :uncertain) :uncertain :fault))
+                (fn-oqw-terminalp (fn-oqw-step kind phase word))
+                (equal (fn-oqw-step kind (fn-oqw-step kind phase word) word2)
+                       (fn-oqw-step kind phase word))))
+  :subject fn-oqw-step
+  :witness ((kind :batch) (phase :fence) (word :uncertain) (word2 :ok))
+  :breaks ((not-terminal ((kind :batch) (phase :done) (word :eio) (word2 :ok)))
+           (not-ok ((kind :batch) (phase :fence) (word :ok) (word2 :ok))))
+  :mutations ((uncertain-as-fault
+               (:conclusion (equal (fn-oqw-step kind phase word) :fault))
+               ((kind :batch) (phase :fence) (word :uncertain) (word2 :ok))
+               :fault "an uncertain effect collapsed to a fault")))
+
+(defteeth fn-oqw-batch-effect-order
+  :claim (() (let ((trace (fn-oqw-trace :batch (fn-oqw-start :batch) words))) (and (implies (member-equal :append trace)
+                  (and (equal (first words) :ok)
+                       (equal (second words) :ok)))
+         (implies (member-equal :fence trace)
+                  (equal (third words) :ok))
+         (implies (member-equal :resolutions trace)
+                  (and (equal (first words) :ok) (equal (second words) :ok)
+                       (equal (third words) :ok) (equal (fourth words) :ok)))
+         (iff (equal (fn-oqw-final :batch (fn-oqw-start :batch) words) :done)
+              (and (fn-oqw-all-ok (take 5 words)) (<= 5 (len words))))
+         (implies (equal (fn-oqw-final :batch (fn-oqw-start :batch) words) :done)
+                  (equal trace (fn-oqw-phases :batch))))))
+  :subject fn-oqw-final
+  :witness ((words '(:ok :ok :ok :ok :ok)))
+  :mutations ((fifth-effect-ignored
+               (:conclusion (iff (equal (fn-oqw-final :batch (fn-oqw-start :batch) words) :done) (fn-oqw-all-ok (take 4 words))))
+               ((words '(:ok :ok :ok :ok :uncertain)))
+               :fault "the fifth effect left out of the success test")
+              (failed-job-ran-every-phase
+               (:conclusion (let ((trace (fn-oqw-trace :batch (fn-oqw-start :batch) words))) (equal trace (fn-oqw-phases :batch))))
+               ((words '(:ok :ok :fault)))
+               :fault "a job whose append failed claimed to have run every phase")))
+
+(defteeth fn-oqw-receipt-outcomes-are-distinct
+  :claim (() (let* ((r (fn-oqw-receipt l gen final cids))
+         (outcome (car r))) (and (member-equal outcome '(:fenced :failed :fault :stale :consumed))
+         (iff (equal outcome :fenced)
+              (and (fn-otb-open l) (equal (nfix gen) (fn-otb-gen l))
+                   (equal final :done)))
+         (iff (equal outcome :failed)
+              (and (fn-otb-open l) (equal (nfix gen) (fn-otb-gen l))
+                   (equal final :uncertain)))
+         (iff (equal outcome :fault)
+              (and (fn-otb-open l) (equal (nfix gen) (fn-otb-gen l))
+                   (not (equal final :done)) (not (equal final :uncertain))))
+         (iff (equal outcome :stale) (not (equal (nfix gen) (fn-otb-gen l))))
+         (implies (member-equal outcome '(:stale :consumed))
+                  (and (null (cadr r)) (equal (caddr r) l)))
+         (implies (member-equal outcome '(:fenced :failed :fault))
+                  (and (equal (cdr r) (cdr (fn-otb-complete l gen cids)))
+                       (not (fn-otb-open (caddr r))))))))
+  :subject fn-oqw-receipt
+  :witness ((l *oqwt-l*) (gen 1) (final :done) (cids '(7)))
+  :mutations ((without-open
+               (:conclusion (let* ((r (fn-oqw-receipt l gen final cids)) (outcome (car r))) (iff (equal outcome :fenced) (and (equal (nfix gen) (fn-otb-gen l)) (equal final :done)))))
+               ((l *oqwt-done*) (gen 1) (final :done) (cids '(7)))
+               :fault "a closed ledger counted as fenced: the open antecedent dropped")
+              (without-generation
+               (:conclusion (let* ((r (fn-oqw-receipt l gen final cids)) (outcome (car r))) (iff (equal outcome :fenced) (and (fn-otb-open l) (equal final :done)))))
+               ((l *oqwt-l*) (gen 3) (final :done) (cids '(7)))
+               :fault "a generation other than the ledger's counted as fenced")
+              (without-done
+               (:conclusion (let* ((r (fn-oqw-receipt l gen final cids)) (outcome (car r))) (iff (equal outcome :fenced) (and (fn-otb-open l) (equal (nfix gen) (fn-otb-gen l))))))
+               ((l *oqwt-l*) (gen 1) (final :uncertain) (cids '(7)))
+               :fault "an uncertain job counted as fenced: the :done antecedent dropped")
+              (stale-by-final
+               (:conclusion (let* ((r (fn-oqw-receipt l gen final cids)) (outcome (car r))) (iff (equal outcome :stale) (equal final :done))))
+               ((l *oqwt-l*) (gen 1) (final :done) (cids '(7)))
+               :fault "stale decided by the job's final phase, not the generation")))

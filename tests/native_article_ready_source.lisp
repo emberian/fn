@@ -25,6 +25,8 @@
   (harness-stub-reached 'fnn-err "host/native/io.lisp"))
 (defun fnn-extent-pool-funded-p ()
   (harness-stub-reached 'fnn-extent-pool-funded-p "host/native/extent.lisp"))
+(defun fnn-owner-article-window ()
+  (harness-stub-reached 'fnn-owner-article-window "host/native/owner.lisp"))
 (defun fnn-owner-cursor-step (service cid plan class)
   (declare (ignorable service cid plan class))
   (harness-stub-reached 'fnn-owner-cursor-step "host/native/owner.lisp"))

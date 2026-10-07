@@ -10,6 +10,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/connection-budget")
+(include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 
 (defconst *cbt-machine* 2147483648)
@@ -333,3 +334,42 @@
                             (nfix (fn-cbud-held-at 8 *cbt-held*))))
                    (not (<= (fn-cbud-held-at 8 (fn-cbud-live-held *cbt-live-v64* 12 *cbt-held*))
                             (nfix (fn-cbud-held-at 8 *cbt-held*))))))
+
+; TEETH-62 BEGIN
+; The PRF-1268 live-held keystones of books/connection-budget.lisp with their teeth (TEETH CONTRACT v1).
+(defteeth fn-cbud-live-held-charges-current-and-active
+  :claim (((owned (consp held)))
+          (and (equal (fn-cbud-held-at 8 (fn-cbud-live-held v active held))
+                       (max (nfix active)
+                            (fn-cbud-config-handshake-slots v (fn-cbud-held-at 7 held))))
+                (equal
+                 (list (fn-cbud-held-at 0 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 1 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 2 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 3 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 4 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 5 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 6 (fn-cbud-live-held v active held))
+                       (fn-cbud-held-at 7 (fn-cbud-live-held v active held)))
+                 (list (fn-cbud-held-at 0 held) (fn-cbud-held-at 1 held) (fn-cbud-held-at 2 held) (fn-cbud-held-at 3 held) (fn-cbud-held-at 4 held) (fn-cbud-held-at 5 held) (fn-cbud-held-at 6 held) (fn-cbud-held-at 7 held)))))
+  :subject fn-cbud-live-held
+  :witness ((v *cbt-live-v4*) (active 12) (held *cbt-held*))
+  :breaks ((owned ((v *cbt-live-v4*) (active 12) (held nil))))
+  :mutations ((active-only
+               (:conclusion (equal (fn-cbud-held-at 8 (fn-cbud-live-held v active held)) (nfix active)))
+               ((v *cbt-live-v4*) (active 3) (held *cbt-held*))
+               :fault "a lowering charged only the actual live count, not the published handshake slots")))
+
+(defteeth fn-cbud-live-held-releases-only-unneeded-slots
+  :claim (((active-fits (<= (nfix active) (nfix (fn-cbud-held-at 8 held)))) (published-fits (<= (fn-cbud-config-handshake-slots v (fn-cbud-held-at 7 held))
+                    (nfix (fn-cbud-held-at 8 held)))))
+          (<= (fn-cbud-held-at 8 (fn-cbud-live-held v active held))
+               (nfix (fn-cbud-held-at 8 held))))
+  :subject fn-cbud-live-held
+  :witness ((v *cbt-live-v4*) (active 12) (held *cbt-held*))
+  :breaks ((active-fits ((v *cbt-live-v4*) (active 20) (held *cbt-held*)))
+           (published-fits ((v *cbt-live-v64*) (active 12) (held *cbt-held*))))
+  :mutations ((release-to-live
+               (:conclusion (<= (fn-cbud-held-at 8 (fn-cbud-live-held v active held)) (nfix active)))
+               ((v *cbt-live-v4*) (active 3) (held *cbt-held*))
+               :fault "the held figure released down to the live count, below the published handshake slots")))
