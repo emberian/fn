@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -70,6 +71,27 @@ class HostTablesRuleTests(unittest.TestCase):
             refused, accepted = host_check.tables_check([declared])
             self.assertEqual(refused, [])
             self.assertEqual(len(accepted), 4)
+
+    def test_a_fnn_guarded_by_form_declares_every_site_of_its_variable(self):
+        # 31df31581 moved the contract from a `guarded-by:' comment to
+        # (fnn-guarded-by VAR LOCK); a setf that re-makes the table is covered.
+        body = ('(defvar *fx-lock* (sb-thread:make-mutex))\n'
+                '(defvar *fx-a* (make-hash-table))\n'
+                '{form}'
+                '(defun fx-take () (fnn-with-observed-mutex (*fx-lock* :fx) (gethash 1 *fx-a*)))\n'
+                '(defun fx-reset () (setf *fx-a* (make-hash-table :size 8)))\n')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "form.lisp"
+            path.write_text(body.format(form="(fnn-guarded-by *fx-a* *fx-lock*)\n"))
+            refused, accepted = host_check.tables_check([path])
+            self.assertEqual(refused, [])
+            self.assertEqual(len(accepted), 2)
+            path.write_text(body.format(form=""))
+            refused, _ = host_check.tables_check([path])
+            self.assertEqual(len(refused), 2)
+            path.write_text(body.format(form="(fnn-guarded-by *fx-a* *fx-other*)\n"))
+            refused, _ = host_check.tables_check([path])
+            self.assertEqual(len(refused), 2)
 
     def test_the_command_exits_one_on_the_fixture(self):
         self.assertEqual(host_check.main(["--tables", str(FIXTURES / "refused.lisp")]), 1)

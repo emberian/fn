@@ -940,6 +940,11 @@ ASSIGNERS = frozenset({"setq", "setf", "psetq", "psetf"})
 SYNCHRONIZED = re.compile(r":synchronized\s+t(?![\w*+-])", re.IGNORECASE)
 CONFINED = re.compile(r";+\s*thread-confined:\s*\S", re.IGNORECASE)
 GUARDED = re.compile(r";+\s*guarded-by:\s*([^\s().,;]+)", re.IGNORECASE)
+# A contract that names its variable (31df31581, CONVERGE-2 row 31):
+# (fnn-guarded-by VAR LOCK), LOCK a lock global or a form reaching one
+# ((fnn-owner-service-lock)).  A comment bound by position can be moved away
+# from its defvar; the form cannot, so it covers every site naming VAR.
+GUARD_FORM = re.compile(r"^\s*\(fnn-guarded-by\s+([^\s()]+)\s+(\([^()]*\)|[^\s()]+)\s*\)", re.MULTILINE)
 TOKEN = re.compile(r"[^\s()'`\",;]+")
 
 
@@ -1010,9 +1015,10 @@ def table_sites(text: str) -> list[tuple[int, str, bool, str]]:
 
 
 def lock_taken(text: str, lock: str) -> bool:
-    """Does a with-mutex / with-recursive-lock in TEXT take LOCK (a variable,
+    """Does a with-mutex / with-recursive-lock / fnn-with-observed-mutex (the
+    io.lisp macro that expands to with-mutex) in TEXT take LOCK (a variable,
     or an accessor applied to an object)?"""
-    return re.search(r"with-(?:mutex|recursive-lock)\s*\(\s*\(?\s*" + re.escape(lock)
+    return re.search(r"(?:with-(?:mutex|recursive-lock)|fnn-with-observed-mutex)\s*\(\s*\(?\s*" + re.escape(lock)
                      + r"(?=[\s)])", text, re.IGNORECASE) is not None
 
 
@@ -1027,6 +1033,7 @@ def tables_check(files: list[Path], root: Path = ROOT) -> tuple[list[str], list[
         except ValueError:
             rel = path.as_posix()
         sites = table_sites(text)
+        guard_forms = {var: lock for var, lock in GUARD_FORM.findall(text)}
 
         def declaration(line: int) -> str:
             """The site's line, the line before, and the comment lines that
@@ -1049,6 +1056,17 @@ def tables_check(files: list[Path], root: Path = ROOT) -> tuple[list[str], list[
             if synchronized:
                 accepted.append(f"{where}: :synchronized t")
                 continue
+            if name in guard_forms:
+                lock = guard_forms[name]
+                # A symbol lock must be taken in this file; a form (the owner
+                # service's lock) is held by the caller, which
+                # lock_discipline_check's R1b judges.
+                if lock.startswith("(") or lock_taken(text, lock):
+                    accepted.append(f"{where}: guarded-by {lock} (fnn-guarded-by)")
+                else:
+                    refused.append(f"{where}: guarded-by {lock}, but no "
+                                   "with-mutex/with-recursive-lock in this file takes it")
+                continue
             near = declaration(line)
             if not (GUARDED.search(near) or CONFINED.search(near)) and name in declared:
                 near = declared[name]
@@ -1063,7 +1081,7 @@ def tables_check(files: list[Path], root: Path = ROOT) -> tuple[list[str], list[
             else:
                 refused.append(f"{where}: a global hash table that is neither "
                                ":synchronized t nor declared `;; thread-confined: "
-                               "<reason>` or `;; guarded-by: <lock>`")
+                               "<reason>`, `;; guarded-by: <lock>` or (fnn-guarded-by VAR LOCK)")
     return refused, accepted
 
 
