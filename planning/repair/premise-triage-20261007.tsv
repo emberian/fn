@@ -1,0 +1,529 @@
+role	class	premise	variable	first_book
+state	established off the host path	adt-pg-pokp	q	books/def-representation-tree.lisp
+state	established off the host path	fn-acg-reachablep	s	books/account-config-generation-cursor.lisp
+state	established off the host path	fn-ach-reachablep	s	books/account-config-history-cursor.lisp
+state	established off the host path	fn-arpb-okp	st	books/arena-reader-bound.lisp
+state	established off the host path	fn-arpn-clear-through-p	s	books/arena-reader-pins.lisp
+state	established off the host path	fn-ats-matchingp	slot	books/allocation-turn-slots.lisp
+state	established off the host path	fn-bch-tail-ok-logic	s	books/body-chunks.lisp
+state	established off the host path	fn-bpfj-wf	st	books/bp-node-fragment-job.lisp
+state	established off the host path	fn-bs-alpha-crash-imagep	s	books/byte-store-scan.lisp
+state	established off the host path	fn-bs-frontier-directory-committedp	bs	books/byte-store-program-invariants.lisp
+state	established off the host path	fn-bs-pending-matches-phase	bs	books/byte-store-scan.lisp
+state	established off the host path	fn-bs-pending-shape-okp	bs	books/byte-store-scan.lisp
+state	established off the host path	fn-bs-statep	bs	books/byte-store-scan.lisp
+state	established off the host path	fn-ewp-publication	s	books/page-window-span.lisp
+state	established off the host path	fn-ewz-compressed-completep	s	books/extent-window-compressed-refinement.lisp
+state	established off the host path	fn-hdc-built-nodep	node	books/history-decode-shape.lisp
+state	established off the host path	fn-hdc-coherent	s	books/history-decode-refinement.lisp
+state	established off the host path	fn-hdc-node-contractp	s	books/history-decode-shape.lisp
+state	established off the host path	fn-hdc-node-in-poolp	node	books/history-decode-shape.lisp
+state	established off the host path	fn-hhc-matches	slot	books/history-capture-custody.lisp
+state	established off the host path	fn-hib-requestp	q	books/history-image-binding.lisp
+state	established off the host path	fn-hib-root-holds	h	books/history-image-binding.lisp
+state	established off the host path	fn-hmc-funded-g-p	g	books/host-model.lisp
+state	established off the host path	fn-hp-in-region	k	books/history-pages-grow-cap.lisp
+state	established off the host path	fn-hrcur-cold-rejected-prefixp	node	books/history-cold-record-cursor.lisp
+state	established off the host path	fn-hrcur-dos-domainp	node	books/history-cold-record-cursor.lisp
+state	established off the host path	fn-hrcur-wordp	k	books/history-record-cursor.lisp
+state	established off the host path	fn-lpv-header-equiv	s	books/legacy-parser-columns.lisp
+state	established off the host path	fn-lpv-value-state-p	s	books/legacy-parser-values.lisp
+state	established off the host path	fn-mpxl-tabp	tab	books/msgid-linear.lisp
+state	established off the host path	fn-onb-node-boundp	node	books/owner-number-bound.lisp
+state	established off the host path	fn-ovw-cursorp	cur	books/over-window.lisp
+state	established off the host path	fn-pck-carriedp	h	books/catalog-pages.lisp
+state	established off the host path	fn-pck-log-retains	log	books/paged-checkpoint.lisp
+state	established off the host path	fn-prof-keylessp	k	books/peer-refused-offers.lisp
+state	established off the host path	fn-pwr-plan-matches-token	s	books/page-window-span.lisp
+state	established off the host path	fn-pwx-boundp	ledger	books/page-window-read.lisp
+state	established off the host path	fn-rv-bankp	bank	books/resource-vector.lisp
+state	established off the host path	fn-rv-slotp	slot	books/resource-vector.lisp
+state	established off the host path	fn-scjs-store-framep	s	books/served-catalog-join-host-views.lisp
+state	established off the host path	fn-stce-authority-sourcep	cursor	books/substrate-committed-row.lisp
+state	established off the host path	fn-wg-grammarp	g	books/wire-family-fnct.lisp
+state	established off the host path	fn-wg-nonemptyp	g	books/wire-grammar.lisp
+state	established off the host path	fn-wg-valuep	g	books/article-kind-codec.lisp
+state	established off the host path	fn-wmc-core-shapedp	s	books/wildmat-cursor.lisp
+state	never concluded	fn-aj-kind-allowedp	s	books/app-journal.lisp
+state	never concluded	fn-ajpf-write-octets	s	books/app-journal.lisp
+state	never concluded	fn-arena-stored	h	books/assumptions-stored.lisp
+state	never concluded	fn-arx-files-unnamed-p	fs	books/payload-arena-extent.lisp
+state	never concluded	fn-asj-boundaryp	w	books/article-subject.lisp
+state	never concluded	fn-asj-insertion-boundaryp	w	books/article-subject.lisp
+state	never concluded	fn-asj-permitted-relay-transformp	w	books/article-subject.lisp
+state	never concluded	fn-asj-steps-validp	w	books/article-subject.lisp
+state	never concluded	fn-av-byte-restrictedp	conn	books/served-available-access.lisp
+state	never concluded	fn-av-events-restrictedp	conn	books/served-available-access.lisp
+state	never concluded	fn-av-span-restrictedp	conn	books/served-available-access.lisp
+state	never concluded	fn-bch-tail-okp	s	books/body-chunks-span.lisp
+state	never concluded	fn-bplc-cut-plan	st	books/bp-node-listener-control.lisp
+state	never concluded	fn-bs-scp-inputp	bs	books/checkpoint-reserve.lisp
+state	never concluded	fn-cadm-sourcep	s	books/consumer-account-candidate-model.lisp
+state	never concluded	fn-cd-okp	s	books/def-carried.lisp
+state	never concluded	fn-cd-run-okp	s	books/def-carried.lisp
+state	never concluded	fn-cp-overflow-of	h	books/catalog-paged.lisp
+state	never concluded	fn-crb-registers-within	s	books/consumer-replay-bound.lisp
+state	never concluded	fn-crb-step-admittedp	s	books/consumer-replay-bound.lisp
+state	never concluded	fn-crdm-domainp	s	books/consumer-remote-completion-model.lisp
+state	never concluded	fn-crsm-domainp	s	books/consumer-remote-scope-model.lisp
+state	never concluded	fn-crx-turn-currentp	issued	books/connection-receiver-source-invariants.lisp
+state	never concluded	fn-csp-conns-idlep-but	conns	books/peer-catchup-spool.lisp
+state	never concluded	fn-csp-free-conn	conns	books/peer-catchup-spool.lisp
+state	never concluded	fn-csp-unopened-conn	conns	books/peer-catchup-spool.lisp
+state	never concluded	fn-dm-keyp	k	books/catalog-dense-map.lisp
+state	never concluded	fn-ews-effect	s	books/extent-window-stream-semantics.lisp
+state	never concluded	fn-frame-spec-tablep	table	books/frame-journal.lisp
+state	never concluded	fn-frame-table-kinds-in	table	books/frame-journal.lisp
+state	never concluded	fn-hd-ident-row	k	books/def-holder.lisp
+state	never concluded	fn-hed-fixedp	cursor	books/history-event-directory-refinement.lisp
+state	never concluded	fn-hsb-admittedp	s	books/tls-handshake-budget.lisp
+state	never concluded	fn-iqr-resident-promotion-domainp	ledger	books/incoming-buffer-carrier.lisp
+state	never concluded	fn-lg-rotation-indexp	k	books/store-log.lisp
+state	never concluded	fn-lgdm-entry-len-bounded	h	books/store-log-entry-bound.lisp
+state	never concluded	fn-lgw-entry-len-bounded	h	books/store-log-entry-bound.lisp
+state	never concluded	fn-lss-donep	cur	books/list-status-cursor.lisp
+state	never concluded	fn-mpx-faithful	tab	books/msgid-pages.lisp
+state	never concluded	fn-mpx-tablep	tab	books/msgid-pages.lisp
+state	never concluded	fn-mxa-find	k	books/mux-accept-slot.lisp
+state	never concluded	fn-nnw-meta-initialp	cur	books/newnews-metadata-cursor.lisp
+state	never concluded	fn-orcp-conns-boundedp	conns	books/owner-reclaim-conns.lisp
+state	never concluded	fn-ovw-served-okp	server	books/over-window.lisp
+state	never concluded	fn-owner-history-publication	state	books/history-source-capture-refinement.lisp
+state	never concluded	fn-pck-disk-holds	disk	books/paged-checkpoint-host.lisp
+state	never concluded	fn-pcx-admissiblep	s	books/productive-contract.lisp
+state	never concluded	fn-pol-statement-policy	s	books/policy.lisp
+state	never concluded	fn-ppc-dup-okp	s	books/post-prepare-catalog.lisp
+state	never concluded	fn-psub-namep	g	books/packed-submission.lisp
+state	never concluded	fn-pwr-fault-phasep	s	books/page-window-read.lisp
+state	never concluded	fn-rccap-idle-target-prefixp	cursor	books/admission-semantic-census-prefix.lisp
+state	never concluded	fn-replay-apply-record	node	books/history-knowledge.lisp
+state	never concluded	fn-rrc-scp-inputp	bs	books/recovery-refinement-concurrent.lisp
+state	never concluded	fn-rv-sub-bankp	slot	books/resource-vector.lisp
+state	never concluded	fn-scj-view-pinned-connp	conn	books/served-catalog-join-frame-conns.lisp
+state	never concluded	fn-stce-authority-tagp	cursor	books/substrate-committed-row.lisp
+state	never concluded	fn-wg-op	g	books/wire-grammar.lisp
+state	never concluded	fn-wmc-decidedp	s	books/wildmat-cursor.lisp
+state	never concluded	pcks-writable	q	books/paged-checkpoint-stage.lisp
+state	preserved only	fn-aec-pool-statep	pool	books/allocation-epoch-pool.lisp
+state	preserved only	fn-b3-stack-above	h	books/blake3-tree.lisp
+state	preserved only	fn-bphs-held-sourcep	h	books/bp-handoff-producer-shape.lisp
+state	preserved only	fn-bplc-creditp	st	books/bp-node-listener-control.lisp
+state	preserved only	fn-bpn-sp-statep	s	books/bp-sequence-persistence.lisp
+state	preserved only	fn-cd-inv	s	books/def-carried.lisp
+state	preserved only	fn-crevm-measurep	s	books/consumer-remote-event-model.lisp
+state	preserved only	fn-hpr-cursorp	cursor	books/history-image-row-step.lisp
+state	preserved only	fn-mpxl-faithful	tab	books/msgid-linear.lisp
+state	preserved only	fn-osr-frozen-index-prefixp	s	books/owner-snapshot-recovery.lisp
+state	preserved only	fn-osr-verdict-prefixp	s	books/owner-snapshot-recovery.lisp
+state	preserved only	fn-pio-direct-okp	issued	books/page-read-direct.lisp
+state	preserved only	fn-pio-issued-in-holds-p	issued	books/page-read-direct.lisp
+state	preserved only	fn-pio-issuedp	issued	books/page-read-direct.lisp
+state	preserved only	fn-pwx-rowp	w	books/page-window-executor.lisp
+state	preserved only	fn-rfh-ready-p	s	books/refusal-headroom.lisp
+state	preserved only	fn-rl-slotp	slot	books/resource-vector-exec.lisp
+value	established off the host path	fn-aec-statep	i	books/allocation-epoch.lisp
+value	established off the host path	fn-ajpf-profilep	domain	books/app-journal.lisp
+value	established off the host path	fn-ak-no-crlfp	l	books/article-kind-acceptance.lisp
+value	established off the host path	fn-ak-rows-namesp	rows	books/article-kind-acceptance.lisp
+value	established off the host path	fn-ak-sp-vchar-listp	xs	books/article-kind-codec.lisp
+value	established off the host path	fn-ak-text-valuep	v	books/article-kind-acceptance.lisp
+value	established off the host path	fn-arpn-pinsp	pins	books/arena-reader-bound.lisp
+value	established off the host path	fn-article-body-crlfp	body	books/article-kind-acceptance.lisp
+value	established off the host path	fn-arx-files-agree	ext	books/payload-arena-extent.lisp
+value	established off the host path	fn-auth-access-text	as	books/nntp-auth.lisp
+value	established off the host path	fn-auth-sasl-line-okp	code	books/nntp-auth.lisp
+value	established off the host path	fn-b3-all-non-nil	os	books/blake3-tree.lisp
+value	established off the host path	fn-bch-clean-linesp	ls	books/body-chunks.lisp
+value	established off the host path	fn-bch-no-lf-p	xs	books/body-chunks.lisp
+value	established off the host path	fn-bpc-node-carryp	depth	books/bp-controller-registry-carry.lisp
+value	established off the host path	fn-bpc-segment-carry-loop	0	books/bp-controller-registry-carry.lisp
+value	established off the host path	fn-bpnf-replay-rowp	row	books/bp-recovery-guards.lisp
+value	established off the host path	fn-bs-config-okp	config	books/byte-store-relation.lisp
+value	established off the host path	fn-bs-imp-completep	img	books/store-init-log-publication.lisp
+value	established off the host path	fn-bs-inop	i	books/store-log-recover-copy.lisp
+value	established off the host path	fn-cac-fields-validp	values	books/consumer-authority-codec.lisp
+value	established off the host path	fn-cat$p-wfp	fn-cat$p	books/catalog-paged.lisp
+value	established off the host path	fn-cat-history-relation	records	books/catalog-entries.lisp
+value	established off the host path	fn-cat-rows-corr	n	books/catalog-logic.lisp
+value	established off the host path	fn-cfg-hex-digit-octetsp	xs	books/peer-transit-authority.lisp
+value	established off the host path	fn-cfg-item-listp	items	books/consumer-account-config-marker-invariants.lisp
+value	established off the host path	fn-cfg-itemp	item	books/consumer-account-config-marker-invariants.lisp
+value	established off the host path	fn-checkpointp	x	books/checkpoint-codec.lisp
+value	established off the host path	fn-cmt-field	1	books/committer-actor.lisp
+value	established off the host path	fn-cp-nth	3	books/consumer-authority-revision.lisp
+value	established off the host path	fn-cpl-cinv	dir	books/catalog-live-links.lisp
+value	established off the host path	fn-cpl-goodp	dir	books/catalog-live-links.lisp
+value	established off the host path	fn-cpl-okp	dir	books/catalog-paged.lisp
+value	established off the host path	fn-cpl-wentry-okp	e	books/catalog-live-links.lisp
+value	established off the host path	fn-cpl-winv	dir	books/catalog-live-links.lisp
+value	established off the host path	fn-cpl-wplan-okp	plan	books/catalog-live-links.lisp
+value	established off the host path	fn-cr-requestp	request	books/consumer-remote-codec.lisp
+value	established off the host path	fn-csp-body-inv-of	mode	books/peer-catchup-spool-body.lisp
+value	established off the host path	fn-ctw-all-above	l	books/catalog-logic.lisp
+value	established off the host path	fn-ctw-all-below	l	books/catalog-logic.lisp
+value	established off the host path	fn-feed-presentp	m	books/peer-feed-invariants.lisp
+value	established off the host path	fn-gns-group-cursorp	c	books/group-number-source-assignment.lisp
+value	established off the host path	fn-gns-number-cursorp	c	books/group-number-source.lisp
+value	established off the host path	fn-hct-shapep	c	books/history-census-controller.lisp
+value	established off the host path	fn-hib-disk-bound	file	books/history-image-binding.lisp
+value	established off the host path	fn-hmac-inv-row	a	books/hmac-sha256.lisp
+value	established off the host path	fn-hmc-nat-listp	gs	books/host-model.lisp
+value	established off the host path	fn-hmc-row-of	key	books/host-model.lisp
+value	established off the host path	fn-hp-resident-row-boundsp	last	books/history-paged.lisp
+value	established off the host path	fn-hpe-shapep	c	books/history-pool-emitter.lisp
+value	established off the host path	fn-hrcur-byte-invariantp	c	books/history-record-cursor.lisp
+value	established off the host path	fn-hrcur-cold-countp	n	books/history-cold-record-cursor.lisp
+value	established off the host path	fn-hrcur-cold-invariantp	c	books/history-cold-record-cursor.lisp
+value	established off the host path	fn-hrcur-dos-invariantp	c	books/history-decoded-octet-scan.lisp
+value	established off the host path	fn-hrcur-span-invariantp	c	books/history-record-cursor.lisp
+value	established off the host path	fn-hrcur-widthp	source	books/history-cold-record-cursor.lisp
+value	established off the host path	fn-hrsc-domainp	x	books/history-scalar-cursor.lisp
+value	established off the host path	fn-hsrcb-invariantp	c	books/history-source-byte-refinement.lisp
+value	established off the host path	fn-lg-prefixp	p	books/store-log-crash.lisp
+value	established off the host path	fn-lg-recordsp	records	books/store-log-crash.lisp
+value	established off the host path	fn-lgrc-holdsp	o	books/store-log-recover-copy.lisp
+value	established off the host path	fn-lgu-writes-at-or-above	ops	books/store-log-durable.lisp
+value	established off the host path	fn-lim-fieldp	field	books/limits-live.lisp
+value	established off the host path	fn-lpc-at	2	books/legacy-parser-value-run.lisp
+value	established off the host path	fn-lpv-selectedp	key	books/legacy-parser-columns.lisp
+value	established off the host path	fn-memberships-conflictsp	m	books/served-availability.lisp
+value	established off the host path	fn-mlh-empty-from	p	books/msgid-linear-exec.lisp
+value	established off the host path	fn-mlh-faithful	rows	books/msgid-linear-exec.lisp
+value	established off the host path	fn-mlh-faithful-from	i	books/msgid-linear-exec.lisp
+value	established off the host path	fn-mlh-okp	n	books/msgid-linear-exec.lisp
+value	established off the host path	fn-mpx-complete-from	0	books/msgid-pages.lisp
+value	established off the host path	fn-nnw-carryp	carry	books/newnews-cursor.lisp
+value	established off the host path	fn-npw-piecesp	pieces	books/nov-piece-window.lisp
+value	established off the host path	fn-ocap-previewp	preview	books/output-tariff-family.lisp
+value	established off the host path	fn-omk-widthp	x	books/index-backing-assignment.lisp
+value	established off the host path	fn-orcp-swap-admissiblep	live-oc	books/owner-reclaim-conns.lisp
+value	established off the host path	fn-par-local-contextp	ident	books/peer-invite-retry.lisp
+value	established off the host path	fn-pck-root-fitsp	configs	books/paged-checkpoint-host.lisp
+value	established off the host path	fn-pic-agent-contextp	c	books/post-identity-captured-source-pair-context.lisp
+value	established off the host path	fn-pic-agent-shapep	c	books/post-identity-captured-source-parser-context.lisp
+value	established off the host path	fn-pic-agent-tracep	c	books/post-identity-captured-agent-join.lisp
+value	established off the host path	fn-pic-block-prefixp	c	books/post-identity-captured-digest-block.lisp
+value	established off the host path	fn-pic-digest-trajectoryp	limit	books/post-identity-captured-hash-refinement.lisp
+value	established off the host path	fn-pic-source-pair-agent-contextp	c	books/post-identity-captured-source-parser-context.lisp
+value	established off the host path	fn-pic-source-pair-contextp	c	books/post-identity-captured-source-trace.lisp
+value	established off the host path	fn-pic-source-tracep	c	books/post-identity-captured-source-completion.lisp
+value	established off the host path	fn-pic-spanp	d	books/post-identity-captured-hash-domain.lisp
+value	established off the host path	fn-pio-issued-row	token	books/page-read-direct.lisp
+value	established off the host path	fn-pio-tokens-in-issued-p	file	books/page-read-direct.lisp
+value	established off the host path	fn-psc-agent-statep	c	books/post-identity-source-cursor-agent.lisp
+value	established off the host path	fn-psc-block-statep	c	books/post-identity-source-cursor-block.lisp
+value	established off the host path	fn-psc-comparison-statep	c	books/post-identity-source-cursor-refinement.lisp
+value	established off the host path	fn-psc-get	aux	books/post-identity-source-cursor-refinement.lisp
+value	established off the host path	fn-psc-leading-path-statep	c	books/post-identity-source-cursor-refinement.lisp
+value	established off the host path	fn-psc-path-finder-statep	c	books/post-identity-source-cursor-refinement.lisp
+value	established off the host path	fn-psc-skip-statep	c	books/post-identity-source-cursor-agent.lisp
+value	established off the host path	fn-psc-source-contextp	c	books/post-identity-captured-source-continuation.lisp
+value	established off the host path	fn-psc-source-date-contextp	c	books/post-identity-source-cursor-source-date.lisp
+value	established off the host path	fn-psc-source-resumep	p	books/post-identity-captured-source-continuation.lisp
+value	established off the host path	fn-pull-octetsp	octets	books/peer-catchup-spool.lisp
+value	established off the host path	fn-pwx-tokenp	token	books/page-window-span.lisp
+value	established off the host path	fn-pwz-budget-carryp	compressed	books/decoded-window-budget-trajectory.lisp
+value	established off the host path	fn-pwz-tokenp	token	books/decoded-worker-controller-trajectory.lisp
+value	established off the host path	fn-pzd-endedp	status	books/decoded-window-budget-completion.lisp
+value	established off the host path	fn-pzw-profile-carryp	compressed	books/payload-window-profile-width.lisp
+value	established off the host path	fn-pzw-walk-widthp	code	books/payload-window-width.lisp
+value	established off the host path	fn-rcca-waiting-rowp	remapper	books/snapshot-row-source-ack-refinement.lisp
+value	established off the host path	fn-rccs-decoded-row-lineagep	source	books/snapshot-row-source-tagged-refinement.lisp
+value	established off the host path	fn-rcct-current-row-invariantp	c	books/snapshot-row-source-tagged-refinement.lisp
+value	established off the host path	fn-rcl-bp-boundp	msgid	books/store-reclaim-holders.lisp
+value	established off the host path	fn-rhl-dseq	ds1	books/replay-historical-limits.lisp
+value	established off the host path	fn-rlo-free-chainp	rows	books/resource-output-chain.lisp
+value	established off the host path	fn-rlo-reusable-range-p	2	books/resource-output-chain.lisp
+value	established off the host path	fn-rov-correspondp	view	books/retention-obligation-view.lisp
+value	established off the host path	fn-rv-rowp	row	books/resource-vector.lisp
+value	established off the host path	fn-rv-token-retiredp	j	books/resource-vector.lisp
+value	established off the host path	fn-sca-held-rowsp	rows	books/catalog-availability-owner-load.lisp
+value	established off the host path	fn-sccv-livep	v	books/store-checkpoint-verify.lisp
+value	established off the host path	fn-scj-rows-invp	fn-cat	books/served-catalog-join-finish.lisp
+value	established off the host path	fn-scka-srcs-okp	srcs	books/store-checkpoint-arena-writer.lisp
+value	established off the host path	fn-sic-span-itemp	item	books/statement-items-cursor-spans.lisp
+value	established off the host path	fn-sig-public-key-p	new-pk	books/principal-invariants.lisp
+value	established off the host path	fn-sig-signature-p	signature	books/stx-carrier.lisp
+value	established off the host path	fn-sjh-colsp	pending	books/owner-number-bound-join.lisp
+value	established off the host path	fn-sjh-linkp	o	books/served-catalog-join-host.lisp
+value	established off the host path	fn-sjh-views-okp	views	books/owner-number-bound-join.lisp
+value	established off the host path	fn-sjh-viewsp	views	books/owner-number-bound-join.lisp
+value	established off the host path	fn-splan-fresh-effectsp	effects	books/served-plan-cursor.lisp
+value	established off the host path	fn-stce-statementsp	xs	books/substrate-committed-transcript.lisp
+value	established off the host path	fn-stx-pol-creators-are	cands	books/stx-index.lisp
+value	established off the host path	fn-tcrt-expiry-reason	phase	books/tcpcl-retained-turn.lisp
+value	established off the host path	fn-vdc-correspondp	trie	books/retention-obligation-view.lisp
+value	established off the host path	fn-wf-ctl-enum-small	specs	books/wire-family-control.lisp
+value	established off the host path	fn-wf-ctl-field-specsp	specs	books/wire-family-control.lisp
+value	established off the host path	fn-wg-header-octetsp	v	books/wire-grammar.lisp
+value	established off the host path	fn-wix-carryp	carry	books/withdrawal-index-carried.lisp
+value	established off the host path	fn-wix-cset-okp	ws	books/withdrawal-index-carried.lisp
+value	established off the host path	fn-wix-tset-okp	ws	books/withdrawal-index-carried.lisp
+value	established off the host path	fn-zin-tab-okp	fn-zin-tab	books/decoded-window-budget-trajectory.lisp
+value	established off the host path	fn-zin-window-ready-p	fn-zin-win	books/decoded-window-budget-trajectory.lisp
+value	established off the host path	pcks-res	p	books/paged-checkpoint-stage.lisp
+value	established off the host path	pcks-treesp	rows	books/paged-checkpoint-stage.lisp
+value	established off the host path	pgs-alloc-inv	alloc	books/paged-checkpoint-host.lisp
+value	established off the host path	pgs-dbd-domainp	limit	books/pagestore-digest-byte-domain.lisp
+value	established off the host path	pgs-dbd-framesp	depth	books/pagestore-digest-byte-domain.lisp
+value	established off the host path	pgs-dcd-domainp	limit	books/pagestore-digest-byte-domain.lisp
+value	established off the host path	pgs-dcs-counter-framesp	depth	books/pagestore-digest-cursor-counter.lisp
+value	established off the host path	pgs-dcs-invariantp	limit	books/extent-window-stream-semantics.lisp
+value	established off the host path	pgs-dcs-phasep	pgs-digest-state	books/pagestore-digest-cursor-progress.lisp
+value	established off the host path	pgs-rec-valid	x	books/pagestore-keystones.lisp
+value	never concluded	fn-aec-physical-installationp	i	books/allocation-epoch.lisp
+value	never concluded	fn-af-id-rightp	b	books/transit-same-decision.lisp
+value	never concluded	fn-af-msg-id-closep	b	books/transit-same-decision.lisp
+value	never concluded	fn-af-msg-id-core-aux	b	books/transit-same-decision.lisp
+value	never concluded	fn-af-msg-id-corep	b	books/transit-same-decision.lisp
+value	never concluded	fn-af-no-fold-literal-restp	b	books/transit-same-decision.lisp
+value	never concluded	fn-aj-profile-validp	domain	books/app-journal.lisp
+value	never concluded	fn-ajpf-read	domain	books/app-journal.lisp
+value	never concluded	fn-ak-row-valuep	row	books/article-kind-codec.lisp
+value	never concluded	fn-ak-rows-valuesp	*fn-ak-v1-rows*	books/article-kind-hybrid.lisp
+value	never concluded	fn-ak-valuesp	from	books/article-kind-hybrid.lisp
+value	never concluded	fn-apr-tokenp	token	books/admission-semantic-census-initial-refinement.lisp
+value	never concluded	fn-apr-widthp	5	books/admission-semantic-census-step-refinement.lisp
+value	never concluded	fn-arf-rewrite-of-p	old	books/handle-holds.lisp
+value	never concluded	fn-article-header-bytep	byte	books/legacy-parser-values.lisp
+value	never concluded	fn-article-namep	name	books/article-kind-acceptance.lisp
+value	never concluded	fn-article-wsp-startsp	conts	books/relay-source.lisp
+value	never concluded	fn-arx-faithful-chunks-p	chunks	books/payload-extent.lisp
+value	never concluded	fn-asj-continuationsp	f	books/article-subject.lisp
+value	never concluded	fn-asj-trace-blockp	f	books/article-subject.lisp
+value	never concluded	fn-assume-checkpoint-publishedp	tables	books/assumptions-publication.lisp
+value	never concluded	fn-asto-preflight-planp	plan	books/article-stream-owner.lisp
+value	never concluded	fn-asto-preflight-restp	rest	books/article-stream-owner.lisp
+value	never concluded	fn-auth-login-offeredp	acfg	books/nntp-auth.lisp
+value	never concluded	fn-auth-sasl-waitingp	as	books/nntp-auth-invariants.lisp
+value	never concluded	fn-authsec-32p	server-key	books/auth-secret.lisp
+value	never concluded	fn-av-orr-restrictedp	oc	books/served-available-access.lisp
+value	never concluded	fn-av-otm-restrictedp	oc	books/served-available-access.lisp
+value	never concluded	fn-av-own-restrictedp	o	books/served-available-access.lisp
+value	never concluded	fn-av-read-restrictedp	oc	books/served-available-access.lisp
+value	never concluded	fn-bch-octetp	x	books/body-chunks.lisp
+value	never concluded	fn-bpah-delivery-unframe	octets	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpaj-context-firstp	joined	books/bp-native-app-replay-bridge.lisp
+value	never concluded	fn-bpaj-receiver-only-recordsp	records	books/bp-native-app-replay-bridge.lisp
+value	never concluded	fn-bpc-row-livep	nonce	books/bp-controller-registry-carry.lisp
+value	never concluded	fn-bpcc-waiver-recordp	record	books/bp-carry-waiver.lisp
+value	never concluded	fn-bpcc-waiver-release-event	bp	books/bp-carry-waiver.lisp
+value	never concluded	fn-bpco-checkpoint-operation-p	current	books/bp-controller-checkpoint-operation.lisp
+value	never concluded	fn-bpfj-finishedp	job	books/bp-node-fragment-job.lisp
+value	never concluded	fn-bpfs-accepted-prefixp	prefix	books/bp-fragment-send.lisp
+value	never concluded	fn-bph-connections	text	books/bp-heap-command.lisp
+value	never concluded	fn-bphs-exact-listp	x	books/bp-handoff-recovery-shape.lisp
+value	never concluded	fn-bphs-held-sourcesp	held	books/bp-handoff-producer-shape.lisp
+value	never concluded	fn-bpit-helper-seconds	lifetime	books/bp-ion-lifetime.lisp
+value	never concluded	fn-bpn-lifecycle-record-bindingsp	names	books/bp-node-host-machine.lisp
+value	never concluded	fn-bpn-report-delete-recordp	record	books/bp-fnbs-deletion-publication.lisp
+value	never concluded	fn-bpnf-delete-unframe	octets	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpnf-family-record-atp	record	books/bp-fnbs-family-publication.lisp
+value	never concluded	fn-bpnf-family-replay-row-record	row	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpnf-family-replay-unframe	octets	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpnf-stored-from-values	values	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpnf-stored-record-unframe	octets	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpnp-attempt-unframe	octets	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpnp-deferral-unframe	octets	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpnp-dispatch-unframe	octets	books/bp-recovery-guards.lisp
+value	never concluded	fn-bpnp-result-unframe	octets	books/bp-recovery-guards.lisp
+value	never concluded	fn-bprpf-held-adus-fitp	held	books/bp-recovery-profile.lisp
+value	never concluded	fn-bpsp-incoming-contended	waiting	books/bp-session-profile.lisp
+value	never concluded	fn-bpsp-lines	xs	books/bp-session-profile.lisp
+value	never concluded	fn-bpsp-row	line	books/bp-session-profile.lisp
+value	never concluded	fn-caa-current-binding	name	books/consumer-account-relation.lisp
+value	never concluded	fn-caar-has-namep	name	books/consumer-account-relation.lisp
+value	never concluded	fn-caar-rowsp	rows	books/consumer-account-relation.lisp
+value	never concluded	fn-cab-eventp	event	books/consumer-account-config-domain.lisp
+value	never concluded	fn-cac-eventp	event	books/consumer-authority-codec.lisp
+value	never concluded	fn-cac-fieldp	value	books/consumer-authority-codec.lisp
+value	never concluded	fn-cac-kinds	kind	books/consumer-authority-codec.lisp
+value	never concluded	fn-cacm-recordp	r	books/consumer-account-config-marker-invariants.lisp
+value	never concluded	fn-cae-eventp	event	books/consumer-transaction-dispatch.lisp
+value	never concluded	fn-cai-get-octets	name	books/consumer-account-relation.lisp
+value	never concluded	fn-cat-may-seal	ticket	books/catalog-may-seal.lisp
+value	never concluded	fn-cev-report-kindp	kind	books/control-evidence.lisp
+value	never concluded	fn-cfg-peer-of-rows	name	books/peer-set.lisp
+value	never concluded	fn-cne-eventp	event	books/consumer-transaction-dispatch.lisp
+value	never concluded	fn-cp-authority-namespacep	namespace	books/consumer-account-adoption.lisp
+value	never concluded	fn-cp-smallp	by	books/catalog-paged.lisp
+value	never concluded	fn-cpc-admissiblep	txmax	books/consumer-publication-charge.lisp
+value	never concluded	fn-cpl-centry-okp	e	books/catalog-live-links.lisp
+value	never concluded	fn-crev-headp	event	books/consumer-remote-event-codec.lisp
+value	never concluded	fn-crv-policy-p	policy	books/cold-read-reservation.lisp
+value	never concluded	fn-crw-job-demand	descriptor	books/cold-read-window.lisp
+value	never concluded	fn-ctl-row-event	msgid	books/control-visible-prefix-bound.lisp
+value	never concluded	fn-cvec-article-memberships-refusedp	profile	books/store-capacity-vector.lisp
+value	never concluded	fn-cwait-secondsp	x	books/wire-family-consumer.lisp
+value	never concluded	fn-dm-lanep	lane	books/catalog-dense-map.lisp
+value	never concluded	fn-dmap$c-pid	pk	books/catalog-dense-map.lisp
+value	never concluded	fn-ewz-effect	z	books/extent-window-compressed-input.lisp
+value	never concluded	fn-feed-namep	msgid	books/peer-feed-invariants.lisp
+value	never concluded	fn-fs-exit-kindp	kind	books/failure-scope.lisp
+value	never concluded	fn-fs-section-class-ok	classes	books/failure-scope.lisp
+value	never concluded	fn-gns-groups-high-matchp	groups	books/group-number-source-pending.lisp
+value	never concluded	fn-hep-current	fn-history-backing	books/history-source-capture-refinement.lisp
+value	never concluded	fn-hib-chain-distinct	t0	books/history-image-binding.lisp
+value	never concluded	fn-hib-file-bound	file	books/history-image-binding.lisp
+value	never concluded	fn-hib-nc	file	books/history-image-binding.lisp
+value	never concluded	fn-hib-root-is-image	file	books/history-image-binding.lisp
+value	never concluded	fn-hib-tabs	p	books/history-image-binding.lisp
+value	never concluded	fn-his-plan-okp	res	books/history-image-snapshot.lisp
+value	never concluded	fn-hist$p-root-ready	stage	books/history-paged-adopt.lisp
+value	never concluded	fn-hkn-plain-article-record-p	record	books/history-knowledge.lisp
+value	never concluded	fn-hmc-worker-of	tok	books/host-model.lisp
+value	never concluded	fn-hrcur-cold-taskp	task	books/history-cold-record-cursor.lisp
+value	never concluded	fn-hrcur-tree-domainp	row	books/history-census-controller.lisp
+value	never concluded	fn-hsb-event-under	lmax	books/tls-handshake-budget.lisp
+value	never concluded	fn-hsb-events-timed	es	books/tls-handshake-budget.lisp
+value	never concluded	fn-hsb-events-under	lmax	books/tls-handshake-budget.lisp
+value	never concluded	fn-hsb-has	key	books/tls-handshake-decision.lisp
+value	never concluded	fn-iprc-copy-layout-domainp	prefix	books/index-backing-publication-row-carry.lisp
+value	never concluded	fn-isr-sealablep	plan	books/incoming-setup-ranges.lisp
+value	never concluded	fn-lgl-chain-distinct	t0	books/store-log-lineage.lisp
+value	never concluded	fn-lgl-trailer-distinct	p	books/store-log-lineage.lisp
+value	never concluded	fn-lst-summaries-agreep	archive	books/list-available-reference.lisp
+value	never concluded	fn-mlh-find-empty	p	books/msgid-linear-exec.lisp
+value	never concluded	fn-mlh-saturatedp	tag	books/msgid-linear-exec.lisp
+value	never concluded	fn-mlh-slot-guardp	p	books/msgid-linear-exec.lisp
+value	never concluded	fn-mpxl-moverp	tag	books/msgid-linear.lisp
+value	never concluded	fn-native-admin-naturalp	text	books/native-admin.lisp
+value	never concluded	fn-native-auth-login-namep	name	books/native-auth-admin.lisp
+value	never concluded	fn-ncline-line	line	books/native-control-line.lisp
+value	never concluded	fn-ncpath-basep	base	books/native-config-paths.lisp
+value	never concluded	fn-nh-checkpoint-deferredp	ckpt	books/native-health.lisp
+value	never concluded	fn-nhctrl-open-values	octets	books/native-control-kinds.lisp
+value	never concluded	fn-nlp-donep	pend	books/native-live-pages.lisp
+value	never concluded	fn-nls-view-currentp	oc	books/native-live-status.lisp
+value	never concluded	fn-nnm-needs-matchp	selector	books/newnews-matching-selector.lisp
+value	never concluded	fn-nntp-response-okp-of-bytes	article	books/productive-read-message-id.lisp
+value	never concluded	fn-nnw-pastp	threshold	books/newnews-cursor.lisp
+value	never concluded	fn-nnw-stream-outputp	progress	books/newnews-stream-cursor.lisp
+value	never concluded	fn-nnw-stream-renderp	p	books/served-plan-line-buffer.lisp
+value	never concluded	fn-nnw-stream-selectp	progress	books/newnews-stream-cursor.lisp
+value	never concluded	fn-nret-request	argv	books/native-retire.lisp
+value	never concluded	fn-nrf-facts	seq	books/nov-row-facts.lisp
+value	never concluded	fn-oadl-wordp	admission	books/output-admission-line.lisp
+value	never concluded	fn-ock-publication-duep	durable	books/owner-publication-lifecycle.lisp
+value	never concluded	fn-ocln-commandp	oc	books/output-admission-line.lisp
+value	never concluded	fn-octet-list-listp	xs	books/byte-store-keystones.lisp
+value	never concluded	fn-omk-at	2	books/payload-view-lease.lisp
+value	never concluded	fn-omk-tokenp	source	books/snapshot-row-source-ack-refinement.lisp
+value	never concluded	fn-opl-holdsp	count	books/owner-publication-lifecycle.lisp
+value	never concluded	fn-orln-refusalp	word	books/owner-resource-line.lisp
+value	never concluded	fn-orv-policy-p	policy	books/output-reservation.lisp
+value	never concluded	fn-own-feed-parse-response	octets	books/owner-feed.lisp
+value	never concluded	fn-pcb-revoked-principalp	received	books/peer-carriage.lisp
+value	never concluded	fn-pck-recordsp	configs	books/paged-checkpoint-host.lisp
+value	never concluded	fn-pct-selectablep	f	books/productive-transfer.lisp
+value	never concluded	fn-peer-header-limit-refusal	cfg	books/bp-transit-join.lisp
+value	never concluded	fn-pgs-frame-sel-p	sel	books/assumptions-pgs-host-io.lisp
+value	never concluded	fn-pic-choice-productp	c	books/post-identity-captured-hash-choice.lisp
+value	never concluded	fn-pic-observation-okp	c	books/post-identity-captured-agent-join.lisp
+value	never concluded	fn-pic-payload-productp	c	books/post-identity-captured-payload-refinement.lisp
+value	never concluded	fn-pol-slot-lessp	b	books/policy-invariants.lisp
+value	never concluded	fn-prd-row-schedulablep	row	books/peer-round-driver.lisp
+value	never concluded	fn-prl-nth	5	books/incoming-setup-ranges.lisp
+value	never concluded	fn-psc-info-agent-statep	c	books/post-identity-source-cursor-info.lisp
+value	never concluded	fn-pset-login-octets	login	books/peer-set.lisp
+value	never concluded	fn-psub-decision-shapep	d	books/packed-submission.lisp
+value	never concluded	fn-psub-joinablep	gs	books/packed-submission.lisp
+value	never concluded	fn-pull-plan-of-rows	name	books/peer-pull.lisp
+value	never concluded	fn-pwz-naturals	9	books/decoded-window-read.lisp
+value	never concluded	fn-pxy-octetsp	xs	books/tls-proxy.lisp
+value	never concluded	fn-pxy-trusted-peer	address	books/tls-handshake-source.lisp
+value	never concluded	fn-pzw-table-representationp	fn-zin-tab	books/payload-window-register-width.lisp
+value	never concluded	fn-qplan-donep	p	books/served-query-plan.lisp
+value	never concluded	fn-qps-eligiblep	held	books/query-payload-scalar.lisp
+value	never concluded	fn-rccap-owner-selected-prefixp	target	books/admission-semantic-census-owner-refinement.lisp
+value	never concluded	fn-rccap-owner-selected-targetp	candidate	books/admission-semantic-census-owner-refinement.lisp
+value	never concluded	fn-record-group-name-octets-aux	xs	books/owner-advance-carried.lisp
+value	never concluded	fn-replay-verdict-pair	e	books/store-finalize-incremental.lisp
+value	never concluded	fn-rhl-record-variantp	r1	books/replay-historical-limits.lisp
+value	never concluded	fn-rl-profile-representable-p	budget	books/resource-vector-exec.lisp
+value	never concluded	fn-rl-words-representable-p	words	books/resource-vector-exec.lisp
+value	never concluded	fn-rpin-owner	cid	books/host-model.lisp
+value	never concluded	fn-rse-public-ledger-correspondsp	snapshots	books/replay-enrollment-public-refinement.lisp
+value	never concluded	fn-rse-result-spans	result	books/replay-enrollment-parser-refinement.lisp
+value	never concluded	fn-rxt-live-claim-p	ticket	books/receiver-turn-controller.lisp
+value	never concluded	fn-rxt-parser-jobp	job	books/receiver-turn-controller.lisp
+value	never concluded	fn-sar-live-rule	live	books/served-access-revoke.lisp
+value	never concluded	fn-sasl-bindingp	binding	books/sasl.lisp
+value	never concluded	fn-sasl-no-nulp	pw	books/sasl.lisp
+value	never concluded	fn-sasl-seedp	seed	books/sasl.lisp
+value	never concluded	fn-sca-load-availability-ready-p	rows	books/catalog-availability-owner-load.lisp
+value	never concluded	fn-scat-list-active-formp	args	books/served-catalog.lisp
+value	never concluded	fn-scj-trie-indexedp	v	books/served-catalog-join-read.lisp
+value	never concluded	fn-scl-events-select-nothing-p	events	books/served-chunk-live-free.lisp
+value	never concluded	fn-scram-no-nulp	login	books/sasl.lisp
+value	never concluded	fn-scram-noncep	cn	books/sasl.lisp
+value	never concluded	fn-scv-keptp	group	books/group-summary-cursor.lisp
+value	never concluded	fn-sfi-carry	c	books/store-finalize-incremental.lisp
+value	never concluded	fn-sfi-historyp-extend	count	books/store-finalize-incremental.lisp
+value	never concluded	fn-sjh-io-eventsp	events	books/owner-number-bound-join.lisp
+value	never concluded	fn-sjh-io-run-premisesp	oc	books/served-catalog-join-host-entries.lisp
+value	never concluded	fn-sn-row-verdict-pair	row	books/owner-snapshot-recovery.lisp
+value	never concluded	fn-sopc-open-refusal	e	books/bp-receipt-log-crash.lisp
+value	never concluded	fn-splan-donep	p	books/served-plan-cursor.lisp
+value	never concluded	fn-splan-line-ready-p	p	books/served-plan-line-buffer.lisp
+value	never concluded	fn-splan-rest-donep	rest	books/served-plan.lisp
+value	never concluded	fn-srs-chunksp	chunks	books/payload-extent.lisp
+value	never concluded	fn-ssc-tlv-read	xs	books/tls-self-signed.lisp
+value	never concluded	fn-ssk-snapshot-binding	snapshot	books/statement-snapshot-keyring.lisp
+value	never concluded	fn-ssr-no-snapshot-p	ws	books/statement-recover-stream.lisp
+value	never concluded	fn-stcp-widthp	c	books/substrate-commit-profile-refinement.lisp
+value	never concluded	fn-stid-consumer	cs	books/store-identity.lisp
+value	never concluded	fn-tcrt-contact-timeout-p	phase	books/tcpcl-retained-turn.lisp
+value	never concluded	fn-tcrt-expiry	action	books/tcpcl-retained-turn.lisp
+value	never concluded	fn-tcrt-init-timeout-p	phase	books/tcpcl-retained-turn.lisp
+value	never concluded	fn-tcrt-passive-timeout-p	phase	books/tcpcl-retained-turn.lisp
+value	never concluded	fn-tcrt-progress-frame-p	type	books/tcpcl-retained-turn.lisp
+value	never concluded	fn-tcrt-stall-timeout-p	phase	books/tcpcl-retained-turn.lisp
+value	never concluded	fn-web-private-begin-p	action	books/web-session-keystones.lisp
+value	never concluded	fn-web-private-begin-row-p	row	books/web-session-keystones.lisp
+value	never concluded	fn-web-private-reply-p	flow	books/web-session-keystones.lisp
+value	never concluded	fn-wf-ctl-field-specp	spec	books/wire-family-control.lisp
+value	never concluded	fn-wg-armp	arm	books/wire-grammar.lisp
+value	never concluded	fn-wg-class-okp	class	books/wire-grammar.lisp
+value	never concluded	fn-wildmat-patternp	pattern	books/wildmat-live.lisp
+value	never concluded	fn-zar-stored	article	books/nntp-zarticle.lisp
+value	never concluded	fn-zc-owedp	x	books/nntp-compress.lisp
+value	never concluded	fn-zc-withdrawn-linep	line	books/nntp-compress.lisp
+value	never concluded	fn-zin-freshp	fn-zin-st	books/decoded-window-output-trajectory.lisp
+value	never concluded	fn-zin-lit-ready-p	fn-zin-st	books/decoded-window-output-trajectory.lisp
+value	preserved only	fn-apc-plansp	plans	books/owner-parse-carried.lisp
+value	preserved only	fn-arpn-at-most-p	pins	books/arena-reader-pins.lisp
+value	preserved only	fn-arpn-pendp	pend	books/arena-reader-pins.lisp
+value	preserved only	fn-asx-prefix-equalp	key	books/article-select-index.lisp
+value	preserved only	fn-bpnr-publish-phasep	phase	books/bp-node-rotation-codec.lisp
+value	preserved only	fn-bpnrc-tasks-validp	tasks	books/bp-node-rotation-cursor.lisp
+value	preserved only	fn-cais-alphabet-triep	trie	books/consumer-account-index-shape.lisp
+value	preserved only	fn-cais-triep	trie	books/consumer-account-index-shape.lisp
+value	preserved only	fn-cat-rows-availability-decidedp	rows	books/catalog-availability-owner-load.lisp
+value	preserved only	fn-csp-framerp	f	books/peer-catchup-spool-framer.lisp
+value	preserved only	fn-hd-identp	holds	books/def-holder.lisp
+value	preserved only	fn-hib-nw	file	books/history-image-binding.lisp
+value	preserved only	fn-hib-tw	0	books/history-image-binding.lisp
+value	preserved only	fn-hmc-rowsp	rows	books/host-model.lisp
+value	preserved only	fn-hmc-workersp	ws	books/host-model.lisp
+value	preserved only	fn-ibrc-prefixp	fn-cat	books/index-backing-served-producer-carry.lisp
+value	preserved only	fn-mxa-at-most-one-each	loops	books/mux-accept-slot.lisp
+value	preserved only	fn-nnw-maxes-okp	tail	books/newnews-cursor.lisp
+value	preserved only	fn-nnw-stream-progress-okp	progress	books/newnews-stream-cursor.lisp
+value	preserved only	fn-ofct-table-relationp	tbl	books/owner-feed-counts.lisp
+value	preserved only	fn-ohr-exposure-entries-openp	entries	books/owner-host-relation.lisp
+value	preserved only	fn-orf-digitsp	digits	books/operator-report-fields.lisp
+value	preserved only	fn-orf-fieldsp	fields	books/operator-report-fields.lisp
+value	preserved only	fn-pcb-scheduled-from	records	books/peer-carriage.lisp
+value	preserved only	fn-pio-holds-in-issued-p	holds	books/page-read-direct.lisp
+value	preserved only	fn-psc-failed-direct-resumep	resume	books/post-identity-source-cursor-refinement.lisp
+value	preserved only	fn-psc-line-statep	c	books/post-identity-source-cursor-refinement.lisp
+value	preserved only	fn-pzw-bits-widthp	bits	books/payload-window-width.lisp
+value	preserved only	fn-rhl-configs-variantp	c1	books/replay-historical-limits.lisp
+value	preserved only	fn-rl-fits-from	i	books/resource-vector-exec.lisp
+value	preserved only	fn-rt-okp	tree	books/resource-vector-tree.lisp
+value	preserved only	fn-scsr-stack-provenancep	infos	books/store-checkpoint-size-reader.lisp
+value	preserved only	fn-splan-cw-rest-okp	rest	books/served-plan-cursor.lisp
+value	preserved only	fn-stx-pol-entry-okp	e	books/stx-index.lisp
+value	preserved only	fn-stx-pol-not-above	m	books/stx-index.lisp
+value	preserved only	pgs-dcd-framesp	depth	books/pagestore-digest-cursor-domain.lisp
