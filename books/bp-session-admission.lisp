@@ -3,6 +3,7 @@
 ; originator declaration is literal: it does not distinguish local processes.
 (in-package "ACL2")
 (include-book "bp-native-app")
+(include-book "def-loop")
 (include-book "bp-primary")
 (include-book "peer-config")
 
@@ -20,28 +21,9 @@
 ; so a recursion one frame per row could exhaust the 1,024 KiB control
 ; stack.  Each is (mbe :logic <the recursion, unchanged> :exec <a loop>);
 ; the right folds run over the reversed rows (books/rev-onto.lisp).
-(defun fn-bpaj-boundary-slot-count-loop (rows name slot acc)
-  (declare (xargs :guard (acl2-numberp acc) :measure (acl2-count rows)))
-  (if (consp rows)
-      (fn-bpaj-boundary-slot-count-loop
-       (cdr rows) name slot
-       (+ acc (if (and (equal (fn-cfg-row-a (car rows)) name)
-                       (equal (fn-cfg-row-b (car rows)) slot)) 1 0)))
-    acc))
-
-(defun fn-bpaj-boundary-slot-count (rows name slot)
-  (declare (xargs :guard t :measure (acl2-count rows)))
-  (mbe :logic (if (consp rows)
-                  (+ (if (and (equal (fn-cfg-row-a (car rows)) name)
-                              (equal (fn-cfg-row-b (car rows)) slot)) 1 0)
-                     (fn-bpaj-boundary-slot-count (cdr rows) name slot))
-                0)
-       :exec (fn-bpaj-boundary-slot-count-loop rows name slot 0)))
-
-(defthm fn-bpaj-boundary-slot-count-loop-is-plus
-  (implies (acl2-numberp acc)
-           (equal (fn-bpaj-boundary-slot-count-loop rows name slot acc)
-                  (+ acc (fn-bpaj-boundary-slot-count rows name slot)))))
+(def-loop fn-bpaj-boundary-slot-count (rows name slot)
+  :shape :sum :over rows :elt r
+  :body (if (and (equal (fn-cfg-row-a r) name) (equal (fn-cfg-row-b r) slot)) 1 0))
 
 (defun fn-bpaj-unique-boundary-rowp (rows name slot value number)
   (declare (xargs :guard t))
@@ -762,8 +744,6 @@
                                       fn-cfgp fn-cfg-labelp))))
 
 (verify-guards fn-bpaj-boundary-rowp)
-(verify-guards fn-bpaj-boundary-slot-count-loop)
-(verify-guards fn-bpaj-boundary-slot-count)
 (verify-guards fn-bpaj-unique-boundary-rowp)
 (verify-guards fn-bpaj-current-peer-eidp-rows)
 (verify-guards fn-bpaj-current-peer-eidp)
