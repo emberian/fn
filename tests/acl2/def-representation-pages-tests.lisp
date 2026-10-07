@@ -131,3 +131,49 @@
 (must-fail-checked
  (def-representation drt-pg-n (a (:nat 18446744073709551616)) :pages t)
  :unchecked "refused at expansion: a :nat bound of 2^64 is more than one word")
+
+; -----------------------------------------------------------------------------
+; 5. Setting a row in place (same width): the dirty pages are the row's own.
+
+(defconst *drt-big* (append (drt-narrow 300) (list *drt-wide*) (drt-narrow 300)))
+(defconst *drt-new* (list 5 (make-list 20000 :initial-element 9) t))
+
+; the wide row sits at index 300, spans three pages; its set rewrites them and no other
+(assert-event (<= (len (drt-pg-set-dirty *drt-big* 300 *drt-new*)) 4))
+(assert-event (< 1 (len (drt-pg-set-dirty *drt-big* 300 *drt-new*))))
+(assert-event (equal (pgs-apply-dirty (drt-pg-pages-of *drt-big*) (drt-pg-set-dirty *drt-big* 300 *drt-new*))
+                     (drt-pg-pages-of (update-nth 300 *drt-new* *drt-big*))))
+(assert-event (equal (len (drt-pg-set-dirty (drt-narrow 700) 3 '(9 (1 2 3) nil))) 1))
+
+; A set-dirty that keeps only the first dirty page.
+(defun drt-pg-bad-set (a i x)
+  (declare (xargs :verify-guards nil))
+  (take 1 (drt-pg-set-dirty a i x)))
+
+(must-fail-checked
+ (defthm drt-pg-bad-set-is-apply-dirty
+   (implies (and (drt-pg$ap a) (natp i) (< i (len a)) (drt-pg-rowp x)
+                 (equal (len (adt-tp-rw *drt-pg-schema* x)) (len (adt-tp-rw *drt-pg-schema* (nth i a)))))
+            (equal (pgs-apply-dirty (drt-pg-pages-of a) (drt-pg-bad-set a i x))
+                   (drt-pg-pages-of (update-nth i x a))))
+   :hints (("Goal" :in-theory (enable drt-pg-pages-of drt-pg$ap drt-pg-rowp)))))
+
+(assert-event (not (equal (pgs-apply-dirty (drt-pg-pages-of *drt-big*) (drt-pg-bad-set *drt-big* 300 *drt-new*))
+                          (drt-pg-pages-of (update-nth 300 *drt-new* *drt-big*)))))
+
+; A bound of one page.
+(must-fail-checked
+ (defthm drt-pg-set-dirty-bound-one
+   (<= (len (drt-pg-set-dirty a i x)) 1)))
+(assert-event (not (<= (len (drt-pg-set-dirty *drt-big* 300 *drt-new*)) 1)))
+
+; The set must have the old row's width: a narrower row shifts every later word.
+(must-fail-checked
+ (defthm drt-pg-set-any-width
+   (implies (and (drt-pg$ap a) (natp i) (< i (len a)) (drt-pg-rowp x))
+            (equal (pgs-apply-dirty (drt-pg-pages-of a) (drt-pg-set-dirty a i x))
+                   (drt-pg-pages-of (update-nth i x a))))
+   :hints (("Goal" :in-theory (enable drt-pg-pages-of drt-pg$ap drt-pg-rowp)))))
+(assert-event (not (equal (pgs-apply-dirty (drt-pg-pages-of *drt-big*)
+                                           (drt-pg-set-dirty *drt-big* 0 '(1 nil nil)))
+                          (drt-pg-pages-of (update-nth 0 '(1 nil nil) *drt-big*)))))

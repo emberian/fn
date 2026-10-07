@@ -672,3 +672,309 @@
   (<= (len (adt-tp-extend-dirty s a xs)) (+ 1 (adt-tp-rows-pages s xs)))
   :hints (("Goal" :in-theory (disable adt-tp-dirty-bound)
            :use ((:instance adt-tp-dirty-bound (w (adt-tp-seq-words s a)) (n (adt-tp-seq-words s xs)))))))
+
+; -----------------------------------------------------------------------------
+; 6. Setting a row in place.  A rewrite of the M words at offset R into page K0
+; changes only the pages those words touch (`adt-tp-region-dirty-is-the-delta');
+; a row replaced by one of the same width (the paged catalog's withdraw and
+; redecide rewrite columns of a row, never its octets' length) is such a
+; rewrite.  The set's dirty pages are the row's own and the one it may share:
+; no term in the length of the sequence.
+
+(defthm adt-tp-nthcdr-nthcdr
+  (implies (and (natp a) (natp b))
+           (equal (nthcdr a (nthcdr b x)) (nthcdr (+ a b) x))))
+
+(defun adt-tp-ind-nth (k w)
+  (if (zp k) w (adt-tp-ind-nth (1- k) (nthcdr *pgs-page-words* w))))
+
+(defthm adt-tp-nthcdr-pages
+  ; The pages after the first K are the pages of the words after the first 2048 K.
+  (implies (and (natp k) (true-listp w))
+           (equal (nthcdr k (adt-tp-pages w))
+                  (adt-tp-pages (nthcdr (* *pgs-page-words* k) w))))
+  :hints (("Goal" :induct (adt-tp-ind-nth k w))
+          ("Subgoal *1/2" :expand ((adt-tp-pages w)))))
+
+(defun adt-tp-ind-xy (x y)
+  (declare (xargs :measure (nfix y)))
+  (if (zp y) x (adt-tp-ind-xy (nfix (- x *pgs-page-words*)) (nfix (- y *pgs-page-words*)))))
+
+(defthm adt-tp-npages-mono
+  (implies (and (natp x) (natp y) (<= x y))
+           (<= (adt-tp-npages x) (adt-tp-npages y)))
+  :hints (("Goal" :induct (adt-tp-ind-xy x y)
+           :in-theory (enable adt-tp-npages))))
+
+(defun adt-tp-ind-k2 (k)
+  (if (zp k) 0 (adt-tp-ind-k2 (1- k))))
+
+(defthm adt-tp-npages-plus-multiple
+  (implies (and (natp k) (natp y))
+           (equal (adt-tp-npages (+ (* *pgs-page-words* k) y)) (+ k (adt-tp-npages y))))
+  :hints (("Goal" :induct (adt-tp-ind-k2 k)
+           :in-theory (enable adt-tp-npages))))
+
+(defthm adt-tp-le-npages-times
+  (implies (natp x) (<= x (* *pgs-page-words* (adt-tp-npages x))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (adt-tp-npages x) :in-theory (enable adt-tp-npages))))
+
+(defthm adt-tp-split3
+  (implies (and (true-listp l) (natp a) (natp c) (<= (+ a c) (len l)))
+           (equal (append (take a l) (append (take c (nthcdr a l)) (nthcdr (+ a c) l))) l))
+  :hints (("Goal" :use ((:instance adt-tp-take-nthcdr-split (m a) (w l))
+                        (:instance adt-tp-take-nthcdr-split (m c) (w (nthcdr a l)))
+                        (:instance adt-tp-nthcdr-nthcdr (a c) (b a) (x l)))
+           :in-theory (disable adt-tp-take-nthcdr-split adt-tp-nthcdr-nthcdr))))
+
+(defthm adt-tp-take-of-append2
+  (implies (and (natp n) (<= n (len a)))
+           (equal (take n (append a b)) (take n a)))
+  :hints (("Goal" :in-theory (enable take))))
+
+(defthm adt-tp-take-of-append-len
+  (implies (and (equal pw (append x y)) (equal (len x) k) (true-listp x))
+           (equal (take k pw) x))
+  :hints (("Goal" :use ((:instance adt-tp-take-of-append2 (n k) (a x) (b y))
+                        (:instance adt-tp-take-nthcdr-split (m k) (w x)))
+           :in-theory (disable adt-tp-take-of-append2 adt-tp-take-nthcdr-split))))
+
+(defthm adt-tp-take-pages
+  ; The first K pages are the pages of the first 2048 K words.
+  (implies (and (natp k) (true-listp w) (<= (* *pgs-page-words* k) (len w)))
+           (equal (take k (adt-tp-pages w))
+                  (adt-tp-pages (take (* *pgs-page-words* k) w))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance adt-tp-take-nthcdr-split (m (* *pgs-page-words* k)) (w w))
+                 (:instance adt-tp-pages-of-append-aligned
+                            (w1 (take (* *pgs-page-words* k) w)) (z (nthcdr (* *pgs-page-words* k) w)))
+                 (:instance adt-tp-npages-of-multiple)
+                 (:instance adt-tp-len-pages (w (take (* *pgs-page-words* k) w)))
+                 (:instance adt-tp-take-of-append-len (pw (adt-tp-pages w))
+                            (x (adt-tp-pages (take (* *pgs-page-words* k) w)))
+                            (y (adt-tp-pages (nthcdr (* *pgs-page-words* k) w)))))
+           :in-theory (disable adt-tp-take-nthcdr-split adt-tp-pages-of-append-aligned adt-tp-npages-of-multiple
+                               adt-tp-len-pages adt-tp-pages-long adt-tp-take-of-append-len))))
+
+(defun adt-tp-region-ind (a b ps)
+  (if (atom ps) (list a b) (adt-tp-region-ind (append a (list (car ps))) (cdr b) (cdr ps))))
+
+(defthm adt-tp-apply-dirty-region
+  ; The dirty pages numbered from the end of A, as many as B has, replace B and leave C.
+  (implies (and (true-listp a) (true-listp b) (true-listp c) (true-listp ps)
+                (equal (len b) (len ps)))
+           (equal (pgs-apply-dirty (append a b c) (adt-tp-number (len a) ps))
+                  (append a ps c)))
+  :hints (("Goal" :in-theory (enable pgs-apply-dirty)
+           :induct (adt-tp-region-ind a b ps))))
+
+(defthm adt-tp-len-take2
+  (implies (and (natp n) (<= n (len x))) (equal (len (take n x)) n))
+  :hints (("Goal" :in-theory (enable take))))
+
+(defthm adt-tp-true-listp-take2
+  (true-listp (take n x))
+  :hints (("Goal" :in-theory (enable take))))
+
+(defthm adt-tp-region-lists
+  ; Two page lists agreeing before page K and from page K+C on: the C dirty
+  ; pages of the second, numbered from K, turn the first into the second.
+  (implies (and (true-listp l) (true-listp l2) (natp k) (natp c)
+                (<= (+ k c) (len l)) (<= (+ k c) (len l2))
+                (equal (take k l) (take k l2))
+                (equal (nthcdr (+ k c) l) (nthcdr (+ k c) l2)))
+           (equal (pgs-apply-dirty l (adt-tp-number k (take c (nthcdr k l2)))) l2))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance adt-tp-split3 (l l) (a k) (c c))
+                 (:instance adt-tp-split3 (l l2) (a k) (c c))
+                 (:instance adt-tp-apply-dirty-region
+                            (a (take k l)) (b (take c (nthcdr k l))) (c (nthcdr (+ k c) l))
+                            (ps (take c (nthcdr k l2))))
+                 (:instance adt-tp-len-take2 (n k) (x l))
+                 (:instance adt-tp-len-take2 (n c) (x (nthcdr k l)))
+                 (:instance adt-tp-len-take2 (n c) (x (nthcdr k l2))))
+           :in-theory (disable adt-tp-split3 adt-tp-apply-dirty-region adt-tp-len-take2))))
+
+(defthm adt-tp-nthcdr-append-len
+  (implies (and (true-listp a) (natp j))
+           (equal (nthcdr (+ (len a) j) (append a b)) (nthcdr j b))))
+
+(defun adt-tp-region-dirty (w2 k0 r m)
+  ; The dirty pages of rewriting M words that start R words into page K0 of
+  ; the tape W2: the pages the region touches, numbered from K0.
+  (declare (xargs :guard t :verify-guards nil))
+  (adt-tp-number k0 (take (adt-tp-npages (+ r m)) (nthcdr k0 (adt-tp-pages w2)))))
+
+(defthm adt-tp-after-region
+  ; The words after the pages a region touches do not depend on the region.
+  (implies (and (true-listp p) (true-listp wr) (natp k0) (natp r) (natp c)
+                (equal (len p) (+ (* *pgs-page-words* k0) r))
+                (<= (+ r (len wr)) (* *pgs-page-words* c)))
+           (equal (nthcdr (* *pgs-page-words* (+ k0 c)) (append p (append wr q)))
+                  (nthcdr (+ (* *pgs-page-words* c) (- (+ r (len wr)))) q)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance adt-tp-nthcdr-append-len (a p) (b (append wr q))
+                            (j (+ (len wr) (+ (* *pgs-page-words* c) (- (+ r (len wr)))))))
+                 (:instance adt-tp-nthcdr-append-len (a wr) (b q)
+                            (j (+ (* *pgs-page-words* c) (- (+ r (len wr)))))))
+           :in-theory (disable adt-tp-nthcdr-append-len))))
+
+(defthm adt-tp-take-words-of-append
+  ; The words before page K0 do not depend on what follows P.
+  (implies (and (true-listp p) (natp k0) (<= (* *pgs-page-words* k0) (len p)))
+           (equal (take (* *pgs-page-words* k0) (append p z)) (take (* *pgs-page-words* k0) p)))
+  :hints (("Goal" :use ((:instance adt-tp-take-of-append2 (n (* *pgs-page-words* k0)) (a p) (b z)))
+           :in-theory (disable adt-tp-take-of-append2))))
+
+(defthm adt-tp-region-dirty-is-the-delta
+  ; Rewriting the M words at offset 2048 K0 + R of a tape, by M other words: the
+  ; dirty pages of the new tape, applied to the old pages, give the new pages.
+  (implies (and (true-listp p) (true-listp wr) (true-listp wx) (true-listp q)
+                (natp k0) (natp r) (< r *pgs-page-words*) (natp m)
+                (equal (len p) (+ (* *pgs-page-words* k0) r))
+                (equal (len wr) m) (equal (len wx) m))
+           (equal (pgs-apply-dirty (adt-tp-pages (append p (append wr q)))
+                                   (adt-tp-region-dirty (append p (append wx q)) k0 r m))
+                  (adt-tp-pages (append p (append wx q)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (adt-tp-region-dirty)
+                           (adt-tp-region-lists adt-tp-take-pages adt-tp-nthcdr-pages adt-tp-after-region
+                            adt-tp-npages-mono adt-tp-npages-plus-multiple adt-tp-len-pages
+                            adt-tp-pages-long adt-tp-take-words-of-append adt-tp-le-npages-times))
+           :use ((:instance adt-tp-region-lists
+                            (l (adt-tp-pages (append p (append wr q))))
+                            (l2 (adt-tp-pages (append p (append wx q))))
+                            (k k0) (c (adt-tp-npages (+ r m))))
+                 (:instance adt-tp-take-pages (k k0) (w (append p (append wr q))))
+                 (:instance adt-tp-take-pages (k k0) (w (append p (append wx q))))
+                 (:instance adt-tp-take-words-of-append (z (append wr q)))
+                 (:instance adt-tp-take-words-of-append (z (append wx q)))
+                 (:instance adt-tp-nthcdr-pages (k (+ k0 (adt-tp-npages (+ r m)))) (w (append p (append wr q))))
+                 (:instance adt-tp-nthcdr-pages (k (+ k0 (adt-tp-npages (+ r m)))) (w (append p (append wx q))))
+                 (:instance adt-tp-after-region (c (adt-tp-npages (+ r m))) (q q))
+                 (:instance adt-tp-after-region (c (adt-tp-npages (+ r m))) (wr wx) (q q))
+                 (:instance adt-tp-le-npages-times (x (+ r m)))
+                 (:instance adt-tp-len-pages (w (append p (append wr q))))
+                 (:instance adt-tp-len-pages (w (append p (append wx q))))
+                 (:instance adt-tp-npages-mono (x (+ (* *pgs-page-words* k0) r m))
+                            (y (len (append p (append wr q)))))
+                 (:instance adt-tp-npages-mono (x (+ (* *pgs-page-words* k0) r m))
+                            (y (len (append p (append wx q)))))
+                 (:instance adt-tp-npages-plus-multiple (k k0) (y (+ r m)))))))
+
+; -----------------------------------------------------------------------------
+; Setting a row in place (a same-width rewrite).
+
+(defthm adt-tp-floor-mod
+  (implies (natp x)
+           (and (natp (floor x *pgs-page-words*)) (natp (mod x *pgs-page-words*))
+                (< (mod x *pgs-page-words*) *pgs-page-words*)
+                (equal x (+ (* *pgs-page-words* (floor x *pgs-page-words*)) (mod x *pgs-page-words*)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable floor mod))))
+
+(defthm adt-tp-split-row
+  (implies (and (true-listp a) (natp i) (< i (len a)))
+           (and (equal a (append (take i a) (cons (nth i a) (nthcdr (+ 1 i) a))))
+                (equal (update-nth i x a) (append (take i a) (cons x (nthcdr (+ 1 i) a))))
+                (true-listp (take i a)) (true-listp (nthcdr (+ 1 i) a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable take update-nth nth) :induct (take i a))))
+
+(defun adt-tp-set-dirty (s a i x)
+  ; The dirty pages of setting row I of A to X, when X has the width of the row it replaces.
+  (declare (xargs :verify-guards nil :guard t))
+  (let ((off (len (adt-tp-seq-words s (take i a)))))
+    (adt-tp-region-dirty (adt-tp-seq-words s (update-nth i x a))
+                         (floor off *pgs-page-words*) (mod off *pgs-page-words*)
+                         (len (adt-tp-rw s x)))))
+
+(defthm adt-tp-take-len-append
+  (implies (true-listp a1) (equal (take (len a1) (append a1 y)) a1))
+  :hints (("Goal" :in-theory (enable take))))
+
+(defthm adt-tp-update-nth-len-append
+  (implies (true-listp a1)
+           (equal (update-nth (len a1) x (append a1 (cons r a2))) (append a1 (cons x a2))))
+  :hints (("Goal" :in-theory (enable update-nth))))
+
+(defthm adt-tp-seq-words-of-row-split
+  (implies (and (true-listp a1))
+           (equal (adt-tp-seq-words s (append a1 (cons r a2)))
+                  (append (adt-tp-seq-words s a1)
+                          (append (adt-tp-rw s r) (adt-tp-seq-words s a2)))))
+  :hints (("Goal" :in-theory (enable adt-tp-seq-words))))
+
+(defthm adt-tp-pages-of-set-split
+  (implies (and (equal a (append a1 (cons r a2))) (equal i (len a1)) (true-listp a1)
+                (adt-tp-schema-ok s) (adt-seq-p s a1) (adt-seq-p s a2)
+                (adt-rec-p s r) (adt-rec-p s x)
+                (equal (len (adt-tp-rw s x)) (len (adt-tp-rw s r))))
+           (equal (pgs-apply-dirty (adt-tp-pages-of s a) (adt-tp-set-dirty s a i x))
+                  (adt-tp-pages-of s (update-nth i x a))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (adt-tp-pages-of adt-tp-set-dirty)
+                           (adt-tp-region-dirty-is-the-delta adt-tp-region-dirty))
+           :use ((:instance adt-tp-floor-mod (x (len (adt-tp-seq-words s a1))))
+                 (:instance adt-tp-region-dirty-is-the-delta
+                            (p (adt-tp-seq-words s a1))
+                            (wr (adt-tp-rw s r)) (wx (adt-tp-rw s x))
+                            (q (adt-tp-seq-words s a2))
+                            (k0 (floor (len (adt-tp-seq-words s a1)) *pgs-page-words*))
+                            (r (mod (len (adt-tp-seq-words s a1)) *pgs-page-words*))
+                            (m (len (adt-tp-rw s x))))))))
+
+(defthm adt-tp-seq-p-true-listp
+  (implies (adt-seq-p s a) (true-listp a))
+  :rule-classes :forward-chaining)
+
+(defthm adt-tp-seq-p-take
+  (implies (and (adt-seq-p s a) (natp i) (<= i (len a))) (adt-seq-p s (take i a)))
+  :hints (("Goal" :in-theory (enable take adt-seq-p) :induct (take i a))))
+
+(defthm adt-tp-seq-p-nthcdr
+  (implies (adt-seq-p s a) (adt-seq-p s (nthcdr i a)))
+  :hints (("Goal" :in-theory (enable adt-seq-p nthcdr))))
+
+(defthm adt-tp-rec-p-nth
+  (implies (and (adt-seq-p s a) (natp i) (< i (len a))) (adt-rec-p s (nth i a)))
+  :hints (("Goal" :in-theory (enable adt-seq-p nth))))
+
+(defthm adt-tp-pages-of-set-is-apply-dirty
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (natp i) (< i (len a)) (adt-rec-p s x)
+                (equal (len (adt-tp-rw s x)) (len (adt-tp-rw s (nth i a)))))
+           (equal (pgs-apply-dirty (adt-tp-pages-of s a) (adt-tp-set-dirty s a i x))
+                  (adt-tp-pages-of s (update-nth i x a))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable adt-tp-len-take2)
+           :use ((:instance adt-tp-split-row (a a) (i i))
+                 (:instance adt-tp-len-take2 (n i) (x a))
+                 (:instance adt-tp-pages-of-set-split
+                            (a1 (take i a)) (r (nth i a)) (a2 (nthcdr (+ 1 i) a)))))))
+
+(defthm adt-tp-len-take-le
+  (<= (len (take n x)) (nfix n))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable take))))
+
+(defthm adt-tp-len-region-dirty
+  (<= (len (adt-tp-region-dirty w2 k0 r m)) (adt-tp-npages (+ r m)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (adt-tp-region-dirty) (adt-tp-len-take-le))
+           :use ((:instance adt-tp-len-take-le (n (adt-tp-npages (+ r m))) (x (nthcdr k0 (adt-tp-pages w2))))))))
+
+(defthm adt-tp-set-dirty-bound
+  ; The row's own pages and the one page it may share: no term in the length of the sequence.
+  (<= (len (adt-tp-set-dirty s a i x)) (+ 1 (adt-tp-npages (len (adt-tp-rw s x)))))
+  :hints (("Goal" :in-theory (e/d (adt-tp-set-dirty) (adt-tp-len-region-dirty adt-tp-npages-subadd))
+           :use ((:instance adt-tp-len-region-dirty
+                            (w2 (adt-tp-seq-words s (update-nth i x a)))
+                            (k0 (floor (len (adt-tp-seq-words s (take i a))) *pgs-page-words*))
+                            (r (mod (len (adt-tp-seq-words s (take i a))) *pgs-page-words*))
+                            (m (len (adt-tp-rw s x))))
+                 (:instance adt-tp-floor-mod (x (len (adt-tp-seq-words s (take i a)))))
+                 (:instance adt-tp-npages-subadd
+                            (x (mod (len (adt-tp-seq-words s (take i a))) *pgs-page-words*))
+                            (y (len (adt-tp-rw s x))))))))
