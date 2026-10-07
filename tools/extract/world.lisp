@@ -111,6 +111,7 @@
 (include-book "../../books/recovery-profile-buffer")
 (include-book "../../books/heap-figure")
 (include-book "../../books/heap-open-nursery")
+(include-book "../../books/idle-collection")
 (include-book "../../books/heap-reservation")
 (include-book "../../books/bp-heap-command")
 (include-book "../../books/cold-read-reservation")
