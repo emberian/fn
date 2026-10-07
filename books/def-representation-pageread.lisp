@@ -26,10 +26,10 @@
 
 (defun adt-pr-fill (p res frames)
   (declare (xargs :guard t :verify-guards nil))
-  (take (adt-pr-cap frames) (cons p (remove p res))))
+  (take (adt-pr-cap frames) (cons p (remove-equal p res))))
 
 (defthm adt-pr-member-of-fill
-  (member p (adt-pr-fill p res frames))
+  (member-equal p (adt-pr-fill p res frames))
   :hints (("Goal" :in-theory (enable adt-pr-fill adt-pr-cap))))
 
 (defthm adt-pr-len-of-fill
@@ -41,7 +41,7 @@
 (defun adt-pr-word (tag j pages res)
   (declare (xargs :guard (natp j) :verify-guards nil))
   (let ((p (floor (nfix j) *pgs-page-words*)))
-    (if (member (cons tag p) res)
+    (if (member-equal (cons tag p) res)
         (nth (mod (nfix j) *pgs-page-words*) (nth p pages))
       (list :need-page tag p))))
 
@@ -50,10 +50,10 @@
 (defun adt-pr-read-words (tag j end pages res frames acc fills)
   (declare (xargs :guard (and (natp j) (natp end) (true-listp acc))
                   :measure (+ (* 2 (nfix (- (nfix end) (nfix j))))
-                              (if (member (cons tag (floor (nfix j) *pgs-page-words*)) res) 0 1))
+                              (if (member-equal (cons tag (floor (nfix j) *pgs-page-words*)) res) 0 1))
                   :verify-guards nil))
   (cond ((not (< (nfix j) (nfix end))) (mv (reverse acc) res fills))
-        ((member (cons tag (floor (nfix j) *pgs-page-words*)) res)
+        ((member-equal (cons tag (floor (nfix j) *pgs-page-words*)) res)
          (adt-pr-read-words tag (+ 1 (nfix j)) end pages res frames
                             (cons (adt-pr-word tag j pages res) acc) fills))
         (t (let ((p (floor (nfix j) *pgs-page-words*)))
@@ -66,104 +66,120 @@
       0
     (+ 1 (- (floor (+ -1 (nfix end)) *pgs-page-words*) (floor (nfix j) *pgs-page-words*)))))
 
-(defthm adt-pr-nth-of-take
-  (implies (and (natp m) (< m (nfix n)) (< m (len v)))
-           (equal (nth m (adt-tp-take n v)) (nth m v)))
-  :hints (("Goal" :in-theory (enable adt-tp-take nth))))
+(local
+ (defthm adt-pr-nth-of-take
+   (implies (and (natp m) (< m (nfix n)) (< m (len v)))
+            (equal (nth m (adt-tp-take n v)) (nth m v)))
+   :hints (("Goal" :in-theory (enable adt-tp-take nth)))))
 
-(defthm adt-pr-nth-of-append
-  (implies (and (natp m) (< m (len v)))
-           (equal (nth m (append v z)) (nth m v)))
-  :hints (("Goal" :in-theory (enable nth))))
+(local
+ (defthm adt-pr-nth-of-append
+   (implies (and (natp m) (< m (len v)))
+            (equal (nth m (append v z)) (nth m v)))
+   :hints (("Goal" :in-theory (enable nth)))))
 
-(defthm adt-pr-nth-of-page-short
-  (implies (and (natp m) (< m (len v)) (true-listp v) (<= (len v) *pgs-page-words*))
-           (equal (nth m (adt-tp-page v)) (nth m v)))
-  :hints (("Goal" :in-theory (disable adt-tp-page-long adt-tp-page-short)
-           :use ((:instance adt-tp-page-short (w v))
-                 (:instance adt-pr-nth-of-append (z (adt-tp-zeros (- *pgs-page-words* (len v)))))))))
+(local
+ (defthm adt-pr-nth-of-page-short
+   (implies (and (natp m) (< m (len v)) (true-listp v) (<= (len v) *pgs-page-words*))
+            (equal (nth m (adt-tp-page v)) (nth m v)))
+   :hints (("Goal" :in-theory (disable adt-tp-page-long adt-tp-page-short)
+            :use ((:instance adt-tp-page-short (w v))
+                  (:instance adt-pr-nth-of-append (z (adt-tp-zeros (- *pgs-page-words* (len v))))))))))
 
-(defthm adt-pr-nth-of-page-long
-  (implies (and (natp m) (< m *pgs-page-words*) (< m (len v)) (true-listp v) (<= *pgs-page-words* (len v)))
-           (equal (nth m (adt-tp-page v)) (nth m v)))
-  :hints (("Goal" :in-theory (disable adt-tp-page-long adt-tp-page-short)
-           :use ((:instance adt-tp-page-long (w v)) (:instance adt-pr-nth-of-take (n *pgs-page-words*))))))
+(local
+ (defthm adt-pr-nth-of-page-long
+   (implies (and (natp m) (< m *pgs-page-words*) (< m (len v)) (true-listp v) (<= *pgs-page-words* (len v)))
+            (equal (nth m (adt-tp-page v)) (nth m v)))
+   :hints (("Goal" :in-theory (disable adt-tp-page-long adt-tp-page-short)
+            :use ((:instance adt-tp-page-long (w v)) (:instance adt-pr-nth-of-take (n *pgs-page-words*)))))))
 
-(defthm adt-pr-nth-of-page
-  (implies (and (natp m) (< m *pgs-page-words*) (< m (len v)) (true-listp v))
-           (equal (nth m (adt-tp-page v)) (nth m v)))
-  :hints (("Goal" :in-theory (disable adt-tp-page-long adt-tp-page-short adt-pr-nth-of-page-short adt-pr-nth-of-page-long)
-           :use (adt-pr-nth-of-page-short adt-pr-nth-of-page-long))))
+(local
+ (defthm adt-pr-nth-of-page
+   (implies (and (natp m) (< m *pgs-page-words*) (< m (len v)) (true-listp v))
+            (equal (nth m (adt-tp-page v)) (nth m v)))
+   :hints (("Goal" :in-theory (disable adt-tp-page-long adt-tp-page-short adt-pr-nth-of-page-short adt-pr-nth-of-page-long)
+            :use (adt-pr-nth-of-page-short adt-pr-nth-of-page-long)))))
 
-(defthm adt-pr-nth-of-nthcdr
-  (implies (and (natp a) (natp b))
-           (equal (nth a (nthcdr b w)) (nth (+ a b) w)))
-  :hints (("Goal" :in-theory (enable nth nthcdr))))
+(local
+ (defthm adt-pr-nth-of-nthcdr
+   (implies (and (natp a) (natp b))
+            (equal (nth a (nthcdr b w)) (nth (+ a b) w)))
+   :hints (("Goal" :in-theory (enable nth nthcdr)))))
 
-(defthm adt-pr-floor-mod
-  (implies (natp j)
-           (equal (+ (mod j *pgs-page-words*) (* *pgs-page-words* (floor j *pgs-page-words*))) j))
-  :hints (("Goal" :in-theory (enable mod))))
+(local
+ (defthm adt-pr-floor-mod
+   (implies (natp j)
+            (equal (+ (mod j *pgs-page-words*) (* *pgs-page-words* (floor j *pgs-page-words*))) j))
+   :hints (("Goal" :in-theory (enable mod)))))
 
-(defthm adt-pr-mod-bounds
-  (implies (natp j)
-           (and (<= 0 (mod j *pgs-page-words*)) (< (mod j *pgs-page-words*) *pgs-page-words*)))
-  :rule-classes nil)
+(local
+ (defthm adt-pr-mod-bounds
+   (implies (natp j)
+            (and (<= 0 (mod j *pgs-page-words*)) (< (mod j *pgs-page-words*) *pgs-page-words*)))
+   :rule-classes nil))
 
-(defthm adt-pr-floor-natp
-  (implies (natp j) (natp (floor j *pgs-page-words*)))
-  :rule-classes :type-prescription)
+(local
+ (defthm adt-pr-floor-natp
+   (implies (natp j) (natp (floor j *pgs-page-words*)))
+   :rule-classes :type-prescription))
 
-(defthm adt-pr-mod-natp
-  (implies (natp j) (natp (mod j *pgs-page-words*)))
-  :rule-classes :type-prescription)
+(local
+ (defthm adt-pr-mod-natp
+   (implies (natp j) (natp (mod j *pgs-page-words*)))
+   :rule-classes :type-prescription))
 
 ; The arithmetic of a word's place, once, with floor and mod closed.
-(defthm adt-pr-place
-  (implies (and (natp j) (natp len) (< j len))
-           (and (< (* *pgs-page-words* (floor j *pgs-page-words*)) len)
-                (< (mod j *pgs-page-words*) (- len (* *pgs-page-words* (floor j *pgs-page-words*))))
-                (< (mod j *pgs-page-words*) *pgs-page-words*)
-                (equal (+ (mod j *pgs-page-words*) (* *pgs-page-words* (floor j *pgs-page-words*))) j)))
-  :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
-           :use (adt-pr-floor-mod adt-pr-mod-bounds)))
-  :rule-classes nil)
+(local
+ (defthm adt-pr-place
+   (implies (and (natp j) (natp len) (< j len))
+            (and (< (* *pgs-page-words* (floor j *pgs-page-words*)) len)
+                 (< (mod j *pgs-page-words*) (- len (* *pgs-page-words* (floor j *pgs-page-words*))))
+                 (< (mod j *pgs-page-words*) *pgs-page-words*)
+                 (equal (+ (mod j *pgs-page-words*) (* *pgs-page-words* (floor j *pgs-page-words*))) j)))
+   :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
+            :use (adt-pr-floor-mod adt-pr-mod-bounds)))
+   :rule-classes nil))
 
 ; The word at J of the page image is the tape's.
-(defthm adt-pr-nth-of-pages
-  (implies (and (true-listp w) (natp j) (< j (len w)))
-           (equal (nth (mod j *pgs-page-words*) (nth (floor j *pgs-page-words*) (adt-tp-pages w)))
-                  (nth j w)))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance adt-tp-nth-of-pages (k (floor j *pgs-page-words*)))
-                 (:instance adt-pr-place (len (len w)))
-                 (:instance adt-pr-nth-of-page (m (mod j *pgs-page-words*))
-                            (v (nthcdr (* *pgs-page-words* (floor j *pgs-page-words*)) w)))
-                 (:instance adt-pr-nth-of-nthcdr (a (mod j *pgs-page-words*))
-                            (b (* *pgs-page-words* (floor j *pgs-page-words*)))))
-           :in-theory (e/d (adt-tp-len-nthcdr)
-                           (adt-tp-nth-of-pages adt-pr-nth-of-page adt-pr-nth-of-nthcdr adt-pr-floor-mod
-                            floor mod adt-tp-page-short adt-tp-page-long)))))
+(local
+ (defthm adt-pr-nth-of-pages
+   (implies (and (true-listp w) (natp j) (< j (len w)))
+            (equal (nth (mod j *pgs-page-words*) (nth (floor j *pgs-page-words*) (adt-tp-pages w)))
+                   (nth j w)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance adt-tp-nth-of-pages (k (floor j *pgs-page-words*)))
+                  (:instance adt-pr-place (len (len w)))
+                  (:instance adt-pr-nth-of-page (m (mod j *pgs-page-words*))
+                             (v (nthcdr (* *pgs-page-words* (floor j *pgs-page-words*)) w)))
+                  (:instance adt-pr-nth-of-nthcdr (a (mod j *pgs-page-words*))
+                             (b (* *pgs-page-words* (floor j *pgs-page-words*)))))
+            :in-theory (e/d (adt-tp-len-nthcdr)
+                            (adt-tp-nth-of-pages adt-pr-nth-of-page adt-pr-nth-of-nthcdr adt-pr-floor-mod
+                             floor mod adt-tp-page-short adt-tp-page-long))))))
 
-(defthm adt-pr-nthcdr-cons
-  (implies (and (natp j) (< j (len w)))
-           (equal (nthcdr j w) (cons (nth j w) (nthcdr (+ 1 j) w))))
-  :hints (("Goal" :in-theory (enable nth nthcdr) :induct (nth j w))))
+(local
+ (defthm adt-pr-nthcdr-cons
+   (implies (and (natp j) (< j (len w)))
+            (equal (nthcdr j w) (cons (nth j w) (nthcdr (+ 1 j) w))))
+   :hints (("Goal" :in-theory (enable nth nthcdr) :induct (nth j w)))))
 
-(defthm adt-pr-take-step
-  (implies (and (natp j) (< j (len w)) (natp end) (< j end))
-           (equal (adt-tp-take (- end j) (nthcdr j w))
-                  (cons (nth j w) (adt-tp-take (- end (+ 1 j)) (nthcdr (+ 1 j) w)))))
-  :hints (("Goal" :in-theory (e/d (adt-tp-take) (adt-pr-nthcdr-cons))
-           :use adt-pr-nthcdr-cons)))
+(local
+ (defthm adt-pr-take-step
+   (implies (and (natp j) (< j (len w)) (natp end) (< j end))
+            (equal (adt-tp-take (- end j) (nthcdr j w))
+                   (cons (nth j w) (adt-tp-take (- end (+ 1 j)) (nthcdr (+ 1 j) w)))))
+   :hints (("Goal" :in-theory (e/d (adt-tp-take) (adt-pr-nthcdr-cons))
+            :use adt-pr-nthcdr-cons))))
 
-(defthm adt-pr-reverse-is-revappend
-  (implies (true-listp x) (equal (reverse x) (revappend x nil)))
-  :hints (("Goal" :in-theory (enable reverse))))
+(local
+ (defthm adt-pr-reverse-is-revappend
+   (implies (true-listp x) (equal (reverse x) (revappend x nil)))
+   :hints (("Goal" :in-theory (enable reverse)))))
 
-(defthm adt-pr-take-zero
-  (equal (adt-tp-take 0 x) nil)
-  :hints (("Goal" :in-theory (enable adt-tp-take))))
+(local
+ (defthm adt-pr-take-zero
+   (equal (adt-tp-take 0 x) nil)
+   :hints (("Goal" :in-theory (enable adt-tp-take)))))
 
 ; Reading [J, END) through the pool gives the tape's words there, whatever the
 ; pool holds and however small it is.
@@ -176,23 +192,25 @@
           ("Subgoal *1/2" :use ((:instance adt-pr-nth-of-pages (j j)) (:instance adt-pr-take-step)))))
 
 
-(defthm adt-pr-floor-succ
-  (implies (natp j)
-           (or (equal (floor (+ 1 j) *pgs-page-words*) (floor j *pgs-page-words*))
-               (equal (floor (+ 1 j) *pgs-page-words*) (+ 1 (floor j *pgs-page-words*)))))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (disable floor mod)
-           :use (adt-pr-floor-mod (:instance adt-pr-floor-mod (j (+ 1 j)))
-                 adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j (+ 1 j)))))))
+(local
+ (defthm adt-pr-floor-succ
+   (implies (natp j)
+            (or (equal (floor (+ 1 j) *pgs-page-words*) (floor j *pgs-page-words*))
+                (equal (floor (+ 1 j) *pgs-page-words*) (+ 1 (floor j *pgs-page-words*)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable floor mod)
+            :use (adt-pr-floor-mod (:instance adt-pr-floor-mod (j (+ 1 j)))
+                  adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j (+ 1 j))))))))
 
-(defthm adt-pr-floor-mono
-  (implies (and (natp j) (natp k) (<= j k))
-           (<= (floor j *pgs-page-words*) (floor k *pgs-page-words*)))
-  :rule-classes :linear
-  :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
-           :use (adt-pr-floor-mod (:instance adt-pr-floor-mod (j k))
-                 adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j k))))))
+(local
+ (defthm adt-pr-floor-mono
+   (implies (and (natp j) (natp k) (<= j k))
+            (<= (floor j *pgs-page-words*) (floor k *pgs-page-words*)))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
+            :use (adt-pr-floor-mod (:instance adt-pr-floor-mod (j k))
+                  adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j k)))))))
 
 ; Pages still to fill: the pages of [J, END), less the current one if resident.
 (defun adt-pr-bnd (tag j end res)
@@ -200,7 +218,7 @@
   (if (<= (nfix end) (nfix j))
       0
     (- (adt-pr-span j end)
-       (if (member (cons tag (floor (nfix j) *pgs-page-words*)) res) 1 0))))
+       (if (member-equal (cons tag (floor (nfix j) *pgs-page-words*)) res) 1 0))))
 
 (defthm adt-pr-read-words-fills
   (implies (and (natp j) (natp end))
@@ -216,19 +234,21 @@
   :hints (("Goal" :induct (adt-pr-read-words tag j end pages res frames acc fills)
            :in-theory (disable floor mod adt-pr-fill adt-pr-cap))))
 
-(defthm adt-pr-floor-plus-page
-  (implies (natp x)
-           (equal (floor (+ *pgs-page-words* x) *pgs-page-words*) (+ 1 (floor x *pgs-page-words*))))
-  :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
-           :use (adt-pr-floor-mod (:instance adt-pr-floor-mod (j (+ *pgs-page-words* x)))
-                 adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j (+ *pgs-page-words* x)))))))
+(local
+ (defthm adt-pr-floor-plus-page
+   (implies (natp x)
+            (equal (floor (+ *pgs-page-words* x) *pgs-page-words*) (+ 1 (floor x *pgs-page-words*))))
+   :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
+            :use (adt-pr-floor-mod (:instance adt-pr-floor-mod (j (+ *pgs-page-words* x)))
+                  adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j (+ *pgs-page-words* x))))))))
 
-(defthm adt-pr-floor-plus-small
-  (implies (and (natp x) (natp y) (< y *pgs-page-words*))
-           (<= (floor (+ x y) *pgs-page-words*) (+ 1 (floor x *pgs-page-words*))))
-  :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
-           :use (adt-pr-floor-mod (:instance adt-pr-floor-mod (j (+ x y)))
-                 adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j (+ x y)))))))
+(local
+ (defthm adt-pr-floor-plus-small
+   (implies (and (natp x) (natp y) (< y *pgs-page-words*))
+            (<= (floor (+ x y) *pgs-page-words*) (+ 1 (floor x *pgs-page-words*))))
+   :hints (("Goal" :do-not-induct t :in-theory (disable floor mod)
+            :use (adt-pr-floor-mod (:instance adt-pr-floor-mod (j (+ x y)))
+                  adt-pr-mod-bounds (:instance adt-pr-mod-bounds (j (+ x y))))))))
 
 ; A record of W words read from OFF touches at most one page more than W
 ; words take.
@@ -246,55 +266,63 @@
     (adt-pr-read-words tag off (+ (nfix off) (nfix w)) pages res frames nil fills)
     (mv (car (adt-tp-dseq s ws)) res fills)))
 
-(defthm adt-pr-append-take-nthcdr
-  (implies (and (true-listp a) (natp i) (<= i (len a)))
-           (equal (append (take i a) (nthcdr i a)) a)))
+(local
+ (defthm adt-pr-append-take-nthcdr
+   (implies (and (true-listp a) (natp i) (<= i (len a)))
+            (equal (append (take i a) (nthcdr i a)) a))))
 
-(defthm adt-pr-nthcdr-of-append-len
-  (implies (and (true-listp p) (equal (len p) off))
-           (equal (nthcdr off (append p r)) r)))
+(local
+ (defthm adt-pr-nthcdr-of-append-len
+   (implies (and (true-listp p) (equal (len p) off))
+            (equal (nthcdr off (append p r)) r))))
 
-(defthm adt-pr-take-of-append-len
-  (implies (and (true-listp x) (equal (len x) w))
-           (equal (adt-tp-take w (append x r)) x))
-  :hints (("Goal" :use ((:instance adt-tp-take-of-append (n w) (a x) (b r))
-                        (:instance adt-tp-take-of-len (a x)))
-           :in-theory (disable adt-tp-take-of-append adt-tp-take-of-len))))
+(local
+ (defthm adt-pr-take-of-append-len
+   (implies (and (true-listp x) (equal (len x) w))
+            (equal (adt-tp-take w (append x r)) x))
+   :hints (("Goal" :use ((:instance adt-tp-take-of-append (n w) (a x) (b r))
+                         (:instance adt-tp-take-of-len (a x)))
+            :in-theory (disable adt-tp-take-of-append adt-tp-take-of-len)))))
 
-(defthm adt-pr-seq-words-of-split
-  (implies (and (natp i) (< i (len a)) (true-listp a))
-           (equal (adt-tp-seq-words s a)
-                  (append (adt-tp-seq-words s (take i a))
-                          (append (adt-tp-rw s (nth i a))
-                                  (adt-tp-seq-words s (nthcdr (+ 1 i) a))))))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance adt-pr-append-take-nthcdr)
-                 (:instance adt-tp-seq-words-of-append (a (take i a)) (b (nthcdr i a)))
-                 (:instance adt-pr-nthcdr-cons (j i) (w a)))
-           :in-theory (disable adt-pr-append-take-nthcdr adt-tp-seq-words-of-append adt-pr-nthcdr-cons
-                               adt-tp-seq-words-of-snoc take nthcdr))))
+(local
+ (defthm adt-pr-seq-words-of-split
+   (implies (and (natp i) (< i (len a)) (true-listp a))
+            (equal (adt-tp-seq-words s a)
+                   (append (adt-tp-seq-words s (take i a))
+                           (append (adt-tp-rw s (nth i a))
+                                   (adt-tp-seq-words s (nthcdr (+ 1 i) a))))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance adt-pr-append-take-nthcdr)
+                  (:instance adt-tp-seq-words-of-append (a (take i a)) (b (nthcdr i a)))
+                  (:instance adt-pr-nthcdr-cons (j i) (w a)))
+            :in-theory (disable adt-pr-append-take-nthcdr adt-tp-seq-words-of-append adt-pr-nthcdr-cons
+                                adt-tp-seq-words-of-snoc take nthcdr)))))
 
-(defthm adt-pr-len-seq-words-split
-  (implies (and (natp i) (< i (len a)) (true-listp a))
-           (<= (+ (len (adt-tp-seq-words s (take i a))) (len (adt-tp-rw s (nth i a))))
-               (len (adt-tp-seq-words s a))))
-  :hints (("Goal" :use adt-pr-seq-words-of-split :in-theory (disable adt-pr-seq-words-of-split take nthcdr))))
+(local
+ (defthm adt-pr-len-seq-words-split
+   (implies (and (natp i) (< i (len a)) (true-listp a))
+            (<= (+ (len (adt-tp-seq-words s (take i a))) (len (adt-tp-rw s (nth i a))))
+                (len (adt-tp-seq-words s a))))
+   :hints (("Goal" :use adt-pr-seq-words-of-split :in-theory (disable adt-pr-seq-words-of-split take nthcdr)))))
 
-(defthm adt-pr-rec-p-of-nth
-  (implies (and (adt-seq-p s a) (natp i) (< i (len a)))
-           (adt-rec-p s (nth i a)))
-  :hints (("Goal" :in-theory (enable nth adt-seq-p))))
+(local
+ (defthm adt-pr-rec-p-of-nth
+   (implies (and (adt-seq-p s a) (natp i) (< i (len a)))
+            (adt-rec-p s (nth i a)))
+   :hints (("Goal" :in-theory (enable nth adt-seq-p)))))
 
-(defthm adt-pr-seq-p-true-listp
-  (implies (adt-seq-p s a) (true-listp a))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable adt-seq-p))))
+(local
+ (defthm adt-pr-seq-p-true-listp
+   (implies (adt-seq-p s a) (true-listp a))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable adt-seq-p)))))
 
-(defthm adt-pr-dseq-of-rw
-  (implies (and (adt-tp-schema-ok s) (adt-rec-p s x))
-           (equal (car (adt-tp-dseq s (adt-tp-rw s x))) x))
-  :hints (("Goal" :use ((:instance adt-tp-seq-roundtrip (a (list x)) (tail nil)))
-           :in-theory (e/d (adt-seq-p) (adt-tp-seq-roundtrip)))))
+(local
+ (defthm adt-pr-dseq-of-rw
+   (implies (and (adt-tp-schema-ok s) (adt-rec-p s x))
+            (equal (car (adt-tp-dseq s (adt-tp-rw s x))) x))
+   :hints (("Goal" :use ((:instance adt-tp-seq-roundtrip (a (list x)) (tail nil)))
+            :in-theory (e/d (adt-seq-p) (adt-tp-seq-roundtrip))))))
 
 ; Row I of a sequence, read from its page image through the pool: OFF its word
 ; offset and W its width.
@@ -344,13 +372,15 @@
         (cons (list off w) (adt-pr-dir-rows s (cdr rows) (+ off w))))
     nil))
 
-(defthm adt-pr-len-dir-rows
-  (equal (len (adt-pr-dir-rows s rows off)) (len rows)))
+(local
+ (defthm adt-pr-len-dir-rows
+   (equal (len (adt-pr-dir-rows s rows off)) (len rows))))
 
-(defun adt-pr-dir-ind (rows i off s)
-  (if (consp rows)
-      (adt-pr-dir-ind (cdr rows) (1- i) (+ off (len (adt-tp-rw s (car rows)))) s)
-    (list i off)))
+(local
+ (defun adt-pr-dir-ind (rows i off s)
+   (if (consp rows)
+       (adt-pr-dir-ind (cdr rows) (1- i) (+ off (len (adt-tp-rw s (car rows)))) s)
+     (list i off))))
 
 (defthm adt-pr-dir-rows-nth
   (implies (and (natp i) (< i (len rows)) (natp off))
@@ -364,18 +394,21 @@
 ; words each, so entry I is at word 3I.
 (defconst *adt-pr-dir-schema* '((:u64) (:u64)))
 
-(defthm adt-pr-len-dir-rw
-  (equal (len (adt-tp-rw *adt-pr-dir-schema* x)) 3))
+(local
+ (defthm adt-pr-len-dir-rw
+   (equal (len (adt-tp-rw *adt-pr-dir-schema* x)) 3)))
 
-(defthm adt-pr-len-dir-seq-words
-  (equal (len (adt-tp-seq-words *adt-pr-dir-schema* a)) (* 3 (len a)))
-  :hints (("Goal" :in-theory (enable adt-tp-seq-words))))
+(local
+ (defthm adt-pr-len-dir-seq-words
+   (equal (len (adt-tp-seq-words *adt-pr-dir-schema* a)) (* 3 (len a)))
+   :hints (("Goal" :in-theory (enable adt-tp-seq-words)))))
 
-(defthm adt-pr-len-dir-seq-words-take
-  (implies (and (natp i) (<= i (len a)))
-           (equal (len (adt-tp-seq-words *adt-pr-dir-schema* (take i a))) (* 3 i)))
-  :hints (("Goal" :in-theory (disable adt-pr-len-dir-seq-words)
-           :use ((:instance adt-pr-len-dir-seq-words (a (take i a)))))))
+(local
+ (defthm adt-pr-len-dir-seq-words-take
+   (implies (and (natp i) (<= i (len a)))
+            (equal (len (adt-tp-seq-words *adt-pr-dir-schema* (take i a))) (* 3 i)))
+   :hints (("Goal" :in-theory (disable adt-pr-len-dir-seq-words)
+            :use ((:instance adt-pr-len-dir-seq-words (a (take i a))))))))
 
 ; The words of a sequence from OFF fit a u64 (the offsets and widths are u64).
 (defthm adt-pr-dir-rows-seq-p
