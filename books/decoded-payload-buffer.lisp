@@ -15,7 +15,8 @@
 (include-book "payload-lz-scalar-realizer")
 (include-book "def-representation")
 
-(def-representation fn-dlz (octet :u8) :scalar (:octet-seq fn-octets))
+; :paged nil: the flat foundation, so a read is one array access.
+(def-representation fn-dlz (octet :u8) :scalar (:octet-seq fn-octets) :paged nil)
 
 (defthm fn-durable-realize-lz-octet-is-the-buffer-read
   (implies (and (natp i) (fn-cbor-octet-listp dict))

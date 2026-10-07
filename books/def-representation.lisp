@@ -744,13 +744,19 @@
 ; :into over the NAME-APPEND export, so the per-octet loop is generated and
 ; verified, never written in a host.  The correspondence is the generated
 ; NAME-NTH-OF-FILL-LIST: fill, then read at I, is `(nth I XS)'.
-(defun rep-octet-seq-defs (st ap a nth-a nth-c count-of get-c)
+(defun rep-octet-seq-defs (st ap a nth-a nth-c count-of get-c paged)
   `((defun ,nth-a (i ,a)
       (declare (xargs :guard (and (,ap ,a) (natp i))))
       (nth i ,a))
     (defun ,nth-c (i ,st)
       (declare (xargs :stobjs ,st :guard (natp i)))
-      (if (< i (nfix (,count-of ,st))) (,get-c i ,st) nil))))
+      ,(if paged
+           `(if (< i (nfix (,count-of ,st))) (,get-c i ,st) nil)
+         ; The flat foundation's read is one array access; its guard is the
+         ; array's own length (the correspondence puts the count inside it).
+         `(if (and (< i (nfix (,count-of ,st))) (,(adt-sym get-c "-OKP") i ,st))
+              (,get-c i ,st)
+            nil)))))
 
 (defun rep-octet-seq-thms (name nth-a ap)
   (declare (ignore ap))
@@ -918,7 +924,7 @@
        (defun ,clear-a (,a)
          (declare (xargs :guard (,ap ,a)) (ignore ,a))
          nil)
-       ,@(and octet-seq (rep-octet-seq-defs st ap a nth-a nth-c count-of get-c))
+       ,@(and octet-seq (rep-octet-seq-defs st ap a nth-a nth-c count-of get-c paged))
        ,@(and paged
               `((defun ,(adt-sym name "$A-RESERVE") (rows octets ,a)
                   (declare (xargs :guard (and (,ap ,a) (natp rows) (natp octets))) (ignore rows octets))

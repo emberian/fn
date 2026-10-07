@@ -341,6 +341,21 @@
  (def-representation drt-r8 (octet :u8) :scalar (:octet-seq drt-no-such-buffer))
  :unchecked "refused at expansion: SRC is not an octet-buffer stobj in the world")
 
+; :paged nil: the flat foundation; the reader is one array access.
+(def-representation drt-dec3 (octet :u8) :scalar :octet-seq :paged nil)
+
+(defun drt-dec3-run ()
+  (declare (xargs :guard t))
+  (with-local-stobj drt-dec3
+    (mv-let (out drt-dec3)
+      (let ((drt-dec3 (drt-dec3-fill-list '(4 5 6) drt-dec3)))
+        (mv (list (drt-dec3-count drt-dec3) (drt-dec3-nth 0 drt-dec3) (drt-dec3-nth 2 drt-dec3)
+                  (drt-dec3-nth 3 drt-dec3))
+            drt-dec3))
+      out)))
+
+(assert! (equal (drt-dec3-run) '(3 4 6 nil)))
+
 (must-fail-checked
  (defthm drt-dec-wrong-index
    (implies (and (true-listp xs) (natp i))
