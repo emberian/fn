@@ -250,6 +250,9 @@ class Report:
     installed_from: dict[str, str] = field(default_factory=dict)
     roots: list[str] = field(default_factory=list)
     roots_installed: list[str] = field(default_factory=list)
+    # install-partial: the record this report was reused from (one install
+    # per run, INSTALL_RECORD), or None when the selection ran.
+    reused_from: str | None = None
     # Installed or kept pairs whose entry carried a compiled file, and those
     # whose entry had none (ACL2 then processes that book's events uncompiled).
     fasl_installed: int = 0
@@ -1851,6 +1854,84 @@ def umbrella_miss(candidate: list[str], missing: list[str]) -> str:
     return "; ".join(parts)
 
 
+# One install per run (CONVERGE-3 time bar, 2026-10-07).  A gate run installed
+# the same roots twice: tools/hbox_native.sh's install step (install-partial
+# over roots.txt), then certify_books --incremental, which calls
+# install_partial again; the second pass found every pair resident and still
+# redid the whole selection (13.5-15 min at load 12-14 on hbox).  The record
+# below lets the second call return the first's report.  Its key is what the
+# selection is a function of: the closure's sources (each book's content hash,
+# `required_closure`), the roots and recertify lists, the toolchain identity,
+# the ACL2 executable, this tree's path, and the run id.  It is never keyed on
+# the cache's mtime.  The record is honoured only while every artifact it
+# installed is still exactly as installed (stat of .cert/.port/.fasl: device,
+# inode, size, mtime) and every book it left uncached still has no
+# certificate; anything else and install_partial runs in full.
+#
+# Scope: ONE RUN.  The record is written and honoured only under
+# FN_INSTALL_RUN (tools/hbox_native.sh exports one id per run, for its install
+# step and its certify), and only for the same id.  A record left in a tree
+# never outlives its run: across runs the cache may have gained the pairs a
+# book lacked, and the next run must look again.
+INSTALL_RECORD = Path("build") / ".install-partial.json"
+INSTALL_RUN_ENV = "FN_INSTALL_RUN"
+
+
+def _install_key(root: Path, required: dict[str, str], roots, recertify,
+                 toolchain_identity: str, acl2) -> str:
+    return stable_identity({
+        "run": os.environ.get(INSTALL_RUN_ENV, ""),
+        "sources": closure_listing(required), "roots": sorted(roots),
+        "recertify": sorted(recertify), "toolchain": toolchain_identity,
+        "acl2": str(Path(acl2).resolve()) if acl2 is not None else "",
+        "tree": str(root.resolve())})
+
+
+def _artifact_stats(root: Path, report: "Report") -> dict[str, list]:
+    stats: dict[str, list] = {}
+    for name in sorted(report.installed_from):
+        for suffix in (".cert", ".port", ".fasl"):
+            try:
+                st = (root / f"{name}{suffix}").stat()
+            except OSError:
+                continue
+            stats[f"{name}{suffix}"] = [st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns]
+    return stats
+
+
+def _reused_install(root: Path, key: str) -> "Report | None":
+    """The recorded report when KEY matches and the tree is as installed."""
+    try:
+        record = json.loads((root / INSTALL_RECORD).read_text(encoding="utf-8"))
+        if not isinstance(record, dict) or record.get("key") != key:
+            return None
+        report = Report(**record["report"])
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+    if _artifact_stats(root, report) != record.get("stats"):
+        return None
+    if any((root / f"{name}.cert").exists() for name in report.uncached):
+        return None
+    report.reused_from = str(INSTALL_RECORD)
+    return report
+
+
+def _write_install_record(root: Path, key: str, report: "Report") -> None:
+    from dataclasses import asdict
+    body = asdict(report)
+    body["reused_from"] = None
+    path = root / INSTALL_RECORD
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps({"key": key, "report": body,
+                                         "stats": _artifact_stats(root, report)},
+                                        sort_keys=True), encoding="utf-8")
+        os.replace(temporary, path)
+    except OSError:
+        pass
+
+
 @scoped_closures
 def install_partial(root: Path, cache: Path, roots: Iterable[str],
                     toolchain_identity: str, acl2: Path | None = None,
@@ -1886,6 +1967,13 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     if outside:
         raise ValueError("a book to recertify is not in the roots' closure: "
                          + ", ".join(outside))
+    key = _install_key(root, required, roots, recertify, toolchain_identity, acl2)
+    run_scoped = bool(os.environ.get(INSTALL_RUN_ENV))
+    if _attempt == 0 and run_scoped:
+        reused = _reused_install(root, key)
+        if reused is not None:
+            return reused
+        (root / INSTALL_RECORD).unlink(missing_ok=True)
     report.recertified = list(recertify)
     report.books = len(required)
     report.toolchain_identity = toolchain_identity
@@ -1959,6 +2047,8 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     report.roots = list(roots)
     report.roots_installed = sorted(name for name in roots
                                     if name in report.installed_from)
+    if run_scoped:
+        _write_install_record(root, key, report)
     return report
 
 

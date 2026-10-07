@@ -2240,5 +2240,80 @@ class ContentHashMemoTests(unittest.TestCase):
             self.assertEqual(len(opened), 2)
 
 
+
+class InstallOncePerRunTests(unittest.TestCase):
+    """One install per run (tools/certs.py INSTALL_RECORD): under one
+    FN_INSTALL_RUN id the second install_partial of the same roots returns the
+    first's report without selecting again; anything that changed the tree,
+    or another run id, or no id at all, selects in full."""
+
+    TOOLCHAIN = CompiledFileTests.TOOLCHAIN
+    FARM = CompiledFileTests.FARM
+    source = CompiledFileTests.source
+
+    def setUp(self):
+        self.calls = 0
+
+    def install(self, *args):
+        def checker(paths, pairs, acl2, root):
+            self.calls += 1
+            return {pair: (True, True) for pair in pairs}
+        return certs.install_partial(*args, acl2=Path("/fixture/acl2"), pair_checker=checker)
+
+    def tree(self, one, two):
+        root, manifest = self.source(one, ["books/base", "books/mid"])
+        cache = Path(two) / "cache"
+        certs.publish(root, cache, [manifest], origin=self.FARM, origin_kind="run")
+        return worktree(two + "/target"), cache
+
+    def test_the_same_run_reuses_the_selection(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                mock.patch.dict(os.environ, {"FN_INSTALL_RUN": "run-1"}):
+            target, cache = self.tree(one, two)
+            first = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            calls = self.calls
+            self.assertGreater(calls, 0)
+            second = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(self.calls, calls, "the second install selected again")
+            self.assertEqual(second.reused_from, str(certs.INSTALL_RECORD))
+            self.assertEqual(second.installed_from, first.installed_from)
+            self.assertEqual(second.uncached, first.uncached)
+
+    def test_a_changed_artifact_selects_again(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                mock.patch.dict(os.environ, {"FN_INSTALL_RUN": "run-1"}):
+            target, cache = self.tree(one, two)
+            self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            calls = self.calls
+            cert = target / "books/base.cert"
+            os.utime(cert, ns=(cert.stat().st_atime_ns, cert.stat().st_mtime_ns + 10**9))
+            again = self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertGreater(self.calls, calls)
+            self.assertIsNone(again.reused_from)
+
+    def test_another_run_or_no_run_selects_again(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            target, cache = self.tree(one, two)
+            with mock.patch.dict(os.environ, {"FN_INSTALL_RUN": "run-1"}):
+                self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            calls = self.calls
+            with mock.patch.dict(os.environ, {"FN_INSTALL_RUN": "run-2"}):
+                self.assertIsNone(self.install(target, cache, ["books/mid"], self.TOOLCHAIN).reused_from)
+            self.assertGreater(self.calls, calls)
+            calls = self.calls
+            env = {k: v for k, v in os.environ.items() if k != "FN_INSTALL_RUN"}
+            with mock.patch.dict(os.environ, env, clear=True):
+                self.assertIsNone(self.install(target, cache, ["books/mid"], self.TOOLCHAIN).reused_from)
+            self.assertGreater(self.calls, calls)
+
+    def test_other_roots_select_again(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                mock.patch.dict(os.environ, {"FN_INSTALL_RUN": "run-1"}):
+            target, cache = self.tree(one, two)
+            self.install(target, cache, ["books/mid"], self.TOOLCHAIN)
+            calls = self.calls
+            self.assertIsNone(self.install(target, cache, ["books/base"], self.TOOLCHAIN).reused_from)
+            self.assertGreater(self.calls, calls)
+
 if __name__ == "__main__":
     unittest.main()
