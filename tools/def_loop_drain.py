@@ -1664,8 +1664,12 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                                 raise Refuse("exec-differs", flat_low(b.items[1])[:60])
             # late guard: callee verified after the wrapper
             names = set()
+            # the guard and loop guard too: def-loop verifies guards where it stands, and a
+            # guard that calls a function whose guards come later refuses there (wire's
+            # fn-wire-lines-size, guard fn-wire-octet-linesp, verified at the book's end)
             for part in (spec.body, spec.keep, spec.stop, spec.stopval, spec.lets, spec.tail, spec.while_,
-                         spec.combine, spec.init, spec.done, spec.emit, spec.skip):
+                         spec.combine, spec.init, spec.done, spec.emit, spec.skip,
+                         getattr(spec, "guard", None), getattr(spec, "loop_guard", None)):
                 if part is not None:
                     fn_names(part, names)
             for part in ([spec.next, spec.skip_next] if spec.shape == "step" else []):

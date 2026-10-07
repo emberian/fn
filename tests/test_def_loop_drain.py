@@ -113,6 +113,15 @@ class LateGuard(unittest.TestCase):
         self.assertLess(out.index("(def-loop"), out.index("fn-nntp-active-lines-true-listp"))
         self.assertEqual(out.count("verify-guards"), 1)
 
+    def test_a_guard_callee_verified_later_moves_up(self):
+        # wire's fn-wire-lines-size: its :guard calls fn-wire-octet-linesp, whose
+        # verify-guards sat at the book's end; def-loop verifies guards where it stands
+        out = self.conv("late-guard-in-guard")
+        self.assertLess(out.index("(verify-guards fn-wire-octet-linesp)"), out.index("(def-loop"))
+        self.assertLess(out.index("(verify-guards fn-wire-octet-listp)"),
+                        out.index("(verify-guards fn-wire-octet-linesp)"))
+        self.assertEqual(out.count("(verify-guards fn-wire-octet-linesp)"), 1)
+
 
 class ExecDiffers(unittest.TestCase):
     """The exec-differs drain (lane drain-gv3): a hand loop that is the logic's terms in
