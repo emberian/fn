@@ -36,6 +36,8 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+from tools import ratchet  # noqa: E402
 BASELINE = os.path.join(ROOT, "tools", "clock_unit_baseline.json")
 EXEMPT = {"books/clock.lisp", "books/clock-unit.lisp"}
 ARITH = {"+", "-", "*", "/", "floor", "ceiling", "truncate", "round", "mod",
@@ -216,11 +218,9 @@ def main(argv=None):
             for line, op in found[rel]:
                 print("{}:{}: ({} ... fn-clock-...)".format(rel, line, op))
     if args.write_baseline:
-        grown = [rel for rel in found
-                 if len(found[rel]) > baseline.get(rel, 0) and baseline]
-        if grown:
-            print("clock_unit_check: refused: the baseline only shrinks; grown: "
-                  + ", ".join(sorted(grown)), file=sys.stderr)
+        if ratchet.report("clock_unit_check", ratchet.refused(
+                "clock_unit_check", ratchet.old_rows("clock_unit_check", baseline_path, lambda: baseline),
+                {rel: len(v) for rel, v in found.items()})):
             return 1
         doc = ("tools/clock_unit_check.py: raw arithmetic on a clock observation's "
                "fields outside books/clock-unit.lisp, counted per file (PRF-378). "

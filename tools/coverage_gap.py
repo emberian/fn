@@ -265,7 +265,7 @@ def report(root, claims=None, lanes=None, acks_path=None):
     nr = never_run(root, scenarios, modules, load_evidence_paths(root, findings))
     known = {it["id"] for it in items} | {s.get("id") for s in scenarios} | set(modules)
     for a in sorted(acks):
-        if a not in known:
+        if a not in known and not a.startswith("ratchet:"):  # tools/ratchet.py reads those
             findings.add("ACKS.md", f"ACK names no item, scenario or module: {a}")
     by = {}
     for it, disp, ev in rows:

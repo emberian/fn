@@ -109,6 +109,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import callgraph  # noqa: E402
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from tools import ratchet  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "reach-baseline.json"
@@ -1432,6 +1434,15 @@ def unresolved_failures(unresolved, triaged: dict) -> list[str]:
     return sorted(out)
 
 
+def baseline_raise_refused(findings) -> bool:
+    """A --baseline rewrite may drop orphans, never add one without an ACKS.md
+    ratchet line (tools/ratchet.py); prints the refusal and returns True."""
+    old = ratchet.old_rows("reach_check", BASELINE,
+                           lambda: {k: 1 for k in load_baseline().get("accepted", {})})
+    return ratchet.report("reach_check", ratchet.refused(
+        "reach_check", old, {f.key(): 1 for f in findings}))
+
+
 def write_baseline(findings) -> None:
     current = load_baseline()
     existing = current.get("accepted", {})
@@ -1524,6 +1535,8 @@ def main(argv=None) -> int:
     findings, hosted, unresolved = audit(graph, chosen)
 
     if arguments.baseline:
+        if baseline_raise_refused(findings):
+            return 1
         write_baseline(findings)
         print(f"reach_check: baseline rewritten with {len(findings)} accepted "
               f"orphan(s) in {BASELINE.relative_to(ROOT)}")

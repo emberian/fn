@@ -55,7 +55,16 @@ class RaiseNeedsAReasonTests(unittest.TestCase):
         self.assertEqual(written, {"host/a-host.lisp": 1})
 
     def test_a_raise_with_a_reason_keeps_one_dated_line_and_the_check_ignores_it(self):
-        code, written = self.run_write(["--reason", "two arrived"], {"host/a-host.lisp": 1})
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from tools import ratchet
+        with tempfile.TemporaryDirectory() as d:
+            acks = Path(d) / "ACKS.md"
+            acks.write_text("ratchet:owner_globals_check:host/a-host.lisp \u2014 two arrived "
+                            "\u2014 the test\n")
+            with mock.patch.object(ratchet, "ACKS", acks):
+                code, written = self.run_write(["--reason", "two arrived"], {"host/a-host.lisp": 1})
         self.assertEqual(code, 0)
         self.assertEqual(written["host/a-host.lisp"], 2)
         self.assertEqual(len(written["_reasons"]), 1)
