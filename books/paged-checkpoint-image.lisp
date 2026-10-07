@@ -1,8 +1,6 @@
 ; fn: the staged keystone's pre-state is the previous commit's image (lane
 ; s-pck-host, 2026-10-07; STORAGE-PROGRAM-20261006.md section 3.3, phase 2c).
 ;
-; STATEMENTS (written first; the proofs follow in this file).
-;
 ; `fn-pck-x-stage-is-the-dirty' (paged-checkpoint-stage.lisp) assumes a mem0
 ; whose dirty pages hold the prefix tail then zeros, resident.  Here that state
 ; is derived from the image the previous commit left.
@@ -11,25 +9,30 @@
 ;       (vi = 2); the arrays have the image's lengths (d = V, w = 2048 V); the
 ;       tape window (words 16384 .. 2048 V) is PW followed by zeros.
 ;
-;   fn-pck-x-prestate   (pcki-img PW mem), the image grown to NPN pages
-;       (`pgs-x-grow-image', zero pages, resident) with NPN covering
-;       the last tape page of PW ++ a WL-word delta:
-;         (pcks-res CNT (+ CNT WL) mem2)   -- every delta position is writable
+;   fn-pck-x-prestate   from (pcki-img PW mem), the image grown to NPN pages
+;       (`pgs-x-grow-image': zero pages, resident), NPN covering the last tape
+;       page of PW ++ a WL-word delta:
+;         (pcks-res CNT (+ CNT WL) mem2)   every delta position is writable
 ;         (pgs-x-abs-dirty LP mem2) = (pck-shift 8 (adt-tp-dirty-at CNT TAIL zeros(WL)))
 ;       with CNT = (len PW), TAIL = PW's last partial page, LP the pages of that
-;       set.  These are exactly premises (1) and (2) of the keystone.  The tail
-;       page needs no separate read: the invariant holds it resident.
+;       set.  These are premises (1) and (2) of the keystone.  The tail page
+;       needs no separate read: the invariant holds it resident.
 ;
 ;   fn-pck-x-image-after-commit   the invariant is the loop's: from
 ;       (pcki-img PW mem), growing, staging the delta rows and
 ;       `pgs-x-commit-durable' on the tape's dirty pages leave
-;       (pcki-img PW' mem4) with PW' the words of (prefix ++ delta); the
-;       staging answers :ok.  So a store opened (every tape page filled and
-;       verified) establishes the invariant once, and each publication keeps it.
+;       (pcki-img PW++W mem4), W the words of the delta; the staging answers
+;       :ok.  A store opened (every tape page filled and verified) establishes
+;       the invariant once, and each publication keeps it.
 ;
-; Not here (owed, PCK-STAGE-NEED-PAGE): a tail page that is not resident
-; (lazy open) answers (:need-page LP); that path fills the page and retries.
-
+; Scope.  `pgs-x-commit' between the staging and the durable marking touches
+; the page store's tables and the image's word array only through the dirty
+; pages' digests (pagestore-refine.lisp, pgs-x-words-0-of-commit); the
+; invariant is stated over the w, d and v arrays and is closed under
+; `pgs-x-commit-durable' here.  PCK-STAGE-NEED-PAGE (a tail page that is not
+; resident answers (:need-page LP) under lazy open; fill and retry) stays owed.
+; Premise (3) of the keystone (every program under 2^64 octets) is
+; `adt-tp-seq-lens-ok', carried through.
 (in-package "ACL2")
 (include-book "paged-checkpoint-stage")
 (include-book "history-pages-relocate")
@@ -383,3 +386,356 @@
                   (equal (pgs-x-abs-dirty (pgs-dirty-lpages d) mem2) d))))
   :hints (("Goal" :use (pcki-prestate-res pcki-prestate-dirty)
            :in-theory (theory 'minimal-theory))))
+
+; -----------------------------------------------------------------------------
+; Staging keeps the image's shape: the array lengths and every page's flag.
+; Reading the flags as a list (`pcki-vis') lets the frame be one equality.
+
+(defun pcki-vis (n pgs-mem)
+  (declare (xargs :stobjs pgs-mem :verify-guards nil))
+  (if (zp n) nil (cons (pgs-vi (1- n) pgs-mem) (pcki-vis (1- n) pgs-mem))))
+
+(defun pcki-shape (pgs-mem)
+  (declare (xargs :stobjs pgs-mem :verify-guards nil))
+  (list (pgs-w-length pgs-mem) (pgs-d-length pgs-mem) (pgs-v-length pgs-mem)
+        (pcki-vis (pgs-v-length pgs-mem) pgs-mem)))
+
+(defthm pcki-write-nonok
+  (implies (not (equal (mv-nth 0 (pgs-x-write lp off v pgs-mem)) :ok))
+           (equal (mv-nth 1 (pgs-x-write lp off v pgs-mem)) pgs-mem))
+  :hints (("Goal" :in-theory (enable pgs-x-write))))
+
+(defthm pcki-vi-of-write
+  (implies (and (natp lp) (natp off) (natp j))
+           (equal (pgs-vi j (mv-nth 1 (pgs-x-write lp off v pgs-mem))) (pgs-vi j pgs-mem)))
+  :hints (("Goal" :cases ((equal (mv-nth 0 (pgs-x-write lp off v pgs-mem)) :ok))
+           :in-theory (disable pgs-x-write))
+          ("Subgoal 2" :use pcki-write-nonok :in-theory (disable pcki-write-nonok pgs-x-write))
+          ("Subgoal 1" :use ((:instance pgs-x-write-facts (a 0) (j j)))
+           :in-theory (disable pgs-x-write-facts pgs-x-write))))
+
+(defthm pcki-lengths-of-write
+  (implies (and (natp lp) (natp off))
+           (and (equal (pgs-w-length (mv-nth 1 (pgs-x-write lp off v pgs-mem))) (pgs-w-length pgs-mem))
+                (equal (pgs-d-length (mv-nth 1 (pgs-x-write lp off v pgs-mem))) (pgs-d-length pgs-mem))
+                (equal (pgs-v-length (mv-nth 1 (pgs-x-write lp off v pgs-mem))) (pgs-v-length pgs-mem))))
+  :hints (("Goal" :cases ((equal (mv-nth 0 (pgs-x-write lp off v pgs-mem)) :ok))
+           :in-theory (disable pgs-x-write))
+          ("Subgoal 2" :use pcki-write-nonok :in-theory (disable pcki-write-nonok pgs-x-write))
+          ("Subgoal 1" :use ((:instance pgs-x-write-facts (a 0) (j 0)))
+           :in-theory (disable pgs-x-write-facts pgs-x-write))))
+
+(defthm pcki-vis-of-write
+  (implies (and (natp lp) (natp off))
+           (equal (pcki-vis n (mv-nth 1 (pgs-x-write lp off v pgs-mem))) (pcki-vis n pgs-mem)))
+  :hints (("Goal" :induct (pcki-vis n pgs-mem) :in-theory (disable pgs-x-write))))
+
+(defthm pcki-shape-of-write
+  (implies (and (natp lp) (natp off))
+           (equal (pcki-shape (mv-nth 1 (pgs-x-write lp off v pgs-mem))) (pcki-shape pgs-mem)))
+  :hints (("Goal" :in-theory (disable pgs-x-write pcki-vis))))
+
+(in-theory (disable pcki-shape pcki-vis pcki-write-nonok pcki-vi-of-write pcki-lengths-of-write pcki-vis-of-write))
+
+(defthm pcki-shape-of-wr
+  (implies (natp q)
+           (equal (pcki-shape (mv-nth 1 (pcks-wr q v pgs-mem))) (pcki-shape pgs-mem)))
+  :hints (("Goal" :expand ((pcks-wr q v pgs-mem))
+           :use ((:instance pcki-shape-of-write (lp (+ 8 (floor q 2048))) (off (mod q 2048))))
+           :in-theory (disable pcki-shape-of-write pgs-x-write))))
+
+(defthm pcki-shape-of-put-row
+  (implies (and (natp j) (natp nw) (natp p))
+           (equal (pcki-shape (mv-nth 1 (fn-pck-x-put-row j nw p fn-octets pgs-mem))) (pcki-shape pgs-mem)))
+  :hints (("Goal" :induct (pcks-put-ind j nw p fn-octets pgs-mem)
+           :in-theory (union-theories '(pcks-put-row-open pcks-put-row-done (:induction pcks-put-ind) pcki-shape-of-wr)
+                                      (disable fn-pck-x-put-row pcks-wr pcki-shape pgs-x-write)))))
+
+(defthm pcki-shape-of-stage
+  (implies (natp p)
+           (equal (pcki-shape (mv-nth 2 (fn-pck-x-stage-rows rows p fn-arena fn-octets pgs-mem))) (pcki-shape pgs-mem)))
+  :hints (("Goal" :induct (pcks-stage-ind rows p fn-arena fn-octets pgs-mem)
+           :in-theory (union-theories '(pcks-stage-open pcks-stage-done (:induction pcks-stage-ind) pcki-shape-of-put-row)
+                                      (disable fn-pck-x-stage-rows fn-pck-x-put-row fn-pck-x-encode-row fn-pck-x-row-words pcki-shape)))))
+
+(defthm pcki-vis-vi
+  (implies (and (equal (pcki-vis n a) (pcki-vis n b)) (natp n) (natp j) (< j n))
+           (equal (pgs-vi j a) (pgs-vi j b)))
+  :hints (("Goal" :induct (pcki-vis n a) :in-theory (enable pcki-vis))))
+
+(defthm pcki-shape-vi
+  (implies (and (equal (pcki-shape a) (pcki-shape b)) (natp j) (< j (pgs-v-length a)))
+           (equal (pgs-vi j a) (pgs-vi j b)))
+  :hints (("Goal" :use ((:instance pcki-vis-vi (n (pgs-v-length a))))
+           :in-theory (e/d (pcki-shape) (pcki-vis-vi)))))
+
+(defthm pcki-shape-resident
+  (implies (equal (pcki-shape a) (pcki-shape b))
+           (equal (pcki-resident lo hi a) (pcki-resident lo hi b)))
+  :hints (("Goal" :induct (pcki-resident lo hi a)
+           :in-theory (e/d (pcki-resident pcki-shape) (pcki-vis-vi)))
+          (and stable-under-simplificationp
+               '(:use ((:instance pcki-shape-vi (j lo)))
+                 :in-theory (e/d (pcki-resident pcki-shape) (pcki-vis-vi pcki-shape-vi))))))
+
+(defthm pcki-shape-img
+  (implies (equal (pcki-shape a) (pcki-shape b))
+           (and (equal (pgs-w-length a) (pgs-w-length b))
+                (equal (pgs-d-length a) (pgs-d-length b))
+                (equal (pgs-v-length a) (pgs-v-length b))))
+  :hints (("Goal" :in-theory (enable pcki-shape))))
+
+; -----------------------------------------------------------------------------
+; `pgs-x-commit-durable' marks pages clean and verified: lengths and words stay,
+; and a resident page stays resident.
+
+(defun pcki-fw (m) (nth *pgs-wi* m))
+(defun pcki-fd (m) (nth *pgs-di* m))
+(defun pcki-fv (m) (nth *pgs-vi* m))
+
+(defthm pcki-fields-of-update-d
+  (and (equal (pcki-fv (update-pgs-di i v m)) (pcki-fv m))
+       (equal (pcki-fw (update-pgs-di i v m)) (pcki-fw m))
+       (implies (< (nfix i) (len (pcki-fd m)))
+                (equal (len (pcki-fd (update-pgs-di i v m))) (len (pcki-fd m)))))
+  :hints (("Goal" :in-theory (enable update-pgs-di pcki-fv pcki-fw pcki-fd))))
+
+(defthm pcki-fields-of-update-v
+  (and (equal (pcki-fd (update-pgs-vi i v m)) (pcki-fd m))
+       (equal (pcki-fw (update-pgs-vi i v m)) (pcki-fw m))
+       (implies (< (nfix i) (len (pcki-fv m)))
+                (equal (len (pcki-fv (update-pgs-vi i v m))) (len (pcki-fv m))))
+       (implies (and (natp q) (natp i) (< i (len (pcki-fv m))))
+                (equal (nth q (pcki-fv (update-pgs-vi i v m)))
+                       (if (equal q i) v (nth q (pcki-fv m))))))
+  :hints (("Goal" :in-theory (enable update-pgs-vi pcki-fv pcki-fw pcki-fd))))
+
+(defthm pcki-lengths-are-fields
+  (and (equal (pgs-d-length m) (len (pcki-fd m)))
+       (equal (pgs-w-length m) (len (pcki-fw m)))
+       (equal (pgs-v-length m) (len (pcki-fv m))))
+  :hints (("Goal" :in-theory (enable pgs-d-length pgs-w-length pgs-v-length pcki-fd pcki-fv pcki-fw))))
+
+(in-theory (disable pcki-fw pcki-fd pcki-fv))
+
+(defun pcki-dstep (l pgs-mem)
+  (declare (xargs :stobjs pgs-mem :verify-guards nil))
+  (let* ((pgs-mem (if (< l (pgs-d-length pgs-mem)) (update-pgs-di l 0 pgs-mem) pgs-mem))
+         (pgs-mem (if (< l (pgs-v-length pgs-mem)) (update-pgs-vi l 2 pgs-mem) pgs-mem)))
+    pgs-mem))
+
+(defthm pcki-durable-cons
+  (implies (consp lpages)
+           (equal (pgs-x-commit-durable lpages pgs-mem)
+                  (pgs-x-commit-durable (cdr lpages) (pcki-dstep (car lpages) pgs-mem))))
+  :hints (("Goal" :expand ((pgs-x-commit-durable lpages pgs-mem)) :in-theory (enable pcki-dstep))))
+
+(defthm pcki-dstep-fields
+  (implies (natp l)
+           (and (equal (pcki-fw (pcki-dstep l m)) (pcki-fw m))
+                (equal (len (pcki-fd (pcki-dstep l m))) (len (pcki-fd m)))
+                (equal (len (pcki-fv (pcki-dstep l m))) (len (pcki-fv m)))
+                (implies (and (natp q) (equal (nth q (pcki-fv m)) 2))
+                         (equal (nth q (pcki-fv (pcki-dstep l m))) 2))))
+  :hints (("Goal" :in-theory (e/d (pcki-dstep) (update-pgs-di update-pgs-vi))
+           :do-not-induct t
+           :cases ((< l (len (pcki-fd m))) ))
+          ("Subgoal 2" :cases ((< l (len (pcki-fv m)))))))
+
+(defun pcki-dind (lpages pgs-mem)
+  (declare (xargs :stobjs pgs-mem :verify-guards nil))
+  (if (atom lpages)
+      pgs-mem
+    (let ((pgs-mem (pcki-dstep (car lpages) pgs-mem)))
+      (pcki-dind (cdr lpages) pgs-mem))))
+
+(defthm pcki-durable-fields
+  (implies (nat-listp lpages)
+           (and (equal (pcki-fw (pgs-x-commit-durable lpages m)) (pcki-fw m))
+                (equal (len (pcki-fd (pgs-x-commit-durable lpages m))) (len (pcki-fd m)))
+                (equal (len (pcki-fv (pgs-x-commit-durable lpages m))) (len (pcki-fv m)))
+                (implies (and (natp q) (equal (nth q (pcki-fv m)) 2))
+                         (equal (nth q (pcki-fv (pgs-x-commit-durable lpages m))) 2))))
+  :hints (("Goal" :induct (pcki-dind lpages m)
+           :in-theory (e/d (pgs-x-commit-durable) (pcki-durable-cons pcki-dstep-fields pcki-dstep)))
+          (and stable-under-simplificationp
+               '(:use ((:instance pcki-durable-cons (pgs-mem m)) (:instance pcki-dstep-fields (l (car lpages))))
+                 :in-theory (disable pcki-durable-cons pcki-dstep-fields pcki-dstep pgs-x-commit-durable)))))
+
+(defthm pcki-wi-is-fw
+  (equal (pgs-wi j m) (nth j (pcki-fw m)))
+  :hints (("Goal" :in-theory (enable pgs-wi pcki-fw))))
+
+(defthm pcki-vi-is-fv
+  (equal (pgs-vi j m) (nth j (pcki-fv m)))
+  :hints (("Goal" :in-theory (enable pgs-vi pcki-fv))))
+
+(defthm pcki-durable-wi
+  (implies (nat-listp lpages)
+           (equal (pgs-wi j (pgs-x-commit-durable lpages m)) (pgs-wi j m)))
+  :hints (("Goal" :use pcki-durable-fields :in-theory (disable pcki-durable-fields pgs-x-commit-durable))))
+
+(defthm pcki-durable-words
+  (implies (and (nat-listp lpages) (natp k))
+           (equal (pgs-x-words 0 a k (pgs-x-commit-durable lpages pgs-mem)) (pgs-x-words 0 a k pgs-mem)))
+  :hints (("Goal" :induct (pcks-ind a k)
+           :in-theory (e/d (pcks-words-step pcks-words-zero) (pgs-x-commit-durable)))))
+
+(defthm pcki-durable-resident
+  (implies (and (nat-listp lpages) (pcki-resident lo hi m))
+           (pcki-resident lo hi (pgs-x-commit-durable lpages m)))
+  :hints (("Goal" :induct (pcki-resident lo hi m)
+           :in-theory (e/d (pcki-resident) (pgs-x-commit-durable pcki-durable-fields)))
+          (and stable-under-simplificationp
+               '(:use ((:instance pcki-durable-fields (q lo)))
+                 :in-theory (e/d (pcki-resident pcki-vi-is-fv pcki-lengths-are-fields)
+                                 (pgs-x-commit-durable pcki-durable-fields))))))
+
+(defthm pcki-img-of-durable
+  (implies (and (pcki-img pw pgs-mem) (nat-listp lpages))
+           (pcki-img pw (pgs-x-commit-durable lpages pgs-mem)))
+  :hints (("Goal" :use ((:instance pcki-durable-fields (m pgs-mem))
+                        (:instance pcki-durable-resident (lo 8) (hi (pgs-v-length pgs-mem)) (m pgs-mem))
+                        (:instance pcki-durable-words (a 16384) (k (* 2048 (- (pgs-v-length pgs-mem) 8)))))
+           :in-theory (e/d (pcki-img pcki-lengths-are-fields)
+                           (pcki-durable-fields pcki-durable-resident pcki-durable-words pgs-x-commit-durable pgs-x-words)))))
+
+; -----------------------------------------------------------------------------
+; The invariant survives growth, staging and the durable marking.
+
+(defthm pcki-resident-of-grown
+  (implies (and (pcki-img pw pgs-mem) (natp npn) (< (pgs-v-length pgs-mem) npn)
+                (natp lo) (<= 8 lo) (natp hi) (<= hi npn))
+           (pcki-resident lo hi (pgs-x-grow-image npn pgs-mem)))
+  :hints (("Goal" :induct (pcki-resident lo hi (pgs-x-grow-image npn pgs-mem))
+           :in-theory (e/d (pcki-img (:induction pcki-resident)) (pgs-x-grow-image fn-hp-grow-image-vi fn-hp-grow-image-lengths pcki-resident-vi)))
+          (and stable-under-simplificationp
+               '(:expand ((pcki-resident lo hi (pgs-x-grow-image npn pgs-mem)))
+                 :use ((:instance fn-hp-grow-image-vi (q lo))
+                       (:instance fn-hp-grow-image-lengths (np (pgs-v-length pgs-mem)))
+                       (:instance pcki-resident-vi (lo 8) (hi (pgs-v-length pgs-mem)) (p lo)))
+                 :in-theory (e/d (pcki-img) (pgs-x-grow-image fn-hp-grow-image-vi fn-hp-grow-image-lengths pcki-resident-vi))))))
+
+(defthm pcki-img-of-grown
+  (implies (and (pcki-img pw pgs-mem) (natp npn) (<= (len pw) (* 2048 (- npn 8))))
+           (pcki-img pw (pgs-x-grow-image npn pgs-mem)))
+  :hints (("Goal" :do-not-induct t :cases ((< (pgs-v-length pgs-mem) npn)))
+          ("Subgoal 2" :use (pcki-grow-same) :in-theory (disable pcki-grow-same pgs-x-grow-image))
+          ("Subgoal 1" :use ((:instance fn-hp-grow-image-lengths (np (pgs-v-length pgs-mem)))
+                             (:instance pcki-resident-of-grown (lo 8) (hi npn))
+                             (:instance pcki-window-any (tt (- npn 8))))
+           :in-theory (e/d (pcki-img) (fn-hp-grow-image-lengths pcki-resident-of-grown pcki-window-any pgs-x-grow-image pgs-x-words adt-tp-zeros)))))
+
+(defthm pcki-true-listp-wlist
+  (true-listp (pcks-wlist rows fn-arena))
+  :hints (("Goal" :in-theory (enable pcks-wlist-is-dlo-of-words))))
+
+(defthm pcki-img-of-stage
+  (implies (and (pcki-img pw pgs-mem) (pcks-treesp rows fn-arena)
+                (pcks-res (len pw) (+ (len pw) (pcks-wlen rows fn-arena)) pgs-mem)
+                (<= (+ (len pw) (pcks-wlen rows fn-arena)) (* 2048 (- (pgs-v-length pgs-mem) 8))))
+           (let ((m3 (mv-nth 2 (fn-pck-x-stage-rows rows (len pw) fn-arena fn-octets pgs-mem))))
+             (and (equal (mv-nth 0 (fn-pck-x-stage-rows rows (len pw) fn-arena fn-octets pgs-mem)) :ok)
+                  (pcki-img (append pw (pcks-wlist rows fn-arena)) m3))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance pcks-stage-rows (p (len pw)) (a 16384) (k (* 2048 (- (pgs-v-length pgs-mem) 8))))
+                 (:instance pcki-shape-of-stage (p (len pw)))
+                 (:instance pcki-shape-img (a pgs-mem) (b (mv-nth 2 (fn-pck-x-stage-rows rows (len pw) fn-arena fn-octets pgs-mem))))
+                 (:instance pcki-shape-resident (lo 8) (hi (pgs-v-length pgs-mem)) (a pgs-mem)
+                            (b (mv-nth 2 (fn-pck-x-stage-rows rows (len pw) fn-arena fn-octets pgs-mem))))
+                 (:instance pcks-put-over-zeros (a pw) (ws (pcks-wlist rows fn-arena))
+                            (r (adt-tp-zeros (- (- (* 2048 (- (pgs-v-length pgs-mem) 8)) (len pw)) (pcks-wlen rows fn-arena)))))
+                 (:instance pcki-zeros-append (a (pcks-wlen rows fn-arena))
+                            (b (- (- (* 2048 (- (pgs-v-length pgs-mem) 8)) (len pw)) (pcks-wlen rows fn-arena))))
+                 (:instance pcks-wlen-is-len-wlist))
+           :in-theory (e/d (pcki-img) (pcks-stage-rows pcki-shape-of-stage pcki-shape-img pcki-shape-resident pcks-put-over-zeros
+                                       pcki-zeros-append pcks-wlen-is-len-wlist fn-pck-x-stage-rows pcks-res pcks-put
+                                       pgs-x-words adt-tp-zeros pcks-wlen pcks-wlist
+                                       pcks-wlen-is-len-words pcks-wlist-is-dlo-of-words pcks-len-dlo-list pcks-res-hi)))))
+
+(defthm pcki-nat-listp-iota
+  (implies (natp a) (nat-listp (pcks-iota a n)))
+  :hints (("Goal" :induct (pcks-iota a n))))
+
+(defthm pcki-lpages-nat
+  (implies (and (natp cnt) (natp wl) (true-listp tail) (equal (len tail) (- cnt (* 2048 (floor cnt 2048)))))
+           (nat-listp (pgs-dirty-lpages (pck-shift 8 (adt-tp-dirty-at cnt tail (adt-tp-zeros wl))))))
+  :hints (("Goal" :cases ((< 0 wl)))
+          ("Subgoal 2" :in-theory (e/d (pcks-dirty-at-nil) (adt-tp-dirty-at pck-shift)))
+          ("Subgoal 1" :use (pcki-model-lpages) :in-theory (disable pcki-model-lpages adt-tp-dirty-at pck-shift pcks-iota))))
+
+(defthm pcki-grown-vlen
+  (implies (and (pcki-img pw pgs-mem) (natp npn))
+           (<= npn (pgs-v-length (pgs-x-grow-image npn pgs-mem))))
+  :hints (("Goal" :do-not-induct t :cases ((< (pgs-v-length pgs-mem) npn)))
+          ("Subgoal 2" :use (pcki-grow-same) :in-theory (disable pcki-grow-same pgs-x-grow-image))
+          ("Subgoal 1" :use ((:instance fn-hp-grow-image-lengths (np (pgs-v-length pgs-mem))))
+           :in-theory (e/d (pcki-img) (fn-hp-grow-image-lengths pgs-x-grow-image)))))
+
+(defthm pcki-img-true-listp
+  (implies (pcki-img pw pgs-mem) (true-listp pw))
+  :hints (("Goal" :in-theory (enable pcki-img))))
+
+(defthm pcki-true-listp-nthcdr
+  (implies (true-listp x) (true-listp (nthcdr n x))))
+
+(defthm pcki-after-commit-wlist
+  (implies (and (pcki-img pw pgs-mem) (natp npn) (pcks-treesp rows fn-arena)
+                (<= (+ 8 (floor (+ (len pw) (pcks-wlen rows fn-arena) 2047) 2048)) npn))
+           (let* ((mem2 (pgs-x-grow-image npn pgs-mem))
+                  (r (fn-pck-x-stage-rows rows (len pw) fn-arena fn-octets mem2))
+                  (tail (nthcdr (* 2048 (floor (len pw) 2048)) pw))
+                  (lp (pgs-dirty-lpages (pck-shift 8 (adt-tp-dirty-at (len pw) tail (adt-tp-zeros (pcks-wlen rows fn-arena)))))))
+             (and (equal (mv-nth 0 r) :ok)
+                  (pcki-img (append pw (pcks-wlist rows fn-arena))
+                            (pgs-x-commit-durable lp (mv-nth 2 r))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance pcki-hi-bound (cnt (len pw)) (wl (pcks-wlen rows fn-arena)))
+                 (:instance pcki-img-of-grown)
+                 (:instance pcki-prestate-res (wl (pcks-wlen rows fn-arena)))
+                 (:instance pcki-grown-vlen)
+                 (:instance pcki-img-of-stage (pgs-mem (pgs-x-grow-image npn pgs-mem)))
+                 (:instance pcki-lpages-nat (cnt (len pw)) (wl (pcks-wlen rows fn-arena))
+                            (tail (nthcdr (* 2048 (floor (len pw) 2048)) pw)))
+                 (:instance pcks-len-tail (k (floor (len pw) 2048)))
+                 (:instance pcki-img-of-durable (pw (append pw (pcks-wlist rows fn-arena)))
+                            (pgs-mem (mv-nth 2 (fn-pck-x-stage-rows rows (len pw) fn-arena fn-octets (pgs-x-grow-image npn pgs-mem))))
+                            (lpages (pgs-dirty-lpages (pck-shift 8 (adt-tp-dirty-at (len pw) (nthcdr (* 2048 (floor (len pw) 2048)) pw)
+                                                                                    (adt-tp-zeros (pcks-wlen rows fn-arena))))))))
+           :in-theory (disable pcki-hi-bound pcki-img-of-grown pcki-prestate-res pcki-grown-vlen pcki-img-of-stage pcki-lpages-nat
+                               pcks-len-tail pcki-img-of-durable pgs-x-grow-image pgs-x-commit-durable fn-pck-x-stage-rows
+                               pcks-wlen pcks-wlist adt-tp-dirty-at adt-tp-zeros pck-shift pgs-dirty-lpages pcki-img
+                               pcks-wlen-is-len-words pcks-wlist-is-dlo-of-words pcks-len-dlo-list pcks-res-hi pcks-res))))
+
+(defthm pcki-wlist-is-words
+  (implies (and (fn-pck-sccb-listp (fn-rows-wire-of rows fn-arena))
+                (adt-tp-seq-lens-ok *fn-pck-row-schema* (fn-pck-rows (fn-rows-wire-of rows fn-arena))))
+           (equal (pcks-wlist rows fn-arena)
+                  (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows (fn-rows-wire-of rows fn-arena)))))
+  :hints (("Goal" :do-not-induct t
+           :use (pcks-wlist-is-dlo-of-words
+                        (:instance pck-rows-ap (recs (fn-rows-wire-of rows fn-arena)))
+                        (:instance pcks-dlo-list-id (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows (fn-rows-wire-of rows fn-arena)))))
+                        (:instance adt-tp-u64s-seq-words (s *fn-pck-row-schema*) (a (fn-pck-rows (fn-rows-wire-of rows fn-arena)))))
+           :in-theory (disable pcks-wlist-is-dlo-of-words pcks-dlo-list-id adt-tp-u64s-seq-words pcks-wlist adt-tp-seq-words pck-rows-ap))))
+
+(defthm fn-pck-x-image-after-commit
+  ; The loop: from the image of PW, growing it, staging the delta rows and
+  ; marking the tape's dirty pages durable leave the image of PW ++ the
+  ; delta's words.  The staging answers :ok.
+  (let* ((delta (fn-rows-wire-of rows fn-arena))
+         (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows delta)))
+         (mem2 (pgs-x-grow-image npn pgs-mem))
+         (r (fn-pck-x-stage-rows rows (len pw) fn-arena fn-octets mem2))
+         (tail (nthcdr (* *pgs-page-words* (floor (len pw) *pgs-page-words*)) pw))
+         (lp (pgs-dirty-lpages (pck-shift 8 (adt-tp-dirty-at (len pw) tail (adt-tp-zeros (len w)))))))
+    (implies (and (pcki-img pw pgs-mem) (natp npn)
+                  (fn-pck-sccb-listp delta)
+                  (adt-tp-seq-lens-ok *fn-pck-row-schema* (fn-pck-rows delta))
+                  (<= (+ 8 (floor (+ (len pw) (len w) 2047) 2048)) npn))
+             (and (equal (mv-nth 0 r) :ok)
+                  (pcki-img (append pw w) (pgs-x-commit-durable lp (mv-nth 2 r))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance pcki-after-commit-wlist))
+           :in-theory (union-theories '(pcks-wlen-is-len-words pcki-wlist-is-words pcks-treesp-of-sccb-listp)
+                                      (theory 'minimal-theory)))))
