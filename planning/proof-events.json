@@ -15805,7 +15805,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-gidx-put-all-loop-of-rev-onto"
+          "name": "fn-dl-foldr-loop-is-foldr"
         },
         {
           "kind": "theorem",
@@ -15849,10 +15849,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-native-auth-admin-sort-credentials-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-native-auth-line-count-loop-is-plus"
         },
         {
@@ -15866,10 +15862,6 @@
         {
           "kind": "theorem",
           "name": "fn-nntp-xpat-join-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oag-group-facts-loop-of-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15933,10 +15925,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-smid-codes-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-store-codes-from-groups-loop-of-rev-onto"
         },
         {
@@ -15958,10 +15946,6 @@
         {
           "kind": "theorem",
           "name": "fn-tcl-drive-loop-is-drive"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tcl-take-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
