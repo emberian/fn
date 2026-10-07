@@ -878,6 +878,7 @@
     "tests/acl2/payload-lz-append-tests",
     "tests/acl2/deflate-inflate-tests",
     "books/deflate-pool-check",
+    "books/decoded-payload-decode-into",
     "tests/acl2/deflate-pool-tests",
     "books/nntp-compress-dict",
     "tests/acl2/nntp-compress-dict-tests",
@@ -1907,6 +1908,7 @@
     "books/peer-catchup-spool-framer",
     "books/peer-catchup-spool-hash",
     "books/peer-catchup-spool",
+    "books/peer-catchup-spool-body",
     "tests/acl2/peer-catchup-spool-framer-tests",
     "tests/acl2/peer-catchup-spool-hash-tests",
     "tests/acl2/peer-catchup-spool-tests",
@@ -2572,27 +2574,27 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3063,
-    "books_in_root_closure": 2898,
-    "roots": 2568,
-    "theorems": 40833,
-    "functions": 26062,
-    "assert_events": 28106,
-    "must_fails": 2718,
+    "books": 3066,
+    "books_in_root_closure": 2901,
+    "roots": 2570,
+    "theorems": 40961,
+    "functions": 26088,
+    "assert_events": 28133,
+    "must_fails": 2722,
     "prover_refusals": 0,
     "encapsulates": 257,
     "guards": {
       "verified": 4054,
-      "declared-off": 3378,
-      "default-guarded": 14440,
-      "default-unguarded": 4190
+      "declared-off": 3381,
+      "default-guarded": 14451,
+      "default-unguarded": 4202
     },
-    "suspect_theorems": 1484,
+    "suspect_theorems": 1488,
     "export_hygiene_warnings": 423,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 297,
-    "include_hygiene_warnings": 4105,
-    "host_names_warnings": 3655,
+    "include_hygiene_warnings": 4110,
+    "host_names_warnings": 3656,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -16747,18 +16749,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 23,
-      "functions": 28,
+      "functions": 29,
       "guards": {
         "verified": 5,
         "declared-off": 0,
-        "default-guarded": 23,
+        "default-guarded": 24,
         "default-unguarded": 0
       },
       "verify_guards_events": 5,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -18434,6 +18436,60 @@
       "read_error": null
     },
     {
+      "book": "books/decoded-payload-buffer.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "def-representation",
+        "payload-lz-scalar-realizer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-payload-decode-into.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-payload-buffer",
+        "deflate-pool"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/decoded-window-action-trajectory.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -19449,11 +19505,11 @@
       "book": "books/def-representation-lib.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
-      "functions": 5,
+      "theorems": 22,
+      "functions": 6,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 5,
         "default-unguarded": 0
       },
@@ -19469,7 +19525,9 @@
         "proto/adt-lib"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "adt-between-step"
+      ],
       "read_error": null
     },
     {
@@ -19572,12 +19630,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 34,
+      "functions": 39,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 34
+        "default-unguarded": 39
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -19587,6 +19645,7 @@
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "def-representation-lib",
         "def-representation-paged",
         "proto/adt"
@@ -39362,6 +39421,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "decoded-payload-buffer",
         "payload-arena-extent-logic",
         "payload-arena-paged",
         "payload-lz-scalar-realizer"
@@ -40138,6 +40198,35 @@
       "read_error": null
     },
     {
+      "book": "books/peer-catchup-spool-body.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 88,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 4,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-catchup-spool"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-csp-body-inv-of-symbol",
+        "fn-csp-hash-effect-conns"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/peer-catchup-spool-framer.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -40219,7 +40308,7 @@
       "book": "books/peer-catchup-spool.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 103,
+      "theorems": 107,
       "functions": 61,
       "guards": {
         "verified": 1,
@@ -50901,7 +50990,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -56228,7 +56317,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 31,
+      "defconsts": 33,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -56247,19 +56336,19 @@
       "book": "books/wire-family-consumer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 85,
-      "functions": 8,
+      "theorems": 94,
+      "functions": 10,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 5,
-        "default-unguarded": 3
+        "default-guarded": 6,
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 11,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 1,
       "includes": [
@@ -56390,12 +56479,12 @@
       "book": "books/wire-grammar.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 196,
-      "functions": 48,
+      "theorems": 212,
+      "functions": 50,
       "guards": {
         "verified": 4,
         "declared-off": 3,
-        "default-guarded": 41,
+        "default-guarded": 43,
         "default-unguarded": 0
       },
       "verify_guards_events": 4,
@@ -56422,6 +56511,7 @@
         "fn-wg-encode-opener-frame",
         "fn-wg-encode-opener-line",
         "fn-wg-encode-opener-rest",
+        "fn-wg-encode-opener-sized",
         "fn-wg-encode-opener-uint",
         "fn-wg-encode-opener-where",
         "fn-wg-nonemptyp-opener-const",
@@ -65863,7 +65953,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 62,
+      "assert_events": 69,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 2,
@@ -68247,17 +68337,17 @@
       "book": "tests/acl2/def-representation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 25,
+      "theorems": 16,
+      "functions": 28,
       "guards": {
         "verified": 0,
         "declared-off": 15,
-        "default-guarded": 5,
+        "default-guarded": 8,
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 30,
-      "must_fails": 8,
+      "assert_events": 31,
+      "must_fails": 12,
       "prover_refusals": 0,
       "defconsts": 5,
       "defmacros": 0,
@@ -79838,15 +79928,16 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 41,
+      "assert_events": 51,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/defkeystone",
-        "../../books/peer-catchup-spool"
+        "../../books/peer-catchup-spool",
+        "../../books/peer-catchup-spool-body"
       ],
       "system_includes": [],
       "suspects": [],
@@ -86390,7 +86481,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 22,
+      "assert_events": 27,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 3,
@@ -90172,15 +90263,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 4,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 26,
+      "assert_events": 28,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -90260,7 +90351,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 9,
+      "assert_events": 11,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 2,
@@ -90382,6 +90473,14 @@
     }
   ],
   "suspects": [
+    {
+      "theorem": "adt-between-step",
+      "book": "books/def-representation-lib.lisp",
+      "line": 166,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of adt-between and the conclusion is that arm's value"
+      ]
+    },
     {
       "theorem": "adt-h-puts-of-atom",
       "book": "books/def-representation-tree-walk.lisp",
@@ -90654,7 +90753,7 @@
     {
       "theorem": "fn-arx-entry-file-of-extent-by-definition",
       "book": "books/payload-arena-extent.lisp",
-      "line": 1599,
+      "line": 1600,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry-file and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-arx-entry-file and the conclusion is that branch's value"
@@ -90663,7 +90762,7 @@
     {
       "theorem": "fn-arx-entry-of-extent",
       "book": "books/payload-arena-extent.lisp",
-      "line": 193,
+      "line": 194,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value"
       ]
@@ -90671,7 +90770,7 @@
     {
       "theorem": "fn-arx-entry-of-resident",
       "book": "books/payload-arena-extent.lisp",
-      "line": 207,
+      "line": 208,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value"
       ]
@@ -90679,7 +90778,7 @@
     {
       "theorem": "fn-arx-view-empty",
       "book": "books/payload-arena-extent.lisp",
-      "line": 257,
+      "line": 258,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-view and the conclusion is that arm's value"
       ]
@@ -92694,9 +92793,25 @@
       ]
     },
     {
+      "theorem": "fn-csp-body-inv-of-symbol",
+      "book": "books/peer-catchup-spool-body.lisp",
+      "line": 104,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-csp-conns-inv-of-symbol",
       "book": "books/peer-catchup-spool.lisp",
-      "line": 1356,
+      "line": 1373,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-csp-hash-effect-conns",
+      "book": "books/peer-catchup-spool-body.lisp",
+      "line": 629,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -92704,7 +92819,7 @@
     {
       "theorem": "fn-csp-pull-list-of-non-list",
       "book": "books/peer-catchup-spool.lisp",
-      "line": 887,
+      "line": 899,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-pull-list and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-pull-list and the conclusion is that branch's value"
@@ -92713,7 +92828,7 @@
     {
       "theorem": "fn-csp-windowp-of-symbol",
       "book": "books/peer-catchup-spool.lisp",
-      "line": 726,
+      "line": 742,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -94464,7 +94579,7 @@
     {
       "theorem": "fn-ncr-cli-after-only-a-register-sends-more",
       "book": "books/consumer-reason.lisp",
-      "line": 241,
+      "line": 257,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-after and the conclusion is that arm's value"
       ]
@@ -94472,10 +94587,9 @@
     {
       "theorem": "fn-ncr-cli-plan-without-the-flag-by-definition",
       "book": "books/consumer-reason.lisp",
-      "line": 187,
+      "line": 202,
       "reasons": [
-        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-plan and the conclusion is that arm's value",
-        "branch-of-definition: the hypothesis negates a branch test of fn-ncr-cli-plan and the conclusion is that branch's value"
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ncr-cli-plan and the conclusion is that arm's value"
       ]
     },
     {
@@ -101767,7 +101881,7 @@
     {
       "theorem": "fn-wg-encode-opener-base64-lines",
       "book": "books/wire-grammar.lisp",
-      "line": 1083,
+      "line": 1132,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101775,7 +101889,7 @@
     {
       "theorem": "fn-wg-encode-opener-bytes",
       "book": "books/wire-grammar.lisp",
-      "line": 1065,
+      "line": 1114,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101783,7 +101897,7 @@
     {
       "theorem": "fn-wg-encode-opener-const",
       "book": "books/wire-grammar.lisp",
-      "line": 1053,
+      "line": 1102,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101791,7 +101905,7 @@
     {
       "theorem": "fn-wg-encode-opener-enum",
       "book": "books/wire-grammar.lisp",
-      "line": 1089,
+      "line": 1138,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101799,7 +101913,7 @@
     {
       "theorem": "fn-wg-encode-opener-frame",
       "book": "books/wire-grammar.lisp",
-      "line": 1130,
+      "line": 1186,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101807,7 +101921,7 @@
     {
       "theorem": "fn-wg-encode-opener-line",
       "book": "books/wire-grammar.lisp",
-      "line": 1077,
+      "line": 1126,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101815,7 +101929,15 @@
     {
       "theorem": "fn-wg-encode-opener-rest",
       "book": "books/wire-grammar.lisp",
-      "line": 1071,
+      "line": 1120,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-wg-encode-opener-sized",
+      "book": "books/wire-grammar.lisp",
+      "line": 1179,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101823,7 +101945,7 @@
     {
       "theorem": "fn-wg-encode-opener-uint",
       "book": "books/wire-grammar.lisp",
-      "line": 1059,
+      "line": 1108,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101831,7 +101953,7 @@
     {
       "theorem": "fn-wg-encode-opener-where",
       "book": "books/wire-grammar.lisp",
-      "line": 1124,
+      "line": 1173,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value"
       ]
@@ -101839,7 +101961,7 @@
     {
       "theorem": "fn-wg-nonemptyp-opener-const",
       "book": "books/wire-grammar.lisp",
-      "line": 1291,
+      "line": 1361,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-nonemptyp and the conclusion is that arm's value"
       ]
@@ -101847,7 +101969,7 @@
     {
       "theorem": "fn-wg-valuep-opener-const",
       "book": "books/wire-grammar.lisp",
-      "line": 1138,
+      "line": 1194,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-valuep and the conclusion is that arm's value"
       ]
@@ -101855,7 +101977,7 @@
     {
       "theorem": "fn-wg-valuep-opener-uint",
       "book": "books/wire-grammar.lisp",
-      "line": 1144,
+      "line": 1200,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-valuep and the conclusion is that arm's value"
       ]
@@ -104176,7 +104298,7 @@
       {
         "theorem": "fn-arx-page-copy-len",
         "book": "books/payload-arena-extent.lisp",
-        "line": 114,
+        "line": 115,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -105022,13 +105144,13 @@
       {
         "theorem": "fn-wg-rev-of-rev",
         "book": "books/wire-grammar.lisp",
-        "line": 149,
+        "line": 152,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-wg-consp-of-drop",
         "book": "books/wire-grammar.lisp",
-        "line": 783,
+        "line": 815,
         "reason": "len-backchaining: an enabled consp conclusion backchained to a len hypothesis"
       },
       {
@@ -111385,6 +111507,27 @@
         "line": 6,
         "include": "consumer-position-fields",
         "included": "books/consumer-position-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/decoded-payload-buffer.lisp",
+        "line": 16,
+        "include": "def-representation",
+        "included": "books/def-representation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/decoded-payload-decode-into.lisp",
+        "line": 14,
+        "include": "decoded-payload-buffer",
+        "included": "books/decoded-payload-buffer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/decoded-payload-decode-into.lisp",
+        "line": 15,
+        "include": "deflate-pool",
+        "included": "books/deflate-pool.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -120765,6 +120908,13 @@
         "line": 40,
         "include": "payload-arena-paged",
         "included": "books/payload-arena-paged.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/payload-arena-extent.lisp",
+        "line": 43,
+        "include": "decoded-payload-buffer",
+        "included": "books/decoded-payload-buffer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -132903,6 +133053,13 @@
         "line": 20,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-catchup-spool-tests.lisp",
+        "line": 3,
+        "include": "../../books/peer-catchup-spool-body",
+        "included": "books/peer-catchup-spool-body.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -147469,57 +147626,57 @@
       },
       {
         "host": "host/native/consumer-local.lisp",
-        "line": 42,
+        "line": 43,
         "name": "fnn-ascii-octet-list",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/consumer-local.lisp",
-        "line": 42,
+        "line": 43,
         "name": "fnn-err",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/consumer-local.lisp",
-        "line": 42,
+        "line": 43,
         "name": "fnn-octet-list",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/consumer-local.lisp",
-        "line": 42,
+        "line": 43,
         "name": "fnn-read-regular-bounded",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/consumer-local.lisp",
-        "line": 42,
+        "line": 43,
+        "name": "fnn-hex",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/consumer-local.lisp",
+        "line": 43,
         "name": "fnn-write-staged",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/consumer-local.lisp",
-        "line": 42,
+        "line": 43,
         "name": "fnn-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/consumer-local.lisp",
-        "line": 149,
+        "line": 157,
         "name": "fnn-register-verb",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/consumer-local.lisp",
-        "line": 151,
-        "name": "fnn-hex",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
@@ -148169,14 +148326,14 @@
       },
       {
         "host": "host/native/control.lisp",
-        "line": 843,
+        "line": 851,
         "name": "fnn-read-regular-bounded",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/control.lisp",
-        "line": 843,
+        "line": 851,
         "name": "fnn-control-reasoned-exchange",
         "source": "host/native/control-transport.lisp",
         "reason": "defined in host/native/control-transport.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -148274,14 +148431,14 @@
       },
       {
         "host": "host/native/deflate.lisp",
-        "line": 578,
+        "line": 598,
         "name": "create-fn-octets$c",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/deflate.lisp",
-        "line": 581,
+        "line": 601,
         "name": "create-fn-zin-st",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -149219,42 +149376,42 @@
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1676,
+        "line": 1706,
         "name": "fnn-extent-decoded-window-realize-octet",
         "source": "host/native/extent-decoded.lisp",
         "reason": "defined in host/native/extent-decoded.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1700,
+        "line": 1729,
         "name": "fn-arena$x-ext-length",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1700,
+        "line": 1729,
         "name": "fn-arena$x-exti",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1700,
+        "line": 1729,
         "name": "fn-arn-lz-extentp",
         "source": "books/payload-arena-extent-logic.lisp",
         "reason": "defined in books/payload-arena-extent-logic.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1761,
+        "line": 1790,
         "name": "fn-pgs-frame-len",
         "source": "books/assumptions-pgs-host-io.lisp",
         "reason": "defined in books/assumptions-pgs-host-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1761,
+        "line": 1790,
         "name": "fn-pgs-frame-put",
         "source": "books/assumptions-pgs-host-io.lisp",
         "reason": "defined in books/assumptions-pgs-host-io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -156793,7 +156950,14 @@
       },
       {
         "host": "host/native/store-identity.lisp",
-        "line": 66,
+        "line": 41,
+        "name": "fnn-hex",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/store-identity.lisp",
+        "line": 71,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
