@@ -40,6 +40,7 @@
 ;      fn-bs-scp-program-crash-is-old-or-new), never a mix; a rerun after a
 ;      death past the install rewrites nothing more.
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "owner-reclaim")
 (include-book "reclaim-cuts") ; *fn-orcp-cuts*
 (include-book "owner-credits")
@@ -372,50 +373,15 @@
 ; the swap.  (mv ROWS FN-ARENA), ROWS :bad when a record does not intern.
 ; Executes by a loop (depth_check: a chunk of rewritten rows, data), as
 ; books/store-intern.lisp fn-intern-events does: the :logic is the recursion,
-; the :exec collects onto an accumulator (fn-orcp-intern-rows-loop-is-rev-onto),
-; and the guards are verified, so the host's call runs the loop.
-(defun fn-orcp-intern-rows-loop (rows keyring generation acc fn-arena)
-  (declare (xargs :stobjs fn-arena
-                  :guard (and (fn-prin-keyringp keyring) (natp generation))))
-  (if (atom rows)
-      (mv (fn-ag-rev-onto acc nil) fn-arena)
-    (mv-let (row fn-arena)
-      (if (fn-record-p (car rows))
-          (fn-intern-event (car rows) keyring generation fn-arena)
-        (mv (car rows) fn-arena))
-      (if (eq row :bad)
-          (mv :bad fn-arena)
-        (fn-orcp-intern-rows-loop (cdr rows) keyring generation (cons row acc) fn-arena)))))
-
-(defun fn-orcp-intern-rows (rows keyring generation fn-arena)
-  (declare (xargs :stobjs fn-arena
-                  :guard (and (fn-prin-keyringp keyring) (natp generation))
-                  :verify-guards nil))
-  (mbe :logic
-       (if (atom rows)
-           (mv nil fn-arena)
-         (mv-let (row fn-arena)
-           (if (fn-record-p (car rows))
-               (fn-intern-event (car rows) keyring generation fn-arena)
-             (mv (car rows) fn-arena))
-           (if (eq row :bad)
-               (mv :bad fn-arena)
-             (mv-let (rest fn-arena)
-               (fn-orcp-intern-rows (cdr rows) keyring generation fn-arena)
-               (if (eq rest :bad)
-                   (mv :bad fn-arena)
-                 (mv (cons row rest) fn-arena))))))
-       :exec (fn-orcp-intern-rows-loop rows keyring generation nil fn-arena)))
-
-(defthm fn-orcp-intern-rows-loop-is-rev-onto
-  (equal (fn-orcp-intern-rows-loop rows keyring generation acc fn-arena)
-         (mv-let (r a) (fn-orcp-intern-rows rows keyring generation fn-arena)
-           (mv (if (eq r :bad) :bad (fn-ag-rev-onto acc r)) a)))
-  :hints (("Goal" :induct (fn-orcp-intern-rows-loop rows keyring generation acc fn-arena)
-                  :in-theory (disable fn-intern-event))))
-
-(verify-guards fn-orcp-intern-rows
-  :hints (("Goal" :in-theory (disable fn-intern-event))))
+; the :exec the loop, equal by the bridge def-loop :fold generates, and the
+; guards are verified, so the host's call runs the loop.
+(def-loop fn-orcp-intern-rows (rows keyring generation fn-arena)
+  :shape :fold :over rows :st fn-arena :done (atom rows) :elt r
+  :row (if (fn-record-p r)
+           (fn-intern-event r keyring generation fn-arena)
+         (mv r fn-arena))
+  :next (cdr rows)
+  :guard (and (fn-prin-keyringp keyring) (natp generation)))
 
 ; The rebuild, off the mutex over the interned rewritten ROWS: the open's
 ; extension of the empty capture over them (fn-rii-sco-extend, the host's

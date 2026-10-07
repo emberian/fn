@@ -775,22 +775,24 @@
                         ,@(and stobjp `(:stobjs ,st))))
         (if ,done
             (mv (revappend ,acc nil) ,st)
-          (mv-let (dl-row ,st) ,(fn-dl-let let row)
-            (if (eq dl-row ,fail)
-                (mv ,fail ,st)
-              ,loop-call))))
+          ,(fn-dl-let let
+             `(mv-let (dl-row ,st) ,row
+                (if (eq dl-row ,fail)
+                    (mv ,fail ,st)
+                  ,loop-call)))))
       (defun ,name ,formals
         (declare (xargs :guard ,guard :verify-guards nil :measure ,m
                         ,@(and stobjp `(:stobjs ,st))))
         (mbe :logic (if ,done
                         (mv nil ,st)
-                      (mv-let (dl-row ,st) ,(fn-dl-let let row)
-                        (if (eq dl-row ,fail)
-                            (mv ,fail ,st)
-                          (mv-let (dl-rest ,st) ,rec-call
-                            (if (eq dl-rest ,fail)
+                      ,(fn-dl-let let
+                         `(mv-let (dl-row ,st) ,row
+                            (if (eq dl-row ,fail)
                                 (mv ,fail ,st)
-                              (mv (cons dl-row dl-rest) ,st))))))
+                              (mv-let (dl-rest ,st) ,rec-call
+                                (if (eq dl-rest ,fail)
+                                    (mv ,fail ,st)
+                                  (mv (cons dl-row dl-rest) ,st)))))))
              :exec (,loop ,@formals nil)))
       (local (defthm ,mop (natp ,m) :rule-classes nil
                ,@(and progress-hints `(:hints ,progress-hints))))
@@ -810,8 +812,8 @@
                          (:functional-instance
                           fn-dl-fold-loop-is-revappend
                           (fn-dl-fo-done ,(fn-dl-sp-lam svars done))
-                          (fn-dl-fo-step ,(fn-dl-fo-lam svars st (fn-dl-let let row)))
-                          (fn-dl-fo-next ,(fn-dl-sp-lam svars (fn-dl-sp-tuple svars next)))
+                          (fn-dl-fo-step ,(fn-dl-fo-lam svars st (fn-dl-proof-let let row)))
+                          (fn-dl-fo-next ,(fn-dl-sp-lam svars (fn-dl-proof-let let (fn-dl-sp-tuple svars next))))
                           (fn-dl-fo-m ,(fn-dl-sp-lam svars m))
                           (fn-dl-fo-fail (lambda () ,fail))
                           (fn-dl-fold ,(fn-dl-fo-lam svars st `(,name ,@formals)))
