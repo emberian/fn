@@ -540,6 +540,17 @@
    "why": "lane lock-model-gaps-2: host/native/bp-node.lisp:218-228 answers an indeterminate Store/FNRJ/FNWF result as (values :uncertain ...) and its only caller, fnn-bpnode-dispatch-one (:319-341), converts that status back to fnn-indeterminate (:339-341) after driving the delivery effects. The checker verifies the clause ends in (values :uncertain ...) without an early exit, that every reference to the function is a multiple-value-bind value form, and that the bound status reaches (when (eq STATUS :uncertain) (fnn-indeterminate ...)) past no return-from/return/go/throw. The R7 rule then reads the clause as a deferred rethrow, not a swallow."
   }
  },
+ "dead_call_arms": [
+  {
+   "function": "fnn-owner-handle-chunk-step",
+   "call": "fnn-owner-chunk-results",
+   "file": "host/native/owner.lisp",
+   "results_param": "results",
+   "tag": ":fnn-extent-cold",
+   "arm_calls": ["fnn-owner-cold-line"],
+   "why": "lane lock-model-gaps-2: the mux loop never waits for a cold page (owner.lisp:6310-6326). fnn-owner-handle-chunk-step answers (values :cold READ) when the read's first value is :fnn-extent-cold and calls fnn-owner-chunk-results only in the else branch (:6339-6343); chunk-results calls fnn-owner-cold-line, which awaits the page, only in its :fnn-extent-cold arm (:5698). Reached through that one edge the arm is dead, so R9 does not count the await. The checker verifies the guard, that the argument is an unassigned local, and that every call to cold-line in chunk-results sits in that arm; the other callers of chunk-results (fnn-owner-handle-chunk, fnn-owner-cold-line itself) are not pruned."
+  }
+ ],
  "dead_thread_guards": [
   {
    "function": "fnn-mux-start",

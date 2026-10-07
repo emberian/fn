@@ -1994,3 +1994,86 @@ class StatusRethrow(unittest.TestCase):
     def test_a_clause_that_returns_another_status_is_a_loud_error(self):
         with self.assertRaises(ValueError):
             self.run7(self.src(self.GOOD, clause="(values :ok 0)"))
+
+
+class DeadCallArm(unittest.TestCase):
+    """The mux loop's step excludes the cold arm before it calls the shared
+    result function, so reached through that edge the arm's await is dead
+    (contract dead_call_arms, verified)."""
+
+    ROW = [{"function": "fnn-step", "call": "fnn-results", "file": "host/native/fixture.lisp",
+            "results_param": "results", "tag": ":cold", "arm_calls": ["fnn-cold-line"], "why": "test"}]
+
+    def run9(self, source, rows=None):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["dead_call_arms"] = self.ROW if rows is None else rows
+        raw["actors"] = {"mux-loop": {"roots": ["fnn-mux-run"], "no_await": True, "await_ok": [], "why": "t"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath),
+                                                  ["host/native/fixture.lisp"], {})
+            return [(f.function, f.key) for f in checker.run({"R9"}) if f.rule == "R9"]
+
+    def src(self, step_body=None, results_arm="(:cold (fnn-cold-line results))", extra="", mux="(fnn-step x)"):
+        step_body = step_body or """(let ((results (list (fnn-read x))))
+    (if (eq (first results) :cold)
+        (values :cold results)
+        (fnn-results x results)))"""
+        return f"""
+(defun fnn-wait-q (queue lock) (sb-thread:condition-wait queue lock))
+(defun fnn-cold-line (results) (fnn-wait-q results results))
+(defun fnn-read (x) x)
+(defun fnn-results (x results)
+  (case (first results)
+    {results_arm}
+    (t (fnn-other results x))))
+(defun fnn-other (results x) (fnn-cold-line (list results x)))
+(defun fnn-step (x)
+  {step_body})
+(defun fnn-mux-run (x) {mux})
+{extra}
+"""
+
+    def waits(self, found):
+        return [k for k in found if k[0] == "fnn-wait-q"]
+
+    def test_the_excluded_arm_is_not_a_blocking_path_of_the_mux_loop(self):
+        # fnn-results' other arm still reaches the wait through fnn-other: only the
+        # one call named in the row is dropped, and only inside fnn-results
+        found = self.waits(self.run9(self.src(results_arm="(:cold (fnn-cold-line results))")))
+        self.assertTrue(found)
+        self.assertEqual(self.waits(self.run9(self.src().replace("(t (fnn-other results x))", "(t (values results x))"))), [])
+
+    def test_without_the_row_the_mux_loop_is_charged_with_the_await(self):
+        self.assertTrue(self.waits(self.run9(self.src(), rows=[])))
+
+    def test_a_call_outside_the_else_branch_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run9(self.src(step_body="""(let ((results (list (fnn-read x))))
+    (fnn-results x results))"""))
+
+    def test_a_guard_on_the_then_branch_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run9(self.src(step_body="""(let ((results (list (fnn-read x))))
+    (if (eq (first results) :cold)
+        (fnn-results x results)
+        (values :other results)))"""))
+
+    def test_an_assigned_results_variable_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run9(self.src(step_body="""(let ((results (list (fnn-read x))))
+    (if (eq (first results) :cold)
+        (values :cold results)
+        (progn (setq results (list :cold)) (fnn-results x results))))"""))
+
+    def test_a_cold_call_outside_the_tag_arm_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run9(self.src(results_arm="(:warm (fnn-cold-line results))"))
+
+    def test_another_route_of_the_mux_loop_to_the_callee_keeps_the_arm(self):
+        found = self.run9(self.src(mux="(progn (fnn-step x) (fnn-results x (list :cold)))"))
+        self.assertTrue(self.waits(found), found)

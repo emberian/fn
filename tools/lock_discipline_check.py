@@ -3713,21 +3713,123 @@ class Checker:
                              "push:" + e.name, [row.get("why", "")])
 
     # R9 ----------------------------------------------------------------------
+    def verified_dead_call_arms(self) -> dict:
+        """{(caller, callee): the callee calls that sit only in the arm CALLER
+        has excluded} for the declared edges (contract dead_call_arms) that hold
+        up against the source.  CALLER's call to CALLEE passes, as CALLEE's
+        RESULTS parameter, a local R that CALLER never assigns, and every such
+        call sits in the else branch of (if (eq (first R) TAG) ...).  In CALLEE,
+        every call to an ARM_CALLS function sits in the TAG clause of a
+        (case (first RESULTS) ...), and no ARM_CALLS function is referenced any
+        other way.  Then, reached through that edge, the arm's calls cannot run.
+        A row that does not verify is a loud error."""
+        out = {}
+        tree = self.an.tree
+        mutators = {"setq", "setf", "psetq", "psetf", "incf", "decf", "push", "pushnew", "pop", "rotatef", "shiftf"}
+        for row in self.c.raw.get("dead_call_arms", []):
+            caller, callee, tag = row["function"], row["call"], row["tag"]
+            arm_calls = set(row["arm_calls"])
+
+            def fail(why, caller=caller, callee=callee):
+                raise ValueError(f"dead_call_arms {caller} -> {callee}: {why}")
+
+            if caller not in self.infos or callee not in self.infos:
+                if not (tree.root / row["file"]).exists():
+                    continue
+                fail("not functions of the analyzed host")
+            params = lambda_params(tree.defs[callee].params)
+            if row["results_param"] not in params:
+                fail(f"{callee} has no parameter {row['results_param']}")
+            idx = params.index(row["results_param"])
+
+            def walk(forms, parents):
+                """(form, ancestors-with-branch-index) for every list form."""
+                stack = [(f, ()) for f in forms]
+                while stack:
+                    x, anc = stack.pop()
+                    yield x, anc
+                    if isinstance(x, list):
+                        stack.extend((c, anc + ((x, k),)) for k, c in enumerate(x))
+
+            def tag_clause(key):
+                return sym(key) == tag or (isinstance(key, list) and any(sym(k) == tag for k in key))
+
+            # CALLEE: the arm's calls live only in the TAG clause of (case (first RESULTS) ...)
+            for x, anc in walk(tree.defs[callee].body, ()):
+                if isinstance(x, Sym) and str(x) in arm_calls:
+                    parent = anc[-1][0] if anc else None
+                    if not (isinstance(parent, list) and parent and parent[0] is x):
+                        fail(f"{x} is referenced other than by a call in {callee}")
+                if isinstance(x, list) and x and head(x) in arm_calls:
+                    ok = False
+                    for k in range(len(anc) - 1):
+                        form, _ = anc[k]
+                        clause, _ = anc[k + 1]
+                        if (isinstance(form, list) and head(form) in ("case", "ecase") and len(form) > 2
+                                and isinstance(form[1], list) and head(form[1]) == "first"
+                                and len(form[1]) == 2 and sym(form[1][1]) == row["results_param"]
+                                and isinstance(clause, list) and clause and clause is not form[1]
+                                and any(clause is c for c in form[2:]) and tag_clause(clause[0])):
+                            ok = True
+                    if not ok:
+                        fail(f"a call to {head(x)} in {callee} is outside the {tag} clause of (case (first {row['results_param']}) ...)")
+            # CALLER: every call passes an unassigned local, in the else branch of the tag test
+            seen = 0
+            for x, anc in walk(tree.defs[caller].body, ()):
+                if isinstance(x, Sym) and str(x) == callee:
+                    parent = anc[-1][0] if anc else None
+                    if not (isinstance(parent, list) and parent and parent[0] is x):
+                        fail(f"{callee} is referenced other than by a call in {caller}")
+                if not (isinstance(x, list) and x and head(x) == callee):
+                    continue
+                seen += 1
+                arg = x[idx + 1] if len(x) > idx + 1 else None
+                if not isinstance(arg, Sym):
+                    fail(f"the RESULTS argument of a call in {caller} is not a variable")
+                var = str(arg)
+                ok = False
+                for k, (form, _) in enumerate(anc):
+                    if (isinstance(form, list) and head(form) == "if" and len(form) == 4
+                            and isinstance(form[1], list) and head(form[1]) in ("eq", "eql") and len(form[1]) == 3):
+                        a, b = form[1][1], form[1][2]
+                        if sym(b) == tag and isinstance(a, list) and head(a) == "first" and len(a) == 2 \
+                                and sym(a[1]) == var:
+                            child = anc[k + 1][0] if k + 1 < len(anc) else x
+                            if child is form[3]:
+                                ok = True
+                if not ok:
+                    fail(f"a call in {caller} is not in the else branch of (if (eq (first {var}) {tag}) ...)")
+                for y, _ in walk(tree.defs[caller].body, ()):
+                    if isinstance(y, list) and len(y) > 1 and head(y) in mutators and any(
+                            sym(t) == var or (isinstance(t, list) and t and sym(t[0]) == var)
+                            for t in y[1:2]):
+                        fail(f"{var} is assigned in {caller}")
+            if seen == 0:
+                fail(f"{caller} has no call to {callee}")
+            out[(caller, callee)] = frozenset(arm_calls)
+        return out
+
     def rule_R9(self):
         actors = self.c.raw.get("actors", {})
+        dead_arms = self.verified_dead_call_arms()
         for actor, row in actors.items():
             roots = [r for r in row["roots"] if r in self.infos]
-            reach: dict[str, list] = {}
-            stack = [(r, [r]) for r in roots]
+            reach: dict[tuple, list] = {}
+            stack = [((r, frozenset()), [r]) for r in roots]
             while stack:
-                n, trail = stack.pop()
-                if n in reach:
+                (n, excl), trail = stack.pop()
+                if (n, excl) in reach:
                     continue
-                reach[n] = trail
+                reach[(n, excl)] = trail
                 for e in self.infos[n].events:
-                    if e.kind == "call" and e.name in self.infos and e.name not in reach:
-                        stack.append((e.name, trail + [e.name]))
-            for n, trail in sorted(reach.items()):
+                    if e.kind == "call" and e.name in self.infos:
+                        if e.name in excl:
+                            continue
+                        # EXCL names calls of N itself, never of what N calls
+                        nxt = dead_arms.get((n, e.name), frozenset())
+                        if (e.name, nxt) not in reach:
+                            stack.append(((e.name, nxt), trail + [e.name]))
+            for (n, _excl), trail in sorted(reach.items(), key=lambda kv: (kv[0][0], sorted(kv[0][1]))):
                 info = self.infos[n]
                 for e in info.events:
                     if e.kind == "gate" and "gate_classes" in row:
