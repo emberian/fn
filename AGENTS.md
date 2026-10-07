@@ -49,9 +49,9 @@ substantial changes, then the spec you touch. Proposals and open questions are n
   the author's check only (arm64). A book over ten seconds at two jobs is a defect (D26).
 - Read failures with `tools/certify_triage.py RUN_DIR`; never grep for FAILED.
 - Run the narrowest test that could refute you; state your control. Never an unfiltered suite.
-- Merge on narrow gates (`--affected-by` certify, filtered tests, `host_check --load` for
-  host/); images, natives and full `green_check` run at convergence. Say which closure a green
-  covers.
+- Merge on narrow gates (`--affected-by` certify, filtered tests; for host/ `host_check --load`
+  and `interface_emit --check` at 0 findings, a new definterface taking `:kinds` from its book
+  guard); images, natives and full `green_check` run at convergence. Say which closure a green covers.
 - More than ~5 identical edits is a program transformation (`tools/lisp_rewrite.py`) with
   fixtures; never hand-edit the class. Bounded mechanical work may go to `claude-grok -p`; review its diff. Find bugs by tracing the current tree, never bisecting.
 - Take the next known step in the lane in hand; fix the root, drain the class. Owed items only
