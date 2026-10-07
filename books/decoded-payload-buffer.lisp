@@ -15,7 +15,7 @@
 (include-book "payload-lz-scalar-realizer")
 (include-book "def-representation")
 
-(def-representation fn-dlz (octet :u8) :scalar :octet-seq)
+(def-representation fn-dlz (octet :u8) :scalar (:octet-seq fn-octets))
 
 (defthm fn-durable-realize-lz-octet-is-the-buffer-read
   (implies (and (natp i) (fn-cbor-octet-listp dict))

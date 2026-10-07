@@ -312,6 +312,35 @@
   :rule-classes nil
   :hints (("Goal" :use drt-dec-nth-of-fill-list)))
 
+; (:octet-seq SRC): the instance copies an octet buffer's octets with no list.
+(def-representation drt-dec2 (octet :u8) :scalar (:octet-seq fn-octets))
+
+(defun drt-dec2-run ()
+  (declare (xargs :guard t))
+  (with-local-stobj fn-octets
+    (mv-let (out fn-octets)
+      (let ((fn-octets (fn-octets-from-list '(5 6 7) fn-octets)))
+        (with-local-stobj drt-dec2
+          (mv-let (o2 drt-dec2)
+            (let ((drt-dec2 (drt-dec2-fill-from fn-octets drt-dec2)))
+              (mv (list (drt-dec2-count drt-dec2) (drt-dec2-nth 0 drt-dec2)
+                        (drt-dec2-nth 2 drt-dec2) (drt-dec2-nth 3 drt-dec2))
+                  drt-dec2))
+            (mv o2 fn-octets))))
+      out)))
+
+(assert! (equal (drt-dec2-run) '(3 5 7 nil)))
+
+(defthm drt-dec2-fill-from-correspondence
+  (implies (true-listp fn-octets)
+           (equal (drt-dec2-fill-from fn-octets drt-dec2) fn-octets))
+  :rule-classes nil
+  :hints (("Goal" :use drt-dec2-fill-from-is-the-buffer)))
+
+(must-fail-checked
+ (def-representation drt-r8 (octet :u8) :scalar (:octet-seq drt-no-such-buffer))
+ :unchecked "refused at expansion: SRC is not an octet-buffer stobj in the world")
+
 (must-fail-checked
  (defthm drt-dec-wrong-index
    (implies (and (true-listp xs) (natp i))

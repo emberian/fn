@@ -151,3 +151,32 @@
   (implies (and (natp i) (<= (len a) i))
            (equal (nth i a) nil))
   :hints (("Goal" :in-theory (enable nth))))
+
+; The octets [I, N) of a list, for the stobj-to-stobj copy loop of
+; :octet-seq (books/def-representation.lisp).  Defthmds: an instance
+; enables them for its own induction.
+(defun adt-between (i n a)
+  (declare (xargs :measure (nfix (- n i)) :verify-guards nil))
+  (if (and (natp i) (natp n) (< i n))
+      (cons (nth i a) (adt-between (+ 1 i) n a))
+    nil))
+(defthmd adt-between-done
+  (implies (<= n i) (equal (adt-between i n a) nil))
+  :hints (("Goal" :in-theory (enable adt-between))))
+(defthmd adt-between-step
+  (implies (and (natp i) (natp n) (< i n))
+           (equal (adt-between i n a)
+                  (cons (nth i a) (adt-between (+ 1 i) n a))))
+  :hints (("Goal" :in-theory (enable adt-between))))
+(defthmd adt-nthcdr-cons
+  (implies (and (natp i) (< i (len a)))
+           (equal (nthcdr i a) (cons (nth i a) (nthcdr (+ 1 i) a))))
+  :hints (("Goal" :induct (nthcdr i a) :in-theory (enable nth nthcdr))))
+(defthmd adt-between-nthcdr
+  (implies (and (natp i) (true-listp a))
+           (equal (adt-between i (len a) a) (nthcdr i a)))
+  :hints (("Goal" :induct (adt-between i (len a) a)
+                  :in-theory (enable adt-between adt-nthcdr-cons))))
+(defthmd adt-between-whole
+  (implies (true-listp a) (equal (adt-between 0 (len a) a) a))
+  :hints (("Goal" :use (:instance adt-between-nthcdr (i 0)) :in-theory (union-theories (disable adt-between adt-between-nthcdr) (quote (nthcdr))))))
