@@ -1891,11 +1891,13 @@ failed/timed-out join fault the service and retain registration and custody."
 
 (defun fnn-owner-custody-trace (control &rest observations)
   "Existing developer pipeline selector: literal producer/receipt values only.
-A diagnostic failure does not alter custody, classification or settlement."
-  (handler-case
-      (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
-        (apply #'fnn-err control observations))
-    (serious-condition () nil)))
+A failure of the stderr write does not alter custody, classification or
+settlement; the selector read is outside that guard, so an unregistered
+selector name faults (fnn-developer-selector) instead of silently disabling
+the trace."
+  (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
+    (handler-case (apply #'fnn-err control observations)
+      (serious-condition () nil))))
 
 (defun fnn-owner-syncer-install (service threads stack)
   "Called only inside the actual startup :hold producer's owner section."
