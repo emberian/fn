@@ -5,6 +5,9 @@
 (include-book "consumer-event-index")
 (local (include-book "arithmetic/top" :dir :system))
 
+; Inherited rules that loop on a symbolic length.
+(in-theory (disable pckx-npk-step pckx-npk-bound))
+
 (defconst *pcko-stub* t)
 
 ; -----------------------------------------------------------------------------
@@ -360,3 +363,46 @@
                                pcko-tape pcko-trees pcko-wellp pcko-cost nfix)
            :expand ((pcko-trees (nthcdr pos w)) (pcko-wellp (nthcdr pos w))
                     (pcko-cost (nthcdr pos w))))))
+
+; -----------------------------------------------------------------------------
+; The root row, then the tape.
+
+(defun pcko-root (w)
+  ; The tree of the root row at the start of W.
+  (declare (xargs :verify-guards nil))
+  (cadr (fn-scc-decode-tree (adt-tp-unpack (nth 1 w) (nthcdr 2 w)))))
+
+(defthm pcko-open-is-the-fold
+  (implies (and (pcko-img w pgs-mem) (natp npg) (<= 8 npg) (equal (len w) (* 2048 npg))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))
+                (equal (nth 0 w) 1)
+                (<= (+ 2 (adt-tp-npk (nth 1 w))) 16384)
+                (pcko-ok-treep (fn-scc-decode-tree (adt-tp-unpack (nth 1 w) (nthcdr 2 w))))
+                (pcko-wellp (nthcdr 16384 w))
+                (not (eq (mv-nth 0 (fn-ssr-intern-step (fn-ssr-seed (nth 1 (pcko-root w)))
+                                                       (pcko-trees (nthcdr 16384 w))
+                                                       nil nil :resident nil fn-arena))
+                         :bad)))
+           (let* ((ts (pcko-trees (nthcdr 16384 w)))
+                  (x (pcko-root w))
+                  (seed (fn-ssr-seed (nth 1 x))))
+             (and (equal (mv-nth 0 (fn-pck-x-open npg pgs-mem fn-arena fn-octets)) :ok)
+                  (equal (mv-nth 1 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
+                         (fn-ssr-rows (mv-nth 0 (fn-ssr-intern-step seed ts nil nil :resident nil fn-arena))))
+                  (equal (mv-nth 2 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
+                         (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x)))
+                  (equal (mv-nth 3 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
+                         (fn-cei-build-aux ts 0 nil))
+                  (equal (mv-nth 4 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
+                         (+ 2 (adt-tp-npk (nth 1 w)) (pcko-cost (nthcdr 16384 w))))
+                  (equal (mv-nth 5 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
+                         (mv-nth 1 (fn-ssr-intern-step seed ts nil nil :resident nil fn-arena))))))
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-pck-x-open npg pgs-mem fn-arena fn-octets))
+           :use ((:instance pcko-tape-is-the-fold (pos 16384) (seq 0) (index nil)
+                            (reads (+ 2 (adt-tp-npk (nth 1 w))))
+                            (acc (fn-ssr-seed (nth 1 (pcko-root w))))
+                            (fn-octets (adt-tp-unpack (nth 1 w) (nthcdr 2 w)))))
+           :in-theory (e/d (pcko-root) (nth nthcdr adt-tp-unpack adt-tp-npk fn-scc-decode-tree
+                                        pcko-tape pcko-tape-is-the-fold pcko-trees pcko-wellp pcko-cost
+                                        fn-ssr-intern-step fn-ssr-seed nfix)))))
