@@ -48,8 +48,10 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertIn("acquire_step acquire-dtn dtn", out)
         self.assertLess(out.index("step certify "), out.index("acquire_step acquire default"))
         function = re.search(r"^ORIGIN_DONE=0\nacquire_step\(\) \{.*?^\}\n", out, re.S | re.M).group(0)
-        # The decision, run against stubs: python3 acquire fails "no complete" until
-        # certify-origin has run; every call is logged.
+        # The decision, run against stubs: python3 acquire exits 3
+        # (proof_artifacts.NO_SET: no complete installable set) until
+        # certify-origin has run; every call is logged.  An ACL2 load that
+        # rejected a set exits 1 and must not trigger the closure certify.
         harness = """
 T=. L=$PWD/logs CACHE=c ACL2=a
 mkdir -p $L; echo books/x > $L/roots.txt
@@ -58,8 +60,9 @@ step() { name=$1; shift; echo "STEP $name $*"; touch $L/certified; }
 python3() {
     case "$*" in
       *acquire*) echo "ACQ $*" >> $L/calls
+          if [ "$MODE" = rejected ]; then echo "profile=default result=no complete current artifact set passed an ACL2 load rejected=1"; return 1; fi
           if [ "$MODE" = fast ] || [ -f $L/certified ] && [ "$MODE" != stillred ]; then echo ok; return 0; fi
-          echo "profile=default result=none of the 108 candidate artifact sets is complete rejected=0"; return 1;;
+          echo "profile=default result=none of the 2 complete candidate artifact sets could be installed rejected=0"; return 3;;
       *loadfail*) return 1;;
     esac
 }
@@ -84,10 +87,14 @@ echo REACHED
         self.assertIn("--closure", done.stdout)
         self.assertEqual(calls, 3, done.stdout)  # fail, retry ok, dtn ok
         done, calls = run("stillred")
-        self.assertIn("FINISH 1", done.stdout)
+        self.assertIn("FINISH 3", done.stdout)
         self.assertNotIn("REACHED", done.stdout)
         self.assertEqual(done.stdout.count("STEP certify-origin"), 1)
         self.assertEqual(calls, 2)
+        done, calls = run("rejected")
+        self.assertIn("FINISH 1", done.stdout)
+        self.assertNotIn("STEP certify-origin", done.stdout)
+        self.assertEqual(calls, 1)
 
     def test_default_prefix_does_not_require_unrequested_dtn_certificates(self):
         answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
