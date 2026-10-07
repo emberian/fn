@@ -5,11 +5,14 @@
  "exposure": "none",
  "file": "books/article-stream-owner.lisp",
  "id": "ARTICLE-INDEX-READY-BRIDGE",
- "notes": [],
+ "notes": [
+  "10-07 02:14 READY: books/article-stream-owner-bridge.lisp (fn-asto-ready-plan-step-of-capture-selection, -capture-number/-current/-msgid/-msgid-unpinned, -owner corollaries, fn-asto-capture-catalogp-of-conns-pinp); certify run-20261007T054148Z-d5b0 persvati passed"
+ ],
  "owner": "article-index",
  "severity": "medium",
+ "sha": "b9e8c2588",
  "source": "ARTICLE-INDEX",
- "state": "open",
+ "state": "ready",
  "title": "fn-asto-selection-ready/-missing/-finish read only the outcome fields (1,2,3,5,9) of a selection state; state that as a theorem so the number/current outcome-equality keystones carry the capture result (the keystones are at the selection start, not through the ready step), and prove the owner invariant fn-scj-conn-pinp discharges fn-scr-catalogp at fn-asto-capture",
- "updated": "2026-10-07T02:45:19Z"
+ "updated": "2026-10-07T06:14:06Z"
 }
