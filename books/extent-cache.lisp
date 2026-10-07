@@ -1389,3 +1389,92 @@
                         (:instance fn-xc-write-frame
                                    (i (fn-xc-lru (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) nil fn-xcs))
                                    (stamp (fn-xc-tick fn-xcc)))))))
+
+; =============================================================================
+; Leaving: a retiring file, the end of recovery and pool pressure.
+
+(defthm fn-xcs-set-kind-reads
+  (implies (and (fn-xcsp fn-xcs) (natp i) (< i (fn-xcs-count fn-xcs)) (natp j))
+           (equal (fn-xcs-get-kind j (fn-xcs-set-kind i v fn-xcs))
+                  (if (equal j i) v (fn-xcs-get-kind j fn-xcs))))
+  :hints (("Goal" :in-theory (enable fn-xcs-set-kind-is-update-nth fn-xcs-get-kind-is-nth
+                                     fn-xcs-count-is-len fn-xcsp-is-seq-p))))
+
+(defthm fn-xcs-set-kind-other-columns
+  (implies (and (fn-xcsp fn-xcs) (natp i) (< i (fn-xcs-count fn-xcs)) (natp j))
+           (and (equal (fn-xcs-get-file j (fn-xcs-set-kind i v fn-xcs)) (fn-xcs-get-file j fn-xcs))
+                (equal (fn-xcs-get-tokp j (fn-xcs-set-kind i v fn-xcs)) (fn-xcs-get-tokp j fn-xcs))))
+  :hints (("Goal" :in-theory (enable fn-xcs-set-kind-is-update-nth fn-xcs-get-file-is-nth fn-xcs-get-tokp-is-nth
+                                     fn-xcs-count-is-len fn-xcsp-is-seq-p))))
+
+(defthm fn-xcs-set-kind-frame
+  (implies (and (fn-xcsp fn-xcs) (natp i) (< i (fn-xcs-count fn-xcs)) (natp j) (not (equal j i)))
+           (equal (nth j (fn-xcs-set-kind i v fn-xcs)) (nth j fn-xcs)))
+  :hints (("Goal" :in-theory (enable fn-xcs-set-kind-is-update-nth))))
+
+(defthm fn-xc-live-count-after-free
+  (implies (and (fn-xcsp fn-xcs) (natp i) (< i (fn-xcs-count fn-xcs)) (natp a) (natp b)
+                (not (equal (fn-xcs-get-kind i fn-xcs) 0)))
+           (equal (fn-xc-live-count a b (fn-xcs-set-kind i 0 fn-xcs))
+                  (if (and (<= a i) (< i b))
+                      (+ -1 (fn-xc-live-count a b fn-xcs))
+                    (fn-xc-live-count a b fn-xcs))))
+  :hints (("Goal" :in-theory (enable fn-xc-live-count)
+                  :induct (fn-xc-live-count a b fn-xcs))))
+
+(defthm fn-xc-free-effects
+  (implies (and (fn-xcsp fn-xcs) (natp i) (< i (fn-xcs-count fn-xcs))
+                (not (equal (fn-xcs-get-kind i fn-xcs) 0)))
+           (let ((s2 (mv-nth 2 (fn-xc-free i fn-xcs))))
+             (and (equal (mv-nth 0 (fn-xc-free i fn-xcs)) :freed)
+                  ; the token is the slot's own: the charge to release
+                  (equal (mv-nth 1 (fn-xc-free i fn-xcs)) (fn-xc-slot-token i fn-xcs))
+                  (fn-xcsp s2) (equal (fn-xcs-count s2) (fn-xcs-count fn-xcs))
+                  (equal (fn-xcs-get-kind i s2) 0)
+                  (implies (and (natp j) (not (equal j i))) (equal (nth j s2) (nth j fn-xcs)))
+                  (implies (and (natp a) (natp b))
+                           (equal (fn-xc-live-count a b s2)
+                                  (if (and (<= a i) (< i b))
+                                      (+ -1 (fn-xc-live-count a b fn-xcs))
+                                    (fn-xc-live-count a b fn-xcs)))))))
+  :hints (("Goal" :in-theory (e/d (fn-xc-free) (fn-xcs-set-kind-reads fn-xc-live-count-after-free))
+                  :use ((:instance fn-xcs-set-kind-keeps-well-formed (v 0))
+                        (:instance fn-xcs-set-kind-keeps-count (v 0))
+                        (:instance fn-xcs-set-kind-reads (v 0) (j i))
+                        (:instance fn-xc-live-count-after-free)))))
+
+(defthm fn-xc-free-of-a-free-slot-is-stale
+  (implies (and (fn-xcsp fn-xcs) (natp i) (< i (fn-xcs-count fn-xcs))
+                (equal (fn-xcs-get-kind i fn-xcs) 0))
+           (equal (fn-xc-free i fn-xcs) (list :stale nil fn-xcs)))
+  :hints (("Goal" :in-theory (enable fn-xc-free))))
+
+; A freed slot answers no lookup.
+(defthm fn-xc-freed-slot-matches-nothing
+  (implies (and (fn-xcsp fn-xcs) (natp i) (< i (fn-xcs-count fn-xcs))
+                (not (equal kind 0)) (natp j)
+                (not (equal (fn-xcs-get-kind i fn-xcs) 0)))
+           (not (fn-xc-slot-matchp i exactp kind file eoff elen a b c d trailer pos
+                                   (mv-nth 2 (fn-xc-free i fn-xcs)))))
+  :hints (("Goal" :in-theory (enable fn-xc-free fn-xc-slot-matchp fn-xcs-get-kind-is-nth
+                                     fn-xcs-set-kind-is-update-nth fn-xcs-count-is-len fn-xcsp-is-seq-p)
+                  :use ((:instance fn-xc-row-typed (fn-xcs fn-xcs))))))
+
+; --- the next live slot (of a file) is the first one
+(defthm fn-xc-next-is-live-and-first
+  (implies (and (fn-xcsp fn-xcs) (natp from) (fn-xc-next from file fn-xcs))
+           (let ((r (fn-xc-next from file fn-xcs)))
+             (and (natp r) (<= from r) (< r (fn-xcs-count fn-xcs))
+                  (not (equal (fn-xcs-get-kind r fn-xcs) 0))
+                  (or (null file) (equal (fn-xcs-get-file r fn-xcs) file))
+                  (implies (and (natp j) (<= from j) (< j r))
+                           (or (equal (fn-xcs-get-kind j fn-xcs) 0)
+                               (and file (not (equal (fn-xcs-get-file j fn-xcs) file))))))))
+  :hints (("Goal" :in-theory (enable fn-xc-next) :induct (fn-xc-next from file fn-xcs))))
+
+(defthm fn-xc-next-finds-every-held-slot
+  (implies (and (fn-xcsp fn-xcs) (natp from) (natp j) (<= from j) (< j (fn-xcs-count fn-xcs))
+                (not (equal (fn-xcs-get-kind j fn-xcs) 0))
+                (or (null file) (equal (fn-xcs-get-file j fn-xcs) file)))
+           (and (fn-xc-next from file fn-xcs) (<= (fn-xc-next from file fn-xcs) j)))
+  :hints (("Goal" :in-theory (enable fn-xc-next) :induct (fn-xc-next from file fn-xcs))))
