@@ -523,8 +523,17 @@ a job that signalled, cancelled or not.  Nothing here settles or signals."
 ;;; is what the scalar borrow of its own coordinate answers; a span refuses
 ;;; wherever the scalar does); the host only chooses where a span starts and
 ;;; ends, and when ACL2 refuses it asks the scalar exactly as before.
-(defstruct (fnn-window-span (:constructor make-fnn-window-span (token key base len dst)))
-  token key base len dst)
+(defstruct (fnn-window-span (:constructor make-fnn-window-span (token key base len dst &optional below)))
+  token key base len dst
+  ;; BELOW: the window's start when ACL2's scalar borrow refused a coordinate
+  ;; below it (:unavailable); every coordinate below the start is then that
+  ;; same refusal (fn-owner-page-window-byte-at-below-the-window-is-one-word,
+  ;; books/page-window-span.lisp fn-pwr-byte-at-below-the-window-is-the-outcome),
+  ;; so the arena's walk of the earlier octets, served by the verified-window
+  ;; cache while a later window is the borrowed one, asks ACL2 once, not per
+  ;; octet.  Cleared with the span, and by the job's cancellation (a
+  ;; cancelled job answers :cancelled, not :unavailable).
+  below)
 
 (defconstant +fnn-extent-span-capacity+ 16384)
 
@@ -560,6 +569,12 @@ I, else borrow a span from I and read it, else the scalar borrow."
         (key (list file eoff elen poff plen trailer)))
     (when (and span (eq (fnn-window-span-token span) token)
                (eq (fnn-cold-worker-phase worker) :returned)
+               (fnn-window-span-below span)
+               (< i (fnn-window-span-below span))
+               (equal (fnn-window-span-key span) key))
+      (return-from fnn-extent-window-span-octet (values :unavailable nil)))
+    (when (and span (eq (fnn-window-span-token span) token)
+               (eq (fnn-cold-worker-phase worker) :returned)
                (<= (fnn-window-span-base span) i)
                (< i (+ (fnn-window-span-base span) (fnn-window-span-len span)))
                (equal (fnn-window-span-key span) key))
@@ -573,7 +588,15 @@ I, else borrow a span from I and read it, else the scalar borrow."
             (progn
               (setf (fnn-cold-worker-span worker) (make-fnn-window-span token key i (- j i) dst))
               (values :byte (fn-ew-span-bytesi 0 dst)))
-            (fnn-extent-window-byte-at worker token file eoff elen poff plen trailer i))))))
+            (multiple-value-bind (word byte)
+                (fnn-extent-window-byte-at worker token file eoff elen poff plen trailer i)
+              (when (and (eq word :unavailable) (integerp (eighth token)) (< i (eighth token)))
+                (if (and span (eq (fnn-window-span-token span) token)
+                         (equal (fnn-window-span-key span) key))
+                    (setf (fnn-window-span-below span) (eighth token))
+                  (setf (fnn-cold-worker-span worker)
+                        (make-fnn-window-span token key 0 0 dst (eighth token)))))
+              (values word byte)))))))
 
 (defvar *fnn-extent-window-mode* nil)
 (defvar *fnn-extent-window-worker* nil)
@@ -779,6 +802,8 @@ the job is released.  Values :released (or a stale word) and whether cached."
                                 (fnn-cold-worker-row worker) token)
       (declare (ignore ignored))
       (when (eq word :cancelled) (setf (fnn-cold-worker-row worker) row))
+      (when (and (eq word :cancelled) (fnn-cold-worker-span worker))
+        (setf (fnn-window-span-below (fnn-cold-worker-span worker)) nil))
       (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
         (let ((*print-pretty* nil))
           (if (fn-pwz-tokenp token)
