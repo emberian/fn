@@ -1,6 +1,7 @@
 """tools/interface_emit.py: the definterface registry and its host-binding check."""
 from __future__ import annotations
 
+import subprocess
 import tempfile
 import contextlib
 import io
@@ -512,6 +513,79 @@ class LaptopRefusalTests(unittest.TestCase):
                                   side_effect=AssertionError("read the tree")):
             with self.assertRaises(SystemExit):
                 interface_emit.main(["--write"])
+
+
+class KeystoneFormulaTests(unittest.TestCase):
+    """The static half of fn-di-keystone-problem: a keystone's formula mentions
+    its target.  CONVERGE-3 row 43: at 2fb40fd5e books/bp-heap-command.lisp's
+    fn-bph-extended-reservation-holds-bp-sessions never called
+    fn-bpsp-node-capacity, the :via target host/interfaces.lisp named, and only
+    the image build's host-ld said so."""
+
+    HISTORIC = "2fb40fd5e"
+    DECLARATION = (
+        "(definterface fn-bph-extend-reservation :class :common-lisp-compliant\n"
+        "  :keystones ((fn-bph-extended-reservation-holds-bp-sessions :via {via})))\n")
+
+    def historic_book(self) -> str:
+        from tools import commit_map
+        return subprocess.run(
+            ["git", "-C", str(ROOT), "show", commit_map.resolve(self.HISTORIC) + ":books/bp-heap-command.lisp"],
+            capture_output=True, text=True, check=True).stdout
+
+    def fixture(self, via: str, book: str | None = None) -> Path:
+        root = tree('(in-package "ACL2")\n' + self.DECLARATION.format(via=via))
+        (root / "books").mkdir()
+        (root / "books" / "bp-heap-command.lisp").write_text(book or self.historic_book())
+        return root
+
+    def check(self, root: Path):
+        return interface_emit.keystone_findings(interface_emit.declarations(root), root)
+
+    def test_the_n_bp_heap_case_before_its_fix_is_refused(self):
+        problems, unresolved = self.check(self.fixture("fn-bpsp-node-capacity"))
+        self.assertEqual(unresolved, [])
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("fn-bph-extended-reservation-holds-bp-sessions does not call "
+                      "fn-bpsp-node-capacity", problems[0])
+
+    def test_a_via_target_the_formula_does_call_passes(self):
+        self.assertEqual(self.check(self.fixture("fn-bpsp-node-startup")), ([], []))
+
+    def test_a_comment_or_docstring_cannot_satisfy_it(self):
+        book = ('(in-package "ACL2")\n; fn-bpsp-node-capacity is the capacity\n'
+                '(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+                '  (implies (natp x) (equal (fn-other x) "fn-bpsp-node-capacity"))\n'
+                "  :hints ((\"Goal\" :use fn-bpsp-node-capacity)) :rule-classes nil)\n"
+                "(defthm unrelated (equal 'fn-bpsp-node-capacity 'fn-bpsp-node-capacity))\n")
+        problems, _ = self.check(self.fixture("fn-bpsp-node-capacity", book))
+        self.assertEqual(len(problems), 1, problems)
+
+    def test_a_bare_keystone_must_call_its_own_entry(self):
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+                '  (implies (natp x) (fn-bph-extend-reservation x)))\n')
+        root = tree('(in-package "ACL2")\n(definterface fn-bph-extend-reservation '
+                    ':class :common-lisp-compliant\n  :keystones (fn-bph-extended-reservation-holds-bp-sessions))\n')
+        (root / "books").mkdir()
+        (root / "books" / "b.lisp").write_text(book)
+        self.assertEqual(self.check(root), ([], []))
+        (root / "books" / "b.lisp").write_text(book.replace("fn-bph-extend-reservation", "fn-zz"))
+        self.assertEqual(len(self.check(root)[0]), 1)
+
+    def test_a_keystone_the_reader_cannot_find_is_listed_not_failed(self):
+        root = self.fixture("fn-bpsp-node-capacity", '(in-package "ACL2")\n')
+        problems, unresolved = self.check(root)
+        self.assertEqual(problems, [])
+        self.assertEqual(len(unresolved), 1)
+        self.assertIn("fn-bph-extended-reservation-holds-bp-sessions", unresolved[0])
+
+    def test_the_current_tree_has_at_most_the_n_bp_heap_finding(self):
+        # 0 once lane/n-bp-heap-ld lands; until then exactly that keystone.
+        problems, unresolved = interface_emit.keystone_findings(interface_emit.declarations())
+        for problem in problems:
+            self.assertIn("fn-bph-extended-reservation-holds-bp-sessions", problem)
+        self.assertLessEqual(len(problems), 1)
+        self.assertLessEqual(len(unresolved), 1)  # fn-tariff-family-...: a defmacro template
 
 
 if __name__ == "__main__":
