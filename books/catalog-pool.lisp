@@ -241,3 +241,64 @@
            :in-theory (union-theories '(fn-cpg-msgid-seqs (:definition mv-nth) (:definition nth) (:executable-counterpart zp)
                                         (:rewrite car-cons) (:rewrite cdr-cons))
                                       (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; 2. The (group . number) reader over the pages.
+
+(local
+ (defthm fn-cpg-number-seq-sound
+   (implies (and (natp i) (equal k (fn-cat-number-seq g n c i)) k)
+            (and (natp k) (<= i k) (< k (+ i (len c)))
+                 (fn-held-number-in g (nth (- k i) c))
+                 (equal (fn-held-number-in g (nth (- k i) c)) n)))
+   :hints (("Goal" :induct (fn-cat-number-seq g n c i)
+            :in-theory (enable fn-cat-number-seq)))))
+
+(defthm fn-cpg-group-number-core
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h)
+                (equal cand (fn-cat$a-group-number group n h)))
+           (equal (nth 0 (fn-cpg-group-number group n cand (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h)
+                                              res frames))
+                  (fn-cat$a-group-number group n h)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cpg-number-seq-sound (i 0) (k cand) (g group) (c h))
+                 (:instance fn-cpg-read-row-held (i cand) (fills nil)))
+           :in-theory (e/d (fn-cpg-group-number fn-cat$a-group-number)
+                           (fn-cpg-number-seq-sound fn-cpg-read-row-held fn-cat-number-seq
+                            fn-cp-row-held fn-crow-read-indexed fn-cpg-dir-pages fn-pck-cat-pages
+                            fn-cpg-tape-ok mv-nth fn-cp-row-of)))))
+
+; The dense map's own lookup, composed with the stobj correspondence the
+; paged catalog already proves (fn-cat-paged-group-number{correspondence}).
+(defthm fn-cpg-group-number-of-pages
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h)
+                (fn-cat$pcorr fn-cat$p h))
+           (equal (nth 0 (fn-cpg-group-number group n (fn-cat$p-group-number group n fn-cat$p)
+                                              (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h) res frames))
+                  (fn-cat$a-group-number group n h)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-paged-group-number{correspondence} (fn-cat-paged h))
+                 (:instance fn-cpg-group-number-core (cand (fn-cat$p-group-number group n fn-cat$p))))
+           :in-theory (disable fn-cpg-group-number-core
+                               fn-cpg-group-number fn-cpg-dir-pages fn-pck-cat-pages fn-cpg-tape-ok
+                               fn-cat$p-group-number fn-cat$a-group-number))))
+
+(defthm fn-cpg-group-number-fills
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h))
+           (<= (len (nth 2 (fn-cpg-group-number group n cand (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h)
+                                                res frames)))
+               (fn-cpg-bound (if cand (list cand) nil) h)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cpg-read-row-fills (i cand) (fills nil)))
+           :in-theory (e/d (fn-cpg-group-number fn-cpg-bound)
+                           (fn-cpg-read-row-fills fn-cp-row-held fn-crow-read-indexed fn-cpg-dir-pages
+                            fn-pck-cat-pages fn-cpg-tape-ok mv-nth fn-cp-row-of fn-crow-pool-pages-of-row)))))
+
+(defthm fn-cpg-group-number-residency
+  (implies (<= (len res) (adt-pr-cap frames))
+           (<= (len (nth 1 (fn-cpg-group-number group n cand cnt dpages rpages res frames)))
+               (adt-pr-cap frames)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-crow-read-indexed-residency (i cand) (fills nil)))
+           :in-theory (e/d (fn-cpg-group-number)
+                           (fn-crow-read-indexed-residency fn-cp-row-held fn-crow-read-indexed mv-nth adt-pr-cap)))))
