@@ -36,8 +36,8 @@
 (defconst *fn-profile-limits*
   '((:tls-limit 65536 "symbols"
      "SBCL's thread-local storage per thread (--tls-limit) the image BUILD runs at: the served world passed SBCL's default 16384 at load (batch AV), so images build at this")
-    (:run-tls-limit 16384 "symbols"
-     "SBCL's thread-local storage per thread (--tls-limit) the saved launcher RUNS at: every thread's storage is resident (512 KiB at 65536), and the served world starts and serves at 16384 (MEM-001, build/coordinator/MEMORY-20261006.md row 5)")
+    (:run-tls-limit 20480 "symbols"
+     "SBCL's thread-local storage per thread (--tls-limit) the saved launcher RUNS at: every thread's storage is resident (SBCL's dynamic_values_bytes is 16 octets a symbol: 320 KiB at 20480, 1 MiB at 65536). 16384 serves (MEM-001), but the image's own symbols take TLS index 33,140 of the 131,072 a thread holds at 16384 (25.3%, over tools/build_native_host.sh's 25% budget, nwt/mem-batch 54409d7a9); at 20480 they take 20.2% of 163,840. A thread can index half of that area: a 4096 run exhausts at TLS index 32,724 of its 65,536 octets (hbox probe, 2026-10-07)")
     (:stack-kib 1024 "KiB"
      "every thread's control stack (--control-stack-size), whatever the store profile")
     (:default-stack-kib 2048 "KiB"
