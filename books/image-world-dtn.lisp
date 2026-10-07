@@ -129,6 +129,7 @@
 (include-book "heap-reservation")
 (include-book "bp-heap-command")
 (include-book "cold-read-reservation")
+(include-book "reclaim-reservation")
 (include-book "resource-output")
 (include-book "served-plan-line-buffer")
 (include-book "resource-syncer")
