@@ -256,17 +256,43 @@
 (assert-event (not (fn-bpn-effect-kind-memberp
                     :release (fn-bpn-answer-effects *bpnm-a5*))))
 
-; Restart of the prefix cut after :attempting requeues the exact same peer,
-; route and wire.  This is the crash boundary the native service exercises.
+;; Restart of the prefix cut after :attempting resolves the orphan through the
+;; one append path: the replayed machine still holds the job :attempting (its
+;; memory is exactly the log), the restart proposes the durable :requeued
+;; record, and only that record's durable result requeues the exact same peer,
+;; route and wire.  This is the crash boundary the native service exercises.
 (defconst *bpnm-restart*
   (fn-bpn-step *bpnm-s0* (list :restart (list *bpnm-r0* *bpnm-r1*) :ready)))
-(defconst *bpnm-restarted-job*
-  (fn-bpn-find-job (list *bpnm-work* *bpnm-attempt* 0)
-                   (fn-bpn-machine-state-jobs
-                    (fn-bpn-answer-state *bpnm-restart*))))
+(defconst *bpnm-restart-job-key* (list *bpnm-work* *bpnm-attempt* 0))
+(assert-event
+ (equal (car (fn-bpn-answer-effects *bpnm-restart*)) '(:restart-ready 1)))
+(defconst *bpnm-resolution*
+  (third (cadr (fn-bpn-answer-effects *bpnm-restart*))))
+(assert-event
+ (equal (cadr (fn-bpn-answer-effects *bpnm-restart*))
+        (list :persist 2 *bpnm-resolution*)))
+(assert-event (equal (car *bpnm-resolution*) :requeued))
+(assert-event (equal (nth 5 *bpnm-resolution*) :uncertain))
+(assert-event
+ (equal (fn-bpn-job-status
+         (fn-bpn-find-job *bpnm-restart-job-key*
+                          (fn-bpn-machine-state-jobs
+                           (fn-bpn-answer-state *bpnm-restart*))))
+        :attempting))
 (assert-event
  (fn-bpn-lifecycle-recovery-agrees-with-statep
   *bpnm-lifecycle-recovery* (fn-bpn-answer-state *bpnm-restart*)))
+; Nothing else is proposed while the resolution is pending.
+(assert-event
+ (null (fn-bpn-answer-effects
+        (fn-bpn-step (fn-bpn-answer-state *bpnm-restart*)
+                     (list :contact *bpnm-peer* t)))))
+(defconst *bpnm-resolved*
+  (fn-bpn-step (fn-bpn-answer-state *bpnm-restart*) '(:persist-result 2 :durable)))
+(defconst *bpnm-restarted-job*
+  (fn-bpn-find-job *bpnm-restart-job-key*
+                   (fn-bpn-machine-state-jobs
+                    (fn-bpn-answer-state *bpnm-resolved*))))
 (assert-event (equal (fn-bpn-job-status *bpnm-restarted-job*) :queued))
 (assert-event (equal (fn-bpn-job-route *bpnm-restarted-job*) *bpnm-route*))
 (assert-event
@@ -274,6 +300,27 @@
         (fn-bpn-job-wire
          (fn-bpn-find-job (list *bpnm-work* *bpnm-attempt* 0)
                           (fn-bpn-machine-state-jobs *bpnm-s1*)))))
+; The fence of CONVERGE-2 row 17: the next attempt, appended after the
+; resolution, replays; without the resolution the same attempt is refused.
+(defconst *bpnm-next-attempt*
+  (list :attempting 3 *bpnm-work* *bpnm-attempt* 0))
+(assert-event
+ (equal (car (fn-bpn-replay-records
+              (fn-bpn-initial-machine-state
+               (fn-bpn-machine-state-config *bpnm-s0*)
+               (fn-bpn-machine-state-max-jobs *bpnm-s0*)
+               (fn-bpn-machine-state-max-octets *bpnm-s0*))
+              (list *bpnm-r0* *bpnm-r1* *bpnm-resolution* *bpnm-next-attempt*)))
+        :ready))
+(assert-event
+ (equal (car (fn-bpn-replay-records
+              (fn-bpn-initial-machine-state
+               (fn-bpn-machine-state-config *bpnm-s0*)
+               (fn-bpn-machine-state-max-jobs *bpnm-s0*)
+               (fn-bpn-machine-state-max-octets *bpnm-s0*))
+              (list *bpnm-r0* *bpnm-r1*
+                    (list :attempting 2 *bpnm-work* *bpnm-attempt* 0))))
+        :fault))
 
 (defthm fn-bpn-reachable-restart-keeps-exact-send-context
   (and (equal (fn-bpn-job-status *bpnm-restarted-job*) :queued)
