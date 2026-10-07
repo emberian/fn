@@ -425,6 +425,12 @@
   (declare (xargs :guard t))
   (+ 2 (fn-wire-list-length line)))
 
+(verify-guards fn-wire-octetp)
+
+(verify-guards fn-wire-octet-listp)
+
+(verify-guards fn-wire-octet-linesp)
+
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
@@ -1286,9 +1292,6 @@
 ; -----------------------------------------------------------------------------
 ; Executable guard closure
 
-(verify-guards fn-wire-octetp)
-(verify-guards fn-wire-octet-listp)
-(verify-guards fn-wire-octet-linesp)
 (verify-guards fn-wire-unstuff-line)
 (verify-guards fn-wire-reverse-octets-aux)
 (verify-guards fn-wire-reverse-octets)
