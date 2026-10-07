@@ -1811,6 +1811,21 @@ class Analyzer:
             if ctx.noio is not True and len(form) > 3:
                 parts.append(self.walk_body(form[3:], Ctx(ctx.locks, False, ctx.scope, ctx.gated, ctx.ignore, ctx.cond), env, line))
             return sig_union(parts)
+        # (if (sb-thread:holding-mutex-p L) THEN ELSE): THEN runs only on a
+        # thread that holds L (holding-mutex-p is true of the calling thread's
+        # own holds and of nothing else), so THEN is walked inside L's region;
+        # ELSE is walked as the context it is in.  No acquisition is recorded:
+        # nothing is taken here.  An unresolved lock object keeps the plain
+        # walk.
+        if (isinstance(test, list) and len(test) == 2
+                and head(test) == "sb-thread:holding-mutex-p" and len(form) in (3, 4)):
+            lock = self.lock_of(test[1], env)
+            if not lock.startswith("?"):
+                inner = Ctx(ctx.locks | {lock}, ctx.noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond)
+                parts = [self.walk(test, ctx, env, line), self.walk(form[2], inner, env, line)]
+                if len(form) > 3:
+                    parts.append(self.walk(form[3], ctx, env, line))
+                return sig_union(parts)
         # (if PARAM ...) / (if (not PARAM) ...): each arm runs only under
         # that truthiness of the defun's PARAMETER.  A call site that passes
         # a literal for PARAM can rule the contradicted arm's routes out

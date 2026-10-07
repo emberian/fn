@@ -85,6 +85,40 @@ class R3Reads(unittest.TestCase):
 """
         self.assertEqual(keys(run(src, ["R3"]), "R3"), [])
 
+    HELD_OR_TAKEN = """
+(defun fnn-extent-read-held-or-taken (file eoff)
+  (flet ((read-page ()
+           (fnn-extent-pread (gethash file *fnn-extent-fds*) (make-array 10) eoff)))
+    (if (sb-thread:holding-mutex-p *fnn-extent-lock*)
+        (read-page)
+      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (read-page)))))
+"""
+
+    def test_a_read_in_the_held_arm_of_holding_mutex_p_passes(self):
+        # the then-arm of (if (holding-mutex-p L) ...) runs only on a thread
+        # that holds L: the read is inside L's region in both arms
+        self.assertEqual(keys(run(self.HELD_OR_TAKEN, ["R3"]), "R3"), [])
+
+    def test_the_not_held_arm_of_holding_mutex_p_is_not_a_region(self):
+        # the shape fn-pgs-fill-frame had: the else arm reads with no lock
+        src = self.HELD_OR_TAKEN.replace(
+            """      (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+        (read-page)))))""", """      (read-page))))""")
+        self.assertIn(("fnn-extent-read-held-or-taken", "naked:fnn-extent-pread"),
+                      keys(run(src, ["R3"]), "R3"))
+        # and the lookup under the lock with the read after it (the original)
+        src = """
+(defun fnn-extent-read-held-or-taken (file eoff)
+  (let ((fd (if (sb-thread:holding-mutex-p *fnn-extent-lock*)
+                (gethash file *fnn-extent-fds*)
+              (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                (gethash file *fnn-extent-fds*)))))
+    (fnn-extent-pread fd (make-array 10) eoff)))
+"""
+        self.assertIn(("fnn-extent-read-held-or-taken", "naked:fnn-extent-pread"),
+                      keys(run(src, ["R3"]), "R3"))
+
     ISSUED = """
 (defun fnn-extent-issue-direct (file)
   (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)

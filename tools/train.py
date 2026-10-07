@@ -6,10 +6,21 @@ of regeneration is fixed and the push is conditional on gates that ran at the
 exact HEAD being pushed, recorded in build/train/<branch>.json.
 
     train.py merge LANE@SHA [LANE@SHA ...]
-    train.py regen [--cite ID ...] [--cite-from DIR] [--hbox]
+    train.py regen [--cite ID ...] [--cite-from DIR]
+    train.py boxstep BOX             # hbox or persvati: the box step, recorded
     train.py gate [--strict-lock]
     train.py push
     train.py status
+
+The box step (`boxstep`) certifies wire-export incrementally on a build box,
+regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
+the world, build-list and host checks, commits the fetched outputs and records
+the resulting sha in build/train/box-step.json.  The `box_step` gate passes
+when that sha is HEAD, or when it is an ancestor of HEAD, no file under
+books/, specs/ or tests/acl2/ changed since it, and the local checks
+(LOCAL_BOX_CHECKS) are all 0 at HEAD; the gate then records the sha it
+inherits from (coordinator ruling, 2026-10-07, during the hbox outage).  Any
+other case refuses: the train runs `boxstep` first.
 """
 from __future__ import annotations
 
@@ -53,14 +64,26 @@ REGEN_OUTPUTS = (
 )
 HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
 
-HBOX_CMD = (
+BOX_CMD = (
+    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export && "
     "python3 tools/interface_emit.py --write && python3 tools/interface_emit.py --check && "
     "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check && "
     "python3 tools/extract/world.py --check && python3 tools/build_lists_check.py && "
     "python3 tools/host_check.py --read && python3 tools/host_check.py --world"
 )
 
-GATES = ("ancestor", "ledger", "current_view", "main_last", "host_load", "lock_delta", "secrets")
+# Paths whose change since the last box step makes a new box step necessary.
+BOX_PATHS = ("books", "specs", "tests/acl2")
+# What the gate runs locally when it inherits a box step instead.
+LOCAL_BOX_CHECKS = (
+    ("interface_emit", ["tools/interface_emit.py", "--check"]),
+    ("world", ["tools/extract/world.py", "--check"]),
+    ("build_lists", ["tools/build_lists_check.py"]),
+    ("host_read", ["tools/host_check.py", "--read"]),
+    ("host_world", ["tools/host_check.py", "--world"]),
+)
+
+GATES = ("ancestor", "ledger", "current_view", "main_last", "host_load", "box_step", "lock_delta", "secrets")
 
 
 class TrainError(Exception):
@@ -320,16 +343,38 @@ def cmd_regen(t: Train, args) -> int:
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
-    # (6)
-    if args.hbox:
-        argv = ["sh", "tools/remote_check.sh", "hbox", "--fetch", "planning/interfaces.json",
-                "--fetch", "specs/wire-grammar.json", "--cmd", HBOX_CMD]
-        rc = t.run("regen-hbox", argv)
-        if done("hbox", rc):
-            return rc
-        _commit_named(t, HBOX_OUTPUTS, f"Regenerate train {n}: interfaces and wire grammar from hbox")
-        done("hbox_commit", 0)
     say("regen done at " + t.head()[:9])
+    return 0
+
+
+# --------------------------------------------------------------------------- box step
+
+def box_record_path(t: Train) -> Path:
+    return t.dir / "box-step.json"
+
+
+def load_box_record(t: Train) -> dict | None:
+    path = box_record_path(t)
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def cmd_boxstep(t: Train, args) -> int:
+    if t.dirty():
+        raise TrainError("working tree is dirty; the box step ships HEAD")
+    ran_at = t.head()
+    argv = ["sh", "tools/remote_check.sh", args.box]
+    for out in HBOX_OUTPUTS:
+        argv += ["--fetch", out]
+    argv += ["--cmd", BOX_CMD]
+    rc = t.run(f"boxstep-{args.box}", argv)
+    if rc != 0:
+        say(f"box step on {args.box} failed (rc {rc}); nothing recorded")
+        return rc
+    _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the box step's emits on {args.box} at {ran_at[:9]}")
+    record = {"sha": t.head(), "ran_at": ran_at, "box": args.box}
+    t.dir.mkdir(parents=True, exist_ok=True)
+    box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    say(f"box step recorded: {args.box} at {record['sha'][:9]}")
     return 0
 
 
@@ -376,6 +421,29 @@ def cmd_gate(t: Train, args) -> int:
     else:
         say("host unchanged vs origin/dev: host_check --load skipped")
         rec("host_load", 0, skipped=True)
+
+    box = load_box_record(t)
+    if box is None:
+        say("box_step: no box step recorded; run `train.py boxstep BOX`")
+        rec("box_step", 1, error="no box step recorded")
+    elif box["sha"] == head:
+        say(f"box_step: ran at HEAD on {box['box']}")
+        rec("box_step", 0, ran_on=box["box"])
+    elif git(t.root, "merge-base", "--is-ancestor", box["sha"], "HEAD", check=False).returncode != 0:
+        say(f"box_step: the recorded box step {box['sha'][:9]} is not an ancestor of HEAD; run `train.py boxstep BOX`")
+        rec("box_step", 1, error="box step not an ancestor", box_sha=box["sha"])
+    else:
+        changed = git(t.root, "diff", "--name-only", box["sha"], "HEAD", "--", *BOX_PATHS).stdout.split()
+        if changed:
+            say(f"box_step: {len(changed)} file(s) under {', '.join(BOX_PATHS)} changed since the box step at "
+                f"{box['sha'][:9]} (first: {changed[0]}); run `train.py boxstep BOX`")
+            rec("box_step", 1, error="box paths changed since the box step", box_sha=box["sha"], changed=changed)
+        else:
+            local = {name: t.run(f"gate-box-{name}", [PY, *argv]) for name, argv in LOCAL_BOX_CHECKS}
+            rc = 0 if all(v == 0 for v in local.values()) else 1
+            say(f"box_step: inherits {box['sha'][:9]} ({box['box']}); local checks "
+                + ", ".join(f"{k}={v}" for k, v in local.items()))
+            rec("box_step", rc, inherits_from=box["sha"], box=box["box"], local_checks=local)
 
     tmp = Path(tempfile.mkdtemp(prefix="dev-", dir=str(t.dir)))
     wt = tmp / "dev"
@@ -436,6 +504,9 @@ def cmd_push(t: Train, args) -> int:
             raise TrainError(f"push to {target} failed: {p.stderr.strip()}")
     carried = ", ".join(f"{l['name']}@{l['sha'][:9]}" for l in st["lanes"] if l["status"] == "merged")
     say(f"dev {old[:9]}..{head[:9]} carried: {carried or '-'}")
+    b = gates["box_step"]
+    say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
+                        else f"ran at HEAD on {b['ran_on']}"))
     return 0
 
 
@@ -466,8 +537,9 @@ def main(argv=None) -> int:
     r = sub.add_parser("regen")
     r.add_argument("--cite", action="append", metavar="ID")
     r.add_argument("--cite-from", metavar="DIR")
-    r.add_argument("--hbox", action="store_true")
     r.add_argument("--label", metavar="N", help="the train number for the regen commit messages")
+    b = sub.add_parser("boxstep")
+    b.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
     g.add_argument("--strict-lock", action="store_true")
     sub.add_parser("push")
@@ -475,7 +547,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     try:
         t = Train(toplevel(Path.cwd()))
-        return {"merge": cmd_merge, "regen": cmd_regen, "gate": cmd_gate,
+        return {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "gate": cmd_gate,
                 "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
     except TrainError as e:
         say(f"train: {e}")
