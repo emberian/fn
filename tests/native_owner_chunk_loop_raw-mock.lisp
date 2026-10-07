@@ -291,13 +291,14 @@ unbounded (&rest or &key)."
     (fn-owner-compress-owed nil)
     ;; The reader context a response captures before its first window
     ;; (fnn-owner-capture-reader-context): opaque to the host, retained.
-    (fn-owner-catalog-capture-context (list :captured-context (first args)))))
+    (fn-owner-catalog-capture-context (list :captured-context (first args)))
+    ;; The idle check (fn-exp-idle-delivery): kept, no tail.
+    (fn-owner-exposure-idle (list :keep nil))))
 
 (defun fnn-owner-action (name &rest args)
   (ecase name
     (fn-owner-observe (push args *observations*) (push :observe *timeline*) :observed)
     (fn-owner-close :closed)
-    (fn-owner-exposure-idle :keep)
     ;; The transport took a reply window (fn-exp-progress, Astra c07).
     (fn-owner-exposure-progress (push :output-progress *timeline*) :ok)
     (fn-owner-exposure-release :released)
@@ -433,7 +434,14 @@ unbounded (&rest or &key)."
     ;; A scenario's plan is its list of ready windows: never an ARTICLE
     ;; preflight plan (books/article-stream-...: fn-asto-preflight-planp).
     (fn-asto-preflight-planp nil)
-    (fn-asto-plan-articlep nil)))
+    (fn-asto-plan-articlep nil)
+    ;; The reply's send verdict (books/send-progress.lisp): every scripted
+    ;; write is taken whole, so each look continues and the state is opaque.
+    (fn-send-progress-begin (list :send-state (first args)))
+    (fn-send-progress-decide :continue)
+    (fn-send-progress-next (first args))
+    ;; Row 20: no scripted reply leaves a kernel queue, so no tail.
+    (fn-exp-tail-start nil)))
 
 ;; The live arena and catalog stobjs (host/native/io.lisp, read from ACL2's
 ;; state): a response's capture retains them; nothing here reads through them.

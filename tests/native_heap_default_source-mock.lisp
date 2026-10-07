@@ -104,6 +104,10 @@
      (push (cons :default args) *calls*) (apply (symbol-function entry) args))
     (fn-pfr-extend-operation-reservation
      (push (cons :peer args) *calls*) (first args))
+    ;; books/bp-heap-command.lisp: not a BP node serve, so no BP terms and the
+    ;; base itself (fn-bph-extend-reservation with no terms).
+    (fn-bph-node-serve-p nil)
+    (fn-bph-extend-reservation (first args))
     (fn-orv-extend-reservation
      (push (cons :output args) *calls*) (apply (symbol-function entry) args))
     (fn-heap-reserve-report-line (format nil "~s" (first args)))

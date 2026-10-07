@@ -53,7 +53,10 @@
                       *fn-heap-message-id-octets*)))
           (cons :octet-buffers (* 2 (fn-ock-capture-budget profile)))
           ;; the articles in flight (lane zero-copy-commit): the slots' pool
-          (cons :articles (fn-heap-articles-octets profile)))))
+          (cons :articles (fn-heap-articles-octets profile))
+          ;; the live history roots, a retained generation and its candidate
+          ;; (lane mem10-hroot): a reserve of their own, outside the articles
+          (cons :history-roots (fn-heap-hroot-reserve-octets profile)))))
 
 (defun fn-heap-breakdown-sum (terms)
   (declare (xargs :guard t))

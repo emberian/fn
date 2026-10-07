@@ -1845,7 +1845,8 @@
               (nfix (fn-bs-profile-max-history-octets profile))
               (nfix (fn-bs-profile-max-transactions profile)))
              (fn-heap-store-inflight-octets profile)
-             (fn-heap-articles-octets profile))
+             (fn-heap-articles-octets profile)
+             (fn-heap-hroot-reserve-octets profile))
           nursery))
   :hints (("Goal" :in-theory (union-theories '(fn-heap-figure-octets fn-heap-store-figure-octets
                                                fn-heap-store-base-octets

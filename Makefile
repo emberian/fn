@@ -643,6 +643,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-checkpoint-verify-tests \
 	books/heap-store-figure \
 	books/heap-figure \
+	books/history-root-figure \
 	books/heap-open-nursery \
 	tests/acl2/heap-open-nursery-tests \
 	books/send-progress \
