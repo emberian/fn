@@ -394,8 +394,19 @@ def formals_of(defun):
     return f
 
 
-def pick_elt(xs, formals):
-    taken = {i.low for i in formals.items if isinstance(i, Atom)}
+def atoms_of(n, out):
+    if isinstance(n, Pre):
+        atoms_of(n.node, out)
+    elif isinstance(n, Lst):
+        for i in n.items:
+            atoms_of(i, out)
+    elif isinstance(n, Atom) and not isinstance(n, Str):
+        out.add(n.low)
+    return out
+
+
+def pick_elt(xs, formals, used=()):
+    taken = {i.low for i in formals.items if isinstance(i, Atom)} | set(used)
     for c in (xs[0], "e", "x", "y", "z", "w", "u", "v"):
         c = c.lower()
         if c not in ("t", "nil") and c not in taken:
@@ -620,7 +631,12 @@ def shape_of(name, formals, logic, wrapper):
 
 def finish(spec, name, formals, wrapper, fl):
     xs = spec.xs
-    spec.elt = pick_elt(xs, formals)
+    used = set()
+    for attr in ("body", "keep", "stop", "stopval", "while_", "tail", "lets"):
+        v = getattr(spec, attr)
+        if v is not None:
+            atoms_of(v, used)
+    spec.elt = pick_elt(xs, formals, used)
     car_of_xs = lambda n: is_call(n, "car") and len(n.items) == 2 and flat_low(n.items[1]) == xs
     sub = lambda n: n if n is None else subst(n, car_of_xs, S(spec.elt))
     for attr in ("body", "keep", "stop", "stopval", "while_", "tail"):
