@@ -54,7 +54,10 @@
 (in-package "ACL2")
 
 (defconstant +fnn-mux-loops+ *fn-heap-mux-loops*) ; books/profile-limits.lisp
-(defconstant +fnn-mux-send-seconds+ 10)
+;; The stop's one bound on the replies its loops still hold: the profile's
+;; send-stall window (books/send-progress.lisp), the figure the fixed send
+;; deadline had.  A live reply is judged by the verdict (fnn-mux-send-check).
+(defconstant +fnn-mux-send-seconds+ *fn-send-stall-seconds*)
 (defconstant +fnn-mux-idle-seconds+ 1)
 (defconstant +fnn-mux-drain-seconds+ 1)
 (defconstant +fnn-mux-tick-ms+ 250)
@@ -121,7 +124,12 @@
   ;; Exact identity/effect/section receipts, retained through terminal cleanup.
   (cleanup-receipts nil) (cleanup-phase nil)
   input
-  out (out-at 0) out-end out-deadline out-op after
+  out (out-at 0) out-end out-op after
+  ;; The next look at a queued reply's send (fnn-mux-send-check) and what the
+  ;; verdict remembers between looks: SEND-STATE is books/send-progress.lisp's
+  ;; state (nil between replies), SEND-HANDED the octets of the reply the
+  ;; kernel has accepted.  The host keeps them and compares nothing.
+  out-deadline (send-state nil) (send-handed 0)
   want resume-at idle-at hs-deadline drain-deadline
   greeting done
   ;; The service class this connection's quanta are admitted as (:reader, or
@@ -247,6 +255,62 @@ ACL2 lets one served step read (fnn-mux-read-buffer)."
                         (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn)
                         (or (fnn-mux-conn-out-end conn)
                             (length (fnn-mux-conn-out conn)))))
+
+;;; The send verdict (CONVERGE-2 row 20).  ACL2 decides
+;;; (books/send-progress.lisp fn-send-progress-decide): the host observes the
+;;; clock, the kernel's unsent octets and the octets the kernel accepted, and
+;;; enforces the answer.
+
+(defconstant +fnn-mux-siocoutq+ #x5411) ; Linux ioctl TIOCOUTQ, SIOCOUTQ on a socket
+
+(defun fnn-mux-send-outq (conn)
+  "The kernel's unsent octets for CONN's socket, or NIL where the platform
+gives no figure (only Linux's SIOCOUTQ is read; the verdict then judges the
+octets the socket accepted alone)."
+  #+linux
+  (sb-alien:with-alien ((n sb-alien:int 0))
+    (let ((r (sb-alien:alien-funcall
+              (sb-alien:extern-alien "ioctl" (function sb-alien:int sb-alien:int
+                                                       sb-alien:unsigned-long
+                                                       (* sb-alien:int)))
+              (fnn-mux-conn-fd conn) +fnn-mux-siocoutq+ (sb-alien:addr n))))
+      (and (zerop r) (>= n 0) n)))
+  #-linux
+  (progn conn nil))
+
+(defun fnn-mux-send-observation (conn)
+  "(NOW OUTQ HANDED): the monotonic milliseconds, the kernel's unsent octets,
+the octets of this reply the kernel has accepted."
+  (list (fnn-owner-monotonic-ms) (fnn-mux-send-outq conn) (fnn-mux-conn-send-handed conn)))
+
+(defun fnn-mux-send-look (conn)
+  "The next look at CONN's send: one loop tick on."
+  (setf (fnn-mux-conn-out-deadline conn)
+        (fnn-mux-ticks (/ +fnn-mux-tick-ms+ 1000))))
+
+(defun fnn-mux-send-begin (conn)
+  "A reply's first window is queued: nothing accepted yet, the state ACL2
+starts it with."
+  (let ((obs (fnn-mux-send-observation conn)))
+    (setf (fnn-mux-conn-send-handed conn) 0
+          (fnn-mux-conn-send-state conn)
+          (fnn-core 'fn-send-progress-begin (first obs) (second obs))))
+  (fnn-mux-send-look conn))
+
+(defun fnn-mux-send-check (loop conn)
+  "A queued reply's look: ACL2's verdict on the observation.  :continue
+advances the state and schedules the next look; a refusal is logged by name
+and ends the connection (the client keeps what the kernel took)."
+  (let* ((obs (fnn-mux-send-observation conn))
+         (state (fnn-mux-conn-send-state conn))
+         (verdict (fnn-core 'fn-send-progress-decide state obs)))
+    (cond ((eq verdict :continue)
+           (setf (fnn-mux-conn-send-state conn) (fnn-core 'fn-send-progress-next state obs))
+           (fnn-mux-send-look conn))
+          (t
+           (fnn-err "send refused reason=~(~a~) cid=~a op=~(~a~)" (second verdict)
+                    (fnn-mux-conn-cid conn) (fnn-mux-conn-out-op conn))
+           (fnn-mux-finish loop conn)))))
 
 (defun fnn-mux-wake-locked (loop)
   "LOOP's LOCK held: one octet to the wake pipe, unless the loop has closed
@@ -557,9 +621,9 @@ plan remains."
     (fnn-owner-connection-call service op (lambda () nil))
     (fnn-mux-output-window conn (fnn-octets octets) end)
     (setf (fnn-mux-conn-out-op conn) op
-          (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-want conn) nil)
+    (fnn-mux-send-begin conn)
     (fnn-mux-flush loop conn)))
 
 (defun fnn-mux-read-class (loop conn)
@@ -616,6 +680,7 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
           (fnn-mux-conn-out-end conn) nil
           (fnn-mux-conn-out-at conn) 0
           (fnn-mux-conn-out-deadline conn) nil
+          (fnn-mux-conn-send-state conn) nil
           (fnn-mux-conn-want conn) nil
           (fnn-mux-conn-resume-at conn)
           (+ (fnn-now)
@@ -641,6 +706,7 @@ worker retains physical custody until its existing return/settlement."
           (fnn-mux-conn-out-end conn) nil
           (fnn-mux-conn-out-at conn) 0
           (fnn-mux-conn-out-deadline conn) nil
+          (fnn-mux-conn-send-state conn) nil
           (fnn-mux-conn-want conn) nil
           (fnn-mux-conn-resume-at conn)
           (+ (fnn-now) (round (* +fnn-mux-cold-poll-ms+ internal-time-units-per-second) 1000)))
@@ -685,6 +751,8 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
                                 (lambda () (fnn-mux-write-now conn)))))
                  (if (integerp progress)
                      (setf (fnn-mux-conn-out-at conn) (+ (fnn-mux-conn-out-at conn) progress)
+                           (fnn-mux-conn-send-handed conn)
+                           (+ (fnn-mux-conn-send-handed conn) progress)
                            (fnn-mux-conn-want conn) nil)
                    (progn (setf (fnn-mux-conn-want conn) progress
                                 (fnn-mux-conn-drained-late conn) t)
@@ -709,12 +777,13 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
                 (fnn-mux-plan-yield loop conn rest (fnn-mux-conn-after conn) t)
                 (return-from fnn-mux-flush nil))
               (fnn-mux-output-window conn octets end)
-              (setf (fnn-mux-conn-plan conn) (if donep nil rest)
-                    (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)))
+              (setf (fnn-mux-conn-plan conn) (if donep nil rest))
+              (fnn-mux-send-look conn))
           (let ((after (fnn-mux-conn-after conn)))
             (setf (fnn-mux-conn-out conn) nil
                   (fnn-mux-conn-out-end conn) nil (fnn-mux-conn-after conn) nil
-                  (fnn-mux-conn-out-deadline conn) nil)
+                  (fnn-mux-conn-out-deadline conn) nil
+                  (fnn-mux-conn-send-state conn) nil)
             (fnn-mux-after loop conn after)
             (return-from fnn-mux-flush nil)))))))
 
@@ -1495,7 +1564,7 @@ included), no input in hand, no completion awaited, no resume timer."
 
 (defun fnn-mux-timers (loop now)
   "Run each connection's due timer; answer the ticks to the next one."
-  (let ((next nil) (service (fnn-mux-service loop)))
+  (let ((next nil))
     (flet ((due (at) (and at (<= at now)))
            (note (at) (when (and at (or (null next) (< at next))) (setq next at))))
       (dolist (conn (copy-list (fnn-mux-loop-conns loop)))
@@ -1503,13 +1572,8 @@ included), no input in hand, no completion awaited, no resume timer."
           (fnn-mux-guarded (loop conn)
             (cond
               ((and (fnn-mux-conn-out conn) (due (fnn-mux-conn-out-deadline conn)))
-               ;; fnn-send-all's deadline, in the send's own named scope.
-               (fnn-owner-connection-call
-                service (fnn-mux-conn-out-op conn)
-                (lambda ()
-                  (if (fnn-mux-conn-channel conn)
-                      (error 'fnn-tls-io-error :detail "operation timed out")
-                    (fnn-os-fail sb-posix:etimedout)))))
+               ;; ACL2's verdict on the reply's send, not a fixed deadline.
+               (fnn-mux-send-check loop conn))
               ((and (eq (fnn-mux-conn-phase conn) :handshake)
                     (due (fnn-mux-conn-hs-deadline conn)))
                (error 'fnn-tls-handshake-error :detail "operation timed out"))

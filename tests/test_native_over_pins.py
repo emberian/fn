@@ -307,6 +307,100 @@ class NativeOverPinsTests(unittest.TestCase):
         finally:
             node.stop(expect=None, grace=300)
 
+    @staticmethod
+    def server_tx_queue(server_port, client_port):
+        """The unsent octets of the owner's side of one connection, from
+        /proc/net/tcp{,6} (tx_queue), or None where the table is not there."""
+        for table in ("/proc/net/tcp", "/proc/net/tcp6"):
+            try:
+                with open(table) as rows:
+                    next(rows)
+                    for row in rows:
+                        fields = row.split()
+                        local, remote = fields[1], fields[2]
+                        if (int(local.rsplit(":", 1)[1], 16) == server_port
+                                and int(remote.rsplit(":", 1)[1], 16) == client_port):
+                            return int(fields[4].split(":")[0], 16)
+            except OSError:
+                continue
+        return None
+
+    def test_a_reader_that_stops_reading_is_refused_send_stalled(self):
+        """The owner's send verdict (books/send-progress.lisp): a reader that
+        reads nothing of a 12 MiB ARTICLE is refused by name, send-stalled,
+        :send-stall-seconds (10 s) after the last octet the kernel accepted
+        plus at most one mux tick (250 ms) -- never as Errno 110 -- and the
+        client then reads what the kernel took and sees the end of the stream.
+        The last progress is read off the owner's side of the socket
+        (tx_queue in /proc/net/tcp), polled every 50 ms."""
+        size = 12 << 20
+        stall_seconds = 10
+        node = Node(self, self.image, root=self.root / "stalled-reader")
+        # The same profile as the slow-drain test above: one group, a record
+        # that holds the article, a history that affords it.
+        node.operator("init", "--profile", "development", "--max-transactions", "1024",
+                      "--max-history-octets", str(128 << 20),
+                      "--max-record-octets", str(size + (1 << 20)),
+                      "--max-groups-per-article", "16",
+                      "--max-article-octets", str(size), GROUP, timeout=600, expect=EXIT.OK)
+        secret = node.store("node-secret", "create", timeout=600)
+        self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
+        head = ("From: xpy@example.invalid\r\nNewsgroups: %s\r\nSubject: large\r\n"
+                "Message-ID: %s\r\n\r\n" % (GROUP, msgid("stopped"))).encode("ascii")
+        line = b"b" * 78 + b"\r\n"
+        body = line * ((size - len(head) - 4096) // len(line))
+        owner = node.start(timeout=600)
+        try:
+            with Client(node.port, timeout=300, greeting=None) as poster:
+                first, final = poster.post(head + body)
+                self.assertTrue((final or first).startswith(b"240"), (first, final))
+            client = Client(node.port, timeout=300, greeting=None)
+            try:
+                client.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
+                client_port = client.sock.getsockname()[1]
+                mark = owner.stderr.end
+                client.send(("ARTICLE %s\r\n" % msgid("stopped")).encode())
+                sent = time.monotonic()
+                last_change, last_queue, refused_at = sent, None, None
+                observed = False
+                while time.monotonic() - sent < 240:
+                    queue = self.server_tx_queue(node.port, client_port)
+                    now = time.monotonic()
+                    if queue is not None:
+                        observed = True
+                        if queue != last_queue:
+                            last_change, last_queue = now, queue
+                    text = owner.stderr.since(mark)
+                    if b"send refused" in text:
+                        refused_at = now
+                        break
+                    time.sleep(0.05)
+                log = owner.stderr.since(mark)[-3000:]
+                self.assertIsNotNone(refused_at, "no send refusal within 240 s: %r" % log)
+                self.assertIn(b"send refused reason=send-stalled", log)
+                self.assertNotIn(b"Errno 110", log)
+                if observed:
+                    gap = refused_at - last_change
+                    # Refused no sooner than the window after the last
+                    # progress, and no later than one tick (0.25 s) and the
+                    # poll's own slack beyond it.
+                    self.assertGreaterEqual(gap, stall_seconds - 0.5, (gap, log))
+                    self.assertLessEqual(gap, stall_seconds + 0.25 + 1.0, (gap, log))
+                # The client keeps what the kernel took, then the stream ends.
+                client.sock.settimeout(60)
+                got = 0
+                while True:
+                    chunk = client.sock.recv(65536)
+                    if not chunk:
+                        break
+                    got += len(chunk)
+                self.assertGreater(got, 0)
+                self.assertLess(got, size)
+            finally:
+                client.close(False)
+        finally:
+            node.stop(expect=None, grace=300)
+
     def test_a_cold_quantum_reads_off_the_owner_mutex(self):
         """Codex r67 F2 for OVER: a cursor quantum that needs a payload not in
         the realizer's cache issues the read and waits for it OFF the owner

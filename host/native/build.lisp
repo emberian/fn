@@ -220,6 +220,9 @@
 ;; Lane f1-bisect: host/native/io.lisp fnn-open-nursery calls
 ;; fn-heap-open-nursery-trigger (the open's trigger sized to its history).
 (include-book "books/heap-open-nursery")
+;; CONVERGE-2 row 20: host/native/mux.lisp asks the send verdict of
+;; books/send-progress.
+(include-book "books/send-progress")
 ;; MEM-003: host/native/owner.lisp fnn-owner-maybe-collect-idle asks the idle
 ;; collection verdict of books/idle-collection.
 (include-book "books/idle-collection")
