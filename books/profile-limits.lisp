@@ -83,7 +83,7 @@
     (:extent-cache-entries 8 "entries"
      "the payload extent cache's whole-entry slots (books/extent-cache.lisp; read through fn-arx-read-cache-entries); at most 32 until the hash index lands (owed item EXT-CACHE-INDEX), a larger figure fails the certification of books/extent-cache.lisp")
     (:extent-cache-windows 8 "windows"
-     "the payload extent cache's verified-window slots, raw and decoded together (books/extent-cache.lisp; read through fn-arx-read-cache-windows); the same bound")))
+     "the payload extent cache's verified-window slots, raw and decoded together (books/extent-cache.lisp; read through fn-arx-read-cache-windows); the same bound, and at most the entries figure (the resource plan sizes the cache's charge by the entries alone)")))
 
 ; The row's VALUE, at macroexpansion: (fn-profile-limit :stack-kib) is the
 ; literal 1024 wherever it appears, and an unknown KEY is refused there.

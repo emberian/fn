@@ -74,10 +74,16 @@ class ExtentIdentitySourceTests(unittest.TestCase):
         host = (ROOT / "host" / "native" / "extent.lisp").read_text(encoding="ascii")
         entry = native_cuts.host_function(host, "fnn-extent-entry")
         self.assertNotIn("(ignore trailer)", entry)
-        # A hit agrees with the whole descriptor identity.
-        for field in ("(eql (first e) file)", "(eql (second e) eoff)",
-                      "(eql (third e) elen)", "(eql (fourth e) trailer)"):
-            self.assertIn(field, entry)
+        # A hit agrees with the whole descriptor identity: the host asks ACL2
+        # (books/extent-cache.lisp fn-xc-lookup, which compares file, offset,
+        # length and trailer of a live whole-entry slot) with all four, and
+        # decides nothing itself.
+        self.assertIn("(fnn-extent-slot-lookup 1 file eoff elen 0 0 0 0 trailer 0 0)", entry)
+        lookup = native_cuts.host_function(host, "fnn-extent-slot-lookup")
+        self.assertIn("'fn-xc-lookup from kind file eoff elen a b c d trailer pos", lookup)
+        # The host's own cache lists, and their find-if / subseq / delete moves, are gone.
+        for gone in ("*fnn-extent-cache*", "*fnn-extent-window-cache*", "find-if", "(subseq *fnn"):
+            self.assertNotIn(gone, host)
         # The verdict is ACL2's, against the descriptor's trailer; every
         # refusal is by name.
         verdict = native_cuts.host_function(host, "fnn-extent-entry-verdict")

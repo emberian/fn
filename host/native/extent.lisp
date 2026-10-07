@@ -74,14 +74,19 @@ Missing wait/pin/other owner edges leave full PageIO replay unavailable."
 ;; guarded-by: *fnn-extent-lock* (file id -> (device . inode) of the file opened)
 (defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
 (defvar *fnn-extent-next-id* nil)
-(defvar *fnn-extent-cache* nil)
-(defvar *fnn-extent-cache-tokens* (make-hash-table :test #'eq))
-;; guarded-by: *fnn-extent-lock* (every reader and writer: fnn-extent-cache-
-;; forget/-store, both "Extent lock held", and the pool install under it).
-;; Verified vector -> immutable charged token. Capacity is a static pool
-;; allowance, not a per-entry credit that eviction pretends to reclaim.
-;; ((file eoff elen trailer . octets) ...), most recent first: the verified
-;; entries, each under the descriptor identity it was verified for
+;; The payload extent cache.  ACL2 owns every decision about it
+;; (books/extent-cache.lisp: which slot holds a descriptor, which slot an
+;; install takes, which slot yields under pool pressure, which slots a retiring
+;; file takes with it, and the charge each slot hands back); the host keeps only
+;; what ACL2 cannot hold, one value per slot number.
+(defvar *fnn-extent-xcs* nil)   ; ACL2's slot table (fn-xcs), guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-xcc* nil)   ; its clock and geometry cells (fn-xcc), same lock
+;; guarded-by: *fnn-extent-lock*.  Slot S of the first NE: the verified entry's
+;; octet vector; slot S of the next NW: a verified window's (PLAN . WINDOW)
+;; (PLAN is NIL for a decoded window).  A slot ACL2 holds free holds NIL here.
+;; Capacity is a static pool allowance, not a per-entry credit that eviction
+;; pretends to reclaim.
+(defvar *fnn-extent-slots* (vector))
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
 (defvar *fnn-extent-issued* nil)
 ;; guarded-by: *fnn-extent-lock*.  ACL2's issued table (books/page-read-direct.lisp
@@ -123,7 +128,7 @@ are memory, rebuilt at fnn-extent-direct-start."
   "Install the admitted fixed peak capacities before any live registration.
 ACL2 supplied capacities include cache insertion overlap; table backing is
 permanent baseline, never refunded when an association is removed."
-  (declare (ignorable worker-capacity))
+  (declare (ignorable worker-capacity cache-capacity))
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (and (zerop (hash-table-count *fnn-extent-fds*))
                  (zerop (hash-table-count *fnn-extent-paths*))
@@ -131,16 +136,16 @@ permanent baseline, never refunded when an association is removed."
                  (zerop (hash-table-count *fnn-extent-bases*))
                  (null *fnn-extent-issued*)
                  (null *fnn-extent-file-holds*)
-                 (zerop (hash-table-count *fnn-extent-cache-tokens*))
-                 (null *fnn-extent-cache*))
+                 (not (fnn-extent-cache-live-p)))
       (fnn-fault "cold pool installation follows physical registration"))
     (setf *fnn-extent-fds* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
           *fnn-extent-paths* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
           *fnn-extent-incarnations* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
           *fnn-extent-bases* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
           ;; the issued and holds tables are ACL2 values bounded by the worker
-          ;; count (admission needs an idle worker): no backing to size
-          *fnn-extent-cache-tokens* (make-hash-table :test #'eq :size cache-capacity :rehash-threshold 1.0 :rehash-size 1))))
+          ;; count (admission needs an idle worker): no backing to size.  The
+          ;; cache's table is ACL2's, sized by the profile row, not by CACHE-CAPACITY.
+          )))
 
 (defun fnn-extent-register (path)
   "Reserve ACL2's fresh incarnation name and funded path lease before open.
@@ -246,6 +251,13 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
       0
     (fnn-core 'fn-arx-read-cache-entries)))
 
+(defun fnn-extent-window-limit ()
+  "ACL2's bound on the verified windows the realizer keeps
+(fn-arx-read-cache-windows); 0 under the same cache-off selector."
+  (if (equal (fnn-developer-selector "FN_NATIVE_EXTENT_CACHE_TEST_OFF") "1")
+      0
+    (fnn-core 'fn-arx-read-cache-windows)))
+
 (defvar *fnn-octets-rd* nil)
 
 (defun fnn-live-octets-rd ()
@@ -265,6 +277,91 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 (defun fnn-core-page-read-pool (name &rest arguments)
   "The extent mutex serializes the pool; never acquire owner from here."
   (apply #'fnn-call name (append arguments (list (fnn-live-page-read-pool)))))
+
+;;; The cache's slot table, over books/extent-cache.lisp.  Every function here
+;;; runs with *fnn-extent-lock* held, and none decides anything: each asks ACL2
+;;; (fn-xc-lookup, -touch, -install-entry, -install-window, -yield, -free,
+;;; -next-live, -slot-token, -holds) and does exactly what it answers.
+(defun fnn-extent-cache-ready ()
+  "The slot table, laid out once from the profile's figures (both 0 under the
+developer cache-off selector).  ACL2 refuses a figure its scans do not support."
+  (unless *fnn-extent-xcs*
+    (let ((ne (fnn-extent-cache-limit)) (nw (fnn-extent-window-limit)))
+      (destructuring-bind (word xcs xcc)
+          (fnn-call 'fn-xc-init ne nw (create-fn-xcs) (create-fn-xcc))
+        (unless (eq word :initialized)
+          (fnn-fault "the extent cache refused its profile figures ~d entries, ~d windows: ~a"
+                     ne nw word))
+        (setq *fnn-extent-xcs* xcs
+              *fnn-extent-xcc* xcc
+              *fnn-extent-slots* (make-array (+ ne nw) :initial-element nil)))))
+  t)
+
+(defun fnn-extent-slot-lookup (kind file eoff elen a b c d trailer pos from)
+  "The first slot at or after FROM that ACL2 says holds the descriptor, or NIL."
+  (fnn-extent-cache-ready)
+  (destructuring-bind (word slot)
+      (fnn-call 'fn-xc-lookup from kind file eoff elen a b c d trailer pos
+                *fnn-extent-xcs* *fnn-extent-xcc*)
+    (and (eq word :hit) slot)))
+
+(defun fnn-extent-slot-touch (slot)
+  "SLOT was used: ACL2 makes it the most recent."
+  (destructuring-bind (word xcs xcc)
+      (fnn-call 'fn-xc-touch slot *fnn-extent-xcs* *fnn-extent-xcc*)
+    (unless (eq word :touched) (fnn-fault "extent cache touched a slot ACL2 does not hold"))
+    (setq *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc)))
+
+(defun fnn-extent-slot-token (slot)
+  "SLOT's pool charge, as ACL2 reconstructs it from the slot's columns."
+  (first (fnn-call 'fn-xc-slot-token slot *fnn-extent-xcs*)))
+
+(defun fnn-extent-slot-holds-p (slot token)
+  (first (fnn-call 'fn-xc-holds slot token *fnn-extent-xcs*)))
+
+(defun fnn-extent-cache-live-p ()
+  "Whether ACL2's table holds any slot (NIL before the table is laid out)."
+  (and *fnn-extent-xcs*
+       (first (fnn-call 'fn-xc-next-live 0 nil *fnn-extent-xcs*))
+       t))
+
+(defun fnn-extent-slot-clear (slot)
+  (setf (svref *fnn-extent-slots* slot) nil))
+
+(defun fnn-extent-cache-take (files)
+  "Every slot ACL2 finds live for one of FILES (every slot when FILES is :all)
+is freed; the tokens of their pool charges, for the caller to release."
+  (let ((tokens nil))
+    (when *fnn-extent-xcs*
+      (dolist (file (if (eq files :all) '(nil) files))
+        (let ((from 0))
+          (loop
+            (let ((slot (first (fnn-call 'fn-xc-next-live from file *fnn-extent-xcs*))))
+              (unless slot (return))
+              (destructuring-bind (word token xcs)
+                  (fnn-call 'fn-xc-free slot *fnn-extent-xcs*)
+                (declare (ignore word))
+                (setq *fnn-extent-xcs* xcs)
+                (fnn-extent-slot-clear slot)
+                (when token (push token tokens))
+                (setq from (1+ slot))))))))
+    (nreverse tokens)))
+
+(defun fnn-extent-cache-yield-oldest ()
+  "Extent lock held.  The caches hold pool charge only for speed: when a read
+cannot be admitted for want of the pool's octets, the slot ACL2 names (the
+least recently used whole entry, else the least recently used window) gives its
+charge back -- ACL2's exact eviction (fn-owner-page-cache-evict), never a guess
+about what is free.  T when one was evicted, NIL when no cache holds anything:
+the pool is then genuinely out."
+  (fnn-extent-cache-ready)
+  (destructuring-bind (word slot token xcs)
+      (fnn-call 'fn-xc-yield *fnn-extent-xcs* *fnn-extent-xcc*)
+    (setq *fnn-extent-xcs* xcs)
+    (when (eq word :yielded)
+      (fnn-extent-slot-clear slot)
+      (fnn-extent-cache-release (and token (list token)))
+      t)))
 
 ;;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4;
 ;;; MODE 2026-10-01 section 3).  The pool stobj starts :uninitialized and
@@ -617,68 +714,75 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ;;; quanta are shaped to); the oldest is evicted, and its exact :cached row
 ;;; released (fn-prl-evict), on insertion and when its file retires
 ;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW).
-(defvar *fnn-extent-window-cache* nil) ; guarded-by: *fnn-extent-lock*
 
 (defun fnn-extent-window-cache-insert (token plan window)
-  "Extent lock held, the :cached row already ACL2's.  Front insertion; the
-tokens of the entries evicted past the bound (the caller releases them)."
-  (push (list token plan window) *fnn-extent-window-cache*)
-  (let ((limit (fnn-extent-cache-limit)))
-    (when (> (length *fnn-extent-window-cache*) limit)
-      (let ((evicted (mapcar #'first (nthcdr limit *fnn-extent-window-cache*))))
-        (setq *fnn-extent-window-cache* (subseq *fnn-extent-window-cache* 0 limit))
-        evicted))))
+  "Extent lock held, the :cached row already ACL2's.  ACL2 places the window
+(books/extent-cache.lisp fn-xc-install-window); the tokens to release: the
+slot's victim, or the new row itself when ACL2 already holds that window."
+  (fnn-extent-cache-ready)
+  (destructuring-bind (word slot evicted xcs xcc)
+      (fnn-call 'fn-xc-install-window token *fnn-extent-xcs* *fnn-extent-xcc*)
+    (setq *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc)
+    (case word
+      ((:installed :replaced)
+       (setf (svref *fnn-extent-slots* slot) (cons plan window))
+       (and evicted (list evicted)))
+      (:present (list token))
+      (t (fnn-fault "the window cache refused a window ACL2 had already cached")))))
 
-(defvar *fnn-extent-cache-span* nil)  ; (entry key base len), guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-cache-span* nil)  ; (slot key base len token), guarded-by: *fnn-extent-lock*
 (defvar *fnn-extent-cache-span-dst* nil) ; the span's one buffer, guarded-by: *fnn-extent-lock*
 
+(defun fnn-extent-span-valid-p (span key i)
+  "SPAN (a window's copied octets) still answers I of KEY: ACL2 says the slot
+still holds the charge the span was copied under."
+  (and span (equal (second span) key)
+       (<= (third span) i) (< i (+ (third span) (fourth span)))
+       (fnn-extent-slot-holds-p (first span) (fifth span))))
+
 (defun fnn-extent-window-cache-byte (file eoff elen poff plen trailer i)
-  "A cached window's payload byte I of this exact descriptor, or NIL.  The
-host only selects candidates by the token's own descriptor and requested
-offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at).  A hit is
-decided as a SPAN (fn-owner-page-window-cache-span-at, KEYSTONE
+  "A cached window's payload byte I of this exact descriptor, or NIL.  ACL2
+names the slots that hold the descriptor and cover I (fn-xc-lookup) and decides
+the hit (fn-owner-page-window-cache-byte-at).  A hit is decided as a SPAN
+(fn-owner-page-window-cache-span-at, KEYSTONE
 fn-owner-page-window-cache-span-at-is-the-cached-bytes): the window's octets
 from I on are copied once into this host's buffer and the octets after I are
-read from the copy, valid while its entry is still in the cache."
+read from the copy, valid while ACL2 still holds its slot."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (let ((span *fnn-extent-cache-span*)
           (key (list file eoff elen poff plen trailer)))
-      (when (and span (equal (second span) key)
-                 (<= (third span) i) (< i (+ (third span) (fourth span)))
-                 (member (first span) *fnn-extent-window-cache* :test #'eq))
+      (when (fnn-extent-span-valid-p span key i)
         (incf (first *fnn-extent-stats*))
         (return-from fnn-extent-window-cache-byte
           (fn-ew-span-bytesi (- i (third span)) *fnn-extent-cache-span-dst*))))
-    (dolist (entry *fnn-extent-window-cache* nil)
-      (destructuring-bind (token plan window) entry
-        (when (and (eq (first token) :window)
-                   (eql (third token) file) (eql (fourth token) eoff)
-                   (eql (fifth token) elen) (eql (sixth token) poff)
-                   (eql (seventh token) plen) (eql (ninth token) trailer)
-                   (integerp (eighth token)) (<= (eighth token) i))
-          (let ((j (and (integerp (nth 5 plan))
-                        (min plen (+ i +fnn-extent-span-capacity+) (+ (eighth token) (nth 5 plan))))))
+    (let ((from 0))
+      (loop
+        (let ((slot (fnn-extent-slot-lookup 2 file eoff elen poff plen 0 0 trailer i from)))
+          (unless slot (return nil))
+          (setq from (1+ slot))
+          (let* ((token (fnn-extent-slot-token slot))
+                 (plan (car (svref *fnn-extent-slots* slot)))
+                 (window (cdr (svref *fnn-extent-slots* slot)))
+                 (j (and (integerp (nth 5 plan))
+                         (min plen (+ i +fnn-extent-span-capacity+) (+ (eighth token) (nth 5 plan))))))
             (when (and j (< (1+ i) j))
               (let ((dst (or *fnn-extent-cache-span-dst*
                              (setq *fnn-extent-cache-span-dst* (create-fn-ew-span)))))
                 (when (eq (first (fnn-core-page-read-pool 'fn-owner-page-window-cache-span-at
                                     token plan file eoff elen poff plen trailer i j window dst))
                           :span)
-                  (setq *fnn-extent-cache-span* (list entry (list file eoff elen poff plen trailer) i (- j i)))
+                  (setq *fnn-extent-cache-span*
+                        (list slot (list file eoff elen poff plen trailer) i (- j i) token))
                   (incf (first *fnn-extent-stats*))
-                  (unless (eq entry (first *fnn-extent-window-cache*))
-                    (setq *fnn-extent-window-cache*
-                          (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
-                  (return (fn-ew-span-bytesi 0 dst))))))
-          (destructuring-bind (word byte)
-              (fnn-core-page-read-pool 'fn-owner-page-window-cache-byte-at
-                                       token plan file eoff elen poff plen trailer i window)
-            (when (eq word :byte)
-              (incf (first *fnn-extent-stats*))
-              (unless (eq entry (first *fnn-extent-window-cache*))
-                (setq *fnn-extent-window-cache*
-                      (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
-              (return byte))))))))
+                  (fnn-extent-slot-touch slot)
+                  (return (fn-ew-span-bytesi 0 dst)))))
+            (destructuring-bind (word byte)
+                (fnn-core-page-read-pool 'fn-owner-page-window-cache-byte-at
+                                         token plan file eoff elen poff plen trailer i window)
+              (when (eq word :byte)
+                (incf (first *fnn-extent-stats*))
+                (fnn-extent-slot-touch slot)
+                (return byte)))))))))
 
 (defun fnn-extent-window-release (worker token &optional cachep)
   "Caller holds no buffer aliases. Drop the sole retained result BEFORE refund.
@@ -700,7 +804,7 @@ the job is released.  Values :released (or a stale word) and whether cached."
       ;; A returned decoded job whose window ACL2 admits (fn-dwj-cache: its
       ;; outcome is :ready, KEEP is funded) is retired and cached in ONE
       ;; ACL2 step; the buffer moves out of the persistent worker below.
-      (when (and cachep (fnn-cold-worker-decoded worker) (plusp (fnn-extent-cache-limit)))
+      (when (and cachep (fnn-cold-worker-decoded worker) (plusp (fnn-extent-window-limit)))
         (setq decoded-attempt (fnn-extent-decoded-window-cache-attempt worker token)))
       ;; A torn reset or settlement must never be retried or offered as idle.
       (setf (fnn-cold-worker-phase worker) :retiring)
@@ -713,7 +817,7 @@ the job is released.  Values :released (or a stale word) and whether cached."
       (destructuring-bind (word row &rest ignored)
           (let ((attempt
                   (and cachep (not decoded-attempt) (fnn-extent-window-p token)
-                       (plusp (fnn-extent-cache-limit))
+                       (plusp (fnn-extent-window-limit))
                        (consp result) (true-listp (first result))
                        (fnn-core-page-read-pool 'fn-owner-page-window-executor-cache
                                                 (fnn-cold-worker-row worker) token (first result)))))
@@ -1185,67 +1289,33 @@ or the file holds fewer octets.  Called with the realizer's lock held."
   ;; Every served miss enters ACL2 admission, including diagnostic cache-off.
   t)
 
-(defun fnn-extent-cache-forget (entries)
-  "Extent lock held. Forget exact vector bindings, returning eviction tokens
-for the core resource ledger. No timeout or cancellation invokes this."
-  (let ((tokens nil))
-    (dolist (entry entries)
-      (let* ((octets (cddddr entry))
-             (token (gethash octets *fnn-extent-cache-tokens*)))
-        (when token (push token tokens))
-        (remhash octets *fnn-extent-cache-tokens*)))
-    (nreverse tokens)))
-
 (defun fnn-extent-cache-store (file eoff elen trailer octets &optional token)
-  "Extent lock held. Return keptp and exact tokens of evicted buffers."
-  (let ((limit (fnn-extent-cache-limit)) (evicted nil))
-    (when (plusp limit)
-      (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
-      (when token (setf (gethash octets *fnn-extent-cache-tokens*) token))
-      (when (> (length *fnn-extent-cache*) limit)
-        (setq evicted (fnn-extent-cache-forget (nthcdr limit *fnn-extent-cache*)))
-        (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit))))
-    (values (plusp limit) evicted)))
-
-(defun fnn-extent-cache-yield-oldest ()
-  "Extent lock held.  The caches hold pool charge only for speed: when a read
-cannot be admitted for want of the pool's octets, the least recently used
-cached buffer gives its charge back (the whole-extent entries first, then the
-verified windows) -- ACL2's exact eviction (fn-owner-page-cache-evict), never a
-guess about what is free.  T when one was evicted, NIL when no cache holds
-anything: the pool is then genuinely out."
-  (let ((entry (car (last *fnn-extent-cache*))))
-    (cond (entry
-           (setq *fnn-extent-cache* (butlast *fnn-extent-cache*))
-           (fnn-extent-cache-release (fnn-extent-cache-forget (list entry)))
-           t)
-          (*fnn-extent-window-cache*
-           (let ((window (car (last *fnn-extent-window-cache*))))
-             (setq *fnn-extent-window-cache* (butlast *fnn-extent-window-cache*))
-             (fnn-extent-cache-release (list (first window))))
-           t)
-          (t nil))))
+  "Extent lock held.  Hand OCTETS to ACL2's table.  Return keptp and the exact
+tokens of the charges to release (the slot's victim; the new charge itself when
+ACL2 already holds the descriptor, so its read is not cached twice)."
+  (fnn-extent-cache-ready)
+  (destructuring-bind (word slot evicted xcs xcc)
+      (fnn-call 'fn-xc-install-entry file eoff elen trailer token
+                *fnn-extent-xcs* *fnn-extent-xcc*)
+    (setq *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc)
+    (case word
+      ((:installed :replaced)
+       (setf (svref *fnn-extent-slots* slot) octets)
+       (values t (and evicted (list evicted))))
+      (:present (values t (and token (list token))))
+      (t (values nil nil)))))
 
 (defun fnn-extent-cache-drop-files (files)
-  "Extent lock held. Remove physical buffers and return their exact tokens:
-the whole-extent cache's and the verified-window cache's (a window token
-names its file third)."
-  (let ((keep nil) (drop nil) (wkeep nil) (wdrop nil))
-    (dolist (entry *fnn-extent-cache*)
-      (if (member (first entry) files) (push entry drop) (push entry keep)))
-    (setq *fnn-extent-cache* (nreverse keep))
-    (dolist (entry *fnn-extent-window-cache*)
-      (if (member (third (first entry)) files) (push (first entry) wdrop) (push entry wkeep)))
-    (setq *fnn-extent-window-cache* (nreverse wkeep))
-    (append (fnn-extent-cache-forget (nreverse drop)) (nreverse wdrop))))
+  "Extent lock held. Free every slot, whole entry or window, ACL2 finds for
+FILES and return the exact tokens of their charges."
+  (fnn-extent-cache-take files))
 
 (defun fnn-extent-end-recovery-cache ()
   "Before serving, drop startup-only borrows and every direct/offline cache.
 No recovery activation remains. Retained decoder array highwater is separate."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-    (let ((tokens (append (fnn-extent-cache-forget *fnn-extent-cache*)
-                          (mapcar #'first *fnn-extent-window-cache*))))
-      (setq *fnn-extent-cache* nil *fnn-extent-lz-last* nil *fnn-extent-window-cache* nil)
+    (let ((tokens (fnn-extent-cache-take :all)))
+      (setq *fnn-extent-lz-last* nil)
       (fnn-extent-cache-release tokens))))
 
 (defun fnn-extent-read-verified (file eoff elen trailer)
@@ -1336,15 +1406,18 @@ A served result transfers to the cache before the caller borrows the vector."
 
 (defun fnn-extent-entry (file eoff elen trailer)
   "The verified vector under the complete descriptor identity. Called with
-extent lock held; caller keeps that lock until its final vector borrow ends."
-  (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
-                                       (eql (third e) elen) (eql (fourth e) trailer)))
-                      *fnn-extent-cache*)))
-    (if hit
+extent lock held; caller keeps that lock until its final vector borrow ends.
+
+NO PIN: a slot's vector is borrowed under *fnn-extent-lock* from this lookup to
+the last octet copied, and ACL2's install, yield and free (the only things that
+replace a slot) run under the same lock, so an install cannot evict a slot in
+use.  books/extent-cache.lisp states this as its invariant instead of a pin
+column; a borrow that outlives the lock breaks it."
+  (let ((slot (fnn-extent-slot-lookup 1 file eoff elen 0 0 0 0 trailer 0 0)))
+    (if slot
         (progn (incf (first *fnn-extent-stats*))
-               (unless (eq hit (first *fnn-extent-cache*))
-                 (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
-               (cddddr hit))
+               (fnn-extent-slot-touch slot)
+               (svref *fnn-extent-slots* slot))
       (if *fnn-extent-no-io*
           (throw 'fnn-extent-cold (list file eoff elen trailer))
         (fnn-extent-entry-direct file eoff elen trailer)))))
@@ -1399,9 +1472,7 @@ keeps that lease until its last buffer borrow ends. Extent lock held."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
     (let ((mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
       (unless (eq mode :ready) (return-from fnn-extent-issue-read (values nil mode))))
-    (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
-                                   (eql (third e) elen) (eql (fourth e) trailer)))
-                  *fnn-extent-cache*)
+    (when (fnn-extent-slot-lookup 1 file eoff elen 0 0 0 0 trailer 0 0)
       (return-from fnn-extent-issue-read nil))
     (unless (gethash file *fnn-extent-fds*)
       (error 'fnn-extent-fault
@@ -1513,9 +1584,7 @@ Otherwise (values TOKEN WORD WORKER): WORD :admitted, or ACL2's refusal."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
     (let ((mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
       (unless (eq mode :ready) (return-from fnn-extent-issue-direct (values nil mode nil))))
-    (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
-                                   (eql (third e) elen) (eql (fourth e) trailer)))
-                  *fnn-extent-cache*)
+    (when (fnn-extent-slot-lookup 1 file eoff elen 0 0 0 0 trailer 0 0)
       (return-from fnn-extent-issue-direct nil))
     (unless (gethash file *fnn-extent-fds*)
       (error 'fnn-extent-fault

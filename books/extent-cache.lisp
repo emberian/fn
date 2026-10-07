@@ -582,7 +582,10 @@
   (and (natp (fn-profile-limit :extent-cache-entries))
        (natp (fn-profile-limit :extent-cache-windows))
        (<= (fn-profile-limit :extent-cache-entries) *fn-xc-max-slots*)
-       (<= (fn-profile-limit :extent-cache-windows) *fn-xc-max-slots*))
+       (<= (fn-profile-limit :extent-cache-windows) *fn-xc-max-slots*)
+       ; the resource plan sizes the cache's charge by the entries figure alone
+       ; (fn-prstartup-cache-capacity), for both kinds
+       (<= (fn-profile-limit :extent-cache-windows) (fn-profile-limit :extent-cache-entries)))
   :rule-classes nil)
 
 (defun fn-xc-init (ne nw fn-xcs fn-xcc)

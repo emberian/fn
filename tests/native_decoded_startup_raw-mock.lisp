@@ -23,6 +23,8 @@
   (harness-stub-reached 'fnn-emit "host/native/io.lisp"))
 (defun fnn-extent-cache-limit ()
   (harness-stub-reached 'fnn-extent-cache-limit "host/native/extent.lisp"))
+(defun fnn-extent-window-limit ()
+  (harness-stub-reached 'fnn-extent-window-limit "host/native/extent.lisp"))
 (defun fnn-extent-cache-release (tokens)
   (declare (ignorable tokens))
   (harness-stub-reached 'fnn-extent-cache-release "host/native/extent.lisp"))

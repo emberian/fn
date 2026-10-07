@@ -134,6 +134,11 @@
   :class :common-lisp-compliant
   :root :extract)
 
+; host/native/extent.lisp reads the verified-window slots the same way
+; (books/extent-cache.lisp; the profile row :extent-cache-windows).
+(definterface fn-arx-read-cache-windows
+  :class :common-lisp-compliant)
+
 ; host/native/owner.lisp's checkpoint release reads the live arena's file
 ; count (lane composed-owner-4, row A6).
 (definterface fn-arx-file-count
@@ -4830,6 +4835,30 @@
 ;; host/page-read-host.lisp: the dedicated carried resource stobj.
 (definterface fn-owner-page-read-admit :class :common-lisp-compliant)
 (definterface fn-owner-page-cache-evict :class :common-lisp-compliant)
+;; books/extent-cache.lisp: the payload extent cache's decisions.  The host
+;; keeps one value per slot number (host/native/extent.lisp); ACL2 says which
+;; slot holds a descriptor, which an install takes, which yields under pressure.
+(definterface fn-xc-init :class :common-lisp-compliant
+  :keystones (fn-xc-init-initializes fn-xc-init-lookups-miss))
+(definterface fn-xc-lookup :class :common-lisp-compliant
+  :keystones (fn-xc-lookup-hit-is-the-descriptor fn-xc-lookup-miss-is-absent))
+(definterface fn-xc-touch :class :common-lisp-compliant
+  :keystones (fn-xc-lookup-after-touch))
+(definterface fn-xc-install-entry :class :common-lisp-compliant
+  :keystones ((fn-xc-install-then-lookup-hits :via fn-xc-install)
+              (fn-xc-install-evicts-the-least-recently-used :via fn-xc-install)))
+(definterface fn-xc-install-window :class :common-lisp-compliant
+  :keystones ((fn-xc-install-then-lookup-hits :via fn-xc-install)
+              (fn-xc-install-occupancy :via fn-xc-install)))
+(definterface fn-xc-yield :class :common-lisp-compliant
+  :keystones (fn-xc-yield-an-entry
+              (fn-xc-eviction-releases-exactly-the-slots-charge :via fn-xc-slot-token)))
+(definterface fn-xc-free :class :common-lisp-compliant
+  :keystones (fn-xc-freed-slot-matches-nothing))
+(definterface fn-xc-next-live :class :common-lisp-compliant
+  :keystones ((fn-xc-next-finds-every-held-slot :via fn-xc-next)))
+(definterface fn-xc-slot-token :class :common-lisp-compliant)
+(definterface fn-xc-holds :class :common-lisp-compliant)
 (definterface fn-pio-own-admitted-token
   :class :common-lisp-compliant
   :keystones ((fn-pio-admitted-resource-token-establishes-owned-read :via fn-pio-own-admitted-token)))
