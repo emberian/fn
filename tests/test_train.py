@@ -24,7 +24,8 @@ with open(os.environ["STUB_LOG"], "a") as f:
     f.write(name + " " + " ".join(args) + "\\n")
 if name == "lock_discipline_check":
     keys = json.load(open("lockkeys.json"))
-    print(json.dumps({"new": [{"key": k} for k in keys]}))
+    # the checker's current shape: `new` is a list of key strings
+    print(json.dumps({"new": list(keys), "stale": []}))
     sys.exit(0)
 if mode == "write" and name in ("ledger", "current_view"):
     with open("planning/%s.out" % name, "a") as f:
