@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/blake3-tree.lisp",
+ "id": "PROOF-OWED-B3-APPEND-WINDOW-STATE",
+ "notes": [],
+ "owner": "streaming",
+ "severity": "medium",
+ "slice": "blake3",
+ "source": "p-teeth-3",
+ "state": "open",
+ "title": "fn-b3-append-window states only the FOLD of the post-append state; it never states that (fn-b3-cv-push k node(w) (push-all k outs(prefix))) equals (push-all k outs(prefix++w) nil), the invariant a second append needs. A wrong cv-push height still satisfies the fold equation for one append (evaluated, p-teeth-3 audit), so the binary-counter height is unpinned. Prove the state-equality (hyps as append-window) and give it defteeth with a wrong-height mutation.",
+ "updated": "2026-10-07T00:09:37Z"
+}

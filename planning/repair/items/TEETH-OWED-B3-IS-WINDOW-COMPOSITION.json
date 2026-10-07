@@ -2,12 +2,14 @@
  "category": "proof-owed",
  "file": "tests/acl2/blake3-tree-tests.lisp",
  "id": "TEETH-OWED-B3-IS-WINDOW-COMPOSITION",
- "notes": [],
+ "notes": [
+  "10-06 20:06 lane p-teeth-3: hypothesis dropped (node-of-fix-octets), defteeth landed"
+ ],
  "owner": "streaming",
  "severity": "low",
  "slice": "blake3",
  "source": "streaming",
- "state": "open",
+ "state": "landed",
  "title": "fn-blake3-is-window-composition has assert-event teeth but no defteeth: its only hypothesis (fn-b3-octet-listp m) has no breaking value (the equation holds for non-octet m too), so defteeth refuses for want of a removal witness. Fix: prove the form without the hypothesis, which needs a node-of-fix-octets lemma (node over the raw object equals node over fn-b3-fix-octets), then defteeth with no hypotheses.",
- "updated": "2026-10-07T00:00:23Z"
+ "updated": "2026-10-07T00:06:59Z"
 }
