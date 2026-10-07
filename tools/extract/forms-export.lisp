@@ -501,11 +501,18 @@ disarms it when it returns, so it bounds this export and not the xt-core-export 
               "world:defmacro")))))
 
 (defun fe-derive-inline-decls (f)
-  (let ((n (symbol-name f)) (out nil))
-    (when (inline-namep n) (push `(declaim (inline ,f)) out))
-    (when (notinline-namep n) (push `(declaim (notinline ,f)) out))
-    (when (member-eq f (global-val 'ext-gen-barriers *fe-w*)) (push `(declaim (notinline ,f)) out))
-    out))
+  "F's inline proclamation as the image's SBCL holds it.  ACL2 proclaims its own: defun-inline's
+F$INLINE / F$NOTINLINE names, the ext-gen-barriers, and the built-ins it declaims inline in raw Lisp
+(ACL2 8.7 axioms.lisp:1563: ifix, nfix, zp, natp, posp, len, fix, ...), which SBCL records as F's
+:inlinep.  Without them every such call in fn-core is a full call, and a caller's declared types no
+longer reach the callee's arithmetic (EXTRACTION-PROGRAM-20261007.md, extract-prof)."
+  (let* ((n (symbol-name f))
+         (sbcl (sb-int:info :function :inlinep f))
+         (inline (or (inline-namep n) (eq sbcl 'inline)))
+         (notinline (or (notinline-namep n) (eq sbcl 'notinline)
+                        (member-eq f (global-val 'ext-gen-barriers *fe-w*)))))
+    (cond (notinline (list `(declaim (notinline ,f))))
+          (inline (list `(declaim (inline ,f)))))))
 
 (defun fe-registry-forms (stobj-names all-names)
   `((defun xl-make-live-stobjs ()
@@ -556,7 +563,7 @@ disarms it when it returns, so it bounds this export and not the xt-core-export 
                                                 (mapcar (lambda (n) (fe-expand-body-form `(defg ,(st-lst n) nil))) stobj-names))
                                               "world:defconst,source:defvar"))
                                        ((string= id "decl:prologue") (cons (fe-prologue-forms) "acl2.lisp:2704-2705,*acl2-optimize-form*"))
-                                       (t (cons (fe-derive-inline-decls sym) "world:inline-namep"))))
+                                       (t (cons (fe-derive-inline-decls sym) "world:inlinep"))))
           ((string= kind "global")
            ;; the cell's value in the extraction world's session, as the image's LD has it at its
            ;; :return-from-lp form.  A global the session has not bound (the host binds fn's own at
@@ -677,7 +684,7 @@ disarms it when it returns, so it bounds this export and not the xt-core-export 
                                 (cond (d (add-unit id (car d) (cdr d))
                                          (when (string= kind "raw")
                                            (let ((dd (fe-derive-inline-decls sym)))
-                                             (when dd (add-unit (fe-id :decl sym) dd "world:inline-namep")))
+                                             (when dd (add-unit (fe-id :decl sym) dd "world:inlinep")))
                                            (dolist (s (stobjs-in sym *fe-w*))
                                              (when (and s (not (eq s 'state))) (pushnew s stobj-set)))
                                            (let ((a (fe-derive-attach sym)))
