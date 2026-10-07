@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1819,
     "declared_and_dispatched": 1768,
-    "guard_verified": 1069,
+    "guard_verified": 1070,
     "with_keystone": 278,
     "with_fold_keystone_only": 3,
     "raw_dispatched": 20
@@ -12295,7 +12295,7 @@
       "name": "fn-asto-plan-render-window",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [

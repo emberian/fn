@@ -2127,13 +2127,14 @@
 
 
 ; Shared ARTICLE/HEAD/BODY plans consumed by native NNTP and Web. Predicates
-; have guard T. The retained renderer still uses its logical counterpart:
-; complete renderer source guards and host/reference refinement remain owed.
+; have guard T. The renderer is guard-verified (ARTICLE-PATH-UNVERIFIED-GUARDS):
+; the host runs its executable, not the logical counterpart; host/reference
+; refinement remains owed.
 (definterface fn-asto-plan-articlep :class :common-lisp-compliant)
 (definterface fn-asto-plan-cursorp :class :common-lisp-compliant)
 (definterface fn-asto-preflight-planp :class :common-lisp-compliant)
 (definterface fn-asto-plan-render-window
-  :class :ideal
+  :class :common-lisp-compliant
   :keystones ((fn-ast-render-window-byte-bound :via fn-ast-render-window)))
 
 

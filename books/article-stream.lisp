@@ -310,7 +310,7 @@
       (mv (if (null remaining) :valid :invalid) server-state))))
 
 (defun fn-ast-ready-memberships (scan kind number article server)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard t))
   (let ((cur (fn-ast-ready scan kind number article server nil)))
     (list (fn-ast-at 0 cur) (fn-ast-at 1 cur) (fn-ast-at 2 cur)
           (and (consp server) (not (eq kind :body)) (fn-nntp-article-idp article)
@@ -319,11 +319,53 @@
           (fn-ast-at 4 cur) (fn-ast-at 5 cur)
           (fn-ast-server-state server server))))
 
+;; What a cursor may hold. FN-AST-CURSORP is the guard of the render transition: the
+; piece list is what fn-npw-one consumes, and the phase's other fields are what
+; the phase reads when it builds the next piece list. A cursor is created by
+; fn-ast-ready-memberships (its server state is (:xref-server S S)) and every
+; transition below keeps the invariant (fn-ast-render-one-keeps-cursorp).
+; SRV-TAILP: REM is a tail of ORIG and every octet of ORIG before it is a valid
+; server octet; with REM = NIL that makes ORIG an octet list.
+(defun fn-ast-srv-tailp (orig rem)
+  (declare (xargs :guard t))
+  (or (equal orig rem)
+      (and (consp orig) (integerp (car orig))
+           (<= 33 (car orig)) (<= (car orig) 126)
+           (fn-ast-srv-tailp (cdr orig) rem))))
+
+(defun fn-ast-server-statep (s)
+  (declare (xargs :guard t))
+  (fn-ast-srv-tailp (fn-ast-at 1 s) (fn-ast-at 2 s)))
+
+(defun fn-ast-xref-pairsp (pairs)
+  (declare (xargs :guard t))
+  (if (consp pairs)
+      (and (consp (car pairs)) (stringp (car (car pairs)))
+           (fn-ast-xref-pairsp (cdr pairs)))
+    (null pairs)))
+
+(defun fn-ast-cursorp (cur fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (and (fn-npw-piecesp (fn-ast-at 1 cur) fn-arena)
+       (let ((phase (fn-ast-at 0 cur)))
+         (cond
+          ((eq phase :initial)
+           (or (null (fn-ast-at 3 cur))
+               (and (consp (fn-ast-at 3 cur)) (eq (car (fn-ast-at 3 cur)) :xref-source)
+                    (fn-ast-server-statep (fn-ast-at 6 cur)))
+               (and (fn-ast-xref-pairsp (fn-ast-at 3 cur))
+                    (fn-cbor-octet-listp (fn-ast-at 6 cur)))))
+          ((eq phase :xref-server) (fn-ast-server-statep (fn-ast-at 6 cur)))
+          ((eq phase :xref-seek-first) (fn-cbor-octet-listp (fn-ast-at 6 cur)))
+          ((eq phase :xref) (fn-ast-xref-pairsp (fn-ast-at 3 cur)))
+          (t t)))))
+
 ; Each transition spends one unit, even when numerical setup or a phase
 ; transition produces no bytes. The payload branch emits at most two octets
 ; (a leading dot is doubled); it never scans for the end of a line.
 (defun fn-ast-render-one (cur fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard (fn-ast-cursorp cur fn-arena)
+                  :guard-hints (("Goal" :in-theory (disable fn-npw-one fn-npw-piecesp)))))
   (let ((phase (fn-ast-at 0 cur)) (pieces (fn-ast-at 1 cur)) (pos (nfix (fn-ast-at 2 cur))))
     (cond
      ((eq phase :done) (mv nil cur))
@@ -375,6 +417,77 @@
                 (list :payload nil 0 nil (fn-ast-source-next source) (equal byte 10) nil))))))
      (t (mv nil (list :done nil 0 nil nil nil nil))))))
 
+(local
+ (progn
+   (defthm fn-ast-srv-tailp-step
+     (implies (and (fn-ast-srv-tailp orig rem) (consp rem)
+                   (integerp (car rem)) (<= 33 (car rem)) (<= (car rem) 126))
+              (fn-ast-srv-tailp orig (cdr rem)))
+     :hints (("Goal" :in-theory (enable fn-ast-srv-tailp))))
+   (defthm fn-ast-srv-tailp-nil-octets
+     (implies (fn-ast-srv-tailp orig nil) (fn-cbor-octet-listp orig))
+     :hints (("Goal" :in-theory (enable fn-ast-srv-tailp))))
+   (defthm fn-ast-server-one-keeps-statep
+     (implies (fn-ast-server-statep s)
+              (fn-ast-server-statep (mv-nth 1 (fn-ast-server-one s))))
+     :hints (("Goal" :in-theory (enable fn-ast-server-one fn-ast-server-statep
+                                        fn-ast-server-state fn-ast-at))))
+   (defthm fn-ast-server-one-valid-octets
+     (implies (and (fn-ast-server-statep s)
+                   (eq (mv-nth 0 (fn-ast-server-one s)) :valid))
+              (fn-cbor-octet-listp (fn-ast-at 1 (mv-nth 1 (fn-ast-server-one s)))))
+     :hints (("Goal" :in-theory (enable fn-ast-server-one fn-ast-server-statep fn-ast-at))))
+   (defthm fn-ast-xref-pairsp-not-source
+     (implies (and (fn-ast-xref-pairsp x) (consp x))
+              (not (equal (car x) :xref-source)))
+     :hints (("Goal" :in-theory (enable fn-ast-xref-pairsp))))
+   (defthm fn-ast-xref-pairsp-cdr
+     (implies (and (fn-ast-xref-pairsp x) (consp x))
+              (fn-ast-xref-pairsp (cdr x)))
+     :hints (("Goal" :in-theory (enable fn-ast-xref-pairsp))))
+   (defthm fn-ast-xref-pairsp-car
+     (implies (and (fn-ast-xref-pairsp x) (consp x))
+              (and (consp (car x)) (stringp (car (car x)))))
+     :hints (("Goal" :in-theory (enable fn-ast-xref-pairsp))))
+   (defthm fn-ast-xref-one-pair-stringp
+     (implies (eq (mv-nth 0 (fn-ast-xref-one it)) :pair)
+              (and (consp (mv-nth 1 (fn-ast-xref-one it)))
+                   (stringp (car (mv-nth 1 (fn-ast-xref-one it))))))
+     :hints (("Goal" :use fn-ast-xref-one-pair-is-numbered
+                     :in-theory (disable fn-ast-xref-one))))))
+
+; The render transition keeps the cursor invariant, so a cursor made by
+; fn-ast-ready-memberships stays a valid guard argument for every later unit.
+(defthm fn-ast-render-one-keeps-cursorp
+  (implies (fn-ast-cursorp cur fn-arena)
+           (fn-ast-cursorp (mv-nth 1 (fn-ast-render-one cur fn-arena)) fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-ast-render-one fn-ast-cursorp fn-ast-at
+                                   fn-npw-piecesp fn-npw-partp)
+                                  (fn-npw-one fn-ast-xref-one fn-npw-one-keeps-pieces
+                                   fn-ast-server-one fn-ast-server-statep fn-ast-xref-pairsp))
+                  :use ((:instance fn-npw-one-keeps-pieces
+                          (pieces (fn-ast-at 1 cur)) (pos (nfix (fn-ast-at 2 cur))))))))
+
+(local
+ (defthm fn-ast-at-of-cons
+   (implies (natp i)
+            (equal (fn-ast-at i (cons a b))
+                   (if (zp i) a (fn-ast-at (- i 1) b))))
+   :hints (("Goal" :expand ((fn-ast-at i (cons a b)))))))
+
+(local
+ (defthm fn-ast-initial-pieces-piecesp
+   (fn-npw-piecesp (fn-ast-initial-pieces kind number article) fn-arena)
+   :hints (("Goal" :in-theory (enable fn-ast-initial-pieces fn-npw-piecesp fn-npw-partp)))))
+
+; The cursor the owner publishes is always a valid cursor, whatever the capture holds.
+(defthm fn-ast-ready-memberships-cursorp
+  (fn-ast-cursorp (fn-ast-ready-memberships scan kind number article server) fn-arena)
+  :hints (("Goal" :in-theory (e/d (fn-ast-ready-memberships fn-ast-ready fn-ast-cursorp
+                                   fn-ast-server-statep fn-ast-srv-tailp fn-ast-server-state
+                                   fn-ast-xref-state)
+                                  (fn-ast-initial-pieces fn-ast-at)))))
+
 (defun fn-ast-render-step-aux (cur fuel acc fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil :measure (nfix fuel)))
   (if (or (zp fuel) (eq (car cur) :done))
@@ -404,8 +517,28 @@
   (and (not (consp (fn-ast-window-pending window)))
        (eq (fn-ast-at 0 (fn-ast-window-cur window)) :done)))
 
+(defun fn-ast-windowp (window fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (fn-ast-cursorp (fn-ast-window-cur window) fn-arena))
+
+(local
+ (defthm fn-ast-window-cur-of-ready-memberships
+   (equal (fn-ast-window-cur (fn-ast-ready-memberships scan kind number article server))
+          (fn-ast-ready-memberships scan kind number article server))
+   :hints (("Goal" :in-theory (e/d (fn-ast-window-cur fn-ast-ready-memberships fn-ast-ready fn-ast-at)
+                                   (fn-ast-cursorp fn-ast-initial-pieces))))))
+
+; The cursor the owner publishes is a window in the sense of the render guard.
+(defthm fn-ast-ready-memberships-windowp
+  (fn-ast-windowp (fn-ast-ready-memberships scan kind number article server) fn-arena)
+  :hints (("Goal" :in-theory (e/d (fn-ast-windowp) (fn-ast-ready-memberships)))))
+
 (defun fn-ast-render-window-aux (cur pending fuel left acc fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil :measure (nfix fuel)))
+  (declare (xargs :stobjs fn-arena :measure (nfix fuel)
+                  :guard (and (fn-ast-cursorp cur fn-arena) (natp fuel) (natp left)
+                              (true-listp acc))
+                  :guard-hints (("Goal" :in-theory (disable fn-ast-cursorp fn-ast-render-one
+                                                            fn-npw-piecesp)))))
   (cond
    ((or (zp fuel) (zp left)
         (and (not (consp pending)) (eq (fn-ast-at 0 cur) :done)))
@@ -418,10 +551,31 @@
       (fn-ast-render-window-aux next out (- fuel 1) left acc fn-arena)))))
 
 (defun fn-ast-render-window (window fuel octets fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard (fn-ast-windowp window fn-arena)))
   (fn-ast-render-window-aux (fn-ast-window-cur window)
                             (fn-ast-window-pending window)
                             (nfix fuel) (nfix octets) nil fn-arena))
+
+; A window rendered from a valid window is a valid window, so the plan can carry it.
+(defthm fn-ast-render-window-aux-keeps-windowp
+  (implies (fn-ast-cursorp cur fn-arena)
+           (fn-ast-windowp (mv-nth 1 (fn-ast-render-window-aux cur pending fuel left acc fn-arena))
+                           fn-arena))
+  :hints (("Goal" :induct (fn-ast-render-window-aux cur pending fuel left acc fn-arena)
+                  :in-theory (e/d (fn-ast-windowp fn-ast-window-cur fn-ast-at)
+                                  (fn-ast-cursorp fn-ast-render-one)))))
+(defthm fn-ast-render-window-keeps-windowp
+  (implies (fn-ast-windowp window fn-arena)
+           (fn-ast-windowp (mv-nth 1 (fn-ast-render-window window fuel octets fn-arena))
+                           fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-ast-windowp)
+                                  (fn-ast-render-window-aux fn-ast-cursorp
+                                      fn-ast-window-cur fn-ast-window-pending))
+                  :expand ((fn-ast-render-window window fuel octets fn-arena))
+                  :use ((:instance fn-ast-render-window-aux-keeps-windowp
+                          (cur (fn-ast-window-cur window))
+                          (pending (fn-ast-window-pending window))
+                          (fuel (nfix fuel)) (left (nfix octets)) (acc nil))))))
 
 (defthm fn-ast-render-window-acc-bound
   (<= (len (mv-nth 0 (fn-ast-render-window-aux cur pending fuel left acc fn-arena)))
