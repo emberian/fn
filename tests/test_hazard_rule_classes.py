@@ -34,6 +34,16 @@ class Convert(unittest.TestCase):
                          .replace("((:rewrite))", "nil").replace(":rule-classes :rewrite", ":rule-classes nil")
                          .replace("nil", "X"))
 
+    def test_disable_mode(self):
+        edits, resid = h.disable_plan(FIX / "census.tsv")
+        self.assertEqual(sorted((n, w) for _, n, w in resid),
+                         [("d-only-list", "defthmd: already disabled"), ("f-generated", "generated")])
+        text = (FIX / "in.lisp").read_text()
+        out = write(text, [e for _, e in edits["in.lisp"]])
+        self.assertTrue(out.startswith(text))
+        self.assertTrue(out.endswith("(in-theory (disable a-plain\n                    b-rewrite\n"
+                                     "                    c-mixed\n                    e-already))\n"))
+
 
 if __name__ == "__main__":
     unittest.main()
