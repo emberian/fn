@@ -4,12 +4,13 @@
  "notes": [
   "10-04 16:36 Design notes (access-check, not started): the decision belongs where both configs are visible, fn-own-served-conn / fn-own-tls-served-conn (o conn): live = (fn-own-config o), pinned = (fn-own-conn-config conn). Narrowed iff some group of the pinned archive is readable under (fn-auth-access-text as pinned 1) and not under (fn-auth-access-text as live 1) (text equality short-circuits, so the common read pays one compare; moderation hiding comes in through the :hide text). When narrowed, serve the live generation (the ruling: next command checked against the new generation), and persist it in the conn record so the walk happens once; keystone: the served reply of a narrowed session is the reference walk over the LIVE rule's view (compose with PRF-1328 and fn-auth-view-excludes-unreadable-groups-on-any-connection). Changing fn-own-served-conn moves the reference too (keep the legacy equations). Red->green: tests.test_native_group_access test_source_peer_reader_access_preserves_transit, restore the old-socket assertions (writer: LIST ACTIVE omits fn.private.x, GROUP 411, STAT 430, CHECK 238 still) and amend specs/reconfiguration.md 2.3 Readers with the tightening exception. owner.lisp is wide fan-in; certify its affected roots on a rented box.",
   "10-05 02:10 READY lane/access-revoke: pinned AND live read rule per command (fn-gac-config-with-live in fn-own-served-conn; fn-auth-access-text and-text; (:and a b) in fn-gac-readablep); PRF-1330 books/served-access-revoke.lisp; teeth tests/acl2/served-access-revoke-tests.lisp (old-socket 223, pipelined AUTHINFO, widening); native red bq10050033-0101 (set 7616e2c97) -> green developer on lane image 1b3e7ac12 (persvati native-arv-green); production blocked only by SCEN-INSTALLED-HEAP-NOT-HELD (cold-start-2); spec reconfiguration.md 2.3 amended",
-  "10-05 03:10 final at d4ff71272 ((:and A B) one level for depth_check): persvati image bq10050225-0124 certify-20261005T023143Z-184763; native-arv-green2 developer ALL OK, production env red only (SCEN-INSTALLED-HEAP-NOT-HELD)"
+  "10-05 03:10 final at d4ff71272 ((:and A B) one level for depth_check): persvati image bq10050225-0124 certify-20261005T023143Z-184763; native-arv-green2 developer ALL OK, production env red only (SCEN-INSTALLED-HEAP-NOT-HELD)",
+  "2026-10-06 INTEGRATOR-7: landed on dev at bc105c904 (merge of lane/access-revoke@85e4dd6e5); STATUS regenerated."
  ],
  "owner": "access-revoke",
  "severity": "high",
  "source": "access-check",
- "state": "ready",
+ "state": "landed",
  "title": "Access tightening reaches open connections at once (coordinator ruling 2026-10-04): today a connection's injection config (fn-own-conn-config, with the account-access listing) is pinned at open and kept by every advance (books/owner.lisp fn-own-finish-read, books/owner-advance-carried.lisp), so a revoked READ rule never reaches an open socket, even after GROUP; native acc-green prints the pinned source-peer socket still listing fn.private.x and STAT 223 after GROUP fn.public",
- "updated": "2026-10-05T03:10:00Z"
+ "updated": "2026-10-06T14:38:52Z"
 }

@@ -402,10 +402,12 @@ FROM past the end, a 501 a malformed request.
   (`fn-cu-select-serves-only-retrievable`). A record is a Message-ID and
   the stored octets: no local article number is sent (the Xref field is
   never stored, section 2.3).
-- **Work**: a batch serves records while their octets fit QUANTUM, capped
-  at 1 MiB (local policy, a work quantum and not a data cap); the first
-  record is always served, whole, so an article larger than the quantum is
-  never cut (`fn-cu-select-stays-within-the-quantum`). Finding FROM walks
+- **Work**: a batch serves records while their rendered octets — the
+  record's header line, its body lines and their CRLF framing, exactly the
+  wire's octets (`fn-cu-record-cost`) — fit QUANTUM, capped at 1 MiB (local
+  policy, a work quantum and not a data cap); the first record is always
+  served, whole, so an article larger than the quantum is never cut
+  (`fn-cu-select-stays-within-the-quantum`). Finding FROM walks
   the view (O(END) per batch): slice 1 has no ordinal index (below).
 - **The digest chain**: `c' = BLAKE3(c || BLAKE3(article) || msgid)` (SHA-256 up to store format 9) from
   32 zero octets. The peer answers CHAIN' over the batch's records

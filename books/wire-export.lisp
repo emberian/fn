@@ -32,6 +32,7 @@
 (include-book "wire-family-fncu")
 (include-book "wire-family-identity")
 (include-book "wire-family-consumer")
+(include-book "wire-family-control")
 (include-book "outcome-class")
 
 (defconst *fn-wgx-language* "fn-wire-grammar")
@@ -159,6 +160,10 @@
       ((equal op :where)
        (fn-wgx-array (list (fn-wgx-name op) (fn-wgx-grammar-json (fn-wg-arg 1 g))
                            (fn-wgx-array (fn-wgx-checks-json (fn-wg-where-checks g))))))
+      ((equal op :sized)
+       (fn-wgx-array (list (fn-wgx-name op) (fn-wgx-nat (fn-wg-arg 1 g))
+                           (fn-wgx-nat (fn-wg-arg 2 g)) (fn-wgx-nat (fn-wg-arg 3 g))
+                           (fn-wgx-grammar-json (fn-wg-arg 4 g)))))
       ((equal op :frame)
        (fn-wgx-array (list (fn-wgx-name op) (fn-wgx-hexq (fn-wg-arg 1 g))
                            (fn-wgx-nat (fn-wg-arg 2 g)) (fn-wgx-nat (fn-wg-arg 3 g))
@@ -198,6 +203,7 @@
       ((equal op :maybe)
        (fn-wgx-array (if (consp v) (list (fn-wgx-value-json (fn-wg-arg 1 g) (car v))) nil)))
       ((equal op :where) (fn-wgx-value-json (fn-wg-arg 1 g) v))
+      ((equal op :sized) (fn-wgx-value-json (fn-wg-arg 4 g) v))
       ((equal op :frame) (fn-wgx-value-json (fn-wg-arg 5 g) v))
       (t (fn-wgx-str "null")))))
  (defun fn-wgx-seq-value-json (g v)
@@ -231,7 +237,7 @@
 ;
 ; A family named conformance.* is on no wire: it exists so that the vectors
 ; exercise every node, class and check of the language (the wire families
-; use only const, uint, bytes, enum, seq, tag and frame).
+; use only const, uint, bytes, enum, seq, tag, sized and frame).
 
 (defconst *fn-wgx-fncu-values*
   (list (list nil '(1) (make-list 64 :initial-element 255) '(2 3) '(4) '(5 6 7)
@@ -337,6 +343,74 @@
   '(("ack-past-frontier" (:accepted (11 10 1)) :where)
     ("distance-not-frontier-minus-ack" (:accepted (3 10 6)) :where)))
 
+;; fnct.consumer.request / .reasoned-request: every command, and the
+;; near misses each field refuses.
+(defconst *fn-wgx-cursor-value* (car *fn-wgx-fncu-values*))
+(defconst *fn-wgx-secret* '(115 101 99 114 101 116))       ; "secret"
+(defconst *fn-wgx-request-values*
+  (list (list :register (list '(1) '(2 3)))
+        (list :ack *fn-wgx-cursor-value*)
+        (list :position (list '(7)))
+        (list :unregister (list '(7)))
+        (list :bootstrap nil)
+        (list :poll (list (make-list 64 :initial-element 9)))
+        (list :status (list '(7)))
+        (list :bound-poll (list '(7) *fn-wgx-secret*))
+        (list :bound-ack (list (make-list 496 :initial-element 5) *fn-wgx-cursor-value*))
+        (list :wait (list '(7) 0))
+        (list :wait (list '(7) 3600))
+        (list :bound-wait (list '(7) (list 30 *fn-wgx-secret*)))))
+(defconst *fn-wgx-request-refusals*
+  (list (list "empty-consumer-id" (list :position (list nil)) :malformed)
+        (list "consumer-id-past-64" (list :status (list (make-list 65 :initial-element 1))) :malformed)
+        (list "wait-past-3600" (list :wait (list '(7) 3601)) :malformed)
+        (list "empty-secret" (list :bound-poll (list '(7) nil)) :malformed)
+        (list "secret-past-496" (list :bound-poll (list '(7) (make-list 497 :initial-element 5))) :malformed)
+        (list "ack-cursor-epoch-zero"
+              (list :ack (list nil '(17 34) '(51) '(68) '(85) '(102) 1 1 0 0)) :malformed)))
+
+;; fnct.consumer.reply: every status, accepted with and without a cursor.
+(defconst *fn-wgx-reply-values*
+  (list (list :accepted (list *fn-wgx-cursor-value*))
+        (list :accepted nil) (list :refused nil) (list :uncertain nil) (list :fault nil)))
+(defconst *fn-wgx-reply-refusals*
+  (list (list "cursor-epoch-zero"
+              (list :accepted (list (list nil '(17 34) '(51) '(68) '(85) '(102) 1 1 0 0))) :malformed)))
+
+;; fnct.consumer.poll-reply: the accepted reply with an empty report and with
+;; one, a second cursor, and each other status; and the near misses its
+;; :sized cursor refuses (an empty history field, which the cursor grammar
+;; refuses, and so the length it declares is under its lower bound).
+(defconst *fn-wgx-poll-values*
+  (list (list :accepted (list *fn-wgx-cursor-value* nil))
+        (list :accepted (list *fn-wgx-cursor-value* '(1 2 3 4 5 6 7 8)))
+        (list :accepted (list (cadr *fn-wgx-fncu-values*) (make-list 64 :initial-element 7)))
+        (list :refused nil) (list :uncertain nil) (list :fault nil)))
+(defconst *fn-wgx-poll-refusals*
+  (list (list "cursor-history-empty"
+              (list :accepted (list (list nil nil '(2 3) '(4) '(5 6 7) '(8) 0 9 1 4294967295) nil))
+              :malformed)
+        (list "unknown-status" (list :busy nil) :malformed)))
+
+;; fnct.reasoned-reply and fnct.line-reply: refused, uncertain and fault
+;; with their reasons, the unnamed and NONE words, and the field bounds.
+(defconst *fn-wgx-reasoned-values*
+  (list (list :accepted '(78 79 78 69))                                   ; NONE
+        (list :refused (fn-wgx-str "no-owner"))
+        (list :uncertain '(78 79 78 69))
+        (list :fault (fn-wgx-str "unnamed"))
+        (list :busy (make-list 512 :initial-element 97))))
+(defconst *fn-wgx-reasoned-refusals*
+  (list (list "empty-reason" (list :refused nil) :malformed)
+        (list "reason-past-512" (list :refused (make-list 513 :initial-element 97)) :malformed)))
+(defconst *fn-wgx-lined-values*
+  (list (list :accepted '(78 79 78 69) (fn-wgx-str "applied: max-connections 64; the next start reserves 64"))
+        (list :refused (fn-wgx-str "limit-exceeds-profile") (fn-wgx-str "x"))
+        (list :uncertain '(78 79 78 69) (make-list 1024 :initial-element 32))))
+(defconst *fn-wgx-lined-refusals*
+  (list (list "empty-line" (list :accepted '(78 79 78 69) nil) :malformed)
+        (list "line-past-1024" (list :accepted '(78 79 78 69) (make-list 1025 :initial-element 32)) :malformed)))
+
 (defconst *fn-wgx-families*
   (list
    (list "fncu.cursor" *fn-wf-fncu-grammar*
@@ -344,11 +418,35 @@
          '(fn-wf-fncu-encode-agrees fn-wf-fncu-decode-agrees
            fn-cp-cursor-decode-encode-roundtrip fn-cp-cursor-encode-decode-roundtrip)
          *fn-wgx-fncu-values* *fn-wgx-fncu-refusals*)
+   (list "fnct.consumer.request" *fn-wf-cs-request-grammar*
+         'fn-cwait-request-encode 'fn-cwait-request-decode
+         '(fn-wf-cs-request-encode-agrees fn-wf-cs-request-decode-agrees)
+         *fn-wgx-request-values* *fn-wgx-request-refusals*)
+   (list "fnct.consumer.reasoned-request" *fn-wf-cs-reasoned-request-grammar*
+         'fn-ncr-request-encode 'fn-ncr-request-decode
+         '(fn-wf-cs-reasoned-request-encode-agrees fn-wf-cs-reasoned-request-decode-agrees)
+         *fn-wgx-request-values* *fn-wgx-request-refusals*)
+   (list "fnct.consumer.reply" *fn-wf-cs-reply-grammar*
+         'fn-ncl-reply-encode 'fn-ncl-reply-decode
+         '(fn-wf-cs-reply-encode-agrees fn-wf-cs-reply-decode-agrees)
+         *fn-wgx-reply-values* *fn-wgx-reply-refusals*)
    (list "fnct.consumer.status-reply" *fn-wf-cs-status-reply-grammar*
          'fn-ncl-status-reply-encode 'fn-ncl-status-reply-decode
          '(fn-wf-cs-status-encode-agrees fn-wf-cs-status-decode-agrees
            fn-ncl-status-accepted-reply-roundtrip fn-ncl-status-nonaccepted-reply-roundtrip)
          *fn-wgx-status-values* *fn-wgx-status-refusals*)
+   (list "fnct.consumer.poll-reply" *fn-wf-cs-poll-reply-grammar*
+         'fn-ncl-poll-reply-encode 'fn-ncl-poll-reply-decode
+         '(fn-wf-cs-poll-encode-agrees)
+         *fn-wgx-poll-values* *fn-wgx-poll-refusals*)
+   (list "fnct.reasoned-reply" *fn-wf-ctl-reasoned-reply-grammar*
+         'fn-native-control-reasoned-reply-encode 'fn-nctrl-reasoned-reply-payload-decode
+         '(fn-wf-ctl-reasoned-encode-agrees fn-wf-ctl-reasoned-decode-agrees)
+         *fn-wgx-reasoned-values* *fn-wgx-reasoned-refusals*)
+   (list "fnct.line-reply" *fn-wf-ctl-lined-reply-grammar*
+         'fn-native-control-lined-reply-encode 'fn-ncline-reply-payload-decode
+         '(fn-wf-ctl-lined-encode-agrees fn-wf-ctl-lined-decode-agrees)
+         *fn-wgx-lined-values* *fn-wgx-lined-refusals*)
    (list "fnct.store-identity.request" *fn-wf-identity-request-grammar*
          'fn-wg-encode 'fn-wg-decode nil (list nil) nil)
    (list "fnct.store-identity.reply" *fn-wf-identity-reply-grammar*
@@ -362,7 +460,11 @@
          'fn-wg-encode 'fn-wg-decode nil *fn-wgx-tail-values* *fn-wgx-tail-refusals*)))
 
 (defconst *fn-wgx-exchanges*
-  '(("fnct.store-identity.request" "fnct.store-identity.reply")))
+  '(("fnct.consumer.request" "fnct.consumer.reply" "fnct.consumer.status-reply"
+     "fnct.consumer.poll-reply")
+    ("fnct.consumer.reasoned-request" "fnct.consumer.reply" "fnct.consumer.status-reply"
+     "fnct.consumer.poll-reply" "fnct.reasoned-reply")
+    ("fnct.store-identity.request" "fnct.store-identity.reply")))
 
 (defun fn-wgx-entry-name (e) (declare (xargs :guard t)) (fn-wg-arg 0 e))
 (defun fn-wgx-entry-grammar (e) (declare (xargs :guard t)) (fn-wg-arg 1 e))

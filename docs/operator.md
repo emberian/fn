@@ -1189,6 +1189,27 @@ its `[control]` socket for the request, as it does for `store export`,
 `store reclaim`, `store inspect` and `recover`, which answer on the running
 node the same way.
 
+### Reclaiming while the node runs
+
+`store reclaim` removes for good the articles that the retention rules have
+expired. With the node stopped it always works. On a running node it is
+off unless you turn it on in `fn.toml`:
+
+```toml
+[resources]
+reclaim_live = true
+```
+
+Then restart. The pass needs memory of its own, about a second copy of the
+store's history, so with this key the node starts with a larger heap.
+`status` shows the next start's figure on its `heap=` line, so check it
+before and after you add the key. If the machine cannot hold the larger
+figure, the start is refused by name (`machine-cannot-hold-reclaim-reserve`)
+and the node keeps running as it was until you remove the key. Without the
+key, `store reclaim` and `store reclaim --recorded` on the running node are
+refused with `offline-only`, before anything is written. `store reclaim
+--dry-run` still answers. Stop the node and run `store reclaim` to reclaim.
+
 ## 11. How much one node can handle
 
 Measured in September 2026, on a shared server with a busy, nearly full ZFS
@@ -1226,7 +1247,9 @@ before the article is saved. The full figures are in
 `[store] path`; `[listener] host`, `port`, `tls_cert`, `tls_key`,
 `tls_port`; `[auth] required`, `protected_only`; `[posting] enabled`;
 `[control] path`; `[log] path`; `[alerts] headroom_min_percent`
-(default 10). `[listener] host` takes one or more addresses, comma
+(default 10); `[resources] reclaim_live` (`true` lets `store reclaim` run
+on the live node and makes the heap larger; absent or `false` it does not:
+see [reclaiming while the node runs](#reclaiming-while-the-node-runs)). `[listener] host` takes one or more addresses, comma
 separated, IPv4 or IPv6 (`[::1], 192.0.2.7`), or `localhost`; `0.0.0.0` and
 `::` are refused. Groups, peers and policies are not in this file: they are
 kept in the store and changed with commands. `run` refuses `[posting] agent`,

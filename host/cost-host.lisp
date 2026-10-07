@@ -50,4 +50,25 @@
 (def-cost fn-ocap-admit-preview :visits 0 :conses 3)
 (def-cost fn-tariff-article-octets :visits 0 :conses 0)
 (def-cost fn-tariff-stat-octets :visits 0 :conses 0)
+(def-cost fn-tariff-line-octets :visits 0 :conses 0)
+(def-cost fn-tariff-group-reply-octets :visits 0 :conses 0)
 (def-cost fn-tariff-descriptor :visits 0 :conses 3)
+
+; The ratchet's backlog (lane cost-ratchet): every guard-verified dispatched
+; entry carries a def-cost.  The two constants and the config's reclaim flag
+; are bounded outright; the figure arithmetic and the owner page borrows are
+; derived, nothing bounded, because their callees (the heap figures and the
+; span borrows of books/page-window-span.lisp, books/decoded-window-span.lisp)
+; have no row of their own and a bound over a name list would restate the body.
+(def-cost fn-asto-quantum :visits 0 :conses 0)
+(def-cost fn-heap-reclaim-chunk-rows :visits 0 :conses 0)
+(def-cost fn-ncfg-nth :visits (+ 1 m) :sizes ((m (nfix n))))
+(def-cost fn-native-config-reclaim-livep :visits 32)
+(def-cost fn-mca-figure-octets :unaccounted (fn-mca-base-octets fn-heap-with-nursery))
+(def-cost fn-rrv-extend-reservation
+  :unaccounted (fn-rrv-extra-octets fn-heap-grow-runtime-dynamic fn-heap-machine-octets fn-crv-nth))
+(def-cost fn-owner-page-window-span-at :unaccounted (fn-owner-page-read-ledger fn-pwr-span-at))
+(def-cost fn-owner-page-window-cache-span-at :unaccounted (fn-owner-page-read-ledger fn-pwc-span-at))
+(def-cost fn-owner-page-decoded-job-span-at :unaccounted (fn-owner-page-read-ledger fn-dwj-span-at))
+(def-cost fn-owner-page-decoded-window-cache-span-at
+  :unaccounted (fn-owner-page-read-ledger fn-pwz-cache-span-at))

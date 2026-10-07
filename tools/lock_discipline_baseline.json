@@ -274,14 +274,6 @@
    "reason": "*fnn-bpnode-budgets* written with no lock at host/native/bp-node.lisp:493 (fnn-command-bp-node-resume); 2 write site(s), 3 access site(s) across 2 actor(s), no "
   },
   {
-   "key": "R1b|fnn-command-bp-node|*fnn-bpnode-control-pump*:unlocked-write",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/bp-node.lisp:1122",
-   "reason": "*fnn-bpnode-control-pump* written with no lock at host/native/bp-node.lisp:956 (fnn-command-bp-node); 1 write site(s), 7 access site(s) across 3 actor(s), no co"
-  },
-  {
    "key": "R1b|fnn-connection-custody-publish-raw|fnn-owner-service-connection-head:unlocked-write",
    "count": 1,
    "rule": "R1b",
@@ -304,14 +296,6 @@
    "category": "violation",
    "where": "host/native/io.lisp:213",
    "reason": "*fnn-section-step* written with no lock at host/native/io.lisp:164 (fnn-durable-step); 2 write site(s), 7 access site(s) across 25 actor(s), no common lock"
-  },
-  {
-   "key": "R1b|fnn-entry-guard-spec|*fnn-entry-guard-specs*:unlocked-write",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/io.lisp:1387",
-   "reason": "*fnn-entry-guard-specs* written with no lock at host/native/io.lisp:1292 (fnn-entry-guard-spec); 1 write site(s), 2 access site(s) across 18 actor(s), no common"
   },
   {
    "key": "R1b|fnn-extent-executor-start|*fnn-cold-stopping*:unlocked-write",
@@ -658,14 +642,6 @@
    "reason": "fnn-owner-service-feeds written with no lock at host/native/owner.lisp:1023 (fnn-owner-feed-close-all); 3 write site(s), 6 access site(s) across 7 actor(s), no "
   },
   {
-   "key": "R1b|fnn-owner-identity-commit|*fnn-finish-callback*:unlocked-write",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/owner.lisp:3834",
-   "reason": "*fnn-finish-callback* written with no lock at host/native/owner.lisp:2582 (fnn-owner-identity-commit); 1 write site(s), 2 access site(s) across 6 actor(s), no c"
-  },
-  {
    "key": "R1b|fnn-owner-journal-open|*fnn-journal-fd*:unlocked-write",
    "count": 1,
    "rule": "R1b",
@@ -704,14 +680,6 @@
    "category": "violation",
    "where": "host/native/owner.lisp:6689",
    "reason": "fnn-owner-service-retire written with no lock at host/native/owner.lisp:4778 (fnn-owner-maybe-retire); 2 write site(s), 11 access site(s) across 7 actor(s), no "
-  },
-  {
-   "key": "R1b|fnn-owner-measure-note|*fnn-owner-measure-table*:unlocked-write",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/owner.lisp:539",
-   "reason": "*fnn-owner-measure-table* written with no lock at host/native/owner.lisp:358 (fnn-owner-measure-note); 1 write site(s), 3 access site(s) across 11 actor(s), no "
   },
   {
    "key": "R1b|fnn-owner-note-queued|fnn-owner-service-queued:unlocked-read",
@@ -768,14 +736,6 @@
    "category": "violation",
    "where": "host/native/owner.lisp:8549",
    "reason": "fnn-owner-service-tls-context written with no lock at host/native/owner.lisp:6113 (fnn-owner-run); 1 write site(s), 11 access site(s) across 2 actor(s), no comm"
-  },
-  {
-   "key": "R1b|fnn-owner-signal-commit|fnn-owner-service-commits:unlocked-read",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/owner.lisp:444",
-   "reason": "fnn-owner-service-commits: unlocked-read; writes under [('W',)], 3 access site(s), no common lock"
   },
   {
    "key": "R1b|fnn-owner-space-observe-if-due|fnn-owner-service-space-need:unlocked-write",
@@ -866,14 +826,6 @@
    "reason": "*fnn-tls-version*: unlocked-read; writes under [('XTLSINIT',)], 3 access site(s), no common lock"
   },
   {
-   "key": "R1b|fnn-trailing-kind|*fnn-trailing-stobjs*:unlocked-write",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/io.lisp:460",
-   "reason": "*fnn-trailing-stobjs* written with no lock at host/native/io.lisp:372 (fnn-trailing-kind); 1 write site(s), 2 access site(s) across 11 actor(s), no common lock"
-  },
-  {
    "key": "R1b|fnn-web-start|*fnn-web-face*:unlocked-write",
    "count": 1,
    "rule": "R1b",
@@ -920,30 +872,6 @@
    "category": "violation",
    "where": "host/native/extent.lisp:1414",
    "reason": "io leaf fnn-extent-pread runs while holding O; reached from 54 site(s) under O, e.g. fnn-owner-inspect-request (host/native/admin.lisp:351)"
-  },
-  {
-   "key": "R2|fnn-bplc-cut|O:finish-output",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/bp-listener-control.lisp:28",
-   "reason": "io leaf finish-output runs while holding O; reached from 1 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
-   "key": "R2|fnn-bplc-cut|O:sleep",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/bp-listener-control.lisp:29",
-   "reason": "sleep leaf sleep runs while holding O; reached from 1 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
-   "key": "R2|fnn-bplc-drive|O:sb-bsd-sockets:socket-close",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/bp-listener-control.lisp:70",
-   "reason": "socket leaf sb-bsd-sockets:socket-close runs while holding O; reached from 1 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
   },
   {
    "key": "R2|fnn-chmod|O:sb-posix:chmod",
@@ -1018,30 +946,6 @@
    "reason": "io leaf sb-posix:fsync runs while holding XSNAP; reached from 1 site(s) under XSNAP, e.g. fnn-snapshot-job-log-durable (host/native/snapshot-producer.lisp:559)"
   },
   {
-   "key": "R2|fnn-emit|O:finish-output",
-   "count": 3,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:954",
-   "reason": "io leaf finish-output runs while holding O; reached from 3 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
-   "key": "R2|fnn-emit|O:write-sequence",
-   "count": 3,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:953",
-   "reason": "io leaf write-sequence runs while holding O; reached from 3 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
-   "key": "R2|fnn-extent-pread|E:probe-file",
-   "count": 11,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/extent.lisp:220",
-   "reason": "io leaf probe-file runs while holding E; reached from 11 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1044)"
-  },
-  {
    "key": "R2|fnn-extent-pread|E:sb-alien:alien-funcall",
    "count": 11,
    "rule": "R2",
@@ -1050,36 +954,12 @@
    "reason": "io leaf sb-alien:alien-funcall runs while holding E; reached from 11 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1044)"
   },
   {
-   "key": "R2|fnn-extent-pread|E:sleep",
-   "count": 11,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/extent.lisp:220",
-   "reason": "sleep leaf sleep runs while holding E; reached from 11 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1044)"
-  },
-  {
-   "key": "R2|fnn-extent-pread|O:probe-file",
-   "count": 111,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/extent.lisp:220",
-   "reason": "io leaf probe-file runs while holding O; reached from 112 site(s) under O, e.g. fnn-owner-inspect-request (host/native/admin.lisp:351)"
-  },
-  {
    "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
    "count": 111,
    "rule": "R2",
    "category": "violation",
    "where": "host/native/extent.lisp:224",
    "reason": "io leaf sb-alien:alien-funcall runs while holding O; reached from 112 site(s) under O, e.g. fnn-owner-inspect-request (host/native/admin.lisp:351)"
-  },
-  {
-   "key": "R2|fnn-extent-pread|O:sleep",
-   "count": 111,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/extent.lisp:220",
-   "reason": "sleep leaf sleep runs while holding O; reached from 112 site(s) under O, e.g. fnn-owner-inspect-request (host/native/admin.lisp:351)"
   },
   {
    "key": "R2|fnn-extent-read-entry|E:fnn-extent-pread",
@@ -1120,22 +1000,6 @@
    "category": "violation",
    "where": "host/native/io.lisp:564",
    "reason": "io leaf sb-posix:fstat runs while holding O; reached from 41 site(s) under O, e.g. fnn-owner-reclaim-request (host/native/admin.lisp:422)"
-  },
-  {
-   "key": "R2|fnn-heap-core-octets|O:sb-posix:stat",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/heap.lisp:110",
-   "reason": "io leaf sb-posix:stat runs while holding O; reached from 1 site(s) under O, e.g. fnn-mux-budget-install (host/native/mux.lisp:1452)"
-  },
-  {
-   "key": "R2|fnn-heap-rlimit|O:sb-alien:alien-funcall",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/heap.lisp:55",
-   "reason": "io leaf sb-alien:alien-funcall runs while holding O; reached from 1 site(s) under O, e.g. fnn-mux-budget-install (host/native/mux.lisp:1450)"
   },
   {
    "key": "R2|fnn-link|O:sb-posix:link",
@@ -1192,38 +1056,6 @@
    "category": "violation",
    "where": "host/native/io.lisp:773",
    "reason": "io leaf sb-posix:readdir runs while holding O; reached from 4 site(s) under O, e.g. fnn-bpapp-open-journal (host/native/bp-app.lisp:306)"
-  },
-  {
-   "key": "R2|fnn-listen|O:sb-bsd-sockets:socket-bind",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:6140",
-   "reason": "socket leaf sb-bsd-sockets:socket-bind runs while holding O; reached from 1 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
-   "key": "R2|fnn-listen|O:sb-bsd-sockets:socket-listen",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:6141",
-   "reason": "socket leaf sb-bsd-sockets:socket-listen runs while holding O; reached from 1 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
-   "key": "R2|fnn-listen|O:sb-bsd-sockets:socket-name",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:6142",
-   "reason": "socket leaf sb-bsd-sockets:socket-name runs while holding O; reached from 1 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
-   "key": "R2|fnn-listen|O:sb-bsd-sockets:sockopt-reuse-address",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:6139",
-   "reason": "socket leaf sb-bsd-sockets:sockopt-reuse-address runs while holding O; reached from 1 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
   },
   {
    "key": "R2|fnn-log-await-sync|O:sb-thread:condition-wait",
@@ -1506,14 +1338,6 @@
    "reason": "socket leaf sb-bsd-sockets:socket-shutdown runs while holding XPULL; reached from 1 site(s) under XPULL, e.g. fnn-pull-service-wake (host/native/pull-service.li"
   },
   {
-   "key": "R2|fnn-socket-shut|O:sb-bsd-sockets:socket-close",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:6115",
-   "reason": "socket leaf sb-bsd-sockets:socket-close runs while holding O; reached from 1 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
    "key": "R2|fnn-socket-shut|R:sb-bsd-sockets:socket-close",
    "count": 1,
    "rule": "R2",
@@ -1528,38 +1352,6 @@
    "category": "violation",
    "where": "host/native/io.lisp:2932",
    "reason": "io leaf sb-posix:lstat runs while holding O; reached from 1 site(s) under O, e.g. fnn-control-live-status-legacy-answer (host/native/control.lisp:174)"
-  },
-  {
-   "key": "R2|fnn-tls-configured-library-pair|XTLSINIT:probe-file",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/tls.lisp:94",
-   "reason": "io leaf probe-file runs while holding XTLSINIT; reached from 1 site(s) under XTLSINIT, e.g. fnn-tls-initialize (host/native/tls.lisp:332)"
-  },
-  {
-   "key": "R2|fnn-tls-configured-library-pair|XTLSRELOAD:probe-file",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/tls.lisp:94",
-   "reason": "io leaf probe-file runs while holding XTLSRELOAD; reached from 1 site(s) under XTLSRELOAD, e.g. fnn-tls-owner-reload (host/native/tls-reload.lisp:76)"
-  },
-  {
-   "key": "R2|fnn-tls-load-libraries|XTLSINIT:probe-file",
-   "count": 2,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/tls.lisp:296",
-   "reason": "io leaf probe-file runs while holding XTLSINIT; reached from 1 site(s) under XTLSINIT, e.g. fnn-tls-initialize (host/native/tls.lisp:332)"
-  },
-  {
-   "key": "R2|fnn-tls-load-libraries|XTLSRELOAD:probe-file",
-   "count": 2,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/tls.lisp:296",
-   "reason": "io leaf probe-file runs while holding XTLSRELOAD; reached from 1 site(s) under XTLSRELOAD, e.g. fnn-tls-owner-reload (host/native/tls-reload.lisp:76)"
   },
   {
    "key": "R2|fnn-tls-server-candidate|XTLSRELOAD:sb-posix:stat",
@@ -1680,14 +1472,6 @@
    "category": "violation",
    "where": "host/native/owner.lisp:5176",
    "reason": "undeclared lock edge C -> M"
-  },
-  {
-   "key": "R5|fnn-owner-consumer-local-wait|unresolved:manual grab-mutex of W",
-   "count": 1,
-   "rule": "R5",
-   "category": "unresolved",
-   "where": "host/native/owner.lisp:4099",
-   "reason": "manual grab-mutex of W"
   },
   {
    "key": "R5|lambda@host/native/owner.lisp:fnn-owner-await-logical#lambda1|unresolved:lock object lock",
@@ -1890,14 +1674,6 @@
    "reason": "handler clause ignore-errors consumes ['fault'] without routing it to the fence"
   },
   {
-   "key": "R7|fnn-owner-abandon-connection|swallow:fnn-store-error:fault",
-   "count": 1,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/owner.lisp:3114",
-   "reason": "handler clause fnn-store-error consumes ['fault'] without routing it to the fence"
-  },
-  {
    "key": "R7|fnn-owner-attempt-filled|swallow:fnn-store-indeterminate:indet",
    "count": 1,
    "rule": "R7",
@@ -1978,28 +1754,12 @@
    "reason": "handler clause serious-condition routes connection-local ['refusal'] to the fence (a client/peer event stops the node)"
   },
   {
-   "key": "R7|fnn-owner-consumer-entropy-observation|swallow:error:fault",
-   "count": 1,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/owner.lisp:3914",
-   "reason": "handler clause error consumes ['fault'] without routing it to the fence"
-  },
-  {
    "key": "R7|fnn-owner-export-captured|overfence:serious-condition:refusal",
    "count": 1,
    "rule": "R7",
    "category": "violation",
    "where": "host/native/owner.lisp:7503",
    "reason": "handler clause serious-condition routes connection-local ['refusal'] to the fence (a client/peer event stops the node)"
-  },
-  {
-   "key": "R7|fnn-owner-feed-append-locked|swallow:error:fault,indet",
-   "count": 1,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/owner.lisp:1222",
-   "reason": "handler clause error consumes ['fault', 'indet'] without routing it to the fence"
   },
   {
    "key": "R7|fnn-owner-feed-append-locked|swallow:ignore-errors:fault,indet",
@@ -2035,18 +1795,10 @@
   },
   {
    "key": "R7|fnn-owner-publish-captured|swallow:serious-condition:fault,indet",
-   "count": 2,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/owner.lisp:7118",
-   "reason": "handler clause serious-condition consumes ['fault', 'indet'] without routing it to the fence"
-  },
-  {
-   "key": "R7|fnn-owner-release-extents|swallow:serious-condition:fault,indet",
    "count": 1,
    "rule": "R7",
    "category": "violation",
-   "where": "host/native/owner.lisp:6869",
+   "where": "host/native/owner.lisp:7118",
    "reason": "handler clause serious-condition consumes ['fault', 'indet'] without routing it to the fence"
   },
   {
@@ -2064,14 +1816,6 @@
    "category": "violation",
    "where": "host/native/owner.lisp:2363",
    "reason": "handler clause ignore-errors consumes ['fault'] without routing it to the fence"
-  },
-  {
-   "key": "R7|fnn-pull-journal-append|swallow:error:fault,indet",
-   "count": 1,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/pull-service.lisp:245",
-   "reason": "handler clause error consumes ['fault', 'indet'] without routing it to the fence"
   },
   {
    "key": "R7|fnn-pull-journal-append|swallow:ignore-errors:fault,indet",
@@ -2104,14 +1848,6 @@
    "category": "violation",
    "where": "host/native/tcpcl.lisp:462",
    "reason": "handler clause error consumes ['fault', 'indet'] without routing it to the fence"
-  },
-  {
-   "key": "R7|lambda@host/native/owner.lisp:fnn-owner-shared-action-locked#lambda1|swallow:ignore-errors:fault",
-   "count": 1,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/owner.lisp:2960",
-   "reason": "handler clause ignore-errors consumes ['fault'] without routing it to the fence"
   },
   {
    "key": "R7|lambda@host/native/owner.lisp:fnn-owner-start-syncer#lambda1|swallow:serious-condition:fault,indet",

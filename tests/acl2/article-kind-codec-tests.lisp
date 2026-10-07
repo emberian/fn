@@ -12,6 +12,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/article-kind-codec")
+(include-book "../../books/defkeystone")
 
 (defun akc-crlf (xs)
   (declare (xargs :guard t))
@@ -81,3 +82,61 @@
                 (consp (fn-ak-layout vals payload))))
   :hints (("Goal" :in-theory (disable fn-ak-rows-valuesp (:e fn-ak-rows-valuesp)
                                       fn-ak-render-rows fn-ak-frame))))
+
+; ---------------------------------------------------------------------------
+; PRF-1324 keystones of books/article-kind-codec.lisp with their teeth (TEETH
+; CONTRACT v1): the example values with the payload "hello", the head above
+; and its non-canonical base64 spelling, a From with no mailbox.  Not here:
+; fn-ak-grammar-encode-is-the-layout, whose payload hypothesis separates the
+; two only past *fn-article-max-octets* octets (fn-ak-layout takes any octet
+; list): that witness is a megabyte list, which exhausted a proof session.
+(defconst *akc-hello* (fn-ak-text "hello"))
+(defconst *akc-hello-source* (akc-src (concatenate 'string *akc-head* "aGVsbG8=|")))
+(defconst *akc-unpadded-source* (akc-src (concatenate 'string *akc-head* "aGVsbG8|")))
+
+(defteeth fn-ak-decode-of-encode
+  :claim (((kind (fn-ak-rows-valuesp *fn-ak-v1-rows* vals)) (payload (fn-ak-payloadp payload)))
+          (equal (fn-ak-decode (fn-ak-encode vals payload)) (list :ok vals payload)))
+  :subject fn-ak-decode
+  :witness ((vals (fn-ak-example-values)) (payload *akc-hello*))
+  :breaks ((kind ((vals *akc-bad-from*) (payload *akc-hello*)))
+           (payload ((vals (fn-ak-example-values)) (payload '(256))) :logical "an octet outside 0..255, outside the payload guard"))
+  :mutations ((payload-lost
+               (:conclusion (equal (fn-ak-decode (fn-ak-encode vals payload)) (list :ok vals nil)))
+               ((vals (fn-ak-example-values)) (payload *akc-hello*))
+               :fault "a decode that returns the values and drops the payload")))
+
+(defteeth fn-ak-encode-of-decode
+  :claim (((accepted (equal (car (fn-ak-decode source)) :ok)))
+          (equal (fn-ak-encode (cadr (fn-ak-decode source)) (caddr (fn-ak-decode source))) source))
+  :subject fn-ak-decode
+  :witness ((source *akc-hello-source*))
+  :breaks ((accepted ((source *akc-unpadded-source*))))
+  :mutations ((reencoded-without-payload
+               (:conclusion (equal (fn-ak-encode (cadr (fn-ak-decode source)) nil) source))
+               ((source *akc-hello-source*))
+               :fault "a re-encoding that drops the decoded payload")))
+
+; fn-ak-grammar-encode-is-the-layout (TEETH CONTRACT v1).  The payload
+; hypothesis separates the encoder from the layout only past
+; *fn-article-max-octets* (4,261,412,864) octets: no removal witness can be
+; built, so the claim keeps the hypothesis inside the implication and the
+; teeth are the in-guard positive witness and conclusion mutations.
+(defteeth fn-ak-grammar-encode-is-the-layout
+  :claim (() (implies (fn-ak-payloadp payload)
+                      (equal (fn-ak-encode vals payload)
+                             (fn-ak-layout vals payload))))
+  :subject fn-ak-encode
+  :witness ((vals (fn-ak-example-values)) (payload *akc-hello*))
+  :mutations ((layout-of-the-empty-payload
+               (:conclusion (implies (fn-ak-payloadp payload)
+                                     (equal (fn-ak-encode vals payload)
+                                            (fn-ak-layout vals nil))))
+               ((vals (fn-ak-example-values)) (payload *akc-hello*))
+               :fault "a layout that drops the payload the encoder wrote")
+              (layout-of-other-values
+               (:conclusion (implies (fn-ak-payloadp payload)
+                                     (equal (fn-ak-encode vals payload)
+                                            (fn-ak-layout *akc-bad-from* payload))))
+               ((vals (fn-ak-example-values)) (payload *akc-hello*))
+               :fault "a layout that renders other header values than the encoder")))

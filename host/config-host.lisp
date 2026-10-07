@@ -15,12 +15,12 @@
 (include-book "../books/native-init-resume")
 ; `fn-native-admin-some-group-name-reservedp': RFC 5536 s3.1.4 reserved names.
 (include-book "../books/native-admin")
-;
-; Loaded here, not left to a bridge's `ld' order: this file uses names
-; host/store-host.lisp defines, so a session that loads this file alone
-; must get them too.  A second `ld' of a file already in the session
-; re-admits identical definitions, which ACL2 accepts as redundant.
-(ld "store-host.lisp" :ld-error-action :error)
+; The sibling edge is an include-book, the discipline the account-*/index-*
+; host books already follow for owner-host: certify-book refuses an `ld'
+; (LD-FN is not an embedded event form), so a host file that carries one
+; has never certified.  In a session that ld'd the sibling earlier the
+; include is redundant and loads nothing.
+(include-book "store-host")
 
 ; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
 ; operator data (D27: no fixed cap), one control-stack frame per element.

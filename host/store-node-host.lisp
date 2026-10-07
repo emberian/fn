@@ -73,12 +73,12 @@
 ; fn-store-sn-prepare and the retention prepare call.
 (include-book "../books/store-reclaim")
 (include-book "../books/acceptance-payload-ref")
-;
-; Loaded here, not left to a bridge's `ld' order: this file uses names
-; host/store-host.lisp defines, so a session that loads this file alone
-; must get them too.  A second `ld' of a file already in the session
-; re-admits identical definitions, which ACL2 accepts as redundant.
-(ld "store-host.lisp" :ld-error-action :error)
+; The sibling edge is an include-book, the discipline the account-*/index-*
+; host books already follow for owner-host: certify-book refuses an `ld'
+; (LD-FN is not an embedded event form), so a host file that carries one
+; has never certified.  In a session that ld'd the sibling earlier the
+; include is redundant and loads nothing.
+(include-book "store-host")
 
 (include-book "../books/peer-config")
 (include-book "../books/provenance-codec")

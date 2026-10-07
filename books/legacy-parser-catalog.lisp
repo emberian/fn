@@ -13,14 +13,27 @@
   :hints (("Goal" :induct (fn-lpc-feed bytes s)
            :in-theory (e/d (fn-lpc-feed) (fn-lpc-byte fn-lpc-at)))))
 
+; fn-lpc-byte steps the header through fn-lpc-header-byte-names over the
+; five NOV names (legacy-parser-cursor, 8630f38a3): that is fn-lpc-header-byte.
+(local (defthm fn-lpv-byte-header-unfolds
+  (equal (fn-lpc-at 4 (fn-lpc-byte s byte))
+         (fn-lpc-header-byte (fn-lpc-at 4 s) byte (nfix (fn-lpc-at 3 s))
+                             (fn-lpc-at 0 s) (fn-lpc-at 2 s)))
+  :hints (("Goal" :in-theory
+    (union-theories '(fn-lpc-byte fn-lpc-byte-names fn-lpc-header-byte fn-lpc-at
+                      fn-ag-car fn-ag-cdr car-cons cdr-cons)
+                    (union-theories (theory 'minimal-theory)
+                                    (executable-counterpart-theory :here)))))))
+
 (defthm fn-lpv-feed-header-is-actual-header-run
   (implies (natp (fn-lpc-at 3 s))
            (equal (fn-lpc-at 4 (fn-lpc-feed bytes s))
                   (fn-nlv-run bytes (fn-lpc-at 4 s) (fn-lpc-at 3 s)
                               (fn-lpc-at 0 s) (fn-lpc-at 2 s))))
   :hints (("Goal" :induct (fn-lpc-feed bytes s)
-           :in-theory (e/d (fn-lpc-feed fn-nlv-run fn-lpc-byte fn-lpc-at)
-                           (fn-lpc-header-byte fn-lpc-body-byte fn-lpc-split-byte)))))
+           :in-theory (e/d (fn-lpc-feed fn-nlv-run)
+                           (fn-lpc-byte fn-lpc-header-byte fn-lpc-body-byte
+                            fn-lpc-split-byte)))))
 
 (defthm fn-lpv-full-list-tick-is-feed
   (implies (<= (len bytes) (nfix fuel))
@@ -77,7 +90,7 @@
             (or (<= 8 (nfix (fn-lpc-at 3 s)))
                 (equal byte (fn-lpc-at (nfix (fn-lpc-at 3 s)) *fn-rcl-magic*)))))
   :hints (("Goal" :in-theory (union-theories
-    '(fn-lpc-byte fn-lpc-at fn-ag-car fn-ag-cdr car-cons cdr-cons iff)
+    '(fn-lpc-byte fn-lpc-byte-names fn-lpc-at fn-ag-car fn-ag-cdr car-cons cdr-cons iff)
     (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here)))))))
 
 (local (defthm fn-lpv-magic-tail-empty

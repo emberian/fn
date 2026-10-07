@@ -269,7 +269,12 @@
   :claim (((second-drawn (equal (car (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops)) slot d2)) :drawn))) (let ((again (cadr (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops)) slot d2))) (token (caddr (fn-rv-draw bank slot d1)))) (and (equal (car (fn-rv-settle again slot token)) :stale) (equal (cadr (fn-rv-settle again slot token)) again))))
   :witness ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops (list (list :settle 0 1))) (d2 *rvt-read*))
   :breaks ((second-drawn ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops nil) (d2 *rvt-read*)) :logical "pre-contract witness, evaluated logically"))
-  :mutations (:deferred "no false neighbour named yet"))
+  :mutations ((replay-settles-the-new-draw
+               (:conclusion (let ((again (cadr (fn-rv-draw (cadr (fn-rv-run (cadr (fn-rv-draw bank slot d1)) ops)) slot d2)))
+                                  (token (caddr (fn-rv-draw bank slot d1))))
+                              (equal (car (fn-rv-settle again slot (+ 1 token))) :stale)))
+               ((bank *rvt-conn*) (slot 0) (d1 *rvt-read*) (ops (list (list :settle 0 1))) (d2 *rvt-read*))
+               :fault "a slot that goes stale for every token once reused, so the second draw's own completion is refused")))
 
 (defteeth fn-rv-step-keeps-the-other-slots
   :claim (((natp (natp j)) (other (not (equal j (nfix (nth 1 op)))))) (equal (fn-rv-row j (cadr (fn-rv-step bank op))) (fn-rv-row j bank)))

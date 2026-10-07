@@ -15,6 +15,7 @@
 (in-package "ACL2")
 (include-book "../../books/app-pattern-delivery")
 (include-book "hybrid-store-tests")
+(include-book "../../books/defkeystone")
 
 (defconst *apd-name* (fn-ak-text "pubsub"))
 (defconst *apd-from* (fn-ak-text "author@example.invalid"))
@@ -151,3 +152,123 @@
  (not (equal (list (fn-pat-partition (fn-ak-text "<a@x>") 4) (fn-pat-partition (fn-ak-text "<b@x>") 4)
                    (fn-pat-partition (fn-ak-text "<c@x>") 4) (fn-pat-partition (fn-ak-text "<d@x>") 4))
              (make-list 4 :initial-element (fn-pat-partition (fn-ak-text "<a@x>") 4)))))
+
+; ---------------------------------------------------------------------------
+; PRF-1325/1329 keystones with their teeth (TEETH CONTRACT v1).  Not here:
+; fn-pat-select-is-one-worker, whose (posp workers) hypothesis has no
+; counterexample (fn-pat-select skips exactly when the index is not the
+; partition, and fn-pat-partition is total in N), so its removal waits on a
+; proof of the weakened theorem; fn-pat-reader-delivers-what-the-writer-encoded
+; (four hypotheses over a projected cursor event, owed).
+(defteeth fn-pat-partition-is-a-worker
+  :claim (((workers (posp n)))
+          (and (natp (fn-pat-partition msgid n)) (< (fn-pat-partition msgid n) n)))
+  :subject fn-pat-select
+  :witness ((msgid *apd-msgid*) (n 3))
+  :breaks ((workers ((msgid *apd-msgid*) (n 0))))
+  :mutations ((worker-zero-unused
+               (:conclusion (and (natp (fn-pat-partition msgid n))
+                                 (< 0 (fn-pat-partition msgid n))
+                                 (< (fn-pat-partition msgid n) n)))
+               ((msgid *apd-msgid*) (n 3))
+               :fault "a partition that never chooses worker 0")))
+
+(defteeth fn-pat-values-check-is-the-kind
+  :claim (() (iff (fn-pat-values-check name-word from seconds group msgid)
+                  (not (fn-ak-rows-valuesp *fn-ak-v1-rows*
+                                           (fn-pat-values name-word from seconds group msgid)))))
+  :subject fn-pat-values-check
+  :witness ((name-word *apd-name*) (from (fn-ak-text "nomailbox")) (seconds 0)
+            (group *apd-group*) (msgid *apd-msgid*))
+  :mutations ((check-inverted
+               (:conclusion (iff (fn-pat-values-check name-word from seconds group msgid)
+                                 (fn-ak-rows-valuesp *fn-ak-v1-rows*
+                                                     (fn-pat-values name-word from seconds group msgid))))
+               ((name-word *apd-name*) (from *apd-from*) (seconds *apd-seconds*)
+                (group *apd-group*) (msgid *apd-msgid*))
+               :fault "a values check that refuses exactly the article-kind rows it should pass")))
+
+; ---------------------------------------------------------------------------
+; fn-pat-reader-delivers-what-the-writer-encoded (TEETH CONTRACT v1).  The
+; keystone's four antecedents sit inside its `let', so the claim has no
+; labelled hypothesis and the removal witness is a mutation: the source
+; antecedent dropped, at the fixture's own event (a source that is not the
+; writer's encoding, delivered as :foreign).  The other three have no
+; counterexample here: fn-pat-encode answers nil exactly for values or a
+; payload outside the kind, and an :ok projection carries a nonempty source,
+; so (nth 6 p) = the encoding forces :ok, a passing check and a payload of the
+; kind together; their removal waits on a proof of the weakened theorem.
+(defteeth fn-pat-reader-delivers-what-the-writer-encoded
+  :claim (() (let ((p (fn-cpj-project cursor event)))
+               (implies (and (equal (car p) :ok)
+                             (not (fn-pat-values-check name-word from seconds group msgid))
+                             (fn-ak-payloadp payload)
+                             (equal (nth 6 p)
+                                    (fn-pat-encode name-word from seconds group msgid payload)))
+                        (equal (fn-pat-decode :opaque-1 (fn-pat-project cursor event))
+                               (list :deliver (nth 2 p) (nth 5 p) payload)))))
+  :subject fn-pat-decode
+  :witness ((cursor *apd-cursor*) (event *apd-event-bytes*) (name-word *apd-name*)
+            (from *apd-from*) (seconds *apd-seconds*) (group *apd-group*)
+            (msgid *apd-msgid*) (payload *apd-payload*))
+  :mutations ((without-the-source-antecedent
+               (:conclusion (let ((p (fn-cpj-project cursor event)))
+                              (implies (and (equal (car p) :ok)
+                                            (not (fn-pat-values-check name-word from seconds group msgid))
+                                            (fn-ak-payloadp payload))
+                                       (equal (fn-pat-decode :opaque-1 (fn-pat-project cursor event))
+                                              (list :deliver (nth 2 p) (nth 5 p) payload)))))
+               ((cursor *apd-cursor*) (event *apd-other-bytes*) (name-word *apd-name*)
+                (from *apd-from*) (seconds *apd-seconds*) (group *apd-group*)
+                (msgid *apd-msgid*) (payload *apd-payload*))
+               :fault "a reader that owes the payload for any projected event, whatever source it binds")
+              (delivered-after-its-sequence
+               (:conclusion (let ((p (fn-cpj-project cursor event)))
+                              (implies (and (equal (car p) :ok)
+                                            (not (fn-pat-values-check name-word from seconds group msgid))
+                                            (fn-ak-payloadp payload)
+                                            (equal (nth 6 p)
+                                                   (fn-pat-encode name-word from seconds group msgid payload)))
+                                       (equal (fn-pat-decode :opaque-1 (fn-pat-project cursor event))
+                                              (list :deliver (1+ (nth 2 p)) (nth 5 p) payload)))))
+               ((cursor *apd-cursor*) (event *apd-event-bytes*) (name-word *apd-name*)
+                (from *apd-from*) (seconds *apd-seconds*) (group *apd-group*)
+                (msgid *apd-msgid*) (payload *apd-payload*))
+               :fault "a payload file numbered one past the event's sequence")))
+
+; ---------------------------------------------------------------------------
+; fn-pat-select-is-one-worker (TEETH CONTRACT v1).  Its (posp workers)
+; hypothesis has no counterexample (above), and no removal witness is built
+; for the :deliver hypothesis, so both stay inside the implication; the teeth are
+; the positive witness (the worker the partition names keeps the decision) and
+; conclusion mutations.
+(defteeth fn-pat-select-is-one-worker
+  :claim (() (implies (and (posp (fn-pat-parse-nat workers))
+                           (equal (fn-pat-at 0 decision) :deliver))
+                      (iff (equal (fn-pat-at 0 (fn-pat-select decision index workers)) :deliver)
+                           (equal (fn-pat-parse-nat index)
+                                  (fn-pat-partition (fn-pat-at 2 decision)
+                                                    (fn-pat-parse-nat workers))))))
+  :subject fn-pat-select
+  :witness ((decision (list :deliver 7 *apd-msgid*)) (index (fn-ak-text "0"))
+            (workers (fn-ak-text "3")))
+  :mutations ((every-worker-keeps-it
+               (:conclusion (implies (and (posp (fn-pat-parse-nat workers))
+                                          (equal (fn-pat-at 0 decision) :deliver))
+                                     (iff (equal (fn-pat-at 0 (fn-pat-select decision index workers)) :deliver)
+                                          (equal (fn-pat-parse-nat index)
+                                                 (+ 1 (fn-pat-partition (fn-pat-at 2 decision)
+                                                                        (fn-pat-parse-nat workers)))))))
+               ((decision (list :deliver 7 *apd-msgid*)) (index (fn-ak-text "0"))
+                (workers (fn-ak-text "3")))
+               :fault "a selection that keeps the decision at the worker after the partition's")
+              (other-worker-keeps-it
+               (:conclusion (implies (and (posp (fn-pat-parse-nat workers))
+                                          (equal (fn-pat-at 0 decision) :deliver))
+                                     (not (iff (equal (fn-pat-at 0 (fn-pat-select decision index workers)) :deliver)
+                                               (equal (fn-pat-parse-nat index)
+                                                      (fn-pat-partition (fn-pat-at 2 decision)
+                                                                        (fn-pat-parse-nat workers)))))))
+               ((decision (list :deliver 7 *apd-msgid*)) (index (fn-ak-text "0"))
+                (workers (fn-ak-text "3")))
+               :fault "a selection that skips exactly the worker the partition names")))

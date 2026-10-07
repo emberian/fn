@@ -329,6 +329,9 @@ not armed. Instrumentation has no semantic or admission role."
   ;; Exact normalized launch descriptors, and private output pool projection.
   ;; Explicit policy activation/full tariffs are still PRF-1259 obligations.
   (cold-resources nil) (output-resources nil) (output-slots nil)
+  ;; The operator's live-reclaim opt-in (D53, `[resources] reclaim_live'):
+  ;; the connection budget holds the owner's work reserve only with it.
+  (reclaim-live nil)
   ;; ACL2 serials, independent of configuration and ledger draw generations.
   (connection-generation 0) (response-generation 0)
   (output-ledger nil) (output-grants nil)
@@ -477,6 +480,9 @@ as at 7aad444ce."
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0)
+  ;; A pull journal: the peer's octet list as ACL2's plan named it (the cache's
+  ;; identity for `fn-pull-plan-for', never rebuilt from PEER).
+  (peer-octets nil)
   ;; Lane owner-offlock: one append (write, fsync, phase) at a time.  The
   ;; batch job appends off the owner mutex while a quantum under it may
   ;; append too (a feed tick, a bound submission's inline commit).
@@ -699,6 +705,15 @@ range), which the caller runs under the owner mutex
                    (every #'digit-char-p raw)
                    (parse-integer raw)))))
 
+(defun fnn-owner-article-window ()
+  "ACL2's ARTICLE quantum (fn-asto-quantum), the developer selector's override
+passed through as for the OVER cursor."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
+    (fnn-core 'fn-asto-quantum
+              (and raw (> (length raw) 0)
+                   (every #'digit-char-p raw)
+                   (parse-integer raw)))))
+
 (defun fnn-owner-response-pin (service cid)
   "Hold ACL2's arena-reader generation for CID's response.  The caller
 holds the owner mutex, before returning its captured plan.  Only one
@@ -764,7 +779,7 @@ READY is immutable and can be replayed by Web without authority effects."
                        (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                          (let ((answer
                                  (fnn-core-state 'fn-owner-article-ready-plan-step
-                                                 cid plan (fnn-owner-over-window))))
+                                                 cid plan (fnn-owner-article-window))))
                            (list :warm answer))))))))
                (if (eq (car attempt) :warm) attempt
                  (list :cold (fnn-owner-cold-issue-locked service cid attempt)))))
@@ -823,7 +838,7 @@ Empty progress yields; a cold read retains the exact original plan/capture."
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                            (destructuring-bind (word bytes next done)
-                               (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-over-window)
+                               (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-article-window)
                                          (fnn-live-stobj 'fn-arena))
                              (list :warm word bytes next done))))))))
                  (if (eq (car attempt) :warm) attempt
@@ -1253,12 +1268,17 @@ followed these writes, under this lock."
 WRITTEN with each journal written added once, in first-written order.  The
 caller owes each one barrier (fnn-owner-feed-barrier-batch)."
   (fnn-owner-measured (:feed-flush)
-    (dolist (pair pairs)
-      (sb-thread:with-mutex ((fnn-owner-feed-journal-lock (car pair)))
-        (fnn-owner-feed-append-locked (car pair) (cdr pair) :barrier nil))
-      (unless (member (car pair) written :test #'eq)
-        (setq written (append written (list (car pair)))))))
-  written)
+    (let ((seen (make-hash-table :test #'eq))
+          (fresh nil))
+      (dolist (journal written)
+        (setf (gethash journal seen) t))
+      (dolist (pair pairs)
+        (sb-thread:with-mutex ((fnn-owner-feed-journal-lock (car pair)))
+          (fnn-owner-feed-append-locked (car pair) (cdr pair) :barrier nil))
+        (unless (gethash (car pair) seen)
+          (setf (gethash (car pair) seen) t)
+          (push (car pair) fresh)))
+      (append written (nreverse fresh)))))
 
 (defun fnn-owner-feed-barrier-batch (journals)
   "One barrier per journal of JOURNALS that still holds unbarriered frames."
@@ -7685,12 +7705,18 @@ the stop's refusal at a chunk boundary is `owner-stopping'."
     (format nil "reclaimable=~d reclaimable-octets=~d held=~d reclaimed=~d freed-octets=~d"
             reclaimable octets held reclaimed freed)))
 
-(defparameter +fnn-reclaim-chunk-rows+ 1024
+(defun fnn-reclaim-chunk-rows ()
   "Rows rewritten and folded per ACL2 call while a reclaim pass walks the
-captured history (a work quantum per call, never a bound on the store).")
+captured history (a work quantum per call, never a bound on the store):
+ACL2's (books/heap-store-figure.lisp fn-heap-reclaim-chunk-rows), the chunk
+the pass's reserved demand holds (fn-heap-reclaim-demand-octets)."
+  (let ((n (fnn-core 'fn-heap-reclaim-chunk-rows)))
+    (unless (and (integerp n) (> n 0))
+      (fnn-fault "ACL2 returned a malformed reclaim chunk size"))
+    n))
 
 (defun fnn-owner-reclaim-walk (records ctx arena service history-source &optional consumer)
-  "One pass over the captured history in chunks of +fnn-reclaim-chunk-rows+:
+  "One pass over the captured history in chunks of (fnn-reclaim-chunk-rows):
 from the pinned P3 root HISTORY-SOURCE when there is one (each row's decode
 funded before it is read, the chunk's grant returned once the chunk is
 consumed), else the captured RECORDS.  Without CONSUMER the pass folds the
@@ -7701,16 +7727,16 @@ rewrite, joined by fn-orc-rewrite-rows-of-append) and handed to CONSUMER;
 no rewritten row outlives its chunk here (lane reclaim, PRF-1315: the pass
 keeps no whole rewritten-row list) and the answer is nil."
   (let ((acc (and (null consumer) (fnn-core 'fn-owner-orc-init)))
-        (rest records) (ordinal 0)
+        (rest records) (ordinal 0) (chunk-rows (fnn-reclaim-chunk-rows))
         (total (and history-source (fourth (first history-source)))))
     (loop while (if history-source (< ordinal total) rest) do
       (let ((chunk
               (if history-source
-                  (loop repeat +fnn-reclaim-chunk-rows+
+                  (loop repeat chunk-rows
                         while (< ordinal total)
                         collect (prog1 (fnn-owner-history-root-at service history-source ordinal)
                                   (incf ordinal)))
-                (loop repeat +fnn-reclaim-chunk-rows+ while rest collect (pop rest)))))
+                (loop repeat chunk-rows while rest collect (pop rest)))))
         (if consumer
             (let ((rewritten (fnn-core 'fn-owner-orc-rewrite-chunk chunk ctx arena)))
               (unless (and (listp rewritten) (= (length rewritten) (length chunk)))
@@ -7982,9 +8008,10 @@ publication).  Answers the reply word."
              (unless captured
                ;; S038: another pass in flight or queued is refused by name
                ;; before any credit is reserved (CAPTURED stays nil, so the
-               ;; cleanup never finishes the other pass's slot)
+               ;; cleanup never finishes the other pass's slot); D53: so is
+               ;; a live pass on a node without `[resources] reclaim_live'
                (cond ((and (eq (first answer) :deferred)
-                           (member (second answer) '(:in-flight :queued))
+                           (member (second answer) '(:in-flight :queued :offline-only))
                            (null (third answer)))
                       (deferred (second answer)))
                      ((and (eq (first answer) :deferred) (integerp (third answer)))
@@ -8144,10 +8171,10 @@ publication).  Answers the reply word."
                        (fnn-owner-history-root-prepare-rows service rows column-salt))
                      (fnn-call 'fn-owner-orcp-load-catalog-begin column-key cat)
                      (let ((view-index (fnn-core 'fn-owner-orcp-view-index (second rebuilt)))
-                           (rest rows))
+                           (rest rows) (chunk-rows (fnn-reclaim-chunk-rows)))
                        (loop while rest do
                          (fnn-call 'fn-owner-orcp-load-catalog-chunk
-                                   (loop repeat +fnn-reclaim-chunk-rows+ while rest
+                                   (loop repeat chunk-rows while rest
                                          collect (pop rest))
                                    view-index arena cat))))
                    (setq e nil)
@@ -8630,7 +8657,7 @@ the caller joins any partial executor before relinquishing run authority."
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet) tls-context
                         connection-fault-operation tls-port more-addresses
-                        cold-resources output-resources)
+                        cold-resources output-resources reclaim-live)
   "Run one service from already-normalized boundary values.
 MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 `[listener] host' list (NNT-041); each gets the same port and TLS port."
@@ -8672,6 +8699,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   (setq service (fnn-owner-install root max-connections fault))
                   (setf (fnn-owner-service-cold-resources service) cold-resources
                         (fnn-owner-service-output-resources service) output-resources
+                        (fnn-owner-service-reclaim-live service) (and reclaim-live t)
                         (fnn-owner-service-output-slots service)
                         (fnn-core 'fn-orv-startup-slots max-connections))
                   (fnn-owner-retain-run-authority service)
@@ -8939,7 +8967,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
 
 (defun fnn-owner-run-normalized (store-octets listener-host-octets
                                  listener-port oncep max-connections &optional tls-context
-                                 tls-port cold-resources output-resources)
+                                 tls-port cold-resources output-resources reclaim-live)
   "Operator callback over ACL2-normalized projections; no argv semantics."
   (unless (and (typep store-octets 'fnn-octets)
                (typep listener-host-octets 'fnn-octets)
@@ -8949,7 +8977,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                (or (null tls-context) (fnn-tls-context-p tls-context))
                (or (null tls-port)
                    (and tls-context (integerp tls-port) (< 0 tls-port 65536)
-                        (/= tls-port listener-port) (not oncep))))
+                        (/= tls-port listener-port) (not oncep)))
+               (member reclaim-live '(t nil)))
     (fnn-fault "malformed ACL2 owner run plan"))
   (let* ((root (fnn-octets-string store-octets))
          (projections
@@ -8984,7 +9013,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                (cons (first projection)
                                      (fnn-octets (second projection))))
                              (rest projections))
-                     cold-resources output-resources))))
+                     cold-resources output-resources reclaim-live))))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."

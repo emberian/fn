@@ -7,6 +7,7 @@
 ; fn-own-feed-resolution-records) for peer "inn".
 (in-package "ACL2")
 (include-book "../../books/feed-journal-order")
+(include-book "../../books/defkeystone")
 
 (defconst *fjot-open*
   (fn-feed-open '(105 110 110) (fn-feed-limits 5 1000 3 t)
@@ -83,3 +84,22 @@
 ; intent.  Both orders then add both keys, so the intent fold changes order
 ; and the conclusion fails.
 (assert-event (equal (fjot-k (fjot-intent 3) (fjot-intent 1) nil nil) '(nil nil t)))
+
+; TEETH-62 BEGIN
+; fn-fjo-an-intent-moved-past-another-resolution-replays-alike with its teeth (TEETH CONTRACT v1).
+(defteeth fn-fjo-an-intent-moved-past-another-resolution-replays-alike
+  :claim (((intent (equal (fn-feed-journal-kind i) :feed-intent)) (resolution (member-equal (fn-feed-journal-kind r) '(:feed-commit :feed-abort))) (another-key (not (equal (fn-own-feed-intent-key (fn-feed-journal-values i))
+                            (fn-own-feed-intent-key (fn-feed-journal-values r))))))
+          (and (equal (fn-fjo-intents-run intents (append xs (list* i r ys)))
+                       (fn-fjo-intents-run intents (append xs (list* r i ys))))
+                (equal (fn-feed-replay f (append xs (list* i r ys)))
+                       (fn-feed-replay f (append xs (list* r i ys))))))
+  :subject fn-feed-replay
+  :witness ((i (fjot-intent 3)) (r (fjot-commit 1)) (xs *fjot-xs*) (ys *fjot-ys*) (intents nil) (f *fjot-open*))
+  :breaks ((intent ((i (fjot-commit 3)) (r (fjot-commit 1)) (xs nil) (ys nil) (intents nil) (f *fjot-open*)))
+           (resolution ((i (fjot-intent 3)) (r (fjot-intent 1)) (xs nil) (ys nil) (intents nil) (f *fjot-open*)))
+           (another-key ((i (fjot-intent 1)) (r (fjot-commit 1)) (xs nil) (ys nil) (intents nil) (f *fjot-open*))))
+  :mutations ((nothing-unresolved
+               (:conclusion (equal (fn-fjo-intents-run intents (append xs (list* i r ys))) intents))
+               ((i (fjot-intent 3)) (r (fjot-commit 1)) (xs *fjot-xs*) (ys *fjot-ys*) (intents nil) (f *fjot-open*))
+               :fault "a replay that leaves no intent unresolved")))

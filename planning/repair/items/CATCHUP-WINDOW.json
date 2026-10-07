@@ -1,0 +1,15 @@
+{
+ "category": "host",
+ "detail": "PRF-1335/1336. fnn-pull-flight-begin reads the first of fn-owner-log-bounds under the transit serialization and passes it as fn-csp-begin's fifth argument; the flight keeps an alist (j . cid) for the controller's window connections and the index of the exchange in flight; (:open-local j) opens and registers j; (:local j . octets) selects j's cid; replies are (:local j . octets) and (:local-window j). Pull rounds (kind not :catch-up) keep the one-connection shapes. The host decides nothing: ACL2 names every j and W. Exchanges are still serialized by the flight (one operation outstanding), so this wiring is the protocol-correct prerequisite; overlapping exchanges (so the committer batches) is the pace work Deputy N measures (peer_catchup ~35/s -> N/s). planning/interfaces.json is stale after the definterface keystone edit; tools/interface_emit.py --write on the integrate branch.",
+ "file": "host/native/pull-service.lisp",
+ "id": "CATCHUP-WINDOW",
+ "native": "tests.test_native_peer_catchup",
+ "notes": [],
+ "owner": "catchup3",
+ "severity": "medium",
+ "slice": "peer-services",
+ "source": "catchup3",
+ "state": "in-progress",
+ "title": "Catch-up host forwards the offer window: fn-csp-begin gets W (the operator's log-batch-records, read once) and :local/:open-local/:local-window events carry the connection index j",
+ "updated": "2026-10-06T23:46:23Z"
+}

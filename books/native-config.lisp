@@ -269,7 +269,8 @@
         ((equal table "resources")
          (member-equal key '("cold_heap_octets" "cold_workers"
                             "cold_descriptors" "cold_read_ids" "cold_file_ids"
-                            "output_heap_octets" "output_quantum_heap_octets")))
+                            "output_heap_octets" "output_quantum_heap_octets"
+                            "reclaim_live")))
         ((equal table "ops")
          (member-equal key '("mission" "unit" "scope" "keep_releases"
                              "log_max_bytes" "log_keep" "memory_max")))
@@ -851,6 +852,24 @@ raw owner binds exactly these octets and never resolves a name."
   (declare (xargs :guard t))
   (fn-ncfg-nth 30 config))
 
+; Live reclaim is opt-in (lane reclaim-funding, planning/design/
+; reclaim-funding-2026-10-04.md section 11): the owner's reclaim work reserve
+; exists only when the operator writes [resources] reclaim_live = true.
+; Absent and false are the same: no live reclaim, offline reclaim only.
+(defun fn-ncfg-reclaim-live (pairs)
+  (declare (xargs :guard t))
+  (fn-ncfg-bool-value (fn-ncfg-value pairs "resources" "reclaim_live") nil))
+
+;  The flag is stored only when set: a configuration that does not ask for
+; live reclaim is the list it was before the key existed.
+(defun fn-ncfg-with-reclaim-live (flag c)
+  (declare (xargs :guard t))
+  (if (and flag (true-listp c)) (update-nth 31 t c) c))
+
+(defun fn-native-config-reclaim-livep (config)
+  (declare (xargs :guard t))
+  (fn-ncfg-nth 31 config))
+
 (defthm fn-ncfg-output-resources-is-supported-or-refused
   (implies (not (equal (fn-ncfg-output-resources pairs) :bad))
            (fn-native-config-output-resources-wfp (fn-ncfg-output-resources pairs)))
@@ -907,7 +926,8 @@ raw owner binds exactly these octets and never resolves a name."
                                       *fn-ncfg-default-log-keep* *fn-ncfg-max-u64*))
          (memory-max (fn-ncfg-string-value (fn-ncfg-value pairs "ops" "memory_max") nil *fn-ncfg-max-text* nil))
          (cold-resources (fn-ncfg-cold-resources pairs))
-         (output-resources (fn-ncfg-output-resources pairs)))
+         (output-resources (fn-ncfg-output-resources pairs))
+         (reclaim-live (fn-ncfg-reclaim-live pairs)))
     (if (or (equal store :bad) (equal host :bad) (equal port :bad)
             (equal tls-cert :bad) (equal tls-key :bad) (equal required :bad)
             (equal protected :bad) (equal auth-path :bad) (equal enabled :bad)
@@ -924,18 +944,19 @@ raw owner binds exactly these octets and never resolves a name."
             (equal mission :bad) (equal unit :bad) (equal scope :bad)
             (equal keep-releases :bad) (equal log-max-bytes :bad)
             (equal log-keep :bad) (equal memory-max :bad) (equal cold-resources :bad)
-            (equal output-resources :bad)
+            (equal output-resources :bad) (equal reclaim-live :bad)
             (not (fn-ncfg-optional-absolutep alert-command))
             (not (fn-ncfg-optional-memberp mission *fn-ncfg-mission-names*))
             (not (fn-ncfg-memberp scope *fn-ncfg-ops-scopes*))
             (equal keep-releases 0) (equal log-max-bytes 0))
         :bad
-      (update-nth 30 output-resources
-       (update-nth 29 cold-resources (fn-native-config-make store host port tls-cert tls-key required protected
+      (fn-ncfg-with-reclaim-live reclaim-live
+       (update-nth 30 output-resources
+        (update-nth 29 cold-resources (fn-native-config-make store host port tls-cert tls-key required protected
                              auth-path enabled agent anchor log control acl2-path acl2-slots
                              alert-command headroom refusal-rate cooldown
                              mission unit scope keep-releases log-max-bytes
-                             log-keep memory-max tls-port))))))
+                             log-keep memory-max tls-port)))))))
 
 (defthm fn-ncfg-listener-element-ok-is-a-projection
   (implies (equal (fn-ncfg-first (fn-ncfg-listener-element text)) :ok)

@@ -1,0 +1,20 @@
+{
+ "category": "lock-discipline",
+ "detail": "fnn-mux-budget-install (mux.lisp:1963) is called from the start path (owner.lisp:8737) and wraps its work in fnn-owner-serialized (owner.lisp:3048 -> fnn-section-run, O). Inside, mux.lisp:1976 calls fnn-heap-core-octets (heap.lisp:110) -> sb-posix:stat of sb-ext:*core-pathname*.\nKey: R2|fnn-heap-core-octets|O:sb-posix:stat (2 sites). Held, reachable, one stat at startup before listening; hazard small (no serving threads yet) but fnn-heap-machine-octets (mux.lisp:1974, reads /proc or cgroup files via fnn-heap-observations) in the same argument list is the same shape and is not flagged, so the checker's list is not exhaustive for this thunk.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "host/native/mux.lisp",
+ "fix": "Observe the machine and core figures before entering the section and pass them in (as fnn-owner-limit-serialized does for its observations, admin.lisp:~543), or declare as a startup-phase exception.",
+ "id": "LOCK-R2-BUDGET-INSTALL-STAT",
+ "notes": [
+  "10-06 20:26 Fixed: machine+core observed before fnn-owner-serialized in fnn-mux-budget-install; R2 core stat key (and fnn-fstat O key) gone, none added; host_check read/load rc0; raw test red/green. Pending convergence natives: startup/budget image natives (tests/test_native_mux*, connection-budget)."
+ ],
+ "owner": "unassigned",
+ "scenario": "Start path only; a slow stat of the core delays startup under O, nothing else waits.",
+ "severity": "low",
+ "sha": "b19c8e14a",
+ "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
+ "state": "ready",
+ "title": "fnn-mux-budget-install stats the core file (fnn-heap-core-octets) inside an owner section at start",
+ "updated": "2026-10-07T00:26:08Z"
+}

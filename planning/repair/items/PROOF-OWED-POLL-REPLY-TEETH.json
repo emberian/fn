@@ -1,0 +1,18 @@
+{
+ "category": "proof-owed",
+ "detail": "Executable teeth landed (tests/acl2/wire-family-consumer-tests.lisp: host encoding equals the grammar's for every status, the encoder refuses (:bad) a non-decoding cursor and a status carrying one, both decoders refuse the :sized bounds, a short or long report, a carried cursor, a wrong kind; tests/acl2/wire-grammar-tests.lisp: :sized positive, bounds, overrun, underrun, inner refusal). Owed, statement-first: a REACHABLE positive and one removal witness per hypothesis of fn-wf-cs-poll-encode-agrees through defteeth (books/defkeystone.lisp), and for fn-wg-decode-of-encode-sized / fn-wg-encode-of-decode-sized the same.",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "books/wire-family-consumer.lisp",
+ "fix": "Add the defteeth forms beside the executable assert-events.",
+ "id": "PROOF-OWED-POLL-REPLY-TEETH",
+ "locus": "wire-family-consumer",
+ "notes": [],
+ "owner": "fnct-sized",
+ "scenario": "The keystone could be vacuous if its not-:bad hypothesis were unreachable; the executable positives show it is reachable for every status, but the per-hypothesis removal witnesses are not stated as teeth.",
+ "severity": "low",
+ "source": "fnct-sized-2026-10-07",
+ "state": "open",
+ "title": "proof-owed: statement teeth for fn-wf-cs-poll-encode-agrees and the :sized node's two lemmas",
+ "updated": "2026-10-07T01:31:32Z"
+}

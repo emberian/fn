@@ -52,7 +52,8 @@
   ; The constructor leaves the optional resource policies absent. Path
   ; resolution must retain the explicit policies, including their refusal at
   ; the operator boundary, rather than silently resetting it to the default.
-  (update-nth 30 (fn-native-config-output-resources c)
+  (fn-ncfg-with-reclaim-live (fn-native-config-reclaim-livep c)
+   (update-nth 30 (fn-native-config-output-resources c)
    (update-nth 29 (fn-native-config-cold-resources c)
    (fn-native-config-make
    (fn-ncpath-resolve (fn-native-config-store c) base)
@@ -73,7 +74,7 @@
    (fn-native-config-ops-mission c) (fn-native-config-ops-unit c)
    (fn-native-config-ops-scope c) (fn-native-config-ops-keep-releases c)
    (fn-native-config-ops-log-max-bytes c) (fn-native-config-ops-log-keep c)
-   (fn-native-config-ops-memory-max c) (fn-native-config-listener-tls-port c)))))
+   (fn-native-config-ops-memory-max c) (fn-native-config-listener-tls-port c))))))
 
 ; The octets up to (not including) the last `/' of reversed octets REV, or
 ; nil when there is none.
@@ -197,6 +198,20 @@
                            (cadr (fn-native-config-load config-octets)) base)
                           (cadr (fn-native-config-load config-octets)))))))
 
+;; The live-reclaim flag (field 31) is set past every other field, so a
+;; field below it reads through the wrapper without splitting on the flag.
+(local
+ (defthm fn-ncpath-ncfg-nth-is-nth
+   (implies (natp n) (equal (fn-ncfg-nth n x) (nth n x)))
+   :hints (("Goal" :in-theory (enable fn-ncfg-nth nth)))))
+(local (in-theory (disable fn-ncpath-ncfg-nth-is-nth)))
+(local
+ (defthm fn-ncpath-nth-with-reclaim-live
+   (implies (and (natp i) (< i 31))
+            (and (equal (fn-ncfg-nth i (fn-ncfg-with-reclaim-live f c)) (fn-ncfg-nth i c))
+                 (equal (nth i (fn-ncfg-with-reclaim-live f c)) (nth i c))))
+   :hints (("Goal" :in-theory (enable fn-ncfg-with-reclaim-live fn-ncpath-ncfg-nth-is-nth)))))
+
 ; The resolved store is the store resolved (the other path fields alike).
 (defthm fn-ncpath-resolve-config-store
   (equal (fn-native-config-store (fn-ncpath-resolve-config c base))
@@ -206,14 +221,14 @@
 (defthm fn-ncpath-resolve-config-cold-resources-by-definition
   (equal (fn-native-config-cold-resources (fn-ncpath-resolve-config c base))
          (fn-native-config-cold-resources c))
-  :hints (("Goal" :in-theory (enable fn-native-config-cold-resources
-                                     fn-ncfg-nth))))
+  :hints (("Goal" :in-theory (e/d (fn-native-config-cold-resources fn-ncpath-ncfg-nth-is-nth)
+                                  (fn-ncfg-with-reclaim-live)))))
 
 (defthm fn-ncpath-resolve-config-output-resources-by-definition
   (equal (fn-native-config-output-resources (fn-ncpath-resolve-config c base))
          (fn-native-config-output-resources c))
-  :hints (("Goal" :in-theory (enable fn-native-config-output-resources
-                                     fn-ncfg-nth))))
+  :hints (("Goal" :in-theory (e/d (fn-native-config-output-resources fn-ncpath-ncfg-nth-is-nth)
+                                  (fn-ncfg-with-reclaim-live)))))
 
 (in-theory (disable fn-ncpath-resolve fn-ncpath-resolve-config fn-ncpath-base
                     fn-ncpath-config-octets))

@@ -616,7 +616,7 @@ ACL2 returns."
 (defun fnn-control-owner-run-normalized
     (store-octets listener-host-octets listener-port oncep max-connections
      control-path-octets posting-enabledp &optional tls-context tls-port
-     cold-resources output-resources)
+     cold-resources output-resources reclaim-live)
   "Add composable lifecycle hooks while leaving owner normalization intact."
   (unless (and (typep control-path-octets 'fnn-octets)
                (> (length control-path-octets) 0)
@@ -658,7 +658,7 @@ ACL2 returns."
     (let ((*fnn-mux-control-clients* max-clients))
       (fnn-owner-run-normalized store-octets listener-host-octets listener-port
                                 oncep max-connections tls-context tls-port
-                                cold-resources output-resources))))
+                                cold-resources output-resources reclaim-live))))
 
 
 
@@ -764,7 +764,8 @@ payload octets; a reason word is not)."
 
 (defun fnn-control-consumer-plain (path operation first second)
   "The kind-4 exchange (an old owner's, after it refused kind 22 unread):
-answers the reply list, as before PKT-709."
+answers (values REPLY FRAME), the reply list, as before PKT-709, and the
+reply frame's octets (NIL when none came)."
   (let ((request-list
           (fnn-core 'fn-native-control-host-consumer-request-encode
                     operation first second)))
@@ -786,17 +787,21 @@ answers the reply list, as before PKT-709."
                                    octets)))
              (ordinary (and octets
                             (fnn-core 'fn-native-control-host-reply-decode octets))))
-        (cond ((fnn-control-consumer-reply-okp operation reply) reply)
-              ((member ordinary '(:refused :uncertain :fault :busy))
-               (fnn-control-consumer-bare-reply
-                operation (if (eq ordinary :busy) :refused ordinary)))
-              (t (fnn-control-consumer-bare-reply
-                  operation (fnn-control-transport-outcome stage))))))))
+        (values
+         (cond ((fnn-control-consumer-reply-okp operation reply) reply)
+               ((member ordinary '(:refused :uncertain :fault :busy))
+                (fnn-control-consumer-bare-reply
+                 operation (if (eq ordinary :busy) :refused ordinary)))
+               (t (fnn-control-consumer-bare-reply
+                   operation (fnn-control-transport-outcome stage))))
+         frame)))))
 
 (defun fnn-control-consumer-local (path-octets operation first second)
   "Exchange one ACL2-framed consumer command with the 0600 owner socket.
-Answers (values REPLY WORD): REPLY the consumer reply list the command
-prints from, WORD ACL2's reason word (octets) or NIL.
+Answers (values REPLY WORD FRAME): REPLY the consumer reply list the command
+prints from, WORD ACL2's reason word (octets) or NIL, FRAME the octets of the
+reply frame the exchange read (NIL when none came; the resend's, when it
+resent): output only, for `fn consumer --frame'.
 
 PKT-709: the request goes as the reasoned consumer request (FNCT kind 22,
 books/consumer-reason.lisp); ACL2 reads the answer
@@ -823,7 +828,7 @@ the transport outcome of the stage reached."
                        (second step)
                      (fnn-control-consumer-bare-reply
                       operation (fnn-control-transport-outcome stage)))
-                   nil))
+                   nil frame))
           (:status
            (let ((status (second step)))
              (values (fnn-control-consumer-bare-reply
@@ -832,13 +837,16 @@ the transport outcome of the stage reached."
                             ((eq status :busy) :refused)
                             ;; An acceptance never comes as a reasoned reply.
                             (t (fnn-control-transport-outcome stage))))
-                     (third step))))
+                     (third step)
+                     frame)))
           (:resend
-           (values (fnn-control-consumer-plain path operation first second) nil))
+           (multiple-value-bind (reply plain-frame)
+               (fnn-control-consumer-plain path operation first second)
+             (values reply nil plain-frame)))
           (otherwise
            (values (fnn-control-consumer-bare-reply
                     operation (fnn-control-transport-outcome stage))
-                   nil)))))))
+                   nil frame)))))))
 
 (defun fnn-control-submit (path-octets msgid-octets group-octets payload-path-octets)
   "Submit one exact bounded file; answer (values STATUS WORD), ACL2's status

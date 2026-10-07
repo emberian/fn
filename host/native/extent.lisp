@@ -311,6 +311,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 
 (defstruct (fnn-cold-worker (:constructor %make-fnn-cold-worker))
   row thread token result phase next decoded decoded-storage scope
+  span ; the span borrow's copy of the window, see fnn-extent-window-span-at
   (ready (sb-thread:make-waitqueue :name "fn cold job")))
 
 ;; Allocated only after the installed baseline covers every persistent
@@ -496,6 +497,69 @@ a job that signalled, cancelled or not.  Nothing here settles or signals."
 ;;; Future owner quantum bindings retain the exact charged cold row. These
 ;;; are thread-dynamic references, not a second window cache or a new map.
 ;;; No served caller binds them until allocator and owner lifetime joins land.
+;;; THE SPAN BORROW (books/page-window-span.lisp; host row
+;;; fn-owner-page-window-span-at).  The arena reads a payload one octet at a
+;;; time; each octet was a scalar borrow, a lock and three ACL2 calls (about
+;;; 6 us, PERF-REGRESSION-20261005).  A miss now borrows one SPAN: one lock,
+;;; one ACL2 decision, the octets copied into a buffer this host owns (a
+;;; fn-ew-span of its own, never an alias of the private window), and the
+;;; octets that follow are read from the copy.  ACL2 decides every span
+;;; (KEYSTONE fn-owner-page-window-span-at-is-the-scalar-borrows: each octet
+;;; is what the scalar borrow of its own coordinate answers; a span refuses
+;;; wherever the scalar does); the host only chooses where a span starts and
+;;; ends, and when ACL2 refuses it asks the scalar exactly as before.
+(defstruct (fnn-window-span (:constructor make-fnn-window-span (token key base len dst)))
+  token key base len dst)
+
+(defconstant +fnn-extent-span-capacity+ 16384)
+
+(defun fnn-extent-window-span-at (worker token file eoff elen poff plen trailer i dst)
+  "One lock, one ACL2 call: copy the window's octets from payload coordinate I
+to the end of the window (at most the buffer, never past PLEN) into DST.
+(values WORD J): :span and the exclusive end, or the scalar borrow's word."
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (unless (fnn-extent-executor-observe-returned worker)
+      (return-from fnn-extent-window-span-at (values :pending nil)))
+    (unless (fnn-core-cold-single 'fn-pwx-boundp
+                     (fnn-core-cold-single 'fn-owner-page-read-ledger (fnn-live-page-read-pool))
+                     (fnn-cold-worker-row worker) token :returned)
+      (return-from fnn-extent-window-span-at (values :stale-job nil)))
+    (let ((result (fnn-cold-worker-result worker)))
+      (when (typep result 'condition) (error result))
+      (destructuring-bind (plan window) result
+        ;; The window's end is a hint only: ACL2 refuses a span that is not
+        ;; exactly inside the window.
+        (let ((j (and (integerp (eighth token)) (integerp (nth 5 plan))
+                      (min plen (+ i +fnn-extent-span-capacity+) (+ (eighth token) (nth 5 plan))))))
+          (if (and j (< (1+ i) j))
+              (values (first (fnn-core-page-read-pool 'fn-owner-page-window-span-at
+                               (fnn-cold-worker-row worker) token plan file eoff elen poff plen
+                               trailer i j window dst))
+                      j)
+              (values :unavailable nil)))))))
+
+(defun fnn-extent-window-span-octet (worker token file eoff elen poff plen trailer i)
+  "Octet I of the borrowed window: from this worker's span copy when it covers
+I, else borrow a span from I and read it, else the scalar borrow."
+  (let ((span (fnn-cold-worker-span worker))
+        (key (list file eoff elen poff plen trailer)))
+    (when (and span (eq (fnn-window-span-token span) token)
+               (eq (fnn-cold-worker-phase worker) :returned)
+               (<= (fnn-window-span-base span) i)
+               (< i (+ (fnn-window-span-base span) (fnn-window-span-len span)))
+               (equal (fnn-window-span-key span) key))
+      (return-from fnn-extent-window-span-octet
+        (values :byte (fn-ew-span-bytesi (- i (fnn-window-span-base span))
+                                         (fnn-window-span-dst span)))))
+    (let ((dst (if span (fnn-window-span-dst span) (create-fn-ew-span))))
+      (multiple-value-bind (word j)
+          (fnn-extent-window-span-at worker token file eoff elen poff plen trailer i dst)
+        (if (eq word :span)
+            (progn
+              (setf (fnn-cold-worker-span worker) (make-fnn-window-span token key i (- j i) dst))
+              (values :byte (fn-ew-span-bytesi 0 dst)))
+            (fnn-extent-window-byte-at worker token file eoff elen poff plen trailer i))))))
+
 (defvar *fnn-extent-window-mode* nil)
 (defvar *fnn-extent-window-worker* nil)
 (defvar *fnn-extent-window-token* nil)
@@ -504,7 +568,7 @@ a job that signalled, cancelled or not.  Nothing here settles or signals."
   "Staged realizer: scalar success or the core's complete cold descriptor."
   (multiple-value-bind (word byte)
       (if *fnn-extent-window-worker*
-          (fnn-extent-window-byte-at *fnn-extent-window-worker* *fnn-extent-window-token*
+          (fnn-extent-window-span-octet *fnn-extent-window-worker* *fnn-extent-window-token*
                                     file eoff elen poff plen trailer i)
         (values :unavailable nil))
     (cond ((eq word :byte) byte)
@@ -565,11 +629,26 @@ tokens of the entries evicted past the bound (the caller releases them)."
         (setq *fnn-extent-window-cache* (subseq *fnn-extent-window-cache* 0 limit))
         evicted))))
 
+(defvar *fnn-extent-cache-span* nil)  ; (entry key base len), guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-cache-span-dst* nil) ; the span's one buffer, guarded-by: *fnn-extent-lock*
+
 (defun fnn-extent-window-cache-byte (file eoff elen poff plen trailer i)
   "A cached window's payload byte I of this exact descriptor, or NIL.  The
 host only selects candidates by the token's own descriptor and requested
-offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at)."
+offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at).  A hit is
+decided as a SPAN (fn-owner-page-window-cache-span-at, KEYSTONE
+fn-owner-page-window-cache-span-at-is-the-cached-bytes): the window's octets
+from I on are copied once into this host's buffer and the octets after I are
+read from the copy, valid while its entry is still in the cache."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (let ((span *fnn-extent-cache-span*)
+          (key (list file eoff elen poff plen trailer)))
+      (when (and span (equal (second span) key)
+                 (<= (third span) i) (< i (+ (third span) (fourth span)))
+                 (member (first span) *fnn-extent-window-cache* :test #'eq))
+        (incf (first *fnn-extent-stats*))
+        (return-from fnn-extent-window-cache-byte
+          (fn-ew-span-bytesi (- i (third span)) *fnn-extent-cache-span-dst*))))
     (dolist (entry *fnn-extent-window-cache* nil)
       (destructuring-bind (token plan window) entry
         (when (and (eq (first token) :window)
@@ -577,6 +656,20 @@ offset; ACL2 decides the hit (fn-owner-page-window-cache-byte-at)."
                    (eql (fifth token) elen) (eql (sixth token) poff)
                    (eql (seventh token) plen) (eql (ninth token) trailer)
                    (integerp (eighth token)) (<= (eighth token) i))
+          (let ((j (and (integerp (nth 5 plan))
+                        (min plen (+ i +fnn-extent-span-capacity+) (+ (eighth token) (nth 5 plan))))))
+            (when (and j (< (1+ i) j))
+              (let ((dst (or *fnn-extent-cache-span-dst*
+                             (setq *fnn-extent-cache-span-dst* (create-fn-ew-span)))))
+                (when (eq (first (fnn-core-page-read-pool 'fn-owner-page-window-cache-span-at
+                                    token plan file eoff elen poff plen trailer i j window dst))
+                          :span)
+                  (setq *fnn-extent-cache-span* (list entry (list file eoff elen poff plen trailer) i (- j i)))
+                  (incf (first *fnn-extent-stats*))
+                  (unless (eq entry (first *fnn-extent-window-cache*))
+                    (setq *fnn-extent-window-cache*
+                          (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
+                  (return (fn-ew-span-bytesi 0 dst))))))
           (destructuring-bind (word byte)
               (fnn-core-page-read-pool 'fn-owner-page-window-cache-byte-at
                                        token plan file eoff elen poff plen trailer i window)
@@ -615,7 +708,8 @@ the job is released.  Values :released (or a stale word) and whether cached."
         (fnn-extent-decoded-storage-retire worker token))
       (setf (fnn-cold-worker-phase worker) :releasing)
       (setf (fnn-cold-worker-decoded worker) nil)
-      (setf (fnn-cold-worker-result worker) nil)
+      (setf (fnn-cold-worker-result worker) nil
+            (fnn-cold-worker-span worker) nil)
       (destructuring-bind (word row &rest ignored)
           (let ((attempt
                   (and cachep (not decoded-attempt) (fnn-extent-window-p token)
@@ -705,7 +799,8 @@ caller then stops the owner with the fault."
         (fnn-extent-decoded-storage-retire worker token))
       (setf (fnn-cold-worker-phase worker) :releasing)
       (setf (fnn-cold-worker-decoded worker) nil)
-      (setf (fnn-cold-worker-result worker) nil)
+      (setf (fnn-cold-worker-result worker) nil
+            (fnn-cold-worker-span worker) nil)
       (destructuring-bind (word row &rest ignored)
         (fnn-core-cold-pool 'fn-owner-page-window-executor-settle-cancelled
                                 (fnn-cold-worker-row worker) token)
@@ -900,6 +995,7 @@ No cancellation, timeout or thread termination releases a job or baseline."
         (fnn-cold-worker-token worker) token
         (fnn-cold-worker-next worker) nil
         (fnn-cold-worker-result worker) nil
+        (fnn-cold-worker-span worker) nil
         (fnn-cold-worker-phase worker) :binding)
   ;; The owning activation retains the exact token before this physical
   ;; executor can run, even if notification subsequently signals.
@@ -1007,6 +1103,7 @@ settlement; the dead executor is never reused for another admitted job."
     (setf (fnn-cold-worker-row worker) row
           (fnn-cold-worker-token worker) nil
           (fnn-cold-worker-result worker) nil
+          (fnn-cold-worker-span worker) nil
           (fnn-cold-worker-phase worker) :idle)
     (when (and (not *fnn-cold-stopping*)
                (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
@@ -1553,6 +1650,56 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 (defun acl2_*1*_acl2::fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
 
+;;; Octet I of the decoded payload, from the generated buffer fn-dlz
+;;; (books/decoded-payload-buffer.lisp, def-representation :scalar
+;;; (:octet-seq fn-octets)).  The decode writes into ACL2's pooled output
+;;; buffer (fnn-pzd-decode-into) and fn-dlz-fill-from, a generated index loop,
+;;; makes fn-dlz hold those octets: no octet list of the decoded payload is
+;;; built.  KEYSTONE fn-dlz-decode-into-is-the-lz-value
+;;; (books/decoded-payload-decode-into.lisp): after an :ok decode, the filled
+;;; buffer is the value A-DURABLE-LZ names; reads are fn-dlz-nth
+;;; (fn-dlz-nth-is-nth).  The buffer holds the last payload read, keyed as
+;;; *fnn-extent-lz-last* is (descriptor identity and the dictionary's EQ
+;;; identity), under the extent lock.  Every call here comes through
+;;; fn-durable-realize-lz-octet, whose ACL2 guard is a natural index; its
+;;; one caller, fn-arena$x-get (books/payload-arena-extent.lisp), has that
+;;; guard.  RULING 1 (2026-10-06, RULINGS-20261006.md) authorises this edit to
+;;; a forbidden-zone file.
+(defvar *fnn-extent-lz-buffer-key* nil)       ; (key . dict) fn-dlz holds, guarded-by: *fnn-extent-lock*
+(defvar *fnn-dlz* nil)
+
+(defun fnn-live-dlz ()
+  (or *fnn-dlz*
+      (setq *fnn-dlz*
+            (or (cdr (assoc 'fn-dlz (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the decoded-payload buffer stobj is not in this image")))))
+
+(defun fnn-extent-lz-buffer-octet (file eoff elen poff plen trailer n dict i)
+  (let ((key (list file eoff elen trailer poff plen n)))
+    (loop
+      (multiple-value-bind (hit octet)
+          (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+            (let ((held *fnn-extent-lz-buffer-key*))
+              (if (and held (equal (car held) key) (eq (cdr held) dict))
+                  (values t (fn-dlz-nth i (fnn-live-dlz)))
+                  (values nil nil))))
+        (when hit (return octet)))
+      (let* ((c (fn-durable-realize-octets file eoff elen poff plen trailer))
+             (r (funcall 'fnn-pzd-decode-into dict c n
+                         (lambda (out)
+                           (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+                             (let ((st (fnn-live-dlz)))
+                               (setq *fnn-extent-lz-buffer-key* nil)
+                               (fn-dlz-fill-from out st)
+                               (setq *fnn-extent-lz-buffer-key* (cons key dict))))))))
+        (unless (eq r :ok)
+          (let ((where (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+                         (incf (third *fnn-extent-stats*))
+                         (fnn-extent-where file poff))))
+            (error 'fnn-extent-fault
+                   :message (format nil "arena-extent-lz-decode: the block at ~a does not decode to its ~a octets"
+                                    where n))))))))
+
 ;;; The arena scalar export consumes this seam. Window mode may only borrow
 ;;; the authenticated returned decoded window; it never falls back to the
 ;;; full-payload realizer. The physical decoded worker installs that leaf.
@@ -1564,8 +1711,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
         (throw 'fnn-extent-window-refused
           (values (fnn-core-cold-single 'fn-owner-page-window-decoded-refusal)
                   nil nil nil)))
-    (fnn-core 'fn-oct-nth i
-      (fn-durable-realize-lz file eoff elen poff compressed trailer decoded dict))))
+    (fnn-extent-lz-buffer-octet file eoff elen poff compressed trailer decoded dict i)))
 
 (defun acl2_*1*_acl2::fn-durable-realize-lz-octet
     (file eoff elen poff compressed trailer decoded dict i)

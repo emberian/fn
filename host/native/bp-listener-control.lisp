@@ -28,9 +28,16 @@
       (finish-output)
       (loop (sleep 1)))))
 
-(defun fnn-bplc-drive (node)
-  "One observed primitive per ACL2 action; accept no session while changing."
+(defun fnn-bplc-drive (node &optional service)
+  "One observed primitive per ACL2 action; accept no session while changing.
+With SERVICE (the drive runs off the owner mutex) each primitive is admitted as
+a live section is: ACL2's fn-fs-section-admit over the service's stopping flag,
+refused with the section's own known refusal once the owner is stopping."
   (loop
+    (when (and service
+               (eq (fn-fs-section-admit :live (fnn-owner-service-stopping service))
+                   :refuse))
+      (fnn-refuse "owner service is stopping"))
     (let* ((action (fnn-core 'fn-bplc-action (fnn-bplc-model node)))
            (kind (first action)))
       (case kind
@@ -88,9 +95,7 @@
         (ignore-errors (fnn-bplc-close-all node))
         (error condition)))))
 
-(defun fnn-bplc-reconfigure (node)
-  (let ((*fnn-bplc-test-change* t))
-    (setf (fnn-bplc-model node)
-          (fnn-owner-core 'fn-owner-bplc-begin (fnn-bplc-model node) (fnn-bplc-mode node)))
-    (fnn-bplc-cut node :configuration-published)
-    (fnn-bplc-drive node)))
+(defun fnn-bplc-begin-locked (node)
+  "Under the owner mutex: ACL2 begins the change of the model."
+  (setf (fnn-bplc-model node)
+        (fnn-owner-core 'fn-owner-bplc-begin (fnn-bplc-model node) (fnn-bplc-mode node))))

@@ -249,6 +249,18 @@
       (fnn-core 'fn-native-control-host-status-exit-code
                 (fnn-hybrid-control-send control request)))))
 
+(defun fnn-hybrid-author-request (generation source ed-signature ml-signature ml-public-path)
+  "ACL2's author request: the one dispatch of `fn-native-hybrid-control-author-encode'
+for `hybrid-author' and for the pattern's :sign step.  SOURCE and the signatures
+are octet vectors or ACL2 octet lists (a list passes through unconsed);
+ML-PUBLIC-PATH is the path string the request names."
+  (fnn-core 'fn-native-hybrid-control-host-author-encode
+            generation
+            (fnn-octet-list source)
+            (fnn-octet-list ed-signature)
+            (fnn-octet-list ml-signature)
+            (fnn-octet-list (fnn-string-octets ml-public-path))))
+
 (defun fnn-command-hybrid-author (args)
   (unless (= (length args) 6)
     (error 'fnn-usage-error
@@ -258,15 +270,13 @@
     (let* ((generation-value
             (fnn-core 'fn-native-hybrid-control-host-uint32 generation))
            (request
-           (fnn-core
-            'fn-native-hybrid-control-host-author-encode
-            generation-value
-            (fnn-octet-list
+            (fnn-hybrid-author-request
+             generation-value
              (fnn-read-regular-bounded
-              source-path (fnn-core 'fn-hsig-host-max-source-octets)))
-            (fnn-hsig-command-read-exact ed-path 64 "Ed25519 signature")
-            (fnn-hsig-command-read-exact ml-path 3309 "ML-DSA-65 signature")
-            (fnn-octet-list (fnn-string-octets ml-public))))
+              source-path (fnn-core 'fn-hsig-host-max-source-octets))
+             (fnn-hsig-command-read-exact ed-path 64 "Ed25519 signature")
+             (fnn-hsig-command-read-exact ml-path 3309 "ML-DSA-65 signature")
+             ml-public))
            (status (fnn-hybrid-control-send control request)))
       ;; ACL2's status word, rendered as `operator post' renders it
       ;; (host/native/operator.lisp fnn-operator-emit-status), so a retry

@@ -26,9 +26,9 @@
       (when *fnn-bpnode-control-pump* (funcall *fnn-bpnode-control-pump*))
       (sleep 1))))
 
-(defun fnn-bpnode-source-decision (view)
+(defun fnn-bpnode-source-decision (owner view)
   "Print ACL2's D23 source decision for VIEW; the host classifies nothing."
-  (let ((line (fnn-owner-core 'fn-owner-bp-source-decision-line view)))
+  (let ((line (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-source-decision-line view)))))
     (when (stringp line)
       (fnn-out "BP node source ~a" line))))
 
@@ -43,11 +43,11 @@
       (incf *fnn-bpnode-test-busy-answers*)
       t)))
 
-(defun fnn-bpnode-refusal-line (view result)
+(defun fnn-bpnode-refusal-line (owner view result)
   "Print ACL2's line for a request VIEW answered RESULT (not accepted):
 its reason class, which ACL2 already returned; the host classifies nothing."
-  (let ((line (fnn-owner-core 'fn-owner-bp-request-refusal-line view result
-                              *fnn-owner-transit-detail*)))
+  (let ((line (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-request-refusal-line
+                                     view result *fnn-owner-transit-detail*)))))
     (when (stringp line)
       (fnn-out "BP node ~a" line))))
 
@@ -59,7 +59,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                                    issuer view node-id)
     (unless (member answer '(:request-accepted :request-duplicate))
       (fnn-bpnode-refusal-line
-       view (case answer
+       owner view (case answer
               (:request-refused :refused)
               (:busy :busy)
               (otherwise :uncertain))))
@@ -67,8 +67,8 @@ its reason class, which ACL2 already returned; the host classifies nothing."
 
 (defun fnn-bpnode-request-result-1
     (owner receipt-root destination policy issuer view node-id)
-  (fnn-bpnode-source-decision view)
-  (unless (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
+  (fnn-bpnode-source-decision owner view)
+  (unless (eq (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-request-trustedp view))) t)
     (return-from fnn-bpnode-request-result-1
       (values :request-refused '(0))))
   (when (fnn-bpnode-test-busy-p)
@@ -86,8 +86,9 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                   (source (seventh view))
                   (dest (eighth view))
                   (result nil)
-                  (receipt nil))
-             (multiple-value-setq (result receipt)
+                  (receipt nil)
+                  (receipt-id nil))
+             (multiple-value-setq (result receipt receipt-id)
                (fnn-quantum-bp
                 owner nil
                 (lambda ()
@@ -95,21 +96,24 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                   ;; Authorize the fresh Store decision against the live
                   ;; owner configuration under serialization.
                   (if (eq (fnn-owner-core 'fn-owner-bp-request-trustedp view) t)
-                      (fnn-bpapp-accept-locked
-                       owner journal inbound-id request node-id identity
-                       (fifth view) source dest)
-                    (values :refused nil)))))
+                      (multiple-value-bind (accepted accepted-receipt)
+                          (fnn-bpapp-accept-locked
+                           owner journal inbound-id request node-id identity
+                           (fifth view) source dest)
+                        (values accepted accepted-receipt
+                                (when (member accepted '(:accepted :duplicate))
+                                  (fnn-core-state
+                                   'fn-bprj-request-receipt-id request))))
+                    (values :refused nil nil)))))
              (case result
                ((:accepted :duplicate)
                 (unless receipt
                   (fnn-fault "BP node committed request has no receipt ADU"))
-                (let ((receipt-id
-                        (fnn-core-state 'fn-bprj-request-receipt-id request)))
-                  (unless (stringp receipt-id)
-                    (fnn-fault "BP node committed request has no receipt ID"))
-                  (values (if (eq result :accepted)
-                              :request-accepted :request-duplicate)
-                          (fnn-octet-list (fnn-string-octets receipt-id)))))
+                (unless (stringp receipt-id)
+                  (fnn-fault "BP node committed request has no receipt ID"))
+                (values (if (eq result :accepted)
+                            :request-accepted :request-duplicate)
+                        (fnn-octet-list (fnn-string-octets receipt-id))))
                (:refused (values :request-refused '(0)))
                ;; BP-R17: the owner deferred (a (:busy reason) plan or the
                ;; dispatcher's (:busy)); the node keeps the row held.
@@ -117,13 +121,13 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                (otherwise (values :uncertain '(0)))))))
       (when journal (fnn-app-journal-close journal)))))
 
-(defun fnn-bpnode-receipt-observations (view)
+(defun fnn-bpnode-receipt-observations (owner view)
   "Signed receipts: the two primitive observations over ACL2's preimage.
 ACL2 (`fn-bpah-receipt-signature-plan') chooses the preimage, the enrolled
 keys and the signatures; the host only asks libsodium and OpenSSL, exactly
 as the transit path does (`fnn-hsig-observe-raw'), and hands the
 observations back.  Nil when there is nothing to observe."
-  (let ((plan (fnn-owner-core 'fn-owner-bp-receipt-signature-plan view)))
+  (let ((plan (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-receipt-signature-plan view)))))
     (when (and (consp plan) (= (length plan) 4))
       (destructuring-bind (preimage ed-key ml-key signatures) plan
         (let* ((observations
@@ -133,19 +137,27 @@ observations back.  Nil when there is nothing to observe."
                 (first observations)
                 (if (consp ml) (first ml) ml)))))))
 
-(defun fnn-bpnode-release-line (view obs)
+(defun fnn-bpnode-release-line (owner view obs)
   "Print ACL2's D23 release verdict for a receipt VIEW; the host decides nothing."
-  (let ((line (fnn-owner-core 'fn-owner-bp-release-line view obs)))
+  (let ((line (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-release-line view obs)))))
     (when (stringp line)
       (fnn-out "BP node release ~a" line))))
 
-(defun fnn-bpnode-receipt-detail (view obs)
+(defun fnn-bpnode-check-detail (detail)
+  (unless (and (fnn-octet-list-p detail) (consp detail)
+               (<= (length detail) 256))
+    (fnn-fault "BP node release detail is not a bounded octet list"))
+  detail)
+
+(defun fnn-bpnode-receipt-detail (owner view obs)
   "ACL2's release verdict for VIEW as the kind-7 delivery detail octets."
-  (let ((detail (fnn-owner-core 'fn-owner-bp-receipt-release-detail view obs)))
-    (unless (and (fnn-octet-list-p detail) (consp detail)
-                 (<= (length detail) 256))
-      (fnn-fault "BP node release detail is not a bounded octet list"))
-    detail))
+  (fnn-bpnode-check-detail
+   (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-receipt-release-detail view obs)))))
+
+(defun fnn-bpnode-receipt-detail-locked (view obs)
+  "The same verdict, for a caller already inside a BP quantum."
+  (fnn-bpnode-check-detail
+   (fnn-owner-core 'fn-owner-bp-receipt-release-detail view obs)))
 
 (defun fnn-bpnode-receipt-result
     (owner workflow-root view configured-peer)
@@ -156,20 +168,21 @@ observations back.  Nil when there is nothing to observe."
   ;; receipt names the exact held obligation.  The kind-7 detail is ACL2's
   ;; verdict, so the FNBS journal keeps it.
   (declare (ignore configured-peer))
-  (fnn-bpnode-source-decision view)
-  (let ((obs (fnn-bpnode-receipt-observations view)))
-    (fnn-bpnode-release-line view obs)
-    (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
+  (fnn-bpnode-source-decision owner view)
+  (let ((obs (fnn-bpnode-receipt-observations owner view)))
+    (fnn-bpnode-release-line owner view obs)
+    (unless (eq (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs))) t)
       (return-from fnn-bpnode-receipt-result
-        (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
-    (fnn-quantum-bp
+        (values :receipt-refused (fnn-bpnode-receipt-detail owner view obs))))
+    (multiple-value-bind (word detail print)
+        (fnn-quantum-bp
      owner nil
      (lambda ()
      ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
      (block receipt
        (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
          (return-from receipt
-           (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
+           (values :receipt-refused (fnn-bpnode-receipt-detail-locked view obs))))
        (let ((journal nil))
          (fnn-unwind-cleanups
               ((block journal-body
@@ -178,18 +191,21 @@ observations back.  Nil when there is nothing to observe."
                                     workflow-root :workflow :owner-mode t))
                 (let ((record (fnn-owner-core
                                'fn-owner-bp-receipt-release-record view obs))
-                      (detail (fnn-bpnode-receipt-detail view obs)))
+                      (detail (fnn-bpnode-receipt-detail-locked view obs)))
                   (unless record
-                    (fnn-out "BP node release refused detail=~a"
-                             (fnn-octets-string (fnn-octets detail)))
+                    ;; The line is printed by the caller, after the section.
                     (return-from journal-body
-                      (values :receipt-refused detail)))
+                      (values :receipt-refused detail t)))
                   (fnn-workflow-commit-receipt-intent
                    journal record
                    (lambda (release)
                      (fnn-bpo-canonical-release owner release)))
                   (values :receipt-accepted detail))))
-           (when journal (fnn-app-journal-close journal)))))))))
+           (when journal (fnn-app-journal-close journal)))))))
+      (when print
+        (fnn-out "BP node release refused detail=~a"
+                 (fnn-octets-string (fnn-octets detail))))
+      (values word detail))))
 
 (defun fnn-bpnode-app-result
     (owner receipt-root workflow-root destination policy issuer view
@@ -261,7 +277,7 @@ observations back.  Nil when there is nothing to observe."
                  ;; PEER-ID is the one-row instance.
                  (list :progress node observation
                        (fnn-core 'fn-bpnp-host-routes
-                                 (fnn-owner-core 'fn-owner-bp-route-table)
+                                 (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-route-table)))
                                  (fnn-bp-eid configured-peer))
                        0)))))
       (unless effects (return-from fnn-bpnode-dispatch-one nil))

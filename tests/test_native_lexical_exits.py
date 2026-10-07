@@ -44,14 +44,20 @@ class NativeLexicalExitTests(unittest.TestCase):
  (declare (ignore args))
  (assert (eq subject 'fn-owner-control-filing-buffer))
  '(:refused :groups))
-(defun fnn-bpnode-source-decision (view) (declare (ignore view)) (incf *observations*))
-(defun fnn-bpnode-receipt-observations (view) (declare (ignore view)) :observations)
-(defun fnn-bpnode-release-line (view obs) (declare (ignore view obs)) (incf *release-lines*))
+(defun fnn-bpnode-source-decision (owner view) (declare (ignore owner view)) (incf *observations*))
+(defun fnn-bpnode-receipt-observations (owner view) (declare (ignore owner view)) :observations)
+(defun fnn-bpnode-release-line (owner view obs) (declare (ignore owner view obs)) (incf *release-lines*))
 (defun fnn-owner-core (subject &rest args)
  (declare (ignore args))
  (assert (eq subject 'fn-owner-bp-receipt-gatep)) nil)
-(defun fnn-bpnode-receipt-detail (view obs) (declare (ignore view obs)) '(7 9))
-(defun fnn-quantum-bp (&rest args) (declare (ignore args)) (error "Refusal entered owner quantum"))
+(defun fnn-bpnode-receipt-detail (owner view obs) (declare (ignore owner view obs)) '(7 9))
+(defvar *quanta* 0)
+;; The gate is read in its own quantum (bp-node's per-read quanta); a second
+;; quantum would be the refusal entering the owner to accept.
+(defun fnn-quantum-bp (owner step thunk)
+ (declare (ignore owner step))
+ (when (> (incf *quanta*) 1) (error "Refusal entered owner quantum"))
+ (funcall thunk))
 '''
         suffix = '''
 (assert (eq (fnn-owner-attempt-filled :owner :mid :payload nil :evidence) :refused))

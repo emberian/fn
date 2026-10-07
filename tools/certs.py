@@ -605,7 +605,14 @@ def book_entries(root: Path, cache: Path, name: str,
     first, then each certification image the image rule allows for it now.
     An entry made in a world the rule no longer allows is never found."""
     found: list[tuple[Path, dict]] = []
-    for world in cert_images.worlds(root.resolve(), name):
+    try:
+        worlds = cert_images.worlds(root.resolve(), name)
+    except cert_images.UnreadableSource as error:
+        # One book the graph cannot read (a parked book over an include a
+        # decision deleted) is this book's unreadable finding, never an
+        # abort of the whole install (FILL-CERTS-INSTALL-DELETED-BOOK).
+        raise UnreadableBook(str(error)) from None
+    for world in worlds:
         key, _ = closure_key(root, name, world)
         found.extend(cached_entries(cache, key, metadata_filter))
     return found
@@ -2577,7 +2584,11 @@ def main(argv: list[str] | None = None) -> int:
         report = status(root, cache)
     for line in report.lines():
         print(line)
-    return 1 if arguments.action == "install-set" and report.artifact_set is None else 0
+    if arguments.action == "install-set" and report.artifact_set is None:
+        return 1
+    # `install` reports a book it cannot read (a deleted include) as a finding
+    # and installs the rest; the finding is still a failure of the command.
+    return 1 if arguments.action == "install" and report.unreadable else 0
 
 
 if __name__ == "__main__":

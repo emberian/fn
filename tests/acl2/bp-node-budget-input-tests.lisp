@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-budget-input")
+(include-book "../../books/defkeystone")
 ; Decimal octets supplied directly, including explicit UTF-8 non-ASCII digits.
 (defconst *bpnb-backoff* '(111 119 110 101 114 45 98 97 99 107 111 102 102 32 53))
 (defconst *bpnb-retry* '(114 101 116 114 121 45 98 117 100 103 101 116 32 51))
@@ -62,3 +63,42 @@
 ; Removal of read bound: ordinary valid short file is accepted.
 (assert-event (and (not (< 256 (len *bpnb-backoff*)))
                    (fn-bpnb-read *bpnb-backoff*)))
+
+; TEETH-62 BEGIN
+; The three PRF keystones of books/bp-node-budget-input.lisp with their teeth (TEETH CONTRACT v1).
+(defteeth fn-bpnb-input-past-read-bound-is-refused
+  :claim (((past-bound (< 256 (len octets))))
+          (not (fn-bpnb-read octets)))
+  :subject fn-bpnb-read
+  :witness ((octets (make-list 257 :initial-element 97)))
+  :breaks ((past-bound ((octets *bpnb-backoff*))))
+  :mutations ((read-as-empty
+               (:conclusion (equal (fn-bpnb-read octets) '(:rows nil nil)))
+               ((octets (make-list 257 :initial-element 97)))
+               :fault "an over-long input read as a file with no rows")))
+
+(defteeth fn-bpnb-installed-backoff-refuses-another-backoff
+  :claim (((installed (second rows)) (is-backoff (equal (car (fn-bpnb-row line nil))
+                       '(111 119 110 101 114 45 98 97 99 107 111 102 102))))
+          (not (fn-bpnb-install-row line rows)))
+  :subject fn-bpnb-install-row
+  :witness ((rows (list :rows 5 3)) (line *bpnb-backoff*))
+  :breaks ((installed ((rows '(:rows nil 3)) (line *bpnb-backoff*)))
+           (is-backoff ((rows '(:rows 5 nil)) (line *bpnb-retry*))))
+  :mutations ((refusal-ignores-rows
+               (:conclusion (not (fn-bpnb-install-row line '(:rows nil nil))))
+               ((rows (list :rows 5 3)) (line *bpnb-backoff*))
+               :fault "the refusal decided as though no row were installed")))
+
+(defteeth fn-bpnb-installed-retries-refuses-another-retries
+  :claim (((installed (third rows)) (is-retries (equal (car (fn-bpnb-row line nil))
+                       '(114 101 116 114 121 45 98 117 100 103 101 116))))
+          (not (fn-bpnb-install-row line rows)))
+  :subject fn-bpnb-install-row
+  :witness ((rows (list :rows 5 3)) (line *bpnb-retry*))
+  :breaks ((installed ((rows '(:rows 5 nil)) (line *bpnb-retry*)))
+           (is-retries ((rows '(:rows nil 3)) (line *bpnb-backoff*))))
+  :mutations ((refusal-ignores-rows
+               (:conclusion (not (fn-bpnb-install-row line '(:rows nil nil))))
+               ((rows (list :rows 5 3)) (line *bpnb-retry*))
+               :fault "the refusal decided as though no row were installed")))

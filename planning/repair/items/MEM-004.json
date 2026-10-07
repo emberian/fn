@@ -1,0 +1,14 @@
+{
+ "category": "performance",
+ "detail": "Measured (clean image, no hook, small preset): after 1,800 POSTs VmRSS 169.2 MB, VmHWM 239.4 MB (r3); after 1,000 POSTs RSS 163.7 / HWM 223.7 (r2). The reopen peaks too: HWM 162.6 vs RSS 126.9 (r3). Source: owner.lisp:7235 sets bytes-consed-between-gcs to fnn-gc-nursery-octets (64 MiB, books/profile-limits.lisp:53 :gc-nursery-mib) for the duration of a publication, and owner.lisp:6884 restores the 8 MiB service trigger; the garbage a publication allocates can pile up to the large trigger. This is a hypothesis for the ~70 MB spike: not yet timed against the checkpoint events. First step: sample VmRSS every 50 ms through the POST run and line the spike up with the OWNER-OPEN/checkpoint lines in owner.stderr. Evidence hbox:/tank/fn/scratch/n-mem/r2/ hbox:/tank/fn/scratch/n-mem/r3/.",
+ "file": "host/native/owner.lisp",
+ "id": "MEM-004",
+ "line": "7235",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem",
+ "state": "open",
+ "title": "peak RSS during POSTs and a checkpoint is 239 MB against a 169 MB steady state: the publication sets the 64 MiB collection trigger while it runs",
+ "updated": "2026-10-06T21:30:00Z"
+}

@@ -12,12 +12,13 @@
 (include-book "../books/store-log-reclaim")
 (include-book "../books/reclaim-instant")
 (include-book "../books/expiry-instant")
-;
-; Loaded here, not left to a bridge's `ld' order: this file uses names
-; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
-; must get them too.  A second `ld' of a file already in the session
-; re-admits identical definitions, which ACL2 accepts as redundant.
-(ld "store-node-host.lisp" :ld-error-action :error)
+; The sibling edge is an include-book, the discipline the account-*/index-*
+; host books already follow for owner-host: certify-book refuses an `ld'
+; (LD-FN is not an embedded event form), so a host file that carries one
+; has never certified.  store-host comes with store-node-host's own
+; include of it.  In a session that ld'd the sibling earlier the include
+; is redundant and loads nothing.
+(include-book "store-node-host")
 
 (defun fn-store-checkpoint-rollover-proposal (fresh-id state)
   (declare (xargs :stobjs state :mode :program))

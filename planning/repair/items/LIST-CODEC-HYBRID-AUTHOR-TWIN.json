@@ -1,0 +1,17 @@
+{
+  "acceptance": "fn-native-hybrid-control-host-author-encode has a buffer twin over the source and signature octets with a KEYSTONE equal to the reference list encoder (fn-native-hybrid-control-author-encode) and defteeth; fnn-hybrid-author-request dispatches it and stops consing lists; tools/list_codec_check.py counts the hybrid-control.lisp site at one fewer and the baseline row is lowered.",
+  "category": "representation",
+  "detail": "fnn-hybrid-author-request (host/native/hybrid-control.lisp) is the one consolidated dispatch of the hybrid author request for hybrid-author and the pattern :sign step. It is consolidated, not twinned: fnn-octet-list over the source file (up to the profile's source bound), the 64-octet Ed25519 and 3309-octet ML-DSA signatures and the key path still conses a list from a byte vector at hybrid-author (a list passes through unconsed from the pattern step). Its buffer twin is owed.",
+  "disposition": "LOCAL",
+  "exposure": "latent",
+  "file": "host/native/hybrid-control.lisp",
+  "id": "LIST-CODEC-HYBRID-AUTHOR-TWIN",
+  "note": "Filed by lane list-codec-twins at 2dc00b595: the dedup removed the pattern.lisp duplicate site, not the cons.",
+  "notes": [],
+  "owner": "unassigned",
+  "severity": "low",
+  "source": "tools/list_codec_check.py",
+  "state": "open",
+  "title": "Hybrid author request: source and signature octets still consed to lists (buffer twin owed)",
+  "updated": "2026-10-06"
+}

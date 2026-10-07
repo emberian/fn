@@ -9,6 +9,7 @@
 ; books/peer-inbound.lisp (the relay refusal).
 (in-package "ACL2")
 (include-book "../../books/nntp-auth")
+(include-book "../../books/defkeystone")
 (include-book "../../books/config-invariants")
 (include-book "../../books/owner-agent")
 (include-book "../../books/native-admin")
@@ -514,3 +515,21 @@
       (not (member-equal "fn.queue" (mdt-view-groups *mdt-as-source*)))
       (not (fn-auth-arts-name-groupp "fn.queue" (mdt-view-arts *mdt-as-source*)))))
 (assert-event (member-equal "fn.test" (mdt-view-groups *mdt-as-source*)))
+
+; TEETH-62 BEGIN
+; fn-auth-view-excludes-unreadable-groups-on-any-connection with its teeth (TEETH CONTRACT v1).
+(defteeth fn-auth-view-excludes-unreadable-groups-on-any-connection
+  :claim (((projected (fn-nntp-session-projected (fn-auth-reader-session as))) (access (fn-auth-access-text as config 1)) (unreadable (not (fn-gac-readablep (fn-auth-access-text as config 1) g))))
+          (and (not (member-equal g (fn-state-groups
+                                      (fn-auth-view-archive as config archive))))
+                (not (fn-auth-arts-name-groupp
+                      g (fn-state-articles (fn-auth-view-archive as config archive))))))
+  :subject fn-auth-view-archive
+  :witness ((as *mdt-as-carol*) (config *mdt-cfg*) (archive *mdt-state*) (g "fn.queue"))
+  :breaks ((projected ((as *mdt-carol-session*) (config *mdt-cfg*) (archive *mdt-state*) (g "fn.queue")))
+           (access ((as *mdt-as-carol*) (config (fn-inj-make-config-closed t *mdt-agent* *mdt-groups* 32768 nil)) (archive *mdt-state*) (g "fn.queue")))
+           (unreadable ((as *mdt-as-carol*) (config *mdt-cfg*) (archive *mdt-state*) (g "fn.test"))))
+  :mutations ((unrestricted-view
+               (:conclusion (not (member-equal g (fn-state-groups archive))))
+               ((as *mdt-as-carol*) (config *mdt-cfg*) (archive *mdt-state*) (g "fn.queue"))
+               :fault "the view judged against the unrestricted archive")))
