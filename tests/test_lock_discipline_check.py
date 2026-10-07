@@ -2609,12 +2609,16 @@ class R7EscalationLoop(unittest.TestCase):
     nil))
 (defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s nil)) :name "t"))
 """
+    ROWS = {"fnn-owner-install-or-end": {"param": "install", "why": "test"}}
     GOOD = """(dolist (c (nreverse conditions))
       (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s c "x")) c "x"))"""
 
     def swallow(self, tail, wrapper=None, rows=None):
         src = (self.WRAPPER if wrapper is None else wrapper) + self.ACTOR % tail
-        raw = dict(CONTRACTS.raw, escalation_wrappers=CONTRACTS.raw.get("escalation_wrappers", {}) if rows is None else rows)
+        # the rows are stated here: other tests edit the shared CONTRACTS in place
+        raw = dict(CONTRACTS.raw, escalation_wrappers=self.ROWS if rows is None else rows,
+                   classifying_escape_functions={"fnn-owner-thread-escape": "test"},
+                   fence_functions=sorted(set(CONTRACTS.raw["fence_functions"]) | {"fnn-exit"}))
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "host" / "native").mkdir(parents=True)
@@ -2624,6 +2628,9 @@ class R7EscalationLoop(unittest.TestCase):
 
     def test_the_escalation_loop_is_recognised(self):
         self.assertEqual(self.swallow(self.GOOD), [])
+
+    def test_an_undeclared_wrapper_is_not_recognised(self):
+        self.assertTrue(self.swallow(self.GOOD, rows={}))
 
     def test_without_the_loop_the_capture_is_a_swallow(self):
         self.assertTrue(self.swallow('(fnn-out "x")'))
