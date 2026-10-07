@@ -46,13 +46,28 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnr-generation-directory (fn-bpnr-plan-generation plan)))
 
+; The base machine a replay from checkpoint CK runs over (S3): BASE with the
+; checkpoint's owed jobs and token counter seeded in, so the replay sees the
+; machine the rotation left.  Without a checkpoint, or over a base that is not
+; a machine, it is BASE itself.
+(defun fn-bpnr-replay-base (ck base)
+  (declare (xargs :guard t))
+  (if (and (fn-bpnr-checkpointp ck) (fn-bpn-machine-statep base))
+      (fn-bpn-state-with base (fn-bpnr-checkpoint-jobs ck)
+                         (fn-bpn-machine-state-contacts base)
+                         (fn-bpn-machine-state-pending base)
+                         (fn-bpn-machine-state-fenced base)
+                         (fn-bpnr-checkpoint-next-token ck))
+    base))
+
 ; The replay of one generation's rows from its checkpoint.  Without a
 ; checkpoint it is exactly fn-bpnf-family-replay-rows.
 (defun fn-bpnr-replay-from (ck rows base)
   (declare (xargs :guard t))
   (if (fn-bpnr-checkpointp ck)
       (fn-bpnf-family-replay-rows-aux
-       rows base (fn-bpnr-checkpoint-held ck) (fn-bpnr-checkpoint-handoffs ck)
+       rows (fn-bpnr-replay-base ck base)
+       (fn-bpnr-checkpoint-held ck) (fn-bpnr-checkpoint-handoffs ck)
        (fn-bpnr-checkpoint-prior ck) (fn-bpnr-checkpoint-next-arrival ck))
     (fn-bpnf-family-replay-rows rows base)))
 
@@ -73,15 +88,21 @@
 
 ; The checkpoint of a replay result, and of the recovery event the host
 ; holds after open (the value `bp-node checkpoint' passes to :rotate).
-(defun fn-bpnr-checkpoint-of-replay (generation replay covered)
+(defun fn-bpnr-checkpoint-of-replay (generation replay covered jobs next-token)
   (declare (xargs :guard t))
   (fn-bpnr-checkpoint generation (fn-bpn-nth 1 replay) (fn-bpn-nth 2 replay)
-                      (fn-bpn-nth 3 replay) (fn-bpn-nth 4 replay) covered))
+                      (fn-bpn-nth 3 replay) (fn-bpn-nth 4 replay) covered
+                      jobs next-token))
 
-(defun fn-bpnr-checkpoint-of-event (event generation)
+; ST is the recovered state the event left: its base machine's owed jobs and
+; token counter are the ones the checkpoint carries (fn-bpnr-checkpoint-of-
+; statep).
+(defun fn-bpnr-checkpoint-of-event (event generation st)
   (declare (xargs :guard t))
-  (fn-bpnr-checkpoint-of-replay generation (fn-bpn-nth 4 event)
-                                (fn-bpn-nth 5 event)))
+  (fn-bpnr-checkpoint-of-replay
+   generation (fn-bpn-nth 4 event) (fn-bpn-nth 5 event)
+   (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+   (fn-bpn-machine-state-next-token (fn-bpnf-base st))))
 
 ; The clock-domain gate's retained evidence (N07): a selected or damaged
 ; checkpoint is retained evidence, so a missing domain record next to it
@@ -90,6 +111,154 @@
   (declare (xargs :guard t))
   (or (fn-bpnf-clock-domain-legacy-evidence namespace-plan sequence-present)
       (not (equal (fn-cbor-ag-car plan) :none))))
+
+;; S3 support.  Replay reads its base only through the profile's limits
+;; (family planning compares against max-jobs and max-octets), so seeding the
+;; base with a checkpoint's jobs and token counter changes no replay result.
+;; The plain statement below is what the recovery keystones are proved over.
+(local
+ (defthm fn-bpnr-held-list-of-state
+   (equal (fn-bpnf-held-list (fn-bpnf-state b held o h c i w e n)) held)
+   :hints (("Goal" :in-theory (union-theories
+                        '(fn-bpnf-state fn-bpnf-state-with-arrival
+                          fn-bpnf-held-list fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons (:e zp) (:e binary-+) (:e natp) (:e not) (:e equal))
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnr-base-of-state
+   (equal (fn-bpnf-base (fn-bpnf-state b held o h c i w e n)) b)
+   :hints (("Goal" :in-theory (union-theories
+                        '(fn-bpnf-state fn-bpnf-state-with-arrival
+                          fn-bpnf-base fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons (:e zp) (:e binary-+) (:e natp) (:e not) (:e equal))
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnr-active-set-ignores-base
+   (equal (fn-bpnf-active-set (fn-bpnf-state b2 held o h c i w e n) a)
+          (fn-bpnf-active-set (fn-bpnf-state b held o h c i w e n) a))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories
+                        '(fn-bpnf-active-set fn-bpnr-held-list-of-state)
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnr-fragment-query-ignores-base
+   (equal (fn-bpnf-fragment-query (fn-bpnf-state b2 held o h c i w e n) a)
+          (fn-bpnf-fragment-query (fn-bpnf-state b held o h c i w e n) a))
+   :rule-classes nil
+   :hints (("Goal" :use fn-bpnr-active-set-ignores-base
+            :in-theory (union-theories
+                        '(fn-bpnf-fragment-query fn-bpnr-held-list-of-state)
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnr-family-plan-ignores-base
+   (implies (and (equal (fn-bpn-machine-state-max-jobs b2) (fn-bpn-machine-state-max-jobs b))
+                 (equal (fn-bpn-machine-state-max-octets b2) (fn-bpn-machine-state-max-octets b)))
+   (equal (fn-bpnf-family-plan (fn-bpnf-state b2 held o h c i w e n) a)
+          (fn-bpnf-family-plan (fn-bpnf-state b held o h c i w e n) a)))
+   :rule-classes nil
+   :hints (("Goal" :use (fn-bpnr-active-set-ignores-base fn-bpnr-fragment-query-ignores-base)
+            :in-theory (union-theories
+                        '(fn-bpnf-family-plan fn-bpnr-held-list-of-state fn-bpnr-base-of-state)
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnr-family-plan-at-ignores-base
+   (implies (and (equal (fn-bpn-machine-state-max-jobs b2) (fn-bpn-machine-state-max-jobs b))
+                 (equal (fn-bpn-machine-state-max-octets b2) (fn-bpn-machine-state-max-octets b)))
+   (equal (fn-bpnf-family-plan-at (fn-bpnf-state b2 held o h c i w e n) a obs)
+          (fn-bpnf-family-plan-at (fn-bpnf-state b held o h c i w e n) a obs)))
+   :rule-classes nil
+   :hints (("Goal" :use (fn-bpnr-active-set-ignores-base fn-bpnr-family-plan-ignores-base)
+            :in-theory (union-theories
+                        '(fn-bpnf-family-plan-at)
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnr-family-apply-ignores-base
+   (implies (and (equal (fn-bpn-machine-state-max-jobs b2) (fn-bpn-machine-state-max-jobs b))
+                 (equal (fn-bpn-machine-state-max-octets b2) (fn-bpn-machine-state-max-octets b)))
+   (equal (fn-bpnf-family-apply (fn-bpnf-state b2 held o h c i w e n) r na)
+          (fn-bpnf-family-apply (fn-bpnf-state b held o h c i w e n) r na)))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-bpnr-active-set-ignores-base
+                                    (a (fn-bpnf-find-arrival (fn-bpn-nth 3 r) held)))
+                         (:instance fn-bpnr-family-plan-ignores-base
+                                    (a (fn-bpnf-find-arrival (fn-bpn-nth 3 r) held))))
+            :in-theory (union-theories
+                        '(fn-bpnf-family-apply fn-bpnr-held-list-of-state)
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnr-family-apply-at-ignores-base
+   (implies (and (equal (fn-bpn-machine-state-max-jobs b2) (fn-bpn-machine-state-max-jobs b))
+                 (equal (fn-bpn-machine-state-max-octets b2) (fn-bpn-machine-state-max-octets b)))
+   (equal (fn-bpnf-family-apply-at (fn-bpnf-state b2 held o h c i w e n) r na)
+          (fn-bpnf-family-apply-at (fn-bpnf-state b held o h c i w e n) r na)))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-bpnr-family-plan-at-ignores-base
+                                    (a (fn-bpnf-find-arrival (fn-bpn-nth 3 r) held))
+                                    (obs (fn-bpn-nth 7 r)))
+                         fn-bpnr-family-apply-ignores-base)
+            :in-theory (union-theories
+                        '(fn-bpnf-family-apply-at fn-bpnr-held-list-of-state)
+                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-bpnr-state-with-keeps-limits
+   (implies (fn-bpn-machine-statep b)
+            (and (equal (fn-bpn-machine-state-max-jobs (fn-bpn-state-with b j c p f tk))
+                        (fn-bpn-machine-state-max-jobs b))
+                 (equal (fn-bpn-machine-state-max-octets (fn-bpn-state-with b j c p f tk))
+                        (fn-bpn-machine-state-max-octets b))))))
+
+(local
+ (defthm fn-bpnr-family-apply-at-ignores-seeded-jobs
+   (implies (fn-bpn-machine-statep b)
+   (equal (fn-bpnf-family-apply-at (fn-bpnf-state (fn-bpn-state-with b j c p f tk) held o h cc i w e n) r na)
+          (fn-bpnf-family-apply-at (fn-bpnf-state b held o h cc i w e n) r na)))
+   :hints (("Goal" :use ((:instance fn-bpnr-family-apply-at-ignores-base
+                                    (b2 (fn-bpn-state-with b j c p f tk))
+                                    (c cc))
+                         fn-bpnr-state-with-keeps-limits)
+            :in-theory (disable fn-bpnr-state-with-keeps-limits)))))
+
+(defthm fn-bpnr-replay-aux-ignores-seeded-jobs
+  (implies (fn-bpn-machine-statep b)
+           (equal (fn-bpnf-family-replay-rows-aux rows (fn-bpn-state-with b j c p f tk) held handoffs prior na)
+                  (fn-bpnf-family-replay-rows-aux rows b held handoffs prior na)))
+  :hints (("Goal" :induct (fn-bpnf-family-replay-rows-aux rows b held handoffs prior na)
+           :do-not '(generalize fertilize eliminate-destructors)
+           :in-theory (union-theories '(fn-bpnf-family-replay-rows-aux fn-bpnr-family-apply-at-ignores-seeded-jobs fn-bpnr-state-with-keeps-limits)
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-bpnr-replay-from-is-unseeded
+  (equal (fn-bpnr-replay-from ck rows base)
+         (if (fn-bpnr-checkpointp ck)
+             (fn-bpnf-family-replay-rows-aux
+              rows base (fn-bpnr-checkpoint-held ck)
+              (fn-bpnr-checkpoint-handoffs ck) (fn-bpnr-checkpoint-prior ck)
+              (fn-bpnr-checkpoint-next-arrival ck))
+           (fn-bpnf-family-replay-rows rows base)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnr-replay-from fn-bpnr-replay-base
+                         fn-bpnr-replay-aux-ignores-seeded-jobs)
+                       (theory 'minimal-theory)))))
+
+;; S3.  The base a replay from a checkpoint runs over carries the jobs and the
+;; token counter the checkpoint holds.
+(defthm fn-bpnr-replay-base-seeds-checkpoint
+  (implies (and (fn-bpnr-checkpointp ck) (fn-bpn-machine-statep base))
+           (and (equal (fn-bpn-machine-state-jobs (fn-bpnr-replay-base ck base))
+                       (fn-bpnr-checkpoint-jobs ck))
+                (equal (fn-bpn-machine-state-next-token (fn-bpnr-replay-base ck base))
+                       (fn-bpnr-checkpoint-next-token ck))))
+  :hints (("Goal" :in-theory (union-theories
+                       '(fn-bpnr-replay-base fn-bpn-state-with)
+                       (union-theories (theory 'ground-zero)
+                                       (theory 'fn-bpn-machine-state-internals))))))
 
 ; ---------------------------------------------------------------------------
 ; KEYSTONE (recovery from a checkpoint).  Take any recovery authority the
@@ -108,7 +277,7 @@
                 (fn-bpnr-checkpointp ck1)
                 (equal ck1 (fn-bpnr-checkpoint-of-replay
                             generation (fn-bpnr-replay-from ck0 rows0 base)
-                            covered)))
+                            covered jobs next-token)))
            (equal (fn-bpnr-replay-from ck1 suffix base)
                   (fn-bpnr-replay-from ck0 (append rows0 suffix) base)))
   :hints (("Goal" :do-not-induct t
@@ -164,7 +333,7 @@
                             (fn-bpnr-replay-from
                              (fn-bpnr-plan-checkpoint plan0) rows0
                              (fn-bpnf-base st))
-                            covered))
+                            covered jobs next-token))
                 (fn-bpnr-checkpoint-octets ck1 budget))
            (equal (fn-bpnr-recover-auto-event
                    st base-records sequence-ready suffix
@@ -233,6 +402,7 @@
                          fn-bpnr-checkpoint fn-bpnr-checkpoint-generation
                          fn-bpnr-checkpoint-held fn-bpnr-checkpoint-handoffs
                          fn-bpnr-checkpoint-next-arrival fn-bpnr-checkpoint-covered
+                         fn-bpnr-checkpoint-jobs fn-bpnr-checkpoint-next-token
                          fn-bpn-nth-is-nth-on-true-lists
                          nth len true-listp car-cons cdr-cons
                          (:e natp) (:e zp) (:e binary-+) (:e unary--) (:e len)
@@ -247,11 +417,16 @@
        (equal (fn-bpnr-checkpoint-prior (fn-bpnr-rotation-checkpoint ck e))
               (cons e 0))
        (equal (fn-bpnr-checkpoint-next-arrival (fn-bpnr-rotation-checkpoint ck e))
-              (fn-bpnr-checkpoint-next-arrival ck)))
+              (fn-bpnr-checkpoint-next-arrival ck))
+       (equal (fn-bpnr-checkpoint-jobs (fn-bpnr-rotation-checkpoint ck e))
+              (fn-bpnr-checkpoint-jobs ck))
+       (equal (fn-bpnr-checkpoint-next-token (fn-bpnr-rotation-checkpoint ck e))
+              (fn-bpnr-checkpoint-next-token ck)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpnr-rotation-checkpoint fn-bpnr-checkpoint
                                 fn-bpnr-checkpoint-held fn-bpnr-checkpoint-handoffs
                                 fn-bpnr-checkpoint-prior
+                                fn-bpnr-checkpoint-jobs fn-bpnr-checkpoint-next-token
                                 fn-bpnr-checkpoint-next-arrival fn-bpn-nth fn-cbor-ag-car
                                 car-cons cdr-cons (:e zp) (:e natp) (:e not)
                                 (:e binary-+))
@@ -267,7 +442,7 @@
                    (fn-bpnr-checkpoint-next-arrival ck))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
-                       '(fn-bpnr-replay-from
+                       '(fn-bpnr-replay-from-is-unseeded
                          fn-bpnr-rotation-checkpoint-is-a-checkpoint
                          fn-bpnr-rotation-checkpoint-fields)
                        (theory 'minimal-theory)))))
@@ -288,7 +463,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
                        '(fn-bpnr-replay-from-rotation-checkpoint
-                         fn-bpnr-replay-from fn-bpnr-replay-aux-of-nil
+                         fn-bpnr-replay-from-is-unseeded fn-bpnr-replay-aux-of-nil
                          update-nth car-cons cdr-cons (:e zp) (:e natp)
                          (:e binary-+) (:e unary--))
                        (theory 'minimal-theory)))))
@@ -320,7 +495,7 @@
                             (next-arrival (fn-bpnr-checkpoint-next-arrival ck))))
            :in-theory (union-theories
                        '(fn-bpnr-replay-from-rotation-checkpoint
-                         fn-bpnr-replay-from)
+                         fn-bpnr-replay-from-is-unseeded)
                        (theory 'minimal-theory)))))
 
 (defthm fn-bpnr-reopen-from-rotation-checkpoint
@@ -358,7 +533,7 @@
            :in-theory (union-theories
                        '(fn-bpnr-recover-auto-event fn-bpnr-plan-checkpoint
                          fn-bpnr-replay-from-rotation-checkpoint-nil
-                         fn-bpnr-replay-from fn-bpnr-replay-aux-of-nil
+                         fn-bpnr-replay-from-is-unseeded fn-bpnr-replay-aux-of-nil
                          fn-cbor-ag-car fn-bpn-nth update-nth max nfix
                          car-cons cdr-cons (:e len) (:e zp) (:e natp) (:e equal)
                          (:e binary-+) (:e unary--) (:e not) (:e fn-bpn-nth)
@@ -384,7 +559,7 @@
                        (theory 'ground-zero)))))
 
 (defthm fn-bpnr-checkpoint-of-replay-prior
-  (equal (fn-bpnr-checkpoint-prior (fn-bpnr-checkpoint-of-replay g replay c))
+  (equal (fn-bpnr-checkpoint-prior (fn-bpnr-checkpoint-of-replay g replay c j nt))
          (fn-bpn-nth 3 replay))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpnr-checkpoint-prior fn-bpnr-checkpoint-of-replay
@@ -440,7 +615,7 @@
                 (equal (car (fn-bpnr-replay-from ck0 rows0 base)) :ready)
                 (equal ck1 (fn-bpnr-checkpoint-of-replay
                             generation (fn-bpnr-replay-from ck0 rows0 base)
-                            covered))
+                            covered jobs next-token))
                 (fn-bpnr-checkpointp ck1)
                 (natp e)
                 (or (null (fn-bpnr-checkpoint-prior ck1))
@@ -478,7 +653,7 @@
                             generation
                             (fn-bpnr-replay-from (fn-bpnr-plan-checkpoint plan0)
                                                  rows0 (fn-bpnf-base st))
-                            covered))
+                            covered jobs next-token))
                 (fn-bpnr-checkpointp ck1)
                 (natp e)
                 (or (null (fn-bpnr-checkpoint-prior ck1))
@@ -526,7 +701,7 @@
                             generation
                             (fn-bpnr-replay-from (fn-bpnr-plan-checkpoint plan0)
                                                  rows0 (fn-bpnf-base st))
-                            covered))
+                            covered jobs next-token))
                 (fn-bpnr-checkpointp ck1))
            (or (null (fn-bpnr-checkpoint-prior ck1))
                (< (car (fn-bpnr-checkpoint-prior ck1))
@@ -550,7 +725,7 @@
                             generation
                             (fn-bpnr-replay-from (fn-bpnr-plan-checkpoint plan0)
                                                  rows0 (fn-bpnf-base st))
-                            covered))
+                            covered jobs next-token))
                 (fn-bpnr-checkpointp ck1)
                 (natp e)
                 (<= (nfix (fn-bpnf-epoch st)) e))
@@ -603,7 +778,7 @@
                               (fn-bpnr-replay-from
                                (fn-bpnr-plan-checkpoint plan0) rows0
                                (fn-bpnf-base st))
-                              covered))
+                              covered jobs next-token))
                   (fn-bpnr-checkpointp ck1)
                   (fn-bpnr-checkpoint-octets rck budget)
                   (fn-bpnr-rows-start-after suffix (cons e 0)))
@@ -678,7 +853,7 @@
                               (fn-bpnr-replay-from
                                (fn-bpnr-plan-checkpoint plan0) rows0
                                (fn-bpnf-base st))
-                              covered))
+                              covered jobs next-token))
                   (fn-bpnr-checkpointp ck1)
                   (equal new (fn-bpnr-checkpoint-octets
                               (fn-bpnr-rotation-checkpoint ck1 e) budget))
@@ -743,6 +918,60 @@
                         (:e zp) (:e natp) (:e not) (:e binary-+)
                         (:e fn-cbor-ag-car) (:e fn-bpn-nth) (:e equal)
                         (:e car) (:e cdr) fn-cbor-ag-car))))
+
+;; KEYSTONE (S2, the refusal direction).  A checkpoint that does not carry the
+;; state's owed jobs and token counter is refused: the machine answers
+;; :rotation-refused, so a rotation that drops owed work is never proposed.
+(defthm fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work
+  (implies (or (not (equal (fn-bpnr-checkpoint-jobs ck)
+                           (fn-bpn-machine-state-jobs (fn-bpnf-base st))))
+               (not (equal (fn-bpnr-checkpoint-next-token ck)
+                           (fn-bpn-machine-state-next-token (fn-bpnf-base st)))))
+           (equal (car (car (fn-bpnf-answer-effects
+                             (fn-bpnp-rotate-step st generation ck))))
+                  :rotation-refused))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn-bpnp-rotate-step fn-bpnr-checkpoint-of-statep
+                        fn-bpnf-answer fn-bpnf-answer-effects fn-bpn-nth
+                        car-cons cdr-cons (:e zp) (:e natp) (:e not)
+                        (:e binary-+) (:e fn-cbor-ag-car) (:e fn-bpn-nth)
+                        (:e equal) (:e car) (:e cdr) fn-cbor-ag-car))))
+
+;; KEYSTONE (S4: a rotation of a state that owes jobs).  If the machine
+;; proposes the publication, then recovery from the file it publishes, read
+;; at the machine's depth budget, runs over a base machine whose jobs and
+;; token counter are the rotating state's own, whatever fresh base (BASE0)
+;; the recovery starts from.  The owed work is in the file; a rotation does
+;; not drop it.
+(defthm fn-bpnp-rotation-recovery-seeds-owed-jobs
+  (implies (and (equal (car (car (fn-bpnf-answer-effects (fn-bpnp-rotate-step st generation ck)))) :persist-checkpoint)
+                (fn-bpn-machine-statep base0))
+           (and (equal (fn-bpn-machine-state-jobs
+                        (fn-bpnr-replay-base (fn-bpnr-plan-checkpoint (fn-bpnr-selection-plan t (fn-bpnr-checkpoint-octets (fn-bpn-nth 4 (car (fn-bpnf-answer-effects (fn-bpnp-rotate-step st generation ck)))) (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))) (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) base0))
+                       (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                (equal (fn-bpn-machine-state-next-token
+                        (fn-bpnr-replay-base (fn-bpnr-plan-checkpoint (fn-bpnr-selection-plan t (fn-bpnr-checkpoint-octets (fn-bpn-nth 4 (car (fn-bpnf-answer-effects (fn-bpnp-rotate-step st generation ck)))) (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))) (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) base0))
+                       (fn-bpn-machine-state-next-token (fn-bpnf-base st)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnp-rotate-step-proposes-only-own-projection)
+                 (:instance fn-bpnr-selection-plan-of-octets
+                            (ck (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+                            (budget (fn-bpnr-depth-budget
+                                     (fn-bpn-machine-state-max-jobs
+                                      (fn-bpnf-base st)))))
+                 (:instance fn-bpnr-rotation-checkpoint-is-a-checkpoint
+                            (e (fn-bpnf-epoch st)))
+                 (:instance fn-bpnr-rotation-checkpoint-fields
+                            (e (fn-bpnf-epoch st)))
+                 (:instance fn-bpnr-replay-base-seeds-checkpoint
+                            (ck (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+                            (base base0)))
+           :in-theory (union-theories
+                       '(fn-bpnr-checkpoint-of-statep
+                         fn-bpnp-rotation-quiescentp fn-frame-natp
+                         fn-bpnr-plan-checkpoint-of-selected)
+                       (theory 'minimal-theory)))))
 
 ;; The credit reset (only a :durable answer for the issued, pending
 ;; checkpoint operation sets the count to zero) is exercised by the N16
