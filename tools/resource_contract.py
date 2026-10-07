@@ -204,7 +204,7 @@ ROWS: tuple[Row, ...] = (
                  "planning/evidence/serve-depth-2026-09-28.md",
                  "planning/evidence/peer-list-depth-2026-09-28.md")),
     Row("S1b", "the depth debt driven to zero, and raw host Lisp linted",
-        records=("tools/raw_depth_check.py", "tools/raw_depth_baseline.json")),
+        records=("tools/depth_check.py", "tools/depth_baseline.json")),
     Row("S2", "every thread's control stack is one profile constant; exhaustion is a fault",
         theorems=(("books/heap-reservation", "fn-heap-reserve-decide-holds-every-thread-the-node-runs"),),
         proofs=("PRF-198",)),

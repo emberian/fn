@@ -1016,7 +1016,7 @@ not on this tree yet; its citations are checked once they land.
 | W10 | `books/public-exposure`: `fn-exp-charge-bounds-steps-per-quantum`, `fn-exp-charge-waits-and-never-closes` | PRF-161 | none |  |
 | W11 | `books/consumer-wait`: `fn-cwait-capacity-is-positive` | none | none |  |
 | S1 | none (measured or open) | none | `tools/depth_check.py`, `tools/depth_baseline.json`, `planning/evidence/open-depth-2026-09-28.md`, `planning/evidence/serve-depth-2026-09-28.md`, `planning/evidence/peer-list-depth-2026-09-28.md` |  |
-| S1b | none (measured or open) | none | `tools/raw_depth_check.py`, `tools/raw_depth_baseline.json` |  |
+| S1b | none (measured or open) | none | `tools/depth_check.py`, `tools/depth_baseline.json` |  |
 | S2 | `books/heap-reservation`: `fn-heap-reserve-decide-holds-every-thread-the-node-runs` | PRF-198 | none |  |
 | T1 | `books/owner-tls-prefix`: `fn-own-read-tls-prefix-consumed-is-bounded`; `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded` | PRF-213, PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md`, `planning/evidence/tls-reload-2026-09-26.md` |  |
 | C1 | `books/owner-time-model`: `fn-otm-stall-tells-no-member-its-outcome`, `fn-otm-shed-iff-slow`, `fn-otm-wait-stays-within-the-stall`, `fn-otm-f4w-stall-within-h`, `fn-otm-barrier-reader-bound`; `books/owner-batch`: `fn-owb-fence-failed-answers-uncertain` | PRF-311, PRF-255 | `planning/evidence/time-model-2026-09-27.md`, `planning/evidence/time-model-2-2026-09-27.md` |  |
@@ -1049,10 +1049,10 @@ Constants the rows quote, read from the books that define them.
 | `*fn-otm-cadence-default-ms*` | 1,000 | ms, the committer's clock cadence | `books/owner-time-model.lisp` |
 | `:stack-kib` | 1,024 | KiB, every thread's control stack | `books/profile-limits.lisp` |
 | `:tls-limit` | 65,536 | symbols, SBCL thread-local storage (not Transport Layer Security) | `books/profile-limits.lisp` |
-| `:run-tls-limit` | 16,384 | symbols, SBCL thread-local storage the saved launcher runs at | `books/profile-limits.lisp` |
+| `:run-tls-limit` | 20,480 | symbols, SBCL thread-local storage the saved launcher runs at | `books/profile-limits.lisp` |
 | `:max-connections` | 32 | served connections, default | `books/profile-limits.lisp` |
 | `:control-clients` | 16 | control clients | `books/profile-limits.lisp` |
-| `:gc-nursery-mib` | 64 | MiB, the collector's nursery | `books/profile-limits.lisp` |
+| `:gc-nursery-mib` | 8 | MiB, the collector's nursery | `books/profile-limits.lisp` |
 | `:fixed-threads` | 12 | threads the node always runs | `books/profile-limits.lisp` |
 
 The small preset (`*fn-heap-small-request*`, books/heap-figure.lisp);
