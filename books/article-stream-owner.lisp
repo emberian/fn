@@ -450,32 +450,40 @@
                            (eq (fn-ast-at 9 selection) :selected)) "423 withdrawn")
                      (t "423 no article with that number")))))))))
 
+;; The READY decision over the selection state NEXT the step reached: it reads
+;; only NEXT's outcome fields (mode, number, group, phase, article: fn-asx-outcome)
+;; and CAPTURE's other fields (books/article-stream-owner-bridge.lisp states it).
+(defun fn-asto-selection-ready-on (oc capture next fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (cond
+   ((and (eq (fn-ast-at 9 next) :selected)
+         (member-eq (fn-ast-at 1 next) '(:withdrawn :withdrawn-msgid)))
+    (fn-asto-selection-missing oc (fn-asto-capture-with-selection capture next nil)))
+   ((eq (fn-ast-at 9 next) :selected)
+    (let* ((article (fn-ast-at 5 next))
+           (msgidp (eq (fn-ast-at 1 next) :msgid))
+           (selection (list article (fn-ast-at 3 next) (not msgidp)
+                             (and (not msgidp) (fn-ast-at 2 next))))
+           (capture2 (fn-asto-capture-with-selection capture selection
+                        (fn-asto-payload-preflight article fn-arena))))
+      (mv :yield oc (list (list :article-preflight capture2)))))
+   ((eq (fn-ast-at 9 next) :missing)
+    (if (and (member-eq (fn-ast-at 1 next) '(:number :msgid)) (consp (fn-ast-at 7 capture)))
+        (mv :yield oc (list (list :article-preflight
+          (fn-asto-capture-with-selection capture
+            (fn-ast-select-state
+              (if (eq (fn-ast-at 1 next) :msgid) :withdrawn-msgid :withdrawn)
+              (fn-ast-at 2 next) (fn-ast-at 3 next) (fn-ast-at 7 capture) nil nil nil 0
+              (if (eq (fn-ast-at 1 next) :msgid) :msgid-next :next)) nil))))
+      (fn-asto-selection-missing oc (fn-asto-capture-with-selection capture next nil))))
+   (t (mv :yield oc (list (list :article-preflight
+                        (fn-asto-capture-with-selection capture next nil)))))))
+
 (defun fn-asto-selection-ready (oc capture fuel fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((next (fn-ast-select-step (fn-ast-at 2 capture) (nfix fuel))))
-    (cond
-     ((and (eq (fn-ast-at 9 next) :selected)
-           (member-eq (fn-ast-at 1 next) '(:withdrawn :withdrawn-msgid)))
-      (fn-asto-selection-missing oc (fn-asto-capture-with-selection capture next nil)))
-     ((eq (fn-ast-at 9 next) :selected)
-      (let* ((article (fn-ast-at 5 next))
-             (msgidp (eq (fn-ast-at 1 next) :msgid))
-             (selection (list article (fn-ast-at 3 next) (not msgidp)
-                               (and (not msgidp) (fn-ast-at 2 next))))
-             (capture2 (fn-asto-capture-with-selection capture selection
-                          (fn-asto-payload-preflight article fn-arena))))
-        (mv :yield oc (list (list :article-preflight capture2)))))
-     ((eq (fn-ast-at 9 next) :missing)
-      (if (and (member-eq (fn-ast-at 1 next) '(:number :msgid)) (consp (fn-ast-at 7 capture)))
-          (mv :yield oc (list (list :article-preflight
-            (fn-asto-capture-with-selection capture
-              (fn-ast-select-state
-                (if (eq (fn-ast-at 1 next) :msgid) :withdrawn-msgid :withdrawn)
-                (fn-ast-at 2 next) (fn-ast-at 3 next) (fn-ast-at 7 capture) nil nil nil 0
-                (if (eq (fn-ast-at 1 next) :msgid) :msgid-next :next)) nil))))
-        (fn-asto-selection-missing oc (fn-asto-capture-with-selection capture next nil))))
-     (t (mv :yield oc (list (list :article-preflight
-                          (fn-asto-capture-with-selection capture next nil))))))))
+  (fn-asto-selection-ready-on oc capture
+                              (fn-ast-select-step (fn-ast-at 2 capture) (nfix fuel))
+                              fn-arena))
 
 ; Finish decides both the session and READY plan. No host parser, reply line,
 ; or framing verdict participates. The connection/configuration comparison
