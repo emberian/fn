@@ -140,16 +140,22 @@ def tokens(text: str):
             i = end
 
 
-def code_only(text: str) -> str:
-    """TEXT with `;' comments removed up to (not including) the newline,
-    and each `#| |#' block and each string literal replaced by one space.
-    Character literals and escaped symbols are code and are kept."""
+def code_only(text: str, strings: str | None = " ") -> str:
+    """TEXT with `;' comments removed up to (not including) the newline and
+    each `#| |#' block replaced by one space.  Each string literal is
+    replaced by STRINGS (one space by default; '""' keeps a string's place
+    as an empty string; None keeps the literal).  Character literals and
+    escaped symbols are code and are kept."""
     out, last = [], 0
     for kind, start, end in tokens(text):
-        if kind == "comment" or kind == "string":
+        if kind == "comment":
             out.append(text[last:start])
-            if kind == "string" or text.startswith("#|", start):
+            if text.startswith("#|", start):
                 out.append(" ")
+            last = end
+        elif kind == "string" and strings is not None:
+            out.append(text[last:start])
+            out.append(strings)
             last = end
     out.append(text[last:])
     return "".join(out)

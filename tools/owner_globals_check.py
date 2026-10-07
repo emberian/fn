@@ -48,6 +48,7 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from tools import ratchet  # noqa: E402
+from tools import lisp_source  # noqa: E402
 BASELINE = ROOT / "tools" / "owner_globals_baseline.json"
 HOST_DIRS = ("host",)
 ACCESSOR = re.compile(r"(?:^|[\s(])[A-Za-z0-9*+/<>=!?.-]*-global\s+'(fn-owner-[a-z0-9*+/<>=!?.-]*)",
@@ -55,35 +56,9 @@ ACCESSOR = re.compile(r"(?:^|[\s(])[A-Za-z0-9*+/<>=!?.-]*-global\s+'(fn-owner-[a
 
 
 def strip_comments_and_strings(text):
-    """The source with `;' comments, `#|...|#' blocks and string contents blanked."""
-    out = []
-    i, n = 0, len(text)
-    while i < n:
-        c = text[i]
-        if c == ";":
-            j = text.find("\n", i)
-            i = n if j < 0 else j
-            continue
-        if text.startswith("#|", i):
-            depth, i = 1, i + 2
-            while i < n and depth:
-                if text.startswith("#|", i):
-                    depth, i = depth + 1, i + 2
-                elif text.startswith("|#", i):
-                    depth, i = depth - 1, i + 2
-                else:
-                    i += 1
-            continue
-        if c == '"':
-            j = i + 1
-            while j < n and text[j] != '"':
-                j += 2 if text[j] == "\\" else 1
-            out.append('""')
-            i = j + 1
-            continue
-        out.append(c)
-        i += 1
-    return "".join(out)
+    """The source with `;' comments and `#|...|#' blocks removed and each
+    string literal read as an empty one (tools/lisp_source.py)."""
+    return lisp_source.code_only(text, strings='""')
 
 
 def globals_of(text):
