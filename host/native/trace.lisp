@@ -510,6 +510,16 @@ ACL2's accessors); both are freed together by `fnn-trace-reset'."
                       ;; takes the previous traced call's outcome.
                       :skew (and (fnn-developer-selector "FN_NATIVE_TEST_TRACE_SKEW") t))))
 
+(defun fnn-trace-config-ring-octets (config-octets)
+  "The ring octets ACL2's plan of CONFIG-OCTETS' [trace] table commits (0 for
+none, and for a table the start will refuse by name)."
+  (if config-octets
+      (fnn-core 'fn-dtrace-config-ring-octets (fnn-octet-list config-octets)
+                (if (fnn-developer-image-p) :developer :production))
+    0))
+
+(defvar *fnn-heap-trace-ring-octets*)
+
 (defun fnn-trace-decide-plan (config-octets)
   "At `run': ACL2's plan of the profile's [trace] table.  A refusal stops the
 start by name; a plan that starts on starts the ring before anything listens."
@@ -519,7 +529,8 @@ start by name; a plan that starts on starts the ring before anything listens."
          (kind (fnn-core 'fn-dtrace-plan-kind plan)))
     (when (eq kind :refused)
       (fnn-refuse "the [trace] table is refused: ~(~a~)" (fnn-core 'fn-dtrace-plan-refusal plan)))
-    (setq *fnn-trace-plan* plan)
+    (setq *fnn-trace-plan* plan
+          *fnn-heap-trace-ring-octets* (fnn-core 'fn-dtrace-ring-octets plan))
     (when (and (eq kind :plan) (fnn-core 'fn-dtrace-plan-start-p plan))
       (fnn-trace-turn-on plan))
     plan))

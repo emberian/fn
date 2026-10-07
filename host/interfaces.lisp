@@ -22,6 +22,7 @@
 (include-book "../books/definterface")
 (include-book "../books/decision-trace-points") ; the projections :trace names
 (include-book "../books/decision-trace-config") ; the [trace] table's plan
+(include-book "../books/decision-trace-reservation") ; the ring's place in the reservation
 (include-book "../books/decision-trace-control") ; trace on|off|drain, kinds 26 and 27
 ; Keystones the declarations below name, in books no host file otherwise
 ; brings into the image world (decision-keystones-5; host_check --books).
@@ -6090,6 +6091,17 @@
 (definterface fn-dtrace-plan-allocation :class :common-lisp-compliant)
 (definterface fn-dtrace-plan-start-p :class :common-lisp-compliant)
 (definterface fn-dtrace-plan-rss-every :class :common-lisp-compliant)
+(definterface fn-dtrace-ring-octets
+  :class :common-lisp-compliant
+  :keystones (fn-dtrace-ring-octets-natp))
+(definterface fn-dtrace-config-ring-octets
+  :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
+  :keystones (fn-dtrace-no-table-no-ring))
+(definterface fn-dtrace-extend-reservation
+  :class :common-lisp-compliant
+  :keystones (fn-dtrace-no-ring-leaves-the-reservation
+              fn-dtrace-extended-reservation-holds-the-ring))
 (definterface fn-dtrace-verb
   :class :common-lisp-compliant
   :keystones (fn-dtrace-verb-never-enables-without-a-plan
