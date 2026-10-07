@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint-host.lisp",
+ "id": "PCK-ADOPT-VIEW-INDEX",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pck-host",
+ "state": "open",
+ "title": "fn-pck-catalog-open-is-the-load premise (PCK-ADOPT-LOAD) takes the same view-index for the prefix load and the full load; the withdrawal view depends on the whole history, so the writer must carry the index or the premise must be restated per S.",
+ "updated": "2026-10-07T12:00:00Z"
+}
