@@ -60,6 +60,11 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-crow-dir-pages-of (fn-pck-crow-rows h)))
 
+; A crow row carries MSGID (the held row it decodes to does).
+(defun fn-cpg-hitp (msgid row)
+  (declare (xargs :guard t :verify-guards nil))
+  (equal msgid (fn-record-msgid (fn-cp-row-held row))))
+
 ; The candidates whose row, read through the pool, carries MSGID: the
 ; (mv seqs res fills) of the old fn-cat$p-confirm, over the pages.
 (defun fn-cpg-msgid-loop (msgid cands cnt dpages rpages res frames fills acc)
@@ -67,7 +72,7 @@
   (if (consp cands)
       (if (< (car cands) cnt)
           (mv-let (row res fills) (fn-crow-read-indexed (car cands) dpages rpages res frames fills)
-            (if (equal msgid (fn-record-msgid (fn-cp-row-held row)))
+            (if (fn-cpg-hitp msgid row)
                 (fn-cpg-msgid-loop msgid (cdr cands) cnt dpages rpages res frames fills (cons (car cands) acc))
               (fn-cpg-msgid-loop msgid (cdr cands) cnt dpages rpages res frames fills acc)))
         (fn-cpg-msgid-loop msgid (cdr cands) cnt dpages rpages res frames fills acc))
@@ -152,7 +157,7 @@
                   (revappend acc (fn-mpxt-confirm msgid cands h))))
   :hints (("Goal" :induct (fn-cpg-msgid-loop msgid cands (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h)
                                              res frames fills acc)
-           :in-theory (e/d (fn-mpxt-hitp fn-mpx-below-p)
+           :in-theory (e/d (fn-mpxt-hitp fn-mpx-below-p fn-cpg-hitp)
                            (fn-cp-row-held fn-cp-row-of fn-cp-escapedp fn-cp-smallp fn-cp-tree-of
                             fn-crow-read-indexed fn-cpg-dir-pages fn-pck-cat-pages fn-cpg-tape-ok
                             mv-nth)))))
@@ -179,4 +184,60 @@
            :in-theory (union-theories '(fn-cpg-msgid-seqs fn-mlh-seqs fn-mlh-faithful (:definition mv-nth)
                                         (:definition revappend) (:executable-counterpart true-listp)
                                         (:definition nth) (:executable-counterpart zp) (:rewrite car-cons) (:rewrite cdr-cons))
+                                      (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; 3, 4. Pages touched and residency of the Message-ID reader.
+
+(defthm fn-cpg-read-row-fills
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h) (natp i) (< i (len h)))
+           (<= (len (mv-nth 2 (fn-crow-read-indexed i (fn-cpg-dir-pages h) (fn-pck-cat-pages h) res frames fills)))
+               (+ (len fills) 3 (fn-crow-pool-pages-of-row (fn-cp-row-of (nth i h))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-crow-read-indexed-fills (a (fn-pck-crow-rows h)))
+                 fn-pck-crow-rows-ap
+                 (:instance fn-pck-nth-crow-rows))
+           :in-theory (e/d (fn-cpg-tape-ok fn-cpg-dir-pages fn-pck-cat-pages)
+                           (fn-crow-read-indexed-fills fn-pck-crow-rows-ap fn-pck-nth-crow-rows
+                            fn-pck-crow-rows fn-cp-row-of fn-crow-read-indexed fn-crow-dir-pages-of
+                            fn-crow-pages-of)))))
+
+(defthm fn-cpg-msgid-loop-fills
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h) (nat-listp cands))
+           (<= (len (mv-nth 2 (fn-cpg-msgid-loop msgid cands (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h)
+                                                 res frames fills acc)))
+               (+ (len fills) (fn-cpg-bound cands h))))
+  :hints (("Goal" :induct (fn-cpg-msgid-loop msgid cands (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h)
+                                             res frames fills acc)
+           :in-theory (e/d (fn-cpg-bound)
+                           (fn-cp-row-held fn-cp-row-of fn-crow-read-indexed fn-cpg-dir-pages fn-pck-cat-pages
+                            fn-cpg-tape-ok mv-nth fn-crow-pool-pages-of-row fn-cpg-hitp)))
+          ("Subgoal *1/3" :use ((:instance fn-cpg-read-row-fills (i (car cands)))))
+          ("Subgoal *1/2" :use ((:instance fn-cpg-read-row-fills (i (car cands)))))
+          ("Subgoal *1/1" :use ((:instance fn-cpg-read-row-fills (i (car cands)))))))
+
+(defthm fn-cpg-msgid-loop-residency
+  (implies (<= (len res) (adt-pr-cap frames))
+           (<= (len (mv-nth 1 (fn-cpg-msgid-loop msgid cands cnt dpages rpages res frames fills acc)))
+               (adt-pr-cap frames)))
+  :hints (("Goal" :induct (fn-cpg-msgid-loop msgid cands cnt dpages rpages res frames fills acc)
+           :in-theory (e/d () (fn-cp-row-held fn-crow-read-indexed mv-nth adt-pr-cap)))))
+
+(defthm fn-cpg-msgid-seqs-fills
+  (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (fn-cpg-tape-ok h) (nat-listp cands))
+           (<= (len (nth 2 (fn-cpg-msgid-seqs msgid cands (len h) (fn-cpg-dir-pages h) (fn-pck-cat-pages h) res frames)))
+               (fn-cpg-bound cands h)))
+  :hints (("Goal" :use ((:instance fn-cpg-msgid-loop-fills (fills nil) (acc nil)))
+           :in-theory (union-theories '(fn-cpg-msgid-seqs (:definition mv-nth) (:definition nth) (:executable-counterpart zp)
+                                        (:rewrite car-cons) (:rewrite cdr-cons) (:executable-counterpart len)
+                                        (:definition len))
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-cpg-msgid-seqs-residency
+  (implies (<= (len res) (adt-pr-cap frames))
+           (<= (len (nth 1 (fn-cpg-msgid-seqs msgid cands cnt dpages rpages res frames)))
+               (adt-pr-cap frames)))
+  :hints (("Goal" :use ((:instance fn-cpg-msgid-loop-residency (fills nil) (acc nil)))
+           :in-theory (union-theories '(fn-cpg-msgid-seqs (:definition mv-nth) (:definition nth) (:executable-counterpart zp)
+                                        (:rewrite car-cons) (:rewrite cdr-cons))
                                       (theory 'minimal-theory)))))
