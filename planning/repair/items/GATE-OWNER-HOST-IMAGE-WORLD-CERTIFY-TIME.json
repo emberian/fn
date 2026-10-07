@@ -1,0 +1,12 @@
+{
+ "file": "host/owner-host.lisp",
+ "id": "GATE-OWNER-HOST-IMAGE-WORLD-CERTIFY-TIME",
+ "note": "Measured elapsed per book (hbox gates): host/owner-host 130.0 s (converge-3 0b4d3b183, load ~5; hbox:/tank/fn/scratch/converge-3/native-c3-0b4d3b183), 179.3 s (attach-gate ag4; hbox:/tank/fn/scratch/attach-gate/native-ag4-6679dae0e), 197.2 s (p-ast-guard; hbox:/tank/fn/scratch/p-ast-guard/native-pag-f108f0618), 503.8 s (converge-1, load ~14; hbox:/tank/fn/scratch/converge-1/native-c1-ea6bdf2cd). books/image-world 164.2 / 242.2 / 218.4 / 307.5 s in the same runs; image-world-dtn 157.8 / 307.5 s beside it. On persvati (certify-20261007T223016Z-2919327, 4 jobs, load 7.5) owner-host took 22.6 s with 18,129 prover steps: its time there is include and load, not proof, so the hbox figure needs its event split first (proof_cost.py on the gate manifest: slowest events). Two questions: (1) owner-host: which events or includes take the 130-500 s on hbox. The hazard-rule class (p-rule-class, train 14) already took fn-owner-log-reopen's guard from 43.7 s to 0.02 s, so measure at a post-train-14 sha. (2) image-world: must it recertify whenever any book in its closure changes, or can a gate check it against the world it includes (an include-only umbrella whose certificate is the conjunction of its includes')? tools/gate_walls.py (lane n-gate-time) keeps these as a standing row.",
+ "notes": [],
+ "owner": "P",
+ "severity": "high",
+ "source": "N, 2026-10-07 (ruling 17: time and CPU are bars alongside memory); per-book elapsed from tree/build/acl2/certify-*/*.active.json",
+ "state": "open",
+ "title": "Every hbox gate certifies host/owner-host and then books/image-world serially, about 80% of the gate's book time; ruling 17 makes time a bar",
+ "updated": "2026-10-07T23:40:00Z"
+}
