@@ -90,31 +90,13 @@
 
 (verify-guards fn-arpb-ousted-of)
 
-(defun fn-arpb-ousted-drop-loop (g tab rev)
-  (declare (xargs :guard (and (fn-arpb-tablep tab) (true-listp rev))))
-  (cond ((atom tab) (revappend rev tab))
-        ((equal (caar tab) g)
-         (if (< 1 (cdar tab))
-             (revappend rev (cons (cons g (- (cdar tab) 1)) (cdr tab)))
-           (revappend rev (cdr tab))))
-        (t (fn-arpb-ousted-drop-loop g (cdr tab) (cons (car tab) rev)))))
-
 ; One reader fewer ousted at G (its first row dropped at zero).
-(defun fn-arpb-ousted-drop (g tab)
-  (declare (xargs :guard (fn-arpb-tablep tab) :verify-guards nil))
-  (mbe :logic (cond ((atom tab) tab)
-                    ((equal (caar tab) g)
-                     (if (< 1 (cdar tab))
-                         (cons (cons g (- (cdar tab) 1)) (cdr tab))
-                       (cdr tab)))
-                    (t (cons (car tab) (fn-arpb-ousted-drop g (cdr tab)))))
-       :exec (fn-arpb-ousted-drop-loop g tab nil)))
-
-(defthm fn-arpb-ousted-drop-loop-is-ousted-drop
-  (equal (fn-arpb-ousted-drop-loop g tab rev)
-         (revappend rev (fn-arpb-ousted-drop g tab))))
-
-(verify-guards fn-arpb-ousted-drop)
+(def-loop fn-arpb-ousted-drop (g tab)
+  :shape :map :over tab :elt e
+  :guard (fn-arpb-tablep tab)
+  :stop (equal (caar tab) g)
+  :stop-value (if (< 1 (cdar tab)) (cons (cons g (- (cdar tab) 1)) (cdr tab)) (cdr tab)) :tail tab
+  :body e)
 
 ; ---------------------------------------------------------------- the cut
 
