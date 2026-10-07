@@ -10,6 +10,7 @@
     python3 tools/host_check.py --read [FILE...] # static: every host/ file reads (half a second)
     python3 tools/host_check.py --books         # static: each book a host file calls into is in the world
     python3 tools/host_check.py --loaded        # static: every host file is loaded by some build
+    python3 tools/host_check.py --build-lists   # static: the DTN image loads what the default image loads
     python3 tools/host_check.py --attach-order  # static: attach book precedes its stobj generic
     python3 tools/host_check.py --macro-order [FILE...]  # static: no raw macro used before its defmacro
 
@@ -26,6 +27,12 @@ that use as a function call (batch AW's `(log)`).  See the section above
 gate run it): a certified host file whose include-book closure reaches an
 attachable stobj generic before its attach book is refused.  See the section
 above `AttachWorld`.
+
+`--build-lists` (native-subsets-6c0626c5, 2026-09-23; `make check` and
+tools/train.py run it): the DTN image's build script loads every host file the
+default image's does, or DTN_OMITTED gives the reason, and no raw module,
+host-file call or book include of the DTN image reaches a name only an omitted
+file defines.  See the section above `DTN_OMITTED`.
 
 `--books` (obstructions-9 item 83; `make check-fast` and `--forward`, hence
 hbox_native's pre-image host-forward step, run it): for each image build,
@@ -174,6 +181,7 @@ import acl2_slots  # noqa: E402
 
 HOST_DIRS = ("host", "host/native")
 BUILD_SCRIPT = "host/native/build.lisp"
+DTN_BUILD = "host/native/build-dtn.lisp"
 # The image build script names its own raw files; reading them from it keeps
 # this tool from carrying a second copy of that decision.
 RAW_LOAD = re.compile(r'\(load\s+"([^"]+\.lisp)"')
@@ -1073,7 +1081,7 @@ def tables_main(names: list[str]) -> int:
 
 # --world (lane lane-tools-2, 2026-09-28): the names a raw file hands to the
 # image's executable counterparts must be defined in that image's world.
-WORLD_BUILDS = ("host/native/build.lisp", "host/native/build-dtn.lisp")
+WORLD_BUILDS = (BUILD_SCRIPT, DTN_BUILD)
 WORLD_CALLERS = {"fnn-call", "fnn-counterpart"}  # and every fnn-core*
 
 
@@ -1454,19 +1462,18 @@ def world_sites(path: Path) -> tuple[list[tuple[int, str]], int]:
 def world_check(builds=WORLD_BUILDS, root: Path = ROOT) -> tuple[list[str], list[str]]:
     """(refusals, notes): each counterpart name a raw file of BUILD passes to
     `fnn-core'/`fnn-call' that BUILD's world does not define, by file:line."""
-    import build_lists_check
     # The DTN image omits host files by declaration, each name it cannot
-    # reach with its reason (tools/build_lists_check.py DTN_OMITTED, which
+    # reach with its reason (host_check --build-lists' DTN_OMITTED, which
     # `make check' holds to "still omitted, still reached"); that register is
     # read here, not a second list kept.
-    dtn_excused = {name: reason for _, (_, names) in build_lists_check.DTN_OMITTED.items()
+    dtn_excused = {name: reason for _, (_, names) in DTN_OMITTED.items()
                    for name, reason in names.items()}
     refused: list[str] = []
     notes: list[str] = []
     for build in builds:
         defined, raw, problems = world_of(build, root)
         refused += [f"{build}: {problem}" for problem in problems]
-        excused = dtn_excused if build == build_lists_check.DTN_BUILD else {}
+        excused = dtn_excused if build == DTN_BUILD else {}
         checked = dynamic = waived = 0
         for name in raw:
             sites, computed = world_sites(root / name)
@@ -1482,7 +1489,7 @@ def world_check(builds=WORLD_BUILDS, root: Path = ROOT) -> tuple[list[str], list
         notes.append(f"{build}: {len(raw)} raw file(s), {checked} named counterpart(s) "
                      f"checked against {len(defined)} world name(s); {dynamic} computed "
                      "name(s) not checkable statically"
-                     + (f"; {waived} unreachable in this image by build_lists_check's "
+                     + (f"; {waived} unreachable in this image by --build-lists' "
                         "DTN_OMITTED" if waived else ""))
     return refused, notes
 
@@ -1515,17 +1522,16 @@ def book_holes(builds=WORLD_BUILDS, root: Path = ROOT,
     ACL2-mode call site. Its declaration still needs the defining book in
     the actual image world, rather than merely somewhere in the repository.
     """
-    import build_lists_check
     import interface_emit
     index = repository_definitions(root) if index is None else index
     declarations = interface_emit.declarations(root)
-    dtn_excused = {name for _, (_, names) in build_lists_check.DTN_OMITTED.items()
+    dtn_excused = {name for _, (_, names) in DTN_OMITTED.items()
                    for name in names}
     found: list[str] = []
     for build in builds:
         defined, _, _ = world_of(build, root)
         defined = {name.lower() for name in defined}
-        excused = dtn_excused if build == build_lists_check.DTN_BUILD else set()
+        excused = dtn_excused if build == DTN_BUILD else set()
         loaded = ld_sequence(build, root)
         for declaration in declarations:
             name = declaration["name"]
@@ -1971,6 +1977,492 @@ def attach_order_main() -> int:
     return 1 if findings else 0
 
 
+# --- --build-lists: the DTN image loads what the default image loads, or says why
+#
+# Protects the DTN image's `store init`.  host/native/build.lisp and
+# host/native/build-dtn.lisp keep two `ld` lists.  On 2026-09-23 (`be7397c8`)
+# `fn-store-checkpoint-clone-fence-name` moved into host/checkpoint-host.lisp;
+# build.lisp gained the `ld`, build-dtn.lisp did not, and host/native/io.lisp
+# calls that name when any Store opens.  Both DTN images built and both refused
+# `store init` with "ACL2 executable counterpart missing"
+# (native-subsets-6c0626c5, failure 2): the raw modules name ACL2 functions as
+# quoted symbols resolved at call time, so nothing static saw it.
+#
+# The lists stay separate on purpose (the DTN image omits the NNTP reader, the
+# writable owner and the operator surfaces; its build script is what
+# `tools/proof_artifacts.py --profile dtn` reads); this makes the difference
+# explicit.  Static, no ACL2.  build_lists_findings reports, by prefix:
+#
+#   duplicate   a literal ld/include-book directive repeated in one build script
+#               (duplicate_load_findings; S141);
+#   omitted     a host file in build.lisp's ld_closure and not build-dtn.lisp's
+#               must be a key of DTN_OMITTED, with a reason;
+#   stale       every DTN_OMITTED key is in fact omitted, and every name it or
+#               DTN_RAW_REACH excuses is still reached (an excuse outlives its
+#               call silently otherwise, batch AX);
+#   reached     no name an omitted file defines is spelled as a quoted symbol
+#               (`'name`) in a raw module build-dtn.lisp loads, or called from a
+#               host file in its closure, unless DTN_OMITTED lists the name with
+#               the reason the DTN image cannot reach it;
+#   raw         the same for raw modules: no raw module build-dtn.lisp loads
+#               calls or `#'`-names a function defined only in a raw module that
+#               only build.lisp loads, unless DTN_RAW_REACH says why it cannot
+#               run (raw_findings);
+#   keystone    every keystone a `definterface` in host/interfaces.lisp cites,
+#               when a tree book defines it, is in a book build.lisp's image
+#               includes (keystone_findings; dcece7415 / D26 put K1 in no list);
+#   included    every `fn-` name an ld host file of build-dtn.lisp calls or names
+#               in `:stobjs` that a book defines is defined in a book the DTN image
+#               has included by the time that file loads (include_findings over
+#               BookIndex; 32842f50 lacked octets-stobj and the DTN image failed).
+#
+# It does not follow the books an omitted host file includes, cannot see a
+# counterpart name computed at run time, and reads definitions by pattern, so
+# a name a macro defines is invisible to `included`.  world_check reads
+# DTN_OMITTED for the names a DTN image cannot reach rather than keeping a
+# second list.
+
+# host file -> (why the DTN image omits it, {referenced name: why unreachable})
+DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
+    "host/interfaces.lisp": (
+        "the host-called entries' declarations (definterface, lane generators G7), "
+        "checked against the default image's world when it is built; several "
+        "declared entries (the extraction roots, the NNTP reader's) are not in the "
+        "DTN world, and the file defines no function any raw file calls", {}),
+    "host/owner-retain-host.lisp": (
+        "only theorems (fn-owner-retain-statep across host/owner-host.lisp's writers, "
+        "stage 5); the DTN image does not ld owner-host.lisp, and the file defines no "
+        "function any raw file calls", {}),
+    "host/anchor-wire-host.lisp": (
+        "only host/native/anchor.lisp uses it; the DTN image does not load anchor.lisp", {}),
+    "host/anchor-server-host.lisp": (
+        "only host/native/anchor.lisp uses it; the DTN image does not load anchor.lisp", {}),
+    "host/reader-host.lisp": (
+        "the NNTP reader; its book books/served is left out of the DTN image by design",
+        {name: "io.lisp's `reader` verb; the DTN image has no NNTP reader by design "
+               "(build-dtn.lisp header)"
+         for name in ("fn-reader-chunk", "fn-reader-outcome", "fn-reader-reset",
+                      "fn-reader-set-posting", "fn-reader-use-seed",
+                      "fn-reader-use-store")}),
+    "host/native/reader-model-host.lisp": (
+        "the differential reader model over books/served, left out by design",
+        {"fn-reader-model-octets": "io.lisp's `model` verb faults on the missing "
+                                   "counterpart, as the build-dtn.lisp header says"}),
+    "host/native-auth-admin-host.lisp": (
+        "credential administration; used only by auth-admin.lisp, not loaded", {}),
+    "host/consumer-remote-host.lisp": (
+        "remote consumer ingress (FNCE); used only by host/native/consumer-remote.lisp, "
+        "which build-dtn.lisp does not load", {}),
+    "host/peer-invite-host.lisp": (
+        "peering invitations (PRF-097); used only by host/native/peer-invite.lisp, "
+        "which build-dtn.lisp does not load: its operator has no :peering executor "
+        "(host/native/operator-live.lisp registers it) and refuses `peer "
+        "genesis|invite|accept|confirm` by the :control surface's name", {}),
+    "host/tls-reload-host.lisp": (
+        "`tls reload` and the served certificate line (PRF-212); used only by "
+        "host/native/tls-reload.lisp, which build-dtn.lisp does not load: its "
+        "operator has no :tls executor and no live owner (host/native/operator-live.lisp "
+        "installs both), so it refuses `tls` and `status` asks no owner", {}),
+    "host/store-identity-host.lisp": (
+        "`fn identity CONTROL` (Mini M4); used only by host/native/store-identity.lisp, "
+        "which build-dtn.lisp does not load: the DTN image registers no `identity` verb "
+        "and its owner answers no control request of kind 24", {}),
+    "host/native-hybrid-control-host.lisp": (
+        "hybrid authoring control; used by control.lisp and hybrid-control.lisp, not loaded", {}),
+    "host/web-host.lisp": (
+        "the node's own web face (PRF-340); used only by host/native/web-host.lisp, which "
+        "build-dtn.lisp does not load: the web face is an owner start hook of the operator's "
+        "`run' (host/native/operator-live.lisp), and the DTN image has no live owner", {}),
+    "host/owner-served-carried.lisp": (
+        "the def-carried relation over host/owner-host.lisp's writers (D40 raw "
+        "dispatch, lane post-guard-off); the DTN image does not ld owner-host.lisp, "
+        "and the file defines no function any raw file calls", {}),
+    "host/cost-host.lisp": (
+        "def-cost rows checked in the default image's world after host/interfaces.lisp "
+        "(itself omitted here); its reader rows are over books/served, which the DTN "
+        "image leaves out by design, and the file defines no function any raw file calls", {}),
+    "host/topic-history-metadata-host.lisp": (
+        "includes books/topic-history-authorship for topic-local.lisp, not loaded; defines nothing", {}),
+}
+
+# (raw module that calls, raw function defined only outside the DTN image) -> why.
+# Empty since batch AX: operator.lisp called 21 such functions behind a
+# run-time surface flag; they moved to host/native/operator-live.lisp, which
+# the DTN image does not load (tools/host_check.py --load --build
+# host/native/build-dtn.lisp is the dynamic half).  A new entry is a call the
+# DTN image loads and cannot run; prefer the file split.
+DTN_RAW_REACH: dict[tuple[str, str], str] = {}
+
+LD = re.compile(r'^\s*\(ld\s+"([^"]+)"', re.M)
+HOST_EDGE = re.compile(r'^\s*\((ld|include-book)\s+"([^"]+)"', re.M)
+LOAD = re.compile(r'\(load\s+"([^"]+)"')
+DEF = re.compile(r'^\s*\((?:defun|defund|defmacro|defconst|defabbrev)\s+([^\s()]+)', re.M | re.I)
+
+
+def strip_comments(text: str) -> str:
+    """Lisp without comments or #| |# blocks; string literals kept."""
+    import lisp_source
+    return lisp_source.code_only(text, strings=None)
+
+
+def strip_code(text: str) -> str:
+    """Raw Lisp without comments, #| |# blocks or string contents (each
+    literal read as \"\"); character literals kept (tools/lisp_source.py)."""
+    import lisp_source
+    return lisp_source.code_only(text, strings='""')
+
+
+BUILD_RAW_DEF = re.compile(r"\((?:defun|defmacro)\s+([^\s()]+)", re.I)
+RAW_USE = re.compile(r"(?:\(|#')(fnn-[^\s()']+)", re.I)
+
+
+def raw_findings(root: Path, default_text: str, dtn_text: str,
+                 reach: dict[tuple[str, str], str]) -> list[str]:
+    default_raw = LOAD.findall(strip_comments(default_text))
+    dtn_raw = LOAD.findall(strip_comments(dtn_text))
+    code = {path: strip_code((root / path).read_text(encoding="utf-8"))
+            for path in set(default_raw) | set(dtn_raw)}
+    present = {name.lower() for path in dtn_raw for name in BUILD_RAW_DEF.findall(code[path])}
+    absent: dict[str, str] = {}
+    for path in default_raw:
+        if path not in dtn_raw:
+            for name in BUILD_RAW_DEF.findall(code[path]):
+                absent.setdefault(name.lower(), path)
+    out = []
+    used = set()
+    for user in dtn_raw:
+        for name in sorted({use.lower() for use in RAW_USE.findall(code[user])}):
+            if name in absent and name not in present:
+                used.add((user, name))
+                if (user, name) not in reach:
+                    out.append(f"raw: {user} calls {name}, defined only in {absent[name]}, "
+                               f"which {DTN_BUILD} does not load")
+    for user, name in sorted(set(reach) - used):
+        out.append(f"stale: DTN_RAW_REACH excuses {user} calling {name}, which it no "
+                   "longer does (or the DTN image now loads its definition)")
+    return out
+
+
+def ld_closure(root: Path, build_text: str) -> list[str]:
+    """Host files a session script `ld`s, transitively, relative to each file.
+    A host sibling reached by an include-book (the certify-legal sibling
+    edge; the `ld` form is refused by certify-book) loads with its
+    certificate exactly where the include stands, so it is walked the same
+    way; books/ targets are not host files and stay out."""
+    seen: list[str] = []
+
+    def walk(text: str, base: str) -> None:
+        code = strip_comments(text)
+        edges = [(m.group(1), m.group(2)) for m in HOST_EDGE.finditer(code)]
+        for kind, target in edges:
+            path = os.path.normpath(os.path.join(base, target))
+            if kind == "include-book" and not path.startswith("host/"):
+                continue
+            if kind == "include-book" and not path.endswith(".lisp"):
+                path += ".lisp"
+            if path not in seen and (root / path).is_file():
+                seen.append(path)
+                walk((root / path).read_text(encoding="utf-8"), os.path.dirname(path))
+
+    walk(build_text, ".")
+    return seen
+
+
+def duplicate_load_findings(text: str, loader: str) -> list[str]:
+    """Repeated literal directives in one build script, not include closures.
+
+    Distinct books may share dependencies. That does not repeat a directive in
+    the script. Quoted data and definition/macro bodies are not load events.
+    """
+    import ledger
+    try:
+        forms = ledger.Reader(text).top_level()
+    except ledger.ReadError as error:
+        return [f"duplicate-load: {loader}: unreadable load list: {error}"]
+    seen = {}
+    out = []
+    for form, line in ledger.source_events(forms):
+        kind = ledger.head(form)
+        if kind not in ("ld", "include-book") or len(form) < 2:
+            continue
+        if type(form[1]) is not str:
+            continue
+        target = os.path.normpath(form[1])
+        namespace = ledger.keyword_plist(form[2:]).get(":dir") if kind == "include-book" else None
+        key = (kind, target, repr(namespace))
+        if key in seen:
+            out.append(f"duplicate-load: {loader}:{line}: {kind} {target} "
+                       f"repeats directive at line {seen[key]}")
+        else:
+            seen[key] = line
+    return out
+
+
+def build_lists_findings(root: Path = ROOT, default_text: str | None = None,
+             dtn_text: str | None = None,
+             omitted: dict[str, tuple[str, dict[str, str]]] | None = None,
+             reach: dict[tuple[str, str], str] | None = None) -> list[str]:
+    default_text = default_text if default_text is not None else (root / BUILD_SCRIPT).read_text()
+    dtn_text = dtn_text if dtn_text is not None else (root / DTN_BUILD).read_text()
+    omitted = DTN_OMITTED if omitted is None else omitted
+    default = ld_closure(root, default_text)
+    dtn = ld_closure(root, dtn_text)
+    out = (duplicate_load_findings(default_text, BUILD_SCRIPT)
+           + duplicate_load_findings(dtn_text, DTN_BUILD))
+    for path in default:
+        if path not in dtn and path not in omitted:
+            out.append(f"omitted: {path} is loaded by {BUILD_SCRIPT} and not by "
+                       f"{DTN_BUILD}, and DTN_OMITTED gives no reason")
+    for path in omitted:
+        if path not in default or path in dtn:
+            out.append(f"stale: DTN_OMITTED lists {path}, which is not a default-only host file")
+    corpus = {path: strip_comments((root / path).read_text(encoding="utf-8"))
+              for path in LOAD.findall(strip_comments(dtn_text))}
+    host = {path: strip_comments((root / path).read_text(encoding="utf-8")) for path in dtn}
+    provided = {name.lower() for text in host.values() for name in DEF.findall(text)}
+    for path in default:
+        if path in dtn:
+            continue
+        allowed = omitted.get(path, ("", {}))[1]
+        names = {n.lower() for n in DEF.findall((root / path).read_text(encoding="utf-8"))}
+        for name in sorted(names - provided):
+            quoted = re.compile(r"'" + re.escape(name) + r"(?![\w\-*+$!?%&<>=/.:])", re.I)
+            called = re.compile(r"\(" + re.escape(name) + r"(?![\w\-*+$!?%&<>=/.:])", re.I)
+            reached = ([f"reached: {user} names '{name}, defined only in {path}, "
+                        f"which {DTN_BUILD} does not load"
+                        for user, text in corpus.items() if quoted.search(text)]
+                       + [f"reached: {user} calls {name}, defined only in {path}, "
+                          f"which {DTN_BUILD} does not load"
+                          for user, text in host.items() if called.search(text)])
+            if name not in allowed:
+                out.extend(reached)
+            elif not reached:
+                out.append(f"stale: DTN_OMITTED excuses {name} ({path}), which nothing "
+                           f"{DTN_BUILD} loads names any more")
+    out.extend(raw_findings(root, default_text, dtn_text,
+                            DTN_RAW_REACH if reach is None else reach))
+    out.extend(include_findings(root, dtn_text))
+    out.extend(keystone_findings(root, default_text, default))
+    return out
+
+
+INTERFACES = "host/interfaces.lisp"
+THEOREM_DEF = re.compile(r"^[ \t]*\((?:defthm|defthmd|defrule|defkeystone|defaxiom)\s+"
+                         r"([^\s()]+)", re.I | re.M)
+
+
+def read_list(code: str, start: int) -> list:
+    """The s-expression list opening at CODE[START] as nested Python lists of
+    atom strings (no strings or quotes appear in a :keystones list)."""
+    stack: list[list] = [[]]
+    for token in re.finditer(r"\(|\)|[^\s()]+", code[start:]):
+        text = token.group(0)
+        if text == "(":
+            stack.append([])
+        elif text == ")":
+            done = stack.pop()
+            stack[-1].append(done)
+            if len(stack) == 1:
+                return stack[0][0]
+        else:
+            stack[-1].append(text)
+    raise ValueError("unbalanced :keystones list")
+
+
+def keystone_lists(text: str) -> list[tuple[str, list[str]]]:
+    """(interface, keystone names) for each definterface with :keystones; an
+    entry `(NAME :via F)' names NAME."""
+    code = strip_comments(text)
+    out = []
+    heads = list(re.finditer(r"\(definterface\s+([^\s()]+)", code, re.I))
+    for n, match in enumerate(heads):
+        end = heads[n + 1].start() if n + 1 < len(heads) else len(code)
+        at = code.find(":keystones", match.end(), end)
+        if at < 0:
+            continue
+        items = read_list(code, code.index("(", at))
+        out.append((match.group(1).lower(),
+                    [(item[0] if isinstance(item, list) else item).lower()
+                     for item in items if item]))
+    return out
+
+
+def keystone_findings(root: Path, build_text: str, ld_files: list[str],
+                      index: BookIndex | None = None) -> list[str]:
+    if INTERFACES not in ld_files or not (root / INTERFACES).is_file():
+        return []
+    index = index or BookIndex(root)
+    available: set[str] = set()
+    starts = []
+    for text, base in [(build_text, ".")] + [
+            ((root / path).read_text(encoding="utf-8"), os.path.dirname(path))
+            for path in ld_files]:
+        for target, rest in INCLUDE.findall(strip_code_keep_strings(text)):
+            if ":dir" not in rest.lower():
+                starts.append(os.path.normpath(os.path.join(base, target)) + ".lisp")
+    index.close(available, starts)
+    theorems: dict[str, set[str]] = {}
+    for path in sorted((root / "books").rglob("*.lisp")):
+        rel = path.relative_to(root).as_posix()
+        for name in THEOREM_DEF.findall(strip_comments(path.read_text(encoding="utf-8"))):
+            theorems.setdefault(name.lower(), set()).add(rel)
+    out = []
+    for interface, names in keystone_lists((root / INTERFACES).read_text(encoding="utf-8")):
+        for name in names:
+            books = theorems.get(name)
+            if books and not books & available:
+                out.append(f"keystone: {INTERFACES} definterface {interface} cites {name}, "
+                           f"defined in {', '.join(sorted(books))}, which {BUILD_SCRIPT}'s "
+                           f"image does not include")
+    return out
+
+
+INCLUDE = re.compile(r'\(include-book\s+"([^"]+)"([^)]*)\)', re.I)
+LOCAL_INCLUDE = re.compile(r'\(local\s+\(include-book\s+"([^"]+)"', re.I)
+BOOK_DEF = re.compile(r"\((?:defun|defund|defun-sk|define|defmacro|defabbrev|defconst|"
+                      r"defstobj|defabsstobj|defun-inline|defund-inline|defun-nx|"
+                      r"defund-nx|defstub|encapsulate\s+\(\s*\()\s*\(?([^\s()]+)", re.I)
+HOST_CALL = re.compile(r"\((fn-[^\s()'`,]+)", re.I)
+HOST_STOBJS = re.compile(r":stobjs\s+(\([^)]*\)|[^\s()]+)", re.I)
+ORDER = re.compile(r'^\s*\((include-book|ld)\s+"([^"]+)"([^\n]*)', re.M)
+
+
+class BookIndex:
+    """Non-local include closures and definitions of the repository's books."""
+
+    def __init__(self, root: Path):
+        self.root = root
+        self._includes: dict[str, list[str]] = {}
+        self._defs: dict[str, set[str]] = {}
+        self.owner: dict[str, set[str]] = {}
+        for path in sorted((root / "books").rglob("*.lisp")):
+            rel = path.relative_to(root).as_posix()
+            for name in self.defs(rel):
+                self.owner.setdefault(name, set()).add(rel)
+
+    def _code(self, rel: str) -> str:
+        return strip_code_keep_strings((self.root / rel).read_text(encoding="utf-8"))
+
+    def includes(self, rel: str) -> list[str]:
+        if rel not in self._includes:
+            out: list[str] = []
+            if (self.root / rel).exists():
+                text = self._code(rel)
+                text = LOCAL_INCLUDE.sub("", text)
+                for target, rest in INCLUDE.findall(text):
+                    if ":dir" in rest.lower():
+                        continue
+                    out.append(os.path.normpath(os.path.join(os.path.dirname(rel), target))
+                               + ".lisp")
+            self._includes[rel] = out
+        return self._includes[rel]
+
+    def defs(self, rel: str) -> set[str]:
+        if rel not in self._defs:
+            self._defs[rel] = {n.lower() for n in BOOK_DEF.findall(self._code(rel))}
+            import ledger
+            parsed = ledger.analyze_book(self.root / rel, rel)
+            # Keep the existing special-form names; add the shared generator
+            # definitions (without treating generated theorems as callables).
+            self._defs[rel].update(f.name for f in parsed.functions if not f.local)
+            self._defs[rel].update(parsed.macros)
+
+        return self._defs[rel]
+
+    def close(self, books: set[str], start: list[str]) -> None:
+        stack = list(start)
+        while stack:
+            book = stack.pop()
+            if book in books:
+                continue
+            books.add(book)
+            stack.extend(self.includes(book))
+
+
+def strip_code_keep_strings(text: str) -> str:
+    """Lisp without comments or #| |# blocks; string literals kept (include targets)."""
+    return strip_comments(text)
+
+
+def host_uses(text: str) -> set[str]:
+    code = strip_code(text)
+    names = {n.lower() for n in HOST_CALL.findall(code)}
+    for group in HOST_STOBJS.findall(code):
+        names.update(n.lower() for n in re.findall(r"[^\s()]+", group))
+    return names
+
+
+def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
+                     loader: str = DTN_BUILD) -> list[str]:
+    index = index or BookIndex(root)
+    available: set[str] = set()
+    out: list[str] = []
+    seen: dict[str, None] = {}  # host files `ld`ed so far, in load order
+
+    host_defined: set[str] = set()
+
+    def visit(text: str, base: str, path: str | None = None) -> None:
+        # Check each stretch before advancing the world at its next load.
+        # A later include (including one reached through a nested ld) cannot
+        # justify an earlier use in this file.
+        code = strip_code_keep_strings(text)
+        local = {n.lower() for n in DEF.findall(strip_comments(text))}
+
+        def check_uses(segment: str) -> None:
+            if path is None:
+                return
+            defined = set().union(*(index.defs(b) for b in available
+                                    if (root / b).exists()))
+            for name in sorted(host_uses(segment) - local - host_defined - defined):
+                books = index.owner.get(name)
+                if books:
+                    finding = (f"included: {path} uses {name}, defined in "
+                               f"{', '.join(sorted(books))}, which {loader} has not "
+                               f"included when it loads {path}")
+                    if finding not in out:
+                        out.append(finding)
+
+        offset = 0
+        for match in ORDER.finditer(code):
+            check_uses(code[offset:match.start()])
+            offset = match.end()
+            kind, target, rest = match.groups()
+            if kind.lower() == "include-book":
+                # The generated umbrella loads the union first; counting it
+                # would make the declared-order rule vacuous.
+                if os.path.normpath(os.path.join(base, target)).startswith("books/image-world"):
+                    continue
+                if ":dir" not in rest.lower():
+                    index.close(available, [os.path.normpath(os.path.join(base, target))
+                                            + ".lisp"])
+                continue
+            nested = os.path.normpath(os.path.join(base, target))
+            if nested in seen:
+                continue
+            seen[nested] = None
+            visit((root / nested).read_text(encoding="utf-8"),
+                  os.path.dirname(nested), nested)
+        check_uses(code[offset:])
+        if path is not None:
+            host_defined.update(local)
+
+    visit(dtn_text, ".")
+    return out
+
+
+def build_lists_main() -> int:
+    # The served crash model sends no ACL2 setup since it reads the record
+    # log through the image (lane log-recovery-mod): its rule went with it.
+    found = build_lists_findings()
+    for line in found:
+        print(f"build-lists: {line}")
+    default = ld_closure(ROOT, (ROOT / BUILD_SCRIPT).read_text())
+    dtn = ld_closure(ROOT, (ROOT / DTN_BUILD).read_text())
+    print(f"build-lists: default ld closure {len(default)}, DTN {len(dtn)}, "
+          f"omitted with reasons {len(DTN_OMITTED)}; {len(found)} finding(s)")
+    return 1 if found else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -2022,6 +2514,9 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--attach-order", action="store_true",
                         help="static: no certified host file's include-book closure reaches "
                              "an attachable stobj generic before its attach book")
+    mode.add_argument("--build-lists", action="store_true",
+                        help="static: the DTN image's ld/raw lists load what the default "
+                             "image's do, or DTN_OMITTED says why not")
     mode.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
@@ -2031,6 +2526,8 @@ def main(argv: list[str] | None = None) -> int:
         return books_main(args.files)
     if args.loaded:
         return loaded_main()
+    if args.build_lists:
+        return build_lists_main()
     if args.attach_order:
         return attach_order_main()
     if args.macro_order:
