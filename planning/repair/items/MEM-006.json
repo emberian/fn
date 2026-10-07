@@ -1,0 +1,14 @@
+{
+ "category": "claim-gap",
+ "detail": "The figure is SBCL --dynamic-space-size, a virtual ceiling (books/heap-figure.lisp:16-41: core + nursery + 2 x list octets + buffers). On 3e53d7bc5dbd72de73042b46e6174d316ef7a63d the same small flags give init reservation 1079 MB (fn-host), 1795 MB (fn-host-developer) and 1027 MB (fn-host-dtn): the figure rises ~1.9 MB per MB of core. 1068 MB does not reproduce on this image set (1079 at init; status prints heap=664 empty, 723 after 1,000 POSTs, 730 at a filled store): name the image and command that produced 1068. Measured resident (r1-r3): empty-open RSS 115 MB / anon 23 MB; 1,000 POSTs RSS 164 / anon 68; filled store (1,800 POSTs, 'history exhausted') RSS 169 / anon 73.5 / HWM 239; reopen RSS 127 / anon 34 / HWM 163. Of the RSS, ~96 MB is the file-backed core (clean, shared, droppable). D35's two bars: accountable (anon) <= 256 MiB is met by 3.5x; working set (RSS) <= 128 MiB is NOT met at 1,000 POSTs (164) and the peak is 239. The memory phase should state anon, RSS, HWM and reservation as four separate numbers and aim the repair at RSS/HWM, not the reservation. Evidence hbox:/tank/fn/scratch/n-mem/r1 r2 r3, MEMORY-20261006.md.",
+ "file": "planning/decisions.md",
+ "id": "MEM-006",
+ "line": "1846",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "high",
+ "source": "n-mem",
+ "state": "open",
+ "title": "D35/F8/D65 quote the heap reservation (1068/1079 MB) as the memory figure; measured resident is 169 MB RSS (239 MB peak) and 73.5 MB anonymous at a FILLED small-preset store",
+ "updated": "2026-10-06T21:30:00Z"
+}
