@@ -406,3 +406,165 @@
            :in-theory (e/d (pcko-root) (nth nthcdr adt-tp-unpack adt-tp-npk fn-scc-decode-tree
                                         pcko-tape pcko-tape-is-the-fold pcko-trees pcko-wellp pcko-cost
                                         fn-ssr-intern-step fn-ssr-seed nfix)))))
+
+; -----------------------------------------------------------------------------
+; The rows the writer made are well: the model's own roundtrip, read through the
+; exec's accessors.
+
+(defthm pcko-decode-of-program
+  (implies (fn-sccb-treep x)
+           (equal (fn-scc-decode-tree (fn-scc-program x)) (list :ok x)))
+  :hints (("Goal" :use ((:instance fn-scc-decode-tree-of-encode)
+                        (:instance fn-sccb-treep-is-treep))
+           :in-theory (disable fn-scc-decode-tree-of-encode fn-sccb-treep-is-treep))))
+
+(defthm pcko-wellp-of-seq-words
+  (implies (and (fn-pck-sccb-listp recs) (or (atom tail) (not (equal (car tail) 1))))
+           (and (pcko-wellp (append (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs)) tail))
+                (equal (pcko-trees (append (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs)) tail))
+                       recs)))
+  :hints (("Goal" :induct (fn-pck-sccb-listp recs)
+           :in-theory (e/d (fn-pck-rows fn-pck-sccb-listp fn-pck-enc-row adt-tp-seq-words adt-tp-rw adt-tp-fw)
+                           (adt-tp-unpack adt-tp-npk fn-scc-decode-tree)))))
+
+; -----------------------------------------------------------------------------
+; The shape of the image the writer's pages flatten to.
+
+(defthm pcko-pad-arith
+  (implies (natp n) (equal (+ n (adt-tp-pad n)) (* 2048 (adt-tp-npages n))))
+  :hints (("Goal" :induct (adt-tp-npages n)
+           :in-theory (enable adt-tp-npages adt-tp-pad))))
+
+(defun pcko-rw0 (tree)
+  (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row tree)))
+
+(defthm pcko-rw0-true-listp (true-listp (pcko-rw0 tree)))
+
+(defthm pcko-flat-fit
+  (implies (and (true-listp w) (<= (len (adt-tp-pages w)) 8))
+           (and (<= (len w) 16384)
+                (equal (adt-tp-flat (fn-pck-fit (adt-tp-pages w)))
+                       (append w (adt-tp-zeros (- 16384 (len w)))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-fit adt-tp-len-pages)
+                           (adt-tp-pages adt-tp-flat adt-tp-flat-of-pages pcko-pad-arith))
+           :use ((:instance adt-tp-flat-of-pages)
+                 (:instance pck-append-zeros (a (adt-tp-pad (len w)))
+                            (b (* 2048 (- 8 (adt-tp-npages (len w))))))
+                 (:instance pck-flat-zero-pages (n (- 8 (adt-tp-npages (len w)))))
+                 (:instance pck-flat-append (p (adt-tp-pages w))
+                            (q (fn-pck-zero-pages (- 8 (adt-tp-npages (len w))))))
+                 (:instance pcko-pad-arith (n (len w)))))))
+
+(defthm pcko-root-flat
+  (implies (fn-pck-root-fitsp configs recs)
+           (let ((rw0 (pcko-rw0 (fn-pck-root-tree configs recs))))
+             (and (<= (len rw0) 16384)
+                  (equal (adt-tp-flat (fn-pck-root-pages-of configs recs))
+                         (append rw0 (adt-tp-zeros (- 16384 (len rw0))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-root-pages-of fn-pck-root-pages-of-tree
+                            fn-pck-root-fitsp fn-pck-root-fitsp-tree
+                            fn-pck-row-pages-of adt-tp-pages-of adt-tp-seq-words pcko-rw0 fn-pck-enc-row)
+                           (adt-tp-pages adt-tp-flat adt-tp-flat-of-pages pcko-flat-fit))
+           :use ((:instance pcko-flat-fit (w (adt-tp-rw *fn-pck-row-schema*
+                                                        (fn-pck-enc-row (fn-pck-root-tree configs recs)))))))))
+
+(defun pcko-tw (recs) (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs)))
+(defthm pcko-tw-true-listp (true-listp (pcko-tw recs)))
+
+(defthm pcko-flat-pages
+  (implies (fn-pck-root-fitsp configs recs)
+           (let* ((rw0 (pcko-rw0 (fn-pck-root-tree configs recs)))
+                  (tw (pcko-tw recs)))
+             (equal (adt-tp-flat (fn-pck-pages configs recs))
+                    (append rw0 (adt-tp-zeros (- 16384 (len rw0)))
+                            tw (adt-tp-zeros (adt-tp-pad (len tw)))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-pages fn-pck-row-pages-of adt-tp-pages-of pcko-tw)
+                           (adt-tp-pages adt-tp-flat adt-tp-flat-of-pages pcko-root-flat fn-pck-root-pages-of))
+           :use ((:instance pcko-root-flat)
+                 (:instance pck-flat-append (p (fn-pck-root-pages-of configs recs))
+                            (q (adt-tp-pages (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs)))))
+                 (:instance adt-tp-flat-of-pages (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs))))))))
+
+(defthm pcko-len-pages
+  (implies (fn-pck-root-fitsp configs recs)
+           (equal (len (fn-pck-pages configs recs))
+                  (+ 8 (adt-tp-npages (len (pcko-tw recs))))))
+  :hints (("Goal" :in-theory (e/d (fn-pck-pages fn-pck-row-pages-of adt-tp-pages-of pcko-tw adt-tp-len-pages)
+                                  (adt-tp-pages)))))
+
+(defthm pcko-nthcdr-16384
+  (implies (and (true-listp rw0) (<= (len rw0) 16384))
+           (equal (nthcdr 16384 (append rw0 (adt-tp-zeros (- 16384 (len rw0))) rest)) rest))
+  :hints (("Goal" :use ((:instance pck-nthcdr-root (r (append rw0 (adt-tp-zeros (- 16384 (len rw0))))) (c rest)))
+           :in-theory (disable pck-nthcdr-root))))
+
+(defthm pcko-len-w-gen
+  (implies (and (true-listp rw0) (<= (len rw0) 16384) (true-listp tw))
+           (equal (len (append rw0 (adt-tp-zeros (- 16384 (len rw0))) tw (adt-tp-zeros (adt-tp-pad (len tw)))))
+                  (+ 16384 (* 2048 (adt-tp-npages (len tw))))))
+  :hints (("Goal" :use ((:instance pcko-pad-arith (n (len tw)))))))
+
+(defthm pcko-len-w
+  (implies (fn-pck-root-fitsp configs recs)
+           (equal (len (adt-tp-flat (fn-pck-pages configs recs)))
+                  (* 2048 (len (fn-pck-pages configs recs)))))
+  :hints (("Goal" :in-theory (disable pcko-flat-pages pcko-len-w-gen pcko-len-pages pcko-root-flat
+                                      pcko-rw0 pcko-tw adt-tp-rw fn-pck-enc-row fn-pck-pages)
+           :use ((:instance pcko-flat-pages) (:instance pcko-len-pages)
+                 (:instance pcko-root-flat)
+                 (:instance pcko-len-w-gen (rw0 (pcko-rw0 (fn-pck-root-tree configs recs)))
+                            (tw (pcko-tw recs)))))))
+
+(defthm pcko-w-tape
+  (implies (fn-pck-root-fitsp configs recs)
+           (equal (nthcdr 16384 (adt-tp-flat (fn-pck-pages configs recs)))
+                  (append (pcko-tw recs) (adt-tp-zeros (adt-tp-pad (len (pcko-tw recs)))))))
+  :hints (("Goal" :in-theory (e/d () (pcko-flat-pages pcko-nthcdr-16384 fn-pck-pages pcko-rw0 pcko-tw))
+           :use ((:instance pcko-flat-pages)
+                 (:instance pcko-root-flat)
+                 (:instance pcko-nthcdr-16384 (rw0 (pcko-rw0 (fn-pck-root-tree configs recs)))
+                            (rest (append (pcko-tw recs) (adt-tp-zeros (adt-tp-pad (len (pcko-tw recs)))))))))))
+
+(defthm pcko-w-tape-well
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs))
+           (and (pcko-wellp (nthcdr 16384 (adt-tp-flat (fn-pck-pages configs recs))))
+                (equal (pcko-trees (nthcdr 16384 (adt-tp-flat (fn-pck-pages configs recs)))) recs)))
+  :hints (("Goal" :in-theory (e/d (fn-pck-recordsp pcko-tw) (pcko-w-tape pcko-wellp-of-seq-words fn-pck-pages))
+           :use ((:instance pcko-w-tape)
+                 (:instance pcko-wellp-of-seq-words
+                            (tail (adt-tp-zeros (adt-tp-pad (len (pcko-tw recs)))))
+                            (recs recs))
+                 (:instance adt-tp-car-zeros (n (adt-tp-pad (len (pcko-tw recs)))))))))
+
+(defthm pcko-rw0-is
+  (equal (pcko-rw0 x)
+         (cons 1 (cons (len (fn-scc-program x)) (adt-tp-pack (fn-scc-program x)))))
+  :hints (("Goal" :in-theory (enable pcko-rw0) :use pckx-row-of-program)))
+
+(defthm pcko-w-root
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs))
+           (let ((w (adt-tp-flat (fn-pck-pages configs recs)))
+                 (x (fn-pck-root-tree configs recs)))
+             (and (equal (nth 0 w) 1)
+                  (equal (nth 1 w) (len (fn-scc-program x)))
+                  (<= (+ 2 (adt-tp-npk (nth 1 w))) 16384)
+                  (pcko-ok-treep (fn-scc-decode-tree (adt-tp-unpack (nth 1 w) (nthcdr 2 w))))
+                  (equal (pcko-root w) x))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-recordsp pcko-root) (fn-pck-pages pcko-root-flat pcko-rw0
+                                                       pcko-tw adt-tp-unpack adt-tp-npk
+                                                       adt-tp-rw fn-pck-enc-row fn-scc-decode-tree
+                                                       pcko-rw0-is))
+           :use ((:instance pcko-root-flat)
+                 (:instance pcko-rw0-is (x (fn-pck-root-tree configs recs)))
+                 (:instance pckx-row-of-program (x (fn-pck-root-tree configs recs)))
+                 (:instance pck-program-octetsp (x (fn-pck-root-tree configs recs)))
+                 (:instance adt-tp-unpack-of-pack (o (fn-scc-program (fn-pck-root-tree configs recs)))
+                            (r (append (adt-tp-zeros (- 16384 (len (pcko-rw0 (fn-pck-root-tree configs recs)))))
+                                       (pcko-tw recs)
+                                       (adt-tp-zeros (adt-tp-pad (len (pcko-tw recs)))))))
+                 (:instance pcko-decode-of-program (x (fn-pck-root-tree configs recs)))
+                 (:instance adt-tp-len-pack (o (fn-scc-program (fn-pck-root-tree configs recs))))))))
