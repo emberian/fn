@@ -597,8 +597,8 @@
                           chunk
                         (fn-arena-get-span h at
                                            (min (fn-ast-span-want)
-                                                (- (fn-arena-payload-len h fn-arena) at)
-                                                (nfix (fn-ast-at 2 source)))
+                                                (min (- (fn-arena-payload-len h fn-arena) at)
+                                                     (nfix (fn-ast-at 2 source))))
                                            fn-arena)))
                (byte (car chunk)))
           (mv (if (and (fn-ast-at 5 cur) (equal byte 46)) '(46 46) (list byte))
@@ -607,11 +607,74 @@
       (mv-let (out next) (fn-ast-render-one cur fn-arena)
         (mv out next nil)))))
 
+;; The span renderer's local facts: the per-octet renderer on a readable
+;; payload cursor, and the span's car, cdr and length.
+(local
+ (defthm fn-ast-render-one-on-a-readable-payload
+   (implies (and (equal (fn-ast-at 0 cur) :payload) (not (consp (fn-ast-at 1 cur)))
+                 (fn-ast-source-readablep (fn-ast-at 4 cur) fn-arena))
+            (equal (fn-ast-render-one cur fn-arena)
+                   (let ((byte (fn-arena-get (fn-ast-at 0 (fn-ast-at 4 cur))
+                                             (nfix (fn-ast-at 1 (fn-ast-at 4 cur))) fn-arena)))
+                     (mv (if (and (fn-ast-at 5 cur) (equal byte 46)) '(46 46) (list byte))
+                         (list :payload nil 0 nil (fn-ast-source-next (fn-ast-at 4 cur))
+                               (equal byte 10) nil)))))
+   :hints (("Goal" :in-theory (e/d (fn-ast-render-one fn-ast-source-readablep fn-ast-source-byte)
+                                   (fn-npw-one fn-ast-xref-one fn-ast-server-one fn-ast-source-next))))))
+
+(local
+ (defthm fn-ast-span-car-cdr
+   (implies (not (zp n))
+            (and (equal (car (fn-arena-get-span h at n fn-arena)) (fn-arena-get h at fn-arena))
+                 (equal (cdr (fn-arena-get-span h at n fn-arena))
+                        (fn-arena-get-span h (+ 1 at) (1- n) fn-arena))
+                 (consp (fn-arena-get-span h at n fn-arena))))
+   :hints (("Goal" :expand ((fn-arena-get-span h at n fn-arena))))))
+
+(local
+ (defun fn-ast-span-ind (at n)
+   (if (zp n) at (fn-ast-span-ind (+ 1 at) (1- n)))))
+
+(local
+ (defthm fn-ast-span-len
+   (equal (len (fn-arena-get-span h at n fn-arena)) (nfix n))
+   :hints (("Goal" :induct (fn-ast-span-ind at n)
+                   :in-theory (enable fn-arena-get-span-is-the-gets)))))
+
+(local
+ (defthm fn-ast-span-true-listp
+   (true-listp (fn-arena-get-span h at n fn-arena))
+   :hints (("Goal" :induct (fn-ast-span-ind at n)
+                   :in-theory (enable fn-arena-get-span-is-the-gets)))))
+
+(local
+ (defthm fn-ast-span-of-zp
+   (implies (zp n) (equal (fn-arena-get-span h at n fn-arena) nil))
+   :hints (("Goal" :in-theory (enable fn-arena-get-span-is-the-gets)))))
+
+(local
+ (defthm fn-ast-chunk-car-cdr
+   (implies (and (equal chunk (fn-arena-get-span h at (len chunk) fn-arena))
+                 (consp chunk))
+            (and (equal (car chunk) (fn-arena-get h at fn-arena))
+                 (equal (cdr chunk) (fn-arena-get-span h (+ 1 at) (+ -1 (len chunk)) fn-arena))))
+   :hints (("Goal" :use ((:instance fn-ast-span-car-cdr (n (len chunk))))
+                   :in-theory (disable fn-ast-span-car-cdr)))))
+
+(local
+ (defthm fn-ast-render-one-chunk-keeps-cursorp
+   (implies (fn-ast-cursorp cur fn-arena)
+            (fn-ast-cursorp (mv-nth 1 (fn-ast-render-one-chunk cur chunk fn-arena)) fn-arena))
+   :hints (("Goal" :use fn-ast-render-one-keeps-cursorp :in-theory (e/d (fn-ast-render-one-chunk fn-ast-cursorp fn-npw-piecesp)
+                                   (fn-ast-render-one fn-ast-source-readablep fn-ast-source-next
+                                    fn-arena-get-span-is-the-gets))))))
+
 (defun fn-ast-render-window-aux-chunk (cur pending chunk fuel left acc fn-arena)
   (declare (xargs :stobjs fn-arena :measure (nfix fuel)
                   :guard (and (fn-ast-cursorp cur fn-arena) (natp fuel) (natp left)
                               (true-listp acc))
                   :guard-hints (("Goal" :in-theory (disable fn-ast-cursorp fn-ast-render-one
+                                                            fn-ast-render-one-chunk
                                                             fn-npw-piecesp)))))
   (cond
    ((or (zp fuel) (zp left)
@@ -640,9 +703,9 @@
                                      (mv-nth 2 (fn-ast-render-one-chunk cur chunk fn-arena))
                                      fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-ast-render-one-chunk fn-ast-chunk-validp
-                                   fn-ast-source-readablep fn-ast-source-byte fn-ast-source-next)
-                                  (fn-ast-render-one fn-ast-cursorp))
-                  :expand ((fn-ast-render-one cur fn-arena)))))
+                                   fn-ast-source-readablep fn-ast-source-next)
+                                  (fn-ast-render-one fn-ast-cursorp fn-arena-get-span-is-the-gets
+                                   fn-ast-span-want)))))
 
 (defthm fn-ast-render-window-aux-chunk-is-per-octet
   (implies (fn-ast-chunk-validp cur chunk fn-arena)
