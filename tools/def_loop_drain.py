@@ -48,145 +48,24 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 ROOT = Path(os.environ.get("DEF_LOOP_DRAIN_ROOT") or Path(__file__).resolve().parent.parent)
 
 # --------------------------------------------------------------------------
-# reader
+# reader and printer: tools/lisp_rewrite.py (the one shared reader)
 
-
-@dataclass
-class Atom:
-    text: str
-    start: int = 0
-    end: int = 0
-
-    @property
-    def low(self):
-        return self.text.lower()
-
-
-@dataclass
-class Str(Atom):
-    pass
-
-
-@dataclass
-class Pre:
-    prefix: str
-    node: object
-    start: int = 0
-    end: int = 0
-
-
-@dataclass
-class Lst:
-    items: list
-    start: int = 0
-    end: int = 0
-    comments: list = field(default_factory=list)  # comment text inside, in order
-
-
-TOKEN = re.compile(
-    r'''(?P<ws>\s+)|(?P<comment>;[^\n]*)|(?P<str>"(?:\\.|[^"\\])*")'''
-    r'''|(?P<char>\#\\(?:[A-Za-z]+|.))|(?P<open>\()|(?P<close>\))'''
-    r'''|(?P<pre>,@|\#'|[`',])|(?P<bar>\|[^|]*\|)|(?P<blk>\#\|.*?\|\#)'''
-    r'''|(?P<atom>[^\s()";]+)''', re.S)
-
-
-class ReadError(Exception):
-    pass
+from lisp_rewrite import Atom, Str, Pre, Lst, ReadError, flat, emit, parse, write  # noqa: E402
 
 
 def read_all(text: str):
-    """Top-level data of TEXT: a list of nodes (positions are into TEXT) and
-    the comments between them as (start, text) pairs."""
-    tokens = []
-    pos = 0
-    for m in TOKEN.finditer(text):
-        if m.start() != pos:
-            raise ReadError(f"unreadable text at {pos}: {text[pos:pos+30]!r}")
-        pos = m.end()
-        kind = m.lastgroup
-        if kind == "ws":
-            continue
-        tokens.append((kind, m.group(), m.start(), m.end()))
-    if pos != len(text):
-        raise ReadError(f"unreadable text at {pos}")
-    out = []
-    comments = []
-    stack = []  # (Lst)
-    pending_pre = []  # per open frame: prefixes waiting for a datum
-
-    def emit(node):
-        while pending_pre and pending_pre[-1][0] is stack_ref():
-            p = pending_pre.pop()
-            node = Pre(p[1], node, p[2], node.end)
-        (stack[-1].items if stack else out).append(node)
-
-    def stack_ref():
-        return stack[-1] if stack else None
-
-    for kind, s, a, b in tokens:
-        if kind == "comment":
-            comments.append((a, s))
-            if stack:
-                stack[-1].comments.append(s)
-            continue
-        if kind == "blk":
-            comments.append((a, s))
-            continue
-        if kind == "pre":
-            pending_pre.append((stack_ref(), s, a))
-            continue
-        if kind == "open":
-            stack.append(Lst([], a, 0))
-            continue
-        if kind == "close":
-            if not stack:
-                raise ReadError("unbalanced )")
-            node = stack.pop()
-            node.end = b
-            emit(node)
-            continue
-        if kind == "str":
-            emit(Str(s, a, b))
-        else:
-            emit(Atom(s, a, b))
-    if stack:
-        raise ReadError("unbalanced (")
-    return out, comments
-
-
-# --------------------------------------------------------------------------
-# printer
-
-
-def flat(n) -> str:
-    if isinstance(n, Pre):
-        return n.prefix + flat(n.node)
-    if isinstance(n, Lst):
-        return "(" + " ".join(flat(i) for i in n.items) + ")"
-    return n.text
+    """Top-level data of TEXT and the comments between them as (start, text)."""
+    p = parse(text)
+    return p.forms, p.comments
 
 
 def pretty(n, indent=0, width=84) -> str:
-    one = flat(n)
-    if indent + len(one) <= width or not isinstance(n, (Lst, Pre)):
-        return one
-    if isinstance(n, Pre):
-        return n.prefix + pretty(n.node, indent + len(n.prefix), width)
-    items = n.items
-    if not items:
-        return "()"
-    head = items[0]
-    if isinstance(head, Atom) and len(items) > 1 and not isinstance(head, Str):
-        pad = indent + 2 + len(head.text)
-        first = pretty(items[1], pad, width)
-        rest = [" " * pad + pretty(i, pad, width) for i in items[2:]]
-        if head.low in ("let", "let*", "cond", "if", "and", "or") or True:
-            return "(" + head.text + " " + "\n".join([first] + rest) + ")"
-    pad = indent + 1
-    return "(" + ("\n" + " " * pad).join(pretty(i, pad, width) for i in items) + ")"
+    return emit(n, indent=indent, width=width, layout="aligned", drop_comments=True)
 
 
 # --------------------------------------------------------------------------
@@ -827,20 +706,15 @@ def apply_text(text: str, conv) -> str:
         w = c["wrapper"]
         edits.append((w.start, w.end, c["text"]))
         for k in c["kill"]:
-            edits.append((k.start, k.end, ""))
-    out = text
-    for s, e, r in sorted(edits, key=lambda t: -t[0]):
-        if r == "":
-            m = re.match(r"[ \t]*\n(\s*\n)?", out[e:])
-            if m:
-                e += m.end()
-        out = out[:s] + r + out[e:]
-    if conv and '(include-book "def-loop")' not in out:
-        m = re.search(r'^\(include-book "[^"]+"[^\n]*\)\n', out, re.M)
+            # a deleted form takes its trailing blank line with it
+            m = re.match(r"[ \t]*\n(\s*\n)?", text[k.end:])
+            edits.append((k.start, k.end + (m.end() if m else 0), ""))
+    if conv and '(include-book "def-loop")' not in text:
+        m = re.search(r'^\(include-book "[^"]+"[^\n]*\)\n', text, re.M)
         if not m:
             raise Refuse("no-shape", "no include-book to anchor def-loop")
-        out = out[:m.end()] + '(include-book "def-loop")\n' + out[m.end():]
-    return out
+        edits.append((m.end(), m.end(), '(include-book "def-loop")\n'))
+    return write(text, edits)
 
 
 # --------------------------------------------------------------------------
