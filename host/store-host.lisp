@@ -12,6 +12,10 @@
 ; only marshal.
 
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/replay")
 (include-book "../books/store-intern")
 (include-book "../books/open-frontier-wire")

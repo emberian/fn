@@ -51,6 +51,7 @@
 ; never per candidate.
 (in-package "ACL2")
 (include-book "store-reclaim")
+(include-book "def-loop")
 (include-book "store-node")
 (include-book "payload-arena")
 
@@ -70,36 +71,10 @@
 
 ; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
 ; operator data (D27: no fixed cap), one control-stack frame per element.
-(defun fn-rcl-cursors-at-zero-loop (groups acc)
-  (declare (xargs :guard t))
-  (if (consp groups)
-      (fn-rcl-cursors-at-zero-loop (cdr groups)
-       (if (stringp (car groups)) (cons (cons (car groups) 0) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-rcl-cursors-at-zero (groups)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp groups)
-           (if (stringp (car groups))
-               (cons (cons (car groups) 0) (fn-rcl-cursors-at-zero (cdr groups)))
-             (fn-rcl-cursors-at-zero (cdr groups)))
-         nil)
-       :exec (fn-rcl-cursors-at-zero-loop groups nil)))
-
-(defthm fn-rcl-cursors-at-zero-loop-is-rev-onto
-  (equal (fn-rcl-cursors-at-zero-loop groups acc)
-         (fn-ag-rev-onto acc (fn-rcl-cursors-at-zero groups)))
-  :hints (("Goal" :induct (fn-rcl-cursors-at-zero-loop groups acc)
-                  :in-theory (union-theories
-                              '(fn-rcl-cursors-at-zero-loop fn-rcl-cursors-at-zero fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-rcl-cursors-at-zero
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-rcl-cursors-at-zero fn-ag-rev-onto fn-rcl-cursors-at-zero-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-rcl-cursors-at-zero (groups)
+  :shape :map :over groups :elt g
+  :keep (stringp g)
+  :body (cons g 0))
 
 ; -----------------------------------------------------------------------------
 ; The BP slot: the canonical Store retention pins.
@@ -606,49 +581,12 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-rcl-held-verdicts-loop (verdicts acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp verdicts)
-      (if (and (consp (car verdicts))
-               (not (and (consp (cdr (car verdicts)))
-                         (equal (car (cdr (car verdicts))) :absent))))
-          (fn-rcl-held-verdicts-loop (cdr verdicts) (cons (car verdicts) acc))
-        (fn-rcl-held-verdicts-loop (cdr verdicts) acc))
-    (revappend acc nil)))
-
-(defun fn-rcl-held-verdicts (verdicts)
-  "The entries of VERDICTS that `fn-rcl-verdict-heldp' can answer true for:
-a (MSGID . VERDICT) pair whose verdict is not :absent."
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp verdicts)
-           (if (and (consp (car verdicts))
-                    (not (and (consp (cdr (car verdicts)))
-                              (equal (car (cdr (car verdicts))) :absent))))
-               (cons (car verdicts) (fn-rcl-held-verdicts (cdr verdicts)))
-             (fn-rcl-held-verdicts (cdr verdicts)))
-         nil)
-       :exec (fn-rcl-held-verdicts-loop verdicts nil)))
-
-(local
- (defthm fn-rcl-held-verdicts-loop-is-revappend
-   (equal (fn-rcl-held-verdicts-loop verdicts acc)
-          (revappend acc (fn-rcl-held-verdicts verdicts)))
-   :hints (("Goal" :induct (fn-rcl-held-verdicts-loop verdicts acc)
-                   :in-theory (union-theories '(fn-rcl-held-verdicts-loop fn-rcl-held-verdicts revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-rcl-held-verdicts-loop)
-
-(verify-guards fn-rcl-held-verdicts
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-rcl-held-verdicts)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-rcl-held-verdicts-loop-is-revappend (acc nil))))))
-
+; The entries of VERDICTS that `fn-rcl-verdict-heldp' can answer true for:
+; a (MSGID . VERDICT) pair whose verdict is not :absent.
+(def-loop fn-rcl-held-verdicts (verdicts)
+  :shape :map :over verdicts :elt v
+  :keep (and (consp v) (not (and (consp (cdr v)) (equal (car (cdr v)) :absent))))
+  :body v)
 
 (defthm fn-rcl-verdict-heldp-of-held-verdicts
   (equal (fn-rcl-verdict-heldp msgid (fn-rcl-held-verdicts verdicts))

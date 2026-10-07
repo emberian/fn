@@ -18,6 +18,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-responses")
+(include-book "def-loop")
 ; The reply texts below are the protocol table's (books/protocol-table.lisp):
 ; `fn-proto-text' is a macro, so each site admits the same literal as before.
 (include-book "protocol-table")
@@ -221,39 +222,14 @@
   (fn-nntp-counts-summary-line
    group (fn-gidx-group-summary archive buckets group) closed))
 
+(verify-guards fn-gidx-counts-line)
+
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-gidx-counts-lines-loop (archive buckets groups closed acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp groups)
-      (fn-gidx-counts-lines-loop archive
-                                 buckets
-                                 (cdr groups)
-                                 closed
-                                 (cons (fn-gidx-counts-line archive
-                                                            buckets
-                                                            (car groups)
-                                                            closed)
-                                       acc))
-    (revappend acc nil)))
-
-(defun fn-gidx-counts-lines (archive buckets groups closed)
-  (mbe :logic
-       (if (consp groups)
-           (cons (fn-gidx-counts-line archive buckets (car groups) closed)
-                 (fn-gidx-counts-lines archive buckets (cdr groups) closed))
-         nil)
-       :exec (fn-gidx-counts-lines-loop archive buckets groups closed nil)))
-
-(local
- (defthm fn-gidx-counts-lines-loop-is-revappend
-   (equal (fn-gidx-counts-lines-loop archive buckets groups closed acc)
-          (revappend acc (fn-gidx-counts-lines archive buckets groups closed)))
-   :hints (("Goal" :induct (fn-gidx-counts-lines-loop archive buckets groups closed acc)
-                   :in-theory (union-theories '(fn-gidx-counts-lines-loop fn-gidx-counts-lines revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-gidx-counts-lines (archive buckets groups closed)
+  :shape :map :over groups :elt g
+  :body (fn-gidx-counts-line archive buckets g closed))
 
 (defun fn-gidx-list-counts-command (session archive buckets closed args)
   (if (null args)
@@ -274,17 +250,6 @@
             (fn-nntp-single session (fn-proto-text "LIST" :syntax))))
       (fn-nntp-single session (fn-proto-text "LIST" :syntax)))))
 
-(verify-guards fn-gidx-counts-line)
-(verify-guards fn-gidx-counts-lines-loop)
-
-(verify-guards fn-gidx-counts-lines
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-gidx-counts-lines)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-gidx-counts-lines-loop-is-revappend (acc nil))))))
 (verify-guards fn-gidx-list-counts-command)
 
 (defthm fn-gidx-list-counts-command-preserves-session

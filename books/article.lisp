@@ -10,6 +10,7 @@
 
 (in-package "ACL2")
 (include-book "cbor")
+(include-book "def-loop")
 (include-book "std/lists/rev" :dir :system)
 
 ; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds section 2.3).
@@ -551,45 +552,12 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-article-get-headers-aux-loop (fields name acc)
-  (declare (xargs :guard (and (fn-article-field-listp fields) (true-listp acc)) :verify-guards nil))
-  (if (consp fields)
-      (let ((field (car fields)))
-        (if (fn-article-field-name-equalp field name)
-            (fn-article-get-headers-aux-loop (cdr fields) name (cons field acc))
-          (fn-article-get-headers-aux-loop (cdr fields) name acc)))
-    (revappend acc nil)))
-
-(defun fn-article-get-headers-aux (fields name)
-  (declare (xargs :verify-guards nil :guard (fn-article-field-listp fields)))
-  (mbe :logic
-       (if (consp fields)
-           (let ((field (car fields)))
-             (if (fn-article-field-name-equalp field name)
-                 (cons field (fn-article-get-headers-aux (cdr fields) name))
-               (fn-article-get-headers-aux (cdr fields) name)))
-         nil)
-       :exec (fn-article-get-headers-aux-loop fields name nil)))
-
-(local
- (defthm fn-article-get-headers-aux-loop-is-revappend
-   (equal (fn-article-get-headers-aux-loop fields name acc)
-          (revappend acc (fn-article-get-headers-aux fields name)))
-   :hints (("Goal" :induct (fn-article-get-headers-aux-loop fields name acc)
-                   :in-theory (union-theories '(fn-article-get-headers-aux-loop fn-article-get-headers-aux revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-article-get-headers-aux-loop)
-
-(verify-guards fn-article-get-headers-aux
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-article-get-headers-aux)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-article-get-headers-aux-loop-is-revappend (acc nil))))))
-
+(def-loop fn-article-get-headers-aux (fields name)
+  :shape :map :over fields :elt f
+  :guard (fn-article-field-listp fields)
+  :let ((field f))
+  :keep (fn-article-field-name-equalp field name)
+  :body field)
 
 (defun fn-article-get-headers (article name)
   (declare (xargs :guard (fn-article-syntax-p article)))
@@ -872,7 +840,6 @@
 (verify-guards fn-article-parse-under)
 (verify-guards fn-article-parse)
 (verify-guards fn-article-field-name-equalp)
-(verify-guards fn-article-get-headers-aux)
 (verify-guards fn-article-get-headers)
 (verify-guards fn-article-get-header)
 

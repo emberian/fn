@@ -8,6 +8,7 @@
 
 (in-package "ACL2")
 (include-book "rev-onto")
+(include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
 ; Total executable helpers.
@@ -300,40 +301,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-initial-nexts-loop (groups acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp groups)
-      (fn-initial-nexts-loop (cdr groups) (cons (cons (car groups) 1) acc))
-    (revappend acc nil)))
-
-(defun fn-initial-nexts (groups)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp groups)
-           (cons (cons (car groups) 1)
-                 (fn-initial-nexts (cdr groups)))
-         nil)
-       :exec (fn-initial-nexts-loop groups nil)))
-
-(local
- (defthm fn-initial-nexts-loop-is-revappend
-   (equal (fn-initial-nexts-loop groups acc)
-          (revappend acc (fn-initial-nexts groups)))
-   :hints (("Goal" :induct (fn-initial-nexts-loop groups acc)
-                   :in-theory (union-theories '(fn-initial-nexts-loop fn-initial-nexts revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-
-(verify-guards fn-initial-nexts-loop)
-
-(verify-guards fn-initial-nexts
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-initial-nexts)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-initial-nexts-loop-is-revappend (acc nil))))))
+(def-loop fn-initial-nexts (groups)
+  :shape :map :over groups :elt g
+  :body (cons g 1))
 
 (defun fn-next-number (group nexts)
   (declare (xargs :guard t :verify-guards nil))
@@ -391,47 +361,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-allocate-memberships-loop (groups nexts acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp groups)
-      (fn-allocate-memberships-loop (cdr groups)
-                                    (fn-bump-number (car groups) nexts)
-                                    (cons (cons (car groups)
-                                                (fn-next-number (car groups) nexts))
-                                          acc))
-    (revappend acc nil)))
-
-(defun fn-allocate-memberships (groups nexts)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp groups)
-           (cons (cons (car groups)
-                       (fn-next-number (car groups) nexts))
-                 (fn-allocate-memberships
-                  (cdr groups)
-                  (fn-bump-number (car groups) nexts)))
-         nil)
-       :exec (fn-allocate-memberships-loop groups nexts nil)))
-
-(local
- (defthm fn-allocate-memberships-loop-is-revappend
-   (equal (fn-allocate-memberships-loop groups nexts acc)
-          (revappend acc (fn-allocate-memberships groups nexts)))
-   :hints (("Goal" :induct (fn-allocate-memberships-loop groups nexts acc)
-                   :in-theory (union-theories '(fn-allocate-memberships-loop fn-allocate-memberships revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-
-(verify-guards fn-allocate-memberships-loop)
-
-(verify-guards fn-allocate-memberships
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-allocate-memberships)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-allocate-memberships-loop-is-revappend (acc nil))))))
+(def-loop fn-allocate-memberships (groups nexts)
+  :shape :step :over (groups nexts) :done (atom groups) :elt g
+  :body (cons g (fn-next-number g nexts))
+  :next ((cdr groups) (fn-bump-number g nexts)))
 
 (defun fn-advance-nexts (groups nexts)
   (declare (xargs :guard t :verify-guards nil))

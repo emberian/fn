@@ -194,108 +194,32 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the peer feed table, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-put-loop (peer record f tbl acc)
-  (declare (xargs :guard t))
-  (if (consp tbl)
-      (if (equal (fn-own-feed-entry-name (car tbl)) peer)
-          (fn-ag-rev-onto acc (cons (fn-own-feed-entry-scoped peer record f
-                                        (fn-own-feed-entry-dists (car tbl)))
-              (cdr tbl)))
-        (fn-own-feed-put-loop peer record f (cdr tbl) (cons (car tbl) acc)))
-    (fn-ag-rev-onto acc (list (fn-own-feed-entry peer record f)))))
-
-(defun fn-own-feed-put (peer record f tbl)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp tbl)
-           (if (equal (fn-own-feed-entry-name (car tbl)) peer)
-               (cons (fn-own-feed-entry-scoped peer record f
-                                               (fn-own-feed-entry-dists (car tbl)))
+(def-loop fn-own-feed-put (peer record f tbl)
+  :shape :map :over tbl :elt e
+  :stop (equal (fn-own-feed-entry-name e) peer)
+  :stop-value (cons (fn-own-feed-entry-scoped peer
+                                               record
+                                               f
+                                               (fn-own-feed-entry-dists e))
                      (cdr tbl))
-             (cons (car tbl) (fn-own-feed-put peer record f (cdr tbl))))
-         (list (fn-own-feed-entry peer record f)))
-       :exec (fn-own-feed-put-loop peer record f tbl nil)))
-
-(defthm fn-own-feed-put-loop-is-rev-onto
-  (equal (fn-own-feed-put-loop peer record f tbl acc)
-         (fn-ag-rev-onto acc (fn-own-feed-put peer record f tbl)))
-  :hints (("Goal" :induct (fn-own-feed-put-loop peer record f tbl acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-put-loop fn-own-feed-put fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-put
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-put fn-ag-rev-onto fn-own-feed-put-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+  :tail (list (fn-own-feed-entry peer record f))
+  :body e)
 
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the peer feed table, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-forget-loop (peer tbl acc)
-  (declare (xargs :guard t))
-  (if (consp tbl)
-      (if (equal (fn-own-feed-entry-name (car tbl)) peer)
-          (fn-ag-rev-onto acc (cdr tbl))
-        (fn-own-feed-forget-loop peer (cdr tbl) (cons (car tbl) acc)))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-forget (peer tbl)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp tbl)
-           (if (equal (fn-own-feed-entry-name (car tbl)) peer)
-               (cdr tbl)
-             (cons (car tbl) (fn-own-feed-forget peer (cdr tbl))))
-         nil)
-       :exec (fn-own-feed-forget-loop peer tbl nil)))
-
-(defthm fn-own-feed-forget-loop-is-rev-onto
-  (equal (fn-own-feed-forget-loop peer tbl acc)
-         (fn-ag-rev-onto acc (fn-own-feed-forget peer tbl)))
-  :hints (("Goal" :induct (fn-own-feed-forget-loop peer tbl acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-forget-loop fn-own-feed-forget fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-forget
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-forget fn-ag-rev-onto fn-own-feed-forget-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-forget (peer tbl)
+  :shape :map :over tbl :elt e
+  :stop (equal (fn-own-feed-entry-name e) peer)
+  :stop-value (cdr tbl)
+  :body e)
 
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the peer feed table, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-names-loop (tbl acc)
-  (declare (xargs :guard t))
-  (if (consp tbl)
-      (fn-own-feed-names-loop (cdr tbl)
-       (cons (fn-own-feed-entry-name (car tbl)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-names (tbl)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp tbl)
-           (cons (fn-own-feed-entry-name (car tbl)) (fn-own-feed-names (cdr tbl)))
-         nil)
-       :exec (fn-own-feed-names-loop tbl nil)))
-
-(defthm fn-own-feed-names-loop-is-rev-onto
-  (equal (fn-own-feed-names-loop tbl acc)
-         (fn-ag-rev-onto acc (fn-own-feed-names tbl)))
-  :hints (("Goal" :induct (fn-own-feed-names-loop tbl acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-names-loop fn-own-feed-names fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-names
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-names fn-ag-rev-onto fn-own-feed-names-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-names (tbl)
+  :shape :map :over tbl :elt e
+  :body (fn-own-feed-entry-name e))
 
 (defun fn-own-feed-tablep (tbl)
   (declare (xargs :guard t))
@@ -596,43 +520,13 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the peer feed table, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-scope-all-loop (tbl peers acc)
-  (declare (xargs :guard t))
-  (if (consp tbl)
-      (fn-own-feed-scope-all-loop (cdr tbl) peers
-       (cons (fn-own-feed-entry-scoped
-        (fn-own-feed-entry-name (car tbl))
-        (fn-own-feed-entry-record (car tbl))
-        (fn-own-feed-entry-feed (car tbl))
-        (fn-own-feed-dists-of-rows (fn-own-feed-entry-name (car tbl)) peers)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-scope-all (tbl peers)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp tbl)
-           (cons (fn-own-feed-entry-scoped
-                  (fn-own-feed-entry-name (car tbl))
-                  (fn-own-feed-entry-record (car tbl))
-                  (fn-own-feed-entry-feed (car tbl))
-                  (fn-own-feed-dists-of-rows (fn-own-feed-entry-name (car tbl)) peers))
-                 (fn-own-feed-scope-all (cdr tbl) peers))
-         nil)
-       :exec (fn-own-feed-scope-all-loop tbl peers nil)))
-
-(defthm fn-own-feed-scope-all-loop-is-rev-onto
-  (equal (fn-own-feed-scope-all-loop tbl peers acc)
-         (fn-ag-rev-onto acc (fn-own-feed-scope-all tbl peers)))
-  :hints (("Goal" :induct (fn-own-feed-scope-all-loop tbl peers acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-scope-all-loop fn-own-feed-scope-all fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-scope-all
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-scope-all fn-ag-rev-onto fn-own-feed-scope-all-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-scope-all (tbl peers)
+  :shape :map :over tbl :elt e
+  :body (fn-own-feed-entry-scoped (fn-own-feed-entry-name e)
+                                   (fn-own-feed-entry-record e)
+                                   (fn-own-feed-entry-feed e)
+                                   (fn-own-feed-dists-of-rows (fn-own-feed-entry-name e)
+                                                              peers)))
 
 ; The table the owner holds for one configuration value.  Called at open and
 ; again after every (:set-peer ...) / (:remove-peer ...) delta.
@@ -805,43 +699,12 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the peer feed table, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-restart-all-loop (tbl acc)
-  (declare (xargs :guard t))
-  (if (consp tbl)
-      (fn-own-feed-restart-all-loop (cdr tbl)
-       (cons (fn-own-feed-entry-scoped
-        (fn-own-feed-entry-name (car tbl))
-        (fn-own-feed-entry-record (car tbl))
-        (fn-feed-restart (fn-own-feed-entry-feed (car tbl)))
-        (fn-own-feed-entry-dists (car tbl))) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-restart-all (tbl)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp tbl)
-           (cons (fn-own-feed-entry-scoped
-                  (fn-own-feed-entry-name (car tbl))
-                  (fn-own-feed-entry-record (car tbl))
-                  (fn-feed-restart (fn-own-feed-entry-feed (car tbl)))
-                  (fn-own-feed-entry-dists (car tbl)))
-                 (fn-own-feed-restart-all (cdr tbl)))
-         nil)
-       :exec (fn-own-feed-restart-all-loop tbl nil)))
-
-(defthm fn-own-feed-restart-all-loop-is-rev-onto
-  (equal (fn-own-feed-restart-all-loop tbl acc)
-         (fn-ag-rev-onto acc (fn-own-feed-restart-all tbl)))
-  :hints (("Goal" :induct (fn-own-feed-restart-all-loop tbl acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-restart-all-loop fn-own-feed-restart-all fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-restart-all
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-restart-all fn-ag-rev-onto fn-own-feed-restart-all-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-restart-all (tbl)
+  :shape :map :over tbl :elt e
+  :body (fn-own-feed-entry-scoped (fn-own-feed-entry-name e)
+                                   (fn-own-feed-entry-record e)
+                                   (fn-feed-restart (fn-own-feed-entry-feed e))
+                                   (fn-own-feed-entry-dists e)))
 
 ; Each of the three is `fn-feedp' from the feed cluster's own preservation
 ; keystone (books/peer-feed-invariants.lisp), CITED and never restated, plus
@@ -1016,47 +879,14 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-own-feed-dist-names-of-pieces-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-own-feed-dist-names-of-pieces-loop (cdr rev)
-                                             (let ((name (fn-path-trim (car rev)))
-                                                   (rest acc))
-                                               (if (and (fn-own-feed-dist-namep name)
-                                                        (not (equal rest :malformed)))
-                                                   (cons (fn-own-feed-fold name) rest)
-                                                 :malformed)))
-    acc))
-
-(defun fn-own-feed-dist-names-of-pieces (pieces)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp pieces)
-           (let ((name (fn-path-trim (car pieces)))
-                 (rest (fn-own-feed-dist-names-of-pieces (cdr pieces))))
-             (if (and (fn-own-feed-dist-namep name) (not (equal rest :malformed)))
-                 (cons (fn-own-feed-fold name) rest)
-               :malformed))
-         nil)
-       :exec (fn-own-feed-dist-names-of-pieces-loop (fn-ag-rev-onto pieces nil) nil)))
-
-(local
- (defthm fn-own-feed-dist-names-of-pieces-loop-of-rev-onto
-   (equal (fn-own-feed-dist-names-of-pieces-loop (fn-ag-rev-onto pieces zs) nil)
-          (fn-own-feed-dist-names-of-pieces-loop zs (fn-own-feed-dist-names-of-pieces pieces)))
-   :hints (("Goal" :induct (fn-ag-rev-onto pieces zs)
-                   :in-theory (union-theories '(fn-own-feed-dist-names-of-pieces-loop fn-own-feed-dist-names-of-pieces fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-own-feed-dist-names-of-pieces-loop)
-
-(verify-guards fn-own-feed-dist-names-of-pieces
-  :hints (("Goal" :in-theory (union-theories '(fn-own-feed-dist-names-of-pieces fn-own-feed-dist-names-of-pieces-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-own-feed-dist-names-of-pieces-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-own-feed-dist-names-of-pieces (pieces)
+  :shape :foldr :over pieces :elt p
+  :combine (let ((name (fn-path-trim p)) (rest acc))
+                (if (and (fn-own-feed-dist-namep name) (not (equal rest :malformed)))
+                    (cons (fn-own-feed-fold name) rest)
+                    :malformed))
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-own-feed-dist-list (value)
   (declare (xargs :guard t))
@@ -1130,39 +960,10 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the peer feed table, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-targets-loop (tbl origin groups path acc)
-  (declare (xargs :guard t))
-  (if (consp tbl)
-      (fn-own-feed-targets-loop (cdr tbl) origin groups path
-       (if (fn-own-feed-offerablep (fn-own-feed-entry-record (car tbl))
-                               origin groups path) (cons (fn-own-feed-entry-name (car tbl)) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-targets (tbl origin groups path)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp tbl)
-           (let ((rest (fn-own-feed-targets (cdr tbl) origin groups path)))
-             (if (fn-own-feed-offerablep (fn-own-feed-entry-record (car tbl))
-                                         origin groups path)
-                 (cons (fn-own-feed-entry-name (car tbl)) rest)
-               rest))
-         nil)
-       :exec (fn-own-feed-targets-loop tbl origin groups path nil)))
-
-(defthm fn-own-feed-targets-loop-is-rev-onto
-  (equal (fn-own-feed-targets-loop tbl origin groups path acc)
-         (fn-ag-rev-onto acc (fn-own-feed-targets tbl origin groups path)))
-  :hints (("Goal" :induct (fn-own-feed-targets-loop tbl origin groups path acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-targets-loop fn-own-feed-targets fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-targets
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-targets fn-ag-rev-onto fn-own-feed-targets-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-targets (tbl origin groups path)
+  :shape :map :over tbl :elt e
+  :keep (fn-own-feed-offerablep (fn-own-feed-entry-record e) origin groups path)
+  :body (fn-own-feed-entry-name e))
 
 (defthm fn-own-feed-targets-true-listp
   (true-listp (fn-own-feed-targets tbl origin groups path)))
@@ -1620,43 +1421,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-own-feed-intent-remove-loop (key intents acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp intents)
-      (if (equal key (car intents))
-          (fn-own-feed-intent-remove-loop key (cdr intents) acc)
-        (fn-own-feed-intent-remove-loop key (cdr intents) (cons (car intents) acc)))
-    (revappend acc nil)))
-
-(defun fn-own-feed-intent-remove (key intents)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp intents)
-           (if (equal key (car intents))
-               (fn-own-feed-intent-remove key (cdr intents))
-             (cons (car intents) (fn-own-feed-intent-remove key (cdr intents))))
-         nil)
-       :exec (fn-own-feed-intent-remove-loop key intents nil)))
-
-(local
- (defthm fn-own-feed-intent-remove-loop-is-revappend
-   (equal (fn-own-feed-intent-remove-loop key intents acc)
-          (revappend acc (fn-own-feed-intent-remove key intents)))
-   :hints (("Goal" :induct (fn-own-feed-intent-remove-loop key intents acc)
-                   :in-theory (union-theories '(fn-own-feed-intent-remove-loop fn-own-feed-intent-remove revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-own-feed-intent-remove-loop)
-
-(verify-guards fn-own-feed-intent-remove
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-own-feed-intent-remove)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-own-feed-intent-remove-loop-is-revappend (acc nil))))))
-
+(def-loop fn-own-feed-intent-remove (key intents)
+  :shape :map :over intents :elt i
+  :keep (equal key i) :keep-order :skip-first
+  :body i)
 
 (defun fn-own-feed-intent-memberp (key intents)
   (declare (xargs :guard t))
@@ -1730,81 +1498,30 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the configured peer names, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-intent-records-loop (names msgid identity evidence generation txid tick acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-own-feed-intent-records-loop (cdr names) msgid identity evidence generation txid tick
-       (cons (fn-feed-journal-entry
-        :feed-intent
-        (fn-own-feed-intent-values (car names) msgid identity evidence
-                                   generation txid tick)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-intent-records (names msgid identity evidence generation txid tick)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (cons (fn-feed-journal-entry
-                  :feed-intent
-                  (fn-own-feed-intent-values (car names) msgid identity evidence
-                                             generation txid tick))
-                 (fn-own-feed-intent-records (cdr names) msgid identity evidence
-                                             generation txid tick))
-         nil)
-       :exec (fn-own-feed-intent-records-loop names msgid identity evidence generation txid tick nil)))
-
-(defthm fn-own-feed-intent-records-loop-is-rev-onto
-  (equal (fn-own-feed-intent-records-loop names msgid identity evidence generation txid tick acc)
-         (fn-ag-rev-onto acc (fn-own-feed-intent-records names msgid identity evidence generation txid tick)))
-  :hints (("Goal" :induct (fn-own-feed-intent-records-loop names msgid identity evidence generation txid tick acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-intent-records-loop fn-own-feed-intent-records fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-intent-records
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-intent-records fn-ag-rev-onto fn-own-feed-intent-records-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-intent-records (names msgid identity evidence generation txid tick)
+  :shape :map :over names :elt n
+  :body (fn-feed-journal-entry :feed-intent
+                                (fn-own-feed-intent-values n
+                                                           msgid
+                                                           identity
+                                                           evidence
+                                                           generation
+                                                           txid
+                                                           tick)))
 
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the configured peer names, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-resolution-records-loop (kind names msgid identity evidence generation txid tick acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-own-feed-resolution-records-loop kind (cdr names) msgid identity evidence generation txid tick
-       (cons (fn-feed-journal-entry
-        kind (fn-own-feed-intent-values (car names) msgid identity
-                                        evidence generation txid tick)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-resolution-records (kind names msgid identity evidence
-                                            generation txid tick)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (cons (fn-feed-journal-entry
-                  kind (fn-own-feed-intent-values (car names) msgid identity
-                                                  evidence generation txid tick))
-                 (fn-own-feed-resolution-records kind (cdr names) msgid identity
-                                                 evidence generation txid tick))
-         nil)
-       :exec (fn-own-feed-resolution-records-loop kind names msgid identity evidence generation txid tick nil)))
-
-(defthm fn-own-feed-resolution-records-loop-is-rev-onto
-  (equal (fn-own-feed-resolution-records-loop kind names msgid identity evidence generation txid tick acc)
-         (fn-ag-rev-onto acc (fn-own-feed-resolution-records kind names msgid identity evidence generation txid tick)))
-  :hints (("Goal" :induct (fn-own-feed-resolution-records-loop kind names msgid identity evidence generation txid tick acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-resolution-records-loop fn-own-feed-resolution-records fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-resolution-records
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-resolution-records fn-ag-rev-onto fn-own-feed-resolution-records-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-resolution-records (kind names msgid identity evidence generation txid tick)
+  :shape :map :over names :elt n
+  :body (fn-feed-journal-entry kind
+                                (fn-own-feed-intent-values n
+                                                           msgid
+                                                           identity
+                                                           evidence
+                                                           generation
+                                                           txid
+                                                           tick)))
 
 (defun fn-own-feed-target-capacityp (names tbl msgid)
   (declare (xargs :guard t))
@@ -1853,39 +1570,10 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the configured peer names, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-distribution-targets-loop (names tbl dists acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-own-feed-distribution-targets-loop (cdr names) tbl dists
-       (if (fn-own-feed-distribution-admitsp (fn-own-feed-dists-of (car names) tbl)
-                                         dists) (cons (car names) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-distribution-targets (names tbl dists)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (if (fn-own-feed-distribution-admitsp (fn-own-feed-dists-of (car names) tbl)
-                                                 dists)
-               (cons (car names)
-                     (fn-own-feed-distribution-targets (cdr names) tbl dists))
-             (fn-own-feed-distribution-targets (cdr names) tbl dists))
-         nil)
-       :exec (fn-own-feed-distribution-targets-loop names tbl dists nil)))
-
-(defthm fn-own-feed-distribution-targets-loop-is-rev-onto
-  (equal (fn-own-feed-distribution-targets-loop names tbl dists acc)
-         (fn-ag-rev-onto acc (fn-own-feed-distribution-targets names tbl dists)))
-  :hints (("Goal" :induct (fn-own-feed-distribution-targets-loop names tbl dists acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-distribution-targets-loop fn-own-feed-distribution-targets fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-distribution-targets
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-distribution-targets fn-ag-rev-onto fn-own-feed-distribution-targets-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-distribution-targets (names tbl dists)
+  :shape :map :over names :elt n
+  :keep (fn-own-feed-distribution-admitsp (fn-own-feed-dists-of n tbl) dists)
+  :body n)
 
 ;; KEYSTONE.  The filter is exactly the decision: a name survives it iff it
 ;; was offered and its peer's filter admits the article's distributions.
@@ -1921,40 +1609,10 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the configured peer names, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-feed-new-targets-loop (names tbl msgid acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-own-feed-new-targets-loop (cdr names) tbl msgid
-       (if (not (consp (fn-feed-find msgid
-                               (fn-feed-queue
-                                (fn-own-feed-find (car names) tbl))))) (cons (car names) acc) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-feed-new-targets (names tbl msgid)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (if (consp (fn-feed-find msgid
-                                    (fn-feed-queue
-                                     (fn-own-feed-find (car names) tbl))))
-               (fn-own-feed-new-targets (cdr names) tbl msgid)
-             (cons (car names) (fn-own-feed-new-targets (cdr names) tbl msgid)))
-         nil)
-       :exec (fn-own-feed-new-targets-loop names tbl msgid nil)))
-
-(defthm fn-own-feed-new-targets-loop-is-rev-onto
-  (equal (fn-own-feed-new-targets-loop names tbl msgid acc)
-         (fn-ag-rev-onto acc (fn-own-feed-new-targets names tbl msgid)))
-  :hints (("Goal" :induct (fn-own-feed-new-targets-loop names tbl msgid acc)
-                  :in-theory (union-theories
-                              '(fn-own-feed-new-targets-loop fn-own-feed-new-targets fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-feed-new-targets
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-feed-new-targets fn-ag-rev-onto fn-own-feed-new-targets-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-feed-new-targets (names tbl msgid)
+  :shape :map :over names :elt n
+  :keep (consp (fn-feed-find msgid (fn-feed-queue (fn-own-feed-find n tbl)))) :keep-order :skip-first
+  :body n)
 
 (defun fn-own-feed-restart-record (peer)
   (declare (xargs :guard t))

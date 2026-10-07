@@ -30,6 +30,7 @@
 ; advances over, so a contact examines each job from F on at most once.
 (in-package "ACL2")
 (include-book "bp-node-job-offer")
+(include-book "def-loop")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -1064,38 +1065,12 @@
 ; (D27): the walk executes by a loop (lane depth-debt, PRF-919), (mbe
 ; :logic <the recursion, unchanged> :exec <a loop carrying the reversed
 ; prefix>).
-(defun fn-bpnjc-table-with-loop (table peer f acc)
-  (declare (xargs :guard t))
-  (if (atom table)
-      (fn-ag-rev-onto acc (list (cons peer f)))
-    (if (and (consp (car table)) (equal (car (car table)) peer))
-        (fn-ag-rev-onto acc (cons (cons peer f) (cdr table)))
-      (fn-bpnjc-table-with-loop (cdr table) peer f (cons (car table) acc)))))
-
-(defun fn-bpnjc-table-with (table peer f)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (atom table)
-                  (list (cons peer f))
-                (if (and (consp (car table)) (equal (car (car table)) peer))
-                    (cons (cons peer f) (cdr table))
-                  (cons (car table) (fn-bpnjc-table-with (cdr table) peer f))))
-       :exec (fn-bpnjc-table-with-loop table peer f nil)))
-
-(defthm fn-bpnjc-table-with-loop-is-rev-onto
-  (equal (fn-bpnjc-table-with-loop table peer f acc)
-         (fn-ag-rev-onto acc (fn-bpnjc-table-with table peer f)))
-  :hints (("Goal" :induct (fn-bpnjc-table-with-loop table peer f acc)
-                  :in-theory (union-theories
-                              '(fn-bpnjc-table-with-loop fn-bpnjc-table-with
-                                fn-ag-rev-onto atom car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bpnjc-table-with
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpnjc-table-with fn-ag-rev-onto
-                                fn-bpnjc-table-with-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-bpnjc-table-with (table peer f)
+  :shape :map :over table :elt e
+  :stop (and (consp e) (equal (car e) peer))
+  :stop-value (cons (cons peer f) (cdr table))
+  :tail (list (cons peer f))
+  :body e)
 
 (defun fn-bpnjc-contact-close (table st peer cursor)
   (declare (xargs :guard t))

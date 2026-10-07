@@ -1,6 +1,9 @@
 ; Internal pre-dispatch reader continuation. The caller holds owner exclusion
 ; from current source validation through actual RC and once-only completion.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/history-paged-attach")
 (include-book "../books/index-connection-repin-prepare")
 
 (defun fn-owner-index-connection-repin-prepare

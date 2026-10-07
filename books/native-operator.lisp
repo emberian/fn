@@ -8,6 +8,7 @@
 
 (in-package "ACL2")
 (include-book "native-config")
+(include-book "def-loop")
 (include-book "native-config-show")
 (include-book "native-config-paths")
 (include-book "native-admin")
@@ -34,26 +35,9 @@
            (fn-nop-argvp (cdr argv)))
     (null argv)))
 
-(defun fn-nop-argument-texts-loop (argv acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp argv)
-      (fn-nop-argument-texts-loop (cdr argv) (cons (fn-record-octets-string (car argv)) acc))
-    (revappend acc nil)))
-
-(defun fn-nop-argument-texts (argv)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp argv)
-                  (cons (fn-record-octets-string (car argv))
-                        (fn-nop-argument-texts (cdr argv)))
-                nil)
-       :exec (fn-nop-argument-texts-loop argv nil)))
-
-(local
- (defthm fn-nop-argument-texts-loop-is-revappend
-   (equal (fn-nop-argument-texts-loop argv acc)
-          (revappend acc (fn-nop-argument-texts argv)))))
-
-(verify-guards fn-nop-argument-texts)
+(def-loop fn-nop-argument-texts (argv)
+  :shape :map :over argv :elt a
+  :body (fn-record-octets-string a))
 
 (defun fn-nop-result (status reason command config arguments)
   (declare (xargs :guard t))
@@ -1679,26 +1663,9 @@ is installed into the owner for both served and control submission."
        (fn-ncfg-nth 2 (fn-native-operator-result-arguments result)))
     nil))
 
-(defun fn-native-operator-post-group-octets-loop (groups acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp groups)
-      (fn-native-operator-post-group-octets-loop (cdr groups) (cons (fn-record-string-octets (car groups)) acc))
-    (revappend acc nil)))
-
-(defun fn-native-operator-post-group-octets (groups)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp groups)
-                  (cons (fn-record-string-octets (car groups))
-                        (fn-native-operator-post-group-octets (cdr groups)))
-                nil)
-       :exec (fn-native-operator-post-group-octets-loop groups nil)))
-
-(local
- (defthm fn-native-operator-post-group-octets-loop-is-revappend
-   (equal (fn-native-operator-post-group-octets-loop groups acc)
-          (revappend acc (fn-native-operator-post-group-octets groups)))))
-
-(verify-guards fn-native-operator-post-group-octets)
+(def-loop fn-native-operator-post-group-octets (groups)
+  :shape :map :over groups :elt g
+  :body (fn-record-string-octets g))
 
 (defun fn-native-operator-result-post-group-octets (result)
   (declare (xargs :guard t))

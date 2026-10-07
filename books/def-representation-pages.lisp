@@ -674,6 +674,77 @@
            :use ((:instance adt-tp-dirty-bound (w (adt-tp-seq-words s a)) (n (adt-tp-seq-words s xs)))))))
 
 ; -----------------------------------------------------------------------------
+; 5b. The dirty set from the tape's summary.  The host does not hold the tape's
+; words: it holds their count and reads the last partial page from the store.
+; `adt-tp-dirty-at' takes exactly those, and is the dirty set (the delta's words
+; are the only input that grows).
+
+(defun adt-tp-dirty-at (cnt tail n)
+  ; CNT: the tape's word count; TAIL: the words of its last partial page.
+  (declare (xargs :guard (and (natp cnt) (true-listp tail) (true-listp n))))
+  (if (atom n) nil (adt-tp-number (floor cnt *pgs-page-words*) (adt-tp-pages (append tail n)))))
+
+(defthm adt-tp-dirty-at-is-dirty
+  (implies (true-listp w)
+           (equal (adt-tp-dirty-at (len w) (nthcdr (* *pgs-page-words* (floor (len w) *pgs-page-words*)) w) n)
+                  (adt-tp-dirty w n)))
+  :hints (("Goal" :in-theory (enable adt-tp-dirty-at adt-tp-dirty))))
+
+(defun adt-tp-extend-dirty-at (s cnt tail xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (adt-tp-dirty-at cnt tail (adt-tp-seq-words s xs)))
+
+(defthm adt-tp-extend-dirty-at-is-extend-dirty
+  (equal (adt-tp-extend-dirty-at s (len (adt-tp-seq-words s a))
+           (nthcdr (* *pgs-page-words* (floor (len (adt-tp-seq-words s a)) *pgs-page-words*))
+                   (adt-tp-seq-words s a))
+           xs)
+         (adt-tp-extend-dirty s a xs))
+  :hints (("Goal" :in-theory (e/d (adt-tp-extend-dirty-at adt-tp-extend-dirty)
+                                  (adt-tp-dirty-at-is-dirty adt-tp-dirty-at adt-tp-dirty))
+           :use ((:instance adt-tp-dirty-at-is-dirty (w (adt-tp-seq-words s a)) (n (adt-tp-seq-words s xs)))))))
+
+(defthm adt-tp-nthcdr-nthcdr
+  (implies (and (natp a) (natp b))
+           (equal (nthcdr a (nthcdr b x)) (nthcdr (+ a b) x))))
+
+(defthm adt-tp-nth-of-pages
+  (implies (and (natp k) (true-listp w) (< (* *pgs-page-words* k) (len w)))
+           (equal (nth k (adt-tp-pages w)) (adt-tp-page (nthcdr (* *pgs-page-words* k) w))))
+  :hints (("Goal" :induct (adt-tp-ind-k k w) :in-theory (disable adt-tp-page))
+          ("Subgoal *1/2" :expand ((adt-tp-pages w)))
+          ("Subgoal *1/1" :expand ((adt-tp-pages w)))))
+
+(defthm adt-tp-take-of-len
+  (implies (true-listp a) (equal (adt-tp-take (len a) a) a))
+  :hints (("Goal" :in-theory (enable adt-tp-take))))
+
+(defthm adt-tp-len-nthcdr-x
+  (equal (len (nthcdr n w)) (nfix (- (len w) (nfix n)))))
+
+(defthm adt-tp-mod-is-len-minus
+  (implies (and (natp l) (equal k (floor l *pgs-page-words*)))
+           (equal (mod l *pgs-page-words*) (- l (* *pgs-page-words* k))))
+  :hints (("Goal" :in-theory (enable mod))))
+
+(defthm adt-tp-tail-is-page-prefix
+  ; The host reads TAIL from page K of the store: the first (CNT mod 2048) words
+  ; of page K = floor(CNT / 2048), when the tape ends inside it.
+  (implies (and (true-listp w) (natp k) (equal k (floor (len w) *pgs-page-words*))
+                (< (* *pgs-page-words* k) (len w)))
+           (equal (nthcdr (* *pgs-page-words* k) w)
+                  (adt-tp-take (mod (len w) *pgs-page-words*) (nth k (adt-tp-pages w)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable adt-tp-page-short adt-tp-take-of-append adt-tp-take-of-len adt-tp-nth-of-pages)
+           :use ((:instance adt-tp-nth-of-pages)
+                 (:instance adt-tp-mod-is-len-minus (l (len w)))
+                 (:instance adt-tp-page-short (w (nthcdr (* *pgs-page-words* k) w)))
+                 (:instance adt-tp-take-of-append (n (mod (len w) *pgs-page-words*))
+                            (a (nthcdr (* *pgs-page-words* k) w))
+                            (b (adt-tp-zeros (- *pgs-page-words* (len (nthcdr (* *pgs-page-words* k) w))))))
+                 (:instance adt-tp-take-of-len (a (nthcdr (* *pgs-page-words* k) w)))))))
+
+; -----------------------------------------------------------------------------
 ; 6. Setting a row in place.  A rewrite of the M words at offset R into page K0
 ; changes only the pages those words touch (`adt-tp-region-dirty-is-the-delta');
 ; a row replaced by one of the same width (the paged catalog's withdraw and

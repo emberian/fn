@@ -202,42 +202,14 @@
 ; -----------------------------------------------------------------------------
 ; Sorting by offset (a merge sort)
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpfw-evens-loop (xs acc)
-  (declare (xargs :guard (and (true-listp xs) (true-listp acc)) :verify-guards nil))
-  (if (consp xs) (fn-bpfw-evens-loop (cddr xs) (cons (car xs) acc)) (revappend acc nil)))
-
-(defun fn-bpfw-evens (xs)
-  (declare (xargs :verify-guards nil :guard (true-listp xs)))
-  (mbe :logic
-       (if (consp xs)
-           (cons (car xs) (fn-bpfw-evens (cddr xs)))
-         nil)
-       :exec (fn-bpfw-evens-loop xs nil)))
-
-(local
- (defthm fn-bpfw-evens-loop-is-revappend
-   (equal (fn-bpfw-evens-loop xs acc)
-          (revappend acc (fn-bpfw-evens xs)))
-   :hints (("Goal" :induct (fn-bpfw-evens-loop xs acc)
-                   :in-theory (union-theories '(fn-bpfw-evens-loop fn-bpfw-evens revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpfw-evens-loop)
-
-(verify-guards fn-bpfw-evens
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpfw-evens)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpfw-evens-loop-is-revappend (acc nil))))))
+; Every other element (the :exec is a loop, def-loop :step: the advance is cddr).
+(def-loop fn-bpfw-evens (xs)
+  :shape :step :done (atom xs) :elt e :body e :next (cddr xs)
+  :guard (true-listp xs))
 
 (defthm fn-bpfw-len-evens
   (<= (len (fn-bpfw-evens xs)) (len xs))
+  :hints (("Goal" :induct (fn-bpfw-evens xs)))
   :rule-classes :linear)
 
 (defthm fn-bpfw-len-evens-strict
@@ -423,38 +395,11 @@
 ; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
 ; control-stack frame per element of the active fragment set (data, not a bound).  The :logic is
 ; the recursion, unchanged; the :exec is a loop, equal by fn-bpfw-head-cell-loop-of-rev-onto (a right fold, run from the left over the reversed list).
-(defun fn-bpfw-head-cell-step (x rest)
-  (declare (xargs :guard t))
-  (fn-bpf-merge-cell (if (consp x) (car x) :gap) rest))
-
-(defun fn-bpfw-head-cell-loop (rev acc)
-  (declare (xargs :guard t))
-  (if (consp rev)
-      (fn-bpfw-head-cell-loop (cdr rev) (fn-bpfw-head-cell-step (car rev) acc))
-    acc))
-
-(defun fn-bpfw-head-cell (active)
-  (declare (xargs :guard (true-list-listp active) :verify-guards nil))
-  (mbe :logic (if (consp active)
-                  (fn-bpf-merge-cell (if (consp (car active)) (car (car active)) :gap)
-                                     (fn-bpfw-head-cell (cdr active)))
-                :gap)
-       :exec (fn-bpfw-head-cell-loop (fn-ag-rev-onto active nil) :gap)))
-
-(defthm fn-bpfw-head-cell-loop-of-rev-onto
-  (equal (fn-bpfw-head-cell-loop (fn-ag-rev-onto active zs) :gap)
-         (fn-bpfw-head-cell-loop zs (fn-bpfw-head-cell active)))
-  :hints (("Goal" :induct (fn-ag-rev-onto active zs)
-                  :in-theory (union-theories
-                              '(fn-bpfw-head-cell-loop fn-bpfw-head-cell fn-bpfw-head-cell-step fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-bpfw-head-cell
-  :hints (("Goal" :use ((:instance fn-bpfw-head-cell-loop-of-rev-onto (zs nil)))
-                  :in-theory (union-theories
-                              '(fn-bpfw-head-cell-loop fn-bpfw-head-cell)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-bpfw-head-cell (active)
+  :shape :foldr :over active :elt a
+  :combine (fn-bpf-merge-cell (if (consp a) (car a) :gap) acc) :init :gap
+  :rev fn-ag-rev-onto
+  :guard (true-list-listp active))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;

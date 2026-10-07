@@ -1,6 +1,7 @@
 ; Native BP application join: intent-first FNRJ replay and exact Store binding.
 (in-package "ACL2")
 (include-book "bp-receipt-records")
+(include-book "def-loop")
 (include-book "bp-request-ref")
 ; books/owner.lisp's own includes, not owner: this book names none of
 ; owner's definitions (audit 2026-09-25, packet 2), so a change to the owner
@@ -173,48 +174,15 @@
 ; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
 ; control-stack frame per element of the store's whole event history (data, not a bound).  The :logic is
 ; the recursion, unchanged; the :exec is a loop, equal by fn-bpaj-record-for-msgid-loop-is-rev-onto.
-(defun fn-bpaj-record-for-msgid-loop (msgid records acc)
-  (declare (xargs :guard t :measure (acl2-count records)))
-  (if (consp records)
-      (let ((record (fn-bpr-event-article (car records))))
-        (fn-bpaj-record-for-msgid-loop
-         msgid (cdr records)
-         (if (and (fn-held-p record)
-                  (equal msgid (fn-record-msgid record)))
-             (cons record acc)
-           acc)))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-bpaj-record-for-msgid (msgid records)
-  (declare (xargs :guard t :measure (acl2-count records)))
-  (mbe :logic
-       (if (consp records)
-           (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records)))
-                 (record (fn-bpr-event-article (car records))))
-             ; A history's articles are held rows after the records flip
-             ; (books/held-record.lisp): the walk is the index's fold
-             ; (fn-cei-article-records-for, books/consumer-event-index.lisp).
-             (if (and (fn-held-p record)
-                      (equal msgid (fn-record-msgid record)))
-                 (cons record rest)
-               rest))
-         nil)
-       :exec (fn-bpaj-record-for-msgid-loop msgid records nil)))
-
-(defthm fn-bpaj-record-for-msgid-loop-is-rev-onto
-  (equal (fn-bpaj-record-for-msgid-loop msgid records acc)
-         (fn-ag-rev-onto acc (fn-bpaj-record-for-msgid msgid records)))
-  :hints (("Goal" :induct (fn-bpaj-record-for-msgid-loop msgid records acc)
-                  :in-theory (union-theories
-                              '(fn-bpaj-record-for-msgid-loop fn-bpaj-record-for-msgid fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-bpaj-record-for-msgid (msgid records)
+  :shape :map :over records :elt r
+  :let ((record (fn-bpr-event-article r)))
+  :keep (and (fn-held-p record) (equal msgid (fn-record-msgid record)))
+  :body record)
 
 ; The book verifies no guards by default (eagerness 0); the host calls this
 ; through its executable counterpart, which runs raw code -- the :exec loop --
 ; only for a guard-verified function (lane depth-debt).
-(verify-guards fn-bpaj-record-for-msgid-loop)
-(verify-guards fn-bpaj-record-for-msgid)
-
 ; The Store record a context names: the one article record with its
 ; Message-ID, with its txid and generation; nil otherwise.  Every read of a
 ; context (recovery included) resolves it here.
