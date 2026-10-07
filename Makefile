@@ -304,10 +304,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/def-representation-pages \
 	books/paged-checkpoint \
 	books/catalog-pages \
+	books/paged-checkpoint-host \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
 	tests/acl2/def-representation-pages-tests \
 	tests/acl2/paged-checkpoint-tests \
+	tests/acl2/paged-checkpoint-host-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
