@@ -140,6 +140,11 @@ class ExecDiffers(unittest.TestCase):
         out = self.conv("gv3-step-helper")
         self.assertNotIn("key-values-step", out)
 
+    def test_step_helper_guard_verification_goes_with_it(self):
+        out = self.conv("gv3-step-helper-vg")
+        self.assertNotIn("ready-peers-step", out)
+        self.assertNotIn("verify-guards", out)
+
     def test_step_helper_named_elsewhere_stays(self):
         out = self.conv("gv3-step-helper-kept")
         self.assertIn("(defun fn-cll-key-values-step", out)

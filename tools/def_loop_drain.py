@@ -1450,11 +1450,13 @@ def analyse(text: str, book: str, other_text: dict | None = None):
             # goes with the twin when nothing else names it
             for hn in sorted(used_helpers):
                 hform = by_name[hn]
+                own = [f for f in forms if f.kind == "verify-guards" and f.name == hn]
                 outside = [f for f in forms if f is not hform and f is not w and f not in kill
-                           and mentions(f.node, hn)]
+                           and f not in own and mentions(f.node, hn)]
                 outside_txt = [o for o, ot in (other_text or {}).items() if re.search(re.escape(hn), ot, re.I)]
                 if not outside and not outside_txt:
                     kill.append(hform)
+                    kill.extend(own)
             killset = {id(k) for k in kill}
             if spec.shape in ("foldr", "step", "fold"):
                 for k in kill:
@@ -1655,7 +1657,9 @@ def exported(text):
 
 def stmt_diff(old_text, new_text):
     o, n = exported(old_text), exported(new_text)
-    removed = [k for k in o if k not in n and not ("-loop-is-" in k or "-loop-of-" in k or (o[k][0] == "defun" and k.endswith("-loop")))]
+    removed = [k for k in o if k not in n and not ("-loop-is-" in k or "-loop-of-" in k or (o[k][0] == "defun" and k.endswith("-loop"))
+                                       or (o[k][0] == "defun" and k.endswith("-step")
+                                           and n.get(k[:-5]) == ("defun", "def-loop")))]
     removed += [k for k in o if k in n and o[k][0] == "defun" and n[k] == ("defun", "def-loop") and False]
     added = [k for k in n if k not in o]
     changed = [k for k in o if k in n and o[k] != n[k] and o[k][0].startswith("defthm")]
