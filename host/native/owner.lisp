@@ -8460,12 +8460,19 @@ torn last entry follows.  Answers the offset the writer resumes at."
     (fnn-indeterminate "service log physical return remains unobserved"))
   (let ((requested *fnn-sighup-count*))
     (unless (= requested *fnn-owner-log-handled*)
-      (let ((decision (fnn-owner-serialized
+      (let* ((decided (fnn-owner-serialized
                        service nil
                        (lambda ()
-                         (fnn-owner-core 'fn-owner-log-reopen
-                                         (and *fnn-owner-log-path* t)
-                                         *fnn-owner-log-handled* requested)))))
+                         ;; The decision and the line it rendered leave the
+                         ;; section together: the global is read while the
+                         ;; owner is held, so the line written below is the
+                         ;; one this decision produced.
+                         (cons (fnn-owner-core 'fn-owner-log-reopen
+                                               (and *fnn-owner-log-path* t)
+                                               *fnn-owner-log-handled* requested)
+                               (fnn-global 'fn-owner-log-line)))))
+             (decision (car decided))
+             (line (cdr decided)))
         (unless (and (consp decision)
                      (member (first decision) '(:reopen :ignore :none))
                      (integerp (second decision)))
@@ -8485,7 +8492,12 @@ torn last entry follows.  Answers the offset the writer resumes at."
               ;; PKT-508: through the writer's queue while it runs, so
               ;; the swap never waits on a write in progress.
               (fnn-log-swap-fd fd)
-              (fnn-owner-log 'fn-owner-log-line))))
+              (unless (fnn-octet-list-p line)
+                (fnn-fault "owner returned a malformed log line"))
+              ;; No commit quantum is open on the maintenance thread
+              ;; (*fnn-owner-deferred* is rebound only inside one), so the
+              ;; line is written directly, as fnn-owner-log does outside one.
+              (fnn-log-line line))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
 (def-actor fnn-owner-spawn-listener :kind :accept :thread-name "fn owner accept" :roster t
