@@ -1491,8 +1491,7 @@
            :in-theory (e/d (fn-ncl-poll-reply-encode fn-ncl-status-code
                             fn-ncl-poll-event-bytesp fn-frame-octet-listp-of-append
                             fn-cbor-u32-bytes-are-octets)
-                           (fn-ncl-poll-seal fn-ncl-poll-reply-decode fn-cp-cursor-decode
-                            fn-wf-cs-poll-decode-of-accepted-payload)))))
+                           (fn-ncl-poll-seal fn-ncl-poll-reply-decode fn-cp-cursor-decode)))))
 (defthm fn-wf-cs-poll-encode-accepted-cursor-ok
   (implies (not (equal (fn-ncl-poll-reply-encode :accepted cursor report) :bad))
            (equal (car (fn-cp-cursor-decode cursor)) :ok))
@@ -1518,7 +1517,6 @@
                  fn-wf-cs-poll-encode-accepted-cursor-ok
                  (:instance fn-wf-cs-cursor-ok-sized (c cursor)))
            :in-theory (e/d (fn-wf-cs-poll-value-accepted-fields)
-                           (fn-wf-cs-poll-accepted-roundtrip
-                            fn-ncl-poll-reply-decode fn-ncl-poll-reply-encode fn-wg-encode
+                           (fn-ncl-poll-reply-decode fn-ncl-poll-reply-encode fn-wg-encode
                             fn-wg-valuep fn-wf-cs-poll-value
                             fn-cp-cursor-decode fn-wf-fncu-value fn-ncl-poll-seal)))))
