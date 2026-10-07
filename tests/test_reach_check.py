@@ -812,9 +812,6 @@ class WorldEdgeTests(unittest.TestCase):
         self.assertIsNone(reach_check.load_world(None))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class ProseIsNotReachTests(unittest.TestCase):
     """CONVERGE-2 row 14: a docstring that cites a book program is prose, not
@@ -844,3 +841,7 @@ class ProseIsNotReachTests(unittest.TestCase):
         self.assertEqual(set(names), {"open", "fn-lg-open-program", "fn-lgrc-program"})
         self.assertNotIn("fn-doc-program", names)
         self.assertNotIn("fn-test-only", names)
+
+
+if __name__ == "__main__":
+    unittest.main()

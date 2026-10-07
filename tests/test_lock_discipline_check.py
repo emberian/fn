@@ -2591,9 +2591,6 @@ class R5StructSlotLock(unittest.TestCase):
         self.assertTrue(self.r5(row={"match": ["(fnn-ss-gone-slot-lock)"], "struct_slot": "fnn-ss-gone-slot-lock"}))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class R1bBindingOnlySpecial(unittest.TestCase):
     """contracts `binding_only_specials': a special only rebound by let to a
@@ -2890,3 +2887,7 @@ class R2PipeClose(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.r2(self.SRC.replace("(let ((fd (if (eq slot :read) (fnn-pc-loop-wake-read loop) (fnn-pc-loop-wake-write loop))))",
                                      "(let ((fd (sb-posix:open \"/x\" 0)))"))
+
+
+if __name__ == "__main__":
+    unittest.main()

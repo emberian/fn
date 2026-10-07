@@ -2139,9 +2139,6 @@ class ScopedManifestAndGraphTests(unittest.TestCase):
             self.assertEqual(expected, ["dep", "local", "nested"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class PairFactsCompactTests(unittest.TestCase):
     """compact-pair-facts: duplicates and facts about certificates no entry
@@ -2241,3 +2238,7 @@ class ContentHashMemoTests(unittest.TestCase):
             self.assertNotEqual(third, first)
             self.assertEqual(third, hashlib.sha256(b"two").hexdigest())
             self.assertEqual(len(opened), 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
