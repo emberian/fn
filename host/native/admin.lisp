@@ -568,6 +568,11 @@ ordinary live reconfiguration, and on :applied served at once."
       ;; until the quantum ends.
       (if (not (equal (car (fnn-owner-core 'fn-owner-limit-carried)) seen))
        :carry-moved
+      ;; The store's use reads only the owner's carried state, and its
+      ;; carried-debt fallback can load history pages through the extent
+      ;; mutex (fn-pgs-fill-frame takes it non-recursively): read it here,
+      ;; under the owner mutex and before the extent mutex.
+      (let ((use (fnn-owner-core 'fn-owner-limit-use)))
       ;; The extent mutex owns pool draws independently of the owner mutex.
       ;; Keep it through preview, durability and the exact budget reduction.
       (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
@@ -579,7 +584,6 @@ ordinary live reconfiguration, and on :applied served at once."
               ;; no walk of the configuration history per request.
               (values (car carry))
               (funded (cdr carry))
-              (use (fnn-owner-core 'fn-owner-limit-use))
               (initial (progn
                    (unless (and (consp carry) values funded)
                      (fnn-fault "owner carries no limit profile"))
@@ -630,7 +634,7 @@ ordinary live reconfiguration, and on :applied served at once."
                       (fnn-indeterminate
                        "owner refused a durably recorded limit's profile"))
                     (setf (fnn-store-config store) served)))
-                (list :reason :accepted (fnn-lim-reason d) line))))))))))))
+                (list :reason :accepted (fnn-lim-reason d) line)))))))))))))
        (unless (eq answer :carry-moved) (return answer))))))
 
 (defun fnn-admin-execute-limit (store plan)

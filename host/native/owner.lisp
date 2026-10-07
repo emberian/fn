@@ -1631,6 +1631,7 @@ one ring, so the table's key and the served boundary's are one source."
                      :batching (fnn-store-logp store)
                      :stopping nil))
               (fnn-owner-history-root-maintain service)
+              (fnn-owner-history-sync-first service)
               (progn
                 (setf (fnn-owner-service-feeds service)
                       (fnn-owner-feed-open-all service configured))
