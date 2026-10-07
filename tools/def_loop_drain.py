@@ -544,8 +544,29 @@ def classify_nonshape(name, formals, logic, loop_body, exec_call):
             return Refuse("fold", "loop threads more than one extra")
     if re.search(r"\(let\*?\s+\(\(\w[\w-]*\s+\(" + re.escape(name.lower()), low) or \
             re.search(r"\(let\*?\s+\(\(\w[\w-]* \(" + re.escape(name.lower()), low):
-        return Refuse("pair-result", "recursion result is bound and inspected")
+        return Refuse("pair-result", pair_result_why(logic, name))
     return Refuse("no-shape")
+
+
+def pair_result_why(logic, name):
+    """Which pair-result: the recursion's result bound to R is (a) taken apart with car/cdr to
+    rebuild a pair (a prefix split: take-and-rest), (b) an index to offset (a position search),
+    or (c) inspected for failure and passed on (a parser threading an error record)."""
+    rv = set()
+    contains(logic, lambda x: (is_call(x, "let") or is_call(x, "let*")) and len(x.items) == 3
+             and isinstance(x.items[1], Lst) and rv.update(
+                 b.items[0].low for b in x.items[1].items
+                 if isinstance(b, Lst) and len(b.items) == 2 and isinstance(b.items[0], Atom)
+                 and is_call(b.items[1], name)) and False)
+    split = contains(logic, lambda x: is_call(x) and x.items[0].low in ("car", "cdr") and len(x.items) == 2
+                     and isinstance(x.items[1], Atom) and x.items[1].low in rv)
+    if split:
+        return "split: the result pair is rebuilt around (car R) and (cdr R) (a prefix split; no def-loop shape)"
+    if contains(logic, lambda x: is_call(x) and x.items[0].low in ("+", "1+") and any(
+            isinstance(i, Atom) and i.low in rv for i in x.items[1:])):
+        return "position: the result is an index offset by one per element (a find-position; no def-loop shape)"
+    return ("failure: the recursion's result is inspected and passed on, the loop exits early "
+            "(an error-record parser; no def-loop shape)")
 
 
 def walk_calls(n, name):
@@ -669,7 +690,7 @@ def shape_of(name, formals, logic, wrapper):
             if f != xs and not (isinstance(arg, Atom) and arg.low == f):
                 if is_call(arg, "cdr") or is_call(arg, "cddr") or is_call(arg, "nthcdr"):
                     raise Refuse("two-list" if is_call(arg, "cdr") else "step")
-                raise Refuse("fold", f"parameter {f} changes in the recursion")
+                raise Refuse("fold", f"parameter {f} changes in the recursion (a state thread: no def-loop shape)")
             if f == xs and not (is_call(arg, "cdr") and flat_low(arg.items[1]) == xs):
                 raise Refuse("step", "other than (cdr XS)")
     match_inner(inner, name, formals, xs, spec)
@@ -859,7 +880,7 @@ def step_spec(name, formals, logic, exe, lf, wrapper, helpers=None, used_helpers
         raise Refuse("no-shape", "exec is not (LOOP formals nil)")
     xa = xargs_of(wrapper)
     ph = xa.get(":hints")
-    logic = cond_to_if(logic)
+    logic = cond_to_if(inline_rec_lets(logic, name))
     if "mv-let" in flat_low(logic) or "(mv " in flat_low(logic):
         raise Refuse("mv")
     if not (is_call(logic, "if") and len(logic.items) == 4):

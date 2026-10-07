@@ -183,6 +183,37 @@ class ExecDiffers(unittest.TestCase):
         self.refused("gv3-refuse-seed", "exec-differs", "true-listp seed")
 
 
+class PairResult(unittest.TestCase):
+    """The pair-result drain: a let* that names the recursion result next to other bindings
+    is a plain :step (newnews-scan); the rest is refused with the kind of result named."""
+
+    def test_recursion_result_bound_in_a_multi_binding_let_is_a_step(self):
+        (conv, resid), text = run("gv3-pair-newnews")
+        self.assertEqual(resid, [])
+        spec = conv[0]["spec"]
+        self.assertEqual((spec.shape, spec.svars), ("step", ["articles", "horizon"]))
+        out = d.apply_text(text, conv)
+        expected = FIX / "gv3-pair-newnews.out.lisp"
+        if os.environ.get("REGEN"):
+            expected.write_text(out)
+        self.assertEqual(out, expected.read_text())
+
+    def refused(self, name, kind):
+        (conv, resid), _ = run(name)
+        self.assertEqual(conv, [])
+        self.assertEqual([r[1] for r in resid], ["pair-result"])
+        self.assertTrue(resid[0][2].startswith(kind), resid[0][2])
+
+    def test_prefix_split_refuses_by_name(self):
+        self.refused("gv3-pair-split", "split:")
+
+    def test_position_search_refuses_by_name(self):
+        self.refused("gv3-pair-position", "position:")
+
+    def test_error_record_parser_refuses_by_name(self):
+        self.refused("gv3-pair-failure", "failure:")
+
+
 class Refusals(unittest.TestCase):
     def refused(self, name, why):
         (conv, resid), _ = run(name)
