@@ -1,0 +1,27 @@
+{
+ "id": "LOCK-R2-UNLINK-UNDER-OWNER-MUTEX",
+ "category": "lock-discipline",
+ "file": "host/native/io.lisp",
+ "line": "891",
+ "owner": "deputy-C",
+ "severity": "medium",
+ "slice": "host",
+ "source": "CONVERGE-1 row 10 / CONVERGE-2 row 13",
+ "state": "open",
+ "title": "sb-posix:unlink (fnn-unlink, io.lisp:891) runs under the owner mutex O from 24 sites (baseline 17, --lower-stale refuses the raise), under E from 1 and under K from 1: a slow or stalled directory operation blocks every owner quantum",
+ "keys": [
+  "R2|fnn-unlink|O:sb-posix:unlink",
+  "R2|fnn-unlink|E:sb-posix:unlink",
+  "R2|fnn-unlink|K:sb-posix:unlink"
+ ],
+ "notes": [
+  "Sites enumerated 2026-10-07 on dev ac7593c60 from lock_discipline_check's own R2 region walk (a probe copy recording each (lock, leaf) site), grouped by the call that reaches the unlink:",
+  "(a) live reconfigure, 8 under O and the 1 under E (fnn-owner-live-reconfigure-locked -> fnn-admin-publish -> fnn-immutable-publish-effect): bp-control.lisp:107 fnn-bpnc-execute; admin.lisp:600 fnn-owner-limit-serialized (O and E); admin.lisp:692 fnn-owner-live-admin-serialized; admin.lisp:470 fnn-owner-reclaim-request; peer-invite.lisp:142/173/250 fnn-pinv-owner-issue/accept/confirm. Those keys are listed in LOCK-R2-LIVE-RECONFIGURE-IO (high, owner unassigned); its off-mutex design fixes this group.",
+  "(b) durable application publish via fnn-app-publish, 6: bp-obligation.lisp:174/177/180 fnn-bpo-request-publish; :367/:368 fnn-carry-execute; :270 fnn-command-bpo-owner-recover.",
+  "(c) bp workflow journal, 5: bp-app.lisp:248 fnn-bpapp-deliver and bp-node.lisp:100 fnn-bpnode-request-result-1 (via fnn-bpapp-accept-locked); bp-app.lisp:319 fnn-bpapp-open-journal (fnn-receipt-initialize); bp-node.lisp:199 fnn-bpnode-receipt-result (fnn-workflow-commit-receipt-intent); bp-obligation.lisp:120 fnn-command-bpo-owner-receipt (fnn-workflow-accept-receipt).",
+  "(d) auth bindings publish, 2: login-bindings.lisp:36 fnn-login-bindings-owner-reload; auth.lisp:107 fnn-native-auth-install (both fnn-native-auth-publish-bindings).",
+  "(e) log rotation, snapshot and redeem, 3 under O and the 1 under K: owner.lisp:7552 fnn-owner-maybe-publish-quantum and owner.lisp:8047 fnn-owner-reclaim-pass (fnn-log-rotate); snapshot-producer.lisp:630 fnn-owner-snapshot-capture and, under K, snapshot-producer.lisp:542 fnn-snapshot-job-freeze-log (fnn-snapshot-job-freeze-log / fnn-log-rotate); owner.lisp:5685 fnn-owner-redeem-quantum (fnn-owner-account-redeem).",
+  "Fix shape: every unlink here removes a superseded name after the durable rename/link that replaced it (cleanup, not the commit point). Defer it to an off-mutex debt list drained after the lock is released, the pattern fnn-immutable-close-debts already uses (LOCK-R1B-IMMUTABLE-CLOSE-DEBT-UNLOCKED fixed its locking), with crash recovery already tolerating a leftover superseded name (verify per family before moving). Group (a) rides with LOCK-R2-LIVE-RECONFIGURE-IO's design; (b)-(e) are C's lane after it. Gate per family: its sites leave the O count, no new key, REAL-key guard, host_check --load/--read 0, natives listed for convergence."
+ ],
+ "updated": "2026-10-07T13:45:00Z"
+}
