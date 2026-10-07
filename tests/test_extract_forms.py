@@ -153,13 +153,13 @@ class FormsWorldTests(unittest.TestCase):
     def test_one_unit_edited_is_refused_by_name(self):
         def edit(copy):
             text = (copy / 'defs.lisp').read_text('latin-1')
-            head = ';;;; UNIT raw:ACL2::FN-OCTETS-LEN\n'
-            self.assertIn(head, text)
+            head = ';;;; UNIT raw:ACL2::FN-ZC-OWED\n'
+            self.assertTrue(head in text)
             at = text.index(head) + len(head)
             text = text[:at] + text[at:].replace('COMMON-LISP:DEFUN', 'COMMON-LISP:DEFMACRO', 1)
             (copy / 'defs.lisp').write_text(text, 'latin-1')
         out = self.mutated(edit)
-        self.assertIn('unit raw:ACL2::FN-OCTETS-LEN', out)
+        self.assertIn('unit raw:ACL2::FN-ZC-OWED', out)
 
     def test_manifest_bound_to_another_world_is_refused(self):
         def edit(copy):
