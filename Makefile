@@ -2656,7 +2656,7 @@ site:
 # Every pre-image gate for a host-code conversion, as one target (item 34):
 # world.py --check, interface_emit --check, host_check --forward/--world/
 # --load FILE, and the certified-world class check (host_check's default).
-# On a box: tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
+# On a box: tools/remote_check.sh auto --install-roots books/image-world --cmd 'make host-convert-check FILE=host/native/x.lisp'
 host-convert-check:
 	@$(PYTHON) tools/host_convert_check.py $(FILE)
 
