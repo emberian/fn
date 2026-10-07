@@ -48,50 +48,25 @@
        (fn-bpaj-unique-boundary-rowp rows name "bp-boundary-originators"
                                 "all-co-resident" 0)))
 
+(verify-guards fn-bpaj-boundary-rowp)
+
+(verify-guards fn-bpaj-unique-boundary-rowp)
+
+(verify-guards fn-bpaj-loopback-peerp)
+
 ; A right fold (each row's test reads the suffix's answer): the :exec
 ; folds the reversed rows from the left.
-(defun fn-bpaj-loopback-candidates-loop (rev all listener-port acc)
-  (declare (xargs :guard (true-listp acc) :measure (acl2-count rev)))
-  (if (consp rev)
-      (fn-bpaj-loopback-candidates-loop
-       (cdr rev) all listener-port
-       (let ((name (fn-cfg-row-a (car rev))))
-         (if (and (equal (fn-cfg-row-b (car rev)) "bp-trust")
-                  (fn-bpaj-loopback-peerp name all listener-port)
-                  (not (member-equal name acc)))
-             (cons name acc)
-           acc)))
-    acc))
-
-(defun fn-bpaj-loopback-candidates (rows all listener-port)
-  (declare (xargs :guard t :measure (acl2-count rows)))
-  (mbe :logic
-       (if (consp rows)
-           (let* ((row (car rows))
-                  (name (fn-cfg-row-a row))
-                  (rest (fn-bpaj-loopback-candidates
-                         (cdr rows) all listener-port)))
-             (if (and (equal (fn-cfg-row-b row) "bp-trust")
-                      (fn-bpaj-loopback-peerp name all listener-port)
-                      (not (member-equal name rest)))
-                 (cons name rest)
-               rest))
-         nil)
-       :exec (fn-bpaj-loopback-candidates-loop
-              (fn-ag-rev-onto rows nil) all listener-port nil)))
-
-(defthm fn-bpaj-loopback-candidates-loop-of-rev-onto
-  (equal (fn-bpaj-loopback-candidates-loop (fn-ag-rev-onto rows zs)
-                                           all listener-port nil)
-         (fn-bpaj-loopback-candidates-loop
-          zs all listener-port
-          (fn-bpaj-loopback-candidates rows all listener-port)))
-  :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
-                  :in-theory (union-theories
-                              '(fn-bpaj-loopback-candidates-loop
-                                fn-bpaj-loopback-candidates
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-bpaj-loopback-candidates (rows all listener-port)
+  :shape :foldr :over rows :elt r
+  :combine (let* ((row r) (name (fn-cfg-row-a row)))
+                 (if (and (equal (fn-cfg-row-b row) "bp-trust")
+                          (fn-bpaj-loopback-peerp name all listener-port)
+                          (not (member-equal name acc)))
+                     (cons name acc)
+                     acc))
+  :init nil
+  :rev fn-ag-rev-onto
+  :loop-guard (true-listp acc))
 
 (defun fn-bpaj-session-principal (cfg channel announced)
   (declare (xargs :guard t))
@@ -165,46 +140,20 @@
        (fn-bpaj-unique-boundary-rowp all name "bp-trust" "network" 0)
        (fn-bpaj-unique-boundary-rowp all name "transport-bp" eid 0)))
 
+(verify-guards fn-bpaj-direct-enrolledp)
+
 ; The boundaries directly enrolled for EID, each once, in row order.
-(defun fn-bpaj-enrolled-source-names-loop (rev all eid acc)
-  (declare (xargs :guard (true-listp acc) :measure (acl2-count rev)))
-  (if (consp rev)
-      (fn-bpaj-enrolled-source-names-loop
-       (cdr rev) all eid
-       (let ((name (fn-cfg-row-a (car rev))))
-         (if (and (equal (fn-cfg-row-b (car rev)) "bp-trust")
-                  (fn-bpaj-direct-enrolledp all name eid)
-                  (not (member-equal name acc)))
-             (cons name acc)
-           acc)))
-    acc))
-
-(defun fn-bpaj-enrolled-source-names (rows all eid)
-  (declare (xargs :guard t :measure (acl2-count rows)))
-  (mbe :logic
-       (if (consp rows)
-           (let ((name (fn-cfg-row-a (car rows)))
-                 (rest (fn-bpaj-enrolled-source-names (cdr rows) all eid)))
-             (if (and (equal (fn-cfg-row-b (car rows)) "bp-trust")
-                      (fn-bpaj-direct-enrolledp all name eid)
-                      (not (member-equal name rest)))
-                 (cons name rest)
-               rest))
-         nil)
-       :exec (fn-bpaj-enrolled-source-names-loop
-              (fn-ag-rev-onto rows nil) all eid nil)))
-
-(defthm fn-bpaj-enrolled-source-names-loop-of-rev-onto
-  (equal (fn-bpaj-enrolled-source-names-loop (fn-ag-rev-onto rows zs)
-                                             all eid nil)
-         (fn-bpaj-enrolled-source-names-loop
-          zs all eid (fn-bpaj-enrolled-source-names rows all eid)))
-  :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
-                  :in-theory (union-theories
-                              '(fn-bpaj-enrolled-source-names-loop
-                                fn-bpaj-enrolled-source-names
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-bpaj-enrolled-source-names (rows all eid)
+  :shape :foldr :over rows :elt r
+  :combine (let ((name (fn-cfg-row-a r)))
+                (if (and (equal (fn-cfg-row-b r) "bp-trust")
+                         (fn-bpaj-direct-enrolledp all name eid)
+                         (not (member-equal name acc)))
+                    (cons name acc)
+                    acc))
+  :init nil
+  :rev fn-ag-rev-onto
+  :loop-guard (true-listp acc))
 
 ; PRINCIPAL is a current BP boundary whose enrollment lists SOURCE as carried.
 (defun fn-bpaj-carrier-rows (rows all principal source)
@@ -743,29 +692,13 @@
                                       fn-bpaj-without-release-rows
                                       fn-cfgp fn-cfg-labelp))))
 
-(verify-guards fn-bpaj-boundary-rowp)
-(verify-guards fn-bpaj-unique-boundary-rowp)
 (verify-guards fn-bpaj-current-peer-eidp-rows)
 (verify-guards fn-bpaj-current-peer-eidp)
-(verify-guards fn-bpaj-direct-enrolledp)
-(verify-guards fn-bpaj-enrolled-source-names-loop)
-(verify-guards fn-bpaj-enrolled-source-names
-  :hints (("Goal" :use ((:instance fn-bpaj-enrolled-source-names-loop-of-rev-onto
-                         (rows rows) (zs nil)))
-                  :in-theory (disable fn-bpaj-enrolled-source-names-loop-of-rev-onto
-                                      fn-bpaj-direct-enrolledp))))
 (verify-guards fn-bpaj-carrier-rows)
 (verify-guards fn-bpaj-source-enrolled-anywherep)
 (verify-guards fn-bpaj-carried-source-decision)
 (verify-guards fn-bpaj-source-decision-trustedp)
 (verify-guards fn-bpaj-source-decision-principal)
-(verify-guards fn-bpaj-loopback-peerp)
-(verify-guards fn-bpaj-loopback-candidates-loop)
-(verify-guards fn-bpaj-loopback-candidates
-  :hints (("Goal" :use ((:instance fn-bpaj-loopback-candidates-loop-of-rev-onto
-                         (rows rows) (zs nil)))
-                  :in-theory (disable fn-bpaj-loopback-candidates-loop-of-rev-onto
-                                      fn-bpaj-loopback-peerp))))
 (verify-guards fn-bpaj-eid-text)
 (verify-guards fn-bpaj-session-principal)
 (verify-guards fn-bpaj-source-eid)

@@ -42,6 +42,7 @@
 (in-package "ACL2")
 
 (include-book "owner-feed")
+(include-book "def-loop")
 (include-book "wire")
 (include-book "frame-trailer")
 (include-book "records-shape")
@@ -171,39 +172,13 @@
                          (fn-feed-journal-values r)
                          *fn-ores-zero-trailer*))))
 
-(defun fn-ores-sealed-plan-loop (records acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp records)
-      (fn-ores-sealed-plan-loop (cdr records)
-                                (cons (fn-ores-sealed-entry (car records)) acc))
-    (fn-ag-rev-onto acc nil)))
-
 (verify-guards fn-ores-sealed-entry)
-(verify-guards fn-ores-sealed-plan-loop)
-
-(defun fn-ores-sealed-plan (records)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp records)
-                  (cons (cons (fn-ores-record-peer (car records))
-                              (fn-ores-seal
-                               (fn-feed-encode (fn-feed-journal-kind (car records))
-                                               (fn-feed-journal-values (car records))
-                                               *fn-ores-zero-trailer*)))
-                        (fn-ores-sealed-plan (cdr records)))
-                nil)
-       :exec (fn-ores-sealed-plan-loop records nil)))
-
-(defthm fn-ores-sealed-plan-loop-is-rev-onto
-  (equal (fn-ores-sealed-plan-loop records acc)
-         (fn-ag-rev-onto acc (fn-ores-sealed-plan records)))
-  :hints (("Goal" :induct (fn-ores-sealed-plan-loop records acc)
-                  :in-theory (union-theories
-                              '(fn-ores-sealed-plan-loop fn-ores-sealed-plan
-                                fn-ag-rev-onto car-cons cdr-cons fn-ores-sealed-entry)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-ores-sealed-plan
-  :hints (("Goal" :in-theory (disable fn-ores-sealed-entry fn-ores-seal fn-ores-record-peer))))
+(def-loop fn-ores-sealed-plan (records)
+  :shape :map :over records :elt r
+  :body (cons (fn-ores-record-peer r)
+              (fn-ores-seal (fn-feed-encode (fn-feed-journal-kind r)
+                                            (fn-feed-journal-values r)
+                                            *fn-ores-zero-trailer*))))
 
 (defun fn-ores-feed-publication (word peer records token command status log-line)
   (declare (xargs :guard t :verify-guards nil))
