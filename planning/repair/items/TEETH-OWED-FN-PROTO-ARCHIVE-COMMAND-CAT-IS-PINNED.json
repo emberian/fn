@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-proto-archive-command-cat-is-pinned; books/protocol-served.lisp:387; statement: (implies (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)) (fn-statep archive) (fn-gidx-pin-correspondencep index archive) (fn-midx-correspondencep (fn-gidx-pin-trie in ...; owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/protocol-served.lisp",
+ "id": "TEETH-OWED-FN-PROTO-ARCHIVE-COMMAND-CAT-IS-PINNED",
+ "keystone": "fn-proto-archive-command-cat-is-pinned",
+ "line": 387,
+ "notes": [],
+ "owner": "def-command",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-proto-archive-command-cat-is-pinned is a new registry keystone with no generated teeth: declare (defteeth fn-proto-archive-command-cat-is-pinned ...) in a tests/acl2 book",
+ "updated": "2026-10-07T16:49:45Z"
+}

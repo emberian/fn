@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-nnw-stream-batch-residual; books/newnews-stream-cursor.lisp:535; statement: (equal (append (car (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)) (fn-nnw-stream-remaining (mv-nth 1 (fn-nnw-stream-batch cur visits bytes fn-arena fn-cat)) fn-arena fn-cat)) (fn-nnw-stream- ...; owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/newnews-stream-cursor.lisp",
+ "id": "TEETH-OWED-FN-NNW-STREAM-BATCH-RESIDUAL",
+ "keystone": "fn-nnw-stream-batch-residual",
+ "line": 535,
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-nnw-stream-batch-residual is a new registry keystone with no generated teeth: declare (defteeth fn-nnw-stream-batch-residual ...) in a tests/acl2 book",
+ "updated": "2026-10-07T16:49:45Z"
+}

@@ -34,7 +34,11 @@ with it:
   immutable revision whose manifest `git show` yields; a missing base or
   revision FAILS CLOSED (no HEAD fallback).  Findings: a base `generated`
   entry no longer generated (a downgrade); a name absent from the base that
-  is not generated (a new keystone declares its teeth); a new `deferred`
+  is not generated (a new keystone declares its teeth) unless it is OWED (an
+  open repair item planning/repair/items/TEETH-OWED-<NAME>.json, category
+  `teeth-owed`, names it: counted and printed, not a finding; the item is a
+  finding itself once the keystone has teeth, leaves the registry, or was
+  already in the base; tools/teeth_owed_file.py files them); a new `deferred`
   exemption (rejected by default; a base deferred is grandfathered); an
   owed row not met; a stale committed manifest.  Counts are printed from
   the sets: coverage counts only certified generated entries whose
@@ -78,6 +82,9 @@ PROOFS = ROOT / "planning/proofs.json"
 PROOF_EVENTS = ROOT / "planning/proof-events.json"
 MANIFEST = ROOT / "planning/teeth-obligations.json"
 BASE = ROOT / "planning/teeth-base.json"
+OWED_ITEMS = ROOT / "planning/repair/items"
+OWED_CATEGORY = "teeth-owed"
+OWED_CLOSED = {"landed", "refuted", "duplicate"}
 CONTAINERS = {"local", "progn", "encapsulate", "with-output", "defsection"}
 
 
@@ -369,18 +376,58 @@ def stored(entries: dict[str, dict]) -> list[dict]:
                    for entry in entries.values()), key=lambda e: e["name"])
 
 
+def owed_items(directory: Path | None = None) -> dict[str, dict]:
+    """The open teeth-owed repair items by the keystone each names: category
+    `teeth-owed` and a state that is not closed (landed, refuted, duplicate)."""
+    found: dict[str, dict] = {}
+    for path in sorted((directory or OWED_ITEMS).glob("*.json")):
+        try:
+            item = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        if item.get("category") != OWED_CATEGORY or item.get("state") in OWED_CLOSED:
+            continue
+        found.setdefault(str(item.get("keystone")), item)
+    return found
+
+
+def untoothed_new(current: dict[str, dict], base: dict | None) -> list[str]:
+    """The names the gate's `new and has no generated teeth` finding is
+    about: absent from the base, not generated."""
+    if base is None:
+        return []
+    known = {entry["name"] for entry in base.get("entries", [])}
+    return sorted(name for name, entry in current.items()
+                  if name not in known and entry["class"] != "generated")
+
+
 def manifest_findings(current: dict[str, dict], base: dict | None, why: str,
-                      committed: dict | None) -> list[str]:
+                      committed: dict | None,
+                      owed: dict[str, dict] | None = None) -> list[str]:
     problems: list[str] = []
     if base is None:
         return [f"teeth gate: {why}"]
+    owed = owed or {}
     base_entries = {entry["name"]: entry for entry in base.get("entries", [])}
+    for name, item in sorted(owed.items()):
+        entry = current.get(name)
+        if entry is None:
+            problems.append(f"teeth gate: owed item {item.get('id')} names {name}, which is "
+                            f"in no registry, defteeth or owed row (close it: state=refuted)")
+        elif entry["class"] == "generated":
+            problems.append(f"teeth gate: owed item {item.get('id')}: {name} now has "
+                            f"generated teeth (close it: state=landed)")
+        elif name in base_entries:
+            problems.append(f"teeth gate: owed item {item.get('id')}: {name} is in the base "
+                            f"revision; an owed item covers only a new keystone")
     # with a base, WHY is its revision (base_manifest); the manifest itself
     # names none of its own
     base_rev = why
     for name, entry in sorted(current.items()):
         old = base_entries.get(name)
         if old is None:
+            if entry["class"] != "generated" and name in owed:
+                continue
             if entry["class"] != "generated":
                 problems.append(f"teeth gate: {name} is new (not in the base {base_rev[:12]}) "
                                 f"and has no generated teeth: declare them (defteeth {name} ...)")
@@ -413,7 +460,7 @@ def manifest_findings(current: dict[str, dict], base: dict | None, why: str,
     return problems
 
 
-def manifest_counts(current: dict[str, dict]) -> str:
+def manifest_counts(current: dict[str, dict], owed_new: int = 0) -> str:
     registry = [e for e in current.values() if e["registry"]]
     generated = [e for e in registry if e["class"] == "generated"]
     certified = [e for e in generated if e.get("certified")]
@@ -428,7 +475,8 @@ def manifest_counts(current: dict[str, dict]) -> str:
             f"{sum(1 for e in generated for b in e.get('bounds', []) if not b['derived'])} underived "
             f"bounds, {sum(1 for e in generated for b in e.get('bounds', []) if not b['attained'])} "
             f"unattained bounds, {sum(1 for e in current.values() if e.get('owed_by'))} owed "
-            f"({sum(1 for e in current.values() if e.get('owed_met') is False)} unmet)")
+            f"({sum(1 for e in current.values() if e.get('owed_met') is False)} unmet); "
+            f"{owed_new} new keystone(s) owed by a teeth-owed repair item")
 
 
 def gate(write: bool, bootstrap: bool = False) -> list[str]:
@@ -447,15 +495,26 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
             committed = json.loads(MANIFEST.read_text(encoding="utf-8"))
         except ValueError:
             committed = None
-    problems = manifest_findings(current, base, why, committed)
+    owed = owed_items()
+    problems = manifest_findings(current, base, why, committed, owed)
     stale = [p for p in problems if "stale" in p or "is missing; run --write" in p]
     if bootstrap and base is None and committed is None:
         print(f"keystone_emit: BOOTSTRAP: no base and no manifest; writing the first "
               f"manifest ({why}); commit it, then planning/teeth-base.json naming that "
               f"revision")
         stale = problems
-    print(manifest_counts(current))
+    owed_new = [n for n in untoothed_new(current, base) if n in owed]
+    print(manifest_counts(current, len(owed_new)))
+    for name in owed_new:
+        item = owed[name]
+        print(f"keystone_emit: owed: {name} ({item.get('id')}, owner {item.get('owner', '?')})")
     if write and problems == stale:
+        dropped = sorted({e["name"] for e in (committed or {}).get("entries", [])}
+                         - set(current))
+        was = {e["name"]: e for e in (committed or {}).get("entries", [])}
+        for name in dropped:
+            print(f"keystone_emit: dropped from the manifest: {name} ({was[name]['class']} "
+                  f"there; no longer in the registry, a defteeth or an owed row)")
         MANIFEST.write_text(json.dumps({
             "about": "The teeth obligation manifest (TEETH CONTRACT v1): one entry per "
                      "registry keystone and per owed row; generated by tools/keystone_emit.py "
