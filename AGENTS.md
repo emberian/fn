@@ -2,7 +2,7 @@
 
 Read [the project guide](docs/README.md), [architecture](docs/architecture.md),
 [decisions](planning/decisions.md), [now](planning/now.md) and
-[the current view](planning/current.md) before substantial changes, then the
+the current view (`python3 tools/current_view.py` prints it) before substantial changes, then the
 specification for the affected subsystem. How lanes work is
 [how we work](planning/how-we-work.md).
 
@@ -24,7 +24,7 @@ specification for the affected subsystem. How lanes work is
 - A claim names its coordinate: source revision, proof (a manifest the
   committed `planning/evidence-index.tsv` names by hash; its bytes are in the
   evidence archive, `tools/evidence_store.py`), qualified image, deployment.
-  `planning/current.md` keeps the four apart; none implies another.
+  The current view keeps the four apart; none implies another.
 - Evidence is filed, not committed: `planning/evidence/<path>` stays the name
   you cite, `python3 tools/evidence_store.py put <path>` archives the bytes
   and writes the index line you commit (`evidence_manifests.py add RUN` does

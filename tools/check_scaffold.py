@@ -379,7 +379,7 @@ def main() -> int:
     # The generated half of the ledger: `python3 tools/ledger.py --check'.  It
     # reads the books themselves, so it fails on an event name that no book
     # defines, on a theorem whose shape disqualifies it as evidence, and on a
-    # stale planning/ledger.md.  Counts are never typed into prose.
+    # ledger that does not build.  Counts are never typed into prose.
     tree = ledger.load_tree()
     for problem in ledger.check_problems(tree):
         fail(f"ledger: {problem}")
@@ -410,10 +410,10 @@ def main() -> int:
         return exit_status(ERRORS, REFUSED, UNAVAILABLE)
     print(f"Scaffold OK: {len(markdown)} Markdown files, {len(requirements)} requirements, "
           f"{len(proofs)} proof targets, {len(scenarios)} scenario specifications.")
-    print("Ledger OK: cited events exist, are not SUSPECT, and planning/ledger.md is current.")
+    print("Ledger OK: cited events exist, are not SUSPECT, and the ledger builds.")
     print(f"Ledger lints: {len(warnings)} warnings (export hygiene, teeth form, "
           "hand-written record, "
-          f"include hygiene, host names); see planning/ledger.json.")
+          f"include hygiene, host names); see `python3 tools/ledger.py --check`.")
     print("Structural checks only; no ACL2 certification or scenario execution performed.")
     return 0
 

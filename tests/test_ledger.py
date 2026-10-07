@@ -743,10 +743,10 @@ class GeneratedStatusTests(unittest.TestCase):
 
 
 class RepositoryLedgerTests(unittest.TestCase):
-    """The real tree: the shipped ledger must be current and the cited events
+    """The real tree: the ledger must build and the cited events
     must pass the same checks the fixtures above describe."""
 
-    def test_the_checked_in_ledger_is_current(self):
+    def test_the_ledger_builds_and_registry_events_are_current(self):
         self.assertEqual(ledger.check_problems(), [])
 
     def test_every_named_assumption_has_an_encapsulate(self):
@@ -838,26 +838,6 @@ class TreeCacheTests(unittest.TestCase):
         with mock.patch.dict("os.environ", {"FN_LEDGER_TREE_CACHE": "0"}):
             self.assertIsNone(ledger._tree_cache_dir())
 
-
-
-class LaneCheckTests(unittest.TestCase):
-    """`make check-lane`: generated files are written aside, not compared."""
-
-    def test_without_the_flag_nothing_is_diverted(self):
-        with mock.patch.dict("os.environ", {}, clear=False) as env:
-            env.pop("FN_LANE_CHECK", None)
-            self.assertFalse(ledger.lane_generated("planning/ledger.md", "x"))
-
-    def test_with_the_flag_the_text_lands_in_the_directory_and_is_compared(self):
-        with tempfile.TemporaryDirectory() as directory, \
-                mock.patch.dict("os.environ", {"FN_LANE_CHECK": "1",
-                                               "FN_LANE_CHECK_DIR": directory}), \
-                mock.patch("sys.stderr") as stderr:
-            self.assertTrue(ledger.lane_generated("planning/ledger.md", "regenerated\n"))
-            written = Path(directory, "planning/ledger.md").read_text()
-            said = "".join(call.args[0] for call in stderr.write.call_args_list)
-        self.assertEqual(written, "regenerated\n")
-        self.assertIn("differs from the committed file", said)
 
 
 class SuspectCacheTests(unittest.TestCase):

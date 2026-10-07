@@ -91,9 +91,11 @@ class PendingBridgeTests(unittest.TestCase):
 
 
 class ViewTests(unittest.TestCase):
-    def test_committed_view_is_current(self) -> None:
-        committed = (current_view.ROOT / current_view.OUTPUT).read_text(encoding="utf-8")
-        self.assertEqual(current_view.build(), committed)
+    def test_view_builds_and_names_every_capability(self) -> None:
+        text = current_view.build()
+        view = json.loads((current_view.ROOT / current_view.SIDECAR).read_text(encoding="utf-8"))
+        for capability in view["capabilities"]:
+            self.assertIn(capability["id"], text)
 
 
 class CarriedTests(unittest.TestCase):

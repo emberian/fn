@@ -1,7 +1,7 @@
 # How we work now
 
 A lane is briefed from this page, [now](now.md) (dev, the goal, the lanes)
-and [the current view](current.md). Release scope is
+and the current view (`python3 tools/current_view.py`). Release scope is
 [the trajectory plan](plan-2026-09-22-trajectory.md) §0 to §2. The rules of
 [AGENTS.md](../AGENTS.md) apply in full; this page is the loop.
 
@@ -66,8 +66,8 @@ and [the current view](current.md). Release scope is
    stages that line; `evidence_store.py put PATH` does the same for a report,
    log or transcript under `planning/evidence/`. A reader fetches by hash
    (`evidence_store.py cat PATH`, or any tool, through build/evidence-cache).
-5. **The coordinator merges as lanes land**, regenerates the ledger and
-   `current.md` in the merge (never hand-resolving a generated file),
+5. **The coordinator merges as lanes land**, regenerates `proofs.json` events
+   (`tools/ledger.py --write`) in the merge (never hand-resolving a generated file),
    checks new registry IDs against the claims ledger (`next_id.py check`;
    the registry merge driver names an unclaimed row and a collision's
    claimant), runs `make check` and

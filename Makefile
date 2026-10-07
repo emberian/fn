@@ -2647,11 +2647,7 @@ extract-check:
 site:
 	$(PYTHON) site/build_site.py --out build/site
 
-# `make check` for a lane worktree: planning/ledger.json, ledger.md and
-# current.md are regenerated into one temporary directory and compared there
-# (printed, never failing) instead of against the committed files, which a
-# lane must not commit.  Their generation still has to succeed, and every
-# other check is the same.
+# `make check` for a lane worktree (FN_LANE_CHECK set; every check is the same).
 # Every pre-image gate for a host-code conversion, as one target (item 34):
 # world.py --check, interface_emit --check, host_check --forward/--world/
 # --load FILE, and the certified-world class check (host_check's default).
@@ -2671,9 +2667,7 @@ check-lane:
 # docs fix can break, before a full check-lane (lanes asked for it after a
 # two-line registry fix cost a 25-minute round; batch BB, 2026-09-28).  Not a
 # gate: `make check` stays the gate.  Registry reciprocity, spec and reach
-# citations, the ledger and the current view (with FN_LANE_CHECK, as
-# check-fast-lane sets it, the ledger is regenerated into a temporary
-# directory and only printed, as in check-lane), docs_check, and every host/
+# citations, the ledger and the current view, docs_check, and every host/
 # file reads (host_check --read, half a second: stx-model-2's paren on a
 # comment line reached an image build; obstructions-9 item 80), and every
 # book an ld host file calls into is in the image world (host_check --books,
@@ -2802,10 +2796,10 @@ check:
 # must itself cite an archived manifest that certified each event book at its
 # current digest. Any warning fails; --explain PRF-xxx names the manifest.
 	@$(CHECK_STEP) $(PYTHON) tools/certified_claims.py
-# planning/current.md, the per-capability current view, is generated from
-# planning/current-view.json and the tree (host call lines, keystones, the
-# archived manifests, the tested and deployed images' source digests); this
-# fails when it is stale or names something absent.
+# The per-capability current view (`python3 tools/current_view.py` prints it)
+# is computed from planning/current-view.json and the tree (host call lines,
+# keystones, the archived manifests, the tested and deployed images' source
+# digests); this fails when it cannot be built or names something absent.
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 # The fastest passed attempt at each current book/include closure, grouped by
 # host and toolchain. The ten-second rule (D26) over

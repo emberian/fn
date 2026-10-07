@@ -4,16 +4,14 @@
     python3 tools/coverage_gap.py [--check] [--root DIR] [--claims FILE]
         [--lanes DIR] [--acks FILE] [--json]
 
-Spec: build/coordinator/COORDINATOR-SOP.md (the comprehensiveness loop).  Run
-it at each integrator regen, after planning/repair/STATUS.md is regenerated.
+Spec: build/coordinator/COORDINATOR-SOP.md (the comprehensiveness loop).
 
 Inputs, each read in the format its producer writes (nothing is guessed):
 
 * planning/repair/items/*.json -- the repair ledger, one JSON object per item
-  (planning/repair/repair.py writes them; its ``report`` writes STATUS.md).
+  (planning/repair/repair.py writes them; its ``report`` prints the status table).
   ``state`` is open | in-progress | ready (open obligations), landed, refuted,
-  duplicate, or deferred.  The report also checks that STATUS.md's
-  ``Items: N`` equals the item count, i.e. that the regen ran first.
+  duplicate, or deferred.
 * build/coordinator/claims.jsonl -- the workq registry
   (build/coordinator/workq.py): rows {"op": "claim"|"done"|"release", "id",
   "worker", ...}.  An id is held iff its last row is a ``claim``.  The file is
@@ -86,15 +84,6 @@ def load_items(root, findings):
             findings.add(f, f"malformed item ({e})")
             continue
         items.append(item)
-    status = Path(root) / "planning/repair/STATUS.md"
-    text = read_text(status, findings)
-    if text is not None:
-        m = re.search(r"^Generated .*Items: (\d+)\.", text, re.M)
-        if not m:
-            findings.add(status, "no 'Items: N' line (not a generated STATUS.md)")
-        elif int(m.group(1)) != len(items):
-            findings.add(status, f"stale: says {m.group(1)} items, ledger has {len(items)} "
-                                 "(regenerate with repair.py report first)")
     return items
 
 

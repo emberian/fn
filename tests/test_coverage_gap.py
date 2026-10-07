@@ -34,7 +34,6 @@ class Tree:
         self.lanes = Path(d.name) / "lanes"
         self.acks = self.root / "planning/repair/ACKS.md"
         self.acks.write_text("# header\n")
-        self.status()
         self.catalog([])
         self.tiers([])
         self.evidence([])
@@ -43,11 +42,6 @@ class Tree:
         self.items.append(id)
         d = {"id": id, "state": state, "owner": "nobody", "notes": [], **kw}
         (self.root / f"planning/repair/items/{id}.json").write_text(json.dumps(d))
-        self.status()
-
-    def status(self):
-        (self.root / "planning/repair/STATUS.md").write_text(
-            f"# s\n\nGenerated 2026-10-06 16:05 UTC. Items: {len(self.items)}.\n")
 
     def catalog(self, scenarios):
         (self.root / "tests/scenarios/catalog.json").write_text(json.dumps({"scenarios": scenarios}))
@@ -129,12 +123,6 @@ class Dispositions(unittest.TestCase):
     def test_a_ratchet_ack_names_a_baseline_row_not_an_item(self):
         self.t.acks.write_text("ratchet:loop_call_check:f.lisp \u2014 r \u2014 w\n")
         self.assertEqual(self.t.run()["findings"], [])
-
-    def test_stale_status_md_is_a_finding(self):
-        self.t.item("A")
-        self.t.items.append("phantom")
-        self.t.status()
-        self.assertTrue(any("stale" in f for f in self.t.run()["findings"]))
 
 
 class FailClosed(unittest.TestCase):
