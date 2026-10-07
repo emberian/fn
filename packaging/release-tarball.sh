@@ -243,7 +243,7 @@ if [ -z "$frozen" ]; then
     [ "$image_acl2" = "$FN_ACL2" ] || echo "image-acl2: $image_acl2"
     [ -z "$runtime_from" ] || echo "runtime-from: $($sums "$runtime_from/sbcl")"
     if [ -d "$frozen/openssl/lib" ]; then
-      echo "openssl: ${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}}"
+      echo "openssl: ${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-}}"
       (cd "$frozen" && $sums openssl/lib/libcrypto.so.3 openssl/lib/libssl.so.3)
     fi
   } > "$work/release-gate.txt"
