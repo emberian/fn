@@ -2051,6 +2051,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/article-stream-server-tests \
 	books/article-select-index \
 	books/article-stream-owner \
+	books/article-stream-owner-bridge \
 	tests/acl2/article-stream-owner-tests \
 	tests/acl2/catalog-availability-tests \
 	tests/acl2/catalog-availability-owner-load-tests \
