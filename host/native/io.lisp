@@ -148,6 +148,17 @@ fn-lgdm-repair-text: a torn tail dropped, a confirmed repair), newest first;
 (defun fnn-os-fail (errno &optional path)
   (error 'fnn-os-error :errno errno :path path))
 
+(defmacro fnn-guarded-by (var lock)
+  "Declare that every access to the global VAR holds LOCK: a lock global
+(*fnn-extent-lock*) or the form that reaches a service's lock
+((fnn-owner-service-lock) for the owner mutex).  The contract names its
+variable, so moving a defvar cannot re-target it, as a `guarded-by:' comment
+bound by position did (CONVERGE-2 row 31).  tools/lock_discipline_check.py
+reads these forms and refuses a comment contract; at load time the form
+expands to nothing."
+  (declare (ignore var lock))
+  nil)
+
 ;;; Shared observation-only primitive declaration precedes extent compilation.
 ;;; Its collector/runtime functions are installed by owner before workers run.
 (defvar *fnn-native-observer* nil)
@@ -5117,9 +5128,10 @@ caller does not know."
 
 (defvar *fnn-close-debts-lock* (sb-thread:make-mutex :name "fn close debts"))
 
-(defvar *fnn-publication-close-debts* nil ; guarded-by: *fnn-close-debts-lock*
+(defvar *fnn-publication-close-debts* nil
   "Publication lock descriptor identities with unobserved physical return.
 These records retain evidence; they never authorize retry of a consumed fd.")
+(fnn-guarded-by *fnn-publication-close-debts* *fnn-close-debts-lock*)
 
 (defvar *fnn-publication-lock-roots* nil
   "Roots of locally owned publication lock descriptors until physical return.")
@@ -5436,8 +5448,9 @@ its name (fnn-archive-entry), never a host fault."
                      count)))
         (fnn-close fd)))))
 
-(defvar *fnn-immutable-close-debts* nil ; guarded-by: *fnn-close-debts-lock*
+(defvar *fnn-immutable-close-debts* nil
   "Exact #(FD STAGE FINAL OPERATION PUBLICATION CONDITION) return debts.")
+(fnn-guarded-by *fnn-immutable-close-debts* *fnn-close-debts-lock*)
 
 (defun fnn-immutable-close-observation ()
   (if (sb-thread:with-mutex (*fnn-close-debts-lock*)

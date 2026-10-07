@@ -5277,30 +5277,27 @@ written within SECONDS."
 
 ; One reply line from one peer.  The article of a 335/238 is the row's bytes
 ; read through the arena (books/owner-feed-article.lisp fn-ofa-feed-article,
-; fn-ofa-feed-article-is-the-feed-article-over-alpha), never its handle.
-(defun fn-owner-feed-octets (peer-octets line monotonic fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+; fn-ofa-feed-article-is-the-feed-article-over-alpha), never its handle.  This
+; step does NOT read the arena: the article arrives as an argument, read first
+; by fn-owner-feed-reply-article (a pure probe), so that an arena read the host
+; must suspend (a payload extent not in memory) happens before anything of the
+; reply chunk is committed (LOCK-R2-FEED-REPLY-PAYLOAD-PREAD).
+(defun fn-owner-feed-reply-msgid (peer owner)
+  "The Message-ID of PEER's in-flight offer."
+  (declare (xargs :mode :program))
+  (let* ((entry (fn-own-feed-entry-of peer (fn-own-feeds owner)))
+         (feed (fn-own-feed-entry-feed entry)))
+    (fn-own-feed-inflight-msgid (fn-feed-queue feed))))
+
+(defun fn-owner-feed-octets (peer-octets line monotonic article state)
+  (declare (xargs :stobjs (state) :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value (fn-owner-feed-word-publication nil nil nil))
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (entry (fn-own-feed-entry-of peer (fn-own-feeds owner)))
-             (feed (fn-own-feed-entry-feed entry))
-             (msgid (fn-own-feed-inflight-msgid (fn-feed-queue feed)))
-             (response (fn-own-feed-parse-response line msgid))
-             ; The record's bytes by Message-ID, read once and only for a
-             ; reply that sends them (335/238; books/peer-feed
-             ; fn-feed-observe ignores ARTICLE for every other code): its
-             ; handle through the history stobj (R holds: the entry
-             ; fn-owner-feed-reply-chunk refreshed it)
-             ; (fn-apr-feed-article-is-own-feed-article,
-             ; books/acceptance-payload-ref.lisp) read through the arena
-             ; (fn-ofa-feed-article-is-the-feed-article-over-alpha).  Since
-             ; the records flip the row holds a handle; handing it to the
-             ; port sent an empty command (lane feed-fault).
-             (article (and response (fn-ofa-send-codep response)
-                           (fn-ofa-feed-article owner msgid fn-arena fn-hist))))
+             (msgid (fn-owner-feed-reply-msgid peer owner))
+             (response (fn-own-feed-parse-response line msgid)))
         (cond
          ((null response)
           (value (fn-ores-feed-port-publication :quiet nil nil nil nil)))
@@ -5340,12 +5337,15 @@ it is :CONNECTION-REFUSED and the raw adapter must close this peer without
 flushing the previous peer's pending projection."
   (if (equal (fn-fc-kind step) :refused) :connection-refused (fn-fc-kind step)))
 
-(defun fn-owner-feed-reply-chunk-synced (peer-octets octets monotonic fn-arena fn-hist state)
+(defun fn-owner-feed-reply-chunk-synced (peer-octets octets monotonic article fn-arena state)
   "Consume one ACL2 connection/reply event; nil drains retained input.
 
 Greeting and MODE replies stay inside fn-fc.  A normal feed reply reaches the
-existing port only after fn-fc has made this connection ready."
-  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
+existing port only after fn-fc has made this connection ready.  ARTICLE is the
+reply's article, read beforehand by fn-owner-feed-reply-article: this step
+commits (the framer table, the stop table) and never reads the payload arena
+itself."
+  (declare (xargs :stobjs (state fn-arena) :mode :program
                   :guard (and (fn-cbor-octet-listp octets)
                               (fn-cbor-octet-listp peer-octets))))
   (let ((peer (fn-store-octets->string peer-octets)))
@@ -5409,7 +5409,7 @@ existing port only after fn-fc has made this connection ready."
                                                                 (and (equal word :ok) fallback-line))))))
                   (:reply
                    (fn-owner-feed-octets peer-octets (fn-fc-line step)
-                                         monotonic fn-arena fn-hist state))
+                                         monotonic article state))
                   (:streaming-refused
                    (value (fn-owner-feed-word-publication :streaming-refused nil stop-line)))
                   (:need-input
@@ -5422,16 +5422,73 @@ existing port only after fn-fc has made this connection ready."
                            kind nil (fn-peer-feed-failure-line peer input step octets))))
                   (otherwise (value (fn-owner-feed-word-publication :fault nil nil))))))))))
 
+;;; The feed reply, in two halves so a payload read the host must suspend
+;;; commits nothing (LOCK-R2-FEED-REPLY-PAYLOAD-PREAD).  The committing half,
+;;; fn-owner-feed-reply-chunk-synced, f-put-globals the consumed framer state;
+;;; its :reply arm used to read the article afterwards, so a cold read could
+;;; not be abandoned and re-run (the octets would reach the framer twice).
+;;; The read is now fn-owner-feed-reply-article, which returns no state: the
+;;; host runs it first, with the extent realizer in its no-I/O mode, and
+;;; fetches a cold extent off every lock before it runs the committing half
+;;; warm.  The committing half calls no arena read (fn-ofa-feed-article occurs
+;;; only in the probe below).
+
+; The history stobj refreshed against the owner's Store (host/store-node-host.lisp
+; fn-host-hist-sync; R by fn-hist-refresh-is-the-history), alone: the probe's
+; precondition (R holds at its read), run by the host outside the no-I/O mode.
+(defun fn-owner-feed-reply-sync (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv nil t fn-hist state)))
+
+; The article this reply sends, from the connection's CURRENT framer state and
+; the owner's in-flight offer, committing nothing: the same pure framer step
+; fn-owner-feed-reply-chunk-synced takes (fn-fc-table-lookup, fn-fc-step,
+; fn-fc-line), then the same rule as fn-owner-feed-octets for which replies
+; send the bytes (a :reply line whose response is a send code, 335/238;
+; books/peer-feed fn-feed-observe ignores ARTICLE for every other code): its
+; handle through the history stobj (fn-apr-feed-article-is-own-feed-article,
+; books/acceptance-payload-ref.lisp) read through the arena
+; (fn-ofa-feed-article-is-the-feed-article-over-alpha).  Since the records
+; flip the row holds a handle; handing it to the port sent an empty command
+; (lane feed-fault).  NIL when the reply sends nothing.  It takes the state
+; only to read and returns none, so a throw out of the arena read leaves
+; everything as it was.
+(defun fn-owner-feed-reply-article (peer-octets octets fn-arena fn-hist state)
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
+                  :guard (and (fn-cbor-octet-listp octets)
+                              (fn-cbor-octet-listp peer-octets))))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
+        (mv nil nil state)
+      (let ((input (fn-fc-table-lookup peer (f-get-global 'fn-owner-feed-inputs state))))
+        (if (not (fn-fc-statep input))
+            (mv nil nil state)
+          (let* ((step (fn-fc-step input octets))
+                 (stop (fn-fc-streaming-refusal-p input step))
+                 (kind (if stop :streaming-refused
+                         (fn-owner-feed-connection-result-kind step))))
+            (if (not (equal kind :reply))
+                (mv nil nil state)
+              (let* ((owner (fn-owner-core state))
+                     (msgid (fn-owner-feed-reply-msgid peer owner))
+                     (response (fn-own-feed-parse-response (fn-fc-line step) msgid)))
+                (mv nil
+                    (and response (fn-ofa-send-codep response)
+                         (fn-ofa-feed-article owner msgid fn-arena fn-hist))
+                    state)))))))))
+
 ; The feed reply entry: the history stobj refreshed against the owner's Store
 ; first (host/store-node-host.lisp fn-host-hist-sync; R by
-; fn-hist-refresh-is-the-history), then the reply read through it.
-(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic fn-arena fn-hist state)
+; fn-hist-refresh-is-the-history), then the reply committed with the article
+; fn-owner-feed-reply-article read for it in the same owner quantum.
+(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic article fn-arena fn-hist state)
   (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
                   :guard (and (fn-cbor-octet-listp octets)
                               (fn-cbor-octet-listp peer-octets))))
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
     (mv-let (erp val state)
-      (fn-owner-feed-reply-chunk-synced peer-octets octets monotonic fn-arena fn-hist state)
+      (fn-owner-feed-reply-chunk-synced peer-octets octets monotonic article fn-arena state)
       (mv erp val fn-hist state))))
 
 

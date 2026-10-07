@@ -1773,9 +1773,16 @@
 (definterface fn-owner-feed-reconcile-apply
   :class ::program)
 
+(definterface fn-owner-feed-reply-article
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
+
 (definterface fn-owner-feed-reply-chunk
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
+
+(definterface fn-owner-feed-reply-sync
+  :class ::program)
 
 (definterface fn-owner-feed-security
   :class ::program
@@ -3759,6 +3766,16 @@
               (fn-send-progress-stalled-refused :via fn-send-progress-verdict)
               (fn-send-progress-too-slow-refused :via fn-send-progress-verdict)
               (fn-send-progress-verdict-answers :via fn-send-progress-verdict)))
+
+(definterface fn-idle-gc-quiet
+  :class :common-lisp-compliant
+  :keystones (fn-idle-gc-quiet-counts-only-quiet-ticks-at-the-limit))
+
+(definterface fn-idle-gc-decide
+  :class :common-lisp-compliant
+  :keystones ((fn-idle-gc-verdict-collects-only-when-owed :via fn-idle-gc-verdict)
+              (fn-idle-gc-verdict-collects-when-owed :via fn-idle-gc-verdict)
+              fn-idle-gc-decide-never-collects-during-a-publication))
 
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)

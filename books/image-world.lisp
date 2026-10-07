@@ -115,6 +115,7 @@
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "send-progress")
+(include-book "idle-collection")
 (include-book "heap-reservation")
 (include-book "bp-heap-command")
 (include-book "cold-read-reservation")

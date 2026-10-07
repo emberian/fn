@@ -643,6 +643,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/heap-open-nursery-tests \
 	books/send-progress \
 	tests/acl2/send-progress-tests \
+	books/idle-collection \
+	tests/acl2/idle-collection-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
 	books/cold-read-reservation \

@@ -156,6 +156,16 @@
   (when (and signal-condition first-condition) (error first-condition))
   first-condition))
 
+(defun fnn-bp-session-custody-unreleased-p (bank)
+ "Observation for ACL2's fn-bpsched-service: some retained session accepted an
+inbound transfer whose own progress turn, which follows the actual final ACK
+write (fnn-tcl-turn-local), has not run yet."
+ (let ((slots (fnn-bpsb-slots bank)))
+  (and slots
+       (loop for grant across slots
+             thereis (and grant (fnn-bpsg-conn grant)
+                          (fnn-tclc-progress (fnn-bpsg-conn grant)) t)))))
+
 (defun fnn-bp-session-loop (bank control listeners begin once service pending)
  "One writer: one installed listener attempt, one retained slot, one local turn."
  (let ((slot 2) (phase 0) (accepted nil) (once-tail nil) (listener-index 0)
@@ -211,7 +221,8 @@
                         (list :retained-closed key)))
         (when once (setq once-tail 8 phase 0)))))))
    (setq slot (fnn-core 'fn-bpsched-next-slot slot (length (fnn-bpsb-slots bank))))
-   (funcall service (fnn-core 'fn-bpsched-service phase))
+   (funcall service (fnn-core 'fn-bpsched-service phase
+                              (fnn-bp-session-custody-unreleased-p bank)))
    (setq phase (fnn-core 'fn-bpsched-next phase))
    (when (and once-tail (plusp once-tail)) (decf once-tail))
    (when (and once accepted once-tail (zerop once-tail)

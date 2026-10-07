@@ -42,9 +42,39 @@
     (fn-bplc-with-session st
      (fn-bpsched-session-view (fn-bpsched-remove (fn-ncfg-nth 1 event) rows))))
    (otherwise (fn-bplc-step st event)))))
-(defun fn-bpsched-service (phase)
+; The node loop's local service for this pass.  CUSTODY-UNRELEASED: some
+; retained session accepted an inbound transfer (its final XFER_ACK queued,
+; fn-tcl-delivery-plan-progress-p) and that session's own turn has not yet
+; written the ACK and run its progress.  Dispatch hands accepted custody to
+; the application, and an application fence ends every session: dispatching
+; first lost the owed ACK, so the sender saw an interrupted transfer for a
+; custody this node holds (CONVERGE-2 row 22, test_bp_node_native).  The
+; session's own progress turn, which follows the actual ACK write
+; (host/native/tcpcl.lisp fnn-tcl-turn-local), dispatches it instead.
+(defun fn-bpsched-service (phase custody-unreleased)
  (declare (xargs :guard t))
- (nth (mod (nfix phase) 8) '(:fragment :dispatch :expiry :outbox :forward :receipt :report :rotation)))
+ (let ((service (nth (mod (nfix phase) 8)
+                     '(:fragment :dispatch :expiry :outbox :forward :receipt :report :rotation))))
+  (if (and custody-unreleased (equal service :dispatch)) :custody-wait service)))
+
+; KEYSTONE: no dispatch while an accepted custody's ACK may still be owed.
+(defthm fn-bpsched-no-dispatch-before-acknowledged-custody-is-released
+ (implies custody-unreleased
+          (not (equal (fn-bpsched-service phase custody-unreleased) :dispatch))))
+
+; ... and otherwise the rotation is unchanged: every pass still reaches
+; dispatch once custody is released (no starvation by this rule).
+(defthm fn-bpsched-service-without-unreleased-custody-is-the-rotation
+ (equal (fn-bpsched-service phase nil)
+        (nth (mod (nfix phase) 8)
+             '(:fragment :dispatch :expiry :outbox :forward :receipt :report :rotation))))
+
+; Teeth: the rule bites at the dispatch phase and only there.
+(defthm fn-bpsched-custody-wait-teeth
+ (and (equal (fn-bpsched-service 1 t) :custody-wait)
+      (equal (fn-bpsched-service 1 nil) :dispatch)
+      (equal (fn-bpsched-service 0 t) :fragment))
+ :rule-classes nil)
 (defun fn-bpsched-next (phase)
  (declare (xargs :guard t)) (mod (+ 1 (nfix phase)) 8))
 

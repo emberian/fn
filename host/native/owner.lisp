@@ -6357,6 +6357,32 @@ LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
       (:unavailable (fnn-owner-unavailable-line service cid incoming since now limit class))
       (otherwise (fnn-owner-resource-unavailable-line service cid incoming word class)))))
 
+;;; The peer feed reply's article read (LOCK-R2-FEED-REPLY-PAYLOAD-PREAD),
+;;; the served read's protocol (row A4) for a caller with no connection.  The
+;;; reply chunk commits the consumed framer state, so it cannot be abandoned
+;;; and re-run; ACL2's pure probe (host/owner-host.lisp
+;;; fn-owner-feed-reply-article) reads the article first.  Here it runs with
+;;; the extent realizer in its no-I/O mode: a payload extent not in the cache
+;;; throws the entry it needs and nothing is committed.  The history refresh
+;;; that precedes it (fn-owner-feed-reply-sync, a different item's reads)
+;;; stays outside that mode.  The cold read is issued here, under the owner
+;;; mutex that excludes file retirement (fnn-owner-cold-issue-locked, CID 0
+;;; as fnn-extent-entry-direct's synchronous admission passes), and awaited by
+;;; the caller on its own thread holding no lock (fnn-owner-cold-await, ACL2's
+;;; dependency and line deadlines).
+(defun fnn-owner-feed-reply-probe-locked (service peer-octets octets)
+  "Owner held.  (values :warm ARTICLE): the article (NIL for a reply that
+sends none), read warm, nothing committed; or (values :cold READ): the entry
+needed was not in memory, its read issued for fnn-owner-cold-await."
+  (fnn-core-arena-state 'fn-owner-feed-reply-sync)
+  (let ((got (catch 'fnn-extent-cold
+               (let ((*fnn-extent-no-io* t))
+                 (list :warm (fnn-core-arena-state 'fn-owner-feed-reply-article
+                                                   peer-octets octets))))))
+    (if (eq (car got) :warm)
+        (values :warm (second got))
+      (values :cold (fnn-owner-cold-issue-locked service 0 got)))))
+
 ;;; r71 F7 (lane served-live): an I/O loop never waits for a cold page.
 ;;; fnn-owner-handle-chunk awaits the page on the calling thread
 ;;; (fnn-owner-cold-line), which on a mux loop held every connection the
@@ -7048,21 +7074,29 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
           (let ((drop-ids (fnn-extent-ids-of-paths dropped-paths)))
             ;; The history image's file is never retired (its descriptor is
             ;; read off the lock for the process's life): refused by name
-            ;; before anything is retired, never a close under a pread.
-            (when (and *fnn-extent-image-id*
-                       (or (member *fnn-extent-image-id* drop-ids)
-                           (eql *fnn-extent-image-id* *fnn-extent-checkpoint-id*)))
-              (fnn-fault (format nil "the history image's file ~d would be retired"
-                                 *fnn-extent-image-id*)))
-            (fnn-owner-gated (service :control)
-              (setq *fnn-extent-retired*
-                    (sort (remove-duplicates
-                           (append drop-ids
-                                   (and *fnn-extent-checkpoint-id*
-                                        (list *fnn-extent-checkpoint-id*))
-                                   *fnn-extent-retired*))
-                          #'<)
-                    *fnn-extent-checkpoint-id* new-id)))
+            ;; before anything is retired, never a close under a pread.  The
+            ;; check reads *fnn-extent-checkpoint-id* in the same owner
+            ;; quantum that retires it and installs NEW-ID (its contract,
+            ;; host/native/extent.lisp; CONVERGE-2 row 31), so no other
+            ;; release can move it between the check and the write.  The
+            ;; fault is raised after the quantum, as before.
+            (let ((image-retired nil))
+              (fnn-owner-gated (service :control)
+                (if (and *fnn-extent-image-id*
+                         (or (member *fnn-extent-image-id* drop-ids)
+                             (eql *fnn-extent-image-id* *fnn-extent-checkpoint-id*)))
+                    (setq image-retired t)
+                  (setq *fnn-extent-retired*
+                        (sort (remove-duplicates
+                               (append drop-ids
+                                       (and *fnn-extent-checkpoint-id*
+                                            (list *fnn-extent-checkpoint-id*))
+                                       *fnn-extent-retired*))
+                              #'<)
+                        *fnn-extent-checkpoint-id* new-id)))
+              (when image-retired
+                (fnn-fault (format nil "the history image's file ~d would be retired"
+                                   *fnn-extent-image-id*)))))
           (dolist (f (reverse frames))
             (destructuring-bind (eoff elen handles) f
               ;; A fresh read (no descriptor names the frame yet): the frame
@@ -8547,7 +8581,41 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
   (fnn-owner-cold-reap service)
   (fnn-owner-maybe-publish service)
   (fnn-owner-maybe-reopen-log service)
-  (fnn-owner-maybe-retire service))
+  (fnn-owner-maybe-retire service)
+  (fnn-owner-maybe-collect-idle service))
+
+;;; MEM-003: the collection while the owner is idle.  SBCL returns freed pages
+;;; to the OS only after a collection of a generation above 1, and the nursery
+;;; trigger's collections are generation 0 and 1, so a burst's garbage stays
+;;; resident until something collects higher.  ACL2 decides when
+;;; (books/idle-collection.lisp fn-idle-gc-quiet, fn-idle-gc-decide); this
+;;; observes the two facts the decision reads and makes the one call it
+;;; names.  The marks are the allocation counter at the previous tick and at
+;;; the last collection; the first tick takes the current counter for both
+;;; (the open's own full collection is the last one before it).
+(defvar *fnn-idle-gc-tick-mark* nil)
+(defvar *fnn-idle-gc-collect-mark* nil)
+(defvar *fnn-idle-gc-quiet* 0)
+
+(defun fnn-owner-maybe-collect-idle (service)
+  (let* ((consed (sb-ext:get-bytes-consed))
+         (publishing (fnn-with-roster (service)
+                       (and (or (fnn-owner-service-publisher service)
+                                (fnn-owner-service-exporter service))
+                            t))))
+    (unless *fnn-idle-gc-tick-mark*
+      (setq *fnn-idle-gc-tick-mark* consed
+            *fnn-idle-gc-collect-mark* consed))
+    (setq *fnn-idle-gc-quiet*
+          (fnn-core 'fn-idle-gc-quiet *fnn-idle-gc-quiet* publishing
+                    (- consed *fnn-idle-gc-tick-mark*))
+          *fnn-idle-gc-tick-mark* consed)
+    (let ((verdict (fnn-core 'fn-idle-gc-decide *fnn-idle-gc-quiet* publishing
+                             (- consed *fnn-idle-gc-collect-mark*))))
+      (when (consp verdict)
+        (sb-ext:gc :gen (second verdict))
+        (setq *fnn-idle-gc-tick-mark* (sb-ext:get-bytes-consed)
+              *fnn-idle-gc-collect-mark* *fnn-idle-gc-tick-mark*)))))
 
 ;;; r71 F8 (lane served-live): the primary accept loop ran the maintenance
 ;;; quanta itself, each waiting at the owner's scheduling gate (:control or

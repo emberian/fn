@@ -62,8 +62,8 @@
   (wakes 0))
 
 (defparameter *fnn-pull-runtime-lock* (sb-thread:make-mutex :name "fn pull runtimes"))
-;; guarded-by: *fnn-pull-runtime-lock*
 (defparameter *fnn-pull-runtimes* (make-hash-table :test #'eq))
+(fnn-guarded-by *fnn-pull-runtimes* *fnn-pull-runtime-lock*)
 
 (defun fnn-pull-runtime-get (service)
   (sb-thread:with-mutex (*fnn-pull-runtime-lock*) (gethash service *fnn-pull-runtimes*)))

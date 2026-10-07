@@ -1727,13 +1727,17 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertFalse((self.receiver_store / "control.sock").exists())
 
     def test_control_listener_retires_after_one_normal_bp_session(self):
-        peer, peer_port = self.start_node(False, once=False)
-        self.relay.route(peer_port)
         receiver, port = self.start_node(True, control=True)
         socket_path = self.receiver_store / "control.sock"
         self.assertTrue(socket_path.exists())
+        # The sender's bp-service and the sender's node share one journal,
+        # and a node owns its journal's spool for its whole life (one writer
+        # per journal, 21dad2b2f): the request goes out before the sender's
+        # node starts to take the return receipt (CONVERGE-2 row 22).
         sent = self.send_request(port, "control-one-session")
         self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        peer, peer_port = self.start_node(False, once=False)
+        self.relay.route(peer_port)
         self.assertEqual(receiver.wait(timeout=120), EXIT.OK, receiver.diagnostics())
         self.assertFalse(socket_path.exists())
         peer.stop(grace=5)

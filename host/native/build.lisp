@@ -223,6 +223,9 @@
 ;; CONVERGE-2 row 20: host/native/mux.lisp asks the send verdict of
 ;; books/send-progress.
 (include-book "books/send-progress")
+;; MEM-003: host/native/owner.lisp fnn-owner-maybe-collect-idle asks the idle
+;; collection verdict of books/idle-collection.
+(include-book "books/idle-collection")
 (include-book "books/heap-reservation")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")

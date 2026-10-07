@@ -315,6 +315,8 @@
 (include-book "books/heap-open-nursery")
 ;; CONVERGE-2 row 20: mux.lisp's send verdict, as in build.lisp.
 (include-book "books/send-progress")
+;; MEM-003: fnn-owner-maybe-collect-idle (owner.lisp), as in build.lisp.
+(include-book "books/idle-collection")
 (include-book "books/heap-reservation")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")
