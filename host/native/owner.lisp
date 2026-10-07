@@ -6109,21 +6109,30 @@ owner, as a late store fault does on the whole-extent line."
       (error condition))
     t))
 
-(defun fnn-owner-response-window-close (service capture)
+(defun fnn-owner-response-window-close (service capture &optional (class :reader))
   "Whole response stopped issuing, its final scalar activation has returned.
-Cancel now; release only after independent physical return."
+Cancel now; release only after independent physical return.  One
+fnn-quantum-mux-finish quantum of CLASS (the closing connection's gate class;
+a reader's :reader by default), so the cold window's settlement and the
+pending-extent release are ordered by the scheduler against the batch job
+and run, as a connection's close does, whether or not the service is
+stopping."
   (when capture
-    (sb-thread:with-mutex ((fnn-owner-service-lock service))
-      (let ((read (fnn-response-capture-window-read capture)))
-        (when read
-          (setf (fnn-owner-cold-read-abandonedp read) t)
-          (unless (fnn-owner-cold-read-settledp read)
-            ;; A borrowed window returned verified and was read: it is
-            ;; released as published.  Any other is cancelled first.
-            (unless (fnn-owner-cold-read-borrowedp read)
-              (fnn-extent-window-cancel (fnn-owner-cold-read-worker read) (fnn-owner-cold-read-token read)))
-            (fnn-owner-cold-window-result-locked service read))
-          (setf (fnn-response-capture-window-read capture) nil)))))
+    (fnn-quantum-mux-finish
+     service nil
+     (lambda ()
+       (let ((read (fnn-response-capture-window-read capture)))
+         (when read
+           (setf (fnn-owner-cold-read-abandonedp read) t)
+           (unless (fnn-owner-cold-read-settledp read)
+             ;; A borrowed window returned verified and was read: it is
+             ;; released as published.  Any other is cancelled first.
+             (unless (fnn-owner-cold-read-borrowedp read)
+               (fnn-extent-window-cancel (fnn-owner-cold-read-worker read)
+                                         (fnn-owner-cold-read-token read)))
+             (fnn-owner-cold-window-result-locked service read))
+           (setf (fnn-response-capture-window-read capture) nil))))
+     class))
   :window-closed)
 
 (defun fnn-owner-cold-result-locked (service read)

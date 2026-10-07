@@ -395,7 +395,9 @@ failed effects remain discoverable while independent physical cleanup runs."
              ;; debt; no live renderer in this single loop can publish again.
              (fnn-mux-cleanup-attempt
               loop conn (list :response-window capture)
-              (lambda () (fnn-owner-response-window-close service capture)) :window-closed nil)
+              (lambda ()
+                (fnn-owner-response-window-close service capture (fnn-mux-conn-class conn)))
+              :window-closed nil)
              (fnn-mux-cleanup-attempt
               loop conn :output-discard
               (lambda () (fnn-owner-output-close service (fnn-mux-conn-output-grant conn) :discarded))
@@ -748,7 +750,8 @@ contract, without blocking the loop)."
 (defun fnn-mux-after (loop conn after)
   ;; All windows, including a partial socket write's pending suffix, have
   ;; drained.  A replacement catalog is now safe for this connection.
-  (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn))
+  (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn)
+                                   (fnn-mux-conn-class conn))
   (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
   ;; Output progress (Codex r67 F3, Astra c07): a reply whose drain outlasted
   ;; its step -- it waited on the socket or yielded at a cursor -- ends now,
