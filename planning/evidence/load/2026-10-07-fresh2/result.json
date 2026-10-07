@@ -1,0 +1,188 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 0,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [
+    {
+     "bar": "L-FRESH",
+     "checks": [
+      {
+       "cmp": "eq",
+       "metric": "fresh.256.ok",
+       "ok": false,
+       "threshold": 1,
+       "value": 0
+      },
+      {
+       "cmp": "eq",
+       "metric": "fresh.1024.ok",
+       "ok": false,
+       "threshold": 1,
+       "value": 0
+      }
+     ],
+     "quantity": "a fresh node starts under a whole-process limit of 256 MB and of 1024 MB and serves one POST and one ARTICLE",
+     "reason": null,
+     "source": "D35/D65; CONVERGE-3 row 19b",
+     "verdict": "FAIL"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     21.27,
+     19.59,
+     20.12
+    ],
+    "loadavg_start": [
+     21.27,
+     19.59,
+     20.12
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "L-FRESH",
+   "exit_code": null,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "16384",
+    "--max-history-octets",
+    "8388608",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "decided"
+   },
+   "hook": null,
+   "image": {
+    "core_sha256": "fc94e5059e8211e5fd03e3c049bd7e3323fa07a8cd76b12d5cac7ad0f48d8efc",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host --fn operator /dev/shm/fn-load-fresh2/L_FRESH-image-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "max_connections": null,
+   "metrics": {
+    "fresh.1024.ok": 0,
+    "fresh.1024.seconds_to_listening_or_exit": 0.2,
+    "fresh.256.ok": 0,
+    "fresh.256.seconds_to_listening_or_exit": 0.2,
+    "posts.admitted": 0,
+    "posts.refused": 0
+   },
+   "noisy": false,
+   "not_measured": {},
+   "phases": [
+    {
+     "arc_bytes": null,
+     "counts": {
+      "admitted": 0,
+      "refused": 0
+     },
+     "gc": null,
+     "kind": "fresh_start",
+     "load": [
+      21.27,
+      19.59,
+      20.12
+     ],
+     "measure": true,
+     "name": "limits",
+     "results": [
+      {
+       "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--quiet",
+        "-p",
+        "MemoryMax=256M",
+        "-p",
+        "MemorySwapMax=0",
+        "/tmp/fn-installed-zapuoj57/bin/fn",
+        "operator",
+        "/dev/shm/fn-load-fresh2/L_FRESH-image-x-r1/fresh-256/fn.toml",
+        "run"
+       ],
+       "exit_code": 1,
+       "heap_probe": {
+        "exit": 1,
+        "stderr_tail": "",
+        "stdout": "refused machine-cannot-hold-profile heap=497 MB machine=256 MB"
+       },
+       "limit_mb": 256,
+       "listening": false,
+       "seconds_to_listening_or_exit": 0.2,
+       "stderr_tail": "fn: refused machine-cannot-hold-profile heap=497 MB machine=256 MB\n",
+       "stdout_tail": "",
+       "verdict": "refused-or-exited"
+      },
+      {
+       "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--quiet",
+        "-p",
+        "MemoryMax=1024M",
+        "-p",
+        "MemorySwapMax=0",
+        "/tmp/fn-installed-zapuoj57/bin/fn",
+        "operator",
+        "/dev/shm/fn-load-fresh2/L_FRESH-image-x-r1/fresh-1024/fn.toml",
+        "run"
+       ],
+       "exit_code": 1,
+       "heap_probe": {
+        "exit": 1,
+        "stderr_tail": "",
+        "stdout": "refused machine-cannot-hold-threads reservation=1030 MB machine=1024 MB"
+       },
+       "limit_mb": 1024,
+       "listening": false,
+       "seconds_to_listening_or_exit": 0.2,
+       "stderr_tail": "fn: refused machine-cannot-hold-threads reservation=1030 MB machine=1024 MB\n",
+       "stdout_tail": "",
+       "verdict": "refused-or-exited"
+      }
+     ],
+     "seconds": 0.688,
+     "status": "ok"
+    }
+   ],
+   "preset": "small",
+   "refusals": {
+    "fresh-1024-fn-refused-machinecannotholdthreads-reservation1030-mb": 1,
+    "fresh-256-fn-refused-machinecannotholdprofile-heap497-mb": 1
+   },
+   "rep": 1,
+   "seconds": 0.7,
+   "started_utc": "2026-10-07T23:14:19Z",
+   "status": "complete",
+   "store": {},
+   "target": "image",
+   "trace": null,
+   "workload": "fresh-start"
+  }
+ ],
+ "evidence": null,
+ "label": "fresh2",
+ "rev": "0b4d3b18385a53209146a78296e282d06c17e573",
+ "schema": 1
+}

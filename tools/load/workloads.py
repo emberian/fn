@@ -19,6 +19,7 @@ PATH = HERE / "workloads.json"
 PHASE_KINDS = {
     "post": {"count", "duration_s", "octets", "connections", "rate_per_s", "background_readers"},
     "commands": {"reps"},
+    "fresh_start": {"limits_mb"},
     "census": set(),
     "publish": set(),
     "read": {"readers", "count", "duration_s", "cmd", "poster"},

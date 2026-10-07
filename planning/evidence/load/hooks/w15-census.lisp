@@ -6,43 +6,51 @@
 ;;; then creates FN_LOAD_CENSUS_DIR/done.  Loaded through the same path as w13-idle-gc.lisp.
 (in-package "ACL2")
 
-(defun fnl-owner-type-p (name)
-  (let ((s (symbol-name name)))
-    (or (eql 0 (search "FN-" s)) (eql 0 (search "PGS-" s)) (eql 0 (search "FNN-CONNECTION-CUSTODY" s)))))
+(defun fnl-deep-size (v seen depth)
+  "Octets reachable from V through arrays and structure slots (DEPTH levels), shared objects once."
+  (cond ((or (null v) (symbolp v) (typep v 'fixnum) (typep v 'character) (functionp v)) 0)
+        ((gethash v seen) 0)
+        ((typep v '(or array bignum double-float structure-object))
+         (setf (gethash v seen) t)
+         (let ((b (sb-ext:primitive-object-size v)))
+           (when (> depth 0)
+             (cond ((typep v 'simple-vector)
+                    (loop for e across v do (incf b (fnl-deep-size e seen (1- depth)))))
+                   ((typep v 'structure-object)
+                    (let ((dd (sb-kernel:find-defstruct-description (type-of v))))
+                      (when dd
+                        (dolist (dsd (sb-kernel:dd-slots dd))
+                          (when (eq (sb-kernel:dsd-raw-type dsd) t)
+                            (incf b (fnl-deep-size (sb-kernel:%instance-ref v (sb-kernel:dsd-index dsd)) seen (1- depth))))))))))
+           b))
+        (t 0)))
+
+(defun fnl-large-census (stream)
+  "LARGE lines: dynamic-space arrays of at least 256 KiB, grouped by element type, with count, total octets
+and the largest length; then the 12 biggest singly.  A stobj is a vector of arrays, so its big parts show here."
+  (let ((tab (make-hash-table :test 'equal)) (singles '()))
+    (dolist (o (sb-vm:list-allocated-objects :dynamic :larger 262144))
+      (when (arrayp o)
+        (let* ((key (format nil "~a" (array-element-type o))) (sz (sb-ext:primitive-object-size o))
+               (c (or (gethash key tab) (setf (gethash key tab) (list 0 0 0)))))
+          (incf (first c)) (incf (second c) sz) (setf (third c) (max (third c) (length o)))
+          (push (list sz key (length o)) singles))))
+    (maphash (lambda (k c) (format stream "LARGE ~a count ~d bytes ~d maxlen ~d~%" (substitute #\_ #\Space k) (first c) (second c) (third c))) tab)
+    (loop for x in (subseq (sort singles #'> :key #'first) 0 (min 12 (length singles)))
+          do (format stream "LARGE1 ~a bytes ~d len ~d~%" (substitute #\_ #\Space (second x)) (first x) (third x)))))
 
 (defun fnl-owner-census (stream)
-  "OWNER lines: instances of the owner's structures, each with its own size and the size of the
-vectors it points to (two levels, shared vectors counted once).  instance-usage counts only the
-instance headers, which for a stobj is almost nothing."
-  (let ((objs '()))
-    (sb-sys:without-gcing
-      (sb-vm::map-allocated-objects
-       (lambda (obj type size)
-         (declare (ignore type size))
-         (when (typep obj 'structure-object)
-           (let ((n (type-of obj)))
-             (when (and (symbolp n) (fnl-owner-type-p n)) (push obj objs)))))
-       :dynamic))
-    (let ((tab (make-hash-table :test 'eq)) (seen (make-hash-table :test 'eq)))
-      (labels ((own (v)
-                 (when (and (typep v '(or vector bignum double-float)) (not (gethash v seen)))
-                   (setf (gethash v seen) t)
-                   (sb-ext:primitive-object-size v)))
-               (deep (v)
-                 (let ((b (or (own v) 0)))
-                   (when (typep v 'simple-vector)
-                     (loop for e across v do (incf b (or (own e) 0))))
-                   b)))
-        (dolist (obj objs)
-          (let* ((n (type-of obj)) (cell (or (gethash n tab) (setf (gethash n tab) (list 0 0 0)))))
-            (incf (first cell))
-            (incf (second cell) (sb-ext:primitive-object-size obj))
-            (let ((dd (sb-kernel:find-defstruct-description n)))
-              (when dd
-                (dolist (dsd (sb-kernel:dd-slots dd))
-                  (when (eq (sb-kernel:dsd-raw-type dsd) t)
-                    (incf (third cell) (deep (sb-kernel:%instance-ref obj (sb-kernel:dsd-index dsd)))))))))))
-      (maphash (lambda (n c) (format stream "OWNER ~a instances ~d self ~d slots ~d~%" n (first c) (second c) (third c))) tab))))
+  "OWNER lines: each live stobj the owner holds (S3: simple-vectors, one slot per defstobj field), the octets
+reachable from each top-level slot, shared parts counted once.  Handles: host/native/io.lisp:431-462."
+  (let ((seen (make-hash-table :test 'eq)))
+    (dolist (spec '((cat fnn-live-cat) (arena fnn-live-arena) (hist fnn-live-hist) (owner fnn-live-owner-st)))
+      (let* ((fn (second spec)) (obj (and (fboundp fn) (funcall fn))))
+        (if (not (simple-vector-p obj))
+            (format stream "OWNER-MISSING ~a ~a~%" (first spec) (type-of obj))
+            (loop for slot across obj for i from 0
+                  do (format stream "OWNER ~a slot ~d type ~a bytes ~d~%" (first spec) i
+                             (substitute #\_ #\Space (format nil "~a" (if (arrayp slot) (array-element-type slot) (type-of slot))))
+                             (fnl-deep-size slot seen 6))))))))
 
 (let ((dir (sb-ext:posix-getenv "FN_LOAD_CENSUS_DIR")))
   (when (and dir (plusp (length dir)))
@@ -63,7 +71,9 @@ instance headers, which for a stobj is almost nothing."
                      (format t "~&--- instance-usage~%")
                      (sb-vm:instance-usage :dynamic :top-n 80)
                      (format t "~&--- owner~%")
-                     (fnl-owner-census out))))
+                     (fnl-owner-census out)
+                     (format t "~&--- large~%")
+                     (fnl-large-census out))))
              (error (e) (with-open-file (o (concatenate 'string dir "/census.err") :direction :output :if-exists :supersede)
                           (format o "~a~%" e))))
            (with-open-file (o (concatenate 'string dir "/done") :direction :output :if-exists :supersede)

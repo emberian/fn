@@ -165,18 +165,18 @@ class SweepTests(unittest.TestCase):
         cr = cell_result(cell="W15@1k", sub=True)
         self.assertEqual(result.judge_cell(cr, result.load_bars()), [])
 
-    def test_census_groups_by_owner_structure(self):
+    def test_census_sums_owner_slots_per_stobj(self):
         text = ("=== RAW dynamic-usage 1000\n--- room\nCONS:\n    5,000 bytes, 10 objects, 100% dynamic.\n\n"
-                "--- instance-usage\n\nTop 80 dynamic instance types:\n  FN-CAT$P   4,000 bytes,   12 objects (3 per object).\n"
-                "--- owner\nOWNER ACL2::FN-CAT$P instances 2 self 100 slots 4000\nOWNER ACL2::FN-MLH instances 1 self 10 slots 290\n"
-                "OWNER ACL2::FN-NEW-THING instances 1 self 5 slots 5\n")
+                "--- instance-usage\n\nTop 80 dynamic instance types:\n  FN-X   4,000 bytes,   12 objects (3 per object).\n"
+                "--- owner\nOWNER cat slot 0 type T bytes 4000\nOWNER cat slot 1 type (UNSIGNED-BYTE_32) bytes 300\n"
+                "OWNER arena slot 0 type T bytes 10\n--- large\nLARGE (UNSIGNED-BYTE_8) count 2 bytes 600000 maxlen 400000\n")
         c = cells.parse_census(text)["raw"]
         self.assertEqual(c["dynamic_usage"], 1000)
-        self.assertEqual(c["groups"]["catalog rows"], 4100)
-        self.assertEqual(c["groups"]["message-id table"], 300)
-        self.assertEqual(c["groups"]["owner structures, unlisted"], 10)
+        self.assertEqual(c["groups"]["cat"], 4300)
+        self.assertEqual(c["groups"]["arena"], 10)
+        self.assertEqual(c["large"]["(UNSIGNED-BYTE_8)"]["bytes"], 600000)
         self.assertEqual(c["by_type"]["room:CONS"], 5000)
-        self.assertEqual(c["by_type"]["inst:FN-CAT$P"], 4000)
+        self.assertEqual(c["by_type"]["inst:FN-X"], 4000)
 
 
 class StatsTests(unittest.TestCase):

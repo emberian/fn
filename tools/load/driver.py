@@ -781,6 +781,85 @@ class Run:
                 "store_octets_after": sum(v[0] for v in after.values()),
                 "sizes_before": components(before), "sizes_after": components(after), "checkpoint_report": tail.strip()[-200:]}
 
+    def phase_fresh_start(self, ph):
+        """L-FRESH (absorbed from tools/load_fresh_start.py): per limit, a fresh store, the node started the way an
+        installed node starts (packaging/fn: the image's heap probe, which may refuse the profile on this machine)
+        inside `systemd-run --user --scope -p MemoryMax=LIMIT -p MemorySwapMax=0`, then one POST and one ARTICLE."""
+        from tests import native_harness as h
+        image = self.node.target.path
+        results = []
+        for limit in ph["limits_mb"]:
+            d = Path(self.node.work) / ("fresh-%d" % limit)
+            shutil.rmtree(d, ignore_errors=True)
+            d.mkdir(parents=True)
+            node = Node(self.node.target, d, self.node.flags, self.node.groups, self.node.env["SBCL_USER_ARGS"], [],
+                        d / "gc.log", {}, 1.0, "declared")
+            node.init()
+            env = h.environment({"FN_NATIVE_HOST": None})
+            scope = ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=%dM" % limit, "-p", "MemorySwapMax=0"]
+            core = Path(str(image) + ".core")
+            boot = (core.stat().st_size + 1048575) // 1048576 + 128 if core.exists() else 256
+            probe = subprocess.run(scope + [str(image), "--fn", "heap", "--", "operator", str(node.config), "run"],
+                                   env=dict(env, SBCL_USER_ARGS="--dynamic-space-size %d" % boot), capture_output=True, timeout=300)
+            r = {"limit_mb": limit, "heap_probe": {"exit": probe.returncode, "stdout": probe.stdout.decode("utf-8", "replace").strip(),
+                                                  "stderr_tail": probe.stderr[-400:].decode("utf-8", "replace")}}
+            errp, outp = d / "run.stderr", d / "run.stdout"
+            argv = scope + [str(h.installed_launcher(image)), "operator", str(node.config), "run"]
+            r["argv"] = argv
+            with open(errp, "wb") as err, open(outp, "wb") as so:
+                proc = subprocess.Popen(argv, env=env, stdout=so, stderr=err, cwd=str(ROOT))
+            t0, listening = time.monotonic(), False
+            while time.monotonic() - t0 < 120:
+                if b"LISTENING " in outp.read_bytes():
+                    listening = True
+                    break
+                if proc.poll() is not None:
+                    break
+                time.sleep(0.2)
+            r["seconds_to_listening_or_exit"] = round(time.monotonic() - t0, 2)
+            r["listening"] = listening
+            try:
+                if listening:
+                    r["at_listening_kib"] = (proc_snapshot(proc.pid) or {}).get("vmrss")
+                    node.pid = proc.pid
+                    c = None
+                    try:
+                        m, rm = _clients()
+                        c = m.Conn(node.port, buffered=True)
+                        ctr = Counters()
+                        d_post = post_one(c, ctr, 2048)
+                        d_art, rep, octets = timed_cmd(c, "ARTICLE %s" % m.msgid(0))
+                        r["served"] = d_post is not None and rep.startswith(b"220")
+                        r["post_ms"], r["article_ms"] = (d_post or 0) * 1000, d_art * 1000
+                    except Exception as e:      # noqa: BLE001 - the failure is the result
+                        r["client_error"] = repr(e)
+                        r["served"] = False
+                    finally:
+                        if c is not None:
+                            with contextlib.suppress(Exception):
+                                c.close()
+                    snap = proc_snapshot(proc.pid) or {}
+                    r["after_kib"] = {k: snap.get(k) for k in ("vmrss", "hwm", "anon", "file")}
+            finally:
+                if proc.poll() is None:
+                    proc.terminate()                    # SIGTERM to the PID this driver started
+                    try:
+                        proc.wait(timeout=90)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                        r["needed_sigkill"] = True
+                r["exit_code"] = proc.returncode
+            r["stdout_tail"] = outp.read_bytes()[-2000:].decode("utf-8", "replace")
+            r["stderr_tail"] = errp.read_bytes()[-2000:].decode("utf-8", "replace")
+            r["verdict"] = "serves" if r.get("served") else ("refused-or-exited" if not listening else "listening-but-no-service")
+            if not r.get("served"):
+                line = next((l for l in (r["stderr_tail"] + "\n" + r["heap_probe"]["stderr_tail"] + "\n" + r["heap_probe"]["stdout"]).splitlines()
+                             if "refused" in l), r["verdict"])
+                self.ctr.refusals["fresh-%d-%s" % (limit, refusal_name(line.encode()))] += 1
+            results.append(r)
+        return {"results": results}
+
     def phase_unimplemented(self, ph):
         return {"status": "not-implemented", "reason": ph["reason"]}
 
@@ -900,16 +979,20 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         return d
     try:
         cr["heap"] = {"mode": node.heap_mode}
-        info = prepare_store(node, run, spec, args.cache, (target.core_sha256 or "x")[:12] + "-" + spec["preset"])
-        cr["store"] = info
-        cr["heap"]["sbcl_user_args"] = node.env["SBCL_USER_ARGS"]
-        spec["_preloaded"] = info.get("preloaded", 0)
-        node.sampler.start()
-        time.sleep(spec.get("settle_s", 3))
-        cr["open_s"] = round(node.open_s, 3)
-        snap = proc_snapshot(node.pid)
-        cr["phases"].append({"name": "open", "kind": "open", "seconds": round(node.open_s, 3), "open_s": round(node.open_s, 3),
-                             "mem": {k: snap[k] for k in ("vmrss", "hwm", "anon", "file")}, "gc": gc_delta() if use_hook else None})
+        if spec.get("own_nodes"):        # the phases start their own nodes (fresh-start)
+            cr["store"] = {}
+        else:
+            info = prepare_store(node, run, spec, args.cache, (target.core_sha256 or "x")[:12] + "-" + spec["preset"])
+            cr["store"] = info
+            cr["heap"]["sbcl_user_args"] = node.env["SBCL_USER_ARGS"]
+            spec["_preloaded"] = info.get("preloaded", 0)
+            node.sampler.start()
+            time.sleep(spec.get("settle_s", 3))
+            cr["open_s"] = round(node.open_s, 3)
+            snap = proc_snapshot(node.pid)
+            cr["phases"].append({"name": "open", "kind": "open", "seconds": round(node.open_s, 3), "open_s": round(node.open_s, 3),
+                                 "open_cpu_s": getattr(node, "open_cpu_s", None),
+                                 "mem": {k: snap[k] for k in ("vmrss", "hwm", "anon", "file")}, "gc": gc_delta() if use_hook else None})
         write()
         for ph in spec["phases"]:
             before = proc_snapshot(node.pid) if node.pid else None
@@ -1046,8 +1129,8 @@ def cmd_box(args):
     base = BOX_BASE if args.box == "hbox" else "~/fn-load"
     ship = "%s/ship/%s" % (base, args.label)
     runs = "%s/runs/%s" % (base, args.label)
-    ssh(host, "mkdir -p %s/tests %s/books %s/planning/evidence/load/hooks %s" % (ship, ship, ship, runs))
-    for src, dst in (("planning/evidence/load/hooks/", "planning/evidence/load/hooks/"), ("tools/", "tools/"), ("tests/__init__.py", "tests/"), ("tests/native_harness.py", "tests/"),
+    ssh(host, "mkdir -p %s/tests %s/books %s/packaging %s/host/native %s/planning/evidence/load/hooks %s" % (ship, ship, ship, ship, ship, runs))
+    for src, dst in (("planning/evidence/load/hooks/", "planning/evidence/load/hooks/"), ("packaging/fn", "packaging/"), ("host/native/io.lisp", "host/native/"), ("tools/", "tools/"), ("tests/__init__.py", "tests/"), ("tests/native_harness.py", "tests/"),
                      ("books/outcome-class.lisp", "books/")):
         p = subprocess.run(["rsync", "-a", "--exclude", "__pycache__", str(ROOT / src) + ("/" if src.endswith("/") else ""), "%s:%s/%s" % (host, ship, dst)],
                            capture_output=True, text=True)

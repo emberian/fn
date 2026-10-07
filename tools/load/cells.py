@@ -40,7 +40,7 @@ def derive(workload, phases):
         if p.get("status") == "not-implemented":
             nm.setdefault("*", p.get("reason"))
     fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers, "article-sizes": _sizes, "growth": _growth,
-          "m1-durable": _durable, "smoke": _smoke}.get(workload)
+          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh}.get(workload)
     if fn:
         fn(phases, m, nm)
     if workload == "rss-small-filled" and "rss_kib.hwm" not in m:
@@ -57,6 +57,20 @@ def _expand(workload, nm):
     owned = {"m1-durable": ["durable.exact"], "fresh-start": ["fresh.256.ok", "fresh.1024.ok"],
              "catchup": ["catchup.rate_1000", "catchup.rate_10000"]}.get(workload, [])
     return {k: nm["*"] for k in owned}
+
+
+def _fresh(phases, m, nm):
+    ph = _phase(phases, "limits")
+    got = {r["limit_mb"]: r for r in (ph or {}).get("results", [])}
+    for limit in (256, 1024):
+        r = got.get(limit)
+        if r is None:
+            nm["fresh.%d.ok" % limit] = "limit %d MB did not run" % limit
+            continue
+        m["fresh.%d.ok" % limit] = 1 if r.get("served") else 0
+        if r.get("at_listening_kib"):
+            m["fresh.%d.rss_kib_at_listening" % limit] = r["at_listening_kib"]
+        m["fresh.%d.seconds_to_listening_or_exit" % limit] = r["seconds_to_listening_or_exit"]
 
 
 def _smoke(phases, m, nm):
@@ -180,14 +194,15 @@ def parse_census(text):
         inst = sect.split("--- instance-usage", 1)[1].split("--- owner", 1)[0] if "--- instance-usage" in sect else ""
         for mo in re.finditer(r"^\s+(\S+)\s+([\d,]+) bytes,\s+([\d,]+) objects", inst, flags=re.M):
             by["inst:" + mo.group(1)] = int(mo.group(2).replace(",", ""))
-        owner = {}
-        for mo in re.finditer(r"^OWNER (\S+) instances (\d+) self (\d+) slots (\d+)", sect, flags=re.M):
-            owner[mo.group(1).split(":")[-1].upper()] = int(mo.group(3)) + int(mo.group(4))
-        groups = {}
-        for gname, rx in ANON_GROUPS:
-            groups[gname] = sum(v for k, v in owner.items() if re.match(rx, k))
-        groups["owner structures, unlisted"] = sum(v for k, v in owner.items() if not any(re.match(rx, k) for _, rx in ANON_GROUPS))
-        out[name] = {"dynamic_usage": int(du.group(1)) if du else None, "groups": groups, "owner": owner,
+        owner, groups = {}, {}
+        for mo in re.finditer(r"^OWNER (\S+) slot (\d+) type (\S+) bytes (\d+)", sect, flags=re.M):
+            owner["%s.slot%s" % (mo.group(1), mo.group(2))] = int(mo.group(4))
+            groups[mo.group(1)] = groups.get(mo.group(1), 0) + int(mo.group(4))
+            groups["%s.slot%s:%s" % (mo.group(1), mo.group(2), mo.group(3))] = int(mo.group(4))
+        large = {}
+        for mo in re.finditer(r"^LARGE (\S+) count (\d+) bytes (\d+) maxlen (\d+)", sect, flags=re.M):
+            large[mo.group(1)] = {"count": int(mo.group(2)), "bytes": int(mo.group(3)), "maxlen": int(mo.group(4))}
+        out[name] = {"large": large, "dynamic_usage": int(du.group(1)) if du else None, "groups": groups, "owner": owner,
                      "by_type": dict(sorted(by.items(), key=lambda kv: -kv[1])[:40])}
     return out
 
@@ -210,6 +225,8 @@ def _mem_vs_size(phases, m, nm):
             for g, v in body["groups"].items():
                 m["anon.%s.%s" % (kind, g.replace(" ", "_"))] = v
             m["anon.%s.dynamic_usage" % kind] = body["dynamic_usage"]
+            for t, v in (body.get("large") or {}).items():
+                m["anon.%s.large.%s.bytes" % (kind, t)] = v["bytes"]
             for t, v in list(body["by_type"].items())[:12]:
                 m["anon.%s.type.%s" % (kind, t)] = v
     elif ce:

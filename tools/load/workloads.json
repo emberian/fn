@@ -333,9 +333,10 @@
    ]
   },
   "fresh-start": {
-   "about": "A fresh node (operator init, run to LISTENING) under a whole-process limit of 256 MB and of 1024 MB (cgroup MemoryMax, not the heap flag), serving one POST and one ARTICLE.",
-   "preset": "default",
+   "about": "A fresh node (operator init, run to LISTENING) under a whole-process limit of 256 MB and of 1024 MB (cgroup MemoryMax, not the heap flag), serving one POST and one ARTICLE. Started the way an installed node starts (packaging/fn: the image's heap probe, which may refuse the profile), each inside systemd-run --user --scope -p MemoryMax=LIMIT -p MemorySwapMax=0; a refusal is the result and is recorded verbatim. Absorbed from tools/load_fresh_start.py.",
+   "preset": "small",
    "groups": [
+    "fn.letters",
     "fn.test"
    ],
    "sampler_s": 1.0,
@@ -343,11 +344,15 @@
    "phases": [
     {
      "name": "limits",
-     "kind": "unimplemented",
-     "reason": "needs one systemd scope per limit; tools/load_fresh_start.py (lane load-bars-now) measures it today",
+     "kind": "fresh_start",
+     "limits_mb": [
+      256,
+      1024
+     ],
      "measure": true
     }
-   ]
+   ],
+   "own_nodes": true
   },
   "catchup": {
    "about": "Two nodes on one box; B pulls a 1000- then a 10000-article backlog from A (L-CATCHUP).",
