@@ -1483,6 +1483,8 @@ def render(spec: Spec, hoisted) -> str:
         parts.append("  :body 'nil")  # def-loop reads a bare NIL :body as absent
     else:
         opt(":body", spec.body)
+    if spec.rev:
+        parts.append(f"  :rev {spec.rev}")
     parts[-1] += ")"
     head_comments = "".join(c.rstrip() + "\n" for c in hoisted)
     return head_comments + "\n".join(parts)
@@ -1641,6 +1643,12 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                 # the exec loop must compute the same terms as the logic: a loop that
                 # differs (fix, fn-ag-car) is there to make the guards provable, and
                 # the generated loop would use the logic's terms
+                if spec.shape == "concat":
+                    # the loop reverses each piece with a guard-total function: :concat :rev
+                    lc = list(walk_calls(body_of(lf.node), lf.name))
+                    if len(lc) == 1 and is_call(lc[0].items[-1], "fn-ag-rev-onto") \
+                            and len(lc[0].items[-1].items) == 3:
+                        spec.rev = "fn-ag-rev-onto"
                 if spec.shape != "step":
                     xs_ = spec.xs
                     carx = lambda n: is_call(n, "car") and len(n.items) == 2 and flat_low(n.items[1]) == xs_
@@ -1691,9 +1699,15 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                     kill.extend(own)
             killset = {id(k) for k in kill}
             if spec.shape in ("foldr", "step", "fold", "thread"):
+                # a loop that verified its own guards at its defun (no :verify-guards nil) keeps
+                # the default theory: the wrapper's verify-guards hints are the wrapper's
+                loop_deferred = ":verify-guards" in xargs_of(lf.node) and \
+                    xargs_of(lf.node)[":verify-guards"].low == "nil"
+                if not loop_deferred and spec.guard_hints is None:
+                    spec.guard_hints = xargs_of(lf.node).get(":guard-hints")
                 for k in kill:
                     if k.kind == "verify-guards" and k.name in (name, name + "-loop") and is_call(k.node) \
-                            and spec.guard_hints is None:
+                            and spec.guard_hints is None and (loop_deferred or k.name == name + "-loop"):
                         ks = k.node.items[2:]
                         for i in range(0, len(ks) - 1, 2):
                             if isinstance(ks[i], Atom) and ks[i].low == ":hints":
@@ -1988,7 +2002,7 @@ def library_bridge(form: str) -> str | None:
         return "fn-dl-take-base-loop-is-revappend" if base else "fn-dl-take-loop-is-revappend"
     return {"sum": "fn-dl-sum-loop-is-plus", "concat": "fn-dl-concat-loop-is-revappend",
             "into": "fn-dl-into-loop-is-append", "step": "fn-dl-step-loop-is-revappend",
-            "fold": "fn-dl-fold-loop-is-revappend", "foldr": "fn-dl-foldr-loop-is-foldr"}.get(shape)
+            "fold": "fn-dl-fold-loop-is-revappend", "thread": "fn-dl-thread-loop-is-revappend", "foldr": "fn-dl-foldr-loop-is-foldr"}.get(shape)
 
 
 def tree_defs():

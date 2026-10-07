@@ -283,6 +283,8 @@ class Ledger(unittest.TestCase):
                          "fn-dl-sum-loop-is-plus")
         self.assertEqual(d.library_bridge("(def-loop f (x) :shape :concat :over x)"),
                          "fn-dl-concat-loop-is-revappend")
+        self.assertEqual(d.library_bridge("(def-loop f (x) :shape :thread :over x)"),
+                         "fn-dl-thread-loop-is-revappend")
 
     def test_loopish_names_only(self):
         self.assertTrue(d.LOOPISH.search("fn-x-loop-is-rev-onto"))
@@ -328,6 +330,10 @@ class VocabTwo(unittest.TestCase):
 
     def test_map_with_acc_before_stobj(self):
         self.check("rewrite-rows", "map")
+
+    def test_concat_with_a_guard_total_reversal(self):
+        out = self.check("append-pieces", "concat")
+        self.assertIn(":rev fn-ag-rev-onto", out)
 
     def refused(self, tag):
         text = (FIX / f"vc2-refuse-{tag}.in.lisp").read_text()
