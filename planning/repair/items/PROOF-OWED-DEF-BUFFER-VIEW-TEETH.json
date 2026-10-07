@@ -1,0 +1,11 @@
+{
+ "file": "books/def-buffer.lisp",
+ "id": "PROOF-OWED-DEF-BUFFER-VIEW-TEETH",
+ "notes": [],
+ "owner": "deputy-s",
+ "severity": "low",
+ "source": "lane s-frame-fill, ruling 1",
+ "state": "open",
+ "title": "def-buffer: the 24 other octet clones (octets-stobj itself, deflate-inflate, web-request, store-log-buffer, receive-octet-buffer, native-control-buffer, bp-node-rotation-buffer, owner-checkpoint-writer, payload-extent-read fn-octets-rd) become one def-buffer line each; the generator is proved against fn-octets-pg's hand form (expansion equal form for form) and one executed instance, not yet against every clone's exports",
+ "updated": "2026-10-07T02:30:00Z"
+}
