@@ -8593,29 +8593,43 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
 ;;; names.  The marks are the allocation counter at the previous tick and at
 ;;; the last collection; the first tick takes the current counter for both
 ;;; (the open's own full collection is the last one before it).
+(defvar *fnn-idle-gc-lock* (sb-thread:make-mutex :name "fn idle collection"))
 (defvar *fnn-idle-gc-tick-mark* nil)
+(fnn-guarded-by *fnn-idle-gc-tick-mark* *fnn-idle-gc-lock*)
 (defvar *fnn-idle-gc-collect-mark* nil)
+(fnn-guarded-by *fnn-idle-gc-collect-mark* *fnn-idle-gc-lock*)
 (defvar *fnn-idle-gc-quiet* 0)
+(fnn-guarded-by *fnn-idle-gc-quiet* *fnn-idle-gc-lock*)
 
+;;; The tick runs on the maintenance worker, or on the accept loop of a
+;;; one-connection run (fnn-owner-maybe-collect-idle's two callers through
+;;; fnn-owner-maintenance-tick), and the marks are per process; the lock
+;;; makes the count and the verdict one step whichever thread ticks.  The
+;;; collection itself runs outside it (a collection stops the world; nothing
+;;; else waits on this lock).
 (defun fnn-owner-maybe-collect-idle (service)
   (let* ((consed (sb-ext:get-bytes-consed))
          (publishing (fnn-with-roster (service)
                        (and (or (fnn-owner-service-publisher service)
                                 (fnn-owner-service-exporter service))
-                            t))))
-    (unless *fnn-idle-gc-tick-mark*
-      (setq *fnn-idle-gc-tick-mark* consed
-            *fnn-idle-gc-collect-mark* consed))
-    (setq *fnn-idle-gc-quiet*
-          (fnn-core 'fn-idle-gc-quiet *fnn-idle-gc-quiet* publishing
-                    (- consed *fnn-idle-gc-tick-mark*))
-          *fnn-idle-gc-tick-mark* consed)
-    (let ((verdict (fnn-core 'fn-idle-gc-decide *fnn-idle-gc-quiet* publishing
-                             (- consed *fnn-idle-gc-collect-mark*))))
-      (when (consp verdict)
-        (sb-ext:gc :gen (second verdict))
-        (setq *fnn-idle-gc-tick-mark* (sb-ext:get-bytes-consed)
-              *fnn-idle-gc-collect-mark* *fnn-idle-gc-tick-mark*)))))
+                            t)))
+         (verdict
+           (sb-thread:with-mutex (*fnn-idle-gc-lock*)
+             (unless *fnn-idle-gc-tick-mark*
+               (setq *fnn-idle-gc-tick-mark* consed
+                     *fnn-idle-gc-collect-mark* consed))
+             (setq *fnn-idle-gc-quiet*
+                   (fnn-core 'fn-idle-gc-quiet *fnn-idle-gc-quiet* publishing
+                             (- consed *fnn-idle-gc-tick-mark*))
+                   *fnn-idle-gc-tick-mark* consed)
+             (fnn-core 'fn-idle-gc-decide *fnn-idle-gc-quiet* publishing
+                       (- consed *fnn-idle-gc-collect-mark*)))))
+    (when (consp verdict)
+      (sb-ext:gc :gen (second verdict))
+      (let ((after (sb-ext:get-bytes-consed)))
+        (sb-thread:with-mutex (*fnn-idle-gc-lock*)
+          (setq *fnn-idle-gc-tick-mark* after
+                *fnn-idle-gc-collect-mark* after))))))
 
 ;;; r71 F8 (lane served-live): the primary accept loop ran the maintenance
 ;;; quanta itself, each waiting at the owner's scheduling gate (:control or
