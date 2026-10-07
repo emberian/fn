@@ -3,6 +3,7 @@
 ; Reception here is a validated-bundle kernel, not a TCPCL or FNBS publisher.
 (in-package "ACL2")
 (include-book "bp-node-machine")
+(include-book "def-loop")
 (include-book "bp-handoff-recovery-shape")
 (include-book "bp-adu")
 (include-book "bp-signed-receipt")
@@ -117,32 +118,14 @@
         (car held)
       (fn-bpnf-find-held key (cdr held)))))
 
+(verify-guards fn-bpnf-held-wire)
+
 ; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
 ; node's held-bundle or job queue, data with no fixed cap (D27), one
 ; control-stack frame per row before.
-(defun fn-bpnf-held-octets-loop (held acc)
-  (declare (xargs :guard (acl2-numberp acc)))
-  (if (atom held)
-      acc
-    (fn-bpnf-held-octets-loop (cdr held) (+ acc (len (fn-bpnf-held-wire (car held)))))))
-
-(defun fn-bpnf-held-octets (held)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (atom held)
-           0
-         (+ (len (fn-bpnf-held-wire (car held)))
-            (fn-bpnf-held-octets (cdr held))))
-       :exec (fn-bpnf-held-octets-loop held 0)))
-
-(defthm fn-bpnf-held-octets-loop-is-plus
-  (implies (acl2-numberp acc)
-           (equal (fn-bpnf-held-octets-loop held acc)
-                  (+ acc (fn-bpnf-held-octets held))))
-  :hints (("Goal" :induct (fn-bpnf-held-octets-loop held acc)
-                  :in-theory (disable fn-bpnf-held-wire))))
-
-
+(def-loop fn-bpnf-held-octets (held)
+  :shape :sum :over held :elt h
+  :body (len (fn-bpnf-held-wire h)))
 
 (defun fn-bpnf-receive-decision (held ingress bundle)
   (declare (xargs :guard (fn-bpb-bundlep bundle)))
@@ -1083,7 +1066,6 @@
 (verify-guards fn-bpnf-held-principal)
 (verify-guards fn-bpnf-held-id)
 (verify-guards fn-bpnf-held-bundle)
-(verify-guards fn-bpnf-held-wire)
 (verify-guards fn-bpnf-heldp)
 
 ; Served scans ask of every held row a question whose answer is no for most
@@ -1125,8 +1107,6 @@
 (verify-guards fn-bpnf-held-nonfragment-headerp)
 (verify-guards fn-bpnf-held-administrative-headerp)
 (verify-guards fn-bpnf-find-held)
-(verify-guards fn-bpnf-held-octets-loop)
-(verify-guards fn-bpnf-held-octets)
 (verify-guards fn-bpnf-receive-decision)
 (verify-guards fn-bpnf-outcome)
 (verify-guards fn-bpnf-outcomep)

@@ -1,0 +1,17 @@
+{
+ "category": "tooling",
+ "file": "tools/certs.py",
+ "id": "CERT-INSTALL-DELETES-IN-TREE-PAIR",
+ "notes": [
+  "2026-10-07 train 10 (hbox integrate-20261006n-check at a63e5459f): certify_books --incremental certified books/wire-export over 98 dependency pairs installed from other origins and published it with this tree as origin; the next certs.py install refused it (no single origin covers its cached closure) and clear_local_pair() deleted the fresh pair, so include-book wire-export failed. Workaround until fixed: certify_books.py --closure books/wire-export.",
+  "Must-fail teeth (tests/test_certs_alist_install.py, red on dev bc88e77f2's install, green on the lane): test_a_pair_certified_in_this_tree_over_resident_dependencies_is_kept, test_a_pair_over_another_version_of_its_dependency_is_refused_whatever_its_origin, test_pairs_from_two_origins_compose_when_their_hashes_agree.",
+  "Coordinator ruling 2026-10-07: replace the origin criterion, don't patch it; origins are provenance only. The first patch (ec284d422, keep-resident rule) was withdrawn before merge."
+ ],
+ "owner": "deputy-C",
+ "severity": "high",
+ "slice": "tooling",
+ "source": "train-10",
+ "state": "ready",
+ "title": "certs.py install composed by origin label (one-origin rule) and deleted a pair certified in this tree over its resident dependencies; replaced by ACL2's own criterion (post-alist entry equals the installed dependency's self entry), one implementation shared with install-partial",
+ "updated": "2026-10-07T11:30:00Z"
+}

@@ -1804,6 +1804,9 @@
 (definterface fn-owner-hybrid-snapshots
   :class :common-lisp-compliant)
 
+(definterface fn-owner-arena-count
+  :class ::program)
+
 (definterface fn-owner-identity-publication-verdict
   :class ::program)
 

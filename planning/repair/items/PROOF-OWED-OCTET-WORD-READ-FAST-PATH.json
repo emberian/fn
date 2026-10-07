@@ -1,11 +1,13 @@
 {
  "file": "books/octets-stobj.lisp",
  "id": "PROOF-OWED-OCTET-WORD-READ-FAST-PATH",
- "notes": [],
+ "notes": [
+  "fixed forward: fn-oct-word4 inline unrolled exec of fn-octets$c-get-word at k=4 (mbe, equivalence fn-oct-word4-is-word-down); fill 97 -> 25 us"
+ ],
  "owner": "deputy-s",
  "severity": "low",
  "source": "lane s-frame-fill",
- "state": "open",
+ "state": "closed",
  "title": "fn-octets$c-get-word reads K=4 and K=8 octets through the recursive fn-oct-word-down (only K=7 has the unrolled word7 path): the in-place page fill (fn-pgb-frame-put, two 4-octet reads per word) costs 146 us a page against 97 us for the list version it replaced, with 0 bytes consed against 155,599. An unrolled k=4 (and k=8 on an unboxed return) exec path in the foundation, with the same abstract reader, closes the gap",
  "updated": "2026-10-07T02:30:00Z"
 }

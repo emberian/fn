@@ -54,6 +54,7 @@
 (include-book "books/peer-flight-startup")
 (include-book "books/peer-catchup-spool-resources")
 (include-book "books/peer-catchup-spool")
+(include-book "books/peer-catchup-spool-body") ; K1 (D26 split): host/interfaces cites its keystones
 (include-book "books/peer-catchup-spool-hash")
 (include-book "books/store-config")
 (include-book "books/identity")

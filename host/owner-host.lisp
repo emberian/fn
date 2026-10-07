@@ -25,6 +25,10 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
@@ -1093,7 +1097,17 @@
 ; deferral (its reason, class and attempts are what the host logs), or :stale
 ; for a capture that did not hold the slot.
 (defun fn-owner-sco-publication-abandoned (count serial outcome now state)
-  (declare (xargs :stobjs state :guard t))
+  ; Guard in the minimal theory: under the attach-first include order the
+  ; global car/consp rewrites of books/owner-queued-work and
+  ; books/failure-scope are tried first and the rewriter runs past 900 s.
+  (declare (xargs :stobjs state :guard t
+                  :guard-hints (("Goal" :in-theory (union-theories
+                    '(fn-opl-settle fn-orc-release-slot
+                      state-p not mv-nth put-global update-global-table global-table
+                      (:executable-counterpart symbolp) (:executable-counterpart equal)
+                      fn-sg-state-p1-of-put-global
+                      state-p-implies-and-forward-to-state-p1)
+                    (theory 'minimal-theory))))))
   (let* ((pass (fn-owner-sco-global 'fn-owner-orc-pass state))
          (inflight (fn-owner-sco-global 'fn-owner-sco-inflight state))
          (current (fn-owner-sco-global 'fn-owner-sco-serial state))
@@ -2180,6 +2194,16 @@
 ; fn-pidx-existing-action-is-store-existing-action) and the payload sealed
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
+
+; The arena count as the owner's own compiled code reads it.  Startup compares
+; it with the host's reading (host/native/owner.lisp
+; fnn-owner-arena-identity-check): fn-owner-prepare-buffer below feeds exactly
+; this read to the held row, and a certified world without the image's arena
+; attachment (the attach book precedes the generic: tools/attach_order_check.py)
+; reads a different arena representation than the host seals into.
+(defun fn-owner-arena-count (fn-arena)
+  (declare (xargs :stobjs (fn-arena) :mode :program))
+  (fn-arena-count fn-arena))
 
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge

@@ -59,8 +59,9 @@ worktree that still exists on this machine is still not drawn from.  The
 measurement found nothing that requires this exclusion; it stays because no
 run needs a live tree's pairs when the farm publishes every certified book
 from a snapshot.  ``--require-origin`` keeps the single-origin rule for
-a caller that asks for it.  ``install`` remains the legacy per-book
-inspection and recovery command; native builds use ``install-set``.
+a caller that asks for it.  ``install`` is ``install-partial`` over every
+book here (or the named books' closures): one selection, ACL2's alist
+equality, for every installer; native builds use ``install-set``.
 
 **A run need not find its whole closure cached.**  ``install-partial`` is
 what an incremental certification uses (``certify_books.py --incremental``,
@@ -228,9 +229,6 @@ class Report:
     # Books whose only cached pairs were made in another worktree that still
     # exists on this machine: ACL2 would follow that worktree's sub-books.
     foreign_local: list[str] = field(default_factory=list)
-    # `install`: books left uncertified because no single origin holds a pair
-    # for the book and each cached dependency; one line naming both origins.
-    mixed_origin: list[str] = field(default_factory=list)
     removed_foreign: int = 0
     # Entries already cached whose recorded origin kind this run corrected.
     relabelled: int = 0
@@ -321,8 +319,6 @@ class Report:
             out.append(f"  foreign-local (made in another live worktree): {book}")
         for book in self.unreadable:
             out.append(f"  unreadable closure: {book}")
-        for line in self.mixed_origin:
-            out.append(f"  mixed-origin: {line}")
         for book in self.uncached:
             out.append(f"  uncached: {book}")
         for book in self.uncompiled:
@@ -1220,6 +1216,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     source bytes; when ``acl2`` is provided, the shared selector also checks
     actual certificate post-alists. Missing toolchain metadata remains visible
     only when no toolchain was requested; deployment supplies its identity.
+
     """
     needed = required_closure(root, roots, dependencies_only)
     required = tuple(sorted(needed))
@@ -1357,12 +1354,18 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          dependencies_only: bool = False,
                          acl2: Path | None = None,
                          pair_checker=None,
+                         candidate: ArtifactSet | None = None,
                          _attempt: int = 0) -> Report:
     """Install one complete set: one origin when one suffices, else composed.
 
     The selected set's actual ACL2 certificate alists must agree, including
     when all pairs came from one origin. ``require_origin`` constrains the
     origin but does not bypass this compatibility check.
+
+    CANDIDATE installs exactly that set, as `artifact_sets` enumerated and
+    checked it, instead of enumerating again: a caller that listed the sets
+    and chose one gets that one, not whatever a second enumeration over a
+    cache other trees publish into finds (proof_artifacts.acquire).
     """
     rejected = set(reject)
     if acl2 is None:
@@ -1379,9 +1382,10 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         report.toolchain_identity = stable_identity({
             "empty": True, "toolchain_identity": toolchain_identity})
         return report
-    candidates = [one for one in artifact_sets(
+    candidates = ([candidate] if candidate is not None else artifact_sets(
                       root, cache, roots, toolchain_identity,
-                      dependencies_only, acl2, pair_checker)
+                      dependencies_only, acl2, pair_checker))
+    candidates = [one for one in candidates
                   if one.identity not in rejected
                   and (require_origin is None
                        or one.origin_root == require_origin)]
@@ -1438,7 +1442,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         return install_artifact_set(root, cache, roots, toolchain_identity,
                                     reject, require_origin, purge_on_miss,
                                     dependencies_only, acl2, pair_checker,
-                                    _attempt + 1)
+                                    candidate=candidate, _attempt=_attempt + 1)
     return report
 
 
@@ -1658,6 +1662,7 @@ def install_umbrellas(root: Path, cache: Path, acl2: Path,
         if candidate and candidate not in tries:
             tries.append(candidate)
     lines: list[str] = []
+    last_missing: list[str] = []
     for candidate in tries:
         try:
             report = installer(candidate)
@@ -1666,9 +1671,29 @@ def install_umbrellas(root: Path, cache: Path, acl2: Path,
             continue
         if report.artifact_set is not None:
             return candidate, lines + [f"umbrellas installed as one set: {' '.join(candidate)}"]
-        lines.append(f"umbrellas {' '.join(candidate)}: no coherent set in {cache}")
+        missing = list(getattr(report, "uncached", None) or [])
+        lines.append(f"umbrellas {' '.join(candidate)}: no coherent set in {cache}"
+                     + (f"; {umbrella_miss(candidate, missing)}" if missing else ""))
+        last_missing = missing
+    cause = umbrella_miss(roots, last_missing) if tries and last_missing else "cause not reported"
     return [], lines + ["umbrellas: NOT installed as one set (include-book of the "
-                        "umbrella may fail on a certificate here)"]
+                        f"umbrella may fail on a certificate here): {cause}"]
+
+
+def umbrella_miss(candidate: list[str], missing: list[str]) -> str:
+    """Name what the cache lacks: the umbrellas' own certificates for these
+    source bytes (they are certified by the image build, not before), or
+    dependencies that have no usable certificate here."""
+    own = [name for name in candidate if name in missing]
+    deps = [name for name in missing if name not in candidate]
+    parts = []
+    if own:
+        parts.append(f"no usable certificate for the umbrella itself: {' '.join(own)}")
+    if deps:
+        shown = " ".join(deps[:8]) + (f" (+{len(deps) - 8} more)" if len(deps) > 8 else "")
+        parts.append(f"{len(deps)} dependenc{'y' if len(deps) == 1 else 'ies'} "
+                     f"without a usable certificate: {shown}")
+    return "; ".join(parts)
 
 
 @scoped_closures
@@ -1722,16 +1747,24 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
         if usable and not compiled and name not in recertify:
             report.uncompiled.append(name)
         usable = compiled
-        own = [entry for entry in usable if entry[1].get("origin_root") == target]
         if name in recertify:
             options[name] = []
             continue
-        options[name] = ((own[:1] + sorted(
-            [entry for entry in usable if entry not in own],
-            key=lambda entry: (str(entry[1].get("published_at", "")), str(entry[0])),
-            reverse=True)) if own else sorted(
-                usable, key=lambda entry: (str(entry[1].get("published_at", "")),
-                                           str(entry[0])), reverse=True))
+        # The search starts each book at the pair already resident here, by
+        # content (the certificate this tree's own certify or last install
+        # left), then this tree's own entry, then the newest: a newer pair
+        # published from another tree must not displace the one the resident
+        # parents were certified over (acquire 1159/1173, 2026-10-07).
+        resident = root / f"{name}.cert"
+        digest = content_hash(resident) if resident.is_file() else None
+        newest_first = sorted(
+            usable, key=lambda entry: (str(entry[1].get("published_at", "")),
+                                       str(entry[0])), reverse=True)
+        options[name] = sorted(
+            newest_first,
+            key=lambda entry: (digest is None
+                               or content_hash(entry[0] / "book.cert") != digest,
+                               entry[1].get("origin_root") != target))
     if acl2 is None:
         raise ValueError("install-partial needs an ACL2 executable for exact "
                          "certificate-alist compatibility")
@@ -2206,201 +2239,64 @@ def write_text_atomic(target: Path, value: str) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def entry_per_origin(entries: list[tuple[Path, dict]],
-                     target: str) -> dict[str, tuple[Path, dict]]:
-    """The usable entries grouped by origin root: one per origin, the compiled
-    ones before the rest, the newest publication first (`choose_entry`'s rule
-    applied within each origin)."""
-    grouped: dict[str, list[tuple[Path, dict]]] = {}
-    for found in entries:
-        if usable_origin(found[1], target):
-            grouped.setdefault(str(found[1]["origin_root"]), []).append(found)
-    return {origin: newest([e for e in group if e[1].get("fasl_sha256")] or group)
-            for origin, group in grouped.items()}
+def install(root: Path, cache: Path, names: list[str] | None = None,
+            acl2: Path | None = None, toolchain_identity: str | None = None,
+            pair_checker=None) -> Report:
+    """Install every book of NAMES' closure (default: every book here) whose
+    cached pair agrees with the pairs installed under it.
 
+    **The criterion is ACL2's own, not an origin label.**  A book's
+    certificate is installable iff, for every dependency, the entry its
+    post-alist requires (familiar name, certificate annotations, book-hash)
+    equals that dependency's installed certificate's own entry: exactly what
+    include-book checks (``include-book-alist-subsetp``; measured 2026-09-23,
+    see the module docstring, it ignores the full path).  So a pair
+    certified in this tree over dependencies installed from other trees
+    installs when the hashes agree (train 10, 2026-10-07: the one-origin rule
+    deleted such a fresh books/wire-export pair), and a pair over a different
+    version of a dependency does not, whatever its origin.  Origins are
+    provenance only.  This is ``install_partial``'s selection
+    (``compatible_partial_choices`` over ``cert_alists``), one implementation
+    for every installer; a book left out loses any local pair, so the next
+    certify step certifies it.
 
-@scoped_closures
-def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
-    """Copy in every cached pair whose closure key matches a book here.
-
-    **One origin per composed set.**  A certificate's post-alist names each
-    sub-book by the path it was certified under, and ACL2 refuses a book whose
-    certificate requires ``<origin A>/books/d.lisp`` once it has included
-    ``<origin B>/books/d.lisp`` (hbox, 2026-10-07: wire-export over defrecord
-    from a second origin).  So a book installs from an origin only together
-    with every dependency of its include closure that the cache holds under
-    that same origin, and its dependencies are placed from that origin too:
-    books are decided largest closure first and each decision binds the
-    closure.  A book with no origin covering its cached closure is not
-    installed (the next certify step certifies it) and is named in
-    ``mixed_origin`` with both origins.
+    ACL2 is required (``--acl2`` or FN_ACL2): without it there is no way to
+    compare certificate alists, and installing on anything weaker is the
+    proxy this replaced.
     """
-    report = Report(action="install", cache=str(cache))
+    if acl2 is None:
+        raise ValueError("install needs an ACL2 executable (--acl2 or FN_ACL2) to "
+                         "compare certificate alists; nothing installed")
+    if toolchain_identity is None:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import acl2_toolchain
+        found = acl2_toolchain.fingerprint(Path(acl2))
+        if not found.qualified or found.identity is None:
+            raise ValueError(f"install: unqualified ACL2 launcher {acl2}: {found.reason}")
+        toolchain_identity = found.identity
+    roots, unreadable = [], []
+    for source in book_sources(root, names):
+        if not source.is_file():
+            continue
+        name = book_name(root, source)
+        try:
+            closure(root, name)
+        except UnreadableBook as error:
+            unreadable.append(f"{name}: {error}")
+            continue
+        roots.append(name)
+    report = install_partial(root, cache, roots, toolchain_identity, Path(acl2),
+                             pair_checker)
+    report.action = "install"
+    report.unreadable.extend(unreadable)
+    # Diagnosis, not a decision: a book left out whose only cached pairs were
+    # made in a worktree that still exists here (usable_origin's rule).
     target = str(root.resolve())
-    books = [source for source in book_sources(root, names) if source.is_file()]
-    report.books = len(books)
-    per_origin_memo: dict[str, dict[str, tuple[Path, dict]]] = {}
-    all_entries: dict[str, list[tuple[Path, dict]]] = {}
-
-    def entries_of(name: str) -> list[tuple[Path, dict]]:
-        if name not in all_entries:
-            all_entries[name] = book_entries(root, cache, name)
-        return all_entries[name]
-
-    def origins_of(name: str) -> dict[str, tuple[Path, dict]]:
-        if name not in per_origin_memo:
-            per_origin_memo[name] = entry_per_origin(entries_of(name), target)
-        return per_origin_memo[name]
-
-    def resident_origin(dep: str) -> str | None:
-        """The one origin root the tree's own pair for DEP was certified under,
-        or None when it cannot be told or is several.  A cached entry with the
-        same bytes names it; otherwise the certificate's own sub-book paths do
-        (every path ending in a dependency's name, less that name); a book
-        with no sub-books records none, so it is this tree's own."""
-        cert_bytes = (root / f"{dep}.cert").read_bytes()
-        digest = hashlib.sha256(cert_bytes).hexdigest()
-        known = {str(meta.get("origin_root")) for entry, meta in entries_of(dep)
-                 if content_hash(entry / "book.cert") == digest}
-        if known:
-            return next(iter(known)) if len(known) == 1 else None
-        names = [other for other in closure(root, dep) if other != dep]
-        if not names:
-            return target
-        roots = set()
-        for found in re.findall(rb'"(/[^"]*)\.lisp"', cert_bytes):
-            path = found.decode("utf-8", "replace")
-            for other in names:
-                if path.endswith("/" + other):
-                    roots.add(path[:-len(other) - 1])
-        return next(iter(roots)) if len(roots) == 1 else None
-
-    closures: dict[str, list[str]] = {}
-    for source in books:
-        name = book_name(root, source)
-        try:
-            entries_of(name)
-            closures[name] = sorted(closure(root, name))
-        except UnreadableBook as error:
-            report.unreadable.append(f"{name}: {error}")
-    assigned: dict[str, str] = {}
-    refused: dict[str, tuple[str, str]] = {}
-    for name in sorted(closures, key=lambda book: (-len(closures[book]), book)):
-        options = origins_of(name)
-        if not options:
-            continue
-        dependencies = [dep for dep in closures[name] if dep != name]
-        try:
-            held = {dep: origins_of(dep) for dep in dependencies}
-        except UnreadableBook as error:
-            report.unreadable.append(f"{name}: {error}")
-            closures.pop(name)
-            continue
-        forced = assigned.get(name)
-        wanted = {forced: options[forced]} if forced in options else options
-        fits = {}
-        blame: dict[str, tuple[int, str, str]] = {}
-        for origin, found in wanted.items():
-            gap = ""
-            covered = 1
-            for dep in dependencies:
-                if assigned.get(dep, origin) != origin:
-                    gap = gap or f"{dep} (already placed from {assigned[dep]})"
-                elif held[dep] and origin not in held[dep]:
-                    gap = gap or (f"{dep} (cached only under "
-                                  + ", ".join(sorted(held[dep])) + ")")
-                elif not held[dep] and (root / f"{dep}.cert").is_file():
-                    # Nothing to place over it: the tree keeps this pair, so
-                    # its own origin must be the one this book installs from.
-                    resident = resident_origin(dep)
-                    if resident is None:
-                        gap = gap or (f"{dep} (resident certificate whose origin is "
-                                      "unreadable or spans several roots)")
-                    elif resident != origin:
-                        gap = gap or f"{dep} (resident certificate from {resident})"
-                    else:
-                        covered += 1
-                else:
-                    covered += 1
-            if gap:
-                blame[origin] = (covered, origin, gap)
-            else:
-                fits[origin] = found
-        if not fits:
-            covered, origin, gap = max(blame.values())
-            refused[name] = (origin, gap)
-            continue
-        origin = max(fits, key=lambda o: (o == target,
-                                          str(fits[o][1].get("published_at", "")), o))
-        assigned[name] = origin
-        for dep in dependencies:
-            if origin in held[dep]:
-                assigned[dep] = origin
-    # Every dependency a decision bound to an origin is placed from it, also
-    # when NAMES left it out of `books`: otherwise the tree keeps whatever pair
-    # it had, possibly from another origin than the book over it.
-    placing = list(books)
-    listed = {book_name(root, source) for source in books}
-    for dep in sorted(assigned):
-        source = (root / f"{dep}.lisp").resolve()
-        if dep not in listed and source.is_file():
-            placing.append(source)
-            closures[dep] = []
-    for source in placing:
-        name = book_name(root, source)
-        if name not in closures:
-            continue
-        cert = source.with_suffix(".cert")
-        port = source.with_suffix(".port")
-        entries = entries_of(name)
-        chosen = origins_of(name).get(assigned.get(name, ""))
-
-        def clear_local_pair() -> bool:
-            if cert.is_file() and any(
-                    content_hash(cert) == content_hash(entry / "book.cert")
-                    for entry, _ in entries):
-                cert.unlink()
-                port.unlink(missing_ok=True)
-                source.with_suffix(".fasl").unlink(missing_ok=True)
-                report.removed_foreign += 1
-                return True
-            return False
-
-        if name in refused:
-            origin, gap = refused[name]
-            report.mixed_origin.append(
-                f"{name}: certificate pair from origin {origin}, but dependency {gap}; "
-                "no single origin covers its closure, not installed")
-            clear_local_pair()
-            continue
-        if chosen is None:
-            if entries:
-                # Every cached pair belongs to a worktree that still exists
-                # here.  Installing one would make this worktree include that
-                # worktree's books.  Remove a local pair that is provably one
-                # of them, so a tree poisoned by an earlier install recovers.
-                report.foreign_local.append(name)
-                clear_local_pair()
-            else:
-                report.uncached.append(name)
-            continue
-        for attempt in range(ENTRY_ATTEMPTS):
-            directory, meta = chosen
-            try:
-                moved = install_entry(directory, meta, cert, port, report)
-                break
-            except EntryChanged:
-                if attempt == ENTRY_ATTEMPTS - 1:
-                    raise
-                entry_backoff(attempt)
-                chosen = entry_per_origin(book_entries(root, cache, name), target
-                                          ).get(assigned[name])
-                if chosen is None:
-                    raise EntryChanged(f"cache entry vanished for {name}")
-        if moved:
-            report.installed += 1
-        else:
-            report.kept += 1
+    report.foreign_local = [name for name in report.uncached
+                            if any(not usable_origin(meta, target)
+                                   for _, meta in book_entries(root, cache, name))
+                            and not any(usable_origin(meta, target)
+                                        for _, meta in book_entries(root, cache, name))]
     return report
 
 
@@ -2688,7 +2584,13 @@ def main(argv: list[str] | None = None) -> int:
             mirror(cache, arguments.remote)
             report.mirrored = remote_target(arguments.remote)
     elif arguments.action == "install":
-        report = install(root, cache, names)
+        if not arguments.acl2:
+            parser.error("install needs --acl2 (or FN_ACL2) to compare certificate alists")
+        try:
+            report = install(root, cache, names, Path(arguments.acl2).resolve(),
+                             arguments.toolchain_identity)
+        except ValueError as error:
+            parser.error(str(error))
     elif arguments.action == "install-set":
         if not names:
             parser.error("install-set needs one or more root books")

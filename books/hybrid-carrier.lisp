@@ -4,6 +4,7 @@
 
 (in-package "ACL2")
 (include-book "hybrid-signature")
+(include-book "def-loop")
 (include-book "stx-carrier")
 (include-book "injection-shape")
 (include-book "article-fields")
@@ -293,45 +294,11 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-hc-count-name-loop (name rev acc)
-  (declare (xargs :guard (rationalp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-hc-count-name-loop name
-                             (cdr rev)
-                             (+ (if (and (true-listp (car rev))
-                                         (equal name (fn-article-field-name (car rev))))
-                                    1
-                                  0)
-                                acc))
-    acc))
-
-(defun fn-hc-count-name (name fields)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp fields)
-           (+ (if (and (true-listp (car fields))
-                       (equal name (fn-article-field-name (car fields)))) 1 0)
-              (fn-hc-count-name name (cdr fields)))
-         0)
-       :exec (fn-hc-count-name-loop name (fn-ag-rev-onto fields nil) 0)))
-
-(local
- (defthm fn-hc-count-name-loop-of-rev-onto
-   (equal (fn-hc-count-name-loop name (fn-ag-rev-onto fields zs) 0)
-          (fn-hc-count-name-loop name zs (fn-hc-count-name name fields)))
-   :hints (("Goal" :induct (fn-ag-rev-onto fields zs)
-                   :in-theory (union-theories '(fn-hc-count-name-loop fn-hc-count-name fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-hc-count-name-loop)
-
-(verify-guards fn-hc-count-name
-  :hints (("Goal" :in-theory (union-theories '(fn-hc-count-name fn-hc-count-name-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-hc-count-name-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-hc-count-name (name fields)
+  :shape :foldr :over fields :elt f
+  :combine (+ (if (and (true-listp f) (equal name (fn-article-field-name f))) 1 0) acc) :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (rationalp acc))
 
 (defun fn-hc-no-other-reservedp (fields)
   (declare (xargs :guard t))

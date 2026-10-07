@@ -1,0 +1,4 @@
+(def-loop fn-intern-events (ws keyring generation fn-arena)
+  :shape :fold :over ws :st fn-arena :done (atom ws) :elt w
+  :row (fn-intern-event w keyring generation fn-arena) :next (cdr ws)
+  :guard (and (fn-prin-keyringp keyring) (natp generation)))

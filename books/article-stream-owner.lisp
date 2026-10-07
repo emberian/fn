@@ -147,7 +147,9 @@
                    (fn-ast-select-step (fn-asto-selection-start session archive index args) fuel))
                   (fn-asx-outcome (fn-asto-selection-start-cat session v args fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-asx-walk-is-lookup fn-asx-walk-nonstring fn-scat-number-article
+           :in-theory (disable fn-ast-select-step fn-ast-select-one fn-asx-goodp fn-cat-view-articles
+                               fn-gidx-pinp fn-gidx-pin-trie fn-midx-correspondencep
+                               fn-asx-walk-is-lookup fn-asx-walk-nonstring fn-scat-number-article
                                fn-scat-number-article-is-find-group-number fn-scr-catalogp
                                fn-asx-first fn-asx-done-state fn-asx-outcome fn-asx-need)
            :use ((:instance fn-scr-catalogp-parts)
@@ -211,7 +213,9 @@
                    (fn-ast-select-step (fn-asto-selection-start session archive index args) fuel))
                   (fn-asx-outcome (fn-asto-selection-start-cat session v args fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-asx-walk-is-lookup fn-asx-walk-nonstring fn-scat-number-article
+           :in-theory (disable fn-ast-select-step fn-ast-select-one fn-asx-goodp fn-cat-view-articles
+                               fn-gidx-pinp fn-gidx-pin-trie fn-midx-correspondencep
+                               fn-asx-walk-is-lookup fn-asx-walk-nonstring fn-scat-number-article
                                fn-scat-number-article-is-find-group-number fn-scr-catalogp
                                fn-asx-first fn-asx-done-state fn-asx-outcome fn-asx-need
                                fn-asx-first-current-is-found fn-asto-view-articles-uniq)

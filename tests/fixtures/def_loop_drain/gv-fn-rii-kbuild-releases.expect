@@ -1,0 +1,4 @@
+(def-loop fn-rii-kbuild-releases (releases)
+  :shape :foldr :over releases :elt r
+  :combine (fn-rii-id-put (fn-retain-release-id r) acc) :init nil
+  :rev fn-ag-rev-onto)
