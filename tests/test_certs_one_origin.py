@@ -100,6 +100,37 @@ class OneOriginInstallTests(unittest.TestCase):
                              (from_a / "book.cert").read_bytes())
             self.assertEqual(report.mixed_origin, [])
 
+    def resident_mid(self, target: Path, *roots: str) -> None:
+        """A resident certificate of books/mid whose post-alist names base under ROOTS."""
+        names = "".join(f' "{root}/books/base.lisp"' for root in roots)
+        (target / "books/mid.cert").write_bytes(
+            certs_bytes + f"(post-alist{names})".encode())
+
+    def test_resident_pair_certified_in_this_tree_is_a_local_pair(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as target_dir:
+            cache = Path(cache_dir)
+            target = worktree(target_dir, certified=["books/base", "books/mid"])
+            self.resident_mid(target, str(target))
+            self.publish(a, cache, ["tests/acl2/mid-tests"], str(target),
+                         "2026-10-01T00:00:00+00:00")
+            report = certs.install(target, cache)
+            self.assertEqual(report.mixed_origin, [])
+            self.assertTrue((target / "tests/acl2/mid-tests.cert").exists())
+
+    def test_resident_pair_naming_several_roots_is_refused_by_name(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as target_dir:
+            cache = Path(cache_dir)
+            target = worktree(target_dir, certified=["books/base", "books/mid"])
+            self.resident_mid(target, ORIGIN_A, ORIGIN_B)
+            self.publish(a, cache, ["tests/acl2/mid-tests"], str(target),
+                         "2026-10-01T00:00:00+00:00")
+            report = certs.install(target, cache)
+            self.assertFalse((target / "tests/acl2/mid-tests.cert").exists())
+            [line] = report.mixed_origin
+            self.assertIn("books/mid", line)
+
 
 if __name__ == "__main__":
     unittest.main()

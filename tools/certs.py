@@ -144,6 +144,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -2251,6 +2252,29 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
             per_origin_memo[name] = entry_per_origin(entries_of(name), target)
         return per_origin_memo[name]
 
+    def resident_origin(dep: str) -> str | None:
+        """The one origin root the tree's own pair for DEP was certified under,
+        or None when it cannot be told or is several.  A cached entry with the
+        same bytes names it; otherwise the certificate's own sub-book paths do
+        (every path ending in a dependency's name, less that name); a book
+        with no sub-books records none, so it is this tree's own."""
+        cert_bytes = (root / f"{dep}.cert").read_bytes()
+        digest = hashlib.sha256(cert_bytes).hexdigest()
+        known = {str(meta.get("origin_root")) for entry, meta in entries_of(dep)
+                 if content_hash(entry / "book.cert") == digest}
+        if known:
+            return next(iter(known)) if len(known) == 1 else None
+        names = [other for other in closure(root, dep) if other != dep]
+        if not names:
+            return target
+        roots = set()
+        for found in re.findall(rb'"(/[^"]*)\.lisp"', cert_bytes):
+            path = found.decode("utf-8", "replace")
+            for other in names:
+                if path.endswith("/" + other):
+                    roots.add(path[:-len(other) - 1])
+        return next(iter(roots)) if len(roots) == 1 else None
+
     closures: dict[str, list[str]] = {}
     for source in books:
         name = book_name(root, source)
@@ -2286,10 +2310,16 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
                     gap = gap or (f"{dep} (cached only under "
                                   + ", ".join(sorted(held[dep])) + ")")
                 elif not held[dep] and (root / f"{dep}.cert").is_file():
-                    # Nothing to place over it: the tree keeps this pair, and
-                    # no cache entry says which origin it was certified under.
-                    gap = gap or (f"{dep} (resident certificate of unknown origin, "
-                                  "no cached pair to replace it)")
+                    # Nothing to place over it: the tree keeps this pair, so
+                    # its own origin must be the one this book installs from.
+                    resident = resident_origin(dep)
+                    if resident is None:
+                        gap = gap or (f"{dep} (resident certificate whose origin is "
+                                      "unreadable or spans several roots)")
+                    elif resident != origin:
+                        gap = gap or f"{dep} (resident certificate from {resident})"
+                    else:
+                        covered += 1
                 else:
                     covered += 1
             if gap:
