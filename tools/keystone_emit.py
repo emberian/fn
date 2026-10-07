@@ -36,12 +36,11 @@ with it:
   entry no longer generated (a downgrade); a name absent from the base that
   is not generated is TOOTHLESS: no per-name finding, but a member of the
   ledger "keystones without teeth: N (ceiling C)", printed by name (and in
-  --json); the gate fails when N differs from the shrink-only ceiling (above it: a new
-  toothless keystone; below it: lower the ceiling in the same commit) in
-  planning/teeth-ceiling.json (`ratchet:keystone_emit:toothless`; --write-ceiling
-  lowers it and raises it only with that ACKS.md line, tools/ratchet.py).  The
-  count cannot see a swap: teeth added to one keystone while another is added
-  toothless leaves N unchanged.  A base `generated`
+  --json); the gate fails on a toothless name outside the shrink-only name set in
+  planning/teeth-ceiling.json, and on a name in the set that is no longer
+  toothless (lower the set in the same commit).  --write-ceiling drops names
+  freely and adds one only with its ACKS.md line
+  `ratchet:keystone_emit:<name>` (tools/ratchet.py).  A base `generated`
   entry that vanishes with no generated successor of the same owner book and
   claim (a rename shows as old gone plus new generated, printed as `renamed`;
   an entry whose book is deleted is exempt); a new `deferred`
@@ -64,7 +63,7 @@ with it:
     python3 tools/keystone_emit.py --check    # the same (make check)
     python3 tools/keystone_emit.py --write    # citations, keystone_subjects
     python3 tools/keystone_emit.py --write-manifest   # the gate's manifest
-    python3 tools/keystone_emit.py --write-ceiling    # lower the toothless ceiling to N
+    python3 tools/keystone_emit.py --write-ceiling    # drop names from the toothless set
     python3 tools/keystone_emit.py --json     # the toothless ledger as JSON
     python3 tools/keystone_emit.py --write --claim --milestone M4 --title T --lane L
 
@@ -489,31 +488,37 @@ def load_ceiling() -> dict:
         return {}
 
 
+def ceiling_names(ceiling: dict) -> set[str] | None:
+    names = ceiling.get(CEILING_ROW)
+    return set(names) if isinstance(names, list) else None
+
+
 def toothless_findings(toothless: list[str], ceiling: dict) -> list[str]:
-    """The ceiling check: N toothless keystones against the committed ceiling."""
-    if CEILING_ROW not in ceiling:
+    """The ceiling check: the toothless NAMES against the committed name set."""
+    allowed = ceiling_names(ceiling)
+    if allowed is None:
         return ["teeth gate: planning/teeth-ceiling.json is missing; run --write-ceiling"]
-    if len(toothless) > ceiling[CEILING_ROW]:
-        return [f"teeth gate: {len(toothless)} keystones without teeth exceed the ceiling "
-                f"{ceiling[CEILING_ROW]}: give the new keystone teeth (defteeth ...), or "
-                f"ACK the raise ({ratchet.token('keystone_emit', CEILING_ROW)} in "
-                f"planning/repair/ACKS.md, then --write-ceiling)"]
-    if len(toothless) < ceiling[CEILING_ROW]:
-        return [f"teeth gate: {len(toothless)} keystones without teeth is below the ceiling "
-                f"{ceiling[CEILING_ROW]}: lower it (--write-ceiling) in this commit"]
-    return []
+    found = [f"teeth gate: new toothless keystone {name}: give it teeth, or add an ACKS.md "
+             f"line {ratchet.token('keystone_emit', name)} and --write-ceiling"
+             for name in sorted(set(toothless) - allowed)]
+    found += [f"teeth gate: {name} is in planning/teeth-ceiling.json and is no longer "
+              f"toothless (it gained teeth, was renamed or was deleted): lower the set: "
+              f"--write-ceiling in this commit" for name in sorted(allowed - set(toothless))]
+    return found
 
 
-def write_ceiling(n: int) -> int:
+def write_ceiling(names: list[str]) -> int:
+    new = {name: 1 for name in names}
     old = ratchet.old_rows("keystone_emit", CEILING,
-                           lambda: {CEILING_ROW: load_ceiling().get(CEILING_ROW, 0)})
-    if ratchet.report("keystone_emit", ratchet.refused("keystone_emit", old, {CEILING_ROW: n})):
+                           lambda: {n: 1 for n in ceiling_names(load_ceiling()) or ()})
+    if ratchet.report("keystone_emit", ratchet.refused("keystone_emit", old, new)):
         return 1
     CEILING.write_text(json.dumps({
-        "about": "The shrink-only ceiling on keystones without teeth (tools/keystone_emit.py "
-                 "--write-ceiling; raising it needs an ACKS.md line, tools/ratchet.py).",
-        CEILING_ROW: n}, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"keystone_emit: wrote planning/teeth-ceiling.json ({CEILING_ROW}: {n})")
+        "about": "The shrink-only set of keystones without teeth (tools/keystone_emit.py "
+                 "--write-ceiling drops names freely; adding one needs its ACKS.md line, "
+                 "tools/ratchet.py).",
+        CEILING_ROW: sorted(names)}, indent=1) + "\n", encoding="utf-8")
+    print(f"keystone_emit: wrote planning/teeth-ceiling.json ({len(names)} names)")
     return 0
 
 
@@ -549,7 +554,7 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
               f"teeth, same book and claim)")
     print(manifest_counts(current))
     print(f"keystone_emit: keystones without teeth: {len(toothless)} "
-          f"(ceiling {ceiling.get(CEILING_ROW, 'unset')})")
+          f"(ceiling {len(ceiling_names(ceiling) or ())})")
     for name in toothless:
         print(f"keystone_emit: toothless: {name}")
     LEDGER[:] = toothless
@@ -607,10 +612,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="write planning/teeth-obligations.json when the gate's only "
                              "finding is its staleness")
     parser.add_argument("--write-ceiling", action="store_true",
-                        help="lower planning/teeth-ceiling.json to the toothless count; "
+                        help="rewrite the toothless name set in planning/teeth-ceiling.json; "
                              "raising it needs the ratchet ACKS.md line")
     parser.add_argument("--json", action="store_true",
-                        help="print the toothless ledger as JSON (names, count, ceiling)")
+                        help="print the toothless ledger as JSON (names, count, ceiling names)")
     parser.add_argument("--bootstrap", action="store_true",
                         help="with --write-manifest: write the FIRST manifest when no base "
                              "and no manifest exist (never again)")
@@ -672,12 +677,13 @@ def main(argv: list[str] | None = None) -> int:
         problems += sorted(gate_writable)
 
     if arguments.write_ceiling:
-        if write_ceiling(len(LEDGER)):
+        if write_ceiling(LEDGER):
             return 1
-        problems = [p for p in problems if "teeth-ceiling.json" not in p and "without teeth" not in p]
+        problems = [p for p in problems if "teeth-ceiling.json" not in p
+                    and "toothless keystone" not in p]
     if arguments.json:
         print(json.dumps({"toothless": sorted(LEDGER), "count": len(LEDGER),
-                          "ceiling": load_ceiling().get(CEILING_ROW),
+                          "ceiling": sorted(ceiling_names(load_ceiling()) or ()),
                           "findings": problems}, indent=1), file=json_out)
         return 1 if problems else 0
     if not (arguments.check and not problems):

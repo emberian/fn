@@ -67,22 +67,30 @@ def gen_entry(name):
 
 
 class Ceiling(unittest.TestCase):
-    def test_n_above_the_ceiling_fails_and_cites_the_ratchet_token(self):
-        found = ke.toothless_findings(["a", "b", "c"], {"toothless": 2})
+    def test_a_name_outside_the_set_fails_and_cites_its_ack_token(self):
+        found = ke.toothless_findings(["a", "b", "c"], {"toothless": ["a", "b"]})
         self.assertEqual(len(found), 1)
-        self.assertIn("ratchet:keystone_emit:toothless", found[0])
+        self.assertIn("new toothless keystone c", found[0])
+        self.assertIn("ratchet:keystone_emit:c", found[0])
 
-    def test_n_equal_to_the_ceiling_passes(self):
-        self.assertEqual(ke.toothless_findings(["a", "b"], {"toothless": 2}), [])
+    def test_the_same_set_passes(self):
+        self.assertEqual(ke.toothless_findings(["b", "a"], {"toothless": ["a", "b"]}), [])
 
-    def test_n_below_the_ceiling_fails_until_it_is_lowered(self):
-        found = ke.toothless_findings(["a"], {"toothless": 2})
+    def test_a_swap_fails_both_ways(self):
+        found = ke.toothless_findings(["a", "c"], {"toothless": ["a", "b"]})
+        self.assertEqual(len(found), 2)
+        self.assertTrue(any("new toothless keystone c" in f for f in found))
+        self.assertTrue(any("b is in planning/teeth-ceiling.json and is no longer" in f
+                            for f in found))
+
+    def test_a_drop_without_a_write_fails(self):
+        found = ke.toothless_findings(["a"], {"toothless": ["a", "b"]})
         self.assertEqual(len(found), 1)
-        self.assertIn("below the ceiling 2", found[0])
-        self.assertIn("--write-ceiling", found[0])
+        self.assertIn("lower the set: --write-ceiling", found[0])
 
-    def test_a_missing_ceiling_fails(self):
+    def test_a_missing_or_old_format_ceiling_fails(self):
         self.assertEqual(len(ke.toothless_findings([], {})), 1)
+        self.assertEqual(len(ke.toothless_findings([], {"toothless": 3})), 1)
 
 
 class WriteCeiling(unittest.TestCase):
@@ -97,29 +105,34 @@ class WriteCeiling(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def write(self, n):
+    def write(self, names):
         with contextlib.redirect_stdout(io.StringIO()):
-            return ke.write_ceiling(n)
+            return ke.write_ceiling(names)
 
     def stored(self):
         return json.loads(self.path.read_text())["toothless"]
 
-    def test_the_first_capture_is_allowed_and_a_lowering_writes(self):
-        self.assertEqual(self.write(5), 0)
-        self.assertEqual(self.stored(), 5)
-        self.assertEqual(self.write(3), 0)
-        self.assertEqual(self.stored(), 3)
+    def test_the_first_capture_is_allowed_and_drops_write(self):
+        self.assertEqual(self.write(["b", "a", "c"]), 0)
+        self.assertEqual(self.stored(), ["a", "b", "c"])
+        self.assertEqual(self.write(["a"]), 0)
+        self.assertEqual(self.stored(), ["a"])
 
-    def test_a_raise_without_an_ack_is_refused(self):
-        self.write(3)
-        self.assertEqual(self.write(4), 1)
-        self.assertEqual(self.stored(), 3)
+    def test_adding_a_name_without_its_ack_is_refused(self):
+        self.write(["a"])
+        self.assertEqual(self.write(["a", "b"]), 1)
+        self.assertEqual(self.stored(), ["a"])
 
-    def test_a_raise_with_the_ack_passes(self):
-        self.write(3)
-        self.acks.write_text("ratchet:keystone_emit:toothless \u2014 a reason \u2014 lane q\n")
-        self.assertEqual(self.write(4), 0)
-        self.assertEqual(self.stored(), 4)
+    def test_a_swap_write_is_refused_without_the_ack(self):
+        self.write(["a", "b"])
+        self.assertEqual(self.write(["a", "c"]), 1)
+        self.assertEqual(self.stored(), ["a", "b"])
+
+    def test_adding_a_name_with_its_ack_passes(self):
+        self.write(["a"])
+        self.acks.write_text("ratchet:keystone_emit:b \u2014 a reason \u2014 lane q\n")
+        self.assertEqual(self.write(["a", "b"]), 0)
+        self.assertEqual(self.stored(), ["a", "b"])
 
 
 def gen(name, book="tests/acl2/t.lisp", claim="c1", **more):
@@ -197,17 +210,17 @@ class WriteManifest(unittest.TestCase):
     def written(self):
         return {e["name"] for e in json.loads(self.manifest.read_text())["entries"]}
 
-    def set_ceiling(self, n):
-        (self.dir / "ceiling.json").write_text(json.dumps({"toothless": n}))
+    def set_ceiling(self, names):
+        (self.dir / "ceiling.json").write_text(json.dumps({"toothless": names}))
 
     def test_a_new_toothless_keystone_above_the_ceiling_blocks_regeneration(self):
-        self.set_ceiling(0)
+        self.set_ceiling([])
         problems, _ = self.run_gate(True)
-        self.assertTrue(any("exceed the ceiling 0" in p for p in problems))
+        self.assertTrue(any("new toothless keystone new" in p for p in problems))
         self.assertEqual(self.written(), {"kept", "gone"})
 
     def test_within_the_ceiling_it_regenerates_and_prints_the_ledger(self):
-        self.set_ceiling(1)
+        self.set_ceiling(["new"])
         problems, out = self.run_gate(True)
         self.assertEqual(problems, [])
         self.assertEqual(self.written(), {"kept", "new"})
@@ -216,7 +229,7 @@ class WriteManifest(unittest.TestCase):
         self.assertIn("toothless: new", out)
 
     def test_the_gate_check_alone_reports_staleness(self):
-        self.set_ceiling(1)
+        self.set_ceiling(["new"])
         problems, out = self.run_gate(False)
         self.assertEqual(len(problems), 1)
         self.assertIn("stale", problems[0])
