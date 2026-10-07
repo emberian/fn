@@ -1654,25 +1654,55 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 (defun acl2_*1*_acl2::fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
 
-;;; Octet I of the decoded payload.  The decoded payload is the one list
-;;; fn-durable-realize-lz keeps (the last one read); fn-oct-nth on it walked I
-;;; conses per octet, so a reader of N octets did N^2/2 steps.  One vector copy
-;;; per distinct decoded list (EQ), under the extent lock that guards the list's
-;;; own cache, answers every octet in constant time: the logical answer is the
-;;; same, (nth I LIST) (fn-oct-nth: NIL past the end, the first octet for a
-;;; non-natural I).
-(defvar *fnn-extent-lz-last-vector* nil)      ; (octets-list . vector), guarded-by: *fnn-extent-lock*
+;;; Octet I of the decoded payload, from the generated buffer fn-dlz
+;;; (books/decoded-payload-buffer.lisp, def-representation :scalar
+;;; (:octet-seq fn-octets)).  The decode writes into ACL2's pooled output
+;;; buffer (fnn-pzd-decode-into) and fn-dlz-fill-from, a generated index loop,
+;;; makes fn-dlz hold those octets: no octet list of the decoded payload is
+;;; built.  KEYSTONE fn-dlz-decode-into-is-the-lz-value
+;;; (books/decoded-payload-decode-into.lisp): after an :ok decode, the filled
+;;; buffer is the value A-DURABLE-LZ names; reads are fn-dlz-nth
+;;; (fn-dlz-nth-is-nth).  The buffer holds the last payload read, keyed as
+;;; *fnn-extent-lz-last* is (descriptor identity and the dictionary's EQ
+;;; identity), under the extent lock.  Every call here comes through
+;;; fn-durable-realize-lz-octet, whose ACL2 guard is a natural index; its
+;;; one caller, fn-arena$x-get (books/payload-arena-extent.lisp), has that
+;;; guard.  RULING 1 (2026-10-06, RULINGS-20261006.md) authorises this edit to
+;;; a forbidden-zone file.
+(defvar *fnn-extent-lz-buffer-key* nil)       ; (key . dict) fn-dlz holds, guarded-by: *fnn-extent-lock*
+(defvar *fnn-dlz* nil)
 
-(defun fnn-extent-lz-octet (i octets)
-  (cond ((not (typep i '(integer 0))) (car octets))
-        (t (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-             (let ((cell *fnn-extent-lz-last-vector*))
-               (unless (and cell (eq (car cell) octets))
-                 (setq cell (cons octets (coerce octets '(simple-array (unsigned-byte 8) (*))))
-                       *fnn-extent-lz-last-vector* cell))
-               (let ((vector (cdr cell)))
-                 (declare (type (simple-array (unsigned-byte 8) (*)) vector))
-                 (and (< i (length vector)) (aref vector i))))))))
+(defun fnn-live-dlz ()
+  (or *fnn-dlz*
+      (setq *fnn-dlz*
+            (or (cdr (assoc 'fn-dlz (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the decoded-payload buffer stobj is not in this image")))))
+
+(defun fnn-extent-lz-buffer-octet (file eoff elen poff plen trailer n dict i)
+  (let ((key (list file eoff elen trailer poff plen n)))
+    (loop
+      (multiple-value-bind (hit octet)
+          (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+            (let ((held *fnn-extent-lz-buffer-key*))
+              (if (and held (equal (car held) key) (eq (cdr held) dict))
+                  (values t (fn-dlz-nth i (fnn-live-dlz)))
+                  (values nil nil))))
+        (when hit (return octet)))
+      (let* ((c (fn-durable-realize-octets file eoff elen poff plen trailer))
+             (r (funcall 'fnn-pzd-decode-into dict c n
+                         (lambda (out)
+                           (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+                             (let ((st (fnn-live-dlz)))
+                               (setq *fnn-extent-lz-buffer-key* nil)
+                               (fn-dlz-fill-from out st)
+                               (setq *fnn-extent-lz-buffer-key* (cons key dict))))))))
+        (unless (eq r :ok)
+          (let ((where (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+                         (incf (third *fnn-extent-stats*))
+                         (fnn-extent-where file poff))))
+            (error 'fnn-extent-fault
+                   :message (format nil "arena-extent-lz-decode: the block at ~a does not decode to its ~a octets"
+                                    where n))))))))
 
 ;;; The arena scalar export consumes this seam. Window mode may only borrow
 ;;; the authenticated returned decoded window; it never falls back to the
@@ -1685,8 +1715,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
         (throw 'fnn-extent-window-refused
           (values (fnn-core-cold-single 'fn-owner-page-window-decoded-refusal)
                   nil nil nil)))
-    (fnn-extent-lz-octet
-     i (fn-durable-realize-lz file eoff elen poff compressed trailer decoded dict))))
+    (fnn-extent-lz-buffer-octet file eoff elen poff compressed trailer decoded dict i)))
 
 (defun acl2_*1*_acl2::fn-durable-realize-lz-octet
     (file eoff elen poff compressed trailer decoded dict i)

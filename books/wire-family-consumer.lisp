@@ -1264,3 +1264,151 @@
                             fn-cwait-request-encode fn-nctrl-open fn-nctrl-seal fn-wg-encode fn-wg-valuep
                             fn-wg-encode-opener-frame fn-wg-valuep-opener-frame fn-frame-protected fn-frame-trailer
                             fn-wf-cs-request-payload fn-wf-cs-request-value)))))
+
+;; -----------------------------------------------------------------------------
+; fnct.consumer.poll-reply (FNCT kind 6, payload at most
+; *fn-ncl-poll-max-payload* octets): a status code, and for `accepted' the
+; fncu cursor behind a four-octet length (31..346 octets, the cursor grammar's
+; shortest and longest encodings: a :sized node, whose
+; inner grammar is the cursor family's and must consume all of them) and the
+; report behind a four-octet length (0..*fn-stxa-max-octets*; none is the
+; empty report).  The other statuses carry two zero lengths.  The value of
+; (fn-ncl-poll-reply-encode STATUS CURSOR REPORT) is
+; (fn-wf-cs-poll-value STATUS CURSOR REPORT): (:accepted (CURSOR-VALUE REPORT))
+; or (STATUS NIL).  The encoder is proved to agree; the decoder's agreement
+; is an owed item (planning/repair).
+
+(defthm fn-wf-cs-fncu-encoding-bounds
+  (implies (fn-wg-valuep *fn-wf-fncu-grammar* v)
+           (and (<= 31 (len (fn-wg-encode *fn-wf-fncu-grammar* v)))
+                (<= (len (fn-wg-encode *fn-wf-fncu-grammar* v)) 346)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-wg-encode-opener-seq fn-wg-valuep-opener-seq fn-wg-next
+                            fn-wg-encode-opener-const fn-wg-valuep-opener-const
+                            fn-wg-encode-opener-bytes fn-wg-valuep-opener-bytes
+                            fn-wg-encode-opener-uint fn-wg-valuep-opener-uint
+                            fn-wg-len-of-app fn-wg-len-of-app)
+                           (fn-wg-encode fn-wg-valuep)))))
+(defthm fn-wf-cs-cursor-ok-sized
+  (implies (equal (car (fn-cp-cursor-decode c)) :ok)
+           (let ((v (fn-wf-fncu-value (cadr (fn-cp-cursor-decode c)))))
+             (and (fn-wg-valuep *fn-wf-fncu-grammar* v)
+                  (equal (fn-wg-encode *fn-wf-fncu-grammar* v) c)
+                  (fn-cbor-octet-listp c)
+                  (<= 31 (len c))
+                  (<= (len c) 346))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-wf-cs-cursor-ok-facts
+                 (:instance fn-wf-cs-fncu-encoding-bounds
+                            (v (fn-wf-fncu-value (cadr (fn-cp-cursor-decode c))))))
+           :in-theory (disable fn-cp-cursor-decode fn-wg-encode fn-wg-valuep fn-wf-fncu-value))))
+(defconst *fn-wf-cs-poll-payload*
+  `(:tag 1
+    (0 :accepted (:seq (:sized 4 31 346 ,*fn-wf-fncu-grammar*)
+                       (:bytes 4 0 ,*fn-stxa-max-octets* :any)))
+    (1 :refused (:const (0 0 0 0 0 0 0 0)))
+    (2 :uncertain (:const (0 0 0 0 0 0 0 0)))
+    (3 :fault (:const (0 0 0 0 0 0 0 0)))))
+(defconst *fn-wf-cs-poll-reply-grammar*
+  `(:frame (70 78 67 84) 1 6 ,*fn-ncl-poll-max-payload* ,*fn-wf-cs-poll-payload*))
+(defthm fn-wf-cs-poll-grammarp
+  (and (fn-wg-grammarp *fn-wf-cs-poll-payload*)
+       (fn-wg-grammarp *fn-wf-cs-poll-reply-grammar*)))
+
+(defun fn-wf-cs-poll-value (status cursor report)
+  (declare (xargs :guard t))
+  (list status (if (eq status :accepted)
+                   (list (fn-wf-fncu-value (cadr (fn-cp-cursor-decode cursor))) report)
+                 nil)))
+(defun fn-wf-cs-poll-payload (status cursor report)
+  (append (list (fn-ncl-status-code status)) (fn-cbor-u32-bytes (len cursor)) cursor
+          (fn-cbor-u32-bytes (len report)) report))
+(defthm fn-wf-cs-poll-payload-encode-accepted
+  (implies (and (eq status :accepted)
+                (not (equal (fn-ncl-poll-reply-encode status cursor report) :bad)))
+           (and (fn-wg-valuep *fn-wf-cs-poll-payload* (fn-wf-cs-poll-value status cursor report))
+                (equal (fn-wg-encode *fn-wf-cs-poll-payload* (fn-wf-cs-poll-value status cursor report))
+                       (fn-wf-cs-poll-payload status cursor report))
+                (fn-cbor-octet-listp (fn-wf-cs-poll-payload status cursor report))
+                (<= (len (fn-wf-cs-poll-payload status cursor report)) *fn-ncl-poll-max-payload*)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-cs-cursor-ok-sized (c cursor)))
+           :in-theory (e/d (fn-ncl-poll-reply-encode fn-ncl-status-code fn-ncl-poll-event-bytesp
+                            fn-wf-cs-poll-value fn-wf-cs-poll-payload
+                            fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
+                            fn-wg-encode-opener-seq fn-wg-valuep-opener-seq fn-wg-next
+                            fn-wg-encode-opener-sized fn-wg-valuep-opener-sized
+                            fn-wg-encode-opener-bytes fn-wg-valuep-opener-bytes
+                            fn-wg-app-is-append fn-wf-be-bytes-4)
+                           (fn-nctrl-seal fn-wg-encode fn-wg-valuep fn-cp-cursor-decode fn-wf-fncu-value
+                            fn-cbor-u32-bytes)))))
+
+(defthm fn-wf-cs-poll-payload-encode-other
+  (implies (and (not (eq status :accepted))
+                (not (equal (fn-ncl-poll-reply-encode status cursor report) :bad)))
+           (and (fn-wg-valuep *fn-wf-cs-poll-payload* (fn-wf-cs-poll-value status cursor report))
+                (equal (fn-wg-encode *fn-wf-cs-poll-payload* (fn-wf-cs-poll-value status cursor report))
+                       (fn-wf-cs-poll-payload status cursor report))
+                (fn-cbor-octet-listp (fn-wf-cs-poll-payload status cursor report))
+                (<= (len (fn-wf-cs-poll-payload status cursor report)) *fn-ncl-poll-max-payload*)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ncl-poll-reply-encode fn-ncl-status-code
+                            fn-wf-cs-poll-value fn-wf-cs-poll-payload
+                            fn-wg-encode-opener-tag fn-wg-valuep-opener-tag fn-wg-tag-next
+                            fn-wg-encode-opener-const fn-wg-valuep-opener-const
+                            fn-wg-app-is-append fn-wf-be-bytes-4)
+                           (fn-nctrl-seal fn-wg-encode fn-wg-valuep fn-cp-cursor-decode fn-wf-fncu-value
+                            fn-cbor-u32-bytes)))))
+(defthm fn-wf-cs-poll-payload-encode-agrees
+  (implies (not (equal (fn-ncl-poll-reply-encode status cursor report) :bad))
+           (and (fn-wg-valuep *fn-wf-cs-poll-payload* (fn-wf-cs-poll-value status cursor report))
+                (equal (fn-wg-encode *fn-wf-cs-poll-payload* (fn-wf-cs-poll-value status cursor report))
+                       (fn-wf-cs-poll-payload status cursor report))
+                (fn-cbor-octet-listp (fn-wf-cs-poll-payload status cursor report))
+                (<= (len (fn-wf-cs-poll-payload status cursor report)) *fn-ncl-poll-max-payload*)))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-wf-cs-poll-payload-encode-accepted fn-wf-cs-poll-payload-encode-other)
+           :in-theory (disable fn-ncl-poll-reply-encode fn-wf-cs-poll-value fn-wf-cs-poll-payload
+                               fn-wg-encode fn-wg-valuep))))
+(defthm fn-wf-cs-poll-encode-is-seal
+  (implies (not (equal (fn-ncl-poll-reply-encode s c r) :bad))
+           (equal (fn-ncl-poll-reply-encode s c r)
+                  (fn-ncl-poll-seal (fn-wf-cs-poll-payload s c r))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ncl-poll-reply-encode fn-wf-cs-poll-payload)
+                                  (fn-ncl-poll-seal fn-cbor-u32-bytes)))))
+
+(defthm fn-wf-cs-poll-seal-is-host-framing
+  (implies (and (fn-cbor-octet-listp p) (<= (len p) *fn-ncl-poll-max-payload*))
+           (equal (fn-ncl-poll-seal p)
+                  (append (fn-frame-protected (list 70 78 67 84) 1 6 p)
+                          (fn-frame-trailer (fn-frame-protected (list 70 78 67 84) 1 6 p)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ncl-poll-seal) (fn-frame-protected fn-frame-trailer)))))
+
+; KEYSTONE (agreement).  The host's poll-reply encoder, when it encodes, is
+; fn-wg-encode at the grammar.
+(defthm fn-wf-cs-poll-encode-agrees
+  (implies (not (equal (fn-ncl-poll-reply-encode status cursor report) :bad))
+           (and (fn-wg-valuep *fn-wf-cs-poll-reply-grammar* (fn-wf-cs-poll-value status cursor report))
+                (equal (fn-ncl-poll-reply-encode status cursor report)
+                       (fn-wg-encode *fn-wf-cs-poll-reply-grammar*
+                                     (fn-wf-cs-poll-value status cursor report)))))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-wf-cs-poll-payload-encode-agrees
+                 (:instance fn-wf-cs-poll-encode-is-seal (s status) (c cursor) (r report))
+                 (:instance fn-wf-fnct-host-seal-is-wg-encode (g *fn-wf-cs-poll-payload*) (k 6)
+                            (mx *fn-ncl-poll-max-payload*)
+                            (v (fn-wf-cs-poll-value status cursor report)))
+                 (:instance fn-wf-cs-poll-seal-is-host-framing
+                            (p (fn-wf-cs-poll-payload status cursor report))))
+           :in-theory (e/d ()
+                           (fn-wf-cs-poll-payload-encode-agrees fn-wf-fnct-host-seal-is-wg-encode
+                            fn-wg-encode fn-wg-valuep fn-wg-encode-opener-frame
+                            fn-wg-valuep-opener-frame fn-frame-protected fn-frame-trailer
+                            fn-ncl-poll-seal fn-ncl-poll-reply-encode fn-wf-cs-poll-payload
+                            fn-wf-cs-poll-value)))))

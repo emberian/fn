@@ -7732,8 +7732,8 @@ is the open's (the store is not served)."
          (out nil)
          (done nil)
          (renamed nil))
-    (unwind-protect
-         (let ((free (fnn-disk-free-octets-at stage-dir)))
+    (fnn-unwind-cleanups
+        ((let ((free (fnn-disk-free-octets-at stage-dir)))
            (unless (eq (fnn-core 'fn-lgrc-copy-verdict free extent) :copy)
              (error 'fnn-store-open-refusal
                     :message (fnn-core 'fn-lgrc-copy-refusal-text free extent (file-namestring path))))
@@ -7762,11 +7762,16 @@ is the open's (the store is not served)."
              (fnn-fsync-dir stage-dir)
              (fnn-log-at :log-recovered)
              (prog1 (%make-fnn-log :path path :fd out :kernel ks :unit unit :max max :extent extent)
-               (setq done t))))
+               (setq done t)))))
+      ;; Every cleanup is attempted and none is dropped: a close of the read
+      ;; descriptor, or of a copy that was not published, that fails is
+      ;; surfaced (fnn-unwind-cleanups: signalled after a normal return,
+      ;; recorded and escalated through the failure scope while escaping).
       (fnn-close fd)
       (unless done
-        (when out (ignore-errors (fnn-close out)))
-        (unless renamed (ignore-errors (fnn-unlink stage)))))))
+        (when out (fnn-close out)))
+      (unless (or done renamed)
+        (when (fnn-lstat stage) (fnn-unlink stage))))))
 
 (defun fnn-log-prepare (log record)
   "The checked prepare: RECORD joins the open batch only at the kernel's

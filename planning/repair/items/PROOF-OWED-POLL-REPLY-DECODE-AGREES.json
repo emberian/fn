@@ -1,0 +1,18 @@
+{
+ "category": "proof-owed",
+ "detail": "books/wire-family-consumer.lisp exports fnct.consumer.poll-reply (kind 6) and proves its ENCODER agrees (fn-wf-cs-poll-encode-agrees). The decoder side (fn-ncl-poll-reply-decode accepts exactly the octets the grammar accepts whole, with the same value, the shape of fn-wf-cs-reply-decode-agrees) is owed: payload decode lemma for the tag with the :sized cursor (fn-wg-decode-of-encode-sized and fn-wg-encode-of-decode-sized are the tools), the shape and answer lemmas over fn-ncl-poll-open, then the keystone. The export's agreement list names only the encoder theorem until it lands. tests/acl2/wire-family-consumer-tests.lisp checks both decoders on the positives and on seven refusals.",
+ "disposition": "BRIDGE",
+ "exposure": "live",
+ "file": "books/wire-family-consumer.lisp",
+ "fix": "Prove fn-wf-cs-poll-decode-agrees in the shape of fn-wf-cs-reply-decode-agrees and add it to the poll-reply entry in books/wire-export.lisp.",
+ "id": "PROOF-OWED-POLL-REPLY-DECODE-AGREES",
+ "locus": "wire-family-consumer",
+ "notes": [],
+ "owner": "fnct-sized",
+ "scenario": "Mini decodes a poll reply with the grammar while the host decodes it with fn-ncl-poll-reply-decode; until the decoder keystone lands, agreement on arbitrary octets is evidenced only by vectors and executable tests.",
+ "severity": "medium",
+ "source": "fnct-sized-2026-10-07",
+ "state": "open",
+ "title": "proof-owed: fn-ncl-poll-reply-decode agrees with the fnct.consumer.poll-reply grammar",
+ "updated": "2026-10-07T01:31:32Z"
+}

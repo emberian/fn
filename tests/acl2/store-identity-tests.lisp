@@ -87,6 +87,17 @@
                      (list :run (fn-wgx-str "/n/control"))))
 (assert-event (equal (fn-stid-cli-plan (list (fn-wgx-str "n/control"))) '(:usage)))
 (assert-event (equal (fn-stid-cli-plan nil) '(:usage)))
+; --frame: the same path, and the host prints the reply frame's octets.
+(assert-event (equal (fn-stid-cli-plan (list *fn-stid-frame-flag* (fn-wgx-str "/n/control")))
+                     (list :run (fn-wgx-str "/n/control") :frame)))
+(assert-event (equal (fn-stid-cli-plan (list *fn-stid-frame-flag* (fn-wgx-str "n/control")))
+                     '(:usage)))
+(assert-event (equal (fn-stid-cli-plan (list *fn-stid-frame-flag*)) '(:usage)))
+(assert-event (equal (fn-stid-cli-plan (list (fn-wgx-str "/n/control") *fn-stid-frame-flag*))
+                     '(:usage)))
+(assert-event (equal (fn-stid-cli-plan (list *fn-stid-frame-flag* *fn-stid-frame-flag*
+                                             (fn-wgx-str "/n/control")))
+                     '(:usage)))
 (assert-event (equal (fn-stid-cli-plan (list (fn-wgx-str "/n/control") (fn-wgx-str "x")))
                      '(:usage)))
 (assert-event (equal (list (fn-stid-exit-code (fn-stid-value *sitt-verdict* nil nil))

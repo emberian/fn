@@ -946,22 +946,6 @@
    "reason": "io leaf sb-posix:fsync runs while holding XSNAP; reached from 1 site(s) under XSNAP, e.g. fnn-snapshot-job-log-durable (host/native/snapshot-producer.lisp:559)"
   },
   {
-   "key": "R2|fnn-emit|O:finish-output",
-   "count": 3,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:954",
-   "reason": "io leaf finish-output runs while holding O; reached from 3 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
-   "key": "R2|fnn-emit|O:write-sequence",
-   "count": 3,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:953",
-   "reason": "io leaf write-sequence runs while holding O; reached from 3 site(s) under O, e.g. fnn-bpnc-execute (host/native/bp-control.lisp:104)"
-  },
-  {
    "key": "R2|fnn-extent-pread|E:sb-alien:alien-funcall",
    "count": 11,
    "rule": "R2",
