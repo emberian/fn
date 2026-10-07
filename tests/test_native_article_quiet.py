@@ -12,7 +12,7 @@ green after: stdout unchanged across POST + ARTICLE + BODY."""
 import unittest
 from tests.native_harness import Client, Node, native_image, requires
 
-IMAGE = native_image("FN_NATIVE_HOST", "build/fn-host-developer")
+IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 
 @requires(IMAGE)
