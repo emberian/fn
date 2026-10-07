@@ -5,13 +5,14 @@
  "fix": "Have the worker keep a non-fnn-os-error condition separately and make fnn-csp-worker-take / the consumer re-signal it as fnn-fault so it reaches the fence; keep fnn-os-error reduced to status.",
  "id": "LOCK-R7-CSP-WORKER-FAULT-DOWNGRADE",
  "notes": [
-  "10-06 20:13 Code fixed on lane/lock-host-fix-1 (take re-signals non-OS condition as fnn-fault; red/green via native_catchup_spool_source). R7 swallow key REMAINS: checker cannot see the cross-thread re-signal; needs failure_scopes row fnn-csp-worker-loop scope=result (like fnn-extent-executor-job), a contract edit outside this lane. Pending convergence natives (catchup/pull image natives)."
+  "10-06 20:13 Code fixed on lane/lock-host-fix-1 (take re-signals non-OS condition as fnn-fault; red/green via native_catchup_spool_source). R7 swallow key REMAINS: checker cannot see the cross-thread re-signal; needs failure_scopes row fnn-csp-worker-loop scope=result (like fnn-extent-executor-job), a contract edit outside this lane. Pending convergence natives (catchup/pull image natives).",
+  "10-06 20:13 Fixed: take re-signals non-OS condition as fnn-fault (a1e1e961e); contract row fnn-csp-worker-loop=result (536e4e3fe). R7 key gone, none added. Pending convergence natives (catchup/pull image natives)."
  ],
  "owner": "open",
  "severity": "low",
- "sha": "a1e1e961e",
+ "sha": "536e4e3fe",
  "source": "lock-triage-r1b-20261006",
- "state": "in-progress",
+ "state": "ready",
  "title": "fnn-csp-worker-loop reduces every serious-condition, including a non-OS fault, to status :error with no fence (R7)",
- "updated": "2026-10-07T00:13:08Z"
+ "updated": "2026-10-07T00:13:57Z"
 }
