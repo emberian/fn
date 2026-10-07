@@ -85,6 +85,13 @@ class Conn:
         self.stream = whole_stream(self.sock)
         self.reader = self.sock.makefile("rb", buffering=65536) if buffered else self.stream
         self.greeting = self.readline()
+        if not self.greeting.startswith(b"200"):
+            # A refusal arrives as the greeting (the connection cap: "400 too
+            # many connections; try again later") and then EOF; reading on
+            # reports a bare b'' that hides the reason (gc-barriers, 2026-10-07).
+            greeting = self.greeting
+            self.sock.close()
+            raise ConnectionRefusedError("server greeting was not 200: %r" % (greeting,))
 
     def quickack(self):
         if hasattr(socket, "TCP_QUICKACK"):
