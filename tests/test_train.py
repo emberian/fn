@@ -31,11 +31,8 @@ if name == "lock_discipline_check":
     # the checker's current shape: `new` is a list of key strings
     print(json.dumps({"new": list(keys), "stale": []}))
     sys.exit(0)
-if mode == "write" and name in ("ledger", "current_view"):
-    with open("planning/%s.out" % name, "a") as f:
-        f.write("regen\\n")
-if name == "repair" and "report" in args:
-    with open("planning/repair/STATUS.md", "a") as f:
+if mode == "write" and name == "ledger":
+    with open("planning/proofs.json", "a") as f:
         f.write("regen\\n")
 sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 '''
@@ -191,7 +188,8 @@ class TrainBase(unittest.TestCase):
         (self.seed / ".gitignore").write_text("build/\n")
         (self.seed / "lockkeys.json").write_text("[]\n")
         (self.seed / "src.txt").write_text("a\nb\nc\n")
-        (self.seed / "planning/ledger.json").write_text("base\n")
+        (self.seed / "specs").mkdir(exist_ok=True)
+        (self.seed / "specs/wire-grammar.json").write_text("base\n")
         (self.seed / "planning/evidence-index.tsv").write_text("e0\n")
         (self.seed / "planning/decisions.md").write_text("d0\n")
         self.commit(self.seed, "init")
@@ -255,13 +253,13 @@ class TrainBase(unittest.TestCase):
 class MergeTests(TrainBase):
     def test_generated_conflict_takes_train_side(self):
         # train side first changes the ledger on dev; the lane changes it too.
-        sha = self.lane("a", {"planning/ledger.json": "lane version\n", "src.txt": "a\nb\nc\nlane\n"})
-        self.advance_dev({"planning/ledger.json": "dev version\n"})
+        sha = self.lane("a", {"specs/wire-grammar.json": "lane version\n", "src.txt": "a\nb\nc\nlane\n"})
+        self.advance_dev({"specs/wire-grammar.json": "dev version\n"})
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
         p = self.train("merge", f"a@{sha}")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertEqual((self.work / "planning/ledger.json").read_text(), "dev version\n")
+        self.assertEqual((self.work / "specs/wire-grammar.json").read_text(), "dev version\n")
         self.assertIn("lane", (self.work / "src.txt").read_text())
         parents = sh(self.work, "git", "rev-list", "--parents", "-n1", "HEAD").stdout.split()
         self.assertEqual(len(parents), 3, "expected a merge commit")
@@ -315,7 +313,7 @@ class RegenTests(TrainBase):
         p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["ledger --write", "current_view --write", "repair report"])
+        self.assertEqual(log, ["ledger --write"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
 
@@ -325,9 +323,10 @@ class RegenTests(TrainBase):
         self.assertEqual(self.stub_log(), [])
 
     def test_regen_failure_stops_the_train(self):
-        p = self.train("regen", extra_env={"STUB_RC_current_view_write": "1"})
+        p = self.train("regen", extra_env={"STUB_RC_ledger_write": "1"})
         self.assertNotEqual(p.returncode, 0)
-        self.assertNotIn("repair report", self.stub_log())
+        subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
+        self.assertFalse(subj.startswith("Regenerate"), subj)
 
 
 class PushTests(TrainBase):

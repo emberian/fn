@@ -49,10 +49,6 @@ PY3 = os.environ.get("TRAIN_PY3", "python3")
 
 # Conflicted files that are regenerated anyway: the train side wins.
 GENERATED = (
-    "planning/ledger.json",
-    "planning/ledger.md",
-    "planning/current.md",
-    "planning/repair/STATUS.md",
     "planning/interfaces.json",
     "specs/wire-grammar.json",
 )
@@ -67,11 +63,7 @@ DEDUPE = ("planning/evidence-index.tsv",)
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
     EVIDENCE_INDEX,
-    "planning/ledger.json",
-    "planning/ledger.md",
     "planning/proofs.json",
-    "planning/current.md",
-    "planning/repair/STATUS.md",
 )
 HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
 
@@ -337,11 +329,9 @@ def cmd_regen(t: Train, args) -> int:
         t.save(st)
         return rc
 
-    # ledger, current view, repair status, in this order
+    # ledger.py --write: proofs.json's event arrays (the views are not committed)
     for step, argv in (
         ("ledger", [PY, "tools/ledger.py", "--write"]),
-        ("current_view", [PY, "tools/current_view.py", "--write"]),
-        ("repair", [PY, "planning/repair/repair.py", "report"]),
     ):
         rc = t.run(f"regen-{step}", argv)
         if done(step, rc):
@@ -350,7 +340,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: ledger, current view, repair status"
+    msg = f"Regenerate train {n}: proofs.json events"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
