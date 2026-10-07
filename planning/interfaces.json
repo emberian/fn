@@ -5,7 +5,7 @@
     "declared": 1818,
     "declared_and_dispatched": 1767,
     "guard_verified": 1069,
-    "with_keystone": 277,
+    "with_keystone": 278,
     "with_fold_keystone_only": 3,
     "raw_dispatched": 20
   },
@@ -13580,6 +13580,12 @@
         },
         {
           "theorem": "fn-csp-streaming-only-from-335"
+        },
+        {
+          "theorem": "fn-csp-journals-only-a-settled-batch"
+        },
+        {
+          "theorem": "fn-csp-at-most-one-streaming"
         }
       ],
       "extraction": null,
@@ -28251,7 +28257,7 @@
       ]
     },
     {
-      "name": "fn-pgs-frame-put",
+      "name": "fn-pgb-frame-put",
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
@@ -28262,9 +28268,13 @@
         ]
       ],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-pgb-frame-put-is-frame-put-of-words"
+        }
+      ],
       "extraction": null,
-      "direct": "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) is the constraint's right-hand side, the put of fn-pgs-fill-realize's 2048 u64 words at BASE; the selector and range are checked first, the words are the realizer's",
+      "direct": "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) stores the page buffer's little-endian words with it after one pread; the selector and range are checked first",
       "delegates": null,
       "raw_with": [],
       "raw_with_carried": null,
