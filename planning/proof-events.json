@@ -15821,10 +15821,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-otm-disk-effects-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-otm-journal-starts-loop-is-plus"
         },
         {

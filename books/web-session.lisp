@@ -496,44 +496,17 @@
 ; Executes by a loop (lane depth-debt, PRF-919): one row per newsgroup of
 ; the reply, as many as the operator's group table holds (D27: data, not a
 ; bound).  The loop conses the rows reversed and rev-onto's them back.
-(defun fn-wss-active-rows-loop (j be fn-web-in acc)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (and (natp j) (natp be) (<= be (fn-octets-len fn-web-in)))
-                  :measure (nfix (- be j))))
-  (if (or (not (natp j)) (not (natp be)) (>= j be) (>= j (fn-octets-len fn-web-in)))
-      (fn-ag-rev-onto acc nil)
-    (let* ((le (min be (fn-oct-line-end j fn-web-in)))
-           (ce (fn-wss-content-end j le fn-web-in)))
-      (fn-wss-active-rows-loop
-       le be fn-web-in
-       (cons (fn-wss-active-row (fn-wss-split j ce j 32 fn-web-in) fn-web-in) acc)))))
-
-(defun fn-wss-active-rows (j be fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (and (natp j) (natp be) (<= be (fn-octets-len fn-web-in)))
-                  :measure (nfix (- be j))
-                  :verify-guards nil))
-  (mbe :logic
-       (if (or (not (natp j)) (not (natp be)) (>= j be) (>= j (fn-octets-len fn-web-in)))
-           nil
-         (let* ((le (min be (fn-oct-line-end j fn-web-in)))
-                (ce (fn-wss-content-end j le fn-web-in)))
-           (cons (fn-wss-active-row (fn-wss-split j ce j 32 fn-web-in) fn-web-in)
-                 (fn-wss-active-rows le be fn-web-in))))
-       :exec (fn-wss-active-rows-loop j be fn-web-in nil)))
-
-(defthm fn-wss-active-rows-loop-is-rev-onto
-  (equal (fn-wss-active-rows-loop j be fn-web-in acc)
-         (fn-ag-rev-onto acc (fn-wss-active-rows j be fn-web-in)))
-  :hints (("Goal" :induct (fn-wss-active-rows-loop j be fn-web-in acc)
-                  :in-theory (e/d (fn-ag-rev-onto)
-                                  (fn-wss-active-row fn-wss-split fn-wss-content-end
-                                   fn-oct-line-end)))))
-
-(verify-guards fn-wss-active-rows
-  :hints (("Goal" :in-theory (e/d (fn-ag-rev-onto)
-                                  (fn-wss-active-row fn-wss-split fn-wss-content-end
-                                   fn-oct-line-end)))))
+(def-loop fn-wss-active-rows (j be fn-web-in)
+  :shape :step
+  :done (or (not (natp j)) (not (natp be)) (>= j be) (>= j (fn-octets-len fn-web-in)))
+  :let ((le (min be (fn-oct-line-end j fn-web-in))) (ce (fn-wss-content-end j le fn-web-in)))
+  :body (fn-wss-active-row (fn-wss-split j ce j 32 fn-web-in) fn-web-in) :next le
+  :measure (nfix (- be j))
+  :guard (and (natp j) (natp be) (<= be (fn-octets-len fn-web-in))) :stobjs fn-web-in
+  :guard-hints (("Goal"
+                 :in-theory
+                 (e/d (fn-ag-rev-onto)
+                      (fn-wss-active-row fn-wss-split fn-wss-content-end fn-oct-line-end)))))
 
 ; OVER (RFC 3977 8.3): "number TAB subject TAB from TAB date TAB ..." per
 ; line.  A row for the page: (NUMBER SUBJECT FROM DATE), the last three
