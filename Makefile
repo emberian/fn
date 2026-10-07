@@ -2657,7 +2657,7 @@ site:
 # --load FILE, and the certified-world class check (host_check's default).
 # On a box: tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
 host-convert-check:
-	@$(PYTHON) tools/host_convert_check.py $(FILE)
+	@$(PYTHON) tools/host_check.py --convert $(FILE)
 
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check

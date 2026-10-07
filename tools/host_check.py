@@ -10,6 +10,7 @@
     python3 tools/host_check.py --read [FILE...] # static: every host/ file reads (half a second)
     python3 tools/host_check.py --books         # static: each book a host file calls into is in the world
     python3 tools/host_check.py --loaded        # static: every host file is loaded by some build
+    python3 tools/host_check.py --convert [FILE...]  # on a box: every pre-image gate (make host-convert-check)
     python3 tools/host_check.py --build-lists   # static: the DTN image loads what the default image loads
     python3 tools/host_check.py --attach-order  # static: attach book precedes its stobj generic
     python3 tools/host_check.py --macro-order [FILE...]  # static: no raw macro used before its defmacro
@@ -27,6 +28,10 @@ that use as a function call (batch AW's `(log)`).  See the section above
 gate run it): a certified host file whose include-book closure reaches an
 attachable stobj generic before its attach book is refused.  See the section
 above `AttachWorld`.
+
+`--convert` (obstructions-5 item 34): runs world.py --check, interface_emit
+--check, --forward, --world, --load FILE and the certified-world default as one
+command before any image build; see the section above `convert_gates`.
 
 `--build-lists` (native-subsets-6c0626c5, 2026-09-23; `make check` and
 tools/train.py run it): the DTN image's build script loads every host file the
@@ -116,7 +121,7 @@ the files build.lisp `load`s, in build.lisp's order.  It then reports:
 It first runs tools/extract/world.py --check (the umbrellas against the
 build scripts; a stale umbrella is a FAIL: limits-live-5's host include-book
 passed --load and died in the image build's acquire).  `make
-host-convert-check FILE=...` (tools/host_convert_check.py) runs this with
+host-convert-check FILE=...` (`--convert`) runs this with
 every other pre-image gate, including the certified-world class check.
 THE WORLD (obstructions-6 item 40): when the build script's include-books
 have certificates in the tree -- or `certs.py install-set` can install them
@@ -2463,6 +2468,86 @@ def build_lists_main() -> int:
     return 1 if found else 0
 
 
+# --- --convert [FILE...]: every pre-image gate for a host-code conversion ----
+#
+# Protects the image build.  A lane that moves host code into a book, or adds
+# a host include-book or a host-called entry, met three gates one image build
+# at a time (obstructions-5 item 34): limits-live-5 lost a build to the
+# umbrellas (books/image-world*) that tools/extract/world.py regenerates, and
+# decision-keystones-3 one to a `definterface` whose :class the image build's
+# world refused (`::ideal` against a :common-lisp-compliant entry).  `--convert`
+# runs all of them (convert_gates), in order, reports every verdict and does not
+# stop at the first red:
+#
+#   world       tools/extract/world.py --check (fix: world.py, then certify
+#               books/image-world*);
+#   interfaces  tools/interface_emit.py --check (fix: --write, on a box);
+#   forward     host_check --forward;
+#   names       host_check --world;
+#   load        host_check --load [FILE]: the raw files in build order through
+#               FILE, in one bare ACL2;
+#   class       host_check's default: each image's ACL2-mode prefix in the
+#               CERTIFIED world, where definterface checks each :class, :kinds
+#               and :delegates.  Needs the umbrellas' certificates; NOT RUN
+#               without them, and NOT RUN is red here.
+#
+# Exit 0 when every gate is green; 1 when any is red or did not run.  It reads
+# the whole tree and starts ACL2, so it refuses the laptop (FN_LAPTOP_OK=1
+# overrides): `make host-convert-check [FILE=host/native/x.lisp]`, or
+# tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'.
+
+CONVERT_FIXES = {
+    "world": "python3 tools/extract/world.py (writes the umbrellas), then certify "
+             "books/image-world, -dtn and -store-test",
+    "interfaces": "python3 tools/interface_emit.py --write on a box, and commit what it writes",
+    "forward": "move the definition above its first use in build order",
+    "names": "define the name in a book the image includes, or stop calling it",
+    "load": "tools/host_check.py --load --log-dir build/host-load FILE names the form",
+    "class": "build/host-translate/build.log names the refused definterface; a certified "
+             "umbrella is needed (tools/certs.py install, or certify books/image-world*)",
+}
+
+
+def convert_gates(files: list[str]) -> list[tuple[str, list[str]]]:
+    python = sys.executable
+    return [
+        ("world", [python, "tools/extract/world.py", "--check"]),
+        ("interfaces", [python, "tools/interface_emit.py", "--check"]),
+        ("forward", [python, "tools/host_check.py", "--forward"]),
+        ("names", [python, "tools/host_check.py", "--world"]),
+        ("load", [python, "tools/host_check.py", "--load", *files]),
+        ("class", [python, "tools/host_check.py"]),
+    ]
+
+
+def convert_verdict(code: int) -> str:
+    return {0: "ok", 2: "NOT RUN"}.get(code, "FAIL")
+
+
+def convert_run(files: list[str], runner=None) -> int:
+    if runner is None:
+        def runner(command):
+            return subprocess.run(command, cwd=ROOT).returncode
+    results = []
+    for name, command in convert_gates(files):
+        print(f"== host-convert-check: {name}: {' '.join(command[1:])}", flush=True)
+        code = runner(command)
+        results.append((name, code))
+        print(f"== host-convert-check: {name} {convert_verdict(code)}", flush=True)
+    red = [(name, code) for name, code in results if code != 0]
+    print("host-convert-check: " + ", ".join(f"{name} {convert_verdict(code)}" for name, code in results))
+    for name, code in red:
+        print(f"  {name} {convert_verdict(code)}: {CONVERT_FIXES[name]}")
+    print("host-convert-check: " + ("GREEN: build the images" if not red else
+                                     f"RED ({len(red)} of {len(results)}): no image build yet"))
+    return 1 if red else 0
+
+
+def convert_main(files: list[str]) -> int:
+    acl2_slots.refuse_on_laptop("tools/host_check.py --convert")
+    return convert_run([word for word in files if word])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -2517,6 +2602,9 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--build-lists", action="store_true",
                         help="static: the DTN image's ld/raw lists load what the default "
                              "image's do, or DTN_OMITTED says why not")
+    mode.add_argument("--convert", action="store_true",
+                        help="every pre-image gate for a host-code conversion, in order "
+                             "(FILEs reach --load); on a build box, not the laptop")
     mode.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
@@ -2526,6 +2614,8 @@ def main(argv: list[str] | None = None) -> int:
         return books_main(args.files)
     if args.loaded:
         return loaded_main()
+    if args.convert:
+        return convert_main(args.files)
     if args.build_lists:
         return build_lists_main()
     if args.attach_order:
