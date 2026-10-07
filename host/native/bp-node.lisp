@@ -174,7 +174,8 @@ observations back.  Nil when there is nothing to observe."
     (unless (eq (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs))) t)
       (return-from fnn-bpnode-receipt-result
         (values :receipt-refused (fnn-bpnode-receipt-detail owner view obs))))
-    (fnn-quantum-bp
+    (multiple-value-bind (word detail print)
+        (fnn-quantum-bp
      owner nil
      (lambda ()
      ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
@@ -192,16 +193,19 @@ observations back.  Nil when there is nothing to observe."
                                'fn-owner-bp-receipt-release-record view obs))
                       (detail (fnn-bpnode-receipt-detail-locked view obs)))
                   (unless record
-                    (fnn-out "BP node release refused detail=~a"
-                             (fnn-octets-string (fnn-octets detail)))
+                    ;; The line is printed by the caller, after the section.
                     (return-from journal-body
-                      (values :receipt-refused detail)))
+                      (values :receipt-refused detail t)))
                   (fnn-workflow-commit-receipt-intent
                    journal record
                    (lambda (release)
                      (fnn-bpo-canonical-release owner release)))
                   (values :receipt-accepted detail))))
-           (when journal (fnn-app-journal-close journal)))))))))
+           (when journal (fnn-app-journal-close journal)))))))
+      (when print
+        (fnn-out "BP node release refused detail=~a"
+                 (fnn-octets-string (fnn-octets detail))))
+      (values word detail))))
 
 (defun fnn-bpnode-app-result
     (owner receipt-root workflow-root destination policy issuer view
