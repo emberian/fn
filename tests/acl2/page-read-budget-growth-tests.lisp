@@ -73,3 +73,38 @@
                :fault "a shrink that clears the charged reads"
                :lemma prgrowth-custody-mutant-witness)))
 
+
+(defthm prgrowth-funding-witness
+  (and (fn-prs-fundedp (fn-prl-nth 0 *prgrowth-ledger*) (fn-prl-baseline *prgrowth-ledger*) '(0 0 0 0 0)
+                       (fn-prl-nth 1 *prgrowth-ledger*))
+       (let ((next (mv-nth 1 (fn-prl-resident-shrink 200 *prgrowth-ledger*))))
+         (fn-prs-fundedp (fn-prl-nth 0 next) (fn-prl-baseline next) '(0 0 0 0 0) (fn-prl-nth 1 next)))))
+(defthm prgrowth-funding-without-funded
+  (and (not (fn-prs-fundedp (fn-prl-nth 0 *prgrowth-unfunded*) (fn-prl-baseline *prgrowth-unfunded*) '(0 0 0 0 0)
+                            (fn-prl-nth 1 *prgrowth-unfunded*)))
+       (not (let ((next (mv-nth 1 (fn-prl-resident-shrink 0 *prgrowth-unfunded*))))
+              (fn-prs-fundedp (fn-prl-nth 0 next) (fn-prl-baseline next) '(0 0 0 0 0) (fn-prl-nth 1 next))))))
+(defthm prgrowth-funding-mutant-witness
+  (and (fn-prs-fundedp (fn-prl-nth 0 *prgrowth-ledger*) (fn-prl-baseline *prgrowth-ledger*) '(0 0 0 0 0)
+                       (fn-prl-nth 1 *prgrowth-ledger*))
+       (let ((next (mv-nth 1 (fn-prl-resident-shrink 200 *prgrowth-ledger*))))
+         (fn-prs-fundedp (fn-prl-nth 0 next) (fn-prl-baseline next) '(0 0 0 0 0) (fn-prl-nth 1 next)))
+       (not (let ((next (mv-nth 1 (fn-prl-resident-shrink 200 *prgrowth-ledger*))))
+              (not (fn-prs-fundedp (fn-prl-nth 0 next) (fn-prl-baseline next) '(0 0 0 0 0) (fn-prl-nth 1 next)))))))
+(defteeth fn-prl-resident-shrink-keeps-funding
+  :claim (((funded (fn-prs-fundedp (fn-prl-nth 0 ledger) (fn-prl-baseline ledger) '(0 0 0 0 0)
+                                   (fn-prl-nth 1 ledger))))
+          (let ((next (mv-nth 1 (fn-prl-resident-shrink amount ledger))))
+            (fn-prs-fundedp (fn-prl-nth 0 next) (fn-prl-baseline next) '(0 0 0 0 0)
+                            (fn-prl-nth 1 next))))
+  :subject fn-prl-resident-shrink
+  :witness-lemma prgrowth-funding-witness
+  :witness ((amount 200) (ledger *prgrowth-ledger*))
+  :breaks ((funded ((amount 0) (ledger *prgrowth-unfunded*)) :lemma prgrowth-funding-without-funded))
+  :mutations ((always-unfunded
+               (:conclusion (let ((next (mv-nth 1 (fn-prl-resident-shrink amount ledger))))
+                              (not (fn-prs-fundedp (fn-prl-nth 0 next) (fn-prl-baseline next) '(0 0 0 0 0)
+                                                   (fn-prl-nth 1 next)))))
+               ((amount 200) (ledger *prgrowth-ledger*))
+               :fault "a shrink whose result is no longer funded"
+               :lemma prgrowth-funding-mutant-witness)))
