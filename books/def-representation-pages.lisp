@@ -44,10 +44,7 @@
 (include-book "pagestore")
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
-(local (include-book "std/lists/take" :dir :system))
-(local (include-book "std/lists/nthcdr" :dir :system))
 (local (include-book "std/lists/append" :dir :system))
-(local (include-book "std/lists/repeat" :dir :system))
 
 ; -----------------------------------------------------------------------------
 ; 1. The tape: words cut into pages.
