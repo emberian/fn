@@ -1,0 +1,15 @@
+{
+ "acceptance": "defteeth in tests/acl2/article-stream-owner-tests.lisp for the five keystones",
+ "category": "proof-owed",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "books/article-stream-owner.lisp",
+ "id": "ARTICLE-INDEX-TEETH",
+ "notes": [],
+ "owner": "article-index",
+ "severity": "low",
+ "source": "ARTICLE-INDEX",
+ "state": "open",
+ "title": "Teeth owed for the ARTICLE catalog-index keystones (fn-asto-selection-start-cat-number, -current, -msgid, -msgid-unpinned; fn-asx-walk-is-lookup, fn-asx-msgid-walk-is-lookup): a positive witness inside the guard and a negative that falsifies the conclusion with a mutated lookup (wrong number, wrong message-id, withdrawn row)",
+ "updated": "2026-10-07T02:45:19Z"
+}
