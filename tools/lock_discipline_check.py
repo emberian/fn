@@ -641,6 +641,10 @@ class Event:
     # one operation on a :synchronized table (gethash, remhash, clrhash,
     # hash-table-count, setf of gethash): atomic in the table's own lock
     atomic: bool = False
+    # (names the thread variable of an enclosing `unless (and T (thread-alive-p T))'
+    # is bound from) per such guard, and a call's first argument when it is a symbol
+    dead: tuple = ()
+    arg0: str = ""
 
 
 @dataclass
@@ -762,6 +766,7 @@ class Analyzer:
         self._writes_cache: dict = {}  # fn name -> frozenset of names its body writes
         self.cur_def = None
         self.rebound: list = []       # specials let-bound around the form being walked
+        self.dead_guards: list = []   # thread-not-alive guards around the form being walked
         self.defer_vars: list = []    # variables whose captured conditions are rethrown on every exit path
         self.leaf_kinds = self._leaf_table()
         self.region_of = {}
@@ -1052,6 +1057,7 @@ class Analyzer:
         self.cur_def = d
         self.defer_vars = []
         self.rebound = []
+        self.dead_guards = []
         self.recording = record
         if not record:
             self.pass1_name = name
@@ -1074,7 +1080,7 @@ class Analyzer:
             seen = set()
             unique = []
             for e in info.events:
-                k = (e.kind, e.name, e.line, e.ctx, e.bound, e.atomic, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
+                k = (e.kind, e.name, e.line, e.ctx, e.bound, e.atomic, e.dead, e.arg0, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
                 if k not in seen:
                     seen.add(k)
                     unique.append(e)
@@ -1090,9 +1096,10 @@ class Analyzer:
             self.infos[name] = info
         return info
 
-    def ev(self, kind, name, line, ctx, extra=None, atomic=False):
+    def ev(self, kind, name, line, ctx, extra=None, atomic=False, arg0=""):
         if self.recording:
-            self.cur.events.append(Event(kind, name, line, ctx, extra, frozenset(self.rebound), atomic))
+            self.cur.events.append(Event(kind, name, line, ctx, extra, frozenset(self.rebound), atomic,
+                                         tuple(self.dead_guards), arg0))
 
     def walk_body(self, forms, ctx, env, line):
         return sig_union([self.walk(f, ctx, env, line_of(f, line)) for f in forms])
@@ -1114,6 +1121,15 @@ class Analyzer:
             return self.walk_body(form, ctx, env, line)
         if h in SPECIAL_SKIP:
             return EMPTY_SIG
+        if h == "unless" and len(form) > 2 and self.dead_test(form[1]) is not None:
+            guard = self.dead_ties(self.dead_test(form[1]), env)
+            parts = [self.walk(form[1], ctx, env, line)]
+            self.dead_guards.append(guard)
+            try:
+                parts.append(self.walk_body(form[2:], ctx, env, line))
+            finally:
+                self.dead_guards.pop()
+            return sig_union(parts)
         if h == "function":
             target = sym(form[1]) if len(form) > 1 else None
             if target and target in self.tree.defs:
@@ -1356,6 +1372,36 @@ class Analyzer:
         for stmt in body_forms:
             scan(stmt)
         return uses
+
+    @staticmethod
+    def dead_test(test):
+        """T for a test `(thread-alive-p T)' or `(and T (thread-alive-p T))' (an
+        `unless' body then runs only when no thread T is running), else None."""
+        if isinstance(test, list) and head(test) == "and" and len(test) == 3 and isinstance(test[1], Sym) \
+                and test[1] == sym(test[2][1] if isinstance(test[2], list) and len(test[2]) > 1 else None):
+            test = test[2]
+        if isinstance(test, list) and head(test) == "sb-thread:thread-alive-p" and len(test) == 2 \
+                and isinstance(test[1], Sym):
+            return str(test[1])
+        return None
+
+    @staticmethod
+    def dead_ties(thread_var, env):
+        """THREAD-VAR and every name its binding forms mention, two bindings deep:
+        what the guarded thread is looked up from."""
+        def names(form, out):
+            if isinstance(form, Sym):
+                out.add(str(form))
+            elif isinstance(form, list):
+                for x in form:
+                    names(x, out)
+        out = {thread_var}
+        for _ in range(2):
+            for n in list(out):
+                init = env.get(n)
+                if isinstance(init, list):
+                    names(init, out)
+        return frozenset(out)
 
     def walk_flet_body(self, entry, ctx, env, line, bound=None):
         fparams, fbody = entry
@@ -1701,9 +1747,9 @@ class Analyzer:
             if self.recording:
                 lam = Def(rid, creator.path, line, [], [Node([fn[1]])], "lambda", "", creator.loaded)
                 lam.body[0].line = line
-                saved = (self.cur, self.recording, self.rebound, self.defer_vars)
+                saved = (self.cur, self.recording, self.rebound, self.defer_vars, self.dead_guards)
                 info = self.walk_def(rid, lam, True, thread_of=(creator.name, line, tname))
-                self.cur, self.recording, self.rebound, self.defer_vars = saved
+                self.cur, self.recording, self.rebound, self.defer_vars, self.dead_guards = saved
             self.ev("thread", rid, line, ctx, tname)
         else:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
@@ -1761,10 +1807,10 @@ class Analyzer:
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
                 "lambda", "", self.cur.loaded)
         saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None), self.defer_vars,
-                 self.rebound)
+                 self.rebound, self.dead_guards)
         self.walk_def(rid, d, True, thread_of=thread_of, env={k: None for k in env})
         (self.cur, self.cur_def, self.recording, self.gate_class, self.defer_vars,
-         self.rebound) = saved
+         self.rebound, self.dead_guards) = saved
         return rid
 
     def walk_handler_case(self, form, ctx, env, line):
@@ -1921,7 +1967,7 @@ class Analyzer:
                 self.ev("call", quoted_symbol(target), line, ctx, "funcall")
                 parts.append(("u", frozenset(), (quoted_symbol(target),), ()))
         if h in self.tree.defs:
-            self.ev("call", h, line, ctx)
+            self.ev("call", h, line, ctx, arg0=str(args[0]) if args and isinstance(args[0], Sym) else "")
             parts.append(("u", frozenset(), (h,), ()))
             callee = self.tree.defs[h]
             cparams = lambda_params(callee.params)
@@ -2488,19 +2534,56 @@ class Model:
     def compute_actors(self) -> None:
         """actors[f] = set of root names whose synchronous closure reaches F."""
         actors: dict[str, set] = collections.defaultdict(set)
+        post: dict[str, set] = collections.defaultdict(set)
+        guards = self.dead_guard_rows()
         for r, kind in self.roots.items():
             if kind not in ("thread", "serving", "async", "entry", "startup"):
                 continue
-            stack = [r]
-            seen = {r}
+            stack = [(r, None)]
+            seen = {(r, None)}
             while stack:
-                n = stack.pop()
-                actors[n].add(r)
+                n, tag = stack.pop()
+                (actors[n].add(r) if tag is None else post[n].add((r, tag)))
                 for e in self.infos[n].events:
-                    if e.kind == "call" and e.name in self.infos and e.name not in seen:
-                        seen.add(e.name)
-                        stack.append(e.name)
+                    if e.kind == "call" and e.name in self.infos:
+                        nxt = (e.name, tag or guards.get((n, e.name, id(e))))
+                        if nxt not in seen:
+                            seen.add(nxt)
+                            stack.append(nxt)
         self.actors = actors
+        self.post_actors = post
+
+    def dead_guard_rows(self) -> dict:
+        """{(function, callee, id(call event)): the root of the thread that is
+        not running} for the guarded calls a contract row declares: the call
+        sits in an `unless (and T (thread-alive-p T))' body, T is looked up
+        from the very object the call's first argument names, and the
+        function starts exactly one thread of the declared name."""
+        out = {}
+        for row in self.c.raw.get("dead_thread_guards", []):
+            info = self.infos.get(row["function"])
+            if info is None:
+                continue
+            roots = [e.name for e in info.events if e.kind == "thread" and e.extra == row["thread_name"]]
+            if len(roots) != 1:
+                continue
+            for e in info.events:
+                if (e.kind == "call" and e.name == row["call"] and e.arg0
+                        and any(e.arg0 in ties for ties in e.dead)):
+                    out[(row["function"], e.name, id(e))] = roots[0]
+        return out
+
+    def collapse_dead(self, labels):
+        """Drop the actor labels `X|after|R' when R is the only other actor:
+        the stop that runs after the thread R is no longer running is ordered
+        after everything R did."""
+        out = set(labels)
+        for lab in list(out):
+            if "|after|" in lab:
+                tag = lab.split("|after|", 1)[1]
+                if tag in out and all(l == tag or l.endswith("|after|" + tag) for l in out):
+                    out = {tag}
+        return out
 
     def actor_of(self, root: str) -> str:
         kind = self.roots.get(root)
@@ -2677,6 +2760,7 @@ class Checker:
                 if e.atomic:
                     held = held | {"SYNC:" + e.name}    # the table's own lock covers this one operation
                 actors = {self.m.actor_of(r) for r in self.m.actors.get(name, ())}
+                actors |= {self.m.actor_of(r) + "|after|" + tag for r, tag in self.m.post_actors.get(name, ())}
                 if not actors or actors == {"startup"} or "STARTUP" in held:
                     continue
                 sites[e.name].append((info, e, held, actors - {"startup"}))
@@ -2684,7 +2768,7 @@ class Checker:
             writes = [r for r in rows if r[1].extra == "w"]
             if not writes:
                 continue
-            actors = set().union(*(r[3] for r in rows))
+            actors = self.m.collapse_dead(set().union(*(r[3] for r in rows)))
             if len(actors) < 2:
                 continue
             common = frozenset.intersection(*[r[2] for r in rows])

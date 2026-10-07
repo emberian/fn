@@ -516,6 +516,14 @@
   "fnn-owner-accept": "the primary accept/SIGTERM loop runs on the caller thread of fnn-owner-run after startup (owner.lisp:5959ff)"
  },
  "entries_are_actors": false,
+ "dead_thread_guards": [
+  {
+   "function": "fnn-mux-start",
+   "call": "fnn-mux-stop-loop",
+   "thread_name": "fn owner io",
+   "why": "lane lock-model-gaps: the failed-start cleanup of fnn-mux-start (host/native/mux.lisp:1766-1801, the guard at :1791-1792) stops a loop on the starter's own thread only under (unless (and thread (sb-thread:thread-alive-p thread)) ...), where THREAD is looked up from that loop (fnn-mux-loop-thread, or the actor registered for it by fnn-owner-actor-for-custody): a loop whose thread is absent or no longer running. Everything the loop's thread did precedes that stop, so the stop is not concurrent with it. The check verifies the guard shape, that THREAD is bound from the object the call's first argument names, and that fnn-mux-start starts exactly one thread named \"fn owner io\"; that this thread is the one THREAD names is the code's, cited above."
+  }
+ ],
  "leaves": {
   "io": [
    "fnn-extent-pread",

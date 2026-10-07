@@ -1687,3 +1687,54 @@ class LeafLockRows(unittest.TestCase):
       (incf (fnn-pull-runtime-wakes runtime)))))
 """, ["R5"])
         self.assertTrue(any("XPWAKE" in str(k[1]) for k in keys(found, "R5")), keys(found, "R5"))
+
+
+class R1bDeadThreadGuard(unittest.TestCase):
+    """A stop that runs only when the loop's thread is absent or no longer
+    running is ordered after that thread (contract dead_thread_guards)."""
+
+    def source(self, guard="(unless (and thread (sb-thread:thread-alive-p thread)) (fnn-mux-stop-loop loop))",
+               extra="", spawns=1):
+        second = ("""
+  (sb-thread:make-thread (lambda () (fnn-mux-idle loop)) :name "fn owner io")""" if spawns == 2 else "")
+        return f"""
+(defstruct fnn-mux-loop thread buffer)
+(defun fnn-mux-run (loop) (setf (fnn-mux-loop-buffer loop) 1))
+(defun fnn-mux-idle (loop) (fnn-mux-loop-thread loop))
+(defun fnn-mux-stop-loop (loop) (setf (fnn-mux-loop-buffer loop) nil))
+(defun fnn-mux-start (loop other ready)
+  (setf (fnn-mux-loop-thread loop)
+        (sb-thread:make-thread (lambda () (fnn-mux-run loop)) :name "fn owner io")){second}
+  (let* ((thread (fnn-mux-loop-thread loop)))
+    {guard}))
+{extra}"""
+
+    def r1b(self, source):
+        return [k for k in keys(run(source, ["R1b"]), "R1b") if "fnn-mux-loop-buffer" in k[1]]
+
+    def test_the_guarded_stop_is_ordered_after_the_thread(self):
+        self.assertEqual(self.r1b(self.source()), [])
+
+    def test_an_unguarded_stop_races_with_the_thread(self):
+        self.assertTrue(self.r1b(self.source(guard="(fnn-mux-stop-loop loop)")))
+
+    def test_the_wrong_polarity_races(self):
+        self.assertTrue(self.r1b(self.source(guard="(when (and thread (sb-thread:thread-alive-p thread)) (fnn-mux-stop-loop loop))")))
+
+    def test_a_stop_of_another_object_is_not_ordered(self):
+        self.assertTrue(self.r1b(self.source(
+            guard="(unless (and thread (sb-thread:thread-alive-p thread)) (fnn-mux-stop-loop other))")))
+
+    def test_an_unrelated_conjunct_leaves_the_thread_running(self):
+        self.assertTrue(self.r1b(self.source(
+            guard="(unless (and ready (sb-thread:thread-alive-p thread)) (fnn-mux-stop-loop loop))")))
+
+    def test_a_third_actor_keeps_the_finding(self):
+        self.assertTrue(self.r1b(self.source(extra="""
+(defun fnn-mux-adopt (loop) (setf (fnn-mux-loop-buffer loop) 2))
+(defun fnn-mux-acceptor (loop)
+  (sb-thread:make-thread (lambda () (fnn-mux-adopt loop)) :name "fn acceptor"))
+""")))
+
+    def test_two_threads_of_the_declared_name_void_the_row(self):
+        self.assertTrue(self.r1b(self.source(spawns=2)))
