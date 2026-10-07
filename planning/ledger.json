@@ -2618,7 +2618,7 @@
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 312,
     "include_hygiene_warnings": 3954,
-    "host_names_warnings": 3660,
+    "host_names_warnings": 3665,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -162424,238 +162424,273 @@
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 49,
+        "line": 51,
         "name": "endp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 49,
+        "line": 51,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 49,
+        "line": 51,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 49,
+        "line": 51,
         "name": "*acl2-property-unbound*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 49,
+        "line": 51,
         "name": "hons-get",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 49,
+        "line": 51,
         "name": "hons-acons",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 68,
+        "line": 70,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 68,
+        "line": 70,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 68,
+        "line": 70,
         "name": "*nil*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 76,
+        "line": 78,
         "name": "union-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 76,
+        "line": 78,
         "name": "all-fnnames-lst",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 80,
+        "line": 82,
         "name": "all-fnnames",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 84,
+        "line": 86,
         "name": "symbolp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 84,
+        "line": 86,
         "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 102,
+        "line": 104,
         "name": "string-downcase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 110,
+        "line": 112,
         "name": "princ$",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 117,
-        "name": "w",
+        "line": 125,
+        "name": "weak-rewrite-rule-p",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 117,
-        "name": "getpropc",
+        "line": 125,
+        "name": "access",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 117,
-        "name": "strip-cars",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "tools/coverage_dump.lisp",
-        "line": 117,
-        "name": "get-event",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "tools/coverage_dump.lisp",
-        "line": 148,
-        "name": "mutual-recursion",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "tools/coverage_dump.lisp",
-        "line": 148,
-        "name": "atom",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "tools/coverage_dump.lisp",
-        "line": 148,
-        "name": "cov-mbe-pairs-list",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "tools/coverage_dump.lisp",
-        "line": 148,
-        "name": "cov-mbe-pairs",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "tools/coverage_dump.lisp",
-        "line": 172,
+        "line": 125,
         "name": "symbol-listp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 178,
-        "name": "symbol-class",
+        "line": 125,
+        "name": "no-duplicatesp-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 178,
-        "name": "*t*",
+        "line": 125,
+        "name": "add-to-set-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 178,
-        "name": "reverse",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "tools/coverage_dump.lisp",
-        "line": 223,
-        "name": "caar",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "tools/coverage_dump.lisp",
-        "line": 223,
+        "line": 140,
         "name": "cdar",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 233,
+        "line": 140,
+        "name": "find-rules-of-rune",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 149,
+        "name": "w",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 149,
+        "name": "getpropc",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 149,
+        "name": "strip-cars",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 149,
+        "name": "get-event",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 183,
+        "name": "mutual-recursion",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 183,
+        "name": "atom",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 183,
+        "name": "cov-mbe-pairs-list",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 183,
+        "name": "cov-mbe-pairs",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 213,
+        "name": "symbol-class",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 213,
+        "name": "*t*",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 213,
+        "name": "reverse",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 258,
+        "name": "caar",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 268,
         "name": "fast-alist-free",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 233,
+        "line": 268,
         "name": "open-output-channel",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 233,
+        "line": 268,
         "name": "newline",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 233,
+        "line": 268,
         "name": "close-output-channel",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
