@@ -696,6 +696,12 @@ $ISTEP image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $catalog_env FN_NATIVE_PRO
 BOX
         done
         [ "$ISTEP" != pstep ] || echo pwait
+        # The build's own provenance stamp (TREE_SHA, MANIFEST.json in
+        # build/): a composed fixture binds its launchers to it when the
+        # run tests images it does not publish (CONVERGE-20261007-1 red #3).
+        cat <<BOX
+step stamp-images python3 tools/image_set.py stamp \$T
+BOX
         if [ -n "$PUBLISH" ]; then
             cat <<BOX
 step publish python3 tools/image_set.py publish \$T $SOURCE_ID --base ${IMAGES_BASE:-/tank/fn/images}
