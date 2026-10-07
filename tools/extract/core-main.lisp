@@ -12,11 +12,13 @@
 (defvar cl-user::*xl-out* (sb-ext:posix-getenv "XL_OUT"))
 (defun cl-user::xl-path (name) (concatenate 'string cl-user::*xl-out* name))
 (load (cl-user::xl-path "packages.lisp") :external-format :latin-1)
+;; ONE compilation unit from the runtime to the end of host/native: SBCL's undefined-function summary is then
+;; judged after the host has defined what the books only constrain (X2); tools/extract/core.sh fails the build
+;; on any name in it.  defs.lisp is LOADED as source (each form compiled as it is read, as ACL2 compiles
+;; its own installs): a defglobal/defparameter initializer can call a function defined above it.
 (with-compilation-unit ()
-  (load (compile-file (concatenate 'string (sb-ext:posix-getenv "XL_X") "clruntime.lisp")
-                      :output-file (cl-user::xl-path "clruntime.fasl")))
-  (load (compile-file (cl-user::xl-path "defs.lisp") :output-file (cl-user::xl-path "defs.fasl")
-                      :external-format :latin-1)))
+(load (concatenate 'string (sb-ext:posix-getenv "XL_X") "clruntime.lisp"))
+(load (cl-user::xl-path "defs.lisp") :external-format :latin-1)
 (load (cl-user::xl-path "core-world.lisp") :external-format :utf-8)
 (acl2::xl-make-live-stobjs)
 ;; ACL2's global compilation policy: the image compiles host/native under it
@@ -26,6 +28,7 @@
 ;; The actual image-hook checker refuses other restore callbacks; loading a
 ;; module after that check would evade the saved-image exclusion contract.
 (load (cl-user::xl-path "host-block.lisp"))
+) ; the compilation unit
 (defun cl-user::xl-toplevel ()
   ;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4):
   ;; no (acl2::fnn-runtime-bootstrap-startup) gate before argv; its
