@@ -10,6 +10,7 @@
     python3 tools/host_check.py --read [FILE...] # static: every host/ file reads (half a second)
     python3 tools/host_check.py --books         # static: each book a host file calls into is in the world
     python3 tools/host_check.py --loaded        # static: every host file is loaded by some build
+    python3 tools/host_check.py --attach-order  # static: attach book precedes its stobj generic
     python3 tools/host_check.py --macro-order [FILE...]  # static: no raw macro used before its defmacro
 
 `--loaded` (Q7k, 2026-09-29; `make check` runs it): a host file no build loads
@@ -20,6 +21,11 @@ server contains.  See the section above `loaded_findings`.
 used above its `defmacro` in load order is refused, because the image compiles
 that use as a function call (batch AW's `(log)`).  See the section above
 `macro_blank`.
+
+`--attach-order` (CONVERGE-1, red 1; `make check` and hbox_native's `attach-order`
+gate run it): a certified host file whose include-book closure reaches an
+attachable stobj generic before its attach book is refused.  See the section
+above `AttachWorld`.
 
 `--books` (obstructions-9 item 83; `make check-fast` and `--forward`, hence
 hbox_native's pre-image host-forward step, run it): for each image build,
@@ -160,6 +166,7 @@ import shutil
 import subprocess
 import sys
 import time
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -1812,6 +1819,158 @@ def macro_order_main(names: list[str]) -> int:
     return 1 if early else 0
 
 
+# --- --attach-order: an attachable stobj generic reached before its attach book
+#
+# Protects the image's arena and history stobjs.  A host file that is
+# include-book'd (D61) is compiled in the world its own include-books build.
+# Reaching `fn-arena` (books/payload-arena.lisp) without
+# `books/payload-arena-attach` first compiles it against the generic arena
+# while the image runs the attached one: the owner read arena count 0 where
+# the host's arena held 1, and every second POST stopped with "owner prepare
+# returned NOT-SEALED" (CONVERGE-1, red 1).  Run by tools/native_preflight.py
+# gate `attach-order` (hbox_native.sh static gates) and `make check`; no ACL2.
+#
+#   pairs   an attach book is a books/*.lisp with a literal
+#           `(attach-stobj GEN IMPL)` that host/native/build.lisp includes; the
+#           generic is the book with `(defabsstobj GEN ... :attachable t`.
+#           Today: fn-cat, fn-hist, fn-arena.  A pair that is not exactly one
+#           generic is a finding (attach_unpaired), never a dropped pair.
+#   scope   the host/*.lisp files reachable by include-book from the
+#           books/image-world* umbrellas (UMBRELLAS).
+#   rule    walking a file's include-books depth first, each book at its first
+#           inclusion (the order ACL2 certifies it), the generic must be met
+#           inside the attach book or after it (AttachWorld.generic_state).
+#
+# Not checked: `defattach` seams (the stub resolves at call time, order does not
+# matter); books/* above a generic (certified over it by design, books/catalog.lisp
+# header); catalog-paged-attach, which the image does not include.  It reads
+# source order, not the binary .cert files, which record the same order.
+
+UMBRELLAS = ("books/image-world", "books/image-world-dtn", "books/image-world-store-test")
+ATTACH_INCLUDE = re.compile(r'^\s*\(include-book\s+"([^"]+)"', re.M)
+ATTACH_STOBJ = re.compile(r'\(attach-stobj\s+([A-Za-z0-9$*+-]+)\s+[A-Za-z0-9$*+-]+\s*\)', re.I)
+
+
+def _attach_read(path: Path) -> str:
+    return re.sub(r";[^\n]*", "", path.read_text(errors="replace"))
+
+
+class AttachWorld:
+    def __init__(self, root: Path):
+        self.root = root
+        self._incs: dict[str, list[str]] = {}
+
+    def includes(self, rel: str) -> list[str]:
+        if rel not in self._incs:
+            out = []
+            base = os.path.dirname(rel)
+            for m in ATTACH_INCLUDE.finditer(_attach_read(self.root / (rel + ".lisp"))):
+                target = os.path.normpath(os.path.join(base, m.group(1)))
+                if (self.root / (target + ".lisp")).exists():
+                    out.append(target)
+            self._incs[rel] = out
+        return self._incs[rel]
+
+    def closure(self, rel: str) -> list[str]:
+        seen: list[str] = []
+        stack = [rel]
+        while stack:
+            book = stack.pop()
+            if book not in seen:
+                seen.append(book)
+                stack.extend(self.includes(book))
+        return seen
+
+    def generic_state(self, rel: str, generic: str, attach: str) -> str:
+        """How the closure of REL first meets GENERIC: "absent" (not reached),
+        "attached" (inside the attach book, which attaches before it includes the
+        generic, or after it finished) or "bare" (reached with no attachment)."""
+        done: set[str] = set()
+        result = ["absent"]
+
+        def go(book: str, stack: tuple[str, ...]) -> None:
+            if book in done or result[0] != "absent":
+                return
+            done.add(book)
+            if book == generic:
+                result[0] = "attached" if attach in stack or attach in finished else "bare"
+                return
+            for child in self.includes(book):
+                go(child, stack + (book,))
+            finished.add(book)
+
+        finished: set[str] = set()
+        go(rel, ())
+        return result[0]
+
+
+class AttachUnpaired(NamedTuple):
+    """An attach book whose generic is not exactly one :attachable defabsstobj."""
+    generic: str
+    attach: str
+    candidates: list[str]
+
+
+def attach_pairs(root: Path) -> tuple[list[tuple[str, str, str]], list[AttachUnpaired]]:
+    """((generic name, generic book, attach book) ..., unpaired), over the image's
+    attach books only."""
+    image = {os.path.normpath(m.group(1)) for m in ATTACH_INCLUDE.finditer(_attach_read(root / BUILD_SCRIPT))}
+    found, bad = [], []
+    for path in sorted((root / "books").glob("*.lisp")):
+        rel = "books/" + path.stem
+        if rel not in image:
+            continue
+        for m in ATTACH_STOBJ.finditer(_attach_read(path)):
+            gen = m.group(1).lower()
+            generic = [p for p in sorted((root / "books").glob("*.lisp"))
+                       if re.search(r"\(defabsstobj\s+%s(?![A-Za-z0-9$*+-])" % re.escape(gen), _attach_read(p), re.I)
+                       and ":attachable t" in _attach_read(p).lower()]
+            if len(generic) == 1:
+                found.append((gen, "books/" + generic[0].stem, rel))
+            else:
+                bad.append(AttachUnpaired(gen, rel, ["books/" + g.stem for g in generic]))
+    return found, bad
+
+
+def attach_unpaired(root: Path) -> list[str]:
+    """An attach book whose generic is not exactly one :attachable defabsstobj: a
+    finding naming the books, never a silently dropped pair."""
+    return ["%s.lisp: (attach-stobj %s ...) names %s :attachable generic(s)%s; the pair cannot be checked"
+            % (u.attach, u.generic, len(u.candidates),
+               (" (" + ", ".join(b + ".lisp" for b in u.candidates) + ")") if u.candidates else "")
+            for u in attach_pairs(root)[1]]
+
+
+def attach_scope(root: Path, world: AttachWorld) -> list[str]:
+    hosts: set[str] = set()
+    for umbrella in UMBRELLAS:
+        if (root / (umbrella + ".lisp")).exists():
+            hosts.update(b for b in world.closure(umbrella) if b.startswith("host/"))
+    return sorted(hosts)
+
+
+def attach_findings(root: Path = ROOT) -> list[str]:
+    world = AttachWorld(root)
+    findings = attach_unpaired(root)
+    for gen, generic, attach in attach_pairs(root)[0]:
+        for host in attach_scope(root, world):
+            if world.generic_state(host, generic, attach) == "bare":
+                findings.append(
+                    "%s.lisp: its closure reaches %s (%s) before %s attaches it; "
+                    "include-book \"../%s\" first" % (host, generic, gen, attach, attach))
+    return findings
+
+
+def attach_order_main() -> int:
+    findings = attach_findings()
+    for line in findings:
+        print("host_check --attach-order: " + line)
+    ps = attach_pairs(ROOT)[0]
+    print("host_check --attach-order: %d attach pair(s) (%s), %d host file(s) in scope, %d finding(s)"
+          % (len(ps), ", ".join(p[0] for p in ps), len(attach_scope(ROOT, AttachWorld(ROOT))), len(findings)))
+    return 1 if findings else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1860,6 +2019,9 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--macro-order", action="store_true",
                         help="static: no raw host macro is used before its defmacro in "
                              "build.lisp's load order (FILEs replace the order)")
+    mode.add_argument("--attach-order", action="store_true",
+                        help="static: no certified host file's include-book closure reaches "
+                             "an attachable stobj generic before its attach book")
     mode.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
@@ -1869,6 +2031,8 @@ def main(argv: list[str] | None = None) -> int:
         return books_main(args.files)
     if args.loaded:
         return loaded_main()
+    if args.attach_order:
+        return attach_order_main()
     if args.macro_order:
         return macro_order_main(args.files)
     if args.read:
