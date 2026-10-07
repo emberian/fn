@@ -1,4 +1,5 @@
-"""`tools/teeth_check.py`: the reading of a witness, and the driver it writes.
+"""`tools/teeth_check.py`: the reading of a witness, and the driver it writes; --null-witness and
+--must-fail (formerly null_witness_lint and must_fail_check).
 
 The three defects this tool exists to find were all found by hand on
 2026-09-20, so each of them is a case here: a claim whose two sides are both
@@ -10,9 +11,14 @@ than by a string this file imagines ACL2 prints.
 
 from __future__ import annotations
 
+import contextlib
+import io
+import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -434,6 +440,155 @@ class Acl2Errors(unittest.TestCase):
         found = teeth_check.ACL2_ERROR.findall(log)
         self.assertEqual([m[1] for m in found], ["DEFCONST", "DEFTHEORY"])
         self.assertEqual(found[0][0], "Translate")
+
+
+BOOK = '''; a (must-fail (thm nil)) in a comment is not code
+(in-package "ACL2")
+(include-book "std/testing/must-fail" :dir :system)
+(defconst *s* "(must-fail (thm nil))")
+(must-fail (defthm a nil))
+(defmacro t-mf (name) `(must-fail
+  (defthm ,name nil)))
+#| (must-fail (thm nil)) |#
+(must-fail (defun 5)) ; must-fail-ok: a malformed defun is the claim
+'''
+
+
+class MustFailCheckTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        (self.root / "tests/acl2").mkdir(parents=True)
+        self.book = self.root / "tests/acl2/x-tests.lisp"
+        self.book.write_text(BOOK)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_bare_sites_in_code_only(self):
+        sites = teeth_check.mf_bare_sites(BOOK)
+        self.assertEqual([(line, ok) for line, _, ok in sites],
+                         [(5, False), (6, False), (9, True)])
+
+    def test_lint_fails_then_convert_passes(self):
+        self.assertEqual(teeth_check.main(["--must-fail", "--root", str(self.root)]), 1)
+        self.assertEqual(teeth_check.main(["--must-fail", "--root", str(self.root), "--convert"]), 0)
+        text = self.book.read_text()
+        self.assertIn('(include-book "must-fail-checked")', text)
+        self.assertNotIn("std/testing/must-fail", text)
+        self.assertIn("(must-fail-checked (defthm a nil))", text)
+        self.assertIn("`(must-fail-checked\n", text)
+        # the declared site, the comment and the string are left alone
+        self.assertIn("(must-fail (defun 5)) ; must-fail-ok:", text)
+        self.assertIn('"(must-fail (thm nil))"', text)
+        self.assertIn("#| (must-fail (thm nil)) |#", text)
+        # idempotent
+        self.assertEqual(teeth_check.mf_convert_text(text), text)
+
+    def test_checked_is_not_bare(self):
+        self.assertEqual(teeth_check.mf_bare_sites("(must-fail-checked (thm nil))"), [])
+        self.assertEqual(len(teeth_check.mf_bare_sites("(must-fail! (thm nil))")), 1)
+
+
+def findings(text: str) -> list:
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "x-tests.lisp"
+        path.write_text(text)
+        return [name for name, _ in teeth_check.nw_book_findings(path)]
+
+
+class NullWitnessTests(unittest.TestCase):
+    def test_an_empty_lace_over_a_produced_node_without_a_witness_is_named(self):
+        self.assertEqual(findings(
+            "(assert-event (equal (fn-x-lace (fn-step *s0* 1)) nil))\n"), ["fn-x-lace"])
+        self.assertEqual(findings("(assert-event (null (fn-x-lace (fn-step *s0* 1))))\n"),
+                         ["fn-x-lace"])
+        self.assertEqual(findings(
+            "(assert-event (equal (len (fn-x-lace (fn-step *s0* 1))) 0))\n"),
+            ["fn-x-lace"])
+        self.assertEqual(findings(
+            "(defthm t1 (implies (natp n) (endp (fn-x-lace (fn-step s n)))))\n"),
+            ["fn-x-lace"])
+
+    def test_a_positive_witness_beside_it_clears_it(self):
+        for witness in ("(assert-event (consp (fn-x-lace (fn-step *s0* 2))))",
+                        "(assert-event (not (null (fn-x-lace (fn-step *s0* 2)))))",
+                        "(assert-event (equal (fn-x-lace (fn-step *s0* 2)) '(1 2)))",
+                        "(assert-event (member-equal 3 (fn-x-lace (fn-step *s0* 2))))",
+                        "(assert-event (< 0 (len (fn-x-lace (fn-step *s0* 2)))))"):
+            self.assertEqual(findings(
+                "(assert-event (equal (fn-x-lace (fn-step *s0* 1)) nil))\n" + witness),
+                [], witness)
+
+    def test_predicates_literals_hypotheses_and_must_fail_are_not_findings(self):
+        self.assertEqual(findings("(assert-event (not (fn-validp (fn-step *s0* 1))))"), [])
+        self.assertEqual(findings("(assert-event (equal (fn-article-msgid 7) nil))"), [])
+        self.assertEqual(findings("(assert-event (equal (fn-sn-keyring *sni-initial*) nil))"),
+                         [])
+        self.assertEqual(findings(
+            "(defthm t1 (implies (null (fn-lace (fn-step s 1))) (natp n)))"), [])
+        self.assertEqual(findings(
+            "(must-fail (assert-event (equal (fn-lace (fn-step s 1)) nil)))"), [])
+
+    def test_main_warns_allows_and_names_stale(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests" / "acl2").mkdir(parents=True)
+            (root / "tests" / "acl2" / "a-tests.lisp").write_text(
+                "(assert-event (equal (fn-lace (fn-step *s0* 1)) nil))\n")
+            allow = root / "allow.json"
+            allow.write_text(json.dumps({"allow": {}}))
+            with mock.patch.object(teeth_check, "ROOT", root), mock.patch.object(teeth_check, "NW_ALLOW", allow):
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(teeth_check.main(["--null-witness"]), 0)
+                    self.assertEqual(teeth_check.main(["--null-witness", "--strict"]), 1)
+                self.assertIn("WARN tests/acl2/a-tests.lisp:1 fn-lace", out.getvalue())
+                allow.write_text(json.dumps({"allow": {
+                    "tests/acl2/a-tests.lisp fn-lace": "empty by design",
+                    "tests/acl2/a-tests.lisp fn-gone": "was here"}}))
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(teeth_check.main(["--null-witness", "--strict"]), 1)
+                self.assertNotIn("WARN", out.getvalue())
+                self.assertIn("STALE tests/acl2/a-tests.lisp fn-gone", out.getvalue())
+
+    def test_the_allow_list_only_shrinks(self):
+        # tools/ratchet.py: an entry the allow-list gains needs an ACKS.md line
+        # `ratchet:teeth_check:null-witness_<BOOK>_<FUNCTION>`; dropping a stale
+        # entry (--write-baseline) never does.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests" / "acl2").mkdir(parents=True)
+            (root / "tests" / "acl2" / "a-tests.lisp").write_text(
+                "(assert-event (equal (fn-lace (fn-step *s0* 1)) nil))\n")
+            allow = root / "allow.json"
+            allow.write_text(json.dumps({"allow": {"tests/acl2/a-tests.lisp fn-gone": "was here"}}))
+            acks = root / "ACKS.md"
+            acks.write_text("")
+            key = "tests/acl2/a-tests.lisp fn-lace"
+            with mock.patch.object(teeth_check, "ROOT", root), \
+                    mock.patch.object(teeth_check, "NW_ALLOW", allow), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                # a raise without the ACK is refused and writes nothing
+                self.assertEqual(teeth_check.null_witness_main(
+                    [], False, allow_key=key, reason="empty by design", acks=acks), 1)
+                self.assertNotIn(key, json.loads(allow.read_text())["allow"])
+                self.assertIn("refusing to raise", out.getvalue())
+                # the same raise with the ACK goes through
+                acks.write_text(f"ratchet:teeth_check:null-witness_tests/acl2/a-tests.lisp_fn-lace"
+                                " \u2014 empty by design \u2014 the owner of a-tests\n")
+                self.assertEqual(teeth_check.null_witness_main(
+                    [], False, allow_key=key, reason="empty by design", acks=acks), 0)
+                self.assertIn(key, json.loads(allow.read_text())["allow"])
+                # a lowering needs no ACK: the stale entry goes, the live one stays
+                acks.write_text("")
+                self.assertEqual(teeth_check.null_witness_main(
+                    [], False, write_baseline=True, acks=acks), 0)
+                self.assertEqual(list(json.loads(allow.read_text())["allow"]), [key])
+                # --allow without a reason is a usage error
+                self.assertEqual(teeth_check.null_witness_main(
+                    [], False, allow_key="x y", acks=acks), 2)
 
 
 if __name__ == "__main__":

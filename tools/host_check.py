@@ -920,8 +920,8 @@ def _bare(token: str) -> str:
 def table_sites(text: str) -> list[tuple[int, str, bool, str]]:
     """(line, name, synchronized, form text) for each make-hash-table in code
     whose table can outlive one call."""
-    import must_fail_check  # the one Lisp comment/string mask in tools/
-    mask = must_fail_check.code_mask(text)
+    import teeth_check  # the one Lisp comment/string mask in tools/
+    mask = teeth_check.code_mask(text)
     stack: list[tuple[int, str, str]] = []  # (open position, head, second token)
     sites = []
     i, n = 0, len(text)
