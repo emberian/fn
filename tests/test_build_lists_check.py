@@ -307,9 +307,6 @@ class DuplicateLoadTests(unittest.TestCase):
         self.assertIn("unreadable", check.duplicate_load_findings('(ld "broken"', "fixture")[0])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class KeystoneClosureTests(unittest.TestCase):
     """A definterface keystone defined in a book the image never includes:
@@ -362,3 +359,7 @@ class KeystoneClosureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = self.tree(temp, include_body=False)
             self.assertEqual(check.keystone_findings(root, "", []), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
