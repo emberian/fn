@@ -12,15 +12,26 @@
 (defvar cl-user::*xl-out* (sb-ext:posix-getenv "XL_OUT"))
 (defun cl-user::xl-path (name) (concatenate 'string cl-user::*xl-out* name))
 (load (cl-user::xl-path "packages.lisp") :external-format :latin-1)
+;; defs.lisp's forms are read and evaluated one at a time, each compiled as it is read (as ACL2
+;; compiles its own installs), so a defglobal/defparameter initializer can call a function defined above
+;; it.  Not `load': loading a source file gives every compiled form a debug source holding its own copy of
+;; the file's form-position table so far, which for defs.lisp's ~25,000 forms was 1.29 GB of
+;; (unsigned-byte 32) vectors in the saved core (EXTRACTION-PROGRAM-20261007.md section 6).
+(defun cl-user::xl-eval-forms (path external-format)
+  (with-open-file (in path :external-format external-format)
+    (let ((*package* *package*) (*readtable* *readtable*) (eof (list nil)))
+      (loop for form = (read in nil eof)
+            until (eq form eof)
+            do (eval form)))))
 ;; ONE compilation unit from the runtime to the end of host/native: SBCL's undefined-function summary is then
 ;; judged after the host has defined what the books only constrain (X2); tools/extract/core.sh fails the build
-;; on any name in it.  defs.lisp is LOADED as source (each form compiled as it is read, as ACL2 compiles
-;; its own installs): a defglobal/defparameter initializer can call a function defined above it.
+;; on any name in it.
 (with-compilation-unit ()
 (load (concatenate 'string (sb-ext:posix-getenv "XL_X") "clruntime.lisp"))
-(load (cl-user::xl-path "defs.lisp") :external-format :latin-1)
+(cl-user::xl-eval-forms (cl-user::xl-path "defs.lisp") :latin-1)
 (load (cl-user::xl-path "core-world.lisp") :external-format :utf-8)
-(acl2::xl-make-live-stobjs)
+;; named through its symbol: this form is compiled before defs.lisp defines it
+(funcall 'acl2::xl-make-live-stobjs)
 ;; ACL2's global compilation policy: the image compiles host/native under it
 (proclaim '(optimize (compilation-speed 0) (speed 3) (space 1) (safety 0)))
 (when (sb-ext:posix-getenv "XL_PROF") (require :sb-sprof))

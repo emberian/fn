@@ -35,8 +35,39 @@ def raw_block(tree, build="host/native/build.lisp"):
     return text[i:j - 1]
 
 
+# What the image's raw block does that only an ACL2 image can do; the product leaves it out, by name.
+# A bare-SBCL core has no ACL2 world, LD or banner (EXTRACTION-PROGRAM-20261007.md section 6).
+IMAGE_ONLY_LOADS = {
+    # `fn acl2 session' runs ACL2's LD over the image's world (ld-fn: ACL2's evaluator);
+    # its `raw-traps' subcommand goes with it, so fn-core has no `acl2' developer verb.
+    "host/native/acl2-session.lisp": "ACL2's read-eval-print loop over the image's world",
+    # FN_NATIVE_DEV_REPL: admits ACL2 events through ld-fn and the prover over the image's world
+    "host/native/dev-repl.lisp": "ACL2 event admission (LD and the prover) over the image's world",
+}
+IMAGE_ONLY_FORMS = {
+    "(setq *print-startup-banner* nil)": "ACL2's startup banner variable",
+}
+
+
+def product_raw_block(tree, build="host/native/build.lisp"):
+    """raw_block without IMAGE_ONLY_LOADS and IMAGE_ONLY_FORMS.  A build may omit an image-only
+    load (build-dtn.lisp has no dev-repl) but never repeat one; every image-only form must be there once."""
+    body = raw_block(tree, build)
+    for rel in IMAGE_ONLY_LOADS:
+        pat = re.compile(r'(?m)^[ \t]*\(load "' + re.escape(rel) + r'"\)[ \t]*\n')
+        if len(pat.findall(body)) > 1:
+            raise ValueError("image-only load is loaded more than once by %s: %s" % (build, rel))
+        body = pat.sub("", body)
+    for form in IMAGE_ONLY_FORMS:
+        if body.count(form) != 1:
+            raise ValueError("image-only form is not in %s exactly once: %s" % (build, form))
+        body = body.replace(form, "")
+    return body
+
+
 def host_files(tree, build="host/native/build.lisp"):
-    return re.findall(r'\(load "(host/native/[^"]+\.lisp)"\)', raw_block(tree, build))
+    """The raw host files the product loads, in order."""
+    return re.findall(r'\(load "(host/native/[^"]+\.lisp)"\)', product_raw_block(tree, build))
 
 
 def product_block(tree, build="host/native/build.lisp"):
@@ -46,7 +77,7 @@ def product_block(tree, build="host/native/build.lisp"):
     This builder captures the SAME gate before ImagePrepare. It supplies no
     qualifier or accepted admission.
     """
-    body = raw_block(tree, build)
+    body = product_raw_block(tree, build)
     prepare = list(re.finditer(
         r"(?im)^([ \t]*)\(fnn-runtime-bootstrap-image-prepare\)[ \t]*(?:;[^\n]*)?$", body))
     if not prepare:

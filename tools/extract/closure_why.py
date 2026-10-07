@@ -15,7 +15,7 @@ below):
   (TREE/host/native/*.lisp, the files tools/extract/host_tokens.py scans);
 * how many units are reachable only through those boundary edges.
 
-usage: closure_why.py OUT [--tree TREE] [--target ID ...] [--json]
+usage: closure_why.py OUT [--tree TREE] [--target ID ...] [--json] [--check]
 """
 from __future__ import annotations
 
@@ -25,6 +25,13 @@ import re
 import sys
 from collections import deque
 from pathlib import Path
+
+# X2's ban (EXTRACTION-PROGRAM-20261007.md section 6): ACL2's evaluator, LD and translator are never
+# reachable from a root of the served program.  FMT1 (ACL2's printer, reached through WARNING1 and
+# WORMHOLE-ER) is reported with them but not yet banned: its callers are being classified.
+BANNED = ("EV", "EV-W", "EV-REC", "EV-FNCALL", "EV-FNCALL-W", "LD-FN", "TRANS-EVAL",
+          "TRANSLATE11", "TRANSLATE11-LOCAL-DEF", "TRANSLATE1", "TRANSLATE")
+BANNED_IDS = tuple("%s:ACL2::%s" % (k, n) for n in BANNED for k in ("raw", "star1"))
 
 EVALUATOR = ("raw:ACL2::EV", "raw:ACL2::EV-W", "raw:ACL2::EV-REC", "raw:ACL2::LD-FN",
              "raw:ACL2::TRANS-EVAL", "raw:ACL2::TRANSLATE11", "raw:ACL2::TRANSLATE11-LOCAL-DEF",
@@ -147,8 +154,21 @@ def main(argv=None) -> int:
     ap.add_argument("--tree", type=Path)
     ap.add_argument("--target", action="append")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--check", action="store_true",
+                    help="X2: exit 1, naming a path, if a BANNED unit is reachable from a root")
     a = ap.parse_args(argv)
     roots, graph = read_edges(a.out / "edges.tsv")
+    if a.check:
+        all_roots = sorted(set(roots) | {"star1:" + r.split(":", 1)[1] for r in roots})
+        banned = {b for b in BANNED_IDS if b in graph}
+        bad = [p for p in (shortest(graph, r, banned) for r in all_roots) if p]
+        if bad:
+            bad.sort(key=len)
+            print("closure_why: ACL2's evaluator is reachable from %d root(s); shortest: %s"
+                  % (len(bad), " > ".join(bad[0])), file=sys.stderr)
+            return 1
+        print("closure_why: no banned unit reachable (%d banned ids present in the closure)" % len(banned))
+        return 0
     r = analyse(roots, graph, set(a.target or EVALUATOR), a.tree)
     if a.json:
         json.dump(r, sys.stdout, indent=1)

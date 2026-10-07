@@ -7,8 +7,9 @@ stobj or defconst). Comments and strings are skipped. Optional third
 argument BUILD selects the native build script; default
 host/native/build.lisp.
 
-Which words: fn's own names (FN..., *FN...*, CREATE-...) wherever they
-appear, since the host names them as quoted data for fnn-call dispatch too;
+Which words: fn's own names (FN..., *FN...*, CREATE-...) and every *EARMUFFED*
+variable or constant wherever they appear, since the host names functions as
+quoted data for fnn-call dispatch and reads variables as bare words;
 any other word only where the host APPLIES it -- the head of a form `(w',
 `#'w' or a quoted `'w'.  A word the host uses only as a variable or a
 keyword-like name (an `ev' parameter, an flet's `fmt') would otherwise root
@@ -57,8 +58,10 @@ from ledger import Sym  # noqa: E402
 
 
 def own(word):
-    """fn's own name: FN..., *FN..., or a stobj creator CREATE-..."""
-    return word.lstrip("*").startswith("FN") or word.startswith("CREATE-")
+    """A word kept wherever it appears: fn's own name (FN..., *FN..., a stobj creator
+    CREATE-...), or a special variable or constant (*NAME*), which the host reads as a bare word."""
+    return (word.lstrip("*").startswith("FN") or word.startswith("CREATE-")
+            or (len(word) > 2 and word.startswith("*") and word.endswith("*")))
 
 
 def _word(x):

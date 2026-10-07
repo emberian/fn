@@ -312,7 +312,8 @@ sets *fe-text* and *fe-starts*."
 ;;; ------------------------------------------------------------------------
 ;;; free names of an expanded form
 (defun fe-calls (form fns vars)
-  "Record the function names a macroexpanded FORM calls in FNS and every symbol atom outside quote in VARS."
+  "Record the function names a macroexpanded FORM calls in FNS, and in VARS every symbol atom outside quote and
+every special variable a let, let* or lambda binds."
   (labels ((walk (x locals)
              (cond ((symbolp x) (when (and x (not (eq x t))) (setf (gethash x vars) t)))
                    ((atom x) nil)
@@ -321,8 +322,9 @@ sets *fe-text* and *fe-starts*."
                           (quote nil)
                           (function (cond ((symbolp (cadr x)) (note (cadr x) locals))
                                           ((and (consp (cadr x)) (eq (car (cadr x)) 'lambda)) (walk (cadr x) locals))))
-                          (lambda (walk-body (cddr x) locals))
-                          ((let let*) (dolist (b (cadr x)) (when (consp b) (walk (cadr b) locals)))
+                          (lambda (bound-specials (cadr x)) (walk-body (cddr x) locals))
+                          ((let let*) (bound-specials (mapcar (lambda (b) (if (consp b) (car b) b)) (cadr x)))
+                           (dolist (b (cadr x)) (when (consp b) (walk (cadr b) locals)))
                            (walk-body (cddr x) locals))
                           ((flet labels)
                            (let ((l2 (append (mapcar #'car (cadr x)) locals)))
@@ -343,6 +345,13 @@ sets *fe-text* and *fe-starts*."
                                    (t (if (symbolp op) (note op locals) (walk op locals))
                                       (dolist (y (cdr x)) (walk y locals))))))))))
            (walk-body (b locals) (dolist (y b) (walk y locals)))
+           ;; a binding of a special variable is a reference to it: without the variable's declaration
+           ;; bare SBCL compiles the binding as lexical, invisible to the functions that read it
+           (bound-specials (names)
+             (dolist (v names)
+               (when (and (symbolp v) v (not (member v lambda-list-keywords))
+                          (eq (sb-int:info :variable :kind v) :special))
+                 (setf (gethash v vars) t))))
            (note (s locals) (unless (member s locals) (setf (gethash s fns) t))))
     (walk form nil)))
 
@@ -524,6 +533,10 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                                               "world:defconst,source:defvar"))
                                        ((string= id "decl:prologue") (cons (fe-prologue-forms) "acl2.lisp:2704-2705,*acl2-optimize-form*"))
                                        (t (cons (fe-derive-inline-decls sym) "world:inline-namep"))))
+          ((string= kind "guard")
+           ;; the guard ACL2 prints when a primitive's *1* finds its guard false (guard-raw,
+           ;; translate.lisp:7616), untranslated here in the world; clruntime.lisp's guard-raw reads it
+           (cons (list `(setf (gethash ',sym *xl-guard-raw*) ',(guard-raw sym *fe-w*))) "world:guard-raw"))
           ((string= kind "registry")
            (cons (fe-registry-forms stobj-names (fe-all-stobj-names)) "world:defstobj-registry"))
           (t (error "unknown unit kind in ~a" id)))))
@@ -545,6 +558,14 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
   "NAMES plus the foundations of abstract stobjs and nested stobj field types (frontend.lisp)."
   (xt-stobj-closure-1 names nil *fe-w*))
 
+(defun fe-guard-raw-subjects (form fn)
+  "Call FN on F for each (guard-raw (quote F) ...) inside FORM."
+  (cond ((atom form) nil)
+        ((and (eq (car form) 'guard-raw) (consp (cdr form)) (consp (cadr form))
+              (eq (car (cadr form)) 'quote) (symbolp (cadr (cadr form))))
+         (funcall fn (cadr (cadr form))))
+        (t (loop for x on form while (consp x) do (fe-guard-raw-subjects (car x) fn)))))
+
 (defun fe-closure (roots stobj-names macro-names)
   "Walk from ROOTS (raw and *1* of each), the named stobjs and macros; return an fe-run."
   (let ((units (make-hash-table :test 'equal)) (order nil) (queue nil)
@@ -561,6 +582,9 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                    (dolist (f forms) (fe-calls (fe-walkable f) fns vars))
                    (maphash (lambda (s v) (declare (ignore v)) (ref-fn s id)) fns)
                    (maphash (lambda (s v) (declare (ignore v)) (ref-var s id)) vars)
+                   (dolist (f forms) (fe-guard-raw-subjects f (lambda (g) (edge id (fe-id :guard g))
+                                                                    (unless (gethash (fe-id :guard g) units)
+                                                                      (enqueue "guard" g id)))))
                    (dolist (f forms)    ; attachments name their implementation as quoted data
                      (when (and (eq (car f) 'defparameter) (fe-star1-p (cadr f)) (consp (caddr f))
                                 (eq (car (caddr f)) 'quote) (symbolp (cadr (caddr f))))

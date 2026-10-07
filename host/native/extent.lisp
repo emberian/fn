@@ -618,6 +618,7 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ;;; released (fn-prl-evict), on insertion and when its file retires
 ;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW).
 (defvar *fnn-extent-window-cache* nil) ; guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
 
 (defun fnn-extent-window-cache-insert (token plan window)
   "Extent lock held, the :cached row already ACL2's.  Front insertion; the
@@ -1619,7 +1620,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;;; that reads octet by octet (fn-arena$x-get) decodes once; the key is the
 ;;; whole descriptor identity (file, entry, expected trailer, block, length)
 ;;; and the dictionary's identity (EQ: one shared list per dictionary).
-(defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
+;;; (*fnn-extent-lz-last*, the one decoded payload kept, is declared with the other extent caches.)
 
 (defun fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (when *fnn-extent-window-mode*
@@ -1818,14 +1819,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;; guarded-by: the owner mutex ((S . IDS) ...: quiet file ids waiting for
 ;; the readers pinned at or below the stamp S)
 (defvar *fnn-extent-checkpoint-id* nil)
-(defvar *fnn-extent-image-id* nil
-  "The file id the history image was registered under at the open
-(host/native/io.lisp fnn-state-checkpoint-adopt-image, fnn-extent-register-at):
-fn-pgs-fill-realize preads it OFF the extent lock for the process's life, so
-it is never retired -- a CHECKED exclusion (fnn-owner-release-extents faults
-by name if it ever enters the retired set), the file resource's :excluded
-root history-image (books/page-read-direct.lisp, def-holder fn-pio-file-holds;
-c05 finding F1).")
+;; *fnn-extent-image-id* is declared in host/native/io.lisp, which sets it first and loads before this file.
 ;; guarded-by: the owner mutex (the realizer id of the installed checkpoint
 ;; the last reseat pointed payloads at)
 

@@ -108,6 +108,19 @@ Presence is distinct from a present NIL value; no classes are inferred here."
       (error "stobj-table key is not in the extracted stobj registry: ~s" name)))
 (defun user-stobj-alist (state) (declare (ignore state)) *xl-user-stobj-alist*)
 
+;;; --- the guard-violation throw.  ACL2 8.7 axioms.lisp:2881 throw-raw-ev-fncall: inside LD
+;;; (*ld-level* > 0, raw mode off), which is where the image runs fn, it is (throw 'raw-ev-fncall val);
+;;; its other branch formats VAL with ev-fncall-msg over the live world, i.e. ACL2's evaluator, for a
+;;; top-level REPL this core does not have.  host/native's fnn-call catches the tag as the image's does.
+(defun throw-raw-ev-fncall (val) (throw 'raw-ev-fncall val))
+;;; guard-raw (translate.lisp:7616): the guard a primitive's *1* puts in its guard-violation value,
+;;; untranslated in the extraction world and carried by defs.lisp's guard: units (forms-export.lisp).
+(defvar *xl-guard-raw* (make-hash-table :test 'eq))
+(defun guard-raw (fn wrld)
+  (declare (ignore wrld))
+  (multiple-value-bind (g found) (gethash fn *xl-guard-raw*)
+    (if found g (hard-error 'guard-raw (format nil "no guard carried for ~s" fn) nil))))
+
 ;;; --- ACL2's error path.  A guard violation or hard error inside an entry
 ;;; halts it; host/native's fnn-call catches the throw and reports the fault
 ;;; `ACL2 error in ENTRY: ACL2 Halted' (exit :fault), as in the image. -------

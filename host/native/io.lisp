@@ -2891,6 +2891,15 @@ in *fnn-checkpoint-load-io-error*."
                (progn (fnn-octets-release)
                       (values (if (equal answer '(:refused :arena)) :arena :refused) 0))))))))
 
+(defvar *fnn-extent-image-id* nil
+  "The file id the history image was registered under at the open
+(host/native/io.lisp fnn-state-checkpoint-adopt-image, fnn-extent-register-at):
+fn-pgs-fill-realize preads it OFF the extent lock for the process's life, so
+it is never retired -- a CHECKED exclusion (fnn-owner-release-extents faults
+by name if it ever enters the retired set), the file resource's :excluded
+root history-image (books/page-read-direct.lisp, def-holder fn-pio-file-holds;
+c05 finding F1).")
+
 (defun fnn-state-checkpoint-adopt-image (store s)
   "The checkpoint's history image adopted (host/store-node-host.lisp
 fn-store-sco-image-open over the live fn-hrecs$c: the binding checked against
@@ -5905,6 +5914,10 @@ report is never rendered behind an owner."
            +fnn-exit-ok+))
       (fnn-store-close store))))
 
+(defvar *fnn-lz-tally* nil
+  "ACL2's tally of the records the last full replay read (fn-lzr-read-step):
+what `store ROOT compression' reports.")
+
 (defun fnn-command-compression (root)
   "`store ROOT compression': the profile's compression threshold and ACL2's
 tally of the log the open replayed (fn-lzr-tally-text): records, compressed
@@ -7397,10 +7410,6 @@ record's (FILE . PLACE), PLACE ACL2's (START N ROFF RLEN); else NIL.")
 (defvar *fnn-log-record-stored* nil
   "While a log stream hands a record to its sink: the octets the log holds
 for it (a compressed record's frame, or the record itself).")
-
-(defvar *fnn-lz-tally* nil
-  "ACL2's tally of the records the last full replay read (fn-lzr-read-step):
-what `store ROOT compression' reports.")
 
 (defvar *fnn-lz-dicts* nil)
 (defvar *fnn-lz-current* nil)

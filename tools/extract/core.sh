@@ -91,6 +91,8 @@ fi
 if [ -s "$OUT/gaps.txt" ]; then
     echo "core: the closure has names nothing provides (see $OUT/gaps.txt):" >&2; head -20 "$OUT/gaps.txt" >&2; exit 1
 fi
+# X2: ACL2's evaluator, LD and translator are reachable from no root (closure_why.py BANNED, over edges.tsv)
+python3 "$X/closure_why.py" "$OUT" --check || { echo "core: the closure reaches ACL2's evaluator (X2); see above" >&2; exit 1; }
 # X1: a separate image run re-derives every unit from the world and ACL2's sources and compares
 {
   printf '(ld "tools/extract/frontend.lisp")\n:q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n'
@@ -119,10 +121,13 @@ HEAP=$(opt --dynamic-space-size); STACK=$(opt --control-stack-size); TLS=$(opt -
       --non-interactive --no-userinit --load "$X/core-main.lisp" > "$OUT/sbcl.log" 2>&1 ) || {
     echo "core: the SBCL build failed; see $OUT/sbcl.log" >&2; tail -30 "$OUT/sbcl.log" >&2; exit 1; }
 [ -s "$OUT/fn-core.core" ] || { echo "core: no $OUT/fn-core.core" >&2; exit 1; }
-# X2: judged at the end of the build, after host/native has defined the constrained functions it provides
-if grep -aq "Undefined functions:\|Undefined variables:" "$OUT/sbcl.log"; then
-    echo "core: SBCL reports undefined names after the whole build (X2); see $OUT/sbcl.log:" >&2
-    awk '/Undefined (functions|variables):/{f=1} f' "$OUT/sbcl.log" | head -12 >&2; exit 1
+# X2: judged at the end of the build, after host/native has defined the constrained functions it provides.
+# SBCL says "Undefined function:" for one name and "Undefined functions:" for several.  A let of a
+# special variable nothing here declares compiles as a LEXICAL binding with only a style warning, so a
+# binding ACL2 relies on (*hard-error-returns-nilp*) would silently stop reaching its readers: refused too.
+if grep -aqE "Undefined (functions?|variables?):|using the lexical binding of the symbol" "$OUT/sbcl.log"; then
+    echo "core: SBCL reports undefined or undeclared names after the whole build (X2); see $OUT/sbcl.log:" >&2
+    grep -aE -A1 "Undefined (functions?|variables?):|using the lexical binding of the symbol" "$OUT/sbcl.log" | head -24 >&2; exit 1
 fi
 [ "$NAME" = fn-core ] || mv "$OUT/fn-core.core" "$OUT/$NAME.core"
 python3 "$X/core_launcher.py" "$OUT/$NAME" --runtime "$SBCL" --home "$SBCL_HOME" \
