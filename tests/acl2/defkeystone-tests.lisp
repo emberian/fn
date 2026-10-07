@@ -178,14 +178,14 @@
 ;; is the exact output; the last is that output run, with a call actual.
 (assert-event
  (equal (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 z) (w state))
-        '((lambda (x) (mv-nth '0 (mv-list '2 (fn-dkt-two x)))) '3)))
+        '((lambda (x) (mv-nth '0 (mv-list 2 (fn-dkt-two x)))) '3)))
 (assert-event
  (equal (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2)) (w state))
-        '((lambda (x y) (declare (ignorable y)) (mv-nth '0 (mv-list '2 (fn-dkt-two x))))
+        '((lambda (x y) (declare (ignorable y)) (mv-nth '0 (mv-list 2 (fn-dkt-two x))))
           '3 (cons '1 '2))))
 (assert-event
  (equal (fn-dt-bridge '((lambda (x y w) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2) (len q)) (w state))
-        '((lambda (x y w) (declare (ignorable y w)) (mv-nth '0 (mv-list '2 (fn-dkt-two x))))
+        '((lambda (x y w) (declare (ignorable y w)) (mv-nth '0 (mv-list 2 (fn-dkt-two x))))
           '3 (cons '1 '2) (len q))))
 (assert-event
  (let ((tm (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2)) (w state))))
