@@ -22,11 +22,13 @@ ROOT = HERE.parent.parent
 BARS = HERE / "bars.json"
 ITEMS = ROOT / "planning" / "repair" / "items"
 LOADED_ABOVE = 8.0          # a latency bar is NOT-MEASURED when the box's 1-minute load exceeds this
+TIME_LOAD_MAX = 4.0         # a time bar (T-*, ruling 17) needs load <= 4 at start AND end, on pinned cores
 MIN_P99_SAMPLES = 200       # p99 of fewer samples is not reported
 
 CMP = {"le": lambda v, t: v <= t, "lt": lambda v, t: v < t, "ge": lambda v, t: v >= t,
        "gt": lambda v, t: v > t, "eq": lambda v, t: v == t}
-CMP_TEXT = {"le": "<=", "lt": "<", "ge": ">=", "gt": ">", "eq": "=="}
+CMP["report"] = lambda v, t: True
+CMP_TEXT = {"report": "reported", "le": "<=", "lt": "<", "ge": ">=", "gt": ">", "eq": "=="}
 
 
 def pct(values, q):
@@ -75,21 +77,37 @@ def load_bars(path=BARS):
 
 
 def judge_cell(cr, bars):
-    """One verdict row per bar that names this cell: PASS, FAIL or NOT-MEASURED, with the reason."""
+    """One verdict row per bar that names this cell: PASS, FAIL, REPORTED or NOT-MEASURED, with the reason.
+
+    A check may name `fs` (zfs, tmpfs): it applies only to a cell on that filesystem.  A `latency` bar is
+    NOT-MEASURED above load 8; a `time` bar (ruling 17) needs load <= 4 at start and end and pinned cores."""
     head = cell_head(cr.get("cell", ""))
-    load1 = ((cr.get("box") or {}).get("loadavg_start") or [None])[0]
+    box = cr.get("box") or {}
+    load1 = (box.get("loadavg_start") or [None])[0]
+    load2 = (box.get("loadavg_end") or [None])[0]
+    fs = (box.get("fs") or "").lower()
     rows = []
     for b in bars:
         if b["cell"] != head:
             continue
         checks, failed, missing = [], False, []
+        applicable = 0
         for c in b["checks"]:
+            if c.get("fs") and c["fs"] != fs:
+                continue
+            applicable += 1
             val = (cr.get("metrics") or {}).get(c["metric"])
             row = {"metric": c["metric"], "cmp": c["cmp"], "threshold": c["threshold"], "value": val}
             if val is None:
                 row["reason"] = (cr.get("not_measured") or {}).get(c["metric"]) or (
                     "run %s" % cr.get("status", "incomplete") if cr.get("status") != "complete"
                     else "metric absent from the run")
+                missing.append(row["reason"])
+            elif b.get("time") and (load1 is None or load2 is None or load1 > TIME_LOAD_MAX or load2 > TIME_LOAD_MAX):
+                row["reason"] = "box loaded (load %s at start, %s at end; a time bar needs <= %g at both)" % (load1, load2, TIME_LOAD_MAX)
+                missing.append(row["reason"])
+            elif b.get("time") and not box.get("pinned"):
+                row["reason"] = "cell not pinned to its own cores (--cores)"
                 missing.append(row["reason"])
             elif b.get("latency") and load1 is not None and load1 > LOADED_ABOVE:
                 row["reason"] = "box loaded (load %.1f > %.0f)" % (load1, LOADED_ABOVE)
@@ -98,7 +116,10 @@ def judge_cell(cr, bars):
                 row["ok"] = bool(CMP[c["cmp"]](val, c["threshold"]))
                 failed = failed or not row["ok"]
             checks.append(row)
-        verdict = "FAIL" if failed else ("NOT-MEASURED" if missing else "PASS")
+        if not applicable:
+            missing.append("no check applies on filesystem %s" % (fs or "unknown"))
+        all_report = bool(checks) and all(c["cmp"] == "report" for c in checks)
+        verdict = "FAIL" if failed else ("NOT-MEASURED" if missing else ("REPORTED" if all_report else "PASS"))
         rows.append({"bar": b["id"], "quantity": b["quantity"], "verdict": verdict,
                      "reason": "; ".join(sorted(set(missing))) if verdict == "NOT-MEASURED" else None,
                      "checks": checks, "source": b["source"]})
@@ -108,7 +129,7 @@ def judge_cell(cr, bars):
 def overall(rows):
     if any(r["verdict"] == "FAIL" for r in rows):
         return "fail"
-    if rows and all(r["verdict"] == "PASS" for r in rows):
+    if rows and all(r["verdict"] in ("PASS", "REPORTED") for r in rows):
         return "pass"
     return "no-bar" if not rows else "not-measured"
 
