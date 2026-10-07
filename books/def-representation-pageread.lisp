@@ -26,7 +26,8 @@
 
 (defun adt-pr-fill (p res frames)
   (declare (xargs :guard t :verify-guards nil))
-  (take (adt-pr-cap frames) (cons p (remove-equal p res))))
+  (let ((l (cons p (remove-equal p res))))
+    (if (< (adt-pr-cap frames) (len l)) (take (adt-pr-cap frames) l) l)))
 
 (defthm adt-pr-member-of-fill
   (member-equal p (adt-pr-fill p res frames))

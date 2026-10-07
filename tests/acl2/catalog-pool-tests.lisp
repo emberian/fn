@@ -110,10 +110,10 @@
 ; 3. Teeth.
 ; (a) No retry: the verdict is read as a word.
 (defun cpt-noretry-words (j end)
-  (declare (xargs :mode :program))
-  (if (< j end) (cons (adt-pr-word :rows j *cpt-pages* nil) (cpt-noretry-words (+ 1 j) end)) nil))
+  (declare (xargs :verify-guards nil :measure (nfix (- (nfix end) (nfix j)))))
+  (if (< (nfix j) (nfix end)) (cons (adt-pr-word :rows j *cpt-pages* nil) (cpt-noretry-words (+ 1 (nfix j)) end)) nil))
 (defun cpt-noretry-row (seq)
-  (declare (xargs :mode :program))
+  (declare (xargs :verify-guards nil))
   (cpt-noretry-words (nth 0 (nth seq (fn-crow-dir-rows (fn-pck-crow-rows *cpt-h*))))
                      (+ (nth 0 (nth seq (fn-crow-dir-rows (fn-pck-crow-rows *cpt-h*)))) (nth 1 (nth seq (fn-crow-dir-rows (fn-pck-crow-rows *cpt-h*)))))))
 (assert-event (member-equal '(:need-page :rows 0) (cpt-noretry-row 3)))
