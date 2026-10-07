@@ -55,7 +55,7 @@ class ConsumerRawMockTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("sbcl"), "SBCL required")
 class FrameFlagMockTests(unittest.TestCase):
-    """`--frame` on `fn identity` and `fn consumer status|position|ack`.
+    """`--frame` on `fn identity` and `fn consumer status|position|ack|poll`.
 
     ACL2's argv plan says `--frame`; the shipped adapters print the reply
     frame their one exchange read, as hex (the host's fnn-hex), in place of
@@ -81,6 +81,15 @@ class FrameFlagMockTests(unittest.TestCase):
 
     def test_ack_frame_prints_the_reply_frame_as_hex(self):
         self.passed(self.consumer, "native consumer --frame ack boundary passed")
+
+    def test_poll_frame_prints_the_reply_frame_as_hex(self):
+        self.passed(self.consumer, "native consumer --frame poll boundary passed")
+
+    def test_poll_frame_still_writes_the_report_and_cursor_files(self):
+        self.passed(self.consumer, "native consumer --frame poll files boundary passed")
+
+    def test_poll_cursor_file_is_the_frames_cursor_field(self):
+        self.passed(self.consumer, "native consumer --frame poll cursor-field boundary passed")
 
     def test_frame_flag_is_absent_without_the_flag(self):
         self.passed(self.consumer, "native consumer --frame absent boundary passed")
