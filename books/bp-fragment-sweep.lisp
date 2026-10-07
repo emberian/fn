@@ -202,42 +202,14 @@
 ; -----------------------------------------------------------------------------
 ; Sorting by offset (a merge sort)
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpfw-evens-loop (xs acc)
-  (declare (xargs :guard (and (true-listp xs) (true-listp acc)) :verify-guards nil))
-  (if (consp xs) (fn-bpfw-evens-loop (cddr xs) (cons (car xs) acc)) (revappend acc nil)))
-
-(defun fn-bpfw-evens (xs)
-  (declare (xargs :verify-guards nil :guard (true-listp xs)))
-  (mbe :logic
-       (if (consp xs)
-           (cons (car xs) (fn-bpfw-evens (cddr xs)))
-         nil)
-       :exec (fn-bpfw-evens-loop xs nil)))
-
-(local
- (defthm fn-bpfw-evens-loop-is-revappend
-   (equal (fn-bpfw-evens-loop xs acc)
-          (revappend acc (fn-bpfw-evens xs)))
-   :hints (("Goal" :induct (fn-bpfw-evens-loop xs acc)
-                   :in-theory (union-theories '(fn-bpfw-evens-loop fn-bpfw-evens revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpfw-evens-loop)
-
-(verify-guards fn-bpfw-evens
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpfw-evens)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpfw-evens-loop-is-revappend (acc nil))))))
+; Every other element (the :exec is a loop, def-loop :step: the advance is cddr).
+(def-loop fn-bpfw-evens (xs)
+  :shape :step :done (atom xs) :elt e :body e :next (cddr xs)
+  :guard (true-listp xs))
 
 (defthm fn-bpfw-len-evens
   (<= (len (fn-bpfw-evens xs)) (len xs))
+  :hints (("Goal" :induct (fn-bpfw-evens xs)))
   :rule-classes :linear)
 
 (defthm fn-bpfw-len-evens-strict

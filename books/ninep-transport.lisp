@@ -178,15 +178,40 @@
         (equal (nth 3 next) (nth 3 session))))
   :hints (("Goal" :in-theory (e/d (fn-9ps-flush-at) (nth update-nth))))))
 
+; The step keeps the mount custody because each callee that returns the
+; session keeps it: one frame lemma per callee, so the step's proof opens
+; only the step (27 s -> 1 s).
+(local
+ (defthm fn-9pt-dispatch-step-mount-frame
+  (implies (fn-ninep-sessionp fn-ninep-session)
+   (let ((next (mv-nth 2 (fn-9p-dispatch-step limit dispatch fn-octets fn-ninep-session))))
+    (and (equal (fn-9ps-mount-token next) (fn-9ps-mount-token fn-ninep-session))
+         (equal (fn-9ps-mount-source next) (fn-9ps-mount-source fn-ninep-session)))))
+  :hints (("Goal" :in-theory
+   (e/d (fn-9p-dispatch-step fn-9ps-version-at)
+        (fn-9p-fields-step fn-9p-header-at fn-9p-body-action fn-9p-version-at
+         fn-9ps-flush-at fn-9ps-clunk-at nth update-nth))))))
+
+(local
+ (defthm fn-9pt-drain-quiesce-version-mount-frame
+  (and (equal (fn-9ps-mount-token (fn-9ps-drain-begin fn-ninep-session)) (fn-9ps-mount-token fn-ninep-session))
+       (equal (fn-9ps-mount-source (fn-9ps-drain-begin fn-ninep-session)) (fn-9ps-mount-source fn-ninep-session))
+       (equal (fn-9ps-mount-token (mv-nth 1 (fn-9ps-quiesce-step fn-ninep-session))) (fn-9ps-mount-token fn-ninep-session))
+       (equal (fn-9ps-mount-source (mv-nth 1 (fn-9ps-quiesce-step fn-ninep-session))) (fn-9ps-mount-source fn-ninep-session))
+       (equal (fn-9ps-mount-token (mv-nth 2 (fn-9pt-version-after-quiescence fn-ninep-session))) (fn-9ps-mount-token fn-ninep-session))
+       (equal (fn-9ps-mount-source (mv-nth 2 (fn-9pt-version-after-quiescence fn-ninep-session))) (fn-9ps-mount-source fn-ninep-session)))
+  :hints (("Goal" :in-theory (e/d (fn-9pt-version-after-quiescence fn-9ps-quiesce-step fn-9ps-drain-begin) (nth update-nth))))))
+
 (defthm fn-9pt-step-retains-mount-custody
  (implies (fn-ninep-sessionp fn-ninep-session)
  (let ((next (mv-nth 2 (fn-9pt-step cursor fn-octets fn-ninep-session))))
   (and (equal (fn-9ps-mount-token next) (fn-9ps-mount-token fn-ninep-session))
        (equal (fn-9ps-mount-source next) (fn-9ps-mount-source fn-ninep-session)))))
  :hints (("Goal" :in-theory
-  (e/d (fn-9pt-step fn-9pt-version-after-quiescence fn-9p-dispatch-step
-         fn-9ps-version-at fn-9ps-quiesce-step fn-9ps-drain-begin)
-       (fn-9p-fields-step fn-9p-header-at fn-9p-body-action fn-9p-version-at
+  (e/d (fn-9pt-step)
+       (fn-9ps-mount-token fn-9ps-mount-source fn-9pt-version-after-quiescence
+        fn-9p-dispatch-step fn-9ps-version-at fn-9ps-quiesce-step fn-9ps-drain-begin
+        fn-9p-fields-step fn-9p-header-at fn-9p-body-action fn-9p-version-at
         fn-9ps-flush-at fn-9ps-clunk-at nth update-nth)))))
 
 (defthm fn-9pt-stale-reply-return-complete-effect

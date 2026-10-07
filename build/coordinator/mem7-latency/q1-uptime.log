@@ -1,0 +1,12 @@
+r1-s64 before  01:12:41 up 83 days,  6:56, 59 users,  load average: 4.61, 5.38, 7.94
+r1-s64 after   01:13:56 up 83 days,  6:58, 61 users,  load average: 6.50, 5.76, 7.85
+r1-s8 before  01:13:56 up 83 days,  6:58, 61 users,  load average: 6.50, 5.76, 7.85
+r1-s8 after   01:15:17 up 83 days,  6:59, 60 users,  load average: 6.75, 6.12, 7.81
+r2-s64 before  01:15:17 up 83 days,  6:59, 60 users,  load average: 6.75, 6.12, 7.81
+r2-s64 after   01:16:27 up 83 days,  7:00, 62 users,  load average: 6.78, 6.30, 7.75
+r2-s8 before  01:16:27 up 83 days,  7:00, 62 users,  load average: 6.78, 6.30, 7.75
+r2-s8 after   01:17:39 up 83 days,  7:01, 62 users,  load average: 6.81, 6.45, 7.70
+r3-s64 before  01:17:39 up 83 days,  7:01, 62 users,  load average: 6.81, 6.45, 7.70
+r3-s64 after   01:18:55 up 83 days,  7:03, 60 users,  load average: 7.70, 6.72, 7.69
+r3-s8 before  01:18:55 up 83 days,  7:03, 60 users,  load average: 7.70, 6.72, 7.69
+r3-s8 after   01:20:18 up 83 days,  7:04, 62 users,  load average: 7.70, 6.95, 7.68

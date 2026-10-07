@@ -36,6 +36,7 @@
 ; digest, is cited for the pins, not claimed).
 
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "login-binding")
 (include-book "def-loop")
 (include-book "owner-config")
@@ -365,31 +366,31 @@
   :shape :map :over pairs :elt p
   :body (fn-lb-binding-delta (and (consp p) (car p)) (and (consp p) (cdr p))))
 
-(defun fn-lb-chunks-loop (xs n acc)
-  (declare (xargs :guard (and (true-listp xs) (posp n)) :measure (len xs)))
-  (if (and (consp xs) (posp n))
-      (fn-lb-chunks-loop (nthcdr (min n (len xs)) xs) n
-                         (cons (take (min n (len xs)) xs) acc))
-    (fn-ag-rev-onto acc nil)))
+; XS in consecutive pieces of at most N (N >= 1): def-loop :step, the advance
+; drops one piece, the measure is the length left.
+(local
+ (defthm fn-lb-len-pos-early
+   (implies (consp xs) (< 0 (len xs)))
+   :rule-classes :linear))
 
-(defun fn-lb-chunks (xs n)
-  ; XS in consecutive pieces of at most N (N >= 1).
-  (declare (xargs :guard (and (true-listp xs) (posp n)) :measure (len xs)
-                  :verify-guards nil))
-  (mbe :logic
-       (if (and (consp xs) (posp n))
-           (cons (take (min n (len xs)) xs)
-                 (fn-lb-chunks (nthcdr (min n (len xs)) xs) n))
-         nil)
-       :exec (fn-lb-chunks-loop xs n nil)))
+(local
+ (defthm fn-lb-len-nthcdr-early
+   (equal (len (nthcdr k x)) (nfix (- (len x) (nfix k))))
+   :hints (("Goal" :induct (nthcdr k x)))))
 
-(defthm fn-lb-chunks-loop-is-rev-onto
-  (equal (fn-lb-chunks-loop xs n acc)
-         (fn-ag-rev-onto acc (fn-lb-chunks xs n)))
-  :hints (("Goal" :induct (fn-lb-chunks-loop xs n acc)
-                  :in-theory (disable take nthcdr min))))
+(local
+ (defthm fn-lb-chunks-progress
+   (implies (and (consp xs) (posp n))
+            (< (len (nthcdr (min n (len xs)) xs)) (len xs)))
+   :hints (("Goal" :in-theory (disable nthcdr len)
+                   :use ((:instance fn-lb-len-nthcdr-early (k (min n (len xs))) (x xs)))))))
 
-(verify-guards fn-lb-chunks)
+(def-loop fn-lb-chunks (xs n)
+  :shape :step :over xs :done (not (and (consp xs) (posp n)))
+  :body (take (min n (len xs)) xs) :next (nthcdr (min n (len xs)) xs)
+  :measure (len xs)
+  :progress-hints (("Goal" :use ((:instance fn-lb-chunks-progress))))
+  :guard (and (true-listp xs) (posp n)))
 
 (defun fn-lb-flatten (chunks)
   (declare (xargs :guard t))

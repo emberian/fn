@@ -324,42 +324,11 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-feed-inflight-count-loop (rev acc)
-  (declare (xargs :guard (rationalp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-feed-inflight-count-loop (cdr rev)
-                                   (+ (if (fn-feed-state-inflightp (fn-feed-entry-state (car rev)))
-                                          1
-                                        0)
-                                      acc))
-    acc))
-
-(defun fn-feed-inflight-count (xs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom xs)
-           0
-           (+ (if (fn-feed-state-inflightp (fn-feed-entry-state (car xs))) 1 0)
-              (fn-feed-inflight-count (cdr xs))))
-       :exec (fn-feed-inflight-count-loop (fn-ag-rev-onto xs nil) 0)))
-
-(local
- (defthm fn-feed-inflight-count-loop-of-rev-onto
-   (equal (fn-feed-inflight-count-loop (fn-ag-rev-onto xs zs) 0)
-          (fn-feed-inflight-count-loop zs (fn-feed-inflight-count xs)))
-   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-                   :in-theory (union-theories '(fn-feed-inflight-count-loop fn-feed-inflight-count fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-feed-inflight-count-loop)
-
-(verify-guards fn-feed-inflight-count
-  :hints (("Goal" :in-theory (union-theories '(fn-feed-inflight-count fn-feed-inflight-count-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-feed-inflight-count-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-feed-inflight-count (xs)
+  :shape :foldr :over xs :elt x
+  :combine (+ (if (fn-feed-state-inflightp (fn-feed-entry-state x)) 1 0) acc) :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (rationalp acc))
 
 (defun fn-feed-attempts-belowp (xs n)
   (declare (xargs :guard t))

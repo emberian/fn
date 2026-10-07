@@ -42,6 +42,7 @@
 
 (in-package "ACL2")
 (include-book "web-request")
+(include-book "def-loop")
 (include-book "web-2047")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
 
@@ -138,50 +139,18 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-wr-pct-encode-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-wr-pct-encode-loop (cdr rev)
-                             (let ((o (car rev)))
-                               (if (fn-wr-unreservedp o)
-                                   (cons o acc)
-                                 (let ((n (if (and (natp o) (< o 256)) o 0)))
-                                   (list* 37
-                                          (fn-ot-hex-digit-upper (floor n 16))
-                                          (fn-ot-hex-digit-upper (mod n 16))
-                                          acc)))))
-    acc))
-
-(defun fn-wr-pct-encode (xs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp xs)
-           (let ((o (car xs)))
-             (if (fn-wr-unreservedp o)
-                 (cons o (fn-wr-pct-encode (cdr xs)))
-               (let ((n (if (and (natp o) (< o 256)) o 0)))
-                 (list* 37 (fn-ot-hex-digit-upper (floor n 16)) (fn-ot-hex-digit-upper (mod n 16))
-                        (fn-wr-pct-encode (cdr xs))))))
-         nil)
-       :exec (fn-wr-pct-encode-loop (fn-ag-rev-onto xs nil) nil)))
-
-(local
- (defthm fn-wr-pct-encode-loop-of-rev-onto
-   (equal (fn-wr-pct-encode-loop (fn-ag-rev-onto xs zs) nil)
-          (fn-wr-pct-encode-loop zs (fn-wr-pct-encode xs)))
-   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-                   :in-theory (union-theories '(fn-wr-pct-encode-loop fn-wr-pct-encode fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-wr-pct-encode-loop)
-
-(verify-guards fn-wr-pct-encode
-  :hints (("Goal" :in-theory (union-theories '(fn-wr-pct-encode fn-wr-pct-encode-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-wr-pct-encode-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-wr-pct-encode (xs)
+  :shape :foldr :over xs :elt x
+  :combine (let ((o x))
+                (if (fn-wr-unreservedp o)
+                    (cons o acc)
+                    (let ((n (if (and (natp o) (< o 256)) o 0)))
+                         (list* 37
+                                (fn-ot-hex-digit-upper (floor n 16))
+                                (fn-ot-hex-digit-upper (mod n 16))
+                                acc))))
+  :init nil
+  :rev fn-ag-rev-onto)
 
 ; -----------------------------------------------------------------------------
 ; Un-stuffing a multi-line block (RFC 3977 3.1.1): a line that opens with
@@ -834,55 +803,25 @@
           (list (fn-wm "</td><td class='date'>")) (fn-wr-span date)
           (list (fn-wm "</td></tr>")) rest))
 
-(defun fn-wr-over-rows-loop (group rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (let ((row (car rev)))
-        (fn-wr-over-rows-loop group (cdr rev)
-          (fn-wr-over-row-segments group
-            (list (fn-wr-txt (fn-wrq-nth 0 row))) (list (fn-wr-url (fn-wrq-nth 0 row)))
-            (fn-wrq-nth 1 row) (fn-wrq-nth 2 row) (fn-wrq-nth 3 row) acc)))
-    acc))
-
-(defun fn-wr-over-rows (group rows)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp rows)
-           (let ((row (car rows)))
-             (append (list (fn-wm "<tr><td class='num'>")
-                           (fn-wr-txt (fn-wrq-nth 0 row))
-                           (fn-wm "</td><td class='subj'><a class='title' href='/a?g=")
-                           (fn-wr-url group)
-                           (fn-wm "&amp;n=")
-                           (fn-wr-url (fn-wrq-nth 0 row))
-                           (fn-wm "'>"))
-                     (fn-wr-wspan-or (fn-wrq-nth 1 row) (fn-wt "(no subject)"))
-                     (list (fn-wm "</a></td><td class='from'>"))
-                     (fn-wr-wspan (fn-wrq-nth 2 row))
-                     (list (fn-wm "</td><td class='date'>"))
-                     (fn-wr-span (fn-wrq-nth 3 row))
-                     (list (fn-wm "</td></tr>"))
-                     (fn-wr-over-rows group (cdr rows))))
-         nil)
-       :exec (fn-wr-over-rows-loop group (fn-ag-rev-onto rows nil) nil)))
-
-(local
- (defthm fn-wr-over-rows-loop-of-rev-onto
-   (equal (fn-wr-over-rows-loop group (fn-ag-rev-onto rows zs) nil)
-          (fn-wr-over-rows-loop group zs (fn-wr-over-rows group rows)))
-   :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
-                   :in-theory (union-theories '(fn-wr-over-rows-loop fn-wr-over-rows fn-wr-over-row-segments fn-wrq-true fn-ag-rev-onto
-                                                binary-append car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-wr-over-rows-loop)
-
-(verify-guards fn-wr-over-rows
-  :hints (("Goal" :in-theory (union-theories '(fn-wr-over-rows fn-wr-over-rows-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-wr-over-rows-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-wr-over-rows (group rows)
+  :shape :foldr :over rows :elt r
+  :combine (let ((row r))
+                (append (list (fn-wm "<tr><td class='num'>")
+                              (fn-wr-txt (fn-wrq-nth 0 row))
+                              (fn-wm "</td><td class='subj'><a class='title' href='/a?g=")
+                              (fn-wr-url group)
+                              (fn-wm "&amp;n=")
+                              (fn-wr-url (fn-wrq-nth 0 row))
+                              (fn-wm "'>"))
+                        (fn-wr-wspan-or (fn-wrq-nth 1 row) (fn-wt "(no subject)"))
+                        (list (fn-wm "</a></td><td class='from'>"))
+                        (fn-wr-wspan (fn-wrq-nth 2 row))
+                        (list (fn-wm "</td><td class='date'>"))
+                        (fn-wr-span (fn-wrq-nth 3 row))
+                        (list (fn-wm "</td></tr>"))
+                        acc))
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-wr-group-main-segments (group row-segs older)
   ; OLDER: the number to page back from, or nil.

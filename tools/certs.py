@@ -1658,6 +1658,7 @@ def install_umbrellas(root: Path, cache: Path, acl2: Path,
         if candidate and candidate not in tries:
             tries.append(candidate)
     lines: list[str] = []
+    last_missing: list[str] = []
     for candidate in tries:
         try:
             report = installer(candidate)
@@ -1666,9 +1667,29 @@ def install_umbrellas(root: Path, cache: Path, acl2: Path,
             continue
         if report.artifact_set is not None:
             return candidate, lines + [f"umbrellas installed as one set: {' '.join(candidate)}"]
-        lines.append(f"umbrellas {' '.join(candidate)}: no coherent set in {cache}")
+        missing = list(getattr(report, "uncached", None) or [])
+        lines.append(f"umbrellas {' '.join(candidate)}: no coherent set in {cache}"
+                     + (f"; {umbrella_miss(candidate, missing)}" if missing else ""))
+        last_missing = missing
+    cause = umbrella_miss(roots, last_missing) if tries and last_missing else "cause not reported"
     return [], lines + ["umbrellas: NOT installed as one set (include-book of the "
-                        "umbrella may fail on a certificate here)"]
+                        f"umbrella may fail on a certificate here): {cause}"]
+
+
+def umbrella_miss(candidate: list[str], missing: list[str]) -> str:
+    """Name what the cache lacks: the umbrellas' own certificates for these
+    source bytes (they are certified by the image build, not before), or
+    dependencies that have no usable certificate here."""
+    own = [name for name in candidate if name in missing]
+    deps = [name for name in missing if name not in candidate]
+    parts = []
+    if own:
+        parts.append(f"no usable certificate for the umbrella itself: {' '.join(own)}")
+    if deps:
+        shown = " ".join(deps[:8]) + (f" (+{len(deps) - 8} more)" if len(deps) > 8 else "")
+        parts.append(f"{len(deps)} dependenc{'y' if len(deps) == 1 else 'ies'} "
+                     f"without a usable certificate: {shown}")
+    return "; ".join(parts)
 
 
 @scoped_closures

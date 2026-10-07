@@ -1054,34 +1054,10 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks one article's index entries, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-gidx-put-all-loop (rev acc)
-  (declare (xargs :guard t))
-  (if (consp rev)
-      (fn-gidx-put-all-loop (cdr rev) (fn-gidx-put (car rev) acc))
-    acc))
-
-(defun fn-gidx-put-all (entries buckets)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp entries)
-                  (fn-gidx-put (car entries) (fn-gidx-put-all (cdr entries) buckets))
-                buckets)
-       :exec (fn-gidx-put-all-loop (fn-ag-rev-onto entries nil) buckets)))
-
-(defthm fn-gidx-put-all-loop-of-rev-onto
-  (equal (fn-gidx-put-all-loop (fn-ag-rev-onto entries zs) buckets)
-         (fn-gidx-put-all-loop zs (fn-gidx-put-all entries buckets)))
-  :hints (("Goal" :induct (fn-ag-rev-onto entries zs)
-                  :in-theory (union-theories
-                              '(fn-gidx-put-all-loop fn-gidx-put-all fn-ag-rev-onto
-                                car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-gidx-put-all
-  :hints (("Goal" :use ((:instance fn-gidx-put-all-loop-of-rev-onto (zs nil)))
-                  :in-theory (union-theories
-                              '(fn-gidx-put-all-loop fn-gidx-put-all)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-gidx-put-all (entries buckets)
+  :shape :foldr :over entries :elt e
+  :combine (fn-gidx-put e acc) :init buckets
+  :rev fn-ag-rev-onto)
 
 (defthm fn-gidx-build-entries-of-append
   (equal (fn-gidx-build-entries (append a b))

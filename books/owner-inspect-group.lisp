@@ -76,48 +76,20 @@
 
 ; The rows of GROUP whose numbers lie in LOW..HIGH: the articles
 ; fn-nntp-group-range-numbers keeps, by its tests, inserted in number order.
-(defun fn-oig-rows-loop (group low high rev acc)
-  (declare (xargs :guard (fn-oig-rowsp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-oig-rows-loop
-       group low high (cdr rev)
-       (let ((number (fn-nntp-article-number group (car rev))))
-         (if (and (posp number)
-                  (fn-ng-less-equal low number)
-                  (fn-ng-less-equal number high))
-             (fn-oig-insert (cons number (fn-oig-msgid (car rev))) acc)
-           acc)))
-    acc))
-
-(defun fn-oig-rows (group low high articles)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp articles)
-           (let ((number (fn-nntp-article-number group (car articles))))
-             (if (and (posp number)
-                      (fn-ng-less-equal low number)
-                      (fn-ng-less-equal number high))
-                 (fn-oig-insert (cons number (fn-oig-msgid (car articles)))
-                                (fn-oig-rows group low high (cdr articles)))
-               (fn-oig-rows group low high (cdr articles))))
-         nil)
-       :exec (fn-oig-rows-loop group low high (fn-ag-rev-onto articles nil) nil)))
-
-(local
- (defthm fn-oig-rows-loop-of-rev-onto
-   (equal (fn-oig-rows-loop group low high (fn-ag-rev-onto xs zs) nil)
-          (fn-oig-rows-loop group low high zs (fn-oig-rows group low high xs)))
-   :hints (("Goal" :induct (fn-ag-rev-onto xs zs)
-            :in-theory (disable fn-nntp-article-number fn-ng-less-equal
-                                fn-oig-insert)))))
+(def-loop fn-oig-rows (group low high articles)
+  :shape :foldr :over articles :elt a
+  :combine (let ((number (fn-nntp-article-number group a)))
+                (if (and (posp number) (fn-ng-less-equal low number) (fn-ng-less-equal number high))
+                    (fn-oig-insert (cons number (fn-oig-msgid a)) acc)
+                    acc))
+  :init nil
+  :rev fn-ag-rev-onto
+  :loop-guard (fn-oig-rowsp acc))
 
 (defthm fn-oig-rowsp-of-rows
   (fn-oig-rowsp (fn-oig-rows group low high articles))
   :hints (("Goal" :in-theory (disable fn-nntp-article-number fn-ng-less-equal
                                       fn-oig-insert))))
-
-(verify-guards fn-oig-rows-loop)
-(verify-guards fn-oig-rows)
 
 ; KEYSTONE.  The report's numbers are LISTGROUP's: the cars of the rows are
 ; fn-nntp-group-range-numbers of the same group, range and archive, the

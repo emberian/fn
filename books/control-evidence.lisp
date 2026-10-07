@@ -214,57 +214,17 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-cev-targeting-lines-loop (msgid rev a verdicts acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-cev-targeting-lines-loop msgid
-                                   (cdr rev)
-                                   a
-                                   verdicts
-                                   (if (and (fn-ctl-withdrawalp (car rev))
-                                            (equal (fn-ctl-w-target (car rev)) msgid))
-                                       (append (fn-nls-text "withdrawn-by")
-                                               (fn-cev-withdrawal-fields (car rev))
-                                               (fn-cev-effect-words (car rev)
-                                                                    a
-                                                                    verdicts)
-                                               *fn-nls-lf*
-                                               acc)
-                                     acc))
-    acc))
-
-(defun fn-cev-targeting-lines (msgid ws a verdicts)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ws)
-           (if (and (fn-ctl-withdrawalp (car ws))
-                    (equal (fn-ctl-w-target (car ws)) msgid))
+(def-loop fn-cev-targeting-lines (msgid ws a verdicts)
+  :shape :foldr :over ws :elt w
+  :combine (if (and (fn-ctl-withdrawalp w) (equal (fn-ctl-w-target w) msgid))
                (append (fn-nls-text "withdrawn-by")
-                       (fn-cev-withdrawal-fields (car ws))
-                       (fn-cev-effect-words (car ws) a verdicts)
+                       (fn-cev-withdrawal-fields w)
+                       (fn-cev-effect-words w a verdicts)
                        *fn-nls-lf*
-                       (fn-cev-targeting-lines msgid (cdr ws) a verdicts))
-             (fn-cev-targeting-lines msgid (cdr ws) a verdicts))
-         nil)
-       :exec (fn-cev-targeting-lines-loop msgid (fn-ag-rev-onto ws nil) a verdicts nil)))
-
-(local
- (defthm fn-cev-targeting-lines-loop-of-rev-onto
-   (equal (fn-cev-targeting-lines-loop msgid (fn-ag-rev-onto ws zs) a verdicts nil)
-          (fn-cev-targeting-lines-loop msgid zs a verdicts (fn-cev-targeting-lines msgid ws a verdicts)))
-   :hints (("Goal" :induct (fn-ag-rev-onto ws zs)
-                   :in-theory (union-theories '(fn-cev-targeting-lines-loop fn-cev-targeting-lines fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cev-targeting-lines-loop)
-
-(verify-guards fn-cev-targeting-lines
-  :hints (("Goal" :in-theory (union-theories '(fn-cev-targeting-lines fn-cev-targeting-lines-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-cev-targeting-lines-loop-of-rev-onto (zs nil))))))
-
+                       acc)
+               acc)
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-cev-verdict-word (verdict)
   (declare (xargs :guard t))
@@ -361,103 +321,27 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-cev-held-count-loop (rev ws raw verdicts acc)
-  (declare (xargs :guard (rationalp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-cev-held-count-loop (cdr rev)
-                              ws
-                              raw
-                              verdicts
-                              (+ (if (equal (fn-cev-envelope-state (car rev)
-                                                                   ws
-                                                                   raw
-                                                                   verdicts)
-                                            "held")
-                                     1
-                                   0)
-                                 acc))
-    acc))
-
-(defun fn-cev-held-count (envs ws raw verdicts)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp envs)
-           (+ (if (equal (fn-cev-envelope-state (car envs) ws raw verdicts) "held") 1 0)
-              (fn-cev-held-count (cdr envs) ws raw verdicts))
-         0)
-       :exec (fn-cev-held-count-loop (fn-ag-rev-onto envs nil) ws raw verdicts 0)))
-
-(local
- (defthm fn-cev-held-count-loop-of-rev-onto
-   (equal (fn-cev-held-count-loop (fn-ag-rev-onto envs zs) ws raw verdicts 0)
-          (fn-cev-held-count-loop zs ws raw verdicts (fn-cev-held-count envs ws raw verdicts)))
-   :hints (("Goal" :induct (fn-ag-rev-onto envs zs)
-                   :in-theory (union-theories '(fn-cev-held-count-loop fn-cev-held-count fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cev-held-count-loop)
-
-(verify-guards fn-cev-held-count
-  :hints (("Goal" :in-theory (union-theories '(fn-cev-held-count fn-cev-held-count-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-cev-held-count-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-cev-held-count (envs ws raw verdicts)
+  :shape :foldr :over envs :elt e
+  :combine (+ (if (equal (fn-cev-envelope-state e ws raw verdicts) "held") 1 0) acc) :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (rationalp acc))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-cev-envelope-lines-loop (rev ws raw verdicts acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-cev-envelope-lines-loop (cdr rev)
-                                  ws
-                                  raw
-                                  verdicts
-                                  (append (fn-nls-text (fn-cev-envelope-state (car rev)
-                                                                              ws
-                                                                              raw
-                                                                              verdicts))
-                                          (fn-nls-text " envelope=")
-                                          (fn-cev-string (fn-article-msgid (car rev)))
-                                          (fn-nls-text " message-id=")
-                                          (fn-cev-string (fn-cev-envelope-original (fn-article-msgid (car rev))))
-                                          *fn-nls-lf*
-                                          acc))
-    acc))
-
-(defun fn-cev-envelope-lines (envs ws raw verdicts)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp envs)
-           (append (fn-nls-text (fn-cev-envelope-state (car envs) ws raw verdicts))
-                   (fn-nls-text " envelope=") (fn-cev-string (fn-article-msgid (car envs)))
+(def-loop fn-cev-envelope-lines (envs ws raw verdicts)
+  :shape :foldr :over envs :elt e
+  :combine (append (fn-nls-text (fn-cev-envelope-state e ws raw verdicts))
+                   (fn-nls-text " envelope=")
+                   (fn-cev-string (fn-article-msgid e))
                    (fn-nls-text " message-id=")
-                   (fn-cev-string (fn-cev-envelope-original (fn-article-msgid (car envs))))
+                   (fn-cev-string (fn-cev-envelope-original (fn-article-msgid e)))
                    *fn-nls-lf*
-                   (fn-cev-envelope-lines (cdr envs) ws raw verdicts))
-         nil)
-       :exec (fn-cev-envelope-lines-loop (fn-ag-rev-onto envs nil) ws raw verdicts nil)))
-
-(local
- (defthm fn-cev-envelope-lines-loop-of-rev-onto
-   (equal (fn-cev-envelope-lines-loop (fn-ag-rev-onto envs zs) ws raw verdicts nil)
-          (fn-cev-envelope-lines-loop zs ws raw verdicts (fn-cev-envelope-lines envs ws raw verdicts)))
-   :hints (("Goal" :induct (fn-ag-rev-onto envs zs)
-                   :in-theory (union-theories '(fn-cev-envelope-lines-loop fn-cev-envelope-lines fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cev-envelope-lines-loop)
-
-(verify-guards fn-cev-envelope-lines
-  :hints (("Goal" :in-theory (union-theories '(fn-cev-envelope-lines fn-cev-envelope-lines-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-cev-envelope-lines-loop-of-rev-onto (zs nil))))))
-
+                   acc)
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-cev-moderation-report (group ws raw verdicts configs)
   (declare (xargs :guard t))

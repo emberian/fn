@@ -1,0 +1,10 @@
+(def-loop fn-lzr-intern-events (ws zs ps dicts keyring generation fn-arena)
+  :shape :fold :over (ws zs ps) :st fn-arena :done (atom ws) :elt w
+  :let ((z (and (consp zs) (car zs)))
+        (p (and (consp ps) (consp (car ps)) (car ps)))
+        (file (nfix (and (consp p) (car p))))
+        (position (and (consp p) (cdr p))))
+  :row (fn-lzr-intern-event w z position file dicts keyring generation fn-arena)
+  :next ((cdr ws) (and (consp zs) (cdr zs)) (and (consp ps) (cdr ps)))
+  :guard (and (fn-lzr-dictsp dicts) (fn-prin-keyringp keyring) (natp generation))
+  :guard-hints (("Goal" :in-theory (disable fn-lzr-intern-event))))

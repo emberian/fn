@@ -125,41 +125,10 @@
 
 ; One walk of the group table: the facts of the entries live at GEN.
 ; A right fold: the :exec folds the reversed entries from the left.
-(defun fn-oag-group-facts-loop (rev gen acc)
-  (declare (xargs :guard t))
-  (if (consp rev)
-      (fn-oag-group-facts-loop
-       (cdr rev) gen
-       (if (fn-cfg-entry-livep (car rev) gen)
-           (append (fn-oag-group-fact-of (car rev)) acc)
-         acc))
-    acc))
-
-(defun fn-oag-group-facts (es gen)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp es)
-                  (if (fn-cfg-entry-livep (car es) gen)
-                      (append (fn-oag-group-fact-of (car es))
-                              (fn-oag-group-facts (cdr es) gen))
-                    (fn-oag-group-facts (cdr es) gen))
-                nil)
-       :exec (fn-oag-group-facts-loop (fn-ag-rev-onto es nil) gen nil)))
-
-(defthm fn-oag-group-facts-loop-of-rev-onto
-  (equal (fn-oag-group-facts-loop (fn-ag-rev-onto es zs) gen nil)
-         (fn-oag-group-facts-loop zs gen (fn-oag-group-facts es gen)))
-  :hints (("Goal" :induct (fn-ag-rev-onto es zs)
-                  :in-theory (union-theories
-                              '(fn-oag-group-facts-loop fn-oag-group-facts
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-oag-group-facts
-  :hints (("Goal" :use ((:instance fn-oag-group-facts-loop-of-rev-onto (zs nil)))
-                  :in-theory (union-theories
-                              '(fn-oag-group-facts-loop fn-oag-group-facts)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-oag-group-facts (es gen)
+  :shape :foldr :over es :elt e
+  :combine (if (fn-cfg-entry-livep e gen) (append (fn-oag-group-fact-of e) acc) acc) :init nil
+  :rev fn-ag-rev-onto)
 
 ; KEYSTONE (PKT-665).  Every entry live at GEN whose creating record's
 ; stamp carries a wall reading has its fact, dated by that reading.

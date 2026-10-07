@@ -1,0 +1,6 @@
+(def-loop fn-stx-index-of-store (articles keyring)
+  :shape :foldr :over articles :elt a
+  :combine (fn-stx-index-add acc (fn-stx-delta (fn-article-payload a) keyring))
+  :init (fn-stx-index-empty)
+  :rev fn-ag-rev-onto
+  :guard (fn-prin-keyringp keyring) :loop-guard (fn-prin-keyringp keyring))
