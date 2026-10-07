@@ -1522,8 +1522,6 @@ class LowerStale(unittest.TestCase):
                 self.assertEqual(baseline.exists(), body is not None)
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class R1bDynamicBinding(unittest.TestCase):
@@ -2529,3 +2527,7 @@ class CheckPrintsEveryKey(unittest.TestCase):
         code, lines = self.run_check(45, "--cap", "5")
         self.assertEqual(len([l for l in lines if " NEW " in l]), 5)
         self.assertTrue(any("hidden by --cap 5" in l for l in lines))
+
+
+if __name__ == "__main__":
+    unittest.main()
