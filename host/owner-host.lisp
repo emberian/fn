@@ -2185,6 +2185,16 @@
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
 
+; The arena count as the owner's own compiled code reads it.  Startup compares
+; it with the host's reading (host/native/owner.lisp
+; fnn-owner-arena-identity-check): fn-owner-prepare-buffer below feeds exactly
+; this read to the held row, and a certified world without the image's arena
+; attachment (the attach book precedes the generic: tools/attach_order_check.py)
+; reads a different arena representation than the host seals into.
+(defun fn-owner-arena-count (fn-arena)
+  (declare (xargs :stobjs (fn-arena) :mode :program))
+  (fn-arena-count fn-arena))
+
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
                                  fn-octets fn-arena fn-cat fn-hist state)

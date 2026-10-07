@@ -1,33 +1,35 @@
 #!/usr/bin/env python3
-"""A certified host file's world has the image's attachment before the generic.
+"""Fail a certified host file whose include-book closure reaches an attachable stobj generic before its attach book.
 
-`(attach-stobj GEN IMPL)` is order-sensitive: ACL2 refuses it once GEN is in
-use, and a book certified over GEN with no attachment is compiled against the
-generic representation.  Before D61 a host file was `ld`ed into the image's
-already-attached world and compiled there; once it is an `include-book`ed
-certified book (D61) its world is whatever its own include-books built, so the
-attachment must be one of them, BEFORE the generic.  Merely including the
-generic leaves the owner reading arena count 0 through the generic while the
-host's attached arena holds 1 (CONVERGE-1 red 1, "owner prepare returned
-NOT-SEALED").
+Why: a host file that is include-book'd (D61) is compiled in the world its own
+include-books build.  Reaching `fn-arena` (books/payload-arena.lisp) without
+`books/payload-arena-attach` first compiles it against the generic arena, while
+the image runs the attached one.  The owner then read arena count 0 where the
+host's arena held 1, and every second POST stopped with "owner prepare returned
+NOT-SEALED" (CONVERGE-1, red 1).
 
-  pairs     discovered from source, not listed here: a books/*.lisp with a
-            literal `(attach-stobj GEN IMPL)` is GEN's attach book; the book
-            with `(defabsstobj GEN ... :attachable t` is the generic.  Only
-            attach books that host/native/build.lisp itself includes are
-            enforced (the image attaches them; books/catalog-paged-attach is
-            not one).  `defattach` (codec, records, crypto) is not order
-            sensitive: the stub resolves its attachment at call time.
-  scope     every host/*.lisp reached by an include-book from the image-world
-            umbrellas.  books/* above a generic stay certified over it by
-            design (books/catalog.lisp header), and the attach books
-            themselves include the books that include the generic.
-  failure   a host file whose include-book closure (depth first, each book at
-            its first inclusion, as ACL2 certifies it) reaches GEN without
-            the attach book already included.
+What it checks, in the default image's source tree, no ACL2 needed:
+  pairs   an attach book is a books/*.lisp with a literal `(attach-stobj GEN IMPL)`
+          that host/native/build.lisp includes; the generic is the book with
+          `(defabsstobj GEN ... :attachable t`.  Today: fn-arena
+          (payload-arena-attach) and fn-hist (history-paged-attach).
+  scope   the host/*.lisp files reachable by include-book from the four
+          books/image-world* umbrellas.
+  rule    walking a file's include-books depth first, each book at its first
+          inclusion (the order ACL2 certifies it), the generic must be met
+          inside the attach book or after it.  Otherwise: one finding naming the
+          file and the include-book line to add first.
 
-Source order is the certificate's include-book-alist order: a certificate
-records the books in the order the certification included them.
+What it does not check: `defattach` seams (codec-attach, records-attach,
+crypto-attach), because the stub resolves its attachment at call time and order
+does not matter; books/* above a generic, which stay certified over it by design
+(books/catalog.lisp header); catalog-paged-attach, which the image does not
+include.  It reads source order, not the .cert files, which are binary; a
+certificate records the same inclusion order.
+
+Enforced by: tools/native_preflight.py gate `attach-order` (hbox_native.sh static
+gates), `make check`, and tests/test_attach_order_check.py (red and green
+fixtures).  Exit 1 on any finding.
 """
 from __future__ import annotations
 

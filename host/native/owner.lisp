@@ -507,8 +507,25 @@ as at 7aad444ce."
         (fnn-log-line line)))))
 
 
+(defun fnn-owner-arena-identity-check ()
+  "Refuse to start when the owner's compiled ACL2 path and the host read
+different arenas.  fn-owner-arena-count (host/owner-host.lisp) is what the
+owner's POST reads for the held row; fn-arena-count is the image's.  Both are
+applied to the live arena, so they agree exactly when the certified owner-host
+was compiled over the same arena representation the image attached
+(tools/attach_order_check.py).  A disagreement is the CONVERGE-1 NOT-SEALED
+stop, caught before the first POST instead of at the second."
+  (let ((arena (fnn-live-arena)))
+    (let ((owner (car (fnn-call 'fn-owner-arena-count arena)))
+          (host (car (fnn-call 'fn-arena-count arena))))
+      (unless (eql owner host)
+        (fnn-refuse "owner startup refused: arena identity (the owner's compiled path reads arena count ~a, the host's reads ~a); host/owner-host was certified without the image's arena attachment (tools/attach_order_check.py)"
+                    owner host))
+      :accepted)))
+
 (defun fnn-owner-run-startup-hooks (service)
   "Run ACL2-backed lifecycle adapters after recovery and before listen."
+  (fnn-owner-arena-identity-check)
   (dolist (hook *fnn-owner-startup-hooks*)
     (unless (eq (funcall hook service) :accepted)
       (fnn-refuse "owner startup hook refused")))
