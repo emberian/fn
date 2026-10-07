@@ -2529,6 +2529,68 @@ class CheckPrintsEveryKey(unittest.TestCase):
         self.assertTrue(any("hidden by --cap 5" in l for l in lines))
 
 
+class R5StructSlotLock(unittest.TestCase):
+    """contracts `locks'[NAME]["struct_slot"]: a lock object that is a struct slot
+    accessor applied to the struct is the declared lock, only when the source
+    shows the slot holds a mutex made per instance and never replaced."""
+
+    SRC = """
+(defstruct (fnn-ss-svc (:constructor %make-fnn-ss-svc)) (n 0)
+  (slot-lock (sb-thread:make-mutex :name "slots")))
+(defun fnn-ss-bump (svc)
+  (sb-thread:with-mutex ((fnn-ss-svc-slot-lock svc))
+    (incf (fnn-ss-svc-n svc))))
+(defun fnn-ss-run () (let ((s (%make-fnn-ss-svc))) (sb-thread:make-thread (lambda () (fnn-ss-bump s)) :name "ss")))
+"""
+    ROW = {"match": ["(fnn-ss-svc-slot-lock)"], "struct_slot": "fnn-ss-svc-slot-lock"}
+
+    def r5(self, src=None, row=None, with_row=True):
+        locks = dict(CONTRACTS.raw["locks"])
+        if with_row:
+            locks["XSS"] = self.ROW if row is None else row
+        raw = dict(CONTRACTS.raw, locks=locks)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + (src or self.SRC))
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f.key for f in checker.run({"R5"}) if f.rule == "R5" and f.function == "fnn-ss-bump"]
+
+    def test_a_verified_slot_lock_resolves(self):
+        self.assertEqual(self.r5(), [])
+
+    def test_without_the_row_the_lock_object_is_unresolved(self):
+        self.assertTrue(self.r5(with_row=False))
+
+    def test_an_accessor_missing_from_the_match_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(row={"match": ["(other)"], "struct_slot": "fnn-ss-svc-slot-lock"})
+
+    def test_a_function_that_is_not_a_slot_accessor_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC + "(defun fnn-ss-fn (svc) svc)",
+                    row={"match": ["(fnn-ss-fn)"], "struct_slot": "fnn-ss-fn"})
+
+    def test_a_slot_whose_initform_is_not_a_mutex_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC.replace('(slot-lock (sb-thread:make-mutex :name "slots"))', "(slot-lock nil)"))
+
+    def test_a_slot_without_an_initform_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC.replace('(slot-lock (sb-thread:make-mutex :name "slots"))', "slot-lock"))
+
+    def test_a_constructor_passing_the_slot_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC + "(defun fnn-ss-make (m) (%make-fnn-ss-svc :slot-lock m))")
+
+    def test_an_assignment_to_the_slot_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC + "(defun fnn-ss-swap (svc m) (setf (fnn-ss-svc-slot-lock svc) m))")
+
+    def test_a_row_for_a_struct_the_tree_lacks_matches_nothing(self):
+        self.assertTrue(self.r5(row={"match": ["(fnn-ss-gone-slot-lock)"], "struct_slot": "fnn-ss-gone-slot-lock"}))
+
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -75,6 +75,12 @@
     "*fnn-close-debts-lock*"
    ]
   },
+  "XMUXSLOT": {
+   "match": [
+    "(fnn-owner-service-mux-slot-lock)"
+   ],
+   "struct_slot": "fnn-owner-service-mux-slot-lock"
+  },
   "XDURABLE": {
    "match": [
     "(fnn-log-durable-lock)"
@@ -243,7 +249,7 @@
   }
  },
  "lock_order": {
-  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); O -> SL and S -> SL (SL, fnn-log-spare-slot-lock, guards only the log's spare slot and its close debt, held for no I/O: the rotation under O and the preparers under S meet there); O -> XCLOSEDEBT and E -> XCLOSEDEBT (XCLOSEDEBT, *fnn-close-debts-lock*, guards the two close-debt lists *fnn-immutable-close-debts* and *fnn-publication-close-debts*, a leaf held for no I/O: any writer that stages a file pushes or observes there, so the edge is declared from the two holders the check reaches); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue).",
+  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); O -> SL and S -> SL (SL, fnn-log-spare-slot-lock, guards only the log's spare slot and its close debt, held for no I/O: the rotation under O and the preparers under S meet there); O -> XCLOSEDEBT and E -> XCLOSEDEBT (XCLOSEDEBT, *fnn-close-debts-lock*, guards the two close-debt lists *fnn-immutable-close-debts* and *fnn-publication-close-debts*, a leaf held for no I/O: any writer that stages a file pushes or observes there, so the edge is declared from the two holders the check reaches); XMUXSLOT -> M (fnn-mux-slot-observation reads each loop under the loop lock, called under the service's slot lock, a defstruct-slot mutex the check verifies: locks XMUXSLOT struct_slot); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue).",
   "O": [
    "G",
    "R",
@@ -273,6 +279,9 @@
   ],
   "XDURABLE": [
    "K"
+  ],
+  "XMUXSLOT": [
+   "M"
   ],
   "C": [
    "G",

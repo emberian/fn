@@ -242,6 +242,7 @@ class Tree:
     defs: dict = field(default_factory=dict)          # name -> Def (functions)
     macros: dict = field(default_factory=dict)        # name -> Def
     structs: dict = field(default_factory=dict)       # accessor -> (struct, slot)
+    struct_inits: dict = field(default_factory=dict)  # accessor -> the slot's initform (None: none)
     globals: dict = field(default_factory=dict)       # name -> (path, line, guarded-by or None)
     synchronized: set = field(default_factory=set)    # globals holding :synchronized tables
     global_inits: dict = field(default_factory=dict)  # defvar name -> its init form (None when absent)
@@ -457,6 +458,8 @@ def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
             sl = slot[0] if isinstance(slot, list) and slot else slot
             if isinstance(sl, Sym):
                 tree.structs[conc + str(sl)] = (sname, str(sl))
+                tree.struct_inits[conc + str(sl)] = (
+                    slot[1] if isinstance(slot, list) and len(slot) > 1 else None)
         return
     if h == "define-condition" and len(form) >= 3 and isinstance(form[1], Sym):
         tree.conditions[str(form[1])] = [str(p) for p in form[2] if isinstance(p, Sym)] if isinstance(form[2], list) else []
@@ -749,14 +752,70 @@ STORE_HOFS = {"push", "pushnew", "setf", "setq", "list", "list*", "cons", "vecto
 WRITE_FORMS = {"setq", "setf", "psetf", "psetq", "incf", "decf", "push", "pushnew", "pop", "remf"}
 
 
+def verify_struct_slot_locks(tree, contracts) -> dict:
+    """contracts `locks'[NAME]["struct_slot"]: an accessor, one of the row's
+    `match' patterns, that names a mutex held in a struct slot.
+
+    A row whose struct this tree does not define matches nothing.
+    Every instance of the struct then has its own lock, and the accessor
+    applied to a variable is that lock, so a lock object `(ACCESSOR x)' is the
+    declared lock NAME.  The row is accepted only when the source shows:
+      (1) the accessor is a slot accessor of a defstruct the host defines;
+      (2) the slot's initform is a (sb-thread:make-mutex ...) call, so a
+          constructor that omits the slot makes a fresh mutex;
+      (3) no constructor call in the host passes the slot's keyword (no
+          instance gets a mutex made elsewhere, or none); and
+      (4) no form in any host function assigns the accessor (the mutex is
+          never replaced, so two threads cannot hold different locks for one
+          instance).
+    """
+    out = {}
+    for name, row in contracts.locks.items():
+        accessor = row.get("struct_slot")
+        if accessor is None:
+            continue
+        where = f"locks {name} struct_slot {accessor}"
+        if "(" + accessor + ")" not in row.get("match", []):
+            raise ValueError(f"{where}: the accessor is not one of the row's match patterns")
+        if accessor not in tree.structs:
+            if accessor in tree.defs:
+                raise ValueError(f"{where}: a function, not a struct slot accessor")
+            continue    # a row for a struct this tree does not define resolves nothing
+        init = tree.struct_inits.get(accessor)
+        if not (isinstance(init, list) and head(init) in ("sb-thread:make-mutex", "make-mutex")):
+            raise ValueError(f"{where}: the slot's initform is not a make-mutex call")
+        struct, slot = tree.structs[accessor]
+        kw = ":" + slot
+        for dd in tree.defs.values():
+            for f in _flat_nodes(dd.body):
+                if head(f) in ("%make-" + struct, "make-" + struct):
+                    if any(isinstance(x, Sym) and str(x).lower() == kw for x in f[1:]):
+                        raise ValueError(f"{where}: {dd.name} passes {kw} to a constructor of {struct} "
+                                         f"({dd.path}:{dd.line})")
+            for h in ("setf", "setq", "psetf", "psetq"):
+                for f in _call_forms(dd.body, h):
+                    for k in range(1, len(f) - 1, 2):
+                        if isinstance(f[k], list) and head(f[k]) == accessor:
+                            raise ValueError(f"{where}: {dd.name} assigns it ({dd.path}:{dd.line})")
+            for h in ("push", "pushnew", "incf", "decf", "pop"):
+                for f in _call_forms(dd.body, h):
+                    if any(isinstance(x, list) and head(x) == accessor for x in f[1:3]):
+                        raise ValueError(f"{where}: {dd.name} assigns it with {h} ({dd.path}:{dd.line})")
+        out[name] = accessor
+    return out
+
+
 class Analyzer:
     def __init__(self, tree: Tree, contracts: Contracts, realizer_reach: dict) -> None:
         self.tree = tree
         self.c = contracts
         self.reach = realizer_reach
         self.infos: dict[str, FnInfo] = {}
+        self.struct_slot_locks = verify_struct_slot_locks(tree, contracts)
         self.lock_patterns = []
         for lock, row in contracts.locks.items():
+            if "struct_slot" in row and lock not in self.struct_slot_locks:
+                continue    # unverified (absent from this tree): matches nothing
             for m in row["match"]:
                 self.lock_patterns.append((m, lock))
         self.templates = set(contracts.raw.get("expand_templates", []))
