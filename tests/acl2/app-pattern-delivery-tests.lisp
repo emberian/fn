@@ -235,3 +235,40 @@
                 (from *apd-from*) (seconds *apd-seconds*) (group *apd-group*)
                 (msgid *apd-msgid*) (payload *apd-payload*))
                :fault "a payload file numbered one past the event's sequence")))
+
+; ---------------------------------------------------------------------------
+; fn-pat-select-is-one-worker (TEETH CONTRACT v1).  Its (posp workers)
+; hypothesis has no counterexample (above), and no removal witness is built
+; for the :deliver hypothesis, so both stay inside the implication; the teeth are
+; the positive witness (the worker the partition names keeps the decision) and
+; conclusion mutations.
+(defteeth fn-pat-select-is-one-worker
+  :claim (() (implies (and (posp (fn-pat-parse-nat workers))
+                           (equal (fn-pat-at 0 decision) :deliver))
+                      (iff (equal (fn-pat-at 0 (fn-pat-select decision index workers)) :deliver)
+                           (equal (fn-pat-parse-nat index)
+                                  (fn-pat-partition (fn-pat-at 2 decision)
+                                                    (fn-pat-parse-nat workers))))))
+  :subject fn-pat-select
+  :witness ((decision (list :deliver 7 *apd-msgid*)) (index (fn-ak-text "0"))
+            (workers (fn-ak-text "3")))
+  :mutations ((every-worker-keeps-it
+               (:conclusion (implies (and (posp (fn-pat-parse-nat workers))
+                                          (equal (fn-pat-at 0 decision) :deliver))
+                                     (iff (equal (fn-pat-at 0 (fn-pat-select decision index workers)) :deliver)
+                                          (equal (fn-pat-parse-nat index)
+                                                 (+ 1 (fn-pat-partition (fn-pat-at 2 decision)
+                                                                        (fn-pat-parse-nat workers)))))))
+               ((decision (list :deliver 7 *apd-msgid*)) (index (fn-ak-text "0"))
+                (workers (fn-ak-text "3")))
+               :fault "a selection that keeps the decision at the worker after the partition's")
+              (other-worker-keeps-it
+               (:conclusion (implies (and (posp (fn-pat-parse-nat workers))
+                                          (equal (fn-pat-at 0 decision) :deliver))
+                                     (not (iff (equal (fn-pat-at 0 (fn-pat-select decision index workers)) :deliver)
+                                               (equal (fn-pat-parse-nat index)
+                                                      (fn-pat-partition (fn-pat-at 2 decision)
+                                                                        (fn-pat-parse-nat workers)))))))
+               ((decision (list :deliver 7 *apd-msgid*)) (index (fn-ak-text "0"))
+                (workers (fn-ak-text "3")))
+               :fault "a selection that skips exactly the worker the partition names")))
