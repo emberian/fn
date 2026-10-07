@@ -130,6 +130,55 @@ class PutAndReadTests(Sandbox):
             store.read_bytes(self.root, REL)
 
 
+class SelfArchiveProvenanceTests(Sandbox):
+    """A run manifest re-archived from another host differs from the indexed
+    bytes only in run_id/archived_from: the index wins and the file is healed."""
+
+    @staticmethod
+    def manifest(origin: str, status: str = "passed") -> bytes:
+        import json
+        return (json.dumps({"run_id": "certify-20261002T000000Z-1", "status": status,
+                            "archived_from": origin}, indent=2) + "\n").encode()
+
+    def test_a_manifest_differing_only_in_provenance_is_healed_to_the_index(self):
+        indexed = self.manifest("nextop.local:/Users/x/run")
+        self.write(REL, indexed)
+        store.put(self.root, [REL])
+        self.write(REL, self.manifest("hbox:/tank/run"))
+        with mock.patch.object(sys, "stderr", new=__import__("io").StringIO()) as err:
+            self.assertEqual(store.locate(self.root, REL), (indexed, "indexed"))
+        self.assertEqual((self.root / REL).read_bytes(), indexed)
+        self.assertIn(REL, err.getvalue())
+        self.assertIn("hbox:/tank/run", err.getvalue())
+        self.assertIn("nextop.local:/Users/x/run", err.getvalue())
+
+    def test_materialize_heals_the_same_way(self):
+        indexed = self.manifest("nextop.local:/Users/x/run")
+        self.write(REL, indexed)
+        store.put(self.root, [REL])
+        self.write(REL, self.manifest("hbox:/tank/run"))
+        self.assertEqual(store.materialize(self.root, REL).read_bytes(), indexed)
+
+    def test_a_non_provenance_field_differing_is_still_a_mismatch(self):
+        self.write(REL, self.manifest("nextop.local:/a"))
+        store.put(self.root, [REL])
+        edited = self.manifest("hbox:/b", status="failed")
+        self.write(REL, edited)
+        with self.assertRaises(store.EvidenceMismatch):
+            store.locate(self.root, REL)
+        self.assertEqual((self.root / REL).read_bytes(), edited)
+
+    def test_a_non_manifest_path_differing_is_still_a_mismatch(self):
+        other = "planning/evidence/notes/x.json"
+        self.write(other, self.manifest("nextop.local:/a"))
+        store.put(self.root, [other])
+        edited = self.manifest("hbox:/b")
+        self.write(other, edited)
+        with self.assertRaises(store.EvidenceMismatch):
+            store.locate(self.root, other)
+        self.assertEqual((self.root / other).read_bytes(), edited)
+
+
 class RemoteFetchTests(Sandbox):
     """`HOST:/path` archives go through one rsync; the result is verified."""
 

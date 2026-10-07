@@ -2529,5 +2529,365 @@ class CheckPrintsEveryKey(unittest.TestCase):
         self.assertTrue(any("hidden by --cap 5" in l for l in lines))
 
 
+class R5StructSlotLock(unittest.TestCase):
+    """contracts `locks'[NAME]["struct_slot"]: a lock object that is a struct slot
+    accessor applied to the struct is the declared lock, only when the source
+    shows the slot holds a mutex made per instance and never replaced."""
+
+    SRC = """
+(defstruct (fnn-ss-svc (:constructor %make-fnn-ss-svc)) (n 0)
+  (slot-lock (sb-thread:make-mutex :name "slots")))
+(defun fnn-ss-bump (svc)
+  (sb-thread:with-mutex ((fnn-ss-svc-slot-lock svc))
+    (incf (fnn-ss-svc-n svc))))
+(defun fnn-ss-run () (let ((s (%make-fnn-ss-svc))) (sb-thread:make-thread (lambda () (fnn-ss-bump s)) :name "ss")))
+"""
+    ROW = {"match": ["(fnn-ss-svc-slot-lock)"], "struct_slot": "fnn-ss-svc-slot-lock"}
+
+    def r5(self, src=None, row=None, with_row=True):
+        locks = dict(CONTRACTS.raw["locks"])
+        if with_row:
+            locks["XSS"] = self.ROW if row is None else row
+        raw = dict(CONTRACTS.raw, locks=locks)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + (src or self.SRC))
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f.key for f in checker.run({"R5"}) if f.rule == "R5" and f.function == "fnn-ss-bump"]
+
+    def test_a_verified_slot_lock_resolves(self):
+        self.assertEqual(self.r5(), [])
+
+    def test_without_the_row_the_lock_object_is_unresolved(self):
+        self.assertTrue(self.r5(with_row=False))
+
+    def test_an_accessor_missing_from_the_match_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(row={"match": ["(other)"], "struct_slot": "fnn-ss-svc-slot-lock"})
+
+    def test_a_function_that_is_not_a_slot_accessor_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC + "(defun fnn-ss-fn (svc) svc)",
+                    row={"match": ["(fnn-ss-fn)"], "struct_slot": "fnn-ss-fn"})
+
+    def test_a_slot_whose_initform_is_not_a_mutex_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC.replace('(slot-lock (sb-thread:make-mutex :name "slots"))', "(slot-lock nil)"))
+
+    def test_a_slot_without_an_initform_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC.replace('(slot-lock (sb-thread:make-mutex :name "slots"))', "slot-lock"))
+
+    def test_a_constructor_passing_the_slot_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC + "(defun fnn-ss-make (m) (%make-fnn-ss-svc :slot-lock m))")
+
+    def test_an_assignment_to_the_slot_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r5(self.SRC + "(defun fnn-ss-swap (svc m) (setf (fnn-ss-svc-slot-lock svc) m))")
+
+    def test_a_row_for_a_struct_the_tree_lacks_matches_nothing(self):
+        self.assertTrue(self.r5(row={"match": ["(fnn-ss-gone-slot-lock)"], "struct_slot": "fnn-ss-gone-slot-lock"}))
+
+
+
+class R1bBindingOnlySpecial(unittest.TestCase):
+    """contracts `binding_only_specials': a special only rebound by let to a
+    fresh list, never assigned, is no shared cell; the row is checked."""
+
+    SRC = """
+(defvar *fnn-bo-deferred* nil)
+(defun fnn-bo-note (x)
+  (if *fnn-bo-deferred*
+      (push x (cdr *fnn-bo-deferred*))
+    (fnn-bo-write x)))
+(defun fnn-bo-write (x) x)
+(defun fnn-bo-batch ()
+  (let ((deferred (list :d)))
+    (let ((*fnn-bo-deferred* deferred))
+      (fnn-bo-note 1))))
+(defun fnn-bo-open () (fnn-bo-note 2))
+(defun fnn-bo-start-a ()
+  (sb-thread:make-thread (lambda () (fnn-bo-batch)) :name "bo a"))
+(defun fnn-bo-start-b ()
+  (sb-thread:make-thread (lambda () (fnn-bo-open)) :name "bo b"))
+"""
+
+    def run_with(self, src, rows):
+        raw = dict(CONTRACTS.raw, binding_only_specials=rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [k for k in keys(checker.run({"R1b"}), "R1b") if "fnn-bo-deferred" in k[1]]
+
+    ROW = {"*fnn-bo-deferred*": "test"}
+
+    def test_without_the_row_the_unbound_path_is_reported(self):
+        self.assertTrue(self.run_with(self.SRC, {}))
+
+    def test_a_verified_row_removes_the_finding(self):
+        self.assertEqual(self.run_with(self.SRC, self.ROW), [])
+
+    def test_an_assignment_of_the_symbol_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.run_with(self.SRC + "(defun fnn-bo-set () (setq *fnn-bo-deferred* (list :x)))", self.ROW)
+
+    def test_a_rebinding_to_another_global_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.run_with(self.SRC + """
+(defvar *fnn-bo-shared* (list :s))
+(defun fnn-bo-alias () (let ((*fnn-bo-deferred* *fnn-bo-shared*)) (fnn-bo-note 3)))""", self.ROW)
+
+    def test_a_non_nil_initial_value_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.run_with(self.SRC.replace("(defvar *fnn-bo-deferred* nil)", "(defvar *fnn-bo-deferred* (list :g))"), self.ROW)
+
+
+class R7EscalationLoop(unittest.TestCase):
+    """A let tail (dolist (X (nreverse V)) (WRAPPER (lambda () (CLASSIFIER .. X ..)) ..))
+    escalates every condition the handler captured into V; the wrapper row is
+    verified against its source."""
+
+    WRAPPER = """
+(defun fnn-owner-install-or-end (install original label)
+  (handler-case (funcall install)
+    (serious-condition (failure)
+      (let ((code 4)) (fnn-exit code)))))
+(defun fnn-owner-thread-escape (service condition label) (list service condition label))
+"""
+    ACTOR = """
+(defun fnn-actor (s items)
+  (let ((conditions nil))
+    (dolist (item items)
+      (handler-case (fnn-fault "x")
+        (serious-condition (c) (push c conditions))))
+    %s
+    nil))
+(defun fnn-spawn (s) (sb-thread:make-thread (lambda () (fnn-actor s nil)) :name "t"))
+"""
+    ROWS = {"fnn-owner-install-or-end": {"param": "install", "why": "test"}}
+    GOOD = """(dolist (c (nreverse conditions))
+      (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s c "x")) c "x"))"""
+
+    def swallow(self, tail, wrapper=None, rows=None):
+        src = (self.WRAPPER if wrapper is None else wrapper) + self.ACTOR % tail
+        # the rows are stated here: other tests edit the shared CONTRACTS in place
+        raw = dict(CONTRACTS.raw, escalation_wrappers=self.ROWS if rows is None else rows,
+                   classifying_escape_functions={"fnn-owner-thread-escape": "test"},
+                   fence_functions=sorted(set(CONTRACTS.raw["fence_functions"]) | {"fnn-exit"}))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f for f in checker.run({"R7"}) if f.function == "fnn-actor" and f.key.startswith("swallow")]
+
+    def test_the_escalation_loop_is_recognised(self):
+        self.assertEqual(self.swallow(self.GOOD), [])
+
+    def test_an_undeclared_wrapper_is_not_recognised(self):
+        self.assertTrue(self.swallow(self.GOOD, rows={}))
+
+    def test_without_the_loop_the_capture_is_a_swallow(self):
+        self.assertTrue(self.swallow('(fnn-out "x")'))
+
+    def test_a_loop_that_only_logs_is_not_an_escalation(self):
+        self.assertTrue(self.swallow('(dolist (c (nreverse conditions)) (fnn-err "x" c))'))
+
+    def test_a_closure_that_calls_no_classifier_is_not(self):
+        self.assertTrue(self.swallow("""(dolist (c (nreverse conditions))
+      (fnn-owner-install-or-end (lambda () (fnn-err "x" c)) c "x"))"""))
+
+    def test_a_classifier_given_another_variable_is_not(self):
+        self.assertTrue(self.swallow("""(dolist (c (nreverse conditions))
+      (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s items "x")) c "x"))"""))
+
+    def test_a_loop_over_another_list_is_not(self):
+        self.assertTrue(self.swallow("""(dolist (c items)
+      (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s c "x")) c "x"))"""))
+
+    def test_a_return_inside_the_loop_is_not(self):
+        self.assertTrue(self.swallow("""(dolist (c (nreverse conditions))
+      (when c (return-from fnn-actor nil))
+      (fnn-owner-install-or-end (lambda () (fnn-owner-thread-escape s c "x")) c "x"))"""))
+
+    def test_a_wrapper_that_swallows_its_own_failure_is_refused(self):
+        bad = self.WRAPPER.replace("(let ((code 4)) (fnn-exit code))", "nil")
+        rows = {"fnn-owner-install-or-end": {"param": "install", "why": "t"}}
+        with self.assertRaises(ValueError):
+            self.swallow(self.GOOD, wrapper=bad, rows=rows)
+
+    def test_a_verified_wrapper_row_is_accepted(self):
+        rows = {"fnn-owner-install-or-end": {"param": "install", "why": "t"}}
+        self.assertEqual(self.swallow(self.GOOD, rows=rows), [])
+
+
+class CloseHookFence(unittest.TestCase):
+    """contracts `close_hook_fences': a failed close hook clears the flag, the
+    clean-close block needs it, and the not-joined arm exits uncertain."""
+
+    BOOK = (ROOT / "books" / "owner-retire-settlement.lisp").read_text()
+    SRC = """
+(defun fnn-run (service)
+  (let ((log-close-action nil))
+    (when service
+      (setq log-close-action (fnn-core 'fn-ort-report-close-action nil :unobserved))
+      (let ((modules-joined t))
+        (dolist (hook (fnn-owner-service-close-hooks service))
+          (handler-case (funcall hook service)
+            (serious-condition () (setq modules-joined nil))))
+        (when (and modules-joined (fnn-drained-p service))
+          (setq log-close-action (fnn-core 'fn-ort-report-close-action log-close-action (fnn-journal-close)))
+          (setq log-close-action :joined))
+        (setq log-close-action (fnn-owner-store-settlement service log-close-action))
+        (if (eq log-close-action :joined)
+            (fnn-ok service)
+          (return-from fnn-run
+            (progn (fnn-err "x")
+                   (fnn-core 'fn-ort-log-close-exit (fnn-code service) +fnn-exit-uncertain+ log-close-action))))))))
+"""
+    ROW = {"fnn-run": {"flag": "modules-joined", "hooks": "fnn-owner-service-close-hooks",
+                       "action": "log-close-action", "exit_call": "fn-ort-log-close-exit",
+                       "exit_const": "+fnn-exit-uncertain+", "book": "books/owner-retire-settlement.lisp",
+                       "why": "test"}}
+
+    def check(self, src=None, book=None, row=None):
+        raw = dict(CONTRACTS.raw, close_hook_fences=row or self.ROW)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "books").mkdir()
+            (root / "books" / "owner-retire-settlement.lisp").write_text(book or self.BOOK)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + (src or self.SRC))
+            ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+
+    def refuses(self, old, new, **kw):
+        self.assertIn(old, kw.get("src", self.SRC))
+        with self.assertRaises(ValueError):
+            self.check(src=self.SRC.replace(old, new))
+
+    def test_the_real_shape_is_accepted(self):
+        self.check()
+
+    def test_a_hook_handler_that_does_not_clear_the_flag_is_refused(self):
+        self.refuses("(serious-condition () (setq modules-joined nil))", "(serious-condition () nil)")
+
+    def test_a_clean_close_block_not_guarded_by_the_flag_is_refused(self):
+        self.refuses("(when (and modules-joined (fnn-drained-p service))", "(when (and (fnn-drained-p service) modules-joined)")
+
+    def test_a_stray_joined_assignment_outside_the_block_is_refused(self):
+        self.refuses("(setq log-close-action (fnn-owner-store-settlement service log-close-action))",
+                     "(setq log-close-action :joined) (setq log-close-action (fnn-owner-store-settlement service log-close-action))")
+
+    def test_an_exit_that_is_not_the_uncertain_one_is_refused(self):
+        self.refuses("+fnn-exit-uncertain+ log-close-action", "+fnn-exit-fault+ log-close-action")
+
+    def test_a_flag_set_back_to_t_is_refused(self):
+        self.refuses("(fnn-journal-close)))", "(fnn-journal-close))) (setq modules-joined t)")
+
+    def test_a_book_that_lost_its_theorem_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.check(book=self.BOOK.replace("fn-ort-log-close-held-is-uncertain", "fn-ort-log-close-renamed"))
+
+
+class R2NonblockingLeaf(unittest.TestCase):
+    """contracts `nonblocking_leaves': shutdown(2) does not wait, close and
+    send on a socket still do."""
+
+    SRC = """
+(defun fnn-teardown-%s (service socket)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service)) (%s socket)))
+(defun fnn-teardown-%s-start (service socket)
+  (sb-thread:make-thread (lambda () (fnn-teardown-%s service socket)) :name "t"))
+"""
+
+    def r2(self, leaf, rows=None):
+        name = leaf.split(":")[-1]
+        raw = dict(CONTRACTS.raw)
+        if rows is not None:
+            raw["nonblocking_leaves"] = rows
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + self.SRC % (name, leaf, name, name))
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f.key for f in checker.run({"R2"}) if f.rule == "R2"]
+
+    def test_socket_shutdown_is_not_a_blocking_leaf(self):
+        self.assertEqual(self.r2("sb-bsd-sockets:socket-shutdown"), [])
+
+    def test_without_the_row_it_is_blocking(self):
+        self.assertTrue(self.r2("sb-bsd-sockets:socket-shutdown", rows={}))
+
+    def test_socket_close_still_blocks(self):
+        self.assertTrue(self.r2("sb-bsd-sockets:socket-close"))
+
+    def test_socket_send_still_blocks(self):
+        self.assertTrue(self.r2("sb-bsd-sockets:socket-send"))
+
+
+class R2PipeClose(unittest.TestCase):
+    """contracts `nonblocking_close_sites': a close of a descriptor that can only
+    be a pipe end the loop made does not block; the provenance is checked."""
+
+    SRC = """
+(defstruct (fnn-pc-loop (:constructor %make-fnn-pc-loop)) lock wake-read wake-write)
+(defun fnn-pc-start ()
+  (let ((loop (%make-fnn-pc-loop)))
+    (multiple-value-bind (read write) (sb-posix:pipe)
+      (setf (fnn-pc-loop-wake-read loop) read
+            (fnn-pc-loop-wake-write loop) write))
+    loop))
+(defun fnn-pc-close-wake (service loop)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+    (dolist (slot '(:read :write))
+      (let ((fd (if (eq slot :read) (fnn-pc-loop-wake-read loop) (fnn-pc-loop-wake-write loop))))
+        (when fd
+          (sb-posix:close fd)
+          (if (eq slot :read) (setf (fnn-pc-loop-wake-read loop) nil)
+            (setf (fnn-pc-loop-wake-write loop) nil)))))))
+(defun fnn-pc-run ()
+  (let ((l (fnn-pc-start))) (sb-thread:make-thread (lambda () (fnn-pc-close-wake nil l)) :name "pc")))
+"""
+    ROW = {"fnn-pc-close-wake": {"close_call": "sb-posix:close",
+                                 "slots": ["fnn-pc-loop-wake-read", "fnn-pc-loop-wake-write"],
+                                 "pipe_call": "sb-posix:pipe", "why": "test"}}
+
+    def r2(self, src=None, rows=None):
+        raw = dict(CONTRACTS.raw, nonblocking_close_sites=self.ROW if rows is None else rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + (src or self.SRC))
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f.key for f in checker.run({"R2"}) if f.rule == "R2" and f.function == "fnn-pc-close-wake"]
+
+    def test_a_close_of_the_pipe_slots_is_not_blocking(self):
+        self.assertEqual(self.r2(), [])
+
+    def test_without_the_row_the_close_blocks(self):
+        self.assertTrue(self.r2(rows={}))
+
+    def test_a_slot_stored_from_another_source_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r2(self.SRC + "(defun fnn-pc-other (loop fd) (setf (fnn-pc-loop-wake-read loop) fd))")
+
+    def test_a_constructor_passing_a_slot_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r2(self.SRC + "(defun fnn-pc-make (fd) (%make-fnn-pc-loop :wake-read fd))")
+
+    def test_a_close_of_another_variable_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r2(self.SRC.replace("(sb-posix:close fd)", "(sb-posix:close (sb-posix:open \"/x\" 0))"))
+
+    def test_a_close_of_a_variable_bound_to_a_foreign_value_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r2(self.SRC.replace("(let ((fd (if (eq slot :read) (fnn-pc-loop-wake-read loop) (fnn-pc-loop-wake-write loop))))",
+                                     "(let ((fd (sb-posix:open \"/x\" 0)))"))
+
+
 if __name__ == "__main__":
     unittest.main()

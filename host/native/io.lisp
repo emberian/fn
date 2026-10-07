@@ -5115,19 +5115,26 @@ caller does not know."
               :exists
             (fnn-os-fail errno new)))))))
 
-(defvar *fnn-publication-close-debts* nil
+(defvar *fnn-close-debts-lock* (sb-thread:make-mutex :name "fn close debts"))
+
+(defvar *fnn-publication-close-debts* nil ; guarded-by: *fnn-close-debts-lock*
   "Publication lock descriptor identities with unobserved physical return.
 These records retain evidence; they never authorize retry of a consumed fd.")
 
 (defvar *fnn-publication-lock-roots* nil
   "Roots of locally owned publication lock descriptors until physical return.")
 
+(defun fnn-publication-close-debts-p ()
+  (sb-thread:with-mutex (*fnn-close-debts-lock*)
+    (and *fnn-publication-close-debts* t)))
+
 (defun fnn-publication-close-observation ()
-  (if *fnn-publication-close-debts* :uncertain :closed))
+  (if (fnn-publication-close-debts-p) :uncertain :closed))
 
 (defun fnn-publication-unlock (fd)
   (when fd
-    (when (assoc fd *fnn-publication-close-debts*)
+    (when (sb-thread:with-mutex (*fnn-close-debts-lock*)
+            (assoc fd *fnn-publication-close-debts*))
       (fnn-indeterminate "publication lock return remains unobserved"))
     (let ((root (cdr (assoc fd *fnn-publication-lock-roots*))))
       ;; Consume custody before issuing return; a descriptor number is never
@@ -5139,7 +5146,8 @@ These records retain evidence; they never authorize retry of a consumed fd.")
             (fnn-flock fd +fnn-lock-un+)
             (fnn-close fd))
         (serious-condition (condition)
-          (push (list fd root condition) *fnn-publication-close-debts*)
+          (sb-thread:with-mutex (*fnn-close-debts-lock*)
+            (push (list fd root condition) *fnn-publication-close-debts*))
           (fnn-indeterminate "publication lock physical return unobserved: ~a" condition))))))
 
 (defun fnn-publication-lock (root-path)
@@ -5155,7 +5163,7 @@ on Linux, where renameat2(RENAME_NOREPLACE) refuses any existing ROOT."
   #+linux nil
   #-linux
   (let ((fd nil) (returned nil))
-    (when *fnn-publication-close-debts*
+    (when (fnn-publication-close-debts-p)
       (fnn-indeterminate "publication lock return remains unobserved"))
     (fnn-unwind-cleanups
         ((setq fd (fnn-open (fnn-concat root-path ".lock")
@@ -5428,18 +5436,21 @@ its name (fnn-archive-entry), never a host fault."
                      count)))
         (fnn-close fd)))))
 
-(defvar *fnn-immutable-close-debts* nil
+(defvar *fnn-immutable-close-debts* nil ; guarded-by: *fnn-close-debts-lock*
   "Exact #(FD STAGE FINAL OPERATION PUBLICATION CONDITION) return debts.")
 
 (defun fnn-immutable-close-observation ()
-  (if *fnn-immutable-close-debts* :uncertain :closed))
+  (if (sb-thread:with-mutex (*fnn-close-debts-lock*)
+        (and *fnn-immutable-close-debts* t))
+      :uncertain :closed))
 
 (defun fnn-immutable-close-handle (fd stage final operation publication)
   "The caller consumed its owning FD slot; retain ambiguity, never retry."
   (handler-case (fnn-close fd)
     (serious-condition (condition)
-      (push (vector fd stage final operation publication condition)
-            *fnn-immutable-close-debts*)
+      (sb-thread:with-mutex (*fnn-close-debts-lock*)
+        (push (vector fd stage final operation publication condition)
+              *fnn-immutable-close-debts*))
       (error condition))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
@@ -7281,7 +7292,13 @@ with its depth, and the rows under it name the path that called it."
   ;; serializes preparers; it is never taken under the owner mutex.
   (reseat-custody nil)
   (active-close-debt nil)
+  ;; SPARE and SPARE-CLOSE-DEBT are the slot shared by the two preparers
+  ;; (under SPARE-LOCK) and the rotation (under the owner mutex): every
+  ;; access is under SPARE-SLOT-LOCK, a leaf that never covers I/O
+  ;; (fnn-log-spare-peek, fnn-log-spare-take, fnn-log-spare-install,
+  ;; fnn-log-spare-clear).
   (spare nil) (spare-close-debt nil) (spare-lock (sb-thread:make-mutex :name "fn log spare"))
+  (spare-slot-lock (sb-thread:make-mutex :name "fn log spare slot"))
   ;; journal/'s path while the rotated-to segment's name is not yet durable:
   ;; the first fence of the new segment (fnn-log-fence) and the checkpoint
   ;; that names it (fnn-owner-publish-captured) fence journal/ first
@@ -8474,15 +8491,38 @@ removes one a death left, and the open's segment listing never sees it
           (setf (fnn-log-active-close-debt log) (list fd condition))
           (error condition))))))
 
+(defun fnn-log-spare-peek (log)
+  "The spare slot's value, (INDEX PATH FD) or NIL."
+  (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+    (fnn-log-spare log)))
+
+(defun fnn-log-spare-install (log spare)
+  "Put SPARE in the slot, the candidate's custody."
+  (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+    (setf (fnn-log-spare log) spare)))
+
+(defun fnn-log-spare-clear (log)
+  "Empty the slot once its descriptor has moved to the active slot."
+  (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+    (setf (fnn-log-spare log) nil)))
+
+(defun fnn-log-spare-take (log)
+  "Take the spare out of the slot, atomically: the one caller that gets it
+owns its descriptor.  A close debt a failed discard left is signalled and
+nothing is taken."
+  (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+    (when (fnn-log-spare-close-debt log)
+      (error (second (fnn-log-spare-close-debt log))))
+    (let ((spare (fnn-log-spare log)))
+      (setf (fnn-log-spare log) nil)
+      spare)))
+
 (defun fnn-log-discard-spare (log)
   "Close and unlink a spare that will not be renamed (another index, or the
 store closing).  Removing a staged name is never uncertain for the history:
 the open ignores and sweeps it."
-  (when (fnn-log-spare-close-debt log)
-    (error (second (fnn-log-spare-close-debt log))))
-  (let ((spare (fnn-log-spare log)))
+  (let ((spare (fnn-log-spare-take log)))
     (when spare
-      (setf (fnn-log-spare log) nil)
       (destructuring-bind (index path fd) spare
         (declare (ignore index))
         (handler-case
@@ -8490,7 +8530,8 @@ the open ignores and sweeps it."
               (fnn-close fd)
               (when (fnn-lstat path) (fnn-unlink path)))
           (serious-condition (condition)
-            (setf (fnn-log-spare-close-debt log) (list spare condition))
+            (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+              (setf (fnn-log-spare-close-debt log) (list spare condition)))
             (error condition)))))))
 
 (defun fnn-log-prepare-spare (store)
@@ -8505,7 +8546,7 @@ of the checkpoint that wanted the rotation (serving continues)."
   (let ((log (fnn-store-log store)))
     (sb-thread:with-mutex ((fnn-log-spare-lock log))
       (let ((next (fnn-core 'fn-lgs-next-segment (fnn-log-index log)))
-            (spare (fnn-log-spare log)))
+            (spare (fnn-log-spare-peek log)))
         (unless (and spare (eql (first spare) next))
           (fnn-log-discard-spare log)
           (unless next
@@ -8521,7 +8562,7 @@ of the checkpoint that wanted the rotation (serving continues)."
                                                   sb-posix:o-excl +fnn-o-nofollow+)))
                   ;; Install candidate custody before any preparation/cut
                   ;; can escape; failed prepare cannot strand a local fd.
-                  (setf (fnn-log-spare log) (list next path fd))
+                  (fnn-log-spare-install log (list next path fd))
                   (fnn-log-preallocate fd extent)
                   (fnn-log-at :rotate-created)
                   (fnn-fsync-file fd)
@@ -8566,7 +8607,7 @@ be in journal/ while the closed segment would take more records)."
         (list (fnn-log-index log) (fnn-core 'fn-lgc-last ks))))
     (unless next
       (fnn-refuse "rotation refused reason=segment-index-exhausted"))
-    (let ((spare (fnn-log-spare log)))
+    (let ((spare (fnn-log-spare-peek log)))
       (unless (and spare (eql (first spare) next))
         (fnn-refuse "rotation refused reason=spare-unprepared"))
       ;; The spare remains the candidate's physical custody across rename
@@ -8601,8 +8642,8 @@ be in journal/ while the closed segment would take more records)."
             ;; Transfer physical custody before any fallible semantic call;
             ;; shutdown must see the candidate in exactly one fd slot.
             (setf (fnn-log-path log) path
-                  (fnn-log-fd log) fd
-                  (fnn-log-spare log) nil)
+                  (fnn-log-fd log) fd)
+            (fnn-log-spare-clear log)
             (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks next unit)
                   (fnn-log-index log) next
                   (fnn-log-genesis log) (fnn-core 'fn-lgc-last ks)

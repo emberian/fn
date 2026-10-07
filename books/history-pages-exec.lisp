@@ -435,3 +435,7 @@
                             fn-hp-iw fn-hp-image fn-hp-okp adt-unle adt-regs fn-hp-rows adt-starts-l adt-end-l
                             adt-lens fn-hp-lens fn-hp-starts adt-placement-ok fn-hp-placement-ok-of-image)))))
 
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-hp-nth-col-sizes))

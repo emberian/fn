@@ -821,7 +821,7 @@ def cmd_build(args) -> int:
         lib = build / "lib"
         if not lib.exists() and (image_set / "lib").is_dir():
             lib.symlink_to(image_set / "lib")
-        (build / f"{launcher}.catalog").write_text("old\n")
+        (build / f"{launcher}.catalog").write_text("paged\n")
         sums = hashlib.sha256(out_core.read_bytes()).hexdigest() if out_core.is_file() else None
         (build / f"{launcher}.overlay.json").write_text(json.dumps({
             "base_set": str(image_set), "base": record["base"], "source": record["source"],

@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/allocation-turn-source-cost.lisp",
+ "id": "ATSC-OWED-REQUEST-BUDGET-CENSUS",
+ "notes": [],
+ "owner": "p-unhooked-books",
+ "severity": "medium",
+ "source": "p-unhooked-books",
+ "state": "open",
+ "title": "fn-atsc-enter-owned-source-census (exact 54+2k cells, 51 operations) now carries (fn-aec-physical-installationp (fn-prp-alloc-installation pool)): the same exact census for a request-budget installation (gate = 9 operations, ceiling = 1) is not proved; only the all-entry-paths bound (<= 64 cells, <= 51 ops, fn-atsc-all-entry-paths-source-census-bound) covers it",
+ "updated": "2026-10-07T13:27:14Z"
+}

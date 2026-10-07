@@ -606,3 +606,9 @@
                     (:d fn-ctl-cause-record) (:d fn-ctl-find-held)
                     (:d fn-ctl-msgid-withdrawn) (:d fn-ctl-served-held)
                     (:d fn-ctl-served-status)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-ctl-visible-filter-is-subset-of-arts
+                    fn-ctl-withdrawn-articles-is-subset-of-arts))

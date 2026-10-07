@@ -429,3 +429,9 @@
     (:d fn-pol-first-authority-stmt)))
 
 (in-theory (disable fn-pol-invariants-vocabulary))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-pol-candidates-members-are-candidates
+                    fn-pol-stmt-is-consp))

@@ -338,9 +338,9 @@ Physical calls record only their literal return, never descriptor closure."
              ;; outer escapes use the same off-owner classifier; a failure
              ;; of its diagnostic cannot remove the retained cleanup debt.
              (setf (fnn-mux-cleanup-receipt-condition receipt) condition)
-             (handler-case
-                 (fnn-owner-thread-escape service condition "mux cleanup")
-               (serious-condition () nil))))
+             (fnn-owner-install-or-end
+              (lambda () (fnn-owner-thread-escape service condition "mux cleanup"))
+              condition "mux cleanup")))
       (unless (fnn-mux-cleanup-receipt-section-returned receipt)
         (fnn-mux-cleanup-debt loop conn receipt)))
     receipt))
@@ -395,7 +395,9 @@ failed effects remain discoverable while independent physical cleanup runs."
              ;; debt; no live renderer in this single loop can publish again.
              (fnn-mux-cleanup-attempt
               loop conn (list :response-window capture)
-              (lambda () (fnn-owner-response-window-close service capture)) :window-closed nil)
+              (lambda ()
+                (fnn-owner-response-window-close service capture (fnn-mux-conn-class conn)))
+              :window-closed nil)
              (fnn-mux-cleanup-attempt
               loop conn :output-discard
               (lambda () (fnn-owner-output-close service (fnn-mux-conn-output-grant conn) :discarded))
@@ -748,7 +750,8 @@ contract, without blocking the loop)."
 (defun fnn-mux-after (loop conn after)
   ;; All windows, including a partial socket write's pending suffix, have
   ;; drained.  A replacement catalog is now safe for this connection.
-  (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn))
+  (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn)
+                                   (fnn-mux-conn-class conn))
   (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
   ;; Output progress (Codex r67 F3, Astra c07): a reply whose drain outlasted
   ;; its step -- it waited on the socket or yielded at a cursor -- ends now,
@@ -1694,8 +1697,9 @@ its descriptor and calling receipt; physical uncertainty never permits retry."
     ;; Fault escalation outside inbox exclusion, after both closes attempted.
     ;; A diagnostic escape leaves every receipt discoverable on the loop.
     (dolist (condition (nreverse conditions))
-      (handler-case (fnn-owner-thread-escape service condition "mux wake close")
-        (serious-condition () nil)))
+      (fnn-owner-install-or-end
+       (lambda () (fnn-owner-thread-escape service condition "mux wake close"))
+       condition "mux wake close"))
     nil))
 
 (def-actor fnn-mux-spawn :kind :mux :thread-name "fn owner io" :roster t
@@ -1868,8 +1872,12 @@ lock.  Give the slot back with fnn-mux-unreserve when no socket fills it."
   (let ((deadline (fnn-mux-ticks seconds)))
     (loop
       (multiple-value-bind (result line) (fnn-mux-reserve-once service deadline)
+        ;; The line is ACL2's (fn-mxa-deferral-line).  Its failure is not
+        ;; swallowed: a malformed line is fnn-fault's, and the accept loop
+        ;; that called us answers it as it answers fnn-owner-retire-refuse's
+        ;; identical write.  No slot is held when LINE is non-NIL (:again).
         (when line
-          (ignore-errors (fnn-log-line (map 'list #'char-code line))))
+          (fnn-log-line (map 'list #'char-code line)))
         (unless (eq result :again)
           (return result))))))
 
@@ -1905,7 +1913,10 @@ thread holds it."
           (push socket (fnn-owner-service-clients service))
           (if reserved
               (setq loop reserved)
-            (progn
+            ;; The cursor belongs to the slot lock, which fnn-mux-reserve-once
+            ;; holds for its own read and increment; the roster lock R is
+            ;; held here for LOOPS and nothing takes R under the slot lock.
+            (sb-thread:with-mutex ((fnn-owner-service-mux-slot-lock service))
               (setq loop (nth (mod (fnn-owner-service-mux-next service) (length loops))
                               loops))
               (incf (fnn-owner-service-mux-next service)))))))

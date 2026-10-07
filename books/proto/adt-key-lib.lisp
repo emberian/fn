@@ -1233,3 +1233,8 @@
     adt-kfind-c adt-kget-c adt-kinsert-c adt-kremove-c adt-kreplace-c adt-kupdate-c adt-klookup-c adt-kmem-c
     adt-kidx adt-kput adt-bucket adt-kempty-c
     (:executable-counterpart adt-pschema) (:executable-counterpart adt-ncols)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable adt-len-when-rec-p))

@@ -1559,3 +1559,8 @@
                     fn-rv-fundedp fn-rv-slack fn-rv-charge fn-rv-draw fn-rv-open
                     fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy fn-rv-step
                     fn-rv-run fn-rv-install))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-rv-len-of-vector))
