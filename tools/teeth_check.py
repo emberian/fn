@@ -1611,27 +1611,18 @@ def anchor_probes(book: str, assertions: list[Assertion],
 # --null-witness: an empty-result assertion with no non-empty witness
 # --------------------------------------------------------------------------
 #
-# Protects against a test that certifies a defect.  A test that asserts
-# `(equal (fn-x-lace node) nil)` -- or `(null ...)`, `(endp ...)`,
-# `(equal (len ...) 0)` -- over a value the machine produced pins whatever the
-# machine produces today as the expected value; when that value is a DEFECT
-# (stx-model, 2026-09-29: stx-policy's laces were empty for every produced
-# node and the old test asserted the empty lace) the test passes for as long as
-# the defect lives.  So an empty-result assertion over a function's result
-# needs a POSITIVE witness beside it in the same book: `(consp (f ...))`,
-# `(equal (f ...) '(...))`, `(member-equal x (f ...))`, `(< 0 (len (f ...)))`,
-# or a negated empty check.
-#
-# nw_classify walks the conclusions of assert-event / assert! / defthm / thm
-# forms (an `implies` hypothesis is not an assertion; `not` flips polarity;
-# must-fail is skipped) and nw_book_findings names, once per book, each
-# function with an empty assertion and no witness.  Warn-only (exit 0) unless
-# --strict.  tools/null_witness_allow.json holds "BOOK FUNCTION" -> why the
-# empty result is right; an entry no longer found is STALE.  The allow-list is
-# a ratchet (tools/ratchet.py): `--null-witness --allow KEY --reason WHY` adds
-# an entry only when planning/repair/ACKS.md carries
-# `ratchet:teeth_check:null-witness_<BOOK>_<FUNCTION>`, and
-# `--null-witness --write-baseline` drops stale entries.  (obstructions-6 item 54)
+# Protects against a test that certifies a defect: `(equal (fn-x-lace node) nil)`
+# (or null / endp / len 0) over a produced value pins whatever the machine
+# produces today (stx-model, 2026-09-29: the empty laces).  Such a function
+# needs a POSITIVE witness (consp, a non-nil equal, member, `(< 0 (len ..))`)
+# in the same book.  nw_classify walks assert-event / assert! / defthm / thm
+# conclusions (`implies` hypotheses excluded, `not` flips polarity, must-fail
+# skipped); nw_book_findings names each unwitnessed function once per book.
+# Warn-only unless --strict.  tools/null_witness_allow.json ("BOOK FUNCTION" ->
+# why the empty value is right; STALE when no longer found) is a ratchet
+# (tools/ratchet.py): --allow KEY --reason WHY needs the ACKS.md line
+# `ratchet:teeth_check:null-witness_<BOOK>_<FUNCTION>`; --write-baseline drops
+# stale entries.  (obstructions-6 item 54)
 
 NW_ALLOW = ROOT / "tools" / "null_witness_allow.json"
 NW_ASSERTIONS = {"assert-event", "assert!", "assert!-stobj", "assert$", "defthm", "thm",
@@ -1860,25 +1851,15 @@ def null_witness_main(files: list[str], strict: bool, allow_key: str | None = No
 # --must-fail [--convert]: every tooth in tests/acl2 is a must-fail whose body TRANSLATES
 # --------------------------------------------------------------------------
 #
-# Protects against a tooth that bites nothing.  `std/testing/must-fail`
-# succeeds when its form fails for ANY reason, output suppressed; a body that
-# stopped translating -- a call at a stale arity, an undefined function, a
-# theorem name already in use -- "fails" and the tooth passes.  The keystone
-# audit of 2026-09-27 found 41 such forms in two test books after the arena
-# flip changed argument counts: PRF-191, PRF-132 and PRF-144 had never been
-# evaluated and every certification was green.
-#
-# tests/acl2/must-fail-checked.lisp defines `must-fail-checked`, which first
-# translates the claim the body makes and only then runs the must-fail, so
-# certification refuses a tooth that does not translate.  `--must-fail` makes
-# that the only must-fail in tests/acl2: it fails on a bare `must-fail` (or
-# `must-fail!`, `must-fail-with-...`) head outside comments and strings
-# (code_mask), including inside a test-local `defmacro` template, unless its
-# line declares `; must-fail-ok: <reason>` (accepted declarations are printed
-# on every run).  `--convert` rewrites bare heads to `must-fail-checked` and
-# makes the book include "must-fail-checked", idempotently, after a merge
-# brings in a book written with the bare form.  Static, no ACL2.  host_check
-# --tables reads code_mask for its own comment/string mask.
+# Protects against a tooth that bites nothing: std must-fail passes when its
+# form fails for ANY reason, so a body that stopped translating (stale arity,
+# undefined function) passes (2026-09-27: 41 such forms, PRF-191/132/144 never
+# evaluated).  tests/acl2/must-fail-checked.lisp translates the body's claim
+# first; this fails on a bare `must-fail`/`must-fail!`/`must-fail-with-...` head
+# in code (code_mask: not comments or strings, defmacro templates included)
+# unless its line declares `; must-fail-ok: <reason>`.  --convert rewrites bare
+# heads to `must-fail-checked` and fixes the include, idempotently.  Static.
+# host_check --tables reads code_mask as its Lisp comment/string mask.
 
 MF_TEST_DIR = "tests/acl2"
 MF_SUPPORT = "must-fail-checked.lisp"
