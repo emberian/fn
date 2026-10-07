@@ -58,13 +58,18 @@ ROOT = Path(os.environ.get("DEF_LOOP_DRAIN_ROOT") or Path(__file__).resolve().pa
 from lisp_rewrite import Atom, Str, Pre, Lst, ReadError, flat, emit, parse, write  # noqa: E402
 
 
+# the tree's hand-written def-loop forms wrap at about 100 columns (84 matched 28 of 64
+# landed conversions byte for byte, 100 matches 33)
+WIDTH = 100
+
+
 def read_all(text: str):
     """Top-level data of TEXT and the comments between them as (start, text)."""
     p = parse(text)
     return p.forms, p.comments
 
 
-def pretty(n, indent=0, width=84) -> str:
+def pretty(n, indent=0, width=WIDTH) -> str:
     return emit(n, indent=indent, width=width, layout="aligned", drop_comments=True)
 
 
@@ -551,7 +556,7 @@ def render(spec: Spec, hoisted) -> str:
     parts.append(first)
 
     def opt(key, node):
-        txt = pretty(node, 4 + len(key))
+        txt = pretty(node, 3 + len(key))
         parts.append(f"  {key} {txt}")
 
     if spec.guard is not None:
@@ -564,11 +569,18 @@ def render(spec: Spec, hoisted) -> str:
     if spec.keep is not None:
         opt(":keep", spec.keep)
         if spec.skip_first:
-            parts[-1] += " :keep-order :skip-first"
+            if "\n" in parts[-1]:  # a wrapped :keep leaves the option on its own line
+                parts.append("  :keep-order :skip-first")
+            else:
+                parts[-1] += " :keep-order :skip-first"
     if spec.while_ is not None and not (spec.shape == "take" and flat_low(spec.while_) == f"(consp {spec.xs})" and False):
         opt(":while", spec.while_)
     if spec.tail is not None:
         opt(":tail", spec.tail)
+        if spec.stop is not None and "\n" not in parts[-1] and "\n" not in parts[-2] \
+                and len(parts[-2]) + len(parts[-1].strip()) + 1 <= WIDTH:
+            tail_line = parts.pop().strip()
+            parts[-1] += " " + tail_line
     if isinstance(spec.body, Atom) and spec.body.low == "nil":
         parts.append("  :body 'nil")  # def-loop reads a bare NIL :body as absent
     else:
