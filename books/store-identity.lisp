@@ -169,15 +169,23 @@
 ; The client's verb: `fn identity CONTROL'
 
 (defconst *fn-stid-usage*
-  "usage: fn identity CONTROL (asks the running owner at the absolute control-socket path CONTROL who this store is: its format word, genesis node identity, schema and profile digests, consumer history id and incarnation, the creating and the running image's revisions, and the digest of the wire-grammar file the image renders; exit 0 accepted, 1 refused by name, 3 no reply the client can read)")
+  "usage: fn identity CONTROL (asks the running owner at the absolute control-socket path CONTROL who this store is: its format word, genesis node identity, schema and profile digests, consumer history id and incarnation, the creating and the running image's revisions, and the digest of the wire-grammar file the image renders; exit 0 accepted, 1 refused by name, 3 no reply the client can read; fn identity --frame CONTROL prints the reply frame's octets as hex, one line, in place of the line, and exits the same way)")
 
 ; (:run CONTROL) for exactly one absolute control-socket path (the consumer
-; verbs' rule, fn-ncl-absolute-pathp), else (:usage).
+; verbs' rule, fn-ncl-absolute-pathp), (:run CONTROL :frame) for `--frame'
+; and then such a path (the host prints the reply frame as hex instead of
+; the line), else (:usage).
+(defconst *fn-stid-frame-flag* '(45 45 102 114 97 109 101)) ; --frame
+
 (defun fn-stid-cli-plan (argv)
   (declare (xargs :verify-guards nil))
-  (if (and (consp argv) (null (cdr argv)) (fn-ncl-absolute-pathp (car argv)))
-      (list :run (car argv))
-    (list :usage)))
+  (cond ((and (consp argv) (null (cdr argv)) (fn-ncl-absolute-pathp (car argv)))
+         (list :run (car argv)))
+        ((and (consp argv) (consp (cdr argv)) (null (cddr argv))
+              (equal (car argv) *fn-stid-frame-flag*)
+              (fn-ncl-absolute-pathp (cadr argv)))
+         (list :run (cadr argv) :frame))
+        (t (list :usage))))
 
 (defun fn-stid-exit-code (value)
   (declare (xargs :guard t))
