@@ -1756,9 +1756,16 @@
 (definterface fn-owner-feed-reconcile-apply
   :class ::program)
 
+(definterface fn-owner-feed-reply-article
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
+
 (definterface fn-owner-feed-reply-chunk
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
+
+(definterface fn-owner-feed-reply-sync
+  :class ::program)
 
 (definterface fn-owner-feed-security
   :class ::program

@@ -220,7 +220,11 @@ device.  While the named file exists a pread does not return, as a read from
 a device under maintenance does not (tests/test_native_slow_disk.py).  Every
 physical payload pread passes here: the whole-extent realizer's
 (fnn-extent-pread) and the window workers' (fnn-extent-window-pread, raw and
-decoded), always off the owner and extent locks."
+decoded).  The cold reads (the served line's and the peer feed reply's, both
+issued under the owner mutex and read by a worker: fnn-extent-prefetch) and
+the window workers' hold neither lock.  The synchronous realizer miss
+(fnn-extent-entry-direct, reached with *fnn-extent-no-io* unbound) does hold
+both (e.g. the history refresh, LOCK-R2-PGS-FILL-REALIZE-REENTRY)."
   (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_READ_STALL_FILE")))
     (when (and stall (plusp (length stall)))
       (loop while (probe-file stall) do (sleep 0.05)))))
