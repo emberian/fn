@@ -227,6 +227,9 @@ class Report:
     # Books whose only cached pairs were made in another worktree that still
     # exists on this machine: ACL2 would follow that worktree's sub-books.
     foreign_local: list[str] = field(default_factory=list)
+    # `install`: books left uncertified because no single origin holds a pair
+    # for the book and each cached dependency; one line naming both origins.
+    mixed_origin: list[str] = field(default_factory=list)
     removed_foreign: int = 0
     # Entries already cached whose recorded origin kind this run corrected.
     relabelled: int = 0
@@ -317,6 +320,8 @@ class Report:
             out.append(f"  foreign-local (made in another live worktree): {book}")
         for book in self.unreadable:
             out.append(f"  unreadable closure: {book}")
+        for line in self.mixed_origin:
+            out.append(f"  mixed-origin: {line}")
         for book in self.uncached:
             out.append(f"  uncached: {book}")
         for book in self.uncompiled:
@@ -2200,21 +2205,129 @@ def write_text_atomic(target: Path, value: str) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def entry_per_origin(entries: list[tuple[Path, dict]],
+                     target: str) -> dict[str, tuple[Path, dict]]:
+    """The usable entries grouped by origin root: one per origin, the compiled
+    ones before the rest, the newest publication first (`choose_entry`'s rule
+    applied within each origin)."""
+    grouped: dict[str, list[tuple[Path, dict]]] = {}
+    for found in entries:
+        if usable_origin(found[1], target):
+            grouped.setdefault(str(found[1]["origin_root"]), []).append(found)
+    return {origin: newest([e for e in group if e[1].get("fasl_sha256")] or group)
+            for origin, group in grouped.items()}
+
+
+@scoped_closures
 def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
-    """Copy in every cached pair whose closure key matches a book here."""
+    """Copy in every cached pair whose closure key matches a book here.
+
+    **One origin per composed set.**  A certificate's post-alist names each
+    sub-book by the path it was certified under, and ACL2 refuses a book whose
+    certificate requires ``<origin A>/books/d.lisp`` once it has included
+    ``<origin B>/books/d.lisp`` (hbox, 2026-10-07: wire-export over defrecord
+    from a second origin).  So a book installs from an origin only together
+    with every dependency of its include closure that the cache holds under
+    that same origin, and its dependencies are placed from that origin too:
+    books are decided largest closure first and each decision binds the
+    closure.  A book with no origin covering its cached closure is not
+    installed (the next certify step certifies it) and is named in
+    ``mixed_origin`` with both origins.
+    """
     report = Report(action="install", cache=str(cache))
-    for source in book_sources(root, names):
-        if not source.is_file():
-            continue
-        report.books += 1
+    target = str(root.resolve())
+    books = [source for source in book_sources(root, names) if source.is_file()]
+    report.books = len(books)
+    per_origin_memo: dict[str, dict[str, tuple[Path, dict]]] = {}
+    all_entries: dict[str, list[tuple[Path, dict]]] = {}
+
+    def entries_of(name: str) -> list[tuple[Path, dict]]:
+        if name not in all_entries:
+            all_entries[name] = book_entries(root, cache, name)
+        return all_entries[name]
+
+    def origins_of(name: str) -> dict[str, tuple[Path, dict]]:
+        if name not in per_origin_memo:
+            per_origin_memo[name] = entry_per_origin(entries_of(name), target)
+        return per_origin_memo[name]
+
+    closures: dict[str, list[str]] = {}
+    for source in books:
         name = book_name(root, source)
         try:
-            entries = book_entries(root, cache, name)
+            entries_of(name)
+            closures[name] = sorted(closure(root, name))
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
+    assigned: dict[str, str] = {}
+    refused: dict[str, tuple[str, str]] = {}
+    for name in sorted(closures, key=lambda book: (-len(closures[book]), book)):
+        options = origins_of(name)
+        if not options:
+            continue
+        dependencies = [dep for dep in closures[name] if dep != name]
+        try:
+            held = {dep: origins_of(dep) for dep in dependencies}
+        except UnreadableBook as error:
+            report.unreadable.append(f"{name}: {error}")
+            closures.pop(name)
+            continue
+        forced = assigned.get(name)
+        wanted = {forced: options[forced]} if forced in options else options
+        fits = {}
+        blame: dict[str, tuple[int, str, str]] = {}
+        for origin, found in wanted.items():
+            gap = ""
+            covered = 1
+            for dep in dependencies:
+                if assigned.get(dep, origin) != origin:
+                    gap = gap or f"{dep} (already placed from {assigned[dep]})"
+                elif held[dep] and origin not in held[dep]:
+                    gap = gap or (f"{dep} (cached only under "
+                                  + ", ".join(sorted(held[dep])) + ")")
+                else:
+                    covered += 1
+            if gap:
+                blame[origin] = (covered, origin, gap)
+            else:
+                fits[origin] = found
+        if not fits:
+            covered, origin, gap = max(blame.values())
+            refused[name] = (origin, gap)
+            continue
+        origin = max(fits, key=lambda o: (o == target,
+                                          str(fits[o][1].get("published_at", "")), o))
+        assigned[name] = origin
+        for dep in dependencies:
+            if origin in held[dep]:
+                assigned[dep] = origin
+    for source in books:
+        name = book_name(root, source)
+        if name not in closures:
             continue
         cert = source.with_suffix(".cert")
-        chosen = choose_entry(entries, str(root.resolve()))
+        port = source.with_suffix(".port")
+        entries = entries_of(name)
+        chosen = origins_of(name).get(assigned.get(name, ""))
+
+        def clear_local_pair() -> bool:
+            if cert.is_file() and any(
+                    content_hash(cert) == content_hash(entry / "book.cert")
+                    for entry, _ in entries):
+                cert.unlink()
+                port.unlink(missing_ok=True)
+                source.with_suffix(".fasl").unlink(missing_ok=True)
+                report.removed_foreign += 1
+                return True
+            return False
+
+        if name in refused:
+            origin, gap = refused[name]
+            report.mixed_origin.append(
+                f"{name}: certificate pair from origin {origin}, but dependency {gap}; "
+                "no single origin covers its closure, not installed")
+            clear_local_pair()
+            continue
         if chosen is None:
             if entries:
                 # Every cached pair belongs to a worktree that still exists
@@ -2222,17 +2335,10 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
                 # worktree's books.  Remove a local pair that is provably one
                 # of them, so a tree poisoned by an earlier install recovers.
                 report.foreign_local.append(name)
-                if cert.is_file() and any(
-                        content_hash(cert) == content_hash(entry / "book.cert")
-                        for entry, _ in entries):
-                    cert.unlink()
-                    source.with_suffix(".port").unlink(missing_ok=True)
-                    source.with_suffix(".fasl").unlink(missing_ok=True)
-                    report.removed_foreign += 1
+                clear_local_pair()
             else:
                 report.uncached.append(name)
             continue
-        port = source.with_suffix(".port")
         for attempt in range(ENTRY_ATTEMPTS):
             directory, meta = chosen
             try:
@@ -2242,8 +2348,8 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
                 if attempt == ENTRY_ATTEMPTS - 1:
                     raise
                 entry_backoff(attempt)
-                chosen = choose_entry(book_entries(root, cache, name),
-                                      str(root.resolve()))
+                chosen = entry_per_origin(book_entries(root, cache, name), target
+                                          ).get(assigned[name])
                 if chosen is None:
                     raise EntryChanged(f"cache entry vanished for {name}")
         if moved:
