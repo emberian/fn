@@ -231,10 +231,12 @@
   :rule-classes nil)
 
 ; The debts (GENERATORS' defteeth v1): each claim is the statement above, in
-; its source shape; the subject is the host's step.
+; its source shape, as the pair (HYPOTHESES TERM) a defteeth :claim is (no
+; hypotheses lifted out: the antecedents stay inside the implication); the
+; subject is the host's step.
 (table fn-teeth-owed 'fn-handle-holds-released-handles-are-unnamed-and-postdate-every-pin
        '(:by handle-holds
-         :claim (implies (and (fn-arpn-okp st)
+         :claim (() (implies (and (fn-arpn-okp st)
                               (member-equal e (mv-nth 1 (fn-arpn-step st '(:release))))
                               (equal (cdr e) (fn-arf-tag (fn-arf-changed-handles old new)))
                               (fn-arf-disjointp (fn-arf-changed-handles old new) named))
@@ -243,12 +245,12 @@
                                        (< (car e) g))
                               (equal (fn-arf-items-handles (cdr e)) (fn-arf-changed-handles old new))
                               (implies (member-equal h (fn-arf-items-handles (cdr e)))
-                                       (not (member-equal h named)))))
+                                       (not (member-equal h named))))))
          :subject fn-arpn-step))
 
 (table fn-teeth-owed 'fn-handle-holds-released-handles-are-unnamed-under-the-pairwise-root-fact
        '(:by handle-holds
-         :claim (implies (and (fn-arpn-okp st)
+         :claim (() (implies (and (fn-arpn-okp st)
                               (member-equal e (mv-nth 1 (fn-arpn-step st '(:release))))
                               (equal (cdr e) (fn-arf-tag (fn-arf-changed-handles old new)))
                               (no-duplicatesp-equal (fn-arf-rows-handles old))
@@ -258,5 +260,5 @@
                                        (< (car e) g))
                               (equal (fn-arf-items-handles (cdr e)) (fn-arf-changed-handles old new))
                               (implies (member-equal h (fn-arf-items-handles (cdr e)))
-                                       (not (member-equal h (fn-arf-rows-handles new))))))
+                                       (not (member-equal h (fn-arf-rows-handles new)))))))
          :subject fn-arpn-step))

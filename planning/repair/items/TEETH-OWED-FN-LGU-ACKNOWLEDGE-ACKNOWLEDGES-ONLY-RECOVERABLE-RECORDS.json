@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-lgu-acknowledge-acknowledges-only-recoverable-records; books/store-log-durable.lisp:1173; statement: (let* ((ks0 (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor)) (run (fn-lgu-host-run bs ks0 (append ops (fn-lgu-finishes n)) ino max)) (final (fn-lgu-host-final bs ks0 (append ops ( ...; owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/store-log-durable.lisp",
+ "id": "TEETH-OWED-FN-LGU-ACKNOWLEDGE-ACKNOWLEDGES-ONLY-RECOVERABLE-RECORDS",
+ "keystone": "fn-lgu-acknowledge-acknowledges-only-recoverable-records",
+ "line": 1173,
+ "notes": [],
+ "owner": "m1-durable",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-lgu-acknowledge-acknowledges-only-recoverable-records is a new registry keystone with no generated teeth: declare (defteeth fn-lgu-acknowledge-acknowledges-only-recoverable-records ...) in a tests/acl2 book",
+ "updated": "2026-10-07T16:49:45Z"
+}
