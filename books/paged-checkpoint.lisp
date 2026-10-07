@@ -1,3 +1,39 @@
+; fn: checkpoint = dirty pages, open = root + log tail (lane s-pck, 2026-10-07;
+; Phase 2a of build/coordinator/STORAGE-PROGRAM-20261006.md; owed items
+; PCK-DELTA, PCK-BOUND, PCK-OPEN, PCK-CRASH).  Model level over the
+; copy-on-write page store of books/pagestore.lisp; no host wiring.
+;
+; The page image of the recovered state after a record prefix is one page-store
+; root: a ROOT region (the capture's four fold roots as one tree, zero padded to
+; *fn-pck-root-pages* pages, rewritten whole by each checkpoint) followed by an
+; EVENTS tape (one row per record, the record's tree program as the row's
+; octets, appended by each checkpoint).  Both are `fn-pck-row', one
+; (def-representation ... :pages t) instance (books/def-representation-pages.lisp):
+; no codec or dirty-set function here is hand written.
+;
+;   fn-pck-dirty-is-the-delta   the dirty pages applied to the old image give the new image
+;   fn-pck-dirty-bound          K plus the delta's own pages plus one; no term in the prefix
+;   fn-pck-open-after-commit-is-full-recover
+;                               commit, open the pages, resume over a suffix = the full open
+;   fn-pck-crash-recovers-from-old-or-new
+;                               a crash at any cut of the commit, any log kept from the old S on
+;
+; Scope, named.  (1) The events tape holds whole records, payload octets
+; included; "payload written once to byte-pool pages and referenced" is
+; D41-STAGE5-ONE-ROW-IMAGE.  (2) The catalog (fn-crow rows, msgid table, dense
+; map) is NOT in this image: it is derived data and will live in its own page-
+; store root, adopted only when its S matches (PCK-ADOPT, PCK-ADOPT-TAG), because
+; two growing regions cannot share one root (pgs-apply-dirty drops a dirty page
+; above the length reached).  (3) Premises, each inhabited in
+; tests/acl2/paged-checkpoint-tests.lisp: every record and the fold roots are
+; encodable trees (fn-pck-recordsp); the root fits K pages (fn-pck-root-fitsp),
+; which is the host's named refusal to checkpoint (the log is kept); the
+; accounted A-CRYPTO hypothesis pgs-writes-faithful.  PCK-ROOT-BOUND owes
+; deriving K from the profile so that fitsp holds by construction.  (4) The
+; delta and bound statements need no fitsp: the root region is cut or padded to
+; exactly K pages.  (5) The log model is (START . TAIL), the records from index
+; START on; recovery replays the tail from the checkpoint's S.
+
 (in-package "ACL2")
 (include-book "def-representation-pages")
 (include-book "pagestore-keystones")
@@ -525,3 +561,149 @@
                  (:instance pck-sccb-listp-of-append (a prefix) (b delta))
                  (:instance pck-recordsp-sccb (recs (append prefix delta)))
                  (:instance pck-true-listp-append (a prefix) (b delta))))))
+
+; -----------------------------------------------------------------------------
+; 7. PCK-CRASH
+;
+; The log is (START . TAIL): the records from index START on; segments
+; wholly below START have been compacted away.  The open reads the checkpoint
+; (the capture of S records) from the pages, and replays the log tail from S.
+
+(defun fn-pck-log-retains (log n)
+  ; The log still holds every record from index N on.
+  (declare (xargs :guard (natp n)))
+  (and (consp log) (natp (car log)) (<= (car log) n)))
+
+(defun fn-pck-recover-view (v log configs frontier max-conns)
+  ; V is the view of the opened image: (TXID CONTENTS), or nil when the open refused.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and v (consp log))
+      (let ((c (fn-pck-capture-of-pages (cadr v))))
+        (fn-ock-recover-extended
+         (fn-sco-extend c configs (nthcdr (- (len (fn-sco-records c)) (nfix (car log))) (cdr log)))
+         configs frontier max-conns))
+    :fault))
+
+(defun fn-pck-recover (image r mode log configs frontier max-conns)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-pck-recover-view (pgs-view (pgs-open image r mode)) log configs frontier max-conns))
+
+(defthm pck-nthcdr-nthcdr
+  (implies (and (natp a) (natp b))
+           (equal (nthcdr a (nthcdr b x)) (nthcdr (+ a b) x))))
+
+(defthm pck-records-of-capture
+  (implies (true-listp recs)
+           (equal (fn-sco-records (fn-sco-capture configs recs)) recs))
+  :hints (("Goal" :in-theory (e/d (fn-sco-records fn-sco-capture fn-sco-make fn-sco-at)
+                                  (fn-sco-cpr-prefix fn-replay-identity-loop
+                                   fn-cpe-projection-replay fn-th-prefix-loop fn-cei-build-aux)))))
+
+(defthm pck-log-tail
+  (implies (and (true-listp recs) (natp s) (<= s (len recs)))
+           (equal (nthcdr (- (len recs) s) (nthcdr s (append recs rest))) rest))
+  :hints (("Goal" :use ((:instance pck-nthcdr-nthcdr (a (- (len recs) s)) (b s) (x (append recs rest))))
+           :in-theory (disable pck-nthcdr-nthcdr))))
+
+(defthm pck-recover-of-view
+  ; Recovery from a view of the pages of RECS: the log tail from the
+  ; checkpoint's S on is REST.
+  (implies (and (true-listp recs)
+                (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                (fn-pck-log-retains log (len recs))
+                (equal (nthcdr (car log) (append recs rest)) (cdr log))
+                (equal v (list tx (fn-pck-pages configs recs))))
+           (equal (fn-pck-recover-view v log configs frontier max-conns)
+                  (fn-ock-recover-extended (fn-sco-extend (fn-sco-capture configs recs) configs rest)
+                                           configs frontier max-conns)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-pck-recover-view fn-pck-log-retains nfix natp (:executable-counterpart consp)
+                                        (:rewrite car-cons) (:rewrite cdr-cons)))
+           :use ((:instance pck-capture-of-pages)
+                 (:instance pck-records-of-capture)
+                 (:instance pck-log-tail (s (car log)))))))
+
+(defthm pck-open-true-listp
+  (implies (equal (car (pgs-open disk r mode)) :ok)
+           (true-listp (pgs-open disk r mode)))
+  :hints (("Goal" :use ((:instance pgs-open-slots-ok (slots (pgs-root-slots r disk))
+                                   (pages (pgs-pages disk))))
+           :in-theory (enable pgs-open))))
+
+(defthm pck-view-of-old
+  (implies (fn-pck-disk-holds disk r mode configs prefix)
+           (equal (pgs-view (pgs-open disk r mode))
+                  (list (third (pgs-open disk r mode)) (fn-pck-pages configs prefix))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(pck-disk-holds-facts pck-open-true-listp pgs-view-of-ok))
+           :use ((:instance pck-disk-holds-facts) (:instance pck-open-true-listp)
+                 (:instance pgs-view-of-ok (o (pgs-open disk r mode)))))))
+
+(defthm pck-crash-cases
+  ; The view is that of the new image or of the old one: either way, the
+  ; recovery over the log tail is the full recovery.
+  (implies (and (true-listp prefix) (true-listp delta) (true-listp suffix)
+                (fn-pck-recordsp configs (append prefix delta))
+                (fn-pck-recordsp configs prefix)
+                (fn-pck-root-fitsp configs (append prefix delta))
+                (fn-pck-root-fitsp configs prefix)
+                (fn-pck-log-retains log (len prefix))
+                (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log))
+                (member-equal v (list (list t1 (fn-pck-pages configs (append prefix delta)))
+                                      (list t0 (fn-pck-pages configs prefix)))))
+           (equal (fn-pck-recover-view v log configs frontier max-conns)
+                  (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (member-equal fn-pck-log-retains)
+                           (pck-recover-of-view fn-owner-recover-from-checkpoint-equals-full-recover
+                            fn-pck-recover-view fn-pck-recordsp fn-pck-root-fitsp fn-sco-capture
+                            fn-sco-extend fn-ock-recover-extended fn-ock-recover-full))
+           :cases ((equal v (list t1 (fn-pck-pages configs (append prefix delta)))))
+           :use ((:instance pck-recover-of-view (recs (append prefix delta)) (rest suffix) (tx t1))
+                 (:instance pck-recover-of-view (recs prefix) (rest (append delta suffix)) (tx t0))
+                 (:instance fn-owner-recover-from-checkpoint-equals-full-recover
+                            (prefix (append prefix delta)))
+                 (:instance fn-owner-recover-from-checkpoint-equals-full-recover
+                            (suffix (append delta suffix)))
+                 (:instance pck-true-listp-append (a prefix) (b delta))
+                 (:instance len-of-append (x prefix) (y delta))))))
+
+; PCK-CRASH
+(defthm fn-pck-crash-recovers-from-old-or-new
+  (let ((p (pgs-plan-commit disk r mode (fn-pck-dirty configs prefix delta) alloc)))
+    (implies (and (true-listp prefix) (true-listp delta) (true-listp suffix)
+                  (fn-pck-recordsp configs (append prefix delta))
+                  (fn-pck-recordsp configs prefix)
+                  (fn-pck-root-fitsp configs (append prefix delta))
+                  (fn-pck-root-fitsp configs prefix)
+                  (fn-pck-disk-holds disk r mode configs prefix)
+                  (pgs-alloc-inv alloc disk)
+                  (pgs-writes-faithful (second p) (pgs-pages disk))
+                  (or (equal sv (pgs-slot (third p) (pgs-root-slots r disk)))
+                      (equal sv (fourth p))
+                      (not (pgs-rec-valid sv)))
+                  (fn-pck-log-retains log (len prefix))
+                  (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log)))
+             (equal (fn-pck-recover (pgs-crash disk r (second p) keep (third p) sv)
+                                    r mode log configs frontier max-conns)
+                    (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-pck-recover pck-open-view-after-commit pck-view-of-old
+                                        pck-recordsp-sccb pck-sccb-listp-of-append
+                                        (:executable-counterpart consp)))
+           :use ((:instance pgs-open-after-crash (dirty (fn-pck-dirty configs prefix delta)))
+                 (:instance pck-disk-holds-facts)
+                 (:instance pck-dirty-lpages-ok)
+                 (:instance pck-open-view-after-commit)
+                 (:instance pck-view-of-old)
+                 (:instance pck-crash-cases
+                            (v (pgs-view (pgs-open (pgs-crash disk r
+                                                              (second (pgs-plan-commit disk r mode (fn-pck-dirty configs prefix delta) alloc))
+                                                              keep
+                                                              (third (pgs-plan-commit disk r mode (fn-pck-dirty configs prefix delta) alloc))
+                                                              sv)
+                                                   r mode)))
+                            (t1 (pgs-next-txid (pgs-root-slots r disk)))
+                            (t0 (third (pgs-open disk r mode))))))))

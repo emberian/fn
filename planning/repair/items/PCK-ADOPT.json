@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "PCK-ADOPT",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "Catalog region on pages (own page-store root r-cat with an S header): fn-crow rows as pages, the catalog the open would build equal to the pages' decoding, commit = append-dirty, withdraw/redecide = set-dirty (same-width row), bounds with no term in the prefix. Needs library NAME-set-dirty + adt-tp-pages-of-set-is-apply-dirty + bound, and the logical function giving the held rows fn-sca-load-held-rows is fed (fn-pck-held-of-prefix). Statement text agreed with Deputy S 2026-10-07.",
+ "updated": "2026-10-07T04:10:00Z"
+}

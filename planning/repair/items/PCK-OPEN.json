@@ -2,12 +2,14 @@
  "category": "proof-owed",
  "file": "books/paged-checkpoint.lisp",
  "id": "PCK-OPEN",
- "notes": [],
+ "notes": [
+  "10-07 proved in books/paged-checkpoint.lisp on lane/s-pck (statements per Deputy S review; DELTA and BOUND need no fitsp)"
+ ],
  "owner": "deputy-S",
  "severity": "high",
  "slice": "storage",
  "source": "s-pck",
- "state": "open",
+ "state": "landed",
  "title": "(defthm fn-pck-open-after-commit-is-full-recover (implies (and (fn-pck-disk-holds disk r mode configs prefix) (pgs-alloc-inv alloc disk)) (equal (fn-pck-open (pgs-commit disk r mode (fn-pck-dirty configs prefix delta) alloc) r mode configs frontier suffix max-conns) (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns)))): composes pgs-open-after-commit with fn-owner-recover-from-checkpoint-equals-full-recover.",
- "updated": "2026-10-07T03:00:00Z"
+ "updated": "2026-10-07T04:10:00Z"
 }
