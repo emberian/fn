@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/peer-catchup-spool")
+(include-book "../../books/peer-catchup-spool-body")
 (include-book "../../books/defkeystone")
 
 (defun csp-test-state (limit window)
@@ -21,6 +22,14 @@
   (declare (xargs :mode :program))
   (cond
    ((zp fuel) (list :exhausted s local journals disk))
+   ; STOP a mode keyword: return the state the first time it is in that mode
+   ; (:offer: as its IHAVE leaves), its effects drained and (for the replay
+   ; modes) a window pending.
+   ((and (keywordp stop) (eq (fn-csp-mode s) stop)
+         (or (eq stop :offer) (not (consp effects)))
+         (or (not (member-eq stop '(:replay-header :replay-body)))
+             (consp (fn-csp-pending s))))
+    (list :at s))
    ; STOP: return the state just before the first settling reply is owed.
    ((and stop (consp effects) (eq (car (car effects)) :local)
          (let ((c (fn-csp-conn (cadr (car effects)) s)))
@@ -344,3 +353,74 @@
                   (<= (fn-csp-conns-bound (fn-csp-conns s2)) 0)))
                ((s *csp-v-s*) (w 2) (event '(:tick)))
                :fault "a bound that admits no record in flight, so the window would not carry the pipelined offers it exists for")))
+
+; Teeth: the body keystones (K1).  The witnesses are REACHABLE states, the
+; controller begun by fn-csp-begin and driven with the drive above: stopped
+; with a body window pending in the replay (conn 0 holds (msgid . :streaming),
+; the window leaves as a :local effect on the next tick), and stopped as the
+; IHAVE leaves (conn 0 holds (msgid . :await335); the local node's 335
+; reply is what makes it stream).
+(defconst *csp-k1-wire* (csp-test-wire '(46 46 120 13 10 13 10) 2 *csp-test-chain*))
+(defconst *csp-k1-body*
+  (cadr (csp-test-drive (csp-test-state 4096 2) nil *csp-k1-wire* nil nil nil 200 :replay-body)))
+(defconst *csp-k1-term*
+  (cadr (csp-test-drive (csp-test-state 4096 2) nil *csp-k1-wire* nil nil nil 200 :terminator)))
+(defconst *csp-k1-offer*
+  (cadr (csp-test-drive (csp-test-state 4096 2) nil *csp-k1-wire* nil nil nil 200 :offer)))
+(defconst *csp-k1-body-octets*
+  (cddr (car (cadr (fn-csp-step *csp-k1-body* '(:tick))))))
+(defconst *csp-k1-335* '(51 51 53 32 111 107 13 10))
+(defconst *csp-k1-msgid* (car (fn-csp-conn 0 *csp-k1-offer*)))
+(assert-event (and (fn-csp-body-inv *csp-k1-body*) (fn-csp-body-inv *csp-k1-term*)
+                   (fn-csp-body-inv *csp-k1-offer*)
+                   (eq (fn-csp-mode *csp-k1-body*) :replay-body)
+                   (eq (fn-csp-mode *csp-k1-term*) :terminator)
+                   (eq (fn-csp-mode *csp-k1-offer*) :offer)))
+; The terminator is a :local effect on the streaming slot, too.
+(assert-event
+ (equal (car (cadr (fn-csp-step *csp-k1-term* '(:tick))))
+        (list* :local 0 '(46 13 10))))
+
+(defteeth fn-csp-body-only-after-its-335
+  :claim (((inv (fn-csp-body-inv s))
+           (eff (member-equal (cons :local (cons j octets))
+                              (cadr (fn-csp-step s event)))))
+          (let ((s2 (car (fn-csp-step s event))))
+            (or (and (natp j)
+                     (equal (fn-csp-conn j s) :free)
+                     (equal (fn-csp-mode s2) :offer)
+                     (equal (fn-csp-slot s2) j)
+                     (equal (fn-csp-conn j s2) (cons (fn-csp-msgid s2) :await335))
+                     (equal octets (fn-cu-ihave (cons (fn-csp-msgid s2) nil))))
+                (and (natp j)
+                     (member-eq (fn-csp-mode s) '(:replay-body :terminator))
+                     (equal (fn-csp-slot s) j)
+                     (equal (fn-csp-conn j s) (cons (fn-csp-msgid s) :streaming))))))
+  :subject fn-csp-step
+  :witness ((s *csp-k1-body*) (event '(:tick)) (j 0) (octets *csp-k1-body-octets*))
+  :breaks ((inv ((s (fn-csp-with *csp-k1-body* :conns (list :free :unopened)))))
+           (eff ((j 1))))
+  :mutations ((body-before-the-335
+               (:conclusion
+                (equal (fn-csp-conn j s) (cons (fn-csp-msgid s) :await335)))
+               ((s *csp-k1-body*) (event '(:tick)) (j 0) (octets *csp-k1-body-octets*))
+               :fault "a body window written on the connection whose IHAVE still awaits its 335")))
+
+(defteeth fn-csp-streaming-only-from-335
+  :claim (((nat (natp k))
+           (post (equal (fn-csp-conn k (car (fn-csp-step s event))) (cons m :streaming))))
+          (or (equal (fn-csp-conn k s) (cons m :streaming))
+              (and (equal (fn-csp-conn k s) (cons m :await335))
+                   (equal (car (fn-pull-list event)) :local)
+                   (equal (nfix (nth 1 event)) k)
+                   (equal (fn-pull-local-code (fn-csp-local-event-octets event)) 335)
+                   (eq (fn-csp-mode s) :offer)
+                   (equal (fn-csp-slot s) k))))
+  :subject fn-csp-step
+  :witness ((s *csp-k1-offer*) (event (list* :local 0 *csp-k1-335*)) (k 0) (m *csp-k1-msgid*))
+  :breaks ((nat ((k -1)) :logical "a negative index is outside the guard of fn-csp-conn (natp); read through nfix it names connection 0")
+           (post ((event '(:tick)))))
+  :mutations ((streaming-is-never-new
+               (:conclusion (equal (fn-csp-conn k s) (cons m :streaming)))
+               ((s *csp-k1-offer*) (event (list* :local 0 *csp-k1-335*)) (k 0) (m *csp-k1-msgid*))
+               :fault "a model in which no reply ever starts a body, so the offer could never proceed")))

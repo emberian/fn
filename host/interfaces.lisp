@@ -2311,7 +2311,9 @@
               (fn-csp-framer-window-accounts-for-every-octet :via fn-csp-framer-window)
               fn-csp-step-settles-one-verdict-exactly-once
               fn-csp-step-final-verdict-journals
-              fn-csp-window-bounds-in-flight))
+              fn-csp-window-bounds-in-flight
+              fn-csp-body-only-after-its-335
+              fn-csp-streaming-only-from-335))
 
 (definterface fn-csp-done-p :class :common-lisp-compliant)
 (definterface fn-csp-close :class :common-lisp-compliant)

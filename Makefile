@@ -1913,6 +1913,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-spool-framer \
 	books/peer-catchup-spool-hash \
 	books/peer-catchup-spool \
+	books/peer-catchup-spool-body \
 	tests/acl2/peer-catchup-spool-framer-tests \
 	tests/acl2/peer-catchup-spool-hash-tests \
 	tests/acl2/peer-catchup-spool-tests \
