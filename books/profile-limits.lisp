@@ -78,6 +78,8 @@
      "TLS handshakes in progress at once on the node, and the most it starts in one second")
     (:tls-handshake-ms 5000 "milliseconds"
      "a TLS handshake's deadline, and a socket's wait for a handshake slot (the time model's D)")
+    (:read-window-octets 262144 "octets"
+     "the payload window one protected window read verifies and publishes (books/extent-window-plan.lisp fn-ewp-begin): each job digests the whole protected prefix, so a payload of P octets costs P / this many prefix digests per pass")
     (:tls-handshake-source-overrides 64 "entries"
      "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")))
 

@@ -462,8 +462,7 @@
 ; included above: the payload arena takes them without the rest of this book.
 
 ; A-PGS-HOST-IO is in books/assumptions-pgs-host-io.lisp, included here:
-; the page store's host I/O, in its list form (`fn-pgs-page-words',
-; `fn-pgs-fill-realize') and, since lane page-word-boundary (2026-10-01),
+; the page store's host I/O, in its logical model (`fn-pgs-page-words') and, since lane page-word-boundary (2026-10-01),
 ; its in-place form over the page store's stobj (`fn-pgs-fill-frame',
 ; constrained to be the put of the same words).  Its own book because that
 ; form is stated over `pgs-mem' (books/pagestore-words.lisp), which this

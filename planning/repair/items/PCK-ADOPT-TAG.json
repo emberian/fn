@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "PCK-ADOPT-TAG",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "Adopt the catalog root only when its S header equals the events root's S, else rebuild from records; crash independence by pgs-crash-isolates-other-roots.",
+ "updated": "2026-10-07T04:10:00Z"
+}

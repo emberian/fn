@@ -86,10 +86,12 @@
 (defun brlct-ks0 (records)
   (declare (xargs :guard t :verify-guards nil))
   (fn-lgk-recover (brlct-content records) (brlct-genesis) (brlct-unit) (brlct-max) 3))
+;; the state the open's copy leaves (books/store-log-recover-copy.lisp K1):
+;; the read's validated prefix, then zeros, nothing pending
 (defun brlct-bs0 (records)
   (declare (xargs :guard t :verify-guards nil))
-  (car (car (last (fn-lg-run (brlct-store (brlct-content records) nil) (brlct-ks0 records)
-                             (fn-lg-recover-program) nil 0)))))
+  (let ((f (fn-lgk-frontier (brlct-ks0 records))) (c (brlct-content records)))
+    (brlct-store (append (fn-bs-take f c) (fn-bs-zeros (- (len c) f))) nil)))
 ; RECORDS committed, then BATCH prepared and appended: the log-written state.
 (defun brlct-prepare-all (ks batch)
   (declare (xargs :guard t :verify-guards nil))

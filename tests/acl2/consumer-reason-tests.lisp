@@ -169,7 +169,7 @@
 (assert-event (equal (fn-ncr-cli-plan '(115 116 97 116 117 115) (list '(47 99) '(98 111 98)))
                      (fn-cwait-cli-plan '(115 116 97 116 117 115) (list '(47 99) '(98 111 98)))))
 (assert-event (equal (fn-ncr-cli-plan *fn-ncr-json-flag* nil) '(:json (:usage :control-path))))
-; --frame wraps a status, position or ack run; every other command is usage.
+; --frame wraps a status, position, ack or poll run; every other command is usage.
 (assert-event (equal (fn-ncr-cli-plan *fn-ncr-frame-flag*
                                       (list '(115 116 97 116 117 115) '(47 99) '(98 111 98)))
                      '(:frame (:run :status (47 99) (98 111 98) nil nil))))
@@ -183,8 +183,18 @@
 (assert-event (equal (fn-ncr-cli-plan *fn-ncr-frame-flag* (list '(104 101 108 112)))
                      '(:usage :frame)))
 (assert-event (equal (fn-ncr-cli-plan *fn-ncr-frame-flag* nil) '(:usage :frame)))
+; poll (four words: control, id, cursor file, report file) is wrapped; the
+; same words without the report file are usage, by the command's own grammar.
 (assert-event (equal (fn-ncr-cli-plan *fn-ncr-frame-flag*
                                       (list '(112 111 108 108) '(47 99) '(98 111 98) '(47 111) '(47 114)))
+                     '(:frame (:run :poll (47 99) (98 111 98) (47 111) (47 114)))))
+(assert-event (equal (fn-ncr-cli-plan *fn-ncr-frame-flag*
+                                      (list '(112 111 108 108) '(47 99) '(98 111 98) '(47 111)))
+                     '(:usage :frame)))
+; wait is a run too, but not one --frame covers
+(assert-event (equal (fn-ncr-cli-plan *fn-ncr-frame-flag*
+                                      (list '(119 97 105 116) '(47 99) '(98 111 98) '(47 111) '(47 114)
+                                            '(45 45 116 105 109 101 111 117 116) '(53)))
                      '(:usage :frame)))
 ; a status that is itself refused by the command's grammar is not wrapped
 (assert-event (equal (fn-ncr-cli-plan *fn-ncr-frame-flag* (list '(115 116 97 116 117 115) '(99)))

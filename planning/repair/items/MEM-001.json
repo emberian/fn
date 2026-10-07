@@ -4,11 +4,13 @@
  "file": "books/profile-limits.lisp",
  "id": "MEM-001",
  "line": "37",
- "notes": [],
+ "notes": [
+  "2026-10-06 N-MEM step 2: TRAIN-READY (launcher value). End to end on 3e53d7bc5, 1,000 POSTs + 32 idle connections opened and closed, idle-after-close: tls-limit 65536 RSS 133.0 / anon 35.7 MB; 16384 -> 120.0 / 23.1 (-13.0 RSS); 4096 -> 117.0 / 19.8 (-16.0); all served with no error. Evidence hbox:/tank/fn/scratch/n-mem/t16384, t4096, s2. Gate: world-deps check and the world-loading native modules, filtered."
+ ],
  "owner": "deputy-N",
  "severity": "medium",
  "source": "n-mem",
  "state": "open",
  "title": "launcher runs at --tls-limit 65536: each thread's thread-local storage costs 512 KiB anonymous RSS; 16384 saves 11.2 MB and 4096 saves 14.0 MB on the 14-thread owner",
- "updated": "2026-10-06T21:30:00Z"
+ "updated": "2026-10-06T23:00:00Z"
 }

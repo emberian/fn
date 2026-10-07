@@ -756,5 +756,61 @@ class LoadedHostTests(unittest.TestCase):
         self.assertIn("host/owner-host.lisp", graph.loaded_hosts)
         self.assertNotIn("host/native/build-store-test.lisp", graph.loaded_hosts)
 
+class WorldEdgeTests(unittest.TestCase):
+    """The call graph from the certified world: where text and world disagree
+    the world is the call (tools/coverage.py's dump, `world_edges')."""
+
+    def graph(self, functions, text, exports=(), bodies=None):
+        import coverage
+        records = [{"name": name, "book": "/x/books/a.lisp", "class": ":ideal",
+                    "callees": calls, "guard_callees": guards, "attachment": None,
+                    "formals": [], "alias": None, "mbe": []}
+                   for name, (calls, guards) in functions.items()]
+        graph = reach_check.Graph.__new__(reach_check.Graph)
+        graph.world = coverage.World({"functions": records, "theorems": []})
+        graph.edges = {name: set(edges) for name, edges in text.items()}
+        graph.known = set(text) | {"a-macro"}
+        graph.export_of = {name: "st" for name in exports}
+        graph.bodies = bodies or {}
+        return graph
+
+    def test_a_quoted_global_named_like_a_function_is_no_call(self):
+        body = ["defun", "slot", ["state"], ["if", ["boundp-global", ["quote", "cap"], "state"], "nil", "nil"]]
+        graph = self.graph({"slot": ([], []), "cap": ([], [])},
+                           {"slot": {"cap"}, "cap": set()}, bodies={"slot": body})
+        self.assertEqual(graph.world_edges(graph.bodies)["slot"], set())
+
+    def test_a_quoted_symbol_outside_a_global_accessor_is_code_it_emits(self):
+        graph = self.graph({"build": ([], [])}, {"build": {"target"}, "target": set()})
+        self.assertEqual(graph.world_edges(graph.bodies)["build"], {"target"})
+
+    def test_a_guard_call_is_a_call(self):
+        graph = self.graph({"f": ([], ["rowsp"]), "rowsp": ([], [])},
+                           {"f": {"rowsp"}, "rowsp": set()})
+        self.assertEqual(graph.world_edges(graph.bodies)["f"], {"rowsp"})
+
+    def test_a_world_call_the_text_misses_is_kept(self):
+        graph = self.graph({"f": (["g"], []), "g": ([], [])}, {"f": set(), "g": set()})
+        self.assertEqual(graph.world_edges(graph.bodies)["f"], {"g"})
+
+    def test_a_macro_mention_stays(self):
+        graph = self.graph({"f": ([], [])}, {"f": {"a-macro"}})
+        self.assertEqual(graph.world_edges(graph.bodies)["f"], {"a-macro"})
+
+    def test_an_export_keeps_its_text_edges_for_the_exec_side(self):
+        graph = self.graph({"export": (["logic"], []), "logic": ([], []), "exec": ([], [])},
+                           {"export": {"logic", "exec"}, "logic": set(), "exec": set()},
+                           exports=["export"])
+        self.assertEqual(graph.world_edges(graph.bodies)["export"], {"logic", "exec"})
+
+    def test_a_function_the_world_lacks_keeps_its_text_edges(self):
+        graph = self.graph({"g": ([], [])}, {"hostfn": {"g"}, "g": set()})
+        self.assertEqual(graph.world_edges(graph.bodies)["hostfn"], {"g"})
+
+    def test_world_none_is_the_text_reader(self):
+        self.assertIsNone(reach_check.load_world("none"))
+        self.assertIsNone(reach_check.load_world(None))
+
+
 if __name__ == "__main__":
     unittest.main()

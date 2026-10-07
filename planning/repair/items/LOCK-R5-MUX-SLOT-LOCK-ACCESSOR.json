@@ -1,0 +1,13 @@
+{
+ "detail": "Key pair (NEW at 61ae00920): R5|fnn-mux-reserve-once|unresolved:lock object (fnn-owner-service-mux-slot-lock) and R5|fnn-mux-reserve-once|?(fnn-owner-service-mux-slot-lock)->M (edge to the loop lock M via fnn-mux-slot-observation, mux.lisp:1819-1824, called under the slot lock). MODEL GAP, not a host defect: the lock object is a defstruct accessor applied to the service, which the checker does not resolve to a named lock. Order is slot lock then loop lock M; no path takes M then the slot lock. Same family as the baselined fnn-mux-reserve, fnn-mux-slot-signal and fnn-mux-unreserve rows.",
+ "file": "tools/lock_discipline_check.py",
+ "fix": "Resolve struct-accessor lock objects through the declared struct slot and declare slot lock -> M in tools/lock_discipline_contracts.json once the checker verifies it; do not hand-add baseline rows.",
+ "id": "LOCK-R5-MUX-SLOT-LOCK-ACCESSOR",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "low",
+ "source": "lock-triage-sn-lock-20261007",
+ "state": "open",
+ "title": "Checker cannot resolve the struct-accessor lock object (fnn-owner-service-mux-slot-lock service) (R5 model gap)",
+ "updated": "2026-10-07T02:59:37Z"
+}

@@ -7,9 +7,9 @@
 ; Direction (coordinator, 2026-09-28, lane extract-2's e2): the host is byte
 ; primitives; the sequence belongs in ACL2 where the extractor reads it.
 ; host/store-open-host.lisp did the reader's read-only open; this file is the
-; writable closure: the exclusive open with P-LOG-RECOVER on the active
+; writable closure: the exclusive open with P-LOG-RECOVER-COPY on the active
 ; segment (fnn-open-live-store, fnn-acquire, fnn-recover-log), the staging
-; sweep and the interrupted drop, the reservation, the prepare and seal, the
+; sweep (the open unlinks no segment: RL-01-CHECKPOINT-NAME-BEFORE-DROP), the reservation, the prepare and seal, the
 ; publication on the record log (fnn-log-publish: the compressed append,
 ; fn-lgc-take, the extension, P-BATCH's append and barrier), the finish, and
 ; the node-secret key files.  Every decision is the ACL2 function the image
@@ -71,6 +71,14 @@
 ; (fn-hx-close, close(2) of a handle, is declared in host/store-open-host.lisp)
 ; lseek(OFF) and write(2) of OCTETS to completion: :ok | (:error ...)
 (defun fn-hx-pwrite (h off octets) (declare (xargs :mode :program) (ignore h off octets)) (fn-hx-stub fn-hx-pwrite))
+; lseek(OFF) and write(2) of the log walk's buffer (fn-octets-lg: its array
+; to its fill), to completion: :ok | (:error ...)  (the open's copy of an
+; entry it validated, from the same buffer: fnn-log-copy-entry)
+(defun fn-hx-pwrite-buf (h off fn-octets-lg)
+  (declare (xargs :mode :program :stobjs fn-octets-lg) (ignorable h off fn-octets-lg))
+  (fn-hx-stub fn-hx-pwrite-buf))
+; statvfs(PATH): f_bavail * f_frsize, or NIL unobserved (fnn-statvfs-free-octets)
+(defun fn-hx-free-octets (path) (declare (xargs :mode :program) (ignore path)) (fn-hx-stub fn-hx-free-octets))
 ; the same with N zero octets
 (defun fn-hx-pwrite-zeros (h off n) (declare (xargs :mode :program) (ignore h off n)) (fn-hx-stub fn-hx-pwrite-zeros))
 ; write(2) of OCTETS at the handle's position, to completion: :ok | (:error ...)
@@ -691,8 +699,19 @@
             (fn-xw-sink-all (cdr records) (if (consp places) (cdr places) places) file
                             tally replay fn-arena)))))))
 
-(defun fn-xw-walk (h extent unit max st file tally replay fn-octets-lg fn-arena)
-  ; fnn-log-stream-segment's loop: (mv RESULT ST TALLY REPLAY fn-octets-lg fn-arena)
+(defun fn-xw-copy-entry (out h pos n step fn-octets-lg)
+  ; fnn-log-copy-entry: the buffer's N octets at POS of OUT, then the entry's
+  ; padding [POS+N, POS+STEP) as H holds it
+  (declare (xargs :mode :program :stobjs fn-octets-lg))
+  (let ((w (fn-xw-sys (fn-hx-pwrite-buf out pos fn-octets-lg))))
+    (if (or (not (fn-xw-okp w)) (<= step n)) w
+      (let ((r (fn-xw-pread h (+ pos n) (- step n))))
+        (if (not (fn-xw-okp r)) r
+          (fn-xw-sys (fn-hx-pwrite out (+ pos n) (cadr r))))))))
+
+(defun fn-xw-walk (h out extent unit max st file tally replay fn-octets-lg fn-arena)
+  ; fnn-log-stream-segment's loop: (mv RESULT ST TALLY REPLAY fn-octets-lg fn-arena);
+  ; OUT the open's staged copy (*fnn-log-stream-copy*) or NIL
   (declare (xargs :mode :program :stobjs (fn-octets-lg fn-arena)))
   (if (fn-lgw-stop st)
       (mv (list :ok) st tally replay fn-octets-lg fn-arena)
@@ -707,13 +726,19 @@
                     st tally replay fn-octets-lg fn-arena)
               (mv-let (took records next) (fn-lgw-step-buf-nf st unit max extent fn-octets-lg)
                 (if (not took)
-                    (fn-xw-walk h extent unit max next file tally replay fn-octets-lg fn-arena)
-                  (let ((places (and file (fn-lgb-entry-places pos (len records) unit fn-octets-lg))))
-                    (mv-let (r tally replay fn-arena)
-                      (fn-xw-sink-all records places file tally replay fn-arena)
-                      (if (not (fn-xw-okp r))
-                          (mv r st tally replay fn-octets-lg fn-arena)
-                        (fn-xw-walk h extent unit max next file tally replay fn-octets-lg fn-arena)))))))))))))
+                    (fn-xw-walk h out extent unit max next file tally replay fn-octets-lg fn-arena)
+                  (let ((c (if out
+                               (fn-xw-copy-entry out h pos (if n n 0) (- (fn-lgw-pos next) pos) fn-octets-lg)
+                             (list :ok))))
+                    (if (not (fn-xw-okp c))
+                        (mv c st tally replay fn-octets-lg fn-arena)
+                      (let ((places (and file (fn-lgb-entry-places pos (len records) unit fn-octets-lg))))
+                        (mv-let (r tally replay fn-arena)
+                          (fn-xw-sink-all records places file tally replay fn-arena)
+                          (if (not (fn-xw-okp r))
+                              (mv r st tally replay fn-octets-lg fn-arena)
+                            (fn-xw-walk h out extent unit max next file tally replay fn-octets-lg
+                                        fn-arena)))))))))))))))
 
 (defun fn-xw-probe-tail (h extent unit max ps)
   ; fnn-log-probe-tail: (:ok PS)
@@ -728,13 +753,13 @@
           (if (not (fn-xw-okp e)) e
             (fn-xw-probe-tail h extent unit max (fn-lgdm-step (cadr hd) (and n (cadr e)) ps unit max))))))))
 
-(defun fn-xw-stream-segment (h extent unit max genesis label writable file store replay
+(defun fn-xw-stream-segment (h out extent unit max genesis label writable file store replay
                                fn-octets-lg fn-arena)
   ; fnn-log-stream-segment under the full replay (*fnn-log-stream-finish*):
   ; (mv RESULT STORE REPLAY fn-octets-lg fn-arena), RESULT (:ok KERNEL VERDICT)
   (declare (xargs :mode :program :stobjs (fn-octets-lg fn-arena)))
   (mv-let (r st tally replay fn-octets-lg fn-arena)
-    (fn-xw-walk h extent unit max (fn-lgw-start genesis 1) file (fn-xw-get store :lz-tally)
+    (fn-xw-walk h out extent unit max (fn-lgw-start genesis 1) file (fn-xw-get store :lz-tally)
                 replay fn-octets-lg fn-arena)
     (mv-let (count fn-octets-lg) (fn-hx-fill h 0 0 fn-octets-lg)
       (declare (ignore count))
@@ -765,7 +790,7 @@
                         (mv (list :ok (fn-lgw-kernel st) verdict) store replay fn-octets-lg fn-arena)))))))))))))
 
 ; ---------------------------------------------------------------------------
-; P-LOG-RECOVER on the active segment (fnn-log-recover), the confirmed
+; P-LOG-RECOVER-COPY on the active segment (fnn-log-recover), the confirmed
 ; repair's quarantine (fnn-log-quarantine), an interrupted rotation
 ; (fnn-log-complete-rotation) and the scan (fnn-log-scan-segments).
 
@@ -821,37 +846,101 @@
                   ((cadr tl) (fn-xw-fsync-dir dir))
                   (t (fn-xw-quarantine-copy h extent dir stage target)))))))))
 
-(defun fn-xw-log-recover (path extent unit max genesis file store replay fn-octets-lg fn-arena)
-  ; fnn-log-recover: (mv RESULT STORE REPLAY fn-octets-lg fn-arena), RESULT (:ok LOG)
+(defun fn-xw-disk-free (path)
+  ; fnn-disk-free-octets-at: statvfs, the developer cap FN_NATIVE_DISK_FREE=N
+  ; applied (its @FILE form is not modelled here: the extracted verbs are run
+  ; without it)
+  (declare (xargs :mode :program))
+  (let ((free (fn-hx-free-octets path))
+        (cap (fn-hx-getenv "FN_NATIVE_DISK_FREE")))
+    (if (and (natp free) (stringp cap))
+        (let ((n (fn-xw-parse-integer cap)))
+          (if (and (fn-xw-okp n) (natp (cadr n))) (min free (cadr n)) free))
+      free)))
+
+(defun fn-xw-recover-copy (path h extent unit max genesis stage stage-dir store replay
+                                fn-octets-lg fn-arena)
+  ; fnn-log-recover past its verdict: STAGE created and preallocated, the
+  ; walk copying each validated entry into it, cut log-copied, its fence,
+  ; cut log-copy-fenced, the rename over PATH, cut log-swapped, journal/'s
+  ; and STAGE-DIR's fences, cut log-recovered; the log's handle opened on
+  ; the name again (the copy's inode).  (mv RESULT STORE REPLAY fn-octets-lg
+  ; fn-arena), RESULT (:ok KS FILE RW); the stage removed on a failure before
+  ; the rename
+  (declare (xargs :mode :program :stobjs (fn-octets-lg fn-arena)))
+  (let* ((sl (fn-xw-lstat stage))
+         (u (cond ((not (fn-xw-okp sl)) sl)
+                  ((cadr sl) (fn-xw-sys (fn-hx-unlink stage)))
+                  (t (list :ok))))
+         (o (if (fn-xw-okp u) (fn-hx-create-excl stage t) u)))
+    (cond ((not (fn-xw-okp u)) (mv u store replay fn-octets-lg fn-arena))
+          ((fn-xw-errp o) (mv (fn-xw-os o) store replay fn-octets-lg fn-arena))
+          (t
+           (let* ((out (cadr o))
+                  (p (fn-xw-sys (fn-hx-preallocate out 0 extent)))
+                  (file (if (fn-xw-okp p) (fn-hx-open-ro stage) p)))
+             (if (or (not (fn-xw-okp p)) (fn-xw-errp file))
+                 (let ((x (fn-hx-close out)) (d (fn-hx-unlink stage)))
+                   (declare (ignore x d))
+                   (mv (if (fn-xw-okp p) (fn-xw-os file) p) store replay fn-octets-lg fn-arena))
+               (mv-let (r store replay fn-octets-lg fn-arena)
+                 (fn-xw-stream-segment h out extent unit max genesis (fn-xw-basename path) t (cadr file)
+                                       store replay fn-octets-lg fn-arena)
+                 (let* ((name (and (fn-xw-okp r)
+                                   (fn-lgdm-quarantine-name (caddr r) (fn-xw-basename path))))
+                        (q (cond ((not (fn-xw-okp r)) r)
+                                 ((stringp name) (fn-xw-quarantine path h extent name))
+                                 (t (list :ok))))
+                        (w (if (fn-xw-okp q) (fn-xw-log-at "log-copied") q))
+                        (w (if (fn-xw-okp w) (fn-xw-sys (fn-hx-fsync out)) w))
+                        (x (fn-hx-close out))
+                        (w (if (fn-xw-okp w) (fn-xw-log-at "log-copy-fenced") w))
+                        (w (if (fn-xw-okp w) (fn-xw-sys (fn-hx-rename stage path)) w))
+                        (renamed (fn-xw-okp w)))
+                   (declare (ignore x))
+                   (if (not renamed)
+                       (let ((d (fn-hx-unlink stage)))
+                         (declare (ignore d))
+                         (mv w store replay fn-octets-lg fn-arena))
+                     (let* ((w (fn-xw-log-at "log-swapped"))
+                            (w (if (fn-xw-okp w) (fn-xw-fsync-dir (fn-xw-parent path)) w))
+                            (w (if (fn-xw-okp w) (fn-xw-fsync-dir stage-dir) w))
+                            (w (if (fn-xw-okp w) (fn-xw-log-at "log-recovered") w))
+                            (rw (if (fn-xw-okp w) (fn-hx-open-rw path) w)))
+                       (cond ((not (fn-xw-okp w)) (mv w store replay fn-octets-lg fn-arena))
+                             ((fn-xw-errp rw) (mv (fn-xw-os rw) store replay fn-octets-lg fn-arena))
+                             (t (mv (list :ok (cadr r) (cadr file) (cadr rw))
+                                    store replay fn-octets-lg fn-arena)))))))))))))
+
+(defun fn-xw-log-recover (path extent unit max genesis stage-dir store replay fn-octets-lg fn-arena)
+  ; fnn-log-recover (P-LOG-RECOVER-COPY, books/store-log-recover-copy.lisp):
+  ; (mv RESULT STORE REPLAY fn-octets-lg fn-arena), RESULT (:ok LOG), LOG's
+  ; :file the realizer handle over the copy
   (declare (xargs :mode :program :stobjs (fn-octets-lg fn-arena)))
   (let ((o (fn-xw-open-segment path extent unit t)))
     (if (not (fn-xw-okp o)) (mv o store replay fn-octets-lg fn-arena)
-      (let ((h (cadr o)))
-        (mv-let (r store replay fn-octets-lg fn-arena)
-          (fn-xw-stream-segment h extent unit max genesis (fn-xw-basename path) t file store replay
-                                fn-octets-lg fn-arena)
-          (if (not (fn-xw-okp r))
-              (prog2$ (fn-hx-close h) (mv r store replay fn-octets-lg fn-arena))
-            (let* ((ks (cadr r))
-                   (name (fn-lgdm-quarantine-name (caddr r) (fn-xw-basename path)))
-                   (q (if (stringp name) (fn-xw-quarantine path h extent name) (list :ok))))
-              (if (not (fn-xw-okp q))
-                  (prog2$ (fn-hx-close h) (mv q store replay fn-octets-lg fn-arena))
-                (mv-let (offset count) (fn-lg-recover-tail ks extent)
-                 (let* ((w (fn-xw-sys (fn-hx-pwrite-zeros h offset count)))
-                        (w (if (fn-xw-okp w) (fn-xw-log-at "log-truncated") w))
-                        (w (if (fn-xw-okp w) (fn-xw-sys (fn-hx-fdatasync h)) w))
-                        (w (if (fn-xw-okp w) (fn-xw-log-at "log-recovered") w)))
-                  (if (not (fn-xw-okp w))
-                      ;; the segment's handle closed here too (sweep S116):
-                      ;; it is not yet the log's, so nothing else reaches it
-                      (prog2$ (fn-hx-close h) (mv w store replay fn-octets-lg fn-arena))
-                    (mv (list :ok (list (cons :path path) (cons :h h) (cons :kernel ks) (cons :unit unit)
-                                        (cons :max max) (cons :extent extent) (cons :count 0)
-                                        (cons :octets 0) (cons :bmax 64) (cons :omax 67108864)
-                                        (cons :pending 0) (cons :reserved nil) (cons :lz-min nil)
-                                        (cons :lz nil)))
-                        store replay fn-octets-lg fn-arena))))))))))))
+      (let* ((h (cadr o))
+             (free (fn-xw-disk-free stage-dir)))
+        (if (not (equal (fn-lgrc-copy-verdict free extent) :copy))
+            (prog2$ (fn-hx-close h)
+                    (mv (list :open-refusal (fn-lgrc-copy-refusal-text free extent (fn-xw-basename path)))
+                        store replay fn-octets-lg fn-arena))
+          (mv-let (r store replay fn-octets-lg fn-arena)
+            (fn-xw-recover-copy path h extent unit max genesis
+                                (fn-xw-join stage-dir (concatenate 'string ".stage-recover-"
+                                                                   (fn-xw-basename path)))
+                                stage-dir store replay fn-octets-lg fn-arena)
+            ;; the read inode's handle is closed either way (sweep S116)
+            (let ((x (fn-hx-close h)))
+              (declare (ignore x))
+              (if (not (fn-xw-okp r)) (mv r store replay fn-octets-lg fn-arena)
+                (mv (list :ok (list (cons :path path) (cons :h (nth 3 r)) (cons :kernel (cadr r))
+                                    (cons :unit unit)
+                                    (cons :max max) (cons :extent extent) (cons :count 0)
+                                    (cons :octets 0) (cons :bmax 64) (cons :omax 67108864)
+                                    (cons :pending 0) (cons :reserved nil) (cons :lz-min nil)
+                                    (cons :lz nil) (cons :file (caddr r))))
+                    store replay fn-octets-lg fn-arena)))))))))
 
 (defun fn-xw-complete-rotation (store path)
   ; fnn-log-complete-rotation, writable
@@ -885,26 +974,22 @@
                   (let ((o (fn-xw-open-segment path (cadr e) unit nil)))
                     (if (not (fn-xw-okp o)) (mv o store replay fn-octets-lg fn-arena)
                       (mv-let (r store replay fn-octets-lg fn-arena)
-                        (fn-xw-stream-segment (cadr o) (cadr e) unit max genesis (fn-xw-basename path) nil
+                        (fn-xw-stream-segment (cadr o) nil (cadr e) unit max genesis (fn-xw-basename path) nil
                                               (cadr o) store replay fn-octets-lg fn-arena)
                         (if (not (fn-xw-okp r)) (mv r store replay fn-octets-lg fn-arena)
                           (fn-xw-scan store (cdr scan) (fn-lgc-last (cadr r)) unit max replay
                                       fn-octets-lg fn-arena)))))))
             (let ((c (fn-xw-complete-rotation store path)))
               (if (not (fn-xw-okp c)) (mv c store replay fn-octets-lg fn-arena)
-                (let ((file (fn-hx-open-ro path)))
-                  (if (fn-xw-errp file)
-                      (mv (fn-xw-os file) store replay fn-octets-lg fn-arena)
-                    (let ((e (fn-xw-observed-extent path)))
-                      (if (not (fn-xw-okp e)) (mv e store replay fn-octets-lg fn-arena)
-                        (mv-let (r store replay fn-octets-lg fn-arena)
-                          (fn-xw-log-recover path (cadr e) unit max genesis (cadr file) store replay
-                                             fn-octets-lg fn-arena)
-                          (if (not (fn-xw-okp r)) (mv r store replay fn-octets-lg fn-arena)
-                            (mv (list :ok (fn-xw-put (fn-xw-put (fn-xw-put (cadr r) :index (car scan))
-                                                                :genesis genesis)
-                                                     :file (cadr file)))
-                                store replay fn-octets-lg fn-arena)))))))))))))))
+                ;; the realizer handle is the copy's (fn-xw-log-recover)
+                (let ((e (fn-xw-observed-extent path)))
+                  (if (not (fn-xw-okp e)) (mv e store replay fn-octets-lg fn-arena)
+                    (mv-let (r store replay fn-octets-lg fn-arena)
+                      (fn-xw-log-recover path (cadr e) unit max genesis (fn-xw-store-path store "staging")
+                                         store replay fn-octets-lg fn-arena)
+                      (if (not (fn-xw-okp r)) (mv r store replay fn-octets-lg fn-arena)
+                        (mv (list :ok (fn-xw-put (fn-xw-put (cadr r) :index (car scan)) :genesis genesis))
+                            store replay fn-octets-lg fn-arena)))))))))))))
 
 ; ---------------------------------------------------------------------------
 ; Observations (fnn-observe through fnn-bridge-io: fn-store-sn-io).
@@ -1012,32 +1097,9 @@
                            store state))))))))))
 
 ; ---------------------------------------------------------------------------
-; P-DROP of the covered segments an interrupted drop left (fnn-log-drop).
-
-(defun fn-xw-drop-each (store indices)
-  (declare (xargs :mode :program))
-  (if (endp indices) (list :ok)
-    (let ((p (fn-xw-segment-path store (car indices))))
-      (if (not (fn-xw-okp p)) p
-        (let ((l (fn-xw-lstat (cadr p))))
-          (if (not (fn-xw-okp l)) l
-            (let ((u (if (cadr l) (fn-xw-sys (fn-hx-unlink (cadr p))) (list :ok))))
-              (if (not (fn-xw-okp u)) u
-                (let ((c (fn-xw-log-at "drop-unlinked")))
-                  (if (not (fn-xw-okp c)) c (fn-xw-drop-each store (cdr indices))))))))))))
-
-(defun fn-xw-drop (store indices)
-  (declare (xargs :mode :program))
-  (if (endp indices) (list :ok)
-    (let ((r (fn-xw-drop-each store indices)))
-      (if (not (fn-xw-okp r)) r
-        (let ((f (fn-xw-fsync-dir (fn-xw-store-path store "journal"))))
-          (if (not (fn-xw-okp f)) f (fn-xw-log-at "drop-durable")))))))
-
-; ---------------------------------------------------------------------------
 ; The open (fnn-open-live-store STORE t: fnn-acquire, fnn-bridge-reset,
-; fnn-recover -> fnn-recover-log's full replay, the barriers, the sweep and
-; the interrupted drop).
+; fnn-recover -> fnn-recover-log's full replay, the barriers and the sweep;
+; no drop).
 
 (defun fn-xw-split-lf (octets current acc)
   ; fnn-decode-joined-names, each name kept as its octets
@@ -1048,7 +1110,7 @@
 
 (defun fn-xw-recover-body (store fn-octets-lg fn-arena state)
   ; fnn-recover-log's first handler-case body: (mv RESULT STORE fn-octets-lg
-  ; fn-arena state), RESULT (:ok COUNT DROP)
+  ; fn-arena state), RESULT (:ok COUNT)
   (declare (xargs :mode :program :stobjs (fn-octets-lg fn-arena state)))
   (let ((c (fn-xw-check-regular (fn-xw-store-path store (fn-store-sco-file-name)))))
     (cond
@@ -1144,7 +1206,7 @@
                                                               (mv (fn-xw-fault "ACL2 returned a non-octet list")
                                                                   store fn-octets-lg fn-arena state))
                                                              (t
-                                                              (mv (list :ok (nth 7 replay) (caddr plan))
+                                                              (mv (list :ok (nth 7 replay))
                                                                   (fn-xw-put (fn-xw-put (fn-xw-put store :generation gen)
                                                                                         :served (fn-xw-split-lf served nil nil))
                                                                              :domain (fn-xw-split-lf domain nil nil))
@@ -1165,7 +1227,7 @@
             (fn-xw-put store :fenced t) fn-octets-lg fn-arena state))
        ((not (fn-xw-okp r)) (mv r store fn-octets-lg fn-arena state))
        (t
-        (let ((count (cadr r)) (drop (caddr r))
+        (let ((count (cadr r))
               (c (fn-xw-at store "recover-replayed")))
           (if (not (fn-xw-okp c)) (mv c store fn-octets-lg fn-arena state)
             (mv-let (b store state)
@@ -1183,16 +1245,8 @@
                    ((member-eq (car s) '(:fault :indeterminate))
                     (mv s (fn-xw-put store :fenced t) fn-octets-lg fn-arena state))
                    ((not (fn-xw-okp s)) (mv s store fn-octets-lg fn-arena state))
-                   (t
-                    (let ((d (fn-xw-drop store drop)))
-                      (cond
-                       ((eq (car d) :os)
-                        (mv (fn-xw-indeterminate
-                             (concatenate 'string "the drop of covered log segments is uncertain: " (fn-xw-text d)))
-                            (fn-xw-put store :fenced t) fn-octets-lg fn-arena state))
-                       ((not (fn-xw-okp d)) (mv d store fn-octets-lg fn-arena state))
-                       (t (mv (list :ok count) (fn-xw-put store :fenced nil)
-                              fn-octets-lg fn-arena state)))))))))))))))))
+                   (t (mv (list :ok count) (fn-xw-put store :fenced nil)
+                          fn-octets-lg fn-arena state))))))))))))))
 
 (defun fn-xw-open-live-store (root fault repair fn-octets-lg fn-arena state)
   ; fnn-open-live-store ROOT t FAULT: (mv RESULT STORE fn-octets-lg fn-arena

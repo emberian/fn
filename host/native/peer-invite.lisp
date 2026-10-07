@@ -488,12 +488,16 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
 ;;; and the exit says which (refused 1, uncertain 3).
 (defun fnn-pinv-login-apply (result argv plan)
   "Apply the accepted `peer set' PLAN (host/native/operator.lisp
-fnn-operator-apply-admin); its exit code."
-  (values (fnn-operator-apply-admin
-           (fnn-core 'fn-native-operator-host-result-store-root result)
-           (fnn-core 'fn-native-operator-host-result-peering-control-path-octets
-                     result)
-           argv plan)))
+fnn-operator-apply-admin); its exit code and the live owner's refusal
+detail, as fnn-operator-apply-admin returns them for every mutating admin
+verb (fnn-operator-execute-admin's multiple-value-bind is the shape: the
+detail is ACL2's reply word, fn-native-control-host-reply-detail, never a
+host sentence)."
+  (fnn-operator-apply-admin
+   (fnn-core 'fn-native-operator-host-result-store-root result)
+   (fnn-core 'fn-native-operator-host-result-peering-control-path-octets
+             result)
+   argv plan))
 
 (defun fnn-pinv-login (result words)
   (let ((name (first words)) (login (second words)) (file (third words)))
@@ -515,16 +519,21 @@ fnn-operator-apply-admin); its exit code."
             (unwind-protect
                  (progn
                    (fnn-write-staged stage (fnn-octets (second decision)))
-                   (let ((exit (fnn-pinv-login-apply result argv plan)))
+                   (multiple-value-bind (exit detail)
+                       (fnn-pinv-login-apply result argv plan)
                      (cond
                        ((eql exit +fnn-exit-ok+)
                         (fnn-replace stage file)
                         (setq published t)
                         (fnn-fsync-dir (fnn-parent file))
                         (fnn-out "login peer=~a file=~a" name file))
-                       (t (fnn-err "peer login: `peer set ~a --login' was not accepted (exit ~d); ~a is unchanged"
-                                   name exit file)))
-                     exit))
+                       (t (fnn-err "peer login: `peer set ~a --login' was not accepted (exit ~d)~a; ~a is unchanged"
+                                   name exit
+                                   (if detail
+                                       (format nil "; the owner said: ~a" detail)
+                                       "")
+                                   file)))
+                     (values exit detail)))
               (unless published
                 (ignore-errors (fnn-unlink stage))))))))))
 

@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "file": "books/catalog-pages.lisp",
+ "id": "PCK-ADOPT",
+ "notes": [
+  "10-07 proved in books/catalog-pages.lisp (fn-pck-adopt-is-the-catalog) on lane/s-pck; the withdraw clause carries three premises (not (fn-cp-escapedp (nth target H))), (fn-cp-smallp by), (fn-cp-smallp (len H)), accepted by Deputy S: without them an escaped row's remainder tree carries the withdrawal and the row widens (tooth pckt-withdraw-image-unpremised in tests/acl2/paged-checkpoint-tests.lisp); excluded cases owed as PCK-ADOPT-ESCAPED"
+ ],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "landed",
+ "title": "Catalog region on pages (own page-store root r-cat with an S header): fn-crow rows as pages, the catalog the open would build equal to the pages' decoding, commit = append-dirty, withdraw/redecide = set-dirty (same-width row), bounds with no term in the prefix. Needs library NAME-set-dirty + adt-tp-pages-of-set-is-apply-dirty + bound, and the logical function giving the held rows fn-sca-load-held-rows is fed (fn-pck-held-of-prefix). Statement text agreed with Deputy S 2026-10-07.",
+ "updated": "2026-10-07T12:00:00Z"
+}

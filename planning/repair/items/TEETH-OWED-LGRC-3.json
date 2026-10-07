@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "file": "tests/acl2/store-log-recover-copy-tests.lisp",
+ "id": "TEETH-OWED-LGRC-3",
+ "notes": [
+  "10-06 N-M1D5-AUDIT filed: lane m1-durable-5 (130da57bf) replaced dev's P10 run-lemma chain (books/store-log-route-programs.lisp, TEETH-21 in tests/acl2/store-log-route-programs-tests.lisp, origin/dev) with books/store-log-recover-copy.lisp and dropped the teeth below without re-expressing them. OLD: tests/acl2/store-log-route-programs-tests.lisp (origin/dev lines ~89-150) witness for fn-lg-open-program-keeps-the-relation-at-every-cut: reachable positive (all hypotheses hold, conclusion holds, 11 states) plus two assert-events: HYPOTHESIS REMOVED 'no operation of the segment pending' (store (slk-store (slk-content) (list (list :write 0 (len (slk-content)) '(1 2 3 4))))) -> conclusion fails; HYPOTHESIS REMOVED 'content length a multiple of the unit' ((append (slk-content) '(0))) -> conclusion fails. NEW keystone fn-lgrc-open-keeps-the-relation-at-every-cut (books/store-log-recover-copy.lisp:2315) carries (null (fn-bs-pending bs)) and (equal (mod (len o) unit) 0) and has a reachable positive only. OWED: the same two removals as ground assert-events over fn-lgrc-final of the attempt against fn-lgk-relp and fn-lg-all-relp of fn-lg-open-program (conclusion false when either hypothesis is removed), plus (consp o)/(posp unit) if a ground counterexample exists. Bites fn-lgrc-open-keeps-the-relation-at-every-cut."
+ ],
+ "owner": "m1-durable-5",
+ "severity": "medium",
+ "slice": "log-recover",
+ "source": "N-M1D5-AUDIT",
+ "state": "open",
+ "title": "teeth owed: the hypothesis removals of the dropped P10 witness (pending own write; dangling octet) against fn-lgrc-open-keeps-the-relation-at-every-cut",
+ "updated": "2026-10-06T23:59:00Z"
+}

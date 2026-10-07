@@ -19,7 +19,9 @@
 ;                                on Linux: the preallocated segment's append
 ;                                changes no size or allocation), then the
 ;                                kernel's fence, or fence-failed on an error;
-;   (:write-at :segment :tail)   recovery's zeroing of [F, end) (one write);
+;   (:write-at :segment :tail)   a zeroing of [F, end) (one write; no program
+;                                hosts it since the open copies instead, RL-01
+;                                A2: books/store-log-recover-copy.lisp);
 ;   (:fence :segment :tail)      its barrier;
 ;   (:cut name)                  a campaign fault point; no effect.
 ;
@@ -28,7 +30,9 @@
 ;
 ;   fn-lg-append-program    fnn-log-append    log-written
 ;   fn-lg-fence-program     fnn-log-fence     log-fenced
-;   fn-lg-recover-program   fnn-log-recover   log-truncated, log-recovered
+;
+; The open's program (fnn-log-recover) is books/store-log-recover-copy.lisp
+; fn-lgrc-program: it never writes the segment it read (RL-01 A2).
 ;
 ; Theorems (the subject is the runner the programs name; the host performs
 ; the same steps in the same order, checked by native_cuts.verify_log_cut_map):
@@ -40,12 +44,13 @@
 ;       log-written with the kernel's append;
 ;   fn-lg-fence-program-keeps-the-relation    from R, every state of the
 ;       fence program's run is R-related (the batch committed);
-;   fn-lg-recover-program-establishes-the-relation   the recovered kernel
-;       (fn-lgt-recover of the durable content) and the store at
-;       log-recovered are R-related, under R's establishment hypotheses.
+;   fn-lg-durable-read-prefix-establishes-the-relation   a store whose
+;       segment durably holds a read's validated prefix and zeros, nothing
+;       pending, is R-related to the read's kernel (what the open's copy
+;       reaches: fn-lgrc-attempt-makes-the-read-prefix-durable).
 ;
 ; At log-written a crash is T2 lifted (fn-lgk-crash-of-related-state-is-a-
-; prefix, PRF-244/245); at log-fenced and log-recovered nothing is pending.
+; prefix, PRF-244/245); at log-fenced nothing is pending.
 (in-package "ACL2")
 
 (include-book "store-log-txid")
@@ -109,13 +114,6 @@
   (list (list :fence :segment :batch)
         (list :cut "log-fenced")))
 
-(defun fn-lg-recover-program ()
-  (declare (xargs :guard t))
-  (list (list :write-at :segment :tail)
-        (list :cut "log-truncated")
-        (list :fence :segment :tail)
-        (list :cut "log-recovered")))
-
 ; -----------------------------------------------------------------------------
 ; Every state of a run is related.
 
@@ -174,34 +172,10 @@
                             fn-lgk-fence-preserves-relation))
            :use ((:instance fn-lgk-fence-preserves-relation)))))
 
-; The recovered kernel: fn-lgt-recover of the durable content, then the
-; program.  Its last state (log-recovered) is related.
+; The recovered kernel: fn-lgt-recover of the durable content.
 (defun fn-lg-recovered-kernel (bs ino genesis max floor)
   (declare (xargs :guard t :verify-guards nil))
   (fn-lgt-recover (fn-bs-durable-content bs ino) genesis (fn-bs-unit bs) max floor))
-
-(defthm fn-lg-recover-program-establishes-the-relation
-  (let* ((ks (fn-lg-recovered-kernel bs ino genesis max floor))
-         (run (fn-lg-run bs ks (fn-lg-recover-program) nil ino))
-         (final (car (last run))))
-    (implies (and (posp (fn-bs-unit bs)) ino (assoc-equal ino (fn-bs-inodes bs))
-                  (true-listp (fn-bs-durable-content bs ino))
-                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
-                  (fn-frame-digestp genesis)
-                  (fn-assume-log-sole-pending-writer bs ino)
-                  (not (fn-bs-ops-for-ino (fn-bs-pending bs) ino)))
-             (and (equal (len run) 4)
-                  (fn-lgk-relp (car final) (cdr final) ino genesis max))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-bs-write fn-bs-fsync-file fn-lgt-recover)
-                           (fn-lgk-relp fn-lgk-recover fn-bs-fence-file fn-bs-durable-content
-                            fn-lgk-frontier fn-bs-zeros fn-lg-scan
-                            fn-lgk-recover-establishes-relation fn-lgt-next-after))
-           :use ((:instance fn-lgk-recover-establishes-relation
-                            (next-txid (fn-lgt-next-after
-                                        (car (fn-lg-scan (fn-bs-durable-content bs ino)
-                                                         genesis (fn-bs-unit bs) max))
-                                        floor)))))))
 
 ;; RL-01 (lane m1-durable-2, 2026-10-04; planning/repair/items/RL-01.json on
 ;; lane/read-life): the open reads the segment through read(2), and after a
@@ -215,8 +189,9 @@
 ;; between the store and O's kernel, against the DURABLE content, with no
 ;; hypothesis relating O to the content before the open.  Each candidate
 ;; fix (rewrite in place, a fresh segment, O_DIRECT) discharges the
-;; antecedent with its own program; the program-level keystone
-;; fn-lg-recover-makes-the-read-prefix-durable waits on ember's choice.
+;; antecedent with its own program; ember chose the fresh file (A2): its
+;; program-level keystone is books/store-log-recover-copy.lisp
+;; fn-lgrc-attempt-makes-the-read-prefix-durable.
 (defthm fn-lg-acked-of-recover
   (equal (fn-lgk-acked (fn-lgk-recover c genesis unit max next-txid))
          (len (car (fn-lg-scan c genesis unit max))))
@@ -276,11 +251,6 @@
          (fn-lgt-recover (fn-lgd-octets s) genesis unit max floor))
   :hints (("Goal" :in-theory (disable fn-lg-scan fn-lg-scan-last fn-lgt-next-after fn-lg-decode
                                       fn-lgd-octets))))
-
-; Recovery's zeroing write: the offset and the count of zeros, [F, EXTENT).
-(defun fn-lg-recover-tail (ks extent)
-  (declare (xargs :guard (true-listp ks)))
-  (mv (fn-lgk-frontier ks) (nfix (- (nfix extent) (fn-lgk-frontier ks)))))
 
 ; The workload record of the developer verb `log' (tests and the power-loss
 ; rig): the codec's record with sequence and txid TXID and a payload of SIZE

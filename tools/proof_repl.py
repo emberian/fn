@@ -62,10 +62,15 @@ costliest forms.
 
 A dependency the cache has no certificate for at this tree's bytes: `start`
 first publishes any pair this tree's own manifests vouch for (a lane's own
-`certify_books.py` run), then refuses naming each book whose own bytes are
-uncertified, the books that miss only because they include one, and the
-fixes: `--certify-missing` certifies them (certify_books.py --incremental,
-under swarm-build where it exists) and starts; `--source-deps` (or
+`certify_books.py` run), then CERTIFIES the rest into this machine's cache
+(certify_books.py --incremental, under swarm-build where it exists) and starts,
+naming each book and why (no certificate at these bytes; certificates only
+from another ACL2 toolchain, naming it and the origin; certificates of mixed
+origins no set composes) -- a laptop start over a box's certificates does this
+too, labelled laptop-only (never evidence of record).  `--cached-only` refuses
+instead, naming each book whose own bytes are uncertified, the books that miss
+only because they include one, and the fixes; `--certify-missing` is the
+explicit spelling of the default; `--source-deps` (or
 `--ld-missing`) loads them from source in the session; `--ld DEPENDENCY`
 (a book the session's book includes, never the book itself) / `--source-deps
 A,B` loads named ones.  A from-source book's proofs run in the
@@ -73,11 +78,12 @@ session and `status` marks it "from source (not certified)"; the books of the
 closure that include it are loaded from source too, since their
 certificates name its other bytes.
 
-Source loading never implicitly launches certification. If a dependency
+Source loading never launches certification: a dependency is loaded from
+source only when asked (`--ld`, `--source-deps`, `--ld-missing`), and if one
 fails from source, fix the source/world or explicitly choose
-`start --certify-missing`. Sent includes may acquire matching cached
-certificates, but a cache miss is refused; certification is a separate
-explicit operation.
+`start --certify-missing`.  A cache miss WITHOUT those flags certifies by
+default (see above); `--cached-only` opts out.  Sent includes may acquire
+matching cached certificates, but a cache miss there is refused.
 
 Round 2 (2026-09-27): a keyword command (`:ubt! foo`) is one command with
 the rest of its line, and when a keyword command or a raw-Lisp abort
@@ -98,9 +104,10 @@ status keeps the original failed-dependency marker. Form-by-form --ld-leak or
 timed-out worlds cannot use this option. `--host BOX`
 (hbox, persvati) runs a command in the lane's tree on that box with the
 box's own ACL2 and cache after syncing tools/ and the book's closure; on a
-box itself FN_ACL2 and FN_CERT_CACHE default to that box's.  Before that
-sync a `start` names the closure's books this branch changed (against the
-merge base with origin/dev) and loads them from source as `--ld` (item 82);
+box itself FN_ACL2 and FN_CERT_CACHE default to that box's.  A `start`
+loads nothing from source on the box unless asked (item 82 once forwarded the
+books this branch changed as `--ld`, so a plain `--host` start died loading
+frame-invariants from source; the box certifies them now);
 a second live session of the lane on the box gets its own tree
 <lane>-repl-<NAME> (item 79); a bare book name (`--ld store-log`) resolves
 under books/ (item 78).  A `send` that loads a host file (`(ld "host/x.lisp")`)
@@ -1604,20 +1611,25 @@ def unusable_reason(entries: Path, toolchain: str | None) -> str:
     metas = [certs.read_meta(directory) for directory in sorted(entries.iterdir())
              if directory.is_dir()]
     identities = sorted({str(meta.get("toolchain_identity") or "none") for meta in metas})
+
+    def origins(chosen) -> str:
+        return ", ".join(sorted({str(meta.get("origin_host") or "?") + ":"
+                                 + str(meta.get("origin_root") or "?") for meta in chosen}))
     if toolchain and toolchain not in identities:
         return (f"the cache holds these bytes only for ACL2 toolchain(s) "
-                f"{', '.join(one[:8] for one in identities)}, and this ACL2 is "
-                f"{toolchain[:8]} (another box's build: certify here, or run where "
-                "that toolchain is)")
+                f"{', '.join(one[:8] for one in identities)} (origin {origins(metas)}), and "
+                f"this ACL2 is {toolchain[:8]} (another box's build: certify here, or run "
+                "where that toolchain is)")
     mine = [meta for meta in metas
             if not toolchain or meta.get("toolchain_identity") == toolchain]
     if mine and not any(meta.get("fasl_sha256") for meta in mine):
         return ("the cache holds these bytes only without their compiled file (.fasl); "
                 "installed bare the book would load uncompiled, so no set takes it "
                 "(--certify-missing certifies and compiles it)")
-    return ("the cache holds certificates for these bytes, but none usable here "
-            "(their ACL2 certificate alists disagree with the other books' chosen "
-            "certificates, or a live worktree's pair)")
+    return ("the cache holds certificates for these bytes"
+            + (f" (origin {origins(mine)})" if mine else "")
+            + ", but none usable here (mixed origins: their ACL2 certificate alists "
+            "disagree with the other books' chosen certificates, or a live worktree's pair)")
 
 
 def root_causes(graph: dict[str, list[str]], missing) -> list[str]:
@@ -1680,6 +1692,20 @@ def diagnose(graph: dict[str, list[str]], missing: list[str], cache: Path,
     if follow:
         lines.append(f"  missing because they include one of the above ({len(follow)}): "
                      + ", ".join(follow))
+    return lines
+
+
+def certify_announcement(graph: dict[str, list[str]], missing: list[str], cache: Path,
+                         toolchain: str | None) -> list[str]:
+    """What a certify-by-default start says before it certifies: which, and why."""
+    lines = [f"proof-repl: no usable cached certificate for {len(missing)} dependenc"
+             f"{'y' if len(missing) == 1 else 'ies'}; certifying into this machine's cache "
+             "(--cached-only refuses instead):"]
+    lines += diagnose(graph, missing, cache, toolchain)[1:]
+    lines.append("proof-repl: certifying the missing dependencies: " + " ".join(missing))
+    if sys.platform == "darwin":
+        lines.append("proof-repl: LAPTOP-ONLY certificates (this machine's toolchain): good "
+                     "for this REPL session, never evidence of record")
     return lines
 
 
@@ -1807,8 +1833,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
         if report is not None and report.artifact_set is None and auto == "certify":
             missing = sorted(report.uncached)
             command = certify_command(missing, jobs)
-            printed.append("proof-repl: certifying the missing dependencies: "
-                           + " ".join(missing))
+            printed.extend(certify_announcement(graph, missing, cache, fingerprint.identity))
             with open(log or os.devnull, "a", encoding="utf-8") as sink:
                 done = subprocess.run(command, cwd=ROOT, stdout=sink, stderr=subprocess.STDOUT)
             printed.append(f"  certify_books.py exit {done.returncode}"
@@ -1927,6 +1952,26 @@ def start(args) -> int:
     return _start(args)
 
 
+def start_auto(args) -> str | None:
+    """What a start does with a dependency the cache cannot supply.
+
+    `--cached-only` refuses (None).  `--ld-missing`/`--source-deps` load from
+    source.  An explicit `--ld`/`--source-deps A,B` names what loads from
+    source and leaves the rest to the refusal.  Otherwise (the default, and
+    `--certify-missing`) the closure is certified into this machine's cache.
+    """
+    if getattr(args, "cached_only", False):
+        return None
+    source_deps = getattr(args, "source_deps", None)
+    if getattr(args, "certify_missing", False):
+        return "certify"
+    if getattr(args, "ld_missing", False) or source_deps == "*":
+        return "ld"
+    if getattr(args, "ld", None) or source_deps:
+        return None
+    return "certify"
+
+
 def _start(args) -> int:
     directory = session_dir(args.name)
     lock_fd = open_session_lock(args.name, "start")
@@ -1948,8 +1993,7 @@ def _start(args) -> int:
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":
             named += [one.strip() for one in source_deps.split(",") if one.strip()]
-        auto = ("certify" if getattr(args, "certify_missing", False) else
-                "ld" if getattr(args, "ld_missing", False) or source_deps == "*" else None)
+        auto = start_auto(args)
         SESSIONS.mkdir(parents=True, exist_ok=True)
         acquired, detail, from_source = install_closure(
             args.book, named, auto,
@@ -3941,36 +3985,6 @@ def own_remote_tree(args, host: str, lane: str | None, tree: str, runner=None) -
     return own
 
 
-def changed_dependencies(book: str, named=(), base_ref: str = "origin/dev") -> list[str]:
-    """The books of BOOK's closure (not BOOK) whose bytes here differ from
-    the merge base with BASE_REF, committed or not, less those NAMED.
-
-    obstructions-9 item 82 (operability-7): a lane that changed a WIDE book
-    (books/native-admin) needs it from source in every session on a book
-    that includes it, and a --host start learned so from the box's refusal
-    only after the sync.  No box cache holds a certificate for bytes only
-    this branch has, so `start --host` loads these from source (as --ld)
-    and says so before syncing.
-    """
-    book = normalize_book(book)
-    try:
-        graph = include_graph(ROOT, book)
-    except (OSError, certs.UnreadableBook, ValueError):
-        return []
-
-    def out(*words):
-        done = subprocess.run(["git", "-C", str(ROOT), *words], capture_output=True, text=True)
-        return done.stdout if done.returncode == 0 else None
-    base = (out("merge-base", "HEAD", base_ref) or "").strip()
-    if not base:
-        return []
-    changed = set((out("diff", "--name-only", base, "--") or "").split())
-    changed |= set((out("ls-files", "--others", "--exclude-standard") or "").split())
-    wanted = {normalize_book(one) for one in named}
-    return sorted(name for name in graph
-                  if name != book and f"{name}.lisp" in changed and name not in wanted)
-
-
 def run_remote(args, argv: list[str]) -> int:
     """This command, on args.host, in the lane's tree there, after syncing what it reads."""
     if reject_cached_only_conflicts(args):
@@ -3991,19 +4005,6 @@ def run_remote(args, argv: list[str]) -> int:
         source_deps = getattr(args, "source_deps", None)
         if source_deps and source_deps != "*":
             books += [normalize_book(one.strip()) for one in source_deps.split(",") if one.strip()]
-        if not (getattr(args, "cached_only", False) or source_deps == "*" or getattr(args, "ld_missing", False)
-                or getattr(args, "certify_missing", False)):
-            changed = changed_dependencies(args.book, books[1:])
-            if changed:
-                print(f"proof-repl --host {host}: {len(changed)} dependenc"
-                      f"{'y' if len(changed) == 1 else 'ies'} of {normalize_book(args.book)} "
-                      f"changed on this branch (no box has their certificates): "
-                      f"{', '.join(changed)}; loading them from source (as --ld; the books "
-                      "between that include them follow). --certify-missing certifies "
-                      "them instead (item 82)", flush=True)
-                books += changed
-                for one in changed:
-                    forwarded += ["--ld", one]
     elif command == "probe":
         record = session_dir(args.name) / "remote.json"
         try:
@@ -4189,16 +4190,17 @@ def main(argv: list[str] | None = None) -> int:
                         "books that include it follow")
     p.add_argument("--cached-only", action="store_true",
                    help="require exact cached dependency certificates; refuse misses "
-                        "without source loading or certification, including dependencies "
-                        "changed since this branch's merge base (the target still loads "
-                        "from source)")
+                        "without source loading or certification (the default certifies "
+                        "them into this machine's cache; the target still loads from "
+                        "source)")
     p.add_argument("--ld-missing", action="store_true",
                    help="load every dependency the cache lacks from source")
     p.add_argument("--source-deps", nargs="?", const="*", default=None, metavar="A,B",
                    help="load these dependencies (comma-separated) from source; bare: "
                         "every one the cache lacks (the same as --ld-missing)")
     p.add_argument("--certify-missing", action="store_true",
-                   help="certify every dependency the cache lacks here first "
+                   help="certify every dependency the cache lacks here first (the default "
+                        "when no source-loading flag is given) "
                         "(certify_books.py --incremental, under swarm-build when present)")
     p.add_argument("--certify-jobs", type=int, default=4,
                    help="--jobs for --certify-missing (default 4)")

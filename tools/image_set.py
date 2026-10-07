@@ -6,6 +6,7 @@
     python3 tools/image_set.py check SHA [--base DIR]
     python3 tools/image_set.py backfill-catalog SHA --repo GIT_DIR [--base DIR] [--dry-run]
     python3 tools/image_set.py link-run RUN TREE IMAGE...
+    python3 tools/image_set.py stamp TREE
 
 An image build is the long pole of a native run (~25 min; python-diet-2 and
 others, 2026-09-28), and a lane that changed only tests or tools rebuilt the
@@ -40,6 +41,13 @@ directory into place; an existing BASE/SHA is left alone (refused, exit 1).
 `link` verifies the set's SHA256SUMS and symlinks the named images (their
 cores, world-deps, and lib/) into TREE/build; a named image the set lacks is
 refused by name (exit 1).  `check` verifies the sums.
+
+`stamp` writes the same TREE_SHA and MANIFEST.json into TREE/build itself,
+for a run that builds and tests without publishing (a convergence batch):
+tests/native_image_provenance.py binds a composed fixture's launchers to
+them.  The sha is the images' own `commit SHA` record; a build without one
+common commit record is left unstamped (any earlier stamp removed), and
+tools/build_native_host.sh removes the stamp before it rebuilds an image.
 
 `link-run` (`hbox_native.sh --reuse-image RUN`) links the images an earlier
 hbox_native run built, RUN/tree/build, the same way, and writes
@@ -219,6 +227,65 @@ def wrong_catalog(found: dict[str, str]) -> list[str]:
     return [f"{name} ({catalog})" for name, catalog in sorted(found.items()) if catalog != "old"]
 
 
+def write_manifest(directory: Path, sha: str, images: dict, tree: Path,
+                   files: list[Path] | None, when: str) -> None:
+    """TREE_SHA and MANIFEST.json for a directory of images: the one writer of
+    the coordinates tests/native_image_provenance.py binds a launcher to
+    (sha, images name -> launcher/core, files path -> sha256).  `publish`
+    writes them into a set (`when` published_utc; files None: every file of
+    the set, TREE_SHA included), `stamp` into a run tree's own build (`when`
+    stamped_utc; files: its images' own)."""
+    atomic_write(directory / "TREE_SHA", sha + "\n")
+    files = files_of(directory) if files is None else files
+    manifest = {"sha": sha, "images": images, "source_tree": str(tree),
+                when: dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "files": {str(p.relative_to(directory)): sha256(p) for p in files}}
+    atomic_write(directory / "MANIFEST.json", json.dumps(manifest, indent=1) + "\n")
+
+
+def stamp(tree: Path) -> int:
+    """Stamp TREE/build's own images with TREE_SHA and MANIFEST.json, so a
+    composed fixture can bind an unpublished build (a convergence run builds
+    and tests without publishing; CONVERGE-20261007-1 red #3).  The sha is the
+    builder's record, never the caller's word: every image must record the
+    same `commit SHA` (FILE.source).  A build with another record (a lane's
+    `worktree SHA+dirty`, mixed commits, unknown) is left unstamped, with any
+    earlier stamp removed, and the fixture refuses it by name.  A build that
+    holds linked images is refused (exit 1): those carry their set's own
+    manifest."""
+    build = tree / "build"
+    found = {name: file for name, file in IMAGES.items()
+             if (build / file).is_file() and (build / f"{file}.core").is_file()}
+    linked = not_built_here(build, found)
+    if linked:
+        print(f"image_set: {build} holds images it did not build: {'; '.join(linked)}; "
+              "not stamped", file=sys.stderr)
+        return 1
+    for name in ("MANIFEST.json", "TREE_SHA"):
+        (build / name).unlink(missing_ok=True)
+    if not found:
+        print(f"image_set: no image in {build}; not stamped", file=sys.stderr)
+        return 0
+    records = {name: source_of(build, file) for name, file in sorted(found.items())}
+    commits = {record.removeprefix("commit ") for record in records.values()}
+    sha = next(iter(commits))
+    if len(commits) != 1 or not SHA.fullmatch(sha):
+        print(f"image_set: {build} not stamped: its images do not record one source "
+              f"commit ({', '.join(f'{name}: {record}' for name, record in records.items())})",
+              file=sys.stderr)
+        return 0
+    images, files = {}, []
+    for name, file in found.items():
+        images[name] = {"launcher": file, "core": f"{file}.core",
+                        "catalog": catalog_of(build, file), "source": f"commit {sha}"}
+        files += [build / file, build / f"{file}.core"]
+        if (build / f"{file}.world-deps").is_file():
+            files.append(build / f"{file}.world-deps")
+    write_manifest(build, sha, images, tree, files, "stamped_utc")
+    print(f"image_set: stamped {', '.join(sorted(images))} in {build} as commit {sha}")
+    return 0
+
+
 def publish(tree: Path, sha: str, base: Path = BASE) -> int:
     if not SHA.fullmatch(sha):
         print(f"image_set: {sha!r} is not a full commit sha", file=sys.stderr)
@@ -274,11 +341,7 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
                         "source": f"commit {sha}"}
     if (build / "lib").is_dir():
         shutil.copytree(build / "lib", partial / "lib")
-    (partial / "TREE_SHA").write_text(sha + "\n")
-    manifest = {"sha": sha, "images": images, "source_tree": str(tree),
-                "published_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "files": {str(p.relative_to(partial)): sha256(p) for p in files_of(partial)}}
-    (partial / "MANIFEST.json").write_text(json.dumps(manifest, indent=1) + "\n")
+    write_manifest(partial, sha, images, tree, None, "published_utc")
     write_sums(partial)
     os.rename(partial, target)
     print(f"image_set: published {', '.join(sorted(images))} at {target}")
@@ -417,7 +480,11 @@ def main(argv: list[str] | None = None) -> int:
     four.add_argument("run")
     four.add_argument("tree")
     four.add_argument("images", nargs="+", choices=sorted(IMAGES))
+    five = sub.add_parser("stamp")
+    five.add_argument("tree")
     args = parser.parse_args(argv)
+    if args.action == "stamp":
+        return stamp(Path(args.tree).resolve())
     if args.action == "link-run":
         return link_run(Path(args.run), Path(args.tree).resolve(), args.images)
     base = Path(args.base)
