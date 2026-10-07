@@ -35,3 +35,14 @@ NEXT:
     stateful, owner steps keep their image-vs-X shape with X = fn-core; drop the chicken side and the functions/fcheck step or re-aim it at `fn-core --xl-load`.
     tests/test_extract_gate.py (651 lines) uses stand-ins: update with it.
  5. READY needs: hbox core.sh green with zero undefined names on the dev world; filtered tests/test_extract_forms.py + remaining test_extract*; push.
+
+## 2026-10-07 later (world image attempt; hbox quiet window started)
+- GO for world_image came; tried the lane tip: the tree has NO .cert files, world loads uncertified ("no certificate on file", then def-holder error). Fix is
+  `python3 tools/proof_artifacts.py acquire --profile default --root TREE --cache /tank/fn/certcache --acl2 /tank/fn/toolchains/w28/acl2-literal-4g-tls64k`
+  (installs certs from the cache into TREE/books). Lane tip: 16 books uncached (extract-c books + image-world, output-admission-line, owner-*).
+  Base tree (my worktree build/lanes/extract-forms-w @ e1084dc30 + core.sh/core-main from a037c17aa, i.e. dev 1e190ff19 + my tools, WITHOUT the extract-c merge):
+  only books/image-world is uncached. Synced to hbox:/tank/fn/scratch/extract-forms/lanetree2 (acquire log acquire2.log). Next: certify books/image-world
+  (or get its cert from E/N), re-run acquire in lanetree2, then `SWARM_MEM_MAX=36G timeout 3000 sh tools/extract/world_image.sh lanetree2` (record the world key + cache path here),
+  then core.sh with FN_EXTRACT_IMAGE=/tank/fn/images/3e53d7bc5dbd72de73042b46e6174d316ef7a63d/fn-host-developer and FN_EXTRACT_WORLD_IMAGE=<that world>.
+- A first acquire (pid 1926309, hbox, lanetree) was left running on the wrong tree; harmless, ends by its own timeout.
+- Context used ~400K: successor starts fresh from this file.
