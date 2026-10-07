@@ -93,7 +93,7 @@ RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"
 STEP_OF_STATUS = "keystone via fold; host-loop correspondence owed"
 
 KEYS = {":class", ":kinds", ":exempt", ":keystones", ":root", ":direct", ":delegates",
-        ":raw-with", ":raw-guarded", ":operation"}
+        ":raw-with", ":raw-guarded", ":operation", ":trace"}
 
 # The subsystems a declaration is filed under (host/interfaces.lisp's
 # sections; planning/interfaces-gaps.md).  A name prefix decides first, then
@@ -207,6 +207,10 @@ def declarations(root: Path = ROOT) -> list[dict]:
                 **({"operation": {key.lstrip(":"): ledger.source_text(value)
                                    for key, value in ledger.keyword_plist(kv[":operation"]).items()}}
                    if kv.get(":operation") is not None else {}),
+                # decision tracing (books/decision-trace.lisp): the declaration as written
+                **({"trace": {key.lstrip(":"): ledger.source_text(value)
+                              for key, value in ledger.keyword_plist(kv[":trace"]).items()}}
+                   if kv.get(":trace") is not None else {}),
             })
     rows = None
     for d in found:

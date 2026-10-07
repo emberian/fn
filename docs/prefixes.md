@@ -455,3 +455,5 @@ anything a book does not already decide.
 | `fn-saw-` | `served-auth-wire-bridge`, `tests/acl2/served-auth-wire-bridge-tests` | Served command framing and authentication hold composition (PKT-390) |
 
 | `fn-rip-` | `native-redeem-input` | Redeem client credential and reply admission; actual native input and wire constructor subjects. |
+
+| `fn-dtrace-` | `decision-trace`, `decision-trace-config`, `decision-trace-control`, `tests/acl2/decision-trace-tests` | Decision tracing, a view over a decision already made (observability program section 2a): the bounded record and row (DT-2), the `definterface :trace` projections the declarations name, `fn-dtrace-admit` (the plan from the profile's `[trace]` table and the image profile, or a refusal by name), the ring's memory charged to the heap figure, `fn-dtrace-verb` (`trace on|off|drain`), and the generated dispatch `fn-dtrace-project`. |

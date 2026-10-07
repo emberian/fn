@@ -26,16 +26,41 @@
 ;                                   ; compiled callback with guard T or only
 ;                                   ; its own supplied stobj recognizers;
 ;                                   ; no invariant or relational guard
-;     [:raw-with (THM ...)])        ; RAW DISPATCH (D40): the host calls the
+;     [:raw-with (THM ...)]         ; RAW DISPATCH (D40): the host calls the
 ;                                   ; guard-verified definition, not its
 ;                                   ; executable counterpart; THM ... is the
 ;                                   ; named preservation argument for the
 ;                                   ; guard conjuncts the entry guard does
 ;                                   ; not evaluate
+;     [:trace (:class CLASS :inputs ((FORMAL PROJ) ...) :outcome FN
+;              :decision D :witnesses (VALS ...))])
+;                                   ; DECISION TRACING (books/decision-trace.lisp):
+;                                   ; the entry's decisions may be recorded.
+;                                   ; PROJ is :value (a natural, boolean,
+;                                   ; keyword or symbol), :length (a list or
+;                                   ; string), :digest (an octets stobj), :redact,
+;                                   ; or (:with FN) (an atom FN computes of the
+;                                   ; argument).  FN and D take the list of the
+;                                   ; values the entry returned: D is the
+;                                   ; decision part, FN the projection recorded.
+;                                   ; WITNESSES are values lists the entry
+;                                   ; returns.
 ;
 ; Admitted, it checks, in the world as loaded (so a declaration cannot drift
 ; from the definition it declares):
 ;
+;   * a :trace declaration is checked against the world (fn-di-trace-refusal):
+;     every named input is a formal, a :value is taken only of a formal whose
+;     guard kind is bounded, a formal of a secret kind (payload, octets,
+;     strings) admits only :redact or :length, a stobj formal only :redact,
+;     FN and D are guard-verified functions of guard T that are not the same
+;     function, and on the declared witnesses FN is a bounded record that
+;     keeps the decision part: two witnesses FN does not tell apart have the
+;     same D, or the declaration is refused as a collapsing projection, by
+;     name.  Admitted, it generates DT-1 (NAME-dtrace-keeps-the-decision) and
+;     NAME-dtrace-outcome-is-a-record, and registers NAME in the table
+;     fn-dtrace-points, from which `fn-dtrace-define-project' generates the
+;     one entry the host calls to project a call into a row;
 ;   * NAME is a function (it has formals) or a stobj creator;
 ;   * CLASS is NAME's symbol-class: a declaration of :common-lisp-compliant
 ;     is a claim that the entry is guard-verified, and the world confirms it;
@@ -106,16 +131,19 @@
 ; never dispatches is stale; see that tool).
 ;
 ; This book includes only books/def-carried (whose row a `:raw-with
-; (:carried NAME)' re-checks) and leaves no rule: its helpers are
-; :program mode.  *fn-entry-guard-kinds* is read from the world
+; (:carried NAME)' re-checks) and books/decision-trace (the records and
+; projections a `:trace' declaration names; pure arithmetic over fn-dtrace-
+; functions, its rules fire on no other term) and leaves no rule of its own:
+; its helpers are :program mode.  *fn-entry-guard-kinds* is read from the world
 ; (books/payload-kinds.lisp), not included, so the file that holds the
 ; declarations decides what is loaded.
 
 (in-package "ACL2")
 (include-book "def-carried") ; fn-cd-problem: a (:carried NAME) row re-checked
+(include-book "decision-trace") ; fn-dtrace-recordp, the projections, the classes
 
 (defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates
-                         :raw-with :raw-guarded :operation))
+                         :raw-with :raw-guarded :operation :trace))
 
 (defconst *fn-di-classes* '(:common-lisp-compliant :ideal :program))
 
@@ -234,6 +262,38 @@
        (symbolp (fn-di-get :physical x)) (fn-di-get :physical x)
        (symbolp (fn-di-get :outcome x)) (fn-di-get :outcome x)))
 
+; DECISION TRACING (:trace).  The form's shape here; the world's checks in
+; fn-di-trace-refusal below.
+(defconst *fn-di-trace-keys* '(:class :inputs :outcome :decision :witnesses))
+
+(defun fn-di-trace-proj-formp (p)
+  (declare (xargs :mode :program))
+  (or (and (member-eq p *fn-dtrace-input-projections*) t)
+      (and (true-listp p) (equal (len p) 2) (eq (car p) :with)
+           (symbolp (cadr p)) (cadr p) t)))
+
+(defun fn-di-trace-inputs-formp (x)
+  (declare (xargs :mode :program))
+  ; ((FORMAL PROJ) ...)
+  (if (atom x)
+      (null x)
+    (and (true-listp (car x)) (equal (len (car x)) 2)
+         (symbolp (car (car x))) (car (car x))
+         (fn-di-trace-proj-formp (cadr (car x)))
+         (fn-di-trace-inputs-formp (cdr x)))))
+
+(defun fn-di-trace-formp (x)
+  (declare (xargs :mode :program))
+  (and (keyword-value-listp x)
+       (fn-di-operation-unique-keys-p x)
+       (not (fn-cd-unknown-keys x *fn-di-trace-keys*))
+       (member-eq (fn-di-get :class x) *fn-dtrace-classes*)
+       (fn-di-trace-inputs-formp (fn-di-get :inputs x))
+       (symbolp (fn-di-get :outcome x)) (fn-di-get :outcome x)
+       (symbolp (fn-di-get :decision x)) (fn-di-get :decision x)
+       (true-listp (fn-di-get :witnesses x))
+       (consp (fn-di-get :witnesses x))))
+
 (defun fn-di-refusal (name kvs)
   (declare (xargs :mode :program))
   ; nil when the form is well-formed; else (REASON . DETAILS)
@@ -272,6 +332,9 @@
    ((and (assoc-keyword :operation kvs)
          (not (fn-di-operation-formp (fn-di-get :operation kvs))))
     (list :bad-operation (fn-di-get :operation kvs)))
+   ((and (assoc-keyword :trace kvs)
+         (not (fn-di-trace-formp (fn-di-get :trace kvs))))
+    (list :bad-trace (fn-di-get :trace kvs)))
    (t nil)))
 
 ; -----------------------------------------------------------------------------
@@ -779,6 +842,196 @@
            (equal (stobjs-in name w) nil)
            st (eq name (get-stobj-creator st w))))))
 
+; -----------------------------------------------------------------------------
+; :trace (books/decision-trace.lisp).  The world's checks, each refusing by a
+; named reason: (REASON . DETAILS).
+
+(defun fn-di-trace-formal-position (formal formals)
+  (declare (xargs :mode :program))
+  (fn-di-position formal formals 0))
+
+(defun fn-di-trace-octets-stobjp (st)
+  (declare (xargs :mode :program))
+  ; the stobjs the control buffer and the wire hold octets in
+  (and (symbolp st) st
+       (let ((n (symbol-name st)))
+         (and (<= 9 (length n)) (equal (subseq n 0 9) "FN-OCTETS")))))
+
+(defun fn-di-trace-fn-refusal (fn role w)
+  (declare (xargs :mode :program))
+  ; FN is a guard-verified function of exactly one formal, a non-stobj, whose
+  ; guard is T
+  (cond ((eq (getpropc fn 'formals :none w) :none)
+         (list :not-a-function role fn))
+        ((not (equal (len (getpropc fn 'formals nil w)) 1))
+         (list :not-a-function-of-the-values role fn))
+        ((not (eq (symbol-class fn w) :common-lisp-compliant))
+         (list :not-guard-verified role fn))
+        ((not (equal (getpropc fn 'guard *t* w) *t*))
+         (list :guard-is-not-t role fn))
+        ((car (getpropc fn 'stobjs-in nil w))
+         (list :takes-a-stobj role fn))
+        (t nil)))
+
+(defun fn-di-trace-input-refusal (formal proj formals stobjs kinds w)
+  (declare (xargs :mode :program))
+  (let* ((pos (and (member-eq formal formals) (fn-di-trace-formal-position formal formals)))
+         (stobj (and pos (nth pos stobjs)))
+         (kind (cadr (assoc-eq formal kinds))))
+    (cond
+     ((null pos) (list :no-such-formal formal))
+     ((eq proj :redact) nil)
+     (stobj
+      (if (and (eq proj :digest) (fn-di-trace-octets-stobjp stobj))
+          nil
+        (list :stobj-formal formal stobj proj)))
+     ((and (member-eq kind *fn-dtrace-secret-kinds*)
+           (not (eq proj :length)))
+      (list :secret-formal formal kind proj))
+     ((eq proj :value)
+      (if (member-eq kind *fn-dtrace-value-kinds*)
+          nil
+        (list :value-on-unbounded-formal formal kind)))
+     ((eq proj :length)
+      (if (member-eq kind *fn-dtrace-length-kinds*)
+          nil
+        (list :length-on-unbounded-formal formal kind)))
+     ((eq proj :digest) (list :digest-needs-an-octets-stobj formal))
+     (t ; (:with FN)
+      (let ((problem (fn-di-trace-fn-refusal (cadr proj) :with w)))
+        (and problem (cons :bad-with problem)))))))
+
+(defun fn-di-trace-inputs-refusal (inputs seen formals stobjs kinds w)
+  (declare (xargs :mode :program))
+  (cond ((atom inputs) nil)
+        ((member-eq (car (car inputs)) seen)
+         (list :duplicate-input (car (car inputs))))
+        (t (or (fn-di-trace-input-refusal (car (car inputs)) (cadr (car inputs))
+                                          formals stobjs kinds w)
+               (fn-di-trace-inputs-refusal (cdr inputs)
+                                           (cons (car (car inputs)) seen)
+                                           formals stobjs kinds w)))))
+
+(defun fn-di-trace-eval (fn x state)
+  (declare (xargs :mode :program :stobjs state))
+  ; (mv ok value): FN applied to X, evaluated in the current world
+  (mv-let (erp val) (magic-ev-fncall fn (list x) state t nil)
+    (if erp (mv nil nil) (mv t val))))
+
+(defun fn-di-trace-witness-rows (fnout dec ws state)
+  (declare (xargs :mode :program :stobjs state))
+  ; ((WITNESS OUT-OK OUT DEC-OK DEC) ...)
+  (if (atom ws)
+      nil
+    (mv-let (ok1 out) (fn-di-trace-eval fnout (car ws) state)
+      (mv-let (ok2 d) (fn-di-trace-eval dec (car ws) state)
+        (cons (list (car ws) ok1 out ok2 d)
+              (fn-di-trace-witness-rows fnout dec (cdr ws) state))))))
+
+(defun fn-di-trace-row-refusal (row)
+  (declare (xargs :mode :program))
+  (cond ((not (true-listp (car row))) (list :witness-is-not-a-values-list (car row)))
+        ((not (and (nth 1 row) (nth 3 row))) (list :witness-fails (car row)))
+        ((not (fn-dtrace-recordp (nth 2 row))) (list :outcome-unbounded (car row)))
+        ((not (fn-dtrace-recordp (nth 4 row))) (list :decision-unbounded (car row)))
+        (t nil)))
+
+(defun fn-di-trace-collapse (row rows)
+  (declare (xargs :mode :program))
+  ; a later row FN does not tell apart from ROW whose decision differs
+  (cond ((atom rows) nil)
+        ((and (equal (nth 2 row) (nth 2 (car rows)))
+              (not (equal (nth 4 row) (nth 4 (car rows)))))
+         (list :collapsing-projection (car row) (car (car rows)) (nth 2 row)))
+        (t (fn-di-trace-collapse row (cdr rows)))))
+
+(defun fn-di-trace-witnesses-refusal (rows)
+  (declare (xargs :mode :program))
+  (cond ((atom rows) nil)
+        (t (or (fn-di-trace-row-refusal (car rows))
+               (fn-di-trace-collapse (car rows) (cdr rows))
+               (fn-di-trace-witnesses-refusal (cdr rows))))))
+
+(defun fn-di-trace-refusal (name trace state)
+  (declare (xargs :mode :program :stobjs state))
+  ; nil, or (REASON . DETAILS); the world is STATE's, which the witnesses are
+  ; evaluated in
+  (let* ((w (w state))
+         (formals (getpropc name 'formals nil w))
+         (stobjs (getpropc name 'stobjs-in nil w))
+         (kinds (fn-di-world-kinds name w))
+         (inputs (fn-di-get :inputs trace))
+         (outcome (fn-di-get :outcome trace))
+         (decision (fn-di-get :decision trace)))
+    (cond
+     ((< *fn-dtrace-max-width* (len inputs)) (list :too-many-inputs (len inputs)))
+     ((fn-di-trace-inputs-refusal inputs nil formals stobjs kinds w))
+     ((fn-di-trace-fn-refusal outcome :outcome w))
+     ((fn-di-trace-fn-refusal decision :decision w))
+     ((eq outcome decision) (list :decision-is-the-outcome outcome))
+     (t (fn-di-trace-witnesses-refusal
+         (fn-di-trace-witness-rows outcome decision (fn-di-get :witnesses trace) state))))))
+
+(defun fn-di-trace-problem (name trace state)
+  (declare (xargs :mode :program :stobjs state))
+  (let ((r (fn-di-trace-refusal name trace state)))
+    (and r (msg ":trace is refused, ~x0: ~x1" (car r) r))))
+
+; The entry the table fn-dtrace-points holds for NAME: the host reads it once
+; at start.  POSITIONS are the argument positions of the inputs that are not
+; :redact, PROJS their projections, in input order; STOBJS-OUT is the world's,
+; so the host records no stobj.
+(defun fn-di-trace-positions (inputs formals)
+  (declare (xargs :mode :program))
+  (cond ((atom inputs) nil)
+        ((eq (cadr (car inputs)) :redact) (fn-di-trace-positions (cdr inputs) formals))
+        (t (cons (fn-di-trace-formal-position (car (car inputs)) formals)
+                 (fn-di-trace-positions (cdr inputs) formals)))))
+
+(defun fn-di-trace-projs (inputs)
+  (declare (xargs :mode :program))
+  (cond ((atom inputs) nil)
+        ((eq (cadr (car inputs)) :redact) (fn-di-trace-projs (cdr inputs)))
+        (t (cons (cadr (car inputs)) (fn-di-trace-projs (cdr inputs))))))
+
+(defun fn-di-trace-entry (name trace w)
+  (declare (xargs :mode :program))
+  (let ((formals (getpropc name 'formals nil w))
+        (inputs (fn-di-get :inputs trace)))
+    (list :class (fn-di-get :class trace)
+          :inputs inputs
+          :positions (fn-di-trace-positions inputs formals)
+          :projs (fn-di-trace-projs inputs)
+          :outcome (fn-di-get :outcome trace)
+          :decision (fn-di-get :decision trace)
+          :stobjs-out (getpropc name 'stobjs-out nil w))))
+
+(defun fn-di-trace-events (name trace w)
+  (declare (xargs :mode :program))
+  (let ((outcome (fn-di-get :outcome trace))
+        (decision (fn-di-get :decision trace)))
+    `((table fn-dtrace-points ',name ',(fn-di-trace-entry name trace w))
+      ; DT-1: the recorded outcome determines the declared decision part
+      ; (whenever that part is itself a record: the witnesses show it is, for
+      ; the values the entry returns).
+      (defthm ,(intern-in-package-of-symbol
+                (concatenate 'string (symbol-name name) "-DTRACE-KEEPS-THE-DECISION")
+                name)
+        (implies (and (fn-dtrace-recordp (,decision a))
+                      (fn-dtrace-recordp (,decision b))
+                      (equal (,outcome a) (,outcome b)))
+                 (equal (,decision a) (,decision b)))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (enable ,outcome ,decision))))
+      ; DT-2: the projection is a bounded record, for every result.
+      (defthm ,(intern-in-package-of-symbol
+                (concatenate 'string (symbol-name name) "-DTRACE-OUTCOME-IS-A-RECORD")
+                name)
+        (fn-dtrace-recordp (,outcome vals))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (enable ,outcome)))))))
+
+
 (defun fn-di-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
@@ -811,6 +1064,10 @@
     (:dual-raw-routes (msg ":raw-with and :raw-guarded are incompatible."))
     (:bad-operation (msg ":operation ~x0 is not a staged funding/cost/custody contract."
                          (cadr reason)))
+    (:bad-trace (msg ":trace ~x0 is not (:class one of ~&1 :inputs ((FORMAL PROJ) ...) ~
+                       :outcome FN :decision D :witnesses (VALS ...)), PROJ one of ~&2 ~
+                       or (:with FN), and the witnesses a non-empty list."
+                     (cadr reason) *fn-dtrace-classes* *fn-dtrace-input-projections*))
     (:bad-raw-with (msg ":raw-with ~x0 is not a non-empty list of theorem names, ~
                          (:carried NAME) or (:carried NAME :assuming A-ID)."
                         (cadr reason)))
@@ -825,18 +1082,23 @@
 ; restatement, cited by nothing, and never a rewrite.
 (defun fn-di-events (name kvs w)
   (declare (xargs :mode :program))
-  (let ((callee (fn-di-get :delegates kvs))
-        (formals (getpropc name 'formals nil w)))
-    (if callee
-        `(progn (table fn-interfaces ',name ',kvs)
-                (defthm ,(intern-in-package-of-symbol
-                          (concatenate 'string (symbol-name name) "-IS-"
-                                       (symbol-name callee) "-BY-DEFINITION")
-                          name)
-                  (equal (,name ,@formals) (,callee ,@formals))
-                  :rule-classes nil
-                  :hints (("Goal" :in-theory '(,name)))))
-      `(table fn-interfaces ',name ',kvs))))
+  (let* ((callee (fn-di-get :delegates kvs))
+         (trace (fn-di-get :trace kvs))
+         (formals (getpropc name 'formals nil w))
+         (table `(table fn-interfaces ',name ',kvs))
+         (delegation
+          (and callee
+               `((defthm ,(intern-in-package-of-symbol
+                           (concatenate 'string (symbol-name name) "-IS-"
+                                        (symbol-name callee) "-BY-DEFINITION")
+                           name)
+                   (equal (,name ,@formals) (,callee ,@formals))
+                   :rule-classes nil
+                   :hints (("Goal" :in-theory '(,name)))))))
+         (tracing (and trace (fn-di-trace-events name trace w))))
+    (if (or delegation tracing)
+        `(progn ,table ,@delegation ,@tracing)
+      table)))
 
 (defmacro definterface (name &rest kvs)
   (let ((reason (fn-di-refusal name kvs)))
@@ -844,8 +1106,68 @@
         `(make-event (er soft 'definterface "~x0: ~@1" ',name
                          ',(fn-di-refusal-text reason)))
       `(make-event
-        (let ((problem (fn-di-problem ',name ',kvs (w state))))
+        (let ((problem (or (fn-di-problem ',name ',kvs (w state))
+                           ,@(and (assoc-keyword :trace kvs)
+                                  `((fn-di-trace-problem ',name ',(fn-di-get :trace kvs) state))))))
           (if problem
               (er soft 'definterface "~x0: ~@1" ',name problem)
             (value (fn-di-events ',name ',kvs (w state)))))
 ))))
+
+; -----------------------------------------------------------------------------
+; The one entry the host calls to project a traced call into a row:
+; (fn-dtrace-project POINT ARGS VALS), ARGS the arguments of the traced
+; entry's non-redacted inputs, in input order (the table's :positions), VALS
+; the values it returned with every stobj position nil (the table's
+; :stobjs-out).  Written once, at the end of the registry that holds every
+; traced declaration (host/interfaces.lisp): the dispatch is generated from the
+; table, so a declaration is the whole of what makes an entry traceable.
+
+(defun fn-di-project-input-exprs (inputs k)
+  (declare (xargs :mode :program))
+  (cond ((atom inputs) nil)
+        ((eq (cadr (car inputs)) :redact)
+         (cons :redacted (fn-di-project-input-exprs (cdr inputs) k)))
+        ((consp (cadr (car inputs)))
+         (cons `(fn-dtrace-atom-clip (,(cadr (cadr (car inputs))) (fn-dtrace-nth ,k args)))
+               (fn-di-project-input-exprs (cdr inputs) (1+ k))))
+        (t (cons `(fn-dtrace-input-of ,(cadr (car inputs)) (fn-dtrace-nth ,k args))
+                 (fn-di-project-input-exprs (cdr inputs) (1+ k))))))
+
+(defun fn-di-project-clauses (entries)
+  (declare (xargs :mode :program))
+  (cond ((atom entries) nil)
+        (t (let* ((name (car (car entries)))
+                  (e (cdr (car entries))))
+             (cons `(,name (list ',name
+                                 (list ,@(fn-di-project-input-exprs (cadr (assoc-keyword :inputs e)) 0))
+                                 (,(cadr (assoc-keyword :outcome e)) vals)))
+                   (fn-di-project-clauses (cdr entries)))))))
+
+(defun fn-di-project-uses (entries)
+  (declare (xargs :mode :program))
+  (cond ((atom entries) nil)
+        (t (cons `(:instance ,(intern-in-package-of-symbol
+                               (concatenate 'string (symbol-name (car (car entries)))
+                                            "-DTRACE-OUTCOME-IS-A-RECORD")
+                               (car (car entries)))
+                             (vals vals))
+                 (fn-di-project-uses (cdr entries))))))
+
+(defun fn-di-project-events (entries)
+  (declare (xargs :mode :program))
+  `(progn
+     (defun fn-dtrace-project (point args vals)
+       (declare (xargs :guard t))
+       (case point
+         ,@(fn-di-project-clauses entries)
+         (otherwise (list :unknown-point nil nil))))
+     (defthm fn-dtrace-project-is-a-row
+       (fn-dtrace-rowp (fn-dtrace-project point args vals))
+       :rule-classes nil
+       :hints (("Goal" :use ,(fn-di-project-uses entries)
+                       :in-theory (enable fn-dtrace-project))))))
+
+(defmacro fn-dtrace-define-project ()
+  `(make-event (value (fn-di-project-events
+                       (table-alist 'fn-dtrace-points (w state))))))
