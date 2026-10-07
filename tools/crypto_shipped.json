@@ -108,7 +108,7 @@
     "tests/test_box_table.py",
     "tests/test_hbox_native.py"
    ],
-   "pattern": "OPENSSL=system|\\\"openssl\\\": \\\"system\\\"|bundled or system|\\blibssl3\\b|^\\s*system\\) cat|openssl is bundled or system|bundled \\\\(/tank[^)]*\\\\) or system|\\[\\\"openssl\\\"\\], \\\"system\\\"|\\\"OPENSSL\\\": \\\"'system'\\\""
+   "pattern": "assertNotIn\\(\\\"openssl-3\\.5\\.8\\\", script\\)|OPENSSL=system|\\\"openssl\\\": \\\"system\\\"|bundled or system|\\blibssl3\\b|^\\s*system\\) cat|openssl is bundled or system|bundled \\\\(/tank[^)]*\\\\) or system|\\[\\\"openssl\\\"\\], \\\"system\\\"|\\\"OPENSSL\\\": \\\"'system'\\\""
   },
   "box-unset-prefix": {
    "profile": "boxes",
@@ -124,9 +124,10 @@
    "profile": "boxes",
    "desc": "deploy_gate treats --native-openssl-prefix as optional",
    "files": [
-    "tools/deploy_gate.py"
+    "tools/deploy_gate.py",
+    "tests/test_deploy_gate.py"
    ],
-   "pattern": "when the box needs one"
+   "pattern": "when the box needs one|\\\"--developer-image\\\", image,$"
   },
   "docs-system-tls": {
    "profile": "docs",
@@ -788,6 +789,29 @@
    ],
    "new": [
     "                               \"WRAP\": \"''\", \"IMAGES_BASE\": \"''\", \"OPENSSL\": \"'bundled'\"})"
+   ]
+  },
+  {
+   "id": "test-hbox-native-persvati-script",
+   "kind": "box-system-openssl",
+   "file": "tests/test_hbox_native.py",
+   "old": [
+    "        self.assertNotIn(\"openssl-3.5.8\", script)",
+    "        self.assertIn(\"command -v openssl\", script)"
+   ],
+   "new": [
+    "        self.assertIn(\"openssl-3.5.8\", script)"
+   ]
+  },
+  {
+   "id": "test-deploy-gate-prefix",
+   "kind": "deploy-gate-optional-prefix",
+   "file": "tests/test_deploy_gate.py",
+   "old": [
+    "                \"--native-image\", image, \"--developer-image\", image,"
+   ],
+   "new": [
+    "                \"--native-image\", image, \"--developer-image\", image, \"--native-openssl-prefix\", \"/opt/ssl\","
    ]
   },
   {

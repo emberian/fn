@@ -28,7 +28,7 @@ variable it reads whose image this run builds, the opt-in flags that mean
 "run against the image this run built", and the OpenSSL and tree paths.
 Values are box-shell words ($T is the tree, $FN_TEST_OPENSSL_BIN the test
 tool OpenSSL 3.5 that makes independent ML-DSA-65 keys; the node itself uses
-the system libssl and its own ML-DSA-65 library, HST-016).
+the shipped OpenSSL 3.5.8, D64, and its own ML-DSA-65 library, HST-016).
 A module that reads an image variable whose image is not in --images (and
 not given by --env) is refused by name, exit 2:
 

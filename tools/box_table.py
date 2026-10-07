@@ -22,7 +22,7 @@ field defaults to that row's and may be given:
     scratch            the scratch base (native runs, remote_check trees)
     gates              the proof_repl / gate tree root
     images             where published image sets live ("" for none)
-    openssl            bundled (/tank/fn/toolchains/openssl-3.5.8) or system
+    openssl            bundled: the OpenSSL 3.5.8 under /tank/fn/toolchains (D64)
     check_jobs         remote_check's default make -j ("" for none)
     pick               false keeps the box out of tools/boxes.sh --pick
     until              UTC expiry; a row past it is ignored, so a torn-down
@@ -56,7 +56,7 @@ FIXED = {
     "hbox": {"scratch": "/tank/fn/scratch", "gates": "/tank/fn/gates",
              "images": "/tank/fn/images", "openssl": "bundled", "check_jobs": "6"},
     "persvati": {"scratch": "~/fn-gates", "gates": "fn-gates", "images": "",
-                 "openssl": "system", "check_jobs": ""},
+                 "openssl": "bundled", "check_jobs": ""},
 }
 FARM_FIELDS = ("acl2", "image_acl2", "load_acl2", "sbcl", "cache", "wrap")
 
@@ -111,8 +111,8 @@ def extra_boxes(fixed: dict | None = None, environ=None, now: dt.datetime | None
                       "scratch", "gates", "images"):
             if not PATH.fullmatch(str(row.get(field, ""))):
                 raise SystemExit(f"box_table: {path}: {name}: bad {field} {row[field]!r}")
-        if row["openssl"] not in ("bundled", "system"):
-            raise SystemExit(f"box_table: {path}: {name}: openssl is bundled or system")
+        if row["openssl"] != "bundled":
+            raise SystemExit(f"box_table: {path}: {name}: openssl is bundled (D64)")
         rows[name] = row
     return rows
 
