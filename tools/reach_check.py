@@ -109,6 +109,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import callgraph  # noqa: E402
+import lisp_source  # noqa: E402
+from lisp_source import code_only, forms, read_sexp  # noqa: E402,F401
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from tools import ratchet  # noqa: E402
 
@@ -161,32 +163,6 @@ def campaign_names(directory: "pathlib.Path | None" = None) -> dict[str, str]:
     return found
 
 
-def code_only(text: str) -> str:
-    """Lisp TEXT with `;' comments, `#| |#' blocks and string literals blanked
-    (a character literal, #-backslash then one character, is code, kept)."""
-    out, i, n = [], 0, len(text)
-    while i < n:
-        c = text[i]
-        if c == "#" and text.startswith("#\\", i):
-            out.append(text[i:i + 3])
-            i += 3
-        elif c == "#" and text.startswith("#|", i):
-            end = text.find("|#", i + 2)
-            i = n if end < 0 else end + 2
-            out.append(" ")
-        elif c == ";":
-            end = text.find("\n", i)
-            i = n if end < 0 else end
-        elif c == '"':
-            i += 1
-            while i < n and text[i] != '"':
-                i += 2 if text[i] == "\\" else 1
-            i += 1
-            out.append(" ")
-        else:
-            out.append(c)
-            i += 1
-    return "".join(out)
 NAME = r"[a-zA-Z0-9<>=/*+$-]+"
 ATTACH_ONE = re.compile(rf"\(defattach\s+({NAME})\s+({NAME})")
 ATTACH_PAIR = re.compile(rf"\(\s*({NAME})\s+({NAME})\s*\)")
@@ -275,7 +251,8 @@ def memoised(kind: str, rel: str, text: str, compute):
         atexit.register(_memo_save)
     if _MEMO_SALT is None:
         salt = hashlib.sha256(b"fn-reach-file-memo-1\0" + sys.version.encode())
-        for source in (pathlib.Path(__file__), pathlib.Path(callgraph.ledger.__file__)):
+        for source in (pathlib.Path(__file__), pathlib.Path(callgraph.ledger.__file__),
+                       pathlib.Path(lisp_source.__file__)):
             salt.update(source.resolve().read_bytes())
         _MEMO_SALT = salt.digest()
     digest = hashlib.sha256(_MEMO_SALT)
@@ -324,41 +301,6 @@ def defined(symbols, table) -> set:
     return {symbol for symbol in symbols if symbol in table}
 
 
-def forms(text: str) -> list[str]:
-    """Top-level forms, tracking parens outside strings and comments."""
-    out: list[str] = []
-    depth, start, i, n, in_string = 0, None, 0, len(text), False
-    while i < n:
-        char = text[i]
-        if in_string:
-            if char == "\\":
-                i += 2
-                continue
-            if char == '"':
-                in_string = False
-            i += 1
-            continue
-        if char == ";":
-            newline = text.find("\n", i)
-            i = n if newline < 0 else newline + 1
-            continue
-        if char == '"':
-            in_string = True
-            i += 1
-            continue
-        if char == "(":
-            if depth == 0:
-                start = i
-            depth += 1
-        elif char == ")":
-            depth -= 1
-            if depth == 0 and start is not None:
-                out.append(text[start:i + 1])
-                start = None
-        i += 1
-    return out
-
-
 def definitions(paths, pattern=DEFUN):
     """name -> (file, whole form), for every definition the pattern opens."""
     found = {}
@@ -373,28 +315,6 @@ def definitions(paths, pattern=DEFUN):
                 found[match.group(1).lower()] = (
                     str(path.relative_to(ROOT)), form)
     return found
-
-
-SEXP_TOKEN = re.compile(r'\s+|;[^\n]*|"(?:\\.|[^"\\])*"|[()]|[^\s()";]+')
-
-
-def read_sexp(text: str):
-    """The first s-expression of TEXT as nested lists of atom strings
-    (strings and comments dropped): enough to read a macro's keywords."""
-    stack: list[list] = [[]]
-    for token in SEXP_TOKEN.findall(text):
-        if not token.strip() or token.startswith((";", '"')):
-            continue
-        if token == "(":
-            stack.append([])
-        elif token == ")":
-            done = stack.pop()
-            stack[-1].append(done)
-            if len(stack) == 1:
-                return done
-        else:
-            stack[-1].append(token.lower())
-    return stack[-1][0] if stack[-1] else None
 
 
 def flatten(tree) -> str:
