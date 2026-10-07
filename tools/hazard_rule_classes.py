@@ -87,6 +87,18 @@ def _is_rewrite(x):
     return False
 
 
+def _rule_classes(form):
+    items = form.items
+    i = 3
+    while i + 1 < len(items):
+        k = items[i]
+        if isinstance(k, Atom) and k.low == ":rule-classes":
+            v = items[i + 1]
+            return v.node if isinstance(v, Pre) else v
+        i += 2
+    return None
+
+
 def edit_for(text, form):
     """(start, end, replacement) taking :rewrite off FORM's rule classes."""
     items = form.items
@@ -162,8 +174,20 @@ def disable_plan(census, only=None):
         if form.items[0].low == "defthmd":
             resid.append((book, name, "defthmd: already disabled"))
             continue
-        if name not in by_book.setdefault(book, []):
-            by_book[book].append(name)
+        rune = name
+        rc = _rule_classes(form)
+        if isinstance(rc, Lst) and any(not _is_rewrite(x) for x in rc.items):
+            # keep the other classes (:forward-chaining ...) working: disable
+            # only the :rewrite rune, which is (:rewrite NAME) when the list
+            # has one bare :rewrite
+            if [x for x in rc.items if _is_rewrite(x)] != [x for x in rc.items
+                                                          if isinstance(x, Atom) and x.low == ":rewrite"] \
+                    or sum(1 for x in rc.items if _is_rewrite(x)) != 1:
+                resid.append((book, name, "rewrite corollary in a class list"))
+                continue
+            rune = f"(:rewrite {name})"
+        if rune not in by_book.setdefault(book, []):
+            by_book[book].append(rune)
     edits = {}
     for book, names in sorted(by_book.items()):
         text = (ROOT / book).read_text()

@@ -42,7 +42,7 @@ class Convert(unittest.TestCase):
         out = write(text, [e for _, e in edits["in.lisp"]])
         self.assertTrue(out.startswith(text))
         self.assertTrue(out.endswith("(in-theory (disable a-plain\n                    b-rewrite\n"
-                                     "                    c-mixed\n                    e-already))\n"))
+                                     "                    (:rewrite c-mixed)\n                    e-already))\n"))
 
 
 if __name__ == "__main__":
