@@ -623,39 +623,10 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-stx-field-octets-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-stx-field-octets-loop (cdr rev)
-                                (append (if (true-listp (car rev)) (car rev) nil)
-                                        (append '(13 10) acc)))
-    acc))
-
-(defun fn-stx-field-octets (lines)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp lines)
-           (append (if (true-listp (car lines)) (car lines) nil)
-                   (append '(13 10) (fn-stx-field-octets (cdr lines))))
-         nil)
-       :exec (fn-stx-field-octets-loop (fn-ag-rev-onto lines nil) nil)))
-
-(local
- (defthm fn-stx-field-octets-loop-of-rev-onto
-   (equal (fn-stx-field-octets-loop (fn-ag-rev-onto lines zs) nil)
-          (fn-stx-field-octets-loop zs (fn-stx-field-octets lines)))
-   :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-stx-field-octets-loop fn-stx-field-octets fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-stx-field-octets-loop)
-
-(verify-guards fn-stx-field-octets
-  :hints (("Goal" :in-theory (union-theories '(fn-stx-field-octets fn-stx-field-octets-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-stx-field-octets-loop-of-rev-onto (zs nil))))))
+(def-loop fn-stx-field-octets (lines)
+  :shape :foldr :over lines :elt l
+  :combine (append (if (true-listp l) l nil) (append '(13 10) acc)) :init nil
+  :rev fn-ag-rev-onto)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
