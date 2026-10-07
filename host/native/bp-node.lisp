@@ -26,16 +26,9 @@
       (when *fnn-bpnode-control-pump* (funcall *fnn-bpnode-control-pump*))
       (sleep 1))))
 
-(defun fnn-bpnode-owner-read (owner name &rest arguments)
-  "ACL2's NAME over the live owner state, read as one BP quantum.  The
-progress callback runs on the command thread outside any quantum while the
-served owner's other actors run sections concurrently, so a read there takes
-the owner section; the quantum returns the value and never spans socket I/O."
-  (fnn-quantum-bp owner nil (lambda () (apply #'fnn-owner-core name arguments))))
-
 (defun fnn-bpnode-source-decision (owner view)
   "Print ACL2's D23 source decision for VIEW; the host classifies nothing."
-  (let ((line (fnn-bpnode-owner-read owner 'fn-owner-bp-source-decision-line view)))
+  (let ((line (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-source-decision-line view)))))
     (when (stringp line)
       (fnn-out "BP node source ~a" line))))
 
@@ -53,8 +46,8 @@ the owner section; the quantum returns the value and never spans socket I/O."
 (defun fnn-bpnode-refusal-line (owner view result)
   "Print ACL2's line for a request VIEW answered RESULT (not accepted):
 its reason class, which ACL2 already returned; the host classifies nothing."
-  (let ((line (fnn-bpnode-owner-read owner 'fn-owner-bp-request-refusal-line
-                                     view result *fnn-owner-transit-detail*)))
+  (let ((line (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-request-refusal-line
+                                     view result *fnn-owner-transit-detail*)))))
     (when (stringp line)
       (fnn-out "BP node ~a" line))))
 
@@ -75,7 +68,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
 (defun fnn-bpnode-request-result-1
     (owner receipt-root destination policy issuer view node-id)
   (fnn-bpnode-source-decision owner view)
-  (unless (eq (fnn-bpnode-owner-read owner 'fn-owner-bp-request-trustedp view) t)
+  (unless (eq (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-request-trustedp view))) t)
     (return-from fnn-bpnode-request-result-1
       (values :request-refused '(0))))
   (when (fnn-bpnode-test-busy-p)
@@ -134,7 +127,7 @@ ACL2 (`fn-bpah-receipt-signature-plan') chooses the preimage, the enrolled
 keys and the signatures; the host only asks libsodium and OpenSSL, exactly
 as the transit path does (`fnn-hsig-observe-raw'), and hands the
 observations back.  Nil when there is nothing to observe."
-  (let ((plan (fnn-bpnode-owner-read owner 'fn-owner-bp-receipt-signature-plan view)))
+  (let ((plan (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-receipt-signature-plan view)))))
     (when (and (consp plan) (= (length plan) 4))
       (destructuring-bind (preimage ed-key ml-key signatures) plan
         (let* ((observations
@@ -146,7 +139,7 @@ observations back.  Nil when there is nothing to observe."
 
 (defun fnn-bpnode-release-line (owner view obs)
   "Print ACL2's D23 release verdict for a receipt VIEW; the host decides nothing."
-  (let ((line (fnn-bpnode-owner-read owner 'fn-owner-bp-release-line view obs)))
+  (let ((line (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-release-line view obs)))))
     (when (stringp line)
       (fnn-out "BP node release ~a" line))))
 
@@ -159,7 +152,7 @@ observations back.  Nil when there is nothing to observe."
 (defun fnn-bpnode-receipt-detail (owner view obs)
   "ACL2's release verdict for VIEW as the kind-7 delivery detail octets."
   (fnn-bpnode-check-detail
-   (fnn-bpnode-owner-read owner 'fn-owner-bp-receipt-release-detail view obs)))
+   (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-receipt-release-detail view obs)))))
 
 (defun fnn-bpnode-receipt-detail-locked (view obs)
   "The same verdict, for a caller already inside a BP quantum."
@@ -178,7 +171,7 @@ observations back.  Nil when there is nothing to observe."
   (fnn-bpnode-source-decision owner view)
   (let ((obs (fnn-bpnode-receipt-observations owner view)))
     (fnn-bpnode-release-line owner view obs)
-    (unless (eq (fnn-bpnode-owner-read owner 'fn-owner-bp-receipt-gatep view obs) t)
+    (unless (eq (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs))) t)
       (return-from fnn-bpnode-receipt-result
         (values :receipt-refused (fnn-bpnode-receipt-detail owner view obs))))
     (fnn-quantum-bp
@@ -280,7 +273,7 @@ observations back.  Nil when there is nothing to observe."
                  ;; PEER-ID is the one-row instance.
                  (list :progress node observation
                        (fnn-core 'fn-bpnp-host-routes
-                                 (fnn-bpnode-owner-read owner 'fn-owner-bp-route-table)
+                                 (fnn-quantum-bp owner nil (lambda () (fnn-owner-core 'fn-owner-bp-route-table)))
                                  (fnn-bp-eid configured-peer))
                        0)))))
       (unless effects (return-from fnn-bpnode-dispatch-one nil))
