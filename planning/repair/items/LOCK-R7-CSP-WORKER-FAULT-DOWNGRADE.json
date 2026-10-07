@@ -1,0 +1,14 @@
+{
+ "category": "lock-discipline",
+ "detail": "Key (NEW, UNSURE settled REAL): R7|fnn-csp-worker-loop|swallow:serious-condition:fault @ host/native/catchup-spool.lisp:59.\n\nThe worker catches any serious-condition and stores status :error, actual 0; the consumer (pull-service.lisp:597-601) reads only its truthiness, so the condition is never logged, classified or fenced. An OS error becoming a per-peer :error is by design (ACL2 decides the round's end), but a non-OS fnn-fault from the leaves (a bad write progress in fnn-write-progress) is downgraded to a peer I/O error without reaching the fence. The unknown-operation branch (:42) is unreachable because submit bounds the operation; the write case needs a kernel contract violation, hence low severity.",
+ "file": "host/native/catchup-spool.lisp",
+ "fix": "Have the worker keep a non-fnn-os-error condition separately and make fnn-csp-worker-take / the consumer re-signal it as fnn-fault so it reaches the fence; keep fnn-os-error reduced to status.",
+ "id": "LOCK-R7-CSP-WORKER-FAULT-DOWNGRADE",
+ "notes": [],
+ "owner": "open",
+ "severity": "low",
+ "source": "lock-triage-r1b-20261006",
+ "state": "open",
+ "title": "fnn-csp-worker-loop reduces every serious-condition, including a non-OS fault, to status :error with no fence (R7)",
+ "updated": "2026-10-07T00:05:48Z"
+}
