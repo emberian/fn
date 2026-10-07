@@ -3172,6 +3172,10 @@
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-open-establishes-the-relation))
 
+(definterface fn-bpnjc-answer
+  :class :common-lisp-compliant
+  :keystones (fn-bpnjc-answer-is-contact-next))
+
 (definterface fn-bpnjc-contact-next
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-offer-keeps-the-relation
