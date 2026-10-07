@@ -9694,7 +9694,7 @@ segment' (tests/test_native_topic_local.py)."
 ;;; HST-025: the trigger is also bounded by the dynamic space this process
 ;;; reserved.  SBCL's own default is a fixed fraction of it (5%); a copying
 ;;; collection of the nursery needs up to the nursery again in free space, so
-;;; at a small reservation a 64 MiB trigger is 128 MiB of headroom the live
+;;; at a small reservation a trigger of 64 MiB (the cap before MEM-007) is 128 MiB of headroom the live
 ;;; heap cannot use.  A sixteenth of the reservation, at most
 ;;; +fnn-gc-nursery-octets+ (every reservation of 1 GiB or more, and the
 ;;; figure heap-from-profile's derivation assumes) and at least 8 MiB.

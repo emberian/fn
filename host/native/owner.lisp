@@ -6870,7 +6870,7 @@ Discharge only physically ended threads. Include incomplete actor starts."
 ;;; largest term of the owner's resident set at every size measured, 1.4 to
 ;;; 1.6 GiB of dead objects on top of a live heap of 0.25 to 0.52 GB.  During
 ;;; recovery and a checkpoint publication the owner uses io.lisp's
-;;; fnn-gc-nursery-octets (64 MiB, less at a reservation under 1 GiB).  This
+;;; fnn-gc-nursery-octets (8 MiB, less at a reservation under 1 GiB).  This
 ;;; bounds collection work and dead memory, not data: the live heap is the
 ;;; store's and grows with it; only the garbage allowed to pile up between
 ;;; two collections is capped.  It decides nothing ACL2 decides.
