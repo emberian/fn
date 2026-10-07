@@ -2,6 +2,7 @@
 ; This is a source allocation model, not an allocator refinement or an
 ; activation gate. See the adjacent evidence inventory for outstanding joins.
 (in-package "ACL2")
+(include-book "profile-limits")
 (include-book "cold-read-layout")
 
 (defun fn-crw-nth (n x)
@@ -32,7 +33,7 @@
 ; empty pre-reserve vector, native trailer vector, digest16 + frame slots64.
 (defun fn-crw-backing-octets ()
   (declare (xargs :guard t))
-  (+ (fn-crl-array-octets 1 8) (fn-crl-array-octets 16384 1)
+  (+ (fn-crl-array-octets 1 8) (fn-crl-array-octets (fn-profile-limit :read-window-octets) 1)
      (fn-crl-array-octets 2 8) (fn-crl-array-octets 0 1)
      (fn-crl-array-octets 64 1) (fn-crl-array-octets 32 1)
      (fn-crl-array-octets 16 8) (fn-crl-array-octets 64 8)))

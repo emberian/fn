@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "file": "tests/acl2/store-log-recover-copy-tests.lisp",
+ "id": "TEETH-OWED-LGRC-1",
+ "notes": [
+  "10-06 N-M1D5-AUDIT filed: lane m1-durable-5 (130da57bf) replaced dev's P10 run-lemma chain (books/store-log-route-programs.lisp, TEETH-21 in tests/acl2/store-log-route-programs-tests.lisp, origin/dev) with books/store-log-recover-copy.lisp and dropped the teeth below without re-expressing them. OLD: defteeth fn-lg-full-length-run-ending-in-a-cut-is-complete (origin/dev tests/acl2/store-log-route-programs-tests.lisp, TEETH-21): mutation last-step-not-a-cut dropped (fn-lg-cut-stepp (car (last steps))) and witnessed (slk-appended-bs)/(slk-appended-ks) steps ((:write-at :segment :batch)) -> a run whose last step is a refused append is not complete; mutation run-cut-short dropped the length equation and witnessed steps ((:write-at :segment :batch) (:cut \"log-written\")) on the same store -> a run stopped by a refused step before its final cut is not complete. NEW: the successful-open predicate is fn-lgrc-open-servesp (books/store-log-recover-copy.lisp:1789; outcomes :ok at all six copy syscalls) and its consumers fn-lgrc-successful-open-serves-the-read-prefix and fn-lgrc-open-keeps-the-relation-at-every-cut (outs nil). OWED: a defteeth / ground assert-event pair for fn-lgrc-successful-open-serves-the-read-prefix at the RL-01 restart store of the test book (lgrct-*): (a) outs with one of the six outcomes a refusal (try each of the six positions): fn-lgrc-open-servesp is nil AND fn-lgrc-servedp of the attempt's last state against fn-lgrc-read-prefix is nil (the copy does not publish a served prefix); (b) hypothesis (not (fn-bsc-lookup s stg stage)) removed with the stage name already bound: servedp nil. Bites fn-lgrc-successful-open-serves-the-read-prefix."
+ ],
+ "owner": "m1-durable-5",
+ "severity": "medium",
+ "slice": "log-recover",
+ "source": "N-M1D5-AUDIT",
+ "state": "open",
+ "title": "teeth owed: a copy with a refused step is not a served open (old defteeth fn-lg-full-length-run-ending-in-a-cut-is-complete, mutations last-step-not-a-cut and run-cut-short)",
+ "updated": "2026-10-06T23:59:00Z"
+}

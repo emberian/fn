@@ -444,13 +444,19 @@ class LogicalFeedTests(unittest.TestCase):
 @requires(DEVELOPER)
 @unittest.skipUnless(sys.platform.startswith("linux"), "/proc is Linux's")
 class PendingAcceptBoundTests(unittest.TestCase):
-    """r71 F13 (host/native/mux.lisp fnn-mux-adopt): the accept threads took
-    every queued connection from the kernel and pushed it onto a loop's
-    inbox, whatever the loop was doing, so while the loops were held (a cold
-    read's wait holds its loop, r71 F7) the accepted-but-unadmitted sockets
-    grew without bound, outside every capacity ACL2 decides.  Now an accept
-    takes a socket only into a loop's free slot (fnn-mux-reserve): at most one
-    pending per loop, the rest wait in the kernel's listen queue."""
+    """r71 F13 (host/native/mux.lisp fnn-mux-reserve, decided by
+    books/mux-accept-slot.lisp fn-mxa-reserve): an accept takes a socket only
+    into a loop's free pending slot -- at most one accepted-and-unbegun
+    socket per loop -- and while every loop holds one, ACL2 defers by name
+    and the rest wait in the kernel's listen queue.
+
+    The loops are held for real: each serves an OVER whose cursor quantum is
+    paused on the loop thread (FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM,
+    developer only).  The old premise, a cold read holding its loop, is gone
+    since r71 F7 (cold reads wait off the loop), so the old flood was simply
+    admitted (r2 red: 29 accepted reader connections, every one begun)."""
+
+    LOOPS = 2  # books/profile-limits.lisp :mux-loops
 
     def test_accepted_sockets_stay_bounded_while_the_loops_are_held(self):
         node = Node(self, DEVELOPER)
@@ -462,26 +468,36 @@ class PendingAcceptBoundTests(unittest.TestCase):
                 _, final = poster.post(article(message_id, body=b"held\r\n"))
                 self.assertTrue(final.startswith(b"240"), final)
         node.stop(process=owner)
-        readstall = node.root / "readstall"
-        self.addCleanup(lambda: readstall.unlink() if readstall.exists() else None)
-        owner = node.start(env={"FN_NATIVE_TEST_READ_STALL_FILE": str(readstall)})
+        stall = node.root / "loop-stall"
+        stall.touch()
+        self.addCleanup(lambda: stall.unlink() if stall.exists() else None)
+        owner = node.start(env={"FN_NATIVE_OVER_WINDOW": "1",
+                                "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM": str(stall)})
         with node.log_on_failure(owner):
-            holders = [Client(node.port, timeout=60) for _ in ids]
-            readstall.write_bytes(b"")
-            # One cold read per loop (adoption is round-robin): both loops
-            # wait for a page the device does not return (up to ACL2's
-            # dependency deadline, 5,000 ms).
-            for client, message_id in zip(holders, ids):
-                client.send(b"ARTICLE " + message_id + b"\r\n")
-            time.sleep(0.5)
+            # Adoption is round robin: one holder per loop, each paused
+            # after its first cursor quantum, on its loop's own thread.
+            holders = [Client(node.port, timeout=60) for _ in range(self.LOOPS)]
+            for client in holders:
+                self.assertTrue(client.command(b"GROUP fn.test").startswith(b"211 "))
+                client.send(b"OVER 1-2\r\n")
+            deadline = time.monotonic() + 60
+            while owner.stderr.since(0).count(b"OVER quantum-held") < self.LOOPS:
+                self.assertLess(time.monotonic(), deadline, owner.stderr.since(0)[-3000:])
+                time.sleep(0.05)
             before = len(os.listdir("/proc/{}/fd".format(owner.pid)))
             flood = [socket.create_connection(("127.0.0.1", node.port), timeout=30)
                      for _ in range(30)]
             time.sleep(2)
             after = len(os.listdir("/proc/{}/fd".format(owner.pid)))
-            self.assertLessEqual(after - before, 4,
+            # One pending socket per loop; two descriptors of slack for the
+            # node's own (a log rotation, a checkpoint file).
+            self.assertLessEqual(after - before, self.LOOPS + 2,
                                  "{} sockets accepted while every loop was held".format(after - before))
-            readstall.unlink()
+            self.assertIn(b"accept deferred reason=pending-accept-bound", owner.stderr.since(0),
+                          "the pending-accept bound must defer by name")
+            stall.unlink()
+            for client in holders:
+                self.assertTrue(client.line().startswith(b"224 "))
             for peer in flood:
                 peer.close()
             for client in holders:

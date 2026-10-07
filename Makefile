@@ -889,6 +889,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-lz-append-tests \
 	tests/acl2/deflate-inflate-tests \
 	books/deflate-pool-check \
+	books/decoded-payload-decode-into \
 	tests/acl2/deflate-pool-tests \
 	books/nntp-compress-dict \
 	tests/acl2/nntp-compress-dict-tests \
@@ -1034,6 +1035,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/decoded-window-span \
 	tests/acl2/page-window-executor-tests \
 	tests/acl2/page-window-read-tests \
+	books/mux-accept-slot \
+	tests/acl2/mux-accept-slot-tests \
 	tests/acl2/page-window-span-tests \
 	tests/acl2/page-window-admission-tests \
 	tests/acl2/page-window-lease-tests \
@@ -1917,6 +1920,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-spool-framer \
 	books/peer-catchup-spool-hash \
 	books/peer-catchup-spool \
+	books/peer-catchup-spool-body \
 	tests/acl2/peer-catchup-spool-framer-tests \
 	tests/acl2/peer-catchup-spool-hash-tests \
 	tests/acl2/peer-catchup-spool-tests \
@@ -2154,7 +2158,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-route-programs-tests \
 	books/store-log-open-barriers \
 	tests/acl2/store-log-open-barriers-tests \
+	books/store-log-recover-copy \
+	tests/acl2/store-log-recover-copy-tests \
 	books/store-log-rotate-spare \
+	books/owner-publication-lifecycle \
+	tests/acl2/owner-publication-lifecycle-tests \
 	books/owner-compact-request \
 	tests/acl2/owner-compact-request-tests \
 	books/bp-carry-frame \

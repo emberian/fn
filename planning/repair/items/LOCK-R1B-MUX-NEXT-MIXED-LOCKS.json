@@ -1,0 +1,13 @@
+{
+ "detail": "Key (NEW at 61ae00920): R1b|fnn-mux-reserve-once|fnn-owner-service-mux-next:mixed-locks. Real, low impact. Writes: fnn-mux-reserve-once (mux.lisp:1827; reads the cursor into fn-mxa-reserve and incf under MUX-SLOT-LOCK) and fnn-mux-adopt's round-robin branch (nth (mod mux-next ..) and incf, under the roster lock R). No common lock, so the two cursor updates can interleave. Worst case: a skipped or doubled round-robin turn; the pending-accept bound (fn-mxa-reservation-keeps-the-pending-bound) does not depend on the cursor, and ACL2 still decides every reservation.",
+ "file": "host/native/mux.lisp",
+ "fix": "Take the slot lock around the cursor read and incf in fnn-mux-adopt's round-robin branch (verify no path takes the slot lock then R), or give the once-client path its own cursor; then declare the slot protector.",
+ "id": "LOCK-R1B-MUX-NEXT-MIXED-LOCKS",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "low",
+ "source": "lock-triage-sn-lock-20261007",
+ "state": "open",
+ "title": "Round-robin cursor fnn-owner-service-mux-next is written under the slot lock in fnn-mux-reserve-once and under the roster lock in fnn-mux-adopt (R1b)",
+ "updated": "2026-10-07T02:59:37Z"
+}

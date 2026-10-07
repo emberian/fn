@@ -83,5 +83,5 @@
 ; reject the data; the next requested payload window is simply another step.
 (assert-event
  (let ((s (fn-ewp-begin 5 0 1000000000 100 999999000 17000 21 8 4 0)))
-   (and (eq (nth 0 s) :scan) (equal (nth 5 s) 16384)
+   (and (eq (nth 0 s) :scan) (equal (nth 5 s) (fn-profile-limit :read-window-octets)) (equal (nth 5 s) 262144)
         (equal (fn-ewp-demand s) 64) (equal (nth 4 s) 17100))))

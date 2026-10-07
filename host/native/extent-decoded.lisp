@@ -179,8 +179,9 @@ carry 0, input 1, hash 2, zin 3, win 4, tab 5, out 6, window 7; the input is (sv
 
 (defun fnn-extent-decoded-window-movable-p (job)
   (and (simple-vector-p job) (> (length job) +fnn-decoded-job-window-slot+)
-       (typep (svref job +fnn-decoded-job-window-slot+)
-              '(simple-array (unsigned-byte 8) (16384)))))
+       (let ((window (svref job +fnn-decoded-job-window-slot+)))
+         (and (typep window '(simple-array (unsigned-byte 8) (*)))
+              (= (length window) (fn-profile-limit :read-window-octets))))))
 
 (defun fnn-extent-decoded-window-cache-attempt (worker token)
   "Extent lock held, the returned job's last borrow released.  NIL, or (:cached

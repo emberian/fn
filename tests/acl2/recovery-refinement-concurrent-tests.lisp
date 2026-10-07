@@ -44,10 +44,12 @@
 (defun rrct-ks0 ()
   (declare (xargs :guard t :verify-guards nil))
   (fn-lgk-recover (rrct-content) (rrct-genesis) (rrct-unit) (rrct-max) 3))
-(defun rrct-recover-run ()
+;; the state the open's copy leaves (books/store-log-recover-copy.lisp K1):
+;; the read's validated prefix, then zeros, nothing pending
+(defun rrct-bs0 ()
   (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-run (rrct-store (rrct-content) nil) (rrct-ks0) (fn-lg-recover-program) nil 0))
-(defun rrct-bs0 () (declare (xargs :guard t :verify-guards nil)) (car (car (last (rrct-recover-run)))))
+  (let ((f (fn-lgk-frontier (rrct-ks0))))
+    (rrct-store (append (fn-bs-take f (rrct-content)) (fn-bs-zeros (- (len (rrct-content)) f))) nil)))
 (defun rrct-ks1 () (declare (xargs :guard t :verify-guards nil)) (fn-lgk-prepare (rrct-ks0) (rrct-r 3)))
 (defun rrct-append-run ()
   (declare (xargs :guard t :verify-guards nil))

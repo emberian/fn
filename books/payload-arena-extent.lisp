@@ -40,6 +40,7 @@
 (include-book "payload-arena-paged")
 (include-book "payload-arena-extent-logic")
 (include-book "payload-lz-scalar-realizer")
+(include-book "decoded-payload-buffer")
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).

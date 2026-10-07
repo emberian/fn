@@ -29,6 +29,7 @@
 ; :blocked (refused by name; the deferral's own report says why).
 (in-package "ACL2")
 (include-book "owner-checkpoint-open")
+(include-book "owner-publication-lifecycle")
 
 ; A suffix to compact: records committed past the newest durable checkpoint,
 ; and not the count the last attempt already took.
