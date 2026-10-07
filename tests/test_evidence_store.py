@@ -10,7 +10,9 @@ union merge that kept two versions of one path is refused, not resolved.
 
 from __future__ import annotations
 
+import contextlib
 import gzip
+import io
 import os
 from pathlib import Path
 import shutil
@@ -189,7 +191,7 @@ class RemoteFetchTests(Sandbox):
             calls.append(command)
             if command[0] == "ssh":
                 # The archive box: run its command here (mkdir, the ingest).
-                return REAL_RUN(["bash", "-c", command[2]], input=kwargs.get("input"),
+                return REAL_RUN(["bash", "-c", command[-1]], input=kwargs.get("input"),
                                 capture_output=True, text=True, check=False)
             if command[0] != "rsync":
                 return subprocess.CompletedProcess(command, 1, "", "")
@@ -237,6 +239,157 @@ class RemoteFetchTests(Sandbox):
             with self.assertRaisesRegex(store.EvidenceRefused, "did not arrive verified"):
                 store.read_bytes(self.root, REL)
         self.assertFalse((self.cache / store.object_rel(sha)).exists())
+
+
+class MirroredArchiveTests(Sandbox):
+    """The archive is an ordered SET (FN_EVIDENCE_ARCHIVES): a write needs one
+    confirming member, a read falls through, reconcile brings the rest up."""
+
+    def setUp(self):
+        super().setUp()
+        self.a = Path(self._dir.name) / "a"
+        self.b = Path(self._dir.name) / "b"
+        self.remote = Path(self._dir.name) / "remote"
+        self.remote.mkdir()
+
+    def members(self, *specs) -> None:
+        os.environ["FN_EVIDENCE_ARCHIVES"] = ",".join(str(spec) for spec in specs)
+
+    def run_with_down_host(self, command, *args, **kwargs):
+        """ssh and rsync to `down.invalid` fail fast (255); `box:` is the
+        directory self.remote, where rsync copies and ssh runs here."""
+        if command[0] == "ssh":
+            if any(part.startswith("down") for part in command[:-1]):
+                return subprocess.CompletedProcess(command, 255, "", "unreachable")
+            return REAL_RUN(["bash", "-c", command[-1]], input=kwargs.get("input"),
+                            capture_output=True, text=True, check=False)
+        if command[0] == "rsync":
+            source, target = command[-2], command[-1]
+            if source.startswith("down") or target.startswith("down"):
+                return subprocess.CompletedProcess(command, 255, "", "unreachable")
+            listing = Path(command[command.index("--files-from") + 1]).read_text()
+            source_dir = Path(source.partition(":")[2]) if ":" in source else Path(source)
+            target_dir = Path(target.partition(":")[2]) if ":" in target else Path(target)
+            for rel in listing.split():
+                if (source_dir / rel).is_file():
+                    (target_dir / rel).parent.mkdir(parents=True, exist_ok=True)
+                    (target_dir / rel).write_bytes((source_dir / rel).read_bytes())
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return subprocess.CompletedProcess(command, 1, "", "")
+
+    def test_put_with_one_member_down_succeeds_and_indexes(self):
+        self.members("down.invalid:/x", self.a)
+        self.write(REL, b"evidence\n")
+        said = io.StringIO()
+        with mock.patch.object(store.subprocess, "run", side_effect=self.run_with_down_host), \
+                contextlib.redirect_stderr(said):
+            sha, _ = store.put(self.root, [REL])[REL]
+        self.assertTrue((self.a / store.object_rel(sha)).is_file())
+        self.assertIn(REL, store.read_index(self.root))
+        self.assertIn("down.invalid:/x", said.getvalue())
+        self.assertIn("1 objects behind", said.getvalue())
+
+    def test_put_with_every_member_down_is_unavailable_and_indexes_nothing(self):
+        self.members("down.invalid:/x", "down2.invalid:/y")
+        self.write(REL, b"evidence\n")
+        with mock.patch.object(store.subprocess, "run", side_effect=self.run_with_down_host), \
+                contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(store.EvidenceUnavailable):
+                store.put(self.root, [REL])
+        self.assertEqual(store.read_index(self.root), {})
+
+    def test_put_writes_every_reachable_member(self):
+        self.members(self.a, self.b)
+        self.write(REL, b"evidence\n")
+        sha, _ = store.put(self.root, [REL])[REL]
+        for member in (self.a, self.b):
+            self.assertTrue((member / store.object_rel(sha)).is_file())
+
+    def test_fetch_falls_through_an_unreachable_member_to_the_next(self):
+        data = b"evidence\n"
+        sha = store.store_object(self.remote, data)
+        store.write_index(self.root, {REL: (sha, len(data))})
+        self.members("down.invalid:/x", f"box:{self.remote}")
+        with mock.patch.object(store.subprocess, "run", side_effect=self.run_with_down_host):
+            self.assertEqual(store.read_bytes(self.root, REL), data)
+        self.assertTrue((self.cache / store.object_rel(sha)).is_file())
+
+    def test_a_corrupt_object_on_the_first_member_is_never_returned(self):
+        data = b"evidence\n"
+        sha = store.store_object(self.b, data)
+        bad = self.a / store.object_rel(sha)
+        bad.parent.mkdir(parents=True)
+        bad.write_bytes(gzip.compress(b"tampered"))
+        store.write_index(self.root, {REL: (sha, len(data))})
+        self.members(self.a, self.b)
+        self.assertEqual(store.read_bytes(self.root, REL), data)
+        self.members(self.a)
+        with self.assertRaises(store.EvidenceRefused):
+            store.read_bytes(self.root, REL)
+        with self.assertRaises(store.EvidenceRefused):
+            store.fetch(self.root, [sha])
+
+    def test_reconcile_copies_exactly_the_missing_objects_both_ways_and_is_idempotent(self):
+        one, two = b"one\n", b"two\n"
+        sha1 = store.store_object(self.a, one)
+        sha2 = store.store_object(self.b, two)
+        shared = store.store_object(self.a, b"shared\n")
+        store.store_object(self.b, b"shared\n")
+        self.members(self.a, self.b)
+        listed = lambda member: set(store.archive_listing(str(member)))  # noqa: E731
+        before = (listed(self.a), listed(self.b))
+        dry = store.reconcile(self.root, dry_run=True)
+        self.assertEqual((listed(self.a), listed(self.b)), before)
+        self.assertEqual(dry[str(self.a)]["missing"], 1)
+        self.assertEqual(dry[str(self.b)]["missing"], 1)
+        self.assertEqual(dry[str(self.a)]["copied"], 0)
+        report = store.reconcile(self.root)
+        for member, present, missing in ((self.a, 2, 1), (self.b, 2, 1)):
+            row = report[str(member)]
+            self.assertEqual((row["present"], row["missing"], row["copied"], row["confirmed"]),
+                             (present, missing, 1, 1))
+        everything = {sha1, sha2, shared}
+        self.assertEqual((listed(self.a), listed(self.b)), (everything, everything))
+        again = store.reconcile(self.root)
+        self.assertTrue(all(row["missing"] == 0 and row["copied"] == 0
+                            for row in again.values()))
+
+    def test_reconcile_reports_an_unreachable_member_and_exits_nonzero(self):
+        store.store_object(self.a, b"one\n")
+        self.members(self.a, "down.invalid:/x")
+        out = io.StringIO()
+        with mock.patch.object(store.subprocess, "run", side_effect=self.run_with_down_host), \
+                mock.patch.object(store, "ROOT", self.root), contextlib.redirect_stdout(out):
+            self.assertEqual(store.main(["reconcile"]), store.EXIT_UNAVAILABLE)
+        self.assertIn("down.invalid:/x: UNREACHABLE", out.getvalue())
+
+    def test_verify_reports_unmirrored_objects_until_reconcile(self):
+        data = b"evidence\n"
+        sha = store.store_object(self.a, data)
+        store.write_index(self.root, {REL: (sha, len(data))})
+        self.members(self.a, self.b)
+        self.b.mkdir()
+
+        def verify(*flags) -> tuple[int, str]:
+            out = io.StringIO()
+            with mock.patch.object(store, "ROOT", self.root), contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(out):
+                return store.main(["verify", *flags]), out.getvalue()
+        code, text = verify("--archive")
+        self.assertNotEqual(code, 0)
+        self.assertIn(f"unmirrored 1 on {self.b}", text)
+        with mock.patch.object(store, "ROOT", self.root), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(store.main(["reconcile"]), 0)
+        code, text = verify("--archive")
+        self.assertEqual(code, 0, text)
+        self.assertNotIn("unmirrored", text)
+
+    def test_the_singular_variable_is_a_one_member_set(self):
+        os.environ.pop("FN_EVIDENCE_ARCHIVES", None)
+        self.assertEqual(store.archive_specs(), [str(self.archive)])
+        del os.environ["FN_EVIDENCE_ARCHIVE"]
+        self.assertEqual(store.archive_specs(), list(store.DEFAULT_ARCHIVES))
 
 
 class TransitionTests(Sandbox):

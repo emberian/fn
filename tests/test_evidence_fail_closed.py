@@ -94,7 +94,7 @@ class Sandbox(unittest.TestCase):
                         (target_dir / rel).write_bytes(data)
                 return subprocess.CompletedProcess(command, 0, "", "")
             if command[0] == "ssh":
-                return REAL_RUN(["bash", "-c", command[2]],
+                return REAL_RUN(["bash", "-c", command[-1]],
                                 input=kwargs.get("input"), capture_output=True,
                                 text=True, check=False)
             return REAL_RUN(command, *args, **kwargs)
@@ -634,7 +634,7 @@ class CanonicalShardTests(Sandbox):
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
             self.assertNotEqual(store.main(["verify"]), 0)
             self.assertNotEqual(store.main(["verify", "--archive"]), 0)
-        self.assertNotIn(sha, store.archive_listing())
+        self.assertNotIn(sha, store.archive_listing(store.archive_specs()[0]))
 
 
 class DurabilityTests(Sandbox):

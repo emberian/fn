@@ -2,7 +2,9 @@
  "file": "tools/evidence_store.py",
  "id": "EVIDENCE-ARCHIVE-SINGLE-HOMED",
  "note": "fix: a second archive location (persvati) that evidence_store.py put writes when hbox is unreachable; a reconcile step copies to hbox and verifies by hash when it returns; the index line (sha256, bytes, logical path) is the same either way. Observed: train 20's regen refused at cite (ssh exit 255 to hbox:/tank/fn/evidence); chain_schedule on persvati paid an ssh timeout per uncached manifest until the laptop cache was seeded.",
- "notes": [],
+ "notes": [
+  "2026-10-07 lane evidence-mirror: tools/evidence_store.py now keeps an ordered archive SET (default hbox:/tank/fn/evidence then persvati:/home/ember/fn-evidence; FN_EVIDENCE_ARCHIVES overrides, FN_EVIDENCE_ARCHIVE is a one-element set). put/archive_objects/stream_objects_to_archive write every member with ssh ConnectTimeout=10 BatchMode=yes and succeed when at least one confirms every object (skipped members named on stderr with objects-behind count; EvidenceUnavailable only when none confirms, no index line). fetch/object_bytes try the cache then members in order, unreachable falls through, bad bytes never returned (REFUSED if no good copy). New `evidence_store.py reconcile [--dry-run]` (stateless, listings are the truth) and `verify [--archive]` over every member reporting 'unmirrored N on <member>'. evidence_history.archive_check treats a pair as archived when any reachable member verifies it. Owed: the first real reconcile that seeds persvati from hbox (deputy runs it; /home/ember/fn-evidence not created by the lane). State left open."
+ ],
  "owner": "C",
  "severity": "high",
  "source": "2026-10-07 hbox outage (from ~14:20 EDT); coordinator ruling",

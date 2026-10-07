@@ -323,16 +323,11 @@ print(json.dumps({'checked': n, 'missing': missing, 'bad': bad}))
 """
 
 
-def archive_check(wanted, spec: str | None = None) -> dict:
-    """{sha256: bytes} or a set of (sha256, bytes) pairs -> {"checked",
-    "missing", "bad"}, measured where the archive is: the canonical object,
-    decompressed, re-hashed, length checked.  Every pair is checked, so an
-    index row that names a hash with the wrong length is refused (r66 F2)."""
-    if isinstance(wanted, dict):
-        wanted = set(wanted.items())
-    host, path = evidence_store.split_spec(spec or evidence_store.archive_spec())
+def _check_member(wanted: set, spec: str) -> dict:
+    host, path = evidence_store.split_spec(spec)
     command = ["python3", "-c", CHECK_SCRIPT, path]
-    argv = ["ssh", host, " ".join(shlex.quote(part) for part in command)] if host else command
+    argv = [*evidence_store.ssh_argv(host), " ".join(shlex.quote(part) for part in command)] \
+        if host else command
     lines = "".join(f"{sha} {size}\n" for sha, size in sorted(wanted))
     done = subprocess.run(argv, input=lines, capture_output=True, text=True, check=False)
     try:
@@ -342,9 +337,40 @@ def archive_check(wanted, spec: str | None = None) -> dict:
     if done.returncode != 0 or not isinstance(report, dict) \
             or report.get("checked") != len(wanted):
         raise evidence_store.EvidenceUnavailable(
-            f"the archive {spec or evidence_store.archive_spec()} could not be checked "
+            f"the archive {spec} could not be checked "
             f"(exit {done.returncode}): {done.stderr.strip()[-300:]}")
     return report
+
+
+def archive_check(wanted, spec: str | None = None) -> dict:
+    """{sha256: bytes} or a set of (sha256, bytes) pairs -> {"checked",
+    "missing", "bad"}, measured where the archive is: the canonical object,
+    decompressed, re-hashed, length checked.  Every pair is checked, so an
+    index row that names a hash with the wrong length is refused (r66 F2).
+
+    With SPEC, that one member.  Without, the archive set: a pair is
+    archived when ANY reachable member verifies it (the durability claim of
+    evidence_store: at least one member), missing when none does, bad when
+    some member holds it wrong and none holds it right; unavailable only
+    when no member could be checked."""
+    if isinstance(wanted, dict):
+        wanted = set(wanted.items())
+    if spec is not None:
+        return _check_member(wanted, spec)
+    reports, failures = [], []
+    for member in evidence_store.archive_specs():
+        try:
+            reports.append(_check_member(wanted, member))
+        except evidence_store.EvidenceUnavailable as error:
+            failures.append(str(error))
+    if not reports:
+        raise evidence_store.EvidenceUnavailable("; ".join(failures))
+    good = {pair for pair in wanted
+            if any(pair[0] not in set(r["missing"]) | set(r["bad"]) for r in reports)}
+    bad = {sha for r in reports for sha in r["bad"]}
+    return {"checked": len(wanted),
+            "missing": sorted({sha for sha, _ in wanted - good} - bad),
+            "bad": sorted({sha for sha, _ in wanted - good} & bad)}
 
 
 # --------------------------------------------------------------------- CLI
@@ -378,7 +404,7 @@ def cmd_complete(args) -> int:
     if args.migrate and failing:
         todo = {oid: path for oid, path in blobs.items() if hashed[oid][0] in failing}
         print(f"migrating {len(todo)} blobs ({len(report['missing'])} missing, "
-              f"{len(report['bad'])} not verifying) to {evidence_store.archive_spec()}",
+              f"{len(report['bad'])} not verifying) to {evidence_store.archive_label()}",
               flush=True)
         for oid, path in sorted(todo.items(), key=lambda item: item[1]):
             print(f"  migrating {oid} {hashed[oid][0]} {path}")
@@ -410,7 +436,7 @@ def cmd_complete(args) -> int:
           f"commits, {len(rules)} rules: {len(blobs)} blobs "
           f"({len({sha for sha, _ in hashed.values()})} distinct sha256, "
           f"{sum(size for _, size in hashed.values()) / 1e6:.1f} MB raw); archived+verified "
-          f"in {evidence_store.archive_spec()} at the canonical name: {archived} / "
+          f"in {evidence_store.archive_label()} at the canonical name: {archived} / "
           f"{len(blobs)}, missing {len(missing_blobs)}, refused {len(bad_blobs)}; "
           f"committed index {len(index)} rows, objects not archived+verified: "
           f"{len(index_failing)}")
@@ -432,7 +458,7 @@ def cmd_complete(args) -> int:
                         f"{rules_path.as_posix()}" + (" --migrate" if args.migrate else ""),
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "head": head,
-        "archive": evidence_store.archive_spec(),
+        "archive": evidence_store.archive_label(),
         "rules_file": rules_path.as_posix(),
         "rules_sha256": hashlib.sha256(rules_path.read_bytes()).hexdigest(),
         "refs_count": len(named),

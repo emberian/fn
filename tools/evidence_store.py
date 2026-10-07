@@ -8,8 +8,10 @@ and transcripts), and every lane worktree paid for it.  ember's decision
 
   * the BYTES of every evidence file live in a content-addressed archive,
     `objects/<sha256[:2]>/<sha256>.gz` (gzip, mtime 0, of the exact file
-    bytes), on hbox at `/tank/fn/evidence` (FN_EVIDENCE_ARCHIVE overrides,
-    `HOST:/path` or a local directory);
+    bytes), held by an ordered SET of archive members, by default
+    `hbox:/tank/fn/evidence` then `persvati:/home/ember/fn-evidence`
+    (FN_EVIDENCE_ARCHIVES, comma-separated, overrides; FN_EVIDENCE_ARCHIVE is
+    a one-element set; a member is `HOST:/path` or a local directory);
   * the repository keeps ONE tracked index, `planning/evidence-index.tsv`:
     one line per file, `<sha256> <bytes> <logical path>`, sorted by path,
     merged with git's union driver (`.gitattributes`), so two lanes that
@@ -42,12 +44,33 @@ or deleted), fsync'd with its directory and read back on the archive box
 a lock, fsync'd.  So the committed index never names bytes the archive lacks,
 to the extent the archive's filesystem honours fsync (hbox: ZFS).
 
+The durability claim, exactly: an index line means AT LEAST ONE archive member
+confirmed that object (verify, fsync, read back through evidence_ingest) --
+not that every member holds it.  `put` writes every member, with ssh
+`ConnectTimeout=10 BatchMode=yes` so a down box costs ten seconds, succeeds
+when one member confirms every object, and names each member it skipped on
+stderr with the count of objects that member is now behind; with no member
+confirming it raises `EvidenceUnavailable` and writes no index line.  Readers
+(`fetch`, `object_bytes`) try the cache, then the members in order: an
+unreachable member falls through to the next, and bytes that fail their hash
+are quarantined (cache) or left for reconcile (a member), never returned,
+whatever another member says -- a good copy elsewhere is used, no good copy is
+REFUSED.  `reconcile [--dry-run]` is stateless (the member listings are the
+truth): for each reachable member it fetches, hash-verified, what another
+member holds and it lacks, and pushes it with evidence_ingest confirmation;
+it exits nonzero for an unreachable member or an unconfirmed copy.
+`verify [--archive]` reports "unmirrored N on <member>" (nonzero) for indexed
+objects a member lacks.  A member that holds an object at its address but with
+bad bytes is not in any listing's "missing"; `verify --archive` finds it
+(REFUSED), and the next `put` of those bytes replaces it.
+
     python3 tools/evidence_store.py put PATH...        # archive + index
     python3 tools/evidence_store.py fetch [--all | GLOB...]
     python3 tools/evidence_store.py cat REL
     python3 tools/evidence_store.py ls GLOB
     python3 tools/evidence_store.py index-tree [--write]  # index == tracked tree
     python3 tools/evidence_store.py verify [--archive]
+    python3 tools/evidence_store.py reconcile [--dry-run]  # mirror the members
     python3 tools/evidence_store.py verify-paths [--revision REV] PATH...
     python3 tools/evidence_store.py history-check [--all-refs] [--path P]
     python3 tools/evidence_store.py migrate-history [--all-refs]
@@ -66,6 +89,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import shlex
+import shutil
 import socket
 import subprocess
 import sys
@@ -80,7 +104,9 @@ import evidence_ingest  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_REL = "planning/evidence"
 INDEX_REL = "planning/evidence-index.tsv"
-DEFAULT_ARCHIVE = "hbox:/tank/fn/evidence"
+DEFAULT_ARCHIVES = ("hbox:/tank/fn/evidence", "persvati:/home/ember/fn-evidence")
+# A down box must cost seconds, not an ssh default timeout per object.
+SSH_OPTIONS = ("-o", "ConnectTimeout=10", "-o", "BatchMode=yes")
 HEADER = ("# fn evidence index: <sha256> <bytes> <path>; the bytes live in the "
           "archive at objects/<sha256[:2]>/<sha256>.gz (tools/evidence_store.py)")
 
@@ -121,8 +147,27 @@ def outcome(error: EvidenceError) -> str:
 # ------------------------------------------------------------------ places
 
 
-def archive_spec() -> str:
-    return os.environ.get("FN_EVIDENCE_ARCHIVE") or DEFAULT_ARCHIVE
+def archive_specs() -> list[str]:
+    """The ordered archive set: FN_EVIDENCE_ARCHIVES (comma-separated), else
+    FN_EVIDENCE_ARCHIVE as a one-element set, else DEFAULT_ARCHIVES."""
+    plural = os.environ.get("FN_EVIDENCE_ARCHIVES", "")
+    specs = [part.strip() for part in plural.split(",") if part.strip()]
+    if not specs:
+        singular = os.environ.get("FN_EVIDENCE_ARCHIVE")
+        specs = [singular] if singular else list(DEFAULT_ARCHIVES)
+    return list(dict.fromkeys(specs))
+
+
+def archive_label() -> str:
+    return ", ".join(archive_specs())
+
+
+def ssh_argv(host: str) -> list[str]:
+    return ["ssh", *SSH_OPTIONS, host]
+
+
+def rsync_ssh() -> str:
+    return " ".join(["ssh", *SSH_OPTIONS])
 
 
 def split_spec(spec: str) -> tuple[str, str]:
@@ -133,15 +178,33 @@ def split_spec(spec: str) -> tuple[str, str]:
     return "", spec
 
 
-def local_archive(spec: str | None = None) -> Path | None:
-    """The archive directory when this machine holds it (hbox), else None."""
-    host, path = split_spec(spec or archive_spec())
+def local_member(spec: str) -> Path | None:
+    """The directory of archive member SPEC when this machine holds it
+    (a bare path, or HOST:/path with HOST this machine and the archive
+    present), else None."""
+    host, path = split_spec(spec)
     if host and host != socket.gethostname().split(".")[0]:
         return None
     candidate = Path(path)
     if not host or (candidate / "objects").is_dir():
         return candidate
     return None
+
+
+def local_archives() -> list[Path]:
+    """Every member of the set this machine holds, in set order."""
+    return [found for found in map(local_member, archive_specs()) if found is not None]
+
+
+def local_archive() -> Path | None:
+    """This machine's member of the archive set (hbox or persvati), else None."""
+    held = local_archives()
+    return held[0] if held else None
+
+
+def remote_members() -> list[str]:
+    """The members this machine must reach over ssh, in set order."""
+    return [spec for spec in archive_specs() if local_member(spec) is None]
 
 
 _CHECKOUTS: dict[tuple, Path] = {}
@@ -375,111 +438,148 @@ def _read_verified(path: Path, sha: str) -> bytes:
     return _verified(data_gz, sha)
 
 
+def _holders(root: Path) -> list[Path]:
+    """Directories this machine reads objects from: the cache, then each
+    local archive member."""
+    return [cache_dir(root), *local_archives()]
+
+
 def object_path(root: Path, sha: str) -> Path | None:
     """Where this machine already has the object, without fetching."""
-    for directory in (cache_dir(root), local_archive()):
-        if directory is not None and (directory / object_rel(sha)).is_file():
+    for directory in _holders(root):
+        if (directory / object_rel(sha)).is_file():
             return directory / object_rel(sha)
     return None
 
 
-def fetch(root: Path, shas: list[str] | set[str], verify_present: bool = True) -> None:
-    """Bring every named object into the cache, one rsync; verify each.
-
-    With `verify_present` (the CLI) an object already here is re-hashed too:
-    a bad cached copy is quarantined and fetched again, a bad local-archive
-    copy is reported UNAVAILABLE (fetch never writes the archive).
-    `prefetch` passes False: every read verifies anyway (`object_bytes`).
-    """
+def _local_good(root: Path, sha: str) -> tuple[bytes | None, EvidenceRefused | None]:
+    """(verified bytes, None) from the first holder whose copy verifies, else
+    (None, the first refusal or None).  A bad cached copy is quarantined; a
+    bad copy in an archive member is left for reconcile (a reader never
+    writes an archive) and never returned."""
     cache = cache_dir(root)
-    wanted_set: set[str] = set()
-    corrupt_archive: list[str] = []
-    for sha in set(shas):
-        object_rel(sha)
-        found = object_path(root, sha)
-        if found is not None and verify_present:
+    refused: EvidenceRefused | None = None
+    for directory in _holders(root):
+        path = directory / object_rel(sha)
+        if not path.is_file():
+            continue
+        try:
+            return _read_verified(path, sha), None
+        except EvidenceRefused as error:
+            refused = refused or error
+            if directory == cache:
+                _quarantine(cache, path, sha)
+    return None, refused
+
+
+def _fetch_remote(root: Path, wanted: list[str]) -> tuple[list[str], list[str], list[str]]:
+    """Try the remote members in order for WANTED; each arrival is verified
+    into the cache.  Returns (still wanted, ever arrived-and-bad, notes).
+    An unreachable member falls through; bytes that fail the hash are
+    quarantined and the next member is asked for that object."""
+    cache = cache_dir(root)
+    bad: list[str] = []
+    notes: list[str] = []
+    wanted = list(wanted)
+    for spec in remote_members():
+        if not wanted:
+            break
+        host, path = split_spec(spec)
+        cache.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile("w", suffix=".list", delete=False) as listing:
+            listing.write("".join(object_rel(sha) + "\n" for sha in wanted))
+            listing_name = listing.name
+        try:
+            done = subprocess.run(
+                ["rsync", "-a", "-e", rsync_ssh(), "--files-from", listing_name,
+                 f"{host}:{path.rstrip('/')}/", str(cache) + "/"],
+                capture_output=True, text=True, check=False)
+        finally:
+            os.unlink(listing_name)
+        left = []
+        for sha in wanted:
+            target = cache / object_rel(sha)
             try:
-                _read_verified(found, sha)
+                _read_verified(target, sha)
             except EvidenceRefused:
-                if found.is_relative_to(cache):
-                    _quarantine(cache, found, sha)
-                    found = object_path(root, sha)
-                    if found is not None:
-                        try:
-                            _read_verified(found, sha)
-                        except EvidenceRefused:
-                            corrupt_archive.append(sha)
-                        continue
-                else:
-                    corrupt_archive.append(sha)
-                    continue
-        if found is None:
-            wanted_set.add(sha)
-    if corrupt_archive:
-        raise EvidenceRefused(
-            f"{len(corrupt_archive)} objects in the local archive {local_archive()} do "
-            f"not verify (first {sorted(corrupt_archive)[0]})")
-    wanted = sorted(wanted_set)
+                bad.append(sha)
+                _quarantine(cache, target, sha)
+                left.append(sha)
+            except EvidenceUnavailable:
+                left.append(sha)
+        if done.returncode != 0 or left:
+            notes.append(f"{spec}: rsync exit {done.returncode}: {done.stderr.strip()[-200:]}")
+        wanted = left
+    return wanted, bad, notes
+
+
+def fetch(root: Path, shas: list[str] | set[str], verify_present: bool = True) -> None:
+    """Bring every named object into the cache; verify each.
+
+    Held here already (the cache, or a local archive member): with
+    `verify_present` (the CLI) it is re-hashed too, a bad cached copy is
+    quarantined and fetched again.  Otherwise the remote members are tried
+    in set order, one rsync each; an unreachable member falls through to the
+    next, and an arrival that fails its hash is quarantined and asked for
+    from the next member.  What no member supplies verified is REFUSED when
+    some copy was there and wrong, UNAVAILABLE otherwise.  `prefetch` passes
+    False: every read verifies anyway (`object_bytes`).
+    """
+    wanted: list[str] = []
+    refused_here: list[str] = []
+    for sha in sorted(set(shas)):
+        object_rel(sha)
+        if verify_present:
+            data, refused = _local_good(root, sha)
+            if data is None:
+                (refused_here if refused else wanted).append(sha)
+        elif object_path(root, sha) is None:
+            wanted.append(sha)
+    wanted += refused_here
     if not wanted:
         return
-    host, path = split_spec(archive_spec())
-    if not host:
+    wanted.sort()
+    count = len(wanted)
+    left, bad, notes = _fetch_remote(root, wanted)
+    if not left:
+        return
+    if not remote_members():
+        if refused_here:
+            raise EvidenceRefused(
+                f"{len(refused_here)} objects in the local archive {local_archive()} do "
+                f"not verify (first {refused_here[0]})")
         raise EvidenceUnavailable(
-            f"{len(wanted)} evidence objects are in neither {cache_dir(root)} nor "
-            f"the archive {archive_spec()} (first {wanted[0]})")
-    cache.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", suffix=".list", delete=False) as listing:
-        listing.write("".join(object_rel(sha) + "\n" for sha in wanted))
-        listing_name = listing.name
-    try:
-        done = subprocess.run(
-            ["rsync", "-a", "--files-from", listing_name,
-             f"{host}:{path.rstrip('/')}/", str(cache) + "/"],
-            capture_output=True, text=True, check=False)
-    finally:
-        os.unlink(listing_name)
-    bad, absent = [], []
-    for sha in wanted:
-        target = cache / object_rel(sha)
-        try:
-            _read_verified(target, sha)
-        except EvidenceRefused:
-            bad.append(sha)
-            _quarantine(cache, target, sha)
-        except EvidenceUnavailable:
-            absent.append(sha)
-    if bad or absent:
-        # Bytes that arrived and do not verify are refused; bytes that did
-        # not arrive are unavailable (r61 F3).
-        kind = EvidenceRefused if bad else EvidenceUnavailable
-        raise kind(
-            f"{len(bad) + len(absent)} of {len(wanted)} evidence objects did not arrive "
-            f"verified from {archive_spec()} ({len(bad)} arrived and do not verify, "
-            f"{len(absent)} did not arrive; rsync exit {done.returncode}: "
-            f"{done.stderr.strip()[-300:]}); first {(bad + absent)[0]}")
+            f"{count} evidence objects are in neither {cache_dir(root)} nor "
+            f"the archive {archive_label()} (first {wanted[0]})")
+    refusals = sorted(set(bad) | (set(refused_here) & set(left)))
+    kind = EvidenceRefused if refusals else EvidenceUnavailable
+    raise kind(
+        f"{len(left)} of {count} evidence objects did not arrive "
+        f"verified from {archive_label()} ({len(set(bad))} arrived and do not verify, "
+        f"{len(left) - len(set(bad) & set(left))} did not arrive; "
+        f"{'; '.join(notes)[-400:]}); first {left[0]}")
 
 
 def object_bytes(root: Path, sha: str) -> bytes:
-    """The object's bytes, verified on this read; a bad cached copy is
-    quarantined and fetched again; anything else unreadable is UNAVAILABLE."""
+    """The object's bytes, verified on this read.  The cache, then each local
+    member; a bad cached copy is quarantined; then the remote members in
+    order.  A copy that does not verify is never returned: with no good copy
+    anywhere it is REFUSED, and anything merely unreadable is UNAVAILABLE."""
     object_rel(sha)
-    cache = cache_dir(root)
-    found = object_path(root, sha)
-    if found is not None:
-        try:
-            return _read_verified(found, sha)
-        except EvidenceRefused:
-            if not found.is_relative_to(cache):
-                raise
-            _quarantine(cache, found, sha)
-            found = object_path(root, sha)
-            if found is not None:
-                return _read_verified(found, sha)
-    fetch(root, [sha], verify_present=False)
-    found = object_path(root, sha)
-    if found is None:
-        raise EvidenceUnavailable(f"object {sha} did not arrive")
-    return _read_verified(found, sha)
+    data, refused = _local_good(root, sha)
+    if data is not None:
+        return data
+    left, bad, notes = _fetch_remote(root, [sha])
+    if not left:
+        return _read_verified(cache_dir(root) / object_rel(sha), sha)
+    if refused is not None:
+        raise refused
+    if bad:
+        raise EvidenceRefused(f"object {sha} did not arrive verified from "
+                              f"{archive_label()} (it arrived and does not verify); "
+                              f"{'; '.join(notes)[-300:]}")
+    raise EvidenceUnavailable(f"object {sha} did not arrive from {archive_label()}"
+                              f"{': ' + '; '.join(notes)[-300:] if notes else ''}")
 
 
 # ------------------------------------------------------------------ readers
@@ -545,8 +645,8 @@ def _heal_provenance(root: Path, local: Path, name: str, entry: tuple[str, int],
         return None
     try:
         indexed = object_bytes(root, entry[0])
-    except EvidenceRefused:
-        return None
+    except EvidenceError:
+        return None  # nothing verified to heal from: the difference stands
     if not same_manifest_modulo_provenance(name, data, indexed):
         return None
 
@@ -732,7 +832,7 @@ def _remote_ingest(host: str, path: str, staging: str, shas: list[str]) -> dict:
     script = Path(evidence_ingest.__file__).read_text(encoding="utf-8")
     command = " ".join(shlex.quote(part) for part in
                        ["python3", "-c", script, path.rstrip("/"), staging])
-    done = subprocess.run(["ssh", host, command], input="".join(s + "\n" for s in shas),
+    done = subprocess.run([*ssh_argv(host), command], input="".join(s + "\n" for s in shas),
                           capture_output=True, text=True, check=False)
     try:
         report = json.loads(done.stdout.strip().splitlines()[-1])
@@ -752,19 +852,19 @@ def _staging_name() -> str:
     return f"incoming/{socket.gethostname().split('.')[0]}-{os.getpid()}-{time.time_ns()}"
 
 
-def push(root: Path, shas: list[str]) -> None:
-    """Copy cached objects to the archive and have the archive confirm them.
+def push(root: Path, shas: list[str], spec: str) -> None:
+    """Copy cached objects to archive member SPEC and have it confirm them.
 
     Local directory: `store_object` there (verify existing, fsync, read back).
     `HOST:/path`: rsync into a fresh staging directory inside the archive,
     then evidence_ingest on the box (verify, quarantine a bad existing
     object, rename into place, fsync, read every digest back).  Raises
-    EvidenceUnavailable unless every object is confirmed.
+    EvidenceUnavailable unless every object is confirmed by this member.
     """
     shas = sorted(set(shas))
     if not shas:
         return
-    host, path = split_spec(archive_spec())
+    host, path = split_spec(spec)
     if not host:
         archive = Path(path)
         for sha in shas:
@@ -774,10 +874,10 @@ def push(root: Path, shas: list[str]) -> None:
     for sha in shas:
         _read_verified(cache / object_rel(sha), sha)
     staging = f"{path.rstrip('/')}/{_staging_name()}"
-    made = subprocess.run(["ssh", host, f"mkdir -p {shlex.quote(staging)}"],
+    made = subprocess.run([*ssh_argv(host), f"mkdir -p {shlex.quote(staging)}"],
                           capture_output=True, text=True, check=False)
     if made.returncode != 0:
-        raise EvidenceUnavailable(f"push to {archive_spec()}: cannot make the staging "
+        raise EvidenceUnavailable(f"push to {spec}: cannot make the staging "
                                   f"directory (ssh exit {made.returncode}): "
                                   f"{made.stderr.strip()[-300:]}")
     with tempfile.NamedTemporaryFile("w", suffix=".list", delete=False) as listing:
@@ -785,36 +885,60 @@ def push(root: Path, shas: list[str]) -> None:
         listing_name = listing.name
     try:
         done = subprocess.run(
-            ["rsync", "-a", "--files-from", listing_name,
+            ["rsync", "-a", "-e", rsync_ssh(), "--files-from", listing_name,
              str(cache) + "/", f"{host}:{staging}/"],
             capture_output=True, text=True, check=False)
     finally:
         os.unlink(listing_name)
     if done.returncode != 0:
-        raise EvidenceUnavailable(f"push to {archive_spec()} failed "
+        raise EvidenceUnavailable(f"push to {spec} failed "
                                   f"(rsync exit {done.returncode}): {done.stderr.strip()[-300:]}")
     _remote_ingest(host, path, staging, shas)
 
 
-def archive_objects(root: Path, objects: dict[str, bytes]) -> None:
-    """{sha: bytes} -> confirmed in the archive (or raise).  Nothing indexed."""
-    archive = local_archive()
-    if archive is not None:
-        for sha, data in objects.items():
-            store_object(archive, data, sha)
-        return
-    cache = cache_dir(root)
-    for sha, data in objects.items():
-        store_object(cache, data, sha)
-    push(root, list(objects))
+def _skipped(spec: str, behind: int, error: Exception) -> None:
+    print(f"evidence_store: archive member {spec} skipped, now {behind} objects "
+          f"behind (`evidence_store.py reconcile` brings it up): {error}",
+          file=sys.stderr, flush=True)
+
+
+def archive_objects(root: Path, objects: dict[str, bytes]) -> list[str]:
+    """{sha: bytes} -> written to EVERY archive member; returns the members
+    that confirmed all of them.  Raises EvidenceUnavailable only when no
+    member confirms; a member that does not is reported on stderr with the
+    count of objects it is now behind.  Nothing indexed."""
+    confirmed: list[str] = []
+    failures: list[str] = []
+    cached = False
+    for spec in archive_specs():
+        try:
+            held = local_member(spec)
+            if held is not None:
+                for sha, data in objects.items():
+                    store_object(held, data, sha)
+            else:
+                if not cached:
+                    for sha, data in objects.items():
+                        store_object(cache_dir(root), data, sha)
+                    cached = True
+                push(root, list(objects), spec)
+            confirmed.append(spec)
+        except EvidenceUnavailable as error:
+            failures.append(f"{spec}: {error}")
+            _skipped(spec, len(objects), error)
+    if not confirmed:
+        raise EvidenceUnavailable("no archive member confirmed the objects; "
+                                  + "; ".join(failures))
+    return confirmed
 
 
 def put(root: Path, rels: list[str], publish: bool = True, *, replace: bool = False) -> dict[str, tuple[str, int]]:
     """Archive working-tree files, then record them in the index.
 
-    The index line is written (locked, fsync'd) only after the
-    archive confirm every object, so a committed index never names bytes the
-    archive lacks (subject to the archive filesystem honouring fsync).
+    The index line is written (locked, fsync'd) only after at least one
+    archive member confirmed every object, so a committed index never names
+    bytes no archive holds (subject to the filesystem honouring fsync);
+    `reconcile` brings the other members up.
     `publish=False` (tests, `put --no-push`) caches without publishing:
     never before a commit.
     """
@@ -919,28 +1043,56 @@ def history_blobs(root: Path, refs: list[str],
     return evidence_history.union(evidence_history.rule_blobs(root, rules, snapshot))
 
 
+class _Fanout:
+    """One tar stream written to every live sink; a sink that breaks drops
+    out (its member is reported skipped), the others carry on."""
+
+    def __init__(self, sinks: dict[str, subprocess.Popen]):
+        self.sinks = dict(sinks)
+
+    def write(self, data: bytes) -> int:
+        for spec, process in list(self.sinks.items()):
+            try:
+                process.stdin.write(data)
+            except OSError:
+                del self.sinks[spec]
+        return len(data)
+
+    def flush(self) -> None:
+        pass
+
+    def close(self) -> None:
+        for spec, process in list(self.sinks.items()):
+            try:
+                process.stdin.close()
+            except OSError:
+                del self.sinks[spec]
+
+
 def stream_objects_to_archive(root: Path, blobs: dict[str, str],
                               extra_files: list[Path]) -> list[tuple[str, int, str, str]]:
-    """Tar every object into a fresh staging directory inside the archive
-    over one ssh, then ingest it there (evidence_ingest: verify each staged
-    and each existing object, quarantine a bad existing one, rename into
-    place, fsync, read every digest back); return the ledger rows.  Nothing
-    is extracted over a final object name, so an interrupted run leaves only
-    staging debris, never a truncated object at a content address."""
-    host, path = split_spec(archive_spec())
+    """Tar every object into a fresh staging directory inside EVERY archive
+    member over one ssh each (one pass over git), then ingest it there
+    (evidence_ingest: verify each staged and each existing object, quarantine
+    a bad existing one, rename into place, fsync, read every digest back);
+    return the ledger rows.  Nothing is extracted over a final object name,
+    so an interrupted run leaves only staging debris, never a truncated
+    object at a content address.  Unavailable only when no member confirms;
+    a member that does not is reported skipped."""
     rows: list[tuple[str, int, str, str]] = []
-    staging = f"{path.rstrip('/')}/{_staging_name()}"
-    if host:
-        sink = subprocess.Popen(
-            ["ssh", host, f"mkdir -p {shlex.quote(staging)} && "
-                          f"tar -x -C {shlex.quote(staging)}"],
-            stdin=subprocess.PIPE)
-        out = sink.stdin
-    else:
-        Path(staging).mkdir(parents=True, exist_ok=True)
-        sink = subprocess.Popen(["tar", "-x", "-C", staging], stdin=subprocess.PIPE)
-        out = sink.stdin
-    assert out is not None
+    staging_name = _staging_name()
+    sinks: dict[str, subprocess.Popen] = {}
+    for spec in archive_specs():
+        host, path = split_spec(spec)
+        staging = f"{path.rstrip('/')}/{staging_name}"
+        if host:
+            argv = [*ssh_argv(host), f"mkdir -p {shlex.quote(staging)} && "
+                                     f"tar -x -C {shlex.quote(staging)}"]
+        else:
+            Path(staging).mkdir(parents=True, exist_ok=True)
+            argv = ["tar", "-x", "-C", staging]
+        sinks[spec] = subprocess.Popen(argv, stdin=subprocess.PIPE)
+    out = _Fanout(sinks)
     seen: set[str] = set()
     with tarfile.open(fileobj=out, mode="w|") as tar:
         def add(data: bytes, blob: str, logical: str) -> None:
@@ -964,31 +1116,46 @@ def stream_objects_to_archive(root: Path, blobs: dict[str, str],
                 if extra.resolve().is_relative_to(checkout_of(root).resolve())
                 else str(extra))
     out.close()
-    if sink.wait() != 0:
-        raise EvidenceUnavailable(f"archive tar sink exited {sink.returncode}")
     expected = sorted(seen)
-    if host:
-        report = _remote_ingest(host, path, staging, expected)
-    else:
-        report = evidence_ingest.ingest(Path(path), Path(staging), expected)
-        if report["bad"] or report["missing"]:
-            raise EvidenceUnavailable(f"ingest into {path}: bad {report['bad'][:5]}, "
-                                      f"missing {report['missing'][:5]}")
-    print(f"ingested: {report['placed']} placed, {report['present']} already present "
-          f"and verified, {report['replaced']} replaced (bad copy quarantined); "
-          f"{report['expected']} read back", flush=True)
+    confirmed: list[str] = []
+    failures: list[str] = []
+    for spec, process in sinks.items():
+        host, path = split_spec(spec)
+        staging = f"{path.rstrip('/')}/{staging_name}"
+        try:
+            code = process.wait()
+            if spec not in out.sinks or code != 0:
+                raise EvidenceUnavailable(f"archive tar sink for {spec} exited {code}")
+            if host:
+                report = _remote_ingest(host, path, staging, expected)
+            else:
+                report = evidence_ingest.ingest(Path(path), Path(staging), expected)
+                if report["bad"] or report["missing"]:
+                    raise EvidenceUnavailable(f"ingest into {path}: bad {report['bad'][:5]}, "
+                                              f"missing {report['missing'][:5]}")
+        except EvidenceUnavailable as error:
+            failures.append(f"{spec}: {error}")
+            _skipped(spec, len(expected), error)
+            continue
+        confirmed.append(spec)
+        print(f"ingested into {spec}: {report['placed']} placed, {report['present']} "
+              f"already present and verified, {report['replaced']} replaced (bad copy "
+              f"quarantined); {report['expected']} read back", flush=True)
+    if not confirmed:
+        raise EvidenceUnavailable("no archive member confirmed the stream; "
+                                  + "; ".join(failures))
     return rows
 
 
-def archive_listing(spec: str | None = None) -> dict[str, int]:
+def archive_listing(spec: str) -> dict[str, int]:
     """sha -> compressed size of every object the archive holds AT ITS
     CANONICAL NAME objects/<sha[:2]>/<sha>.gz (r61 F5: a file of the right
     name in another shard is not at the address every reader opens)."""
-    host, path = split_spec(spec or archive_spec())
+    host, path = split_spec(spec)
     command = (f"cd {shlex.quote(path)} && find objects -name '*.gz' "
                "-printf '%h/%f %s\\n'")
     if host:
-        done = subprocess.run(["ssh", host, command], capture_output=True,
+        done = subprocess.run([*ssh_argv(host), command], capture_output=True,
                               text=True, check=False)
         if done.returncode != 0:
             raise EvidenceUnavailable(f"cannot list the archive {host}:{path} "
@@ -1092,30 +1259,119 @@ def cmd_index_tree(args) -> int:
     return 1 if (missing or differ) else 0
 
 
+def _listings() -> tuple[dict[str, dict[str, int]], dict[str, EvidenceUnavailable]]:
+    """({member: listing} for reachable members, {member: why} for the rest)."""
+    listings: dict[str, dict[str, int]] = {}
+    down: dict[str, EvidenceUnavailable] = {}
+    for spec in archive_specs():
+        try:
+            listings[spec] = archive_listing(spec)
+        except EvidenceUnavailable as error:
+            down[spec] = error
+    return listings, down
+
+
+def reconcile(root: Path, dry_run: bool = False, batch: int = 500) -> dict[str, dict]:
+    """Bring every archive member up to the union of all members' listings.
+
+    Stateless: the listings are the truth.  For each reachable member, the
+    objects some other member holds and it lacks are fetched with hash
+    verification (`object_bytes`: cache, local members, remote members in
+    order) and pushed to it with evidence_ingest confirmation (`push`).
+    Returns {member: {present, missing, copied, confirmed, unreachable}};
+    `dry_run` lists and counts, writes nothing.
+    """
+    listings, down = _listings()
+    union = set().union(*listings.values()) if listings else set()
+    report: dict[str, dict] = {spec: {"present": 0, "missing": 0, "copied": 0,
+                                      "confirmed": 0, "unreachable": str(down[spec])}
+                               for spec in down}
+    for spec, listing in listings.items():
+        lacking = sorted(union - set(listing))
+        report[spec] = {"present": len(listing), "missing": len(lacking), "copied": 0,
+                        "confirmed": 0, "unreachable": None}
+        if dry_run:
+            continue
+        for start in range(0, len(lacking), batch):
+            chunk = lacking[start:start + batch]
+            supplied: list[str] = []
+            for sha in chunk:
+                try:
+                    data = object_bytes(root, sha)
+                    if not (cache_dir(root) / object_rel(sha)).is_file():
+                        store_object(cache_dir(root), data, sha)
+                except EvidenceError as error:
+                    print(f"evidence_store: reconcile: {sha} has no verified source: "
+                          f"{error}", file=sys.stderr, flush=True)
+                    continue
+                supplied.append(sha)
+            report[spec]["copied"] += len(supplied)
+            try:
+                push(root, supplied, spec)
+            except EvidenceError as error:
+                _skipped(spec, len(supplied), error)
+                continue
+            report[spec]["confirmed"] += len(supplied)
+    return report
+
+
+def cmd_reconcile(args) -> int:
+    report = reconcile(ROOT, dry_run=args.dry_run)
+    status = 0
+    for spec, row in report.items():
+        if row["unreachable"]:
+            print(f"{spec}: UNREACHABLE: {row['unreachable'][:200]}")
+            status = EXIT_UNAVAILABLE
+            continue
+        print(f"{spec}: present {row['present']}, missing before {row['missing']}, "
+              f"copied {row['copied']}, confirmed {row['confirmed']}"
+              f"{' (dry run)' if args.dry_run else ''}")
+        if not args.dry_run and row["confirmed"] < row["missing"]:
+            status = status or EXIT_UNAVAILABLE
+    if not any(not row["unreachable"] for row in report.values()):
+        raise EvidenceUnavailable("no archive member could be listed")
+    return status
+
+
 def cmd_verify(args) -> int:
     index = read_index(ROOT)
-    listing = archive_listing()
-    absent = sorted(path for path, (sha, _) in index.items() if sha not in listing)
-    print(f"index {len(index)} files ({len({sha for sha, _ in index.values()})} "
-          f"distinct objects); archive {archive_spec()} holds {len(listing)} objects "
-          f"({sum(listing.values()) / 1e6:.1f} MB compressed); "
-          f"indexed but not archived: {len(absent)}")
+    wanted = {sha for sha, _ in index.values()}
+    listings, down = _listings()
+    if not listings:
+        raise EvidenceUnavailable("no archive member could be listed: "
+                                  + "; ".join(f"{s}: {e}" for s, e in down.items()))
+    union = set().union(*listings.values())
+    absent = sorted(path for path, (sha, _) in index.items() if sha not in union)
+    print(f"index {len(index)} files ({len(wanted)} distinct objects); "
+          f"archive {archive_label()}; indexed but in no archive: {len(absent)}")
     for path in absent[:20]:
         print(f"  not archived: {path}")
     status = 1 if absent else 0
+    for spec, listing in listings.items():
+        lacks = wanted - set(listing)
+        print(f"  {spec}: {len(listing)} objects "
+              f"({sum(listing.values()) / 1e6:.1f} MB compressed)"
+              + (f"; unmirrored {len(lacks)} on {spec}" if lacks else ""))
+        if lacks:
+            status = status or 1
+    for spec, error in down.items():
+        print(f"  {spec}: UNAVAILABLE: {str(error)[:200]}", file=sys.stderr)
+        status = status or EXIT_UNAVAILABLE
     if args.archive:
-        # Every object on the box, decompressed and re-hashed there; a bad or
-        # misplaced one is refused (4); a box that cannot run it is uncertain.
-        host, path = split_spec(archive_spec())
-        command = ["python3", "-", path]
-        done = subprocess.run(["ssh", host, *map(shlex.quote, command)] if host else command,
-                              input=VERIFY_SCRIPT, text=True, check=False)
-        if done.returncode == EXIT_REFUSED:
-            return EXIT_REFUSED
-        if done.returncode != 0:
-            print(f"evidence_store: UNAVAILABLE: the archive check did not run "
-                  f"(exit {done.returncode})", file=sys.stderr)
-            return status or EXIT_UNAVAILABLE
+        # Every object on each reachable box, decompressed and re-hashed
+        # there; a bad or misplaced one is refused (4); a box that cannot run
+        # it is uncertain.
+        for spec in listings:
+            host, path = split_spec(spec)
+            command = ["python3", "-", path]
+            done = subprocess.run([*ssh_argv(host), *map(shlex.quote, command)] if host
+                                  else command, input=VERIFY_SCRIPT, text=True, check=False)
+            if done.returncode == EXIT_REFUSED:
+                return EXIT_REFUSED
+            if done.returncode != 0:
+                print(f"evidence_store: UNAVAILABLE: the archive check of {spec} did not "
+                      f"run (exit {done.returncode})", file=sys.stderr)
+                status = status or EXIT_UNAVAILABLE
     return status
 
 
@@ -1161,7 +1417,7 @@ def cmd_history_check(args) -> int:
     print(f"history {' '.join(refs)} under {' '.join(prefixes)}: {len(blobs)} blobs, "
           f"{len(distinct)} distinct sha256, "
           f"{sum(size for _, size in digests.values()) / 1e6:.1f} MB raw; archive "
-          f"{archive_spec()}: historical blobs not archived and verified at their "
+          f"{archive_label()}: historical blobs not archived and verified at their "
           f"canonical name: {len(missing)} ({len(absent)} absent, {len(bad)} refused)")
     for path, blob, sha in missing[:20]:
         print(f"  not archived: {blob} {sha} {path}")
@@ -1182,7 +1438,7 @@ def cmd_migrate_history(args) -> int:
             if path.is_file() and rel not in tracked:
                 extras.append(path)
     print(f"migrating {len(blobs)} historical blobs + {len(extras)} untracked files "
-          f"to {archive_spec()}", flush=True)
+          f"to {archive_label()}", flush=True)
     rows = stream_objects_to_archive(ROOT, blobs, extras)
     ledger = write_ledger(rows, "history-ledger" if not args.path else "history-ledger-extra")
     print(f"streamed {len(rows)} rows, {len({r[0] for r in rows})} distinct objects; "
@@ -1199,13 +1455,26 @@ def write_ledger(rows: list[tuple[str, int, str, str]], kind: str) -> Path:
     ledger.parent.mkdir(parents=True, exist_ok=True)
     ledger.write_text("".join(f"{sha} {size} {blob} {path}\n"
                               for sha, size, blob, path in sorted(rows, key=lambda r: r[3])))
-    host, path = split_spec(archive_spec())
-    if host:
-        done = subprocess.run(["rsync", "-a", str(ledger), f"{host}:{path}/{ledger.name}"],
+    reached = 0
+    failures = []
+    for spec in archive_specs():
+        host, path = split_spec(spec)
+        if not host:
+            Path(path).mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ledger, Path(path) / ledger.name)
+            reached += 1
+            continue
+        done = subprocess.run(["rsync", "-a", "-e", rsync_ssh(), str(ledger),
+                               f"{host}:{path}/{ledger.name}"],
                               capture_output=True, text=True, check=False)
         if done.returncode != 0:
-            raise EvidenceUnavailable(f"the history ledger did not reach {host}:{path} "
-                                      f"(rsync exit {done.returncode}): {done.stderr[-300:]}")
+            failures.append(f"{host}:{path} (rsync exit {done.returncode}): "
+                            f"{done.stderr[-200:]}")
+        else:
+            reached += 1
+    if not reached:
+        raise EvidenceUnavailable("the history ledger reached no archive member: "
+                                  + "; ".join(failures))
     return ledger
 
 
@@ -1232,7 +1501,11 @@ def main(argv: list[str] | None = None) -> int:
     one.add_argument("--revision", default="HEAD")
     one.add_argument("--write", action="store_true")
     one.set_defaults(func=cmd_index_tree)
-    one = subs.add_parser("verify", help="every indexed object is in the archive")
+    one = subs.add_parser("reconcile", help="copy to each archive member the objects "
+                                            "another holds and it lacks")
+    one.add_argument("--dry-run", action="store_true")
+    one.set_defaults(func=cmd_reconcile)
+    one = subs.add_parser("verify", help="every indexed object is in every archive")
     one.add_argument("--archive", action="store_true",
                      help="also decompress and hash every archived object on the box")
     one.set_defaults(func=cmd_verify)
