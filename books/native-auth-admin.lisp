@@ -244,45 +244,10 @@
 
 ; The insertion sort, a right fold: the :exec inserts the reversed list's
 ; elements from the left into ACC, the sort of the suffix already folded.
-(defun fn-native-auth-admin-sort-credentials-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-native-auth-admin-sort-credentials-loop
-       (cdr rev) (fn-native-auth-admin-insert-credential (car rev) acc))
-    acc))
-
-(verify-guards fn-native-auth-admin-sort-credentials-loop)
-
-(defun fn-native-auth-admin-sort-credentials (credentials)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp credentials)
-           (fn-native-auth-admin-insert-credential
-            (car credentials)
-            (fn-native-auth-admin-sort-credentials (cdr credentials)))
-         nil)
-       :exec (fn-native-auth-admin-sort-credentials-loop
-              (fn-ag-rev-onto credentials nil) nil)))
-
-(defthm fn-native-auth-admin-sort-credentials-loop-of-rev-onto
-  (equal (fn-native-auth-admin-sort-credentials-loop
-          (fn-ag-rev-onto credentials zs) nil)
-         (fn-native-auth-admin-sort-credentials-loop
-          zs (fn-native-auth-admin-sort-credentials credentials)))
-  :hints (("Goal" :induct (fn-ag-rev-onto credentials zs)
-                  :in-theory (union-theories
-                              '(fn-native-auth-admin-sort-credentials-loop
-                                fn-native-auth-admin-sort-credentials
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-native-auth-admin-sort-credentials
-  :hints (("Goal" :use ((:instance fn-native-auth-admin-sort-credentials-loop-of-rev-onto
-                                   (zs nil)))
-                  :in-theory (union-theories
-                              '(fn-native-auth-admin-sort-credentials-loop
-                                fn-native-auth-admin-sort-credentials)
-                              (theory 'minimal-theory)))))
+(def-loop fn-native-auth-admin-sort-credentials (credentials)
+  :shape :foldr :over credentials :elt c
+  :combine (fn-native-auth-admin-insert-credential c acc) :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-native-auth-admin-quoted (octets)
   (declare (xargs :guard t))
