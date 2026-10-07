@@ -568,3 +568,115 @@
                                        (adt-tp-zeros (adt-tp-pad (len (pcko-tw recs)))))))
                  (:instance pcko-decode-of-program (x (fn-pck-root-tree configs recs)))
                  (:instance adt-tp-len-pack (o (fn-scc-program (fn-pck-root-tree configs recs))))))))
+
+; -----------------------------------------------------------------------------
+; The rows the intern fold leaves read back as the records it was given.  The
+; seal survival lemmas are store-intern's local ones, restated.
+
+(local (in-theory (disable fn-arena-payload-is-nth fn-arena-count-is-len
+                           fn-arena-seal-list-is-append fn-arena-p-is-payload-listp
+                           fn-arena-get-is-nth fn-arena-payload-len-is-len-nth)))
+
+(defthm pcko-row-wire-of-survives-seal
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp (list row) fn-arena))
+           (equal (fn-row-wire-of row (fn-arena-seal-list xs fn-arena))
+                  (fn-row-wire-of row fn-arena)))
+  :hints (("Goal" :in-theory (enable fn-row-wire-of fn-rows-handles-inp fn-held-wire-of
+                                     fn-row-handle-inp fn-row-bytes))))
+
+(defthm pcko-rows-handles-survive-seal
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+           (fn-rows-handles-inp rows (fn-arena-seal-list xs fn-arena)))
+  :hints (("Goal" :induct (fn-rows-handles-inp rows fn-arena)
+           :in-theory (enable fn-rows-handles-inp))))
+
+(defthm pcko-rows-wire-of-survives-seal
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+           (equal (fn-rows-wire-of rows (fn-arena-seal-list xs fn-arena))
+                  (fn-rows-wire-of rows fn-arena)))
+  :hints (("Goal" :induct (fn-rows-handles-inp rows fn-arena)
+           :in-theory (enable fn-rows-handles-inp fn-rows-wire-of fn-row-wire-of))))
+
+(defthm pcko-intern-event-wire-p
+  (implies (not (eq (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad))
+           (fn-wire-event-p w))
+  :hints (("Goal" :in-theory (e/d (fn-intern-event fn-wire-event-p)
+                                  (fn-cat-intern-list fn-replay-composite-record)))))
+
+(defthm pcko-rows-survive-intern-event
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+           (and (fn-rows-handles-inp rows (mv-nth 1 (fn-intern-event w keyring generation fn-arena)))
+                (equal (fn-rows-wire-of rows (mv-nth 1 (fn-intern-event w keyring generation fn-arena)))
+                       (fn-rows-wire-of rows fn-arena))))
+  :hints (("Goal" :use ((:instance fn-intern-event-arena)
+                        (:instance pcko-rows-handles-survive-seal
+                                   (xs (fn-record-payload w)))
+                        (:instance pcko-rows-wire-of-survives-seal
+                                   (xs (fn-record-payload w)))
+                        (:instance pcko-rows-handles-survive-seal
+                                   (xs (fn-record-payload (fn-replay-composite-record w))))
+                        (:instance pcko-rows-wire-of-survives-seal
+                                   (xs (fn-record-payload (fn-replay-composite-record w)))))
+           :in-theory (disable fn-intern-event-arena pcko-rows-handles-survive-seal
+                               pcko-rows-wire-of-survives-seal fn-intern-event))))
+
+(defthm pcko-arena-p-of-intern-event
+  (implies (and (fn-arena-p fn-arena)
+                (not (eq (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad)))
+           (fn-arena-p (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
+  :hints (("Goal" :use ((:instance pcko-intern-event-wire-p)
+                        (:instance fn-intern-events-arena-p (ws (list w))))
+           :in-theory (e/d (fn-intern-events fn-wire-event-listp)
+                           (pcko-intern-event-wire-p fn-intern-events-arena-p
+                            fn-intern-event fn-wire-event-p fn-record-p)))))
+
+(defthm pcko-handles-of-cons
+  (implies (syntaxp (not (equal rs ''nil)))
+           (equal (fn-rows-handles-inp (cons r rs) fn-arena)
+                  (and (fn-rows-handles-inp (list r) fn-arena) (fn-rows-handles-inp rs fn-arena))))
+  :hints (("Goal" :in-theory (enable fn-rows-handles-inp))))
+
+(defthm pcko-intern-event-one
+  (implies (and (fn-arena-p fn-arena) (natp generation) (fn-rows-handles-inp rows fn-arena)
+                (not (eq (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad)))
+           (let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))
+                 (ar1 (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
+             (and (fn-arena-p ar1)
+                  (fn-rows-handles-inp (cons row rows) ar1)
+                  (equal (fn-rows-wire-of (cons row rows) ar1)
+                         (cons w (fn-rows-wire-of rows fn-arena))))))
+  :hints (("Goal" :in-theory (e/d (fn-rows-wire-of)
+                                  (fn-intern-event pcko-rows-survive-intern-event
+                                   fn-intern-event-handle-in fn-intern-event-materializes
+                                   fn-rows-handles-inp fn-row-wire-of))
+           :use ((:instance pcko-rows-survive-intern-event)
+                 (:instance fn-intern-event-handle-in)
+                 (:instance fn-intern-event-materializes)
+                 (:instance pcko-arena-p-of-intern-event)
+                 (:instance pcko-handles-of-cons (r (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))
+                            (rs rows) (fn-arena (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))))))
+
+(defthm pcko-statep-generation
+  (implies (fn-ssr-statep acc) (natp (fn-ssr-at 2 acc)))
+  :hints (("Goal" :in-theory (enable fn-ssr-statep))))
+
+(defthm pcko-publish-rows
+  (equal (fn-ssr-at 0 (fn-ssr-publish acc row wire identity))
+         (cons row (fn-ssr-at 0 acc)))
+  :hints (("Goal" :in-theory (enable fn-ssr-publish fn-ssr-state fn-ssr-at))))
+
+(defthm pcko-intern-materializes
+  (implies (and (fn-arena-p fn-arena) (fn-ssr-statep acc)
+                (fn-rows-handles-inp (fn-ssr-at 0 acc) fn-arena)
+                (not (eq (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident nil fn-arena)) :bad)))
+           (let ((acc2 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident nil fn-arena)))
+                 (ar2 (mv-nth 1 (fn-ssr-intern-step acc ws nil nil :resident nil fn-arena))))
+             (and (fn-arena-p ar2)
+                  (fn-rows-handles-inp (fn-ssr-at 0 acc2) ar2)
+                  (equal (fn-rows-wire-of (fn-ssr-at 0 acc2) ar2)
+                         (revappend ws (fn-rows-wire-of (fn-ssr-at 0 acc) fn-arena))))))
+  :hints (("Goal" :induct (fn-ssr-intern-step acc ws nil nil :resident nil fn-arena)
+           :in-theory (e/d (fn-ssr-intern-step)
+                           (fn-intern-event fn-arx-intern-event fn-lzr-intern-event
+                            fn-replay-identity-step fn-ssr-publish fn-ssr-at fn-stxk-context-kind
+                            pcko-intern-cons fn-rows-handles-inp fn-rows-wire-of pcko-handles-of-cons mv-nth)))))
