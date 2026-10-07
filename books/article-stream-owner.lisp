@@ -51,7 +51,7 @@
      (t nil))))
 
 (defun fn-asto-selection-start (session archive index args)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard t))
   (let ((group (fn-nntp-session-group session)))
     (cond
      ((null args)
@@ -79,7 +79,8 @@
 ; (fn-scat-msgid-article). The result is the state the walk above reaches (the
 ; KEYSTONES below), with no archive-list traversal.
 (defun fn-asto-selection-start-cat (session v args fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (let ((group (fn-nntp-session-group session)))
     (cond
      ((null args)
@@ -325,7 +326,8 @@
 ; connection's pinned view V. KEYSTONES: fn-asto-selection-start-cat-number,
 ; -current, -msgid and -msgid-unpinned equate the unrestricted arm with the walk.
 (defun fn-asto-capture-selection (as config session va vi args v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp v)
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (if (fn-auth-access-read as config)
       (fn-asto-selection-start session va vi args)
     (fn-asto-selection-start-cat session v args fn-arena fn-cat)))
@@ -350,15 +352,32 @@
 ;            connection-configuration-pin withdrawn-articles). EXPECTED-CONN includes the installed
 ; post-command wire but its reader selection is unchanged until preflight.
 (defun fn-asto-payload-preflight (article fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((source (fn-ast-source article fn-arena)))
     (if (or (not (fn-nntp-article-idp article))
             (fn-nntp-article-tombstonep article fn-arena))
         (fn-ast-refused-preflight source)
       (fn-ast-preflight source))))
 
+(local
+ (progn
+   (defthm fn-asto-tokenize-aux-true-listp
+     (true-listp (fn-nntp-tokenize-aux xs word-rev words-rev))
+     :rule-classes :type-prescription
+     :hints (("Goal" :in-theory (enable fn-nntp-tokenize-aux))))
+   (defthm fn-asto-tokenize-true-listp
+     (true-listp (fn-nntp-tokenize line))
+     :rule-classes :type-prescription
+     :hints (("Goal" :in-theory (enable fn-nntp-tokenize))))))
+
 (defun fn-asto-capture (oc id w cache fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (true-listp (fn-wsp-events w))
+                              (true-listp (car (fn-wsp-events w)))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :guard-hints (("Goal" :in-theory (disable fn-asto-capture-selection
+                                                            fn-asto-payload-preflight
+                                                            fn-scr-cached-view)))))
   (let* ((o (fn-ocfg-owner oc)) (conn (fn-own-find-conn id (fn-own-conns o)))
          (sc (and conn (fn-own-tls-served-conn o conn)))
          (as (fn-served-conn-session sc)) (config (fn-served-conn-config sc))
@@ -409,7 +428,9 @@
 ; while this retrieval's preflight owns its response. This is a core parser
 ; boundary, independent of the optional physical funding policy.
 (defun fn-asto-first-event (oc id start end fn-octets)
-  (declare (xargs :stobjs fn-octets :verify-guards nil))
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp start) (natp end) (<= start end)
+                              (<= end (fn-octets-len fn-octets)))))
   (let ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
     (and conn (fn-wire-fast-statep (fn-own-conn-wire conn))
          (fn-wire-scan (fn-own-conn-wire conn) start end fn-octets))))
@@ -432,7 +453,7 @@
         (fn-ast-at 7 capture)))
 
 (defun fn-asto-selection-missing (oc capture)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard t))
   (let* ((expected (fn-ast-at 0 capture)) (id (fn-own-conn-id expected))
          (current (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
          (ps (fn-ast-at 1 capture)) (selection (fn-ast-at 2 capture))
@@ -458,7 +479,7 @@
 ;; only NEXT's outcome fields (mode, number, group, phase, article: fn-asx-outcome)
 ;; and CAPTURE's other fields (books/article-stream-owner-bridge.lisp states it).
 (defun fn-asto-selection-ready-on (oc capture next fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (cond
    ((and (eq (fn-ast-at 9 next) :selected)
          (member-eq (fn-ast-at 1 next) '(:withdrawn :withdrawn-msgid)))
@@ -484,7 +505,7 @@
                         (fn-asto-capture-with-selection capture next nil)))))))
 
 (defun fn-asto-selection-ready (oc capture fuel fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (fn-asto-selection-ready-on oc capture
                               (fn-ast-select-step (fn-ast-at 2 capture) (nfix fuel))
                               fn-arena))
@@ -493,7 +514,7 @@
 ; or framing verdict participates. The connection/configuration comparison
 ; fences stale captures; replaying READY has no call site for this function.
 (defun fn-asto-finish (oc capture fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((expected (fn-ast-at 0 capture)) (id (fn-own-conn-id expected))
          (current (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
          (ps (fn-ast-at 1 capture)) (selection (fn-ast-at 2 capture))
@@ -522,8 +543,71 @@
                         (t "503 stored article framing unavailable")))))))
         (mv :ready (fn-asto-with-conn oc conn) effects)))))
 
+;; The ARTICLE cursor effects a plan holds. FN-ASTO-CURSOR-EFFECTSP is the guard of
+;; every function that renders or steps a plan's rest: each effect is a list,
+;; and an :article-cursor effect carries a window the render transition accepts
+;; (fn-ast-windowp). The only maker of such an effect is fn-asto-finish, through
+;; fn-ast-ready-memberships (fn-asto-finish-effects-cursor-effectsp); the READY
+;; and render steps keep it (fn-asto-ready-rest-keeps-cursor-effectsp,
+;; fn-asto-plan-render-window-keeps-render-planp).
+(defun fn-asto-cursor-effectsp (rest fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (consp rest)
+      (and (true-listp (car rest))
+           (or (not (eq (car (car rest)) :article-cursor))
+               (and (consp (cdr (car rest)))
+                    (fn-ast-windowp (car (cdr (car rest))) fn-arena)))
+           (fn-asto-cursor-effectsp (cdr rest) fn-arena))
+    (null rest)))
+
+; The effects the READY steps return are lists: fn-asto-ready-rest appends the
+; rest of the plan to them.
+(local
+ (progn
+   (defthm fn-asto-single-effects-true-listp
+     (true-listp (fn-nntp-result-effects (fn-nntp-single session text)))
+     :hints (("Goal" :in-theory (enable fn-nntp-result-effects fn-nntp-single fn-nntp-make-result))))
+   (defthm fn-asto-selection-missing-effects-true-listp
+     (true-listp (mv-nth 2 (fn-asto-selection-missing oc capture)))
+     :rule-classes :type-prescription
+     :hints (("Goal" :in-theory (enable fn-asto-selection-missing))))
+   (defthm fn-asto-selection-ready-on-effects-true-listp
+     (true-listp (mv-nth 2 (fn-asto-selection-ready-on oc capture next fn-arena)))
+     :rule-classes :type-prescription
+     :hints (("Goal" :in-theory (enable fn-asto-selection-ready-on))))
+   (defthm fn-asto-selection-ready-effects-true-listp
+     (true-listp (mv-nth 2 (fn-asto-selection-ready oc capture fuel fn-arena)))
+     :rule-classes :type-prescription
+     :hints (("Goal" :in-theory (enable fn-asto-selection-ready))))
+   (defthm fn-asto-cursor-effectsp-append
+     (implies (and (true-listp x) (fn-asto-cursor-effectsp x fn-arena)
+                   (fn-asto-cursor-effectsp y fn-arena))
+              (fn-asto-cursor-effectsp (append x y) fn-arena)))
+   (defthm fn-asto-selection-missing-cursor-effectsp
+     (fn-asto-cursor-effectsp (mv-nth 2 (fn-asto-selection-missing oc capture)) fn-arena)
+     :hints (("Goal" :in-theory (enable fn-asto-selection-missing fn-nntp-result-effects
+                                        fn-nntp-single fn-nntp-make-result fn-asto-cursor-effectsp))))
+   (defthm fn-asto-selection-ready-on-cursor-effectsp
+     (fn-asto-cursor-effectsp (mv-nth 2 (fn-asto-selection-ready-on oc capture next fn-arena)) fn-arena)
+     :hints (("Goal" :in-theory (enable fn-asto-selection-ready-on fn-asto-cursor-effectsp))))
+   (defthm fn-asto-selection-ready-cursor-effectsp
+     (fn-asto-cursor-effectsp (mv-nth 2 (fn-asto-selection-ready oc capture fuel fn-arena)) fn-arena)
+     :hints (("Goal" :in-theory (enable fn-asto-selection-ready))))
+   (defthm fn-asto-finish-effects-true-listp
+     (true-listp (mv-nth 2 (fn-asto-finish oc capture fn-arena)))
+     :rule-classes :type-prescription
+     :hints (("Goal" :in-theory (enable fn-asto-finish))))
+   (defthm fn-asto-finish-cursor-effectsp
+     (fn-asto-cursor-effectsp (mv-nth 2 (fn-asto-finish oc capture fn-arena)) fn-arena)
+     :hints (("Goal" :in-theory (e/d (fn-asto-finish fn-asto-cursor-effectsp fn-nntp-result-effects
+                                      fn-nntp-single fn-nntp-make-result)
+                                     (fn-ast-at fn-ast-ready-memberships fn-ast-windowp)))))))
+
+
 (defun fn-asto-ready-rest (oc id rest fuel fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard (fn-asto-cursor-effectsp rest fn-arena)
+                  :guard-hints (("Goal" :in-theory (disable fn-asto-selection-ready
+                                                            fn-asto-finish)))))
   (if (atom rest) (mv :ready oc rest)
     (if (eq (caar rest) :article-preflight)
         (let ((capture (cadar rest)))
@@ -546,9 +630,27 @@
         (mv word oc2 (cons (car rest) next))))))
 
 (defun fn-asto-ready-plan-step (oc id plan fuel fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena
+                  :guard (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)))
   (mv-let (word oc2 rest) (fn-asto-ready-rest oc id (fn-splan-rest plan) fuel fn-arena)
     (mv word oc2 (cons (fn-splan-cur plan) rest))))
+
+(defthm fn-asto-ready-rest-keeps-cursor-effectsp
+  (implies (fn-asto-cursor-effectsp rest fn-arena)
+           (fn-asto-cursor-effectsp
+            (mv-nth 2 (fn-asto-ready-rest oc id rest fuel fn-arena)) fn-arena))
+  :hints (("Goal" :induct (fn-asto-ready-rest oc id rest fuel fn-arena)
+                  :in-theory (e/d (fn-asto-cursor-effectsp)
+                                  (fn-asto-selection-ready fn-asto-finish fn-ast-at
+                                   fn-ast-scan-step fn-asto-capture-with-scan)))))
+
+(defthm fn-asto-ready-plan-step-keeps-cursor-effectsp
+  (implies (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)
+           (fn-asto-cursor-effectsp
+            (fn-splan-rest (mv-nth 2 (fn-asto-ready-plan-step oc id plan fuel fn-arena)))
+            fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-asto-ready-plan-step fn-splan-rest)
+                                  (fn-asto-ready-rest)))))
 
 (defun fn-asto-plan-cursorp (plan)
   (declare (xargs :guard t))
@@ -604,7 +706,10 @@
   :rule-classes (:rewrite :type-prescription))
 
 (defun fn-asto-plan-render-window (plan window fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (declare (xargs :stobjs fn-arena
+                  :guard (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)
+                  :guard-hints (("Goal" :in-theory (disable fn-ast-render-window fn-ast-window-donep
+                                                            fn-ast-windowp fn-splan-rest-donep)))))
   (let ((rest (fn-splan-rest plan)))
     (if (and (not (consp (fn-splan-cur plan))) (eq (caar rest) :article-cursor))
         (mv-let (bytes next)
@@ -614,6 +719,17 @@
                 (cons nil (if done (cdr rest) (cons (list :article-cursor next) (cdr rest))))
                 (and done (fn-splan-rest-donep (cdr rest))))))
       (mv :ordinary nil plan nil))))
+
+(defthm fn-asto-plan-render-window-keeps-cursor-effectsp
+  (implies (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)
+           (fn-asto-cursor-effectsp
+            (fn-splan-rest (mv-nth 2 (fn-asto-plan-render-window plan window fn-arena)))
+            fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-asto-plan-render-window fn-asto-cursor-effectsp fn-splan-rest)
+                                  (fn-ast-render-window fn-ast-window-donep fn-ast-windowp fn-splan-rest-donep))
+                  :use ((:instance fn-ast-render-window-keeps-windowp
+                          (window (car (cdr (car (fn-splan-rest plan)))))
+                          (fuel (nfix window)) (octets (nfix window)))))))
 
 ; -----------------------------------------------------------------------------
 ; A retrieval whose preflight did not get its payload in time (C3: the
