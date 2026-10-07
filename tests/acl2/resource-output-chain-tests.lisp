@@ -516,3 +516,21 @@
   :breaks ((installed ((policy nil)) :lemma rcx-fn-rlo-install-establishes-free-chain-without-installed))
   :mutations ((range-from-3 (:conclusion (fn-rlo-free-chainp (fn-rlo-free-range 3 slots) (mv-nth 1 (fn-rlo-install dynamic store-need cold policy slots ledger)))) ((dynamic 1073741824) (store-need 536870912) (cold nil) (policy '(16777216 1048576)) (slots 4) (ledger (rcx-l0))) :fault "an install whose chain skips the first free slot" :lemma rcx-fn-rlo-install-establishes-free-chain-mutant-range-from-3)))
 
+
+(defthm rcx-fn-rlo-issued-chain-is-tail-witness
+  (and (fn-rlo-free-chainp '(2 3) (rcx-l1)) (eq (car (fn-rlo-issue 7 11 8 :issued (rcx-l1))) :drawn) (fn-rlo-free-chainp (cdr '(2 3)) (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1))))))
+(defthm rcx-fn-rlo-issued-chain-is-tail-without-chain
+  (and (eq (car (fn-rlo-issue 7 11 8 :issued (update-fn-rl-idsi 3 2 (rcx-l1)))) :drawn) (not (fn-rlo-free-chainp '(2 3) (update-fn-rl-idsi 3 2 (rcx-l1)))) (not (fn-rlo-free-chainp (cdr '(2 3)) (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (update-fn-rl-idsi 3 2 (rcx-l1))))))))
+(defthm rcx-fn-rlo-issued-chain-is-tail-without-drawn
+  (and (fn-rlo-free-chainp '(2 3) (rcx-l1)) (not (eq (car (fn-rlo-issue -1 11 8 :issued (rcx-l1))) :drawn)) (not (fn-rlo-free-chainp (cdr '(2 3)) (mv-nth 2 (fn-rlo-issue -1 11 8 :issued (rcx-l1)))))))
+(defthm rcx-fn-rlo-issued-chain-is-tail-mutant-slot-not-drawn
+  (and (fn-rlo-free-chainp '(2 3) (rcx-l1)) (eq (car (fn-rlo-issue 7 11 8 :issued (rcx-l1))) :drawn) (fn-rlo-free-chainp (cdr '(2 3)) (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1)))) (not (fn-rlo-free-chainp '(2 3) (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1)))))))
+(defteeth fn-rlo-issued-chain-is-tail
+  :claim (((chain (fn-rlo-free-chainp rows ledger)) (drawn (eq (car (fn-rlo-issue cid cgen opgen dependency ledger)) :drawn))) (fn-rlo-free-chainp (cdr rows) (mv-nth 2 (fn-rlo-issue cid cgen opgen dependency ledger))))
+  :subject fn-rlo-issue
+  :witness-lemma rcx-fn-rlo-issued-chain-is-tail-witness
+  :witness ((rows '(2 3)) (cid 7) (cgen 11) (opgen 8) (dependency :issued) (ledger (rcx-l1)))
+  :breaks ((chain ((ledger (update-fn-rl-idsi 3 2 (rcx-l1)))) :lemma rcx-fn-rlo-issued-chain-is-tail-without-chain)
+          (drawn ((cid -1)) :lemma rcx-fn-rlo-issued-chain-is-tail-without-drawn))
+  :mutations ((slot-not-drawn (:conclusion (fn-rlo-free-chainp rows (mv-nth 2 (fn-rlo-issue cid cgen opgen dependency ledger)))) ((rows '(2 3)) (cid 7) (cgen 11) (opgen 8) (dependency :issued) (ledger (rcx-l1))) :fault "an issue that leaves the drawn slot on the free chain" :lemma rcx-fn-rlo-issued-chain-is-tail-mutant-slot-not-drawn)))
+
