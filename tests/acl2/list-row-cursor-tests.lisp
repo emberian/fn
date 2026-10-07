@@ -1,6 +1,8 @@
 (in-package "ACL2")
 (include-book "../../books/list-row-cursor")
 (include-book "../../books/list-metadata-cursor")
+(include-book "../../books/defkeystone")
+(include-book "teeth-ground-lemma")
 
 ; Test fuel detects a failure to settle; it never limits a served response.
 (defun lsr-test-drain (cur fuel)
@@ -64,3 +66,34 @@
       (lsr-test-shape-teeth (fn-lsr-make '((:number 34)) :build 0 34 nil nil nil))
       (lsr-test-shape-teeth (fn-lsr-make nil :digits 0 0 nil '(51 52) nil))
       (lsr-test-corrupted-shape)))
+
+; fn-lsr-one-finite-progress (TEETH CONTRACT v1).  fn-lsr-one returns two values and its potential is defun-nx, so every witness is a ground theorem (teeth-ground-lemma; TEETH-OWED-MV-CLAIM lemma debt).  Removals: no cursor (nil: the potential stays 0); a :build cursor past the decimal width, which statep refuses and whose step moves to :digits with a larger potential.
+(defconst *lsrt-cur* (fn-lsr-start "fn.test" '(2 1 34) nil "y"))
+(defconst *lsrt-bad* '(((:number 5)) :build 25 5 nil nil nil))
+(defconst *lsrt-c*
+  '(((live cur) (state (fn-lsr-statep cur)))
+    (< (fn-lsr-remaining-work (mv-nth 1 (fn-lsr-one cur)))
+       (fn-lsr-remaining-work cur))))
+(teeth-ground-lemma lsrt-gl-witness *lsrt-c* ((cur *lsrt-cur*)) :hints (("Goal" :in-theory (enable fn-lsr-one fn-lsr-remaining-work fn-lsr-pieces-work fn-lsr-piece-work fn-lsr-statep))))
+(teeth-ground-lemma lsrt-gl-no-live *lsrt-c* ((cur nil)) :without live :hints (("Goal" :in-theory (enable fn-lsr-one fn-lsr-remaining-work fn-lsr-pieces-work fn-lsr-piece-work fn-lsr-statep))))
+(teeth-ground-lemma lsrt-gl-no-state *lsrt-c* ((cur *lsrt-bad*)) :without state :hints (("Goal" :in-theory (enable fn-lsr-one fn-lsr-remaining-work fn-lsr-pieces-work fn-lsr-piece-work fn-lsr-statep))))
+(teeth-ground-lemma lsrt-gl-grows *lsrt-c* ((cur *lsrt-cur*))
+  :mutation (:conclusion (< (fn-lsr-remaining-work cur)
+                            (fn-lsr-remaining-work (mv-nth 1 (fn-lsr-one cur)))))
+  :hints (("Goal" :in-theory (enable fn-lsr-one fn-lsr-remaining-work fn-lsr-pieces-work fn-lsr-piece-work fn-lsr-statep))))
+
+(defteeth fn-lsr-one-finite-progress
+  :claim (((live cur) (state (fn-lsr-statep cur)))
+          (< (fn-lsr-remaining-work (mv-nth 1 (fn-lsr-one cur)))
+             (fn-lsr-remaining-work cur)))
+  :subject fn-lsr-one
+  :witness ((cur *lsrt-cur*))
+  :witness-lemma lsrt-gl-witness
+  :breaks ((live ((cur nil)) :lemma lsrt-gl-no-live)
+           (state ((cur *lsrt-bad*)) :lemma lsrt-gl-no-state))
+  :mutations ((work-grows
+               (:conclusion (< (fn-lsr-remaining-work cur)
+                               (fn-lsr-remaining-work (mv-nth 1 (fn-lsr-one cur)))))
+               ((cur *lsrt-cur*))
+               :fault "a step whose potential grows: the claim reversed"
+               :lemma lsrt-gl-grows)))
