@@ -1,0 +1,25 @@
+{
+ "id": "REACH-PROSE-BP-NODE-SEAMS",
+ "category": "reach",
+ "owner": "deputy-C",
+ "severity": "medium",
+ "slice": "host",
+ "source": "CONVERGE-2 row 15 (lane/reach-code-only)",
+ "state": "open",
+ "title": "10 reach_check false greens in the BP node's job offer and fragment steps: subjects reached only through host prose (7 PRFs: PRF-139, PRF-120, PRF-103, PRF-1051, PRF-121, PRF-134, PRF-136)",
+ "notes": [
+  "Each event's subject is named only in host prose, never in host code. These are host seams: the host is supposed to exercise the subject. Per event, find the host code path that should call it (or its executable twin). Wire the call so ACL2 decides (do not decide in host), or name the correspondence reach_check accepts. If the host truly does not run it, hand it to P to re-scope the claim. Never re-baseline.",
+  "Events (from build/coordinator/reach-prose-orphans-20261007.txt, dev ac7593c60):",
+  "PRF-139: fn-bpnj-scan-finds-the-held-job (books/bp-node-job-offer.lisp; subjects fn-bpnj-held, fn-bpnj-scan)",
+  "PRF-139: fn-bpnj-scan-finds-the-selected-job (books/bp-node-job-offer.lisp; subjects fn-bpnj-scan)",
+  "PRF-139: fn-bpnj-unique-keys-make-every-job-its-own-entry (books/bp-node-job-offer.lisp; subjects fn-bpnj-own-entryp)",
+  "PRF-120: fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact (books/bp-node-job-offer-progress.lisp; subjects fn-bpnj-contact-next, fn-bpnj-contact-offers)",
+  "PRF-120: fn-bpnj-contact-offers-while-a-ready-job-remains (books/bp-node-job-offer.lisp; subjects fn-bpnj-contact-next)",
+  "PRF-103: fn-bpnj-contact-offers-while-a-ready-job-remains (books/bp-node-job-offer.lisp; subjects fn-bpnj-contact-next)",
+  "PRF-1051: fn-bpnf-family-next-aux-answers-the-first-ready-row (books/bp-node-fragment-step.lisp; subjects fn-bpn-nth, fn-bpnf-any-family-ready-row, fn-bpnf-family-next-aux, fn-bpnf-family-ready-row-with-arrival)",
+  "PRF-121: fn-bpnf-family-next-memo-is-aux (books/bp-node-fragment-step.lisp; subjects fn-bpnf-family-next-aux, fn-bpnf-family-next-memo)",
+  "PRF-134: fn-bpnf-family-next-memo-is-aux (books/bp-node-fragment-step.lisp; subjects fn-bpnf-family-next-aux, fn-bpnf-family-next-memo)",
+  "PRF-136: fn-bpnf-family-select-is-aux (books/bp-node-fragment-step.lisp; subjects fn-bpnf-family-next-aux, fn-bpnf-family-select)"
+ ],
+ "updated": "2026-10-07T14:30:00Z"
+}
