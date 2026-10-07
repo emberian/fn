@@ -299,21 +299,22 @@
       (fn-b3-cv-push key flags (+ 1 (nfix h))
         (fn-b3-parent-out key (car outs) (cadr outs) flags) st))))
 
-(defthm fn-b3-stack-push-all-of-pairs
-  ; L-PAIR: absorbing an EVEN run of singles at height h onto a stack already
-  ; above h is absorbing their consecutive pairs at h+1 — the binary counter
-  ; merges each two exactly once.
-  (implies (and (natp h)
-                (fn-b3-stack-above h st)
-                (true-listp outs) (evenp (len outs)))
-           (equal (fn-b3-stack-push-all key flags h outs st)
-                  (fn-b3-stack-push-all key flags (+ 1 (nfix h))
-                    (fn-b3-pair-outs key flags outs) st)))
-  :hints (("Goal" :induct (fn-b3-lpair-ind key flags h outs st)
-                   :expand ((fn-b3-stack-push-all key flags h outs st)
-                            (fn-b3-stack-push-all key flags (+ 1 (nfix h))
-                              (fn-b3-pair-outs key flags outs) st)
-                            (fn-b3-pair-outs key flags outs)))))
+(local
+ (defthm fn-b3-stack-push-all-of-pairs
+    ; L-PAIR: absorbing an EVEN run of singles at height h onto a stack already
+    ; above h is absorbing their consecutive pairs at h+1 — the binary counter
+    ; merges each two exactly once.
+    (implies (and (natp h)
+                  (fn-b3-stack-above h st)
+                  (true-listp outs) (evenp (len outs)))
+             (equal (fn-b3-stack-push-all key flags h outs st)
+                    (fn-b3-stack-push-all key flags (+ 1 (nfix h))
+                      (fn-b3-pair-outs key flags outs) st)))
+    :hints (("Goal" :induct (fn-b3-lpair-ind key flags h outs st)
+                     :expand ((fn-b3-stack-push-all key flags h outs st)
+                              (fn-b3-stack-push-all key flags (+ 1 (nfix h))
+                                (fn-b3-pair-outs key flags outs) st)
+                              (fn-b3-pair-outs key flags outs))))))
 
 (defun fn-b3-e-ind (key flags h outs st)
   ; E induction: same two-step shape as L-pair, the stack absorbing pairs.
