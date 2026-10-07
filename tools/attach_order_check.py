@@ -37,6 +37,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 UMBRELLAS = ("books/image-world", "books/image-world-dtn", "books/image-world-store-test")
@@ -98,10 +99,18 @@ class World:
         return result[0]
 
 
-def pairs(root: Path) -> list[tuple[str, str, str]]:
-    """(generic name, generic book, attach book), the image's attach books only."""
+class Unpaired(NamedTuple):
+    """An attach book whose generic is not exactly one :attachable defabsstobj."""
+    generic: str
+    attach: str
+    candidates: list[str]
+
+
+def pairs(root: Path) -> tuple[list[tuple[str, str, str]], list[Unpaired]]:
+    """((generic name, generic book, attach book) ..., unpaired), over the image's
+    attach books only."""
     image = {os.path.normpath(m.group(1)) for m in _INCLUDE.finditer(_read(root / BUILD))}
-    found = []
+    found, bad = [], []
     for path in sorted((root / "books").glob("*.lisp")):
         rel = "books/" + path.stem
         if rel not in image:
@@ -114,16 +123,17 @@ def pairs(root: Path) -> list[tuple[str, str, str]]:
             if len(generic) == 1:
                 found.append((gen, "books/" + generic[0].stem, rel))
             else:
-                found.append((gen, None, rel, ["books/" + g.stem for g in generic]))
-    return found
+                bad.append(Unpaired(gen, rel, ["books/" + g.stem for g in generic]))
+    return found, bad
 
 
 def unpaired(root: Path) -> list[str]:
     """An attach book whose generic is not exactly one :attachable defabsstobj: a
     finding naming the books, never a silently dropped pair."""
     return ["%s.lisp: (attach-stobj %s ...) names %s :attachable generic(s)%s; the pair cannot be checked"
-            % (p[2], p[0], len(p[3]), (" (" + ", ".join(b + ".lisp" for b in p[3]) + ")") if p[3] else "")
-            for p in pairs(root) if p[1] is None]
+            % (u.attach, u.generic, len(u.candidates),
+               (" (" + ", ".join(b + ".lisp" for b in u.candidates) + ")") if u.candidates else "")
+            for u in pairs(root)[1]]
 
 
 def scope(root: Path, world: World) -> list[str]:
@@ -137,7 +147,7 @@ def scope(root: Path, world: World) -> list[str]:
 def check(root: Path = ROOT) -> list[str]:
     world = World(root)
     findings = unpaired(root)
-    for gen, generic, attach in (p[:3] for p in pairs(root) if p[1] is not None):
+    for gen, generic, attach in pairs(root)[0]:
         for host in scope(root, world):
             if world.generic_state(host, generic, attach) == "bare":
                 findings.append(
@@ -150,7 +160,7 @@ def main() -> int:
     findings = check()
     for line in findings:
         print("attach_order_check: " + line)
-    ps = [p for p in pairs(ROOT) if p[1] is not None]
+    ps = pairs(ROOT)[0]
     print("attach_order_check: %d attach pair(s) (%s), %d host file(s) in scope, %d finding(s)"
           % (len(ps), ", ".join(p[0] for p in ps), len(scope(ROOT, World(ROOT))), len(findings)))
     return 1 if findings else 0
