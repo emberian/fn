@@ -41,6 +41,7 @@
 ;      death past the install rewrites nothing more.
 (in-package "ACL2")
 (include-book "owner-reclaim")
+(include-book "def-loop")
 (include-book "reclaim-cuts") ; *fn-orcp-cuts*
 (include-book "owner-credits")
 (include-book "owner-checkpoint-open")
@@ -463,29 +464,9 @@
 
 ; Executes by a loop (depth_check: the live connections), guards verified so
 ; the host's call runs it; equal by fn-orcp-repin-conns-loop-is-rev-onto.
-(defun fn-orcp-repin-conns-loop (owner conns acc)
-  (declare (xargs :guard t))
-  (if (consp conns)
-      (fn-orcp-repin-conns-loop owner (cdr conns)
-                                (cons (fn-orcp-repin-conn owner (car conns)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-orcp-repin-conns (owner conns)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp conns)
-                  (cons (fn-orcp-repin-conn owner (car conns))
-                        (fn-orcp-repin-conns owner (cdr conns)))
-                nil)
-       :exec (fn-orcp-repin-conns-loop owner conns nil)))
-
-(defthm fn-orcp-repin-conns-loop-is-rev-onto
-  (equal (fn-orcp-repin-conns-loop owner conns acc)
-         (fn-ag-rev-onto acc (fn-orcp-repin-conns owner conns)))
-  :hints (("Goal" :induct (fn-orcp-repin-conns-loop owner conns acc)
-                  :in-theory (disable fn-orcp-repin-conn))))
-
-(verify-guards fn-orcp-repin-conns
-  :hints (("Goal" :in-theory (disable fn-orcp-repin-conn))))
+(def-loop fn-orcp-repin-conns (owner conns)
+  :shape :map :over conns :elt c
+  :body (fn-orcp-repin-conn owner c))
 
 ; The swapped owner: the rebuilt owner's Store and view; the live owner's
 ; connections (each re-pinned to the rebuilt view: O(connections)), next
@@ -509,26 +490,9 @@
 ; configuration, as fn-ocfg-advance moves the pin of the one connection it
 ; re-pins (books/owner-config.lisp): the connection now reads the rebuilt
 ; view, which is that configuration's.
-(defun fn-orcp-pins-at-loop (conns cfg rev)
-  ; the loop twin (depth_check: the live connections, operator data)
-  (declare (xargs :guard (true-listp rev)))
-  (if (consp conns)
-      (fn-orcp-pins-at-loop (cdr conns) cfg (cons (cons (fn-own-conn-id (car conns)) cfg) rev))
-    (revappend rev nil)))
-
-(defun fn-orcp-pins-at (conns cfg)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp conns)
-                  (cons (cons (fn-own-conn-id (car conns)) cfg)
-                        (fn-orcp-pins-at (cdr conns) cfg))
-                nil)
-       :exec (fn-orcp-pins-at-loop conns cfg nil)))
-
-(defthm fn-orcp-pins-at-loop-is-pins-at
-  (equal (fn-orcp-pins-at-loop conns cfg rev)
-         (revappend rev (fn-orcp-pins-at conns cfg))))
-
-(verify-guards fn-orcp-pins-at)
+(def-loop fn-orcp-pins-at (conns cfg)
+  :shape :map :over conns :elt c
+  :body (cons (fn-own-conn-id c) cfg))
 
 ; What the swap installs (host/owner-host.lisp fn-owner-orcp-swap): the
 ; swapped owner under the rebuilt configuration, every connection pinned

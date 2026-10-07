@@ -54,6 +54,7 @@
 
 (in-package "ACL2")
 (include-book "arena-reader-pins")
+(include-book "def-loop")
 
 ; ---------------------------------------------------------------- ousted
 
@@ -118,25 +119,11 @@
 ; ---------------------------------------------------------------- the cut
 
 ; The live pins below FLOOR -- a prefix, PINS ascending -- and the rest.
-(defun fn-arpb-below-loop (floor pins rev)
-  (declare (xargs :guard (and (natp floor) (fn-arpn-pinsp pins) (true-listp rev))))
-  (if (and (consp pins) (< (caar pins) floor))
-      (fn-arpb-below-loop floor (cdr pins) (cons (car pins) rev))
-    (revappend rev nil)))
-
-(defun fn-arpb-below (floor pins)
-  (declare (xargs :guard (and (natp floor) (fn-arpn-pinsp pins)) :verify-guards nil))
-  (mbe :logic (if (and (consp pins) (< (caar pins) floor))
-                  (cons (car pins) (fn-arpb-below floor (cdr pins)))
-                nil)
-       :exec (fn-arpb-below-loop floor pins nil)))
-
-(defthm fn-arpb-below-loop-is-below
-  (implies (true-listp rev)
-           (equal (fn-arpb-below-loop floor pins rev)
-                  (revappend rev (fn-arpb-below floor pins)))))
-
-(verify-guards fn-arpb-below)
+(def-loop fn-arpb-below (floor pins)
+  :shape :map :over pins :elt p
+  :guard (and (natp floor) (fn-arpn-pinsp pins))
+  :while (< (caar pins) floor)
+  :body p)
 
 (defun fn-arpb-from (floor pins)
   (declare (xargs :guard (and (natp floor) (fn-arpn-pinsp pins))))

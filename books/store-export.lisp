@@ -56,35 +56,9 @@
 
 ; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
 ; operator data (D27: no fixed cap), one control-stack frame per element.
-(defun fn-sxp-chars-octets-loop (chars acc)
-  (declare (xargs :guard t))
-  (if (consp chars)
-      (fn-sxp-chars-octets-loop (cdr chars)
-       (cons (if (characterp (car chars)) (char-code (car chars)) 0) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-sxp-chars-octets (chars)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp chars)
-           (cons (if (characterp (car chars)) (char-code (car chars)) 0)
-                 (fn-sxp-chars-octets (cdr chars)))
-         nil)
-       :exec (fn-sxp-chars-octets-loop chars nil)))
-
-(defthm fn-sxp-chars-octets-loop-is-rev-onto
-  (equal (fn-sxp-chars-octets-loop chars acc)
-         (fn-ag-rev-onto acc (fn-sxp-chars-octets chars)))
-  :hints (("Goal" :induct (fn-sxp-chars-octets-loop chars acc)
-                  :in-theory (union-theories
-                              '(fn-sxp-chars-octets-loop fn-sxp-chars-octets fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-sxp-chars-octets
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-sxp-chars-octets fn-ag-rev-onto fn-sxp-chars-octets-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-sxp-chars-octets (chars)
+  :shape :map :over chars :elt c
+  :body (if (characterp c) (char-code c) 0))
 
 (defun fn-sxp-text-octets (text)
   (declare (xargs :guard t))
@@ -153,49 +127,15 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-sxp-manifest-loop (entries acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp entries)
-      (fn-sxp-manifest-loop (cdr entries)
-                                  (fn-ag-rev-onto (fn-sxp-manifest-line
-                                                                              (car entries))
-                                                  acc))
-    (revappend acc nil)))
-
 ; What `store export' renders (host/native/io.lisp) and the import checks.
-(defun fn-sxp-manifest (entries)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp entries)
-           (append (fn-sxp-manifest-line (car entries))
-                   (fn-sxp-manifest (cdr entries)))
-         nil)
-       :exec (fn-sxp-manifest-loop entries nil)))
+(def-loop fn-sxp-manifest (entries)
+  :shape :concat :over entries :elt e
+  :body (fn-sxp-manifest-line e))
 
 (local
  (defthm fn-sxp-manifest-loop-rev-onto-append
    (equal (revappend (fn-ag-rev-onto x acc) y)
           (revappend acc (append x y)))))
-
-(local
- (defthm fn-sxp-manifest-loop-is-revappend
-   (equal (fn-sxp-manifest-loop entries acc)
-          (revappend acc (fn-sxp-manifest entries)))
-   :hints (("Goal" :induct (fn-sxp-manifest-loop entries acc)
-                   :in-theory (union-theories '(fn-sxp-manifest-loop fn-sxp-manifest revappend car-cons cdr-cons fn-sxp-manifest-loop-rev-onto-append)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-sxp-manifest-loop)
-
-(verify-guards fn-sxp-manifest
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-sxp-manifest)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-sxp-manifest-loop-is-revappend (acc nil))))))
-
 
 ; The name of the first entry whose line the MANIFEST octets do not carry at
 ; its place, or the MANIFEST's own name when every line matched and octets
