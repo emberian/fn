@@ -231,6 +231,9 @@ class Report:
     # `install`: books left uncertified because no single origin holds a pair
     # for the book and each cached dependency; one line naming both origins.
     mixed_origin: list[str] = field(default_factory=list)
+    # `install`: books no single origin covers whose pair was certified in
+    # this tree over the dependency pairs resident here; kept, never removed.
+    kept_in_tree: list[str] = field(default_factory=list)
     removed_foreign: int = 0
     # Entries already cached whose recorded origin kind this run corrected.
     relabelled: int = 0
@@ -323,6 +326,9 @@ class Report:
             out.append(f"  unreadable closure: {book}")
         for line in self.mixed_origin:
             out.append(f"  mixed-origin: {line}")
+        for book in self.kept_in_tree:
+            out.append(f"  kept (certified in this tree over its resident "
+                       f"dependencies): {book}")
         for book in self.uncached:
             out.append(f"  uncached: {book}")
         for book in self.uncompiled:
@@ -2219,6 +2225,10 @@ def entry_per_origin(entries: list[tuple[Path, dict]],
             for origin, group in grouped.items()}
 
 
+# install(): a book bound to the pair already resident in the tree.
+RESIDENT = "<resident>"
+
+
 @scoped_closures
 def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
     """Copy in every cached pair whose closure key matches a book here.
@@ -2285,9 +2295,37 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
             report.unreadable.append(f"{name}: {error}")
     assigned: dict[str, str] = {}
     refused: dict[str, tuple[str, str]] = {}
+
+    def certified_here(name: str, dependencies: list[str]) -> bool:
+        """NAME's resident pair was certified in THIS tree (a cached entry of
+        these exact bytes has this tree as its origin) and every dependency it
+        was certified over is resident here and stays as it is: unplaced, or
+        placed with the bytes already resident.  ACL2 certified it over
+        exactly those pairs, so it composes whatever their origins
+        (CERT-INSTALL-DELETES-IN-TREE-PAIR, train 10)."""
+        cert = root / f"{name}.cert"
+        if not cert.is_file():
+            return False
+        digest = content_hash(cert)
+        if not any(str(meta.get("origin_root")) == target
+                   and content_hash(entry / "book.cert") == digest
+                   for entry, meta in entries_of(name)):
+            return False
+        for dep in dependencies:
+            resident = root / f"{dep}.cert"
+            if not resident.is_file():
+                return False
+            bound = assigned.get(dep)
+            if bound is None or bound == RESIDENT:
+                continue
+            chosen = origins_of(dep).get(bound)
+            if chosen is None or content_hash(chosen[0] / "book.cert") != content_hash(resident):
+                return False
+        return True
+
     for name in sorted(closures, key=lambda book: (-len(closures[book]), book)):
         options = origins_of(name)
-        if not options:
+        if not options or assigned.get(name) == RESIDENT:
             continue
         dependencies = [dep for dep in closures[name] if dep != name]
         try:
@@ -2327,6 +2365,11 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
             else:
                 fits[origin] = found
         if not fits:
+            if certified_here(name, dependencies):
+                assigned[name] = RESIDENT
+                for dep in dependencies:
+                    assigned.setdefault(dep, RESIDENT)
+                continue
             covered, origin, gap = max(blame.values())
             refused[name] = (origin, gap)
             continue
@@ -2366,6 +2409,14 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
                 return True
             return False
 
+        if assigned.get(name) == RESIDENT:
+            if name in listed and name in closures and any(
+                    content_hash(entry / "book.cert") == content_hash(cert)
+                    and str(meta.get("origin_root")) == target
+                    for entry, meta in entries) and cert.is_file():
+                report.kept_in_tree.append(name)
+            report.kept += 1
+            continue
         if name in refused:
             origin, gap = refused[name]
             report.mixed_origin.append(

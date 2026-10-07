@@ -131,6 +131,59 @@ class OneOriginInstallTests(unittest.TestCase):
             [line] = report.mixed_origin
             self.assertIn("books/mid", line)
 
+    def test_a_pair_certified_in_this_tree_over_resident_dependencies_is_kept(self):
+        # CERT-INSTALL-DELETES-IN-TREE-PAIR (train 10, hbox 2026-10-07):
+        # base installed from origin B; mid then certified IN this tree over
+        # that resident base and published with this tree as its origin.  No
+        # single origin covers mid's cached closure (base is cached only under
+        # B), but ACL2 has just certified mid over exactly the base that is
+        # resident here.  The next install deleted mid's fresh pair.
+        with tempfile.TemporaryDirectory() as b, tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as target_dir:
+            cache = Path(cache_dir)
+            self.publish(b, cache, ["books/base"], ORIGIN_B, "2026-10-07T00:00:00+00:00")
+            target = worktree(target_dir)
+            certs.install(target, cache, ["books/base"])
+            from_b = certs.entry_directory(
+                cache, certs.closure_key(target, "books/base")[0], ORIGIN_B)
+            self.assertEqual((target / "books/base.cert").read_bytes(),
+                             (from_b / "book.cert").read_bytes())
+            worktree(target_dir, certified=["books/mid"])
+            self.resident_mid(target, str(target))
+            (target / "books/mid.fasl").write_bytes(b"FASL books/mid")
+            manifest_for(target, ["books/mid"])
+            certs.publish(target, cache, names=["books/mid"], origin=str(target),
+                          origin_host="hbox")
+            fresh = (target / "books/mid.cert").read_bytes()
+            report = certs.install(target, cache)
+            self.assertTrue((target / "books/mid.cert").exists(),
+                            "install deleted the pair certified in this tree")
+            self.assertEqual((target / "books/mid.cert").read_bytes(), fresh)
+            self.assertEqual((target / "books/base.cert").read_bytes(),
+                             (from_b / "book.cert").read_bytes())
+            self.assertFalse(any("books/mid:" in line for line in report.mixed_origin))
+            self.assertEqual(report.kept_in_tree, ["books/mid"])
+            self.assertTrue(any("kept (certified in this tree" in text
+                                for text in report.lines()))
+
+    def test_an_in_tree_pair_whose_dependency_is_not_resident_is_still_refused(self):
+        # The keep needs what ACL2 certified over: with base gone from the
+        # tree, mid's pair names a dependency that is not here, so it goes.
+        with tempfile.TemporaryDirectory() as b, tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as target_dir:
+            cache = Path(cache_dir)
+            self.publish(b, cache, ["books/base"], ORIGIN_B, "2026-10-07T00:00:00+00:00")
+            target = worktree(target_dir, certified=["books/mid"])
+            self.resident_mid(target, str(target))
+            manifest_for(target, ["books/mid"])
+            certs.publish(target, cache, names=["books/mid"], origin=str(target),
+                          origin_host="hbox")
+            report = certs.install(target, cache, ["books/mid"])
+            self.assertFalse((target / "books/mid.cert").exists())
+            self.assertEqual(report.kept_in_tree, [])
+            [line] = report.mixed_origin
+            self.assertIn("books/mid", line)
+
 
 if __name__ == "__main__":
     unittest.main()
