@@ -1003,11 +1003,21 @@
  :hints (("Goal" :induct (fn-rl-fits-from i demand ledger)
           :in-theory (enable fn-rl-fits-from)))))
 
+(local (defthm fn-rl-update-ci-keeps-budgeti
+ (equal (fn-rl-budgeti j (fn-rl-update-ci i slot v ledger)) (fn-rl-budgeti j ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rl-update-ci) (nth update-nth))))))
+
+(local (defthm fn-rl-update-ci-keeps-drawni
+ (equal (fn-rl-drawni j (fn-rl-update-ci i slot v ledger)) (fn-rl-drawni j ledger))
+ :hints (("Goal" :in-theory (e/d (fn-rl-update-ci) (nth update-nth))))))
+
+;; The update leaves the drawn and budget columns alone (the two lemmas above),
+;; so the induction keeps fn-rl-update-ci closed (327k steps -> 25k).
 (local (defthm fn-rl-fits-from-update-ci
  (equal (fn-rl-fits-from i demand (fn-rl-update-ci j slot v ledger))
         (fn-rl-fits-from i demand ledger))
  :hints (("Goal" :induct (fn-rl-fits-from i demand ledger)
-          :in-theory (enable fn-rl-fits-from fn-rl-update-ci)))))
+          :in-theory (e/d (fn-rl-fits-from) (fn-rl-update-ci))))))
 
 (local (defthm fn-rl-update-ci-keeps-slotp
  (equal (fn-rl-slotp s (fn-rl-update-ci i slot v ledger)) (fn-rl-slotp s ledger))
@@ -1015,14 +1025,6 @@
 
 (local (defthm fn-rl-update-ci-keeps-count
  (equal (fn-rl-count (fn-rl-update-ci i slot v ledger)) (fn-rl-count ledger))
- :hints (("Goal" :in-theory (e/d (fn-rl-update-ci) (nth update-nth))))))
-
-(local (defthm fn-rl-update-ci-keeps-budgeti
- (equal (fn-rl-budgeti j (fn-rl-update-ci i slot v ledger)) (fn-rl-budgeti j ledger))
- :hints (("Goal" :in-theory (e/d (fn-rl-update-ci) (nth update-nth))))))
-
-(local (defthm fn-rl-update-ci-keeps-drawni
- (equal (fn-rl-drawni j (fn-rl-update-ci i slot v ledger)) (fn-rl-drawni j ledger))
  :hints (("Goal" :in-theory (e/d (fn-rl-update-ci) (nth update-nth))))))
 
 (local (defthm fn-rl-drawn-update-keeps-slotp
@@ -1185,11 +1187,23 @@
       fn-rl-drawni update-fn-rl-drawni nfix unsigned-byte-p integer-range-p
       default-plus-1 default-plus-2 default-minus))))))
 
+;; Frame facts for the two writers, once, so the induction below does not open
+;; the nine-way fn-rl-update-ci (340k steps -> 22k).
+(local (defthm fn-rl-update-ci-frame
+ (implies (and (natp f) (not (member-equal f '(1 5 6 7 8 9 10 11 12 13))))
+  (equal (nth f (fn-rl-update-ci i slot v ledger)) (nth f ledger)))
+ :hints (("Goal" :in-theory (e/d (fn-rl-update-ci) (nth update-nth))))))
+
+(local (defthm fn-rl-update-drawni-frame
+ (implies (and (natp f) (not (member-equal f '(1 5 6 7 8 9 10 11 12 13))))
+  (equal (nth f (update-fn-rl-drawni i v ledger)) (nth f ledger)))
+ :hints (("Goal" :in-theory (e/d (update-fn-rl-drawni) (nth update-nth))))))
+
 (local (defthm fn-rl-release-from-frame
  (implies (and (natp f) (not (member-equal f '(1 5 6 7 8 9 10 11 12 13))))
   (equal (nth f (fn-rl-release-from i slot mask ledger)) (nth f ledger)))
  :hints (("Goal" :induct (fn-rl-release-from i slot mask ledger)
-          :in-theory (e/d (fn-rl-release-from fn-rl-update-ci) (nth update-nth))))))
+          :in-theory (e/d (fn-rl-release-from fn-rl-update-ci-frame fn-rl-update-drawni-frame) (fn-rl-update-ci update-fn-rl-drawni fn-rl-ci fn-rl-drawni nth update-nth))))))
 
 (local (defthm fn-rl-release-from-keeps-slotp
  (equal (fn-rl-slotp s (fn-rl-release-from i slot mask ledger)) (fn-rl-slotp s ledger))
