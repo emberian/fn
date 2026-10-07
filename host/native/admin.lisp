@@ -511,16 +511,14 @@ every :set-limit row (ACL2's fn-store-lim-effective over the records)."
     (fnn-core 'fn-store-lim-effective (fnn-store-sealed-config store)
               (mapcar #'fnn-octet-list (mapcar #'cdr observation)))))
 
-(defun fnn-lim-decision (store plan values use run-mb core observations
-                         &optional (history nil history-p))
+(defun fnn-lim-decision (store plan values use run-mb core observations history)
   "ACL2's limit decision.  HISTORY is the heap history observation
-(fnn-heap-history-observation over VALUES); a live caller takes it off the
-owner mutex and passes it (sweep S033), the offline one lets it be taken
-here."
+(fnn-heap-history-observation over VALUES), taken by the caller: the live
+one off the owner and extent mutexes (sweep S033), the offline one directly.
+This reads no directory, so it is safe in the deciding quantum."
+  (declare (ignore store))
   (fnn-core 'fn-lim-decide (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)
-            values use run-mb core +fnn-gc-nursery-octets+ observations
-            (if history-p history
-              (fnn-heap-history-observation (fnn-store-root store) values))))
+            values use run-mb core +fnn-gc-nursery-octets+ observations history))
 
 (defun fnn-lim-reason (decision)
   (fnn-core 'fn-lim-decision-reason decision))
@@ -549,19 +547,32 @@ ordinary live reconfiguration, and on :applied served at once."
          ;; when a concurrent limit change moved it.
          (seen nil) (history nil))
     (loop
-     (let ((carry (fnn-quantum-control
-                   service nil
-                   (lambda ()
-                     (fnn-admin-test-fault "limit-carry")
-                     (fnn-owner-core 'fn-owner-limit-carried)))))
-       (when (and seen (equal (car carry) seen)) (return))
-       (setq seen (car carry)
-             history (and seen (fnn-heap-history-observation
-                                (fnn-store-root store) seen)))))
+     (loop
+      (let ((carry (fnn-quantum-control
+                    service nil
+                    (lambda ()
+                      (fnn-admin-test-fault "limit-carry")
+                      (fnn-owner-core 'fn-owner-limit-carried)))))
+        (when (and seen (equal (car carry) seen)) (return))
+        (setq seen (car carry)
+              history (and seen (fnn-heap-history-observation
+                                 (fnn-store-root store) seen)))))
+     (let ((answer
     (fnn-quantum-control
      service nil
      (lambda ()
       (fnn-admin-test-fault "limit")
+      ;; A concurrent limit change moved the carry after the observation
+      ;; above: the history is observed again off the mutexes, never here.
+      ;; The carry moves only in a quantum of the owner, so this read holds
+      ;; until the quantum ends.
+      (if (not (equal (car (fnn-owner-core 'fn-owner-limit-carried)) seen))
+       :carry-moved
+      ;; The store's use reads only the owner's carried state, and its
+      ;; carried-debt fallback can load history pages through the extent
+      ;; mutex (fn-pgs-fill-frame takes it non-recursively): read it here,
+      ;; under the owner mutex and before the extent mutex.
+      (let ((use (fnn-owner-core 'fn-owner-limit-use)))
       ;; The extent mutex owns pool draws independently of the owner mutex.
       ;; Keep it through preview, durability and the exact budget reduction.
       (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
@@ -573,15 +584,11 @@ ordinary live reconfiguration, and on :applied served at once."
               ;; no walk of the configuration history per request.
               (values (car carry))
               (funded (cdr carry))
-              (use (fnn-owner-core 'fn-owner-limit-use))
               (initial (progn
                    (unless (and (consp carry) values funded)
                      (fnn-fault "owner carries no limit profile"))
                    (fnn-lim-decision store plan values use run-mb core observations
-                                     (if (equal values seen)
-                                         history
-                                       (fnn-heap-history-observation
-                                        (fnn-store-root store) values)))))
+                                     history)))
               (growth (fnn-core 'fn-lim-protected-growth
                                 (fnn-core 'fn-lim-apply-row values
                                           (fnn-lim-plan-field plan) (fnn-lim-plan-n plan))
@@ -627,7 +634,8 @@ ordinary live reconfiguration, and on :applied served at once."
                       (fnn-indeterminate
                        "owner refused a durably recorded limit's profile"))
                     (setf (fnn-store-config store) served)))
-                (list :reason :accepted (fnn-lim-reason d) line)))))))))))
+                (list :reason :accepted (fnn-lim-reason d) line)))))))))))))
+       (unless (eq answer :carry-moved) (return answer))))))
 
 (defun fnn-admin-execute-limit (store plan)
   "The offline limit change: no process holds a reservation (run-mb 0), so an
@@ -635,7 +643,8 @@ accepted change is recorded for the next start.  Prints ACL2's line."
   (let* ((values (fnn-lim-recorded-profile store))
          (use (fnn-core-state 'fn-store-lim-use))
          (d (fnn-lim-decision store plan values use 0
-                              (fnn-heap-image-observation) (fnn-heap-observations)))
+                              (fnn-heap-image-observation) (fnn-heap-observations)
+                              (fnn-heap-history-observation (fnn-store-root store) values)))
          (line (fnn-lim-line plan d store values nil)))
     (unless (eq (fnn-core 'fn-lim-decision-status d) :accepted)
       (fnn-refuse "~a" line))

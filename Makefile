@@ -23,9 +23,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-receiver-repin-tests \
 	tests/acl2/connection-receiver-repin-state-tests \
 	books/obligation-view-cursor \
+	books/obligation-view-cursor-refinement \
+	tests/acl2/obligation-view-cursor-tests \
 	books/retention-obligation-view \
 	books/obligation-view-budget \
 	books/view-delta-cursor \
+	books/view-delta-cursor-refinement \
+	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
 	tests/acl2/index-reader-render-establishment-tests \
@@ -2417,7 +2421,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
-	books/image-world-paged \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
     books/pagestore-digest-block-predicate \
@@ -2487,6 +2490,8 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-bootstrap-export-tests \
     tests/acl2/allocation-turn-body-authority-tests \
     tests/acl2/allocation-turn-slots-tests \
+    tests/acl2/allocation-turn-source-cost-tests \
+    tests/acl2/consumer-remote-client-contract-tests \
     books/page-read-counter-transaction \
     books/page-read-issue-source-cost \
     books/recovery-prs-install \
@@ -2570,6 +2575,7 @@ ACL2_BOOKS ?= books/defrecord \
     books/owner-report-owner-accessors \
     books/allocation-turn-body-authority \
     books/allocation-turn-slots \
+    books/allocation-turn-source-cost \
     books/index-backing-writer-step \
     books/index-backing-table-seal \
     books/index-backing-reinsert \
@@ -2687,6 +2693,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lock_discipline_check
 	@$(CHECK_STEP) $(PYTHON) tools/lanedump_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lanedump_check
+	@$(CHECK_STEP) $(PYTHON) tools/unhooked.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_unhooked
 	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
 	@$(CHECK_EXECUTE)

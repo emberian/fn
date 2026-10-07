@@ -164,3 +164,9 @@
                         (mv-nth 1 (fn-rxp-fence token fn-rx-provider))))
         (mv-nth 1 (fn-rxp-fence token fn-rx-provider)))
  :hints (("Goal" :in-theory (enable fn-rxp-fence fn-rxc-fence fn-rxc-currentp))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-rxc-fill-range-copy-bounds
+                    fn-rxp-fill-range-copy-bounds))

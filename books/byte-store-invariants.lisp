@@ -858,3 +858,9 @@
 (in-theory (disable (:rewrite fn-bs-inode-tablep-keys-are-inos)
                     (:rewrite fn-bs-keys-belowp-excludes-bound)
                     (:rewrite fn-bs-op-listp-implies-true-listp)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bs-keys-belowp-bounds-known-key
+                    fn-bs-keys-belowp-excludes-bound))
