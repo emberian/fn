@@ -51,7 +51,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [bp-source-control](#bp-source-control) KEEPALIVE while exact received-source ACK remains held | `fn-tclsctl-never-releases-ack` | yes | yes: `certify-20261003T163429Z-2470673` | no: no matching image evidence | no: profile not deployed |
 | [operator-default-launch](#operator-default-launch) DEFAULT launcher and configured next-run resource projection | `fn-prstartup-accepted-default-launch-fits-machine` | yes | yes: `certify-20261006T024232Z-2942710` | no: no matching image evidence | no: dev source not on the node |
 | [durable-after-ack](#durable-after-ack) durable after acknowledgement (Mini M1) | `fn-lgu-acknowledged-records-are-recovered-at-every-cut` | yes | yes: `certify-20261004T195103Z-266420` | no: no matching image evidence | no: dev source not on the node |
-| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
+| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | yes: `certify-20261006T234233Z-3856331` | no: no matching image evidence | no: dev source not on the node |
 
 ## Records
 
@@ -359,7 +359,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **durable after acknowledgement (Mini M1).** ACKED: the log kernel's acknowledged count (fn-lgc-acked, advanced by fn-lgu-acknowledge (the fold of :finish-one; host/native/io.lisp fnn-log-finish) before the batch's replies leave); client contract: every record whose acceptance a client observed is recovered; not acknowledged = recovered.
 
-- Host-called subject: `fn-lgu-acknowledge` at host/native/io.lisp:7944, equated by `fn-lgu-acknowledge-acknowledges-only-recoverable-records` (books/store-log-durable.lisp:1323).
+- Host-called subject: `fn-lgu-acknowledge` at host/native/io.lisp:7951, equated by `fn-lgu-acknowledge-acknowledges-only-recoverable-records` (books/store-log-durable.lisp:1323).
 - Keystone: `fn-lgu-acknowledged-records-are-recovered-at-every-cut` (books/store-log-durable.lisp:876; PRF-936 (certified)); certified at the current source and closure by `certify-20261004T195103Z-266420` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/store-log-durable.lisp`.
@@ -372,7 +372,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **store identity by command (Mini M4).** IDENTITY: `fn identity CONTROL` asks the running owner (FNCT kind 24, a :read control) and prints the reply (kind 25) that ACL2 encodes over the exported wire grammar: the open's genesis format, node, schema and profile digests, the consumer arm (unbootstrapped, or bootstrapped with non-empty history id and incarnation), the created and running revisions and the BLAKE3 of specs/wire-grammar.json; Mini pins its decoder by that digest.
 
 - Host-called subject: `fn-stid-host-reply` at host/native/store-identity.lisp:23, equated by `fn-stid-value-is-a-reply-value` (books/store-identity.lisp:282).
-- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:317; in no registry row); no archived manifest certifies the current closure; `certify-20261004T202723Z-407947` passed this source of `books/store-identity.lisp`, and since then `books/native-config.lisp`, `books/wire-export.lisp`, `books/wire-family-consumer.lisp` and 4 more changed.
+- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:317; in no registry row); certified at the current source and closure by `certify-20261006T234233Z-3856331` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/store-identity.lisp`, `host/native/store-identity.lisp`.
 - Latest positive result: M4 on dev ad33dd8c4 (merge dce7b2333 of f84daa568, with the may-seal fix 5ea752578): tests.test_native_store_identity 2 ran OK on the published set ad33dd8c4 (developer image), boxq bq10050444-0146, run hbox:/tank/fn/scratch/mini-contract-3/native-bq10050444-0146; books certified lat1 certify-20261004T202723Z-407947 and certify-20261004T203446Z-443120.

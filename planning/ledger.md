@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3059 |
-| Certification roots in the Makefile | 2564 |
-| Books inside the root closure | 2883 |
-| `defthm` and `defthmd` events | 40529 |
-| `defun` events | 26000 |
+| Books read | 3061 |
+| Certification roots in the Makefile | 2566 |
+| Books inside the root closure | 2885 |
+| `defthm` and `defthmd` events | 40639 |
+| `defun` events | 26027 |
 | Functions with verified guards | 4054 |
-| Functions declared `:verify-guards nil` and never verified | 3367 |
-| Functions left at the default with an explicit guard | 14401 |
-| Functions left at the default with no guard | 4178 |
-| `assert-event` checks | 27989 |
+| Functions declared `:verify-guards nil` and never verified | 3377 |
+| Functions left at the default with an explicit guard | 14416 |
+| Functions left at the default with no guard | 4180 |
+| `assert-event` checks | 28039 |
 | `must-fail` checks | 2718 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
-| Theorems flagged SUSPECT by shape | 1475 |
+| Theorems flagged SUSPECT by shape | 1480 |
 | Export-hygiene warnings | 423 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 297 |
-| Include-hygiene warnings | 4059 |
+| Include-hygiene warnings | 4060 |
 | Host-names warnings | 3579 |
 | Hand-written-record warnings | 19 |
 
@@ -177,6 +177,7 @@ that `make certify` requests.
 | `books/auth-secret.lisp` | root | 21 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/blake3-stobj.lisp` | root | 53 | 15 | 2/2/8/3 | 0 | 0 | 6 |
 | `books/blake3-string.lisp` | root | 60 | 12 | 0/1/9/2 | 0 | 0 | 6 |
+| `books/blake3-tree.lisp` | root | 110 | 24 | 0/10/14/0 | 0 | 0 | 5 |
 | `books/blake3.lisp` | root | 42 | 44 | 8/0/36/0 | 0 | 0 | 0 |
 | `books/body-chunks-span.lisp` | closure | 14 | 5 | 2/0/3/0 | 0 | 0 | 1 |
 | `books/body-chunks.lisp` | closure | 107 | 37 | 2/0/32/3 | 0 | 0 | 1 |
@@ -1971,6 +1972,7 @@ that `make certify` requests.
 | `tests/acl2/blake3-stobj-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 38 | 0 | 0 |
 | `tests/acl2/blake3-string-tests.lisp` | root | 2 | 17 | 0/0/17/0 | 72 | 0 | 0 |
 | `tests/acl2/blake3-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 35 | 0 | 0 |
+| `tests/acl2/blake3-tree-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 16 | 0 | 0 |
 | `tests/acl2/body-chunks-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 20 | 0 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 27 | 0 | 0 |
 | `tests/acl2/bp-app-handoff-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 38 | 8 | 0 |
@@ -3137,8 +3139,8 @@ that `make certify` requests.
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
 | `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 0 | 0 |
 | `tests/acl2/wire-bounds-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 52 | 0 | 0 |
-| `tests/acl2/wire-family-consumer-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 5 | 0 | 0 |
-| `tests/acl2/wire-family-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 2 | 0 | 0 |
+| `tests/acl2/wire-family-consumer-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 26 | 0 | 0 |
+| `tests/acl2/wire-family-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
 | `tests/acl2/wire-family-fncu-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/wire-grammar-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/wire-outbound-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 12 | 0 |
@@ -3208,6 +3210,11 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-aw-charge-cost` | `books/article-public-work.lisp` | 60 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-aw-charge-value` | `books/article-public-work.lisp` | 59 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-aw-v-r` | `books/article-work-primitives.lisp` | 17 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-b3-cv-push-of-no-match` | `books/blake3-tree.lisp` | 265 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-cv-push and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-b3-cv-push and the conclusion is that branch's value |
+| `fn-b3-left-chunks-of-not` | `books/blake3-tree.lisp` | 150 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-left-chunks and the conclusion is that arm's value |
+| `fn-b3-left-windows-of-not` | `books/blake3-tree.lisp` | 89 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-left-windows and the conclusion is that arm's value |
+| `fn-b3-left-windows-step` | `books/blake3-tree.lisp` | 94 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-left-windows and the conclusion is that arm's value |
+| `fn-b3-window-tree-split` | `books/blake3-tree.lisp` | 546 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-window-tree and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-b3-window-tree and the conclusion is that branch's value |
 | `fn-b3s-chunk-exec-base` | `books/blake3-string.lisp` | 306 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3s-chunk and the conclusion is that arm's value |
 | `fn-b3s-chunk-model-base` | `books/blake3-string.lisp` | 328 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-chunk and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-b3-chunk and the conclusion is that branch's value |
 | `fn-b3s-chunk-model-step` | `books/blake3-string.lisp` | 338 | arm-of-definition: the hypotheses select one IF/COND arm of fn-b3-chunk and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-b3-chunk and the conclusion is that branch's value |
