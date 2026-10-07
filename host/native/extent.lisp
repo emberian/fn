@@ -1917,26 +1917,31 @@ Anything but :stale removes the row (the file pin) and idles the worker."
     (error 'fnn-extent-fault
            :message (format nil "history-page-read: frame ~a at word ~a is outside the page store"
                             sel base)))
-  (multiple-value-bind (fd base-off)
-      ;; A caller already inside the extent lock (the limit and live
-      ;; reconfiguration quanta reach this through ACL2's history refresh)
-      ;; reads the two tables under it: with-mutex is not recursive.
+  (let ((st (fnn-live-pgb)))
+    ;; R3: the pread runs inside the extent-lock region that looked up its
+    ;; descriptor, so a page file closed or replaced under the lock cannot
+    ;; hand this read a descriptor number the kernel has reused.  A caller
+    ;; already inside the extent lock (the limit and live reconfiguration
+    ;; quanta reach this through ACL2's history refresh) reads under its own
+    ;; hold: with-mutex is not recursive.  The short-read fault names the
+    ;; path from the same region, for the same reason.
+    (flet ((read-page ()
+             (let ((fd (gethash file *fnn-extent-fds*))
+                   (base-off (gethash file *fnn-extent-bases* 0)))
+               (unless (and fd (integerp addr) (<= 0 addr))
+                 (error 'fnn-extent-fault
+                        :message (format nil "history-page-read: no page file ~a (page ~a)"
+                                         file addr)))
+               (let ((got (fnn-extent-pread fd (svref st 0) (+ base-off (* addr 16384)))))
+                 (unless (= got 16384)
+                   (error 'fnn-extent-fault
+                          :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
+                                           addr (gethash file *fnn-extent-paths*) got)))))))
       (if (sb-thread:holding-mutex-p *fnn-extent-lock*)
-          (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0))
+          (read-page)
         (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-          (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0))))
-    (unless (and fd (integerp addr) (<= 0 addr))
-      (error 'fnn-extent-fault
-             :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
-    (let* ((st (fnn-live-pgb))
-           (got (fnn-extent-pread fd (svref st 0) (+ base-off (* addr 16384)))))
-      (unless (= got 16384)
-        (let ((path (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-                      (gethash file *fnn-extent-paths*))))
-          (error 'fnn-extent-fault
-                 :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
-                                  addr path got))))
-      (fn-pgb-frame-put sel base st pgs-mem))))
+          (read-page))))
+    (fn-pgb-frame-put sel base st pgs-mem)))
 
 (defun acl2_*1*_acl2::fn-pgs-fill-frame (file addr sel base pgs-mem)
   (fn-pgs-fill-frame file addr sel base pgs-mem))

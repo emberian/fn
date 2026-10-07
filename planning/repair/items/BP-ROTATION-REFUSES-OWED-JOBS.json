@@ -1,0 +1,21 @@
+{
+ "acceptance": "bp:rotation-with-owed-jobs",
+ "category": "architecture",
+ "evidence": "fn-bpnp-rotation-quiescentp (books/bp-node-progress.lisp:1507) requires (null (fn-bpn-machine-state-jobs base)) and (equal (fn-bpn-machine-state-next-token base) 0); the kind-19 checkpoint (fn-bpnr-checkpoint: generation, held, handoffs, frontier, next-arrival, covered) carries no jobs, so fn-bpnp-rotate-step answers (:rotation-refused G) for any journal with a queued/requeued receipt or report job. Image c4-gate@7a6499ec3, test_disconnected_delivery_restarts_and_releases_only_matching_obligation: after one dispatch pass leaves two requeued receipt jobs, bp-node checkpoint prints 'BP queue recovered jobs=2', 'BP journal rotation generation=1', 'BP journal rotation refused generation=1' and never reaches the stage cut. A journal truncated to its first record (one job) is refused the same way; test_rotation_killed_at_each_cut_keeps_held_rows (no jobs) rotates.",
+ "exposure": "conditional",
+ "file": "books/bp-node-progress.lisp",
+ "fix": "Statement-first in ACL2: either the checkpoint carries the base jobs (a codec field, fn-bpnr-checkpoint-of-statep over them, replay equal to full recovery with the jobs, teeth: a rotation that drops an owed job is refuted) and quiescence drops the jobs/next-token clauses, or the spec states that rotation waits for the queue to drain and the host drains it before rotating. Then restore the stage-cut observation in test_disconnected_delivery_restarts_and_releases_only_matching_obligation.",
+ "id": "BP-ROTATION-REFUSES-OWED-JOBS",
+ "line": "1507",
+ "locus": "bp-rotation",
+ "notes": [],
+ "owner": "bp-transport",
+ "reviewer": "mechanism established by tracing fn-bpnp-rotate-step and by truncating a dumped journal (hbox:/tank/fn/scratch/bp-residual/jdump, jx*): every variant with a job is refused.",
+ "scenario": "A node that ever queued a receipt or report job and still owes it cannot rotate: natural rotation (fn-bpnrd-due-rotation-event) answers NIL on quiescence, so the generation fills toward its 8192-record bound while jobs are owed. The documented stage-cut recovery claim (owed receipt jobs survive a death before selection) cannot be exercised.",
+ "severity": "medium",
+ "slice": "bp",
+ "source": "bp-residual-2026-10-07",
+ "state": "open",
+ "title": "bp-node checkpoint and natural rotation refuse whenever the base machine has any job, so owed receipt jobs make the journal unrotatable and the stage-cut recovery case unreachable",
+ "updated": "2026-10-07T18:16:52Z"
+}

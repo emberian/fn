@@ -13,12 +13,12 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3092 |
 | Certification roots in the Makefile | 2606 |
 | Books inside the root closure | 2937 |
-| `defthm` and `defthmd` events | 41822 |
-| `defun` events | 26418 |
+| `defthm` and `defthmd` events | 41824 |
+| `defun` events | 26419 |
 | Functions with verified guards | 4172 |
 | Functions declared `:verify-guards nil` and never verified | 3468 |
 | Functions left at the default with an explicit guard | 14477 |
-| Functions left at the default with no guard | 4301 |
+| Functions left at the default with no guard | 4302 |
 | `assert-event` checks | 28339 |
 | `must-fail` checks | 2805 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 316 |
 | Include-hygiene warnings | 3707 |
-| Host-names warnings | 3424 |
+| Host-names warnings | 3425 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -1304,7 +1304,7 @@ that `make certify` requests.
 | `books/page-window-executor.lisp` | root | 13 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/page-window-lease.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-window-read.lisp` | root | 8 | 9 | 0/0/9/0 | 0 | 0 | 0 |
-| `books/page-window-span.lisp` | root | 25 | 4 | 0/0/4/0 | 0 | 0 | 2 |
+| `books/page-window-span.lisp` | root | 26 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/page-window-worker-storage.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/paged-checkpoint-exec.lisp` | root | 15 | 7 | 0/4/0/3 | 0 | 0 | 0 |
 | `books/paged-checkpoint-host.lisp` | root | 15 | 10 | 0/6/4/0 | 0 | 0 | 0 |
@@ -2755,7 +2755,7 @@ that `make certify` requests.
 | `tests/acl2/page-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/page-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/page-window-read-tests.lisp` | root | 10 | 14 | 0/1/0/13 | 0 | 0 | 0 |
-| `tests/acl2/page-window-span-tests.lisp` | root | 6 | 8 | 0/0/0/8 | 0 | 0 | 0 |
+| `tests/acl2/page-window-span-tests.lisp` | root | 7 | 9 | 0/0/0/9 | 0 | 0 | 0 |
 | `tests/acl2/paged-checkpoint-exec-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 1 | 2 | 0 |
 | `tests/acl2/paged-checkpoint-host-tests.lisp` | root | 1 | 9 | 0/3/3/3 | 8 | 7 | 0 |
 | `tests/acl2/paged-checkpoint-stage-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 1 | 1 | 0 |

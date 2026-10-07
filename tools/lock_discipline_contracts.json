@@ -246,6 +246,15 @@
     "*fnn-tls-kx-lock*"
    ],
    "why": "lane lock-model-gaps: the decided key exchange record *fnn-tls-kx* (host/native/tls-reload.lisp:68). A leaf with three regions (:72 a copy-list, :91 the decision's setq of the group list and record, :131 one tally bump through a pure ACL2 core call); ACL2's session-line core call and the log write at :130 run before it is taken, never under it."
+  },
+  "XIDLEGC": {
+   "match": [
+    "*fnn-idle-gc-lock*"
+   ],
+   "guard_names": [
+    "*fnn-idle-gc-lock*"
+   ],
+   "why": "CONVERGE-2 row 34: the idle collection's three per-process marks (host/native/owner.lisp *fnn-idle-gc-tick-mark*, -collect-mark, -quiet), ticked by the maintenance worker or by a one-connection run's accept loop. A leaf: two in-memory regions in fnn-owner-maybe-collect-idle, the count and verdict (two pure ACL2 core calls, fn-idle-gc-quiet and fn-idle-gc-decide) and the marks after the collection; the collection runs between them, never under the lock."
   }
  },
  "lock_order": {

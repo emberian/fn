@@ -366,9 +366,13 @@ class NativeOverPinsTests(unittest.TestCase):
                 while time.monotonic() - sent < 240:
                     queue = self.server_tx_queue(node.port, client_port)
                     now = time.monotonic()
-                    if queue is not None:
+                    # Only the reader's progress counts: the refusal's own
+                    # close queues a FIN, one sequence number (tx_queue + 1),
+                    # or empties or removes the row (mb3: that transition
+                    # made the gap 0.0).
+                    if queue:
                         observed = True
-                        if queue != last_queue:
+                        if last_queue is None or abs(queue - last_queue) > 1:
                             last_change, last_queue = now, queue
                     text = owner.stderr.since(mark)
                     if b"send refused" in text:

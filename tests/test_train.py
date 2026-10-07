@@ -38,7 +38,15 @@ sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/evidence_manifests.py", "tools/lock_discipline_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
-         "tools/main_last_check.py"]
+         "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
+         "tools/build_lists_check.py"]
+REMOTE_STUB = '''#!/bin/sh
+echo "remote_check $*" >> "$STUB_LOG"
+for out in planning/interfaces.json specs/wire-grammar.json; do
+  [ -n "$STUB_EMIT" ] && mkdir -p "$(dirname $out)" && echo "$STUB_EMIT" > "$out"
+done
+exit "${STUB_RC_remote_check:-0}"
+'''
 
 
 def sh(cwd, *argv, env=None, check=True):
@@ -61,6 +69,7 @@ class TrainBase(unittest.TestCase):
             p = self.seed / s
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(STUB)
+        (self.seed / "tools/remote_check.sh").write_text(REMOTE_STUB)
         (self.seed / ".gitignore").write_text("build/\n")
         (self.seed / "lockkeys.json").write_text("[]\n")
         (self.seed / "src.txt").write_text("a\nb\nc\n")
@@ -73,6 +82,11 @@ class TrainBase(unittest.TestCase):
         sh(self.tmp, "git", "clone", "-q", str(self.origin), str(self.work))
         self.cfg(self.work)
         sh(self.work, "git", "checkout", "-q", "-b", "integrate/t1", "origin/dev")
+        # every train inherits a box step: the init commit's (no books since)
+        init = sh(self.work, "git", "rev-parse", "HEAD").stdout.strip()
+        (self.work / "build/train").mkdir(parents=True)
+        (self.work / "build/train/box-step.json").write_text(
+            json.dumps({"sha": init, "ran_at": init, "box": "persvati"}))
         self.log = self.tmp / "stub.log"
         self.env = dict(os.environ, STUB_LOG=str(self.log), TRAIN_PY=sys.executable,
                         TRAIN_PY3=sys.executable)
@@ -272,6 +286,73 @@ class PushTests(TrainBase):
         g = self.train("gate", extra_env={"STUB_RC_secrets_check_other.txt": "1"})
         # stub keys rc on the first arg (the file name) via mode
         self.assertNotEqual(g.returncode, 0, g.stdout)
+
+
+class BoxStepTests(TrainBase):
+    """The box_step gate (coordinator ruling 2026-10-07): ran at HEAD, or
+    inherited when nothing under books/, specs/ or tests/acl2/ changed since
+    the recorded box step and the local checks are 0."""
+
+    def merge(self, files):
+        sha = self.lane("a", files)
+        self.assertEqual(self.train("merge", f"a@{sha}").returncode, 0)
+
+    def box(self):
+        return json.loads((self.work / "build/train/box-step.json").read_text())
+
+    def test_inherits_when_no_box_paths_changed_and_names_the_sha(self):
+        self.merge({"tools/x.py": "x\n"})
+        g = self.train("gate")
+        self.assertEqual(g.returncode, 0, g.stdout)
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(st["gates"]["box_step"]["inherits_from"], self.box()["sha"])
+        for check in ("interface_emit --check", "world --check", "build_lists_check", "host_check --read",
+                      "host_check --world"):
+            self.assertIn(check, " | ".join(self.stub_log()))
+        p = self.train("push")
+        self.assertEqual(p.returncode, 0, p.stdout)
+        self.assertIn("box step: inherited from " + self.box()["sha"][:9], p.stdout)
+
+    def test_refuses_when_books_changed_since_the_box_step(self):
+        for path in ("books/b.lisp", "specs/s.md", "tests/acl2/t.lisp"):
+            with self.subTest(path=path):
+                self.setUp()
+                (self.seed / Path(path).parent).mkdir(parents=True, exist_ok=True)
+                self.merge({path: "changed\n"})
+                g = self.train("gate")
+                self.assertNotEqual(g.returncode, 0, g.stdout)
+                self.assertIn("run `train.py boxstep BOX`", g.stdout)
+                self.assertNotEqual(self.train("push").returncode, 0)
+
+    def test_refuses_when_a_local_check_fails(self):
+        self.merge({"tools/x.py": "x\n"})
+        g = self.train("gate", extra_env={"STUB_RC_host_check_world": "1"})
+        self.assertNotEqual(g.returncode, 0, g.stdout)
+
+    def test_refuses_without_a_record(self):
+        (self.work / "build/train/box-step.json").unlink()
+        self.merge({"tools/x.py": "x\n"})
+        self.assertNotEqual(self.train("gate").returncode, 0)
+
+    def test_boxstep_records_and_commits_the_emits_then_the_gate_passes_at_head(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        self.merge({"books/b.lisp": "changed\n"})
+        self.assertNotEqual(self.train("gate").returncode, 0)
+        b = self.train("boxstep", "persvati", extra_env={"STUB_EMIT": "emitted"})
+        self.assertEqual(b.returncode, 0, b.stdout + b.stderr)
+        self.assertEqual(self.box()["sha"], self.head())
+        self.assertEqual((self.work / "planning/interfaces.json").read_text(), "emitted\n")
+        self.assertIn("remote_check persvati", " | ".join(self.stub_log()))
+        g = self.train("gate")
+        self.assertEqual(g.returncode, 0, g.stdout)
+        self.assertIn("ran at HEAD on persvati", g.stdout)
+
+    def test_failed_boxstep_records_nothing(self):
+        before = self.box()
+        self.merge({"tools/x.py": "x\n"})
+        b = self.train("boxstep", "hbox", extra_env={"STUB_RC_remote_check": "3"})
+        self.assertNotEqual(b.returncode, 0)
+        self.assertEqual(self.box(), before)
 
 
 if __name__ == "__main__":

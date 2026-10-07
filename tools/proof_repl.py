@@ -228,6 +228,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lisp_source  # noqa: E402
 import theory_check  # noqa: E402
 import acl2_slots  # noqa: E402
 import acl2_toolchain  # noqa: E402
@@ -322,23 +323,22 @@ def spans(text: str) -> list[tuple[int, int]]:
     start = None
     pending_quote = None
     found = []
-    for match in theory_check.TOKEN.finditer(text):
-        kind = match.lastgroup
-        if kind in ("comment", "block"):
+    for kind, begin_at, end_at in lisp_source.tokens(text):
+        if kind == "comment":
             continue
         if depth == 0:
             if kind == "close":
                 raise ValueError("unmatched closing parenthesis at line "
-                                 + str(text.count("\n", 0, match.start()) + 1))
+                                 + str(text.count("\n", 0, begin_at) + 1))
             if kind == "quote":
-                pending_quote = match.start() if pending_quote is None else pending_quote
+                pending_quote = begin_at if pending_quote is None else pending_quote
                 continue
             if kind == "open":
-                start = pending_quote if pending_quote is not None else match.start()
+                start = pending_quote if pending_quote is not None else begin_at
                 depth = 1
             elif kind in ("atom", "string"):
-                begin = pending_quote if pending_quote is not None else match.start()
-                found.append((begin, match.end()))
+                begin = pending_quote if pending_quote is not None else begin_at
+                found.append((begin, end_at))
             pending_quote = None
             continue
         if kind == "open":
@@ -346,7 +346,7 @@ def spans(text: str) -> list[tuple[int, int]]:
         elif kind == "close":
             depth -= 1
             if depth == 0:
-                found.append((start, match.end()))
+                found.append((start, end_at))
                 start = None
     if depth != 0:
         raise ValueError("unbalanced parentheses")
@@ -2919,35 +2919,33 @@ PROBE_BASE = "fn-probe-base"
 def set_keyword(form: str, keyword: str, value: str) -> str:
     """FORM with the event's KEYWORD argument set to VALUE (replaced or added)."""
     target = 2 if re.match(r"\(\s*local\s*\(", form.strip(), re.IGNORECASE) else 1
-    tokens = [token for token in theory_check.TOKEN.finditer(form)
-              if token.lastgroup not in ("comment", "block")]
+    tokens = [token for token in lisp_source.tokens(form) if token[0] != "comment"]
     depth = 0
-    for index, token in enumerate(tokens):
-        kind = token.lastgroup
+    for index, (kind, begin_at, end_at) in enumerate(tokens):
         if kind == "open":
             depth += 1
         elif kind == "close":
             if depth == target:
-                return form[:token.start()] + f" {keyword} {value}" + form[token.start():]
+                return form[:begin_at] + f" {keyword} {value}" + form[begin_at:]
             depth -= 1
         elif (kind == "atom" and depth == target
-              and token.group().lower() == keyword.lower()):
+              and form[begin_at:end_at].lower() == keyword.lower()):
             rest = tokens[index + 1:]
-            while rest and rest[0].lastgroup == "quote":
+            while rest and rest[0][0] == "quote":
                 rest = rest[1:]
-            if not rest or rest[0].lastgroup == "close":
+            if not rest or rest[0][0] == "close":
                 raise ValueError(f"{keyword} has no value")
-            start = tokens[index + 1].start()
-            if rest[0].lastgroup != "open":
-                return form[:start] + value + form[rest[0].end():]
+            start = tokens[index + 1][1]
+            if rest[0][0] != "open":
+                return form[:start] + value + form[rest[0][2]:]
             level = 0
-            for inner in rest:
-                if inner.lastgroup == "open":
+            for inner_kind, _, inner_end in rest:
+                if inner_kind == "open":
                     level += 1
-                elif inner.lastgroup == "close":
+                elif inner_kind == "close":
                     level -= 1
                     if level == 0:
-                        return form[:start] + value + form[inner.end():]
+                        return form[:start] + value + form[inner_end:]
     raise ValueError("not one event form")
 
 
