@@ -349,12 +349,33 @@ def kind_is_stated(origin_kind: str | None) -> bool:
     return origin_kind is not None or os.environ.get("FN_CERT_ORIGIN_KIND") in ORIGIN_KINDS
 
 
+# content_hash's memo: one digest per file identity in this process.  The key
+# is (device, inode, size, mtime_ns, ctime_ns): a rewrite or a rename into
+# place changes the inode or ctime, so a hit is the same bytes.  It exists
+# because every cache enumeration (cached_entries -> entry_matches_meta)
+# re-hashed each entry's cert, port and fasl, and install-umbrellas
+# enumerates up to three times per run: on hbox's random-read-bound tank a
+# convergence-time install-umbrellas read 3 GB and ran past 20 minutes
+# (2026-10-07).  It never crosses processes.
+_CONTENT_HASHES: dict[tuple, str] = {}
+
+
 def content_hash(path: Path) -> str:
+    status = os.stat(path)
+    key = (status.st_dev, status.st_ino, status.st_size, status.st_mtime_ns,
+           status.st_ctime_ns)
+    known = _CONTENT_HASHES.get(key)
+    if known is not None:
+        return known
     hasher = hashlib.sha256()
-    with path.open("rb") as source:
+    with Path(path).open("rb") as source:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             hasher.update(chunk)
-    return hasher.hexdigest()
+    digest = hasher.hexdigest()
+    after = os.stat(path)
+    if (after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) == key[1:]:
+        _CONTENT_HASHES[key] = digest  # unchanged while it was read
+    return digest
 
 
 def book_sources(root: Path, names: list[str] | None = None) -> list[Path]:
