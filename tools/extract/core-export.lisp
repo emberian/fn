@@ -202,7 +202,47 @@
               (cons (cons (cadr trip) (cddr trip)) tail)))
         (xt-snapshot-stored-properties name (cdr trips) seen)))))
 
-(defun xt-world-snapshot (names verdicts w)
+; X3: every table the closure's bodies read (table-alist 'NAME ...), found
+; by walking the translated bodies, with the two the host reads at install.
+; Each ships in the snapshot with a digest per row, taken here in the world
+; (books/raw-dispatch-verdict.lisp fn-rdv-table-digests); the core's
+; fnn-install-raw-dispatch re-checks them at load and refuses by name.
+(defun xt-tree-tables (x acc)
+  (cond ((atom x) acc)
+        ((and (eq (car x) 'table-alist)
+              (consp (cdr x)) (consp (cadr x)) (eq (car (cadr x)) 'quote)
+              (consp (cdr (cadr x))) (symbolp (cadr (cadr x))))
+         (xt-tree-tables (cddr x) (add-to-set-eq (cadr (cadr x)) acc)))
+        (t (xt-tree-tables (cdr x) (xt-tree-tables (car x) acc)))))
+
+(defun xt-fns-tables (fns w acc)
+  (if (endp fns) acc
+    (xt-fns-tables (cdr fns) w
+                   (xt-tree-tables (getpropc (car fns) 'unnormalized-body nil w) acc))))
+
+(defun xt-existing-tables (names w)
+  (cond ((endp names) nil)
+        ((eq (getpropc (car names) 'table-alist :none w) :none)
+         (xt-existing-tables (cdr names) w))
+        (t (cons (car names) (xt-existing-tables (cdr names) w)))))
+
+(defun xt-carried-table-names (fns w)
+  (let ((names (xt-fns-tables fns w nil)))
+    (remove-duplicates-eq
+     (append '(fn-interfaces fn-raw-dispatch-verdicts)
+             (xt-existing-tables (reverse names) w)))))
+
+; the table as the snapshot carries it: the judged verdicts for D40's own
+(defun xt-carried-alist (name verdicts w)
+  (if (eq name 'fn-raw-dispatch-verdicts) verdicts (table-alist name w)))
+
+(defun xt-table-manifest (tables verdicts w)
+  (if (endp tables) nil
+    (cons (cons (car tables)
+                (fn-rdv-table-digests (car tables) (xt-carried-alist (car tables) verdicts w)))
+          (xt-table-manifest (cdr tables) verdicts w))))
+
+(defun xt-world-snapshot (names verdicts manifest w)
   (if (endp names) nil
     (let* ((name (car names))
            (functionp (not (eq (getpropc name 'formals :none w) :none)))
@@ -211,6 +251,8 @@
             (append
              (and (eq name 'fn-interfaces)
                   (list (cons 'table-alist (table-alist name w))))
+             (and (eq name 'fn-core-table-digests)
+                  (list (cons 'table-alist manifest)))
              ; D40's verdicts, as this export judged them (xt-core-verdicts)
              (and (eq name 'fn-raw-dispatch-verdicts)
                   (list (cons 'table-alist verdicts)))
@@ -223,7 +265,7 @@
                         (cons :xl-stobj-creator (get-stobj-creator name w))
                         (cons :xl-stobj-recognizer (get-stobj-recognizer name w)))))))
       (cons (cons name (append computed (xt-snapshot-stored-properties name w nil)))
-            (xt-world-snapshot (cdr names) verdicts w)))))
+            (xt-world-snapshot (cdr names) verdicts manifest w)))))
 
 ; D40's raw-dispatch verdicts (books/raw-dispatch-verdict.lisp), judged HERE
 ; in the world: the core cannot judge (its world is this snapshot), so it
@@ -337,8 +379,10 @@
     (mv-let (erp n state) (xt-extract-with roots (xt-core-stobj-creators tokens w nil) json-path state)
       (declare (ignore erp n))
       (mv-let (entries stobjs) (xt-walk-closed (append roots (xt-boundary-extra roots w nil)) 4 w)
-        (let ((globals (xt-token-globals tokens (xt-entries-globals entries nil) state))
-              (types (xt-world-types w nil)))
+        (let* ((globals (xt-token-globals tokens (xt-entries-globals entries nil) state))
+               (types (xt-world-types w nil))
+               (tables (xt-carried-table-names (xt-entry-fns entries nil) w))
+               (manifest (xt-table-manifest tables verdicts w)))
           (mv-let (channel state) (open-output-channel pkg-path :character state)
             (let* ((state (princ$ "{\"packages\":[" channel state))
                    (state (xt-json-packages (known-package-alist state) t channel state))
@@ -361,9 +405,10 @@
                                                      (remove-duplicates-eq
                                                       (append (xt-entry-fns entries nil)
                                                               (xt-stobj-closure-1 stobjs nil w)
-                                                              '(state fn-interfaces fn-raw-dispatch-verdicts
+                                                              tables
+                                                              '(state fn-core-table-digests
                                                                 *fn-entry-guard-kinds*)))
-                                                     verdicts w)))
+                                                     verdicts manifest w)))
                                         channel state))
                        (state (close-output-channel channel state)))
                   (value (list :roots (len roots) :consts (len consts) :globals (len globals)

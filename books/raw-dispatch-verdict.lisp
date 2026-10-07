@@ -188,3 +188,70 @@
                 (equal (mv-nth 2 (fn-rdv-admit name digest verdicts))
                        (fn-rdv-verdict-creatorp (cdr (fn-rdv-lookup name verdicts))))))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; Carried tables (X3: every table the extracted closure and host read).
+;
+; The extractor's export ships each such table in the core's snapshot with a
+; digest per row, computed HERE, in the world: fn-rdv-table-digests.  At
+; load the host reads each manifest table as the core holds it and asks
+; fn-rdv-carried-problem, which names the first table absent from the core,
+; the first row missing, added or changed since its digest was taken.  A
+; table the export dropped, or one edited after the digests, never reaches a
+; later crash.  What it does not cover: a table dropped from the manifest and
+; the snapshot together (the runtime's own table-alist refusal names it at
+; its first read, tools/extract/clruntime.lisp).
+
+(defun fn-rdv-row-key (e)
+  (declare (xargs :guard t))
+  (if (consp e) (car e) nil))
+
+(defun fn-rdv-table-row-digest (table e)
+  (declare (xargs :guard t))
+  ; one table row, E = (KEY . VALUE), as (KEY . DIGEST)
+  (cons (fn-rdv-row-key e) (fn-blake3 (fn-sdg-canon (list table e)))))
+
+(defun fn-rdv-table-digests (table alist)
+  (declare (xargs :guard t))
+  (if (atom alist)
+      nil
+    (cons (fn-rdv-table-row-digest table (car alist))
+          (fn-rdv-table-digests table (cdr alist)))))
+
+(defun fn-rdv-table-problem (table carried alist)
+  (declare (xargs :guard t))
+  ; nil, or (:row-missing|:row-added|:row-changed TABLE KEY): CARRIED is the
+  ; digests the world took, ALIST the table as the core holds it
+  (cond ((atom carried)
+         (if (atom alist) nil (list :row-added table (fn-rdv-row-key (car alist)))))
+        ((atom alist) (list :row-missing table (fn-rdv-row-key (car carried))))
+        ((not (equal (car carried) (fn-rdv-table-row-digest table (car alist))))
+         (list :row-changed table (fn-rdv-row-key (car alist))))
+        (t (fn-rdv-table-problem table (cdr carried) (cdr alist)))))
+
+(defun fn-rdv-carried-problem (manifest held)
+  (declare (xargs :guard t))
+  ; MANIFEST: ((TABLE . DIGESTS) ...) as the export carried it; HELD:
+  ; ((TABLE . ALIST) ...) for the tables the core holds.  nil, or the first
+  ; problem, a table absent from HELD named as (:table-missing TABLE).
+  (if (atom manifest)
+      nil
+    (let* ((m (car manifest))
+           (table (fn-rdv-row-key m))
+           (hit (fn-rdv-lookup table held)))
+      (cond ((not hit) (list :table-missing table))
+            ((fn-rdv-table-problem table (if (consp m) (cdr m) nil) (cdr hit)))
+            (t (fn-rdv-carried-problem (cdr manifest) held))))))
+
+; KEYSTONE: a table the check passes is exactly the table whose row digests
+; the world took.
+(defthm fn-rdv-table-verified-only-if-it-is-the-digested-table
+  (implies (not (fn-rdv-table-problem table carried alist))
+           (equal carried (fn-rdv-table-digests table alist)))
+  :hints (("Goal" :induct (fn-rdv-table-problem table carried alist)))
+  :rule-classes nil)
+
+; ... and its premise is inhabited: a table passes against its own digests.
+(defthm fn-rdv-table-problem-of-its-own-digests
+  (not (fn-rdv-table-problem table (fn-rdv-table-digests table alist) alist))
+  :hints (("Goal" :induct (fn-rdv-table-digests table alist))))

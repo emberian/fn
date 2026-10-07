@@ -56,9 +56,21 @@ PRELUDE = r"""
 (defvar *test-verdicts* nil)
 (defvar *test-formals* nil)
 (defun w (state) state)
+(defvar *test-tables* nil)
+(defvar *test-manifest* nil)
+(defvar *test-manifest-carried* t)
 (defun table-alist (name wrld)
   (declare (ignore wrld))
-  (if (eq name 'fn-raw-dispatch-verdicts) *test-verdicts* *test-interfaces*))
+  ;; the core's runtime answers a table its export did not carry with an error
+  (cond ((eq name 'fn-raw-dispatch-verdicts) *test-verdicts*)
+        ((eq name 'fn-interfaces) *test-interfaces*)
+        ((eq name 'fn-core-table-digests)
+         (if *test-manifest-carried* *test-manifest*
+             (error "Selected ACL2 table metadata is unavailable for ~s" name)))
+        ((assoc name *test-tables*) (cdr (assoc name *test-tables*)))
+        (t (error "Selected ACL2 table metadata is unavailable for ~s" name))))
+(defun fn-sdg-canon (x) x)
+(defun fn-blake3 (x) (prin1-to-string x))
 (defun assoc-keyword (key l) (member key l))
 (defun true-list-fix (x) (loop for tail = x then (cdr tail) while (consp tail) collect (car tail)))
 (defmacro mv (&rest r) `(values ,@r))
@@ -83,7 +95,9 @@ PRELUDE = r"""
 
 VERDICT_FORMS = ("fn-rdv-raw-declared-p", "fn-rdv-lookup", "fn-rdv-verdict-digest",
                  "fn-rdv-verdict-problem", "fn-rdv-verdict-target",
-                 "fn-rdv-verdict-creatorp", "fn-rdv-admit")
+                 "fn-rdv-verdict-creatorp", "fn-rdv-admit", "fn-rdv-row-key",
+                 "fn-rdv-table-row-digest", "fn-rdv-table-digests", "fn-rdv-table-problem",
+                 "fn-rdv-carried-problem")
 
 DRIVER = r"""
 %PRELUDE%
@@ -354,6 +368,36 @@ DRIVER_VERDICTS = r"""
 (check (= (install) 1))
 (check (equal (fnn-raw-dispatch-names) '(fn-sub)))
 (check (eq (symbol-function 'fn-bad) *bad-binding*))
+;; X3: the carried tables, checked at load against the digests the export took
+(setq *test-interfaces* '((fn-sub :raw-with (fn-sub-carries))))
+(setq *test-verdicts* (test-judge *test-interfaces*))
+(setq *test-tables* (list (cons 'fn-carried '((row-a . 1) (row-b . 2)))))
+(setq *test-manifest*
+      (list (cons 'fn-carried (fn-rdv-table-digests 'fn-carried '((row-a . 1) (row-b . 2))))
+            (cons 'fn-interfaces (fn-rdv-table-digests 'fn-interfaces *test-interfaces*))))
+(check (= (install) 1))
+;; one carried row edited after its digest: refused by table and row
+(setq *test-tables* (list (cons 'fn-carried '((row-a . 1) (row-b . 3)))))
+(let ((text (refusal #'install)))
+  (check (search "carried table fn-carried" text))
+  (check (search "row-changed" text))
+  (check (search "row-b" text)))
+;; the table dropped from the export: refused by its name at load
+(setq *test-tables* nil)
+(let ((text (refusal #'install)))
+  (check (search "carried table fn-carried" text))
+  (check (search "table-missing" text)))
+;; the manifest itself not carried (a legacy or stripped export): by its name
+(setq *test-tables* (list (cons 'fn-carried '((row-a . 1) (row-b . 2)))))
+(setq *test-manifest-carried* nil)
+(let ((text (refusal #'install)))
+  (check (search "FN-CORE-TABLE-DIGESTS" text)))
+(setq *test-manifest-carried* t)
+;; an edited fn-interfaces row is refused through the same manifest
+(setq *test-interfaces* '((fn-sub :raw-with (fn-sub-other))))
+(setq *test-verdicts* (test-judge *test-interfaces*))
+(let ((text (refusal #'install)))
+  (check (search "carried table fn-interfaces" text)))
 (format t "PASS raw-dispatch verdicts: ~d checks~%" *checks*)
 """
 

@@ -333,6 +333,23 @@ skips the line break and the indentation after it."
                                  (incf i))))))))
         (t (let ((*package* (find-package "ACL2"))) (prin1-to-string msg)))))
 
+(defun fnn-check-carried-tables (wrld)
+  "X3: every table the export carried with a digest per row, as the world
+holds it now.  In the image the manifest is empty (the world is the world);
+in the core it is the snapshot's, and a core whose export did not carry it
+is refused by its name.  A table absent from the core, a row edited, added
+or missing since the digest was taken stops the load by name."
+  (let* ((manifest (table-alist 'fn-core-table-digests wrld))
+         (held (loop for m in manifest
+                     for alist = (handler-case (list (table-alist (car m) wrld))
+                                   (error () nil))
+                     when alist collect (cons (car m) (car alist))))
+         (problem (fn-rdv-carried-problem manifest held)))
+    (when problem
+      (error "fnn-install-raw-dispatch: carried table ~(~a~): ~(~s~)"
+             (cadr problem) problem))
+    (length manifest)))
+
 (defun fnn-install-raw-dispatch (&key (report t))
   "Fill the dispatch table from the fn-interfaces table of the loaded world:
 each :raw-with and :raw-guarded entry admitted by its verdict in the
@@ -342,6 +359,7 @@ digest as this world gives it; the count.  An unjudged, changed or refused
 row, or an absent or unverified target, stops the build by name."
   (let* ((wrld (w *the-live-state*))
          (verdicts (table-alist 'fn-raw-dispatch-verdicts wrld)))
+    (fnn-check-carried-tables wrld)
     (fnn-raw-dispatch-reset)
     (dolist (entry (table-alist 'fn-interfaces wrld))
       (let ((name (car entry)))

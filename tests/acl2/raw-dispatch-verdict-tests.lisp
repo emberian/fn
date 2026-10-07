@@ -269,6 +269,49 @@
                :fault "an admit that grants the registered creator role to every admitted row traps the wrong dispatch"))
   :must-fail t)
 
+; X3: carried tables.  The load-side check names a dropped table and an
+; edited, added or missing row.
+
+(defconst *rdv-carried-digests* (fn-rdv-table-digests 'tt '((a . 1) (b . 2))))
+(defconst *rdv-manifest* (list (cons 'tt *rdv-carried-digests*)))
+
+(assert-event (not (fn-rdv-carried-problem *rdv-manifest* (list (cons 'tt '((a . 1) (b . 2)))))))
+; a table the core did not carry: refused by its name
+(assert-event (equal (fn-rdv-carried-problem *rdv-manifest* nil) '(:table-missing tt)))
+; one edited row: refused by table and key
+(assert-event (equal (fn-rdv-carried-problem *rdv-manifest* (list (cons 'tt '((a . 1) (b . 3)))))
+                     '(:row-changed tt b)))
+(assert-event (equal (fn-rdv-carried-problem *rdv-manifest* (list (cons 'tt '((a . 1)))))
+                     '(:row-missing tt b)))
+(assert-event (equal (fn-rdv-carried-problem *rdv-manifest* (list (cons 'tt '((a . 1) (b . 2) (c . 3)))))
+                     '(:row-added tt c)))
+; the second table of a manifest is checked too
+(assert-event (equal (fn-rdv-carried-problem
+                      (append *rdv-manifest* (list (cons 'uu (fn-rdv-table-digests 'uu '((k . v))))))
+                      (list (cons 'tt '((a . 1) (b . 2)))))
+                     '(:table-missing uu)))
+
+(defteeth fn-rdv-table-verified-only-if-it-is-the-digested-table
+  :claim (((clean (not (fn-rdv-table-problem table carried alist))))
+          (equal carried (fn-rdv-table-digests table alist)))
+  :subject fn-rdv-table-problem
+  :witness ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 1)))))
+  :breaks ((clean ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 2)))))))
+  :mutations ((row-changed
+               (:conclusion (not (fn-rdv-table-problem table carried '((a . 2)))))
+               ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 1)))))
+               :fault "a check that passes a row edited after its digest was taken")
+              (row-added
+               (:conclusion (not (fn-rdv-table-problem table carried '((a . 1) (b . 2)))))
+               ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 1)))))
+               :fault "a check that passes a table with a row the world never digested")
+              (row-dropped
+               (:conclusion (not (fn-rdv-table-problem
+                                  table (fn-rdv-table-digests 'tt '((a . 1) (b . 2))) alist)))
+               ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 1)))))
+               :fault "a check that passes a table with a digested row dropped"))
+  :must-fail t)
+
 ; No `(defteeth-check)' here: this book declares teeth for its own plain
 ; defthms, not for a generator's keystones, and its closure (via
 ; books/state-digest's chain to books/def-keyset-check) carries other
