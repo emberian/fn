@@ -54,8 +54,21 @@ from tests.test_native_bounds_join import JoinFixture, article, dot_stuff
 
 from tests.native_harness import EXIT_OK  # noqa: E402
 MIB4 = 4 * 1024 * 1024
+# The 4 MiB deadlock case's history budget must hold NINE articles (the
+# seven held, the two refused then readmitted) under the gate's worst-case
+# charge, or the history bound -- not the article-slot pool this scenario
+# is about -- decides its end.  The gate charges each article its record
+# ceiling 4,191,552 plus its header at its worst, 8 history octets a
+# payload octet (lane heap-pool B9, the P1 resource contract:
+# *fn-sbud-header-weight*, books/store-budget.lisp), so the gate figure at
+# A = 4 MiB is 37,716,536 and the ninth admission needs
+# 8 x 4,191,872 + 37,716,536 = 71,251,512 octets of H.  The 64 MiB this
+# scenario first ran with (09-28, the same evening B9 landed) holds eight
+# and refuses the ninth 441 history-exhausted -- measured, deterministic,
+# set 3e53d7bc5: hbox scratch span-borrow/native-before-ctrl -- so 96 MiB
+# it is.  The history word itself is test_native_slow_disk's.
 INIT_PROFILE = ("--profile", "development", "--max-transactions", "1024",
-                "--max-history-octets", str(64 << 20),
+                "--max-history-octets", str(96 << 20),
                 "--max-record-octets", "4199563",
                 "--max-article-octets", str(MIB4),
                 "--max-groups-per-article", "16")

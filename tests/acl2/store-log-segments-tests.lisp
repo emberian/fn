@@ -38,7 +38,8 @@
 (assert-event (equal (fn-lgs-open-plan '("000003.log" "000002.log") 2)
                      '(:scan (2 3) nil)))
 ; the drop was interrupted between two unlinks: the covered one left is
-; dropped again and the scan is unchanged
+; named again (the open does not unlink it: RL-01-CHECKPOINT-NAME-BEFORE-
+; DROP) and the scan is unchanged
 (assert-event (equal (fn-lgs-open-plan '("000002.log" "000003.log" "000004.log") 3)
                      '(:scan (3 4) (2))))
 (assert-event (equal (fn-lgs-open-plan '("000003.log" "000004.log") 3)
@@ -223,3 +224,25 @@
    (implies (fn-lgs-all-below-p (fn-lgs-indices covered) first)
             (equal (car (fn-lgs-open-plan (append covered names) first))
                    (car (fn-lgs-open-plan names first)))))))
+;
+; -----------------------------------------------------------------------------
+; fn-lgs-install-drop-covers-what-the-open-left (RL-01-CHECKPOINT-NAME-BEFORE-
+; DROP).  Satisfiable: a drop interrupted after segment 1 left segment 2
+; below the checkpoint's first (3); the open scans 3 and 4 and leaves 2; the
+; next install rotates to 5 and names it; its drop takes 2, 3 and 4.
+(assert-event
+ (let ((open (fn-lgs-open-plan '("000002.log" "000003.log" "000004.log") 3))
+       (install (fn-lgs-open-plan '("000002.log" "000003.log" "000004.log" "000005.log") 5)))
+   (and (equal open '(:scan (3 4) (2)))
+        (equal install '(:scan (5) (2 3 4)))
+        (subsetp-equal (caddr open) (caddr install)))))
+; Teeth, per hypothesis: an install whose first is below the open's (2 < 3)
+; drops nothing and leaves segment 2 uncovered; a journal/ from which segment
+; 2 was unlinked in between lists no 2 for the install to drop.
+(assert-event
+ (let ((open (fn-lgs-open-plan '("000002.log" "000003.log" "000004.log") 3)))
+   (and (equal (fn-lgs-open-plan '("000002.log" "000003.log" "000004.log" "000005.log") 2)
+               '(:scan (2 3 4 5) nil))
+        (not (subsetp-equal (caddr open) nil))
+        (not (subsetp-equal (caddr open)
+                            (caddr (fn-lgs-open-plan '("000003.log" "000004.log" "000005.log") 5)))))))

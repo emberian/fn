@@ -59,7 +59,13 @@ a state checkpoint is published at the history's end with the log rotated,
 then the covered segments are unlinked.  The open answers the history's
 count and keeps no records (PKT-823); the checkpoint is written from the
 state (D27)."
-  (multiple-value-bind (store count) (fnn-open-live-store root t)
+  ;; The developer image's FN_NATIVE_STATE_CHECKPOINT_FAULT cuts the compact's
+  ;; checkpoint as it cuts `store checkpoint's and the reclaim's (lane
+  ;; m1-durable-5: before, the compact opened without it, so no cut of a
+  ;; compact's checkpoint was ever taken, and a test killing at one
+  ;; watched the compact run to its drop instead).
+  (multiple-value-bind (store count)
+      (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
     (fnn-unwind-cleanups
          ((progn
            ;; Every store an image opens is on the record log (batch AW: a format-8
