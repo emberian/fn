@@ -5,7 +5,8 @@ A ratchet that only shrinks keeps the representation drain from regrowing
 (ruling 1: generators are the design of record).  Over books/*.lisp, read with
 tools/lisp_rewrite.py (nothing is interned or macro-expanded), it finds two
 kinds of twin and fails (`--check`) on any book whose count exceeds
-tools/generator_twin_baseline.json:
+tools/generator_twin_baseline.json, and on any
+baseline row above the book's count (a stale row is headroom for a new twin):
 
   octet-clone    a `defabsstobj'/`defstobj' that declares `:congruent-to fn-octets',
                  or a `defstobj' that is a field-for-field copy of fn-octets$c (one
@@ -203,13 +204,16 @@ def main(argv=None):
     stale = sorted(b for b, r in base.items() if rows.get(b, {}).get("count", 0) < r["count"])
     for b in stale:
         print(f"generator_twin_check: STALE row {b} (baseline {base[b]['count']}, now "
-              f"{rows.get(b, {}).get('count', 0)}); lower it with --write-baseline")
+              f"{rows.get(b, {}).get('count', 0)}); lower it with --write-baseline in the lane that drained it")
+    if stale and not (new or bad):
+        # A stale row is headroom: a new twin could land in that book up to the old count unseen.
+        return 1
     if new or bad:
         print("generator_twin_check: a generator should emit this: (def-buffer NAME) or def-representation; "
               "grow the generator if it lacks the vocabulary (ruling 1)")
         return 1
     print(f"generator_twin_check: ok, {sum(r['count'] for r in rows.values())} baselined twin(s) in "
-          f"{len(rows)} book(s), {len(stale)} stale")
+          f"{len(rows)} book(s)")
     return 0
 
 
