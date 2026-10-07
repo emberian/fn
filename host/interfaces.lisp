@@ -2336,7 +2336,9 @@
               fn-csp-step-final-verdict-journals
               fn-csp-window-bounds-in-flight
               fn-csp-body-only-after-its-335
-              fn-csp-streaming-only-from-335))
+              fn-csp-streaming-only-from-335
+              fn-csp-journals-only-a-settled-batch
+              fn-csp-at-most-one-streaming))
 
 (definterface fn-csp-done-p :class :common-lisp-compliant)
 (definterface fn-csp-close :class :common-lisp-compliant)
