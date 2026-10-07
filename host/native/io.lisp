@@ -635,12 +635,34 @@ escape preserved unless a cleanup outranks it."
 (defun fnn-directory-p (st) (sb-posix:s-isdir (sb-posix:stat-mode st)))
 (defun fnn-symlink-p (st) (sb-posix:s-islnk (sb-posix:stat-mode st)))
 
+;;; Per-request cost counters (host/native/trace.lisp, lane obs-request-cost).
+;;; A top-level trace span binds *FNN-IO-COUNTERS* to a fresh struct in ITS
+;;; thread, so the counters are thread-local by binding and need no lock; a
+;;; thread outside a span sees NIL.  Off (the default) each leaf pays exactly
+;;; this one special-variable test.  The counters sit at the leaves every
+;;; served read and write reaches (the shared write and read leaves, the TLS
+;;; leaves, the extent pread, the durable barrier), once per syscall.
+(defstruct (fnn-io-counters (:constructor %make-fnn-io-counters))
+  (read 0 :type fixnum) (write 0 :type fixnum) (syscalls 0 :type fixnum))
+(defvar *fnn-io-counters* nil)
+(defmacro fnn-io-count (kind &optional (octets 0))
+  "Advance the calling thread's counters by one syscall and OCTETS of KIND
+(:read, :write or :sync, which moves no octet counter)."
+  (let ((c (gensym "C")))
+    `(let ((,c *fnn-io-counters*))
+       (when ,c
+         (incf (fnn-io-counters-syscalls ,c))
+         ,@(case kind
+             (:read `((incf (fnn-io-counters-read ,c) ,octets)))
+             (:write `((incf (fnn-io-counters-write ,c) ,octets))))))))
+
 (defun fnn-durable-barrier (fd)
   "The strongest durability barrier this platform offers on FD.
 
 specs/host.md 'Durability barriers by platform': F_FULLFSYNC on darwin, with
 fsync(2) after the listed unsupported errnos; fsync(2) elsewhere.  Neither is a
 power-loss qualification."
+  (fnn-io-count :sync)
   #+darwin
   (handler-case (progn (sb-posix:fcntl fd +fnn-f-fullfsync+)
                        (return-from fnn-durable-barrier nil))
@@ -740,11 +762,13 @@ reported to its readiness loop as :WOULD-BLOCK.  Store file writes still turn
 every such syscall failure into an OS error."
   (multiple-value-bind (count errno) (fnn-retry-eintr call deadline)
     (cond ((and (null count) allow-would-block (fnn-would-block-p errno))
+           (fnn-io-count :sync)
            :would-block)
           ((null count) (fnn-os-fail errno))
           ((not (and (integerp count) (> count 0) (<= count remaining)))
            (fnn-fault "~a write made no valid progress" context))
-          (t count))))
+          (t (fnn-io-count :write count)
+             count))))
 
 (defun fnn-write-all (fd octets)
   (let ((data (fnn-octets octets)) (offset 0))
@@ -774,11 +798,13 @@ receive an OS error for every failed read."
   (multiple-value-bind (count errno)
       (fnn-retry-eintr (lambda () (funcall *fnn-read-syscall* fd buffer)) deadline)
     (cond ((and (null count) allow-would-block (fnn-would-block-p errno))
+           (fnn-io-count :sync)
            :would-block)
           ((null count) (fnn-os-fail errno))
           ((not (and (integerp count) (<= 0 count) (<= count (length buffer))))
            (fnn-fault "read returned an invalid count"))
-          (t count))))
+          (t (fnn-io-count :read count)
+             count))))
 
 (defun fnn-read-bounded-fd (fd maximum &optional size)
   "Read at most MAXIMUM octets from one already validated descriptor.
@@ -7405,6 +7431,8 @@ completion (fnn-write-range)."
 preallocated extent changes no size and no allocation, so it fences exactly
 what the byte model's fn-bs-fsync-file fences (an A-HOST condition of the
 qualification profile).  Elsewhere the platform's durable barrier."
+  #+linux
+  (fnn-io-count :sync)
   #+linux
   (when (minusp (sb-alien:alien-funcall
                  (sb-alien:extern-alien "fdatasync" (function sb-alien:int sb-alien:int))

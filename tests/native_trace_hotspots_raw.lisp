@@ -2,6 +2,7 @@
 ;;; host-only code (no ACL2 definition), so no ACL2 world is needed.
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+(load "tests/native_io_counters_prelude.lisp")
 (load "host/native/trace.lisp")
 
 (defun fnth-run ()

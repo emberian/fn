@@ -754,7 +754,12 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
                           (or (fnn-mux-conn-out-end conn) (length (fnn-mux-conn-out conn)))))
             do (let ((progress (fnn-owner-connection-call
                                 service (fnn-mux-conn-out-op conn)
-                                (lambda () (fnn-mux-write-now conn)))))
+                                (lambda ()
+                                  (fnn-trace-span (:mux-write :cid (fnn-mux-conn-cid conn)
+                                                   :operation (fourth (fnn-mux-conn-response-identity conn))
+                                                   :connection-generation
+                                                   (third (fnn-mux-conn-response-identity conn)))
+                                    (fnn-mux-write-now conn))))))
                  (if (integerp progress)
                      (setf (fnn-mux-conn-out-at conn) (+ (fnn-mux-conn-out-at conn) progress)
                            (fnn-mux-conn-send-handed conn)
@@ -1137,7 +1142,8 @@ no exposure wait pending."
          (incoming (fnn-owner-connection-call
                     service :receive
                     (lambda ()
-                      (let ((value (fnn-mux-receive-now service loop conn)))
+                      (let ((value (fnn-trace-span (:mux-read :cid (fnn-mux-conn-cid conn))
+                                     (fnn-mux-receive-now service loop conn))))
                         (unless (or (member value '(:input :output))
                                     (typep value 'fnn-octets))
                           (error "malformed connection receive result"))

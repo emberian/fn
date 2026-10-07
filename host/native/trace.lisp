@@ -2,6 +2,16 @@
 ;;; Allocation counters are SBCL PROCESS totals, inclusive and approximate:
 ;;; simultaneous threads and nested spans overlap. They are not retained heap.
 ;;;
+;;; Per-request cost columns (program section 2b), each labelled with its scope:
+;;; cpu_us the serving THREAD's user+system CPU (clock_gettime
+;;; CLOCK_THREAD_CPUTIME_ID on Linux and Darwin; the PROCESS run time elsewhere,
+;;; cpu_scope says which); gc_us and gc_count PROCESS-wide; read_octets,
+;;; write_octets and syscalls THREAD-local (io.lisp's fnn-io-counters, bound by
+;;; the span); rss_kib the PROCESS resident size, Linux only, every Nth top-level
+;;; span.  gc_count is a lower bound: SBCL runs *after-gc-hooks* in its finalizer
+;;; thread, so a GC at the very end of a span can be counted by the next one; a
+;;; changed GC epoch inside the span makes the count at least 1.
+;;;
 ;;; Tracing is switched by the operator, never by the environment: `fn operator
 ;;; CONFIG trace on|off|drain' (books/decision-trace.lisp fn-dtrace-verb
 ;;; decides; host/native/control.lisp carries the frame).  `trace on' starts
@@ -11,10 +21,18 @@
 (in-package "ACL2")
 
 (defstruct (fnn-trace-row (:constructor %make-fnn-trace-row))
-  id parent cid operation connection-generation phase start duration bytes allocation-scope (outcome :active))
+  id parent cid operation connection-generation phase start duration bytes allocation-scope (outcome :active)
+  ;; Start marks while :active, then the span's deltas (cost columns).
+  (cpu 0) (gc-us 0) (gc-count 0) (read 0) (write 0) (syscalls 0) gc-epoch rss-kib)
 (defstruct (fnn-trace-state (:constructor %make-fnn-trace-state))
   rows (next 0) (attempts 0) (dropped 0) (sample-every 1) allocation
+  ;; rss-every 0: never sampled.  rss-ticket counts top-level span ends (car).
+  (rss-every 0) (rss-ticket (list 0)) rss-fd
   (lock (sb-thread:make-mutex :name "native-trace")))
+(defvar *fnn-trace-gc-cell* (list 0)
+  "The car counts completed collections seen by FNN-TRACE-AFTER-GC (atomic).")
+(defparameter *fnn-trace-cpu-scope* #+(or linux darwin) :thread #-(or linux darwin) :process)
+(declaim (special *fnn-io-counters*)) ; io.lisp owns it (fnn-io-counters)
 (defvar *fnn-trace-state* nil)
 (defvar *fnn-dtrace* nil
   "NIL when decision tracing is off (the default); else the live ring
@@ -30,6 +48,7 @@
 
 (defun fnn-trace-reset ()
   "Start a run with no tracing, whatever an earlier run in this image left."
+  (fnn-trace-release)
   (setf *fnn-trace-state* nil *fnn-trace-parent* nil *fnn-trace-parent-state* nil
         *fnn-dtrace* nil))
 
@@ -38,16 +57,84 @@
 is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
   (floor (* (get-internal-real-time) 1000000) internal-time-units-per-second))
 
-(defun fnn-trace-start (&key (capacity 4096) (sample-every 1) allocation)
+(defun fnn-trace-after-gc ()
+  (sb-ext:atomic-incf (car *fnn-trace-gc-cell*)))
+
+(defun fnn-trace-release ()
+  "Remove what tracing installed in the runtime: the after-GC hook and the
+resident-size descriptor."
+  (setf sb-ext:*after-gc-hooks* (remove 'fnn-trace-after-gc sb-ext:*after-gc-hooks*))
+  (let ((state *fnn-trace-state*))
+    (when (and state (fnn-trace-state-rss-fd state))
+      (ignore-errors (sb-unix:unix-close (fnn-trace-state-rss-fd state)))
+      (setf (fnn-trace-state-rss-fd state) nil))))
+
+(defun fnn-trace-thread-cpu-us ()
+  "CPU microseconds of the calling thread (cpu_scope :thread), else of the process."
+  #+(or linux darwin)
+  (sb-alien:with-alien ((ts (array sb-alien:long 2)))
+    ;; CLOCK_THREAD_CPUTIME_ID: 3 on Linux, 16 on Darwin.
+    (if (zerop (sb-alien:alien-funcall
+                (sb-alien:extern-alien "clock_gettime"
+                                       (function sb-alien:int sb-alien:int (* (array sb-alien:long 2))))
+                #+linux 3 #+darwin 16 (sb-alien:addr ts)))
+        (+ (* (sb-alien:deref ts 0) 1000000) (floor (sb-alien:deref ts 1) 1000))
+      0))
+  #-(or linux darwin)
+  (floor (* (get-internal-run-time) 1000000) internal-time-units-per-second))
+
+(defun fnn-trace-rss-kib (state)
+  "Resident KiB from the preopened /proc/self/statm descriptor, else NIL."
+  #+linux
+  (let ((fd (fnn-trace-state-rss-fd state)))
+    (when fd
+      (sb-alien:with-alien ((buffer (array (sb-alien:unsigned 8) 96)))
+        (let ((n (sb-alien:alien-funcall
+                  (sb-alien:extern-alien "pread" (function sb-alien:long sb-alien:int
+                                                           (* (array (sb-alien:unsigned 8) 96))
+                                                           sb-alien:unsigned-long sb-alien:long))
+                  fd (sb-alien:addr buffer) 96 0))
+              (i 0) (field 0) (value 0))
+          ;; "size resident shared ...": the second field, in pages.
+          (when (plusp n)
+            (loop while (< i n) do
+              (let ((c (sb-alien:deref buffer i)))
+                (cond ((= c 32) (incf field) (when (= field 2) (return)))
+                      ((and (= field 1) (<= 48 c 57)) (setf value (+ (* value 10) (- c 48))))))
+              (incf i))
+            (floor (* value (sb-alien:alien-funcall
+                             (sb-alien:extern-alien "getpagesize" (function sb-alien:int))))
+                   1024))))))
+  #-linux (progn state nil))
+
+(defun fnn-trace-mark (row)
+  "Take ROW's start marks (the span's thread, now)."
+  (let ((c *fnn-io-counters*))
+    (setf (fnn-trace-row-cpu row) (fnn-trace-thread-cpu-us)
+          (fnn-trace-row-gc-us row) sb-ext:*gc-run-time*
+          (fnn-trace-row-gc-count row) (car *fnn-trace-gc-cell*)
+          (fnn-trace-row-gc-epoch row) sb-kernel::*gc-epoch*
+          (fnn-trace-row-read row) (fnn-io-counters-read c)
+          (fnn-trace-row-write row) (fnn-io-counters-write c)
+          (fnn-trace-row-syscalls row) (fnn-io-counters-syscalls c))))
+
+(defun fnn-trace-start (&key (capacity 4096) (sample-every 1) allocation (rss-every 0))
   "A bounded diagnostic buffer. ALLOCATION is NIL, :PROCESS or
 :ISOLATED-PROCESS. Isolation is a caller assertion, never inferred from CID."
   (unless (and (integerp capacity) (plusp capacity)
                (integerp sample-every) (plusp sample-every)
-               (member allocation '(nil :process :isolated-process)))
+               (member allocation '(nil :process :isolated-process))
+               (typep rss-every '(integer 0 1000000)))
     (error "invalid native trace configuration"))
+  (fnn-trace-release)
+  (pushnew 'fnn-trace-after-gc sb-ext:*after-gc-hooks*)
   (setf *fnn-trace-state*
         (%make-fnn-trace-state :rows (make-array capacity :initial-element nil)
-                              :sample-every sample-every :allocation allocation)))
+                              :sample-every sample-every :allocation allocation
+                              :rss-every rss-every
+                              :rss-fd #+linux (and (plusp rss-every)
+                                                   (ignore-errors (values (sb-unix:unix-open "/proc/self/statm" sb-unix:o_rdonly 0))))
+                                      #-linux nil)))
 
 (defun fnn-trace-begin (state phase cid operation connection-generation)
   "Reserve one bounded row. Identity is diagnostic, not durable acceptance."
@@ -78,12 +165,29 @@ is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
 (defun fnn-trace-finish (state row start bytes outcome)
   ;; Sample before observer locking/formatting; this still includes runtime
   ;; counter overhead and allocations by other threads in the same process.
-  (let ((duration (- (fnn-trace-now) start))
-        (allocated (and bytes (- (sb-ext:get-bytes-consed) bytes))))
+  (let* ((allocated (and bytes (- (sb-ext:get-bytes-consed) bytes)))
+         (duration (- (fnn-trace-now) start))
+         (c *fnn-io-counters*)
+         (cpu (- (fnn-trace-thread-cpu-us) (fnn-trace-row-cpu row)))
+         (gc-us (floor (* (- sb-ext:*gc-run-time* (fnn-trace-row-gc-us row)) 1000000)
+                       internal-time-units-per-second))
+         (gc-count (max (- (car *fnn-trace-gc-cell*) (fnn-trace-row-gc-count row))
+                        (if (eq sb-kernel::*gc-epoch* (fnn-trace-row-gc-epoch row)) 0 1)))
+         (read (- (fnn-io-counters-read c) (fnn-trace-row-read row)))
+         (write (- (fnn-io-counters-write c) (fnn-trace-row-write row)))
+         (syscalls (- (fnn-io-counters-syscalls c) (fnn-trace-row-syscalls row)))
+         (every (fnn-trace-state-rss-every state))
+         (rss (and (plusp every) (null (fnn-trace-row-parent row))
+                   (zerop (mod (sb-ext:atomic-incf (car (fnn-trace-state-rss-ticket state))) every))
+                   (fnn-trace-rss-kib state))))
     (sb-thread:with-mutex ((fnn-trace-state-lock state))
       (setf (fnn-trace-row-start row) start
             (fnn-trace-row-duration row) duration
             (fnn-trace-row-bytes row) allocated
+            (fnn-trace-row-cpu row) cpu (fnn-trace-row-gc-us row) gc-us
+            (fnn-trace-row-gc-count row) gc-count (fnn-trace-row-read row) read
+            (fnn-trace-row-write row) write (fnn-trace-row-syscalls row) syscalls
+            (fnn-trace-row-gc-epoch row) nil (fnn-trace-row-rss-kib row) rss
             (fnn-trace-row-outcome row) outcome))))
 
 (defmacro fnn-trace-span ((phase &key cid (operation '*fnn-trace-operation*)
@@ -92,13 +196,16 @@ is INTERNAL-TIME-UNITS-PER-SECOND, not a promised microsecond clock."
 one special-variable test, no identity evaluation, clock read or thunk."
   (let ((state (gensym "STATE")) (row (gensym "ROW"))
         (start (gensym "START")) (bytes (gensym "BYTES")) (ready (gensym "READY"))
-        (outcome (gensym "OUTCOME")))
+        (outcome (gensym "OUTCOME")) (counters (gensym "COUNTERS")))
     `(if *fnn-trace-state*
          (let* ((,state *fnn-trace-state*)
                 (,row (ignore-errors (fnn-trace-begin ,state ,phase ,cid ,operation ,connection-generation))))
            (if ,row
+               (let* ((,counters (or *fnn-io-counters* (%make-fnn-io-counters)))
+                      (*fnn-io-counters* ,counters))
                (multiple-value-bind (,start ,bytes ,ready)
                    (ignore-errors
+                     (fnn-trace-mark ,row)
                      (values (fnn-trace-now)
                              (and (fnn-trace-state-allocation ,state) (sb-ext:get-bytes-consed)) t))
                  (if ,ready
@@ -114,7 +221,7 @@ one special-variable test, no identity evaluation, clock read or thunk."
                               (multiple-value-prog1 (progn ,@body) (setf ,outcome :returned)))
                          ;; A diagnostic failure must not replace a primary exit.
                          (ignore-errors (fnn-trace-finish ,state ,row ,start ,bytes ,outcome))))
-                   (progn ,@body)))
+                   (progn ,@body))))
              (progn ,@body)))
        (progn ,@body))))
 
@@ -145,7 +252,7 @@ mutex; no conditions, thread names, addresses or payloads are serialized."
           (let ((row (aref rows i)))
             (when row
               (format stream
-                      "~&FN_TRACE {\"type\":\"span\",\"span_id\":~d,\"parent_id\":~a,\"connection_id\":~a,\"operation_id\":~a,\"connection_generation\":~a,\"phase\":\"~(~a~)\",\"start_us\":~d,\"duration_us\":~d,\"allocated_bytes\":~a,\"allocation_scope\":\"~(~a~)\",\"outcome\":\"~(~a~)\"}~%"
+                      "~&FN_TRACE {\"v\":2,\"type\":\"span\",\"span_id\":~d,\"parent_id\":~a,\"connection_id\":~a,\"operation_id\":~a,\"connection_generation\":~a,\"phase\":\"~(~a~)\",\"start_us\":~d,\"duration_us\":~d,\"allocated_bytes\":~a,\"allocation_scope\":\"~(~a~)\",\"outcome\":\"~(~a~)\",\"cpu_us\":~d,\"cpu_scope\":\"~(~a~)\",\"gc_us\":~d,\"gc_count\":~d,\"gc_scope\":\"process\",\"read_octets\":~d,\"write_octets\":~d,\"syscalls\":~d,\"io_scope\":\"thread\",\"rss_kib\":~a,\"rss_scope\":\"process\"}~%"
                       (fnn-trace-row-id row) (or (fnn-trace-row-parent row) "null")
                       (or (fnn-trace-row-cid row) "null")
                       (or (fnn-trace-row-operation row) "null")
@@ -153,7 +260,11 @@ mutex; no conditions, thread names, addresses or payloads are serialized."
                       (fnn-trace-row-start row) (fnn-trace-row-duration row)
                       (or (fnn-trace-row-bytes row) "null")
                       (or (fnn-trace-row-allocation-scope row) :disabled)
-                      (fnn-trace-row-outcome row)))))
+                      (fnn-trace-row-outcome row)
+                      (fnn-trace-row-cpu row) *fnn-trace-cpu-scope*
+                      (fnn-trace-row-gc-us row) (fnn-trace-row-gc-count row)
+                      (fnn-trace-row-read row) (fnn-trace-row-write row)
+                      (fnn-trace-row-syscalls row) (or (fnn-trace-row-rss-kib row) "null")))))
         (format stream "~&FN_TRACE {\"type\":\"summary\",\"attempts\":~d,\"recorded\":~d,\"dropped\":~d,\"incomplete\":~d,\"sample_every\":~d,\"clock_ticks_per_second\":~d}~%"
                 attempts recorded dropped incomplete sample-every internal-time-units-per-second)
         (finish-output stream)))))

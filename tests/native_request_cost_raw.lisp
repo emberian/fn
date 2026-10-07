@@ -14,8 +14,7 @@
     (if (and value (plusp (length value))) value default)))
 
 (load-deployed-forms (cost-source "FN_COST_IO_SOURCE" "host/native/io.lisp")
- '((defstruct (fnn-io-counters (:constructor %make-fnn-io-counters)))
-   (defvar *fnn-io-counters*) (defmacro fnn-io-count)
+ '((defmacro fnn-io-count)
    (defvar *fnn-write-syscall*) (defvar *fnn-read-syscall*)
    (defun fnn-eintr-p) (defun fnn-would-block-p) (defun fnn-retry-eintr)
    (defun fnn-write-progress) (defun fnn-transport-write-now)))
@@ -64,8 +63,9 @@
     (loop while (< (get-internal-real-time) until) do (setf x (logxor (1+ x) (ash x 1)) x (logand x #xffff)))
     x))
 
-(let ((*fnn-write-syscall* (lambda (fd data offset count) (declare (ignore fd data offset))
-                             (values (min count 4096) nil))))
+(setf *fnn-write-syscall* (lambda (fd data offset count) (declare (ignore fd data offset))
+                            (values (min count 4096) nil)))
+(progn
   ;; OFF: no state, no counters, same values.
   (fnn-trace-reset)
   (assert (null *fnn-io-counters*))

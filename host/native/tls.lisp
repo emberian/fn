@@ -994,7 +994,8 @@ wait."
       (fnn-%err-clear-error)
       (let ((result (fnn-%ssl-read ssl (fnn-tls-pointer buffer) limit)))
         (if (> result 0)
-            (subseq buffer 0 result)
+            (progn (fnn-io-count :read result)
+                   (subseq buffer 0 result))
           (let ((disposition (fnn-tls-retry-direction ssl result)))
             (cond ((eq disposition :closed) (fnn-make-octets 0))
                   ((member disposition '(:input :output)) disposition)
@@ -1010,7 +1011,8 @@ wait."
       (fnn-%err-clear-error)
       (let ((result (fnn-%ssl-write ssl (fnn-tls-pointer data offset) count)))
         (if (> result 0)
-            result
+            (progn (fnn-io-count :write result)
+                   result)
           (let ((disposition (fnn-tls-retry-direction ssl result)))
             (if (member disposition '(:input :output))
                 disposition

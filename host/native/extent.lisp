@@ -248,6 +248,7 @@ both (e.g. the history refresh, LOCK-R2-PGS-FILL-REALIZE-REENTRY)."
                                                      sb-alien:system-area-pointer
                                                      sb-alien:unsigned-long sb-alien:long))
                     fd (sb-sys:sap+ (sb-sys:vector-sap octets) done) (- n done) (+ offset done)))))
+        (fnn-io-count :read (max got 0))
         (cond ((plusp got) (incf done got))
               ((zerop got) (return))
               (t (return)))))
