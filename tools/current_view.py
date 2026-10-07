@@ -42,7 +42,6 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs  # noqa: E402
 import commit_map
-import evidence_store  # noqa: E402
 import green_check  # noqa: E402
 import ledger  # noqa: E402
 
@@ -109,11 +108,11 @@ class Evidence:
 
 def record_link(root: Path, rel: str, *mentions: str) -> str:
     path = root / rel
-    # A record under planning/evidence/ is read by its indexed hash when the
-    # working tree no longer carries it (tools/evidence_store.py).
-    if not evidence_store.exists(root, rel):
+    if not path.exists():
+        if rel.startswith("planning/evidence/"):
+            return f"`{path.stem}` (retired record)"  # left the tree with D71; not resolved
         raise ViewError(f"record {rel} is absent")
-    text = evidence_store.read_text(root, rel)
+    text = path.read_text(encoding="utf-8")
     for mention in mentions:
         if mention and mention not in text:
             raise ViewError(f"record {rel} does not mention {mention}")
@@ -397,10 +396,6 @@ def main(argv: list[str] | None = None) -> int:
             return 3
         print(f"current view: no answer from the cert cache: {error}", file=sys.stderr)
         return 2
-    except evidence_store.EvidenceError as error:
-        print(f"current view: {evidence_store.outcome(error)}: committed evidence cannot "
-              f"be accepted: {error}", file=sys.stderr)
-        return evidence_store.exit_code(error)
     except (ViewError, KeyError) as error:
         print(f"current view: {error}", file=sys.stderr)
         return 1

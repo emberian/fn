@@ -2809,7 +2809,7 @@ check:
 # figure is UNQUIET, a failed attempt FAILED. Installed pairs have no proof time.
 	@$(CHECK_STEP) $(PYTHON) tools/proof_cost.py
 # The throughput gate (PKT-407): the newest hbox run under
-# planning/evidence/throughput/ for HEAD or its nearest measured ancestor,
+# planning/throughput/ for HEAD or its nearest measured ancestor,
 # against planning/throughput-baseline.json per operation (25% or the
 # metric's floor); a regression fails unless planning/throughput-causes.json
 # names the run's revision with a reason.  No run: NOT MEASURED, passes.

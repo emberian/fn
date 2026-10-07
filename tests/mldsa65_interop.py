@@ -17,7 +17,7 @@ is the reference the node used before HST-016; this checks, both ways:
               and 70000 octets (and 0 octets seam-only: pkeyutl refuses
               an empty input).
   fixtures    Every committed signed carrier (FN-Authorship articles under
-              tests/ and planning/evidence/, including those embedded in
+              tests/ and planning/, including those embedded in
               stores, inboxes and BP ADUs), signed by OpenSSL 3.5: the seam
               and OpenSSL both verify the carrier's ML-DSA-65 signature over
               fn's signed preimage (tools/fn_verify.py's restatement).
@@ -39,7 +39,6 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
-import evidence_store
 import fn_verify  # noqa: E402
 
 PK, SIG, SK, SEED = 1952, 3309, 4032, 32
@@ -239,27 +238,18 @@ def transcript_articles(data):
 
 def corpus_bytes(rel, root=None):
     root = Path(ROOT if root is None else root)
-    try:
-        return evidence_store.read_bytes(root, rel)
-    except evidence_store.EvidenceError as error:
-        raise type(error)(f"{rel}: {error}") from error
+    return (root / rel).read_bytes()
 
 
 def corpus(root=None):
-    """Union of tracked and indexed keys/carriers; no unreadable candidates omitted.
-
-    Counts partition carrier files by origin; 'both' is counted only once.
-    Scan one file at a time, including indexed containers and transcripts.
-    """
+    """The tracked keys and carriers under tests/ and planning/, one file at a time."""
     root = Path(ROOT if root is None else root)
     tracked = set(subprocess.check_output(
         ['git', '-C', str(root), 'ls-files', '-z', '--', 'tests', 'planning']
     ).decode().rstrip('\0').split('\0')) - {''}
-    indexed = {p for p in evidence_store.read_index(root)
-               if p.startswith(('tests/', 'planning/'))}
     keys, carriers = [], []
-    counts = dict(tracked=0, indexed=0, both=0)
-    for rel in sorted(tracked | indexed):
+    counts = dict(tracked=0)
+    for rel in sorted(tracked):
         key = rel.endswith(('.pem', '.raw'))
         candidate = not rel.endswith(('.py', '.lisp', '.md'))
         if not key and not candidate:
@@ -269,9 +259,7 @@ def corpus(root=None):
             keys.append(rel)
         if candidate and re.search(rb'(?i)fn-authorship:', content):
             carriers.append(rel)
-            source = 'both' if rel in tracked and rel in indexed else (
-                'indexed' if rel in indexed else 'tracked')
-            counts[source] += 1
+            counts['tracked'] += 1
     return keys, carriers, counts
 
 
@@ -286,10 +274,9 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         pem_files, files, corpus_counts = corpus()
-    except (evidence_store.EvidenceError, OSError, ValueError) as error:
+    except (OSError, ValueError) as error:
         print(f"mldsa65_interop: {type(error).__name__}: {error}", file=sys.stderr)
-        return (evidence_store.exit_code(error)
-                if isinstance(error, evidence_store.EvidenceError) else 1)
+        return 1
     seam = Seam(args.library)
     findings, report = [], {"implementation": seam.implementation(),
                             "carrier-file-sources": corpus_counts}
@@ -453,8 +440,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main())
-    except evidence_store.EvidenceError as error:
-        print(f"mldsa65_interop: {type(error).__name__}: {error}", file=sys.stderr)
-        sys.exit(evidence_store.exit_code(error))
+    sys.exit(main())

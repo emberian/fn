@@ -1,0 +1,300 @@
+{
+  "schema": 1,
+  "revision": "f23a5e46a0824519658cc13c16492bddd7453041",
+  "label": "batch-ao",
+  "image": "/tank/fn/scratch/throughput-gate/native-img-f23a5e46a/tree/build/fn-host-developer",
+  "core_sha256": "d72c9247f866857ac8898226c7fddafdb615aa35ea635d8c78d10c0e81f621c0",
+  "launcher_sha256": "e61e4fc3712f11fb110abf99c3abcc4093cc09c2b68e9d4f56ac1bc40f84f34b",
+  "client_sha256": {
+    "tools/throughput_gate.py": "0375dffdcc3e88b6e5b27af3d59c5c6fde1a7f2394323ab07ce4a54316d63e82",
+    "tools/msgid_measure.py": "97a1a72895819546455f64b0d8752e961e983a1757fb58615ce4c5dd408e6fa4",
+    "tools/rep_measure.py": "51f6dc95b094f85310a998e0f095c7aea44effba153f54d71b7932b5949bb3d0",
+    "tools/signed_carriers.py": "353fdeae5290b2fb4fe11b6783397c506a29a6b9ab5831e069972db3cbb9e290",
+    "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/native_process.py": "141d8edd49ed06e5711aebb3ddd3354c09ace10051a13e7f53992345fa6c8b4c"
+  },
+  "filesystem": "tmpfs",
+  "host": "hbox",
+  "started_utc": "2026-09-27T01:28:28Z",
+  "quiet_before": {
+    "own_unit": "throughput-gate-f23a5e46a082-20260927T012822Z.service",
+    "window_s": 10.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "run-r1086ff6d2e7842e9a627f56c3b7b28c5.scope",
+        "cpu_cores": 1.028,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_pack_chain\""
+      },
+      {
+        "unit": "run-radcb11a6a7ab4ec8b563807ad835f439.scope",
+        "cpu_cores": 1.027,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_bp_fragment_node_native\""
+      },
+      {
+        "unit": "run-rb7948468d6364a47bc9a526b76c0c625.scope",
+        "cpu_cores": 1.047,
+        "description": "/usr/local/bin/swarm-build sh tools/build_native_host.sh"
+      },
+      {
+        "unit": "run-rfff6c8d68be44e0593279c0bf466cf95.scope",
+        "cpu_cores": 1.025,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_pack_chain\""
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.019,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "obi-after.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh /tank/fn/scratch/open-by-index/after.sh"
+      },
+      {
+        "unit": "pl-obsd-camp-raw2.service",
+        "cpu_cores": 0.005,
+        "description": "/usr/bin/sh -c \"python3 power_loss_openbsd.py campaign raw2 --seed 302 --epochs 5 --keep-disk > camp-raw2.log 2>&1\""
+      },
+      {
+        "unit": "pl-obsd-camp-raw3.service",
+        "cpu_cores": 0.028,
+        "description": "/usr/bin/sh -c \"python3 power_loss_openbsd.py campaign raw3 --seed 303 --epochs 5 --keep-disk > camp-raw3.log 2>&1\""
+      },
+      {
+        "unit": "pl-obsd-camp-raw4.service",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"python3 power_loss_openbsd.py campaign raw4 --seed 304 --epochs 5 --keep-disk > camp-raw4.log 2>&1\""
+      },
+      {
+        "unit": "pl-obsd-initcuts-raw5.service",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"python3 power_loss_openbsd_next.py initcuts raw5 --seed 501 --epochs 25 --keep-disk > initcuts-raw5.log 2>&1\""
+      },
+      {
+        "unit": "rc2-explore.service",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 explore.py"
+      },
+      {
+        "unit": "run-r140c6fc3f9bc45e9be79d3195da3d152.scope",
+        "cpu_cores": 0.0,
+        "description": "/tank/fn/scratch/storage-log-design/repl.sh python3 tools/proof_repl.py start lgh books/store-log --limit 120"
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-r5f4a2a91d77d41639f1918fda11d3ea5.scope",
+        "cpu_cores": 0.002,
+        "description": "/tank/fn/scratch/connection-multiplexing/native-r5/tree/build/fn-host --fn operator /tmp/fn-hostile-yx6eghrg/fn.toml run"
+      },
+      {
+        "unit": "run-r774bfc9bb3de4581ab4550ed89747264.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/python3 tools/proof_repl.py start cl books/config-owner-live --upto fn-ocl-pin-set-keeps-conns-pinned"
+      },
+      {
+        "unit": "run-racf91acf5f4741d8b4f1345896dd9704.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 tools/owner_post_measure.py build/fn-host-developer --posts 50 --peer"
+      },
+      {
+        "unit": "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 prec1_replay.py /tank/fn/scratch/control-across-peers/native-prec1/tree /tank/fn/scratch/control-across-peers/native-m2/tree /tank/fn/scratch/c"
+      },
+      {
+        "unit": "run-re6cd605372e0431ba5e7f5894c0145e1.scope",
+        "cpu_cores": 0.01,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_peer_by_name\""
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.005,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      },
+      {
+        "unit": "spike-reader-node.service",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/spike_reader_node.py --image /tank/fn/scratch/spike-reader/tree/build/fn-host-developer --tree /tank/fn/scratch/spike-"
+      },
+      {
+        "unit": "spike-reader-web.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/fn_web.py --node 127.0.0.1:11919 --tls-cert node1/cert.pem --user ember --port 8919 --outbox web/outbox --marks web/ma"
+      }
+    ]
+  },
+  "quiet": false,
+  "probe_rc": 0,
+  "probe_n": 1000,
+  "probe_wall_s": 1.716,
+  "probe_cpu_s": 1.713,
+  "probe_reported": {
+    "host": "native",
+    "transactions": 1000,
+    "payload_bytes": 2048,
+    "commit_seconds": 0.67,
+    "reopen_seconds": 0.94,
+    "status": "passed"
+  },
+  "probe_commit_ms": 0.67,
+  "probe_reopen_s": 0.94,
+  "phase_seconds": {
+    "probe": 2.235,
+    "alloc": 2.13,
+    "served": 2.486,
+    "signed": 33.969,
+    "checkpoint": 180.394
+  },
+  "alloc_condition": "TYPE-ERROR",
+  "probe_bytes_consed_per_commit": 1406540,
+  "post_load_s": 0.34,
+  "post_owner_cpu_ms": 3.1,
+  "post_n": 100,
+  "post_octets": 2048,
+  "post_median_ms": 3.356,
+  "post_p95_ms": 4.488,
+  "article_n": 100,
+  "article_median_ms": 5.82,
+  "article_p95_ms": 6.307,
+  "reopen_s": 0.215,
+  "reopen_last_stat": "223 0 <t17-000099@example.invalid> retrieved",
+  "signed_history_load_s": 6.194,
+  "post_signed_owner_cpu_ms": 89.8,
+  "post_signed_n": 100,
+  "post_signed_history": 1000,
+  "post_signed_history_signed": 32,
+  "post_signed_octets": 9522,
+  "post_signed_median_ms": 85.108,
+  "post_signed_p95_ms": 111.779,
+  "post_signed_group": "211 1100 1 1100 fn.test",
+  "carrier_sign_median_s": 0.134,
+  "checkpoint_article_octets": 31744,
+  "checkpoint_posts": 64,
+  "checkpoint_published": false,
+  "box_load": {
+    "samples": 44,
+    "interval_s": 5.0,
+    "cpus": 24,
+    "box_cpu_busy_median": 0.521,
+    "box_cpu_busy_max": 0.66,
+    "loadavg1_median": 12.34,
+    "loadavg1_max": 14.06
+  },
+  "quiet_after": {
+    "own_unit": "throughput-gate-f23a5e46a082-20260927T012822Z.service",
+    "window_s": 5.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "pl-obsd-camp-raw2.service",
+        "cpu_cores": 0.067,
+        "description": "/usr/bin/sh -c \"python3 power_loss_openbsd.py campaign raw2 --seed 302 --epochs 5 --keep-disk > camp-raw2.log 2>&1\""
+      },
+      {
+        "unit": "pl-obsd-camp-raw4.service",
+        "cpu_cores": 0.853,
+        "description": "/usr/bin/sh -c \"python3 power_loss_openbsd.py campaign raw4 --seed 304 --epochs 5 --keep-disk > camp-raw4.log 2>&1\""
+      },
+      {
+        "unit": "run-r1086ff6d2e7842e9a627f56c3b7b28c5.scope",
+        "cpu_cores": 1.051,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_pack_chain\""
+      },
+      {
+        "unit": "run-r684d184a2f024c468d0d1bfe71623d5b.scope",
+        "cpu_cores": 1.048,
+        "description": "/usr/local/bin/swarm-build python3 tools/certify_books.py --incremental --jobs 8 --timeout-seconds 900 books/accounts books/anchor-invariants books/anchor-repla"
+      },
+      {
+        "unit": "run-rf24dde45ad9c42a9a27b16e4f9c8f61b.scope",
+        "cpu_cores": null,
+        "description": "/usr/bin/python3 mux_measure.py /tank/fn/scratch/throughput-gate/native-img-6701d5753/tree/build/fn-host-developer /tank/fn/scratch/connection-multiplexing/meas"
+      },
+      {
+        "unit": "run-rfff6c8d68be44e0593279c0bf466cf95.scope",
+        "cpu_cores": 1.051,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_pack_chain\""
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.028,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "obi-after.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh /tank/fn/scratch/open-by-index/after.sh"
+      },
+      {
+        "unit": "pl-obsd-camp-raw3.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"python3 power_loss_openbsd.py campaign raw3 --seed 303 --epochs 5 --keep-disk > camp-raw3.log 2>&1\""
+      },
+      {
+        "unit": "pl-obsd-initcuts-raw5.service",
+        "cpu_cores": 0.006,
+        "description": "/usr/bin/sh -c \"python3 power_loss_openbsd_next.py initcuts raw5 --seed 501 --epochs 25 --keep-disk > initcuts-raw5.log 2>&1\""
+      },
+      {
+        "unit": "rc2-explore.service",
+        "cpu_cores": 0.002,
+        "description": "/usr/bin/python3 explore.py"
+      },
+      {
+        "unit": "run-r140c6fc3f9bc45e9be79d3195da3d152.scope",
+        "cpu_cores": 0.0,
+        "description": "/tank/fn/scratch/storage-log-design/repl.sh python3 tools/proof_repl.py start lgh books/store-log --limit 120"
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-r774bfc9bb3de4581ab4550ed89747264.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/python3 tools/proof_repl.py start cl books/config-owner-live --upto fn-ocl-pin-set-keeps-conns-pinned"
+      },
+      {
+        "unit": "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 prec1_replay.py /tank/fn/scratch/control-across-peers/native-prec1/tree /tank/fn/scratch/control-across-peers/native-m2/tree /tank/fn/scratch/c"
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.009,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      },
+      {
+        "unit": "spike-reader-node.service",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/spike_reader_node.py --image /tank/fn/scratch/spike-reader/tree/build/fn-host-developer --tree /tank/fn/scratch/spike-"
+      },
+      {
+        "unit": "spike-reader-web.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/fn_web.py --node 127.0.0.1:11919 --tls-cert node1/cert.pem --user ember --port 8919 --outbox web/outbox --marks web/ma"
+      }
+    ]
+  },
+  "finished_utc": "2026-09-27T01:34:46Z"
+}

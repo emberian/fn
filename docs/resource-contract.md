@@ -53,7 +53,7 @@ Three kinds of evidence appear, and a row is labelled with exactly one:
   calls (the host subject is named). Green is not true: the row is a claim
   about the model, and the boundary theorems that connect the model to
   octets and files are the ones the row names, not others.
-- **MEASURED**: a record under `planning/evidence/` with its scope (machine,
+- **MEASURED**: a record under `planning/records/` with its scope (machine,
   image, workload) and margin. A measurement is a fact about one run; it is
   never authority for admission.
 - **OPEN**: no theorem and no measurement. The row says what it would take.
@@ -991,16 +991,16 @@ not on this tree yet; its citations are checked once they land.
 
 | Row | Theorems (book: events) | Proofs | Records | Landing |
 | --- | --- | --- | --- | --- |
-| M1 | `books/heap-figure`: `fn-heap-decide-refuses-exactly-past-the-machine`, `fn-heap-decision-exit-code-of-a-refusal`, `fn-heap-operation-decide-holds-the-store`; `books/heap-reservation`: `fn-heap-init-decide-fits-the-budget-and-the-machine`, `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`, `fn-heap-reserve-decide-holds-every-thread-the-node-runs`, `fn-heap-reserve-thread-refusal-exits-1` | PRF-198 | `planning/evidence/heap-from-profile-2026-09-26.md`, `planning/evidence/heap-bounds-2026-09-28.md` |  |
-| M2 | `books/heap-store-figure`: `fn-heap-store-figure-holds-every-store`, `fn-heap-store-history-holds-payload-and-memberships`, `fn-heap-records-retained-within-the-terms` | PRF-198, PRF-314 | `planning/evidence/heap-bounds-2026-09-28.md` |  |
-| M2b | `books/heap-store-figure`: `fn-heap-record-charge-is-the-budgets-charge`, `fn-heap-record-charge-covers-the-state`, `fn-heap-records-retained-within-the-terms`; `books/heap-figure`: `fn-heap-small-run-base-of-an-empty-store` | PRF-198 | `planning/evidence/heap-bounds-2026-09-28.md` |  |
-| M3 | `books/heap-breakdown`: `fn-heap-breakdown-sums-to-the-reservation`, `fn-heap-breakdown-is-inits-reservation` | PRF-375 | `planning/evidence/f8-reservation-2026-09-28.md` |  |
+| M1 | `books/heap-figure`: `fn-heap-decide-refuses-exactly-past-the-machine`, `fn-heap-decision-exit-code-of-a-refusal`, `fn-heap-operation-decide-holds-the-store`; `books/heap-reservation`: `fn-heap-init-decide-fits-the-budget-and-the-machine`, `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`, `fn-heap-reserve-decide-holds-every-thread-the-node-runs`, `fn-heap-reserve-thread-refusal-exits-1` | PRF-198 | `planning/records/heap-from-profile-2026-09-26.md`, `planning/records/heap-bounds-2026-09-28.md` |  |
+| M2 | `books/heap-store-figure`: `fn-heap-store-figure-holds-every-store`, `fn-heap-store-history-holds-payload-and-memberships`, `fn-heap-records-retained-within-the-terms` | PRF-198, PRF-314 | `planning/records/heap-bounds-2026-09-28.md` |  |
+| M2b | `books/heap-store-figure`: `fn-heap-record-charge-is-the-budgets-charge`, `fn-heap-record-charge-covers-the-state`, `fn-heap-records-retained-within-the-terms`; `books/heap-figure`: `fn-heap-small-run-base-of-an-empty-store` | PRF-198 | `planning/records/heap-bounds-2026-09-28.md` |  |
+| M3 | `books/heap-breakdown`: `fn-heap-breakdown-sums-to-the-reservation`, `fn-heap-breakdown-is-inits-reservation` | PRF-375 | `planning/records/f8-reservation-2026-09-28.md` |  |
 | M4 | `books/heap-open-nursery`: `fn-heap-open-nursery-trigger-bounds`, `fn-heap-store-figure-holds-every-store-at-the-open-trigger` | PRF-364 | none |  |
-| M5 | `books/owner-article-slots`: `fn-oas-read-span-admits-within-the-slots`; `books/owner-article-held`: `fn-oah-read-span-leaves-the-others-article-mode`; `books/heap-store-figure`: `fn-heap-article-slots-are-held`, `fn-heap-article-slots-bounds` | PRF-377 | `planning/evidence/zero-copy-commit-2026-09-28.md` |  |
-| M5b | `books/owner-article-slots`: `fn-oas-refusal-line-follows-the-disk-unfolds` | PRF-377 | `planning/evidence/credits-stall-2026-09-28.md` |  |
-| M6 | `books/memory-credits`: `fn-mcr-transitions-keep-funded`, `fn-mcr-acquire-refuses-exactly-past-the-budget`, `fn-mcr-grow-within-the-reserve-is-admitted`, `fn-mcr-overdraw-is-within-the-completion-reserve`; `books/owner-credits`: `fn-mca-read-span-keeps-funded`, `fn-mca-commit-steps-keep-funded`, `fn-mca-initial-funds-exactly-the-articles` | PRF-380 | `planning/evidence/f8-reservation-2026-09-28.md`, `planning/evidence/credits-2026-09-28.md` |  |
-| M7 | `books/connection-budget`: `fn-cbud-run-decide-refuses-exactly-past-the-limit`, `fn-cbud-deltas-refusal-keeps-the-machine-held`; `books/connection-read-quantum`: `fn-cbud-step-read-octets-is-bounded` | PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md` |  |
-| M8 | none (measured or open) | none | `planning/evidence/f8-reservation-2026-09-28.md` |  |
+| M5 | `books/owner-article-slots`: `fn-oas-read-span-admits-within-the-slots`; `books/owner-article-held`: `fn-oah-read-span-leaves-the-others-article-mode`; `books/heap-store-figure`: `fn-heap-article-slots-are-held`, `fn-heap-article-slots-bounds` | PRF-377 | `planning/records/zero-copy-commit-2026-09-28.md` |  |
+| M5b | `books/owner-article-slots`: `fn-oas-refusal-line-follows-the-disk-unfolds` | PRF-377 | `planning/records/credits-stall-2026-09-28.md` |  |
+| M6 | `books/memory-credits`: `fn-mcr-transitions-keep-funded`, `fn-mcr-acquire-refuses-exactly-past-the-budget`, `fn-mcr-grow-within-the-reserve-is-admitted`, `fn-mcr-overdraw-is-within-the-completion-reserve`; `books/owner-credits`: `fn-mca-read-span-keeps-funded`, `fn-mca-commit-steps-keep-funded`, `fn-mca-initial-funds-exactly-the-articles` | PRF-380 | `planning/records/f8-reservation-2026-09-28.md`, `planning/records/credits-2026-09-28.md` |  |
+| M7 | `books/connection-budget`: `fn-cbud-run-decide-refuses-exactly-past-the-limit`, `fn-cbud-deltas-refusal-keeps-the-machine-held`; `books/connection-read-quantum`: `fn-cbud-step-read-octets-is-bounded` | PRF-223 | `planning/records/connection-multiplexing-2026-09-26.md` |  |
+| M8 | none (measured or open) | none | `planning/records/f8-reservation-2026-09-28.md` |  |
 | M9 | `books/cold-read-reservation`: `fn-crv-accepted-launch-fits-observed-machine` | none | none |  |
 | M10 | none (measured or open) | none | none |  |
 | M11 | `books/owner-obligation-state`: `fn-owner-install-keeps-the-obligation-view`, `fn-owner-open-keeps-the-obligation-view`; `books/heap-figure`: `fn-heap-small-run-base-of-an-empty-store` | PRF-198 | none |  |
@@ -1015,21 +1015,21 @@ not on this tree yet; its citations are checked once they land.
 | W9 | `books/owner-batch`: `fn-owb-batch-within-bounds`; `books/store-log-route`: `fn-olr-take-keeps-the-bounds` | PRF-254 | none |  |
 | W10 | `books/public-exposure`: `fn-exp-charge-bounds-steps-per-quantum`, `fn-exp-charge-waits-and-never-closes` | PRF-161 | none |  |
 | W11 | `books/consumer-wait`: `fn-cwait-capacity-is-positive` | none | none |  |
-| S1 | none (measured or open) | none | `tools/depth_check.py`, `tools/depth_baseline.json`, `planning/evidence/open-depth-2026-09-28.md`, `planning/evidence/serve-depth-2026-09-28.md`, `planning/evidence/peer-list-depth-2026-09-28.md` |  |
+| S1 | none (measured or open) | none | `tools/depth_check.py`, `tools/depth_baseline.json`, `planning/records/open-depth-2026-09-28.md`, `planning/records/serve-depth-2026-09-28.md`, `planning/records/peer-list-depth-2026-09-28.md` |  |
 | S1b | none (measured or open) | none | `tools/raw_depth_check.py`, `tools/raw_depth_baseline.json` |  |
 | S2 | `books/heap-reservation`: `fn-heap-reserve-decide-holds-every-thread-the-node-runs` | PRF-198 | none |  |
-| T1 | `books/owner-tls-prefix`: `fn-own-read-tls-prefix-consumed-is-bounded`; `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded` | PRF-213, PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md`, `planning/evidence/tls-reload-2026-09-26.md` |  |
-| C1 | `books/owner-time-model`: `fn-otm-stall-tells-no-member-its-outcome`, `fn-otm-shed-iff-slow`, `fn-otm-wait-stays-within-the-stall`, `fn-otm-f4w-stall-within-h`, `fn-otm-barrier-reader-bound`; `books/owner-batch`: `fn-owb-fence-failed-answers-uncertain` | PRF-311, PRF-255 | `planning/evidence/time-model-2026-09-27.md`, `planning/evidence/time-model-2-2026-09-27.md` |  |
+| T1 | `books/owner-tls-prefix`: `fn-own-read-tls-prefix-consumed-is-bounded`; `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded` | PRF-213, PRF-223 | `planning/records/connection-multiplexing-2026-09-26.md`, `planning/records/tls-reload-2026-09-26.md` |  |
+| C1 | `books/owner-time-model`: `fn-otm-stall-tells-no-member-its-outcome`, `fn-otm-shed-iff-slow`, `fn-otm-wait-stays-within-the-stall`, `fn-otm-f4w-stall-within-h`, `fn-otm-barrier-reader-bound`; `books/owner-batch`: `fn-owb-fence-failed-answers-uncertain` | PRF-311, PRF-255 | `planning/records/time-model-2026-09-27.md`, `planning/records/time-model-2-2026-09-27.md` |  |
 | C2 | `books/owner-time-model`: `fn-otm-health-disk-held-iff-stalled-or-full`; `books/native-health`: `fn-nh-exit-code-is-zero-or-past-the-outcome-codes` | PRF-358, PRF-172 | none |  |
 | C3 | `books/owner-time-bars`: `fn-otb-a-member-is-answered-once`, `fn-otb-a-late-completion-is-consumed-once`, `fn-otb-a-deadline-keeps-the-io-owned`, `fn-otb-a-late-page-is-unavailable-never-absent` | PRF-384 | none |  |
 | C4 | `books/outcome-class`: `fn-outcome-code-separates-the-classes`, `fn-outcome-code-is-fenced-iff-fenced` | PRF-143 | none |  |
 | D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length`; `books/bp-carry-waiver`: `fn-bpcw-waiver-releases-exactly-once` | PRF-138, PRF-119, PRF-950 | none |  |
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
-| D4 | `books/store-log-durable`: `fn-lgu-acknowledge-acknowledges-only-recoverable-records`, `fn-lgu-acknowledged-records-are-recovered-at-every-cut`; `books/store-log-recover-copy`: `fn-lgrc-acknowledge-from-the-copy`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent`; `books/store-log`: `fn-lg-rotation-entry-len`; `books/store-log-lineage`: `fn-lgl-open-of-rotated-segment` | PRF-936, PRF-244, PRF-268, PRF-979 | `planning/evidence/byte-model-2026-09-29.md` |  |
-| D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` |  |
-| X1 | `books/refusal-effect`: `fn-rfx-unserved-prepare-is-unchanged-by-definition`, `fn-rfx-unaffordable-prepare-is-unchanged-by-definition`, `fn-rfx-refused-reconfigure-is-unchanged-by-definition`, `fn-rfx-refused-post-keeps-records`, `fn-rfx-refused-post-keeps-configuration`, `fn-rfx-refused-post-consumes-one-txid`, `fn-rfx-config-record-txid-is-the-node-next-by-definition` | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
-| X2 | none (measured or open) | none | `planning/evidence/closure-theorems-2026-09-29.md` |  |
+| D4 | `books/store-log-durable`: `fn-lgu-acknowledge-acknowledges-only-recoverable-records`, `fn-lgu-acknowledged-records-are-recovered-at-every-cut`; `books/store-log-recover-copy`: `fn-lgrc-acknowledge-from-the-copy`; `books/store-log-crash`: `fn-lg-entry-len-is-units`; `books/store-log-extend`: `fn-olr-extension-target-is-an-extent`; `books/store-log`: `fn-lg-rotation-entry-len`; `books/store-log-lineage`: `fn-lgl-open-of-rotated-segment` | PRF-936, PRF-244, PRF-268, PRF-979 | `planning/records/byte-model-2026-09-29.md` |  |
+| D5 | `books/expiry-verdict`: `fn-xpy-releasablep-is-rule-or-expired-and-unheld`, `fn-xpy-held-article-is-not-expired` | PRF-918 | `planning/records/expiry-q11-2026-09-28.md` |  |
+| X1 | `books/refusal-effect`: `fn-rfx-unserved-prepare-is-unchanged-by-definition`, `fn-rfx-unaffordable-prepare-is-unchanged-by-definition`, `fn-rfx-refused-reconfigure-is-unchanged-by-definition`, `fn-rfx-refused-post-keeps-records`, `fn-rfx-refused-post-keeps-configuration`, `fn-rfx-refused-post-consumes-one-txid`, `fn-rfx-config-record-txid-is-the-node-next-by-definition` | none | `planning/records/closure-theorems-2026-09-29.md` |  |
+| X2 | none (measured or open) | none | `planning/records/closure-theorems-2026-09-29.md` |  |
 
 Constants the rows quote, read from the books that define them.
 
@@ -1049,10 +1049,10 @@ Constants the rows quote, read from the books that define them.
 | `*fn-otm-cadence-default-ms*` | 1,000 | ms, the committer's clock cadence | `books/owner-time-model.lisp` |
 | `:stack-kib` | 1,024 | KiB, every thread's control stack | `books/profile-limits.lisp` |
 | `:tls-limit` | 65,536 | symbols, SBCL thread-local storage (not Transport Layer Security) | `books/profile-limits.lisp` |
-| `:run-tls-limit` | 16,384 | symbols, SBCL thread-local storage the saved launcher runs at | `books/profile-limits.lisp` |
+| `:run-tls-limit` | 20,480 | symbols, SBCL thread-local storage the saved launcher runs at | `books/profile-limits.lisp` |
 | `:max-connections` | 32 | served connections, default | `books/profile-limits.lisp` |
 | `:control-clients` | 16 | control clients | `books/profile-limits.lisp` |
-| `:gc-nursery-mib` | 64 | MiB, the collector's nursery | `books/profile-limits.lisp` |
+| `:gc-nursery-mib` | 8 | MiB, the collector's nursery | `books/profile-limits.lisp` |
 | `:fixed-threads` | 12 | threads the node always runs | `books/profile-limits.lisp` |
 
 The small preset (`*fn-heap-small-request*`, books/heap-figure.lisp);

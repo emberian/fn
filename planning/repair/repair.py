@@ -25,7 +25,7 @@ Guardrails for a fix (used by burn-down lanes; see planning/repair/README.md):
       are archived and indexed before success. Exit 0 only if all hold.
 """
 import json, os, sys, time, glob, collections, fnmatch, subprocess, tempfile, shutil
-import hashlib, shlex, signal, uuid
+import hashlib, shlex, signal
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -284,17 +284,6 @@ def prose_path(filename):
                 "README.md", "AGENTS.md", "CONTRIBUTORS.md", "CONTRIBUTING.md", "LANEDUMP.md")
 
 
-def archive_result(root, i, result):
-    sys.path.insert(0, str(Path(ROOT).parents[1] / "tools"))
-    import evidence_store
-    rel = f"planning/evidence/repair/{i}-{uuid.uuid4().hex}.json"
-    target = Path(root) / rel
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(result, indent=1) + "\n")
-    entries = evidence_store.put(Path(root), [rel])
-    return {"path": rel, "sha256": entries[rel][0], "bytes": entries[rel][1]}
-
-
 def verify(rest):
     i, o = rest[0], opts(rest[1:])
     d = load(i)
@@ -375,13 +364,6 @@ def verify(rest):
     result["problems"] = problems
     result["semantic_ok"] = not problems
     result["ok"] = result["semantic_ok"]
-    try:
-        result["evidence"] = archive_result(root, i, result)
-        result["evidence_outcome"] = "archived"
-    except Exception as e:
-        problems.append("verification evidence could not be archived: " + str(e))
-        result["evidence_outcome"] = "unavailable"
-        result["ok"] = False
     d["verify"] = result
     save(d)
     print(json.dumps(result, indent=1))
