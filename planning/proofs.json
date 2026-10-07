@@ -10317,7 +10317,7 @@
         "PRF-221"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-arp-add-page-step",
         "fn-arp-write-octet-step",
