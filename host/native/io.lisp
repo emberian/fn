@@ -1566,6 +1566,20 @@ nothing here reads what the ring did with them."
                            (handler-case (princ-to-string values) (error () "guard violation"))))
       (t (fnn-fault "ACL2 error in ~(~a~): ~a" name outcome)))))
 
+; Fixed served callbacks are selected once at funded startup. Their ACL2
+; bodies check scalar inputs before work; :raw-with carries their stobj guards.
+; This bridge establishes no carry and never substitutes a logical callback.
+(defun fnn-fixed-raw-callback (name)
+  "Return the selected compiled raw entry's callback, which enters a
+dispatcher extent itself (host/native/raw-trap.lisp); refuse an unprepared
+hot callback."
+  (when *fnn-dispatch-counterpart*
+    (fnn-fault "fixed callback ~(~a~) requires raw dispatch" name))
+  (unless (fnn-raw-dispatch-target name)
+    (fnn-fault "fixed callback ~(~a~) is missing verified raw dispatch" name))
+  (or (fnn-raw-dispatch-callback name)
+      (fnn-fault "fixed callback ~(~a~) is not compiled" name)))
+
 (defun fnn-core-mv-traced (name thunk)
   "Run THUNK (a fixed callback, returning its scalar MVs) and, when NAME is in
 the traced set (decision tracing, host/native/trace.lisp), offer the values it
