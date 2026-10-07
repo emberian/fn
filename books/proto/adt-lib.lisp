@@ -1453,3 +1453,9 @@
            :in-theory (e/d (adt-canon) (adt-corr-build adt-corr-empty adt-empty-c)))))
 
 (in-theory (disable adt-empty-c adt-build adt-canon))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable adt-nth-of-atom
+                    adt-prefix-eq-nth))

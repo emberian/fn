@@ -1,0 +1,7 @@
+theorem	site	head
+a-plain	in.lisp:3	consp
+b-rewrite	in.lisp:4	car
+c-mixed	in.lisp:6	consp
+d-only-list	in.lisp:8	consp
+e-already	in.lisp:9	consp
+f-generated	in.lisp:1	consp

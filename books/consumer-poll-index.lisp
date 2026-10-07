@@ -214,3 +214,8 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-col-poll-nth-past-end-is-nil)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-col-poll-nth-past-end-is-nil))

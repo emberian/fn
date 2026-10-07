@@ -1132,3 +1132,9 @@
                     (:definition fn-ctl-withdrawalp)
                     (:definition fn-ctl-withdrawn-by-p)
                     (:rewrite fn-ctl-authorize-execute-is-nonempty)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-ctl-authorize-execute-is-nonempty
+                    fn-ctl-visible-filter-is-a-subset))
