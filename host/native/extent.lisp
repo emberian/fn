@@ -1396,8 +1396,11 @@ A served result transfers to the cache before the caller borrows the vector."
                (multiple-value-bind (cachedp evicted)
                    (fnn-extent-cache-store file eoff elen trailer octets token)
                  (unless cachedp (fnn-fault "funded synchronous result has no cache owner"))
-                 (fnn-extent-cache-release evicted)
-                 (fnn-extent-sync-settle row token :ok t))
+                 ;; Settle first: an evicted token may be this read's own (ACL2
+                 ;; already held the descriptor), whose row is :cached only
+                 ;; once settled with CACHEDP.
+                 (fnn-extent-sync-settle row token :ok t)
+                 (fnn-extent-cache-release evicted))
                octets)
           (unless transferring
             ;; Read/verifier stack and its buffer-stobj alias have unwound.

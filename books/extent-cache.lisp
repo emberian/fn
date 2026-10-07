@@ -47,6 +47,21 @@
 ; yield and free run under the same lock: that is why an install cannot evict
 ; a slot in use.  The host marks the borrow site with a comment naming this.
 ;
+; :PRESENT AND THE CHARGE.  fn-xc-install answers :present (and keeps the old
+; slot) when a concurrent cold read of the same descriptor already installed
+; it; the host (fnn-extent-cache-store, host/native/extent.lisp) then returns the
+; NEW read's own token in the list of charges to release.  That cannot be :stale
+; or a double release: a token's ledger row is :issued until settlement and
+; :cached after it (fn-prl-settle, page-read-ledger.lisp:154-174, with CACHEDP
+; true), and fn-prl-evict (:178-191) accepts exactly a :cached row and removes it,
+; so each token is released once.  The funded async path stores (owner.lisp:6025,
+; the row still :issued), commits with CACHEDP true (:6148, which makes it
+; :cached) and releases EVICTED last (:6153); the synchronous path settles
+; with CACHEDP (fnn-extent-entry-direct) before releasing, and cannot reach
+; :present at all, since it holds the extent lock from its miss to its install.
+; The window path caches the row (fn-pwc-cache) before inserting.  The slot's
+; own token is never released by :present: its slot is unchanged.
+;
 ; The clock saturates at 2^64-1 (a slot's stamp is a u64 column).  A
 ; saturated clock leaves ties, which the victim choice breaks by position:
 ; recency order is then approximate, every other statement is unaffected.
