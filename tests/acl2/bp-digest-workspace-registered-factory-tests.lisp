@@ -17,7 +17,7 @@
   (declare (ignore reserve-left))
   (let* ((controller '(:bp-controller 2 0))
          (workspace (list :bp-digest 8 controller job-token))
-         (initial (fn-bpck-begin job-token 0 5 (fn-bpnr-depth-budget 8) nil nil 8 0 1048576))
+         (initial (fn-bpck-begin job-token 0 5 (fn-bpnr-depth-budget 8) nil nil 8 0 nil 0 1048576))
          (counted (fn-bpck-census-step initial 10000))
          (emitting (fn-bpck-stage-observation
                     (fn-bpck-stage-granted counted (list :grown job-token)) :created))

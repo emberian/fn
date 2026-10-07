@@ -1330,6 +1330,11 @@ class NativeBpNodeTests(unittest.TestCase):
         checkpoint_fault = {}
         cut_code, cut_out, cut_err = self.rotate_receiver(
             "stage", observer=lambda **fields: checkpoint_fault.update(fields))
+        # The node owes two requeued receipt jobs here; the rotation must
+        # reach the stage cut with them (it was refused before the
+        # checkpoint carried the base machine's jobs).
+        self.assertNotIn(b"BP journal rotation refused", cut_out)
+        self.assertIn(b"BP journal rotation stopped at=stage", cut_out)
         observe("checkpoint-stage-cut", exit_code=cut_code,
                 stdout=cut_out, stderr=cut_err, fault=checkpoint_fault)
         sender, sender_port = self.start_node(False, once=False)
