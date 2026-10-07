@@ -2489,6 +2489,7 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-bootstrap-export-tests \
     tests/acl2/allocation-turn-body-authority-tests \
     tests/acl2/allocation-turn-slots-tests \
+    tests/acl2/allocation-turn-source-cost-tests \
     books/page-read-counter-transaction \
     books/page-read-issue-source-cost \
     books/recovery-prs-install \
@@ -2572,6 +2573,7 @@ ACL2_BOOKS ?= books/defrecord \
     books/owner-report-owner-accessors \
     books/allocation-turn-body-authority \
     books/allocation-turn-slots \
+    books/allocation-turn-source-cost \
     books/index-backing-writer-step \
     books/index-backing-table-seal \
     books/index-backing-reinsert \

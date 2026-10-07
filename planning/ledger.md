@@ -11,9 +11,9 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 3087 |
-| Certification roots in the Makefile | 2598 |
-| Books inside the root closure | 2929 |
-| `defthm` and `defthmd` events | 41734 |
+| Certification roots in the Makefile | 2600 |
+| Books inside the root closure | 2931 |
+| `defthm` and `defthmd` events | 41736 |
 | `defun` events | 26365 |
 | Functions with verified guards | 4171 |
 | Functions declared `:verify-guards nil` and never verified | 3485 |
@@ -130,7 +130,7 @@ that `make certify` requests.
 | `books/allocation-turn-body-authority.lisp` | root | 4 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/allocation-turn-raw-bridge.lisp` | root | 14 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/allocation-turn-slots.lisp` | root | 25 | 13 | 0/0/12/1 | 0 | 0 | 2 |
-| `books/allocation-turn-source-cost.lisp` | - | 54 | 17 | 3/0/14/0 | 0 | 0 | 1 |
+| `books/allocation-turn-source-cost.lisp` | root | 56 | 17 | 3/0/14/0 | 0 | 0 | 1 |
 | `books/anchor-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-replace.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -1956,7 +1956,7 @@ that `make certify` requests.
 | `tests/acl2/allocation-dual-ceiling-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/allocation-turn-body-authority-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 1 | 0 | 0 |
 | `tests/acl2/allocation-turn-slots-tests.lisp` | root | 1 | 10 | 0/10/0/0 | 23 | 0 | 0 |
-| `tests/acl2/allocation-turn-source-cost-tests.lisp` | - | 6 | 5 | 0/3/2/0 | 30 | 0 | 0 |
+| `tests/acl2/allocation-turn-source-cost-tests.lisp` | root | 6 | 5 | 0/3/2/0 | 30 | 0 | 0 |
 | `tests/acl2/anchor-replace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-teeth-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 57 | 0 | 0 |
@@ -3234,7 +3234,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-asx-step-of-done` | `books/article-select-index.lisp` | 336 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ast-select-step and the conclusion is that arm's value |
 | `fn-ats-body-prepaid-continuation-retains-accounting-by-definition` | `books/allocation-turn-slots.lisp` | 382 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-prepay-body-internal and the conclusion is that arm's value |
 | `fn-ats-finish-stale-keeps-other-turns-by-definition` | `books/allocation-turn-slots.lisp` | 347 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-finish-owned and the conclusion is that arm's value |
-| `fn-atsc-issuer-preserves-baseline-coordinate` | `books/allocation-turn-source-cost.lisp` | 645 | preserves-no-subject-call: the statement never calls fn-atsc-issuer or a fn-atsc-issuer- transition |
+| `fn-atsc-issuer-preserves-baseline-coordinate` | `books/allocation-turn-source-cost.lisp` | 664 | preserves-no-subject-call: the statement never calls fn-atsc-issuer or a fn-atsc-issuer- transition |
 | `fn-auth-consistent-forward` | `books/nntp-auth.lisp` | 545 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp |
 | `fn-auth-moderation-config-without-a-login` | `books/nntp-auth.lisp` | 1759 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-moderation-config and the conclusion is that arm's value |
 | `fn-auth-redeem-outcome-is-inert-unless-it-answers` | `books/nntp-auth.lisp` | 2248 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-redeem-outcome and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-redeem-outcome and the conclusion is that branch's value |

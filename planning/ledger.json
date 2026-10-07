@@ -2479,6 +2479,7 @@
     "tests/acl2/runtime-bootstrap-export-tests",
     "tests/acl2/allocation-turn-body-authority-tests",
     "tests/acl2/allocation-turn-slots-tests",
+    "tests/acl2/allocation-turn-source-cost-tests",
     "books/page-read-counter-transaction",
     "books/page-read-issue-source-cost",
     "books/recovery-prs-install",
@@ -2562,6 +2563,7 @@
     "books/owner-report-owner-accessors",
     "books/allocation-turn-body-authority",
     "books/allocation-turn-slots",
+    "books/allocation-turn-source-cost",
     "books/index-backing-writer-step",
     "books/index-backing-table-seal",
     "books/index-backing-reinsert",
@@ -2603,9 +2605,9 @@
   ],
   "totals": {
     "books": 3087,
-    "books_in_root_closure": 2929,
-    "roots": 2598,
-    "theorems": 41734,
+    "books_in_root_closure": 2931,
+    "roots": 2600,
+    "theorems": 41736,
     "functions": 26365,
     "assert_events": 28286,
     "must_fails": 2773,
@@ -3830,9 +3832,9 @@
     },
     {
       "book": "books/allocation-turn-source-cost.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 54,
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 56,
       "functions": 17,
       "guards": {
         "verified": 3,
@@ -57832,8 +57834,8 @@
     },
     {
       "book": "tests/acl2/allocation-turn-source-cost-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 6,
       "functions": 5,
       "guards": {
@@ -91688,7 +91690,7 @@
     {
       "theorem": "fn-atsc-issuer-preserves-baseline-coordinate",
       "book": "books/allocation-turn-source-cost.lisp",
-      "line": 645,
+      "line": 664,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-atsc-issuer or a fn-atsc-issuer- transition"
       ]
@@ -103716,7 +103718,7 @@
       {
         "theorem": "fn-atsc-ceiling-observes-result",
         "book": "books/allocation-turn-source-cost.lisp",
-        "line": 110,
+        "line": 117,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -110005,14 +110007,14 @@
       },
       {
         "book": "books/allocation-turn-source-cost.lisp",
-        "line": 6,
+        "line": 5,
         "include": "allocation-turn-slots",
         "included": "books/allocation-turn-slots.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/allocation-turn-source-cost.lisp",
-        "line": 7,
+        "line": 6,
         "include": "page-read-issue-source-cost",
         "included": "books/page-read-issue-source-cost.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -123970,14 +123972,14 @@
       },
       {
         "book": "tests/acl2/allocation-turn-source-cost-tests.lisp",
-        "line": 3,
+        "line": 2,
         "include": "../../books/allocation-turn-source-cost",
         "included": "books/allocation-turn-source-cost.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/allocation-turn-source-cost-tests.lisp",
-        "line": 4,
+        "line": 3,
         "include": "allocation-turn-slots-tests",
         "included": "tests/acl2/allocation-turn-slots-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
