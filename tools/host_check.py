@@ -1373,11 +1373,25 @@ def stobj_names(path: Path) -> set[str]:
                                   field + "i", "update-" + field + "i"})
             return
         if head == "def-representation" and len(form) >= 2 and isinstance(form[1], str):
-            # books/def-representation.lisp: the abstract stobj NAME, its
-            # concrete foundation NAME$c, and their creators.
+            # books/def-representation.lisp.  A concrete instance is the
+            # abstract stobj NAME over the foundation NAME$c.  With a non-nil
+            # :generic it is instead the instance NAME-cols (over
+            # NAME-cols$c) and the attachable generic NAME over the foundation
+            # NAME$l (rep-generic-events).  Recognizers and creators only.
             name = str(form[1])
-            found.update({name + "p", "create-" + name, "create-" + name + "$c",
-                          name + "$cp"})
+            rest = form[2:]
+            generic = any(str(k).lower() == ":generic" and str(v).lower() not in ("nil", "")
+                          for k, v in zip(rest, rest[1:]))
+
+            def concrete(n: str) -> set[str]:
+                return {n + "p", "create-" + n, "create-" + n + "$c", n + "$cp"}
+
+            if generic:
+                found.update(concrete(name + "-cols"))
+                found.update({name + "p", "create-" + name, "create-" + name + "$l",
+                              name + "$lp"})
+            else:
+                found.update(concrete(name))
             return
         if head == "defevent" and len(form) >= 2:
             # books/defevent.lisp (lane generators G6): the encoder, the

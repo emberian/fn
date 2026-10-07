@@ -102,6 +102,23 @@ class GeneratedNameTests(unittest.TestCase):
                             ':code-var c :recognizer famp)\n', encoding="utf-8")
             self.assertEqual(host_check.stobj_names(book), {"fam-code", "fam-kind", "famp"})
 
+    def test_a_concrete_representation_names_its_c_foundation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            book = Path(directory) / "b.lisp"
+            book.write_text('(in-package "ACL2")\n(def-representation rc (x :u64) :scalar t)\n',
+                            encoding="utf-8")
+            self.assertEqual(host_check.stobj_names(book),
+                             {"rcp", "create-rc", "create-rc$c", "rc$cp"})
+
+    def test_a_generic_representation_names_its_l_foundation_and_its_cols(self):
+        with tempfile.TemporaryDirectory() as directory:
+            book = Path(directory) / "b.lisp"
+            book.write_text('(in-package "ACL2")\n(def-representation rg (x :u64) :scalar t :generic t)\n',
+                            encoding="utf-8")
+            self.assertEqual(host_check.stobj_names(book),
+                             {"rgp", "create-rg", "create-rg$l", "rg$lp",
+                              "rg-colsp", "create-rg-cols", "create-rg-cols$c", "rg-cols$cp"})
+
 
 class TreeTests(unittest.TestCase):
     def test_the_images_worlds_define_every_named_counterpart(self):
