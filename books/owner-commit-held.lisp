@@ -43,6 +43,10 @@
 ;   S4 fn-och-a-failed-or-faulted-job-takes-no-submission: an uncertain job
 ;      stops (:stop, the uncertain answer and exit 3) and a faulted one
 ;      faults, as inline, and neither takes the held submission.
+;   S5 fn-och-only-the-held-caller-collects: the committer never collects a
+;      held batch nor starts a next one behind it; the held caller collects
+;      it exactly when the syncer returned (its quantum 2 is the :commit pick
+;      after the job, on its own thread).
 (in-package "ACL2")
 (include-book "owner-commit-pipeline")
 (include-book "owner-queued-work")
@@ -281,3 +285,30 @@
              (and (not (member-equal :submit effects))
                   (equal (car (last effects))
                          (if (equal final :uncertain) :stop :fault))))))
+
+; -----------------------------------------------------------------------------
+; The wakes (C's ruling-19 option 1).  The batch in flight is collected by
+; exactly one thread.  For a held batch it is the held caller (its quantum 2
+; is the :commit pick that follows the job); the committer never collects it
+; and never prepares a next batch behind it.  RETURNED whether the syncer
+; returned; QUEUED BLOCKED as fn-ocp-wake's.
+(defun fn-och-committer-wake (phase next held returned queued blocked)
+  (declare (xargs :guard t))
+  (if held :wait (fn-ocp-wake phase next returned queued blocked)))
+
+(defun fn-och-caller-wake (phase held returned)
+  (declare (xargs :guard t))
+  (if (and held (fn-ocs-in-flight-p phase) returned) :collect :wait))
+
+; KEYSTONE S5.  With a held batch in flight the committer neither collects it
+; nor starts a next batch; the held caller collects it exactly when the syncer
+; returned.  Without a held batch the committer's wake is the pipeline's.
+(defthm fn-och-only-the-held-caller-collects
+  (and (implies held
+                (equal (fn-och-committer-wake phase next held returned queued blocked) :wait))
+       (iff (equal (fn-och-caller-wake phase held returned) :collect)
+            (and held (fn-ocs-in-flight-p phase) returned))
+       (implies (not held)
+                (and (equal (fn-och-committer-wake phase next held returned queued blocked)
+                            (fn-ocp-wake phase next returned queued blocked))
+                     (equal (fn-och-caller-wake phase held returned) :wait)))))

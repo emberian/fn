@@ -49,3 +49,12 @@
  (not (fn-och-labelsp '((:owner . :start) (:off . :intents) (:off . :complete)))))
 (assert-event
  (not (fn-och-labelsp '((:owner . :start) (:owner . :fence)))))
+
+; S5 teeth: the held flag is what keeps the committer off the batch.  Unheld,
+; a returned sync wakes the committer to collect (:collect) and a queued
+; member to START-NEXT; held, both are :wait and the caller collects.
+(assert-event (equal (fn-och-committer-wake :staged nil nil t nil nil) :collect))
+(assert-event (equal (fn-och-committer-wake :staged nil nil nil t nil) :start-next))
+(assert-event (equal (fn-och-committer-wake :staged nil t t t nil) :wait))
+(assert-event (equal (fn-och-caller-wake :staged t t) :collect))
+(assert-event (equal (fn-och-caller-wake :staged t nil) :wait))
