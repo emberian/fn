@@ -3727,6 +3727,21 @@
   :keystones (fn-heap-open-nursery-trigger-natp
               fn-heap-open-nursery-trigger-bounds))
 
+(definterface fn-send-progress-begin
+  :class :common-lisp-compliant
+  :keystones (fn-send-progress-begin-continues))
+
+(definterface fn-send-progress-next
+  :class :common-lisp-compliant
+  :keystones (fn-send-progress-next-state))
+
+(definterface fn-send-progress-decide
+  :class :common-lisp-compliant
+  :keystones ((fn-send-progress-draining-reader-continues :via fn-send-progress-verdict)
+              (fn-send-progress-stalled-refused :via fn-send-progress-verdict)
+              (fn-send-progress-too-slow-refused :via fn-send-progress-verdict)
+              (fn-send-progress-verdict-answers :via fn-send-progress-verdict)))
+
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)
 
