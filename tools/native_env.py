@@ -176,6 +176,7 @@ MANUAL = {
     "FN_NATIVE_READER_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST",
     "FN_NATIVE_SOURCE_ROOT": "defaults to the tree the module runs from",
     "FN_SPAN_REFERENCE_HOST": "the base image of the ingress-span differential (SCN-110; built from the lane base, by --env)",
+    "FN_RUN_IMAGE_HEAP": "opt-in for the 128 MB bar's measurement (tests.test_native_image_heap)",
     "FN_RUN_RECLAIM_RSS": "opt-in for the reclaim walk's resident-set measurement (tests.test_native_reclaim_walk)",
     "FN_RUN_SLOW": "opt-in for tests marked slow (tests/native_harness.py `slow'): batches and qualification",
     "FN_INN_SRC": "an installed INN 2.7 tree",
