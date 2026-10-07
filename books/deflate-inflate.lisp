@@ -80,77 +80,12 @@
 (in-package "ACL2")
 (include-book "octets-stobj")
 
-(defabsstobj fn-zin-win
-  :foundation fn-octets$c
-  :recognizer (fn-zin-win-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-zin-win :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-zin-win-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-zin-win-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-zin-win-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-zin-win-append-octet :logic fn-octets$a-append-octet
-                                     :exec fn-octets$c-append-octet :protect t)
-            (fn-zin-win-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-zin-win-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                                :protect t)
-            (fn-zin-win-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-zin-win-from-list :logic fn-octets$a-from-list
-                                  :exec fn-octets$c-from-list :protect t)
-            (fn-zin-win-append-list :logic fn-octets$a-append-list
-                                    :exec fn-oct-write-list :protect t)
-            (fn-zin-win-append-back :logic fn-octets$a-append-back
-                                    :exec fn-octets$c-append-back :protect t)
-            (fn-zin-win-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-zin-win-append-word :logic fn-octets$a-append-word
-                                    :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
+(include-book "def-buffer")
+(def-buffer fn-zin-win)
 
-(defabsstobj fn-zin-tab
-  :foundation fn-octets$c
-  :recognizer (fn-zin-tab-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-zin-tab :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-zin-tab-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-zin-tab-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-zin-tab-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-zin-tab-append-octet :logic fn-octets$a-append-octet
-                                     :exec fn-octets$c-append-octet :protect t)
-            (fn-zin-tab-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-zin-tab-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                                :protect t)
-            (fn-zin-tab-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-zin-tab-from-list :logic fn-octets$a-from-list
-                                  :exec fn-octets$c-from-list :protect t)
-            (fn-zin-tab-append-list :logic fn-octets$a-append-list
-                                    :exec fn-oct-write-list :protect t)
-            (fn-zin-tab-append-back :logic fn-octets$a-append-back
-                                    :exec fn-octets$c-append-back :protect t)
-            (fn-zin-tab-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-zin-tab-append-word :logic fn-octets$a-append-word
-                                    :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
+(def-buffer fn-zin-tab)
 
-(defabsstobj fn-zin-out
-  :foundation fn-octets$c
-  :recognizer (fn-zin-out-p :logic fn-octets$ap :exec fn-octets$cp)
-  :creator (create-fn-zin-out :logic create-fn-octets$a :exec create-fn-octets$c)
-  :exports ((fn-zin-out-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-zin-out-get :logic fn-octets$a-get :exec fn-octets$c-get)
-            (fn-zin-out-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
-            (fn-zin-out-append-octet :logic fn-octets$a-append-octet
-                                     :exec fn-octets$c-append-octet :protect t)
-            (fn-zin-out-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
-            (fn-zin-out-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
-                                :protect t)
-            (fn-zin-out-list :logic fn-octets$a-list :exec fn-octets$c-list)
-            (fn-zin-out-from-list :logic fn-octets$a-from-list
-                                  :exec fn-octets$c-from-list :protect t)
-            (fn-zin-out-append-list :logic fn-octets$a-append-list
-                                    :exec fn-oct-write-list :protect t)
-            (fn-zin-out-append-back :logic fn-octets$a-append-back
-                                    :exec fn-octets$c-append-back :protect t)
-            (fn-zin-out-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
-            (fn-zin-out-append-word :logic fn-octets$a-append-word
-                                    :exec fn-octets$c-append-word :protect t))
-  :congruent-to fn-octets)
+(def-buffer fn-zin-out)
 
 (local
  (defthm fn-zin-stobj-recognizers
