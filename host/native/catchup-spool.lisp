@@ -127,11 +127,19 @@
 
 (defun fnn-csp-worker-take (worker)
   ;; Result arrays are borrowed in place. Take before submitting another job.
-  (sb-thread:with-mutex ((fnn-csp-worker-lock worker))
-    (when (eq (fnn-csp-worker-phase worker) :complete)
-      (setf (fnn-csp-worker-phase worker) :idle)
-      (values t (fnn-csp-worker-status worker) (fnn-csp-worker-actual worker)
-              (fnn-csp-worker-condition worker)))))
+  ;; An OS error is the per-peer I/O outcome ACL2 decides on, so it reaches
+  ;; the consumer as status :error plus its condition.  Any other condition
+  ;; is not an I/O outcome: re-signal it here, on the taking thread, as a
+  ;; fault so it reaches the fence instead of being read as a peer error.
+  (multiple-value-bind (ready status actual condition)
+      (sb-thread:with-mutex ((fnn-csp-worker-lock worker))
+        (when (eq (fnn-csp-worker-phase worker) :complete)
+          (setf (fnn-csp-worker-phase worker) :idle)
+          (values t (fnn-csp-worker-status worker) (fnn-csp-worker-actual worker)
+                  (fnn-csp-worker-condition worker))))
+    (when (and condition (not (typep condition 'fnn-os-error)))
+      (fnn-fault "catchup spool worker fault: ~a" condition))
+    (values ready status actual condition)))
 
 (defun fnn-csp-worker-stop (worker)
   ;; Cancellation revokes new jobs, never physical custody of a running one.

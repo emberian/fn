@@ -1964,6 +1964,10 @@ constants must agree with it or the budget is refused as a fault."
   "ACL2 decides whether this machine holds the live capacity; a refusal is
 the run's (exit 1), named on stderr and in the service log."
   (let* ((store (fnn-owner-service-store service))
+         ;; Observed before the section: a stat of the core file and the
+         ;; machine's memory figures are I/O the owner mutex never holds.
+         (machine (fnn-heap-machine-octets))
+         (core (fnn-heap-core-octets))
          (decision
            (fnn-owner-serialized
             service nil
@@ -1971,9 +1975,9 @@ the run's (exit 1), named on stderr and in the service log."
               (let* ((threads (fnn-mux-thread-count service))
                      (stack (fnn-mux-thread-stack-octets))
                      (word (fnn-owner-core 'fn-owner-connection-budget
-                              (fnn-heap-machine-octets)
+                              machine
                               (sb-ext:dynamic-space-size)
-                              (fnn-heap-core-octets)
+                              core
                               threads stack
                               +fnn-gc-nursery-octets+
                               (fnn-store-config store)
@@ -1989,7 +1993,7 @@ the run's (exit 1), named on stderr and in the service log."
                   (fnn-owner-output-install
                    service (sb-ext:dynamic-space-size)
                    (fnn-core 'fn-mca-figure-octets (fnn-store-config store)
-                             (fnn-heap-core-octets) +fnn-gc-nursery-octets+
+                             core +fnn-gc-nursery-octets+
                              (fnn-owner-service-reclaim-live service))))
                 word))))
          (line (fnn-global 'fn-owner-connection-budget-line)))

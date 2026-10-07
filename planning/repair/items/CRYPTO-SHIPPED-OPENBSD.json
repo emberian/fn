@@ -1,0 +1,16 @@
+{
+ "category": "crypto-shipped",
+ "file": "packaging/release-tarball.sh",
+ "id": "CRYPTO-SHIPPED-OPENBSD",
+ "line": "146",
+ "notes": [
+  "10-06 20:26 RULINGS-20261006 ruling 3, D59. SYSTEM-PATH: packaging/release-tarball.sh:146 openbsd-amd64 platform; packaging/freeze-native-image.sh:15-16 says OpenBSD keeps the base system's LibreSSL (HST-016) and has no openssl step for OpenBSD (:50-77 are Linux only); packaging/install-native.sh:125-134 requires /usr/lib/libssl.so.* and records them as inventory; host/native/tls.lisp:136 #+openbsd candidates libssl.so/libcrypto.so; tools/runpath_check.py:134-138 SYSTEM_TLS_BY openbsd; tools/cut_release.sh:443 builds the openbsd tarball. No hybrid PQ is possible with LibreSSL. Conversion: build OpenSSL 3.5.8 on OpenBSD (analogue of packaging/floor-openssl.sh), freeze it into openssl/lib in the OpenBSD tarball, export FN_OPENSSL_PREFIX in the launcher, drop the LibreSSL inventory and runpath exemption; set pair names for #+openbsd in tls.lisp configured-pair."
+ ],
+ "owner": "deputy-N",
+ "refs": "RULINGS-20261006 ruling 3; D59",
+ "severity": "high",
+ "source": "crypto-audit",
+ "state": "open",
+ "title": "OpenBSD tarball uses base-system LibreSSL (SYSTEM-PATH); no shipped OpenSSL 3.5.8",
+ "updated": "2026-10-07T00:26:35Z"
+}

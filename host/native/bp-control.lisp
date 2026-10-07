@@ -81,29 +81,48 @@
           (fnn-bpnc-retire node)
           (error condition))))))
 
+(defun fnn-bpnc-drive-after (owner node)
+  "The listener drive, off the owner mutex.  A condition leaving it is
+re-signalled inside a settle quantum, so the one envelope classifies it
+(fn-fs-classify over its concrete class) and fences before that mutex is
+released, as it did when the drive ran in the reconfiguration's own section."
+  (handler-case
+      (let ((*fnn-bplc-test-change* t))
+        (fnn-bplc-cut (fnn-bpnc-listeners node) :configuration-published)
+        (fnn-bplc-drive (fnn-bpnc-listeners node) owner))
+    (serious-condition (condition)
+      (fnn-quantum-bp owner nil (lambda () (error condition))))))
+
 (defun fnn-bpnc-execute (node grant)
   (if (not (eq (first grant) :execute))
       (list :reason :refused (second grant))
-    (let ((owner (fnn-bpnc-owner node)) (plan (second grant)))
+    (let ((owner (fnn-bpnc-owner node)) (plan (second grant)) (drive nil))
       (if (eq (fnn-owner-disk-admit owner) :shed)
           :busy
-        (fnn-quantum-bp
-         owner nil
-         (lambda ()
-           (multiple-value-bind (word reason)
-               (fnn-owner-live-reconfigure-locked
-                owner
-                (lambda (cid)
-                  (fnn-owner-result 'fn-ores-config-result-p
-                                    'fn-native-admin-host-owner-reconfigure cid plan)))
-             (cond ((eq word :refused) (list :reason :refused reason))
-                   ((eq word :accepted)
-                    ;; Durable configuration is already published.  Runtime
-                    ;; completion is distinct; a failed bind fences/stops.
-                    (when (fnn-bpnc-listeners node)
-                      (fnn-bplc-reconfigure (fnn-bpnc-listeners node)))
-                    :accepted)
-                   (t word)))))))))
+        (let ((answer
+                (fnn-quantum-bp
+                 owner nil
+                 (lambda ()
+                   (multiple-value-bind (word reason)
+                       (fnn-owner-live-reconfigure-locked
+                        owner
+                        (lambda (cid)
+                          (fnn-owner-result 'fn-ores-config-result-p
+                                            'fn-native-admin-host-owner-reconfigure cid plan)))
+                     (cond ((eq word :refused) (list :reason :refused reason))
+                           ((eq word :accepted)
+                            ;; Durable configuration is already published.  The
+                            ;; model begins its change here (it reads the owner
+                            ;; configuration); the drive runs after release.
+                            (when (fnn-bpnc-listeners node)
+                              (when *fnn-section-step*
+                                (fnn-fault "BP listener drive deferred inside an open durable window"))
+                              (fnn-bplc-begin-locked (fnn-bpnc-listeners node))
+                              (setq drive t))
+                            :accepted)
+                           (t word)))))))
+          (when drive (fnn-bpnc-drive-after owner node))
+          answer)))))
 
 (defun fnn-bpnc-handle (node socket)
   (let ((reasoned nil) (fatal nil))

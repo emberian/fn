@@ -1,0 +1,15 @@
+{
+ "category": "lock-discipline",
+ "detail": "NEW keys not settled either way. Each stays here until its missing evidence is supplied.\n\nR7|fnn-dev-evaluate|swallow:serious-condition:fault,indet (dev-repl.lisp:60): the handler consumes any condition from fnn-owner-serialized + eval into status ERROR and a printed message; the docstring claims 'Evaluation errors follow the owner's normal fault/fence boundary'. Missing: a read of fnn-section-run's fault path showing it fences (and resignals or marks *fnn-dev-admission-failed*) before the condition reaches this handler; if it does the key is a MODEL-GAP of the funcall-boundary kind, otherwise REAL.\nR7|fnn-dev-repl-loop|swallow:serious-condition:fault (dev-repl.lisp:172): accept loop continues after any condition. lmg notes it as private by design (developer image only, io.lisp:6958-6977, owner-only socket) but that is a design exemption, not a checker model fact. Missing: Deputy C ruling whether developer-image loops are exempt from R7 (then a contract row), plus the same evaluate-path fact as above.\n",
+ "disposition": "CHECKER",
+ "file": "tools/lock_discipline_check.py",
+ "fix": "Settle per key as written; then move to LOCK-CHECKER-MODEL-GAPS or file a LOCK-R7-* item.",
+ "id": "LOCK-UNSURE-KEYS",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "low",
+ "source": "lock-ownership census on lane/lock-model-gaps + lock-host-fix-2 (checker --check --json)",
+ "state": "open",
+ "title": "Lock checker NEW keys left UNSURE (dev REPL R7 pair): evidence still missing",
+ "updated": "2026-10-07T00:34:01Z"
+}

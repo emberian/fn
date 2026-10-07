@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/output-tariff-auth.lisp",
+ "id": "PGO-TARIFF-ZARTICLE-REPLY-WITHIN",
+ "notes": "[\"Intended bound (fn-tariff-zar-reply-within): for every arm of fn-zar-command, (fn-tariff-effects-octets (fn-post-result-effects (fn-zar-command session archive index args fn-arena))) <= a figure stated from the stored payload length, i.e. :syntax arm <= *fn-nntp-max-response-octets*; :stored arm (fn-nntp-multi-octets initial (fn-zdn-body-lines body)) <= (len initial)+2 + stuffed length of the compressed body + 3, where dot-stuffing at most doubles... each body line by one octet (so <= 2*(len body)+ lines + 5 with the charge being the article-row charge for the compressed length); fallback arm = ARTICLE tariff (PGO-TARIFF-ARTICLE-REPLY-WITHIN-TARIFF). Needs a lemma bounding fn-nntp-stuff-lines over fn-zdn-body-lines. Then price the :extension family row (XREDEEM and XFNCATCHUP are bounded already) and give each theorem defteeth. 97374aed3 added fn-tariff-zar-command-value, which was f = body and bounded nothing; removed. Coverage: ZARTICLE is counted only through the :extension PREVIEW_KINDS entry of tools/cost_obligations.py (served, unpriced); nothing lists it as priced.\"]",
+ "owner": "p-teeth",
+ "severity": "medium",
+ "source": "p-teeth",
+ "state": "open",
+ "title": "XFN-ZARTICLE tariff bound is owed: fn-zar-command's reply octets within a declared extension-family figure",
+ "updated": "2026-10-06T23:32:19Z"
+}

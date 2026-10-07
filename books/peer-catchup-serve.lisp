@@ -51,10 +51,16 @@
 ; a whole catch-up is the digest of the article set it imported, in the
 ; peer's log order.
 ;
-; WORK.  A batch serves records while their octets stay within QUANTUM
-; (capped at `*fn-cu-max-quantum*', local policy), and always at least one
-; examined entry, so every batch makes progress and none is silently cut:
-; an article larger than the quantum is served whole, alone.
+; WORK.  A batch serves records while their RENDERED octets -- the header
+; line, the body lines and their CRLF framing, exactly what the reply's wire
+; carries -- stay within QUANTUM (capped at `*fn-cu-max-quantum*', local
+; policy), and always at least one examined entry, so every batch makes
+; progress and none is silently cut: an article larger than the quantum is
+; served whole, alone.  Charging the rendered record, not the bare article
+; octets, is what makes the quantum honest: a zero-octet article still
+; charges its header and framing, so no run of empty records rides inside
+; one quantum (root ruling 2026-10-06; a record's charge is
+; `fn-cu-record-cost').
 ;
 ; What is proved here (keystones; the host calls `fn-cu-serve-reply' through
 ; books/nntp.lisp `fn-nntp-command-pinned', the served step's dispatcher):
@@ -240,11 +246,42 @@
        (fn-nntp-article-framedp article fn-arena)
        t))
 
+; The CRLF-framed article's lines, CRLF removed: nil unless the stored octets
+; are one complete framed block (books/nntp-session.lisp `fn-nntp-crlf-lines'
+; admits only complete CRLF-framed lines with no forbidden octet).
+(defun fn-cu-article-lines (bytes)
+  (declare (xargs :guard t))
+  (let ((split (fn-nntp-crlf-lines bytes)))
+    (if (and (consp split) (equal (car split) :ok) (consp (cdr split)))
+        (fn-cu-list (cadr split))
+      nil)))
+
+(defun fn-cu-record-header (msgid count)
+  (declare (xargs :guard t))
+  (append (fn-nntp-string-octets "R ")
+          (fn-cu-msgid-octets msgid)
+          (list 32)
+          (fn-cu-u64-hex count)))
+
+; The rendered record's octets: what the reply's wire carries for one served
+; article -- its header line and its body lines, dot-stuffed and CRLF-framed
+; exactly as `fn-nntp-multi-octets' emits them.  The quantum counts THIS
+; (the rendered record), never the bare article octets: a zero-octet or
+; ill-framed article still charges its header line, so no run of empty
+; records rides inside one quantum, and the stuffing of a dot-led body line
+; is charged with it.
+(defun fn-cu-record-cost (a fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let* ((bytes (fn-nntp-article-bytes a fn-arena))
+         (body (fn-cu-article-lines bytes)))
+    (len (fn-nntp-stuff-lines
+          (cons (fn-cu-record-header (fn-article-msgid a) (len body)) body)))))
+
 ; The walk over the oldest-first ENTRIES from position POS: (mv next served
 ; used), SERVED newest-first (the order is turned once at the end), USED the
-; octets served so far.  The first served record is always taken; a later
-; one only when its octets fit what remains of QUANTUM.  An entry that is
-; not served is passed over and counts as examined.
+; rendered octets served so far.  The first served record is always taken; a
+; later one only when its rendered octets fit what remains of QUANTUM.  An
+; entry that is not served is passed over and counts as examined.
 (defun fn-cu-select-aux (entries groups trie quantum pos served used fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (natp quantum) (natp pos) (natp used))))
@@ -252,7 +289,7 @@
       (mv pos served used)
     (let ((a (car entries)))
       (if (fn-cu-servedp a groups trie fn-arena)
-          (let ((cost (len (fn-nntp-article-bytes a fn-arena))))
+          (let ((cost (fn-cu-record-cost a fn-arena)))
             (if (and (consp served) (< quantum (+ used cost)))
                 (mv pos served used)
               (fn-cu-select-aux (cdr entries) groups trie quantum (+ 1 pos)
@@ -309,21 +346,6 @@
 
 ; -----------------------------------------------------------------------------
 ; Rendering
-
-(defun fn-cu-article-lines (bytes)
-  ; The CRLF-framed article's lines, CRLF removed.
-  (declare (xargs :guard t))
-  (let ((split (fn-nntp-crlf-lines bytes)))
-    (if (and (consp split) (equal (car split) :ok) (consp (cdr split)))
-        (fn-cu-list (cadr split))
-      nil)))
-
-(defun fn-cu-record-header (msgid count)
-  (declare (xargs :guard t))
-  (append (fn-nntp-string-octets "R ")
-          (fn-cu-msgid-octets msgid)
-          (list 32)
-          (fn-cu-u64-hex count)))
 
 ; The block's lines, record after record.
 (defun fn-cu-render-lines (articles fn-arena)
@@ -539,11 +561,12 @@
                  (:instance fn-cu-len-first (n (fn-cu-batch-entries))
                             (x (fn-cu-drop from (fn-cu-rev articles nil))))))))
 
-; The octets of a list of articles.
+; The rendered octets of the records of a list of articles: the charge the
+; quantum bounds (each record is `fn-cu-record-cost').
 (defun fn-cu-octets-of (articles fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (if (consp articles)
-      (+ (len (fn-nntp-article-bytes (car articles) fn-arena))
+      (+ (fn-cu-record-cost (car articles) fn-arena)
          (fn-cu-octets-of (cdr articles) fn-arena))
     0))
 
@@ -566,9 +589,12 @@
    :hints (("Goal" :induct (fn-cu-rev x y)
             :in-theory (disable fn-nntp-article-bytes)))))
 
-; KEYSTONE (bounded work).  A batch serves at most QUANTUM octets of article,
-; or exactly one article (one larger than the quantum is served whole and
-; alone, never cut).
+; KEYSTONE (bounded work, restated over rendered octets by the root's ruling
+; 2026-10-06).  A batch serves at most QUANTUM octets of RENDERED RECORD
+; (header, body and framing -- the wire's own octets, `fn-cu-octets-of'), or
+; exactly one record (one larger than the quantum is served whole and alone,
+; never cut).  The bound is strictly stronger than the former article-octet
+; one: everything the former counted is inside the rendered record.
 (defthm fn-cu-select-stays-within-the-quantum
   (implies (natp quantum)
            (let ((served (mv-nth 1 (fn-cu-select articles from groups trie
@@ -581,6 +607,31 @@
                                                   (fn-cu-drop from (fn-cu-rev articles nil))))
                             (pos from) (served nil) (used 0)))))
   :rule-classes nil)
+
+; KEYSTONE (the charge is the wire).  The block `fn-cu-render-lines' builds
+; for a batch and the charge `fn-cu-octets-of' sums are the same octets once
+; framed: what the reply emits for the batch is exactly what the quantum
+; bounded, never more and never less.
+(local
+ (defthm fn-cu-stuff-lines-of-append
+   (equal (fn-nntp-stuff-lines (append a b))
+          (append (fn-nntp-stuff-lines a) (fn-nntp-stuff-lines b)))
+   :hints (("Goal" :induct (fn-nntp-stuff-lines a)
+            :in-theory (enable fn-nntp-stuff-lines)))))
+
+(local
+ (defthm fn-cu-len-of-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(defthm fn-cu-rendered-records-are-the-charge
+  (equal (len (fn-nntp-stuff-lines (fn-cu-render-lines articles fn-arena)))
+         (fn-cu-octets-of articles fn-arena))
+  :hints (("Goal" :induct (fn-cu-render-lines articles fn-arena)
+           :in-theory (e/d (fn-cu-render-lines fn-cu-octets-of fn-cu-record-cost
+                                               fn-nntp-stuff-lines
+                                               fn-cu-stuff-lines-of-append
+                                               fn-cu-len-of-append)
+                           (fn-nntp-article-bytes)))))
 
 (verify-guards fn-cu-serve-reply)
 

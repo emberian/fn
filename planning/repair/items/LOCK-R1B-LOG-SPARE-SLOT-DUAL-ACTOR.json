@@ -1,0 +1,14 @@
+{
+ "category": "lock-discipline",
+ "detail": "Key (NEW): R1b|fnn-log-discard-spare|fnn-log-spare-close-debt:unlocked-write @ host/native/io.lisp:8374.\n\nActor A: fnn-log-prepare-spare (io.lisp:8387-8404) runs off O under the spare lock S on whichever thread asks: the maintenance thread (owner.lisp:7439) and the reclaim pass (owner.lisp:7984, from the 'store reclaim --recorded' command thread, admin.lisp:483), which calls it before capturing.\nActor B: fnn-log-rotate (io.lisp:8444-8484) on the publication path, under O only: reads the spare slot, sets it nil (io.lisp:8484) and calls fnn-log-discard-spare, which writes fnn-log-spare-close-debt (io.lisp:8374).\nNo common lock; the ACL2 in-flight guard (fn-owner-orcp-capture) does not cover the spare preparation.\n\nHazard: a due publication overlapping an operator reclaim can rotate in a half-prepared spare, or the preparer's discard can act on a custody slot already consumed by rotate.",
+ "file": "host/native/io.lisp",
+ "fix": "Take S inside rotate's spare read, clear and discard, or run the reclaim's prepare-spare inside the publication-exclusive section; then declare the slot's protector.",
+ "id": "LOCK-R1B-LOG-SPARE-SLOT-DUAL-ACTOR",
+ "notes": [],
+ "owner": "open",
+ "severity": "medium",
+ "source": "lock-triage-r1b-20261006",
+ "state": "open",
+ "title": "Log spare slot and fnn-log-spare-close-debt are guarded by S in prepare but by O only in rotate and discard (R1b)",
+ "updated": "2026-10-07T00:05:48Z"
+}

@@ -1,0 +1,14 @@
+{
+ "category": "proof-owed",
+ "detail": "Intended statement: for every state s satisfying the controller invariant (windowp, connsp, ready session) and every step event e, with pair=(fn-csp-step s e) and effs=(cadr pair): (implies (member-eq :journal (strip-cars effs)) (and (equal (strip-cars-count :journal effs) 1) (equal (cdr (assoc :journal effs)) (fn-cu-round-cursor r2)) (<= (fn-csp-offset s) (fn-csp-replay s)) (fn-csp-conns-idlep (fn-csp-conns s-after-settling-reply)))). Local pieces already proved: fn-csp-record-done-journals-only-settled, fn-csp-terminator-journals-nothing, fn-csp-local-verdict-final-journals; the keystone fn-csp-step-final-verdict-journals covers the settling-reply caller. Open: the record-done caller in every mode and the global statement over fn-csp-step. Cites PRF-1335/1336 (the offer window; header of books/peer-catchup-spool.lisp). Needs defteeth (positive witness a reachable state built by fn-csp-begin plus steps, per-hypothesis breaks, a mutation) before it counts.",
+ "file": "books/peer-catchup-spool.lisp",
+ "id": "CSP-OWED-JOURNALS-ONLY-A-SETTLED-BATCH",
+ "notes": [],
+ "owner": "catchup",
+ "severity": "high",
+ "slice": "peer-services",
+ "source": "catchup3",
+ "state": "open",
+ "title": "Catch-up spool controller owes fn-csp-journals-only-a-settled-batch: a :journal effect of fn-csp-step is emitted only when the spool cursor is at the batch end and every conn binding has settled",
+ "updated": "2026-10-06T23:42:39Z"
+}

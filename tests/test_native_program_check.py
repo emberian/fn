@@ -157,10 +157,15 @@ class UnbalancedFormTests(unittest.TestCase):
         host = (ROOT / npc.HOST).read_text()
         # rep-wave-d-3's case: the defun loses its last close parenthesis.
         start = host.index("\n(defun fnn-state-checkpoint-plan ") + 1
-        end = host.index("\n(defun ", start)
-        body = host[start:end].rstrip()
+        # the defun ends where the next top-level definition begins (a defvar
+        # may sit between two defuns), not at the next defun.
+        end = host.index("\n(def", start + 1) + 1
+        lines = host[start:end].rstrip().split("\n")
+        while lines[-1].startswith(";") or not lines[-1].strip():
+            lines.pop()  # comments between this defun and the next form
+        body = "\n".join(lines)
         self.assertTrue(body.endswith(")"))
-        broken = npc.Text(host[:start] + body[:-1] + "\n" + host[end:], [(0, npc.HOST)])
+        broken = npc.Text(host[:start] + body[:-1] + host[start + len(body):], [(0, npc.HOST)])
         self.assertEqual(npc.balance(npc.Text(host, [(0, npc.HOST)])), [])
         problems = npc.balance(broken)
         self.assertEqual(len(problems), 1, problems)

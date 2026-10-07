@@ -378,6 +378,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/blake3-tests \
 	books/blake3-stobj \
 	tests/acl2/blake3-stobj-tests \
+	books/blake3-tree \
+	tests/acl2/blake3-tree-tests \
 	books/frame-octets \
 	tests/acl2/stack-depth-twins-tests \
 	books/frame-fields \
@@ -850,6 +852,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-root-incarnation-tests \
 	tests/acl2/owner-reclaim-seal-tests \
 	books/handle-holds \
+	tests/acl2/handle-holds-tests \
 	books/owner-reclaim-instant \
 	tests/acl2/owner-reclaim-instant-tests \
 	books/store-log-route-phases \
@@ -1910,6 +1913,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	tests/acl2/peer-catchup-serve-tariff-tests \
 	books/peer-catchup-spool-framer \
 	books/peer-catchup-spool-hash \
 	books/peer-catchup-spool \
@@ -2655,6 +2659,8 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --check --summary
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lock_discipline_check
+	@$(CHECK_STEP) $(PYTHON) tools/lanedump_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lanedump_check
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:

@@ -115,8 +115,10 @@ the 2026-09-22 proof-engineering review. Green is not true.
   agents are live in it. Work in your own worktree under `build/lanes/`;
   the coordinator merges.
 - About ten useful lanes; claims announce intent and lock nothing. Lanes
-  coordinate through their `LANEDUMP.md`; the coordinator names each lane's
-  model in its brief.
+  coordinate through `build/coordinator/lanedumps/<lane>.md` (first section: a
+  continuation, at most 150 lines; a root `LANEDUMP.md` stays untracked scratch
+  and `tools/lanedump_check.py` refuses a tracked one); the coordinator names
+  each lane's model in its brief.
 - Orient to the plan, not to another audit. Waves, not per-cut
   qualification: qualify one immutable candidate at convergence while the
   next wave runs. A regression the cut finds does not freeze unrelated
