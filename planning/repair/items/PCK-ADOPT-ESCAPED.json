@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/catalog-pages.lisp",
+ "id": "PCK-ADOPT-ESCAPED",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "PCK-ADOPT's withdraw clause excludes (a) withdrawing a row that is already escaped (fn-cp-escapedp: payload handle not a small natural) and (b) a withdrawal that newly escapes a row (BY or the version (len H) not small): the row's remainder tree carries the withdrawal, so its word width changes and set-dirty does not apply. Intended statement: for natp target < (len H), natp by, the dirty set (fn-pck-cat-withdraw-dirty-shifted H target by) = the generated fn-crow-extend-dirty-style region from the target row to the end of the row sequence, so that (pgs-apply-dirty (fn-pck-cat-pages H) D) = (fn-pck-cat-pages (fn-cat$a-withdraw target by H)), and (len D) <= 1 + (pool pages of the rows from target on, in the NEW image): a term in the rows after the target, none in the rows before it. Owed: a library NAME-set-dirty-widening (adt-tp region dirty over the suffix words) with its delta theorem. Teeth exist for the unpremised clause (tests/acl2/paged-checkpoint-tests.lisp pckt-withdraw-image-unpremised).",
+ "updated": "2026-10-07T12:00:00Z"
+}

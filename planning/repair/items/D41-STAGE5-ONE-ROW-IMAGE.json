@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "D41-STAGE5-ONE-ROW-IMAGE",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "The history image (key, encoded length, offset per event; history-image-snapshot) and the events tape (whole records) become one region; payload octets written once to byte-pool pages and referenced afterwards (no payload copy in event rows).",
+ "updated": "2026-10-07T04:10:00Z"
+}

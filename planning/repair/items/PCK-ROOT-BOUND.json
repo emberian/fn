@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "PCK-ROOT-BOUND",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "fn-pck-root-fitsp is a hypothesis (the host skips the checkpoint and keeps the log when the root exceeds *fn-pck-root-pages* = 8 pages). Owed: derive K from the profile's bounds on consumers and configuration so fitsp holds by construction; otherwise a node whose root outgrows K never checkpoints.",
+ "updated": "2026-10-07T04:10:00Z"
+}

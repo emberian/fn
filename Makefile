@@ -301,8 +301,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-buffer-tests \
 	tests/acl2/pgs-frame-fill-tests \
 	books/def-representation-lib \
+	books/def-representation-pages \
+	books/paged-checkpoint \
+	books/catalog-pages \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-representation-pages-tests \
+	tests/acl2/paged-checkpoint-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
@@ -864,6 +869,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
 	books/recovery-refinement \
+	books/recovery-refinement-store \
 	tests/acl2/recovery-refinement-tests \
 	books/recovery-refinement-concurrent \
 	tests/acl2/recovery-refinement-concurrent-tests \
