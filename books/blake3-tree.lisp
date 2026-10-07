@@ -720,7 +720,7 @@
                       (* (len (fn-b3-window-outs key k base octets flags))
                          (* 1024 (expt 2 (nfix k)))))))
     :hints (("Goal" :induct (fn-b3-window-outs key k base octets flags)
-                    :in-theory (disable fn-b3-node)))))
+                    :in-theory (disable fn-b3-node-splits-at-left-chunks fn-b3-nthcdrx-all-when-len fn-b3-firstn-all-when-len fn-b3-node)))))
 
 (local
  (defthm fn-b3-firstn-of-firstn
@@ -759,7 +759,7 @@
                     (fn-b3-firstn (* j (* 1024 (expt 2 (nfix k)))) octets)
                     flags)))
   :hints (("Goal" :induct (fn-b3-wa-ind j k base octets flags)
-                  :in-theory (disable fn-b3-node))
+                  :in-theory (disable fn-b3-firstn-all-when-len fn-b3-node-splits-at-left-chunks fn-b3-nthcdrx-all-when-len fn-b3-node))
           ("Subgoal *1/2" :expand ((fn-b3-window-outs key k base octets flags)))))
 
 
@@ -797,7 +797,7 @@
              (<= 2 (len (fn-b3-window-outs key k base octets flags))))
     :rule-classes :linear
     :hints (("Goal" :use fn-b3-window-outs-count
-                    :in-theory (disable fn-b3-window-outs-count)
+                    :in-theory (disable fn-b3-window-outs-count fn-b3-node-splits-at-left-chunks)
                     :nonlinearp t))))
 
 (local
@@ -873,7 +873,7 @@
                    (j (fn-b3-left-windows 1 (len (fn-b3-window-outs key k counter octets flags))))))
            :expand ((fn-b3-window-tree key flags
                       (fn-b3-window-outs key k counter octets flags)))
-           :in-theory (disable fn-b3-node fn-b3-window-outs fn-b3-window-tree
+           :in-theory (disable fn-b3-left-chunks-climb fn-b3-window-tree-of-single-window fn-b3-len-of-nthcdrx fn-b3-lw-of-double-len fn-b3-firstn-all-when-len fn-b3-nthcdrx-all-when-len fn-b3-node fn-b3-window-outs fn-b3-window-tree
                                fn-b3-left-chunks fn-b3-left-windows
                                fn-b3-window-outs-count
                                fn-b3-window-count-at-least-two
@@ -889,7 +889,7 @@
                     (fn-b3-window-outs key k counter octets flags))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-b3-node-ind key octets counter flags)
-                  :in-theory (disable fn-b3-node fn-b3-window-outs fn-b3-window-tree
+                  :in-theory (disable fn-b3-node-splits-at-left-chunks fn-b3-left-chunks-of-not fn-b3-node fn-b3-window-outs fn-b3-window-tree
                                       fn-b3-left-chunks fn-b3-left-windows))
           ("Subgoal *1/2" :use ((:instance fn-b3-node-window-tree-step)
                                 (:instance fn-b3-window-tree-of-single-window (base counter))))
@@ -902,7 +902,7 @@
          (fn-b3-window-outs key k base octets flags))
   :rule-classes nil
   :hints (("Goal" :induct (fn-b3-window-outs key k base octets flags)
-                  :in-theory (disable fn-b3-node))))
+                  :in-theory (disable fn-b3-node-splits-at-left-chunks fn-b3-len-of-nthcdrx fn-b3-nthcdrx-of-nthcdrx fn-b3-firstn-all-when-len fn-b3-nthcdrx-all-when-len fn-b3-node))))
 
 (defthm fn-b3-node-is-window-tree
   ; The whole input's node equals the window tree over the windows' subtree
@@ -915,7 +915,7 @@
                   (fn-b3-window-tree key flags
                     (fn-b3-window-outs key k counter octets flags))))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-b3-node-is-window-tree-core (k (nfix k)))
+  :hints (("Goal" :in-theory (disable fn-b3-left-chunks-below fn-b3-left-chunks-climb fn-b3-firstn-all-when-len fn-b3-nthcdrx-all-when-len fn-b3-left-windows-below fn-b3-window-count-at-least-two fn-b3-nthcdrx-of-firstn) :use ((:instance fn-b3-node-is-window-tree-core (k (nfix k)))
                         (:instance fn-b3-window-outs-of-nfix-k (base counter))))))
 
 ; -----------------------------------------------------------------------------
@@ -968,7 +968,7 @@
    (equal (fn-b3-chunk cv (fn-b3-fix-octets l) counter flags startp)
           (fn-b3-chunk cv l counter flags startp))
    :hints (("Goal" :induct (fn-b3-chunk cv l counter flags startp)
-            :in-theory (disable fn-b3-fix-octets fn-b3-words)
+            :in-theory (disable fn-b3-fix-octets-of-octets fn-b3-len-of-nthcdrx fn-b3-nthcdrx-all-when-len fn-b3-fix-octets fn-b3-words)
             :expand ((fn-b3-chunk cv (fn-b3-fix-octets l) counter flags startp)
                      (fn-b3-chunk cv l counter flags startp))))))
 
@@ -977,7 +977,7 @@
    (equal (fn-b3-node key (fn-b3-fix-octets l) counter flags)
           (fn-b3-node key l counter flags))
    :hints (("Goal" :induct (fn-b3-node-ind key l counter flags)
-            :in-theory (disable fn-b3-fix-octets fn-b3-chunk fn-b3-firstn fn-b3-nthcdrx)
+            :in-theory (disable fn-b3-node-splits-at-left-chunks fn-b3-left-chunks-below fn-b3-left-chunks-climb fn-b3-left-chunks-of-not fn-b3-nthcdrx-all-when-len fn-b3-nthcdrx-of-firstn fn-b3-firstn-all-when-len fn-b3-firstn-of-firstn fn-b3-fix-octets fn-b3-chunk fn-b3-firstn fn-b3-nthcdrx)
             :expand ((fn-b3-node key (fn-b3-fix-octets l) counter flags)
                      (fn-b3-node key l counter flags))))))
 
@@ -1068,7 +1068,8 @@
                                fn-b3-left-windows-plus fn-b3-left-windows-1-plus
                                fn-b3-left-windows-double fn-b3-left-windows-double-minus
                                fn-b3-left-windows-1-double fn-b3-lw-of-double-len
-                               fn-b3-window-tree-of-pairs))
+                               fn-b3-window-tree-of-pairs
+                               fn-b3-left-windows-of-not fn-b3-left-windows-step))
            :nonlinearp t)))
 
 (local
@@ -1303,7 +1304,7 @@
                                   (+ base (* j (expt 2 k))) flags)))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-b3-wj-ind j k base prefix flags)
-                  :in-theory (disable fn-b3-node))))
+                  :in-theory (disable fn-b3-node-splits-at-left-chunks fn-b3-nthcdrx-all-when-len fn-b3-firstn-all-when-len fn-b3-node))))
 
 (defthm fn-b3-stack-fold-of-push-snoc
   ; The state after one more output is folded as the walk with it on the right.
@@ -1462,7 +1463,7 @@
                    (octets (append prefix w)))
                  (:instance fn-b3-whole-windows
                    (a (len prefix)) (b (* 1024 (expt 2 k)))))
-           :in-theory (disable fn-b3-window-tree fn-b3-window-outs fn-b3-node
+           :in-theory (disable fn-b3-left-windows-below fn-b3-window-count-at-least-two fn-b3-firstn-all-when-len fn-b3-nthcdrx-all-when-len fn-b3-window-tree fn-b3-window-outs fn-b3-node
                                fn-b3-stack-push-all fn-b3-stack-fold
                                fn-b3-left-windows fn-b3-stack-push-all-of-pairs
                                fn-b3-cv-push))))
@@ -1496,3 +1497,119 @@
            :in-theory (disable fn-b3-window-outs fn-b3-node fn-b3-stack-push-all
                                fn-b3-stack-fold fn-b3-cv-push
                                fn-b3-stack-push-all-of-pairs))))
+
+(local
+ (defthm fn-b3-stack-push-all-of-snoc
+   ; One more output on the right is one more push on the state of the run.
+   (equal (fn-b3-stack-push-all key flags h (append os (list x)) st)
+          (fn-b3-cv-push key flags h x
+            (fn-b3-stack-push-all key flags h os st)))
+   :hints (("Goal" :induct (fn-b3-stack-push-all key flags h os st)))))
+
+(defthm fn-b3-append-window-state-core
+  (implies (and (natp k) (natp counter)
+                (fn-b3-octet-listp prefix) (consp prefix)
+                (equal (mod (len prefix) (* 1024 (expt 2 k))) 0)
+                (fn-b3-octet-listp w) (posp (len w))
+                (<= (len w) (* 1024 (expt 2 k))))
+           (equal (fn-b3-cv-push key flags k
+                    (fn-b3-node key w
+                      (+ counter
+                         (* (expt 2 k)
+                            (floor (len prefix) (* 1024 (expt 2 k)))))
+                      flags)
+                    (fn-b3-stack-push-all key flags k
+                      (fn-b3-window-outs key k counter prefix flags) nil))
+                  (fn-b3-stack-push-all key flags k
+                    (fn-b3-window-outs key k counter (append prefix w) flags) nil)))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-b3-window-outs-of-append-window
+                   (base counter)
+                   (j (floor (len prefix) (* 1024 (expt 2 k)))))
+                 (:instance fn-b3-whole-windows
+                   (a (len prefix)) (b (* 1024 (expt 2 k)))))
+           :in-theory (disable fn-b3-window-outs fn-b3-node fn-b3-stack-push-all
+                               fn-b3-cv-push))))
+
+(local
+ (defthm fn-b3-window-outs-of-nfix-base
+   ; The base counter is read through NFIX everywhere.
+   (equal (fn-b3-window-outs key k (nfix base) octets flags)
+          (fn-b3-window-outs key k base octets flags))
+   :hints (("Goal" :in-theory (disable fn-b3-node)
+            :expand ((:free (b) (fn-b3-window-outs key k b octets flags)))))))
+
+(defthm fn-b3-append-window-state
+  ; The append extension on the held STATE, not only its fold: absorbing one
+  ; more window into the state over whole windows of PREFIX is the state over
+  ; the windows of PREFIX ++ that window, so appends iterate.  The hypotheses
+  ; of fn-b3-append-window less (natp counter): counter, height and windows all
+  ; read their numbers through NFIX, so the state equation holds for any
+  ; counter (the fold equation does not: the node side reads it raw).
+  (implies (and (fn-b3-octet-listp prefix) (consp prefix)
+                (equal (mod (len prefix) (* 1024 (expt 2 (nfix k)))) 0)
+                (fn-b3-octet-listp w) (posp (len w))
+                (<= (len w) (* 1024 (expt 2 (nfix k)))))
+           (equal (fn-b3-cv-push key flags k
+                    (fn-b3-node key w
+                      (+ (nfix counter)
+                         (* (expt 2 (nfix k))
+                            (floor (len prefix) (* 1024 (expt 2 (nfix k))))))
+                      flags)
+                    (fn-b3-stack-push-all key flags k
+                      (fn-b3-window-outs key k counter prefix flags) nil))
+                  (fn-b3-stack-push-all key flags k
+                    (fn-b3-window-outs key k counter (append prefix w) flags) nil)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-b3-append-window-state-core (k (nfix k)) (counter (nfix counter)))
+                 (:instance fn-b3-window-outs-of-nfix-k (base counter) (octets prefix))
+                 (:instance fn-b3-window-outs-of-nfix-k (base counter)
+                            (octets (append prefix w))))
+           :in-theory (disable fn-b3-window-outs fn-b3-node fn-b3-stack-push-all
+                               fn-b3-cv-push))))
+
+(defthm fn-blake3-keyed-is-window-composition
+  ; Keyed mode: the digest is the root of the window composition at the key
+  ; words and the keyed-hash flag.  For any key and message objects.
+  (equal (fn-blake3-keyed key m)
+         (fn-b3-output-root
+           (fn-b3-window-tree (fn-b3-words 8 (fn-b3-fix-octets key))
+                              *fn-b3-keyed-hash*
+             (fn-b3-window-outs (fn-b3-words 8 (fn-b3-fix-octets key)) k 0 m
+                                *fn-b3-keyed-hash*))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-b3-node-is-window-tree
+                          (key (fn-b3-words 8 (fn-b3-fix-octets key)))
+                          (counter 0) (flags *fn-b3-keyed-hash*)
+                          (octets m)))
+                  :do-not-induct t
+                  :in-theory (e/d (fn-blake3-keyed fn-b3-hash)
+                                  (fn-b3-node fn-b3-window-outs fn-b3-window-tree
+                                   fn-b3-fix-octets)))))
+
+(defthm fn-blake3-derive-key-is-window-composition
+  ; Derive-key mode: the context's digest under the context flag keys the
+  ; material's window composition under the material flag.
+  (equal (fn-blake3-derive-key context m)
+         (fn-b3-output-root
+           (fn-b3-window-tree
+             (fn-b3-words 8 (fn-b3-hash *fn-b3-iv* *fn-b3-derive-key-context*
+                                        (fn-b3-fix-octets context)))
+             *fn-b3-derive-key-material*
+             (fn-b3-window-outs
+               (fn-b3-words 8 (fn-b3-hash *fn-b3-iv* *fn-b3-derive-key-context*
+                                          (fn-b3-fix-octets context)))
+               k 0 m *fn-b3-derive-key-material*))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-b3-node-is-window-tree
+                          (key (fn-b3-words 8 (fn-b3-hash *fn-b3-iv* *fn-b3-derive-key-context*
+                                                          (fn-b3-fix-octets context))))
+                          (counter 0) (flags *fn-b3-derive-key-material*)
+                          (octets m)))
+                  :do-not-induct t
+                  :in-theory (e/d (fn-blake3-derive-key fn-b3-hash)
+                                  (fn-b3-node fn-b3-window-outs fn-b3-window-tree
+                                   fn-b3-fix-octets)))))

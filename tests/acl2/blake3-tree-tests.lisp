@@ -222,4 +222,114 @@
       (not (fn-b3tt-append 0 0 (fn-b3tt-input 1024) (fn-b3tt-input 1025) 1)))     ; window longer than W
  :msg "fn-b3-append-window: each added or load-bearing hypothesis has a counterexample")
 
+;; fn-b3-append-window-state: the post-append STATE (not only its fold) is the
+; state over the windows of prefix ++ w.  The hypotheses are those of
+; fn-b3-append-window, grouped as there (the octet-listp ones have no
+; breaking value).  The wrong-height mutation pushes the window at height
+; k+1: the state differs (the fold would not show it).
+(defteeth fn-b3-append-window-state
+  :claim (((windows (and (fn-b3-octet-listp prefix) (consp prefix)
+                         (equal (mod (len prefix) (* 1024 (expt 2 (nfix k)))) 0)
+                         (fn-b3-octet-listp w) (posp (len w))
+                         (<= (len w) (* 1024 (expt 2 (nfix k)))))))
+          (equal (fn-b3-cv-push key flags k
+                   (fn-b3-node key w
+                     (+ (nfix counter)
+                        (* (expt 2 (nfix k))
+                           (floor (len prefix) (* 1024 (expt 2 (nfix k))))))
+                     flags)
+                   (fn-b3-stack-push-all key flags k
+                     (fn-b3-window-outs key k counter prefix flags) nil))
+                 (fn-b3-stack-push-all key flags k
+                   (fn-b3-window-outs key k counter (append prefix w) flags) nil)))
+  :witness ((key *fn-b3-iv*) (flags 0) (k 0) (counter 5)
+            (prefix (fn-b3tt-input 3072)) (w (fn-b3tt-input 1024)))
+  :breaks ((windows ((key *fn-b3-iv*) (flags 0) (k 0) (counter 0)
+                     (prefix nil) (w (fn-b3tt-input 10)))))
+  :mutations ((wrong-height
+               (:conclusion
+                (equal (fn-b3-cv-push key flags (+ 1 (nfix k))
+                         (fn-b3-node key w
+                           (+ (nfix counter)
+                              (* (expt 2 (nfix k))
+                                 (floor (len prefix) (* 1024 (expt 2 (nfix k))))))
+                           flags)
+                         (fn-b3-stack-push-all key flags k
+                           (fn-b3-window-outs key k counter prefix flags) nil))
+                       (fn-b3-stack-push-all key flags k
+                         (fn-b3-window-outs key k counter (append prefix w) flags) nil)))
+               ((key *fn-b3-iv*) (flags 0) (k 0) (counter 5)
+                (prefix (fn-b3tt-input 3072)) (w (fn-b3tt-input 1024)))
+               :fault "the appended window pushed at the wrong height, so it fails to merge")))
+
+(assert-event
+ (equal (fn-b3-cv-push *fn-b3-iv* 0 0
+          (fn-b3-node *fn-b3-iv* (fn-b3tt-input 10) (+ (nfix -1) 1) 0)
+          (fn-b3-stack-push-all *fn-b3-iv* 0 0
+            (fn-b3-window-outs *fn-b3-iv* 0 -1 (fn-b3tt-input 1024) 0) nil))
+        (fn-b3-stack-push-all *fn-b3-iv* 0 0
+          (fn-b3-window-outs *fn-b3-iv* 0 -1
+            (append (fn-b3tt-input 1024) (fn-b3tt-input 10)) 0) nil))
+ :msg "fn-b3-append-window-state: a negative counter does not falsify it")
+
+; Keyed and derive-key digests as window compositions.
+(defteeth fn-blake3-keyed-is-window-composition
+  :claim (()
+          (equal (fn-blake3-keyed key m)
+                 (fn-b3-output-root
+                   (fn-b3-window-tree (fn-b3-words 8 (fn-b3-fix-octets key))
+                                      *fn-b3-keyed-hash*
+                     (fn-b3-window-outs (fn-b3-words 8 (fn-b3-fix-octets key)) k 0 m
+                                        *fn-b3-keyed-hash*)))))
+  :witness ((key (fn-b3tt-input 32)) (m (fn-b3tt-input 2500)) (k 0))
+  :breaks ()
+  :mutations ((wrong-counter
+               (:conclusion
+                (equal (fn-blake3-keyed key m)
+                       (fn-b3-output-root
+                         (fn-b3-window-tree (fn-b3-words 8 (fn-b3-fix-octets key))
+                                            *fn-b3-keyed-hash*
+                           (fn-b3-window-outs (fn-b3-words 8 (fn-b3-fix-octets key)) k 1 m
+                                              *fn-b3-keyed-hash*)))))
+               ((key (fn-b3tt-input 32)) (m (fn-b3tt-input 2500)) (k 0))
+               :fault "the windows hashed at chunk counters shifted by one")
+              (wrong-mode
+               (:conclusion
+                (equal (fn-blake3-keyed key m)
+                       (fn-b3-output-root
+                         (fn-b3-window-tree (fn-b3-words 8 (fn-b3-fix-octets key))
+                                            0
+                           (fn-b3-window-outs (fn-b3-words 8 (fn-b3-fix-octets key)) k 0 m 0)))))
+               ((key (fn-b3tt-input 32)) (m (fn-b3tt-input 2500)) (k 0))
+               :fault "the composition taken in hash mode, not keyed mode")))
+
+(defteeth fn-blake3-derive-key-is-window-composition
+  :claim (()
+          (equal (fn-blake3-derive-key context m)
+                 (fn-b3-output-root
+                   (fn-b3-window-tree
+                     (fn-b3-words 8 (fn-b3-hash *fn-b3-iv* *fn-b3-derive-key-context*
+                                                (fn-b3-fix-octets context)))
+                     *fn-b3-derive-key-material*
+                     (fn-b3-window-outs
+                       (fn-b3-words 8 (fn-b3-hash *fn-b3-iv* *fn-b3-derive-key-context*
+                                                  (fn-b3-fix-octets context)))
+                       k 0 m *fn-b3-derive-key-material*)))))
+  :witness ((context (fn-b3tt-input 20)) (m (fn-b3tt-input 2500)) (k 0))
+  :breaks ()
+  :mutations ((wrong-counter
+               (:conclusion
+                (equal (fn-blake3-derive-key context m)
+                       (fn-b3-output-root
+                         (fn-b3-window-tree
+                           (fn-b3-words 8 (fn-b3-hash *fn-b3-iv* *fn-b3-derive-key-context*
+                                                      (fn-b3-fix-octets context)))
+                           *fn-b3-derive-key-material*
+                           (fn-b3-window-outs
+                             (fn-b3-words 8 (fn-b3-hash *fn-b3-iv* *fn-b3-derive-key-context*
+                                                        (fn-b3-fix-octets context)))
+                             k 1 m *fn-b3-derive-key-material*)))))
+               ((context (fn-b3tt-input 20)) (m (fn-b3tt-input 2500)) (k 0))
+               :fault "the windows hashed at chunk counters shifted by one")))
+
 (defteeth-check)
