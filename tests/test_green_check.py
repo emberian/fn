@@ -412,6 +412,34 @@ class ReleaseGateTests(unittest.TestCase):
             self.assertTrue(all(row["verdict"] == "unarchived"
                                 for row in green_check.strict_rows(report)))
 
+    def test_full_tree_summary_counts_a_moved_dependency_as_stale_not_green(self):
+        """Full-tree mode applies `standing`, as --profile does: the same bytes
+        over a moved dependency are stale in the counts and the worklist."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.tree(root)
+            changed = book(root, "books/dep", '(in-package "ACL2") ; moved')
+            manifest(root, "certify-20260902T010000Z-2", status="passed",
+                     passed={"books/dep": changed})
+            index(root, "certify-20260901T010000Z-1", "certify-20260902T010000Z-2")
+            report = green_check.audit(root, roots=["books/top"])
+            self.assertEqual(report["standing_counts"], {"green": 1, "stale": 1})
+            self.assertEqual(green_check.worklist(report), ["books/top"])
+            self.assertIn("1 green at their current digest and closure",
+                          green_check.summary(report)[0])
+            self.assertIn("1 stale", green_check.summary(report)[0])
+            self.assertEqual(self.standings(green_check.strict_rows(report))["books/top"],
+                             "stale")
+
+    def test_an_unchanged_closure_stays_green_in_the_full_tree_counts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            self.tree(root)
+            index(root, "certify-20260901T010000Z-1")
+            report = green_check.audit(root, roots=["books/top"])
+            self.assertEqual(report["standing_counts"], {"green": 2})
+            self.assertEqual(green_check.worklist(report), [])
+
     def test_merge_gate_uses_the_same_standing(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
