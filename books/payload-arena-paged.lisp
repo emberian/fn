@@ -20,7 +20,7 @@
 ;
 ; The abstraction: the pages' byte lists, concatenated (`fn-arp-flat'), are
 ; the byte array of `fn-arena-bytes': the relation `fn-arena$pcorr' is
-; `fn-arena$corr''s with that list in place of the array, every page is full
+; `fn-arena-bytes$corr''s with that list in place of the pool, every page is full
 ; (*fn-arp-page* octets, `fn-arp-pages-fullp'), and the fill is within the
 ; pages.  The reads, writes and growth are proved against the flat list
 ; once (`fn-arp-nth-flat', `fn-arp-flat-of-page-write', `fn-arp-flat-of-add-page'),
@@ -29,6 +29,159 @@
 
 (in-package "ACL2")
 (include-book "payload-arena-bytes")
+
+; The slices of the pool and the ranges every handle satisfies, with the
+; lemmas about any list that this book's proofs carry over (the arrays as the
+; lists they are).  They were the byte array's, in books/payload-arena-bytes.lisp,
+; until that book became one declaration; the lists they are about are this
+; book's pages' flat view.  Proved under the two rewrite rules the arena book
+; withdraws from includers, as they were there.
+(encapsulate
+  ()
+  (local (in-theory (enable (:rewrite fn-arn-payload-listp-nth)
+                            (:rewrite fn-arn-payload-listp-true-listp))))
+; -----------------------------------------------------------------------------
+  ; The abstraction: the slices buf[off[h]..off[h]+size[h]) for h in [h, count),
+  ; and the range invariant every handle satisfies.  Both are lemmas about
+  ; lists (the arrays as the lists they are).
+  
+  (defun fn-arn-slices (h count off size buf)
+    (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix count) (nfix h)))))
+    (if (or (not (natp h)) (not (natp count)) (<= count h))
+        nil
+      (cons (fn-oct-list-from (nth h off) (+ (nth h off) (nth h size)) buf)
+            (fn-arn-slices (1+ h) count off size buf))))
+  
+  (defun fn-arn-rangesp (h count off size top)
+    (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix count) (nfix h)))))
+    (if (or (not (natp h)) (not (natp count)) (<= count h))
+        t
+      (and (natp (nth h off)) (natp (nth h size))
+           (<= (+ (nth h off) (nth h size)) top)
+           (fn-arn-rangesp (1+ h) count off size top))))
+  
+  (defthm fn-arn-len-of-slices
+    (equal (len (fn-arn-slices h count off size buf))
+           (if (and (natp h) (natp count) (< h count)) (- count h) 0)))
+  
+  (defthm fn-arn-true-listp-of-slices
+    (true-listp (fn-arn-slices h count off size buf)))
+  
+  (local
+   (defun fn-arn-ind-hk (h k count)
+     (declare (xargs :measure (nfix (- (nfix count) (nfix h)))))
+     (if (or (not (natp h)) (not (natp count)) (<= count h))
+         (list h k)
+       (fn-arn-ind-hk (1+ h) (1- k) count))))
+  
+  (defthm fn-arn-nth-of-slices
+    (implies (and (natp h) (natp count) (natp k) (< (+ h k) count))
+             (equal (nth k (fn-arn-slices h count off size buf))
+                    (fn-oct-list-from (nth (+ h k) off)
+                                      (+ (nth (+ h k) off) (nth (+ h k) size))
+                                      buf)))
+    :hints (("Goal" :induct (fn-arn-ind-hk h k count))))
+  
+  (defthm fn-arn-slices-empty
+    (implies (and (natp h) (natp count) (<= count h))
+             (equal (fn-arn-slices h count off size buf) nil)))
+  
+  (defthm fn-arn-rangesp-empty
+    (implies (and (natp h) (natp count) (<= count h))
+             (equal (fn-arn-rangesp h count off size top) t)))
+  
+  ; The split of the slices at the last handle.  Not a rewrite rule.
+  (defthm fn-arn-slices-snoc
+    (implies (and (natp h) (natp n) (<= h n))
+             (equal (fn-arn-slices h (1+ n) off size buf)
+                    (append (fn-arn-slices h n off size buf)
+                            (list (fn-oct-list-from (nth n off) (+ (nth n off) (nth n size)) buf)))))
+    :rule-classes nil
+    :hints (("Goal" :induct (fn-arn-slices h n off size buf))))
+  
+  (defthm fn-arn-rangesp-snoc
+    (implies (and (natp h) (natp n) (<= h n))
+             (equal (fn-arn-rangesp h (1+ n) off size top)
+                    (and (fn-arn-rangesp h n off size top)
+                         (natp (nth n off)) (natp (nth n size))
+                         (<= (+ (nth n off) (nth n size)) top))))
+    :rule-classes nil
+    :hints (("Goal" :induct (fn-arn-rangesp h n off size top))))
+  
+  (defthm fn-arn-rangesp-at
+    (implies (and (fn-arn-rangesp h count off size top)
+                  (natp h) (natp count) (natp k) (<= h k) (< k count))
+             (and (natp (nth k off)) (natp (nth k size))
+                  (<= (+ (nth k off) (nth k size)) top)))
+    :rule-classes nil
+    :hints (("Goal" :induct (fn-arn-rangesp h count off size top))))
+  
+  (defthm fn-arn-rangesp-fill-monotone
+    (implies (and (fn-arn-rangesp h count off size top) (<= top fill2))
+             (fn-arn-rangesp h count off size fill2)))
+  
+  ; The handle arrays: a write at or past the count, and a resize keeping
+  ; the count, change no slice and no range.
+  
+  (defthm fn-arn-slices-of-update-off-outside
+    (implies (and (natp count) (natp j) (<= count j))
+             (equal (fn-arn-slices h count (update-nth j v off) size buf)
+                    (fn-arn-slices h count off size buf))))
+  
+  (defthm fn-arn-slices-of-update-size-outside
+    (implies (and (natp count) (natp j) (<= count j))
+             (equal (fn-arn-slices h count off (update-nth j v size) buf)
+                    (fn-arn-slices h count off size buf))))
+  
+  (defthm fn-arn-rangesp-of-update-off-outside
+    (implies (and (natp count) (natp j) (<= count j))
+             (equal (fn-arn-rangesp h count (update-nth j v off) size top)
+                    (fn-arn-rangesp h count off size top))))
+  
+  (defthm fn-arn-rangesp-of-update-size-outside
+    (implies (and (natp count) (natp j) (<= count j))
+             (equal (fn-arn-rangesp h count off (update-nth j v size) top)
+                    (fn-arn-rangesp h count off size top))))
+  
+  (defthm fn-arn-slices-of-resize-off
+    (implies (and (natp count) (<= count (len off)) (<= count (nfix m)))
+             (equal (fn-arn-slices h count (resize-list off m d) size buf)
+                    (fn-arn-slices h count off size buf))))
+  
+  (defthm fn-arn-slices-of-resize-size
+    (implies (and (natp count) (<= count (len size)) (<= count (nfix m)))
+             (equal (fn-arn-slices h count off (resize-list size m d) buf)
+                    (fn-arn-slices h count off size buf))))
+  
+  (defthm fn-arn-rangesp-of-resize-off
+    (implies (and (natp count) (<= count (len off)) (<= count (nfix m)))
+             (equal (fn-arn-rangesp h count (resize-list off m d) size top)
+                    (fn-arn-rangesp h count off size top))))
+  
+  (defthm fn-arn-rangesp-of-resize-size
+    (implies (and (natp count) (<= count (len size)) (<= count (nfix m)))
+             (equal (fn-arn-rangesp h count off (resize-list size m d) top)
+                    (fn-arn-rangesp h count off size top))))
+  
+  ; The byte array: a write at or past the fill, and a resize keeping the
+  ; fill, change no slice, because every range lies below the fill.
+  
+  (defthm fn-arn-slices-of-update-buf-outside
+    (implies (and (fn-arn-rangesp h count off size top) (natp j) (<= top j))
+             (equal (fn-arn-slices h count off size (update-nth j v buf))
+                    (fn-arn-slices h count off size buf))))
+  
+  (defthm fn-arn-slices-of-resize-buf
+    (implies (and (fn-arn-rangesp h count off size top)
+                  (<= top (len buf)) (<= top (nfix m)))
+             (equal (fn-arn-slices h count off size (resize-list buf m d))
+                    (fn-arn-slices h count off size buf))))
+  
+  (defthm fn-arn-payload-listp-of-slices
+    (implies (and (fn-octets$c-bufp buf) (fn-arn-rangesp h count off size top)
+                  (<= top (len buf)))
+             (fn-arn-payload-listp (fn-arn-slices h count off size buf))))
+  )
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -300,19 +453,13 @@
 ; The concrete recognizer, field by field (forward), and its preservation
 ; by each field's update.
 
-(defthm fn-arp-offp-is-c-offp
-  (equal (fn-arena$p-offp x) (fn-arena$c-offp x)))
-
-(defthm fn-arp-sizep-is-c-sizep
-  (equal (fn-arena$p-sizep x) (fn-arena$c-sizep x)))
-
 (defthm fn-arp-pp-fields
   (implies (fn-arena$pp fn-arena$p)
            (and (true-listp fn-arena$p)
                 (equal (len fn-arena$p) 6)
                 (fn-arena$p-pagesp (nth 0 fn-arena$p))
-                (fn-arena$c-offp (nth 1 fn-arena$p))
-                (fn-arena$c-sizep (nth 2 fn-arena$p))
+                (fn-arena$p-offp (nth 1 fn-arena$p))
+                (fn-arena$p-sizep (nth 2 fn-arena$p))
                 (integerp (nth 3 fn-arena$p)) (<= 0 (nth 3 fn-arena$p))
                 (integerp (nth 4 fn-arena$p)) (<= 0 (nth 4 fn-arena$p))
                 (integerp (nth 5 fn-arena$p)) (<= 0 (nth 5 fn-arena$p))))
@@ -588,12 +735,12 @@
   :hints (("Goal" :in-theory (e/d (fn-arp-buf fn-arp-cap) (fn-arp-cap-of-npages)))))
 
 (defthm fn-arp-pp-of-update-off
-  (implies (and (fn-arena$pp x) (fn-arena$c-offp off))
+  (implies (and (fn-arena$pp x) (fn-arena$p-offp off))
            (fn-arena$pp (update-nth 1 off x)))
   :hints (("Goal" :in-theory (enable update-nth nth))))
 
 (defthm fn-arp-pp-of-update-size
-  (implies (and (fn-arena$pp x) (fn-arena$c-sizep size))
+  (implies (and (fn-arena$pp x) (fn-arena$p-sizep size))
            (fn-arena$pp (update-nth 2 size x)))
   :hints (("Goal" :in-theory (enable update-nth nth))))
 
@@ -618,11 +765,11 @@
   :hints (("Goal" :in-theory (enable update-nth nth))))
 
 (defthm fn-arp-okp-of-update-off
-  (implies (and (fn-arp-okp x) (fn-arena$c-offp off))
+  (implies (and (fn-arp-okp x) (fn-arena$p-offp off))
            (fn-arp-okp (update-nth 1 off x))))
 
 (defthm fn-arp-okp-of-update-size
-  (implies (and (fn-arp-okp x) (fn-arena$c-sizep size))
+  (implies (and (fn-arp-okp x) (fn-arena$p-sizep size))
            (fn-arp-okp (update-nth 2 size x))))
 
 (defthm fn-arp-okp-of-update-count
@@ -1373,7 +1520,7 @@
 (local (in-theory (disable fn-arp-byte fn-arp-list-pages)))
 
 ; -----------------------------------------------------------------------------
-; The abstraction relation: `fn-arena$corr''s, over the flat view.
+; The abstraction relation: `fn-arena-bytes$corr''s, over the flat view.
 
 (defun fn-arena$pcorr (fn-arena$p fn-arena$a)
   (declare (xargs :verify-guards nil))
