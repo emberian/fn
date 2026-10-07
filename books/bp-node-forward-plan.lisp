@@ -13,6 +13,7 @@
 ; most one session.
 (in-package "ACL2")
 (include-book "bp-node-progress-guards")
+(include-book "def-loop")
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
@@ -35,51 +36,19 @@
 ; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
 ; node's held-bundle or job queue, data with no fixed cap (D27), one
 ; control-stack frame per row before.
-(defun fn-bpnp-forward-plan-rows-loop (ordered table seen acc)
-  (declare (xargs :guard t :measure (acl2-count ordered)))
-  (if (atom ordered) (fn-ag-rev-onto acc nil)
-    (let* ((h (car ordered))
-           (peer (fn-bpn-nth 11 h))
-           (choice (fn-bprt-outbound-choice (fn-bpnp-held-dest h) table)))
-      (if (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
-               (null (fn-bpn-nth 14 h))
-               (fn-bpp-eidp peer)
-               (not (member-equal peer (fix-true-list seen)))
-               (equal (fn-bprt-nth 0 choice) :hop))
-          (fn-bpnp-forward-plan-rows-loop
-           (cdr ordered) table (cons peer (fix-true-list seen))
-           (cons (list peer (fn-bprt-nth 1 choice) (fn-bprt-nth 2 choice)
-                       (fn-bprt-nth 3 choice))
-                 acc))
-        (fn-bpnp-forward-plan-rows-loop (cdr ordered) table seen acc)))))
-
-(defun fn-bpnp-forward-plan-rows (ordered table seen)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count ordered)))
-  (mbe :logic
-       (if (atom ordered) nil
-         (let* ((h (car ordered))
-                (peer (fn-bpn-nth 11 h))
-                (choice (fn-bprt-outbound-choice (fn-bpnp-held-dest h) table)))
-           (if (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
-                    (null (fn-bpn-nth 14 h))
-                    (fn-bpp-eidp peer)
-                    (not (member-equal peer (fix-true-list seen)))
-                    (equal (fn-bprt-nth 0 choice) :hop))
-               (cons (list peer (fn-bprt-nth 1 choice) (fn-bprt-nth 2 choice)
-                           (fn-bprt-nth 3 choice))
-                     (fn-bpnp-forward-plan-rows (cdr ordered) table
-                                                (cons peer (fix-true-list seen))))
-             (fn-bpnp-forward-plan-rows (cdr ordered) table seen))))
-       :exec (fn-bpnp-forward-plan-rows-loop ordered table seen nil)))
-
-(defthm fn-bpnp-forward-plan-rows-loop-is-rev-onto
-  (equal (fn-bpnp-forward-plan-rows-loop ordered table seen acc)
-         (fn-ag-rev-onto acc (fn-bpnp-forward-plan-rows ordered table seen)))
-  :hints (("Goal" :induct (fn-bpnp-forward-plan-rows-loop ordered table seen acc)
-                  :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
-                                      fn-bpn-nth fn-bpp-eidp fn-bprt-nth))))
-
-
+(def-loop fn-bpnp-forward-plan-rows (ordered table seen)
+  :shape :step :over (ordered seen) :done (atom ordered) :elt o
+  :emit (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
+             (null (fn-bpn-nth 14 h))
+             (fn-bpp-eidp peer)
+             (not (member-equal peer (fix-true-list seen)))
+             (equal (fn-bprt-nth 0 choice) :hop))
+  :let ((h o)
+        (peer (fn-bpn-nth 11 h))
+        (choice (fn-bprt-outbound-choice (fn-bpnp-held-dest h) table)))
+  :body (list peer (fn-bprt-nth 1 choice) (fn-bprt-nth 2 choice) (fn-bprt-nth 3 choice))
+  :next ((cdr ordered) (cons peer (fix-true-list seen)))
+  :skip-next ((cdr ordered) seen) :measure (acl2-count ordered))
 
 ; The host's question after each pass (host/native/bp-node.lisp
 ; `fnn-bpnode-forward-contact'): a list of (PEER BOUNDARY EID PORT), oldest
@@ -531,64 +500,22 @@
 ; Executes by a loop (lane depth-debt, PRF-919): the walk is over the BP
 ; node's held-bundle or job queue, data with no fixed cap (D27), one
 ; control-stack frame per row before.
-(defun fn-bpnp-forward-unrouted-rows-loop (ordered table seen acc)
-  (declare (xargs :guard t :measure (acl2-count ordered)))
-  (if (atom ordered) (fn-ag-rev-onto acc nil)
-    (let* ((h (car ordered))
-           (dest (fn-bpnp-held-dest h))
-           (choice (fn-bprt-outbound-choice dest table)))
-      (if (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
-               (null (fn-bpn-nth 14 h))
-               (not (equal (fn-bprt-nth 0 choice) :hop))
-               (not (member-equal dest (fix-true-list seen))))
-          (fn-bpnp-forward-unrouted-rows-loop
-           (cdr ordered) table (cons dest (fix-true-list seen))
-           (cons (list dest (fn-bprt-nth 0 choice)) acc))
-        (fn-bpnp-forward-unrouted-rows-loop (cdr ordered) table seen acc)))))
-
-(defun fn-bpnp-forward-unrouted-rows (ordered table seen)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count ordered)))
-  (mbe :logic
-       (if (atom ordered) nil
-         (let* ((h (car ordered))
-                (dest (fn-bpnp-held-dest h))
-                (choice (fn-bprt-outbound-choice dest table)))
-           (if (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
-                    (null (fn-bpn-nth 14 h))
-                    (not (equal (fn-bprt-nth 0 choice) :hop))
-                    (not (member-equal dest (fix-true-list seen))))
-               (cons (list dest (fn-bprt-nth 0 choice))
-                     (fn-bpnp-forward-unrouted-rows (cdr ordered) table
-                                                    (cons dest (fix-true-list seen))))
-             (fn-bpnp-forward-unrouted-rows (cdr ordered) table seen))))
-       :exec (fn-bpnp-forward-unrouted-rows-loop ordered table seen nil)))
-
-(defthm fn-bpnp-forward-unrouted-rows-loop-is-rev-onto
-  (equal (fn-bpnp-forward-unrouted-rows-loop ordered table seen acc)
-         (fn-ag-rev-onto acc (fn-bpnp-forward-unrouted-rows ordered table seen)))
-  :hints (("Goal" :induct (fn-bpnp-forward-unrouted-rows-loop ordered table seen acc)
-                  :in-theory (disable fn-bprt-outbound-choice fn-bpnp-held-dest
-                                      fn-bpn-nth fn-bprt-nth))))
-
-
+(def-loop fn-bpnp-forward-unrouted-rows (ordered table seen)
+  :shape :step :over (ordered seen) :done (atom ordered) :elt o
+  :emit (and (equal (fn-bpn-nth 12 h) '(:forward-pending))
+             (null (fn-bpn-nth 14 h))
+             (not (equal (fn-bprt-nth 0 choice) :hop))
+             (not (member-equal dest (fix-true-list seen))))
+  :let ((h o) (dest (fn-bpnp-held-dest h)) (choice (fn-bprt-outbound-choice dest table)))
+  :body (list dest (fn-bprt-nth 0 choice))
+  :next ((cdr ordered) (cons dest (fix-true-list seen)))
+  :skip-next ((cdr ordered) seen) :measure (acl2-count ordered))
 
 (defun fn-bpnp-forward-unrouted (held table)
   (declare (xargs :guard (true-listp held)))
   (fn-bpnp-forward-unrouted-rows (reverse held) table nil))
 
-(verify-guards fn-bpnp-forward-plan-rows-loop)
-(verify-guards fn-bpnp-forward-plan-rows
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpnp-forward-plan-rows fn-ag-rev-onto fn-bpnp-forward-plan-rows-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-bpnp-forward-plan)
 (verify-guards fn-bpnp-plan-peers)
 (verify-guards fn-bpnp-host-routes)
-(verify-guards fn-bpnp-forward-unrouted-rows-loop)
-(verify-guards fn-bpnp-forward-unrouted-rows
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpnp-forward-unrouted-rows fn-ag-rev-onto fn-bpnp-forward-unrouted-rows-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-bpnp-forward-unrouted)
