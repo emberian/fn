@@ -431,16 +431,20 @@
 
 ; The same, over the arena's own logical functions (:model): the declaration
 ; that replaces books/payload-arena-bytes.lisp's hand stobj, on a fresh name.
+(defthm drt-octet-listp-is-adt-octetsp
+  (equal (fn-cbor-octet-listp x) (adt-octetsp x))
+  :hints (("Goal" :in-theory (enable adt-octetsp fn-cbor-octet-listp fn-cbor-octetp unsigned-byte-p))))
+
 (defthm drt-mod-recognizer-is-the-scalar-sequence
   (equal (fn-arena$ap x) (adt-scalar-seq-p '(:octets) x))
   :hints (("Goal" :in-theory (enable fn-arena$ap fn-arn-payload-listp adt-scalar-seq-p adt-val-okp
-                                     adt-octetsp fn-cbor-octet-listp fn-cbor-octetp unsigned-byte-p))))
+                                     drt-octet-listp-is-adt-octetsp))))
 
 (def-representation drt-mod (payload :octets) :scalar t :paged nil
   :source fn-octets
   :model (:recognizer fn-arena$ap :creator create-fn-arena$a)
-  :lemmas (drt-mod-recognizer-is-the-scalar-sequence drt-src-octets-are-adt-octets
-           fn-oct-nth-is-nth fn-oct-snoc-is-append fn-oct-list-is-identity
+  :lemmas (drt-mod-recognizer-is-the-scalar-sequence drt-octet-listp-is-adt-octetsp
+           drt-src-octets-are-adt-octets fn-oct-nth-is-nth fn-oct-snoc-is-append fn-oct-list-is-identity
            fn-oct-slice-list-is-take-nthcdr)
   :exports ((count :logic fn-arena$a-count) (payload-len :logic fn-arena$a-payload-len)
             (inner-get :as drt-mod-get :logic fn-arena$a-get)

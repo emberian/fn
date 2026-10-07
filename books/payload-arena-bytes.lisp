@@ -172,7 +172,8 @@
 (def-representation fn-arena-bytes (payload :octets) :scalar t :paged nil
   :source fn-octets
   :model (:recognizer fn-arena$ap :creator create-fn-arena$a)
-  :lemmas (fn-arn-recognizer-is-the-scalar-sequence fn-arn-source-octets-are-adt-octets
+  :lemmas (fn-arn-recognizer-is-the-scalar-sequence fn-arn-octet-listp-is-adt-octetsp
+           fn-arn-source-octets-are-adt-octets
            fn-oct-nth-is-nth fn-oct-snoc-is-append fn-oct-list-is-identity
            fn-oct-slice-list-is-take-nthcdr)
   :exports ((count :logic fn-arena$a-count)
