@@ -63,3 +63,12 @@ Verdict on M1: nothing in the core is large and resident except what the stock S
 | plain SBCL, stock core, idle | 37.8 |
 | fn-core without host code (partial core, idle, no start) | 51.4 |
 | ACL2 image, empty open, idle (N, 2026-10-06) | 115-129 (120.0 at idle-after-close) |
+
+## Pre-staged M1/M2 script (m1m2.py, run-m1m2.sh) and dry run (NOISY, load 12-14)
+
+`run-m1m2.sh OUTDIR --core <fn-core launcher>` runs floor, `fn-core identity` (sampled every 10 ms to exit, last sample), fn-core empty small-preset open (6 s after LISTENING), and the 3e53d7bc5 production image empty open, 3 repeats each, tls 16384 / heap 1068 MB, one swarm-build job at 36G, 40 min timeout, kills only its own Popen PIDs. Dry run (floor + image only, `dry1-results.json`, 2026-10-07 00:55):
+| step | VmRSS MB | HWM MB | anon MB | core-mapping Rss MB |
+|---|---|---|---|---|
+| floor | 39.8 | 39.8 | 9.0 | 34.2 |
+| ACL2 image, empty open, idle 6 s after LISTENING | 107.1 | 129.0 | 12.9 | 92.0 |
+The floor reads 2 MB above M0's 37.8 (read at 6 s of a 12 s sleep instead of 4 s of 6; the same stock core), so compare M1 against this script's own floor row. The image's 107 MB is the pre-open-transient figure (HWM 129 matches N's 115-129 range).
