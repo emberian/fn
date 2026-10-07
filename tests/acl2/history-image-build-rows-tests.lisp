@@ -2,6 +2,7 @@
 ; appended all-event rows, corrupted logical history, and malformed custody.
 (in-package "ACL2")
 (include-book "../../books/history-image-build-rows")
+(include-book "../../books/defkeystone")
 
 (local (in-theory (enable fn-hrs-img-ok fn-hp-vhold-is-x)))
 (defconst *hibr-empty*
@@ -82,3 +83,43 @@
     (and (not (<= (fn-hrc-sfx-length c) 16))
          (not (<= (fn-hrc-sfx-length (mv-nth 1 (fn-his-build-row :later c))) 16))))
   :rule-classes nil)
+
+; fn-his-build-row-bounds-suffix-capacity (TEETH CONTRACT v1).  Multiple-value
+; claim (mv-nth of a stobj function): ground-theorem witnesses.  Positive at
+; the producer's begin value; removal at the oversized suffix of
+; hibr-suffix-bound-removal; mutation at the pending refusal, where the row
+; returns its state unchanged and so does not shrink the suffix.
+(defthm hbt-cap-witness
+  (and (<= (fn-hrc-sfx-length (fn-his-build-begin 0 *hibr-empty*)) 16)
+       (<= (fn-hrc-sfx-length (mv-nth 1 (fn-his-build-row *hibr-event* (fn-his-build-begin 0 *hibr-empty*)))) 16))
+  :hints (("Goal" :use ((:instance fn-his-build-begin-establishes
+                                   (salt 0) (fn-hrecs$c *hibr-empty*)))
+           :in-theory (disable fn-his-build-begin fn-his-build-row)))
+  :rule-classes nil)
+
+(defthm hbt-cap-without-bound
+  (and (not (<= (fn-hrc-sfx-length (update-nth 9 (make-list 32 :initial-element nil) *hibr-pending*)) 16))
+       (not (<= (fn-hrc-sfx-length (mv-nth 1 (fn-his-build-row :later (update-nth 9 (make-list 32 :initial-element nil) *hibr-pending*)))) 16)))
+  :rule-classes nil)
+
+(defthm hbt-cap-mut1
+  (and (<= (fn-hrc-sfx-length *hibr-pending*) 16)
+       (<= (fn-hrc-sfx-length (mv-nth 1 (fn-his-build-row :later *hibr-pending*))) 16)
+       (not (< (fn-hrc-sfx-length (mv-nth 1 (fn-his-build-row :later *hibr-pending*)))
+               (fn-hrc-sfx-length *hibr-pending*))))
+  :rule-classes nil)
+
+(defteeth fn-his-build-row-bounds-suffix-capacity
+  :claim (((bounded (<= (fn-hrc-sfx-length c) 16)))
+          (<= (fn-hrc-sfx-length (mv-nth 1 (fn-his-build-row ev c))) 16))
+  :subject fn-his-build-row
+  :witness-lemma hbt-cap-witness
+  :witness ((c (fn-his-build-begin 0 *hibr-empty*)) (ev *hibr-event*))
+  :breaks ((bounded ((c (update-nth 9 (make-list 32 :initial-element nil) *hibr-pending*)) (ev :later))
+                    :lemma hbt-cap-without-bound))
+  :mutations ((row-shrinks-the-suffix
+               (:conclusion (< (fn-hrc-sfx-length (mv-nth 1 (fn-his-build-row ev c)))
+                               (fn-hrc-sfx-length c)))
+               ((c *hibr-pending*) (ev :later))
+               :fault "a row step that always shortens the pending suffix"
+               :lemma hbt-cap-mut1)))
