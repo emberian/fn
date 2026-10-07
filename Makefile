@@ -2389,7 +2389,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
-	books/image-world-paged \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
     books/pagestore-digest-block-predicate \
