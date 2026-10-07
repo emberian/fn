@@ -5833,6 +5833,12 @@
 ; Actual bounded BP heap projection and stopping-aware log admission consumers.
 (definterface fn-bph-command-plan :class :common-lisp-compliant :kinds ((argv true-listp)))
 (definterface fn-bph-refusal-line :class :common-lisp-compliant)
+(definterface fn-bph-node-serve-p :class :common-lisp-compliant :kinds ((argv true-listp)))
+(definterface fn-bph-node-journal :class :common-lisp-compliant :kinds ((argv true-listp)))
+(definterface fn-bph-node-transfer :class :common-lisp-compliant :kinds ((argv true-listp)))
+; The probe's BP extension and the node's startup check read one capacity figure.
+(definterface fn-bph-extend-reservation :class :common-lisp-compliant
+  :keystones ((fn-bph-extended-reservation-holds-bp-sessions :via fn-bpsp-node-capacity)))
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
 ; STATUS/HEALTH project the accepted configuration, never run-only NIL fields.
 (definterface fn-native-operator-host-result-config :class :program)
@@ -5865,9 +5871,7 @@
 (definterface fn-bpsg-return :class :common-lisp-compliant)
 (definterface fn-bpsg-slots :class :common-lisp-compliant :kinds ((grant true-listp)))
 (definterface fn-bpsg-step :class :common-lisp-compliant)
-(definterface fn-bpsp-captured-wire-span :class :common-lisp-compliant)
 (definterface fn-bpsp-file-name :class :common-lisp-compliant)
-(definterface fn-bpsp-held-projection :class :common-lisp-compliant)
 (definterface fn-bpsp-incoming-contended :class :common-lisp-compliant
   :keystones (fn-bpsp-free-incoming-slot-is-not-contention fn-bpsp-nobody-waiting-is-not-contention))
 (definterface fn-bpsp-passive-ms :class :common-lisp-compliant :kinds ((profile true-listp)))
@@ -5875,7 +5879,8 @@
 (definterface fn-bpsp-read :class :common-lisp-compliant)
 (definterface fn-bpsp-read-bound :class :common-lisp-compliant)
 (definterface fn-bpsp-root-release-ready :class :common-lisp-compliant)
-(definterface fn-bpsp-startup :class :common-lisp-compliant)
+(definterface fn-bpsp-node-startup :class :common-lisp-compliant
+  :keystones ((fn-bpsp-node-startup-holds-the-capacity :via fn-bpsp-node-capacity)))
 (definterface fn-bpsp-write :class :common-lisp-compliant)
 (definterface fn-bpsrx-abort-plan :class :common-lisp-compliant)
 (definterface fn-bpsrx-authorizedp :class :common-lisp-compliant)
@@ -5904,9 +5909,6 @@
               fn-tcrt-no-expiry-before-established-session))
 (definterface fn-tsc-at :class :common-lisp-compliant :kinds ((n natp)))
 
-(definterface fn-bpnpf-adu-octets :class :common-lisp-compliant)
-(definterface fn-bpnpf-bundle-octets :class :common-lisp-compliant)
-(definterface fn-bpnpf-rows :class :common-lisp-compliant)
 (definterface fn-tcl-host-segment-mru :class :common-lisp-compliant)
 
 ; Single-candidate continuation; producer guard/refinement is PRF1309.
