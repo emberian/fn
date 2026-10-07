@@ -1872,8 +1872,12 @@ lock.  Give the slot back with fnn-mux-unreserve when no socket fills it."
   (let ((deadline (fnn-mux-ticks seconds)))
     (loop
       (multiple-value-bind (result line) (fnn-mux-reserve-once service deadline)
+        ;; The line is ACL2's (fn-mxa-deferral-line).  Its failure is not
+        ;; swallowed: a malformed line is fnn-fault's, and the accept loop
+        ;; that called us answers it as it answers fnn-owner-retire-refuse's
+        ;; identical write.  No slot is held when LINE is non-NIL (:again).
         (when line
-          (ignore-errors (fnn-log-line (map 'list #'char-code line))))
+          (fnn-log-line (map 'list #'char-code line)))
         (unless (eq result :again)
           (return result))))))
 
