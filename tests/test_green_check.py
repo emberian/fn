@@ -135,7 +135,7 @@ class CacheVerdictTests(Fixture):
 
     def test_the_report_names_where_it_asked_and_counts(self):
         report = audit(self.root, self.cache, self.names)
-        self.assertEqual(report["counts"], {"green": 1, "uncertified": 3})
+        self.assertEqual(report["counts"], {"green": 1, "uncertified": 3, "unknown": 0})
         self.assertEqual(report["standing_counts"], {"green": 1, "uncertified": 3})
         self.assertIn(str(self.cache), report["cache"])
         self.assertEqual(report["record_identity"], RECORD)
@@ -448,6 +448,33 @@ class BoxTests(Fixture):
         with patch.object(green_check, "audit", side_effect=green_check.CacheUnavailable("x")), \
                 patch("sys.stderr"):
             self.assertEqual(green_check.main(["--summary"]), 2)
+
+    def test_unreachable_cache_reports_unknown_per_book_and_does_not_fail_a_summary(self):
+        book(self.root, "books/a", '(in-package "ACL2")')
+        with patch.object(green_check.subprocess, "run", return_value=self.reply({}, code=255)):
+            report = green_check.audit(self.root, roots=["books/a"],
+                                       cache=green_check.Cache(), unknown_ok=True)
+        self.assertEqual(report["books_by_verdict"]["books/a"]["verdict"], "unknown")
+        self.assertEqual(report["counts"]["unknown"], 1)
+        self.assertFalse(green_check.green_at_these_bytes(report["books_by_verdict"]["books/a"]))
+        out = []
+        with patch.object(green_check, "ROOT", self.root), \
+                patch.object(green_check.ledger, "makefile_roots", return_value=["books/a"]), \
+                patch.object(green_check.subprocess, "run", return_value=self.reply({}, code=255)), \
+                patch("builtins.print", side_effect=lambda *a, **k: out.append(" ".join(map(str, a)))):
+            self.assertEqual(green_check.main(["--summary"]), 0)
+            self.assertEqual(green_check.main(["--strict"]), 1)
+        self.assertIn("1 unknown", out[0])
+
+    def test_a_local_mirror_without_a_launcher_uses_the_record_identity(self):
+        book(self.root, "books/a", '(in-package "ACL2")')
+        publish(self.cache, self.root, "books/a", identity=green_check.RECORD_IDENTITY)
+        with patch.object(green_check.acl2_toolchain, "fingerprint",
+                          return_value=green_check.acl2_toolchain.Fingerprint(
+                              False, None, None, {}, "no launcher")):
+            report = green_check.audit(self.root, roots=["books/a"],
+                                       cache=green_check.Cache(local=self.cache))
+        self.assertEqual(report["books_by_verdict"]["books/a"]["verdict"], "green")
 
     def test_an_explicit_box_is_the_only_box_asked(self):
         asked = []

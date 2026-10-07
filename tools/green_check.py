@@ -67,11 +67,15 @@ import certs  # noqa: E402
 import unhooked  # noqa: E402
 import ledger  # noqa: E402
 
-ORDER = {"uncertified": 0, "absent": 1, "green": 2}
+ORDER = {"uncertified": 0, "unknown": 0, "absent": 1, "green": 2}
 
 # The record toolchain's launcher: tools/farm.py HOSTS["hbox"]["acl2"] (a test
 # pins them equal; farm is not imported here because it is heavy).
 RECORD_LAUNCHER = "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
+# The identity that launcher fingerprints to (the boxes compute it themselves;
+# this is only the default for a read-only local mirror on a machine that
+# has no such launcher, e.g. a laptop).  A test pins it against nothing local.
+RECORD_IDENTITY = "fcedce7e3aa26e7ef93c7b3801bc39b2c56b7968cc1dfdf8e710a8931b349d52"
 RECORD_BOX = "hbox"
 FALLBACK_BOX = "persvati"
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
@@ -182,11 +186,7 @@ class Cache:
     def local_identity(self) -> str:
         if self.identity is None:
             found = acl2_toolchain.fingerprint(Path(RECORD_LAUNCHER))
-            if not found.identity:
-                raise CacheUnavailable(
-                    f"a local cache needs the record toolchain identity: {RECORD_LAUNCHER} "
-                    "is not a qualified launcher here; pass --identity")
-            self.identity = found.identity
+            self.identity = found.identity or RECORD_IDENTITY
         return self.identity
 
     def ask_box(self, keys: list[str]) -> dict:
@@ -297,7 +297,8 @@ class Record:
 
 
 def audit(root: Path = ROOT, roots: list[str] | None = None,
-          include_local: bool = True, cache: Cache | None = None) -> dict:
+          include_local: bool = True, cache: Cache | None = None,
+          unknown_ok: bool = False) -> dict:
     """Every root and every book those roots include, judged at its closure key.
 
     `roots` defaults to the Makefile's `ACL2_BOOKS`; scoped queries pass
@@ -319,19 +320,27 @@ def audit(root: Path = ROOT, roots: list[str] | None = None,
         except (certs.UnreadableBook, cert_images.UnreadableSource) as error:
             records[book] = Record(book=book, digest=digest, keys=[],
                                    problem=f"cannot compute a closure key: {error}")
-    cache.ask([key for record in records.values() for key in record.keys])
+    unknown = ""
+    try:
+        cache.ask([key for record in records.values() for key in record.keys])
+    except CacheUnavailable as error:
+        if not unknown_ok:
+            raise
+        unknown = str(error)
+        for record in records.values():
+            record.verdict, record.problem = "unknown", f"cache unavailable: {error}"
     for record in records.values():
-        for key in record.keys:
+        for key in ([] if unknown else record.keys):
             if cache.hit(key) is not None:
                 record.verdict, record.hit, record.hit_key = "green", cache.hit(key), key
                 break
     counts = {name: sum(1 for record in records.values() if record.verdict == name)
-              for name in ("green", "uncertified")}
+              for name in ("green", "uncertified", "unknown")}
     return {
         "schema": "fn-green-check-v2",
         "roots": len(roots),
         "books": len(records),
-        "cache": cache.describe(),
+        "cache": f"UNKNOWN ({unknown})" if unknown else cache.describe(),
         "record_identity": cache.identity,
         "counts": counts,
         "standing_counts": standing_counts(
@@ -542,7 +551,7 @@ def strict_lines(rows: list[dict]) -> list[str]:
 def worklist(report: dict) -> list[str]:
     """The books the certification lanes owe a run."""
     return [book for book, entry in report["books_by_verdict"].items()
-            if standing(entry) in ("uncertified", "absent")]
+            if standing(entry) in ("uncertified", "absent", "unknown")]
 
 
 def summary(report: dict) -> list[str]:
@@ -553,7 +562,8 @@ def summary(report: dict) -> list[str]:
     return [
         f"green-check: {report['books']} books in the closure of "
         f"{report['roots']} Makefile roots -- {counts.get('green', 0)} certified "
-        f"at their current closure key, {counts.get('uncertified', 0)} not.",
+        f"at their current closure key, {counts.get('uncertified', 0)} not, "
+        f"{counts.get('unknown', 0)} unknown (no cache reachable).",
         f"green-check: owed a certification: {shown}{more}",
         f"green-check: asked {report['cache']}.  An entry is a certificate made "
         f"on the record toolchain, not one in this tree, and says nothing about images.",
@@ -599,13 +609,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.profile:
             import proof_artifacts
-            report = audit(root=ROOT, roots=proof_artifacts.profile_roots(ROOT, args.profile))
+            report = audit(root=ROOT, roots=proof_artifacts.profile_roots(ROOT, args.profile),
+                           unknown_ok=True)
         elif args.changed_since:
             changed = changed_books(ROOT, args.changed_since)
             selected, deps = changed_scope(ROOT, changed, ledger.makefile_roots())
-            report = audit(root=ROOT, roots=selected) if selected else {"books_by_verdict": {}}
+            report = audit(root=ROOT, roots=selected, unknown_ok=True) if selected else {"books_by_verdict": {}}
         else:
-            report = audit(root=ROOT)
+            report = audit(root=ROOT, unknown_ok=True)
     except subprocess.CalledProcessError as error:
         print(f"green-check: git cannot resolve {args.changed_since}: "
               f"{error.stderr.strip()}", file=sys.stderr)
