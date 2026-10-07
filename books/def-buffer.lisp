@@ -1,6 +1,6 @@
 ; fn: `def-buffer' --- a live octet buffer, one declaration.
 ;
-;   (def-buffer NAME)
+;   (def-buffer NAME [:view t])
 ;
 ; adds NAME, an abstract stobj congruent to `fn-octets' (books/octets-stobj.lisp):
 ; the same flat (unsigned-byte 8) array and fill, the same logical value (the
@@ -9,11 +9,12 @@
 ; all of them satisfy every theorem proved of `fn-octets'.  The exports are the
 ; twelve a codec clone reads, NAME-{len, get, put, append-octet, clear,
 ; reserve, list, from-list, append-list, append-back, get-word, append-word},
-; each the `fn-octets' logic and executable under the new name, with the
-; logical view opened (NAME-p is an octet list; clear is nil, list is the value,
-; len is `len', get-word is `fn-oct-word-at', append-word is `append' of
-; `fn-oct-word-octets') (`get-word' and
+; each the `fn-octets' logic and executable under the new name (`get-word' and
 ; `append-word' the little-endian K-octet word at I / the word appended).
+; `:view t' also states the logical view opened, as books/octets-stobj.lisp
+; does for `fn-octets': NAME-p is an octet list, clear is nil, list is the
+; value, len is `len', get-word is `fn-oct-word-at', append-word is `append'
+; of `fn-oct-word-octets'.
 ; Nothing is proved here: the correspondence and guard obligations belong to
 ; `fn-octets' and `:congruent-to' reuses them; what is generated is the clone
 ; the tree used to write out by hand (25 copies, books/pagestore-words.lisp
@@ -61,7 +62,7 @@
                                       :exec fn-octets$c-append-word :protect t))
        :congruent-to fn-octets)))
 
-; The logical view, opened, as books/octets-stobj.lisp states it for `fn-octets':
+; `:view t' adds the logical view, opened, as books/octets-stobj.lisp states it for `fn-octets':
 ; the value is the octet list, so the exports are list terms.  Left enabled as
 ; rewrite rules with the exports themselves disabled (the theory the page
 ; store's clone already ran in).
@@ -91,8 +92,8 @@
                           ,(def-buffer-sym n "-LIST") ,(def-buffer-sym n "-LEN")
                           ,(def-buffer-sym n "-GET-WORD") ,(def-buffer-sym n "-APPEND-WORD"))))))
 
-(defmacro def-buffer (name)
+(defmacro def-buffer (name &key view)
   `(progn
      ,(def-buffer-expansion name)
-     ,@(def-buffer-view name)
-     (table fn-generated ',name '(:def-buffer :congruent-to fn-octets))))
+     ,@(and view (def-buffer-view name))
+     (table fn-generated ',name '(:def-buffer :congruent-to fn-octets :view ,view))))
