@@ -61,5 +61,62 @@ class ReadSexpTests(unittest.TestCase):
         self.assertEqual(L.read_sexp("''x"), ["quote", ["quote", "x"]])
 
 
+class ReadAllTests(unittest.TestCase):
+    def test_positions_and_nesting(self):
+        text = "(a (b c)) d"
+        outer, d = L.read_all(text)
+        self.assertEqual((outer.start, outer.end), (0, 9))
+        self.assertEqual((d.text, d.start, d.end), ("d", 10, 11))
+        inner = outer.items[1]
+        self.assertEqual([x.text for x in inner.items], ["b", "c"])
+        self.assertEqual(text[inner.start:inner.end], "(b c)")
+
+    def test_marks_ride_on_the_datum_they_precede(self):
+        a, b, c, d = L.read_all("'x ,@(y) ''z #'f")[0], *L.read_all("'x ,@(y) ''z #'f")[1:]
+        self.assertEqual((a.text, a.marks), ("x", ("'",)))
+        self.assertEqual((b.marks, [x.text for x in b.items]), ((",@",), ["y"]))
+        self.assertEqual((c.text, c.marks), ("z", ("'", "'")))
+        self.assertEqual((d.text, d.marks), ("f", ("#'",)))
+
+    def test_characters_strings_and_escaped_symbols_are_single_leaves(self):
+        text = '(f #\\( #\\" #\\Space "a \\" ) ;" |x ( y| ) z'
+        form, z = L.read_all(text)
+        self.assertEqual([type(x).__name__ for x in form.items],
+                         ["Atom", "Atom", "Atom", "Atom", "Str", "Atom"])
+        self.assertEqual([x.text for x in form.items if isinstance(x, L.Atom)],
+                         ["f", "#\\(", "#\\\"", "#\\Space", "|x ( y|"])
+        self.assertEqual(z.text, "z")
+
+    def test_comments_vanish_even_nested(self):
+        self.assertEqual([x.text for x in L.read_all("a #| b #| c |# d |# e ; f\ng")],
+                         ["a", "e", "g"])
+
+    def test_string_value_resolves_escapes(self):
+        (s,) = L.read_all('"a\\"b\\\\c"')
+        self.assertEqual(L.string_value(s.text), 'a"b\\c')
+        self.assertEqual(L.string_value('"open'), "open")
+
+    def test_lenient_and_strict_unbalanced(self):
+        stray, = L.read_all(") x")
+        self.assertEqual(stray.text, "x")
+        (unclosed,) = L.read_all("(a (b")
+        self.assertEqual(unclosed.end, 5)
+        with self.assertRaises(L.ReadError) as close:
+            L.read_all("(a) )", strict=True)
+        self.assertEqual((close.exception.kind, close.exception.offset), ("close", 4))
+        with self.assertRaises(L.ReadError) as opened:
+            L.read_all("x (a (b", strict=True)
+        self.assertEqual((opened.exception.kind, opened.exception.offset), ("open", 2))
+
+    def test_first_only_and_start(self):
+        self.assertEqual(len(L.read_all("(a) (b)", first_only=True)), 1)
+        (b,) = L.read_all("(a) (b)", start=3, first_only=True)
+        self.assertEqual(b.start, 4)
+
+    def test_line_numberer(self):
+        line = L.line_numberer("a\nb\n\nc")
+        self.assertEqual([line(i) for i in (0, 1, 2, 4, 5)], [1, 1, 2, 3, 4])
+
+
 if __name__ == "__main__":
     unittest.main()

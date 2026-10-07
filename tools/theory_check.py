@@ -48,6 +48,8 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import lisp_source  # noqa: E402
 BOOKS = ROOT / "books"
 
 # The books whose theories are "the codec": the CBOR codec and its
@@ -72,47 +74,23 @@ CODEC_LAYER = CODEC_BOOKS | {
 # whose name ends in `-impl'.
 IMPL = re.compile(r"\(defun\s+(fn-[^\s()]*-impl)\b", re.IGNORECASE)
 
-# An atom is also a character literal (#\( #\" #\; #\Space: the character
-# after #\ is never a delimiter) and a |bar-quoted symbol|; read as ordinary
-# atoms they unbalanced the parentheses of a one-line form (proof_repl send,
-# compression-extents-2, 2026-09-27).
-TOKEN = re.compile(r'''
-    (?P<comment>;[^\n]*)              |
-    (?P<block>\#\|.*?\|\#)            |
-    (?P<string>"(?:\\.|[^"\\])*")     |
-    (?P<open>\()                      |
-    (?P<close>\))                     |
-    (?P<quote>'|`|,@|,|\#\.)          |
-    (?P<atom>\#\\.[^\s()"';]*|\|[^|]*\|[^\s()"';]*|[^\s()"';]+)
-''', re.VERBOSE | re.DOTALL)
-
-
 def forms(text: str) -> list:
     """The top-level forms of a book as nested lists of strings.
 
     Strings come back as their source spelling; atoms as lowercase text.
     Quote marks are dropped: `'(a b)` reads as `(a b)`, which is what a
-    theory expression needs and nothing here cares about more.
+    theory expression needs and nothing here cares about more.  Raises
+    ValueError on unbalanced parentheses.
     """
-    stack: list[list] = [[]]
-    for match in TOKEN.finditer(text):
-        kind = match.lastgroup
-        if kind in ("comment", "block", "quote"):
-            continue
-        if kind == "open":
-            stack.append([])
-        elif kind == "close":
-            if len(stack) == 1:
-                raise ValueError("unbalanced close paren")
-            done = stack.pop()
-            stack[-1].append(done)
-        elif kind == "string":
-            stack[-1].append(match.group())
-        else:
-            stack[-1].append(match.group().lower())
-    if len(stack) != 1:
-        raise ValueError("unbalanced open paren")
-    return stack[0]
+    def convert(node):
+        if isinstance(node, lisp_source.List):
+            return [convert(child) for child in node.items]
+        return node.text if isinstance(node, lisp_source.Str) else node.text.lower()
+
+    try:
+        return [convert(node) for node in lisp_source.read_all(text, strict=True)]
+    except lisp_source.ReadError as error:
+        raise ValueError(f"unbalanced {error.kind} paren") from None
 
 
 def opened_names(expression) -> list[str]:
