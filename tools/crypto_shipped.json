@@ -1,0 +1,1146 @@
+{
+ "profiles": {
+  "linux": {
+   "desc": "Linux release, build host and gates: the shipped OpenSSL 3.5.8, no system fallback"
+  },
+  "macos": {
+   "desc": "macOS is not a release platform (docs/install.md, planning/release-v6.6.0.md 'No macOS release'): delete the Homebrew openssl@3 search"
+  },
+  "openbsd": {
+   "desc": "OpenBSD IS a release platform (cut gate 13): conversion needs OpenSSL 3.5.8 built on OpenBSD first; no rewrite rules, sites are owed",
+   "owed_only": true
+  },
+  "boxes": {
+   "desc": "build/test boxes: every box row bundled, the prefix explicit, no system libssl package"
+  },
+  "tests": {
+   "desc": "the native harness refuses rather than defaulting to a pair"
+  },
+  "docs": {
+   "desc": "prose, generated last so text matches code; states the END state, so apply needs --after-tls (tls.lisp and books/tls-key-exchange.lisp converted)",
+   "requires_flag": "--after-tls"
+  }
+ },
+ "kinds": {
+  "build-prefix": {
+   "profile": "linux",
+   "desc": "host build names the system libssl, or leaves the prefix optional",
+   "files": [
+    "host/native/build.lisp",
+    "tools/build_native_host.sh"
+   ],
+   "pattern": "system libssl|TLS is the system's|the system needs OpenSSL|system's libssl"
+  },
+  "launcher-fallback": {
+   "profile": "linux",
+   "desc": "packaging/fn lets a prefix with no pair fall to the system pair",
+   "files": [
+    "packaging/fn"
+   ],
+   "pattern": "the image loads the system's|keeps the system pair|-d \\\"\\$here/\\.\\./libexec/fn/openssl\\\""
+  },
+  "tank-default-prefix": {
+   "profile": "linux",
+   "desc": "packaging/build scripts default to the build box's /tank openssl toolchain",
+   "files": [
+    "packaging/*.sh",
+    "packaging/fn",
+    "tools/build_native_host.sh"
+   ],
+   "pattern": "/tank/fn/toolchains/openssl-3\\.5\\.8"
+  },
+  "install-system-fallback": {
+   "profile": "linux",
+   "desc": "installer text/paths that permit the system pair on Linux",
+   "files": [
+    "packaging/install-native.sh"
+   ],
+   "pattern": "fall back to the system's pair|system's pair only|system's \\(OpenSSL 3\\.0\\+|no OpenSSL 3\\.5\\.8 libcrypto|dlopen-requirements: system libcrypto"
+  },
+  "release-smoke-apt-libssl": {
+   "profile": "linux",
+   "desc": "the release smoke test installs the system libssl3 first",
+   "files": [
+    "tools/cut_release.sh"
+   ],
+   "pattern": "apt-get install[^'\\n]*libssl3"
+  },
+  "runpath-system-soname": {
+   "profile": "linux",
+   "desc": "runpath_check allows libssl.so.3/libcrypto.so.3 as system names on Linux",
+   "files": [
+    "tools/runpath_check.py"
+   ],
+   "pattern": "\\\"linux\\\": re\\.compile\\(r\\\"\\^lib\\(\\?:ssl\\|crypto\\)\\\\\\.so\\\\\\.3\\$\\\"\\)|system TLS library D35"
+  },
+  "test-build-system-pair": {
+   "profile": "linux",
+   "desc": "build-host test that runs with no prefix (the system pair)",
+   "files": [
+    "tests/test_build_native_host.py"
+   ],
+   "pattern": "env\\.pop\\(\\\"FN_OPENSSL_PREFIX\\\"|assertEqual\\(openssl, \\\"unset\\\"\\)|no OpenSSL prefix is needed"
+  },
+  "macos-homebrew-openssl": {
+   "profile": "macos",
+   "desc": "installer searches Homebrew openssl@3 (macOS is not a release platform)",
+   "files": [
+    "packaging/install-native.sh"
+   ],
+   "pattern": "openssl@3|crypto_path|\\bssl_path"
+  },
+  "harness-default-prefix": {
+   "profile": "tests",
+   "desc": "native harness silently skips the shipped prefix when it is absent",
+   "files": [
+    "tests/native_harness.py"
+   ],
+   "pattern": "if \\(shipped / \\\"lib\\\"\\)\\.is_dir\\(\\):"
+  },
+  "box-system-openssl": {
+   "profile": "boxes",
+   "desc": "a box row or bootstrap that uses the box's system libssl",
+   "files": [
+    "tools/native_box.sh",
+    "tools/box_table.py",
+    "tools/box_bootstrap.sh",
+    "tools/hbox_native.sh",
+    "tests/test_box_table.py",
+    "tests/test_hbox_native.py"
+   ],
+   "pattern": "OPENSSL=system|\\\"openssl\\\": \\\"system\\\"|bundled or system|\\blibssl3\\b|^\\s*system\\) cat|openssl is bundled or system|bundled \\\\(/tank[^)]*\\\\) or system|\\[\\\"openssl\\\"\\], \\\"system\\\"|\\\"OPENSSL\\\": \\\"'system'\\\""
+  },
+  "box-unset-prefix": {
+   "profile": "boxes",
+   "desc": "a box script that unsets FN_OPENSSL_PREFIX or says the node uses the box libssl",
+   "files": [
+    "tools/hbox_native.sh",
+    "tools/fundamentals/rows.sh",
+    "tools/native_env.py"
+   ],
+   "pattern": "unset FN_OPENSSL_PREFIX|hbox's system libssl|the system libssl|links the box's libssl"
+  },
+  "deploy-gate-optional-prefix": {
+   "profile": "boxes",
+   "desc": "deploy_gate treats --native-openssl-prefix as optional",
+   "files": [
+    "tools/deploy_gate.py"
+   ],
+   "pattern": "when the box needs one"
+  },
+  "docs-system-tls": {
+   "profile": "docs",
+   "desc": "prose that says the TLS library is the system's",
+   "files": [
+    "docs/install.md",
+    "docs/operator-internals.md",
+    "planning/release-v6.6.0.md",
+    "specs/host.md",
+    "host/native/digest.lisp"
+   ],
+   "pattern": "library is the system's\\)|apt install libssl3|system's TLS library|system's libssl|system libssl|the system's OpenSSL|system libcrypto/libssl|system TLS library HST-016|system's is loaded|system's OpenSSL 3|openssl@3"
+  }
+ },
+ "rules": [
+  {
+   "id": "build-lisp-feature-check-comment",
+   "kind": "build-prefix",
+   "file": "host/native/build.lisp",
+   "old": [
+    "        ; after io.lisp because its deadline/descriptor helpers are physical",
+    "        ; transport primitives, not protocol decisions.",
+    "        (load \"host/native/tls.lisp\")",
+    "        ; The build-time feature check: the system libssl pair (OpenSSL 3.0+",
+    "        ; or LibreSSL 3+) resolves every function tls.lisp calls.",
+    "        (fnn-tls-initialize)",
+    "        ; Native BLAKE3 (A-CRYPTO-NATIVE; lanes digest-native, blake3-digest):",
+    "        ; the vendored C in lib/libfn-blake3 (tools/build_blake3.sh;"
+   ],
+   "new": [
+    "        ; after io.lisp because its deadline/descriptor helpers are physical",
+    "        ; transport primitives, not protocol decisions.",
+    "        (load \"host/native/tls.lisp\")",
+    "        ; The build-time feature check: the shipped libssl pair named by",
+    "        ; FN_OPENSSL_PREFIX resolves every function tls.lisp calls.",
+    "        (fnn-tls-initialize)",
+    "        ; Native BLAKE3 (A-CRYPTO-NATIVE; lanes digest-native, blake3-digest):",
+    "        ; the vendored C in lib/libfn-blake3 (tools/build_blake3.sh;"
+   ]
+  },
+  {
+   "id": "launcher-prefix",
+   "kind": "launcher-fallback",
+   "file": "packaging/fn",
+   "old": [
+    "# The TLS library (PRF-1327, D59): OpenSSL 3.5.8, whose X25519MLKEM768 the",
+    "# [tls] key_exchange policy offers.  Installed on Linux, it is the release's",
+    "# own libexec/fn/openssl (lib/libcrypto.so.3 and lib/libssl.so.3,",
+    "# packaging/install-native.sh); an operator's FN_OPENSSL_PREFIX wins.  When",
+    "# the prefix holds no pair the image loads the system's, and `run' refuses",
+    "# by name only a node that serves TLS or requires the hybrid key exchange",
+    "# (books/tls-key-exchange.lisp fn-tlsk-library-decide).  A release with no",
+    "# such directory (macOS, OpenBSD) keeps the system pair; developer runs",
+    "# leave it unset: the host's default is the toolchain on the build boxes.",
+    "if [ -n \"$installed\" ] && [ -z \"${FN_OPENSSL_PREFIX:-}\" ] && [ -d \"$here/../libexec/fn/openssl\" ]; then",
+    "    FN_OPENSSL_PREFIX=$(CDPATH= cd -- \"$here/../libexec/fn\" && pwd)/openssl",
+    "    export FN_OPENSSL_PREFIX",
+    "fi"
+   ],
+   "new": [
+    "# The TLS library (D64): the OpenSSL 3.5.8 the release ships, whose",
+    "# X25519MLKEM768 the [tls] key_exchange policy offers.  Installed on Linux,",
+    "# it is the release's own libexec/fn/openssl (lib/libcrypto.so.3 and",
+    "# lib/libssl.so.3, packaging/install-native.sh); an operator's",
+    "# FN_OPENSSL_PREFIX wins.  A prefix with no libssl pair is a refusal: there",
+    "# is no fallback to another prefix or to the system's library.  (macOS and",
+    "# OpenBSD releases are not yet converted: crypto_shipped.py check, owed.)",
+    "if [ -n \"$installed\" ] && [ \"$(uname -s)\" = Linux ]; then",
+    "    if [ -z \"${FN_OPENSSL_PREFIX:-}\" ]; then",
+    "        FN_OPENSSL_PREFIX=$(CDPATH= cd -- \"$here/../libexec/fn\" && pwd)/openssl",
+    "        export FN_OPENSSL_PREFIX",
+    "    fi",
+    "    if [ ! -s \"$FN_OPENSSL_PREFIX/lib/libssl.so.3\" ] && [ ! -s \"$FN_OPENSSL_PREFIX/lib64/libssl.so.3\" ]; then",
+    "        echo \"fn: no OpenSSL libssl.so.3 under $FN_OPENSSL_PREFIX; the shipped OpenSSL 3.5.8 is required\" >&2",
+    "        exit 2",
+    "    fi",
+    "fi"
+   ]
+  },
+  {
+   "id": "freeze-comment",
+   "kind": "tank-default-prefix",
+   "file": "packaging/freeze-native-image.sh",
+   "old": [
+    "# openssl/lib/, from FN_FREEZE_OPENSSL (a prefix; the release build names",
+    "# packaging/floor-openssl.sh's output, built against the glibc floor), else",
+    "# FN_OPENSSL_PREFIX, else the build boxes' /tank/fn/toolchains/openssl-3.5.8.",
+    "# Each launcher exports FN_OPENSSL_PREFIX as that directory unless the caller",
+    "# named one.  It is never put in lib/ (LD_LIBRARY_PATH), so the system's",
+    "# pair the host falls back to stays the system's.  OpenBSD keeps the base",
+    "# system's LibreSSL (HST-016)."
+   ],
+   "new": [
+    "# openssl/lib/, from FN_FREEZE_OPENSSL (a prefix; the release build names",
+    "# packaging/floor-openssl.sh's output, built against the glibc floor), else",
+    "# FN_OPENSSL_PREFIX; with neither set the freeze refuses (D64: no default",
+    "# prefix).  Each launcher exports FN_OPENSSL_PREFIX as that directory unless",
+    "# the caller named one.  It is never put in lib/ (LD_LIBRARY_PATH).  OpenBSD",
+    "# keeps the base system's LibreSSL (HST-016) until the OpenBSD conversion."
+   ]
+  },
+  {
+   "id": "freeze-prefix-required",
+   "kind": "tank-default-prefix",
+   "file": "packaging/freeze-native-image.sh",
+   "old": [
+    "if [ \"$system\" = Linux ]; then",
+    "  openssl_prefix=${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}}"
+   ],
+   "new": [
+    "if [ \"$system\" = Linux ]; then",
+    "  openssl_prefix=${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-}}",
+    "  [ -n \"$openssl_prefix\" ] || {",
+    "    echo \"freeze-native-image: FN_FREEZE_OPENSSL or FN_OPENSSL_PREFIX must name the shipped OpenSSL 3.5.8\" >&2; exit 2; }"
+   ]
+  },
+  {
+   "id": "install-no-toolchain-source",
+   "kind": "tank-default-prefix",
+   "file": "packaging/install-native.sh",
+   "old": [
+    "  # On Linux, the OpenSSL 3.5.8 pair the image was built against: the",
+    "  # caller's FN_OPENSSL_PREFIX, else the build boxes' toolchain",
+    "  # (host/native/tls.lisp *fnn-tls-default-openssl-prefix*).",
+    "  if [ \"$(uname -s)\" = Linux ]; then",
+    "    openssl_prefix=${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}",
+    "    openssl_lib=$openssl_prefix/lib",
+    "    if [ -s \"$openssl_prefix/lib64/libcrypto.so.3\" ] && [ -s \"$openssl_prefix/lib64/libssl.so.3\" ]; then",
+    "      openssl_lib=$openssl_prefix/lib64",
+    "    fi",
+    "  fi",
+    "  frozen=no"
+   ],
+   "new": [
+    "  frozen=no"
+   ]
+  },
+  {
+   "id": "install-refuse-without-frozen-openssl",
+   "kind": "install-system-fallback",
+   "file": "packaging/install-native.sh",
+   "old": [
+    "  [ -s \"$openssl_lib/libcrypto.so.3\" ] && [ -s \"$openssl_lib/libssl.so.3\" ] || {",
+    "    echo \"install-native: no OpenSSL 3.5.8 libcrypto.so.3/libssl.so.3 pair to ship (looked in ${openssl_lib:-the frozen image}; FN_OPENSSL_PREFIX names its prefix)\" >&2; exit 4; }"
+   ],
+   "new": [
+    "  [ -s \"$openssl_lib/libcrypto.so.3\" ] && [ -s \"$openssl_lib/libssl.so.3\" ] || {",
+    "    echo \"install-native: the image carries no openssl/lib libcrypto.so.3/libssl.so.3 pair (packaging/freeze-native-image.sh); the shipped OpenSSL 3.5.8 is required\" >&2; exit 4; }"
+   ]
+  },
+  {
+   "id": "install-tls-comment",
+   "kind": "install-system-fallback",
+   "file": "packaging/install-native.sh",
+   "old": [
+    "# The TLS library: on Linux the release's own OpenSSL 3.5.8 (above; a node",
+    "# that serves no TLS may fall back to the system's pair, D59), elsewhere the",
+    "# system's (OpenSSL 3.0+ or LibreSSL 3+; the image checks the version and",
+    "# every function at start).  libsodium comes from the frozen lib/ or the",
+    "# system; ML-DSA-65 from lib/ (HST-016)."
+   ],
+   "new": [
+    "# The TLS library: on Linux the release's own OpenSSL 3.5.8 (above, D64),",
+    "# the image's frozen openssl/lib and nothing else.  Elsewhere not yet",
+    "# converted (OpenBSD: LibreSSL; the image checks the version and every",
+    "# function at start).  libsodium comes from the frozen lib/ or the system;",
+    "# ML-DSA-65 from lib/ (HST-016)."
+   ]
+  },
+  {
+   "id": "install-dlopen-requirements",
+   "kind": "install-system-fallback",
+   "file": "packaging/install-native.sh",
+   "old": [
+    "  elif command -v ldd >/dev/null 2>&1; then ldd \"$runtime\"",
+    "  fi",
+    "  if [ -n \"$openssl_lib\" ]; then",
+    "    echo \"dlopen-requirements: openssl/lib/libcrypto.so.3+libssl.so.3 (OpenSSL 3.5.8, bundled; the system's pair only for a node serving no TLS, D59), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)\"",
+    "    $hash_command \"$openssl_lib/libcrypto.so.3\" \"$openssl_lib/libssl.so.3\" \\",
+    "                  \"$libdir/openssl/lib/libcrypto.so.3\" \"$libdir/openssl/lib/libssl.so.3\"",
+    "  else"
+   ],
+   "new": [
+    "  elif command -v ldd >/dev/null 2>&1; then ldd \"$runtime\"",
+    "  fi",
+    "  if [ -n \"$openssl_lib\" ]; then",
+    "    echo \"dlopen-requirements: openssl/lib/libcrypto.so.3+libssl.so.3 (OpenSSL 3.5.8, bundled), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)\"",
+    "    $hash_command \"$openssl_lib/libcrypto.so.3\" \"$openssl_lib/libssl.so.3\" \\",
+    "                  \"$libdir/openssl/lib/libcrypto.so.3\" \"$libdir/openssl/lib/libssl.so.3\"",
+    "  else"
+   ]
+  },
+  {
+   "id": "release-inventory-no-tank",
+   "kind": "tank-default-prefix",
+   "file": "packaging/release-tarball.sh",
+   "old": [
+    "      echo \"openssl: ${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}}\""
+   ],
+   "new": [
+    "      echo \"openssl: ${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-}}\""
+   ]
+  },
+  {
+   "id": "build-host-require-prefix",
+   "kind": "build-prefix",
+   "file": "tools/build_native_host.sh",
+   "old": [
+    "# TLS is the system's libssl (OpenSSL 3.0+ or LibreSSL 3+; tls.lisp checks",
+    "# every function it calls at build and at start).  FN_OPENSSL_PREFIX is",
+    "# optional: set, it names another matched libcrypto/libssl pair.",
+    "if [ -n \"${FN_OPENSSL_PREFIX:-}\" ]; then",
+    "    export FN_OPENSSL_PREFIX",
+    "    LD_LIBRARY_PATH=\"$FN_OPENSSL_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"",
+    "    export LD_LIBRARY_PATH",
+    "fi"
+   ],
+   "new": [
+    "# TLS is the shipped OpenSSL 3.5.8 (D64): on Linux FN_OPENSSL_PREFIX must name",
+    "# a prefix whose libcrypto.so.3/libssl.so.3 pair is 3.5.8, and the loader sees",
+    "# that directory only, whatever libssl lies earlier on the path.  Other",
+    "# platforms are not yet converted: FN_OPENSSL_PREFIX stays optional there.",
+    "case $(uname -s) in",
+    "  Linux)",
+    "    if [ -z \"${FN_OPENSSL_PREFIX:-}\" ]; then",
+    "        echo \"build_native_host: FN_OPENSSL_PREFIX must name the shipped OpenSSL 3.5.8\" >&2",
+    "        exit 2",
+    "    fi",
+    "    fn_ssl_lib=",
+    "    for d in \"$FN_OPENSSL_PREFIX/lib64\" \"$FN_OPENSSL_PREFIX/lib\"; do",
+    "        if [ -s \"$d/libcrypto.so.3\" ] && [ -s \"$d/libssl.so.3\" ]; then fn_ssl_lib=$d; break; fi",
+    "    done",
+    "    if [ -z \"$fn_ssl_lib\" ] || ! grep -aq 'OpenSSL 3\\.5\\.8 ' \"$fn_ssl_lib/libcrypto.so.3\"; then",
+    "        echo \"build_native_host: $FN_OPENSSL_PREFIX holds no OpenSSL 3.5.8 libcrypto.so.3/libssl.so.3 pair (FN_OPENSSL_PREFIX)\" >&2",
+    "        exit 2",
+    "    fi",
+    "    export FN_OPENSSL_PREFIX",
+    "    LD_LIBRARY_PATH=\"$fn_ssl_lib\"",
+    "    export LD_LIBRARY_PATH ;;",
+    "  *)",
+    "    if [ -n \"${FN_OPENSSL_PREFIX:-}\" ]; then",
+    "        export FN_OPENSSL_PREFIX",
+    "        LD_LIBRARY_PATH=\"$FN_OPENSSL_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"",
+    "        export LD_LIBRARY_PATH",
+    "    fi ;;",
+    "esac"
+   ]
+  },
+  {
+   "id": "build-host-hint",
+   "kind": "build-prefix",
+   "file": "tools/build_native_host.sh",
+   "old": [
+    "export FN_BLAKE3_LIBRARY",
+    "openssl_hint() {",
+    "    if grep -q -E 'OpenSSL|LibreSSL|TLS library|libcrypto|libssl' \"$LOG\" 2>/dev/null; then",
+    "        echo \"build_native_host: the log names the TLS library; the system needs OpenSSL 3.0+ or LibreSSL 3+ (FN_OPENSSL_PREFIX now: ${FN_OPENSSL_PREFIX:-unset})\" >&2",
+    "    fi",
+    "    if grep -q -E 'ML-DSA' \"$LOG\" 2>/dev/null; then",
+    "        echo \"build_native_host: the log names ML-DSA-65; the library is $FN_MLDSA_LIBRARY (tools/build_mldsa65.sh)\" >&2"
+   ],
+   "new": [
+    "export FN_BLAKE3_LIBRARY",
+    "openssl_hint() {",
+    "    if grep -q -E 'OpenSSL|LibreSSL|TLS library|libcrypto|libssl' \"$LOG\" 2>/dev/null; then",
+    "        echo \"build_native_host: the log names the TLS library; the build needs the shipped OpenSSL 3.5.8 (FN_OPENSSL_PREFIX now: ${FN_OPENSSL_PREFIX:-unset})\" >&2",
+    "    fi",
+    "    if grep -q -E 'ML-DSA' \"$LOG\" 2>/dev/null; then",
+    "        echo \"build_native_host: the log names ML-DSA-65; the library is $FN_MLDSA_LIBRARY (tools/build_mldsa65.sh)\" >&2"
+   ]
+  },
+  {
+   "id": "release-smoke-no-apt-libssl",
+   "kind": "release-smoke-apt-libssl",
+   "file": "tools/cut_release.sh",
+   "old": [
+    "tar xzf $tb && sh fn/install.sh --prefix $S/fresh/opt/fn --node $S/fresh/node --no-service",
+    "cd $T && FN_RELEASE_TARBALL=$S/release/$tb python3 -m unittest -v tests.test_release_tarball 2> $S/release-test.log; tail -1 $S/release-test.log",
+    "[ \\\"\\$(tail -1 $S/release-test.log)\\\" = OK ] || { echo 'test_release_tarball: not OK with no skips'; exit 1; }",
+    "docker run --rm -v $S/release:/r:ro debian:12 sh -c 'apt-get update -qq >/dev/null && apt-get install -y -qq libssl3 >/dev/null && cd /tmp && tar xzf /r/$tb && fn/bin/fn --version' > $S/debian12-version.txt",
+    "[ \\\"\\$(cat $S/debian12-version.txt)\\\" = 'fn $VERSION ($SHORT)' ] || { echo \\\"Debian 12: \\$(cat $S/debian12-version.txt)\\\"; exit 1; }",
+    "grep -F $tb $S/release/SHA256SUMS\"",
+    "  if [ \"$DRY\" = yes ]; then"
+   ],
+   "new": [
+    "tar xzf $tb && sh fn/install.sh --prefix $S/fresh/opt/fn --node $S/fresh/node --no-service",
+    "cd $T && FN_RELEASE_TARBALL=$S/release/$tb python3 -m unittest -v tests.test_release_tarball 2> $S/release-test.log; tail -1 $S/release-test.log",
+    "[ \\\"\\$(tail -1 $S/release-test.log)\\\" = OK ] || { echo 'test_release_tarball: not OK with no skips'; exit 1; }",
+    "docker run --rm -v $S/release:/r:ro debian:12 sh -c 'cd /tmp && tar xzf /r/$tb && fn/bin/fn --version' > $S/debian12-version.txt",
+    "[ \\\"\\$(cat $S/debian12-version.txt)\\\" = 'fn $VERSION ($SHORT)' ] || { echo \\\"Debian 12: \\$(cat $S/debian12-version.txt)\\\"; exit 1; }",
+    "grep -F $tb $S/release/SHA256SUMS\"",
+    "  if [ \"$DRY\" = yes ]; then"
+   ]
+  },
+  {
+   "id": "runpath-linux-no-system-tls",
+   "kind": "runpath-system-soname",
+   "file": "tools/runpath_check.py",
+   "old": [
+    "LIBC_LOADERS_BY = {\"linux\": {\"/lib64/ld-linux-x86-64.so.2\"}, \"openbsd\": {\"/usr/libexec/ld.so\"}}",
+    "LIBC_LOADERS = {\"/lib64/ld-linux-x86-64.so.2\", \"/usr/libexec/ld.so\"}",
+    "PLATFORMS = (\"linux\", \"openbsd\")",
+    "# The system TLS library the image loads by dlopen: D35 as ember confirmed it",
+    "# on 2026-09-26 (\"no OpenSSL 3.5, the system libssl\"; lane crypto-deps):",
+    "# OpenSSL 3's sonames on Linux; on OpenBSD LibreSSL in the base system (the",
+    "# core names it unversioned; ld.so resolves the installed major) or the",
+    "# OpenSSL 3 pair under an operator's FN_OPENSSL_PREFIX (host/native/tls.lisp",
+    "# `fnn-tls-configured-library-pair', an absolute path the operator names).",
+    "SYSTEM_TLS_BY = {",
+    "    \"linux\": re.compile(r\"^lib(?:ssl|crypto)\\.so\\.3$\"),",
+    "    \"openbsd\": re.compile(r\"^lib(?:ssl|crypto)\\.so(?:\\.3|\\.\\d+\\.\\d+)?$\"),",
+    "}",
+    "SYSTEM_TLS = re.compile(r\"^lib(?:ssl|crypto)\\.so(?:\\.[\\d.]+)?$\")"
+   ],
+   "new": [
+    "LIBC_LOADERS_BY = {\"linux\": {\"/lib64/ld-linux-x86-64.so.2\"}, \"openbsd\": {\"/usr/libexec/ld.so\"}}",
+    "LIBC_LOADERS = {\"/lib64/ld-linux-x86-64.so.2\", \"/usr/libexec/ld.so\"}",
+    "PLATFORMS = (\"linux\", \"openbsd\")",
+    "# The system TLS library the image may leave unresolved.  Linux ships its own",
+    "# OpenSSL 3.5.8 (D64): libssl.so.3 and libcrypto.so.3 are not the system's to",
+    "# supply, so a core that names them fails unless the release carries the file.",
+    "# OpenBSD keeps LibreSSL in the base system (the core names it unversioned;",
+    "# ld.so resolves the installed major) or an OpenSSL 3 pair an operator names",
+    "# by an absolute path (host/native/tls.lisp `fnn-tls-configured-library-pair').",
+    "SYSTEM_TLS_BY = {",
+    "    \"linux\": re.compile(r\"^$\"),  # matches no soname",
+    "    \"openbsd\": re.compile(r\"^lib(?:ssl|crypto)\\.so(?:\\.3|\\.\\d+\\.\\d+)?$\"),",
+    "}",
+    "SYSTEM_TLS = re.compile(r\"^lib(?:ssl|crypto)\\.so(?:\\.[\\d.]+)?$\")"
+   ]
+  },
+  {
+   "id": "test-build-supplies-prefix",
+   "kind": "test-build-system-pair",
+   "file": "tests/test_build_native_host.py",
+   "old": [
+    "            env.update({k: (v.replace(\"$BASE\", str(base))) for k, v in extra.items()})",
+    "            env.pop(\"FN_OPENSSL_PREFIX\", None)"
+   ],
+   "new": [
+    "            env.update({k: (v.replace(\"$BASE\", str(base))) for k, v in extra.items()})",
+    "            # D64: on Linux the build requires a prefix holding the shipped",
+    "            # OpenSSL 3.5.8 pair; a stub pair that carries the version string.",
+    "            if \"FN_OPENSSL_PREFIX\" not in extra:",
+    "                prefix = base / \"openssl\"",
+    "                (prefix / \"lib\").mkdir(parents=True)",
+    "                (prefix / \"lib\" / \"libssl.so.3\").write_bytes(b\"x\")",
+    "                (prefix / \"lib\" / \"libcrypto.so.3\").write_bytes(b\"OpenSSL 3.5.8 \\n\")",
+    "                env[\"FN_OPENSSL_PREFIX\"] = str(prefix)"
+   ]
+  },
+  {
+   "id": "test-build-prefix-passed-through",
+   "kind": "test-build-system-pair",
+   "file": "tests/test_build_native_host.py",
+   "old": [
+    "        # and named to the build; no OpenSSL prefix is needed."
+   ],
+   "new": [
+    "        # and named to the build; the shipped OpenSSL prefix is passed through (D64)."
+   ]
+  },
+  {
+   "id": "test-build-prefix-assert",
+   "kind": "test-build-system-pair",
+   "file": "tests/test_build_native_host.py",
+   "old": [
+    "        self.assertEqual(openssl, \"unset\")"
+   ],
+   "new": [
+    "        self.assertEqual(openssl, str(base / \"openssl\"))"
+   ]
+  },
+  {
+   "id": "test-build-import-platform",
+   "kind": "test-build-system-pair",
+   "file": "tests/test_build_native_host.py",
+   "old": [
+    "import pathlib",
+    "import subprocess"
+   ],
+   "new": [
+    "import pathlib",
+    "import platform",
+    "import subprocess"
+   ]
+  },
+  {
+   "id": "test-build-refusal",
+   "kind": "test-build-system-pair",
+   "file": "tests/test_build_native_host.py",
+   "old": [
+    "    def test_old_catalog_refuses_paged_build_by_name_before_running_acl2(self):"
+   ],
+   "new": [
+    "    @unittest.skipUnless(platform.system() == \"Linux\", \"the shipped-prefix rule is Linux's (D64)\")",
+    "    def test_a_linux_build_without_the_shipped_openssl_is_refused(self):",
+    "        for prefix in (\"\", \"$BASE/no-such-prefix\"):",
+    "            with self.subTest(prefix=prefix):",
+    "                answer, _log, _, _ = self.build(\"ACL2 !>\", FN_OPENSSL_PREFIX=prefix)",
+    "                self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)",
+    "                self.assertIn(\"OpenSSL 3.5.8\", answer.stderr)",
+    "                self.assertNotIn(\"built \", answer.stdout)",
+    "",
+    "    def test_old_catalog_refuses_paged_build_by_name_before_running_acl2(self):"
+   ]
+  },
+  {
+   "id": "install-darwin-no-homebrew-openssl",
+   "kind": "macos-homebrew-openssl",
+   "file": "packaging/install-native.sh",
+   "old": [
+    "  echo \"install-native: cannot check the system's TLS library (no ldconfig)\" >&2; exit 4",
+    "else",
+    "  sodium_path=",
+    "  crypto_path=",
+    "  ssl_path=",
+    "  for dependency in /opt/homebrew/opt/libsodium/lib/libsodium.dylib /usr/local/opt/libsodium/lib/libsodium.dylib; do",
+    "    [ ! -f \"$dependency\" ] || sodium_path=$dependency",
+    "  done",
+    "  for dependency in /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib /usr/local/opt/openssl@3/lib/libcrypto.3.dylib; do",
+    "    [ ! -f \"$dependency\" ] || crypto_path=$dependency",
+    "  done",
+    "  for dependency in /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib /usr/local/opt/openssl@3/lib/libssl.3.dylib; do",
+    "    [ ! -f \"$dependency\" ] || ssl_path=$dependency",
+    "  done",
+    "  [ -n \"$sodium_path\" ] || { echo \"install-native: libsodium shared library is unavailable\" >&2; exit 4; }",
+    "  [ -n \"$crypto_path\" ] && [ -n \"$ssl_path\" ] || {",
+    "    echo \"install-native: OpenSSL 3 shared libraries are unavailable\" >&2; exit 4; }",
+    "fi",
+    "",
+    "profile_out=$(mktemp \"${TMPDIR:-/tmp}/fn-native-profile.XXXXXX\") || exit 4"
+   ],
+   "new": [
+    "  echo \"install-native: cannot check the system's TLS library (no ldconfig)\" >&2; exit 4",
+    "else",
+    "  sodium_path=",
+    "  for dependency in /opt/homebrew/opt/libsodium/lib/libsodium.dylib /usr/local/opt/libsodium/lib/libsodium.dylib; do",
+    "    [ ! -f \"$dependency\" ] || sodium_path=$dependency",
+    "  done",
+    "  [ -n \"$sodium_path\" ] || { echo \"install-native: libsodium shared library is unavailable\" >&2; exit 4; }",
+    "fi",
+    "",
+    "profile_out=$(mktemp \"${TMPDIR:-/tmp}/fn-native-profile.XXXXXX\") || exit 4"
+   ]
+  },
+  {
+   "id": "install-darwin-inventory",
+   "kind": "macos-homebrew-openssl",
+   "file": "packaging/install-native.sh",
+   "old": [
+    "  if [ -n \"$crypto_inventory\" ]; then",
+    "    printf '%s\\n' \"$crypto_inventory\" | grep -E 'libsodium\\.so|libcrypto\\.so|libssl\\.so'",
+    "  elif [ \"$frozen\" = no ]; then",
+    "    $hash_command \"$sodium_path\" \"$crypto_path\" \"$ssl_path\"",
+    "  fi",
+    "} > \"$sharedir/native-artifacts.txt\"",
+    ""
+   ],
+   "new": [
+    "  if [ -n \"$crypto_inventory\" ]; then",
+    "    printf '%s\\n' \"$crypto_inventory\" | grep -E 'libsodium\\.so|libcrypto\\.so|libssl\\.so'",
+    "  elif [ \"$frozen\" = no ]; then",
+    "    $hash_command \"$sodium_path\"",
+    "  fi",
+    "} > \"$sharedir/native-artifacts.txt\"",
+    ""
+   ]
+  },
+  {
+   "id": "harness-no-default-prefix",
+   "kind": "harness-default-prefix",
+   "file": "tests/native_harness.py",
+   "old": [
+    "            shipped = Path(os.environ.get(\"FN_OPENSSL_PREFIX\") or OPENSSL_SHIPPED)",
+    "            if (shipped / \"lib\").is_dir():",
+    "                (prefix / \"libexec\" / \"fn\" / \"openssl\").symlink_to(shipped)"
+   ],
+   "new": [
+    "            shipped = Path(os.environ.get(\"FN_OPENSSL_PREFIX\") or OPENSSL_SHIPPED)",
+    "            if not (shipped / \"lib\").is_dir():",
+    "                raise RuntimeError(\"no shipped OpenSSL 3.5.8 prefix at %s (D64: set FN_OPENSSL_PREFIX); the harness does not fall back to the system pair\" % shipped)",
+    "            (prefix / \"libexec\" / \"fn\" / \"openssl\").symlink_to(shipped)"
+   ]
+  },
+  {
+   "id": "native-box-persvati-bundled",
+   "kind": "box-system-openssl",
+   "file": "tools/native_box.sh",
+   "old": [
+    "    persvati) BASE='~/fn-gates' IMAGES_BASE= OPENSSL=system ;;"
+   ],
+   "new": [
+    "    persvati) BASE='~/fn-gates' IMAGES_BASE= OPENSSL=bundled ;;"
+   ]
+  },
+  {
+   "id": "box-table-doc",
+   "kind": "box-system-openssl",
+   "file": "tools/box_table.py",
+   "old": [
+    "    openssl            bundled (/tank/fn/toolchains/openssl-3.5.8) or system"
+   ],
+   "new": [
+    "    openssl            bundled: the OpenSSL 3.5.8 under /tank/fn/toolchains (D64)"
+   ]
+  },
+  {
+   "id": "box-table-persvati",
+   "kind": "box-system-openssl",
+   "file": "tools/box_table.py",
+   "old": [
+    "                 \"openssl\": \"system\", \"check_jobs\": \"\"},"
+   ],
+   "new": [
+    "                 \"openssl\": \"bundled\", \"check_jobs\": \"\"},"
+   ]
+  },
+  {
+   "id": "box-table-values",
+   "kind": "box-system-openssl",
+   "file": "tools/box_table.py",
+   "old": [
+    "        if row[\"openssl\"] not in (\"bundled\", \"system\"):",
+    "            raise SystemExit(f\"box_table: {path}: {name}: openssl is bundled or system\")"
+   ],
+   "new": [
+    "        if row[\"openssl\"] != \"bundled\":",
+    "            raise SystemExit(f\"box_table: {path}: {name}: openssl is bundled (D64)\")"
+   ]
+  },
+  {
+   "id": "box-bootstrap-no-libssl3",
+   "kind": "box-system-openssl",
+   "file": "tools/box_bootstrap.sh",
+   "old": [
+    "#   system    packages (python3 3.12+, git, rsync, libssl3, libsodium, zlib,"
+   ],
+   "new": [
+    "#   system    packages (python3 3.12+, git, rsync, libsodium, zlib,"
+   ]
+  },
+  {
+   "id": "box-bootstrap-packages",
+   "kind": "box-system-openssl",
+   "file": "tools/box_bootstrap.sh",
+   "old": [
+    "# checks it (libssl3 is libssl3t64 on Ubuntu 24.04; both accept either).",
+    "FN_BOX_PACKAGES=\"rsync git python3 python3-venv python3-pip libssl3 libsodium23 zlib1g build-essential pigz zstd openssl docker.io acl\""
+   ],
+   "new": [
+    "# checks it.  No libssl: the node's TLS is the OpenSSL 3.5.8 seeded under",
+    "# /tank/fn/toolchains (D64); `openssl' is the CLI for client tooling.",
+    "FN_BOX_PACKAGES=\"rsync git python3 python3-venv python3-pip libsodium23 zlib1g build-essential pigz zstd openssl docker.io acl\""
+   ]
+  },
+  {
+   "id": "box-bootstrap-install",
+   "kind": "box-system-openssl",
+   "file": "tools/box_bootstrap.sh",
+   "old": [
+    "ssl=libssl3; apt-cache show libssl3t64 >/dev/null 2>&1 && ssl=libssl3t64",
+    "apt-get install -y -q $(echo \"$PKGS\" | sed \"s/libssl3/$ssl/\") >/dev/null"
+   ],
+   "new": [
+    "apt-get install -y -q $PKGS >/dev/null"
+   ]
+  },
+  {
+   "id": "hbox-native-comment",
+   "kind": "box-unset-prefix",
+   "file": "tools/hbox_native.sh",
+   "old": [
+    "#      hbox's system libssl (OpenSSL 3.3.1; no",
+    "#      FN_OPENSSL_PREFIX: HST-016), with every --env NAME=VALUE exported.",
+    "#      OpenSSL 3.5.8 stays a TEST TOOL only (ML-DSA-65 keys and signatures",
+    "#      made independently of the node): $FN_TEST_OPENSSL_BIN, a wrapper",
+    "#      that gives that binary its own libraries and nothing else.  When dtn-developer is built and dtn is"
+   ],
+   "new": [
+    "#      the box's shipped OpenSSL 3.5.8 (FN_OPENSSL_PREFIX, D64), with every",
+    "#      --env NAME=VALUE exported.  The same 3.5.8 binary is also the TEST TOOL",
+    "#      (ML-DSA-65 keys and signatures made independently of the node):",
+    "#      $FN_TEST_OPENSSL_BIN, a wrapper that gives that binary its own",
+    "#      libraries and nothing else.  When dtn-developer is built and dtn is"
+   ]
+  },
+  {
+   "id": "hbox-native-prefix",
+   "kind": "box-unset-prefix",
+   "file": "tools/hbox_native.sh",
+   "old": [
+    "unset FN_OPENSSL_PREFIX",
+    "mkdir -p \\$S/bin"
+   ],
+   "new": [
+    "export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8",
+    "mkdir -p \\$S/bin"
+   ]
+  },
+  {
+   "id": "hbox-native-test-tool-comment",
+   "kind": "box-unset-prefix",
+   "file": "tools/hbox_native.sh",
+   "old": [
+    "# The test OpenSSL (a TEST TOOL only; the node links the box's libssl)."
+   ],
+   "new": [
+    "# The test OpenSSL (the CLI of the same 3.5.8 the node ships)."
+   ]
+  },
+  {
+   "id": "hbox-native-no-system-openssl",
+   "kind": "box-system-openssl",
+   "file": "tools/hbox_native.sh",
+   "old": [
+    "        ;;",
+    "        system) cat <<'OSSL'",
+    "printf '%s\\n' '#!/bin/sh' \"exec $(command -v openssl) \\\"\\$@\\\"\" > $S/bin/openssl-test",
+    "OSSL",
+    "        ;;",
+    "    esac"
+   ],
+   "new": [
+    "        ;;",
+    "    esac"
+   ]
+  },
+  {
+   "id": "rows-prefix",
+   "kind": "box-unset-prefix",
+   "file": "tools/fundamentals/rows.sh",
+   "old": [
+    "unset FN_OPENSSL_PREFIX",
+    "box() { echo"
+   ],
+   "new": [
+    "export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8",
+    "box() { echo"
+   ]
+  },
+  {
+   "id": "test-box-table-persvati",
+   "kind": "box-system-openssl",
+   "file": "tests/test_box_table.py",
+   "old": [
+    "        self.assertEqual(rows[\"cloud2\"][\"openssl\"], \"system\")"
+   ],
+   "new": [
+    "        self.assertEqual(rows[\"cloud2\"][\"openssl\"], \"bundled\")"
+   ]
+  },
+  {
+   "id": "test-hbox-native-persvati",
+   "kind": "box-system-openssl",
+   "file": "tests/test_hbox_native.py",
+   "old": [
+    "                               \"WRAP\": \"''\", \"IMAGES_BASE\": \"''\", \"OPENSSL\": \"'system'\"})"
+   ],
+   "new": [
+    "                               \"WRAP\": \"''\", \"IMAGES_BASE\": \"''\", \"OPENSSL\": \"'bundled'\"})"
+   ]
+  },
+  {
+   "id": "native-env-comment",
+   "kind": "box-unset-prefix",
+   "file": "tools/native_env.py",
+   "old": [
+    "tool OpenSSL 3.5 that makes independent ML-DSA-65 keys; the node itself uses",
+    "the system libssl and its own ML-DSA-65 library, HST-016)."
+   ],
+   "new": [
+    "tool OpenSSL 3.5 that makes independent ML-DSA-65 keys; the node itself uses",
+    "the shipped OpenSSL 3.5.8, D64, and its own ML-DSA-65 library, HST-016)."
+   ]
+  },
+  {
+   "id": "deploy-gate-prefix-help",
+   "kind": "deploy-gate-optional-prefix",
+   "file": "tools/deploy_gate.py",
+   "old": [
+    "                        help=\"FN_OPENSSL_PREFIX for the image, when the box needs one\")"
+   ],
+   "new": [
+    "                        help=\"FN_OPENSSL_PREFIX for the image: the shipped OpenSSL 3.5.8 (D64); required with --native-image\")"
+   ]
+  },
+  {
+   "id": "build-lisp-trust-boundary-comment",
+   "kind": "build-prefix",
+   "file": "host/native/build.lisp",
+   "old": [
+    "        ; The system libssl is the explicit native STARTTLS trust boundary.  It loads"
+   ],
+   "new": [
+    "        ; The shipped libssl is the explicit native STARTTLS trust boundary.  It loads"
+   ]
+  },
+  {
+   "id": "runpath-header-comment",
+   "kind": "runpath-system-soname",
+   "file": "tools/runpath_check.py",
+   "old": [
+    "be carried by the release, the C library, or the system TLS library D35",
+    "chose (SYSTEM_TLS); each service file (template) must start `PREFIX/bin/fn`."
+   ],
+   "new": [
+    "be carried by the release, the C library, or OpenBSD's base-system TLS",
+    "library (SYSTEM_TLS); each service file (template) must start `PREFIX/bin/fn`."
+   ]
+  },
+  {
+   "id": "install-dlopen-requirements-system",
+   "kind": "install-system-fallback",
+   "file": "packaging/install-native.sh",
+   "old": [
+    "    echo \"dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)\""
+   ],
+   "new": [
+    "    echo \"dlopen-requirements: base-system libcrypto+libssl (OpenBSD LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)\""
+   ]
+  },
+  {
+   "id": "deploy-gate-prefix-required",
+   "kind": "deploy-gate-optional-prefix",
+   "file": "tools/deploy_gate.py",
+   "old": [
+    "    overlay = Path(args.overlay).resolve() if args.overlay else None",
+    "    try:",
+    "        gate = DeployGate("
+   ],
+   "new": [
+    "    if args.native_image and not args.native_openssl_prefix:",
+    "        parser.error(\"--native-image needs --native-openssl-prefix: the shipped OpenSSL 3.5.8 (D64)\")",
+    "    overlay = Path(args.overlay).resolve() if args.overlay else None",
+    "    try:",
+    "        gate = DeployGate("
+   ]
+  },
+  {
+   "id": "docs-install-packages",
+   "kind": "docs-system-tls",
+   "file": "docs/install.md",
+   "old": [
+    "  floor. A minimal Debian 12 lacks three packages the steps below use:",
+    "  `apt install libssl3 openssl sudo`. On OpenBSD, nothing extra."
+   ],
+   "new": [
+    "  floor. A minimal Debian 12 lacks two packages the steps below use:",
+    "  `apt install openssl sudo`. On OpenBSD, nothing extra."
+   ]
+  },
+  {
+   "id": "docs-install-no-fallback",
+   "kind": "docs-system-tls",
+   "file": "docs/install.md",
+   "old": [
+    "  which reads the machine's trust store and `openssl.cnf` in `/etc/ssl`. If",
+    "  that directory holds no pair, fn loads the system's OpenSSL instead. A node",
+    "  that serves TLS (a `tls_cert`), or sets `hybrid-required`, then refuses to",
+    "  start, naming the directory. A node that serves no TLS starts and writes a",
+    "  `tls library warning` line to its log. In `fn.toml`, `[tls] key_exchange = \"hybrid-preferred\"` (the"
+   ],
+   "new": [
+    "  which reads the machine's trust store and `openssl.cnf` in `/etc/ssl`. If",
+    "  that directory holds no pair, fn refuses to start, naming the directory;",
+    "  it never loads another OpenSSL. In `fn.toml`, `[tls] key_exchange = \"hybrid-preferred\"` (the"
+   ]
+  },
+  {
+   "id": "docs-install-brings-everything",
+   "kind": "docs-system-tls",
+   "file": "docs/install.md",
+   "old": [
+    "The release brings everything it needs except",
+    "the system's TLS library."
+   ],
+   "new": [
+    "The release brings everything it needs."
+   ]
+  },
+  {
+   "id": "docs-internals-contents",
+   "kind": "docs-system-tls",
+   "file": "docs/operator-internals.md",
+   "old": [
+    "`source-revision`, the SBCL runtime, libsodium and libfn-mldsa65; the TLS",
+    "library is the system's), `share/fn/` (the service template,"
+   ],
+   "new": [
+    "`source-revision`, the SBCL runtime, libsodium, libfn-mldsa65 and",
+    "`openssl/`, the OpenSSL 3.5.8 TLS library), `share/fn/` (the service template,"
+   ]
+  },
+  {
+   "id": "docs-internals-requirements",
+   "kind": "docs-system-tls",
+   "file": "docs/operator-internals.md",
+   "old": [
+    "**Requirements (Linux): glibc 2.36 or later**, the system's libssl (OpenSSL",
+    "3.0 or later), x86-64, and nothing else. The glibc floor is `GLIBC_FLOOR` in"
+   ],
+   "new": [
+    "**Requirements (Linux): glibc 2.36 or later**, x86-64, and nothing else (the",
+    "release carries its own OpenSSL 3.5.8). The glibc floor is `GLIBC_FLOOR` in"
+   ]
+  },
+  {
+   "id": "docs-internals-friends",
+   "kind": "docs-system-tls",
+   "file": "docs/operator-internals.md",
+   "old": [
+    "You need Linux on x86-64 with the system's OpenSSL 3 library (`libssl3` on",
+    "Debian and Ubuntu, `openssl-libs` on Fedora; any 3.x) and, for the TLS pair",
+    "below, an `openssl` command (any version with EC keys). Nothing else: the"
+   ],
+   "new": [
+    "You need Linux on x86-64 and, for the TLS pair",
+    "below, an `openssl` command (any version with EC keys). Nothing else: the"
+   ]
+  },
+  {
+   "id": "docs-release-platforms",
+   "kind": "docs-system-tls",
+   "file": "planning/release-v6.6.0.md",
+   "old": [
+    "- **Platforms.** Linux x86-64 with glibc 2.36 or later and the system libssl",
+    "  (OpenSSL 3.0 or later); OpenBSD 7.9 amd64 with LibreSSL, from a file system"
+   ],
+   "new": [
+    "- **Platforms.** Linux x86-64 with glibc 2.36 or later (its own OpenSSL 3.5.8",
+    "  inside); OpenBSD 7.9 amd64 with LibreSSL, from a file system"
+   ]
+  },
+  {
+   "id": "docs-release-notes",
+   "kind": "docs-system-tls",
+   "file": "planning/release-v6.6.0.md",
+   "old": [
+    "> (OpenBSD 7.9), with its own runtime inside. Nothing else to install but",
+    "> your system's TLS library. `sh fn/install.sh` puts it in `/opt/fn`"
+   ],
+   "new": [
+    "> (OpenBSD 7.9), with its own runtime inside. Nothing else to install.",
+    "> `sh fn/install.sh` puts it in `/opt/fn`"
+   ]
+  },
+  {
+   "id": "docs-spec-hst016-names",
+   "kind": "docs-system-tls",
+   "file": "specs/host.md",
+   "old": [
+    "or the system TLS library HST-016 names)."
+   ],
+   "new": [
+    "or OpenBSD's own LibreSSL, which HST-016 names)."
+   ]
+  },
+  {
+   "id": "docs-spec-tls-row",
+   "kind": "docs-system-tls",
+   "file": "specs/host.md",
+   "old": [
+    "on Linux the OpenSSL 3.5.8 pair fn ships (`FN_OPENSSL_PREFIX`, by default the release's `libexec/fn/openssl` or the build boxes' toolchain; when it holds no pair the system's is loaded, and `run` refuses a node that serves TLS or requires the hybrid, `fn-tlsk-library-decide`, D59); elsewhere the system libssl/libcrypto: OpenSSL 3.0 or later, or LibreSSL 3 or later |"
+   ],
+   "new": [
+    "on Linux the OpenSSL 3.5.8 pair fn ships (`FN_OPENSSL_PREFIX`, the release's `libexec/fn/openssl`; a prefix with no pair is a refusal at start, D64); on OpenBSD, until its conversion, the base system's LibreSSL 3 or later |"
+   ]
+  },
+  {
+   "id": "docs-spec-tls-row-tail",
+   "kind": "docs-system-tls",
+   "file": "specs/host.md",
+   "old": [
+    "`libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD), Homebrew `openssl@3` (macOS); `FN_OPENSSL_PREFIX` optionally names another matched pair |"
+   ],
+   "new": [
+    "`libcrypto.so.3`/`libssl.so.3` (Linux), `libcrypto.so`/`libssl.so` (OpenBSD); `FN_OPENSSL_PREFIX` names the matched pair |"
+   ]
+  },
+  {
+   "id": "docs-digest-comment",
+   "kind": "docs-system-tls",
+   "file": "host/native/digest.lisp",
+   "old": [
+    ";;; (libfn-mldsa65) and host/native/tls.lisp (the system libcrypto/libssl"
+   ],
+   "new": [
+    ";;; (libfn-mldsa65) and host/native/tls.lisp (the shipped libcrypto/libssl"
+   ]
+  }
+ ],
+ "allow": [
+  {
+   "file": "packaging/floor-openssl.sh",
+   "pattern": "/tank/fn/toolchains/openssl-3\\.5\\.8",
+   "reason": "documents where the build box's own toolchain comes from; not a fallback"
+  },
+  {
+   "file": "CHANGELOG.md",
+   "pattern": ".",
+   "reason": "generated from merge history by tools/changelog.py; history is not rewritten"
+  },
+  {
+   "file": "tools/reader_clients/Dockerfile",
+   "pattern": ".",
+   "reason": "apt installs the openssl CLI for client tooling, not the node's library"
+  }
+ ],
+ "owed": [
+  {
+   "profile": "linux",
+   "owner": "P",
+   "file": "books/tls-key-exchange.lisp",
+   "pattern": "fn-tlsk-library-decide",
+   "reason": "owed: books (P): the fallback arm and its theorems; the host must stop recording *fnn-tls-pinned-missing* in the same step"
+  },
+  {
+   "profile": "linux",
+   "owner": "joint P/N",
+   "file": "host/native/tls.lisp",
+   "pattern": "fnn-tls-system-library-candidates|\\*fnn-tls-pinned-missing\\*|\\*fnn-tls-default-openssl-prefix\\*",
+   "reason": "tls.lisp's fallback and refusal are consumed by `run' through tls-reload.lisp/operator-live.lisp into the ACL2 arm P removes; delete both together"
+  },
+  {
+   "profile": "linux",
+   "owner": "joint P/N",
+   "file": "host/native/tls-reload.lisp",
+   "pattern": "pinned-missing|library-decide",
+   "reason": "consumer of the fallback record; goes with the ACL2 arm"
+  },
+  {
+   "profile": "linux",
+   "owner": "joint P/N",
+   "file": "host/native/operator-live.lisp",
+   "pattern": "pinned-missing|library-decide|system",
+   "reason": "consumer of the fallback record; goes with the ACL2 arm"
+  },
+  {
+   "profile": "tests",
+   "owner": "joint P/N",
+   "file": "tests/test_native_tls_key_exchange.py",
+   "pattern": "system_prefix|on_the_system_pair",
+   "reason": "asserts the fallback exists; becomes missing-prefix-always-refuses when tls.lisp refuses"
+  },
+  {
+   "profile": "macos",
+   "owner": "joint P/N",
+   "file": "host/native/tls.lisp",
+   "pattern": "openssl@3|libcrypto\\.3\\.dylib",
+   "reason": "darwin candidates die with the fallback"
+  },
+  {
+   "profile": "macos",
+   "owner": "N",
+   "file": "host/native/crypto.lisp",
+   "pattern": "/opt/homebrew/opt/libsodium",
+   "reason": "libsodium is outside ruling 3's libssl scope; same pattern, flagged"
+  },
+  {
+   "profile": "openbsd",
+   "owner": "N",
+   "file": "packaging/install-native.sh",
+   "pattern": "/usr/lib/libssl|/usr/lib/libcrypto",
+   "reason": "LibreSSL inventory: goes when OpenSSL 3.5.8 is built on OpenBSD and frozen into openssl/lib"
+  },
+  {
+   "profile": "openbsd",
+   "owner": "N",
+   "file": "packaging/freeze-native-image.sh",
+   "pattern": "LibreSSL",
+   "reason": "no OpenSSL step for OpenBSD (analogue of packaging/floor-openssl.sh owed)"
+  },
+  {
+   "profile": "openbsd",
+   "owner": "N",
+   "file": "tools/runpath_check.py",
+   "pattern": "\"openbsd\": re\\.compile|LibreSSL",
+   "reason": "SYSTEM_TLS_BY openbsd exemption goes with the OpenBSD bundle"
+  },
+  {
+   "profile": "openbsd",
+   "owner": "N",
+   "file": "tools/build_native_host.sh",
+   "pattern": "not yet converted",
+   "reason": "non-Linux arm keeps the optional prefix"
+  },
+  {
+   "profile": "openbsd",
+   "owner": "N",
+   "file": "packaging/fn",
+   "pattern": "OpenBSD",
+   "reason": "launcher is Linux-guarded until the OpenBSD bundle exists"
+  },
+  {
+   "profile": "docs",
+   "owner": "N",
+   "file": "docs/operator-internals.md",
+   "pattern": "LibreSSL",
+   "reason": "OpenBSD prose follows the OpenBSD conversion"
+  },
+  {
+   "profile": "docs",
+   "owner": "N",
+   "file": "docs/resource-contract.md",
+   "pattern": "system libssl/libcrypto",
+   "reason": "prose pass after the tls.lisp step"
+  },
+  {
+   "profile": "docs",
+   "owner": "N",
+   "file": "specs/failures.md",
+   "pattern": "A-TLS-NATIVE \\| The system TLS library",
+   "reason": "failure-mode spec row; rewrite after the tls.lisp step, with its theorem owners"
+  }
+ ]
+}
