@@ -1213,3 +1213,109 @@
                   :cases ((fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
                                       trailer start fn-xcs)
                           (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))))
+
+; =============================================================================
+; Occupancy.  The table has NE + NW rows and never gains one, so the live
+; slots of a region number at most the region's size, whatever the profile's N.
+(defun fn-xc-live-count (i hi fn-xcs)
+  (declare (xargs :stobjs fn-xcs
+                  :guard (and (fn-xcsp fn-xcs) (natp i) (natp hi) (<= hi (fn-xcs-count fn-xcs)))
+                  :measure (nfix (- hi i))))
+  (if (and (natp i) (natp hi) (< i hi))
+      (+ (if (equal (fn-xcs-get-kind i fn-xcs) 0) 0 1)
+         (fn-xc-live-count (1+ i) hi fn-xcs))
+    0))
+
+(defthm fn-xc-occupancy-bounded
+  (implies (and (natp i) (natp hi) (<= i hi))
+           (<= (fn-xc-live-count i hi fn-xcs) (- hi i)))
+  :hints (("Goal" :in-theory (enable fn-xc-live-count)
+                  :induct (fn-xc-live-count i hi fn-xcs)))
+  :rule-classes (:rewrite :linear))
+
+(defthm fn-xc-region-occupancy-is-at-most-the-profile-figure
+  (implies (and (fn-xccp fn-xcc) (fn-xc-readyp fn-xcs fn-xcc))
+           (and (<= (fn-xc-live-count 0 (fn-xc-ne fn-xcc) fn-xcs) (fn-xc-ne fn-xcc))
+                (<= (fn-xc-live-count (fn-xc-ne fn-xcc) (+ (fn-xc-ne fn-xcc) (fn-xc-nw fn-xcc)) fn-xcs)
+                    (fn-xc-nw fn-xcc))
+                (<= (fn-xc-live-count 0 (fn-xcs-count fn-xcs) fn-xcs)
+                    (+ (fn-xc-ne fn-xcc) (fn-xc-nw fn-xcc)))))
+  :hints (("Goal" :use ((:instance fn-xc-occupancy-bounded (i 0) (hi (fn-xc-ne fn-xcc)))
+                        (:instance fn-xc-occupancy-bounded (i (fn-xc-ne fn-xcc))
+                                   (hi (+ (fn-xc-ne fn-xcc) (fn-xc-nw fn-xcc))))
+                        (:instance fn-xc-occupancy-bounded (i 0) (hi (fn-xcs-count fn-xcs))))
+                  :in-theory (disable fn-xc-occupancy-bounded))))
+
+; A write at V changes the count by what it makes live less what it frees.
+(defthm fn-xc-live-count-after-write
+  (implies (and (fn-xc-write-okp v wk tokp tid tcid wfile weoff welen wa wb wc wd wstart wtrailer stamp fn-xcs)
+                (natp i) (natp hi))
+           (equal (fn-xc-live-count i hi (fn-xc-write v wk tokp tid tcid wfile weoff welen wa wb wc wd wstart wtrailer
+                                                       stamp fn-xcs))
+                  (if (and (<= i v) (< v hi))
+                      (+ (fn-xc-live-count i hi fn-xcs)
+                         (if (equal wk 0) 0 1)
+                         (if (equal (fn-xcs-get-kind v fn-xcs) 0) 0 -1))
+                    (fn-xc-live-count i hi fn-xcs))))
+  :hints (("Goal" :in-theory (enable fn-xc-live-count)
+                  :induct (fn-xc-live-count i hi fn-xcs))))
+
+(defthm fn-xc-live-count-after-touch
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-readyp fn-xcs fn-xcc)
+                (natp p) (< p (fn-xcs-count fn-xcs)) (not (equal (fn-xcs-get-kind p fn-xcs) 0))
+                (natp i) (natp hi))
+           (equal (fn-xc-live-count i hi (mv-nth 1 (fn-xc-touch p fn-xcs fn-xcc)))
+                  (fn-xc-live-count i hi fn-xcs)))
+  :hints (("Goal" :in-theory (enable fn-xc-live-count fn-xc-touch)
+                  :induct (fn-xc-live-count i hi fn-xcs))))
+
+; A free slot in the range leaves room.
+(defthm fn-xc-occupancy-below-the-bound-when-a-slot-is-free
+  (implies (and (natp i) (natp j) (natp hi) (<= i j) (< j hi)
+                (equal (fn-xcs-get-kind j fn-xcs) 0))
+           (<= (+ 1 (fn-xc-live-count i hi fn-xcs)) (- hi i)))
+  :hints (("Goal" :in-theory (enable fn-xc-live-count)
+                  :induct (fn-xc-live-count i hi fn-xcs))))
+
+(defmacro fn-xc-install-hyps ()
+  '(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+        (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+        (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))
+                    :refused))))
+
+(defmacro fn-xc-install-result (n)
+  `(mv-nth ,n (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)))
+
+; KEYSTONE 3 (the bound).  An install that is not refused adds a live slot
+; exactly when a free slot took it, and the region never holds more than it has.
+(defthm fn-xc-install-occupancy
+  (implies (fn-xc-install-hyps)
+           (let ((n0 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))
+                 (n1 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) (fn-xc-install-result 3))))
+             (and (equal n1 (if (equal (fn-xc-install-result 0) :installed) (+ 1 n0) n0))
+                  (<= n1 (- (fn-xc-hi kind fn-xcc) (fn-xc-lo kind fn-xcc))))))
+  :hints (("Goal" :do-not-induct t
+                  :use (fn-xc-install-nonempty
+                        (:instance fn-xc-install-when-present) (:instance fn-xc-install-when-free)
+                        (:instance fn-xc-install-when-full)
+                        (:instance fn-xc-find-free-is-free (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc)))
+                        (:instance fn-xc-find-bounds (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
+                                   (exactp t) (pos start))
+                        (:instance fn-xc-find-matches (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
+                                   (exactp t) (pos start))
+                        (:instance fn-xc-matchp-is-live (exactp t) (pos start)
+                                   (i (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen
+                                                  a b c d trailer start fn-xcs)))
+                        (:instance fn-xc-occupancy-below-the-bound-when-a-slot-is-free
+                                   (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
+                                   (j (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))
+                        (:instance fn-xc-lru-is-least (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
+                                   (best nil) (j (fn-xc-lo kind fn-xcc)))
+                        (:instance fn-xc-find-free-complete (i (fn-xc-lo kind fn-xcc)) (j (fn-xc-lo kind fn-xcc))
+                                   (hi (fn-xc-hi kind fn-xcc))))
+                  :in-theory (e/d (fn-xc-install-okp fn-xc-write-okp)
+                                  (fn-xc-install-when-present fn-xc-install-when-free fn-xc-install-when-full
+                                   fn-xc-install-placement fn-xc-lookup-is-find))
+                  :cases ((fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                                      trailer start fn-xcs)
+                          (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))))
