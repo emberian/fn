@@ -483,3 +483,21 @@
   :breaks ((settled ((ledger (rcx-l2))) :lemma rcx-fn-rlo-physical-settled-token-is-not-live-without-settled))
   :mutations ((settled-token-stays-live (:conclusion (fn-rlo-livep token op (mv-nth 1 (fn-rlo-physical token op receipt ledger)))) ((token (rcx-tok)) (op 8) (receipt :terminal) (ledger (rcx-l4))) :fault "a settlement that leaves the token live" :lemma rcx-fn-rlo-physical-settled-token-is-not-live-mutant-settled-token-stays-live)))
 
+
+(defthm rcx-fn-rlo-physical-settled-chain-witness
+  (and (fn-rlo-free-chainp '(3) (rcx-l4)) (eq (car (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4))) :settled) (fn-rlo-free-chainp (if (< (fn-rl-gensi (caddr (rcx-tok)) (rcx-l4)) *fn-rl-word-max*) (cons (caddr (rcx-tok)) '(3)) '(3)) (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4))))))
+(defthm rcx-fn-rlo-physical-settled-chain-without-chain
+  (and (eq (car (fn-rlo-physical (rcx-tok) 8 :terminal (update-fn-rl-idsi 3 2 (rcx-l4)))) :settled) (not (fn-rlo-free-chainp '(3) (update-fn-rl-idsi 3 2 (rcx-l4)))) (not (fn-rlo-free-chainp (if (< (fn-rl-gensi (caddr (rcx-tok)) (update-fn-rl-idsi 3 2 (rcx-l4))) *fn-rl-word-max*) (cons (caddr (rcx-tok)) '(3)) '(3)) (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (update-fn-rl-idsi 3 2 (rcx-l4))))))))
+(defthm rcx-fn-rlo-physical-settled-chain-without-settled
+  (and (fn-rlo-free-chainp '(3) (rcx-l2)) (not (eq (car (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l2))) :settled)) (not (fn-rlo-free-chainp (if (< (fn-rl-gensi (caddr (rcx-tok)) (rcx-l2)) *fn-rl-word-max*) (cons (caddr (rcx-tok)) '(3)) '(3)) (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l2)))))))
+(defthm rcx-fn-rlo-physical-settled-chain-mutant-slot-not-freed
+  (and (fn-rlo-free-chainp '(3) (rcx-l4)) (eq (car (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4))) :settled) (fn-rlo-free-chainp (if (< (fn-rl-gensi (caddr (rcx-tok)) (rcx-l4)) *fn-rl-word-max*) (cons (caddr (rcx-tok)) '(3)) '(3)) (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4)))) (not (fn-rlo-free-chainp '(3) (mv-nth 1 (fn-rlo-physical (rcx-tok) 8 :terminal (rcx-l4)))))))
+(defteeth fn-rlo-physical-settled-chain
+  :claim (((chain (fn-rlo-free-chainp rows ledger)) (settled (eq (car (fn-rlo-physical token opgen receipt ledger)) :settled))) (fn-rlo-free-chainp (if (< (fn-rl-gensi (caddr token) ledger) *fn-rl-word-max*) (cons (caddr token) rows) rows) (mv-nth 1 (fn-rlo-physical token opgen receipt ledger))))
+  :subject fn-rlo-physical
+  :witness-lemma rcx-fn-rlo-physical-settled-chain-witness
+  :witness ((rows '(3)) (token (rcx-tok)) (opgen 8) (receipt :terminal) (ledger (rcx-l4)))
+  :breaks ((chain ((ledger (update-fn-rl-idsi 3 2 (rcx-l4)))) :lemma rcx-fn-rlo-physical-settled-chain-without-chain)
+          (settled ((ledger (rcx-l2))) :lemma rcx-fn-rlo-physical-settled-chain-without-settled))
+  :mutations ((slot-not-freed (:conclusion (fn-rlo-free-chainp rows (mv-nth 1 (fn-rlo-physical token opgen receipt ledger)))) ((rows '(3)) (token (rcx-tok)) (opgen 8) (receipt :terminal) (ledger (rcx-l4))) :fault "a settlement that does not push the slot on the free chain" :lemma rcx-fn-rlo-physical-settled-chain-mutant-slot-not-freed)))
+
