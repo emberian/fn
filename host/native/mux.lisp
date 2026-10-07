@@ -338,9 +338,9 @@ Physical calls record only their literal return, never descriptor closure."
              ;; outer escapes use the same off-owner classifier; a failure
              ;; of its diagnostic cannot remove the retained cleanup debt.
              (setf (fnn-mux-cleanup-receipt-condition receipt) condition)
-             (handler-case
-                 (fnn-owner-thread-escape service condition "mux cleanup")
-               (serious-condition () nil))))
+             (fnn-owner-install-or-end
+              (lambda () (fnn-owner-thread-escape service condition "mux cleanup"))
+              condition "mux cleanup")))
       (unless (fnn-mux-cleanup-receipt-section-returned receipt)
         (fnn-mux-cleanup-debt loop conn receipt)))
     receipt))
@@ -1694,8 +1694,9 @@ its descriptor and calling receipt; physical uncertainty never permits retry."
     ;; Fault escalation outside inbox exclusion, after both closes attempted.
     ;; A diagnostic escape leaves every receipt discoverable on the loop.
     (dolist (condition (nreverse conditions))
-      (handler-case (fnn-owner-thread-escape service condition "mux wake close")
-        (serious-condition () nil)))
+      (fnn-owner-install-or-end
+       (lambda () (fnn-owner-thread-escape service condition "mux wake close"))
+       condition "mux wake close"))
     nil))
 
 (def-actor fnn-mux-spawn :kind :mux :thread-name "fn owner io" :roster t

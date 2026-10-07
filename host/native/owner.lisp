@@ -6184,6 +6184,20 @@ before exact settlement releases a charge. Owner->extent serializes it."
     (when (or (null (fnn-owner-cold-read-token read)) (fnn-owner-cold-ready-p read))
       (fnn-owner-cold-result-locked service read))))
 
+(defun fnn-owner-install-or-end (install original label)
+  "Run INSTALL, the off-mutex installation of the fence or the fault stop
+that ORIGINAL decided.  An installation that itself signals leaves the
+service not known to be fenced: both conditions are named and the process
+ends with ORIGINAL's exit, ACL2's fn-fs-exit-code (fnn-exit-code-for) floored
+at the fault exit, never continuing unfenced (R7)."
+  (handler-case (funcall install)
+    (serious-condition (failure)
+      (let ((code (let ((c (fnn-exit-code-for original)))
+                    (if (eql c +fnn-exit-uncertain+) c +fnn-exit-fault+))))
+        (fnn-err "~a: installing the stop failed (~a); original condition: ~a; process ends with exit ~d"
+                 label failure original code)
+        (fnn-exit code)))))
+
 (defun fnn-owner-cold-settle (service read &optional (class :control))
   "A returned job, not a timeout, can transfer its result and release credit.
 CLASS: the gate class of the read this page belongs to.  A served read's
@@ -6196,7 +6210,9 @@ injected disk stall.  The reaper's settlement is maintenance (:control)."
       (fnn-owner-serialized service nil
                             (lambda () (fnn-owner-cold-settle-locked service read)) class)
     (serious-condition (condition)
-      (ignore-errors (fnn-owner-fault-service service nil condition))
+      (fnn-owner-install-or-end
+       (lambda () (fnn-owner-thread-escape service condition "cold settle"))
+       condition "cold settle")
       condition)))
 
 (defun fnn-owner-cold-reap (service)
@@ -7438,13 +7454,19 @@ the crash keystone) and serving continues."
     (handler-case (fnn-owner-maybe-publish service)
       (fnn-store-indeterminate (e)
         (fnn-err "CHECKPOINT auto uncertain; the store needs recovery: ~a" e)
-        (ignore-errors (fnn-owner-fence-service service)))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fence-service service))
+         e "checkpoint publication"))
       (fnn-store-fault (e)
-        (ignore-errors (fnn-owner-fault-service service nil e)))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fault-service service nil e))
+         e "checkpoint publication"))
       (fnn-store-error (e)
         (fnn-err "CHECKPOINT auto failed: ~a" e))
       (serious-condition (e)
-        (ignore-errors (fnn-owner-fault-service service nil e))))))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fault-service service nil e))
+         e "checkpoint publication")))))
     ;; The slot can be released here; actor/worker registration survives the
     ;; complete unwind until the parent's independent physical join.
     (fnn-owner-publisher-release service)))
