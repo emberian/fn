@@ -2681,7 +2681,6 @@ check-lane:
 # an image build).
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
-	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
@@ -2745,13 +2744,6 @@ CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
-# The committed evidence objects (tools/evidence_store.py: ledger --check and
-# current_view --check read them) are fetched once here, in parallel with
-# every step that does not read them, so no step spawns the rsync itself: a
-# step that does is untraceable and never cached (lane iter-arch, 2026-10-04:
-# 46 + 28 s on every check-fast of a fresh tree).  Objects are content-named,
-# so the cache is a shared cache to check_steps, not an input.
-	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 # The analysed tree (tools/ledger.py load_tree, persisted by its inputs'
 # digest under build/cache/ledger-tree) that check_scaffold,
 # current_view, depth_check, harness_check, interface_emit and spec_cite_check
@@ -2867,19 +2859,6 @@ check:
 # walk spelled by hand instead of through a named projection is drift and is
 # counted, not failed (--strict fails on those too).  Mechanical, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/session_depth.py
-# Every certification claim in this tree cites a run directory under
-# `build/`, which `.gitignore:6` excludes: the directory exists only on the
-# box that ran it, and a worktree removal, a farm root or a gate reaper
-# deletes it.  At dev 5698648, 314 run ids were cited in tracked files and
-# none resolved, so a reader could not check a single one.  The manifest is
-# the claim: its bytes are archived by hash and its logical name under
-# planning/evidence/manifests/ is committed in evidence-index.tsv; this fails
-# on a NEWLY cited run with no committed manifest and tolerates the 177 the
-# lane could not recover, which are named in that directory's LOST.txt.
-# `--strict` fails on those too, once their owners re-run or retract them.
-# Mechanical, no ACL2.  `tools/cite_check.py` is the same family for
-# repository paths and deliberately does not read `build/`.
-	@$(CHECK_STEP) $(PYTHON) tools/evidence_manifests.py check
 # The teeth audit's static half: assertions that exercise ACL2 rather than fn,
 # recognisers that no test ever makes TRUE, keystones with no witness in any
 # test book, and citations of theorems the tree no longer defines.  It needs
@@ -3127,8 +3106,7 @@ check:
 # each committed by a lane that never certified it, and every reader took
 # `git log` for certification.  The archived manifests had already recorded
 # those failures at exactly the digests the tree carried; nothing asked.  This
-# reads every manifest under planning/evidence/manifests/ plus this worktree's
-# unarchived runs and gives every root and every book in the roots' closure
+# asks the cert cache (and this worktree's run dirs) and gives every root and every book in the roots' closure
 # one of four answers: green at this digest, RED at this digest, never at this
 # digest, or never a requested root anywhere.  It REPORTS here -- 32 books are
 # red at their digest on this tree and are the certification lanes' worklist
@@ -3204,7 +3182,7 @@ model-test: certify
 # (PKT-305).  No module or test is over its budget.
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
-	    tests.test_evidence_manifests tests.test_green_check tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
+	    tests.test_green_check tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \

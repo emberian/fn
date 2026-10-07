@@ -4,8 +4,8 @@
 It runs `fn 6.6.0 (a3553e6b4a23)`, the same release as [hbox](hbox.md),
 since the format-10 migration of 2026-09-28. Records:
 `planning/evidence/public-node-deploy-2026-09-27.md` and
-`planning/evidence/node-migrate-2026-09-28.md` (filed evidence;
-`python3 tools/evidence_store.py cat PATH`). The deploy runbook is
+`planning/evidence/node-migrate-2026-09-28.md` (historical: the bytes
+are in the hbox evidence archive, `/tank/fn/evidence`, which no tool reads). The deploy runbook is
 `planning/runbook-public-node-2026-09-27.md`.
 
 Nothing on this page is a command to run. The node is redeployed only

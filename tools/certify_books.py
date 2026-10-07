@@ -72,16 +72,15 @@ import cert_images  # noqa: E402
 import certs
 import unhooked  # noqa: E402
 import chain_schedule  # noqa: E402
-import evidence_manifests  # noqa: E402
 import ledger  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parent.parent
 READER = Path(ledger.__file__).resolve()
 BUILD_ROOT = ROOT / "build" / "acl2"
-# Archived manifests, read only for the per-book wall times that order a
+# Earlier run manifests, read only for the per-book wall times that order a
 # parallel schedule (`chain_schedule.quiet_walls`).  Nothing about a verdict comes from here.
-WALL_HISTORY = ROOT / "planning" / "evidence" / "manifests"
+WALL_HISTORY = BUILD_ROOT
 SUCCESS_PREFIX = "FN_CERTIFY_SUCCESS "
 # A failed certify-book prints this and nothing else can: always a failure.
 FATAL_MARKERS = ("CERTIFICATION FAILED",)
@@ -939,20 +938,8 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def record(run_dir: Path, manifest: dict[str, Any]) -> None:
-    """Write the run's manifest and file the durable copy beside it.
-
-    `build/` is ignored, so the run directory this returns to the caller is
-    the one a lane cites and the one a worktree removal or a gate reaper
-    deletes.  The manifest is the claim and is 4 kB to 200 kB; it goes to
-    `planning/evidence/manifests/<run-id>.json` as an ignored draft. Filing
-    with `evidence_manifests.py add RUN-ID` archives its bytes and stages
-    planning/evidence-index.tsv for the claim's commit. The
-    log stays here, and the archived copy records where here was.
-    """
+    """Write the run's manifest into its run dir; the dir is the record."""
     write_json(run_dir / "manifest.json", manifest)
-    if evidence_manifests.archive_run(run_dir, ROOT) in {"written", "present"}:
-        print(f"certify_books: to cite this run: "
-              f"{evidence_manifests.add_command(run_dir.name)}", file=sys.stderr, flush=True)
 
 
 def git_facts() -> dict[str, Any]:

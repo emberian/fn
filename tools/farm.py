@@ -83,7 +83,6 @@ import certs
 from certify_books import BOOK_NAME
 import chain_schedule
 DEPENDENCY_NAME = re.compile(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)+")
-import evidence_manifests
 import native_program_check
 
 HOSTS = {
@@ -666,8 +665,8 @@ CERTIFY_ID_PAUSE = 3
 def note_certify_id(root: Path, identifier: str, certify_id: str) -> None:
     """Record the run's certify-... id in its local run record (when there is one).
 
-    `evidence_manifests.py add RUN` maps a farm run to its certify id from
-    this record, so a lane need not `wait` (the fetched log) to file it.
+    `status` and a lane naming the run read the id from this record, so
+    neither needs the fetched log.
     """
     path = record_path(root, identifier)
     record = run_record(root, identifier)
@@ -1052,8 +1051,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8")
-    # The certify id, as soon as the runner names it (evidence_manifests add
-    # wanted it before `wait`; decision-keystones-2, 2026-09-29).
+    # The certify id, as soon as the runner names it (before `wait`).
     for attempt in range(CERTIFY_ID_ATTEMPTS):
         certify_id = remote_certify_id(host, remote, identifier)
         if certify_id:
@@ -1324,26 +1322,12 @@ def fetch(host: str, identifier: str, root: Path,
               check=False).stdout
     (root / "build" / "farm").mkdir(parents=True, exist_ok=True)
     (root / "build" / "farm" / f"{identifier}.log").write_text(log, encoding="utf-8")
-    archived: dict[str, int] = {}
     fetched_manifests: list[dict] = []
     for directory in sorted(set(EVIDENCE.findall(log))):
         local = root / directory
         local.mkdir(parents=True, exist_ok=True)
         fetch_evidence_dir(host, remote, directory, local)
         fetched_manifests.extend(certs.load_manifests(root, local / "manifest.json"))
-        # The fetched copy lands under `build/`, which is ignored and which a
-        # worktree removal takes with it, so the manifest is also filed under
-        # `planning/evidence/manifests/`.  Its `archived_from` names the box
-        # and the remote directory, because that is where the log stayed.
-        outcome = evidence_manifests.archive_run(
-            local, root, f"{host}:{remote}/{directory}")
-        archived[outcome] = archived.get(outcome, 0) + 1
-        if outcome in {"written", "present"}:
-            print(f"to cite it: {evidence_manifests.add_command(Path(directory).name)}")
-    if archived:
-        print("manifests archived under {}: {}".format(
-            evidence_manifests.ARCHIVE_REL,
-            ", ".join(f"{key} {value}" for key, value in sorted(archived.items()))))
     for directory in certs.BOOK_DIRECTORIES:
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--include=*.fasl", "--exclude=*",
@@ -1579,8 +1563,7 @@ def fetch_logs(host: str, identifier: str, root: Path, remote: Path,
                into: Path) -> list[Path]:
     """One run's per-book logs and manifest, brought home and nothing else.
 
-    `fetch` is the evidence path: it archives the manifest under
-    `planning/evidence/manifests/`, rsyncs the run's new certificate pairs
+    `fetch` is the evidence path: it rsyncs the run's new certificate pairs
     into this worktree and publishes them to the box's cache and to the local
     one.  None of that may happen for a triage run, which certifies a tree
     whose sources have been substituted: its pairs are about a tree nobody

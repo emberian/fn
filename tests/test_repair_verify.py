@@ -75,8 +75,6 @@ class RepairVerifyTests(unittest.TestCase):
         self.item.update(updates)
         self.write("planning/repair/items/FIX.json", json.dumps(self.item))
         with patch.object(repair, "ITEMS", str(self.items)), patch.object(repair, "repo_root", return_value=str(self.root)), \
-                patch.dict(os.environ, {"FN_EVIDENCE_ARCHIVE": str(Path(self.tmp.name) / "archive"),
-                                        "FN_EVIDENCE_CACHE": str(Path(self.tmp.name) / "cache")}), \
                 contextlib.redirect_stdout(io.StringIO()):
             code = repair.verify(["FIX", "--base", self.base])
         result = json.loads((self.items / "FIX.json").read_text())["verify"]

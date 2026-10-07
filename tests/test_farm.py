@@ -1215,7 +1215,7 @@ class StatusTests(unittest.TestCase):
 
 
 class CertifyIdTests(unittest.TestCase):
-    """submit and status name the run's certify id (evidence_manifests add)."""
+    """submit and status name the run's certify id (farm.run_record)."""
 
     def test_submit_records_the_certify_id_the_runner_names(self):
         class Named(Fake):
@@ -1274,9 +1274,6 @@ class CertifyIdTests(unittest.TestCase):
             self.assertIn("certify-20260929T101500Z-77", out.getvalue())
             self.assertEqual(farm.run_record(root, identifier)["certify_id"],
                              "certify-20260929T101500Z-77")
-            import evidence_manifests
-            self.assertEqual(evidence_manifests.certify_ids_of_farm_run(root, identifier),
-                             ["certify-20260929T101500Z-77"])
 
 
 class FrictionTests(unittest.TestCase):

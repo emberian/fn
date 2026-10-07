@@ -11,9 +11,8 @@ The same classifier over the two archived runs the review cites agrees with
 what the freeze lanes found by hand and then some: 2 independent of 53
 failures in `certify-20260922T121645Z-3620455`, and in
 `certify-20260922T075332Z-1349583` the two books the lane named plus three
-test books whose own errors were buried under 90 cascades.  (Spelling run ids
-is safe only here: `tools/evidence_manifests.py` excludes `tests/test_*.py`
-from its citation sweep, because a run id in a unit test is a fixture.)
+test books whose own errors were buried under 90 cascades.  (A run id in a
+unit test is a fixture.)
 
 The farm is faked the way `tests/test_farm.py` fakes it, through the module
 seam `farm.RUN`, so these tests read the exact commands a triage round would
