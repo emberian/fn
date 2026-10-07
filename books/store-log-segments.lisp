@@ -9,11 +9,16 @@
 ; the checkpoint names it), so its last entry's trailer is the next segment's
 ; genesis (fn-lgs-chain-*).  A checkpoint whose F row names its first suffix
 ; segment K and that segment's genesis G covers every segment below K; after
-; the checkpoint's install those are unlinked (the drop), and the open
-; is the checkpoint's capture followed by the scan of K, K+1, ... from G.
+; the checkpoint's install, once the install's own root fence succeeded,
+; those are unlinked (the drop), and the open is the checkpoint's capture
+; followed by the scan of K, K+1, ... from G.  The open itself unlinks
+; nothing (RL-01-CHECKPOINT-NAME-BEFORE-DROP): the checkpoint it reads may
+; be named only in the cache, so a segment an interrupted drop left stays
+; until the next install's drop, which covers it
+; (fn-lgs-install-drop-covers-what-the-open-left).
 ;
 ; ACL2 decides: the segment names (fn-lgs-segment-name, fn-lgs-segment-index),
-; which segments the open scans and which it drops (fn-lgs-open-plan, by name
+; which segments the open scans and which are covered (fn-lgs-open-plan, by name
 ; `history-short-of-checkpoint' and `checkpoint-damaged' otherwise), whether a
 ; scan's stop is a torn tail or a splice (fn-lgs-chain-broken-p: an entry that
 ; validates under another predecessor is refused `log-chain-broken', never read
@@ -383,7 +388,7 @@
            (equal (fn-lgs-all-present ks (append x y)) (fn-lgs-all-present ks y)))))
 ; P-DROP's cuts: a death between two unlinks leaves covered segments beside
 ; the remaining ones; the open's plan scans the same segments and refuses the
-; same stores (the covered ones are only dropped again).
+; same stores (the covered ones stay until the next install's drop).
 (defthm fn-lgs-open-plan-scan-ignores-covered
   (implies (and (posp first)
                 (fn-lgs-all-below-p (fn-lgs-indices covered) first))
@@ -393,6 +398,38 @@
                        (cadr (fn-lgs-open-plan names first)))))
   :hints (("Goal" :in-theory (disable fn-lgs-range fn-lgs-all-present fn-lgs-below
                                       fn-lgs-indices))))
+
+(local
+ (defthm fn-lgs-member-of-below-iff
+   (iff (member-equal x (fn-lgs-below ks k))
+        (and (member-equal x ks) (natp x) (natp k) (< x k)))))
+(local
+ (defthm fn-lgs-below-grows
+   (implies (and (subsetp-equal ks ks2) (natp k) (natp k2) (<= k k2))
+            (subsetp-equal (fn-lgs-below ks k) (fn-lgs-below ks2 k2)))
+   :hints (("Goal" :induct (fn-lgs-below ks k)))))
+
+; KEYSTONE (RL-01-CHECKPOINT-NAME-BEFORE-DROP, the install's half).  The
+; open drops nothing (books/store-log-recover-copy.lisp
+; fn-lgrc-open-unlinks-no-segment), so the segments its plan names as
+; covered (DROP) stay in journal/.  The next checkpoint install's drop
+; (host/native/io.lisp fnn-log-covered-indices: the plan's DROP over
+; journal/ as that run lists it, under the first suffix segment its own
+; checkpoint names) covers every one of them, when nothing unlinked a
+; segment in between (NAMES2 lists every index NAMES did) and the install's
+; first is at or past the open's.  The capture names the active segment,
+; rotated to when it held a record (fn-lgs-rotate-needed-p), which is at or
+; past the active segment the open scanned, the last of its SCAN, which is
+; at or past the open's FIRST.
+(defthm fn-lgs-install-drop-covers-what-the-open-left
+  (implies (and (equal (car (fn-lgs-open-plan names first)) :scan)
+                (equal (car (fn-lgs-open-plan names2 first2)) :scan)
+                (subsetp-equal (fn-lgs-indices names) (fn-lgs-indices names2))
+                (posp first2) (<= first first2))
+           (subsetp-equal (caddr (fn-lgs-open-plan names first))
+                          (caddr (fn-lgs-open-plan names2 first2))))
+  :hints (("Goal" :in-theory (disable fn-lgs-range fn-lgs-all-present fn-lgs-below
+                                      fn-lgs-indices fn-lgs-max-index))))
 
 ; -----------------------------------------------------------------------------
 ; Rotation.  The active segment is closed where its kernel stands (no batch

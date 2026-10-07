@@ -29,8 +29,10 @@
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
 ; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
 ; acknowledged record is recovered from every crash image of the host's run
-; of the active segment; the log's frame bound (fn-lgu-log-max).
-(include-book "../books/store-log-durable")
+; of the active segment; the log's frame bound (fn-lgu-log-max); the open's
+; copy (RL-01 A2: fn-lgrc-copy-verdict, fn-lgrc-copy-refusal-text), which
+; includes the former.
+(include-book "../books/store-log-recover-copy")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -456,9 +458,13 @@
 (definterface fn-lg-extent-okp
   :class :common-lisp-compliant)
 
-(definterface fn-lg-recover-tail
+(definterface fn-lgrc-copy-verdict
   :class :common-lisp-compliant
-  :kinds ((ks true-listp)))
+  :keystones (fn-lgrc-copy-verdict-copies-exactly-with-room
+              fn-lgrc-open-refuses-without-room-and-takes-no-step))
+
+(definterface fn-lgrc-copy-refusal-text
+  :class :common-lisp-compliant)
 
 (definterface fn-lg-workload-prefixp
   :class ::ideal)
@@ -525,7 +531,8 @@
 (definterface fn-lgu-acknowledge
   :class :common-lisp-compliant
   :kinds ((c true-listp) (n natp))
-  :keystones (fn-lgu-acknowledge-acknowledges-only-recoverable-records))
+  :keystones (fn-lgu-acknowledge-acknowledges-only-recoverable-records
+              fn-lgrc-acknowledge-from-the-copy))
 
 (definterface fn-lgc-frontier
   :class :common-lisp-compliant
@@ -654,7 +661,8 @@
 
 (definterface fn-lgs-open-plan
   :class :common-lisp-compliant
-  :keystones (fn-lgs-open-plan-scan-ignores-covered))
+  :keystones (fn-lgs-open-plan-scan-ignores-covered
+              fn-lgs-install-drop-covers-what-the-open-left))
 
 (definterface fn-lgs-segment-index
   :class :common-lisp-compliant)

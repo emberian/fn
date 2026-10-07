@@ -288,7 +288,12 @@ def boundary_registry() -> dict:
             else:
                 rules = {r: cut.candidate for r in ROUTES}
             if table == "LOG_CUTS":
-                ops = ("recover", "restart") if "recover" in cut.program else ("post",)
+                # the open's program (fnn-log-recover) is reached by a
+                # recover or a restart; the append's, fence's and
+                # extension's by a post
+                ops = (("recover", "restart")
+                       if native_cuts.LOG_PROGRAM_HOSTS[cut.program] == "fnn-log-recover"
+                       else ("post",))
             else:
                 ops = TABLE_OPERATIONS[table]
             entry = registry.get(cut.name)

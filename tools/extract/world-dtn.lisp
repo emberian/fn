@@ -133,6 +133,7 @@
 (include-book "../../books/resource-syncer")
 (include-book "../../books/response-identity")
 (include-book "../../books/store-log-durable")
+(include-book "../../books/store-log-recover-copy")
 (include-book "../../books/allocation-turn-slots")
 (include-book "../../books/store-intern")
 (include-book "../../books/open-frontier-wire")

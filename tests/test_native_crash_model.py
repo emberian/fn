@@ -131,13 +131,16 @@ if IMAGE_AVAILABLE:
                     self.run_post_log_cut(cut)
 
         def test_recovery_log_cuts_reopen_the_same_history(self):
-            # P-LOG-RECOVER's cuts (fnn-log-recover: log-truncated after the
-            # tail's zero write, log-recovered after its barrier) and the
+            # P-LOG-RECOVER-COPY's cuts (fnn-log-recover: log-copied after the
+            # copy's writes, log-copy-fenced after its fence, log-swapped
+            # after the rename over the segment, log-recovered after the
+            # directories' fences) and the
             # staging sweep's: a death at each leaves the history the next
             # open reads, and that open completes.  A torn candidate is left
             # first (a death at log-written of a batch of one).
-            for label, env in (("log-truncated", {"FN_NATIVE_LOG_FAULT": "log-truncated"}),
-                               ("log-recovered", {"FN_NATIVE_LOG_FAULT": "log-recovered"}),
+            for label, env in (*((cut, {"FN_NATIVE_LOG_FAULT": cut})
+                                 for cut in ("log-copied", "log-copy-fenced", "log-swapped",
+                                             "log-recovered")),
                                ("recovery-stage-unlinked",
                                 {"FN_NATIVE_RECOVERY_FAULT": "recovery-stage-unlinked:kill"})):
                 with self.subTest(cut=label), tempfile.TemporaryDirectory(

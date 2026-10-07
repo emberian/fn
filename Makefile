@@ -2156,6 +2156,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-route-programs-tests \
 	books/store-log-open-barriers \
 	tests/acl2/store-log-open-barriers-tests \
+	books/store-log-recover-copy \
+	tests/acl2/store-log-recover-copy-tests \
 	books/store-log-rotate-spare \
 	books/owner-compact-request \
 	tests/acl2/owner-compact-request-tests \
