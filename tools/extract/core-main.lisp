@@ -32,6 +32,10 @@
 (load (cl-user::xl-path "core-world.lisp") :external-format :utf-8)
 ;; named through its symbol: this form is compiled before defs.lisp defines it
 (funcall 'acl2::xl-make-live-stobjs)
+;; ACL2's standard channels get their streams at load (axioms.lisp:19005 setup-standard-io and the
+;; eval-when after it); an ACL2 warning the served code prints goes to them, as the image's does
+(unless (fboundp 'acl2::setup-standard-io) (error "core: setup-standard-io is not in the closure"))
+(funcall 'acl2::setup-standard-io)
 ;; ACL2's global compilation policy: the image compiles host/native under it
 (proclaim '(optimize (compilation-speed 0) (speed 3) (space 1) (safety 0)))
 (when (sb-ext:posix-getenv "XL_PROF") (require :sb-sprof))

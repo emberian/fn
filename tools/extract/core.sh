@@ -73,9 +73,11 @@ EXPORT_DEADLINE=${FN_EXPORT_DEADLINE:-900}
   cat "$OUT/tokens.lsp"
   printf ') "%s/core.json" "%s/core-world.lisp" "%s/packages.json" state)\n' "$OUT" "$OUT" "$OUT"
   # the definitions: ACL2's own raw and *1* forms, macroexpanded (forms-export.lisp), under a deadline
-  printf ':q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n(xt-fe-export (with-open-file (s "%s/tokens.lsp") (let ((*package* (find-package "ACL2"))) (read s))) "%s" "%s" "tools/extract/clruntime.lisp" "%s" :deadline %s)\n(sb-ext:exit)\n' \
+  printf ':q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n(xt-fe-export (with-open-file (s "%s/tokens.lsp") (let ((*package* (find-package "ACL2"))) (read s))) "%s" "%s" "tools/extract/clruntime.lisp" "%s" :deadline %s :extra-roots (quote (setup-standard-io)))\n(sb-ext:exit)\n' \
       "$OUT" "$OUT" "$ACL2_SRC" "$WORLD_KEY" "$EXPORT_DEADLINE"
 } > "$OUT/export.lsp"
+# setup-standard-io (ACL2 axioms.lisp:19005) is an extra root: core-main.lisp runs it at build, as ACL2's
+# own load-time form does, so its standard channels carry streams (an ACL2 warning prints, as the image's does).
 # The export is measured at about 30 s on hbox once the image is cached (xt-fe-export: index 5 s, closure 20 s);
 # EXPORT_DEADLINE is the in-image deadline (fails closed naming the phase and the last unit), the outer
 # timeout is twice that plus the front end's own pass.

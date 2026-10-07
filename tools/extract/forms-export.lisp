@@ -680,7 +680,9 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                                              (when a (add-unit (fe-id :attach sym) (car a) (cdr a))))))
                                       ((fe-cl-or-sb-p sym) nil)
                                       (t (setf (gethash id gaps) why))))))))))
-      (dolist (r roots) (enqueue "raw" r :root) (enqueue "star1" r :root))
+      ;; a *1* exists only for a function of the world; a raw-only root (an extra root from ACL2's
+      ;; sources, setup-standard-io) has none
+      (dolist (r roots) (enqueue "raw" r :root) (when (fe-world-function-p r) (enqueue "star1" r :root)))
       (dolist (m macro-names) (enqueue "macro" m :root))
       (dolist (st stobj-names) (pushnew st stobj-set))
       (drain)
