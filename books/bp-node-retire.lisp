@@ -18,6 +18,7 @@
 ; the removal.
 (in-package "ACL2")
 (include-book "bp-node-rotation")
+(include-book "def-loop")
 
 (defun fn-bpnr-stage-prefix ()
   (declare (xargs :guard t))
@@ -85,42 +86,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-bpnr-retire-dir-ops-loop (dir files acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (atom files)
-      (revappend acc (list (list :rmdir dir)))
-    (fn-bpnr-retire-dir-ops-loop dir
-                                 (cdr files)
-                                 (cons (list :unlink-in dir (car files)) acc))))
-
-(defun fn-bpnr-retire-dir-ops (dir files)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (atom files)
-           (list (list :rmdir dir))
-         (cons (list :unlink-in dir (car files))
-               (fn-bpnr-retire-dir-ops dir (cdr files))))
-       :exec (fn-bpnr-retire-dir-ops-loop dir files nil)))
-
-(local
- (defthm fn-bpnr-retire-dir-ops-loop-is-revappend
-   (equal (fn-bpnr-retire-dir-ops-loop dir files acc)
-          (revappend acc (fn-bpnr-retire-dir-ops dir files)))
-   :hints (("Goal" :induct (fn-bpnr-retire-dir-ops-loop dir files acc)
-                   :in-theory (union-theories '(fn-bpnr-retire-dir-ops-loop fn-bpnr-retire-dir-ops revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-bpnr-retire-dir-ops-loop)
-
-(verify-guards fn-bpnr-retire-dir-ops
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-bpnr-retire-dir-ops)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-bpnr-retire-dir-ops-loop-is-revappend (acc nil))))))
-
+(def-loop fn-bpnr-retire-dir-ops (dir files)
+  :shape :map :over files :elt f
+  :tail (list (list :rmdir dir))
+  :body (list :unlink-in dir f))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;

@@ -151,44 +151,14 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cev-join-loop (lines acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp lines)
-      (fn-cev-join-loop (cdr lines) (fn-ag-rev-onto (true-list-fix (car lines)) acc))
-    (revappend acc nil)))
-
-(defun fn-cev-join (lines)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp lines)
-           (append (true-list-fix (car lines)) (fn-cev-join (cdr lines)))
-         nil)
-       :exec (fn-cev-join-loop lines nil)))
+(def-loop fn-cev-join (lines)
+  :shape :concat :over lines :elt l
+  :body (true-list-fix l))
 
 (local
  (defthm fn-cev-join-loop-rev-onto-append
    (equal (revappend (fn-ag-rev-onto x acc) y)
           (revappend acc (append x y)))))
-
-(local
- (defthm fn-cev-join-loop-is-revappend
-   (equal (fn-cev-join-loop lines acc)
-          (revappend acc (fn-cev-join lines)))
-   :hints (("Goal" :induct (fn-cev-join-loop lines acc)
-                   :in-theory (union-theories '(fn-cev-join-loop fn-cev-join revappend car-cons cdr-cons fn-cev-join-loop-rev-onto-append)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cev-join-loop)
-
-(verify-guards fn-cev-join
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cev-join)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cev-join-loop-is-revappend (acc nil))))))
-
 
 ; `control log': the count, then one line per record in the owner's order.
 (defun fn-cev-log-report (ws)
@@ -380,47 +350,12 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cev-queue-envelopes-loop (q arts acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp arts)
-      (if (and (consp (car arts))
-               (member-equal q (true-list-fix (fn-article-groups (car arts))))
-               (fn-cev-envelope-original (fn-article-msgid (car arts))))
-          (fn-cev-queue-envelopes-loop q (cdr arts) (cons (car arts) acc))
-        (fn-cev-queue-envelopes-loop q (cdr arts) acc))
-    (revappend acc nil)))
-
-(defun fn-cev-queue-envelopes (q arts)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp arts)
-           (if (and (consp (car arts))
-                    (member-equal q (true-list-fix (fn-article-groups (car arts))))
-                    (fn-cev-envelope-original (fn-article-msgid (car arts))))
-               (cons (car arts) (fn-cev-queue-envelopes q (cdr arts)))
-             (fn-cev-queue-envelopes q (cdr arts)))
-         nil)
-       :exec (fn-cev-queue-envelopes-loop q arts nil)))
-
-(local
- (defthm fn-cev-queue-envelopes-loop-is-revappend
-   (equal (fn-cev-queue-envelopes-loop q arts acc)
-          (revappend acc (fn-cev-queue-envelopes q arts)))
-   :hints (("Goal" :induct (fn-cev-queue-envelopes-loop q arts acc)
-                   :in-theory (union-theories '(fn-cev-queue-envelopes-loop fn-cev-queue-envelopes revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cev-queue-envelopes-loop)
-
-(verify-guards fn-cev-queue-envelopes
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cev-queue-envelopes)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cev-queue-envelopes-loop-is-revappend (acc nil))))))
-
+(def-loop fn-cev-queue-envelopes (q arts)
+  :shape :map :over arts :elt a
+  :keep (and (consp a)
+              (member-equal q (true-list-fix (fn-article-groups a)))
+              (fn-cev-envelope-original (fn-article-msgid a)))
+  :body a)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;

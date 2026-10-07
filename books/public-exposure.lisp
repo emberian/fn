@@ -75,6 +75,7 @@
 
 (in-package "ACL2")
 (include-book "public-exposure-rows")
+(include-book "def-loop")
 (include-book "profile-limits") ; its figures are rows there
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "owner-config")
@@ -319,84 +320,19 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-exp-remove-loop (id conns acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp conns)
-      (if (equal (fn-exp-entry-id (car conns)) id)
-          (fn-exp-remove-loop id (cdr conns) acc)
-        (fn-exp-remove-loop id (cdr conns) (cons (car conns) acc)))
-    (revappend acc nil)))
-
-(defun fn-exp-remove (id conns)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp conns)
-           (if (equal (fn-exp-entry-id (car conns)) id)
-               (fn-exp-remove id (cdr conns))
-             (cons (car conns) (fn-exp-remove id (cdr conns))))
-         nil)
-       :exec (fn-exp-remove-loop id conns nil)))
-
-(local
- (defthm fn-exp-remove-loop-is-revappend
-   (equal (fn-exp-remove-loop id conns acc)
-          (revappend acc (fn-exp-remove id conns)))
-   :hints (("Goal" :induct (fn-exp-remove-loop id conns acc)
-                   :in-theory (union-theories '(fn-exp-remove-loop fn-exp-remove revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-exp-remove-loop)
-
-(verify-guards fn-exp-remove
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-exp-remove)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-exp-remove-loop-is-revappend (acc nil))))))
-
+(def-loop fn-exp-remove (id conns)
+  :shape :map :over conns :elt c
+  :keep (equal (fn-exp-entry-id c) id) :keep-order :skip-first
+  :body c)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-exp-replace-loop (e conns acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp conns)
-      (if (equal (fn-exp-entry-id (car conns)) (fn-exp-entry-id e))
-          (revappend acc (cons e (cdr conns)))
-        (fn-exp-replace-loop e (cdr conns) (cons (car conns) acc)))
-    (revappend acc nil)))
-
-(defun fn-exp-replace (e conns)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp conns)
-           (if (equal (fn-exp-entry-id (car conns)) (fn-exp-entry-id e))
-               (cons e (cdr conns))
-             (cons (car conns) (fn-exp-replace e (cdr conns))))
-         nil)
-       :exec (fn-exp-replace-loop e conns nil)))
-
-(local
- (defthm fn-exp-replace-loop-is-revappend
-   (equal (fn-exp-replace-loop e conns acc)
-          (revappend acc (fn-exp-replace e conns)))
-   :hints (("Goal" :induct (fn-exp-replace-loop e conns acc)
-                   :in-theory (union-theories '(fn-exp-replace-loop fn-exp-replace revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-exp-replace-loop)
-
-(verify-guards fn-exp-replace
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-exp-replace)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-exp-replace-loop-is-revappend (acc nil))))))
-
+(def-loop fn-exp-replace (e conns)
+  :shape :map :over conns :elt c
+  :stop (equal (fn-exp-entry-id c) (fn-exp-entry-id e))
+  :stop-value (cons e (cdr conns))
+  :body c)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
@@ -458,43 +394,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-exp-drop-loop (key rows acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp rows)
-      (if (and (consp (car rows)) (equal (car (car rows)) key))
-          (fn-exp-drop-loop key (cdr rows) acc)
-        (fn-exp-drop-loop key (cdr rows) (cons (car rows) acc)))
-    (revappend acc nil)))
-
-(defun fn-exp-drop (key rows)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp rows)
-           (if (and (consp (car rows)) (equal (car (car rows)) key))
-               (fn-exp-drop key (cdr rows))
-             (cons (car rows) (fn-exp-drop key (cdr rows))))
-         nil)
-       :exec (fn-exp-drop-loop key rows nil)))
-
-(local
- (defthm fn-exp-drop-loop-is-revappend
-   (equal (fn-exp-drop-loop key rows acc)
-          (revappend acc (fn-exp-drop key rows)))
-   :hints (("Goal" :induct (fn-exp-drop-loop key rows acc)
-                   :in-theory (union-theories '(fn-exp-drop-loop fn-exp-drop revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-exp-drop-loop)
-
-(verify-guards fn-exp-drop
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-exp-drop)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-exp-drop-loop-is-revappend (acc nil))))))
-
+(def-loop fn-exp-drop (key rows)
+  :shape :map :over rows :elt r
+  :keep (and (consp r) (equal (car r) key)) :keep-order :skip-first
+  :body r)
 
 (defun fn-exp-put (key stamp count rows)
   (declare (xargs :guard t))
@@ -503,44 +406,11 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-exp-prune-loop (stamp rows acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp rows)
-      (if (equal (fn-exp-at 1 (car rows)) stamp)
-          (fn-exp-prune-loop stamp (cdr rows) (cons (car rows) acc))
-        (fn-exp-prune-loop stamp (cdr rows) acc))
-    (revappend acc nil)))
-
-(defun fn-exp-prune (stamp rows)
-  ; Keep only the triples of this window.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp rows)
-           (if (equal (fn-exp-at 1 (car rows)) stamp)
-               (cons (car rows) (fn-exp-prune stamp (cdr rows)))
-             (fn-exp-prune stamp (cdr rows)))
-         nil)
-       :exec (fn-exp-prune-loop stamp rows nil)))
-
-(local
- (defthm fn-exp-prune-loop-is-revappend
-   (equal (fn-exp-prune-loop stamp rows acc)
-          (revappend acc (fn-exp-prune stamp rows)))
-   :hints (("Goal" :induct (fn-exp-prune-loop stamp rows acc)
-                   :in-theory (union-theories '(fn-exp-prune-loop fn-exp-prune revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-exp-prune-loop)
-
-(verify-guards fn-exp-prune
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-exp-prune)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-exp-prune-loop-is-revappend (acc nil))))))
-
+; Keep only the triples of this window.
+(def-loop fn-exp-prune (stamp rows)
+  :shape :map :over rows :elt r
+  :keep (equal (fn-exp-at 1 r) stamp)
+  :body r)
 
 (defun fn-exp-count-in (key stamp rows)
   ; KEY's count in window STAMP; a stale or absent triple counts 0.
