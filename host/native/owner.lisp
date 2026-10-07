@@ -8438,16 +8438,21 @@ torn last entry follows.  Answers the offset the writer resumes at."
                      (integerp (second decision)))
           (fnn-fault "owner returned malformed log reopen ~a" decision))
         (when (eq (first decision) :reopen)
-          (handler-case
-              (let ((fd (fnn-owner-open-log *fnn-owner-log-path*)))
-                ;; PKT-508: through the writer's queue while it runs, so
-                ;; the swap never waits on a write in progress.
-                (fnn-log-swap-fd fd)
-                (fnn-owner-log 'fn-owner-log-line))
-            (error (condition)
-              ;; Before transfer the old descriptor stays; after transfer a
-              ;; close fault is retained by the log debt ledger.
-              (fnn-err "service log reopen failed: ~a" condition))))
+          ;; Only the open's refusal is an ordinary outcome: nothing was
+          ;; transferred, the old descriptor stays, and the failure is
+          ;; named.  The swap's and the line's failures (a fault, an
+          ;; indeterminate custody, a close debt the ledger retains) leave
+          ;; this tick for the maintenance actor's boundary, which fences
+          ;; or stops the service.
+          (let ((fd (handler-case (fnn-owner-open-log *fnn-owner-log-path*)
+                      (fnn-os-error (condition)
+                        (fnn-err "service log reopen failed: ~a" condition)
+                        nil))))
+            (when fd
+              ;; PKT-508: through the writer's queue while it runs, so
+              ;; the swap never waits on a write in progress.
+              (fnn-log-swap-fd fd)
+              (fnn-owner-log 'fn-owner-log-line))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
 (def-actor fnn-owner-spawn-listener :kind :accept :thread-name "fn owner accept" :roster t
