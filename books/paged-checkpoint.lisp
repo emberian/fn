@@ -619,9 +619,13 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (and v (consp log))
       (let ((c (fn-pck-capture-of-pages (cadr v))))
-        (fn-ock-recover-extended
-         (fn-sco-extend c configs (nthcdr (- (len (fn-sco-records c)) (nfix (car log))) (cdr log)))
-         configs frontier max-conns))
+        ; A log that starts past the checkpoint's S has lost records the replay
+        ; needs: refuse, never replay a wrong suffix.
+        (if (fn-pck-log-retains log (len (fn-sco-records c)))
+            (fn-ock-recover-extended
+             (fn-sco-extend c configs (nthcdr (- (len (fn-sco-records c)) (nfix (car log))) (cdr log)))
+             configs frontier max-conns)
+          :fault))
     :fault))
 
 (defun fn-pck-recover (image r mode log configs frontier max-conns)

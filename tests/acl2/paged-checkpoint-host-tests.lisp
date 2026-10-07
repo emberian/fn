@@ -110,3 +110,62 @@
         (not (equal (pckh-wrong-tail-dirty w '(9)) (adt-tp-dirty w '(9))))
         (equal (take 6 (cdar (adt-tp-dirty w '(9)))) '(4097 4098 4099 4100 4101 9))
         (equal (take 6 (cdar (pckh-wrong-tail-dirty w '(9)))) '(2049 2050 2051 2052 2053 9)))))
+
+; 6. The open selection must see the log start.  The selection that ignores it
+; (fn-pck-open-raw-selection, today's behaviour) can answer :checkpoint for a
+; log that starts past the checkpoint's S.
+(must-fail-checked
+ (defthm pckh-raw-selection-retains
+   (implies (equal (car (fn-pck-open-raw-selection filep disk r mode count k)) :checkpoint)
+            (fn-pck-log-retains log (cadr (fn-pck-open-raw-selection filep disk r mode count k))))))
+
+; The witness: a checkpoint of S = 2 records over a log that starts at 5.
+(defun pckh-selection-of (s count k log)
+  (let ((sel (fn-sco-select :ok s count k)))
+    (if (and (equal (car sel) :checkpoint) (not (fn-pck-log-retains log (cadr sel))))
+        (list :refused :log-past-checkpoint)
+      sel)))
+(assert-event
+ (and (equal (fn-sco-select :ok 2 6 4) '(:checkpoint 2))
+      (not (fn-pck-log-retains '(5 a) 2))
+      (equal (pckh-selection-of 2 6 4 '(5 a)) '(:refused :log-past-checkpoint))
+      (equal (pckh-selection-of 2 6 4 '(2 a b c d)) '(:checkpoint 2))))
+
+; Recovery through the view with START > S is not the full recovery: the
+; view of an S = 0 image (nothing checkpointed) over a log that starts at 1.
+(defun pckh-ungated-recover-view (v log configs frontier max-conns)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and v (consp log))
+      (let ((c (fn-pck-capture-of-pages (cadr v))))
+        (fn-ock-recover-extended
+         (fn-sco-extend c configs (nthcdr (- (len (fn-sco-records c)) (nfix (car log))) (cdr log)))
+         configs frontier max-conns))
+    :fault))
+
+(must-fail-checked
+ (defthm pckh-ungated-recover-view-is-full
+   (implies (and (true-listp recs) (true-listp suffix)
+                 (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                 (consp log) (natp (car log))
+                 (equal (nthcdr (car log) (append recs suffix)) (cdr log))
+                 (equal v (list tx (fn-pck-pages configs recs))))
+            (equal (pckh-ungated-recover-view v log configs frontier max-conns)
+                   (fn-ock-recover-full configs frontier (append recs suffix) max-conns)))))
+
+(defthm pckh-recover-view-refuses-a-log-past-the-checkpoint
+  (implies (and (consp log) (natp (car log))
+                (< (len (fn-sco-records (fn-pck-capture-of-pages (cadr v)))) (car log)))
+           (equal (fn-pck-recover-view v log configs frontier max-conns) :fault))
+  :hints (("Goal" :in-theory (enable fn-pck-recover-view fn-pck-log-retains))))
+
+; 7. The catalog root's write gate.  Writing always (the ungated plan) does not
+; imply a carried catalog; with an overflow row the written root is not the
+; catalog.
+(defun pckh-ungated-catalog-plan (h s)
+  (declare (xargs :guard t :verify-guards nil))
+  (list :write (fn-pck-cat-pages h) s))
+
+(must-fail-checked
+ (defthm pckh-ungated-catalog-plan-writes-a-carried-catalog
+   (implies (equal (car (pckh-ungated-catalog-plan h s)) :write)
+            (fn-pck-carriedp h))))

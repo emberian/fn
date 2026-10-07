@@ -5,9 +5,13 @@
 ;
 ;   fn-pck-publish-plan        which pages a publication writes, or its named
 ;                              refusal when the root exceeds K pages
-;   fn-pck-open-selection      which open runs, over the page store's open
+;   fn-pck-open-selection      which open runs, over the page store's open; refuses
+;                              (:refused :log-past-checkpoint) when the log
+;                              starts past the checkpoint's S
 ;   fn-pck-compact-floor/-log  the compaction rule: drop only below the S of
 ;                              both root slots
+;   fn-pck-catalog-publish-plan  the catalog root is written only from a
+;                              carried catalog (no overflow row), else skipped
 ;   fn-pck-catalog-open        the catalog root is adopted only when its S is
 ;                              the events root's S, else rebuilt from records
 ;
@@ -20,8 +24,9 @@
 ;                              both slots' S and holds the same records
 ;   fn-pck-crash-after-compaction             the crash keystone with the log
 ;                              compacted at the floor
-;   fn-pck-catalog-open-is-rebuild            the S-match gate makes adopt
-;                              equal rebuild
+;   fn-pck-catalog-open-is-the-load           after a root the publish plan wrote
+;                              (carried catalogs only), the S-match gate makes
+;                              adopt equal the load of the records
 ;
 ; Scope, named.  (1) The log is the model (START . TAIL) of
 ; books/paged-checkpoint.lisp.  (2) A root slot that holds no checkpoint has
@@ -29,7 +34,7 @@
 ; while the older slot is empty.  (3) fn-pck-compact-keeps-both-slots covers
 ; compaction against the two slots' S; a media fault in the NEWER slot falls
 ; back to the older slot, whose S the floor kept (the crash keystone covers a
-; torn commit, not a corrupt slot).  (4) fn-pck-catalog-open-is-rebuild is
+; torn commit, not a corrupt slot).  (4) fn-pck-catalog-open-is-the-load is
 ; generic over the catalog builder (a constrained function): its premise, that
 ; a catalog root tagged S holds the catalog of the first S records, is
 ; PCK-ADOPT-TAG / PCK-ADOPT-LOAD.
@@ -102,9 +107,9 @@
 ; -----------------------------------------------------------------------------
 ; 2. Open
 
-(defun fn-pck-open-selection (filep disk r mode count k)
-  ; Which open runs.  PRESENT: the page file exists.  COUNT: the records the
-  ; log holds.  The reasons are fn-sco-select's.
+(defun fn-pck-open-raw-selection (filep disk r mode count k)
+  ; Which open the page store and the counts allow, ignoring the log's start.
+  ; The reasons are fn-sco-select's.
   (declare (xargs :guard t :verify-guards nil))
   (if (not filep)
       (fn-sco-select :absent 0 count k)
@@ -115,16 +120,30 @@
                          count k)
         (fn-sco-select :corrupt 0 count k)))))
 
+(defun fn-pck-open-selection (filep disk r mode count k log)
+  ; Which open runs.  FILEP: the page file exists.  COUNT: the records the log
+  ; has ever held.  LOG = (START . TAIL).  A checkpoint open that the log
+  ; cannot serve (START past the checkpoint's S) is refused by name; a full
+  ; replay is impossible then too, the log no longer holds records 0..START.
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((sel (fn-pck-open-raw-selection filep disk r mode count k)))
+    (if (and (equal (car sel) :checkpoint)
+             (not (fn-pck-log-retains log (cadr sel))))
+        (list :refused :log-past-checkpoint)
+      sel)))
+
 (defthm fn-pck-open-selection-bounds-the-suffix
-  (implies (equal (car (fn-pck-open-selection filep disk r mode count k)) :checkpoint)
+  (implies (equal (car (fn-pck-open-selection filep disk r mode count k log)) :checkpoint)
            (and (not (equal filep nil)) (equal (car (pgs-open disk r mode)) :ok) (natp count)
-                (equal (cadr (fn-pck-open-selection filep disk r mode count k))
+                (equal (cadr (fn-pck-open-selection filep disk r mode count k log))
                        (len (fn-sco-records (fn-pck-capture-of-pages (second (pgs-view (pgs-open disk r mode)))))))
-                (<= (cadr (fn-pck-open-selection filep disk r mode count k)) count)
-                (<= (- count (cadr (fn-pck-open-selection filep disk r mode count k))) k)))
+                (<= (cadr (fn-pck-open-selection filep disk r mode count k log)) count)
+                (<= (- count (cadr (fn-pck-open-selection filep disk r mode count k log))) k)
+                (fn-pck-log-retains log (cadr (fn-pck-open-selection filep disk r mode count k log)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-pck-capture-of-pages pgs-open pgs-view fn-sco-records)
-           :expand ((fn-pck-open-selection filep disk r mode count k))
+  :hints (("Goal" :in-theory (disable fn-pck-capture-of-pages pgs-open pgs-view fn-sco-records fn-pck-log-retains)
+           :expand ((fn-pck-open-selection filep disk r mode count k log)
+                    (fn-pck-open-raw-selection filep disk r mode count k))
            :do-not-induct t)))
 
 ; -----------------------------------------------------------------------------
@@ -237,7 +256,7 @@
       (fn-pck-held-of-crow-rows (fn-crow-of-pages cat-pages))
     (fn-sca-load-held-rows-from recs idx nil)))
 
-(defthm fn-pck-catalog-open-is-the-load
+(local (defthm fn-pck-catalog-open-of-a-carried-catalog
   ; PCK-ADOPT-LOAD is the premise: the catalog H the root was written from is
   ; the load of the first CAT-S records.  The gate then makes adoption equal
   ; the rebuild; without the gate (CAT-S < S) it would return the catalog of
@@ -247,9 +266,50 @@
                 (equal h (fn-sca-load-held-rows-from (take cat-s recs) idx nil)))
            (equal (fn-pck-catalog-open cat-s (fn-pck-cat-pages h) recs idx)
                   (fn-sca-load-held-rows-from recs idx nil)))
-  :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories (theory 'minimal-theory)
                                       '((:definition fn-pck-catalog-open) (:definition fn-pck-catalog-verdict)
                                         (:executable-counterpart equal) (:executable-counterpart natp)))
-           :use (fn-pck-decode-of-pages (:instance take-of-len-free-local (n cat-s) (x recs))))))
+           :use (fn-pck-decode-of-pages (:instance take-of-len-free-local (n cat-s) (x recs)))))))
+
+(defun fn-pck-catalog-publish-plan (h s)
+  ; The catalog root's write at checkpoint S: the root's pages when every row
+  ; is carried by the columns, else no write (the overflow cells are owed,
+  ; PCK-ADOPT-OVERFLOW).  A skipped write leaves the older root, whose older S
+  ; mismatches, so the open rebuilds.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (fn-pck-carriedp h)
+      (list :write (fn-pck-cat-pages h) s)
+    (list :skip :catalog-overflow)))
+
+(defthm fn-pck-catalog-publish-plan-writes-only-a-carried-catalog
+  (implies (equal (car (fn-pck-catalog-publish-plan h s)) :write)
+           (and (fn-pck-carriedp h)
+                (equal (fn-pck-catalog-publish-plan h s)
+                       (list :write (fn-pck-cat-pages h) s)))))
+
+(defthm fn-pck-catalog-publish-plan-skips-only-an-overflow
+  (implies (equal (car (fn-pck-catalog-publish-plan h s)) :skip)
+           (and (not (fn-pck-carriedp h))
+                (equal (fn-pck-catalog-publish-plan h s) '(:skip :catalog-overflow)))))
+
+(defthm fn-pck-catalog-skip-leaves-a-rebuilding-root
+  ; The older root, written at an earlier S0 < S, is not adopted at S.
+  (implies (and (natp s0) (natp s) (< s0 s))
+           (equal (fn-pck-catalog-verdict s0 s) :rebuild)))
+
+(defthm fn-pck-catalog-open-is-the-load
+  ; Open after a root the plan wrote is the load of the records: the carried
+  ; premise is the plan's gate, not an assumption.
+  (let ((plan (fn-pck-catalog-publish-plan h cat-s)))
+    (implies (and (equal (car plan) :write)
+                  (true-listp recs) (natp cat-s) (<= cat-s (len recs))
+                  (fn-cat-rowsp h)
+                  (equal h (fn-sca-load-held-rows-from (take cat-s recs) idx nil)))
+             (equal (fn-pck-catalog-open (caddr plan) (cadr plan) recs idx)
+                    (fn-sca-load-held-rows-from recs idx nil))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-pck-catalog-open fn-pck-cat-pages fn-pck-carriedp)
+           :use (fn-pck-catalog-publish-plan-writes-only-a-carried-catalog
+                 fn-pck-catalog-open-of-a-carried-catalog))))
