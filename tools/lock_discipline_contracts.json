@@ -516,6 +516,12 @@
   "fnn-owner-accept": "the primary accept/SIGTERM loop runs on the caller thread of fnn-owner-run after startup (owner.lisp:5959ff)"
  },
  "entries_are_actors": false,
+ "test_only_entries": {
+  "fnn-pull-worker-guarded": {
+  "file": "host/native/pull-service.lisp",
+  "why": "lane lock-model-gaps: the guarded wrapper of the pull worker (host/native/pull-service.lisp:1196-1200). The running host never calls it: fnn-pull-service-start spawns (lambda () (fnn-pull-worker runtime)) under the def-actor starter's own escape (:1205-1222), and only tests/native_feed_credential_raw-mock.lisp:201 calls the wrapper. Without this row it counts as a second, main-thread actor of everything the pull worker touches."
+  }
+ },
  "dead_thread_guards": [
   {
    "function": "fnn-mux-start",

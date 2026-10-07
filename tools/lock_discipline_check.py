@@ -2178,6 +2178,7 @@ class Model:
         self.declare_callback_contexts()
         self.roots = self.find_roots()
         self.check_callback_entries()
+        self.check_test_only_entries()
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()
@@ -2230,6 +2231,29 @@ class Model:
             self.infos[entry].events.append(edge)
             self.callers[lam].append((entry, edge))
             self.declared_callbacks[lam] = entry
+
+    def check_test_only_entries(self) -> None:
+        """A declared test-only entry is an uncalled host function that a test
+        under tests/ calls: it is not an actor of the running host.  The row
+        goes inert (the function is then an ordinary callee) the moment a host
+        function calls or references it."""
+        self.test_only = set()
+        rows = self.c.raw.get("test_only_entries", {})
+        texts = None
+        for name in sorted(rows):
+            if name not in self.infos:
+                if not (self.tree.root / rows[name]["file"]).exists():
+                    continue     # a fixture host without the file the row is about
+                raise ValueError(f"test_only_entries {name}: not a function of the analyzed host")
+            if self.roots.get(name) != "entry":
+                raise ValueError(f"test_only_entries {name}: is called or referenced by the host "
+                                 f"(root kind {self.roots.get(name)!r}); the row is stale")
+            if texts is None:
+                texts = [p.read_text(encoding="utf-8", errors="replace")
+                         for p in sorted((self.tree.root / "tests").rglob("*.lisp"))]
+            if not any(re.search(r"[(\s']" + re.escape(name) + r"[\s)]", t) for t in texts):
+                raise ValueError(f"test_only_entries {name}: no file under tests/ mentions it")
+            self.test_only.add(name)
 
     def check_callback_entries(self) -> None:
         """A declared callback's ENTRY is reached only from startup or entry
@@ -2538,6 +2562,8 @@ class Model:
         guards = self.dead_guard_rows()
         for r, kind in self.roots.items():
             if kind not in ("thread", "serving", "async", "entry", "startup"):
+                continue
+            if kind == "entry" and r in self.test_only:
                 continue
             stack = [(r, None)]
             seen = {(r, None)}

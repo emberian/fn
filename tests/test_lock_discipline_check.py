@@ -1738,3 +1738,53 @@ class R1bDeadThreadGuard(unittest.TestCase):
 
     def test_two_threads_of_the_declared_name_void_the_row(self):
         self.assertTrue(self.r1b(self.source(spawns=2)))
+
+
+class TestOnlyEntry(unittest.TestCase):
+    """contract test_only_entries: an uncalled host function that only a test
+    calls is not a main-thread actor; the row is checked against the host."""
+
+    HOST = """
+(defvar *fnn-tov-n* 0)
+(defun fnn-tov-work () (incf *fnn-tov-n*))
+(defun fnn-tov-guarded () (fnn-tov-work))
+(defun fnn-tov-start ()
+  (sb-thread:make-thread (lambda () (fnn-tov-work)) :name "tov"))
+"""
+    MOCK = "(fnn-tov-guarded)\n"
+
+    def analyze(self, host, mock, row=True, file="host/native/fixture.lisp"):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["test_only_entries"] = {"fnn-tov-guarded": {"file": file, "why": "fixture"}} if row else {}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "tests").mkdir()
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + host)
+            if mock is not None:
+                (root / "tests" / "mock.lisp").write_text(mock)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath), ["host/native/fixture.lisp"], {})
+            return [k for k in keys(checker.run({"R1b"}), "R1b") if "fnn-tov-n" in k[1]]
+
+    def test_the_declared_test_only_wrapper_is_not_an_actor(self):
+        self.assertEqual(self.analyze(self.HOST, self.MOCK), [])
+
+    def test_without_the_row_the_wrapper_races_with_the_thread(self):
+        self.assertTrue(self.analyze(self.HOST, self.MOCK, row=False))
+
+    def test_a_host_caller_makes_the_row_stale(self):
+        with self.assertRaisesRegex(ValueError, "called or referenced"):
+            self.analyze(self.HOST + "(defun fnn-tov-command () (fnn-tov-guarded))\n", self.MOCK)
+
+    def test_a_function_no_test_mentions_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "no file under tests"):
+            self.analyze(self.HOST, "(fnn-tov-other)\n")
+
+    def test_a_row_for_a_function_the_file_no_longer_defines_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "not a function"):
+            self.analyze(self.HOST.replace("fnn-tov-guarded", "fnn-tov-renamed"), self.MOCK)
+
+    def test_another_uncalled_function_stays_a_main_actor(self):
+        self.assertTrue(self.analyze(self.HOST + "(defun fnn-tov-command () (fnn-tov-work))\n", self.MOCK))
