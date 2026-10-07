@@ -1478,3 +1478,59 @@
                 (or (null file) (equal (fn-xcs-get-file j fn-xcs) file)))
            (and (fn-xc-next from file fn-xcs) (<= (fn-xc-next from file fn-xcs) j)))
   :hints (("Goal" :in-theory (enable fn-xc-next) :induct (fn-xc-next from file fn-xcs))))
+
+;; KEYSTONE 5 (pressure).  Under pool pressure the least recently used whole
+;; entry yields; if there are none, the least recently used window; the caller
+;; releases exactly the token it is handed.
+(defmacro fn-xc-yield-ready ()
+  '(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-readyp fn-xcs fn-xcc)))
+
+(defthm fn-xc-yield-an-entry
+  (implies (and (fn-xc-yield-ready)
+                (fn-xc-lru (fn-xc-lo 1 fn-xcc) (fn-xc-hi 1 fn-xcc) nil fn-xcs))
+           (let* ((r (fn-xc-yield fn-xcs fn-xcc)) (v (mv-nth 1 r)) (s2 (mv-nth 3 r)))
+             (and (equal (mv-nth 0 r) :yielded)
+                  (natp v) (<= (fn-xc-lo 1 fn-xcc) v) (< v (fn-xc-hi 1 fn-xcc))
+                  (not (equal (fn-xcs-get-kind v fn-xcs) 0))
+                  (equal (mv-nth 2 r) (fn-xc-slot-token v fn-xcs))
+                  (equal (fn-xcs-get-kind v s2) 0)
+                  (equal (fn-xcs-count s2) (fn-xcs-count fn-xcs))
+                  (implies (and (natp j) (not (equal j v))) (equal (nth j s2) (nth j fn-xcs)))
+                  (implies (and (natp j) (<= (fn-xc-lo 1 fn-xcc) j) (< j (fn-xc-hi 1 fn-xcc))
+                                (not (equal (fn-xcs-get-kind j fn-xcs) 0)))
+                           (<= (fn-xcs-get-stamp v fn-xcs) (fn-xcs-get-stamp j fn-xcs))))))
+  :hints (("Goal" :in-theory (e/d (fn-xc-yield) (fn-xc-free-effects))
+                  :do-not-induct t
+                  :use ((:instance fn-xc-lru-is-least (i (fn-xc-lo 1 fn-xcc)) (hi (fn-xc-hi 1 fn-xcc)) (best nil))
+                        (:instance fn-xc-free-effects
+                                   (i (fn-xc-lru (fn-xc-lo 1 fn-xcc) (fn-xc-hi 1 fn-xcc) nil fn-xcs)))))))
+
+(defthm fn-xc-yield-a-window-when-no-entry
+  (implies (and (fn-xc-yield-ready)
+                (not (fn-xc-lru (fn-xc-lo 1 fn-xcc) (fn-xc-hi 1 fn-xcc) nil fn-xcs))
+                (fn-xc-lru (fn-xc-lo 2 fn-xcc) (fn-xc-hi 2 fn-xcc) nil fn-xcs))
+           (let* ((r (fn-xc-yield fn-xcs fn-xcc)) (v (mv-nth 1 r)) (s2 (mv-nth 3 r)))
+             (and (equal (mv-nth 0 r) :yielded)
+                  (natp v) (<= (fn-xc-lo 2 fn-xcc) v) (< v (fn-xc-hi 2 fn-xcc))
+                  (not (equal (fn-xcs-get-kind v fn-xcs) 0))
+                  (equal (mv-nth 2 r) (fn-xc-slot-token v fn-xcs))
+                  (equal (fn-xcs-get-kind v s2) 0)
+                  (implies (and (natp j) (not (equal j v))) (equal (nth j s2) (nth j fn-xcs)))
+                  (implies (and (natp j) (<= (fn-xc-lo 2 fn-xcc) j) (< j (fn-xc-hi 2 fn-xcc))
+                                (not (equal (fn-xcs-get-kind j fn-xcs) 0)))
+                           (<= (fn-xcs-get-stamp v fn-xcs) (fn-xcs-get-stamp j fn-xcs))))))
+  :hints (("Goal" :in-theory (e/d (fn-xc-yield) (fn-xc-free-effects))
+                  :do-not-induct t
+                  :use ((:instance fn-xc-lru-is-least (i (fn-xc-lo 2 fn-xcc)) (hi (fn-xc-hi 2 fn-xcc)) (best nil))
+                        (:instance fn-xc-free-effects
+                                   (i (fn-xc-lru (fn-xc-lo 2 fn-xcc) (fn-xc-hi 2 fn-xcc) nil fn-xcs)))))))
+
+(defthm fn-xc-yield-none-means-empty
+  (implies (and (fn-xc-yield-ready)
+                (equal (mv-nth 0 (fn-xc-yield fn-xcs fn-xcc)) :none)
+                (natp j) (< j (fn-xcs-count fn-xcs)))
+           (equal (fn-xcs-get-kind j fn-xcs) 0))
+  :hints (("Goal" :in-theory (enable fn-xc-yield fn-xc-lo fn-xc-hi)
+                  :do-not-induct t
+                  :use ((:instance fn-xc-lru-is-least (i (fn-xc-lo 1 fn-xcc)) (hi (fn-xc-hi 1 fn-xcc)) (best nil) (j j))
+                        (:instance fn-xc-lru-is-least (i (fn-xc-lo 2 fn-xcc)) (hi (fn-xc-hi 2 fn-xcc)) (best nil) (j j))))))
