@@ -37,6 +37,7 @@
 
 (in-package "ACL2")
 (include-book "login-binding")
+(include-book "def-loop")
 (include-book "owner-config")
 (include-book "config-owner-publish")
 (local (include-book "identity-invariants"))
@@ -74,42 +75,11 @@
 ; recursion one control-stack frame per row could exhaust the 1,024 KiB
 ; stack.  Each is (mbe :logic <the recursion, unchanged> :exec <a loop>),
 ; equal by its <f>-loop-is-rev-onto (books/rev-onto.lisp).
-(defun fn-lb-config-bindings-loop (rows acc)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (fn-lb-config-bindings-loop
-       (cdr rows)
-       (if (fn-cfg-binding-rowp (car rows))
-           (cons (fn-lb-row-binding (car rows)) acc)
-         acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-lb-config-bindings (rows)
-  ; The binding rows (mark 2) of the accounts slot, as the gate's table.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (fn-cfg-binding-rowp (car rows))
-               (cons (fn-lb-row-binding (car rows))
-                     (fn-lb-config-bindings (cdr rows)))
-             (fn-lb-config-bindings (cdr rows)))
-         nil)
-       :exec (fn-lb-config-bindings-loop rows nil)))
-
-(defthm fn-lb-config-bindings-loop-is-rev-onto
-  (equal (fn-lb-config-bindings-loop rows acc)
-         (fn-ag-rev-onto acc (fn-lb-config-bindings rows)))
-  :hints (("Goal" :induct (fn-lb-config-bindings-loop rows acc)
-                  :in-theory (union-theories
-                              '(fn-lb-config-bindings-loop fn-lb-config-bindings
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-lb-config-bindings
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-lb-config-bindings fn-ag-rev-onto fn-lb-config-bindings-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+; The binding rows (mark 2) of the accounts slot, as the gate's table.
+(def-loop fn-lb-config-bindings (rows)
+  :shape :map :over rows :elt r
+  :keep (fn-cfg-binding-rowp r)
+  :body (fn-lb-row-binding r))
 
 (defun fn-lb-value-bindings (v)
   (declare (xargs :guard t))
@@ -341,47 +311,12 @@
 ; (fn-lb-binding-delta-is-admitted) and none reads the record's generation
 ; or stamp, so the records compose.
 
-(defun fn-lb-sync-binds-loop (entries file current acc)
-  (declare (xargs :guard t))
-  (if (consp entries)
-      (fn-lb-sync-binds-loop
-       (cdr entries) file current
-       (let ((name (and (consp (car entries)) (car (car entries)))))
-         (if (and name
-                  (not (equal (fn-lb-binding name current)
-                              (fn-lb-binding name file))))
-             (cons (cons name (fn-lb-binding name file)) acc)
-           acc)))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-lb-sync-binds (entries file current)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp entries)
-           (let ((name (and (consp (car entries)) (car (car entries)))))
-             (if (and name
-                      (not (equal (fn-lb-binding name current)
-                                  (fn-lb-binding name file))))
-                 (cons (cons name (fn-lb-binding name file))
-                       (fn-lb-sync-binds (cdr entries) file current))
-               (fn-lb-sync-binds (cdr entries) file current)))
-         nil)
-       :exec (fn-lb-sync-binds-loop entries file current nil)))
-
-(defthm fn-lb-sync-binds-loop-is-rev-onto
-  (equal (fn-lb-sync-binds-loop entries file current acc)
-         (fn-ag-rev-onto acc (fn-lb-sync-binds entries file current)))
-  :hints (("Goal" :induct (fn-lb-sync-binds-loop entries file current acc)
-                  :in-theory (union-theories
-                              '(fn-lb-sync-binds-loop fn-lb-sync-binds
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-lb-sync-binds
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-lb-sync-binds fn-ag-rev-onto fn-lb-sync-binds-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-lb-sync-binds (entries file current)
+  :shape :map :over entries :elt e
+  :let ((name (and (consp e) (car e))))
+  :keep (and name
+              (not (equal (fn-lb-binding name current) (fn-lb-binding name file))))
+  :body (cons name (fn-lb-binding name file)))
 
 ; PRF-388 (PKT-560): whether ROWS (the accounts slot) hold NAME (octets) as
 ; a redeemed account (mark 1), the row XREDEEM writes.  A tombstone (mark 7)
@@ -402,47 +337,14 @@
   (and (fn-lb-account-heldp name rows)
        (not (fn-lb-has name file))))
 
-(defun fn-lb-sync-unbinds-loop (entries file current rows acc)
-  (declare (xargs :guard t))
-  (if (consp entries)
-      (fn-lb-sync-unbinds-loop
-       (cdr entries) file current rows
-       (let ((name (and (consp (car entries)) (car (car entries)))))
-         (if (and name (fn-lb-binding name current)
-                  (not (fn-lb-binding name file))
-                  (not (fn-lb-config-ownsp name file rows)))
-             (cons (cons name nil) acc)
-           acc)))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-lb-sync-unbinds (entries file current rows)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp entries)
-           (let ((name (and (consp (car entries)) (car (car entries)))))
-             (if (and name (fn-lb-binding name current)
-                      (not (fn-lb-binding name file))
-                      (not (fn-lb-config-ownsp name file rows)))
-                 (cons (cons name nil)
-                       (fn-lb-sync-unbinds (cdr entries) file current rows))
-               (fn-lb-sync-unbinds (cdr entries) file current rows)))
-         nil)
-       :exec (fn-lb-sync-unbinds-loop entries file current rows nil)))
-
-(defthm fn-lb-sync-unbinds-loop-is-rev-onto
-  (equal (fn-lb-sync-unbinds-loop entries file current rows acc)
-         (fn-ag-rev-onto acc (fn-lb-sync-unbinds entries file current rows)))
-  :hints (("Goal" :induct (fn-lb-sync-unbinds-loop entries file current rows acc)
-                  :in-theory (union-theories
-                              '(fn-lb-sync-unbinds-loop fn-lb-sync-unbinds
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-lb-sync-unbinds
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-lb-sync-unbinds fn-ag-rev-onto fn-lb-sync-unbinds-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-lb-sync-unbinds (entries file current rows)
+  :shape :map :over entries :elt e
+  :let ((name (and (consp e) (car e))))
+  :keep (and name
+              (fn-lb-binding name current)
+              (not (fn-lb-binding name file))
+              (not (fn-lb-config-ownsp name file rows)))
+  :body (cons name nil))
 
 (defun fn-lb-sync-pairs (file current rows)
   (declare (xargs :guard t))
@@ -459,40 +361,9 @@
            (fn-lb-pairs-okp (cdr pairs)))
     (null pairs)))
 
-(defun fn-lb-pairs-deltas-loop (pairs acc)
-  (declare (xargs :guard t))
-  (if (consp pairs)
-      (fn-lb-pairs-deltas-loop
-       (cdr pairs)
-       (cons (fn-lb-binding-delta (and (consp (car pairs)) (car (car pairs)))
-                                  (and (consp (car pairs)) (cdr (car pairs))))
-             acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-lb-pairs-deltas (pairs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp pairs)
-           (cons (fn-lb-binding-delta (and (consp (car pairs)) (car (car pairs)))
-                                      (and (consp (car pairs)) (cdr (car pairs))))
-                 (fn-lb-pairs-deltas (cdr pairs)))
-         nil)
-       :exec (fn-lb-pairs-deltas-loop pairs nil)))
-
-(defthm fn-lb-pairs-deltas-loop-is-rev-onto
-  (equal (fn-lb-pairs-deltas-loop pairs acc)
-         (fn-ag-rev-onto acc (fn-lb-pairs-deltas pairs)))
-  :hints (("Goal" :induct (fn-lb-pairs-deltas-loop pairs acc)
-                  :in-theory (union-theories
-                              '(fn-lb-pairs-deltas-loop fn-lb-pairs-deltas
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-lb-pairs-deltas
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-lb-pairs-deltas fn-ag-rev-onto fn-lb-pairs-deltas-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-lb-pairs-deltas (pairs)
+  :shape :map :over pairs :elt p
+  :body (fn-lb-binding-delta (and (consp p) (car p)) (and (consp p) (cdr p))))
 
 (defun fn-lb-chunks-loop (xs n acc)
   (declare (xargs :guard (and (true-listp xs) (posp n)) :measure (len xs)))
