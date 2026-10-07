@@ -24,6 +24,8 @@ the refusal list is the tree's fold / step / non-generator inventory:
     two-list      the recursion steps two lists together
     mv            the logic returns multiple values
     pair-result   the recursion's result is destructured (split, partition)
+    exec-differs  the exec loop's terms differ from the logic's (fix, ag-car):
+                  the loop is what makes the guards provable
     late-guard    a function the body calls has its verify-guards later in the
                   same book, and def-loop verifies guards at its own position
     concat-multi  an append of several pieces per element (assoc changes)
@@ -748,6 +750,20 @@ def analyse(text: str, book: str, other_text: dict | None = None):
                 if r.reason in ("no-shape",) :
                     raise classify_nonshape(name, formals, logic, lf.node, exec_call)
                 raise
+            # the exec loop must compute the same terms as the logic: a loop that
+            # differs (fix, fn-ag-car) is there to make the guards provable, and
+            # the generated loop would use the logic's terms
+            xs_ = spec.xs
+            carx = lambda n: is_call(n, "car") and len(n.items) == 2 and flat_low(n.items[1]) == xs_
+            loop_flat = flat_low(subst(lf.node, carx, S(spec.elt)))
+            for part in (spec.body, spec.keep, spec.stop, spec.stopval, spec.tail,
+                         None if spec.shape == "take" else spec.while_):
+                if part is not None and flat_low(part) not in loop_flat:
+                    raise Refuse("exec-differs", flat_low(part)[:60])
+            if spec.lets is not None:
+                for b in spec.lets.items:
+                    if flat_low(b.items[1]) not in loop_flat:
+                        raise Refuse("exec-differs", flat_low(b.items[1])[:60])
             # late guard: callee verified after the wrapper
             names = set()
             for part in (spec.body, spec.keep, spec.stop, spec.stopval, spec.lets, spec.tail, spec.while_):
@@ -828,6 +844,8 @@ def exported(text):
                 stmt.append(flat_low(items[i]))
                 i += 1
             out[f.name] = (f.kind, tuple(stmt))
+        elif f.kind == "def-loop":
+            out[f.name] = ("defun", "def-loop")
         elif f.kind in ("defun", "defund", "defmacro", "defconst"):
             out[f.name] = (f.kind, flat_low(f.node))
     return out
@@ -835,7 +853,8 @@ def exported(text):
 
 def stmt_diff(old_text, new_text):
     o, n = exported(old_text), exported(new_text)
-    removed = [k for k in o if k not in n]
+    removed = [k for k in o if k not in n and not ("-loop-is-" in k or (o[k][0] == "defun" and k.endswith("-loop")))]
+    removed += [k for k in o if k in n and o[k][0] == "defun" and n[k] == ("defun", "def-loop") and False]
     added = [k for k in n if k not in o]
     changed = [k for k in o if k in n and o[k] != n[k] and o[k][0].startswith("defthm")]
     return removed, added, changed
@@ -914,7 +933,7 @@ def print_report(r):
         print(f"  + {n}")
     for n, why, d in r["residual"]:
         print(f"  - {n}: {why}{(' ' + d) if d else ''}")
-    print(f"  exported diff: removed {len(r['removed'])} (hand twins), "
+    print(f"  exported diff: unexpected removals {r['removed']}, "
           f"added {r['added']}, changed theorems {r['changed_theorems']}")
 
 
