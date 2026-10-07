@@ -244,6 +244,7 @@ class Tree:
     structs: dict = field(default_factory=dict)       # accessor -> (struct, slot)
     globals: dict = field(default_factory=dict)       # name -> (path, line, guarded-by or None)
     synchronized: set = field(default_factory=set)    # globals holding :synchronized tables
+    global_inits: dict = field(default_factory=dict)  # defvar name -> its init form (None when absent)
     conditions: dict = field(default_factory=dict)    # name -> [parents]
     aliens: set = field(default_factory=set)          # define-alien-routine lisp names
     raw_replaced: set = field(default_factory=set)    # ACL2 names the host replaces
@@ -437,6 +438,7 @@ def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
             if k > line - 1 and lines[k].lstrip().startswith("("):
                 break
         tree.globals[name] = (rel, line, guard)
+        tree.global_inits[name] = form[2] if len(form) >= 3 else None
         if len(form) >= 3 and isinstance(form[2], list) and head(form[2]) == "make-hash-table":
             if ":synchronized" in [str(x) for x in form[2] if isinstance(x, Sym)]:
                 tree.synchronized.add(name)
@@ -2644,6 +2646,68 @@ def _call_forms(forms, name):
     return out
 
 
+def verify_binding_only_specials(model) -> dict:
+    """contracts `binding_only_specials': {SPECIAL: why}.
+
+    A special that is only ever dynamically rebound, never assigned, names no
+    shared mutable cell: outside a rebinding it holds its global value, which
+    nothing writes (the defvar's constant NIL), and inside one it holds the
+    object the rebinding thread made for itself.  R1b therefore has no
+    cross-actor state to report on it.  The row is accepted only when the
+    source shows each part of that:
+      (1) the defvar's initial value is NIL (or absent) -- the global value;
+      (2) no form in any host function assigns the symbol itself (setq, setf,
+          psetq, psetf, push, pushnew, pop, incf, decf, set, symbol-value,
+          progv, makunbound), so the global value stays that NIL;
+      (3) every let/let* that rebinds it gives it a value made by that form's
+          thread: a lexical variable or a (list ...) / (cons ...) call, never
+          another global (which could alias a shared object).
+    The one premise it cannot check is that the rebound object is not handed
+    to another thread; a handoff would be a thread spawn or a queue push that
+    R4 and R8 see by their own rules.
+    """
+    tree, rows = model.tree, model.c.raw.get("binding_only_specials", {})
+    ok = {}
+    for name, why in rows.items():
+        where = f"binding_only_specials {name}"
+        if not why or not isinstance(why, str):
+            raise ValueError(f"{where}: no why")
+        if name not in tree.globals:
+            continue    # a row for a special this tree does not define exempts nothing
+        init = tree.global_inits.get(name)
+        if init is not None and not (isinstance(init, Sym) and str(init).lower() == "nil"):
+            raise ValueError(f"{where}: its defvar initial value is not NIL")
+        for d in tree.defs.values():
+            forms = d.body
+            for h in ("setq", "setf", "psetq", "psetf"):
+                for f in _call_forms(forms, h):
+                    if any(isinstance(f[k], Sym) and str(f[k]) == name for k in range(1, len(f) - 1, 2)):
+                        raise ValueError(f"{where}: {d.name} assigns it ({d.path}:{d.line})")
+            for h, k in (("push", 2), ("pushnew", 2), ("pop", 1), ("incf", 1), ("decf", 1),
+                         ("makunbound", 1)):
+                for f in _call_forms(forms, h):
+                    if len(f) > k and isinstance(f[k], Sym) and str(f[k]) == name:
+                        raise ValueError(f"{where}: {d.name} assigns it with {h} ({d.path}:{d.line})")
+            for h in ("set", "symbol-value", "progv"):
+                for f in _call_forms(forms, h):
+                    if any(name.lower() in str(x).lower() for x in f[1:2]):
+                        raise ValueError(f"{where}: {d.name} reaches it through {h} ({d.path}:{d.line})")
+            for h in ("let", "let*"):
+                for f in _call_forms(forms, h):
+                    for b in (f[1] if len(f) > 1 and isinstance(f[1], list) else []):
+                        if not (isinstance(b, list) and len(b) >= 1 and isinstance(b[0], Sym) and str(b[0]) == name):
+                            continue
+                        val = b[1] if len(b) > 1 else None
+                        fresh = (isinstance(val, Sym) and str(val) not in tree.globals
+                                 and str(val).lower() != "nil") or (
+                                 isinstance(val, list) and head(val) in ("list", "cons"))
+                        if not fresh:
+                            raise ValueError(f"{where}: {d.name} rebinds it to a value that is not a "
+                                             f"lexical variable or a fresh list ({d.path}:{d.line})")
+        ok[name] = why
+    return ok
+
+
 def _ancestors(model, name) -> set:
     seen, todo = {name}, [name]
     while todo:
@@ -2847,6 +2911,7 @@ class Model:
         self.check_callback_entries()
         self.check_test_only_entries()
         self.private_owner = verify_private_owner_commands(self)
+        self.binding_only = verify_binding_only_specials(self)
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()
@@ -3452,6 +3517,8 @@ class Checker:
                     continue
                 if e.name in e.bound or e.name in self.m.mustbound.get(name, frozenset()):
                     continue        # the access names a thread-local dynamic binding
+                if e.name in self.m.binding_only:
+                    continue        # verified: only rebound, never assigned (verify_binding_only_specials)
                 held = e.ctx.locks | self.m.mustheld.get(name, frozenset())
                 if e.atomic:
                     held = held | {"SYNC:" + e.name}    # the table's own lock covers this one operation

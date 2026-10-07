@@ -934,6 +934,9 @@
   "fnn-app-journal-close": "the application journal's lock fd (fnn-app-journal-lock-fd), consumed here before the close (workflow.lisp:34); unlocked and closed once, custody of an ambiguous return retained via fnn-app-retain-close-debt"
  },
  "unlocked_publication": {},
+ "binding_only_specials": {
+  "*fnn-owner-deferred*": "host/native/owner.lisp: the commit quantum's deferred list. It is bound only by let (fnn-owner-commit-start-locked, the next-batch seal in fnn-owner-commit-complete) to a fresh list; the checker verifies that no host form assigns the symbol, that its defvar value is NIL, and that every rebinding is a lexical variable or a list. Outside a quantum it is the constant NIL, so fnn-owner-log, fnn-owner-line-after-barrier and fnn-owner-feed-flush-after-barrier take their direct branch there (the open's key-statement recovery, an offline command)."
+ },
  "exceptions": [],
  "enclave": {
   "comment": "PROPOSED to the coordinator: the cold-read ownership protocol (books/page-read-direct.lisp) and the snapshot page lease -- the code already migrated onto issued rows/leases. Strict: no violation or unresolved site, no baseline rows.",

@@ -2531,3 +2531,57 @@ class CheckPrintsEveryKey(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class R1bBindingOnlySpecial(unittest.TestCase):
+    """contracts `binding_only_specials': a special only rebound by let to a
+    fresh list, never assigned, is no shared cell; the row is checked."""
+
+    SRC = """
+(defvar *fnn-bo-deferred* nil)
+(defun fnn-bo-note (x)
+  (if *fnn-bo-deferred*
+      (push x (cdr *fnn-bo-deferred*))
+    (fnn-bo-write x)))
+(defun fnn-bo-write (x) x)
+(defun fnn-bo-batch ()
+  (let ((deferred (list :d)))
+    (let ((*fnn-bo-deferred* deferred))
+      (fnn-bo-note 1))))
+(defun fnn-bo-open () (fnn-bo-note 2))
+(defun fnn-bo-start-a ()
+  (sb-thread:make-thread (lambda () (fnn-bo-batch)) :name "bo a"))
+(defun fnn-bo-start-b ()
+  (sb-thread:make-thread (lambda () (fnn-bo-open)) :name "bo b"))
+"""
+
+    def run_with(self, src, rows):
+        raw = dict(CONTRACTS.raw, binding_only_specials=rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [k for k in keys(checker.run({"R1b"}), "R1b") if "fnn-bo-deferred" in k[1]]
+
+    ROW = {"*fnn-bo-deferred*": "test"}
+
+    def test_without_the_row_the_unbound_path_is_reported(self):
+        self.assertTrue(self.run_with(self.SRC, {}))
+
+    def test_a_verified_row_removes_the_finding(self):
+        self.assertEqual(self.run_with(self.SRC, self.ROW), [])
+
+    def test_an_assignment_of_the_symbol_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.run_with(self.SRC + "(defun fnn-bo-set () (setq *fnn-bo-deferred* (list :x)))", self.ROW)
+
+    def test_a_rebinding_to_another_global_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.run_with(self.SRC + """
+(defvar *fnn-bo-shared* (list :s))
+(defun fnn-bo-alias () (let ((*fnn-bo-deferred* *fnn-bo-shared*)) (fnn-bo-note 3)))""", self.ROW)
+
+    def test_a_non_nil_initial_value_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.run_with(self.SRC.replace("(defvar *fnn-bo-deferred* nil)", "(defvar *fnn-bo-deferred* (list :g))"), self.ROW)
