@@ -744,6 +744,10 @@
    "scope": "converts",
    "why": "every condition in a core call becomes fnn-fault after the handler (io.lisp:1372-1393): converted, never swallowed"
   },
+  "fnn-csp-worker-loop": {
+   "scope": "result",
+   "why": "the spool worker's condition is its RESULT: the loop stores it (catchup-spool.lisp:62, 68) and fnn-csp-worker-take re-signals any condition that is not an fnn-os-error as fnn-fault on the taking thread (catchup-spool.lisp:128-142), while an fnn-os-error stays the per-peer status :error ACL2 decides on"
+  },
   "fnn-extent-executor-job": {
    "scope": "result",
    "why": "a cold job's fault is its RESULT, settled by the owner after actual return (extent.lisp:479-505)"
