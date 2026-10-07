@@ -16,6 +16,9 @@
 (local (in-theory (disable (tau-system))))
 
 (include-book "config-record-order")
+; config-record-order exports its config-first rule disabled (a hazard rule:
+; consp of a bare variable); this book's replay proofs use it.
+(local (in-theory (enable fn-cpr-config-firstp-has-config)))
 
 (defun fn-cpr-event-servedp (cn event)
   ; The served-domain check belongs only to events that create an article.

@@ -1781,8 +1781,13 @@ Anything but :stale removes the row (the file pin) and idles the worker."
            :message (format nil "history-page-read: frame ~a at word ~a is outside the page store"
                             sel base)))
   (multiple-value-bind (fd base-off)
-      (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-        (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0)))
+      ;; A caller already inside the extent lock (the limit and live
+      ;; reconfiguration quanta reach this through ACL2's history refresh)
+      ;; reads the two tables under it: with-mutex is not recursive.
+      (if (sb-thread:holding-mutex-p *fnn-extent-lock*)
+          (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0))
+        (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+          (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0))))
     (unless (and fd (integerp addr) (<= 0 addr))
       (error 'fnn-extent-fault
              :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))

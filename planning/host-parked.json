@@ -32,7 +32,6 @@
   "host/consumer-remote-report-host.lisp": "F07 FNCR remote consumer (PARK the core; Q13 designs afresh after L3); included by 1 book(s) as logic (certified, no served line). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/history-admission-producer-host.lisp": "F09 the owner-host history gates (L3: REMOVE). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/history-operation-observation-host.lisp": "F09 the owner-host history gates (L3: REMOVE). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
-  "host/history-owner-completion-host.lisp": "F09 the owner-host history gates (L3: REMOVE). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/history-owner-view-host.lisp": "F09 the owner-host history gates (L3: REMOVE). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/index-connection-owner-host.lisp": "F03 index group (L3: delete the ledger superstructure, park the seed). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",
   "host/index-connection-pins-host.lisp": "F03 index group (L3: delete the ledger superstructure, park the seed). owner: L3 PARK-THE-CODEX-PILES (build/coordinator/COMPLETE-BEFORE-6.6.0.md, row PARK)",

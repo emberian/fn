@@ -90,7 +90,9 @@
 (defconst *pwzt-model-win* (append (make-list 64 :initial-element 65)
                                  (make-list 65472 :initial-element 0)))
 (defconst *pwzt-model-tab* (make-list 3494 :initial-element 0))
-(defconst *pwzt-model-buffer* (list (make-list 16384 :initial-element 0)))
+; The window buffer is the profile's :read-window-octets since window-read
+; 390408000 (it was 16384).
+(defconst *pwzt-model-buffer* (list (make-list (fn-profile-limit :read-window-octets) :initial-element 0)))
 (defconst *pwzt-model-st* (list '(12 0 0 187 1 64 64 5 0 0 0 1 0 0 0 0 0 0 0 0)))
 (defconst *pwzt-model-z* '(:codec (:trailer 7 100 9 8 0 0 9 23 47 59 102 6 6)
                                   251 0 251 1000 0 0 :full))

@@ -9,6 +9,7 @@ is the closure's hash: same book bytes over a changed dependency is a
 different key, not a cache hit ACL2 would then refuse.
 """
 
+import hashlib
 import importlib.util
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -2136,6 +2137,107 @@ class ScopedManifestAndGraphTests(unittest.TestCase):
             with patch.object(certs.ledger, "analyze_book", side_effect=AssertionError("whole book analysis")):
                 self.assertEqual(certs.book_facts(source)[1], expected)
             self.assertEqual(expected, ["dep", "local", "nested"])
+
+
+
+class PairFactsCompactTests(unittest.TestCase):
+    """compact-pair-facts: duplicates and facts about certificates no entry
+    holds go; the rebuilt index still answers what was kept; it refuses
+    while a certify or install holds the facts (hbox 2026-10-07: a 3.6 GB
+    log and 1.1 GB index under every convergence-time install)."""
+
+    def fixture(self, temp):
+        cache = Path(temp) / "cache"
+        certs_dir = Path(temp) / "certs"
+        certs_dir.mkdir()
+        files = []
+        for name in ("a", "b"):
+            path = certs_dir / f"{name}.cert"
+            path.write_bytes(SERIALIZED + name.encode())
+            entry = cache / f"key{name}" / "origin"
+            entry.mkdir(parents=True)
+            (entry / "meta.json").write_text(
+                json.dumps({"cert_sha256": certs.content_hash(path)}))
+            files.append(path)
+        prover = str(Path("/fixture/acl2").resolve())
+        a, b = (certs.content_hash(f) for f in files)
+        dead = "0" * 64
+        fact = lambda p, c: json.dumps({"acl2": prover, "parent": p, "child": c,
+                                        "required": True, "equal": True}, sort_keys=True)
+        (cache / certs.PAIR_FACTS).write_text(
+            "\n".join([fact(a, b), fact(a, b), fact(a, dead), "{torn"]) + "\n")
+        return cache, files
+
+    def test_dry_run_reports_and_changes_nothing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cache, _ = self.fixture(temp)
+            before = (cache / certs.PAIR_FACTS).read_bytes()
+            report = certs.compact_pair_facts(cache)
+            self.assertFalse(report["applied"])
+            self.assertEqual((report["lines_before"], report["kept"], report["duplicates"],
+                              report["dead"], report["unreadable"]), (4, 1, 1, 1, 1))
+            self.assertLess(report["log_bytes_after"], report["log_bytes_before"])
+            self.assertEqual((cache / certs.PAIR_FACTS).read_bytes(), before)
+            self.assertFalse((cache / certs.PAIR_DB).exists())
+
+    def test_apply_keeps_the_live_fact_and_the_index_answers_it(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cache, files = self.fixture(temp)
+            report = certs.compact_pair_facts(cache, apply=True)
+            self.assertTrue(report["applied"])
+            self.assertEqual(len((cache / certs.PAIR_FACTS).read_text().splitlines()), 1)
+
+            def never(*args):
+                raise AssertionError("the kept fact was probed again")
+
+            check = certs.memoized_pair_checker(cache, never)
+            found = check(files, [(0, 1)], Path("/fixture/acl2"), Path(temp))
+            self.assertEqual(found, {(0, 1): (True, True)})
+            self.assertEqual(check.hits, 1)
+
+    def test_refuses_while_a_session_holds_the_facts(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cache, _ = self.fixture(temp)
+            before = (cache / certs.PAIR_FACTS).read_bytes()
+            with certs.pair_session_lock(cache):
+                with self.assertRaises(certs.PairFactsBusy):
+                    certs.compact_pair_facts(cache, apply=True)
+                with mock.patch("sys.stdout"):
+                    self.assertEqual(
+                        certs.main(["--cache", str(cache), "compact-pair-facts", "--apply"]), 3)
+            self.assertEqual((cache / certs.PAIR_FACTS).read_bytes(), before)
+
+
+class ContentHashMemoTests(unittest.TestCase):
+    """content_hash reads a file once per identity in a process, and a
+    changed file is read again (the convergence-time install-umbrellas
+    re-read every cache entry per enumeration)."""
+
+    def test_unchanged_file_is_read_once_and_a_rewrite_is_read_again(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "book.cert"
+            path.write_bytes(b"one")
+            opened = []
+            real_open = Path.open
+
+            def counting(self, *args, **kwargs):
+                if self == path:
+                    opened.append(self)
+                return real_open(self, *args, **kwargs)
+
+            with mock.patch.object(Path, "open", counting):
+                first = certs.content_hash(path)
+                second = certs.content_hash(path)
+                self.assertEqual(first, second)
+                self.assertEqual(len(opened), 1)
+                time.sleep(0.01)
+                replacement = Path(temp) / "new"
+                replacement.write_bytes(b"two")
+                os.replace(replacement, path)
+                third = certs.content_hash(path)
+            self.assertNotEqual(third, first)
+            self.assertEqual(third, hashlib.sha256(b"two").hexdigest())
+            self.assertEqual(len(opened), 2)
 
 
 if __name__ == "__main__":

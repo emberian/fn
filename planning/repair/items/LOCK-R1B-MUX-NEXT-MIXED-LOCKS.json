@@ -3,11 +3,19 @@
  "file": "host/native/mux.lisp",
  "fix": "Take the slot lock around the cursor read and incf in fnn-mux-adopt's round-robin branch (verify no path takes the slot lock then R), or give the once-client path its own cursor; then declare the slot protector.",
  "id": "LOCK-R1B-MUX-NEXT-MIXED-LOCKS",
- "notes": [],
+ "natives_owed": [
+  "tests/test_native_mux.py",
+  "tests/test_native_mux_roster_order.py",
+  "tests/native_mux_lifecycle_raw.lisp"
+ ],
+ "notes": [
+  "Fixed at 7aec511c7: fnn-mux-adopt's round-robin branch reads and increments fnn-owner-service-mux-next under the mux slot lock inside its roster section; no path takes R under the slot lock; edge R->XMUXSLOT and slots row fnn-owner-service-mux-next->XMUXSLOT declared. Key R1b|fnn-mux-reserve-once|fnn-owner-service-mux-next:mixed-locks gone, none added. Baseline row R1b|fnn-mux-reserve|fnn-owner-service-mux-next:mixed-locks is stale (coordinator --lower-stale). natives_owed: tests/test_native_mux.py, tests/test_native_mux_roster_order.py, tests/native_mux_lifecycle_raw.lisp (the once client)."
+ ],
  "owner": "deputy-N",
  "severity": "low",
+ "sha": "7aec511c7",
  "source": "lock-triage-sn-lock-20261007",
- "state": "open",
+ "state": "ready",
  "title": "Round-robin cursor fnn-owner-service-mux-next is written under the slot lock in fnn-mux-reserve-once and under the roster lock in fnn-mux-adopt (R1b)",
- "updated": "2026-10-07T02:59:37Z"
+ "updated": "2026-10-07T06:14:55Z"
 }

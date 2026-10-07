@@ -144,9 +144,10 @@ exposure admission decides (the id, or NIL when it refused)."
         (serious-condition (condition)
           (sb-thread:with-mutex ((fnn-web-face-lock face))
             (push (list conn key condition) (fnn-web-face-cleanup-debts face)))
-          (handler-case
-              (fnn-owner-thread-escape (fnn-web-face-service face) condition "web cleanup")
-            (serious-condition () nil)))))))
+          (fnn-owner-install-or-end
+           (lambda ()
+             (fnn-owner-thread-escape (fnn-web-face-service face) condition "web cleanup"))
+           condition "web cleanup"))))))
 
 (defun fnn-web-discard-response (conn)
   "No future job or socket writer can consume these response references."

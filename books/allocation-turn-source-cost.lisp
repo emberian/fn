@@ -1,4 +1,3 @@
-; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-atsc-ceiling guard fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; Source side of the actual ATS Qgate/finish contract. Observation scaffolding
 ; is never executed by the served path and its constructors are not charged.
 ; Source CONS cells are distinct from selected compiler allocation requests.
@@ -91,22 +90,30 @@
                                    fn-atsc-ordinary-room fn-aed-ordinary-roomp
                                    fn-atsc-value fn-atsc-ops fn-atsc-sites))))
 
+; Two installation kinds, as fn-aec-ceiling: the physical one adds the affine
+; floor term, the request-budget one carries the dynamic reservation only.
 (defun fn-atsc-ceiling (installation)
- (declare (xargs :guard (fn-aec-installationp installation)))
- (let* ((budget (fn-aec-at 3 installation)) (slack (fn-aec-at 5 installation))
-        (collector (fn-aec-at 6 installation)) (external (fn-aec-at 7 installation))
-        (factor (fn-aec-at 4 installation))
-        (first (- budget slack)) (second (- first collector))
-        (third (- second external))
-        (reservation (fn-aec-at 5 (fn-aec-at 1 installation)))
+ (declare (xargs :guard (fn-aec-installationp installation)
+                 :guard-hints (("Goal" :in-theory (enable fn-aec-installationp fn-aec-physical-installationp
+                                                           fn-aec-request-budget-installationp)))))
+ (let* ((reservation (fn-aec-at 5 (fn-aec-at 1 installation)))
         (dynamic-reserve (fn-aec-at 12 installation)))
-  (list (min (floor third factor) (- reservation dynamic-reserve)) 0
-        (list (list :subtract (list budget slack))
-              (list :subtract (list first collector))
-              (list :subtract (list second external))
-              (list :floor (list third factor))
-              (list :subtract (list reservation dynamic-reserve)))
-        '(fn-aec-ceiling fn-aec-physical-ceiling fn-aec-at min))))
+  (if (fn-aec-physical-installationp installation)
+   (let* ((budget (fn-aec-at 3 installation)) (slack (fn-aec-at 5 installation))
+          (collector (fn-aec-at 6 installation)) (external (fn-aec-at 7 installation))
+          (factor (fn-aec-at 4 installation))
+          (first (- budget slack)) (second (- first collector))
+          (third (- second external)))
+    (list (min (floor third factor) (- reservation dynamic-reserve)) 0
+          (list (list :subtract (list budget slack))
+                (list :subtract (list first collector))
+                (list :subtract (list second external))
+                (list :floor (list third factor))
+                (list :subtract (list reservation dynamic-reserve)))
+          '(fn-aec-ceiling fn-aec-physical-ceiling fn-aec-at min)))
+   (list (- reservation dynamic-reserve) 0
+         (list (list :subtract (list reservation dynamic-reserve)))
+         '(fn-aec-ceiling fn-aec-at)))))
 (defthm fn-atsc-ceiling-observes-result
  (equal (fn-atsc-value (fn-atsc-ceiling installation)) (fn-aec-ceiling installation))
  :hints (("Goal" :in-theory
@@ -596,12 +603,24 @@
          fn-atsc-value fn-atsc-ops fn-atsc-sites))))))
 (local
  (defthm fn-atsc-ceiling-five-operations
-  (equal (len (fn-atsc-ops (fn-atsc-ceiling installation))) 5)
+  (implies (fn-aec-physical-installationp installation)
+   (equal (len (fn-atsc-ops (fn-atsc-ceiling installation))) 5))
   :hints (("Goal" :in-theory
-   (disable floor min fn-aec-at fn-aec-ceiling fn-aec-physical-ceiling)))))
+   (e/d (fn-atsc-ceiling)
+        (floor min fn-aec-at fn-aec-ceiling fn-aec-physical-ceiling
+         fn-aec-physical-installationp))))))
+(local
+ (defthm fn-atsc-ceiling-request-budget-one-operation
+  (implies (not (fn-aec-physical-installationp installation))
+   (equal (len (fn-atsc-ops (fn-atsc-ceiling installation))) 1))
+  :hints (("Goal" :in-theory
+   (e/d (fn-atsc-ceiling)
+        (floor min fn-aec-at fn-aec-ceiling fn-aec-physical-ceiling
+         fn-aec-physical-installationp))))))
 (local
  (defthm fn-atsc-prepaid-gate-thirteen-operations
-  (implies (eq (mv-nth 0 (fn-aec-enter i m e l a n g nil)) :prepaid)
+  (implies (and (fn-aec-physical-installationp i)
+                (eq (mv-nth 0 (fn-aec-enter i m e l a n g nil)) :prepaid))
    (equal (len (fn-atsc-ops (fn-atsc-gate i m e l a n g))) 13))
   :hints (("Goal" :in-theory
    (e/d (fn-atsc-gate fn-aec-enter)
@@ -655,7 +674,8 @@
 ; recognizer, comparison, concrete-store and result-MV native closure is a
 ; separate named ingredient; 62/64 cells alone cannot install Qgate.
 (defthm fn-atsc-enter-owned-source-census
- (implies (eq (mv-nth 0 (fn-ats-enter-internal slot role slots pool)) :gate-owned)
+ (implies (and (fn-aec-physical-installationp (fn-prp-alloc-installation pool))
+               (eq (mv-nth 0 (fn-ats-enter-internal slot role slots pool)) :gate-owned))
   (and (equal (mv-nth 4 (fn-atsc-enter slot role slots pool))
               (+ 54 (* 2 (if (fn-prl-nth 4 (fn-owner-page-read-ledger pool)) 5 4))))
        (equal (len (mv-nth 5 (fn-atsc-enter slot role slots pool))) 51)))
@@ -724,6 +744,13 @@
   :hints (("Goal" :in-theory
    (e/d (fn-atsc-prepay)
         (fn-atsc-add-room fn-atsc-ordinary-room fn-atsc-value fn-atsc-ops fn-atsc-sites))))))
+(local
+ (defthm fn-atsc-ceiling-operation-bound
+  (<= (len (fn-atsc-ops (fn-atsc-ceiling installation))) 5)
+  :rule-classes :linear
+  :hints (("Goal" :cases ((fn-aec-physical-installationp installation))
+           :in-theory (disable fn-atsc-ceiling fn-atsc-ops floor min fn-aec-at
+                               fn-aec-physical-installationp)))))
 (local
  (defthm fn-atsc-gate-operation-bound
   (<= (len (fn-atsc-ops (fn-atsc-gate i m e l a n g))) 13)

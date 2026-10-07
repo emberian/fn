@@ -10,7 +10,8 @@
 
 (defun fn-owner-remote-reader-report-step-internal
  (request protectedp g token fn-arena fn-history-backing fn-page-read-pool fn-octets state)
- (declare (xargs :stobjs (fn-arena fn-history-backing fn-page-read-pool fn-octets state) :mode :program))
+ (declare (xargs :stobjs (fn-arena fn-history-backing fn-page-read-pool fn-octets state) :mode :program)
+  (ignorable fn-arena))
  (mv-let (word inputs state)
   (fn-owner-remote-reader-inputs request protectedp g token fn-history-backing state)
   (let* ((held (fn-owner-remote-scan-read state)) (pending (fn-cp-nth 5 held))

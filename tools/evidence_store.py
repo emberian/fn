@@ -514,13 +514,70 @@ def indexed(root: Path, rel: str | Path) -> bool:
     return _rel(root, rel) in read_index(root)
 
 
-def _local_matching(local: Path, name: str, entry: tuple[str, int]) -> bytes:
+# The two fields a run-manifest self-archive adds (which run, where its logs
+# were left).  evidence_manifests.ADDED is this tuple.
+ADDED = ("run_id", "archived_from")
+MANIFEST_DIR = "planning/evidence/manifests/"
+
+
+def same_manifest_modulo_provenance(name: str, local: bytes, indexed: bytes) -> bool:
+    """Is `local` the indexed run manifest re-archived with other provenance?
+
+    Only for a file under planning/evidence/manifests/, both sides JSON
+    objects equal once the ADDED keys are dropped.  Anything else is False.
+    """
+    if not name.startswith(MANIFEST_DIR):
+        return False
+    try:
+        mine, theirs = json.loads(local), json.loads(indexed)
+    except ValueError:
+        return False
+    if not isinstance(mine, dict) or not isinstance(theirs, dict):
+        return False
+    return ({k: v for k, v in mine.items() if k not in ADDED}
+            == {k: v for k, v in theirs.items() if k not in ADDED})
+
+
+def _heal_provenance(root: Path, local: Path, name: str, entry: tuple[str, int],
+                     data: bytes) -> bytes | None:
+    """Replace a provenance-only-different manifest by the indexed bytes."""
+    if not name.startswith(MANIFEST_DIR):
+        return None
+    try:
+        indexed = object_bytes(root, entry[0])
+    except EvidenceRefused:
+        return None
+    if not same_manifest_modulo_provenance(name, data, indexed):
+        return None
+
+    def origin(blob: bytes) -> object:
+        return json.loads(blob).get("archived_from")
+
+    descriptor, tmp = tempfile.mkstemp(dir=local.parent, prefix=local.name + ".")
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(indexed)
+        os.replace(tmp, local)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
+    print(f"evidence_store: {name}: working-tree manifest differed from the index only "
+          f"in provenance; restored the indexed bytes (archived_from {origin(data)!r} "
+          f"-> {origin(indexed)!r})", file=sys.stderr)
+    return indexed
+
+
+def _local_matching(root: Path, local: Path, name: str, entry: tuple[str, int]) -> bytes:
     try:
         data = local.read_bytes()
     except OSError as error:
         raise EvidenceUnavailable(f"{name}: the working-tree copy is unreadable: "
                                   f"{error}") from error
     if len(data) != entry[1] or sha256_bytes(data) != entry[0]:
+        healed = _heal_provenance(root, local, name, entry, data)
+        if healed is not None:
+            return healed
         raise EvidenceMismatch(
             f"{name}: the working-tree file differs from its index line ({entry[0]}); "
             "`evidence_store.py put` it to file the new bytes, or restore them")
@@ -535,7 +592,7 @@ def locate(root: Path, rel: str | Path) -> tuple[bytes, str]:
     entry = read_index(root).get(name)
     if entry is not None:
         if local.is_file():
-            return _local_matching(local, name, entry), "indexed"
+            return _local_matching(root, local, name, entry), "indexed"
         return object_bytes(root, entry[0]), "indexed"
     if local.is_file():
         return local.read_bytes(), "local"
@@ -596,7 +653,7 @@ def materialize(root: Path, rel: str | Path) -> Path:
             return local
         raise FileNotFoundError(name)
     if local.is_file():
-        _local_matching(local, name, entry)
+        _local_matching(root, local, name, entry)
         return local
     sha = entry[0]
     cache = cache_dir(root)
@@ -652,7 +709,7 @@ def verify_paths(root: Path, rels: list[str],
         try:
             local = root / rel
             if local.is_file():
-                _local_matching(local, rel, entry)
+                _local_matching(root, local, rel, entry)
                 if prefer_local:
                     result[rel] = None
                     continue

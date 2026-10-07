@@ -462,3 +462,9 @@
                          (if (equal h g)
                              (- (fn-arpn-pins-of h (second st)) 1)
                            (fn-arpn-pins-of h (second st))))))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-arpn-clear-through-below-every-pin
+                    fn-arpn-split-released-are-clear))

@@ -1230,3 +1230,8 @@
                            (fn-smid-text fn-smid-describe fn-smid-unsafe-text
                             fn-smid-observed-identity fn-smid-comma-split-aux
                             fn-smid-observationp nth member-equal)))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-smid-open-verdict-opens-only-on-a-match))

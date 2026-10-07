@@ -531,3 +531,8 @@
                  (:instance fn-bs-octet-list-listp-member (xs observed) (x name)))
            :in-theory (disable fn-sn-sweep-round fn-sn-sweep-round-removes-only-unheld-staging-names
                                fn-bs-octet-list-listp-member fn-bs-octets-name))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bs-sweep-round-keeps-every-cut-reopenable))

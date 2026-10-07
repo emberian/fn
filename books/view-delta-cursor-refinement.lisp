@@ -1,4 +1,3 @@
-; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-mxc-put-is-put-chars-of-nthcdr fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
 ; Full-result refinement of the scheduling cursor to the existing trie update.
 (in-package "ACL2")
 (include-book "view-delta-cursor")
@@ -99,12 +98,16 @@
 (local (defthm fn-mxc-char-is-nth
   (equal (char s i) (nth i (coerce s 'list)))
   :hints (("Goal" :in-theory (enable char)))))
-(local (defthm fn-mxc-put-is-put-chars-of-nthcdr
+
+; Disabled: enabled only where the concrete walk meets the list walk, since
+; as a rewrite rule it unfolds every fn-mxc-put that a proof also expands.
+(local (in-theory (disable nth nthcdr)))
+(local (defthmd fn-mxc-put-is-put-chars-of-nthcdr
   (implies (natp i)
            (equal (fn-mxc-put msgid i article trie)
                   (fn-midx-put-chars (nthcdr i (coerce msgid 'list)) article trie)))
   :hints (("Goal" :induct (fn-mxc-put msgid i article trie)
-           :expand ((fn-midx-put-chars (nthcdr i (coerce msgid 'list)) article trie))))))
+           :in-theory (enable fn-mxc-put fn-midx-put-chars nthcdr)))))
 
 (local (defthm fn-vcu-reference-at-unfolds
  (implies (and (stringp key) (natp i))
@@ -139,6 +142,25 @@
  :hints (("Goal" :induct (fn-vcu-drive c fuel)
           :in-theory (e/d (fn-vcu-drive)
                           (fn-vcu-step fn-vcu-at fn-vcu-meaning)))))
+
+; The key walk from slot 0 is the character-list walk: the denotation of the
+; plain fn-vdc-bump/unbump meets the scheduling step's reference here.
+(local (defthmd fn-mxc-get-is-get-chars-of-nthcdr
+  (implies (natp i)
+           (equal (fn-mxc-get msgid i trie)
+                  (fn-midx-get-chars (nthcdr i (coerce msgid 'list)) trie)))
+  :hints (("Goal" :induct (fn-mxc-get msgid i trie)
+           :in-theory (enable fn-mxc-get fn-midx-get-chars nthcdr)))))
+(local (defthm fn-mxc-put-at-zero-is-put-chars
+  (equal (fn-mxc-put key 0 article trie)
+         (fn-midx-put-chars (coerce key 'list) article trie))
+  :hints (("Goal" :use ((:instance fn-mxc-put-is-put-chars-of-nthcdr (i 0) (msgid key)))
+           :in-theory (enable nthcdr)))))
+(local (defthm fn-mxc-get-at-zero-is-get-chars
+  (equal (fn-mxc-get key 0 trie)
+         (fn-midx-get-chars (coerce key 'list) trie))
+  :hints (("Goal" :use ((:instance fn-mxc-get-is-get-chars-of-nthcdr (i 0) (msgid key)))
+           :in-theory (enable nthcdr)))))
 
 (defthm fn-vcu-begin-meaning-unfolds
  (equal (fn-vcu-meaning (fn-vcu-begin key weight release trie))

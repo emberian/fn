@@ -1,6 +1,7 @@
 ; Additive remote caller wrappers, loaded after host/owner-host.lisp.
 ; Actual current configured owner/account publication is read in one span.
 (in-package "ACL2")
+(include-book "owner-host")
 (include-book "../books/consumer-remote-dispatch")
 (include-book "../books/consumer-remote-query-profile")
 (include-book "../books/consumer-remote-operation-source")

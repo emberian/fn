@@ -1648,6 +1648,7 @@ one ring, so the table's key and the served boundary's are one source."
                      :batching (fnn-store-logp store)
                      :stopping nil))
               (fnn-owner-history-root-maintain service)
+              (fnn-owner-history-sync-first service)
               (progn
                 (setf (fnn-owner-service-feeds service)
                       (fnn-owner-feed-open-all service configured))
@@ -1908,11 +1909,13 @@ failed/timed-out join fault the service and retain registration and custody."
 
 (defun fnn-owner-custody-trace (control &rest observations)
   "Existing developer pipeline selector: literal producer/receipt values only.
-A diagnostic failure does not alter custody, classification or settlement."
-  (handler-case
-      (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
-        (apply #'fnn-err control observations))
-    (serious-condition () nil)))
+A failure of the stderr write does not alter custody, classification or
+settlement; the selector read is outside that guard, so an unregistered
+selector name faults (fnn-developer-selector) instead of silently disabling
+the trace."
+  (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
+    (handler-case (apply #'fnn-err control observations)
+      (serious-condition () nil))))
 
 (defun fnn-owner-syncer-install (service threads stack)
   "Called only inside the actual startup :hold producer's owner section."
@@ -6126,21 +6129,30 @@ owner, as a late store fault does on the whole-extent line."
       (error condition))
     t))
 
-(defun fnn-owner-response-window-close (service capture)
+(defun fnn-owner-response-window-close (service capture &optional (class :reader))
   "Whole response stopped issuing, its final scalar activation has returned.
-Cancel now; release only after independent physical return."
+Cancel now; release only after independent physical return.  One
+fnn-quantum-mux-finish quantum of CLASS (the closing connection's gate class;
+a reader's :reader by default), so the cold window's settlement and the
+pending-extent release are ordered by the scheduler against the batch job
+and run, as a connection's close does, whether or not the service is
+stopping."
   (when capture
-    (sb-thread:with-mutex ((fnn-owner-service-lock service))
-      (let ((read (fnn-response-capture-window-read capture)))
-        (when read
-          (setf (fnn-owner-cold-read-abandonedp read) t)
-          (unless (fnn-owner-cold-read-settledp read)
-            ;; A borrowed window returned verified and was read: it is
-            ;; released as published.  Any other is cancelled first.
-            (unless (fnn-owner-cold-read-borrowedp read)
-              (fnn-extent-window-cancel (fnn-owner-cold-read-worker read) (fnn-owner-cold-read-token read)))
-            (fnn-owner-cold-window-result-locked service read))
-          (setf (fnn-response-capture-window-read capture) nil)))))
+    (fnn-quantum-mux-finish
+     service nil
+     (lambda ()
+       (let ((read (fnn-response-capture-window-read capture)))
+         (when read
+           (setf (fnn-owner-cold-read-abandonedp read) t)
+           (unless (fnn-owner-cold-read-settledp read)
+             ;; A borrowed window returned verified and was read: it is
+             ;; released as published.  Any other is cancelled first.
+             (unless (fnn-owner-cold-read-borrowedp read)
+               (fnn-extent-window-cancel (fnn-owner-cold-read-worker read)
+                                         (fnn-owner-cold-read-token read)))
+             (fnn-owner-cold-window-result-locked service read))
+           (setf (fnn-response-capture-window-read capture) nil))))
+     class))
   :window-closed)
 
 (defun fnn-owner-cold-result-locked (service read)
@@ -6201,6 +6213,20 @@ before exact settlement releases a charge. Owner->extent serializes it."
     (when (or (null (fnn-owner-cold-read-token read)) (fnn-owner-cold-ready-p read))
       (fnn-owner-cold-result-locked service read))))
 
+(defun fnn-owner-install-or-end (install original label)
+  "Run INSTALL, the off-mutex installation of the fence or the fault stop
+that ORIGINAL decided.  An installation that itself signals leaves the
+service not known to be fenced: both conditions are named and the process
+ends with ORIGINAL's exit, ACL2's fn-fs-exit-code (fnn-exit-code-for) floored
+at the fault exit, never continuing unfenced (R7)."
+  (handler-case (funcall install)
+    (serious-condition (failure)
+      (let ((code (let ((c (fnn-exit-code-for original)))
+                    (if (eql c +fnn-exit-uncertain+) c +fnn-exit-fault+))))
+        (fnn-err "~a: installing the stop failed (~a); original condition: ~a; process ends with exit ~d"
+                 label failure original code)
+        (fnn-exit code)))))
+
 (defun fnn-owner-cold-settle (service read &optional (class :control))
   "A returned job, not a timeout, can transfer its result and release credit.
 CLASS: the gate class of the read this page belongs to.  A served read's
@@ -6213,7 +6239,9 @@ injected disk stall.  The reaper's settlement is maintenance (:control)."
       (fnn-owner-serialized service nil
                             (lambda () (fnn-owner-cold-settle-locked service read)) class)
     (serious-condition (condition)
-      (ignore-errors (fnn-owner-fault-service service nil condition))
+      (fnn-owner-install-or-end
+       (lambda () (fnn-owner-thread-escape service condition "cold settle"))
+       condition "cold settle")
       condition)))
 
 (defun fnn-owner-cold-reap (service)
@@ -7455,13 +7483,19 @@ the crash keystone) and serving continues."
     (handler-case (fnn-owner-maybe-publish service)
       (fnn-store-indeterminate (e)
         (fnn-err "CHECKPOINT auto uncertain; the store needs recovery: ~a" e)
-        (ignore-errors (fnn-owner-fence-service service)))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fence-service service))
+         e "checkpoint publication"))
       (fnn-store-fault (e)
-        (ignore-errors (fnn-owner-fault-service service nil e)))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fault-service service nil e))
+         e "checkpoint publication"))
       (fnn-store-error (e)
         (fnn-err "CHECKPOINT auto failed: ~a" e))
       (serious-condition (e)
-        (ignore-errors (fnn-owner-fault-service service nil e))))))
+        (fnn-owner-install-or-end
+         (lambda () (fnn-owner-fault-service service nil e))
+         e "checkpoint publication")))))
     ;; The slot can be released here; actor/worker registration survives the
     ;; complete unwind until the parent's independent physical join.
     (fnn-owner-publisher-release service)))
@@ -7497,7 +7531,7 @@ or the spare of ACL2's next segment is prepared."
   (let* ((log (fnn-store-log store))
          (ks (fnn-log-kernel log)))
     (or (not (fnn-core 'fn-lgc-rotate-needed-p ks))
-        (let ((spare (fnn-log-spare log)))
+        (let ((spare (fnn-log-spare-peek log)))
           (and spare (eql (first spare)
                           (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))))))
 
@@ -8444,27 +8478,44 @@ torn last entry follows.  Answers the offset the writer resumes at."
     (fnn-indeterminate "service log physical return remains unobserved"))
   (let ((requested *fnn-sighup-count*))
     (unless (= requested *fnn-owner-log-handled*)
-      (let ((decision (fnn-owner-serialized
+      (let* ((decided (fnn-owner-serialized
                        service nil
                        (lambda ()
-                         (fnn-owner-core 'fn-owner-log-reopen
-                                         (and *fnn-owner-log-path* t)
-                                         *fnn-owner-log-handled* requested)))))
+                         ;; The decision and the line it rendered leave the
+                         ;; section together: the global is read while the
+                         ;; owner is held, so the line written below is the
+                         ;; one this decision produced.
+                         (cons (fnn-owner-core 'fn-owner-log-reopen
+                                               (and *fnn-owner-log-path* t)
+                                               *fnn-owner-log-handled* requested)
+                               (fnn-global 'fn-owner-log-line)))))
+             (decision (car decided))
+             (line (cdr decided)))
         (unless (and (consp decision)
                      (member (first decision) '(:reopen :ignore :none))
                      (integerp (second decision)))
           (fnn-fault "owner returned malformed log reopen ~a" decision))
         (when (eq (first decision) :reopen)
-          (handler-case
-              (let ((fd (fnn-owner-open-log *fnn-owner-log-path*)))
-                ;; PKT-508: through the writer's queue while it runs, so
-                ;; the swap never waits on a write in progress.
-                (fnn-log-swap-fd fd)
-                (fnn-owner-log 'fn-owner-log-line))
-            (error (condition)
-              ;; Before transfer the old descriptor stays; after transfer a
-              ;; close fault is retained by the log debt ledger.
-              (fnn-err "service log reopen failed: ~a" condition))))
+          ;; Only the open's refusal is an ordinary outcome: nothing was
+          ;; transferred, the old descriptor stays, and the failure is
+          ;; named.  The swap's and the line's failures (a fault, an
+          ;; indeterminate custody, a close debt the ledger retains) leave
+          ;; this tick for the maintenance actor's boundary, which fences
+          ;; or stops the service.
+          (let ((fd (handler-case (fnn-owner-open-log *fnn-owner-log-path*)
+                      (fnn-os-error (condition)
+                        (fnn-err "service log reopen failed: ~a" condition)
+                        nil))))
+            (when fd
+              ;; PKT-508: through the writer's queue while it runs, so
+              ;; the swap never waits on a write in progress.
+              (fnn-log-swap-fd fd)
+              (unless (fnn-octet-list-p line)
+                (fnn-fault "owner returned a malformed log line"))
+              ;; No commit quantum is open on the maintenance thread
+              ;; (*fnn-owner-deferred* is rebound only inside one), so the
+              ;; line is written directly, as fnn-owner-log does outside one.
+              (fnn-log-line line))))
         (setq *fnn-owner-log-handled* (second decision))))))
 
 (def-actor fnn-owner-spawn-listener :kind :accept :thread-name "fn owner accept" :roster t

@@ -6,6 +6,7 @@
 (include-book "consumer-remote-host")
 (include-book "history-owner-view-host")
 (include-book "../books/consumer-remote-reader-source")
+(include-book "../books/consumer-remote-source-scan") ; fn-owner-remote-scan-step-internal
 
 ; Inputs13: key, freshly authenticated ingress, actual CP7, generation, actual
 ; current view/posting config, sole carries, source9, request, query allowance,

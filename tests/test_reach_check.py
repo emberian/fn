@@ -812,5 +812,36 @@ class WorldEdgeTests(unittest.TestCase):
         self.assertIsNone(reach_check.load_world(None))
 
 
+
+class ProseIsNotReachTests(unittest.TestCase):
+    """CONVERGE-2 row 14: a docstring that cites a book program is prose, not
+    a call; a crash campaign naming a program in code is a tie, not a host."""
+
+    def test_code_only_drops_comments_blocks_and_strings_and_keeps_code(self):
+        import reach_check as r
+        text = ('(defun f (x)\n  "Runs fn-doc-only (see fn-cited)." ; fn-comment\n'
+                '  #| fn-block |# (g (quote fn-quoted) #\\" x))\n')
+        symbols = {s.lower() for s in r.SYMBOL.findall(r.code_only(text))}
+        self.assertIn("fn-quoted", symbols)
+        self.assertIn("g", symbols)
+        for prose in ("fn-doc-only", "fn-cited", "fn-comment", "fn-block"):
+            self.assertNotIn(prose, symbols)
+
+    def test_campaign_names_reads_code_strings_not_docstrings(self):
+        import reach_check as r
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            (directory / "native_x.py").write_text(
+                '"""Judges cuts with fn-doc-program."""\n'
+                'PROGRAMS = {"open": "fn-lg-open-program"}\n'
+                'def run():\n    """Uses fn-fn-doc."""\n    return "fn-lgrc-program"\n')
+            (directory / "test_native_x.py").write_text('X = "fn-test-only"\n')
+            with patch.object(r, "ROOT", directory):
+                names = r.campaign_names(directory)
+        self.assertEqual(set(names), {"open", "fn-lg-open-program", "fn-lgrc-program"})
+        self.assertNotIn("fn-doc-program", names)
+        self.assertNotIn("fn-test-only", names)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -123,6 +123,70 @@ BASELINE = ROOT / "planning" / "reach-baseline.json"
 DEFUN = re.compile(r"\((?:defun|defund|defun-nx|define|defmacro)\s+([a-zA-Z0-9<>=/*+$-]+)")
 DEFTHM = re.compile(r"\((?:defthm|defthmd)\s+([a-zA-Z0-9<>=/*+${}-]+)")
 SYMBOL = re.compile(r"[a-zA-Z][a-zA-Z0-9<>=/*+${}-]*")
+
+
+def campaign_names(directory: "pathlib.Path | None" = None) -> dict[str, str]:
+    """name -> campaign file, for every string constant a campaign's CODE
+    holds (Python's own parse; module, class and function docstrings are
+    prose and left out).  A campaign drives the native host through crash
+    cuts and judges each cut with the book program it names: that is the
+    tie between a model program and the host, and it is read from the
+    campaign itself, not declared beside it."""
+    import ast
+    directory = directory if directory is not None else ROOT / "tests" / "campaign"
+    found: dict[str, str] = {}
+    for path in sorted(directory.glob("*.py")):
+        if path.name.startswith("test_") or path.name == "__init__.py":
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, UnicodeDecodeError):
+            continue
+        docs = set()
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                                 ast.AsyncFunctionDef)) and node.body:
+                first = node.body[0]
+                if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+                    docs.add(id(first.value))
+        try:
+            rel = str(path.relative_to(ROOT))
+        except ValueError:
+            rel = str(path)
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                    and id(node) not in docs):
+                for symbol in SYMBOL.findall(node.value):
+                    found.setdefault(symbol.lower(), rel)
+    return found
+
+
+def code_only(text: str) -> str:
+    """Lisp TEXT with `;' comments, `#| |#' blocks and string literals blanked
+    (a character literal, #-backslash then one character, is code, kept)."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "#" and text.startswith("#\\", i):
+            out.append(text[i:i + 3])
+            i += 3
+        elif c == "#" and text.startswith("#|", i):
+            end = text.find("|#", i + 2)
+            i = n if end < 0 else end + 2
+            out.append(" ")
+        elif c == ";":
+            end = text.find("\n", i)
+            i = n if end < 0 else end
+        elif c == '"':
+            i += 1
+            while i < n and text[i] != '"':
+                i += 2 if text[i] == "\\" else 1
+            i += 1
+            out.append(" ")
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
 NAME = r"[a-zA-Z0-9<>=/*+$-]+"
 ATTACH_ONE = re.compile(rf"\(defattach\s+({NAME})\s+({NAME})")
 ATTACH_PAIR = re.compile(rf"\(\s*({NAME})\s+({NAME})\s*\)")
@@ -668,7 +732,7 @@ class Graph:
             if str(path.relative_to(ROOT)) not in self.loaded_hosts:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
-            for symbol in defined(self.symbols(text), self.book_defs):
+            for symbol in defined(self.code_symbols(text), self.book_defs):
                 if symbol not in seen:
                     seen.add(symbol)
                     self.via[symbol] = str(path.relative_to(ROOT))
@@ -699,6 +763,21 @@ class Graph:
                                     self.via[nxt] = name
                                     work.append(nxt)
         self.reachable = seen & set(self.book_defs)
+        # Campaign-tied: book functions a crash campaign names in its code,
+        # and what they call, that no host line reaches.  A separate verdict:
+        # the host is checked AGAINST these programs, it does not run them,
+        # so an event about them is neither hosted nor an orphan.
+        self.tied_via: dict[str, str] = {}
+        work = [(name, campaign) for name, campaign in campaign_names().items()
+                if name in self.book_defs and name not in seen]
+        while work:
+            name, campaign = work.pop()
+            if name in self.tied_via or name in seen:
+                continue
+            self.tied_via[name] = campaign
+            work.extend((nxt, campaign) for nxt in self.edges.get(name, ())
+                        if nxt in self.book_defs)
+        self.tied = set(self.tied_via)
 
     def world_edges(self, bodies: dict) -> dict:
         """What each definition CALLS, from the certified world where it speaks.
@@ -811,6 +890,15 @@ class Graph:
     @staticmethod
     def symbols(text: str) -> set[str]:
         return {s.lower() for s in SYMBOL.findall(text)}
+
+    @staticmethod
+    def code_symbols(text: str) -> set[str]:
+        """The symbols a host file's CODE names: comments, #| |# blocks and
+        string literals (docstrings, log text) removed first.  A docstring
+        that cites a book program is prose, not a call (CONVERGE-2 row 14:
+        fn-lgrc-program and fn-lg-open-program counted as reached through
+        io.lisp docstrings, which no host code evaluates)."""
+        return {s.lower() for s in SYMBOL.findall(code_only(text))}
 
     def mentions(self, form, own: str) -> set[str]:
         """What a definition names: callgraph's edge for a read form, the
@@ -1600,6 +1688,8 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 2
     findings, hosted, unresolved = audit(graph, chosen)
+    tied = [f for f in findings if set(f.subjects) & graph.tied]
+    findings = [f for f in findings if not set(f.subjects) & graph.tied]
 
     if arguments.baseline:
         if baseline_raise_refused(findings):
@@ -1632,6 +1722,12 @@ def main(argv=None) -> int:
         if by_proof:
             worst = ", ".join(f"{p} {n}" for p, n in by_proof.most_common(5))
             print(f"reach_check: orphans concentrate in {worst}")
+        if tied:
+            by_campaign = collections.Counter(
+                graph.tied_via[sorted(set(f.subjects) & graph.tied)[0]] for f in tied)
+            print(f"reach_check: {len(tied)} event(s) campaign-tied (their subject is a "
+                  "model program a crash campaign judges the host with, not run by it): "
+                  + ", ".join(f"{c} {n}" for c, n in by_campaign.most_common()))
         for finding in fresh:
             print(f"reach_check: NEW unreachable subject -- {finding.render()}")
         if stale:
@@ -1649,9 +1745,9 @@ def main(argv=None) -> int:
         if graph.unloaded_hosts:
             print("host files no image build loads (no seeds): "
                   + ", ".join(graph.unloaded_hosts))
-        print(f"{hosted} registry events hosted, {len(findings)} orphaned, "
-              f"{len(fresh)} of those unbaselined, {len(unresolved)} "
-              f"unresolvable here")
+        print(f"{hosted} registry events hosted, {len(tied)} campaign-tied, "
+              f"{len(findings)} orphaned, {len(fresh)} of those unbaselined, "
+              f"{len(unresolved)} unresolvable here")
 
     for proof_id, event, export, linking in graph.correspondence_bridged:
         print(f"reach_check: {proof_id}:{event} hosted through the named "
