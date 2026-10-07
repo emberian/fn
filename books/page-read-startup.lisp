@@ -246,7 +246,32 @@
  :hints (("Goal" :in-theory (e/d (fn-prstartup-plan fn-prstartup-nth)
                                  (fn-prstartup-affordable-capacity fn-prstartup-baseline-heap
                                   fn-prstartup-required-heap fn-prstartup-available
-                                  fn-crl-table-supportedp fn-cgb-capacity)))))
+                                  fn-crl-table-supportedp fn-cgb-capacity max min)))))
+
+; The funded bound, abstracted over the plan's coordinates: the search
+; result stays in [lo, hi] (so under any cap above hi) and keeps the heap
+; plus RESERVE inside AVAILABLE.
+(local (defthm fn-prstartup-affordable-capacity-funded
+ (implies (and (natp lo) (natp hi) (<= lo hi) (<= hi cap) (natp reserve) (natp fuel) (integerp available)
+               (<= (+ (fn-prstartup-required-heap lo workers root) reserve) available))
+  (let ((files (fn-prstartup-affordable-capacity lo hi fuel (nfix (- available reserve)) workers root)))
+   (and (natp files) (<= lo files) (<= files hi) (<= files cap)
+        (<= (+ (fn-prstartup-required-heap files workers root) reserve) available))))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn-prstartup-capacity-stays-affordable
+                         (available (nfix (- available reserve))))
+                       (:instance fn-prstartup-capacity-in-range
+                         (available (nfix (- available reserve))))
+                       (:instance fn-prstartup-required-heap-natp (files lo)))
+          :in-theory (disable fn-prstartup-required-heap fn-prstartup-affordable-capacity
+                              fn-prstartup-capacity-stays-affordable fn-prstartup-capacity-in-range)))))
+
+(local (defthm fn-prstartup-minimum-facts
+ (implies (and (natp c) (natp fd) (<= (max 8 (+ 1 c)) fd) (fn-crl-table-supportedp (max 8 (+ 1 c))))
+          (and (natp (max 8 (+ 1 c))) (natp (min fd (expt 2 24)))
+               (<= (max 8 (+ 1 c)) (min fd (expt 2 24))) (<= (min fd (expt 2 24)) fd)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-crl-table-supportedp fn-crl-table-capacity)))))
 
 (defthm fn-prstartup-admitted-capacity-is-funded
  (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve)))
@@ -259,19 +284,14 @@
  :rule-classes nil
  :hints (("Goal"
   :use ((:instance fn-prstartup-plan-when-admitted)
-        (:instance fn-prstartup-capacity-stays-affordable
+        (:instance fn-prstartup-minimum-facts (c (nfix cache-limit)) (fd fd-limit))
+        (:instance fn-prstartup-affordable-capacity-funded
           (lo (max 8 (+ 1 (nfix cache-limit))))
-          (hi (min fd-limit (expt 2 24))) (fuel 25)
-          (available (nfix (- (fn-prstartup-available dynamic occupied protected) reserve))))
-        (:instance fn-prstartup-capacity-in-range
-          (lo (max 8 (+ 1 (nfix cache-limit))))
-          (hi (min fd-limit (expt 2 24))) (fuel 25)
-          (available (nfix (- (fn-prstartup-available dynamic occupied protected) reserve)))))
-  :in-theory (e/d (fn-prstartup-nth fn-prstartup-file-capacity fn-crl-table-supportedp
-                   fn-crl-table-capacity)
+          (hi (min fd-limit (expt 2 24))) (fuel 25) (cap (nfix fd-limit))
+          (available (fn-prstartup-available dynamic occupied protected))))
+  :in-theory (e/d (fn-prstartup-nth fn-prstartup-file-capacity)
       (fn-prstartup-plan fn-prstartup-affordable-capacity fn-prstartup-required-heap
-       fn-prstartup-baseline-heap fn-prstartup-capacity-stays-affordable
-       fn-prstartup-available fn-prstartup-capacity-in-range)))))
+       fn-prstartup-baseline-heap fn-prstartup-available fn-crl-table-supportedp max min)))))
 
 ; KEYSTONE (lane pool-refusal): an admitted plan's resident budget holds,
 ; beyond its installed baseline, the registration quantum of every file the
@@ -294,7 +314,7 @@
         (:instance fn-prstartup-admitted-capacity-is-funded))
   :in-theory (e/d (fn-prstartup-nth fn-prstartup-file-capacity fn-prstartup-required-heap)
                   (fn-prstartup-plan fn-prstartup-affordable-capacity fn-prstartup-baseline-heap
-                   fn-prstartup-available fn-prstartup-registration-reserve)))))
+                   fn-prstartup-available fn-prstartup-registration-reserve max min)))))
 
 (defthm fn-prstartup-admitted-plan-shape
  (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve)))
@@ -314,7 +334,7 @@
                  :in-theory (e/d (fn-prstartup-nth fn-prstartup-file-capacity)
                                  (fn-prstartup-plan fn-prstartup-affordable-capacity
                                   fn-prstartup-baseline-heap fn-prstartup-required-heap
-                                  fn-prstartup-available)))))
+                                  fn-prstartup-available max min)))))
 
 ; The admission arithmetic: one more read fits when a slot is free.
 (defthm fn-prstartup-one-more-slot
@@ -514,6 +534,10 @@
                  (base (fn-heap-store-base-octets profile owner-core observed))
                  (nursery (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))))))
 
+(local (defthm fn-prstartup-max-bounds
+ (implies (and (rationalp a) (rationalp b)) (and (<= a (max a b)) (<= b (max a b))))
+ :rule-classes nil))
+
 (defthm fn-prstartup-extended-covers-launch-floor
  (let ((d (fn-prstartup-extend-default-reservation base nil root workers cache-limit
                                                     core observations profile observed)))
@@ -526,8 +550,11 @@
                                  (fn-prstartup-launch-floor fn-heap-grow-runtime-dynamic
                                   fn-prstartup-required-heap fn-prstartup-launch-extra
                                   fn-heap-reservation-octets
-                                  fn-heap-machine-octets fn-crl-table-supportedp fn-heap-mb-of))
-          :use ((:instance fn-heap-grow-runtime-dynamic-covers-addition
+                                  fn-heap-machine-octets fn-crl-table-supportedp fn-heap-mb-of max min))
+          :use ((:instance fn-prstartup-max-bounds
+                 (a (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base))))
+                 (b (fn-prstartup-launch-floor profile core observed)))
+                (:instance fn-heap-grow-runtime-dynamic-covers-addition
                  (dynamic (max (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base)))
                                (fn-prstartup-launch-floor profile core observed)))
                  (extra (fn-prstartup-launch-extra profile workers cache-limit root))
@@ -557,10 +584,7 @@
                 nil max-connections observed)
                dyn)))
  :rule-classes nil
- :hints (("Goal" :in-theory (disable fn-heap-with-nursery fn-heap-grow-runtime-dynamic
-                                     fn-heap-store-base-octets fn-prstartup-required-heap fn-prstartup-launch-extra
-                                     fn-heap-reservation-octets fn-heap-machine-octets
-                                     fn-crl-table-supportedp fn-heap-nursery-trigger)
+ :hints (("Goal" :in-theory (theory 'minimal-theory)
           :use ((:instance fn-prstartup-extended-covers-launch-floor)
                 (:instance fn-prstartup-launch-floor-holds-owner
                  (dyn (* *fn-heap-mib* (fn-prstartup-nth 1
