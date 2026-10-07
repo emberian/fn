@@ -9,7 +9,7 @@
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *hont-d* (* 780 1024 1024))          ; the small profile's figure (MB = MiB here)
-(defconst *hont-nursery* (* 64 1024 1024))     ; +fnn-gc-nursery-octets+
+(defconst *hont-nursery* (* 64 1024 1024))     ; the pre-MEM-007 +fnn-gc-nursery-octets+, passed as the explicit argument
 (defconst *hont-f1-history* 4388380)           ; journal/ + store-checkpoint.fnsc, hbox 2026-09-28
 
 (defun hont-conclusion (d nursery history)

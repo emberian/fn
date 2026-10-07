@@ -9,6 +9,8 @@
 (defconst *rrvt-profile* *fn-heap-small-profile*)
 (defconst *rrvt-base* '(:heap 640 :development 4096 1024 12))
 (defconst *rrvt-core* 268435456)
+; The host trigger the figures are taken at (books/profile-limits.lisp's :gc-nursery-mib), not a copy of its value.
+(defconst *rrvt-nursery* (* 1048576 (fn-profile-limit :gc-nursery-mib)))
 (defconst *rrvt-machine* '(8589934592))
 
 (assert-event
@@ -26,8 +28,8 @@
                 (fn-heap-store-open-octets *rrvt-profile*
                                            (fn-heap-open-octets-bound *rrvt-profile* nil)
                                            (fn-heap-open-records-bound *rrvt-profile* nil))))
-(assert! (equal (fn-mca-figure-octets *rrvt-profile* *rrvt-core* 67108864 nil)
-                (fn-heap-figure-octets *rrvt-profile* *rrvt-core* 67108864)))
+(assert! (equal (fn-mca-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* nil)
+                (fn-heap-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery*)))
 
 ; ON: the dynamic space grows by at least the owner's reserve and holds the
 ; live figure; the figure is the larger one.
@@ -40,30 +42,30 @@
 (assert! (> (fn-mca-reclaim-reserve-octets *rrvt-profile* t) 0))
 (assert! (equal (fn-rrv-extra-octets *rrvt-profile* nil)
                 (fn-mca-reclaim-reserve-octets *rrvt-profile* t)))
-(assert! (equal (fn-mca-figure-octets *rrvt-profile* *rrvt-core* 67108864 t)
-                (fn-heap-store-live-figure-octets *rrvt-profile* *rrvt-core* 67108864 nil)))
-(assert! (< (fn-mca-figure-octets *rrvt-profile* *rrvt-core* 67108864 nil)
-            (fn-mca-figure-octets *rrvt-profile* *rrvt-core* 67108864 t)))
+(assert! (equal (fn-mca-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* t)
+                (fn-heap-store-live-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* nil)))
+(assert! (< (fn-mca-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* nil)
+            (fn-mca-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* t)))
 ; The premise inhabited: a base decision that holds the store figure, and the
 ; extended one holds the live figure.
 (defconst *rrvt-fit*
-  (list :heap (fn-heap-mb-of (fn-heap-store-figure-octets *rrvt-profile* *rrvt-core* 67108864 nil))
+  (list :heap (fn-heap-mb-of (fn-heap-store-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* nil))
         :development 4096 1024 12))
-(assert! (<= (fn-heap-store-figure-octets *rrvt-profile* *rrvt-core* 67108864 nil)
+(assert! (<= (fn-heap-store-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* nil)
              (* *fn-heap-mib* (fn-crv-nth 1 *rrvt-fit*))))
 (assert!
  (let ((d (fn-rrv-extend-reservation *rrvt-fit* t *rrvt-profile* nil *rrvt-core* *rrvt-machine*)))
    (and (equal (fn-crv-nth 0 d) :heap)
-        (<= (fn-heap-store-live-figure-octets *rrvt-profile* *rrvt-core* 67108864 nil)
+        (<= (fn-heap-store-live-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* nil)
             (* *fn-heap-mib* (fn-crv-nth 1 d))))))
 ; Premise removed (a space short of the store figure): the extended space does
 ; not hold the live figure.
 (assert!
- (let* ((short (list :heap (- (fn-heap-mb-of (fn-heap-store-figure-octets *rrvt-profile* *rrvt-core* 67108864 nil)) 64)
+ (let* ((short (list :heap (- (fn-heap-mb-of (fn-heap-store-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* nil)) 64)
                      :development 4096 1024 12))
         (d (fn-rrv-extend-reservation short t *rrvt-profile* nil *rrvt-core* *rrvt-machine*)))
    (and (equal (fn-crv-nth 0 d) :heap)
-        (not (<= (fn-heap-store-live-figure-octets *rrvt-profile* *rrvt-core* 67108864 nil)
+        (not (<= (fn-heap-store-live-figure-octets *rrvt-profile* *rrvt-core* *rrvt-nursery* nil)
                  (* *fn-heap-mib* (fn-crv-nth 1 d)))))))
 ; A machine too small for the reserve is refused by name (and not accepted).
 (assert!

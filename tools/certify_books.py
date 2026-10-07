@@ -69,7 +69,8 @@ import acl2_cost  # noqa: E402
 import acl2_slots  # noqa: E402
 import acl2_toolchain  # noqa: E402
 import cert_images  # noqa: E402
-import certs  # noqa: E402
+import certs
+import unhooked  # noqa: E402
 import chain_schedule  # noqa: E402
 import evidence_manifests  # noqa: E402
 import ledger  # noqa: E402
@@ -594,7 +595,8 @@ def affected_selection(named: list[str], makefile_roots: list[str],
 
 def lane_selection(named: list[str], targets: list[str],
                    edges: dict[str, list[str]], umbrellas: set[str],
-                   exists, order: list[str] = ()) -> list[str]:
+                   exists, order: list[str] = (),
+                   unhooked: dict[str, str] | None = None) -> list[str]:
     """The roots `--lane` certifies: the named books, the `--affected-by`
     books, the books that include one of those directly, and each target's
     `tests/acl2/<name>-tests`.  Never an image-world umbrella, and never
@@ -606,7 +608,10 @@ def lane_selection(named: list[str], targets: list[str],
     the integrator (landing-pipeline: once per batch on `next`).  EDGES maps
     each book to the books it includes (`local_closure`); EXISTS says
     whether a book name is a book here; ORDER (Makefile order) sorts the
-    includers it names ahead of the rest.
+    includers it names ahead of the rest.  UNHOOKED (planning/unhooked.json,
+    tools/unhooked.py: book -> decision) names books a decision took out of the
+    roots: an includer or companion among them is left out and printed as
+    `unhooked (Dnn): BOOK', never certified as if it were expected to admit.
     """
     wanted = set(targets)
     rank = {book: index for index, book in enumerate(order)}
@@ -616,9 +621,15 @@ def lane_selection(named: list[str], targets: list[str],
          and book not in umbrellas),
         key=lambda book: (rank.get(book, len(rank)), book))
     companions = [f"tests/acl2/{Path(target).name}-tests" for target in targets]
-    return list(dict.fromkeys(
-        list(named) + targets + includers
-        + [book for book in companions if exists(book) and book not in umbrellas]))
+    added = includers + [book for book in companions
+                         if exists(book) and book not in umbrellas]
+    unhooked = unhooked or {}
+    for book in dict.fromkeys(added):
+        if book in unhooked and book not in wanted and book not in named:
+            print(f"unhooked ({unhooked[book]}): {book}", file=sys.stderr)
+    added = [book for book in added
+             if book not in unhooked or book in wanted or book in named]
+    return list(dict.fromkeys(list(named) + targets + added))
 
 
 def lane_edges(makefile_roots: list[str]) -> dict[str, list[str]]:
@@ -1200,7 +1211,8 @@ def main() -> int:
                     named_books, [normalize_book(book) for book in args.affected_by],
                     lane_edges(makefile_roots),
                     set(certs.umbrella_roots(ROOT)),
-                    lambda book: (ROOT / f"{book}.lisp").is_file(), makefile_roots)
+                    lambda book: (ROOT / f"{book}.lisp").is_file(), makefile_roots,
+                    unhooked.load(ROOT))
             else:
                 args.books = affected_selection(named_books, makefile_roots,
                                                 args.affected_by)

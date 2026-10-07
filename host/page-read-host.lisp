@@ -3,6 +3,10 @@
 ; and observed lifetime events; all admission/refund choices are ACL2's.
 ; Supported-profile/launcher installation is a separate boundary obligation.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/page-read-ownership")
 (include-book "../books/page-discovery-ledger")
 (include-book "../books/cold-read-layout")

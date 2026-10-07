@@ -2280,52 +2280,23 @@
         (floor (fn-clock-wall obs) 1000)
       :none)))
 
+(verify-guards fn-nntp-newnews-candidatep)
+
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per committed article.  The loop carries the horizon
 ; forward as the recursion does and collects onto a reversed accumulator.
-(defun fn-nntp-newnews-scan-loop (groups threshold articles horizon fn-arena acc)
-  (declare (xargs :stobjs fn-arena :guard (true-listp acc) :verify-guards nil
-                  :measure (acl2-count articles)))
-  (if (not (consp articles))
-      (revappend acc nil)
-    (let* ((article (fn-ag-car articles))
-           (stamp (fn-article-stamp article)))
-      (fn-nntp-newnews-scan-loop
-       groups threshold (fn-ag-cdr articles) (if (natp stamp) stamp horizon) fn-arena
-       (if (and (fn-nntp-newnews-candidatep groups article)
-                (not (fn-nntp-article-tombstonep article fn-arena))
-                (fn-nntp-newnews-newp threshold stamp horizon))
-           (cons (fn-nntp-string-octets (fn-article-msgid article)) acc)
-         acc)))))
-
-(defun fn-nntp-newnews-scan (groups threshold articles horizon fn-arena)
-  ; The committed list is newest first.  Every natural stamp advances the
-  ; legacy horizon, even when its article belongs to another group.
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil :measure (acl2-count articles)))
-  (mbe :logic
-       (if (not (consp articles))
-           nil
-         (let* ((article (fn-ag-car articles))
-                (stamp (fn-article-stamp article))
-                (rest (fn-nntp-newnews-scan
-                       groups threshold (fn-ag-cdr articles)
-                       (if (natp stamp) stamp horizon) fn-arena)))
-           ; D13: a reclaimed article is not listed.  The test reads at most
-           ; the tombstone's fixed head of the payload, never parses it.
-           (if (and (fn-nntp-newnews-candidatep groups article)
-                    (not (fn-nntp-article-tombstonep article fn-arena))
-                    (fn-nntp-newnews-newp threshold stamp horizon))
-               (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
-             rest)))
-       :exec (fn-nntp-newnews-scan-loop groups threshold articles horizon fn-arena nil)))
-
-(local
- (defthm fn-nntp-newnews-scan-loop-is-revappend
-   (equal (fn-nntp-newnews-scan-loop groups threshold articles horizon fn-arena acc)
-          (revappend acc (fn-nntp-newnews-scan groups threshold articles horizon fn-arena)))
-   :hints (("Goal" :in-theory (disable fn-nntp-newnews-candidatep fn-nntp-article-tombstonep
-                                       fn-nntp-newnews-newp fn-nntp-string-octets
-                                       fn-article-stamp fn-article-msgid)))))
+; The committed list is newest first.  Every natural stamp advances the
+; legacy horizon, even when its article belongs to another group.
+(def-loop fn-nntp-newnews-scan (groups threshold articles horizon fn-arena)
+  :shape :step :over (articles horizon) :done (not (consp articles))
+  :emit (and (fn-nntp-newnews-candidatep groups article)
+             (not (fn-nntp-article-tombstonep article fn-arena))
+             (fn-nntp-newnews-newp threshold stamp horizon))
+  :let ((article (fn-ag-car articles)) (stamp (fn-article-stamp article)))
+  :body (fn-nntp-string-octets (fn-article-msgid article))
+  :next ((fn-ag-cdr articles) (if (natp stamp) stamp horizon))
+  :skip-next ((fn-ag-cdr articles) (if (natp stamp) stamp horizon)) :measure (acl2-count articles)
+  :stobjs fn-arena)
 
 ; -----------------------------------------------------------------------------
 ; The command
@@ -2655,14 +2626,6 @@
 (verify-guards fn-nntp-newnews-reader-horizon
   :hints (("Goal" :in-theory (enable fn-clock-observationp
                                      fn-clock-timep))))
-(verify-guards fn-nntp-newnews-candidatep)
-(verify-guards fn-nntp-newnews-scan-loop)
-
-(verify-guards fn-nntp-newnews-scan
-  :hints (("Goal" :in-theory (disable fn-nntp-newnews-scan-loop fn-nntp-newnews-candidatep
-                                      fn-nntp-article-tombstonep fn-nntp-newnews-newp
-                                      fn-nntp-string-octets fn-article-stamp fn-article-msgid)
-                  :use ((:instance fn-nntp-newnews-scan-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-newnews-response)
 
 ; ---------------------------------------------------------------------------

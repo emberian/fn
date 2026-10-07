@@ -15649,19 +15649,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpaj-enrolled-source-names-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-listener-rows-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-loopback-candidates-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpaj-record-for-msgid-loop-is-rev-onto"
+          "name": "fn-dl-foldr-loop-is-foldr"
         },
         {
           "kind": "theorem",
@@ -15669,15 +15657,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpfw-head-cell-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-dl-map-skip-loop-is-revappend"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpn-ready-peers-loop-of-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15777,10 +15757,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cll-key-values-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cnx-walk-range-loop-is-rev-onto"
         },
         {
@@ -15789,15 +15765,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-exp-cidrs-of-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-feed-backoff-loop-is-delay"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dl-foldr-loop-is-foldr"
         },
         {
           "kind": "theorem",
@@ -15841,23 +15809,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ncfg-listener-plan-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-nls-connection-lines-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-nntp-xpat-join-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oag-moderation-entries-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ores-sealed-plan-loop-is-rev-onto"
         },
         {
           "kind": "theorem",

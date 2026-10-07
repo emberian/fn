@@ -114,6 +114,106 @@ class LateGuard(unittest.TestCase):
         self.assertEqual(out.count("verify-guards"), 1)
 
 
+class ExecDiffers(unittest.TestCase):
+    """The exec-differs drain (lane drain-gv3): a hand loop that is the logic's terms in
+    another form converts (step helper, book helper, renamed accumulator, let inlined, a
+    rev-onto per branch); a loop that really computes other terms is refused by name."""
+
+    def conv(self, name, count=1):
+        (conv, resid), text = run(name)
+        self.assertEqual(resid, [])
+        self.assertEqual(len(conv), count)
+        out = d.apply_text(text, conv)
+        expected = FIX / f"{name}.out.lisp"
+        if os.environ.get("REGEN"):
+            expected.write_text(out)
+        self.assertEqual(out, expected.read_text())
+        return out
+
+    def refused(self, name, why, detail):
+        (conv, resid), _ = run(name)
+        self.assertEqual(conv, [])
+        self.assertEqual([r[1] for r in resid], ["exec-differs"])
+        self.assertIn(detail, resid[0][2])
+
+    def test_step_helper_goes_with_the_twin(self):
+        out = self.conv("gv3-step-helper")
+        self.assertNotIn("key-values-step", out)
+
+    def test_step_helper_guard_verification_goes_with_it(self):
+        out = self.conv("gv3-step-helper-vg")
+        self.assertNotIn("ready-peers-step", out)
+        self.assertNotIn("verify-guards", out)
+
+    def test_step_helper_named_elsewhere_stays(self):
+        out = self.conv("gv3-step-helper-kept")
+        self.assertIn("(defun fn-cll-key-values-step", out)
+        self.assertIn(":shape :foldr", out)
+
+    def test_step_helper_with_a_let_and_a_cond(self):
+        self.conv("gv3-step-helper-let")
+
+    def test_multi_binding_let_names_the_recursion_result(self):
+        self.conv("gv3-multi-let")
+
+    def test_rev_onto_repeated_in_each_branch(self):
+        self.conv("gv3-rev-if")
+
+    def test_accumulator_renamed_by_a_let(self):
+        self.conv("gv3-atom-let")
+
+    def test_logic_let_variable_inlined_in_the_loop(self):
+        self.conv("gv3-let-var-body")
+
+    def test_book_helper_is_the_logic_term(self):
+        self.conv("gv3-book-helper")
+
+    def test_foldr_over_a_stobj_refuses_by_name(self):
+        (conv, resid), _ = run("gv3-refuse-foldr-stobj")
+        self.assertEqual(conv, [])
+        self.assertEqual([r[1] for r in resid], ["foldr-stobjs"])
+
+    def test_guard_total_accessors_refuse_by_name(self):
+        self.refused("gv3-refuse-ag-accessor", "exec-differs", "fn-ag-car")
+
+    def test_early_exit_refuses_by_name(self):
+        self.refused("gv3-refuse-early-exit", "exec-differs", "control flow differs")
+
+    def test_true_listp_seed_refuses_by_name(self):
+        self.refused("gv3-refuse-seed", "exec-differs", "true-listp seed")
+
+
+class PairResult(unittest.TestCase):
+    """The pair-result drain: a let* that names the recursion result next to other bindings
+    is a plain :step (newnews-scan); the rest is refused with the kind of result named."""
+
+    def test_recursion_result_bound_in_a_multi_binding_let_is_a_step(self):
+        (conv, resid), text = run("gv3-pair-newnews")
+        self.assertEqual(resid, [])
+        spec = conv[0]["spec"]
+        self.assertEqual((spec.shape, spec.svars), ("step", ["articles", "horizon"]))
+        out = d.apply_text(text, conv)
+        expected = FIX / "gv3-pair-newnews.out.lisp"
+        if os.environ.get("REGEN"):
+            expected.write_text(out)
+        self.assertEqual(out, expected.read_text())
+
+    def refused(self, name, kind):
+        (conv, resid), _ = run(name)
+        self.assertEqual(conv, [])
+        self.assertEqual([r[1] for r in resid], ["pair-result"])
+        self.assertTrue(resid[0][2].startswith(kind), resid[0][2])
+
+    def test_prefix_split_refuses_by_name(self):
+        self.refused("gv3-pair-split", "split:")
+
+    def test_position_search_refuses_by_name(self):
+        self.refused("gv3-pair-position", "position:")
+
+    def test_error_record_parser_refuses_by_name(self):
+        self.refused("gv3-pair-failure", "failure:")
+
+
 class Refusals(unittest.TestCase):
     def refused(self, name, why):
         (conv, resid), _ = run(name)
