@@ -23,9 +23,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-receiver-repin-tests \
 	tests/acl2/connection-receiver-repin-state-tests \
 	books/obligation-view-cursor \
+	books/obligation-view-cursor-refinement \
+	tests/acl2/obligation-view-cursor-tests \
 	books/retention-obligation-view \
 	books/obligation-view-budget \
 	books/view-delta-cursor \
+	books/view-delta-cursor-refinement \
+	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
 	tests/acl2/index-reader-render-establishment-tests \
@@ -2484,6 +2488,8 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-bootstrap-export-tests \
     tests/acl2/allocation-turn-body-authority-tests \
     tests/acl2/allocation-turn-slots-tests \
+    tests/acl2/allocation-turn-source-cost-tests \
+    tests/acl2/consumer-remote-client-contract-tests \
     books/page-read-counter-transaction \
     books/page-read-issue-source-cost \
     books/recovery-prs-install \
@@ -2567,6 +2573,7 @@ ACL2_BOOKS ?= books/defrecord \
     books/owner-report-owner-accessors \
     books/allocation-turn-body-authority \
     books/allocation-turn-slots \
+    books/allocation-turn-source-cost \
     books/index-backing-writer-step \
     books/index-backing-table-seal \
     books/index-backing-reinsert \
