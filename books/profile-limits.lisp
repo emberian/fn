@@ -62,6 +62,10 @@
      "what one maintenance tick may allocate and still be quiet: served commands and accepts allocate more, the tick's own work less")
     (:idle-gc-floor-kib 8192 "KiB"
      "what must be allocated since the last idle collection before another is worth its pause (the collection trigger's cap, :gc-nursery-mib, in KiB)")
+    (:load-gc-growth-mib 16 "MiB"
+     "how far the dynamic space in use may grow past its figure after the last collection before the owner collects under load (books/idle-collection.lisp fn-load-gc-decide, MEM-012): a burst's garbage is promoted into generations 0-3 and only a collection above generation 1 returns it to the OS, so the whole-process peak (Ruling 16) is bounded by this growth, not by the burst")
+    (:load-gc-generation 3 "generation"
+     "the generation the owner collects through under load: above SBCL's small_generation_limit of 1 so the pages are released, and below a full collection so the pause stays short (the figure is chosen by measurement, MEM-012)")
     (:max-connections 32 "connections"
      "fn.toml's [server] max_connections when it names none")
     (:headroom-min-percent 10 "percent"
