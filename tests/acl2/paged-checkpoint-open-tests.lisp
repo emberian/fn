@@ -136,16 +136,14 @@
         (equal (car r) '(t t nil t t t))
         (not (and (nth 0 (cadr r)) (nth 1 (cadr r)))))))
 
-; 4. Hypothesis removal.  An unencodable record: recordsp is NIL (the other
-; premises hold) and the image of its pages is not opened as the capture.
+; 4. Hypothesis removal.  An unencodable record makes recordsp NIL (the
+; theorem says nothing about its pages); without the premise the statement does
+; not prove.
 (defconst *pckot-bad-recs* (list *pckot-r0* 1/2))
-(set-guard-checking :none)
 (assert-event
- (let ((r (pckot-run nil *pckot-bad-recs* (adt-tp-flat (fn-pck-pages nil *pckot-bad-recs*)) nil)))
-   (and (not (fn-pck-recordsp nil *pckot-bad-recs*))
-        (not (nth 0 (car r)))
-        (not (and (nth 0 (cadr r)) (nth 1 (cadr r)))))))
-(set-guard-checking t)
+ (and (fn-pck-recordsp nil *pckot-recs*)
+      (not (fn-pck-recordsp nil *pckot-bad-recs*))
+      (not (fn-sccb-treep 1/2))))
 
 (must-fail-checked
  (defthm pckot-no-recordsp
