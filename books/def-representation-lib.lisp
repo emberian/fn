@@ -276,6 +276,55 @@
 (defthmd adt-take-len
   (implies (true-listp x) (equal (take (len x) x) x)))
 
+(defthm adt-true-listp-of-between
+  (true-listp (adt-between i n a))
+  :hints (("Goal" :in-theory (enable adt-between))))
+
+(local
+ (defun adt-bt-ind (j m)
+   (if (zp m) j (adt-bt-ind (+ 1 j) (- m 1)))))
+
+(defthm adt-between-take
+  (implies (and (natp j) (natp m) (natp n) (<= (+ j m) n))
+           (equal (take m (adt-between j n a)) (adt-between j (+ j m) a)))
+  :hints (("Goal" :induct (adt-bt-ind j m)
+           :in-theory (enable adt-between))))
+
+(defthm adt-between-nthcdr-m
+  (implies (and (natp j) (natp m) (natp n) (<= (+ j m) n))
+           (equal (nthcdr m (adt-between j n a)) (adt-between (+ j m) n a)))
+  :hints (("Goal" :induct (adt-bt-ind j m)
+           :in-theory (enable adt-between))))
+
+; The pool write of the cells [J, N) of a list A at the octet I, a pool page
+; at a time (the executable NAME$C-RANGE-COPY): the cells that fit in the
+; page of I go to that page in one step, the rest from the next page on.
+; `adt-pg-poolw-cs-is-poolw': the octet-by-octet write of the same cells
+; (`adt-pg-poolw', which NAME$C-POOLW is bridged to).
+(defun adt-pg-poolw-cs (i j n a c)
+  (declare (xargs :measure (nfix (- n j)) :verify-guards nil
+                  :hints (("Goal" :use ((:instance adt-pg-mod-below (n i) (r 16384))
+                                (:instance adt-pg-mod-integerp (n i) (r 16384)))
+                           :in-theory (disable floor mod)))))
+  (if (and (natp i) (natp j) (natp n) (< j n))
+      (let ((m (min (- n j) (- 16384 (mod i 16384)))))
+        (adt-pg-poolw-cs (+ i m) (+ j m) n a
+                         (adt-pg-page-write (floor i 16384) (mod i 16384)
+                                            (adt-between j (+ j m) a) c)))
+    c))
+
+(defthm adt-pg-poolw-cs-is-poolw
+  (implies (and (natp i) (natp j) (natp n))
+           (equal (adt-pg-poolw-cs i j n a c)
+                  (adt-pg-poolw i (adt-between j n a) 16384 c)))
+  :hints (("Goal" :induct (adt-pg-poolw-cs i j n a c)
+           :in-theory (disable floor mod))
+          ("Subgoal *1/1" :use ((:instance adt-pg-poolw-chunk (bytes (adt-between j n a)))
+                                (:instance adt-between-take (m (min (- n j) (- 16384 (mod i 16384)))))
+                                (:instance adt-between-nthcdr-m (m (min (- n j) (- 16384 (mod i 16384))))))
+           :in-theory (e/d (adt-between-step) (floor mod adt-between-take adt-between-nthcdr-m)))
+          ("Subgoal *1/2" :in-theory (enable adt-pg-poolw adt-between))))
+
 (local
  (defthm adt-so-octetsp-nth
    (implies (and (adt-octetsp x) (natp a) (< a (len x))) (unsigned-byte-p 8 (nth a x)))

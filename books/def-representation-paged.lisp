@@ -1752,6 +1752,352 @@
   :hints (("Goal" :induct (adt-pg-poolr off n acc q c)
            :in-theory (e/d (adt-poolr) (adt-poolr-is-slice)))))
 
+; The pool read, a page at a time (the executable NAME$C-POOLR walks the
+; directory once per pool page and runs a tight loop over the page's octets).
+; `adt-pg-poolr-c' is that read on the list view, and `adt-pg-poolr-c-is-poolr'
+; says it is `adt-pg-poolr' (the octet-by-octet read the pool's meaning is
+; stated for): the octets OFF..OFF+N-1, no matter how the range is cut at
+; the pool-page boundaries.  The reads below the top of a page and past the end
+; of its array (or of the directory) are 0, as in `adt-pg-pget'.
+
+; The octets of pool page K (nil when the directory has no such page).
+(defun adt-pg-page-bytes (k c)
+  (declare (xargs :verify-guards nil))
+  (let* ((dir (nth 1 c)) (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+    (if (< jt (len dir))
+        (if (< it (len (nth 0 (nth jt dir))))
+            (nth 0 (nth it (nth 0 (nth jt dir))))
+          nil)
+      nil)))
+
+; M zeros consed onto ACC.
+(defun adt-pg-zeros (m acc)
+  (declare (xargs :measure (nfix m) :verify-guards nil))
+  (if (and (natp m) (< 0 m))
+      (adt-pg-zeros (+ -1 m) (cons 0 acc))
+    acc))
+
+; The octets LO..P-1 of BYTES, consed onto ACC from the top (the order
+; `adt-pg-poolr' conses in).
+(defun adt-pg-pslice (p lo acc bytes)
+  (declare (xargs :measure (nfix p) :verify-guards nil))
+  (if (and (natp p) (natp lo) (< lo p))
+      (adt-pg-pslice (+ -1 p) lo (cons (nth (+ -1 p) bytes) acc) bytes)
+    acc))
+
+; The octets LO..P-1 of pool page K consed onto ACC: those below the
+; length of the page's array are its elements, the rest zeros.
+(defun adt-pg-page-read (k p lo acc c)
+  (declare (xargs :verify-guards nil))
+  (let ((bytes (adt-pg-page-bytes k c)))
+    (adt-pg-pslice (min p (len bytes)) lo
+                   (adt-pg-zeros (- p (min p (max lo (len bytes)))) acc)
+                   bytes)))
+
+(local
+ (defun adt-pg-elem (j bytes)
+   (declare (xargs :verify-guards nil))
+   (if (< (nfix j) (len bytes)) (nth j bytes) 0)))
+
+(local
+ (defun adt-pg-pread (p lo acc bytes)
+   (declare (xargs :measure (nfix p) :verify-guards nil))
+   (if (and (natp p) (natp lo) (< lo p))
+       (adt-pg-pread (+ -1 p) lo (cons (adt-pg-elem (+ -1 p) bytes) acc) bytes)
+     acc)))
+
+(local
+ (defthm adt-pg-pread-closed
+   (implies (and (natp p) (natp lo) (<= lo p))
+            (equal (adt-pg-pread p lo acc bytes)
+                   (adt-pg-pslice (min p (len bytes)) lo
+                                  (adt-pg-zeros (- p (min p (max lo (len bytes)))) acc)
+                                  bytes)))
+   :hints (("Goal" :induct (adt-pg-pread p lo acc bytes)
+            :in-theory (enable adt-pg-elem)))))
+
+(local
+ (defthm adt-pg-pget-in-page
+   (implies (and (natp k) (natp j) (< j 16384))
+            (equal (adt-pg-pget (+ (* 16384 k) j) 16384 c)
+                   (adt-pg-elem j (adt-pg-page-bytes k c))))
+   :hints (("Goal" :in-theory (enable adt-pg-pget adt-pg-elem adt-pg-page-bytes)))))
+
+(local
+ (defthm adt-pg-poolr-in-page-step
+   (implies (and (natp k) (natp lo) (natp p) (< lo p) (<= p 16384))
+            (equal (adt-pg-poolr (+ (* 16384 k) lo) (- p lo) acc 16384 c)
+                   (adt-pg-poolr (+ (* 16384 k) lo) (- (- p 1) lo)
+                                 (cons (adt-pg-elem (- p 1) (adt-pg-page-bytes k c)) acc)
+                                 16384 c)))
+   :rule-classes nil
+   :hints (("Goal" :expand ((adt-pg-poolr (+ (* 16384 k) lo) (- p lo) acc 16384 c))
+            :use ((:instance adt-pg-pget-in-page (j (- p 1))))
+            :in-theory (disable adt-pg-pget-in-page)))))
+
+(local
+ (defthm adt-pg-poolr-in-page-base
+   (implies (and (natp lo) (equal p lo))
+            (equal (adt-pg-poolr off (- p lo) acc q c) acc))
+   :hints (("Goal" :in-theory (enable adt-pg-poolr)))))
+
+(local
+ (defthm adt-pg-poolr-in-page
+   (implies (and (natp k) (natp lo) (natp p) (<= lo p) (<= p 16384))
+            (equal (adt-pg-poolr (+ (* 16384 k) lo) (- p lo) acc 16384 c)
+                   (adt-pg-pread p lo acc (adt-pg-page-bytes k c))))
+   :hints (("Goal" :induct (adt-pg-pread p lo acc (adt-pg-page-bytes k c))
+            :in-theory (e/d ((:induction adt-pg-pread))
+                            ((:definition adt-pg-poolr) adt-pg-pread-closed adt-pg-pget-in-page
+                             adt-pg-page-bytes adt-pg-elem))
+            :expand ((adt-pg-pread p lo acc (adt-pg-page-bytes k c))))
+           ("Subgoal *1/1" :use adt-pg-poolr-in-page-step)
+           ("Subgoal *1/2" :use ((:instance adt-pg-poolr-in-page-base
+                                            (off (+ (* 16384 k) lo)) (q 16384)))))))
+
+(local
+ (defun adt-pg-poolr-split-ind (off m d acc q c)
+   (declare (xargs :measure (nfix d) :verify-guards nil))
+   (if (zp d)
+       acc
+     (adt-pg-poolr-split-ind off m (1- d) (cons (adt-pg-pget (+ off m (1- d)) q c) acc) q c))))
+
+(local
+ (defthm adt-pg-poolr-split
+   (implies (and (natp off) (natp m) (natp d))
+            (equal (adt-pg-poolr off (+ m d) acc q c)
+                   (adt-pg-poolr off m (adt-pg-poolr (+ off m) d acc q c) q c)))
+   :hints (("Goal" :induct (adt-pg-poolr-split-ind off m d acc q c)
+            :in-theory (enable adt-pg-poolr)))))
+
+(local
+ (defthm adt-pg-page-read-is-poolr
+   (implies (and (natp k) (natp lo) (natp p) (<= lo p) (<= p 16384))
+            (equal (adt-pg-page-read k p lo acc c)
+                   (adt-pg-poolr (+ (* 16384 k) lo) (- p lo) acc 16384 c)))
+   :hints (("Goal" :in-theory (e/d (adt-pg-page-read) (adt-pg-poolr))
+            :use ((:instance adt-pg-pread-closed (bytes (adt-pg-page-bytes k c)))
+                  adt-pg-poolr-in-page)))))
+
+; The read, cut at the pool-page boundaries: the last page's octets first
+; (conses from the top), then the page below, down to OFF.
+(defun adt-pg-poolr-c (off n acc c)
+  (declare (xargs :measure (nfix n) :verify-guards nil
+                  :hints (("Goal" :in-theory (disable floor)
+                           :use ((:instance adt-pg-floor-mod (n (+ -1 off n)) (r 16384)))))))
+  (if (and (natp n) (< 0 n) (natp off))
+      (let* ((hi (+ off n)) (k (floor (+ -1 hi) 16384)) (base (* 16384 k))
+             (lo (if (< off base) base off)))
+        (adt-pg-poolr-c off (- lo off)
+                        (adt-pg-page-read k (- hi base) (- lo base) acc c)
+                        c))
+    acc))
+
+(local
+ (defthm adt-pg-poolr-c-step
+   (implies (and (natp off) (natp n) (< 0 n))
+            (let* ((hi (+ off n)) (k (floor (+ -1 hi) 16384)) (base (* 16384 k))
+                   (lo (if (< off base) base off)))
+              (equal (adt-pg-poolr off n acc 16384 c)
+                     (adt-pg-poolr off (- lo off)
+                                   (adt-pg-page-read k (- hi base) (- lo base) acc c)
+                                   16384 c))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable floor adt-pg-poolr adt-pg-page-read-is-poolr adt-pg-poolr-split)
+            :use ((:instance adt-pg-floor-mod (n (+ -1 off n)) (r 16384))
+                  (:instance adt-pg-poolr-split
+                             (m (- (if (< off (* 16384 (floor (+ -1 off n) 16384))) (* 16384 (floor (+ -1 off n) 16384)) off) off))
+                             (d (- (+ off n) (if (< off (* 16384 (floor (+ -1 off n) 16384))) (* 16384 (floor (+ -1 off n) 16384)) off)))
+                             (q 16384))
+                  (:instance adt-pg-page-read-is-poolr (k (floor (+ -1 off n) 16384))
+                             (lo (- (if (< off (* 16384 (floor (+ -1 off n) 16384))) (* 16384 (floor (+ -1 off n) 16384)) off)
+                                    (* 16384 (floor (+ -1 off n) 16384))))
+                             (p (- (+ off n) (* 16384 (floor (+ -1 off n) 16384))))))))))
+
+(defthm adt-pg-poolr-c-is-poolr
+  (implies (and (natp off) (natp n))
+           (equal (adt-pg-poolr-c off n acc c)
+                  (adt-pg-poolr off n acc 16384 c)))
+  :hints (("Goal" :induct (adt-pg-poolr-c off n acc c)
+           :in-theory (disable floor adt-pg-poolr adt-pg-page-read-is-poolr adt-pg-poolr-split))
+          ("Subgoal *1/1" :use adt-pg-poolr-c-step)
+          ("Subgoal *1/2" :in-theory (enable adt-pg-poolr))))
+
+; The pool write, a page at a time (the executable NAME$C-RANGE-COPY walks
+; the directory once per pool page and copies the page's cells in a tight
+; loop).  `adt-pg-poolw-chunk' cuts the octet-by-octet write `adt-pg-poolw' at
+; the pool-page boundary: the octets that fit in the page of I are written in
+; one step to that page (`adt-pg-page-write'), the rest from the next page on.
+
+; Octet J of BYTES set to B (nothing past the end, as `adt-pg-pput').
+(defun adt-pg-bput (j b bytes)
+  (declare (xargs :verify-guards nil))
+  (if (< (nfix j) (len bytes)) (update-nth j b bytes) bytes))
+
+; CHUNK written at J, J+1, ... of BYTES, each by `adt-pg-bput'.
+(defun adt-pg-puts (j chunk bytes)
+  (declare (xargs :verify-guards nil))
+  (if (consp chunk)
+      (adt-pg-puts (+ 1 (nfix j)) (cdr chunk) (adt-pg-bput j (car chunk) bytes))
+    bytes))
+
+; Pool page K of the directory with its octets replaced by NB (nothing when
+; the directory has no such page).
+(defun adt-pg-page-edit (k nb c)
+  (declare (xargs :verify-guards nil))
+  (let* ((dir (nth 1 c)) (jt (floor k *adt-pg-tpages*)) (it (mod k *adt-pg-tpages*)))
+    (if (< jt (len dir))
+        (update-nth 1 (update-nth jt (let ((tp (nth jt dir)))
+                                       (if (< it (len (nth 0 tp)))
+                                           (update-nth 0 (update-nth it (update-nth 0 nb (nth it (nth 0 tp)))
+                                                                     (nth 0 tp))
+                                                       tp)
+                                         tp))
+                                  dir)
+                    c)
+      c)))
+
+; CHUNK written at octet JO of pool page K, the octets past the end of the
+; page's array (or a page the directory does not have) left alone.
+(defun adt-pg-page-write (k jo chunk c)
+  (declare (xargs :verify-guards nil))
+  (let ((bytes (adt-pg-page-bytes k c)))
+    (if (< (nfix jo) (len bytes))
+        (adt-pg-page-edit k (adt-pg-puts jo chunk bytes) c)
+      c)))
+
+(defthm adt-pg-len-puts
+  (equal (len (adt-pg-puts j chunk bytes)) (len bytes))
+  :hints (("Goal" :in-theory (enable adt-pg-puts adt-pg-bput))))
+
+(defthm adt-pg-puts-beyond
+  (implies (<= (len bytes) (nfix j))
+           (equal (adt-pg-puts j chunk bytes) bytes))
+  :hints (("Goal" :in-theory (enable adt-pg-puts adt-pg-bput))))
+
+; Only the first C cells of CHUNK matter when the array ends within them.
+(local
+ (defun adt-pg-clip-ind (j c chunk bytes)
+   (declare (xargs :measure (nfix c) :verify-guards nil))
+   (if (zp c)
+       (list j chunk bytes)
+     (adt-pg-clip-ind (+ 1 (nfix j)) (- c 1) (cdr chunk) (adt-pg-bput j (car chunk) bytes)))))
+
+(defthm adt-pg-puts-clip
+  (implies (and (natp j) (natp c) (<= c (len chunk)) (<= (len bytes) (+ j c)))
+           (equal (adt-pg-puts j chunk bytes) (adt-pg-puts j (take c chunk) bytes)))
+  :rule-classes nil
+  :hints (("Goal" :induct (adt-pg-clip-ind j c chunk bytes)
+           :in-theory (enable adt-pg-puts))))
+
+(local
+ (defthm adt-pg-update-nth-of-nth
+   (implies (and (natp n) (< n (len l)))
+            (equal (update-nth n (nth n l) l) l))
+   :hints (("Goal" :induct (nth n l) :in-theory (enable update-nth nth)))))
+
+(local
+ (defthm adt-pg-nth-len-pos
+   (implies (and (natp n) (< 0 (len (nth n l))))
+            (< n (len l)))
+   :hints (("Goal" :induct (nth n l) :in-theory (enable nth)))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm adt-pg-update-nth-nth-pos
+   (implies (and (natp n) (< 0 (len (nth n l))))
+            (equal (update-nth n (nth n l) l) l))
+   :hints (("Goal" :use ((:instance adt-pg-update-nth-of-nth)
+                         (:instance adt-pg-nth-len-pos))))))
+
+(local
+ (defthm adt-pg-page-bytes-of-edit
+   (implies (< 0 (len (adt-pg-page-bytes k c)))
+            (equal (adt-pg-page-bytes k (adt-pg-page-edit k nb c)) nb))
+   :hints (("Goal" :in-theory (enable adt-pg-page-bytes adt-pg-page-edit)))))
+
+(local
+ (defthm adt-pg-edit-edit
+   (implies (< 0 (len (adt-pg-page-bytes k c)))
+            (equal (adt-pg-page-edit k nb2 (adt-pg-page-edit k nb1 c))
+                   (adt-pg-page-edit k nb2 c)))
+   :hints (("Goal" :in-theory (enable adt-pg-page-bytes adt-pg-page-edit)))))
+
+(local
+ (defthm adt-pg-edit-same
+   (implies (and (natp k) (< 0 (len (adt-pg-page-bytes k c))))
+            (equal (adt-pg-page-edit k (adt-pg-page-bytes k c) c) c))
+   :hints (("Goal" :in-theory (enable adt-pg-page-bytes adt-pg-page-edit)))))
+
+(local
+ (defthm adt-pg-pput-in-page
+   (implies (and (natp k) (natp j) (< j 16384))
+            (equal (adt-pg-pput (+ (* 16384 k) j) b 16384 c)
+                   (adt-pg-page-write k j (list b) c)))
+   :hints (("Goal" :in-theory (enable adt-pg-pput adt-pg-page-write adt-pg-page-edit adt-pg-page-bytes
+                                      adt-pg-puts adt-pg-bput)))))
+
+(local
+ (defthm adt-pg-page-write-compose
+   (implies (and (natp k) (natp jo))
+            (equal (adt-pg-page-write k (+ 1 jo) rest (adt-pg-page-write k jo (list b) c))
+                   (adt-pg-page-write k jo (cons b rest) c)))
+   :hints (("Goal" :in-theory (e/d (adt-pg-page-write) (adt-pg-page-edit adt-pg-page-bytes)))
+           ("Subgoal 2" :in-theory (enable adt-pg-puts adt-pg-bput)))))
+
+(local
+ (defthm adt-pg-page-write-atom
+   (implies (and (natp k) (not (consp chunk)))
+            (equal (adt-pg-page-write k jo chunk c) c))
+   :hints (("Goal" :in-theory (e/d (adt-pg-page-write adt-pg-puts) (adt-pg-page-edit adt-pg-page-bytes))))))
+
+(local
+ (defun adt-pg-wind (k jo chunk c)
+   (declare (xargs :verify-guards nil))
+   (if (consp chunk)
+       (adt-pg-wind k (+ 1 (nfix jo)) (cdr chunk) (adt-pg-page-write k jo (list (car chunk)) c))
+     c)))
+
+(local
+ (defthm adt-pg-poolw-in-page
+   (implies (and (natp k) (natp jo) (<= (+ jo (len chunk)) 16384))
+            (equal (adt-pg-poolw (+ (* 16384 k) jo) chunk 16384 c)
+                   (adt-pg-page-write k jo chunk c)))
+   :hints (("Goal" :induct (adt-pg-wind k jo chunk c)
+            :in-theory (e/d (adt-pg-poolw) (adt-pg-page-write adt-pg-pput-in-page adt-pg-page-write-compose)))
+           ("Subgoal *1/1" :expand ((adt-pg-poolw (+ (* 16384 k) jo) chunk 16384 c))
+            :use ((:instance adt-pg-pput-in-page (j jo) (b (car chunk)))
+                  (:instance adt-pg-page-write-compose (b (car chunk)) (rest (cdr chunk))))))))
+
+(local
+ (defthm adt-pg-poolw-append
+   (implies (acl2-numberp i)
+            (equal (adt-pg-poolw i (append a b) q c)
+                   (adt-pg-poolw (+ i (len a)) b q (adt-pg-poolw i a q c))))
+   :hints (("Goal" :induct (adt-pg-poolw i a q c)
+            :in-theory (enable adt-pg-poolw)))))
+
+(local
+ (defthm adt-pg-append-take-nthcdr
+   (implies (and (true-listp l) (natp m) (<= m (len l)))
+            (equal (append (take m l) (nthcdr m l)) l))
+   :hints (("Goal" :induct (take m l)))))
+
+(defthm adt-pg-poolw-chunk
+  (implies (and (natp i) (consp bytes) (true-listp bytes))
+           (let ((m (min (len bytes) (- 16384 (mod i 16384)))))
+             (equal (adt-pg-poolw i bytes 16384 c)
+                    (adt-pg-poolw (+ i m) (nthcdr m bytes) 16384
+                                  (adt-pg-page-write (floor i 16384) (mod i 16384) (take m bytes) c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable floor mod adt-pg-poolw-append adt-pg-poolw-in-page)
+           :use ((:instance adt-pg-floor-mod (n i) (r 16384))
+                 (:instance adt-pg-poolw-append (a (take (min (len bytes) (- 16384 (mod i 16384))) bytes))
+                            (b (nthcdr (min (len bytes) (- 16384 (mod i 16384))) bytes))
+                            (q 16384))
+                 (:instance adt-pg-poolw-in-page (k (floor i 16384)) (jo (mod i 16384))
+                            (chunk (take (min (len bytes) (- 16384 (mod i 16384))) bytes)))))))
+
 (in-theory (disable adt-pg-poolw adt-pg-poolr))
 
 ; -----------------------------------------------------------------------------
