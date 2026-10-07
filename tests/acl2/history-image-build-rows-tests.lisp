@@ -123,3 +123,107 @@
                ((c *hibr-pending*) (ev :later))
                :fault "a row step that always shortens the pending suffix"
                :lemma hbt-cap-mut1)))
+
+; fn-his-build-row-refines-history-append (TEETH CONTRACT v1).  The claim is
+; over mv-nth of a stobj function: the witnesses are ground theorems (lemma
+; debt, TEETH-OWED-MV-CLAIM), each written with the claim's let (NEXT and the
+; free EV, H, C as lambda formals).  The stobj slot C is a ground logical
+; value; the begin value is the positive, and the removals and the pending
+; case are the existing literal fixtures above.
+(defthm hbt-append-witness
+  (and (fn-hrc-wfp (fn-his-build-begin 0 *hibr-empty*)) (fn-hrs-rel nil (fn-his-build-begin 0 *hibr-empty*))
+       (let ((next (mv-nth 1 (fn-his-build-row *hibr-event* (fn-his-build-begin 0 *hibr-empty*)))) (ev *hibr-event*) (h nil) (c (fn-his-build-begin 0 *hibr-empty*)))
+    (and (fn-hrc-wfp next)
+             (if (and (equal (fn-hrc-lo c) 0) (equal (fn-hrc-hi c) 0))
+                 (fn-hrs-rel (append h (list ev)) next)
+               (and (equal (mv-nth 0 (fn-his-build-row ev c)) '(:refused :pending-suffix))
+                    (equal next c))))))
+  :hints (("Goal" :use ((:instance fn-his-build-begin-establishes (salt 0) (fn-hrecs$c *hibr-empty*))
+                        (:instance fn-his-build-row-refines-history-append
+                                   (ev *hibr-event*) (h nil) (c (fn-his-build-begin 0 *hibr-empty*))))
+           :in-theory (disable fn-his-build-begin fn-his-build-row fn-hrc-wfp fn-hrs-rel)))
+  :rule-classes nil)
+
+(defthm hbt-append-without-wfp
+  (and (fn-hrs-rel nil (update-nth 10 3 *hibr-empty*))
+       (not (fn-hrc-wfp (update-nth 10 3 *hibr-empty*)))
+       (not (let ((next (mv-nth 1 (fn-his-build-row :later (update-nth 10 3 *hibr-empty*)))) (ev :later) (h nil) (c (update-nth 10 3 *hibr-empty*)))
+    (and (fn-hrc-wfp next)
+             (if (and (equal (fn-hrc-lo c) 0) (equal (fn-hrc-hi c) 0))
+                 (fn-hrs-rel (append h (list ev)) next)
+               (and (equal (mv-nth 0 (fn-his-build-row ev c)) '(:refused :pending-suffix))
+                    (equal next c)))))))
+  :hints (("Goal" :in-theory (enable fn-hrc-fields fn-hrc-updaters)))
+  :rule-classes nil)
+
+(defthm hbt-append-without-rel
+  (and (fn-hrc-wfp (update-nth 2 1 (update-nth 4 1 *hibr-empty*)))
+       (not (fn-hrs-rel nil (update-nth 2 1 (update-nth 4 1 *hibr-empty*))))
+       (not (let ((next (mv-nth 1 (fn-his-build-row *hibr-event* (update-nth 2 1 (update-nth 4 1 *hibr-empty*))))) (ev *hibr-event*) (h nil) (c (update-nth 2 1 (update-nth 4 1 *hibr-empty*))))
+    (and (fn-hrc-wfp next)
+             (if (and (equal (fn-hrc-lo c) 0) (equal (fn-hrc-hi c) 0))
+                 (fn-hrs-rel (append h (list ev)) next)
+               (and (equal (mv-nth 0 (fn-his-build-row ev c)) '(:refused :pending-suffix))
+                    (equal next c)))))))
+  :hints (("Goal" :in-theory (enable fn-hrc-fields fn-hrc-updaters)))
+  :rule-classes nil)
+
+(defthm hbt-append-mut1
+  (and (fn-hrc-wfp *hibr-pending*) (fn-hrs-rel (list *hibr-event*) *hibr-pending*)
+       (let ((next (mv-nth 1 (fn-his-build-row :later *hibr-pending*))) (ev :later) (h (list *hibr-event*)) (c *hibr-pending*))
+    (and (fn-hrc-wfp next)
+             (if (and (equal (fn-hrc-lo c) 0) (equal (fn-hrc-hi c) 0))
+                 (fn-hrs-rel (append h (list ev)) next)
+               (and (equal (mv-nth 0 (fn-his-build-row ev c)) '(:refused :pending-suffix))
+                    (equal next c)))))
+       (not (let ((next (mv-nth 1 (fn-his-build-row :later *hibr-pending*))) (ev :later) (h (list *hibr-event*)))
+    (and (fn-hrc-wfp next)
+             (fn-hrs-rel (append h (list ev)) next)))))
+  :rule-classes nil)
+
+(defthm hbt-append-mut2
+  (and (fn-hrc-wfp *hibr-pending*) (fn-hrs-rel (list *hibr-event*) *hibr-pending*)
+       (let ((next (mv-nth 1 (fn-his-build-row :later *hibr-pending*))) (ev :later) (h (list *hibr-event*)) (c *hibr-pending*))
+    (and (fn-hrc-wfp next)
+             (if (and (equal (fn-hrc-lo c) 0) (equal (fn-hrc-hi c) 0))
+                 (fn-hrs-rel (append h (list ev)) next)
+               (and (equal (mv-nth 0 (fn-his-build-row ev c)) '(:refused :pending-suffix))
+                    (equal next c)))))
+       (not (let ((next (mv-nth 1 (fn-his-build-row :later *hibr-pending*))) (ev :later) (h (list *hibr-event*)) (c *hibr-pending*))
+    (and (fn-hrc-wfp next)
+             (if (and (equal (fn-hrc-lo c) 0) (equal (fn-hrc-hi c) 0))
+                 (fn-hrs-rel (append h (list ev)) next)
+               (and (equal (mv-nth 0 (fn-his-build-row ev c)) '(:refused :pending-suffix))
+                    (not (equal next c))))))))
+  :rule-classes nil)
+
+(defteeth fn-his-build-row-refines-history-append
+  :claim (((wfp (fn-hrc-wfp c)) (rel (fn-hrs-rel h c)))
+          (let ((next (mv-nth 1 (fn-his-build-row ev c))))
+    (and (fn-hrc-wfp next)
+             (if (and (equal (fn-hrc-lo c) 0) (equal (fn-hrc-hi c) 0))
+                 (fn-hrs-rel (append h (list ev)) next)
+               (and (equal (mv-nth 0 (fn-his-build-row ev c)) '(:refused :pending-suffix))
+                    (equal next c))))))
+  :subject fn-his-build-row
+  :witness-lemma hbt-append-witness
+  :witness ((c (fn-his-build-begin 0 *hibr-empty*)) (h nil) (ev *hibr-event*))
+  :breaks ((wfp ((c (update-nth 10 3 *hibr-empty*)) (h nil) (ev :later)) :lemma hbt-append-without-wfp)
+           (rel ((c (update-nth 2 1 (update-nth 4 1 *hibr-empty*))) (h nil) (ev *hibr-event*)) :lemma hbt-append-without-rel))
+  :mutations ((refusal-is-an-append
+               (:conclusion (let ((next (mv-nth 1 (fn-his-build-row ev c))))
+    (and (fn-hrc-wfp next)
+             (fn-hrs-rel (append h (list ev)) next))))
+               ((c *hibr-pending*) (h (list *hibr-event*)) (ev :later))
+               :fault "a row step that claims to append even while a suffix is pending"
+               :lemma hbt-append-mut1)
+              (refusal-changes-the-state
+               (:conclusion (let ((next (mv-nth 1 (fn-his-build-row ev c))))
+    (and (fn-hrc-wfp next)
+             (if (and (equal (fn-hrc-lo c) 0) (equal (fn-hrc-hi c) 0))
+                 (fn-hrs-rel (append h (list ev)) next)
+               (and (equal (mv-nth 0 (fn-his-build-row ev c)) '(:refused :pending-suffix))
+                    (not (equal next c)))))))
+               ((c *hibr-pending*) (h (list *hibr-event*)) (ev :later))
+               :fault "a refusal that claims to change the state"
+               :lemma hbt-append-mut2)))
