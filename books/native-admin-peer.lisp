@@ -753,48 +753,11 @@ the address and which has no port or TLS mode of its own."
 ; grows one row per `peer carries' request (PRF-171, D27: no row cap), so
 ; the recursions took one control-stack frame per row.  The :logic is the
 ; recursion, unchanged; the :exec is a loop, equal by the local lemma.
-(defun fn-native-admin-peer-slot-values-loop (rows slot acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rows)
-      (fn-native-admin-peer-slot-values-loop
-       (cdr rows) slot
-       (if (equal (fn-cfg-row-b (car rows)) slot)
-           (cons (fn-cfg-row-c (car rows)) acc)
-         acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-native-admin-peer-slot-values (rows slot)
-  "The value of every row of ROWS whose slot label is SLOT, in row order."
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp rows)
-           (if (equal (fn-cfg-row-b (car rows)) slot)
-               (cons (fn-cfg-row-c (car rows))
-                     (fn-native-admin-peer-slot-values (cdr rows) slot))
-             (fn-native-admin-peer-slot-values (cdr rows) slot))
-         nil)
-       :exec (fn-native-admin-peer-slot-values-loop rows slot nil)))
-
-(local
- (defthm fn-native-admin-peer-slot-values-loop-is-rev-onto
-   (equal (fn-native-admin-peer-slot-values-loop rows slot acc)
-          (fn-ag-rev-onto acc (fn-native-admin-peer-slot-values rows slot)))
-   :hints (("Goal" :induct (fn-native-admin-peer-slot-values-loop rows slot acc)
-                   :in-theory (union-theories
-                               '(fn-native-admin-peer-slot-values-loop
-                                 fn-native-admin-peer-slot-values fn-ag-rev-onto
-                                 car-cons cdr-cons)
-                               (theory 'minimal-theory))))))
-
-(verify-guards fn-native-admin-peer-slot-values-loop)
-
-(verify-guards fn-native-admin-peer-slot-values
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-native-admin-peer-slot-values
-                                fn-native-admin-peer-slot-values-loop-is-rev-onto
-                                fn-ag-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+; The value of every row of ROWS whose slot label is SLOT, in row order.
+(def-loop fn-native-admin-peer-slot-values (rows slot)
+  :shape :map :over rows :elt r
+  :keep (equal (fn-cfg-row-b r) slot)
+  :body (fn-cfg-row-c r))
 
 (defun fn-native-admin-peer-list-octets-loop (head rev acc)
   (declare (xargs :guard (true-listp head) :verify-guards nil))

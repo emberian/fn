@@ -15811,19 +15811,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cp-remove-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cu-unhex-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
           "name": "fn-exp-cidrs-of-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-fc-table-remove-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -15939,19 +15931,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-pa-carried-sources-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pcb-slot-superseded-rows-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-pull-pending-envelope-loop-of-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sched-pull-put-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16020,10 +16000,6 @@
         {
           "kind": "theorem",
           "name": "fn-tlsr-split-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wildmat-false-row-loop-is-rev-onto"
         },
         {
           "kind": "theorem",

@@ -4,6 +4,7 @@
 
 (in-package "ACL2")
 (include-book "hybrid-store")
+(include-book "def-loop")
 
 (defconst *fn-hl-revoked-profile* *fn-hsig-revoked-profile*)
 ; "fn-hybrid-revoked-v1"; payload is exactly the 32-octet principal
@@ -105,42 +106,9 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-hl-history-rows-loop (remaining history acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp remaining)
-      (fn-hl-history-rows-loop (cdr remaining)
-                               history
-                               (cons (fn-hl-history-row (car remaining) history) acc))
-    (revappend acc nil)))
-
-(defun fn-hl-history-rows (remaining history)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp remaining)
-           (cons (fn-hl-history-row (car remaining) history)
-                 (fn-hl-history-rows (cdr remaining) history))
-         nil)
-       :exec (fn-hl-history-rows-loop remaining history nil)))
-
-(local
- (defthm fn-hl-history-rows-loop-is-revappend
-   (equal (fn-hl-history-rows-loop remaining history acc)
-          (revappend acc (fn-hl-history-rows remaining history)))
-   :hints (("Goal" :induct (fn-hl-history-rows-loop remaining history acc)
-                   :in-theory (union-theories '(fn-hl-history-rows-loop fn-hl-history-rows revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-hl-history-rows-loop)
-
-(verify-guards fn-hl-history-rows
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-hl-history-rows)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-hl-history-rows-loop-is-revappend (acc nil))))))
-
+(def-loop fn-hl-history-rows (remaining history)
+  :shape :map :over remaining :elt r
+  :body (fn-hl-history-row r history))
 
 (defthm fn-hl-current-for-principal-of-other-principal
   (implies (not (equal principal

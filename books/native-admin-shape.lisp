@@ -11,6 +11,7 @@
 
 (in-package "ACL2")
 (include-book "records-shape")
+(include-book "def-loop")
 (include-book "acceptance-alloc")
 (include-book "byte-store-txn-name")
 ; fan-in-cuts (lane/fan-in-cuts) moves byte-store-txn-name onto a leaf seam,
@@ -51,27 +52,9 @@
 ; PKT-867: the argv has no word bound, so its walks run in constant stack:
 ; each non-tail walk is an (mbe :logic RECURSION :exec LOOP) with the lemma
 ; equating them (the loop-twin rule, tools/depth_check.py).
-(defun fn-native-admin-words-loop (argv acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp argv)
-      (fn-native-admin-words-loop (cdr argv)
-                                  (cons (fn-record-octets-string (car argv)) acc))
-    (revappend acc nil)))
-
-(defun fn-native-admin-words (argv)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp argv)
-                  (cons (fn-record-octets-string (car argv))
-                        (fn-native-admin-words (cdr argv)))
-                nil)
-       :exec (fn-native-admin-words-loop argv nil)))
-
-(local
- (defthm fn-native-admin-words-loop-is-revappend
-   (equal (fn-native-admin-words-loop argv acc)
-          (revappend acc (fn-native-admin-words argv)))))
-
-(verify-guards fn-native-admin-words)
+(def-loop fn-native-admin-words (argv)
+  :shape :map :over argv :elt a
+  :body (fn-record-octets-string a))
 
 (defun fn-native-admin-digit-value (char)
   (declare (xargs :guard t))
