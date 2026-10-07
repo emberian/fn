@@ -24,7 +24,7 @@
       (if row (acons generation row rest) rest) state)))
 (defun fn-owner-hroot-resize (generation amount state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((r (fn-mcr-resize (fn-owner-credits state) (fn-hroot-credit-key generation) amount)))
+  (let ((r (fn-mcr-hroot-resize (fn-owner-credits state) (fn-hroot-credit-key generation) amount)))
     (if (eq (car r) :ok)
         (let ((state (fn-owner-put-credits (cadr r) state)))
           (mv :funded state))

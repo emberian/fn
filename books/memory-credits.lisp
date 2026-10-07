@@ -84,9 +84,10 @@
 
 (verify-guards fn-mcr-ops-credit)
 
-(defun fn-mcr-make (budget base cache completion runtime drawn ops)
+(defun fn-mcr-make (budget base cache completion runtime drawn ops hroot hroots)
   (declare (xargs :guard t))
-  (list (nfix budget) (nfix base) (nfix cache) (nfix completion) (nfix runtime) (nfix drawn) ops))
+  (list (nfix budget) (nfix base) (nfix cache) (nfix completion) (nfix runtime) (nfix drawn) ops
+        (nfix hroot) hroots))
 
 (defun fn-mcr-budget (l) (declare (xargs :guard t)) (nfix (nth 0 (true-list-fix l))))
 (defun fn-mcr-base (l) (declare (xargs :guard t)) (nfix (nth 1 (true-list-fix l))))
@@ -95,13 +96,17 @@
 (defun fn-mcr-runtime (l) (declare (xargs :guard t)) (nfix (nth 4 (true-list-fix l))))
 (defun fn-mcr-drawn (l) (declare (xargs :guard t)) (nfix (nth 5 (true-list-fix l))))
 (defun fn-mcr-ops (l) (declare (xargs :guard t)) (nth 6 (true-list-fix l)))
+; The history-root reserve and the roots drawing it (an alist shaped like OPS,
+; so the credit of a root is fn-mcr-credit-of over it).
+(defun fn-mcr-hroot (l) (declare (xargs :guard t)) (nfix (nth 7 (true-list-fix l))))
+(defun fn-mcr-hroots (l) (declare (xargs :guard t)) (nth 8 (true-list-fix l)))
 
 ; The funded total: every term of the equation.  The completion reserve is
 ; funded whole whether or not it is drawn (what is drawn of it is inside it).
 (defun fn-mcr-total (l)
   (declare (xargs :guard t))
   (+ (fn-mcr-base l) (fn-mcr-cache l) (fn-mcr-ops-credit (fn-mcr-ops l))
-     (fn-mcr-completion l) (fn-mcr-runtime l)))
+     (fn-mcr-completion l) (fn-mcr-runtime l) (fn-mcr-hroot l)))
 
 ; One entry an operation: each operation's credit is counted once.
 (defun fn-mcr-opsp (ops)
@@ -111,13 +116,15 @@
 (defun fn-mcr-fundedp (l)
   (declare (xargs :guard t))
   (and (fn-mcr-opsp (fn-mcr-ops l))
+       (fn-mcr-opsp (fn-mcr-hroots l))
        (<= (fn-mcr-total l) (fn-mcr-budget l))
-       (<= (fn-mcr-drawn l) (fn-mcr-completion l))))
+       (<= (fn-mcr-drawn l) (fn-mcr-completion l))
+       (<= (fn-mcr-ops-credit (fn-mcr-hroots l)) (fn-mcr-hroot l))))
 
 (defun fn-mcr-with (l cache drawn ops)
   (declare (xargs :guard t))
   (fn-mcr-make (fn-mcr-budget l) (fn-mcr-base l) cache (fn-mcr-completion l)
-               (fn-mcr-runtime l) drawn ops))
+               (fn-mcr-runtime l) drawn ops (fn-mcr-hroot l) (fn-mcr-hroots l)))
 
 (defun fn-mcr-op (id ops)
   (declare (xargs :guard t))
@@ -262,10 +269,13 @@
        (equal (fn-mcr-completion (fn-mcr-with l c d o)) (fn-mcr-completion l))
        (equal (fn-mcr-runtime (fn-mcr-with l c d o)) (fn-mcr-runtime l))
        (equal (fn-mcr-drawn (fn-mcr-with l c d o)) (nfix d))
-       (equal (fn-mcr-ops (fn-mcr-with l c d o)) o)))
+       (equal (fn-mcr-ops (fn-mcr-with l c d o)) o)
+       (equal (fn-mcr-hroot (fn-mcr-with l c d o)) (fn-mcr-hroot l))
+       (equal (fn-mcr-hroots (fn-mcr-with l c d o)) (fn-mcr-hroots l))))
 
 (in-theory (disable fn-mcr-with fn-mcr-budget fn-mcr-base fn-mcr-cache fn-mcr-completion
-                    fn-mcr-runtime fn-mcr-drawn fn-mcr-ops fn-mcr-put fn-mcr-drop))
+                    fn-mcr-runtime fn-mcr-drawn fn-mcr-ops fn-mcr-hroot fn-mcr-hroots
+                    fn-mcr-put fn-mcr-drop))
 
 ; -----------------------------------------------------------------------------
 ; The contract.
@@ -476,7 +486,9 @@
   (declare (xargs :guard t))
   (and (equal (fn-mcr-budget l1) (fn-mcr-budget l))
        (equal (fn-mcr-completion l1) (fn-mcr-completion l))
-       (equal (fn-mcr-drawn l1) (fn-mcr-drawn l))))
+       (equal (fn-mcr-drawn l1) (fn-mcr-drawn l))
+       (equal (fn-mcr-hroot l1) (fn-mcr-hroot l))
+       (equal (fn-mcr-hroots l1) (fn-mcr-hroots l))))
 
 ;; What every admitted resize and move leaves as it was.
 (defthm fn-mcr-resize-and-move-keep-the-rest
@@ -529,35 +541,41 @@
           (t (list :ok (fn-mcr-make (fn-mcr-budget l) (fn-mcr-base l) (fn-mcr-cache l)
                                     (- (fn-mcr-completion l) x) (fn-mcr-runtime l)
                                     (fn-mcr-drawn l)
-                                    (fn-mcr-put id (cons 0 x) (fn-mcr-ops l))))))))
+                                    (fn-mcr-put id (cons 0 x) (fn-mcr-ops l))
+                                    (fn-mcr-hroot l) (fn-mcr-hroots l)))))))
 
 (defun fn-mcr-return (l id)
   (declare (xargs :guard t))
   (list :ok (fn-mcr-make (fn-mcr-budget l) (fn-mcr-base l) (fn-mcr-cache l)
                          (+ (fn-mcr-completion l) (fn-mcr-credit-of id (fn-mcr-ops l)))
                          (fn-mcr-runtime l) (fn-mcr-drawn l)
-                         (fn-mcr-drop id (fn-mcr-ops l)))))
+                         (fn-mcr-drop id (fn-mcr-ops l))
+                         (fn-mcr-hroot l) (fn-mcr-hroots l))))
 
 (local
  (defthm fn-mcr-accessors-of-make
-   (and (equal (fn-mcr-budget (fn-mcr-make b ba c co r d o)) (nfix b))
-        (equal (fn-mcr-base (fn-mcr-make b ba c co r d o)) (nfix ba))
-        (equal (fn-mcr-cache (fn-mcr-make b ba c co r d o)) (nfix c))
-        (equal (fn-mcr-completion (fn-mcr-make b ba c co r d o)) (nfix co))
-        (equal (fn-mcr-runtime (fn-mcr-make b ba c co r d o)) (nfix r))
-        (equal (fn-mcr-drawn (fn-mcr-make b ba c co r d o)) (nfix d))
-        (equal (fn-mcr-ops (fn-mcr-make b ba c co r d o)) o))
+   (and (equal (fn-mcr-budget (fn-mcr-make b ba c co r d o h hs)) (nfix b))
+        (equal (fn-mcr-base (fn-mcr-make b ba c co r d o h hs)) (nfix ba))
+        (equal (fn-mcr-cache (fn-mcr-make b ba c co r d o h hs)) (nfix c))
+        (equal (fn-mcr-completion (fn-mcr-make b ba c co r d o h hs)) (nfix co))
+        (equal (fn-mcr-runtime (fn-mcr-make b ba c co r d o h hs)) (nfix r))
+        (equal (fn-mcr-drawn (fn-mcr-make b ba c co r d o h hs)) (nfix d))
+        (equal (fn-mcr-ops (fn-mcr-make b ba c co r d o h hs)) o)
+        (equal (fn-mcr-hroot (fn-mcr-make b ba c co r d o h hs)) (nfix h))
+        (equal (fn-mcr-hroots (fn-mcr-make b ba c co r d o h hs)) hs))
    :hints (("Goal" :in-theory (enable fn-mcr-budget fn-mcr-base fn-mcr-cache
                                       fn-mcr-completion fn-mcr-runtime fn-mcr-drawn
-                                      fn-mcr-ops)))))
+                                      fn-mcr-ops fn-mcr-hroot fn-mcr-hroots)))))
 
 (local
  (defthm fn-mcr-accessors-natp
    (and (natp (fn-mcr-budget l)) (natp (fn-mcr-base l)) (natp (fn-mcr-cache l))
-        (natp (fn-mcr-completion l)) (natp (fn-mcr-runtime l)) (natp (fn-mcr-drawn l)))
+        (natp (fn-mcr-completion l)) (natp (fn-mcr-runtime l)) (natp (fn-mcr-drawn l))
+        (natp (fn-mcr-hroot l)))
    :rule-classes nil
    :hints (("Goal" :in-theory (enable fn-mcr-budget fn-mcr-base fn-mcr-cache
-                                      fn-mcr-completion fn-mcr-runtime fn-mcr-drawn)))))
+                                      fn-mcr-completion fn-mcr-runtime fn-mcr-drawn
+                                      fn-mcr-hroot)))))
 
 (local
  (defthm fn-mcr-nfix-of-accessors
@@ -566,7 +584,8 @@
         (equal (nfix (fn-mcr-cache l)) (fn-mcr-cache l))
         (equal (nfix (fn-mcr-completion l)) (fn-mcr-completion l))
         (equal (nfix (fn-mcr-runtime l)) (fn-mcr-runtime l))
-        (equal (nfix (fn-mcr-drawn l)) (fn-mcr-drawn l)))
+        (equal (nfix (fn-mcr-drawn l)) (fn-mcr-drawn l))
+        (equal (nfix (fn-mcr-hroot l)) (fn-mcr-hroot l)))
    :hints (("Goal" :use fn-mcr-accessors-natp))))
 
 (local (in-theory (disable fn-mcr-make)))
@@ -668,6 +687,15 @@
         (equal (fn-mcr-ops (cadr (fn-mcr-return l id))) (fn-mcr-drop id (fn-mcr-ops l))))
    :hints (("Goal" :in-theory (enable fn-mcr-borrow fn-mcr-return)))))
 
+(local
+ (defthm fn-mcr-borrow-and-return-keep-the-roots
+   (and (implies (equal (car (fn-mcr-borrow l id x)) :ok)
+                 (and (equal (fn-mcr-hroots (cadr (fn-mcr-borrow l id x))) (fn-mcr-hroots l))
+                      (equal (fn-mcr-hroot (cadr (fn-mcr-borrow l id x))) (fn-mcr-hroot l))))
+        (equal (fn-mcr-hroots (cadr (fn-mcr-return l id))) (fn-mcr-hroots l))
+        (equal (fn-mcr-hroot (cadr (fn-mcr-return l id))) (fn-mcr-hroot l)))
+   :hints (("Goal" :in-theory (enable fn-mcr-borrow fn-mcr-return)))))
+
 ; KEYSTONE (K5).  From a funded ledger an admitted borrow and every return
 ; leave it funded.
 (defthm fn-mcr-borrow-and-return-keep-funded
@@ -680,8 +708,9 @@
                                    fn-mcr-borrow-refuses-exactly-past-the-reserve
                                    fn-mcr-borrow-sets-the-credit
                                    fn-mcr-return-gives-back-the-credit
-                                   fn-mcr-borrow-keeps-the-total))
-           :use (fn-mcr-borrow-keeps-the-total
+                                   fn-mcr-borrow-keeps-the-total
+                                   fn-mcr-borrow-and-return-keep-the-roots))
+           :use (fn-mcr-borrow-keeps-the-total fn-mcr-borrow-and-return-keep-the-roots
                  fn-mcr-borrow-refuses-exactly-past-the-reserve
                  (:instance fn-mcr-borrow-sets-the-credit (a id))
                  (:instance fn-mcr-return-gives-back-the-credit (a id))
@@ -704,3 +733,175 @@
   :hints (("Goal" :in-theory (e/d (fn-mcr-opsp) (fn-mcr-total)))))
 
 (in-theory (disable fn-mcr-borrow fn-mcr-return))
+
+; -----------------------------------------------------------------------------
+; The HISTORY-ROOT RESERVE (lane mem10-hroot, 2026-10-07; MEM-010, MEM-011;
+; planning/design/history-root-reserve-2026-10-07.md).  The live history
+; roots (one generation retained while the next is built) are funded from
+; HROOT, a reserve the figure sizes and the total counts whole whether or not
+; it is drawn, as the completion reserve is.  A root's credit is an entry of
+; HROOTS (shaped like OPS); drawing it never touches the budget's free room,
+; which is what the articles are admitted against.
+;
+;   fn-mcr-hroot-resize id N   the root ID now needs N: shrinking is never
+;                              refused (N = 0 releases it); growing is
+;                              admitted exactly when the roots' credits, with
+;                              ID's at N, fit the reserve, refused
+;                              :history-root-reserve-exhausted by name
+;                              otherwise, the ledger unchanged.  The funded
+;                              total and every other field are unchanged.
+(defun fn-mcr-hroot-sum-with (l id n)
+  (declare (xargs :guard t))
+  (+ (- (fn-mcr-ops-credit (fn-mcr-hroots l)) (fn-mcr-credit-of id (fn-mcr-hroots l)))
+     (nfix n)))
+
+(defun fn-mcr-with-hroots (l roots)
+  (declare (xargs :guard t))
+  (fn-mcr-make (fn-mcr-budget l) (fn-mcr-base l) (fn-mcr-cache l) (fn-mcr-completion l)
+               (fn-mcr-runtime l) (fn-mcr-drawn l) (fn-mcr-ops l) (fn-mcr-hroot l) roots))
+
+(defun fn-mcr-hroot-resize (l id n)
+  (declare (xargs :guard t))
+  (let ((roots (fn-mcr-hroots l)))
+    (if (and (< (fn-mcr-credit-of id roots) (nfix n))
+             (< (fn-mcr-hroot l) (fn-mcr-hroot-sum-with l id n)))
+        (list :refused :history-root-reserve-exhausted)
+      (list :ok (fn-mcr-with-hroots l (fn-mcr-set id n roots))))))
+
+(defun fn-mcr-free (l)
+  (declare (xargs :guard t))
+  (- (fn-mcr-budget l) (fn-mcr-total l)))
+
+(local
+ (defthm fn-mcr-fields-of-with-hroots
+   (and (equal (fn-mcr-budget (fn-mcr-with-hroots l r)) (fn-mcr-budget l))
+        (equal (fn-mcr-base (fn-mcr-with-hroots l r)) (fn-mcr-base l))
+        (equal (fn-mcr-cache (fn-mcr-with-hroots l r)) (fn-mcr-cache l))
+        (equal (fn-mcr-completion (fn-mcr-with-hroots l r)) (fn-mcr-completion l))
+        (equal (fn-mcr-runtime (fn-mcr-with-hroots l r)) (fn-mcr-runtime l))
+        (equal (fn-mcr-drawn (fn-mcr-with-hroots l r)) (fn-mcr-drawn l))
+        (equal (fn-mcr-ops (fn-mcr-with-hroots l r)) (fn-mcr-ops l))
+        (equal (fn-mcr-hroot (fn-mcr-with-hroots l r)) (fn-mcr-hroot l))
+        (equal (fn-mcr-hroots (fn-mcr-with-hroots l r)) r))
+   :hints (("Goal" :in-theory (enable fn-mcr-with-hroots)))))
+
+(in-theory (disable fn-mcr-with-hroots fn-mcr-hroot-sum-with fn-mcr-free))
+
+; Admitted exactly when shrinking, or when the roots with ID at N fit the reserve.
+(defthm fn-mcr-hroot-resize-refuses-exactly-past-the-reserve
+  (equal (equal (car (fn-mcr-hroot-resize l id n)) :ok)
+         (or (<= (nfix n) (fn-mcr-credit-of id (fn-mcr-hroots l)))
+             (<= (fn-mcr-hroot-sum-with l id n) (fn-mcr-hroot l)))))
+
+; A refusal is by name.
+(defthm fn-mcr-hroot-resize-refused-by-name
+  (implies (not (equal (car (fn-mcr-hroot-resize l id n)) :ok))
+           (equal (fn-mcr-hroot-resize l id n)
+                  '(:refused :history-root-reserve-exhausted))))
+
+; KEYSTONE (K1).  A root draws only the reserve: whatever an admitted resize
+; does, the funded total, the budget's free room, the operations, the cache
+; and the completion reserve are as they were.
+(defthm fn-mcr-hroot-resize-leaves-the-pool-and-the-total
+  (implies (equal (car (fn-mcr-hroot-resize l id n)) :ok)
+           (let ((l2 (cadr (fn-mcr-hroot-resize l id n))))
+             (and (equal (fn-mcr-total l2) (fn-mcr-total l))
+                  (equal (fn-mcr-free l2) (fn-mcr-free l))
+                  (equal (fn-mcr-budget l2) (fn-mcr-budget l))
+                  (equal (fn-mcr-ops l2) (fn-mcr-ops l))
+                  (equal (fn-mcr-cache l2) (fn-mcr-cache l))
+                  (equal (fn-mcr-completion l2) (fn-mcr-completion l))
+                  (equal (fn-mcr-drawn l2) (fn-mcr-drawn l))
+                  (equal (fn-mcr-hroot l2) (fn-mcr-hroot l)))))
+  :hints (("Goal" :in-theory (enable fn-mcr-hroot-resize fn-mcr-free fn-mcr-total))))
+
+; An admitted resize sets the root's credit and leaves every other root's.
+(defthm fn-mcr-hroot-resize-sets-the-credit
+  (implies (equal (car (fn-mcr-hroot-resize l id n)) :ok)
+           (let ((l2 (cadr (fn-mcr-hroot-resize l id n))))
+             (and (equal (fn-mcr-credit-of id (fn-mcr-hroots l2)) (nfix n))
+                  (implies (not (equal a id))
+                           (equal (fn-mcr-credit-of a (fn-mcr-hroots l2))
+                                  (fn-mcr-credit-of a (fn-mcr-hroots l)))))))
+  :hints (("Goal" :in-theory (enable fn-mcr-hroot-resize))))
+
+;; The roots' credits sum to what the resize says they do.
+(defthm fn-mcr-hroot-resize-sets-the-sum
+  (implies (and (fn-mcr-opsp (fn-mcr-hroots l))
+                (equal (car (fn-mcr-hroot-resize l id n)) :ok))
+           (equal (fn-mcr-ops-credit (fn-mcr-hroots (cadr (fn-mcr-hroot-resize l id n))))
+                  (fn-mcr-hroot-sum-with l id n)))
+  :hints (("Goal" :in-theory (e/d (fn-mcr-hroot-resize fn-mcr-hroot-sum-with) (fn-mcr-opsp))
+           :use ((:instance fn-mcr-ops-credit-splits-at (ops (fn-mcr-hroots l)))))))
+
+; KEYSTONE (K1).  An admitted resize keeps a funded ledger funded.
+(defthm fn-mcr-hroot-resize-keeps-funded
+  (implies (and (fn-mcr-fundedp l)
+                (equal (car (fn-mcr-hroot-resize l id n)) :ok))
+           (fn-mcr-fundedp (cadr (fn-mcr-hroot-resize l id n))))
+  :hints (("Goal" :in-theory (e/d (fn-mcr-fundedp fn-mcr-hroot-resize fn-mcr-hroot-sum-with)
+                                  (fn-mcr-total fn-mcr-opsp))
+           :use ((:instance fn-mcr-ops-credit-splits-at (ops (fn-mcr-hroots l)))
+                 (:instance fn-mcr-opsp-of-set (ops (fn-mcr-hroots l)))
+                 fn-mcr-hroot-resize-leaves-the-pool-and-the-total))))
+
+(in-theory (disable fn-mcr-hroot-resize))
+
+; The resize of a connection's credit does not see the roots: whatever an
+; admitted root resize did, a resize of any operation is admitted exactly as
+; it was before it.
+(defthm fn-mcr-resize-ignores-the-roots
+  (implies (equal (car (fn-mcr-hroot-resize l id n)) :ok)
+           (and (equal (equal (car (fn-mcr-resize (cadr (fn-mcr-hroot-resize l id n)) k m)) :ok)
+                       (equal (car (fn-mcr-resize l k m)) :ok))
+                (equal (fn-mcr-credit-of k (fn-mcr-ops (cadr (fn-mcr-hroot-resize l id n))))
+                       (fn-mcr-credit-of k (fn-mcr-ops l)))))
+  :hints (("Goal" :in-theory (disable fn-mcr-hroot-resize fn-mcr-total fn-mcr-resize)
+           :use (fn-mcr-hroot-resize-leaves-the-pool-and-the-total
+                 (:instance fn-mcr-resize-refuses-exactly-past-the-budget
+                            (l (cadr (fn-mcr-hroot-resize l id n))) (id k) (n m))
+                 (:instance fn-mcr-resize-refuses-exactly-past-the-budget (id k) (n m))))))
+
+; TEETH (the CONVERGE-2 refusal, hbox:/tank/fn/scratch/n-mem10/r2.log).  The
+; ledger as it was: roots drawn from the free room (an empty reserve): the
+; candidate's ask of 1,792,688 beside generation 1's 2,239,432 and its own
+; 693,888 is refused :memory-budget-exhausted: the roots hold 2,933,320 of the
+; profile's 3,441,664 article octets and 508,344 is free.  The same figures with a reserve for
+; the roots: both generations fit, the free room is untouched, and the
+; article pool is still admitted whole.
+(defthm fn-mcr-hroot-teeth-the-old-draw-refuses-the-candidate
+  (let ((old (fn-mcr-make 5624942530 2815331266 0 2789392384 16777216 0
+                          (list (cons (cons :history-root 1) (cons 0 2239432))
+                                (cons (cons :history-root 2) (cons 0 693888)))
+                          0 nil)))
+    (and (fn-mcr-fundedp old)
+         (equal (fn-mcr-free old) 508344)
+         (equal (fn-mcr-resize old (cons :history-root 2) 1792688)
+                '(:refused :memory-budget-exhausted))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-mcr-fundedp fn-mcr-free fn-mcr-total fn-mcr-resize
+                                     fn-mcr-make fn-mcr-budget fn-mcr-base fn-mcr-cache
+                                     fn-mcr-completion fn-mcr-runtime fn-mcr-drawn fn-mcr-ops
+                                     fn-mcr-hroot fn-mcr-hroots fn-mcr-opsp fn-mcr-ops-credit
+                                     fn-mcr-ops-credit-onto fn-mcr-credit-of fn-mcr-op-owned
+                                     fn-mcr-op-reserved fn-mcr-with fn-mcr-set fn-mcr-put fn-mcr-drop))))
+
+(defthm fn-mcr-hroot-teeth-the-reserve-admits-it-and-spares-the-pool
+  (let* ((new (fn-mcr-make 5624942530 2815331266 0 2789392384 16777216 0 nil
+                           4194304 nil))
+         (g1 (cadr (fn-mcr-hroot-resize new (cons :history-root 1) 2239432)))
+         (g2 (cadr (fn-mcr-hroot-resize g1 (cons :history-root 2) 1792688))))
+    (and (equal (car (fn-mcr-hroot-resize new (cons :history-root 1) 2239432)) :ok)
+         (equal (car (fn-mcr-hroot-resize g1 (cons :history-root 2) 1792688)) :ok)
+         (equal (fn-mcr-free g2) (fn-mcr-free new))
+         ;; the reserve is a real limit: one octet past it is refused by name
+         (equal (fn-mcr-hroot-resize g2 (cons :history-root 3) 162185)
+                '(:refused :history-root-reserve-exhausted))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-mcr-hroot-resize fn-mcr-hroot-sum-with fn-mcr-free
+                                     fn-mcr-total fn-mcr-make fn-mcr-budget fn-mcr-base
+                                     fn-mcr-cache fn-mcr-completion fn-mcr-runtime fn-mcr-drawn
+                                     fn-mcr-ops fn-mcr-hroot fn-mcr-hroots fn-mcr-with-hroots
+                                     fn-mcr-ops-credit fn-mcr-ops-credit-onto fn-mcr-credit-of
+                                     fn-mcr-op-owned fn-mcr-op-reserved fn-mcr-set fn-mcr-put
+                                     fn-mcr-drop))))

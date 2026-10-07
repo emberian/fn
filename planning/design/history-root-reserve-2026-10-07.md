@@ -140,3 +140,63 @@ books/memory-credits.lisp (field, resize, K1) -> books/owner-credits.lisp (initi
 (shape demand lemmas, K2) -> books/heap-store-figure.lisp (term, re-proved keystones) -> host/history-root-host.lisp (calls
 only) -> farm certify --affected-by, host_check --load, interface_emit, world.py --check. Native red-before/green-after
 (N's): capacity_free and kill_mid_catch_up, exact command in READY.
+
+---
+
+## Phase 2 (N's GO, three conditions) -- as built, 2026-10-07
+
+### As built
+- Figure term: `fn-heap-hroot-reserve-octets` (books/heap-store-figure.lisp) = 2 x `fn-heap-hroot-demand-bound`, one summand of
+  `fn-heap-store-base-octets`. Demand bound = 2 x memory bound + 64(1+T) + image(npages) + 96(8 + 2R); memory bound = image(npages) + 8T + 4096;
+  npages = 1 + 4 ceil(T/2048) + ceil(H/16384); `fn-heap-hroot-image-octets` counts every array of the nested page store (data, table,
+  flags, table flags, a directory), which `fn-hroot-page-octets` does not (teeth: `fn-hroot-figure-image-exceeds-the-credits-page-figure`).
+  The tail credit (`:history-root-tail`, `:history-root-lease`, `:history-root-read`) STAYS in the ops credit (owed item 4 below).
+- Ledger: `fn-mcr-make` has two more fields, `hroot` (the reserve, counted whole in `fn-mcr-total`, `fn-mcr-fundedp` bounds the roots by it) and
+  `hroots` (an ops-shaped alist). `fn-mcr-hroot-resize`; host/history-root-host.lisp `fn-owner-hroot-resize` calls it. `fn-mca-initial` funds the reserve
+  out of the base, so `budget - total` is still exactly the article pool.
+- Keystones: books/memory-credits.lisp K1 (`fn-mcr-hroot-resize-leaves-the-pool-and-the-total`, `...-refuses-exactly-past-the-reserve`,
+  `...-keeps-funded`, `fn-mcr-resize-ignores-the-roots`) with the two TEETH witnesses at the CONVERGE-2 numbers; books/owner-credits.lisp K3
+  `fn-mca-roots-draw-the-reserve-and-never-the-articles` (reserve drawn whole, free room still the pool, pool admitted whole, one octet past refused by
+  name) and `fn-mca-initial-funds-exactly-the-articles` extended; books/history-root-figure.lisp K2 (`fn-hroot-{event,grow,retain,tail}-demand-within-the-bound`,
+  `fn-hroot-two-generations-fit-the-reserve`, teeth `fn-hroot-bound-is-reached-by-the-tail-at-the-shape`).
+
+### Condition 1: the figure delta (core 512 MiB, nursery 8 MiB; the core cancels)
+Old = before this lane; new = with the reserve. MB = SBCL megabytes rounded up. hbox `init` budget 24,553 MB.
+
+| preset | T | H | record ceiling R | old | + roots only (images) | + roots, event allowance (as built) | within 24,553 MB |
+|---|---|---|---|---|---|---|---|
+| small | 16384 | 8 MiB | 196,608 | 924 | 978 | 1,050 (reserve 126 MiB) | yes -> yes |
+| development | 128 | 24 MiB | 17,138,486 | 2,634 | 2,779 | 9,056 | yes -> yes |
+| scale | 4096 | 768 MiB | 17,138,486 | 16,065 | 20,692 | 26,970 | **yes -> NO** |
+| default | 2^32-1 | 1 TiB | 67,108,864 | 61,545,747 | 69,306,734 | 69,331,310 | no -> no (already ~2,500x over) |
+
+The default preset was out of budget before and after; it is not a transition. **Scale is**: the images alone fit (20,692), the event allowance
+(96 x (8 + 2R) per generation x 2, R = the preset's 17 MB record ceiling) pushes it over. That allowance is the existing
+`fn-hroot-event-demand`/`-tail-demand` policy (96 octets of transient per tree octet) evaluated at the profile's record ceiling, not a new
+number; it is large because the presets' R is the codec ceiling at 4096 groups, not the 32 KiB article. DECISION for N/ember: (a) accept, (b) bound
+the event by the profile's A + header + groups instead of R (needs a codec lemma: owed 1), (c) stream the decode so the allowance is a chunk (a
+different lane). With a factor of 1 instead of 2 on the tree bound scale is 23,830 (fits) but the factor is unproved either way.
+Also note the term enters EVERY operation's figure (init, compact, recover, offline reclaim: small `init` 524 -> 669 MB) because it is in
+`fn-heap-store-base-octets`; only a serving run holds roots. A per-operation term is a larger change; not done.
+
+### Condition 2: one candidate at a time; leases keeping retired generations -- settled from the code
+`host/history-root-host.lisp` is `:mode :program` throughout (definterface `:class :program`): there is NO theorem about the generation lifecycle.
+- `fn-owner-hroot-begin` allocates the next counter value and a `(:building nil nil)` row; it does not look for an existing `:building` row. Two
+  builders are possible in the code (`fnn-owner-history-root-refresh`, the live catch-up; `fnn-owner-history-root-prepare-rows`, the reclaim pass);
+  nothing proves they never overlap. UNPROVED: at most one `:building` row.
+- `fn-owner-hroot-activate` moves the old `:live` row to `:retired`; `fn-owner-hroot-retire-word` is `:ready` only when the retired row has no leases.
+  A retired generation with a lease stays, with its credit (`fnn-history-root-retire-held` returns nil and leaves it). UNPROVED: the count of
+  retired-with-leases generations (a lease is one `fn-owner-hroot-pin`; the pin count is not bounded by any theorem).
+So the generation count is `1 live + (building) + (retired with leases)`; two is the steady publication, not a proved maximum. What the ledger now
+guarantees instead: ANY number of generations draws the reserve and is refused BY NAME (`:history-root-reserve-exhausted`) past it, never starving the
+articles (K1/K3). The reserve covers the stated two; a third generation is a named refusal at the reserve, not a silent draw of the pool.
+
+### Condition 3: the arena's 2H term is untouched.
+
+### Owed items (statements the lane leaves unproved; each is a premise of K2 or a scope line)
+1. Event tree octets <= 2R (K2's `(<= (fn-hroot-tree-octets ev) (* 2 R))`): needs the event codec.
+2. Root memory <= `fn-heap-hroot-memory-bound` at the store's bounds (K2's memory premise): needs the nested page store's array-length invariants and
+   the store budget (rows <= T, event octets <= H, suffix <= T).
+3. The generation count (condition 2).
+4. `:history-root-tail` (`16 x record octets`), `-lease` (256) and `-read` credits still draw the pool while a reader pins.
+5. `fn-heap-store-need` (the store model) does not include the roots; the keystone that the figure holds every store is unchanged and silent about them.

@@ -18,7 +18,7 @@
 ; owner's work reserve (the completion reserve) of 200,000.
 (defconst *orcp-t-ops* (list (cons (fn-mca-conn-key 3) (cons 0 1000))
                              (cons :open (cons 0 500))))
-(defconst *orcp-t-l* (fn-mcr-make 1000000 100000 0 200000 0 0 *orcp-t-ops*))
+(defconst *orcp-t-l* (fn-mcr-make 1000000 100000 0 200000 0 0 *orcp-t-ops* 0 nil))
 (assert-event (fn-mcr-fundedp *orcp-t-l*))
 ; The demand over 3 records charging 1,000 octets: 10,416 a record and the
 ; same for the walk's chunk, 4,640 a tombstone, 12 a charged octet.
