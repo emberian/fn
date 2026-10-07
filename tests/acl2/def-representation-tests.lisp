@@ -369,6 +369,193 @@
  :unchecked "refused at expansion: :octet-seq with :generic")
 
 ; -----------------------------------------------------------------------------
+; 3c. The scalar :octets vocabulary: payload-len, inner-get, and the sealing
+;     of an octet-buffer stobj (SRC's whole contents, or its range [LO, HI))
+;     as one payload, SRC's cells read straight into the pool.  Declared with a
+;     generated logical side, executed, then the carried theorems, the
+;     no-octet-list structure of the executables, and the teeth.
+
+(defthm drt-src-octets-are-adt-octets
+  (implies (fn-octets-p x) (adt-octetsp x))
+  :hints (("Goal" :in-theory (enable fn-oct-octets-p-is-octet-listp fn-cbor-octet-listp fn-cbor-octetp
+                                     adt-octetsp unsigned-byte-p))))
+
+(def-representation drt-ab (payload :octets) :scalar t :paged nil
+  :source fn-octets :lemmas (drt-src-octets-are-adt-octets)
+  :exports ((count) (payload-len) (inner-get) (get) (append) (seal-buffer) (clear) (seal-range)))
+
+(defun drt-ab-run (drt-ab)
+  (declare (xargs :stobjs drt-ab))
+  (with-local-stobj fn-octets
+    (mv-let (out drt-ab fn-octets)
+      (let* ((fn-octets (fn-octets-append-list '(1 2 3 4 5 6) fn-octets))
+             (drt-ab (drt-ab-clear drt-ab))
+             (drt-ab (drt-ab-append '(9 8) drt-ab))
+             (drt-ab (drt-ab-seal-range 1 4 fn-octets drt-ab))
+             (drt-ab (drt-ab-seal-buffer fn-octets drt-ab))
+             (drt-ab (drt-ab-seal-range 2 2 fn-octets drt-ab))
+             (drt-ab (drt-ab-seal-range 5 6 fn-octets drt-ab)))
+        (mv (list (drt-ab-count drt-ab) (drt-ab-payload-len 1 drt-ab) (drt-ab-payload-len 3 drt-ab)
+                  (drt-ab-inner-get 1 2 drt-ab) (drt-ab-inner-get 2 5 drt-ab)
+                  (drt-ab-get 0 drt-ab) (drt-ab-get 1 drt-ab) (drt-ab-get 2 drt-ab)
+                  (drt-ab-get 3 drt-ab) (drt-ab-get 4 drt-ab))
+            drt-ab fn-octets))
+      (mv out drt-ab))))
+
+(defun drt-ab-top ()
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj drt-ab
+    (mv-let (out drt-ab) (drt-ab-run drt-ab) out)))
+
+(assert! (equal (drt-ab-top)
+                '(5 3 0 4 6 (9 8) (2 3 4) (1 2 3 4 5 6) nil (6))))
+
+; What each new export computes, in the list vocabulary alone.
+(defthm drt-ab-seal-range-is-the-slice
+  (implies (and (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi) (<= hi (len fn-octets)))
+           (equal (drt-ab-seal-range lo hi fn-octets drt-ab)
+                  (append drt-ab (list (take (- hi lo) (nthcdr lo fn-octets))))))
+  :hints (("Goal" :use drt-ab-seal-range-is-slice)))
+
+; The executables read SRC into the pool and build no list: none of the three
+; mentions a consing or list-reading function.
+(assert-event
+ (and (not (intersectp-eq '(cons list append take nthcdr revappend fn-octets-list fn-oct-slice-list)
+                          (all-fnnames (body 'drt-ab$c-seal-range nil (w state)))))
+      (not (intersectp-eq '(cons list append take nthcdr revappend fn-octets-list fn-oct-slice-list)
+                          (all-fnnames (body 'drt-ab$c-range-push nil (w state)))))
+      (not (intersectp-eq '(cons list append take nthcdr revappend fn-octets-list fn-oct-slice-list)
+                          (all-fnnames (body 'drt-ab$c-range-copy nil (w state)))))
+      (not (intersectp-eq '(cons list append take nthcdr revappend fn-octets-list fn-oct-slice-list)
+                          (all-fnnames (body 'drt-ab$c-seal-buffer nil (w state)))))))
+
+; The same, over the arena's own logical functions (:model): the declaration
+; that replaces books/payload-arena-bytes.lisp's hand stobj, on a fresh name.
+(defthm drt-mod-recognizer-is-the-scalar-sequence
+  (equal (fn-arena$ap x) (adt-scalar-seq-p '(:octets) x))
+  :hints (("Goal" :in-theory (enable fn-arena$ap fn-arn-payload-listp adt-scalar-seq-p adt-val-okp
+                                     adt-octetsp fn-cbor-octet-listp fn-cbor-octetp unsigned-byte-p))))
+
+(def-representation drt-mod (payload :octets) :scalar t :paged nil
+  :source fn-octets
+  :model (:recognizer fn-arena$ap :creator create-fn-arena$a)
+  :lemmas (drt-mod-recognizer-is-the-scalar-sequence drt-src-octets-are-adt-octets
+           fn-oct-nth-is-nth fn-oct-snoc-is-append fn-oct-list-is-identity
+           fn-oct-slice-list-is-take-nthcdr)
+  :exports ((count :logic fn-arena$a-count) (payload-len :logic fn-arena$a-payload-len)
+            (inner-get :as drt-mod-get :logic fn-arena$a-get)
+            (get :as drt-mod-payload :logic fn-arena$a-payload)
+            (append :as drt-mod-seal-list :logic fn-arena$a-seal-list)
+            (seal-buffer :logic fn-arena$a-seal-buffer) (clear :logic fn-arena$a-clear)
+            (seal-range :logic fn-arena$a-seal-range)))
+
+(defun drt-mod-run (drt-mod)
+  (declare (xargs :stobjs drt-mod))
+  (with-local-stobj fn-octets
+    (mv-let (out drt-mod fn-octets)
+      (let* ((fn-octets (fn-octets-append-list '(1 2 3 4 5 6) fn-octets))
+             (drt-mod (drt-mod-clear drt-mod))
+             (drt-mod (drt-mod-seal-list '(9 8) drt-mod))
+             (drt-mod (drt-mod-seal-range 1 4 fn-octets drt-mod))
+             (drt-mod (drt-mod-seal-buffer fn-octets drt-mod))
+             (drt-mod (drt-mod-seal-range 2 2 fn-octets drt-mod)))
+        (mv (list (drt-mod-count drt-mod) (drt-mod-payload-len 1 drt-mod) (drt-mod-get 1 2 drt-mod)
+                  (drt-mod-payload 0 drt-mod) (drt-mod-payload 1 drt-mod) (drt-mod-payload 2 drt-mod)
+                  (drt-mod-payload 3 drt-mod))
+            drt-mod fn-octets))
+      (mv out drt-mod))))
+
+(defun drt-mod-top ()
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj drt-mod
+    (mv-let (out drt-mod) (drt-mod-run drt-mod) out)))
+
+(assert! (equal (drt-mod-top) '(4 3 4 (9 8) (2 3 4) (1 2 3 4 5 6) nil)))
+
+; Both the hand logic and the generated one say the same of seal-range.
+(defthm drt-mod-seal-range-is-the-slice
+  (implies (and (true-listp drt-mod) (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi)
+                (<= hi (len fn-octets)))
+           (equal (drt-mod-seal-range lo hi fn-octets drt-mod)
+                  (append drt-mod (list (take (- hi lo) (nthcdr lo fn-octets))))))
+  :hints (("Goal" :use drt-mod-seal-range-is-slice)))
+
+;
+; Teeth.  A seal-range one cell off the front, one cell past the back, an
+; inner read one cell off, a payload length one too long, and a seal-buffer
+; that is not the source: none is a theorem.
+(must-fail-checked
+ (defthm drt-ab-seal-range-off-by-one-front
+   (implies (and (true-listp drt-ab) (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi)
+                 (<= hi (len fn-octets)))
+            (equal (drt-ab-seal-range lo hi fn-octets drt-ab)
+                   (append drt-ab (list (take (- hi lo) (nthcdr (+ 1 lo) fn-octets))))))))
+(must-fail-checked
+ (defthm drt-ab-seal-range-off-by-one-back
+   (implies (and (true-listp drt-ab) (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi)
+                 (<= hi (len fn-octets)))
+            (equal (drt-ab-seal-range lo hi fn-octets drt-ab)
+                   (append drt-ab (list (take (+ 1 (- hi lo)) (nthcdr lo fn-octets))))))))
+(must-fail-checked
+ (defthm drt-mod-seal-range-off-by-one-front
+   (implies (and (true-listp drt-mod) (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi)
+                 (<= hi (len fn-octets)))
+            (equal (drt-mod-seal-range lo hi fn-octets drt-mod)
+                   (append drt-mod (list (take (- hi lo) (nthcdr (+ 1 lo) fn-octets))))))))
+(must-fail-checked
+ (defthm drt-ab-inner-get-off-by-one
+   (equal (drt-ab-inner-get h i drt-ab) (nth (+ 1 i) (nth h drt-ab)))))
+(must-fail-checked
+ (defthm drt-ab-payload-len-one-too-long
+   (equal (drt-ab-payload-len h drt-ab) (+ 1 (len (nth h drt-ab))))))
+(must-fail-checked
+ (defthm drt-ab-seal-buffer-is-not-the-tail
+   (implies (and (true-listp drt-ab) (true-listp fn-octets))
+            (equal (drt-ab-seal-buffer fn-octets drt-ab)
+                   (append drt-ab (list (cdr fn-octets)))))))
+
+; Refusals at expansion, each by the check that names it.
+(must-fail-checked
+ (def-representation drt-v1 (p :octets) :scalar t :paged nil :exports ((count) (frobnicate)))
+ :unchecked "refused at expansion: an unknown :exports role")
+(must-fail-checked
+ (def-representation drt-v2 (p :octets) :scalar t :paged nil :exports ((count) (seal-range)))
+ :unchecked "refused at expansion: seal-range without :source")
+(must-fail-checked
+ (def-representation drt-v3 (p :octets) :scalar t :paged nil :source fn-octets :exports ((count) (clear)))
+ :unchecked "refused at expansion: :source with no seal role")
+(must-fail-checked
+ (def-representation drt-v4 (p :octets) :scalar t :source fn-octets :exports ((count) (seal-range)))
+ :unchecked "refused at expansion: the vocabulary needs :paged nil")
+(must-fail-checked
+ (def-representation drt-v5 (p :octets) :scalar t :paged nil :exports ((count) (inner-get)))
+ :unchecked "refused at expansion: inner-get without payload-len")
+(must-fail-checked
+ (def-representation drt-v6 (p :octets) :scalar t :paged nil
+   :model (:recognizer fn-arena$ap :creator create-fn-arena$a)
+   :exports ((count :logic fn-arena$a-count) (clear)))
+ :unchecked "refused at expansion: a :model entry without its :logic")
+(must-fail-checked
+ (def-representation drt-v7 (p :octets) :scalar t :paged nil
+   :exports ((count :logic fn-arena$a-count) (clear)))
+ :unchecked "refused at expansion: :logic without :model")
+(must-fail-checked
+ (def-representation drt-v8 (p :octets) :scalar t :generic t :exports ((count) (clear)))
+ :unchecked "refused at expansion: :exports with :generic")
+(must-fail-checked
+ (def-representation drt-v9 (p :octets) :scalar t :paged nil :exports ((count) (payload-len)) :lemmas (drt-no-such-lemma))
+ :unchecked "refused at expansion: :lemmas names a theorem not in the world")
+(must-fail-checked
+ (def-representation drt-v10 (p :octets) :scalar t :paged nil :exports ((payload-len) (clear)))
+ :unchecked "refused at expansion: payload-len without count")
+
+(assert-event (equal (cdr (assoc-eq 'drt-ab (table-alist 'fn-generated (w state))))
+                     '(:def-representation :scalar t :generic nil :implementation drt-ab :invariant nil
+                       :trees nil :write-once nil :paged nil
+                       :exports ((count) (payload-len) (inner-get) (get) (append) (seal-buffer) (clear) (seal-range))
+                       :source fn-octets :lemmas (drt-src-octets-are-adt-octets))))
+
+; -----------------------------------------------------------------------------
 ; 4. Teeth.
 
 (must-fail-checked
