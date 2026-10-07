@@ -954,6 +954,14 @@
  "nonblocking_leaves": {
   "sb-bsd-sockets:socket-shutdown": "shutdown(2) on a socket does not wait: it marks the half-connection closed and wakes blocked peers; SO_LINGER governs close(2), not shutdown(2). It still signals socket-error, which the failure rules (R7) see through the leaf's signal class. Deputy C2 ruling 2026-10-07."
  },
+ "nonblocking_close_sites": {
+  "fnn-mux-close-wake": {
+   "close_call": "sb-posix:close",
+   "slots": ["fnn-mux-loop-wake-read", "fnn-mux-loop-wake-write"],
+   "pipe_call": "sb-posix:pipe",
+   "why": "close(2) of a pipe end does not block (Deputy C2 ruling 2026-10-07). verify_pipe_close_sites checks that the descriptor closed here is a let-bound read of the two wake slots, that every store into those slots in the host is NIL or a result of (sb-posix:pipe) (fnn-mux-start), and that no constructor call passes a slot keyword, so the slots hold only pipe ends."
+  }
+ },
  "binding_only_specials": {
   "*fnn-owner-deferred*": "host/native/owner.lisp: the commit quantum's deferred list. It is bound only by let (fnn-owner-commit-start-locked, the next-batch seal in fnn-owner-commit-complete) to a fresh list; the checker verifies that no host form assigns the symbol, that its defvar value is NIL, and that every rebinding is a lexical variable or a list. Outside a quantum it is the constant NIL, so fnn-owner-log, fnn-owner-line-after-barrier and fnn-owner-feed-flush-after-barrier take their direct branch there (the open's key-statement recovery, an offline command)."
  },

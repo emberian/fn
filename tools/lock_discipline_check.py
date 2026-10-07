@@ -2927,6 +2927,81 @@ def verify_close_hook_fences(model) -> dict:
     return fences_ok
 
 
+def verify_pipe_close_sites(model) -> dict:
+    """contracts `nonblocking_close_sites': {FUNCTION: {close_call, slots, pipe_call, why}}.
+
+    close(2) of a pipe descriptor does not block.  The row exempts FUNCTION's
+    CLOSE_CALL leaves from R2 only when the source shows the descriptor it
+    closes is always one of the pipe ends the loop made:
+      (1) every CLOSE_CALL in FUNCTION takes a variable that one let in FUNCTION
+          binds to a slot accessor of SLOTS, or to an if whose arms are such
+          accessors (nothing else reaches the call);
+      (2) every assignment to a slot accessor anywhere in the host stores NIL
+          or a variable bound by (multiple-value-bind (A B) (PIPE_CALL) ...) in
+          the same function; and
+      (3) no constructor call in the host passes a slot's keyword, so a loop
+          starts with NIL there.
+    """
+    tree, rows = model.tree, model.c.raw.get("nonblocking_close_sites", {})
+    out = {}
+    for fname, row in rows.items():
+        where = f"nonblocking_close_sites {fname}"
+        if fname not in tree.defs:
+            continue    # a row for a function this tree does not define exempts nothing
+        for key in ("close_call", "slots", "pipe_call", "why"):
+            if not row.get(key):
+                raise ValueError(f"{where}: no {key}")
+        slots, pipe, close_call = set(row["slots"]), row["pipe_call"], row["close_call"]
+        for a in slots:
+            if a not in tree.structs:
+                raise ValueError(f"{where}: {a} is not a struct slot accessor of the host")
+        d = tree.defs[fname]
+
+        def accessor_forms(v):
+            if isinstance(v, list) and head(v) in slots and len(v) == 2:
+                return True
+            return (isinstance(v, list) and head(v) == "if" and len(v) == 4
+                    and accessor_forms(v[2]) and accessor_forms(v[3]))
+        closes = _call_forms(d.body, close_call)
+        if not closes:
+            raise ValueError(f"{where}: {fname} has no {close_call}")
+        for c in closes:
+            arg = c[1] if len(c) > 1 else None
+            if not isinstance(arg, Sym):
+                raise ValueError(f"{where}: a {close_call} takes something other than a variable")
+            inits = [b[1] for h in ("let", "let*") for f in _call_forms(d.body, h)
+                     for b in (f[1] if len(f) > 1 and isinstance(f[1], list) else [])
+                     if isinstance(b, list) and len(b) == 2 and str(b[0]) == str(arg)]
+            if len(inits) != 1 or not accessor_forms(inits[0]):
+                raise ValueError(f"{where}: {arg} is not bound once to a slot accessor of {sorted(slots)}")
+            if _setq_pairs(d.body, str(arg)):
+                raise ValueError(f"{where}: {arg} is reassigned")
+        for dd in tree.defs.values():
+            mvb = {}
+            for f in _call_forms(dd.body, "multiple-value-bind"):
+                if len(f) > 2 and isinstance(f[1], list) and isinstance(f[2], list) and head(f[2]) == pipe:
+                    for v in f[1]:
+                        mvb[str(v)] = True
+            for f in _call_forms(dd.body, "setf") + _call_forms(dd.body, "setq"):
+                for k in range(1, len(f) - 1, 2):
+                    place, val = f[k], f[k + 1]
+                    if isinstance(place, list) and head(place) in slots:
+                        nil = isinstance(val, Sym) and str(val).lower() == "nil"
+                        if not (nil or (isinstance(val, Sym) and str(val) in mvb)):
+                            raise ValueError(f"{where}: {dd.name} stores something other than NIL or a "
+                                             f"{pipe} result in {head(place)} ({dd.path}:{dd.line})")
+        for slot in slots:
+            struct, sl = tree.structs[slot]
+            kw = ":" + sl
+            for dd in tree.defs.values():
+                for f in _flat_nodes(dd.body):
+                    if head(f) in ("%make-" + struct, "make-" + struct):
+                        if any(isinstance(x, Sym) and str(x).lower() == kw for x in f[1:]):
+                            raise ValueError(f"{where}: {dd.name} passes {kw} to a constructor of {struct}")
+        out[fname] = row
+    return out
+
+
 def verify_binding_only_specials(model) -> dict:
     """contracts `binding_only_specials': {SPECIAL: why}.
 
@@ -3194,6 +3269,7 @@ class Model:
         self.private_owner = verify_private_owner_commands(self)
         self.binding_only = verify_binding_only_specials(self)
         self.close_hook_fences = verify_close_hook_fences(self)
+        self.pipe_close_sites = verify_pipe_close_sites(self)
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()
@@ -3312,6 +3388,7 @@ class Model:
         overrides = self.c.raw.get("effect_overrides", {})
         waiters = self.c.raw.get("condition_wait_wrappers", {})
         nonblocking = self.c.raw.get("nonblocking_leaves", {})
+        pipe_closes = self.pipe_close_sites
         blk: dict = {}
         for flag in (False, True):
             for name in self.infos:
@@ -3322,7 +3399,8 @@ class Model:
                 continue
             for e in info.events:
                 if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
-                        and e.name not in nonblocking:
+                        and e.name not in nonblocking \
+                        and not (name in pipe_closes and e.name == pipe_closes[name]["close_call"]):
                     for flag in (False, True):
                         if e.ctx.noio is not None and e.ctx.noio != flag:
                             continue  # the other arm of (if *fnn-extent-no-io* ...)
@@ -3856,6 +3934,7 @@ class Checker:
         overrides = self.c.raw.get("effect_overrides", {})
         waiters = self.c.raw.get("condition_wait_wrappers", {})
         nonblocking = self.c.raw.get("nonblocking_leaves", {})
+        pipe_closes = self.m.pipe_close_sites
         found: dict = {}
         for name, info in self.infos.items():
             for e in info.events:
@@ -3865,7 +3944,8 @@ class Checker:
                 noio = e.ctx.noio if e.ctx.noio is not None else False
                 cands = []
                 if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
-                        and e.name not in nonblocking:
+                        and e.name not in nonblocking \
+                        and not (name in pipe_closes and e.name == pipe_closes[name]["close_call"]):
                     h2 = held - {e.extra[1]} if e.extra[0] == "await" and e.name == "sb-thread:condition-wait" else held
                     if h2:
                         cands.append((f"{name}:{e.line}:{e.name}", e.extra[0], h2,

@@ -2768,3 +2768,63 @@ class R2NonblockingLeaf(unittest.TestCase):
 
     def test_socket_send_still_blocks(self):
         self.assertTrue(self.r2("sb-bsd-sockets:socket-send"))
+
+
+class R2PipeClose(unittest.TestCase):
+    """contracts `nonblocking_close_sites': a close of a descriptor that can only
+    be a pipe end the loop made does not block; the provenance is checked."""
+
+    SRC = """
+(defstruct (fnn-pc-loop (:constructor %make-fnn-pc-loop)) lock wake-read wake-write)
+(defun fnn-pc-start ()
+  (let ((loop (%make-fnn-pc-loop)))
+    (multiple-value-bind (read write) (sb-posix:pipe)
+      (setf (fnn-pc-loop-wake-read loop) read
+            (fnn-pc-loop-wake-write loop) write))
+    loop))
+(defun fnn-pc-close-wake (service loop)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+    (dolist (slot '(:read :write))
+      (let ((fd (if (eq slot :read) (fnn-pc-loop-wake-read loop) (fnn-pc-loop-wake-write loop))))
+        (when fd
+          (sb-posix:close fd)
+          (if (eq slot :read) (setf (fnn-pc-loop-wake-read loop) nil)
+            (setf (fnn-pc-loop-wake-write loop) nil)))))))
+(defun fnn-pc-run ()
+  (let ((l (fnn-pc-start))) (sb-thread:make-thread (lambda () (fnn-pc-close-wake nil l)) :name "pc")))
+"""
+    ROW = {"fnn-pc-close-wake": {"close_call": "sb-posix:close",
+                                 "slots": ["fnn-pc-loop-wake-read", "fnn-pc-loop-wake-write"],
+                                 "pipe_call": "sb-posix:pipe", "why": "test"}}
+
+    def r2(self, src=None, rows=None):
+        raw = dict(CONTRACTS.raw, nonblocking_close_sites=self.ROW if rows is None else rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + (src or self.SRC))
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f.key for f in checker.run({"R2"}) if f.rule == "R2" and f.function == "fnn-pc-close-wake"]
+
+    def test_a_close_of_the_pipe_slots_is_not_blocking(self):
+        self.assertEqual(self.r2(), [])
+
+    def test_without_the_row_the_close_blocks(self):
+        self.assertTrue(self.r2(rows={}))
+
+    def test_a_slot_stored_from_another_source_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r2(self.SRC + "(defun fnn-pc-other (loop fd) (setf (fnn-pc-loop-wake-read loop) fd))")
+
+    def test_a_constructor_passing_a_slot_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r2(self.SRC + "(defun fnn-pc-make (fd) (%make-fnn-pc-loop :wake-read fd))")
+
+    def test_a_close_of_another_variable_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r2(self.SRC.replace("(sb-posix:close fd)", "(sb-posix:close (sb-posix:open \"/x\" 0))"))
+
+    def test_a_close_of_a_variable_bound_to_a_foreign_value_refuses_the_row(self):
+        with self.assertRaises(ValueError):
+            self.r2(self.SRC.replace("(let ((fd (if (eq slot :read) (fnn-pc-loop-wake-read loop) (fnn-pc-loop-wake-write loop))))",
+                                     "(let ((fd (sb-posix:open \"/x\" 0)))"))
