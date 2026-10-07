@@ -313,6 +313,8 @@
 ;; host/native/io.lisp fnn-open-nursery calls fn-heap-open-nursery-trigger,
 ;; as in build.lisp.
 (include-book "books/heap-open-nursery")
+;; MEM-003: fnn-owner-maybe-collect-idle (owner.lisp), as in build.lisp.
+(include-book "books/idle-collection")
 (include-book "books/heap-reservation")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")

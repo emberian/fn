@@ -641,6 +641,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/heap-figure \
 	books/heap-open-nursery \
 	tests/acl2/heap-open-nursery-tests \
+	books/idle-collection \
+	tests/acl2/idle-collection-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
 	books/cold-read-reservation \
