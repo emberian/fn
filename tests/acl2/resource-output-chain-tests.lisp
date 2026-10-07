@@ -300,3 +300,21 @@
           (wf ((ledger (update-fn-rl-count 99 (rcx-l1)))) :lemma rcx-fn-rlo-install-keeps-representation-without-wf))
   :mutations ((not-wellformed (:conclusion (let ((after (mv-nth 1 (fn-rlo-install dynamic store-need cold policy slots ledger)))) (not (fn-rl-wfp after)))) ((dynamic 1073741824) (store-need 536870912) (cold nil) (policy '(16777216 1048576)) (slots 4) (ledger (rcx-l1))) :fault "an operation that leaves the ledger ill-formed" :lemma rcx-fn-rlo-install-keeps-representation-mutant-not-wellformed)))
 
+
+(defthm rcx-fn-rlo-issue-keeps-representation-witness
+  (and (fn-resource-ledgerp (rcx-l1)) (fn-rl-wfp (rcx-l1)) (let ((after (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1))))) (and (fn-resource-ledgerp after) (fn-rl-wfp after)))))
+(defthm rcx-fn-rlo-issue-keeps-representation-without-rep
+  (and (fn-rl-wfp nil) (not (fn-resource-ledgerp nil)) (not (let ((after (mv-nth 2 (fn-rlo-issue 7 11 8 :issued nil)))) (and (fn-resource-ledgerp after) (fn-rl-wfp after))))))
+(defthm rcx-fn-rlo-issue-keeps-representation-without-wf
+  (and (fn-resource-ledgerp (update-fn-rl-count 99 (rcx-l1))) (not (fn-rl-wfp (update-fn-rl-count 99 (rcx-l1)))) (not (let ((after (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (update-fn-rl-count 99 (rcx-l1)))))) (and (fn-resource-ledgerp after) (fn-rl-wfp after))))))
+(defthm rcx-fn-rlo-issue-keeps-representation-mutant-not-wellformed
+  (and (fn-resource-ledgerp (rcx-l1)) (fn-rl-wfp (rcx-l1)) (let ((after (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1))))) (and (fn-resource-ledgerp after) (fn-rl-wfp after))) (not (let ((after (mv-nth 2 (fn-rlo-issue 7 11 8 :issued (rcx-l1))))) (not (fn-rl-wfp after))))))
+(defteeth fn-rlo-issue-keeps-representation
+  :claim (((rep (fn-resource-ledgerp ledger)) (wf (fn-rl-wfp ledger))) (let ((after (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)))) (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+  :subject fn-rlo-issue
+  :witness-lemma rcx-fn-rlo-issue-keeps-representation-witness
+  :witness ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1)))
+  :breaks ((rep ((ledger nil)) :lemma rcx-fn-rlo-issue-keeps-representation-without-rep)
+          (wf ((ledger (update-fn-rl-count 99 (rcx-l1)))) :lemma rcx-fn-rlo-issue-keeps-representation-without-wf))
+  :mutations ((not-wellformed (:conclusion (let ((after (mv-nth 2 (fn-rlo-issue cid connection-gen operation-gen dependency ledger)))) (not (fn-rl-wfp after)))) ((cid 7) (connection-gen 11) (operation-gen 8) (dependency :issued) (ledger (rcx-l1))) :fault "an operation that leaves the ledger ill-formed" :lemma rcx-fn-rlo-issue-keeps-representation-mutant-not-wellformed)))
+
