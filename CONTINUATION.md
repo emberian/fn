@@ -1,8 +1,14 @@
-# lock-owner-class continuation (2026-10-07)
+# lock-io-class continuation (2026-10-07)
 
-Branch lane/lock-owner-class, pushed; gate `python3 tools/lock_discipline_check.py --check --json` vs origin/dev a49a8eb09: 15 keys gone, 0 added. tests.test_lock_discipline_check: 271 tests pass.
+Branch lane/lock-io-class (base 8e73e32fe, the tip of lane/lock-owner-class), pushed. Gate `python3 tools/lock_discipline_check.py --check --json` against the base: 6 keys gone, 0 added. tests.test_lock_discipline_check: 280 pass. host_check --read and --load exit 0.
 
-Ready (see each item's sha and notes): LOCK-R2-LIMIT-HISTORY-REOBSERVE, LOCK-R7-REOPEN-LOG-ERROR-SWALLOW, LOCK-R1B-RESPONSE-WINDOW-CLOSE-DIRECT-O, LOCK-R7-CUSTODY-TRACE-SELECTOR-SWALLOW, LOCK-R7-ESCALATION-FAILURE-SWALLOWED, LOCK-R1-REOPEN-LOG-GLOBAL-READ, LOCK-R7-STOP-HOOK-FAILURE-FENCE, LOCK-R2-FD-TEARDOWN-UNDER-LOCK.
-Checker model changes (tools/lock_discipline_check.py, each with unit tests): binding_only_specials, escalation_wrappers + dolist escalation tail, close_hook_fences, nonblocking_leaves, nonblocking_close_sites.
-Left alone by instruction: LOCK-R2-LIVE-RECONFIGURE-IO and LOCK-R2-COMMIT-INLINE-LOG-IO (Deputy P, ACL2 phase models).
-Owed to the coordinator: baseline row R1b|fnn-owner-log|*fnn-owner-deferred*:unlocked-write is stale (--lower-stale, not run here); natives_owed are in the item JSONs.
+Items (sha, state; each item JSON carries its notes and natives_owed):
+- LOCK-R2-PGS-FILL-REALIZE-REENTRY 05c318793, partial: the recursive-lock fault is fixed (fn-pgs-fill-frame reads its tables directly when it holds the extent lock; the limit quantum reads fn-owner-limit-use before taking it; install runs fnn-owner-history-sync-first). The R2 keys on fn-pgs-fill-frame stay: E through fnn-owner-live-reconfigure-locked (Deputy P), O by path-insensitive reachability.
+- LOCK-R1B-LOG-SPARE-SLOT-DUAL-ACTOR 217af5ba7, ready: leaf lock SL on the spare slot and its close debt.
+- LOCK-R1B-IMMUTABLE-CLOSE-DEBT-UNLOCKED, ready: both close-debt lists under *fnn-close-debts-lock* (XCLOSEDEBT).
+- LOCK-R5-MUX-SLOT-LOCK-ACCESSOR cedf7f26c, ready: locks[*].struct_slot, verified by verify_struct_slot_locks (unit tests R5StructSlotLock).
+- LOCK-R1B-MUX-NEXT-MIXED-LOCKS 7aec511c7, ready: depends on the struct_slot lock above.
+- LOCK-R7-MUX-DEFERRAL-LOG-SWALLOW 5d2ed7234, ready: only fnn-mux-reserve; the I/O-loop sinks stay baselined.
+
+Owed to the coordinator: baseline rows now stale (--lower-stale, not run here): R5|fnn-mux-reserve|unresolved:lock object (fnn-owner-service-mux-slot-lock), R5|fnn-mux-reserve|?(fnn-owner-service-mux-slot-lock)->M, R5|fnn-mux-slot-signal|unresolved:..., R5|fnn-mux-unreserve|unresolved:..., R1b|fnn-mux-reserve|fnn-owner-service-mux-next:mixed-locks, R1b|fnn-log-discard-spare|fnn-log-spare:unlocked-write.
+Natives cannot run here: natives_owed are in each item JSON.
