@@ -95,6 +95,16 @@
     (labels ((go-x (x)
                (cond ((and (symbolp x) x (null (symbol-package x)))
                       (or (gethash x map) (setf (gethash x map) (make-symbol (format nil "G~d" (incf n))))))
+                     ;; oneify-cltl-code's local function names come from acl2-gentemp's global counter
+                     ;; (gentemp)'s T<n> names (interface-raw.lisp:2635) likewise
+                     ((and (symbolp x) x (eq (symbol-package x) (find-package "ACL2"))
+                           (> (length (symbol-name x)) 1) (char= (char (symbol-name x) 0) #\T)
+                           (every #'digit-char-p (subseq (symbol-name x) 1)))
+                      (or (gethash x map) (setf (gethash x map) (intern (format nil "XTGT~d" (incf n)) "ACL2"))))
+                     ((and (symbolp x) x (eq (symbol-package x) (find-package "ACL2"))
+                           (> (length (symbol-name x)) 6) (string= "ONEIFY" (symbol-name x) :end2 6)
+                           (every #'digit-char-p (subseq (symbol-name x) 6)))
+                      (or (gethash x map) (setf (gethash x map) (intern (format nil "ONEIFY~d" (incf n)) "ACL2"))))
                      ((consp x) (cons (go-x (car x)) (go-x (cdr x))))
                      (t x))))
       (go-x x))))
@@ -728,6 +738,7 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
     (loop for p = (position #\Newline text :start start)
           do (push (subseq text start (or p (length text))) out)
              (if p (setq start (1+ p)) (return)))
+    (when (and out (string= (car out) "")) (pop out))   ; the text's final newline ends the last line
     (nreverse out)))
 
 (defun fe-split-tabs (line)
@@ -778,7 +789,10 @@ REDERIVE: unit id -> the block text it re-derives to, or NIL when it no longer d
                    (push (format nil "unit ~a: the defs.lisp text does not match the manifest digest" id) refusals))
                   ((null re) (push (format nil "unit ~a no longer derives from the world or the sources" id) refusals))
                   ((not (string= re block-text))
-                   (push (format nil "unit ~a: the text differs from what the world derives" id) refusals)))))
+                   (let ((k (or (mismatch re block-text) 0)))
+                     (push (format nil "unit ~a: the text differs from what the world derives at character ~d: defs has ~s, world derives ~s"
+                                   id k (subseq block-text k (min (length block-text) (+ k 70))) (subseq re k (min (length re) (+ k 70))))
+                           refusals))))))
         (dolist (b blocks)
           (unless (gethash (car b) in-manifest)
             (push (format nil "unit ~a is in defs.lisp but not in the manifest" (car b)) refusals)))))
@@ -812,9 +826,7 @@ REDERIVE: unit id -> the block text it re-derives to, or NIL when it no longer d
 (defun fe-read-block-forms (block-text)
   (let ((*package* *fe-dummy-pkg*) (*read-eval* nil) (*read-default-float-format* 'single-float) (out nil))
     (with-input-from-string (s block-text)
-      (loop for line = (read-line s nil) while line
-            do (unless (or (zerop (length line)) (char= (char line 0) #\;))
-                 (push (read-from-string line) out))))
+      (loop for form = (read s nil :eof) until (eq form :eof) do (push form out)))
     (nreverse out)))
 
 (defun xt-verify-defs (out-dir src-dir rt-path world-key)
