@@ -49,6 +49,39 @@ exit "${STUB_RC_remote_check:-0}"
 '''
 
 
+FARM_STUB = '''#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+with open(os.environ["STUB_LOG"], "a") as f:
+    f.write("farm " + " ".join(args) + "\\n")
+act = [a for a in args if a in ("submit", "wait")][0]
+rc = int(os.environ.get("STUB_RC_farm_" + act, "0"))
+if act == "submit":
+    rec = Path("build/farm/run-stub-1.json")
+    rec.parent.mkdir(parents=True, exist_ok=True)
+    rec.write_text(json.dumps({"run_id": "run-stub-1", "remote_path": os.environ["FARM_TREE"],
+                               "certify_id": "certify-stub-1"}))
+    if rc == 0:
+        print("run-stub-1")
+sys.exit(rc)
+'''
+SSH_STUB = '''#!/bin/sh
+# ssh BOX COMMAND: a fetch (tar) really runs; anything else is logged and "emits".
+cmd=$2
+case "$cmd" in
+  *"tar cf"*) exec sh -c "$cmd" ;;
+esac
+echo "ssh $*" >> "$STUB_LOG"
+if [ "${STUB_RC_ssh:-0}" = 0 ]; then
+  for out in planning/interfaces.json specs/wire-grammar.json; do
+    mkdir -p "$FARM_TREE/$(dirname $out)" && echo "${STUB_EMIT:-emitted}" > "$FARM_TREE/$out"
+  done
+fi
+exit "${STUB_RC_ssh:-0}"
+'''
+
+
 def sh(cwd, *argv, env=None, check=True):
     p = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, env=env)
     if check and p.returncode != 0:
@@ -356,6 +389,118 @@ class BoxStepTests(TrainBase):
         b = self.train("boxstep", "hbox", extra_env={"STUB_RC_remote_check": "3"})
         self.assertNotEqual(b.returncode, 0)
         self.assertEqual(self.box(), before)
+
+
+class CertifyTests(TrainBase):
+    """`train.py certify BOX`: one farm run, then the emits in that run's tree."""
+
+    def setUp(self):
+        super().setUp()
+        self.ftree = self.tmp / "farm-tree"
+        self.ftree.mkdir()
+        (self.seed / "tools/farm.py").write_text(FARM_STUB)
+        self.commit(self.seed, "farm stub")
+        sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        ssh = self.tmp / "ssh-stub"
+        ssh.write_text(SSH_STUB)
+        ssh.chmod(0o755)
+        self.env.update(TRAIN_SSH=str(ssh), FARM_TREE=str(self.ftree))
+
+    def merge(self, files):
+        sha = self.lane("a", files)
+        self.assertEqual(self.train("merge", f"a@{sha}").returncode, 0)
+
+    def box(self):
+        return json.loads((self.work / "build/train/box-step.json").read_text())
+
+    def books_train(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        (self.seed / "tests/acl2").mkdir(parents=True, exist_ok=True)
+        self.merge({"books/b.lisp": "changed\n", "tests/acl2/t.lisp": "t\n"})
+
+    def test_certify_is_one_run_with_wire_export_and_the_affected_by_words(self):
+        self.books_train()
+        c = self.train("certify", "hbox")
+        self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
+        farm = [l for l in self.stub_log() if l.startswith("farm ")]
+        self.assertEqual(len(farm), 2, farm)
+        sub = farm[0]
+        for word in ("--lane", "--affected-by books/b", "--timeout-seconds 1800",
+                     "submit hbox", "books/wire-export", "books/b", "tests/acl2/t"):
+            self.assertIn(word, sub)
+        self.assertNotIn("books/b.lisp", sub)
+        self.assertTrue(farm[1].startswith("farm --root") or "wait hbox run-stub-1" in farm[1], farm[1])
+        self.assertNotIn("remote_check", " ".join(self.stub_log()))
+
+    def test_certify_emits_in_the_run_tree_commits_and_records_the_split(self):
+        self.books_train()
+        c = self.train("certify", "hbox")
+        self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
+        ssh = [l for l in self.stub_log() if l.startswith("ssh ")]
+        self.assertEqual(len(ssh), 1, ssh)
+        for word in (str(self.ftree), "timeout", "swarm-build", "interface_emit.py --write --check",
+                     "protocol_emit.py --wire --check", "host_check.py --world"):
+            self.assertIn(word, ssh[0])
+        self.assertNotIn("certify_books", ssh[0])
+        self.assertEqual((self.work / "planning/interfaces.json").read_text(), "emitted\n")
+        rec = self.box()
+        self.assertEqual(rec["sha"], self.head())
+        self.assertEqual((rec["box"], rec["run"], rec["certify_id"]), ("hbox", "run-stub-1", "certify-stub-1"))
+        self.assertEqual(set(rec["wall"]), {"install", "certify", "emit", "total", "emit_steps"})
+        st = json.loads(self.work.joinpath("build/train/integrate__t1.json").read_text())
+        self.assertEqual(st["box_wall"], rec["wall"])
+        g = self.train("gate")
+        self.assertIn("ran at HEAD on hbox", g.stdout)
+        s = self.train("status")
+        self.assertIn("certify", s.stdout)
+
+    def test_a_books_free_train_certifies_wire_export_alone(self):
+        self.merge({"tools/x.py": "x\n"})
+        c = self.train("certify", "hbox")
+        self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
+        sub = [l for l in self.stub_log() if l.startswith("farm") and " submit " in l][0]
+        self.assertNotIn("--lane", sub)
+        self.assertNotIn("--affected-by", sub)
+        self.assertTrue(sub.endswith("submit hbox books/wire-export"), sub)
+
+    def test_failed_certify_records_nothing(self):
+        self.books_train()
+        before = self.box()
+        c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1"})
+        self.assertNotEqual(c.returncode, 0)
+        self.assertEqual(self.box(), before)
+        self.assertEqual([l for l in self.stub_log() if l.startswith("ssh ")], [])
+
+    def test_failed_submit_records_nothing(self):
+        self.books_train()
+        before = self.box()
+        c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_submit": "2"})
+        self.assertNotEqual(c.returncode, 0)
+        self.assertEqual(self.box(), before)
+
+    def test_failed_emit_records_nothing_and_commits_nothing(self):
+        self.books_train()
+        before, head = self.box(), self.head()
+        c = self.train("certify", "hbox", extra_env={"STUB_RC_ssh": "1"})
+        self.assertNotEqual(c.returncode, 0)
+        self.assertEqual(self.box(), before)
+        self.assertEqual(self.head(), head)
+
+    def test_certify_refuses_a_dirty_tree(self):
+        self.books_train()
+        (self.work / "src.txt").write_text("edited\n")
+        c = self.train("certify", "hbox")
+        self.assertNotEqual(c.returncode, 0)
+        self.assertEqual([l for l in self.stub_log() if l.startswith("farm")], [])
+
+    def test_certify_refuses_an_untracked_file(self):
+        # farm ships the worktree, so an untracked file would reach the box
+        self.books_train()
+        (self.work / "NOTES.txt").write_text("x\n")
+        self.assertNotEqual(self.train("certify", "hbox").returncode, 0)
+        self.assertEqual([l for l in self.stub_log() if l.startswith("farm")], [])
 
 
 if __name__ == "__main__":
