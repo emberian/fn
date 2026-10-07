@@ -299,6 +299,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-loop-tests \
 	books/def-representation-lib \
 	books/def-representation-pages \
+	books/paged-checkpoint \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
 	tests/acl2/def-representation-pages-tests \
