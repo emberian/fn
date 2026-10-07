@@ -1592,3 +1592,97 @@
                 (not (fn-xcs-get-tokp v fn-xcs)))
            (equal (fn-xc-slot-token v fn-xcs) nil))
   :hints (("Goal" :in-theory (enable fn-xc-slot-token))))
+
+
+; =============================================================================
+; The table, from the profile.  Init lays NE + NW free rows and the three
+; cells; a fresh cache answers every lookup with a miss, and an empty region
+; (N = 0, the cache off) refuses every install.
+(defthm fn-xc-append-free-shape
+  (implies (and (fn-xcsp fn-xcs) (natp n))
+           (and (fn-xcsp (fn-xc-append-free n fn-xcs))
+                (equal (fn-xcs-count (fn-xc-append-free n fn-xcs)) (+ n (fn-xcs-count fn-xcs)))))
+  :hints (("Goal" :in-theory (enable fn-xc-append-free fn-xcs-append-is-append fn-xcsp-is-seq-p fn-xcs-count-is-len)
+                  :induct (fn-xc-append-free n fn-xcs))))
+
+(defun fn-xc-free-rows (n)
+  (declare (xargs :guard (natp n) :measure (nfix n)))
+  (if (zp n) nil (cons *fn-xc-free-row* (fn-xc-free-rows (1- n)))))
+
+(defthm fn-xc-append-free-is-free-rows
+  (implies (and (natp n) (true-listp fn-xcs))
+           (equal (fn-xc-append-free n fn-xcs)
+                  (append fn-xcs (fn-xc-free-rows n))))
+  :hints (("Goal" :in-theory (enable fn-xc-append-free fn-xcs-append-is-append fn-xc-free-rows)
+                  :induct (fn-xc-append-free n fn-xcs))))
+
+(defun fn-xc-rows-ind (i n)
+  (declare (xargs :measure (nfix n)))
+  (if (or (zp n) (zp i)) 0 (fn-xc-rows-ind (1- i) (1- n))))
+
+(defthm fn-xc-free-rows-nth
+  (implies (and (natp i) (natp n) (< i n))
+           (equal (nth i (fn-xc-free-rows n)) *fn-xc-free-row*))
+  :hints (("Goal" :in-theory (enable nth)
+                  :expand ((fn-xc-free-rows n))
+                  :induct (fn-xc-rows-ind i n))))
+(defthm fn-xc-free-rows-len
+  (equal (len (fn-xc-free-rows n)) (nfix n))
+  :hints (("Goal" :in-theory (enable fn-xc-free-rows))))
+
+(defthm fn-xc-find-in-free-rows
+  (implies (and (member-equal kind '(1 2 3)) (natp i) (natp hi) (<= hi n) (natp n)
+                (equal fn-xcs (fn-xc-free-rows n)))
+           (not (fn-xc-find i hi exactp kind file eoff elen a b c d trailer pos fn-xcs)))
+  :hints (("Goal" :in-theory (enable fn-xc-find fn-xc-slot-matchp fn-xcs-get-kind-is-nth)
+                  :induct (fn-xc-find i hi exactp kind file eoff elen a b c d trailer pos fn-xcs))))
+(defthm fn-xc-empty-stobjs-are-nil
+  (and (implies (and (fn-xcsp fn-xcs) (equal (fn-xcs-count fn-xcs) 0)) (equal fn-xcs nil))
+       (implies (and (fn-xccp fn-xcc) (equal (fn-xcc-count fn-xcc) 0)) (equal fn-xcc nil)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xcsp-is-seq-p fn-xcs-count-is-len fn-xccp-is-scalar-seq-p fn-xcc-count-is-len)
+                  :expand ((adt-seq-p *fn-xcs-schema* fn-xcs) (adt-scalar-seq-p '(:u64) fn-xcc)))))
+(defthm fn-xc-init-initializes
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (equal (fn-xcs-count fn-xcs) 0) (equal (fn-xcc-count fn-xcc) 0)
+                (natp ne) (natp nw) (<= ne *fn-xc-max-slots*) (<= nw *fn-xc-max-slots*))
+           (let ((r (fn-xc-init ne nw fn-xcs fn-xcc)))
+             (and (equal (mv-nth 0 r) :initialized)
+                  (fn-xcsp (mv-nth 1 r)) (fn-xccp (mv-nth 2 r))
+                  (fn-xc-readyp (mv-nth 1 r) (mv-nth 2 r))
+                  (equal (fn-xc-ne (mv-nth 2 r)) ne)
+                  (equal (fn-xc-nw (mv-nth 2 r)) nw)
+                  (equal (fn-xc-tick (mv-nth 2 r)) 0)
+                  (equal (mv-nth 1 r) (fn-xc-free-rows (+ ne nw))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-init fn-xc-readyp fn-xc-cellsp fn-xc-ne fn-xc-nw fn-xc-tick
+                                     fn-xcc-append-is-append fn-xcc-count-is-len fn-xcs-count-is-len
+                                     fn-xccp-is-scalar-seq-p fn-xcc-get-is-nth fn-xc-append-free-is-free-rows adt-scalar-seq-p adt-val-okp unsigned-byte-p)
+                  :use ((:instance fn-xc-append-free-shape (n (+ ne nw))) fn-xc-empty-stobjs-are-nil))))
+(defthm fn-xc-init-lookups-miss
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (equal (fn-xcs-count fn-xcs) 0) (equal (fn-xcc-count fn-xcc) 0)
+                (natp ne) (natp nw) (<= ne *fn-xc-max-slots*) (<= nw *fn-xc-max-slots*)
+                (natp from) (natp pos))
+           (equal (mv-nth 0 (fn-xc-lookup from kind file eoff elen a b c d trailer pos
+                                          (mv-nth 1 (fn-xc-init ne nw fn-xcs fn-xcc))
+                                          (mv-nth 2 (fn-xc-init ne nw fn-xcs fn-xcc))))
+                  :miss))
+  :hints (("Goal" :in-theory (enable fn-xc-lookup fn-xc-lo fn-xc-hi)
+                  :use (fn-xc-init-initializes
+                        (:instance fn-xc-find-in-free-rows (n (+ ne nw)) (hi ne) (i (if (< from 0) 0 from))
+                                   (exactp t) (fn-xcs (fn-xc-free-rows (+ ne nw))))
+                        (:instance fn-xc-find-in-free-rows (n (+ ne nw)) (hi (+ ne nw)) (i (if (< from ne) ne from))
+                                   (exactp nil) (fn-xcs (fn-xc-free-rows (+ ne nw))))))))
+(defthm fn-xc-init-install-refuses-in-an-empty-region
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (equal (fn-xcs-count fn-xcs) 0) (equal (fn-xcc-count fn-xcc) 0)
+                (natp ne) (natp nw) (<= ne *fn-xc-max-slots*) (<= nw *fn-xc-max-slots*)
+                (or (and (equal kind 1) (equal ne 0))
+                    (and (member-equal kind '(2 3)) (equal nw 0))))
+           (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer
+                                           (mv-nth 1 (fn-xc-init ne nw fn-xcs fn-xcc))
+                                           (mv-nth 2 (fn-xc-init ne nw fn-xcs fn-xcc))))
+                  :refused))
+  :hints (("Goal" :in-theory (enable fn-xc-install fn-xc-lo fn-xc-hi)
+                  :use (fn-xc-init-initializes))))
