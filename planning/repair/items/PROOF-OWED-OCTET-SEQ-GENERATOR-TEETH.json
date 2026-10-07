@@ -1,0 +1,11 @@
+{
+ "file": "books/def-representation.lisp",
+ "id": "PROOF-OWED-OCTET-SEQ-GENERATOR-TEETH",
+ "notes": [],
+ "owner": "deputy-p",
+ "severity": "low",
+ "source": "lane gen-span, ruling 1",
+ "state": "open",
+ "title": "def-representation :octet-seq: statement-level teeth for fn-dlz-nth-of-fill-list and the host buffer read (positive witness on a reachable fn-dlz value; negative with a mutated fill)",
+ "updated": "2026-10-07T00:37:36Z"
+}

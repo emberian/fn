@@ -889,6 +889,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-lz-append-tests \
 	tests/acl2/deflate-inflate-tests \
 	books/deflate-pool-check \
+	books/decoded-payload-decode-into \
 	tests/acl2/deflate-pool-tests \
 	books/nntp-compress-dict \
 	tests/acl2/nntp-compress-dict-tests \
