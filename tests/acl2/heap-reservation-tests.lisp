@@ -195,6 +195,11 @@
 ; stacks no longer grow with the article); under 1 GiB refused by name,
 ; never lowered (its small capacity's first run is 1,327 MB since the
 ; figure takes the measured 12 KiB a record: lane reservation-figure).
+; Both figures take a pool page at 64 octets over its 16,384 (heap-store-figure,
+; *fn-heap-arena-page-pointer-octets*).  Measured 2026-10-07 (lane s-vocab, the
+; generated paged arena, SBCL dynamic usage after a full GC, 1,024 then 2,048
+; pages sealed): 16,442 octets a page, 58 over the 16,384, so the 64 holds with a
+; margin and both figures stand as derived.
 (defconst *hrt-bare* '(:default nil))
 (defconst *hrt-mission* '(:default ((4 . 1048576) (5 . 8))))
 (defconst *hrt-gib* (* 1024 *fn-heap-mib*))
