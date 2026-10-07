@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "EXT-CACHE-TEETH-LOOKUP",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-extent-cache",
+ "state": "open",
+ "title": "Keystone fn-xc-lookup-hit-is-the-descriptor / -miss-is-absent / -finds-every-held-descriptor / fn-xc-find-complete (books/extent-cache.lisp) lack teeth: owed a satisfiable witness (a concrete table with a hit and a miss) and a mutant lookup (matching on a wrong column, or skipping the window start check) that the statements refuse, plus premise inhabitation of the readyp hypotheses.",
+ "updated": "2026-10-07T12:00:00Z"
+}

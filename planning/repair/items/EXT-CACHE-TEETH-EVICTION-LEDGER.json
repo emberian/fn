@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "EXT-CACHE-TEETH-EVICTION-LEDGER",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-extent-cache",
+ "state": "open",
+ "title": "Keystone fn-xc-eviction-releases-exactly-the-slots-charge (composition with fn-prl-evict) and fn-xc-install-evicts-the-least-recently-used lack teeth: owed a concrete ledger run where the evicted token is the victim's own, and a mutant that hands back the newest slot's token which the statement refuses.",
+ "updated": "2026-10-07T12:00:00Z"
+}

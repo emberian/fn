@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "EXT-CACHE-TEETH-PRESSURE",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-extent-cache",
+ "state": "open",
+ "title": "Keystone fn-xc-yield-an-entry / -a-window-when-no-entry / -none-means-empty lack teeth: owed a concrete table where an entry and a window are both live (the entry yields), and a mutant that yields the newest slot or a window first which the statements refuse.",
+ "updated": "2026-10-07T12:00:00Z"
+}

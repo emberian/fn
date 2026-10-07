@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "EXT-CACHE-INDEX",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-extent-cache",
+ "state": "open",
+ "title": "Hash index over the extent cache once N > 32: fn-xc-find, -find-free and -lru are linear scans, so books/extent-cache.lisp refuses a profile figure above 32 (*fn-xc-max-slots*, and a theorem on the :extent-cache-entries/:extent-cache-windows rows). Owed: a generated hash index (def-representation keyed instance) with lookup/install/yield decisions proved equal to the scan's, then raise the bound. Until then the profile cannot name more than 32 slots.",
+ "updated": "2026-10-07T12:00:00Z"
+}

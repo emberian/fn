@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "EXT-CACHE-TEETH-INSTALL-LOOKUP",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-extent-cache",
+ "state": "open",
+ "title": "Keystone fn-xc-install-then-lookup-hits (and the :present/:installed/:replaced frames) lacks teeth: owed a concrete install-then-lookup run, and a mutant install that places in the wrong region or forgets the stamp that the statement refuses.",
+ "updated": "2026-10-07T12:00:00Z"
+}

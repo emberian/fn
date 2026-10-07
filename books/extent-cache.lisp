@@ -224,8 +224,9 @@
        (unsigned-byte-p 64 d) (unsigned-byte-p 64 start)
        (natp trailer) (<= trailer *fn-xc-trailer-max*)))
 
-; --- the scans.  GEN: def-loop (an index loop over a stobj's rows; the
-; generator has the list shapes only).
+; --- the scans.  GEN: def-loop :step (an index loop over a stobj's rows; the
+; generator has the list shapes only, and :step has not landed on origin/dev:
+; owed item EXT-CACHE-SCAN-GEN).
 (defun fn-xc-slot-matchp (i exactp kind file eoff elen a b c d trailer pos fn-xcs)
   (declare (xargs :stobjs fn-xcs
                   :guard (and (fn-xcsp fn-xcs) (natp i) (< i (fn-xcs-count fn-xcs)) (natp pos))))
@@ -242,6 +243,7 @@
            (equal (fn-xcs-get-start i fn-xcs) pos)
          (<= (fn-xcs-get-start i fn-xcs) pos))))
 
+; GEN: def-loop :step
 (defun fn-xc-find (i hi exactp kind file eoff elen a b c d trailer pos fn-xcs)
   (declare (xargs :stobjs fn-xcs
                   :guard (and (fn-xcsp fn-xcs) (natp i) (natp hi) (<= hi (fn-xcs-count fn-xcs))
@@ -253,6 +255,7 @@
         (fn-xc-find (1+ i) hi exactp kind file eoff elen a b c d trailer pos fn-xcs))
     nil))
 
+; GEN: def-loop :step
 (defun fn-xc-find-free (i hi fn-xcs)
   (declare (xargs :stobjs fn-xcs
                   :guard (and (fn-xcsp fn-xcs) (natp i) (natp hi) (<= hi (fn-xcs-count fn-xcs)))
@@ -262,6 +265,7 @@
     nil))
 
 ; The least-recently-used LIVE slot of [i, hi): BEST is the least so far (or NIL).
+; GEN: def-loop :step
 (defun fn-xc-lru (i hi best fn-xcs)
   (declare (xargs :stobjs fn-xcs
                   :guard (and (fn-xcsp fn-xcs) (natp i) (natp hi) (<= hi (fn-xcs-count fn-xcs))
@@ -277,6 +281,7 @@
     best))
 
 ; The next live slot at or after I (of FILE when FILE is a natural; any when NIL).
+; GEN: def-loop :step
 (defun fn-xc-next (i file fn-xcs)
   (declare (xargs :stobjs fn-xcs
                   :guard (and (fn-xcsp fn-xcs) (natp i))
@@ -1235,6 +1240,7 @@
 ; =============================================================================
 ; Occupancy.  The table has NE + NW rows and never gains one, so the live
 ; slots of a region number at most the region's size, whatever the profile's N.
+; GEN: def-loop :step
 (defun fn-xc-live-count (i hi fn-xcs)
   (declare (xargs :stobjs fn-xcs
                   :guard (and (fn-xcsp fn-xcs) (natp i) (natp hi) (<= hi (fn-xcs-count fn-xcs)))

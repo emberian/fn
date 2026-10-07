@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "EXT-CACHE-SCAN-GEN",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-extent-cache",
+ "state": "open",
+ "title": "The scans fn-xc-find, fn-xc-find-free, fn-xc-lru, fn-xc-next and fn-xc-live-count in books/extent-cache.lisp are hand-written index loops marked `; GEN: def-loop :step`. Owed: regenerate them with def-loop :step when it lands on origin/dev (ruling 1), keeping the keystone statements unchanged.",
+ "updated": "2026-10-07T12:00:00Z"
+}

@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "EXT-CACHE-TEETH-OCCUPANCY",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-extent-cache",
+ "state": "open",
+ "title": "Keystone fn-xc-region-occupancy-is-at-most-the-profile-figure and fn-xc-install-occupancy lack teeth: owed a table filled to N whose next install keeps the count at N, and a mutant install that allocates a row (appends) which the statement refuses.",
+ "updated": "2026-10-07T12:00:00Z"
+}
