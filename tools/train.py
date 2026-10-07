@@ -312,7 +312,9 @@ def cmd_regen(t: Train, args) -> int:
             return rc
     # (5)
     st["regen_commits"] = st.get("regen_commits", 0) + 1
-    n = st["regen_commits"]
+    # the label the integrator numbers trains by; the state file's own count
+    # restarts with each state file, so it is only the fallback
+    n = args.label or st["regen_commits"]
     cited = " ".join(args.cite or [])
     msg = f"Regenerate train {n}: ledger, current view, repair status" + (f" after citing {cited}" if cited else "")
     _commit_named(t, REGEN_OUTPUTS, msg)
@@ -338,7 +340,9 @@ def _lock_keys(t: Train, cwd: Path) -> set[str] | None:
     say(f"$ (in {cwd}) {PY} tools/lock_discipline_check.py --json  -> rc {p.returncode}")
     try:
         data = json.loads(p.stdout)
-        return {e["key"] for e in data.get("new", [])}
+        # `new` holds key strings (lock-check-full-output, d4d8514f6) or
+        # finding dicts with a 'key' (earlier checkers): accept both.
+        return {e if isinstance(e, str) else e["key"] for e in data.get("new", [])}
     except (ValueError, KeyError, TypeError, AttributeError):
         say("  lock_discipline_check output not parseable: " + (p.stdout + p.stderr)[-300:])
         return None
@@ -460,6 +464,7 @@ def main(argv=None) -> int:
     r.add_argument("--cite", action="append", metavar="ID")
     r.add_argument("--cite-from", metavar="DIR")
     r.add_argument("--hbox", action="store_true")
+    r.add_argument("--label", metavar="N", help="the train number for the regen commit messages")
     g = sub.add_parser("gate")
     g.add_argument("--strict-lock", action="store_true")
     sub.add_parser("push")
