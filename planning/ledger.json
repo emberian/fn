@@ -2602,23 +2602,23 @@
     "books_in_root_closure": 2925,
     "roots": 2594,
     "theorems": 41730,
-    "functions": 26391,
+    "functions": 26385,
     "assert_events": 28286,
     "must_fails": 2773,
     "prover_refusals": 0,
     "encapsulates": 257,
     "guards": {
-      "verified": 4167,
+      "verified": 4171,
       "declared-off": 3501,
-      "default-guarded": 14439,
+      "default-guarded": 14429,
       "default-unguarded": 4284
     },
     "suspect_theorems": 1514,
     "export_hygiene_warnings": 433,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 312,
-    "include_hygiene_warnings": 3954,
-    "host_names_warnings": 3665,
+    "include_hygiene_warnings": 3944,
+    "host_names_warnings": 3667,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -4179,12 +4179,12 @@
       "theorems": 36,
       "functions": 13,
       "guards": {
-        "verified": 4,
+        "verified": 5,
         "declared-off": 0,
-        "default-guarded": 9,
+        "default-guarded": 8,
         "default-unguarded": 0
       },
-      "verify_guards_events": 4,
+      "verify_guards_events": 5,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -7191,14 +7191,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 56,
-      "functions": 24,
+      "functions": 23,
       "guards": {
-        "verified": 8,
+        "verified": 9,
         "declared-off": 5,
-        "default-guarded": 11,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 8,
+      "verify_guards_events": 9,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -7767,6 +7767,7 @@
         "bp-receipt-records",
         "bp-request-ref",
         "clock",
+        "def-loop",
         "identity",
         "msgid-index",
         "owner-feed",
@@ -8737,14 +8738,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 76,
-      "functions": 102,
+      "functions": 101,
       "guards": {
-        "verified": 59,
+        "verified": 58,
         "declared-off": 3,
         "default-guarded": 40,
         "default-unguarded": 0
       },
-      "verify_guards_events": 59,
+      "verify_guards_events": 58,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -12776,14 +12777,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 8,
-      "functions": 14,
+      "functions": 13,
       "guards": {
-        "verified": 1,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 13,
+        "default-guarded": 11,
         "default-unguarded": 0
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -12791,6 +12792,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "rev-onto"
       ],
       "system_includes": [],
@@ -30621,14 +30623,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 32,
-      "functions": 115,
+      "functions": 114,
       "guards": {
-        "verified": 1,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 114,
+        "default-guarded": 112,
         "default-unguarded": 0
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -30636,6 +30638,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "def-loop",
         "profile-limits",
         "records",
         "rev-onto"
@@ -30999,14 +31002,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 75,
-      "functions": 61,
+      "functions": 60,
       "guards": {
-        "verified": 12,
+        "verified": 11,
         "declared-off": 7,
         "default-guarded": 42,
         "default-unguarded": 0
       },
-      "verify_guards_events": 12,
+      "verify_guards_events": 11,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -31016,6 +31019,7 @@
       "includes": [
         "account-list",
         "accounts",
+        "def-loop",
         "native-admin",
         "native-control",
         "native-live-status-words",
@@ -31366,6 +31370,7 @@
       "encapsulates": 0,
       "includes": [
         "def-cursor",
+        "def-loop",
         "newnews-cursor-shape",
         "nntp-newnews",
         "served-columns"
@@ -34177,12 +34182,12 @@
       "theorems": 46,
       "functions": 19,
       "guards": {
-        "verified": 9,
+        "verified": 10,
         "declared-off": 0,
-        "default-guarded": 10,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 9,
+      "verify_guards_events": 10,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -37387,6 +37392,7 @@
       "encapsulates": 0,
       "includes": [
         "config",
+        "def-loop",
         "frame-trailer",
         "nntp-syntax",
         "owner-feed",
@@ -43751,14 +43757,14 @@
       "in_root_closure": true,
       "is_root": false,
       "theorems": 1,
-      "functions": 11,
+      "functions": 10,
       "guards": {
-        "verified": 1,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 10,
+        "default-guarded": 8,
         "default-unguarded": 0
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -43767,6 +43773,7 @@
       "encapsulates": 0,
       "includes": [
         "config",
+        "def-loop",
         "native-config",
         "public-exposure-selectors"
       ],
@@ -92439,7 +92446,7 @@
     {
       "theorem": "fn-bpn-resume-job-keeps-wire-and-peer",
       "book": "books/bp-node-machine.lisp",
-      "line": 1048,
+      "line": 1012,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -92490,7 +92497,7 @@
     {
       "theorem": "fn-bpn-step-emits-no-release",
       "book": "books/bp-node-machine.lisp",
-      "line": 1037,
+      "line": 1001,
       "reasons": [
         "instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing"
       ]
@@ -95917,7 +95924,7 @@
     {
       "theorem": "fn-oag-conns-of-set-conns",
       "book": "books/owner-agent.lisp",
-      "line": 737,
+      "line": 706,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -95925,7 +95932,7 @@
     {
       "theorem": "fn-oag-dispatch-core-keeps-the-config",
       "book": "books/owner-agent.lisp",
-      "line": 561,
+      "line": 530,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -95933,7 +95940,7 @@
     {
       "theorem": "fn-oag-tls-served-conn-config",
       "book": "books/owner-agent.lisp",
-      "line": 660,
+      "line": 629,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -95941,7 +95948,7 @@
     {
       "theorem": "fn-oag-with-wire-keeps-the-config",
       "book": "books/owner-agent.lisp",
-      "line": 537,
+      "line": 506,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -96572,7 +96579,7 @@
     {
       "theorem": "fn-ores-submission-intent-publication-unfolds",
       "book": "books/owner-results.lisp",
-      "line": 260,
+      "line": 235,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-ores-submission-intent-publication"
       ]
@@ -104744,7 +104751,7 @@
       {
         "theorem": "fn-nls-octets-string-is-record-octets-string",
         "book": "books/native-live-status.lisp",
-        "line": 910,
+        "line": 880,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -104936,7 +104943,7 @@
       {
         "theorem": "fn-oag-post-config-agent-is-the-path-identity",
         "book": "books/owner-agent.lisp",
-        "line": 270,
+        "line": 239,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -114458,13 +114465,6 @@
       },
       {
         "book": "books/image-world-dtn.lisp",
-        "line": 330,
-        "include": "owner-results",
-        "included": "books/owner-results.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world-dtn.lisp",
         "line": 331,
         "include": "owner-served-bound",
         "included": "books/owner-served-bound.lisp",
@@ -115928,13 +115928,6 @@
       },
       {
         "book": "books/image-world-paged.lisp",
-        "line": 377,
-        "include": "owner-results",
-        "included": "books/owner-results.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world-paged.lisp",
         "line": 378,
         "include": "owner-served-bound",
         "included": "books/owner-served-bound.lisp",
@@ -116925,13 +116918,6 @@
         "line": 194,
         "include": "feed-wire-input",
         "included": "books/feed-wire-input.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world-store-test.lisp",
-        "line": 200,
-        "include": "owner-results",
-        "included": "books/owner-results.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -118206,13 +118192,6 @@
         "line": 358,
         "include": "owner-identity-served",
         "included": "books/owner-identity-served.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/image-world.lisp",
-        "line": 376,
-        "include": "owner-results",
-        "included": "books/owner-results.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -119652,13 +119631,6 @@
       },
       {
         "book": "books/native-admin.lisp",
-        "line": 20,
-        "include": "public-exposure-rows",
-        "included": "books/public-exposure-rows.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/native-admin.lisp",
         "line": 21,
         "include": "tls-handshake-source",
         "included": "books/tls-handshake-source.lisp",
@@ -119673,14 +119645,14 @@
       },
       {
         "book": "books/native-config.lisp",
-        "line": 12,
+        "line": 13,
         "include": "rev-onto",
         "included": "books/rev-onto.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/native-config.lisp",
-        "line": 13,
+        "line": 14,
         "include": "profile-limits",
         "included": "books/profile-limits.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -119778,28 +119750,28 @@
       },
       {
         "book": "books/native-live-status.lisp",
-        "line": 40,
+        "line": 41,
         "include": "accounts",
         "included": "books/accounts.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/native-live-status.lisp",
-        "line": 42,
+        "line": 43,
         "include": "account-list",
         "included": "books/account-list.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/native-live-status.lisp",
-        "line": 48,
+        "line": 49,
         "include": "records-stamp",
         "included": "books/records-stamp.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/native-live-status.lisp",
-        "line": 58,
+        "line": 59,
         "include": "native-live-status-words",
         "included": "books/native-live-status-words.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -119855,7 +119827,7 @@
       },
       {
         "book": "books/newnews-metadata-cursor.lisp",
-        "line": 9,
+        "line": 10,
         "include": "def-cursor",
         "included": "books/def-cursor.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -120540,13 +120512,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/owner-feed-article.lisp",
-        "line": 39,
-        "include": "owner-results",
-        "included": "books/owner-results.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/owner-host-relation-span.lisp",
         "line": 22,
         "include": "owner-host-relation",
@@ -120782,13 +120747,6 @@
         "line": 4,
         "include": "owner-outcome-pinned",
         "included": "books/owner-outcome-pinned.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/owner-parse-carried.lisp",
-        "line": 47,
-        "include": "owner-results",
-        "included": "books/owner-results.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -121717,16 +121675,9 @@
       },
       {
         "book": "books/public-exposure-rows.lisp",
-        "line": 69,
+        "line": 70,
         "include": "public-exposure-selectors",
         "included": "books/public-exposure-selectors.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/public-exposure.lisp",
-        "line": 77,
-        "include": "public-exposure-rows",
-        "included": "books/public-exposure-rows.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -123540,13 +123491,6 @@
         "line": 18,
         "include": "profile-limits",
         "included": "books/profile-limits.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/tls-handshake-source.lisp",
-        "line": 20,
-        "include": "public-exposure-rows",
-        "included": "books/public-exposure-rows.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -132472,13 +132416,6 @@
         "line": 3,
         "include": "owner-cold-line-tests",
         "included": "tests/acl2/owner-cold-line-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/owner-results-tests.lisp",
-        "line": 8,
-        "include": "../../books/owner-results",
-        "included": "books/owner-results.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -162536,161 +162473,175 @@
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 125,
+        "line": 128,
         "name": "weak-rewrite-rule-p",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 125,
+        "line": 128,
         "name": "access",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 125,
+        "line": 128,
         "name": "symbol-listp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 125,
+        "line": 128,
         "name": "no-duplicatesp-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 125,
+        "line": 128,
         "name": "add-to-set-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 140,
+        "line": 143,
         "name": "cdar",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 140,
+        "line": 143,
+        "name": "enabled-runep",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 143,
         "name": "find-rules-of-rune",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 149,
+        "line": 153,
         "name": "w",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 149,
+        "line": 153,
         "name": "getpropc",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 149,
+        "line": 153,
         "name": "strip-cars",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 149,
+        "line": 153,
         "name": "get-event",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 183,
+        "line": 153,
+        "name": "ens",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "tools/coverage_dump.lisp",
+        "line": 188,
         "name": "mutual-recursion",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 183,
+        "line": 188,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 183,
+        "line": 188,
         "name": "cov-mbe-pairs-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 183,
+        "line": 188,
         "name": "cov-mbe-pairs",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 213,
+        "line": 218,
         "name": "symbol-class",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 213,
+        "line": 218,
         "name": "*t*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 213,
+        "line": 218,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 258,
+        "line": 263,
         "name": "caar",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 268,
+        "line": 273,
         "name": "fast-alist-free",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 268,
+        "line": 273,
         "name": "open-output-channel",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 268,
+        "line": 273,
         "name": "newline",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/coverage_dump.lisp",
-        "line": 268,
+        "line": 273,
         "name": "close-output-channel",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
