@@ -1492,7 +1492,10 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
         if certify_id and decided:
             return [head, f"  manifest {certify_id} {decided} on the box (read as "
                           "`farm.py status` reads it); its evidence did not come back "
-                          f"under {root}/build/acl2 -- `farm.py fetch` it before citing"]
+                          f"under {root}/build/acl2 -- run `farm.py wait "
+                          f"{run_record(root, identifier).get('host') or 'BOX'} "
+                          f"{identifier}` (it fetches a finished run's evidence) "
+                          "before citing"]
         return [head, "  no manifest came back under "
                 f"{root}/build/acl2; the verdict is unknown (not green); "
                 f"read {log}"]

@@ -1809,6 +1809,8 @@ class WaitReadsTheRunsOwnDirectoryTests(unittest.TestCase):
             lines = farm.verdict_lines(root, "run-x", 0)
             self.assertNotIn("unknown", " ".join(lines))
             self.assertIn("manifest certify-20260929T010000Z-11 passed on the box", lines[1])
+            self.assertIn("`farm.py wait hbox run-x`", lines[1])
+            self.assertNotIn("farm.py fetch", lines[1])
             farm.record_path(root, "run-y").write_text(json.dumps({"host": "hbox"}))
             self.assertIn("unknown", " ".join(farm.verdict_lines(root, "run-y", 1)))
 
