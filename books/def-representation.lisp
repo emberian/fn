@@ -5,7 +5,9 @@
 ;
 ;   (def-representation NAME (FIELD KIND) ...
 ;     [:scalar t] [:generic t] [:invariant PRED :invariant-lemmas (L ...)]
-;     [:write-once t] [:paged nil])
+;     [:write-once t] [:paged nil]
+;     [:exports ((ROLE [:as EXPORT] [:logic FN]) ...)] [:source SRC]
+;     [:model (:recognizer R :creator C)] [:lemmas (THM ...)])
 ;
 ; KIND is :u8 :u32 :u64 :bool :octets, (:nat B) or (:enum OBJ ...).  What
 ; `defadt' already generates, this generates (the foundation of typed
@@ -52,6 +54,23 @@
 ;     logical sequence (the sum of its records' octets) in every reachable
 ;     foundation: the pool is bounded by the live records, never by the
 ;     history of their writes.
+;
+;   * the scalar :octets VOCABULARY (lane s-vocab 2026-10-07), for :scalar t
+;     with one :octets field and :paged nil: besides count get set append
+;     clear, the export roles payload-len (the length of one payload),
+;     inner-get (one octet of one payload), and, with :source SRC (an
+;     octet-buffer stobj with SRC-LEN and SRC-GET), seal-buffer and
+;     seal-range, which seal SRC's whole contents or its cells [LO, HI) as
+;     one payload, read cell by cell into the pool: no octet list is built.
+;     :exports lists the exports in their order (the default is the list
+;     above), naming one NAME-ROLE unless :as says otherwise.  With :model
+;     the logical side is GIVEN (every entry names its :logic, the
+;     recognizer R and the creator C): the instance defines none of its own
+;     and proves the executables against it, reading the theorems of :lemmas
+;     (the recognizer is the scalar sequence, SRC is a list of octets, the
+;     given readers are nth, append and take of nthcdr).  See
+;     books/payload-arena-bytes.lisp, the first fixture, and
+;     tests/acl2/def-representation-tests.lisp section 3c.
 ;
 ; Every generated name is derived from NAME (`NAME$c', `NAME$a', `NAME$ap',
 ; `NAME$corr', `NAME-count', `NAME-get-FIELD', ...; `NAME$l' for the list
