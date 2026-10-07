@@ -48,7 +48,6 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
                    "FN_NATIVE_BUILD": str(base / "build.lisp"),
                    "FN_NATIVE_IMAGE": str(base / "fn-host-test"),
                    "FN_NATIVE_LOG": str(base / "build.log")}
-            env.pop("FN_NATIVE_CATALOG", None)
             env.update({k: (v.replace("$BASE", str(base))) for k, v in extra.items()})
             env.pop("FN_OPENSSL_PREFIX", None)
             env.pop("FN_TLS_LIMIT", None)
@@ -102,7 +101,7 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(os.path.realpath(named), os.path.realpath(library[0]))
         self.assertEqual(openssl, "unset")
         # The catalog is recorded beside the image (tools/image_set.py reads it).
-        self.assertEqual(self.catalog_text, "old\n")
+        self.assertEqual(self.catalog_text, "paged\n")
         # So is the source the image was built from (S057): this checkout's
         # HEAD, `commit` only when nothing differs from it.
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
@@ -119,36 +118,6 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(answer.returncode, 1, answer.stdout + answer.stderr)
         self.assertIn("acl2 exited with status 137", answer.stderr)
         self.assertIsNone(self.source_text)
-
-    def test_old_catalog_refuses_paged_build_by_name_before_running_acl2(self):
-        answer, log, _, _ = self.build(
-            "ACL2 !>", FN_NATIVE_CATALOG="old",
-            FN_NATIVE_BUILD="build/native-build-paged.lisp", FN_NATIVE_IMAGE="build/fn-host")
-        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
-        self.assertIn("build/native-build-paged.lisp is a paged build script", answer.stderr)
-        self.assertEqual(log, "")
-        self.assertIsNone(self.catalog_text)
-
-    def test_old_catalog_refuses_paged_build_by_content_before_running_acl2(self):
-        answer, log, _, _ = self.build(
-            "ACL2 !>", build_text='(include-book "books/image-world-paged")\n(value :q)\n',
-            FN_NATIVE_CATALOG="old")
-        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
-        self.assertIn("build.lisp includes books/image-world-paged", answer.stderr)
-        self.assertEqual(log, "")
-        self.assertIsNone(self.catalog_text)
-
-    def test_the_image_name_says_its_catalog(self):
-        # Codex r21 F2: a paged core is never built under the old name, and
-        # an old one never under a -paged name.
-        answer, _log, _, _ = self.build("ACL2 !>", FN_NATIVE_CATALOG="paged",
-                                        FN_NATIVE_BUILD="host/native/build.lisp")
-        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
-        self.assertIn("builds an image named *-paged", answer.stderr)
-        self.assertNotIn("built ", answer.stdout)
-        answer, _log, _, _ = self.build("ACL2 !>", FN_NATIVE_IMAGE="$BASE/fn-host-x-paged")
-        self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
-        self.assertIn("a paged image's name", answer.stderr)
 
 
 if __name__ == "__main__":
