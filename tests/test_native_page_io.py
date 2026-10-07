@@ -463,7 +463,7 @@ class PageIOTests(unittest.TestCase):
     def test_a_publication_never_retires_the_history_image(self):
         # c05 finding F1 (lane def-holder): the history image's file,
         # registered at the open and preread OFF the extent lock
-        # (fn-pgs-fill-realize), is a CHECKED exclusion of retirement:
+        # (fn-pgs-fill-frame), is a CHECKED exclusion of retirement:
         # fnn-owner-release-extents faults by name if that id ever enters
         # the retired set (the file resource's :excluded root history-image,
         # books/page-read-direct.lisp).  A store whose checkpoint carries

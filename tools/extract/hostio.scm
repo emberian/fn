@@ -256,7 +256,7 @@ static int fnx_statfs(const char *p, unsigned char *buf) {
     (let loop ((i (+ start plen -1)) (acc '()))
       (if (< i start) acc (loop (- i 1) (cons (u8vector-ref entry i) acc))))))
 
-;; A-PGS-HOST-IO's page fill (host/native/extent.lisp fn-pgs-fill-realize):
+;; A-PGS-HOST-IO's page fill, the list form the native host no longer builds (host/native/extent.lisp fn-pgs-fill-frame):
 ;; the 2048 little-endian u64 words page ADDR of the page file FILE holds
 ;; (FILE a handle), one pread; a short read refused by name.  ACL2's digest
 ;; check decides whether they are the page the committed table names.

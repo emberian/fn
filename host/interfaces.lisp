@@ -4795,10 +4795,11 @@
 (definterface fn-pgs-frame-len
   :class :common-lisp-compliant
   :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) reads the selected array's length to refuse a range outside it; SEL checked against 0, 1, 2 first")
-(definterface fn-pgs-frame-put
+(definterface fn-pgb-frame-put
   :class :common-lisp-compliant
   :kinds ((base natp))
-  :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) is the constraint's right-hand side, the put of fn-pgs-fill-realize's 2048 u64 words at BASE; the selector and range are checked first, the words are the realizer's")
+  :keystones (fn-pgb-frame-put-is-frame-put-of-words)
+  :direct "the raw body of A-PGS-HOST-IO's frame fill (host/native/extent.lisp fn-pgs-fill-frame) stores the page buffer's little-endian words with it after one pread; the selector and range are checked first")
 
 ;; books/payload-extent-read.lisp
 

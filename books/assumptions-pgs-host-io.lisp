@@ -350,14 +350,6 @@
 (defthm fn-pgb-words-from-len
   (equal (len (fn-pgb-words-from i m oct)) (nfix m)))
 
-; Word I/8 of the buffer, as two u32 halves.  `fn-pgb-get-word' of four octets
-; is a fixnum, so the sum is one machine word and never boxed.
-(defun fn-pgb-word (i fn-pgb)
-  (declare (xargs :stobjs fn-pgb
-                  :guard (and (natp i) (<= (+ i 8) (fn-pgb-len fn-pgb)))))
-  (+ (the (unsigned-byte 32) (fn-pgb-get-word i 4 fn-pgb))
-     (* 4294967296 (the (unsigned-byte 32) (fn-pgb-get-word (+ i 4) 4 fn-pgb)))))
-
 (defthm fn-oct-word-at-split
   (implies (and (natp i))
            (equal (fn-oct-word-at i 8 oct)
@@ -373,10 +365,21 @@
                     (fn-oct-word-at (+ 8 i) 0 oct) (fn-oct-word-at (+ 4 i) 0 oct)
                     (fn-oct-word-at (+ 4 i) 4 oct)))))
 
+; Word I/8 of the buffer, as two u32 halves.  `fn-pgb-get-word' of four octets
+; is a fixnum, so the sum is one machine word and never boxed.
+(defun-inline fn-pgb-word (i fn-pgb)
+  (declare (xargs :stobjs fn-pgb
+                  :guard (and (natp i) (<= (+ i 8) (fn-pgb-len fn-pgb)))
+                  :guard-hints (("Goal" :use ((:instance fn-oct-word-at-8-u64 (oct fn-pgb))
+                                              (:instance fn-oct-word-at-split (oct fn-pgb)))))))
+  (the (unsigned-byte 64)
+       (+ (the (unsigned-byte 32) (fn-pgb-get-word i 4 fn-pgb))
+          (* 4294967296 (the (unsigned-byte 32) (fn-pgb-get-word (+ i 4) 4 fn-pgb))))))
+
 (defthm fn-pgb-word-is-word-at
   (implies (natp i)
            (equal (fn-pgb-word i fn-pgb) (fn-oct-word-at i 8 fn-pgb)))
-  :hints (("Goal" :in-theory (enable fn-pgb-word))))
+  :hints (("Goal" :in-theory (enable fn-pgb-word$inline))))
 
 (defthm fn-pgb-word-u64
   (implies (and (fn-pgb-p fn-pgb) (natp i))
@@ -385,7 +388,7 @@
            :use ((:instance fn-oct-word-at-8-u64 (oct fn-pgb))
                  (:instance fn-pgb-word-is-word-at)))))
 
-(in-theory (disable fn-pgb-word))
+(in-theory (disable fn-pgb-word$inline))
 
 (defun fn-pgb-put-loop (sel base i m fn-pgb pgs-mem)
   ; words BASE .. BASE+M-1 of SEL's array := the M words of the buffer from octet I
