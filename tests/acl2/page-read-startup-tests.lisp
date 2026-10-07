@@ -39,6 +39,9 @@
                                            '(83886080 . 67108864) '(8589934592) nil nil))
 (assert-event
  (and (equal (fn-prstartup-nth 0 *prst-launch*) :heap)
+      ; 259: the decoded worker's requested-window child is the profile's
+      ; :read-window-octets (262144) since window-read 390408000, in
+      ; fn-dwb-reusable-baseline-vector via fn-prstartup-baseline-heap.
       (equal (fn-prstartup-nth 1 *prst-launch*) 259)
       (equal (fn-prstartup-nth 4 *prst-launch*) 1024)
       (equal (fn-prstartup-nth 5 *prst-launch*) 20)

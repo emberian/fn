@@ -28,6 +28,7 @@
 
 (in-package "ACL2")
 (include-book "node-invariants")
+(include-book "def-loop")
 (include-book "config-invariants")
 (include-book "config-records")
 (include-book "nntp-syntax")
@@ -373,41 +374,11 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the domain's group names, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-cnode-extend-nexts-loop (names nexts acc)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (fn-cnode-extend-nexts-loop (cdr names) nexts
-       (cons (cons (car names)
-             (let ((n (fn-next-number (car names) nexts)))
-               (if (posp n) n 1))) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-cnode-extend-nexts (names nexts)
-  ; The watermark list for a (possibly grown) domain: every name keeps the
-  ; watermark it has, a name new to the list starts at 1.
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp names)
-           (cons (cons (car names)
-                       (let ((n (fn-next-number (car names) nexts)))
-                         (if (posp n) n 1)))
-                 (fn-cnode-extend-nexts (cdr names) nexts))
-         nil)
-       :exec (fn-cnode-extend-nexts-loop names nexts nil)))
-
-(defthm fn-cnode-extend-nexts-loop-is-rev-onto
-  (equal (fn-cnode-extend-nexts-loop names nexts acc)
-         (fn-ag-rev-onto acc (fn-cnode-extend-nexts names nexts)))
-  :hints (("Goal" :induct (fn-cnode-extend-nexts-loop names nexts acc)
-                  :in-theory (union-theories
-                              '(fn-cnode-extend-nexts-loop fn-cnode-extend-nexts fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-cnode-extend-nexts
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-cnode-extend-nexts fn-ag-rev-onto fn-cnode-extend-nexts-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+; The watermark list for a (possibly grown) domain: every name keeps the
+; watermark it has, a name new to the list starts at 1.
+(def-loop fn-cnode-extend-nexts (names nexts)
+  :shape :map :over names :elt e
+  :body (cons e (let ((n (fn-next-number e nexts))) (if (posp n) n 1))))
 
 (defun fn-cnode-record-acceptablep (cn record ceiling)
   ; `books/config' admits the record against the node's REAL reservation
@@ -841,46 +812,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-cnode-config-jrecs-loop (records acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp records)
-      (fn-cnode-config-jrecs-loop (cdr records)
-                                  (cons (fn-jrec-make :config
-                                                      (fn-cfg-record-sequence (car records))
-                                                      (car records))
-                                        acc))
-    (revappend acc nil)))
-
-(defun fn-cnode-config-jrecs (records)
-  ; A configuration-only history as the two-kind stream.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp records)
-           (cons (fn-jrec-make :config (fn-cfg-record-sequence (car records))
-                               (car records))
-                 (fn-cnode-config-jrecs (cdr records)))
-         nil)
-       :exec (fn-cnode-config-jrecs-loop records nil)))
-
-(local
- (defthm fn-cnode-config-jrecs-loop-is-revappend
-   (equal (fn-cnode-config-jrecs-loop records acc)
-          (revappend acc (fn-cnode-config-jrecs records)))
-   :hints (("Goal" :induct (fn-cnode-config-jrecs-loop records acc)
-                   :in-theory (union-theories '(fn-cnode-config-jrecs-loop fn-cnode-config-jrecs revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-cnode-config-jrecs-loop)
-
-(verify-guards fn-cnode-config-jrecs
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-cnode-config-jrecs)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-cnode-config-jrecs-loop-is-revappend (acc nil))))))
-
+; A configuration-only history as the two-kind stream.
+(def-loop fn-cnode-config-jrecs (records)
+  :shape :map :over records :elt r
+  :body (fn-jrec-make :config (fn-cfg-record-sequence r) r))
 
 (defun fn-cnode-replay (js)
   ; The entry point: the empty configuration, the ceiling cited once.

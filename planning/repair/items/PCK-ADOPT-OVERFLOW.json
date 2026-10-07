@@ -2,12 +2,14 @@
  "category": "proof-owed",
  "file": "books/paged-checkpoint.lisp",
  "id": "PCK-ADOPT-OVERFLOW",
- "notes": [],
+ "notes": [
+  "2026-10-07 s-pck-host-3: the writer is gated. fn-pck-catalog-publish-plan (books/paged-checkpoint-host.lisp) writes the catalog root only when fn-pck-carriedp holds, else (:skip :catalog-overflow); fn-pck-catalog-publish-plan-writes-only-a-carried-catalog and fn-pck-catalog-open-is-the-load (carried premise discharged by the plan, not assumed); a skipped write leaves an older root whose S mismatches (fn-pck-catalog-skip-leaves-a-rebuilding-root), so open rebuilds. Tooth pckh-ungated-catalog-plan-writes-a-carried-catalog. Still owed: overflow cells on pages, so a catalog with an overflow row can be adopted instead of rebuilt."
+ ],
  "owner": "deputy-S",
  "severity": "high",
  "slice": "storage",
  "source": "s-pck",
  "state": "open",
  "title": "PCK-ADOPT excludes rows the columns cannot carry (fn-cp-overflow-of, the overflow cells); the host must fall back to rebuild when fn-pck-carriedp fails. Owed: overflow cells on pages.",
- "updated": "2026-10-07T04:10:00Z"
+ "updated": "2026-10-07T13:00:00Z"
 }

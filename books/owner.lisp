@@ -94,6 +94,7 @@
 
 (in-package "ACL2")
 (include-book "store-observed")
+(include-book "def-loop")
 (include-book "snoc-list")
 (include-book "served")
 (include-book "clock")
@@ -992,35 +993,9 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks the per-group creation facts (the operator's group table), operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-own-replay-facts-loop (facts acc)
-  (declare (xargs :guard t))
-  (if (consp facts)
-      (fn-own-replay-facts-loop (cdr facts)
-       (cons (fn-own-group-fact-name (car facts)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-own-replay-facts (facts)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp facts)
-           (cons (fn-own-group-fact-name (car facts))
-                 (fn-own-replay-facts (cdr facts)))
-         nil)
-       :exec (fn-own-replay-facts-loop facts nil)))
-
-(defthm fn-own-replay-facts-loop-is-rev-onto
-  (equal (fn-own-replay-facts-loop facts acc)
-         (fn-ag-rev-onto acc (fn-own-replay-facts facts)))
-  :hints (("Goal" :induct (fn-own-replay-facts-loop facts acc)
-                  :in-theory (union-theories
-                              '(fn-own-replay-facts-loop fn-own-replay-facts fn-ag-rev-onto not car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-own-replay-facts
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-own-replay-facts fn-ag-rev-onto fn-own-replay-facts-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-own-replay-facts (facts)
+  :shape :map :over facts :elt f
+  :body (fn-own-group-fact-name f))
 
 ; -----------------------------------------------------------------------------
 ; The durable prefix a version names, and the archive it projects to.
@@ -1079,34 +1054,10 @@
 ; Executes by a loop (lane depth-debt, PRF-919): it walks one article's index entries, operator
 ; data with no fixed cap (D27), so the recursion took one control-stack
 ; frame per element.  The :logic is the recursion, unchanged.
-(defun fn-gidx-put-all-loop (rev acc)
-  (declare (xargs :guard t))
-  (if (consp rev)
-      (fn-gidx-put-all-loop (cdr rev) (fn-gidx-put (car rev) acc))
-    acc))
-
-(defun fn-gidx-put-all (entries buckets)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (consp entries)
-                  (fn-gidx-put (car entries) (fn-gidx-put-all (cdr entries) buckets))
-                buckets)
-       :exec (fn-gidx-put-all-loop (fn-ag-rev-onto entries nil) buckets)))
-
-(defthm fn-gidx-put-all-loop-of-rev-onto
-  (equal (fn-gidx-put-all-loop (fn-ag-rev-onto entries zs) buckets)
-         (fn-gidx-put-all-loop zs (fn-gidx-put-all entries buckets)))
-  :hints (("Goal" :induct (fn-ag-rev-onto entries zs)
-                  :in-theory (union-theories
-                              '(fn-gidx-put-all-loop fn-gidx-put-all fn-ag-rev-onto
-                                car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-gidx-put-all
-  :hints (("Goal" :use ((:instance fn-gidx-put-all-loop-of-rev-onto (zs nil)))
-                  :in-theory (union-theories
-                              '(fn-gidx-put-all-loop fn-gidx-put-all)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-gidx-put-all (entries buckets)
+  :shape :foldr :over entries :elt e
+  :combine (fn-gidx-put e acc) :init buckets
+  :rev fn-ag-rev-onto)
 
 (defthm fn-gidx-build-entries-of-append
   (equal (fn-gidx-build-entries (append a b))
@@ -1238,84 +1189,19 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-own-replace-conn-loop (conn conns acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp conns)
-      (if (equal (fn-own-conn-id (car conns)) (fn-own-conn-id conn))
-          (revappend acc (cons conn (cdr conns)))
-        (fn-own-replace-conn-loop conn (cdr conns) (cons (car conns) acc)))
-    (revappend acc nil)))
-
-(defun fn-own-replace-conn (conn conns)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp conns)
-           (if (equal (fn-own-conn-id (car conns)) (fn-own-conn-id conn))
-               (cons conn (cdr conns))
-             (cons (car conns) (fn-own-replace-conn conn (cdr conns))))
-         nil)
-       :exec (fn-own-replace-conn-loop conn conns nil)))
-
-(local
- (defthm fn-own-replace-conn-loop-is-revappend
-   (equal (fn-own-replace-conn-loop conn conns acc)
-          (revappend acc (fn-own-replace-conn conn conns)))
-   :hints (("Goal" :induct (fn-own-replace-conn-loop conn conns acc)
-                   :in-theory (union-theories '(fn-own-replace-conn-loop fn-own-replace-conn revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-own-replace-conn-loop)
-
-(verify-guards fn-own-replace-conn
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-own-replace-conn)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-own-replace-conn-loop-is-revappend (acc nil))))))
-
+(def-loop fn-own-replace-conn (conn conns)
+  :shape :map :over conns :elt c
+  :stop (equal (fn-own-conn-id c) (fn-own-conn-id conn))
+  :stop-value (cons conn (cdr conns))
+  :body c)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-own-remove-conn-loop (id conns acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp conns)
-      (if (equal (fn-own-conn-id (car conns)) id)
-          (fn-own-remove-conn-loop id (cdr conns) acc)
-        (fn-own-remove-conn-loop id (cdr conns) (cons (car conns) acc)))
-    (revappend acc nil)))
-
-(defun fn-own-remove-conn (id conns)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp conns)
-           (if (equal (fn-own-conn-id (car conns)) id)
-               (fn-own-remove-conn id (cdr conns))
-             (cons (car conns) (fn-own-remove-conn id (cdr conns))))
-         nil)
-       :exec (fn-own-remove-conn-loop id conns nil)))
-
-(local
- (defthm fn-own-remove-conn-loop-is-revappend
-   (equal (fn-own-remove-conn-loop id conns acc)
-          (revappend acc (fn-own-remove-conn id conns)))
-   :hints (("Goal" :induct (fn-own-remove-conn-loop id conns acc)
-                   :in-theory (union-theories '(fn-own-remove-conn-loop fn-own-remove-conn revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-own-remove-conn-loop)
-
-(verify-guards fn-own-remove-conn
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-own-remove-conn)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-own-remove-conn-loop-is-revappend (acc nil))))))
-
+(def-loop fn-own-remove-conn (id conns)
+  :shape :map :over conns :elt c
+  :keep (equal (fn-own-conn-id c) id) :keep-order :skip-first
+  :body c)
 
 (defun fn-own-find-conn (id conns)
   (declare (xargs :guard t))
@@ -2079,43 +1965,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-own-remove-subs-loop (id subs acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
-  (if (consp subs)
-      (if (equal (fn-own-sub-id (car subs)) id)
-          (fn-own-remove-subs-loop id (cdr subs) acc)
-        (fn-own-remove-subs-loop id (cdr subs) (cons (car subs) acc)))
-    (revappend acc nil)))
-
-(defun fn-own-remove-subs (id subs)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp subs)
-           (if (equal (fn-own-sub-id (car subs)) id)
-               (fn-own-remove-subs id (cdr subs))
-             (cons (car subs) (fn-own-remove-subs id (cdr subs))))
-         nil)
-       :exec (fn-own-remove-subs-loop id subs nil)))
-
-(local
- (defthm fn-own-remove-subs-loop-is-revappend
-   (equal (fn-own-remove-subs-loop id subs acc)
-          (revappend acc (fn-own-remove-subs id subs)))
-   :hints (("Goal" :induct (fn-own-remove-subs-loop id subs acc)
-                   :in-theory (union-theories '(fn-own-remove-subs-loop fn-own-remove-subs revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-own-remove-subs-loop)
-
-(verify-guards fn-own-remove-subs
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-own-remove-subs)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-own-remove-subs-loop-is-revappend (acc nil))))))
-
+(def-loop fn-own-remove-subs (id subs)
+  :shape :map :over subs :elt s
+  :keep (equal (fn-own-sub-id s) id) :keep-order :skip-first
+  :body s)
 
 ; Closing drops the connection, its pending transaction, its queued
 ; submissions and its submission in flight (a durable path already running

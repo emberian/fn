@@ -2131,42 +2131,10 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-pull-dropped-words-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-pull-dropped-words-loop (cdr rev)
-                                  (append (fn-record-string-octets " dropped=")
-                                          (fn-pull-list (car rev))
-                                          acc))
-    acc))
-
-(defun fn-pull-dropped-words (ids)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ids)
-           (append (fn-record-string-octets " dropped=")
-                   (fn-pull-list (car ids))
-                   (fn-pull-dropped-words (cdr ids)))
-         nil)
-       :exec (fn-pull-dropped-words-loop (fn-ag-rev-onto ids nil) nil)))
-
-(local
- (defthm fn-pull-dropped-words-loop-of-rev-onto
-   (equal (fn-pull-dropped-words-loop (fn-ag-rev-onto ids zs) nil)
-          (fn-pull-dropped-words-loop zs (fn-pull-dropped-words ids)))
-   :hints (("Goal" :induct (fn-ag-rev-onto ids zs)
-                   :in-theory (union-theories '(fn-pull-dropped-words-loop fn-pull-dropped-words fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-pull-dropped-words-loop)
-
-(verify-guards fn-pull-dropped-words
-  :hints (("Goal" :in-theory (union-theories '(fn-pull-dropped-words fn-pull-dropped-words-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-pull-dropped-words-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-pull-dropped-words (ids)
+  :shape :foldr :over ids :elt i
+  :combine (append (fn-record-string-octets " dropped=") (fn-pull-list i) acc) :init nil
+  :rev fn-ag-rev-onto)
 
 ; The owner log line of a closed round: the peer, how it ended, whether the
 ; cursor moved, how many listed ids the peer could not produce, and each id

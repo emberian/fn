@@ -2035,6 +2035,30 @@ class InstallUmbrellasTests(unittest.TestCase):
                                                     lambda roots: SimpleReport(None))
             self.assertEqual(chosen, [])
             self.assertIn("NOT installed", lines[-1])
+            self.assertIn("cause not reported", lines[-1])
+
+    def test_a_miss_names_what_the_cache_lacks(self):
+        # The hbox line said only "NOT installed as one set"; the installer's
+        # uncached list was dropped.  The umbrella's own missing certificate
+        # and its missing dependencies are now named, each try and overall.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "books").mkdir()
+            for stem in ("image-world", "image-world-dtn"):
+                (root / "books" / f"{stem}.lisp").write_text("")
+            missing = ["books/image-world", "books/a", "books/b"]
+            chosen, lines = certs.install_umbrellas(
+                root, root / "cache", root / "acl2",
+                lambda roots: SimpleReport(None, missing))
+            self.assertEqual(chosen, [])
+            self.assertIn("no usable certificate for the umbrella itself: books/image-world",
+                          lines[0])
+            self.assertIn("2 dependencies without a usable certificate: books/a books/b",
+                          lines[0])
+            self.assertIn("NOT installed", lines[-1])
+            self.assertIn("umbrella itself: books/image-world", lines[-1])
+            many = [f"books/d{i}" for i in range(11)]
+            self.assertIn("(+3 more)", certs.umbrella_miss(["books/image-world"], many))
 
     def test_remote_check_runs_it_after_the_per_book_install(self):
         text = (TOOLS / "remote_check.sh").read_text()
@@ -2054,8 +2078,9 @@ class InstallUmbrellasTests(unittest.TestCase):
 
 
 class SimpleReport:
-    def __init__(self, artifact_set):
+    def __init__(self, artifact_set, uncached=()):
         self.artifact_set = artifact_set
+        self.uncached = list(uncached)
 
 
 class ScopedManifestAndGraphTests(unittest.TestCase):

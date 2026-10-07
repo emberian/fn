@@ -1,0 +1,4 @@
+(def-loop fn-rii-kbuild-pins (pins base)
+  :shape :foldr :over pins :elt p
+  :combine (fn-rii-id-put (fn-retain-obligation-id p) acc) :init base
+  :rev fn-ag-rev-onto)
