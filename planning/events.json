@@ -65,6 +65,10 @@
         "7": {
           "name": "mark",
           "why": "a mark (*fn-otm-mark-entry*): entries were lost before the next"
+        },
+        "8": {
+          "name": "developer-eval",
+          "why": "a developer image evaluated a form by hand (fn-otm-eval-step): replay stops there"
         }
       },
       "recorded": {

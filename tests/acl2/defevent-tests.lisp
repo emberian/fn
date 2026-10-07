@@ -73,7 +73,7 @@
 (assert-event (equal (cadr (assoc-keyword :version (fn-det-family 'fn-otm-op (w state)))) 1))
 (assert-event (equal (strip-cars (cadr (assoc-keyword :reserved
                                                       (fn-det-family 'fn-otm-op (w state)))))
-                     '(0 5 7)))
+                     '(0 5 7 8)))
 
 ; ---------------------------------------------------------------------------
 ; 3. Refusals.
