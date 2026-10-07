@@ -2576,8 +2576,8 @@
     "books_in_root_closure": 2898,
     "roots": 2568,
     "theorems": 40833,
-    "functions": 26060,
-    "assert_events": 28098,
+    "functions": 26062,
+    "assert_events": 28106,
     "must_fails": 2718,
     "prover_refusals": 0,
     "encapsulates": 257,
@@ -2585,7 +2585,7 @@
       "verified": 4054,
       "declared-off": 3378,
       "default-guarded": 14440,
-      "default-unguarded": 4188
+      "default-unguarded": 4190
     },
     "suspect_theorems": 1484,
     "export_hygiene_warnings": 423,
@@ -84473,18 +84473,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 3,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
+      "assert_events": 16,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 1,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -98700,7 +98700,7 @@
     {
       "theorem": "fn-scl-reader-live-session-is-its-own-by-definition",
       "book": "books/served-chunk-live-free.lisp",
-      "line": 213,
+      "line": 214,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-own-conn-live-session and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value"

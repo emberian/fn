@@ -14,12 +14,12 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 2568 |
 | Books inside the root closure | 2898 |
 | `defthm` and `defthmd` events | 40833 |
-| `defun` events | 26060 |
+| `defun` events | 26062 |
 | Functions with verified guards | 4054 |
 | Functions declared `:verify-guards nil` and never verified | 3378 |
 | Functions left at the default with an explicit guard | 14440 |
-| Functions left at the default with no guard | 4188 |
-| `assert-event` checks | 28098 |
+| Functions left at the default with no guard | 4190 |
+| `assert-event` checks | 28106 |
 | `must-fail` checks | 2718 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
@@ -2935,7 +2935,7 @@ that `make certify` requests.
 | `tests/acl2/served-catalog-source-scan-tests.lisp` | root | 0 | 11 | 0/10/0/1 | 10 | 0 | 0 |
 | `tests/acl2/served-catalog-tests.lisp` | root | 26 | 3 | 0/0/0/3 | 0 | 12 | 0 |
 | `tests/acl2/served-catalog-view-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 0 | 1 | 0 |
-| `tests/acl2/served-chunk-live-free-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 8 | 0 | 0 |
+| `tests/acl2/served-chunk-live-free-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 16 | 0 | 0 |
 | `tests/acl2/served-columns-tests.lisp` | root | 3 | 10 | 0/6/4/0 | 3 | 3 | 0 |
 | `tests/acl2/served-date-catalog-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/served-date-current-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
@@ -4171,7 +4171,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scka-select-named-refuses-the-arena-by-name` | `books/store-checkpoint-arena-load.lisp` | 748 | arm-of-definition: constant arguments select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value |
 | `fn-scka-select-named-unfolds` | `books/store-checkpoint-arena-load.lisp` | 752 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scka-select-named and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scka-select-named and the conclusion is that branch's value |
 | `fn-scl-haltedp-of-with-live` | `books/served-chunk-live-free.lisp` | 115 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scl-reader-live-session-is-its-own-by-definition` | `books/served-chunk-live-free.lisp` | 213 | arm-of-definition: the hypotheses select one IF/COND arm of fn-own-conn-live-session and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
+| `fn-scl-reader-live-session-is-its-own-by-definition` | `books/served-chunk-live-free.lisp` | 214 | arm-of-definition: the hypotheses select one IF/COND arm of fn-own-conn-live-session and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
 | `fn-scl-with-live-fields` | `books/served-chunk-live-free.lisp` | 50 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-with-live-of-make-conn-live` | `books/served-chunk-live-free.lisp` | 65 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sco-fault-of-fault` | `books/store-checkpoint-open.lisp` | 445 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
