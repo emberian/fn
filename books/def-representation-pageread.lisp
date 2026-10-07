@@ -318,3 +318,138 @@
                (adt-pr-cap frames)))
   :hints (("Goal" :in-theory (e/d (adt-pr-read-rec) (adt-pr-read-words-residency adt-pr-cap))
            :use ((:instance adt-pr-read-words-residency (j off) (end (+ (nfix off) (nfix w))) (acc nil))))))
+
+; The directory of a sequence: for each record its word offset (from OFF) and
+; width.  Entry I is the offset of record I, the sum of the widths before it.
+(defun adt-pr-dir-rows (s rows off)
+  (declare (xargs :guard (natp off) :verify-guards nil))
+  (if (consp rows)
+      (let ((w (len (adt-tp-rw s (car rows)))))
+        (cons (list off w) (adt-pr-dir-rows s (cdr rows) (+ off w))))
+    nil))
+
+(defthm adt-pr-len-dir-rows
+  (equal (len (adt-pr-dir-rows s rows off)) (len rows)))
+
+(defun adt-pr-dir-ind (rows i off s)
+  (if (consp rows)
+      (adt-pr-dir-ind (cdr rows) (1- i) (+ off (len (adt-tp-rw s (car rows)))) s)
+    (list i off)))
+
+(defthm adt-pr-dir-rows-nth
+  (implies (and (natp i) (< i (len rows)) (natp off))
+           (equal (nth i (adt-pr-dir-rows s rows off))
+                  (list (+ off (len (adt-tp-seq-words s (take i rows))))
+                        (len (adt-tp-rw s (nth i rows))))))
+  :hints (("Goal" :induct (adt-pr-dir-ind rows i off s)
+           :in-theory (e/d (nth take adt-tp-seq-words) (adt-tp-rw adt-tp-fw)))))
+
+; The directory is itself a tape of two-u64 records (offset, width): three
+; words each, so entry I is at word 3I.
+(defconst *adt-pr-dir-schema* '((:u64) (:u64)))
+
+(defthm adt-pr-len-dir-rw
+  (equal (len (adt-tp-rw *adt-pr-dir-schema* x)) 3))
+
+(defthm adt-pr-len-dir-seq-words
+  (equal (len (adt-tp-seq-words *adt-pr-dir-schema* a)) (* 3 (len a)))
+  :hints (("Goal" :in-theory (enable adt-tp-seq-words))))
+
+(defthm adt-pr-len-dir-seq-words-take
+  (implies (and (natp i) (<= i (len a)))
+           (equal (len (adt-tp-seq-words *adt-pr-dir-schema* (take i a))) (* 3 i)))
+  :hints (("Goal" :in-theory (disable adt-pr-len-dir-seq-words)
+           :use ((:instance adt-pr-len-dir-seq-words (a (take i a)))))))
+
+; The words of a sequence from OFF fit a u64 (the offsets and widths are u64).
+(defthm adt-pr-dir-rows-seq-p
+  (implies (and (natp off) (< (+ off (len (adt-tp-seq-words s rows))) (expt 2 64)))
+           (adt-seq-p *adt-pr-dir-schema* (adt-pr-dir-rows s rows off)))
+  :hints (("Goal" :induct (adt-pr-dir-rows s rows off)
+           :in-theory (e/d (adt-seq-p adt-tp-seq-words adt-rec-p adt-val-okp)
+                           (adt-tp-rw adt-tp-fw)))
+          ("Subgoal *1/2" :use ((:instance adt-tp-true-listp-rw (s s) (rec (car rows)))))))
+
+; Row I through its directory entry: the entry read, then the row read, both
+; through the one pool.
+(defun adt-pr-read-indexed (s i dpages rpages res frames fills)
+  (declare (xargs :guard (natp i) :verify-guards nil))
+  (mv-let (ent res fills)
+    (adt-pr-read-rec :dir *adt-pr-dir-schema* (* 3 (nfix i)) 3 dpages res frames fills)
+    (adt-pr-read-rec :rows s (nfix (nth 0 ent)) (nfix (nth 1 ent)) rpages res frames fills)))
+
+(defthm adt-pr-dir-schema-ok
+  (adt-tp-schema-ok *adt-pr-dir-schema*))
+
+(defthm adt-pr-dir-entry-read
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s rows) (natp i) (< i (len rows))
+                (< (len (adt-tp-seq-words s rows)) (expt 2 64)))
+           (equal (mv-nth 0 (adt-pr-read-rec tag *adt-pr-dir-schema* (* 3 i) 3
+                                             (adt-tp-pages-of *adt-pr-dir-schema* (adt-pr-dir-rows s rows 0))
+                                             res frames fills))
+                  (list (len (adt-tp-seq-words s (take i rows)))
+                        (len (adt-tp-rw s (nth i rows))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable adt-pr-read-rec-is-nth adt-pr-dir-rows-nth adt-pr-len-dir-rows
+                               adt-pr-dir-rows-seq-p adt-pr-len-dir-seq-words-take adt-pr-len-dir-rw
+                               adt-pr-read-rec adt-tp-pages-of adt-pr-dir-rows adt-pr-len-seq-words-split)
+           :use ((:instance adt-pr-read-rec-is-nth (s *adt-pr-dir-schema*) (a (adt-pr-dir-rows s rows 0))
+                            (off (* 3 i)) (w 3))
+                 (:instance adt-pr-dir-rows-nth (off 0))
+                 adt-pr-len-dir-rows
+                 (:instance adt-pr-dir-rows-seq-p (off 0))
+                 (:instance adt-pr-len-dir-seq-words-take (a (adt-pr-dir-rows s rows 0)))
+                 (:instance adt-pr-len-dir-rw (x (nth i (adt-pr-dir-rows s rows 0))))
+                 (:instance adt-pr-len-seq-words-split (a rows))))))
+
+(defthm adt-pr-read-indexed-is-nth
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s rows) (natp i) (< i (len rows))
+                (< (len (adt-tp-seq-words s rows)) (expt 2 64)))
+           (equal (mv-nth 0 (adt-pr-read-indexed s i
+                                                 (adt-tp-pages-of *adt-pr-dir-schema* (adt-pr-dir-rows s rows 0))
+                                                 (adt-tp-pages-of s rows) res frames fills))
+                  (nth i rows)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable adt-tp-pages-of adt-pr-dir-rows adt-pr-len-seq-words-split adt-pr-read-rec)
+           :expand ((adt-pr-read-indexed s i (adt-tp-pages-of *adt-pr-dir-schema* (adt-pr-dir-rows s rows 0))
+                                         (adt-tp-pages-of s rows) res frames fills)))))
+
+; Two reads: the entry (3 words: at most 2 pages) and the row.
+(defthm adt-pr-read-indexed-fills
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s rows) (natp i) (< i (len rows))
+                (< (len (adt-tp-seq-words s rows)) (expt 2 64)))
+           (<= (len (mv-nth 2 (adt-pr-read-indexed s i
+                                                   (adt-tp-pages-of *adt-pr-dir-schema* (adt-pr-dir-rows s rows 0))
+                                                   (adt-tp-pages-of s rows) res frames fills)))
+               (+ (len fills) 3 (adt-tp-npages (len (adt-tp-rw s (nth i rows)))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable adt-tp-pages-of adt-pr-dir-rows adt-pr-len-seq-words-split adt-pr-read-rec
+                               adt-pr-read-rec-fills)
+           :use ((:instance adt-pr-read-rec-fills (tag :dir) (s *adt-pr-dir-schema*) (off (* 3 i)) (w 3)
+                            (pages (adt-tp-pages-of *adt-pr-dir-schema* (adt-pr-dir-rows s rows 0))))
+                 (:instance adt-pr-read-rec-fills (tag :rows) (s s)
+                            (off (len (adt-tp-seq-words s (take i rows))))
+                            (w (len (adt-tp-rw s (nth i rows))))
+                            (pages (adt-tp-pages-of s rows))
+                            (res (mv-nth 1 (adt-pr-read-rec :dir *adt-pr-dir-schema* (* 3 i) 3
+                                  (adt-tp-pages-of *adt-pr-dir-schema* (adt-pr-dir-rows s rows 0))
+                                  res frames fills)))
+                            (fills (mv-nth 2 (adt-pr-read-rec :dir *adt-pr-dir-schema* (* 3 i) 3
+                                  (adt-tp-pages-of *adt-pr-dir-schema* (adt-pr-dir-rows s rows 0))
+                                  res frames fills)))))
+           :expand ((adt-pr-read-indexed s i (adt-tp-pages-of *adt-pr-dir-schema* (adt-pr-dir-rows s rows 0))
+                                         (adt-tp-pages-of s rows) res frames fills)))))
+
+(defthm adt-pr-read-indexed-residency
+  (implies (<= (len res) (adt-pr-cap frames))
+           (<= (len (mv-nth 1 (adt-pr-read-indexed s i dpages rpages res frames fills)))
+               (adt-pr-cap frames)))
+  :hints (("Goal" :in-theory (disable adt-pr-read-rec adt-pr-read-rec-residency adt-pr-cap)
+           :use ((:instance adt-pr-read-rec-residency (tag :dir) (s *adt-pr-dir-schema*) (off (* 3 (nfix i))) (w 3)
+                            (pages dpages))
+                 (:instance adt-pr-read-rec-residency (tag :rows) (pages rpages)
+                            (res (mv-nth 1 (adt-pr-read-rec :dir *adt-pr-dir-schema* (* 3 (nfix i)) 3 dpages res frames fills)))
+                            (off (nfix (nth 0 (mv-nth 0 (adt-pr-read-rec :dir *adt-pr-dir-schema* (* 3 (nfix i)) 3 dpages res frames fills)))))
+                            (w (nfix (nth 1 (mv-nth 0 (adt-pr-read-rec :dir *adt-pr-dir-schema* (* 3 (nfix i)) 3 dpages res frames fills)))))
+                            (fills (mv-nth 2 (adt-pr-read-rec :dir *adt-pr-dir-schema* (* 3 (nfix i)) 3 dpages res frames fills)))))
+           :expand ((adt-pr-read-indexed s i dpages rpages res frames fills)))))
