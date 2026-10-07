@@ -212,6 +212,9 @@ class World:
                 "book": book_of(record["book"]),
                 "class": sym(record["class"]),
                 "callees": callees,
+                # the translated guard's functions (a dump before the guard
+                # field has none); the image runs with guard-checking t
+                "guard_callees": sorted({sym(c) for c in record.get("guard_callees", ())}),
                 "attachment": attachment,
                 "constrained": bool(record.get("constrained")),
                 "body": bool(record.get("body")),
