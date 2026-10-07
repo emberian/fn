@@ -926,13 +926,19 @@ def main(argv=None):
     ap.add_argument("--residual", action="store_true")
     ap.add_argument("--out")
     ap.add_argument("--ref", default="origin/dev")
+    ap.add_argument("--exclude-file", help="books/NAME.lisp per line: busy books, tagged excluded")
+    ap.add_argument("--plan", action="store_true", help="list books with take-now twins")
     a = ap.parse_args(argv)
     refs = load_refs()
-    if a.residual:
+    busy = set()
+    if a.exclude_file:
+        busy = {Path(l.strip()).stem for l in Path(a.exclude_file).read_text().splitlines() if l.strip()}
+    if a.residual or a.plan:
         rows = []
         for p in sorted((ROOT / "books").glob("*.lisp")):
             b = p.stem
-            if EXCLUDE.match(b):
+            tag = "excluded" if (EXCLUDE.match(b) or b in busy) else ""
+            if a.plan and tag:
                 continue
             try:
                 rep, _ = check_book(b, a.ref, refs)
@@ -940,9 +946,15 @@ def main(argv=None):
                 rows.append((b, "(unreadable)", "read-error", str(e)))
                 continue
             for n, why, d in rep["residual"]:
-                rows.append((b, n, why, d))
+                rows.append((b, n, why, (d + " " + tag).strip()))
             for n in rep["converted"]:
-                rows.append((b, n, "TAKE-NOW", ""))
+                rows.append((b, n, "TAKE-NOW", tag))
+        if a.plan:
+            from collections import Counter
+            c = Counter(b for b, n, why, d in rows if why == "TAKE-NOW")
+            for b, k in sorted(c.items(), key=lambda kv: (-kv[1], kv[0])):
+                print(k, b)
+            return 0
         text = render_residual(rows)
         if a.out:
             Path(a.out).write_text(text)
