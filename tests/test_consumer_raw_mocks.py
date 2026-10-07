@@ -51,3 +51,44 @@ class ConsumerRawMockTests(unittest.TestCase):
         ok = (run.returncode == 0
               and "native owner consumer local boundary passed" in run.stdout)
         self.assertTrue(ok, "owner consumer local raw mock failed")
+
+
+@unittest.skipUnless(shutil.which("sbcl"), "SBCL required")
+class FrameFlagMockTests(unittest.TestCase):
+    """`--frame` on `fn identity` and `fn consumer status|position|ack`.
+
+    ACL2's argv plan says `--frame`; the shipped adapters print the reply
+    frame their one exchange read, as hex (the host's fnn-hex), in place of
+    the line, and without the flag print the line only.  Each verb is one
+    boundary line of one raw mock, run once for the class.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.consumer = run_mock("native_consumer_frame_raw-mock.lisp")
+        cls.identity = run_mock("native_store_identity_frame_raw-mock.lisp")
+
+    def passed(self, run, line):
+        lines = [x.strip() for x in run.stdout.splitlines()]
+        self.assertEqual(run.returncode, 0, run.stderr[-600:])
+        self.assertIn(line, lines)
+
+    def test_status_frame_prints_the_reply_frame_as_hex(self):
+        self.passed(self.consumer, "native consumer --frame status boundary passed")
+
+    def test_position_frame_prints_the_reply_frame_as_hex(self):
+        self.passed(self.consumer, "native consumer --frame position boundary passed")
+
+    def test_ack_frame_prints_the_reply_frame_as_hex(self):
+        self.passed(self.consumer, "native consumer --frame ack boundary passed")
+
+    def test_frame_flag_is_absent_without_the_flag(self):
+        self.passed(self.consumer, "native consumer --frame absent boundary passed")
+        self.passed(self.identity, "native store identity --frame absent boundary passed")
+
+    def test_identity_frame_prints_the_reply_frame_as_hex(self):
+        self.passed(self.identity, "native store identity --frame boundary passed")
+
+
+if __name__ == "__main__":
+    unittest.main()
