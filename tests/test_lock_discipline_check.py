@@ -2732,3 +2732,39 @@ class CloseHookFence(unittest.TestCase):
     def test_a_book_that_lost_its_theorem_is_refused(self):
         with self.assertRaises(ValueError):
             self.check(book=self.BOOK.replace("fn-ort-log-close-held-is-uncertain", "fn-ort-log-close-renamed"))
+
+
+class R2NonblockingLeaf(unittest.TestCase):
+    """contracts `nonblocking_leaves': shutdown(2) does not wait, close and
+    send on a socket still do."""
+
+    SRC = """
+(defun fnn-teardown-%s (service socket)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service)) (%s socket)))
+(defun fnn-teardown-%s-start (service socket)
+  (sb-thread:make-thread (lambda () (fnn-teardown-%s service socket)) :name "t"))
+"""
+
+    def r2(self, leaf, rows=None):
+        name = leaf.split(":")[-1]
+        raw = dict(CONTRACTS.raw)
+        if rows is not None:
+            raw["nonblocking_leaves"] = rows
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + self.SRC % (name, leaf, name, name))
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f.key for f in checker.run({"R2"}) if f.rule == "R2"]
+
+    def test_socket_shutdown_is_not_a_blocking_leaf(self):
+        self.assertEqual(self.r2("sb-bsd-sockets:socket-shutdown"), [])
+
+    def test_without_the_row_it_is_blocking(self):
+        self.assertTrue(self.r2("sb-bsd-sockets:socket-shutdown", rows={}))
+
+    def test_socket_close_still_blocks(self):
+        self.assertTrue(self.r2("sb-bsd-sockets:socket-close"))
+
+    def test_socket_send_still_blocks(self):
+        self.assertTrue(self.r2("sb-bsd-sockets:socket-send"))

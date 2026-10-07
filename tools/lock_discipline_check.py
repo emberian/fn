@@ -3311,6 +3311,7 @@ class Model:
         at LINE, None at the leaf itself."""
         overrides = self.c.raw.get("effect_overrides", {})
         waiters = self.c.raw.get("condition_wait_wrappers", {})
+        nonblocking = self.c.raw.get("nonblocking_leaves", {})
         blk: dict = {}
         for flag in (False, True):
             for name in self.infos:
@@ -3320,7 +3321,8 @@ class Model:
             if name in overrides:
                 continue
             for e in info.events:
-                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket"):
+                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
+                        and e.name not in nonblocking:
                     for flag in (False, True):
                         if e.ctx.noio is not None and e.ctx.noio != flag:
                             continue  # the other arm of (if *fnn-extent-no-io* ...)
@@ -3853,6 +3855,7 @@ class Checker:
         io_ok = {l for l, row in self.c.locks.items() if row.get("io_ok")}
         overrides = self.c.raw.get("effect_overrides", {})
         waiters = self.c.raw.get("condition_wait_wrappers", {})
+        nonblocking = self.c.raw.get("nonblocking_leaves", {})
         found: dict = {}
         for name, info in self.infos.items():
             for e in info.events:
@@ -3861,7 +3864,8 @@ class Checker:
                     continue
                 noio = e.ctx.noio if e.ctx.noio is not None else False
                 cands = []
-                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket"):
+                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
+                        and e.name not in nonblocking:
                     h2 = held - {e.extra[1]} if e.extra[0] == "await" and e.name == "sb-thread:condition-wait" else held
                     if h2:
                         cands.append((f"{name}:{e.line}:{e.name}", e.extra[0], h2,

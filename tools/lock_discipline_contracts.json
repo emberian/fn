@@ -951,6 +951,9 @@
    "why": "A close hook that signals (fnn-pull-service-close re-signals a retained cleanup debt) clears modules-joined; the clean-close block needs it, so log-close-action stays the held value set before the hooks ran, and the not-joined arm returns fn-ort-log-close-exit with +fnn-exit-uncertain+, i.e. exit 3 (theorem fn-ort-log-close-held-is-uncertain). verify_close_hook_fences checks each link against owner.lisp and the book text."
   }
  },
+ "nonblocking_leaves": {
+  "sb-bsd-sockets:socket-shutdown": "shutdown(2) on a socket does not wait: it marks the half-connection closed and wakes blocked peers; SO_LINGER governs close(2), not shutdown(2). It still signals socket-error, which the failure rules (R7) see through the leaf's signal class. Deputy C2 ruling 2026-10-07."
+ },
  "binding_only_specials": {
   "*fnn-owner-deferred*": "host/native/owner.lisp: the commit quantum's deferred list. It is bound only by let (fnn-owner-commit-start-locked, the next-batch seal in fnn-owner-commit-complete) to a fresh list; the checker verifies that no host form assigns the symbol, that its defvar value is NIL, and that every rebinding is a lexical variable or a list. Outside a quantum it is the constant NIL, so fnn-owner-log, fnn-owner-line-after-barrier and fnn-owner-feed-flush-after-barrier take their direct branch there (the open's key-statement recovery, an offline command)."
  },
