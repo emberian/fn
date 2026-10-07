@@ -56,8 +56,9 @@ path with ACL2_SYSTEM_BOOKS set.")
       (member (cons sym prop) *fnn-world-read-pairs* :test #'equal)))
 
 (defun fnn-strip-world ()
-  "Replace the installed world by its current kept triples (fnn-world-keep-p),
-over a new bottom that keeps the event and command indices valid for event 0.
+  "Replace the installed world by a bottom that keeps the event and command
+indices valid for event 0, and the per-symbol plists by their kept values
+(fnn-world-keep-p; the alist no longer repeats them).
 Returns the new world's length, the kept (symbol . property) pairs and the
 omitted ones (a current value the rule dropped)."
   (let* ((state *the-live-state*)
@@ -116,7 +117,13 @@ omitted ones (a current value the rule dropped)."
     (let* ((bottom (list (list* 'command-landmark 'global-value (cddr command0))
                          (list* 'event-landmark 'global-value (cddr event0))
                          project))
-           (new (nconc triples bottom))
+           ;; The alist is the bottom alone (MEM-005).  An installed world's
+           ;; reads (fgetprop, axioms.lisp) take the per-symbol plists under
+           ;; *current-acl2-world-key*, which hold every kept value; the alist
+           ;; stays only as the installed world's identity (the pair's car,
+           ;; check-acl2-world-invariant) and as the walk lookup-world-index
+           ;; and replace-project-dir-alist make from event 0 and command 0.
+           (new bottom)
            (command-tail (last new 3))
            (event-tail (last new 2)))
       (flet ((set-global (name value)
@@ -133,11 +140,22 @@ omitted ones (a current value the rule dropped)."
       (f-put-global 'current-acl2-world new state))
     ;; Session state that holds old worlds: the undo ring, the proof-output
     ;; world stack (push-current-acl2-world, for pso) and its saved output.
+    ;; The undo stack of every symbol ACL2 defined while the build ran: the forms
+    ;; maybe-pop-undo-stack evaluates when undo-trip retracts a cltl-command
+    ;; trip, which the world above no longer holds (MEM-005).
+    (let ((undo-forms 0))
+      (do-all-symbols (s)
+        (when (get s '*undo-stack*)
+          (incf undo-forms)
+          (remprop s '*undo-stack*)))
+      (format t "~&FNN_STRIP_UNDO_STACK symbols=~d~%" undo-forms))
     (f-put-global 'undone-worlds-kill-ring nil state)
     (f-put-global 'last-make-event-expansion nil state)
     (f-put-global 'acl2-world-alist nil state)
     (f-put-global 'saved-output-reversed nil state)
     (setq *bad-wrld* nil)
+    ;; Nothing may hold the dropped triples through the collection below.
+    (setq triples nil syms nil seen nil)
     (sb-ext:gc :full t)
     (values (length (w state)) kept-keys omitted-keys)))
 
