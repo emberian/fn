@@ -220,3 +220,64 @@
                ((ledger (nth 0 (fn-dwrt-returned nil))) (worker (nth 1 (fn-dwrt-returned nil))) (token (nth 2 (fn-dwrt-returned nil))) (carry (nth 3 (fn-dwrt-returned nil))))
                :fault "a statement that the carry is unchanged even when the retirement succeeded"
                :lemma dwat-refused-mut2)))
+
+; fn-dwj-retirement-preserves-private-backing (TEETH CONTRACT v1).  The job is
+; a ground value: the fixture's returned carry in a fresh job
+; (update-fn-dwj-carry over create-fn-decoded-job), so its private backing is
+; the stobj's initial one.  The witnesses are ground theorems written with
+; the claim's let over NEXT and the free JOB.  The mutation is a retirement
+; that leaves the carry as well: false, because the retirement wipes it.
+(defthm dwjt-backing-witness
+  (let ((next (mv-nth 1 (fn-dwj-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (update-fn-dwj-carry (nth 3 (fn-dwrt-returned nil)) (create-fn-decoded-job))))) (job (update-fn-dwj-carry (nth 3 (fn-dwrt-returned nil)) (create-fn-decoded-job))))
+    (and (equal (fn-dwj-input next) (fn-dwj-input job))
+         (equal (fn-dwj-hash next) (fn-dwj-hash job))
+         (equal (fn-dwj-zin next) (fn-dwj-zin job))
+         (equal (fn-dwj-win next) (fn-dwj-win job))
+         (equal (fn-dwj-tab next) (fn-dwj-tab job))
+         (equal (fn-dwj-out next) (fn-dwj-out job))
+         (equal (fn-dwj-window next) (fn-dwj-window job))))
+  :rule-classes nil)
+
+(defthm dwjt-backing-mut1
+  (and (let ((next (mv-nth 1 (fn-dwj-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (update-fn-dwj-carry (nth 3 (fn-dwrt-returned nil)) (create-fn-decoded-job))))) (job (update-fn-dwj-carry (nth 3 (fn-dwrt-returned nil)) (create-fn-decoded-job))))
+    (and (equal (fn-dwj-input next) (fn-dwj-input job))
+         (equal (fn-dwj-hash next) (fn-dwj-hash job))
+         (equal (fn-dwj-zin next) (fn-dwj-zin job))
+         (equal (fn-dwj-win next) (fn-dwj-win job))
+         (equal (fn-dwj-tab next) (fn-dwj-tab job))
+         (equal (fn-dwj-out next) (fn-dwj-out job))
+         (equal (fn-dwj-window next) (fn-dwj-window job))))
+       (not (let ((next (mv-nth 1 (fn-dwj-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (update-fn-dwj-carry (nth 3 (fn-dwrt-returned nil)) (create-fn-decoded-job))))) (job (update-fn-dwj-carry (nth 3 (fn-dwrt-returned nil)) (create-fn-decoded-job))))
+    (and (and (equal (fn-dwj-input next) (fn-dwj-input job))
+         (equal (fn-dwj-hash next) (fn-dwj-hash job))
+         (equal (fn-dwj-zin next) (fn-dwj-zin job))
+         (equal (fn-dwj-win next) (fn-dwj-win job))
+         (equal (fn-dwj-tab next) (fn-dwj-tab job))
+         (equal (fn-dwj-out next) (fn-dwj-out job))
+         (equal (fn-dwj-window next) (fn-dwj-window job))) (equal (fn-dwj-carry next) (fn-dwj-carry job))))))
+  :rule-classes nil)
+
+(defteeth fn-dwj-retirement-preserves-private-backing
+  :claim (() (let ((next (mv-nth 1 (fn-dwj-retire ledger worker token job))))
+    (and (equal (fn-dwj-input next) (fn-dwj-input job))
+         (equal (fn-dwj-hash next) (fn-dwj-hash job))
+         (equal (fn-dwj-zin next) (fn-dwj-zin job))
+         (equal (fn-dwj-win next) (fn-dwj-win job))
+         (equal (fn-dwj-tab next) (fn-dwj-tab job))
+         (equal (fn-dwj-out next) (fn-dwj-out job))
+         (equal (fn-dwj-window next) (fn-dwj-window job)))))
+  :subject fn-dwj-retire
+  :witness-lemma dwjt-backing-witness
+  :witness ((ledger (nth 0 (fn-dwrt-returned nil))) (worker (nth 1 (fn-dwrt-returned nil))) (token (nth 2 (fn-dwrt-returned nil))) (job (update-fn-dwj-carry (nth 3 (fn-dwrt-returned nil)) (create-fn-decoded-job))))
+  :mutations ((carry-kept
+               (:conclusion (let ((next (mv-nth 1 (fn-dwj-retire ledger worker token job))))
+    (and (and (equal (fn-dwj-input next) (fn-dwj-input job))
+         (equal (fn-dwj-hash next) (fn-dwj-hash job))
+         (equal (fn-dwj-zin next) (fn-dwj-zin job))
+         (equal (fn-dwj-win next) (fn-dwj-win job))
+         (equal (fn-dwj-tab next) (fn-dwj-tab job))
+         (equal (fn-dwj-out next) (fn-dwj-out job))
+         (equal (fn-dwj-window next) (fn-dwj-window job))) (equal (fn-dwj-carry next) (fn-dwj-carry job)))))
+               ((ledger (nth 0 (fn-dwrt-returned nil))) (worker (nth 1 (fn-dwrt-returned nil))) (token (nth 2 (fn-dwrt-returned nil))) (job (update-fn-dwj-carry (nth 3 (fn-dwrt-returned nil)) (create-fn-decoded-job))))
+               :fault "a retirement claimed to leave the carry's authority in place"
+               :lemma dwjt-backing-mut1)))
