@@ -288,7 +288,7 @@ developer cache-off selector).  ACL2 refuses a figure its scans do not support."
   (unless *fnn-extent-xcs*
     (let ((ne (fnn-extent-cache-limit)) (nw (fnn-extent-window-limit)))
       (destructuring-bind (word xcs xcc)
-          (fnn-call 'fn-xc-init ne nw (create-fn-xcs) (create-fn-xcc))
+          (fnn-call 'fn-xc-init ne nw (create-fn-xcs$c) (create-fn-xcc$c))
         (unless (eq word :initialized)
           (fnn-fault "the extent cache refused its profile figures ~d entries, ~d windows: ~a"
                      ne nw word))

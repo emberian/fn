@@ -315,7 +315,7 @@ def stobj_world_names() -> set[str]:
         paths = base.rglob("*.lisp") if directory == "books" else base.glob("*.lisp")
         for path in sorted(paths):
             text = path.read_text(encoding="utf-8", errors="replace").lower()
-            if "(defstobj" in text or "(defabsstobj" in text:
+            if "(defstobj" in text or "(defabsstobj" in text or "(def-representation " in text:
                 found |= {name.lower() for name in stobj_names(path)}
     return found
 
@@ -1371,6 +1371,13 @@ def stobj_names(path: Path) -> set[str]:
                     found.update({field, "update-" + field, field + "p",
                                   field + "-length", "resize-" + field,
                                   field + "i", "update-" + field + "i"})
+            return
+        if head == "def-representation" and len(form) >= 2 and isinstance(form[1], str):
+            # books/def-representation.lisp: the abstract stobj NAME, its
+            # concrete foundation NAME$c, and their creators.
+            name = str(form[1])
+            found.update({name + "p", "create-" + name, "create-" + name + "$c",
+                          name + "$cp"})
             return
         if head == "defevent" and len(form) >= 2:
             # books/defevent.lisp (lane generators G6): the encoder, the
