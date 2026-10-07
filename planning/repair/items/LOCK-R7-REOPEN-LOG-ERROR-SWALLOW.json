@@ -4,11 +4,14 @@
  "file": "host/native/owner.lisp",
  "fix": "Catch only the OS errors of the open (fnn-os-error) and let faults and indeterminate conditions escape to the maintenance actor's boundary, or classify the condition and route fault and indeterminate to fnn-owner-thread-escape.",
  "id": "LOCK-R7-REOPEN-LOG-ERROR-SWALLOW",
- "notes": [],
+ "notes": [
+  "fnn-owner-maybe-reopen-log (owner.lisp) catches only fnn-os-error around fnn-owner-open-log; faults and indeterminate conditions from fnn-log-swap-fd / fnn-owner-log reach the maintenance actor boundary. Key R7|fnn-owner-maybe-reopen-log|swallow:error:fault,indet gone from --check on lane/lock-owner-class at a73f78a5e; none added. natives_owed: tests/test_native_*log*reopen / SIGHUP log-reopen native (grep SIGHUP tests/test_native_*.py)."
+ ],
  "owner": "open",
  "severity": "low",
+ "sha": "a73f78a5e",
  "source": "lock-triage-r1r7-20261006",
- "state": "open",
+ "state": "ready",
  "title": "fnn-owner-maybe-reopen-log: an error clause logs and continues for fault and indeterminate conditions of the reopen",
- "updated": "2026-10-06T23:59:35Z"
+ "updated": "2026-10-07T05:20:43Z"
 }
