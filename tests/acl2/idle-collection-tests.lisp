@@ -98,7 +98,7 @@
 (assert! (equal *fn-load-gc-generation* 3))
 (assert! (equal (fn-load-gc-decide 16777215 0) :wait))
 (assert! (equal (fn-load-gc-decide 16777216 0) '(:collect 3)))
-(assert! (equal (fn-load-gc-decide 100000000 83222783) :wait))
+(assert! (equal (fn-load-gc-decide 100000000 83222785) :wait))
 (assert! (equal (fn-load-gc-decide 100000000 83222784) '(:collect 3)))
 (assert! (equal (fn-load-gc-decide nil 0) :wait))
 (assert! (equal (fn-load-gc-decide 99999999 -1) :wait))
