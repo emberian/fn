@@ -289,6 +289,9 @@ class Node:
         env.update(self.extra_env)
         env.update(extra_env or {})
         self.stderr = open(self.dir / "owner.stderr", "ab")
+        sys.path.insert(0, str(ROOT / "tools"))
+        from rep_measure import decided_heap_env
+        env = decided_heap_env(image or self.image, self.config, env)
         started = now()
         self.process = subprocess.Popen(
             [str(image or self.image), "--fn", "operator", str(self.config), "run"],
