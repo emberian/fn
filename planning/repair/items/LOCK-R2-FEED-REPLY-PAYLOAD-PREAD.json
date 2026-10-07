@@ -6,12 +6,14 @@
  "file": "host/native/feed-service.lisp",
  "fix": "Give the feed reply read the served-read protocol: run the arena read with *fnn-extent-no-io* bound, catch fnn-extent-cold, prefetch the entry off the owner and extent locks within ACL2's dependency deadline, then re-run warm (owner.lisp fnn-owner-chunk-span-no-io is the pattern); or record a decision that the feed path may read synchronously and declare it as a scoped R2 exception with its bound. Also correct the extent.lisp:208-214 docstring.",
  "id": "LOCK-R2-FEED-REPLY-PAYLOAD-PREAD",
- "notes": [],
+ "notes": [
+  "10-06 20:24 BLOCKED ON ACL2 CHANGE (lane lock-host-fix-2). The served-read protocol (bind *fnn-extent-no-io*, catch fnn-extent-cold, prefetch off-lock, re-run) cannot be applied: fn-owner-feed-reply-chunk-synced (host/owner-host.lisp:5266) COMMITS BEFORE IT READS. It f-put-global's fn-owner-feed-inputs (fn-fc-next-state: the connection consumes the octets) and fn-owner-feed-stopped, and only then, in the :reply arm, fn-owner-feed-octets calls fn-ofa-feed-article (the arena read, :5230ff). A throw on a cold miss leaves the consumed state in place, so a re-run feeds the same octets to the framer twice. The served span is re-runnable only because fn-owner-chunk-span is pure over its stobjs. ACL2 options: (a) PREFERRED: a pure read-only probe (e.g. fn-owner-feed-reply-article-probe) that decides from peer+octets whether the reply is a send code and reads fn-ofa-feed-article first, committing nothing; the host runs it under *fnn-extent-no-io*, prefetches a miss off-lock inside ACL2's dependency deadline (owner.lisp fnn-owner-chunk-span-no-io / cold-issue pattern), then runs the existing step warm. (b) reorder the chunk so every f-put-global follows the arena read, with a keystone that a throw before commit leaves state unchanged. Also correct the extent.lisp:208-214 docstring when fixed. UN-PARK: an ACL2 lane owns fn-owner-feed-reply-chunk-synced after rl02 lands on owner-host.lisp (route to Deputy P). No scoped exception taken."
+ ],
  "owner": "unassigned",
  "scenario": "A peer feed link receives a 335/238-style reply that makes the owner read an article whose payload extent is not in the realizer cache (cache bound fn-arx-read-cache-entries): the transit quantum preads from disk holding O and E.",
  "severity": "high",
  "source": "lock-triage-r2b on lane/lock-triage-r2 (settling the UNSURE keys of lock-triage-r2)",
- "state": "open",
+ "state": "deferred",
  "title": "Feed reply chunk reads article payloads through the arena realizer: a cache miss does a synchronous pread under the owner and extent mutexes",
- "updated": "2026-10-07T00:05:17Z"
+ "updated": "2026-10-07T00:24:15Z"
 }
