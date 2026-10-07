@@ -35,6 +35,24 @@
 (selected-source "books/heap-store-figure.lisp" '(fn-heap-core-file *fn-heap-nursery-least-octets* fn-heap-nursery-trigger fn-heap-with-nursery fn-heap-grow-runtime-dynamic))
 (selected-source "books/heap-reservation.lisp"
  '(*fn-heap-thread-runtime-octets* fn-heap-reservation-octets))
+;; ACL2's launch extra (books/page-read-startup.lisp fn-prstartup-launch-extra):
+;; the reads in flight at the profile's segment extent, and what that reads.
+(selected-source "books/page-read-startup.lisp"
+ '(fn-prstartup-launch-extra fn-prstartup-registration-reserve fn-prstartup-read-extent fn-prstartup-read-reserve fn-prstartup-read-demand fn-prstartup-read-token-octets))
+(selected-source "books/byte-store-frame.lisp"
+ '(fn-bs-profile-max-record-octets *fn-bs-pf-max-record-octets* fn-bs-profile-field fn-bs-profile-of fn-bs-profile-validp fn-bs-profile-invalid-reason *fn-bs-pf-max-transactions* fn-bs-pf fn-bs-meta-nth *fn-bs-pf-max-history-octets* *fn-bs-pf-max-article-octets* *fn-bs-pf-max-groups-per-article* *fn-bs-pf-max-group-name-octets* *fn-bs-pf-max-open-suffix* *fn-bs-meta-profile-spec*))
+(selected-source "books/frame-fields.lisp"
+ '(fn-frame-values-okp fn-frame-field-okp fn-frame-textp))
+(selected-source "books/frame-octets.lisp"
+ '(*fn-frame-max-text* *fn-frame-trailer-octets*))
+(selected-source "books/cbor.lisp"
+ '(fn-cbor-at-mostp fn-cbor-octet-listp))
+(selected-source "books/store-checkpoint-codec.lisp"
+ '(fn-scc-segment-max-octets))
+(selected-source "books/store-tree-codec.lisp"
+ '(*fn-scc-segment-header-octets*))
+(selected-source "books/page-read-resources.lisp"
+ '(fn-prs-worker-demand))
 (selected-source (or (fourth sb-ext:*posix-argv*) "books/page-read-startup.lisp")
  '(fn-prstartup-nth fn-prstartup-fd-bookkeeping fn-prstartup-baseline-heap
    fn-prstartup-required-heap fn-prstartup-extend-default-reservation
@@ -98,9 +116,14 @@
     (let ((code (fnn-command-heap "--" '("operator" "CONFIG" "run"))))
       (values code (get-output-stream-string *fnn-stdout*)
               (reverse *calls*) *captured-core* *captured-machine*))))
+;; 259: the base's 256 MiB grown by ACL2's launch extra (books/page-read-startup.lisp
+;; fn-prstartup-launch-extra, 2,676,432 octets here): the descriptor table and
+;; the 4 workers' backing, whose two reusable window vectors each are the
+;; profile's :read-window-octets (262,144; 1,966,080 octets of the extra), and
+;; the reads in flight (2,472).  At the former 16 KiB window it was 257.
 (multiple-value-bind (code line calls cores machines) (heap-command)
   (assert (= code 0))
-  (assert (equal line "(:HEAP 257 :SMALL 8192 1024 16)"))
+  (assert (equal line "(:HEAP 259 :SMALL 8192 1024 16)"))
   (assert (equal (mapcar #'car calls) '(:reclaim :cold :default :peer :output)))
   ;; Off (no `[resources] reclaim_live'): the store decision, unextended; a
   ;; served run's base is not sized by an observed history (ACL2's
@@ -120,7 +143,7 @@
 ;; the space that already holds the reserve.
 (multiple-value-bind (code line calls) (heap-command :run nil t)
   (assert (= code 0))
-  (assert (equal line "(:HEAP 258 :SMALL 8192 1024 16)"))
+  (assert (equal line "(:HEAP 260 :SMALL 8192 1024 16)"))
   (assert (equal (second (cdr (first calls))) t))
   (assert (equal (second (second calls)) '(:heap 257 :small 8192 1024 16))))
 ; No selected backing extension for init/offline/help, or explicit cold.
@@ -142,7 +165,7 @@
 (let ((*calls* nil) (*captured-core* 0) (*captured-machine* 0)
       (*fnn-stdout* (make-string-output-stream)))
   (fnn-heap-print-store-line "/fixture")
-  (assert (equal (get-output-stream-string *fnn-stdout*) "(:HEAP 257 :SMALL 8192 1024 16)"))
+  (assert (equal (get-output-stream-string *fnn-stdout*) "(:HEAP 259 :SMALL 8192 1024 16)"))
   (assert (= *captured-core* *captured-machine* 1))
   (assert (equal (fourth (cdr (assoc :default *calls*))) "/absolute/fixture")))
 (format t "SOURCE DEFAULT HEAP PASSED~%")
