@@ -1,0 +1,13 @@
+{
+ "category": "performance",
+ "detail": "Clean run s2: x0 RSS 124.4 / anon 29.0; with 8 idle connections 126.0 / 30.4; 32 connections 130.1 / 33.3; after all closed and 2 s 133.0 / 35.7. The owner prints per-connection=425 KiB as a budget; measured resident is ~0.18 MB. The residue after close points at per-connection buffers or a thread that is not released (thread count was 14 throughout; read only that count). Not attributed to a structure. Evidence hbox:/tank/fn/scratch/n-mem/s2.log, s2/.",
+ "file": "host/native/io.lisp",
+ "id": "MEM-009",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "low",
+ "source": "n-mem",
+ "state": "open",
+ "title": "32 idle connections cost +5.6 MB RSS / +6.6 MB anon (0.18 MB each) and the memory is not returned after they close",
+ "updated": "2026-10-06T23:00:00Z"
+}
