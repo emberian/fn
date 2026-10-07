@@ -22049,7 +22049,7 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-idle-gc-quiet-counts-only-quiet-ticks"
+          "theorem": "fn-idle-gc-quiet-counts-only-quiet-ticks-at-the-limit"
         }
       ],
       "extraction": null,
@@ -22072,10 +22072,12 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-idle-gc-verdict-collects-only-when-owed"
+          "theorem": "fn-idle-gc-verdict-collects-only-when-owed",
+          "via": "fn-idle-gc-verdict"
         },
         {
-          "theorem": "fn-idle-gc-verdict-collects-when-owed"
+          "theorem": "fn-idle-gc-verdict-collects-when-owed",
+          "via": "fn-idle-gc-verdict"
         },
         {
           "theorem": "fn-idle-gc-decide-never-collects-during-a-publication"
