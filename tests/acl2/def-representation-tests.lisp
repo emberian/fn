@@ -484,6 +484,135 @@
                   (append drt-mod (list (take (- hi lo) (nthcdr lo fn-octets))))))
   :hints (("Goal" :use drt-mod-seal-range-is-slice)))
 
+; The same vocabulary over the PAGED foundation (the generator's directory
+; of 16384-octet pool pages): generated logic, then the arena's logic
+; (:model), executed across a pool-page boundary.
+(def-representation drt-pgb (payload :octets) :scalar t :paged t
+  :source fn-octets :lemmas (drt-src-octets-are-adt-octets)
+  :exports ((count) (payload-len) (inner-get) (get) (append) (seal-buffer) (clear) (seal-range)))
+
+(def-representation drt-pgm (payload :octets) :scalar t :paged t
+  :source fn-octets
+  :model (:recognizer fn-arena$ap :creator create-fn-arena$a)
+  :lemmas (drt-mod-recognizer-is-the-scalar-sequence drt-octet-listp-is-adt-octetsp
+           drt-src-octets-are-adt-octets fn-oct-nth-is-nth fn-oct-snoc-is-append fn-oct-list-is-identity
+           fn-oct-slice-list-is-take-nthcdr)
+  :exports ((count :logic fn-arena$a-count) (payload-len :logic fn-arena$a-payload-len)
+            (inner-get :as drt-pgm-get :logic fn-arena$a-get)
+            (get :as drt-pgm-payload :logic fn-arena$a-payload)
+            (append :as drt-pgm-seal-list :logic fn-arena$a-seal-list)
+            (seal-buffer :logic fn-arena$a-seal-buffer) (clear :logic fn-arena$a-clear)
+            (seal-range :logic fn-arena$a-seal-range)))
+
+; Octets (mod (* 7 i) 251) for i below n; a first payload of 16000 of them
+; and a second of the cells [100, 1100): the second lies across the pool
+; page boundary 16384.
+(defun drt-pat (n)
+  (declare (xargs :guard (natp n)))
+  (if (zp n) nil (append (drt-pat (- n 1)) (list (mod (* 7 (- n 1)) 251)))))
+
+(defun drt-pgb-run (drt-pgb)
+  (declare (xargs :stobjs drt-pgb))
+  (with-local-stobj fn-octets
+    (mv-let (out drt-pgb fn-octets)
+      (let* ((fn-octets (fn-octets-append-list (drt-pat 17000) fn-octets))
+             (drt-pgb (drt-pgb-clear drt-pgb))
+             (drt-pgb (drt-pgb-seal-range 0 16000 fn-octets drt-pgb))
+             (drt-pgb (drt-pgb-seal-range 100 1100 fn-octets drt-pgb))
+             (drt-pgb (drt-pgb-seal-range 16000 16000 fn-octets drt-pgb))
+             (drt-pgb (drt-pgb-seal-range 16990 17000 fn-octets drt-pgb)))
+        (mv (list (drt-pgb-count drt-pgb) (drt-pgb-payload-len 0 drt-pgb) (drt-pgb-payload-len 1 drt-pgb)
+                  (drt-pgb-payload-len 2 drt-pgb) (drt-pgb-inner-get 1 283 drt-pgb)
+                  (drt-pgb-inner-get 1 284 drt-pgb) (drt-pgb-inner-get 1 999 drt-pgb)
+                  (drt-pgb-get 1 drt-pgb) (drt-pgb-get 3 drt-pgb))
+            drt-pgb fn-octets))
+      (mv out drt-pgb))))
+
+(defun drt-pgb-top ()
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj drt-pgb
+    (mv-let (out drt-pgb) (drt-pgb-run drt-pgb) out)))
+
+(assert! (equal (drt-pgb-top)
+                (list 4 16000 1000 0
+                      (nth 383 (drt-pat 17000)) (nth 384 (drt-pat 17000)) (nth 1099 (drt-pat 17000))
+                      (take 1000 (nthcdr 100 (drt-pat 17000)))
+                      (nthcdr 16990 (drt-pat 17000)))))
+
+; One cell off at the boundary is not the same result.
+(assert! (not (equal (drt-pgb-top)
+                     (list 4 16000 1000 0
+                           (nth 383 (drt-pat 17000)) (nth 384 (drt-pat 17000)) (nth 1099 (drt-pat 17000))
+                           (take 1000 (nthcdr 101 (drt-pat 17000)))
+                           (nthcdr 16990 (drt-pat 17000))))))
+
+(defun drt-pgm-run (drt-pgm)
+  (declare (xargs :stobjs drt-pgm))
+  (with-local-stobj fn-octets
+    (mv-let (out drt-pgm fn-octets)
+      (let* ((fn-octets (fn-octets-append-list '(1 2 3 4 5 6) fn-octets))
+             (drt-pgm (drt-pgm-clear drt-pgm))
+             (drt-pgm (drt-pgm-seal-list '(9 8) drt-pgm))
+             (drt-pgm (drt-pgm-seal-range 1 4 fn-octets drt-pgm))
+             (drt-pgm (drt-pgm-seal-buffer fn-octets drt-pgm))
+             (drt-pgm (drt-pgm-seal-range 2 2 fn-octets drt-pgm)))
+        (mv (list (drt-pgm-count drt-pgm) (drt-pgm-payload-len 1 drt-pgm) (drt-pgm-get 1 2 drt-pgm)
+                  (drt-pgm-payload 0 drt-pgm) (drt-pgm-payload 1 drt-pgm) (drt-pgm-payload 2 drt-pgm)
+                  (drt-pgm-payload 3 drt-pgm))
+            drt-pgm fn-octets))
+      (mv out drt-pgm))))
+
+(defun drt-pgm-top ()
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj drt-pgm
+    (mv-let (out drt-pgm) (drt-pgm-run drt-pgm) out)))
+
+(assert! (equal (drt-pgm-top) '(4 3 4 (9 8) (2 3 4) (1 2 3 4 5 6) nil)))
+
+(defthm drt-pgb-seal-range-is-the-slice
+  (implies (and (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi) (<= hi (len fn-octets)))
+           (equal (drt-pgb-seal-range lo hi fn-octets drt-pgb)
+                  (append drt-pgb (list (take (- hi lo) (nthcdr lo fn-octets))))))
+  :hints (("Goal" :use drt-pgb-seal-range-is-slice)))
+
+(assert-event
+ (and (not (intersectp-eq '(cons list append take nthcdr revappend fn-octets-list fn-oct-slice-list)
+                          (all-fnnames (body 'drt-pgb$c-seal-range nil (w state)))))
+      (not (intersectp-eq '(cons list append take nthcdr revappend fn-octets-list fn-oct-slice-list)
+                          (all-fnnames (body 'drt-pgb$c-range-copy nil (w state)))))
+      (not (intersectp-eq '(cons list append take nthcdr revappend fn-octets-list fn-oct-slice-list)
+                          (all-fnnames (body 'drt-pgb$c-seal-buffer nil (w state)))))))
+
+(must-fail-checked
+ (defthm drt-pgb-seal-range-off-by-one-front
+   (implies (and (true-listp drt-pgb) (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi)
+                 (<= hi (len fn-octets)))
+            (equal (drt-pgb-seal-range lo hi fn-octets drt-pgb)
+                   (append drt-pgb (list (take (- hi lo) (nthcdr (+ 1 lo) fn-octets))))))))
+(must-fail-checked
+ (defthm drt-pgb-seal-range-off-by-one-back
+   (implies (and (true-listp drt-pgb) (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi)
+                 (<= hi (len fn-octets)))
+            (equal (drt-pgb-seal-range lo hi fn-octets drt-pgb)
+                   (append drt-pgb (list (take (+ 1 (- hi lo)) (nthcdr lo fn-octets))))))))
+(must-fail-checked
+ (defthm drt-pgm-seal-range-off-by-one-front
+   (implies (and (true-listp drt-pgm) (true-listp fn-octets) (natp lo) (natp hi) (<= lo hi)
+                 (<= hi (len fn-octets)))
+            (equal (drt-pgm-seal-range lo hi fn-octets drt-pgm)
+                   (append drt-pgm (list (take (- hi lo) (nthcdr (+ 1 lo) fn-octets))))))))
+(must-fail-checked
+ (defthm drt-pgb-inner-get-off-by-one
+   (equal (drt-pgb-inner-get h i drt-pgb) (nth (+ 1 i) (nth h drt-pgb)))))
+(must-fail-checked
+ (defthm drt-pgb-payload-len-one-too-long
+   (equal (drt-pgb-payload-len h drt-pgb) (+ 1 (len (nth h drt-pgb))))))
+(must-fail-checked
+ (defthm drt-pgb-seal-buffer-is-not-the-tail
+   (implies (and (true-listp drt-pgb) (true-listp fn-octets))
+            (equal (drt-pgb-seal-buffer fn-octets drt-pgb)
+                   (append drt-pgb (list (cdr fn-octets)))))))
+
 ;
 ; Teeth.  A seal-range one cell off the front, one cell past the back, an
 ; inner read one cell off, a payload length one too long, and a seal-buffer
@@ -528,9 +657,6 @@
 (must-fail-checked
  (def-representation drt-v3 (p :octets) :scalar t :paged nil :source fn-octets :exports ((count) (clear)))
  :unchecked "refused at expansion: :source with no seal role")
-(must-fail-checked
- (def-representation drt-v4 (p :octets) :scalar t :source fn-octets :exports ((count) (seal-range)))
- :unchecked "refused at expansion: the vocabulary needs :paged nil")
 (must-fail-checked
  (def-representation drt-v5 (p :octets) :scalar t :paged nil :exports ((count) (inner-get)))
  :unchecked "refused at expansion: inner-get without payload-len")
