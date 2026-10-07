@@ -1,0 +1,9 @@
+      2 ;   undefined function: ACL2::FN-PGS-FILL-FRAME
+      2 ;   undefined function: ACL2::FN-DURABLE-REALIZE-LZ
+      1 ;   undefined variable: ACL2::FN-CAT
+      1 ;   undefined function: ACL2::FN-SIG-VERIFY
+      1 ;   undefined function: ACL2::FNN-COUNTERPART
+      1 ;   undefined function: ACL2::FN-DURABLE-REALIZE-OCTETS
+      1 ;   undefined function: ACL2::FN-DURABLE-REALIZE-OCTET
+      1 ;   undefined function: ACL2::FN-ARENA-STORED
+      1 ;   undefined function: ACL2::CONGRUENT-STOBJ-REP

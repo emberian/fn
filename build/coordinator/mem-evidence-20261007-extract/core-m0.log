@@ -1,0 +1,34 @@
+host_tokens: 8082 words
+cl: 13421 defuns, 392 stobj primitives, 103 aliases, 2024 *1* functions; 8 host-defined
+core_build: 57 host files
+core: the SBCL build failed; see /tank/fn/scratch/extract-measure/core-m0/sbcl.log
+5: (FN-CD-RAW-PROBLEM FN-OWNER-SERVED-CARRIED FN-OWNER-REFUSE-RESERVATION :XL-WORLD)
+6: (FN-DI-RAW-WITH-PROBLEM FN-OWNER-REFUSE-RESERVATION (:CLASS :COMMON-LISP-COMPLIANT :RAW-WITH (:CARRIED FN-OWNER-SERVED-CARRIED :ASSUMING A-OWNER-INVARIANT-CARRIED)) :XL-WORLD)
+7: (FNN-INSTALL-RAW-DISPATCH :REPORT T)
+8: (SB-INT:SIMPLE-EVAL-IN-LEXENV (FNN-INSTALL-RAW-DISPATCH) #<NULL-LEXENV>)
+9: (SB-IMPL::SIMPLE-EVAL-PROGN-BODY ((LOAD "host/native/raw-trap.lisp") (FNN-INSTALL-RAW-DISPATCH) (LOAD "host/native/crypto.lisp") (FNN-CRYPTO-INITIALIZE) (LOAD "host/native/io.lisp") (LOAD "host/native/extent.lisp") (LOAD "host/native/extent-decoded.lisp") (LOAD "host/native/deflate.lisp") (FNN-SELECT-IMAGE-PROFILE) (FNN-RAW-TRAP-SEAL :DEVELOPER (FNN-DEVELOPER-IMAGE-P)) (FNN-SELECT-RELEASE-VERSION) (LOAD "host/native/tls.lisp") ...) #<NULL-LEXENV>)
+10: (SB-INT:SIMPLE-EVAL-IN-LEXENV (PROGN (LOAD "host/native/raw-trap.lisp") (FNN-INSTALL-RAW-DISPATCH) (LOAD "host/native/crypto.lisp") (FNN-CRYPTO-INITIALIZE) (LOAD "host/native/io.lisp") (LOAD "host/native/extent.lisp") (LOAD "host/native/extent-decoded.lisp") (LOAD "host/native/deflate.lisp") (FNN-SELECT-IMAGE-PROFILE) (FNN-RAW-TRAP-SEAL :DEVELOPER (FNN-DEVELOPER-IMAGE-P)) (FNN-SELECT-RELEASE-VERSION) ...) #<NULL-LEXENV>)
+11: (SB-EXT:EVAL-TLF (PROGN (LOAD "host/native/raw-trap.lisp") (FNN-INSTALL-RAW-DISPATCH) (LOAD "host/native/crypto.lisp") (FNN-CRYPTO-INITIALIZE) (LOAD "host/native/io.lisp") (LOAD "host/native/extent.lisp") (LOAD "host/native/extent-decoded.lisp") (LOAD "host/native/deflate.lisp") (FNN-SELECT-IMAGE-PROFILE) (FNN-RAW-TRAP-SEAL :DEVELOPER (FNN-DEVELOPER-IMAGE-P)) (FNN-SELECT-RELEASE-VERSION) ...) 1 NIL)
+12: ((LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE) (PROGN (LOAD "host/native/raw-trap.lisp") (FNN-INSTALL-RAW-DISPATCH) (LOAD "host/native/crypto.lisp") (FNN-CRYPTO-INITIALIZE) (LOAD "host/native/io.lisp") (LOAD "host/native/extent.lisp") (LOAD "host/native/extent-decoded.lisp") (LOAD "host/native/deflate.lisp") (FNN-SELECT-IMAGE-PROFILE) (FNN-RAW-TRAP-SEAL :DEVELOPER (FNN-DEVELOPER-IMAGE-P)) (FNN-SELECT-RELEASE-VERSION) ...) 1)
+13: ((LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) (PROGN (LOAD "host/native/raw-trap.lisp") (FNN-INSTALL-RAW-DISPATCH) (LOAD "host/native/crypto.lisp") (FNN-CRYPTO-INITIALIZE) (LOAD "host/native/io.lisp") (LOAD "host/native/extent.lisp") (LOAD "host/native/extent-decoded.lisp") (LOAD "host/native/deflate.lisp") (FNN-SELECT-IMAGE-PROFILE) (FNN-RAW-TRAP-SEAL :DEVELOPER (FNN-DEVELOPER-IMAGE-P)) (FNN-SELECT-RELEASE-VERSION) ...) :CURRENT-INDEX 1)
+14: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {7CED51666ADB}> #<SB-C::SOURCE-INFO {1233E64D63}> SB-C::INPUT-ERROR-IN-LOAD)
+15: (SB-INT:LOAD-AS-SOURCE #<SB-INT:FORM-TRACKING-STREAM for "file /tank/fn/scratch/extract-measure/core-m0/host-block.lisp" {122CAA6423}> :VERBOSE NIL :PRINT NIL :CONTEXT "loading")
+16: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-INT:FORM-TRACKING-STREAM for "file /tank/fn/scratch/extract-measure/core-m0/host-block.lisp" {122CAA6423}> NIL)
+17: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {7CED51666E9B}> #<SB-INT:FORM-TRACKING-STREAM for "file /tank/fn/scratch/extract-measure/core-m0/host-block.lisp" {122CAA6423}> NIL #<SB-INT:FORM-TRACKING-STREAM for "file /tank/fn/scratch/extract-measure/core-m0/host-block.lisp" {122CAA6423}>)
+18: (LOAD "/tank/fn/scratch/extract-measure/core-m0/host-block.lisp" :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)
+19: (SB-INT:SIMPLE-EVAL-IN-LEXENV (LOAD (COMMON-LISP-USER::XL-PATH "host-block.lisp")) #<NULL-LEXENV>)
+20: (SB-EXT:EVAL-TLF (LOAD (COMMON-LISP-USER::XL-PATH "host-block.lisp")) 11 NIL)
+21: ((LABELS SB-FASL::EVAL-FORM :IN SB-INT:LOAD-AS-SOURCE) (LOAD (COMMON-LISP-USER::XL-PATH "host-block.lisp")) 11)
+22: ((LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) (LOAD (COMMON-LISP-USER::XL-PATH "host-block.lisp")) :CURRENT-INDEX 11)
+23: (SB-C::%DO-FORMS-FROM-INFO #<FUNCTION (LAMBDA (SB-KERNEL:FORM &KEY :CURRENT-INDEX &ALLOW-OTHER-KEYS) :IN SB-INT:LOAD-AS-SOURCE) {7CED516674CB}> #<SB-C::SOURCE-INFO {1200CFE663}> SB-C::INPUT-ERROR-IN-LOAD)
+24: (SB-INT:LOAD-AS-SOURCE #<SB-INT:FORM-TRACKING-STREAM for "file /tank/fn/scratch/extract-measure/tree/tools/extract/core-main.lisp" {120003B373}> :VERBOSE NIL :PRINT NIL :CONTEXT "loading")
+25: ((LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) #<SB-INT:FORM-TRACKING-STREAM for "file /tank/fn/scratch/extract-measure/tree/tools/extract/core-main.lisp" {120003B373}> NIL)
+26: (SB-FASL::CALL-WITH-LOAD-BINDINGS #<FUNCTION (LABELS SB-FASL::LOAD-STREAM-1 :IN LOAD) {7CED5166788B}> #<SB-INT:FORM-TRACKING-STREAM for "file /tank/fn/scratch/extract-measure/tree/tools/extract/core-main.lisp" {120003B373}> NIL #<SB-INT:FORM-TRACKING-STREAM for "file /tank/fn/scratch/extract-measure/tree/tools/extract/core-main.lisp" {120003B373}>)
+27: (LOAD #P"/tank/fn/scratch/extract-measure/tree/tools/extract/core-main.lisp" :VERBOSE NIL :PRINT NIL :IF-DOES-NOT-EXIST :ERROR :EXTERNAL-FORMAT :DEFAULT)
+28: (SB-IMPL::PROCESS-EVAL/LOAD-OPTIONS ((:LOAD . "/tank/fn/scratch/extract-measure/tree/tools/extract/core-main.lisp") (:QUIT)))
+29: (SB-IMPL::TOPLEVEL-INIT)
+30: ((FLET SB-UNIX::BODY :IN SB-IMPL::START-LISP))
+31: ((FLET "WITHOUT-INTERRUPTS-BODY-3" :IN SB-IMPL::START-LISP))
+32: (SB-IMPL::%START-LISP)
+
+unhandled condition in --disable-debugger mode, quitting

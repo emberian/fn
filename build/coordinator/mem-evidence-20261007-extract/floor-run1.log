@@ -1,0 +1,16 @@
+tls=16384 heap=1068MB load=11.89 11.76 12.58
+VmHWM: 18016 kB VmRSS: 18016 kB 
+Rss: 18560 kB Pss_Anon: 2676 kB Pss_File: 13892 kB Anonymous: 2676 kB 
+core-mapping Rss kB: 13864
+tls=65536 heap=1068MB load=12.07 11.80 12.58
+VmHWM: 39760 kB VmRSS: 39760 kB 
+Rss: 40128 kB Pss_Anon: 10924 kB Pss_File: 26832 kB Anonymous: 10924 kB 
+core-mapping Rss kB: 32348
+tls=16384 heap=1068MB load=12.22 11.84 12.59
+VmHWM: 37840 kB VmRSS: 37840 kB 
+Rss: 38208 kB Pss_Anon: 9004 kB Pss_File: 26833 kB Anonymous: 9004 kB 
+core-mapping Rss kB: 32348
+tls=65536 heap=1068MB load=12.27 11.86 12.59
+VmHWM: 39692 kB VmRSS: 39692 kB 
+Rss: 40060 kB Pss_Anon: 10924 kB Pss_File: 26831 kB Anonymous: 10924 kB 
+core-mapping Rss kB: 32348

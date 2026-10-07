@@ -1,0 +1,16 @@
+core=/tank/fn/scratch/extract-measure/core-m0/fn-core-partial.core tls=16384 heap=1068MB load=24.35 22.27 17.32
+VmHWM: 51448 kB VmRSS: 51448 kB 
+Rss: 51728 kB Pss_File: 15086 kB Anonymous: 34324 kB 
+core-mapping Rss kB: 15216
+core=/tank/fn/scratch/extract-measure/core-m0/fn-core-partial.core tls=16384 heap=1068MB load=23.68 22.20 17.35
+VmHWM: 51520 kB VmRSS: 51520 kB 
+Rss: 51796 kB Pss_File: 15089 kB Anonymous: 34324 kB 
+core-mapping Rss kB: 15216
+core=/tank/fn/scratch/extract-measure/core-m0/fn-core-partial.core tls=65536 heap=1068MB load=23.11 22.12 17.37
+VmHWM: 53440 kB VmRSS: 53440 kB 
+Rss: 53716 kB Pss_File: 15086 kB Anonymous: 36244 kB 
+core-mapping Rss kB: 15216
+core=/tank/fn/scratch/extract-measure/core-m0/fn-core-partial.core tls=65536 heap=1068MB load=21.92 21.90 17.35
+VmHWM: 53440 kB VmRSS: 53440 kB 
+Rss: 53716 kB Pss_File: 15097 kB Anonymous: 36244 kB 
+core-mapping Rss kB: 15216
