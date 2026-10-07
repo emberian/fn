@@ -1348,9 +1348,9 @@
         ; The pages of the rows from row I on, in the new tape, and the page the row may share.
         (implies (and (natp i) (< i (len a)))
                  (<= (len (,set-dirty-widening a i x))
-                     (+ 1 (adt-tp-npages (len (adt-tp-seq-words ,s (nthcdr i (update-nth i x a))))))))
+                     (+ 1 (,pool-pages-rows (nthcdr i (update-nth i x a))))))
         :hints (("Goal" :use ((:instance adt-tp-set-dirty-widening-bound (s ,s)))
-                 :in-theory (e/d (,set-dirty-widening) (adt-tp-set-dirty-widening-bound)))))
+                 :in-theory (e/d (,set-dirty-widening ,pool-pages-rows) (adt-tp-set-dirty-widening-bound)))))
       (defthm ,(adt-sym name "-OF-PAGES-OF-PAGES-OF")
         (implies (,ap a) (equal (,of-pages (,pages-of a)) a))
         :hints (("Goal" :use ((:instance adt-tp-of-pages-of-pages-of (s ,s))
