@@ -22,6 +22,7 @@
   (and (sclt-conn o)
        (equal (sclt-conn o2) (sclt-conn o))
        (equal (fn-own-clock o2) (fn-own-clock o))
+       (equal (fn-own-config o2) (fn-own-config o))
        (equal (fn-own-conn-live-session o2 (sclt-conn o))
               (fn-own-conn-live-session o (sclt-conn o)))))
 

@@ -203,7 +203,8 @@
                                    fn-served-step-counted-result-is-step-of-consumed-prefix)))))
 
 (defthm fn-scl-own-served-conn-is-with-live
-  (implies (equal (fn-own-clock o2) (fn-own-clock o))
+  (implies (and (equal (fn-own-clock o2) (fn-own-clock o))
+                (equal (fn-own-config o2) (fn-own-config o)))
            (equal (fn-own-served-conn o2 conn session)
                   (fn-scl-with-live (fn-own-served-conn o conn session)
                                     (fn-own-view-live (fn-own-view o2)))))
@@ -246,6 +247,7 @@
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (implies (and (equal (fn-own-find-conn id (fn-own-conns o2)) conn)
                   (equal (fn-own-clock o2) (fn-own-clock o))
+                  (equal (fn-own-config o2) (fn-own-config o))
                   (equal (fn-own-conn-live-session o2 conn)
                          (fn-own-conn-live-session o conn))
                   (fn-scl-counted-selects-nothing-p (fn-own-tls-served-conn o conn)
