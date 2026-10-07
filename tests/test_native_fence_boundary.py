@@ -42,9 +42,17 @@ class CommitterBoundaryTests(auto.AutoCheckpointFixture):
         self.init_development()
         owner = self.node.start(env={"FN_NATIVE_COMMITTER_FAULT": selector})
         mid = "<committer-{}@example.invalid>".format(selector)
-        # The submission wakes the committer; its first act is the injected
-        # condition.  The reply (if any) is not the witness: the exit is.
-        self.node.post(mid, article(mid), expect=None)
+        # A served POST queues its submission and wakes the committer, whose
+        # first act is the injected condition.  It must be served: an
+        # `operator post' is a bound control submission, which the owner
+        # commits inline in its own quantum (fnn-owner-complete-bound-
+        # submission) and never hands to the committer thread.  The reply
+        # (if any) is not the witness: the exit is.
+        try:
+            with self.node.session(timeout=60) as client:
+                client.post(article(mid))
+        except (OSError, EOFError):
+            pass
         self.node.exited(expected_exit, timeout=180, process=owner)
         log = owner.stderr.since(0)
         self.assertIn(line, log, log.decode("utf-8", "replace"))
@@ -75,9 +83,9 @@ class PublicationBoundaryTests(auto.AutoCheckpointFixture):
 
     def test_an_uncertain_checkpoint_install_in_the_publication_fences_the_owner(self):
         self.init_development()
-        self.keep_log()
         owner = self.node.start(env={"FN_NATIVE_STATE_CHECKPOINT_FAULT":
                                      "state-checkpoint-replaced:eio"})
+        self.keep_log()
         self.ids = self.post_batch(0, 6)  # Below automatic publication's threshold.
         with self.node.session() as client:
             expected = [client.article(mid) for mid in self.ids]
@@ -163,9 +171,13 @@ class NodeSecretBoundaryTests(unittest.TestCase):
 
     def test_a_barrier_failure_after_the_secrets_publication_is_uncertain(self):
         node = Node(self, DEVELOPER, root=self.root / "node")
-        node.operator("init", "fn.test", timeout=600, expect=EXIT.OK)
         fault = {"FN_NATIVE_NODE_SECRET_FAULT": "fsync-dir:eio"}
-        created = node.store("node-secret", "create", env=fault, timeout=600, expect=None)
+        # The secret's creation is init's last step on the developer path
+        # (`store ROOT init': fnn-command-init, fnn-node-secret-create).
+        # `operator init' cannot carry it: since SEC-006 its staged
+        # publication writes the secret as one of the plan's files, so a
+        # later `node-secret create' only refuses.
+        created = node.store("init", "fn.test", env=fault, timeout=600, expect=None)
         self.assertEqual(created.returncode, EXIT.UNCERTAIN, created.stderr[-600:])
         self.assertIn(b"node secret creation outcome is indeterminate", created.stderr)
         # The secret was published (its link landed): a second create refuses

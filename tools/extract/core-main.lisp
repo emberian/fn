@@ -1,6 +1,6 @@
 ;;; tools/extract/core-main.lisp -- build the Common Lisp product in a BARE
 ;;; SBCL (no ACL2): the image's packages, the hand runtime, the extracted
-;;; definitions (cl.py), the image's state and world values the code reads
+;;; definitions (defs.lisp, forms-export.lisp), the image's state and world values the code reads
 ;;; (core-world.lisp), then host/native exactly as host/native/build.lisp
 ;;; loads it (core_build.py), saved as one executable.  Run from the tree's
 ;;; root; XL_OUT names build/core/.  tools/extract/core.sh runs it.
@@ -12,13 +12,30 @@
 (defvar cl-user::*xl-out* (sb-ext:posix-getenv "XL_OUT"))
 (defun cl-user::xl-path (name) (concatenate 'string cl-user::*xl-out* name))
 (load (cl-user::xl-path "packages.lisp") :external-format :latin-1)
+;; defs.lisp's forms are read and evaluated one at a time, each compiled as it is read (as ACL2
+;; compiles its own installs), so a defglobal/defparameter initializer can call a function defined above
+;; it.  Not `load': loading a source file gives every compiled form a debug source holding its own copy of
+;; the file's form-position table so far, which for defs.lisp's ~25,000 forms was 1.29 GB of
+;; (unsigned-byte 32) vectors in the saved core (EXTRACTION-PROGRAM-20261007.md section 6).
+(defun cl-user::xl-eval-forms (path external-format)
+  (with-open-file (in path :external-format external-format)
+    (let ((*package* *package*) (*readtable* *readtable*) (eof (list nil)))
+      (loop for form = (read in nil eof)
+            until (eq form eof)
+            do (eval form)))))
+;; ONE compilation unit from the runtime to the end of host/native: SBCL's undefined-function summary is then
+;; judged after the host has defined what the books only constrain (X2); tools/extract/core.sh fails the build
+;; on any name in it.
 (with-compilation-unit ()
-  (load (compile-file (concatenate 'string (sb-ext:posix-getenv "XL_X") "clruntime.lisp")
-                      :output-file (cl-user::xl-path "clruntime.fasl")))
-  (load (compile-file (cl-user::xl-path "defs.lisp") :output-file (cl-user::xl-path "defs.fasl")
-                      :external-format :latin-1)))
+(load (concatenate 'string (sb-ext:posix-getenv "XL_X") "clruntime.lisp"))
+(cl-user::xl-eval-forms (cl-user::xl-path "defs.lisp") :latin-1)
 (load (cl-user::xl-path "core-world.lisp") :external-format :utf-8)
-(acl2::xl-make-live-stobjs)
+;; named through its symbol: this form is compiled before defs.lisp defines it
+(funcall 'acl2::xl-make-live-stobjs)
+;; ACL2's standard channels get their streams at load (axioms.lisp:19005 setup-standard-io and the
+;; eval-when after it); an ACL2 warning the served code prints goes to them, as the image's does
+(unless (fboundp 'acl2::setup-standard-io) (error "core: setup-standard-io is not in the closure"))
+(funcall 'acl2::setup-standard-io)
 ;; ACL2's global compilation policy: the image compiles host/native under it
 (proclaim '(optimize (compilation-speed 0) (speed 3) (space 1) (safety 0)))
 (when (sb-ext:posix-getenv "XL_PROF") (require :sb-sprof))
@@ -26,6 +43,7 @@
 ;; The actual image-hook checker refuses other restore callbacks; loading a
 ;; module after that check would evade the saved-image exclusion contract.
 (load (cl-user::xl-path "host-block.lisp"))
+) ; the compilation unit
 (defun cl-user::xl-toplevel ()
   ;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4):
   ;; no (acl2::fnn-runtime-bootstrap-startup) gate before argv; its

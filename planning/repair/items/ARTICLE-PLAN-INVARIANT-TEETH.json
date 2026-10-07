@@ -1,0 +1,11 @@
+{
+ "file": "tests/acl2/article-stream-owner-tests.lisp",
+ "id": "ARTICLE-PLAN-INVARIANT-TEETH",
+ "notes": [],
+ "owner": "p-ast-guard",
+ "severity": "low",
+ "source": "p-ast-guard lane",
+ "state": "open",
+ "title": "Ground teeth for the owner-level plan invariants fn-asto-cursor-effectsp (finish/ready-rest/plan-render-window keep it): assert-events over a built capture and plan, with a mutated effect list the recognizer refuses",
+ "updated": "2026-10-07T12:51:04Z"
+}

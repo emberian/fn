@@ -69,6 +69,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import ledger  # noqa: E402
+import lisp_source  # noqa: E402
 DEFAULT_BUILD = "host/native/build.lisp"
 DTN_BUILD = "host/native/build-dtn.lisp"
 
@@ -150,28 +151,14 @@ DEF = re.compile(r'^\s*\((?:defun|defund|defmacro|defconst|defabbrev)\s+([^\s()]
 
 
 def strip_comments(text: str) -> str:
-    return re.sub(r";[^\n]*", "", text)
+    """Lisp without comments or #| |# blocks; string literals kept."""
+    return lisp_source.code_only(text, strings=None)
 
 
 def strip_code(text: str) -> str:
-    """Raw Lisp without comments, strings or #| |# blocks (character literals kept)."""
-    out, i, n = [], 0, len(text)
-    while i < n:
-        c = text[i]
-        if c == "#" and text.startswith("#\\", i):
-            out.append(text[i:i + 3]); i += 3
-        elif c == "#" and text.startswith("#|", i):
-            j = text.find("|#", i + 2); i = n if j < 0 else j + 2
-        elif c == ";":
-            j = text.find("\n", i); i = n if j < 0 else j
-        elif c == '"':
-            i += 1
-            while i < n and text[i] != '"':
-                i += 2 if text[i] == "\\" else 1
-            i += 1; out.append('""')
-        else:
-            out.append(c); i += 1
-    return "".join(out)
+    """Raw Lisp without comments, #| |# blocks or string contents (each
+    literal read as \"\"); character literals kept (tools/lisp_source.py)."""
+    return lisp_source.code_only(text, strings='""')
 
 
 RAW_DEF = re.compile(r"\((?:defun|defmacro)\s+([^\s()]+)", re.I)
@@ -442,8 +429,7 @@ class BookIndex:
 
 def strip_code_keep_strings(text: str) -> str:
     """Lisp without comments or #| |# blocks; string literals kept (include targets)."""
-    text = re.sub(r"#\|.*?\|#", "", text, flags=re.S)
-    return re.sub(r';[^\n]*', "", text)
+    return strip_comments(text)
 
 
 def host_uses(text: str) -> set[str]:

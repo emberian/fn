@@ -1,0 +1,34 @@
+extract-forms spike, 2026-10-07 (world: hbox extract-cache world-18bcd401...; ACL2 8.7; SBCL 2.6.8)
+Driver: forms-spike.lisp (in the world image, raw Lisp) -> spike-defs.lisp, spike-packages.lisp;
+bare-compile.lisp compiles them in bare /tank/fn/sbcl/bin/sbcl (no ACL2).
+
+What it emits per function f (mirrors interface-raw.lisp install-defs-for-add-trip / add-trip):
+  raw  = (defun . def)                     from the world's cltl-command defuns, unless ignorep
+  *1*  = (defun . (oneify-cltl-code mode def stobj-flag wrld))
+  both macroexpanded by sb-cltl2:macroexpand-all of (lambda formals . body), printed readably with
+  *print-circle*, uninterned symbols renamed by first occurrence (gensym counters otherwise differ).
+  defconst cmds -> defparameter (ifat-defparameter, our-quote-macro expanded); attachment cmds ->
+  set-attachment-symbol-form; defstobj raw-defs/axiomatic-defs/init; inline/notinline declaims.
+
+Result, 24 roots (mbe/guard-verified x3, :ideal x3, :program invariant-risk x3, CLC invariant-risk x2,
+:program x2, stobj-taking x2, defstobj raw+ax, defabsstobj raw+ax, defattach targets x3):
+  closure over callees that have world defs: 3337 functions (raw+*1* forms), 345 defconsts,
+  7 attachments, 20 stobj inits; 0 print failures (every form prints readably).
+  bare SBCL compile-file: completes; zero READ errors.
+Undefined names after compile (the candidate X2 runtime list):
+  raw functions 251:
+    229 ACL2 system functions whose world entry has ignorep=RECLASSIFYING (boot-strap :program -> :logic):
+        the world carries only the *1* def; the raw def is ACL2's source. 228/251 are a top-level
+        (defun NAME ...) in /tank/fn/acl2-8.7/*.lisp (pinnable file:line); the other 23 are
+        macro-generated (assoc-eq-exec, member-eql-exec, ... $guard-check), $inline fns, and
+        4 defstobj creators (create-fn-arena$p ...) that this spike did not emit (spike bug, not a gap).
+    18 with no world entry (binary-+, unary--, state-p, w, ...).
+  *1* functions 50: 44 are *1* of COMMON-LISP primitives (car, cdr, <, floor ...) + 6 ACL2 primitives.
+  variables 27: 9 ACL2 raw specials (*the-live-state*, *aokp*, *wormholep* ...), 7 attachment cells of
+    constrained fns without an attachment cmd, 10 stobj live vars (HONS-S-...: (defg (st-lst name))).
+  Not an ACL2 internals blocker: every needed name resolves to a world def or an ACL2 source defun.
+Open: 2 'undefined functions' INTEGER, UNSIGNED-BYTE (a type specifier read as a call; find the emitter).
+  The 24-root closure pulls the CLI (fn-xw-*), so fmt/ppr/iprint are in it; the host closure is smaller.
+2d28dbf7c66f8a1532a4a9acd0817a17eea22741a7e3e388c7f0526077fd4686  spike-defs.lisp
+a1b26c9f057d63b847e76234aae272cfd9a17d870e89ec54324b2279741f183a  spike-packages.lisp
+-rw-rw-r-- 1 hbox hbox 6509848 Oct  6 23:27 spike-defs.lisp

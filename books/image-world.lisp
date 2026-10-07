@@ -493,6 +493,7 @@
 (include-book "bp-handoff-report")
 (include-book "tcpcl-delivery-invariants")
 (include-book "resource-syncer")
+(include-book "raw-dispatch-verdict")
 (include-book "response-identity")
 (include-book "def-cost")
 (include-book "string-line-cursor-cost")

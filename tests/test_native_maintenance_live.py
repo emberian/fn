@@ -36,8 +36,8 @@ class MaintenanceLiveTests(auto.AutoCheckpointFixture):
 
     def test_recover_and_inspect_answer_on_the_running_owner_and_a_stopped_status_reads_the_header(self):
         self.init_development()
-        self.keep_log()
         owner = self.node.start()
+        self.keep_log()
         self.ids = self.post_batch(0, 3)
         # `recover' on the running owner: accepted by name, then the owner's
         # own status (a `transactions=' line the owner answered).
@@ -154,8 +154,8 @@ class MaintenanceLiveTests(auto.AutoCheckpointFixture):
         the checkpoint and its suffix; a group the node does not carry is
         refused by name, exit 1 (books/owner-inspect-group.lisp)."""
         self.init_development()
-        self.keep_log()
         owner = self.node.start()
+        self.keep_log()
         ids = self.post_batch(0, 3)
 
         def lines(count):

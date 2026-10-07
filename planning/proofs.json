@@ -1410,7 +1410,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -1994,7 +1994,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -2634,7 +2634,7 @@
         "PRF-042"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -2824,7 +2824,7 @@
         "PRF-053"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/hybrid-store.lisp",
         "books/hybrid-store-invariants.lisp",
@@ -3386,7 +3386,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-session-admission.lisp",
         "books/bp-app-handoff.lisp",
@@ -3468,7 +3468,7 @@
         "PRF-012"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-request-plan.lisp",
         "tests/acl2/bp-request-plan-tests.lisp",
@@ -3610,7 +3610,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-rotation-codec.lisp",
         "books/bp-fnbs-replay-append.lisp",
@@ -4455,7 +4455,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-blake3-of-prefixed-buffer-is-blake3",
         "fn-sidb-subject-id-is-id-subject-of-payload"
@@ -4613,7 +4613,7 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-invite.lisp",
         "books/config.lisp",
@@ -4781,7 +4781,7 @@
         "PRF-099"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-invite.lisp",
         "books/key-statements.lisp",
@@ -5375,7 +5375,7 @@
         "PRF-120"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-channel-ingress.lisp",
         "tests/acl2/bp-channel-ingress-tests.lisp",
@@ -5921,7 +5921,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -6072,7 +6072,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner.lisp",
         "books/owner-feed-subject.lisp",
@@ -6224,7 +6224,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/hybrid-store-injected.lisp",
         "books/native-hybrid-control.lisp",
@@ -6678,7 +6678,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -6908,7 +6908,7 @@
         "PRF-179"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-authored-accept.lisp",
         "tests/acl2/peer-authored-accept-tests.lisp",
@@ -7050,7 +7050,7 @@
         "PRF-180"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-open-carried.lisp",
         "tests/acl2/owner-open-carried-tests.lisp",
@@ -7115,7 +7115,7 @@
         "PRF-188"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/post-identity-index.lisp",
         "tests/acl2/post-identity-index-tests.lisp",
@@ -7966,7 +7966,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tls-reload.lisp",
         "tests/acl2/tls-reload-tests.lisp",
@@ -7996,7 +7996,7 @@
         "PRF-212"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tls-reload.lisp",
         "tests/acl2/tls-reload-tests.lisp",
@@ -8063,7 +8063,7 @@
         "PRF-081"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-held-projection.lisp",
         "books/bp-recovery-guards.lisp",
@@ -8161,7 +8161,7 @@
         "PRF-081"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpnrb-checkpoint-decode-is-decode",
         "fn-bpnrb-selection-plan-is-selection-plan",
@@ -8327,7 +8327,7 @@
         "PRF-188"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/reader-open-carried.lisp",
         "tests/acl2/reader-open-carried-tests.lisp",
@@ -8389,7 +8389,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",
@@ -8643,7 +8643,7 @@
         "PRF-256"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "books/config-invariants.lisp",
@@ -8803,7 +8803,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-feed.lisp",
         "books/owner-feed-subject.lisp",
@@ -9133,7 +9133,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpah-handoff-report-is-application-disposition",
         "fn-bpah-persist-delivery-reports-the-record",
@@ -9381,7 +9381,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-kernel.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -10033,7 +10033,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-route-programs.lisp",
         "tests/acl2/store-log-route-programs-tests.lisp",
@@ -11102,7 +11102,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-control-launch.lisp",
         "tests/acl2/native-control-launch-tests.lisp",
@@ -11895,7 +11895,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -12670,7 +12670,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-session.lisp",
         "books/web-session-keystones.lisp",
@@ -12699,7 +12699,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-config.lisp",
         "host/web-host.lisp",
@@ -13098,7 +13098,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/heap-open-nursery.lisp",
         "tests/acl2/heap-open-nursery-tests.lisp",
@@ -13344,7 +13344,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-status-columns.lisp",
         "tests/acl2/native-status-columns-tests.lisp",
@@ -13375,7 +13375,7 @@
         "PRF-205"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-export-stream.lisp",
         "tests/acl2/store-export-stream-tests.lisp",
@@ -13403,7 +13403,7 @@
         "PRF-366"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-import-stream.lisp",
         "tests/acl2/store-import-stream-tests.lisp",
@@ -13493,7 +13493,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-live-pages.lisp",
         "tests/acl2/native-live-pages-tests.lisp",
@@ -13792,7 +13792,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/heap-breakdown.lisp",
         "tests/acl2/heap-breakdown-tests.lisp",
@@ -14311,7 +14311,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-carry-control.lisp",
         "books/bp-carry-frame.lisp",
@@ -14369,7 +14369,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-maintenance-request.lisp",
         "tests/acl2/owner-maintenance-request-tests.lisp"
@@ -14390,7 +14390,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-maintenance-request.lisp",
         "tests/acl2/owner-maintenance-request-tests.lisp"
@@ -14648,7 +14648,7 @@
         "PRF-274"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-host-relation.lisp",
         "tests/acl2/owner-host-relation-tests.lisp"
@@ -14674,7 +14674,7 @@
         "PRF-286"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-host-relation.lisp",
         "tests/acl2/owner-host-relation-tests.lisp"
@@ -14713,7 +14713,7 @@
         "PRF-286"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-host-relation.lisp"
       ],
@@ -14736,7 +14736,7 @@
         "PRF-282"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-durable.lisp",
         "tests/acl2/store-log-durable-tests.lisp",
@@ -14793,7 +14793,7 @@
         "PRF-063"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/hybrid-store-injected.lisp",
         "tests/acl2/hybrid-store-tests.lisp"
@@ -15117,7 +15117,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/control-request-word.lisp",
         "tests/acl2/control-request-word-tests.lisp",
@@ -15390,7 +15390,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-operator-stage.lisp",
         "tests/acl2/native-operator-stage-tests.lisp",
@@ -15447,7 +15447,7 @@
         "PRF-926"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-host-relation.lisp",
         "books/owner-config.lisp"
@@ -15471,7 +15471,7 @@
         "PRF-926"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-outcome-pinned.lisp",
         "books/owner-host-relation.lisp"
@@ -15532,7 +15532,7 @@
         "PRF-106"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-frb-open-as-is-ref-open-as",
         "fn-frb-open-payload-as-is-ref-open-as",
@@ -15568,7 +15568,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-status-columns.lisp",
         "books/native-live-status.lisp",
@@ -15871,7 +15871,7 @@
         "PRF-944"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-sequence.lisp",
         "host/bp-node-host.lisp",
@@ -15894,7 +15894,7 @@
         "PRF-983"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-sequence.lisp",
         "host/bp-node-host.lisp",
@@ -15940,7 +15940,7 @@
         "PRF-230"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent",
         "fn-bpaj-transit-plan-under-is-the-plan-within-the-limits"
@@ -16475,7 +16475,7 @@
         "PRF-383"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/rev-onto.lisp",
         "books/config.lisp",
@@ -17106,7 +17106,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-receive-evidence.lisp",
         "host/bp-receive-evidence-host.lisp",
@@ -17153,7 +17153,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-delivery-publication.lisp",
         "tests/acl2/bp-fnbs-delivery-publication-tests.lisp"
@@ -17175,7 +17175,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-deletion-publication.lisp",
         "tests/acl2/bp-fnbs-deletion-publication-tests.lisp"
@@ -17198,7 +17198,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-family-publication.lisp",
         "tests/acl2/bp-fnbs-family-publication-tests.lisp"
@@ -17325,7 +17325,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-dispatch-publication.lisp",
         "tests/acl2/bp-fnbs-dispatch-publication-tests.lisp"
@@ -17347,7 +17347,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-forward-publication.lisp",
         "tests/acl2/bp-fnbs-forward-publication-tests.lisp"
@@ -17390,7 +17390,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-evidence-host-names.lisp",
         "tests/acl2/bp-evidence-host-names-tests.lisp"
@@ -18005,7 +18005,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-control.lisp",
         "tests/acl2/bp-node-control-tests.lisp",
@@ -18028,7 +18028,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-control.lisp",
         "tests/acl2/bp-node-control-tests.lisp",
@@ -18173,7 +18173,7 @@
         "PRF-1064"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-listener-control.lisp",
         "tests/acl2/bp-node-listener-control-tests.lisp",
@@ -18203,7 +18203,7 @@
         "PRF-1064"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-listener-control.lisp",
         "tests/acl2/bp-node-listener-control-tests.lisp",
@@ -18450,7 +18450,7 @@
         "PRF-134"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-recovery-profile.lisp",
         "tests/acl2/bp-recovery-profile-tests.lisp",
@@ -18899,7 +18899,7 @@
         "PRF-359"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-whl-success-requires-observed-clear-owner",
         "fn-whl-answer-body-is-bounded",
@@ -21403,7 +21403,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/page-read-direct.lisp",
         "tests/acl2/page-read-direct-tests.lisp",
@@ -21755,7 +21755,7 @@
         "PRF-1209"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/host-model-machine.lisp",
         "books/host-model.lisp",
@@ -21922,7 +21922,7 @@
         "PRF-1252"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/output-reservation.lisp",
         "books/resource-output.lisp",
@@ -21968,7 +21968,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-round-driver.lisp",
         "tests/acl2/peer-round-driver-tests.lisp"
@@ -22153,7 +22153,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-init-resume.lisp",
         "tests/acl2/native-init-resume-tests.lisp",
@@ -22178,7 +22178,7 @@
         "PRF-1257"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/wildmat-cursor.lisp",
         "books/newnews-matching-selector.lisp",
@@ -22336,7 +22336,7 @@
         "PRF-322"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-time-journal-stream.lisp",
         "tests/acl2/owner-time-journal-stream-tests.lisp",
@@ -22364,7 +22364,7 @@
         "PRF-1259"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sl-step-derived-conses-within-source-count",
         "fn-sl-step-derived-conses-bound"
@@ -22922,7 +22922,7 @@
         "PRF-1288"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "files": [
         "books/decoded-worker-assignment.lisp",
         "books/decoded-worker-job.lisp",
@@ -23101,7 +23101,7 @@
         "PRF-1300"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-tclsctl-source-drive-keepalive-refines-session",
         "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception"
@@ -23125,7 +23125,7 @@
         "PRF-1291"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-tcl-source-recv-segment-boundary"
       ],
@@ -23360,7 +23360,7 @@
       "requirements": [],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/article-kind.lisp",
         "books/article-kind-acceptance.lisp",
@@ -23382,7 +23382,7 @@
         "PRF-1320"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/article-kind-acceptance.lisp",
         "tests/acl2/article-kind-tests.lisp (positive witness with 115- and 0-octet payloads; one hypothesis-removal witness for each of the 12 hypotheses, every other hypothesis holding and the decision not the injection; the kind's From, Newsgroups and Message-ID refinements shown needed: the same octets with a value outside the kind are refused :from-invalid, :newsgroups-invalid, :message-id-invalid)"
@@ -23403,7 +23403,7 @@
         "PRF-1321"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/article-kind-hybrid.lisp",
         "tests/acl2/article-kind-tests.lisp (positive witness through the plan with a 7208-octet carrier field in 101 lines; one hypothesis-removal witness for each of the 13 hypotheses: a malformed principal leaves no carrier field, 8 fields and 100 lines refuse the carrier's ninth field and its lines)"
@@ -23427,7 +23427,7 @@
         "PRF-1322"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/article-kind-codec.lisp",
         "tests/acl2/article-kind-codec-tests.lisp (round trip and encode = layout at the example values and four payloads; the kind hypothesis needed: a grammar value with a From outside the kind decodes to :from; canonicity: unpadded base64, a bare LF, a trailing octet and a folded header refused; :kind-version and :kind named; the bridge's ceiling needed, proved: above it the codec is nil and the layout octets)"
@@ -23447,7 +23447,7 @@
       "requirements": [],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/app-pattern.lisp",
         "tests/acl2/app-pattern-tests.lisp (pub and sub command lines accepted and covered; one word short, an extra word on a role that does not loop, an empty or NUL word, a bad option, an unknown pattern or role each refused by name; the values check names :from, :groups, :msgid; six malformed def-pattern declarations refused, a well-formed one admitted)"
@@ -23469,7 +23469,7 @@
         "PRF-1325"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/app-pattern-delivery.lisp",
         "tests/acl2/app-pattern-delivery-tests.lisp (inhabited by a real Store event built by fn-hsig-authorized-injected-carried-submission-event around the pubsub writer's source: delivered payload equal; each hypothesis needed: a projecting event with another source is :foreign, a cursor of another position :binding, a grammar source outside the kind :from; empty and withdrawn reports pass through; the spool check refuses another payload, generation, a non-request)"
@@ -23490,7 +23490,7 @@
         "PRF-1326"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/app-pattern-delivery.lisp",
         "books/app-pattern.lisp",
@@ -23580,7 +23580,7 @@
         "PRF-1287"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [],
       "note": "Closes FILL-GROUP-ACCESS-PRIVATE-LEAK and FILL-MODERATION-ENVELOPE-READABLE (lane access-check). Discharges, for read-restricted sessions only, the 'selective owner refinement owed' of the generated av route (6a5427e9e); the unrestricted available projection's selective reference and the av route's guards remain owed (PRF-1287). The read-level hypothesis is per event: AUTHINFO may change the rule between events of one read. Native: developer-image overlay over set 6107ceb56; production at the next image batch.",
       "events": [
@@ -23605,7 +23605,7 @@
         "PRF-1328"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [],
       "note": "ACCESS-REVOKE-PINNED (coordinator ruling 2026-10-04; specs/reconfiguration.md 2.3 Readers). Nothing is written back into the pin. Per-command cost: one more rule lookup and one rule-text comparison.",
       "events": [
@@ -23626,7 +23626,7 @@
         "PRF-387"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tls-key-exchange.lisp",
         "tests/acl2/tls-key-exchange-tests.lisp"

@@ -232,6 +232,13 @@ class Assertion:
     # evaluation too, so it is read for the multi-valued check, but it
     # asserts nothing and is neither counted nor probed.
     kind: str = "assert-event"
+    # True when a `defkeystone`/`defteeth` expansion produced this form, not
+    # a hand: the macro translates its assert-events through
+    # fn-dt-bridge-events (books/defkeystone.lisp), which wraps every
+    # multiple-output call in `(mv-list k ...)` with the world's exact k, so
+    # a multiple-value call in the declared claim runs and is not the
+    # hand-written "does NOT RUN" defect the multi-valued check names.
+    generated: bool = False
     claims: list[Claim] = field(default_factory=list)
 
 
@@ -335,7 +342,7 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
 
     top = 0
 
-    def walk(form: object, line: int) -> None:
+    def walk(form: object, line: int, generated: bool = False) -> None:
         name = head(form)
         if name == "defconst" and len(form) > 1 and isinstance(form[1], Sym):
             constants.append(str(form[1]))
@@ -345,13 +352,15 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
             if len(form) > 2:
                 assertions.append(Assertion(
                     book=book, line=line, index=len(assertions), top=top,
-                    body=form[2], audit=True, kind="defconst"))
+                    body=form[2], audit=True, kind="defconst",
+                    generated=generated))
             return
         if name == "assert-event" and len(form) > 1:
             body = form[1]
             index = len(assertions)
             record = Assertion(book=book, line=line, index=index, top=top,
-                               body=body, audit=mentions_any(body, WORLD))
+                               body=body, audit=mentions_any(body, WORLD),
+                               generated=generated)
             inner, positive = strip_wrappers(body)
             for clause, part in enumerate(conjuncts(inner)):
                 claim, polarity = strip_wrappers(part)
@@ -365,15 +374,15 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
             # books/defkeystone.lisp: its witnesses are assert-events of the
             # expansion, which the ledger reads without evaluating anything.
             for item in ledger.defkeystone_expansion(form):
-                walk(item, line)
+                walk(item, line, True)
             return
         if name == "defteeth" and isinstance(form, list) and len(form) > 1:
             for item in ledger.defteeth_expansion(form):
-                walk(item, line)
+                walk(item, line, True)
             return
         if name in TRANSPARENT and isinstance(form, list):
             for item in form[1:]:
-                walk(item, line)
+                walk(item, line, generated)
 
     for top, (form, line) in enumerate(forms):
         walk(form, line)
@@ -876,6 +885,12 @@ def static_findings(books: dict[str, list[Assertion]],
     names = mv_functions()
     for book, records in sorted(books.items()):
         for record in records:
+            if record.generated:
+                # a defkeystone/defteeth expansion: the macro itself bridges
+                # every multiple-output call with `(mv-list k ...)` before
+                # the assert-event is emitted (fn-dt-bridge-events), so the
+                # form runs; only a HAND-written body is the defect here.
+                continue
             calls = multi_valued_calls(record.body, names)
             if calls:
                 out.append(Finding(

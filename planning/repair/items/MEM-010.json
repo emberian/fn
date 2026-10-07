@@ -4,11 +4,13 @@
  "file": "host/native/history-root.lisp",
  "id": "MEM-010",
  "line": "49",
- "notes": [],
+ "notes": [
+  "MECHANISM (N, 2026-10-07, CONVERGE-2 developer image 401c7ab86, ledger dumped by an encapsulate hook on fnn-owner-history-root-fund at refusal, hbox:/tank/fn/scratch/n-mem10/r2.log, test_native_reclaim_walk capacity_free, 1,100 POSTs): the live history roots are funded out of the article pool. books/owner-credits.lisp fn-mca-initial sets the ledger so that budget - base - completion - runtime = fn-heap-articles-octets profile (here 3,441,664 octets); fn-owner-hroot-resize (host/history-root-host.lisp) charges each generation's (:history-root . g) credit against that free room, and books/heap-store-figure.lisp has no history-root term. At refusal: budget 5,624,942,530 = base 2,815,331,266 + completion 2,789,392,384 + runtime 16,777,216 + ops; ops held (:history-root . 1) 2,239,432 (the retained generation) and the candidate's first 693,888, and the candidate asked 1,792,688. Two generations coexist across a publication (retained + candidate), and together they exceed the article pool. The same draw explains MEM-011's 440 without a refusal line: a funded root leaves the article-slot admission less than one article. Fix direction (not started): a history-root term in the figure sized for two generations at the profile's bound, funded as its own ledger reserve (as fn-mcr-borrow funds the reclaim pass from the completion reserve), so roots never draw the articles' pool."
+ ],
  "owner": "deputy-N",
  "severity": "medium",
  "source": "n-mem",
  "state": "open",
  "title": "one run of twelve stalled after 582 POSTs: live history root allocation refused (REFUSED MEMORY-BUDGET-EXHAUSTED), client hung",
- "updated": "2026-10-06T23:00:00Z"
+ "updated": "2026-10-07T15:20:00Z"
 }

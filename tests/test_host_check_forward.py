@@ -149,7 +149,7 @@ class BookHoleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = self.tree(directory, include_it=True)
             (root / "books/export.lisp").write_text('(defun fn-export-request (x) x)\n')
-            (root / "host/interfaces-extract.lisp").write_text(
+            (root / "host/account-adoption-interfaces.lisp").write_text(
                 '(definterface fn-export-request :class :common-lisp-compliant)\n')
             self.assertEqual(host_check.book_holes(("host/native/build.lisp",), root), [])
 

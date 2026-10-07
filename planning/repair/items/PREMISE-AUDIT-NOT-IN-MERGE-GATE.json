@@ -1,0 +1,14 @@
+{
+ "category": "premise-audit",
+ "detail": "CONVERGE-2 row 29. premise_audit --strict is in the full `make check` target (Makefile:3045), not check-fast or a lane's narrow gate, so no merge since its baseline (949 rows) saw its NEW list: 544 NEW at dev cd56161ba, 528 after reach-code-only's code-only reach (16 fewer; 21 new, 79 gone), 48 baseline rows stale. Same failure mode as owner_globals_check (row 28).",
+ "file": "tools/premise_audit.py",
+ "fix": "Run premise_audit --strict --book <touched books> (or the touched books' premises) in the lane gate a READY quotes; keep the repo-wide run in convergence.",
+ "id": "PREMISE-AUDIT-NOT-IN-MERGE-GATE",
+ "notes": [],
+ "owner": "coordinator",
+ "severity": "medium",
+ "source": "Deputy C4, CONVERGE-2 row 29",
+ "state": "open",
+ "title": "premise_audit --strict runs only in make check, so 544 NEW findings accrued on dev unseen",
+ "updated": "2026-10-07T17:30:00Z"
+}

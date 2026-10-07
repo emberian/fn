@@ -491,6 +491,7 @@
 (include-book "../../books/bp-handoff-report")
 (include-book "../../books/tcpcl-delivery-invariants")
 (include-book "../../books/resource-syncer")
+(include-book "../../books/raw-dispatch-verdict")
 (include-book "../../books/response-identity")
 (include-book "../../books/def-cost")
 (include-book "../../books/string-line-cursor-cost")

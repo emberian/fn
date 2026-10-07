@@ -99,3 +99,44 @@
       (equal (car (astq-xref-result
                        (fn-ast-xref-state nil nil :compare '("fn.a" . 0) 0
                                           '(("fn.a" . 0)) 0) 0)) :wait)))
+
+; The render guard's cursor invariant (ARTICLE-PATH-UNVERIFIED-GUARDS): a cursor the
+; owner publishes is a valid cursor and stays one at every unit of a full render;
+; a cursor whose server octets or pair list are corrupt is refused by the recognizer.
+(defconst *astq-lit* '(nil 0 3 (65 66 67)))
+(defconst *astq-scan* (list *astq-lit* *astq-lit* nil t 0 *astq-lit* nil))
+
+(defun astq-cursorp-all (cur n fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (cond ((not (fn-ast-cursorp cur fn-arena)) nil)
+        ((or (zp n) (eq (car cur) :done)) (eq (car cur) :done))
+        (t (mv-let (out next) (fn-ast-render-one cur fn-arena)
+             (declare (ignore out))
+             (astq-cursorp-all next (- n 1) fn-arena)))))
+
+(assert-event
+ (let ((cur (fn-ast-ready-memberships *astq-scan* :article 1 *astq-one* '(110 111 100 101))))
+   (and (fn-ast-cursorp cur fn-arena)
+        (astq-cursorp-all cur 500 fn-arena))))
+
+(assert-event
+ (let ((cur (fn-ast-ready-memberships *astq-scan* :body 1 *astq-one* nil)))
+   (astq-cursorp-all cur 500 fn-arena)))
+
+; the window the plan carries is a window after a partial render
+(assert-event
+ (let ((cur (fn-ast-ready-memberships *astq-scan* :article 1 *astq-one* '(110 111 100 101))))
+   (mv-let (bytes next) (fn-ast-render-window cur 5000 7 fn-arena)
+     (and (equal (len bytes) 7) (fn-ast-windowp next fn-arena)
+          (mv-let (bytes2 next2) (fn-ast-render-window next 5000 5000 fn-arena)
+            (and (fn-ast-windowp next2 fn-arena) (fn-ast-window-donep next2)
+                 (equal (nthcdr (- (len bytes2) 3) bytes2) '(46 13 10))))))))
+
+; negatives: corrupt server octets / piece lists are not cursors
+(assert-event
+ (and (not (fn-ast-cursorp (list :xref-seek-first nil 0 nil nil t '(1 2 "x")) fn-arena))
+      (not (fn-ast-cursorp (list :xref-seek-first nil 0 nil nil t '(256)) fn-arena))
+      (not (fn-ast-cursorp (list :xref nil 0 '(5) nil t nil) fn-arena))
+      (not (fn-ast-cursorp (list :payload '(7) 0 nil nil t nil) fn-arena))
+      (not (fn-ast-cursorp (list :xref-server nil 0 nil nil t (list :xref-server '(1) 2)) fn-arena))
+      (fn-ast-cursorp (list :xref-server nil 0 nil nil t (list :xref-server '(110) '(110))) fn-arena)))

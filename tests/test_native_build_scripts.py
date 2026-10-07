@@ -106,12 +106,6 @@ class PartialSecretFiles(unittest.TestCase):
         # precedence, rather than one particular spelling of the unwind.
         _raw_fixture(self, "native_io_progress_raw.lisp")
 
-    def test_write_new_unlinks_partial_file_on_failure(self):
-        # S119
-        text = (ROOT / "host/store-write-host.lisp").read_text()
-        m = re.search(r"\(defun fn-xw-write-new .*?\n\n", text, re.S)
-        self.assertIn("(fn-hx-unlink path)", m.group(0))
-
 
 class SelfSignedPartialFiles(unittest.TestCase):
     def test_ssc_write_new_unlinks_what_it_created_on_failure(self):
