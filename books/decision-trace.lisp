@@ -261,12 +261,13 @@
 ; -----------------------------------------------------------------------------
 ; The plan.  SPEC is the `[trace]' table as the config reader gives it
 ; (books/decision-trace-config.lisp): NIL when the profile has no table, else
-; (CLASSES CAPACITY SAMPLE-EVERY ALLOCATION START), each NIL when the key is
+; (CLASSES CAPACITY SAMPLE-EVERY ALLOCATION START RSS-EVERY), each NIL when the key is
 ; absent.  IMAGE is the saved image's profile, :production or :developer.
 
 (defconst *fn-dtrace-default-capacity* 1024)
 (defconst *fn-dtrace-max-capacity* 65536)
 (defconst *fn-dtrace-max-sample-every* 1000000)
+(defconst *fn-dtrace-max-rss-every* 1000000)  ; 0: resident size never sampled (the default)
 (defconst *fn-dtrace-row-slot-octets* 1024)   ; the ring row's struct and a row at the bound
 (defconst *fn-dtrace-ring-header-octets* 4096)
 
@@ -305,6 +306,7 @@
 (defun fn-dtrace-spec-sample-every (spec) (declare (xargs :guard t)) (fn-dtrace-nth 2 spec))
 (defun fn-dtrace-spec-allocation (spec) (declare (xargs :guard t)) (fn-dtrace-nth 3 spec))
 (defun fn-dtrace-spec-start (spec) (declare (xargs :guard t)) (fn-dtrace-nth 4 spec))
+(defun fn-dtrace-spec-rss-every (spec) (declare (xargs :guard t)) (fn-dtrace-nth 5 spec))
 
 ; (:off) -- no table, nothing traced and nothing allocated;
 ; (:plan CLASSES CAPACITY SAMPLE-EVERY ALLOCATION START);
@@ -315,7 +317,8 @@
         (capacity (or (fn-dtrace-spec-capacity spec) *fn-dtrace-default-capacity*))
         (every (or (fn-dtrace-spec-sample-every spec) 1))
         (allocation (fn-dtrace-spec-allocation spec))
-        (start (fn-dtrace-spec-start spec)))
+        (start (fn-dtrace-spec-start spec))
+        (rss-every (or (fn-dtrace-spec-rss-every spec) 0)))
     (cond ((null spec) (list :off))
           ((not (member-eq image '(:production :developer))) (list :refused :unknown-image))
           ((fn-dtrace-classes-refusal classes)
@@ -329,17 +332,20 @@
           ((and (eq allocation :isolated-process) (not (eq image :developer)))
            (list :refused :isolated-allocation-needs-developer-image))
           ((not (member-eq start '(nil :on :off))) (list :refused :start))
-          (t (list :plan classes capacity every allocation (eq start :on))))))
+          ((not (and (natp rss-every) (<= rss-every *fn-dtrace-max-rss-every*)))
+           (list :refused :rss-every))
+          (t (list :plan classes capacity every allocation (eq start :on) rss-every)))))
 
 (defun fn-dtrace-planp (p)
   (declare (xargs :guard t))
-  (and (true-listp p) (eq (car p) :plan) (equal (len p) 6)))
+  (and (true-listp p) (eq (car p) :plan) (equal (len p) 7)))
 
 (defun fn-dtrace-plan-classes (p) (declare (xargs :guard t)) (fn-dtrace-nth 1 p))
 (defun fn-dtrace-plan-capacity (p) (declare (xargs :guard t)) (nfix (fn-dtrace-nth 2 p)))
 (defun fn-dtrace-plan-sample-every (p) (declare (xargs :guard t)) (fn-dtrace-nth 3 p))
 (defun fn-dtrace-plan-allocation (p) (declare (xargs :guard t)) (fn-dtrace-nth 4 p))
 (defun fn-dtrace-plan-start-p (p) (declare (xargs :guard t)) (and (fn-dtrace-nth 5 p) t))
+(defun fn-dtrace-plan-rss-every (p) (declare (xargs :guard t)) (nfix (fn-dtrace-nth 6 p)))
 
 ; The memory a plan commits: a header and one slot per ring row.  The ring is
 ; reserved from the start whether or not tracing starts on, because `trace on'
@@ -401,17 +407,20 @@
        (equal (fn-dtrace-admit '(nil 8 nil :isolated-process nil) :production)
               '(:refused :isolated-allocation-needs-developer-image))
        (equal (fn-dtrace-admit '(nil 8 nil nil :maybe) :production) '(:refused :start))
+       (equal (fn-dtrace-admit '(nil 8 nil nil nil 1000001) :production) '(:refused :rss-every))
        (equal (fn-dtrace-admit '(nil 8 nil nil nil) :elsewhere) '(:refused :unknown-image)))
   :rule-classes nil)
 
 ; The acceptance witnesses: an accepted plan with every field read back.
 (defthm fn-dtrace-admit-accepts
   (and (equal (fn-dtrace-admit '((:verdict :plan) 8 4 :process :on) :production)
-              '(:plan (:verdict :plan) 8 4 :process t))
+              '(:plan (:verdict :plan) 8 4 :process t 0))
        (equal (fn-dtrace-admit '(nil nil nil nil nil) :production)
-              '(:plan (:verdict :refusal :tariff :schedule :plan) 1024 1 nil nil))
+              '(:plan (:verdict :refusal :tariff :schedule :plan) 1024 1 nil nil 0))
+       (equal (fn-dtrace-admit '(nil 8 nil nil nil 64) :production)
+              '(:plan (:verdict :refusal :tariff :schedule :plan) 8 1 nil nil 64))
        (equal (fn-dtrace-admit '(nil 8 nil :isolated-process nil) :developer)
-              '(:plan (:verdict :refusal :tariff :schedule :plan) 8 1 :isolated-process nil))
+              '(:plan (:verdict :refusal :tariff :schedule :plan) 8 1 :isolated-process nil 0))
        (equal (fn-dtrace-ring-octets
                (fn-dtrace-admit '(nil nil nil nil nil) :production))
               (+ 4096 (* 1024 1024))))
