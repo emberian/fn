@@ -4,6 +4,7 @@
 ;;;
 ;;;   (load "tools/extract/forms-export.lisp")
 ;;;   (xt-fe-export TOKENS OUT-DIR ACL2-SRC-DIR CLRUNTIME-PATH WORLD-KEY)
+;;;   (lp)  ; then xt-core-export, handed (@ xt-fe-tables): see below
 ;;;   (xt-verify-defs OUT-DIR ACL2-SRC-DIR CLRUNTIME-PATH WORLD-KEY)
 ;;;
 ;;; For every function f the host's closure reaches, the core compiles exactly
@@ -29,6 +30,13 @@
 ;;; re-derives every unit from the world and the sources and compares: the
 ;;; ids present, the block text and the re-derived text must all agree
 ;;; (X1); any difference refuses by unit name.
+;;;
+;;; A table an emitted form reads by name ((table-alist 'T ...), ACL2's own
+;;; code included: get-check-invariant-risk reads acl2-defaults-table) is not
+;;; a unit.  xt-fe-export leaves the closure's tables in the state global
+;;; XT-FE-TABLES, and xt-core-export (core-export.lisp), run after it, carries
+;;; exactly those (and the host's install tables) in the world snapshot with
+;;; a digest per row (X3).  This walk is the one discovery of carried tables.
 (in-package "ACL2")
 (require :sb-cltl2)
 
@@ -392,17 +400,20 @@ lambda list are bindings, not calls); a variable definition is its value form; a
 ;;; units: an id, the forms, an origin
 (defvar *fe-phase* "start")
 (defvar *fe-last-unit* nil)
+(defvar *fe-deadline-timer* nil)
 (defun fe-arm-deadline (seconds)
   "Fail closed after SECONDS: print the phase and the last unit emitted, then exit 124.  The export is
-measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh passes 900."
+measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh passes 900.  xt-fe-export
+disarms it when it returns, so it bounds this export and not the xt-core-export that follows."
   (when (and seconds (plusp seconds))
     (let ((main sb-thread:*current-thread*))
       (sb-ext:schedule-timer
-       (sb-ext:make-timer (lambda ()
-                            (format t "~&XT-FE TIMEOUT after ~d s: phase ~a, last unit ~a~%" seconds *fe-phase* *fe-last-unit*)
-                            (finish-output)
-                            (sb-ext:exit :code 124 :abort t))
-                          :thread main)
+       (setq *fe-deadline-timer*
+             (sb-ext:make-timer (lambda ()
+                                  (format t "~&XT-FE TIMEOUT after ~d s: phase ~a, last unit ~a~%" seconds *fe-phase* *fe-last-unit*)
+                                  (finish-output)
+                                  (sb-ext:exit :code 124 :abort t))
+                                :thread main))
        seconds))))
 (defun fe-log (what) (setq *fe-phase* what) (format t "~&XT-FE-LOG ~d ~a~%" (floor (get-internal-real-time) internal-time-units-per-second) what) (finish-output))
 (defun fe-id (kind sym) (format nil "~a:~a::~a" (string-downcase (string kind)) (fe-pkg sym) (symbol-name sym)))
@@ -555,13 +566,6 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                    ((boundp-global g *the-live-state*)
                     (cons (list `(defparameter ,sym ',(f-get-global g *the-live-state*))) "world:state-global"))
                    (t (cons (list `(defvar ,sym)) "world:state-global-unbound")))))
-          ((string= kind "table")
-           ;; a table an emitted form reads by name (ACL2's own code too: get-check-invariant-risk reads
-           ;; acl2-defaults-table), carried with its alist in this world; clruntime.lisp's table-alist
-           ;; reads it when the world snapshot (core-export.lisp) does not carry the table
-           ;; a table no event has written is NIL in ACL2 too (table-alist of an unset name)
-           (cons (list `(setf (gethash ',sym *xl-carried-tables*) ',(table-alist sym *fe-w*)))
-                 (if (eq (getpropc sym 'table-alist :none *fe-w*) :none) "world:table-alist-unset" "world:table-alist")))
           ((string= kind "guard")
            ;; the guard ACL2 prints when a primitive's *1* finds its guard false (guard-raw,
            ;; translate.lisp:7616), untranslated here in the world; clruntime.lisp's guard-raw reads it
@@ -581,7 +585,7 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
 
 ;;; ------------------------------------------------------------------------
 ;;; the closure
-(defstruct (fe-run (:conc-name fr-)) units order gaps rt-refs stobjs edges)
+(defstruct (fe-run (:conc-name fr-)) units order gaps rt-refs stobjs edges tables)
 
 (defun fe-stobj-closure (names)
   "NAMES plus the foundations of abstract stobjs and nested stobj field types (frontend.lisp)."
@@ -615,7 +619,8 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
   "Walk from ROOTS (raw and *1* of each), the named stobjs and macros; return an fe-run."
   (let ((units (make-hash-table :test 'equal)) (order nil) (queue nil)
         (gaps (make-hash-table :test 'equal)) (rt-refs (make-hash-table :test 'eq)) (stobj-set nil)
-        (edges (make-hash-table :test 'equal)))   ; unit id -> the unit ids its forms reference (edges.tsv)
+        (edges (make-hash-table :test 'equal))    ; unit id -> the unit ids its forms reference (edges.tsv)
+        (tables nil))   ; every table an emitted form reads by name: the snapshot carries them (core-export.lisp)
     (labels ((enqueue (kind sym why) (push (list kind sym why) queue))
              (edge (why tid) (when (stringp why) (pushnew tid (gethash why edges) :test #'string=)))
              (add-unit (id forms origin)
@@ -628,8 +633,7 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                    (maphash (lambda (s v) (declare (ignore v)) (ref-fn s id)) fns)
                    (maphash (lambda (s v) (declare (ignore v)) (ref-var s id)) vars)
                    (dolist (f forms) (fe-table-subjects f (lambda (tb) (edge id (fe-id :table tb))
-                                                                (unless (gethash (fe-id :table tb) units)
-                                                                  (enqueue "table" tb id)))))
+                                                                (pushnew tb tables))))
                    (dolist (f forms) (fe-guard-raw-subjects f (lambda (g) (edge id (fe-id :guard g))
                                                                     (unless (gethash (fe-id :guard g) units)
                                                                       (enqueue "guard" g id)))))
@@ -701,7 +705,8 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                          #'string< :key #'symbol-name)))
         (let ((d (fe-derive-unit "registry:" names)))
           (add-unit "registry:" (car d) (cdr d)))
-        (make-fe-run :units units :order order :gaps gaps :rt-refs rt-refs :stobjs names :edges edges)))))
+        (make-fe-run :units units :order order :gaps gaps :rt-refs rt-refs :stobjs names :edges edges
+                     :tables (sort tables #'string< :key (lambda (s) (format nil "~a::~a" (fe-pkg s) (symbol-name s)))))))))
 
 ;;; ------------------------------------------------------------------------
 ;;; ordering and files
@@ -767,7 +772,8 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
 (defun fe-token-syms (tokens) (mapcar (lambda (tk) (intern-in-package-of-symbol tk 'fe-root-p)) tokens))
 
 (defun xt-fe-export (tokens out-dir src-dir rt-path world-key &key extra-roots deadline)
-  "Write OUT-DIR/defs.lisp, packages.lisp, manifest.tsv, runtime.tsv, gaps.txt; return (values n-units n-gaps)."
+  "Write OUT-DIR/defs.lisp, packages.lisp, manifest.tsv, runtime.tsv, edges.tsv, gaps.txt; set the state
+global XT-FE-TABLES to the tables the closure reads (for xt-core-export); return (values n-units n-gaps)."
   (fe-arm-deadline deadline)
   (fe-log "index-world") (fe-index-world)
   (fe-log "index-sources") (fe-index-sources src-dir)
@@ -818,8 +824,11 @@ measured at about 80 s on hbox (index 5 s, closure 60 s, write 10 s); core.sh pa
                                                  (sort (copy-list (gethash id (fr-edges run))) #'string<)))))
     (let ((gaps (sort (loop for k being the hash-keys of (fr-gaps run) using (hash-value v) collect (format nil "~a~c~a" k #\Tab v)) #'string<)))
       (fe-write-file (format nil "~a/gaps.txt" out-dir) (format nil "~{~a~%~}" gaps))
-      (format t "~&XT-FE units ~d roots ~d stobjs ~d macros ~d runtime-refs ~d gaps ~d~%"
-              (length ids) (length roots) (length (fr-stobjs run)) (length macros) (hash-table-count (fr-rt-refs run)) (length gaps))
+      (when *fe-deadline-timer* (sb-ext:unschedule-timer *fe-deadline-timer*) (setq *fe-deadline-timer* nil))
+      (f-put-global 'xt-fe-tables (fr-tables run) *the-live-state*)
+      (format t "~&XT-FE units ~d roots ~d stobjs ~d macros ~d runtime-refs ~d tables ~d gaps ~d~%"
+              (length ids) (length roots) (length (fr-stobjs run)) (length macros) (hash-table-count (fr-rt-refs run))
+              (length (fr-tables run)) (length gaps))
       (values (length ids) (length gaps)))))
 
 ;;; ------------------------------------------------------------------------

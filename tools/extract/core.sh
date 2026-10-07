@@ -69,12 +69,15 @@ ACL2_SRC=${FN_EXTRACT_ACL2_SRC:-$(sed -n 's/.*--core "\(.*\)\/saved_acl2\.core".
 [ -d "$ACL2_SRC" ] && [ -f "$ACL2_SRC/axioms.lisp" ] || { echo "core: cannot find ACL2's sources (FN_EXTRACT_ACL2_SRC)" >&2; exit 1; }
 EXPORT_DEADLINE=${FN_EXPORT_DEADLINE:-900}
 {
-  printf '(ld "tools/extract/frontend.lisp")\n(ld "tools/extract/core-export.lisp")\n(xt-core-export (quote\n'
-  cat "$OUT/tokens.lsp"
-  printf ') "%s/core.json" "%s/core-world.lisp" "%s/packages.json" state)\n' "$OUT" "$OUT" "$OUT"
-  # the definitions: ACL2's own raw and *1* forms, macroexpanded (forms-export.lisp), under a deadline
-  printf ':q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n(xt-fe-export (with-open-file (s "%s/tokens.lsp") (let ((*package* (find-package "ACL2"))) (read s))) "%s" "%s" "tools/extract/clruntime.lisp" "%s" :deadline %s :extra-roots (quote (setup-standard-io)))\n(sb-ext:exit)\n' \
+  printf '(ld "tools/extract/frontend.lisp")\n(ld "tools/extract/core-export.lisp")\n'
+  # the definitions first: ACL2's own raw and *1* forms, macroexpanded (forms-export.lisp), under a
+  # deadline.  Its closure walk is the one discovery of the tables the emitted forms read (XT-FE-TABLES).
+  printf ':q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n(xt-fe-export (with-open-file (s "%s/tokens.lsp") (let ((*package* (find-package "ACL2"))) (read s))) "%s" "%s" "tools/extract/clruntime.lisp" "%s" :deadline %s :extra-roots (quote (setup-standard-io)))\n(lp)\n' \
       "$OUT" "$OUT" "$ACL2_SRC" "$WORLD_KEY" "$EXPORT_DEADLINE"
+  # then, back in the loop, the world snapshot, carrying exactly those tables with their row digests
+  printf '(xt-core-export (quote\n'
+  cat "$OUT/tokens.lsp"
+  printf ') "%s/core.json" "%s/core-world.lisp" "%s/packages.json" (@ xt-fe-tables) state)\n:q\n(sb-ext:exit)\n' "$OUT" "$OUT" "$OUT"
 } > "$OUT/export.lsp"
 # setup-standard-io (ACL2 axioms.lisp:19005) is an extra root: core-main.lisp runs it at build, as ACL2's
 # own load-time form does, so its standard channels carry streams (an ACL2 warning prints, as the image's does).
@@ -95,6 +98,8 @@ if [ -s "$OUT/gaps.txt" ]; then
 fi
 # X2: ACL2's evaluator, LD and translator are reachable from no root (closure_why.py BANNED, over edges.tsv)
 python3 "$X/closure_why.py" "$OUT" --check || { echo "core: the closure reaches ACL2's evaluator (X2); see above" >&2; exit 1; }
+# X3: the snapshot carries exactly the tables the emitted forms and the install path read (one discovery)
+python3 "$X/closure_why.py" "$OUT" --check-tables || { echo "core: the carried tables disagree with the closure's (X3); see above" >&2; exit 1; }
 # X1: a separate image run re-derives every unit from the world and ACL2's sources and compares
 {
   printf '(ld "tools/extract/frontend.lisp")\n:q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n'

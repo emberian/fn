@@ -3,7 +3,11 @@
 ; functions and host/native, and nothing of ACL2.  Loaded after frontend.lisp
 ; in the extraction session (the image's world).
 ;
-;   (xt-core-export TOKENS "build/core/core.json" "build/core/core-world.lisp" state)
+;   (xt-core-export TOKENS "build/core/core.json" "build/core/core-world.lisp"
+;                   "build/core/packages.json" (@ xt-fe-tables) state)
+;
+; run after forms-export.lisp's xt-fe-export, whose closure walk names the
+; tables the snapshot carries (state global XT-FE-TABLES).
 ;
 ; TOKENS: every word of host/native/*.lisp (tools/extract/core.sh scans
 ; them), upcased.  Writes
@@ -16,8 +20,9 @@
 ;                    session: the state globals they name, the defconsts
 ;                    host/native names, and each root's formals, stobjs-in
 ;                    and guard (fnn-entry-guard-spec, fnn-trailing-kind),
-;                    and D40's raw-dispatch verdicts as judged here
-;                    (xt-core-verdicts).
+;                    D40's raw-dispatch verdicts as judged here
+;                    (xt-core-verdicts), and the carried tables with a
+;                    digest per row (fn-core-table-digests).
 (in-package "ACL2")
 (program)
 (set-state-ok t)
@@ -202,35 +207,15 @@
               (cons (cons (cadr trip) (cddr trip)) tail)))
         (xt-snapshot-stored-properties name (cdr trips) seen)))))
 
-; X3: every table the closure's bodies read (table-alist 'NAME ...), found
-; by walking the translated bodies, with the two the host reads at install.
-; Each ships in the snapshot with a digest per row, taken here in the world
-; (books/raw-dispatch-verdict.lisp fn-rdv-table-digests); the core's
-; fnn-install-raw-dispatch re-checks them at load and refuses by name.
-(defun xt-tree-tables (x acc)
-  (cond ((atom x) acc)
-        ((and (eq (car x) 'table-alist)
-              (consp (cdr x)) (consp (cadr x)) (eq (car (cadr x)) 'quote)
-              (consp (cdr (cadr x))) (symbolp (cadr (cadr x))))
-         (xt-tree-tables (cddr x) (add-to-set-eq (cadr (cadr x)) acc)))
-        (t (xt-tree-tables (cdr x) (xt-tree-tables (car x) acc)))))
-
-(defun xt-fns-tables (fns w acc)
-  (if (endp fns) acc
-    (xt-fns-tables (cdr fns) w
-                   (xt-tree-tables (getpropc (car fns) 'unnormalized-body nil w) acc))))
-
-(defun xt-existing-tables (names w)
-  (cond ((endp names) nil)
-        ((eq (getpropc (car names) 'table-alist :none w) :none)
-         (xt-existing-tables (cdr names) w))
-        (t (cons (car names) (xt-existing-tables (cdr names) w)))))
-
-(defun xt-carried-table-names (fns w)
-  (let ((names (xt-fns-tables fns w nil)))
-    (remove-duplicates-eq
-     (append '(fn-interfaces fn-raw-dispatch-verdicts)
-             (xt-existing-tables (reverse names) w)))))
+; X3: the tables the snapshot carries.  TABLES is every table the emitted
+; forms read by name, found once, by forms-export.lisp's closure walk
+; (xt-fe-export leaves it in the state global XT-FE-TABLES); the host's
+; install path reads two more (host/native/raw-trap.lisp
+; fnn-install-raw-dispatch).  Each ships with a digest per row, taken here in
+; the world (books/raw-dispatch-verdict.lisp fn-rdv-table-digests); the
+; core's fnn-install-raw-dispatch re-checks them at load and refuses by name.
+(defun xt-carried-table-names (tables)
+  (remove-duplicates-eq (append '(fn-interfaces fn-raw-dispatch-verdicts) tables)))
 
 ; the table as the snapshot carries it: the judged verdicts for D40's own
 (defun xt-carried-alist (name verdicts w)
@@ -242,7 +227,7 @@
                 (fn-rdv-table-digests (car tables) (xt-carried-alist (car tables) verdicts w)))
           (xt-table-manifest (cdr tables) verdicts w))))
 
-(defun xt-world-snapshot (names verdicts manifest w)
+(defun xt-world-snapshot (names tables verdicts manifest w)
   (if (endp names) nil
     (let* ((name (car names))
            (functionp (not (eq (getpropc name 'formals :none w) :none)))
@@ -256,6 +241,10 @@
              ; D40's verdicts, as this export judged them (xt-core-verdicts)
              (and (eq name 'fn-raw-dispatch-verdicts)
                   (list (cons 'table-alist verdicts)))
+             ; a carried table no event has written is NIL, as ACL2's table-alist reads it
+             (and (member-eq name tables)
+                  (eq (getpropc name 'table-alist :none w) :none)
+                  (list (cons 'table-alist nil)))
              (and functionp
                   (list (cons 'guard (guard name nil w))
                         (cons 'symbol-class (symbol-class name w))
@@ -265,7 +254,7 @@
                         (cons :xl-stobj-creator (get-stobj-creator name w))
                         (cons :xl-stobj-recognizer (get-stobj-recognizer name w)))))))
       (cons (cons name (append computed (xt-snapshot-stored-properties name w nil)))
-            (xt-world-snapshot (cdr names) verdicts manifest w)))))
+            (xt-world-snapshot (cdr names) tables verdicts manifest w)))))
 
 ; D40's raw-dispatch verdicts (books/raw-dispatch-verdict.lisp), judged HERE
 ; in the world: the core cannot judge (its world is this snapshot), so it
@@ -367,7 +356,7 @@
                (state (xt-json-datum types channel state)))
           (xt-json-types (cdr entries) table nil channel state))))))
 
-(defun xt-core-export (tokens json-path lisp-path pkg-path state)
+(defun xt-core-export (tokens json-path lisp-path pkg-path fe-tables state)
   (let* ((w (w state))
          ; judged first: a refused export writes nothing
          (verdicts (xt-core-verdicts w))
@@ -381,7 +370,7 @@
       (mv-let (entries stobjs) (xt-walk-closed (append roots (xt-boundary-extra roots w nil)) 4 w)
         (let* ((globals (xt-token-globals tokens (xt-entries-globals entries nil) state))
                (types (xt-world-types w nil))
-               (tables (xt-carried-table-names (xt-entry-fns entries nil) w))
+               (tables (xt-carried-table-names fe-tables))
                (manifest (xt-table-manifest tables verdicts w)))
           (mv-let (channel state) (open-output-channel pkg-path :character state)
             (let* ((state (princ$ "{\"packages\":[" channel state))
@@ -408,7 +397,7 @@
                                                               tables
                                                               '(state fn-core-table-digests
                                                                 *fn-entry-guard-kinds*)))
-                                                     verdicts manifest w)))
+                                                     tables verdicts manifest w)))
                                         channel state))
                        (state (close-output-channel channel state)))
                   (value (list :roots (len roots) :consts (len consts) :globals (len globals)

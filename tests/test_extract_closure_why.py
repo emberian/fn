@@ -105,5 +105,64 @@ class Check(unittest.TestCase):
         self.assertEqual(self.run_check(cut)[0], 0)
 
 
+# A table-reading unit, and a snapshot as core-export.lisp prints it (row keys of every printed shape).
+TABLE_EDGES = EDGES.replace("raw:ACL2::FN-C\traw:ACL2::BINARY-APPEND",
+                            "raw:ACL2::FN-C\traw:ACL2::BINARY-APPEND table:ACL2::ACL2-DEFAULTS-TABLE table:FN-X::T2")
+SNAPSHOT = """(IN-PACKAGE "ACL2")
+(XL-SET-WORLD-SNAPSHOT '((FN-A (GUARD . T))
+ (FN-CORE-TABLE-DIGESTS (TABLE-ALIST (FN-INTERFACES (FN-A 1 2) (|odd )key| 3))
+   (FN-RAW-DISPATCH-VERDICTS (\"a )string\" 4) (#\\) 5))
+   (ACL2-DEFAULTS-TABLE (:DEFUN-MODE 6))
+   (FN-X::T2)))
+ (ACL2-DEFAULTS-TABLE (TABLE-ALIST (:DEFUN-MODE . :LOGIC)))))
+""".replace('\\"', '"')
+
+
+class CheckTables(unittest.TestCase):
+    """X3's one discovery: the snapshot carries exactly the tables the emitted forms and the install path read."""
+
+    def run_check(self, edges, snapshot):
+        import contextlib, io
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "edges.tsv").write_text(edges)
+            (Path(d) / "core-world.lisp").write_text(snapshot, encoding="latin-1")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+                rc = closure_why.main([d, "--check-tables"])
+        return rc, err.getvalue()
+
+    def test_snapshot_names_are_read_past_every_row_shape(self):
+        self.assertEqual(closure_why.snapshot_tables(SNAPSHOT),
+                         ["ACL2::FN-INTERFACES", "ACL2::FN-RAW-DISPATCH-VERDICTS",
+                          "ACL2::ACL2-DEFAULTS-TABLE", "FN-X::T2"])
+
+    def test_agreeing_tables_pass(self):
+        self.assertEqual(self.run_check(TABLE_EDGES, SNAPSHOT), (0, ""))
+
+    def test_a_table_read_but_not_carried_is_refused_by_name(self):
+        rc, err = self.run_check(TABLE_EDGES, SNAPSHOT.replace("   (FN-X::T2)", ""))
+        self.assertEqual(rc, 1)
+        self.assertIn("table FN-X::T2 is read by an emitted form but the snapshot does not carry it", err)
+
+    def test_a_dropped_install_table_is_refused_by_name(self):
+        rc, err = self.run_check(TABLE_EDGES, SNAPSHOT.replace("(FN-INTERFACES (FN-A 1 2) (|odd )key| 3))", ""))
+        self.assertEqual(rc, 1)
+        self.assertIn("table ACL2::FN-INTERFACES is read", err)
+
+    def test_a_table_carried_but_read_by_nothing_is_refused_by_name(self):
+        rc, err = self.run_check(TABLE_EDGES.replace(" table:FN-X::T2", ""), SNAPSHOT)
+        self.assertEqual(rc, 1)
+        self.assertIn("table FN-X::T2 is carried by the snapshot but no emitted form", err)
+
+    def test_a_table_unit_in_defs_is_refused_by_name(self):
+        rc, err = self.run_check(TABLE_EDGES + "table:ACL2::ACL2-DEFAULTS-TABLE\t\n", SNAPSHOT)
+        self.assertEqual(rc, 1)
+        self.assertIn("table:ACL2::ACL2-DEFAULTS-TABLE is a defs.lisp unit", err)
+
+    def test_two_manifests_are_refused(self):
+        with self.assertRaises(ValueError):
+            closure_why.snapshot_tables(SNAPSHOT + "(FN-CORE-TABLE-DIGESTS (TABLE-ALIST))")
+
+
 if __name__ == "__main__":
     unittest.main()

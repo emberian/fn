@@ -15,7 +15,13 @@ below):
   (TREE/host/native/*.lisp, the files tools/extract/host_tokens.py scans);
 * how many units are reachable only through those boundary edges.
 
-usage: closure_why.py OUT [--tree TREE] [--target ID ...] [--json] [--check]
+With --check-tables it checks X3's one discovery of carried tables: the
+tables core-world.lisp's snapshot carries with row digests (its
+FN-CORE-TABLE-DIGESTS manifest) are exactly the `table:` targets of edges.tsv
+(the tables an emitted form reads, found by xt-fe-export's closure walk) and
+the host's INSTALL_TABLES; and no table is a defs.lisp unit.
+
+usage: closure_why.py OUT [--tree TREE] [--target ID ...] [--json] [--check] [--check-tables]
 """
 from __future__ import annotations
 
@@ -39,6 +45,10 @@ EVALUATOR = ("raw:ACL2::EV", "raw:ACL2::EV-W", "raw:ACL2::EV-REC", "raw:ACL2::LD
              "star1:ACL2::EV", "star1:ACL2::EV-W", "star1:ACL2::EV-REC", "star1:ACL2::LD-FN",
              "star1:ACL2::TRANS-EVAL", "star1:ACL2::TRANSLATE11", "star1:ACL2::TRANSLATE11-LOCAL-DEF",
              "star1:ACL2::FMT1")
+
+
+# the tables host/native/raw-trap.lisp fnn-install-raw-dispatch reads (core-export.lisp xt-carried-table-names)
+INSTALL_TABLES = ("ACL2::FN-INTERFACES", "ACL2::FN-RAW-DISPATCH-VERDICTS")
 
 
 def read_edges(path: Path) -> tuple[list[str], dict[str, list[str]]]:
@@ -148,6 +158,69 @@ def analyse(roots: list[str], graph: dict[str, list[str]], targets: set[str], tr
             "units": len(graph), "reachable": len(full), "reachable_without_boundary": len(cut)}
 
 
+def _sexp_end(text: str, i: int) -> int:
+    """The index just past the object starting at TEXT[i] (a list, string, |symbol|, #\\char or atom)."""
+    depth = 0
+    while True:
+        c = text[i]
+        if c == '"' or c == "|":
+            i += 1
+            while text[i] != c:
+                i += 2 if text[i] == "\\" else 1
+        elif c == "#" and text[i + 1] == "\\":
+            i += 2
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        elif depth == 0 and c in " \n\t":
+            return i
+        i += 1
+        if depth == 0 and text[i - 1] in ')"|':
+            return i
+
+
+def qualified(name: str) -> str:
+    return name if "::" in name else "ACL2::" + name
+
+
+def snapshot_tables(core_world: str) -> list[str]:
+    """The tables core-world.lisp's snapshot carries with digests: the keys of FN-CORE-TABLE-DIGESTS."""
+    head = "(FN-CORE-TABLE-DIGESTS (TABLE-ALIST"
+    at = core_world.find(head)
+    if at < 0 or core_world.find(head, at + 1) >= 0:
+        raise ValueError("core-world.lisp holds %s manifests, not one" % ("no" if at < 0 else "several"))
+    i, names = at + len(head), []
+    while True:
+        while core_world[i] in " \n\t":
+            i += 1
+        if core_world[i] == ")":
+            return names
+        if core_world[i] != "(":
+            raise ValueError("FN-CORE-TABLE-DIGESTS row is not a list at offset %d" % i)
+        j = i + 1
+        while core_world[j] not in " ()\n\t":
+            j += 1
+        names.append(qualified(core_world[i + 1:j]))
+        i = _sexp_end(core_world, i)
+
+
+def table_problems(out: Path) -> list[str]:
+    """X3: the snapshot's tables against the forms closure's table reads and the install tables; [] when they agree."""
+    _, graph = read_edges(out / "edges.tsv")
+    read = {v.split(":", 1)[1] for vs in graph.values() for v in vs if v.startswith("table:")}
+    want = read | set(INSTALL_TABLES)
+    have = snapshot_tables((out / "core-world.lisp").read_text(encoding="latin-1"))
+    problems = ["table %s is read by an emitted form but the snapshot does not carry it" % n
+                for n in sorted(want - set(have))]
+    problems += ["table %s is carried by the snapshot but no emitted form or install path reads it" % n
+                 for n in sorted(set(have) - want)]
+    problems += ["table %s is carried twice by the snapshot" % n for n in sorted({n for n in have if have.count(n) > 1})]
+    problems += ["%s is a defs.lisp unit; tables are carried by the snapshot only" % u
+                 for u in sorted(graph) if u.startswith("table:")]
+    return problems
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("out", type=Path)
@@ -156,7 +229,18 @@ def main(argv=None) -> int:
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--check", action="store_true",
                     help="X2: exit 1, naming a path, if a BANNED unit is reachable from a root")
+    ap.add_argument("--check-tables", action="store_true",
+                    help="X3: exit 1, naming each table, unless the snapshot carries exactly the tables read")
     a = ap.parse_args(argv)
+    if a.check_tables:
+        problems = table_problems(a.out)
+        for p in problems:
+            print("closure_why: %s" % p, file=sys.stderr)
+        if problems:
+            return 1
+        print("closure_why: the snapshot carries exactly the %d tables read" % len(snapshot_tables(
+            (a.out / "core-world.lisp").read_text(encoding="latin-1"))))
+        return 0
     roots, graph = read_edges(a.out / "edges.tsv")
     if a.check:
         all_roots = sorted(set(roots) | {"star1:" + r.split(":", 1)[1] for r in roots})
