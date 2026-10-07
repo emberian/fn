@@ -666,14 +666,6 @@
    "reason": "fnn-owner-service-read-octets written with no lock at host/native/owner.lisp:397 (fnn-owner-refresh-read-octets); 1 write site(s), 2 access site(s) across 4 act"
   },
   {
-   "key": "R1b|fnn-owner-release-extents|*fnn-extent-checkpoint-id*:unlocked-read",
-   "count": 1,
-   "rule": "R1b",
-   "category": "violation",
-   "where": "host/native/owner.lisp:6882",
-   "reason": "*fnn-extent-checkpoint-id*: unlocked-read; writes under [('O',)], 4 access site(s), no common lock"
-  },
-  {
    "key": "R1b|fnn-owner-run|*fnn-owner-measure*:unlocked-write",
    "count": 1,
    "rule": "R1b",
