@@ -2910,7 +2910,7 @@ checked; the last row compared with the checkpoint's last record): (values
     (let* ((file (fnn-extent-register-at path base))
            (answer (progn
                      ;; the image's id is excluded from retirement for the
-                     ;; process's life (fn-pgs-fill-realize preads it off the
+                     ;; process's life (fn-pgs-fill-frame preads it off the
                      ;; lock): fnn-owner-release-extents checks it
                      (setq *fnn-extent-image-id* file)
                      (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")

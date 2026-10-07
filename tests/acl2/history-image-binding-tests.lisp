@@ -6,7 +6,7 @@
 ;
 ; The page file is data here, as in tests/acl2/history-records-disk-tests.lisp:
 ; FILE is an alist (PHYS . WORDS) and the host's page fill (A-PGS-HOST-IO's
-; fn-pgs-page-words / fn-pgs-fill-realize) is attached to its lookup, so the
+; fn-pgs-page-words) is attached to its lookup, so the
 ; adoption and the reads EXECUTE over committed images.  Two histories of
 ; the SAME length are each loaded, flushed into an image and committed as a
 ; page file's first transaction; the first is then extended and committed
@@ -52,7 +52,7 @@
   (and (true-listp (hibt-page file addr)) (equal (len (hibt-page file addr)) 2048)
        (fn-pgs-u64-listp (hibt-page file addr))))
 
-(defattach (fn-pgs-page-words hibt-page) (fn-pgs-fill-realize hibt-page))
+(defattach fn-pgs-page-words hibt-page)
 ; the frame fill (A-PGS-HOST-IO's in-place form): the put of the same page
 (defattach fn-pgs-fill-frame fn-pgs-fill-frame-via-words)
 
