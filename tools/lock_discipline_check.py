@@ -638,6 +638,9 @@ class Event:
     # specials dynamically rebound (a `let' of a defvar) around this event,
     # in its own defun: the access names this thread's binding, not the global
     bound: frozenset = frozenset()
+    # one operation on a :synchronized table (gethash, remhash, clrhash,
+    # hash-table-count, setf of gethash): atomic in the table's own lock
+    atomic: bool = False
 
 
 @dataclass
@@ -693,6 +696,8 @@ BUILTIN_PARENTS = {"error": ["serious-condition"], "serious-condition": ["condit
 
 
 SPECIAL_SKIP = {"declare", "quote", "go", "the-environment"}
+# head -> (position of the table argument in the form, access kind)
+SYNC_TABLE_OPS = {"gethash": (2, "r"), "remhash": (2, "w"), "clrhash": (1, "w"), "hash-table-count": (1, "r")}
 BINDING_FORMS = {"let", "let*", "sb-int:dx-let"}
 FUNCALLERS = {"funcall", "apply", "multiple-value-call"}
 # env value marking "this name is the current defun's parameter" (walk_if)
@@ -1069,7 +1074,7 @@ class Analyzer:
             seen = set()
             unique = []
             for e in info.events:
-                k = (e.kind, e.name, e.line, e.ctx, e.bound, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
+                k = (e.kind, e.name, e.line, e.ctx, e.bound, e.atomic, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
                 if k not in seen:
                     seen.add(k)
                     unique.append(e)
@@ -1085,9 +1090,9 @@ class Analyzer:
             self.infos[name] = info
         return info
 
-    def ev(self, kind, name, line, ctx, extra=None):
+    def ev(self, kind, name, line, ctx, extra=None, atomic=False):
         if self.recording:
-            self.cur.events.append(Event(kind, name, line, ctx, extra, frozenset(self.rebound)))
+            self.cur.events.append(Event(kind, name, line, ctx, extra, frozenset(self.rebound), atomic))
 
     def walk_body(self, forms, ctx, env, line):
         return sig_union([self.walk(f, ctx, env, line_of(f, line)) for f in forms])
@@ -1125,6 +1130,12 @@ class Analyzer:
             return self.walk_gated_body(form, ctx, env, line)
         if h in BINDING_FORMS or h in ("multiple-value-bind", "destructuring-bind", "symbol-macrolet"):
             return self.walk_binding(form, h, ctx, env, line)
+        if h in SYNC_TABLE_OPS and len(form) > SYNC_TABLE_OPS[h][0]:
+            pos, kind = SYNC_TABLE_OPS[h]
+            table = form[pos]
+            if isinstance(table, Sym) and str(table) in self.tree.synchronized and str(table) not in env:
+                self.ev("acc", str(table), line, ctx, kind, True)
+                return sig_union([self.walk(x, ctx, env, line) for k, x in enumerate(form[1:], 1) if k != pos])
         if h in ("flet", "labels", "macrolet"):
             env2 = dict(env)
             parts = []
@@ -1600,7 +1611,7 @@ class Analyzer:
         if h in ("setq", "setf", "psetf", "psetq"):
             pairs = form[1:]
             for k in range(0, len(pairs) - 1, 2):
-                parts.append(self.note_place(pairs[k], ctx, env, line, value=pairs[k + 1]))
+                parts.append(self.note_place(pairs[k], ctx, env, line, value=pairs[k + 1], atomic_ok=True))
                 parts.append(self.walk(pairs[k + 1], ctx, env, line))
             return sig_union(parts)
         if h in ("push", "pushnew"):
@@ -1614,7 +1625,7 @@ class Analyzer:
             parts.extend(self.walk(x, ctx, env, line) for x in form[2:])
         return sig_union(parts)
 
-    def note_place(self, place, ctx, env, line, value=None, pushed=None):
+    def note_place(self, place, ctx, env, line, value=None, pushed=None, atomic_ok=False):
         if isinstance(place, Sym):
             name = str(place)
             if name in self.write_regions and name not in env:
@@ -1634,9 +1645,10 @@ class Analyzer:
             if h in ("gethash", "svref", "aref", "car", "cdr", "first", "second", "third", "nth",
                      "getf", "slot-value", "elt", "cadr", "cddr", "rest", "fourth", "fifth"):
                 parts = []
-                for x in place[1:]:
+                for k, x in enumerate(place[1:], 1):
                     if isinstance(x, Sym) and str(x) in self.tree.globals and str(x) not in env:
-                        self.ev("acc", str(x), line, ctx, "w")
+                        self.ev("acc", str(x), line, ctx, "w",
+                                atomic_ok and h == "gethash" and k == 2 and str(x) in self.tree.synchronized)
                     elif isinstance(x, list) and (head(x) in self.tree.structs):
                         self.ev("acc", head(x), line, ctx, "w")
                         parts.append(self.walk_body(x[1:], ctx, env, line))
@@ -2662,6 +2674,8 @@ class Checker:
                 if e.name in e.bound or e.name in self.m.mustbound.get(name, frozenset()):
                     continue        # the access names a thread-local dynamic binding
                 held = e.ctx.locks | self.m.mustheld.get(name, frozenset())
+                if e.atomic:
+                    held = held | {"SYNC:" + e.name}    # the table's own lock covers this one operation
                 actors = {self.m.actor_of(r) for r in self.m.actors.get(name, ())}
                 if not actors or actors == {"startup"} or "STARTUP" in held:
                     continue

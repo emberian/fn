@@ -1512,3 +1512,66 @@ class R1bDynamicBinding(unittest.TestCase):
   (sb-thread:make-thread (lambda () (fnn-dyn-run 2)) :name "dyn b"))
 """)
         self.assertTrue(found)
+
+
+class R1bSynchronizedTable(unittest.TestCase):
+    """One gethash/remhash/clrhash/count on a :synchronized table is atomic in
+    the table's own lock; a bare mention (maphash, a read-modify-write of the
+    cell) or an unsynchronized table is not."""
+
+    HEAD = """
+(defvar *fnn-sync-memo* (make-hash-table :test 'eq :synchronized t))
+(defvar *fnn-plain-memo* (make-hash-table :test 'eq))
+"""
+    TAIL = """
+(defun fnn-sync-start-a ()
+  (sb-thread:make-thread (lambda () (fnn-sync-use 1)) :name "sync a"))
+(defun fnn-sync-start-b ()
+  (sb-thread:make-thread (lambda () (fnn-sync-use 2)) :name "sync b"))
+"""
+
+    def r1b(self, body, var="fnn-sync-memo"):
+        found = run(self.HEAD + body + self.TAIL, ["R1b"])
+        return [k for k in keys(found, "R1b") if var in k[1]]
+
+    def test_atomic_operations_on_a_synchronized_table_pass(self):
+        self.assertEqual(self.r1b("""
+(defun fnn-sync-use (k)
+  (or (gethash k *fnn-sync-memo*)
+      (setf (gethash k *fnn-sync-memo*) (list k)))
+  (remhash k *fnn-sync-memo*)
+  (hash-table-count *fnn-sync-memo*))
+"""), [])
+
+    def test_the_same_shape_on_an_unsynchronized_table_is_refused(self):
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-use (k)
+  (or (gethash k *fnn-plain-memo*)
+      (setf (gethash k *fnn-plain-memo*) (list k))))
+""", "fnn-plain-memo"))
+
+    def test_a_maphash_over_the_table_is_not_atomic(self):
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-use (k)
+  (setf (gethash k *fnn-sync-memo*) k)
+  (maphash (lambda (key v) (list key v)) *fnn-sync-memo*))
+"""))
+
+    def test_a_read_modify_write_of_the_cell_is_not_atomic(self):
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-use (k)
+  (push k (gethash k *fnn-sync-memo*)))
+"""))
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-use (k)
+  (incf (gethash k *fnn-sync-memo* 0))
+  (gethash k *fnn-sync-memo*))
+"""))
+
+    def test_passing_the_table_on_is_not_atomic(self):
+        self.assertTrue(self.r1b("""
+(defun fnn-sync-poke (table k) (setf (gethash k table) k))
+(defun fnn-sync-use (k)
+  (fnn-sync-poke *fnn-sync-memo* k)
+  (setf (gethash k *fnn-sync-memo*) k))
+"""))
