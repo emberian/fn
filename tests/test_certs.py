@@ -9,6 +9,7 @@ is the closure's hash: same book bytes over a changed dependency is a
 different key, not a cache hit ACL2 would then refuse.
 """
 
+import hashlib
 import importlib.util
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -2208,3 +2209,35 @@ class PairFactsCompactTests(unittest.TestCase):
                     self.assertEqual(
                         certs.main(["--cache", str(cache), "compact-pair-facts", "--apply"]), 3)
             self.assertEqual((cache / certs.PAIR_FACTS).read_bytes(), before)
+
+
+class ContentHashMemoTests(unittest.TestCase):
+    """content_hash reads a file once per identity in a process, and a
+    changed file is read again (the convergence-time install-umbrellas
+    re-read every cache entry per enumeration)."""
+
+    def test_unchanged_file_is_read_once_and_a_rewrite_is_read_again(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "book.cert"
+            path.write_bytes(b"one")
+            opened = []
+            real_open = Path.open
+
+            def counting(self, *args, **kwargs):
+                if self == path:
+                    opened.append(self)
+                return real_open(self, *args, **kwargs)
+
+            with mock.patch.object(Path, "open", counting):
+                first = certs.content_hash(path)
+                second = certs.content_hash(path)
+                self.assertEqual(first, second)
+                self.assertEqual(len(opened), 1)
+                time.sleep(0.01)
+                replacement = Path(temp) / "new"
+                replacement.write_bytes(b"two")
+                os.replace(replacement, path)
+                third = certs.content_hash(path)
+            self.assertNotEqual(third, first)
+            self.assertEqual(third, hashlib.sha256(b"two").hexdigest())
+            self.assertEqual(len(opened), 2)
