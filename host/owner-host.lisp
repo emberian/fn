@@ -1097,7 +1097,17 @@
 ; deferral (its reason, class and attempts are what the host logs), or :stale
 ; for a capture that did not hold the slot.
 (defun fn-owner-sco-publication-abandoned (count serial outcome now state)
-  (declare (xargs :stobjs state :guard t))
+  ; Guard in the minimal theory: under the attach-first include order the
+  ; global car/consp rewrites of books/owner-queued-work and
+  ; books/failure-scope are tried first and the rewriter runs past 900 s.
+  (declare (xargs :stobjs state :guard t
+                  :guard-hints (("Goal" :in-theory (union-theories
+                    '(fn-opl-settle fn-orc-release-slot
+                      state-p not mv-nth put-global update-global-table global-table
+                      (:executable-counterpart symbolp) (:executable-counterpart equal)
+                      fn-sg-state-p1-of-put-global
+                      state-p-implies-and-forward-to-state-p1)
+                    (theory 'minimal-theory))))))
   (let* ((pass (fn-owner-sco-global 'fn-owner-orc-pass state))
          (inflight (fn-owner-sco-global 'fn-owner-sco-inflight state))
          (current (fn-owner-sco-global 'fn-owner-sco-serial state))
