@@ -61,8 +61,10 @@
   *trusted*)
 (defun fnn-section-run (owner class cid admits classes name thunk)
   (declare (ignore owner class cid admits classes name))
-  ;; An admin changed the current owner config after outer preflight.
-  (setq *trusted* nil)
+  ;; Every owner read is its own quantum.  An admin changed the owner
+  ;; config after the outer preflight decision, so trust is revoked at the
+  ;; first quantum entered after that decision was read.
+  (when (member :trust *calls*) (setq *trusted* nil))
   (push :lock *calls*)
   (funcall thunk))
 (defun fnn-bpapp-open-journal (&rest arguments)
@@ -131,7 +133,8 @@
               '(fnn-bpnode-source-decision fnn-bpnode-request-result
                 fnn-bpnode-request-result-1 fnn-bpnode-refusal-line
                 fnn-bpnode-receipt-observations fnn-bpnode-release-line
-                fnn-bpnode-receipt-detail fnn-bpnode-receipt-result))
+                fnn-bpnode-check-detail fnn-bpnode-receipt-detail
+                fnn-bpnode-receipt-detail-locked fnn-bpnode-receipt-result))
 
 (let ((view '(nil nil :request (1) :ingress (2) "source" "dest")))
   (setq *trusted* t *calls* nil)
@@ -141,8 +144,8 @@
                  '(:request-refused (0)))
     (error "revoked request was not refused"))
   (unless (equal (reverse *calls*)
-                 '(:trust :open-request-journal :lock :trust
-                   :close-request-journal))
+                 '(:lock :lock :trust :open-request-journal :lock :trust
+                   :close-request-journal :lock))
     (error "request authorization/publication order ~s" (reverse *calls*)))
   ;; The refusal line was asked of ACL2 for this view, as refused, with the
   ;; transit detail the entry cleared.
@@ -155,7 +158,7 @@
                   (fnn-bpnode-receipt-result :owner :root view :peer))
                  '(:receipt-refused (0)))
     (error "revoked receipt was not refused"))
-  (unless (equal (reverse *calls*) '(:trust :lock :trust))
+  (unless (equal (reverse *calls*) '(:lock :lock :lock :lock :trust :lock :trust))
     (error "receipt authorization/publication order ~s" (reverse *calls*))))
 
 (format t "native BP serialized admission: PASS~%")

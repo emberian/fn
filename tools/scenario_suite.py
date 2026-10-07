@@ -53,6 +53,7 @@ none of these questions).  Exit 0 or 1.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import pathlib
 import re
@@ -84,8 +85,18 @@ def entries(root: pathlib.Path = ROOT) -> list[tuple[int, str, str, str, str, st
             continue
         fields = line.split("\t")
         fields += [""] * (5 - len(fields))
+        if "{scaling_ratio_target}" in fields[4]:
+            fields[4] = fields[4].replace("{scaling_ratio_target}", scaling_target(root))
         out.append((number, *fields[:5]))
     return out
+
+
+def scaling_target(root: pathlib.Path = ROOT) -> str:
+    """The declared ARTICLE 8N/N ratio target: tools/scaling_baseline.json, the
+    one source tests/test_native_scaling.py reads too (tools/ratchet.py
+    scaling_limit says when a ceiling above it is allowed)."""
+    data = json.loads((root / "tools/scaling_baseline.json").read_text(encoding="ascii"))
+    return f"{data['article_ratio_target']:g}"
 
 
 def tier(name: str, root: pathlib.Path = ROOT) -> dict[str, list[str]]:

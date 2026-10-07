@@ -39,7 +39,8 @@ facts as the material it serves, which establishes the relation
 fnn-tls-context-swap preserves; on a refusal the candidate is freed and the
 start is refused (exit 1) by ACL2's word, the library's text after it."
   (multiple-value-bind (pointer chain key match detail)
-      (fnn-tls-server-candidate certificate-path private-key-path)
+      (progn (fnn-tls-initialize)
+             (fnn-tls-server-candidate certificate-path private-key-path))
     (let* ((facts (fnn-tls-facts-of pointer chain key match))
            (decision (fnn-core 'fn-tlsr-host-start-decide facts)))
       (if (fnn-core 'fn-tlsr-host-acceptp decision)
@@ -146,13 +147,20 @@ the context's lock."
     (if (null context)
         (list :tls-reply :refused :no-tls-context
               (fnn-core 'fn-tlsr-host-reply-line nil))
-      (sb-thread:with-mutex (*fnn-tls-reload-mutex*)
+      ;; The library probe belongs to initialization, never to the reload
+      ;; mutex: initialize first, and let the candidate's own handler take
+      ;; its failure as it takes any other.
+      (let ((unavailable (handler-case (progn (fnn-tls-initialize) nil)
+                           (fnn-tls-error (condition) condition))))
+       (sb-thread:with-mutex (*fnn-tls-reload-mutex*)
         (let ((served (fnn-tls-served-facts context)))
           (multiple-value-bind (pointer chain key match detail)
               (handler-case
-                  (fnn-tls-server-candidate
-                   (fnn-tls-context-certificate-path context)
-                   (fnn-tls-context-private-key-path context))
+                  (progn
+                    (when unavailable (error unavailable))
+                    (fnn-tls-server-candidate
+                     (fnn-tls-context-certificate-path context)
+                     (fnn-tls-context-private-key-path context)))
                 ;; No context could be created at all: nothing loaded.
                 (fnn-tls-error (condition)
                   (values nil nil nil nil (fnn-tls-error-detail condition))))
@@ -169,7 +177,7 @@ the context's lock."
                   (when pointer (fnn-%ssl-ctx-free pointer))
                   (list :tls-reply :refused
                         (fnn-core 'fn-tlsr-host-refusal decision)
-                        (fnn-core 'fn-tlsr-host-reply-line served)))))))))))
+                        (fnn-core 'fn-tlsr-host-reply-line served))))))))))))
 
 (defun fnn-tls-owner-status (service)
   (let* ((context (fnn-owner-service-tls-context service))

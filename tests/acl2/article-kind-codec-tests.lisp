@@ -116,3 +116,27 @@
                (:conclusion (equal (fn-ak-encode (cadr (fn-ak-decode source)) nil) source))
                ((source *akc-hello-source*))
                :fault "a re-encoding that drops the decoded payload")))
+
+; fn-ak-grammar-encode-is-the-layout (TEETH CONTRACT v1).  The payload
+; hypothesis separates the encoder from the layout only past
+; *fn-article-max-octets* (4,261,412,864) octets: no removal witness can be
+; built, so the claim keeps the hypothesis inside the implication and the
+; teeth are the in-guard positive witness and conclusion mutations.
+(defteeth fn-ak-grammar-encode-is-the-layout
+  :claim (() (implies (fn-ak-payloadp payload)
+                      (equal (fn-ak-encode vals payload)
+                             (fn-ak-layout vals payload))))
+  :subject fn-ak-encode
+  :witness ((vals (fn-ak-example-values)) (payload *akc-hello*))
+  :mutations ((layout-of-the-empty-payload
+               (:conclusion (implies (fn-ak-payloadp payload)
+                                     (equal (fn-ak-encode vals payload)
+                                            (fn-ak-layout vals nil))))
+               ((vals (fn-ak-example-values)) (payload *akc-hello*))
+               :fault "a layout that drops the payload the encoder wrote")
+              (layout-of-other-values
+               (:conclusion (implies (fn-ak-payloadp payload)
+                                     (equal (fn-ak-encode vals payload)
+                                            (fn-ak-layout *akc-bad-from* payload))))
+               ((vals (fn-ak-example-values)) (payload *akc-hello*))
+               :fault "a layout that renders other header values than the encoder")))

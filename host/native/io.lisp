@@ -6373,10 +6373,18 @@ intentionally not timed by this function."
         (error 'fnn-peer-dial-error :outcome :no-address
                                     :detail "no IPv4 address"))))
 
+(defun fnn-peer-dial-target (host)
+  "ACL2's dial target for HOST, a configured peer host.  HOST is what ACL2
+handed this boundary (an octet list: a plan's, a feed link's, a route's) or a
+literal string of the bootstrap and tests; neither is a byte vector, so nothing
+is consed from one."
+  (unless (or (stringp host) (listp host))
+    (fnn-fault "peer host is neither an ACL2 octet list nor a string"))
+  (fnn-core 'fn-peer-dial-target (if (stringp host) (map 'list #'char-code host) host)))
+
 (defun fnn-peer-connect (host port &key (timeout 10))
   "Dial a configured peer HOST (an ACL2 string or octet list) on PORT."
-  (let* ((octets (if (stringp host) (map 'list #'char-code host) (fnn-octet-list host)))
-         (target (fnn-core 'fn-peer-dial-target octets)))
+  (let ((target (fnn-peer-dial-target host)))
     (case (and (consp target) (first target))
       (:address
        (fnn-connect (coerce (second target) '(simple-array (unsigned-byte 8) (*)))
@@ -6415,8 +6423,7 @@ intentionally not timed by this function."
 (defun fnn-peer-connect-start (host port)
   "ACL2's literal/resolve/refuse target; pending TCP retains its socket.
 Synchronous DNS remains a named availability frontier outside TCP polling."
-  (let* ((octets (if (stringp host) (map 'list #'char-code host) (fnn-octet-list host)))
-         (target (fnn-core 'fn-peer-dial-target octets)))
+  (let ((target (fnn-peer-dial-target host)))
     (case (and (consp target) (first target))
       (:address
        (fnn-connect-start (coerce (second target) '(simple-array (unsigned-byte 8) (*))) port))

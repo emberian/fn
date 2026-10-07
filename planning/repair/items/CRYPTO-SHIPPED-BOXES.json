@@ -1,0 +1,16 @@
+{
+ "category": "crypto-shipped",
+ "file": "tools/native_box.sh",
+ "id": "CRYPTO-SHIPPED-BOXES",
+ "line": "21",
+ "notes": [
+  "10-06 20:26 RULINGS-20261006 ruling 3, D59. SYSTEM-PATH: tools/native_box.sh:21 and tools/box_table.py:25,57-59,114 persvati row OPENSSL=system (the node under test runs the box system libssl; box_table.py:114 accepts bundled|system); tools/box_bootstrap.sh:23,48-49,119-120 installs libssl3/libssl3t64 and openssl as the box libssl. AMBIGUOUS: tools/hbox_native.sh:57-58,480 and tools/fundamentals/rows.sh:48 unset FN_OPENSSL_PREFIX (hbox gets the tls.lisp /tank default; any box without /tank/fn/toolchains falls back to system silently); tools/hbox_native.sh:442-454 openssl_setup; tools/native_env.py:30-31 comment says the node itself uses the system libssl (HST-016); tools/deploy_gate.py:597-610,883,1388-1389 --native-openssl-prefix is optional (should be mandatory). Conversion: every box row OPENSSL=bundled with a 3.5.8 prefix provisioned by bootstrap; remove the system value; require prefix in deploy_gate; stop unsetting FN_OPENSSL_PREFIX and pass the prefix explicitly. The openssl CLI used as a test tool (hbox_native openssl-test, fundamentals mixed.py, scale_curve.py:320, deploy_fresh.sh:405-409 cert checks) is not the node's library: leave."
+ ],
+ "owner": "deputy-N",
+ "refs": "RULINGS-20261006 ruling 3; D59",
+ "severity": "medium",
+ "source": "crypto-audit",
+ "state": "open",
+ "title": "build/test boxes: persvati and the box bootstrap use the system libssl (SYSTEM-PATH/AMBIGUOUS)",
+ "updated": "2026-10-07T00:26:35Z"
+}

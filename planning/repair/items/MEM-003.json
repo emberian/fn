@@ -1,0 +1,14 @@
+{
+ "category": "performance",
+ "detail": "Measured via the heap hook (r1): c0 after 1,000 POSTs anon 72,852 kB pre-GC, 47,388 kB after (sb-ext:gc :full t); dynamic usage 178.9 MB pre-GC, 152.1 MB after; the live data the store adds is only ~7 MB (145.1 -> 152.1 MB), so ~27 MB is garbage plus free pages SBCL keeps resident. The service nursery is 8 MiB (owner.lisp:6884) and the one full collection runs once per start (owner.lisp:6897 fnn-owner-release-recovery-garbage); nothing returns pages after serving. At a filled store (1,800 POSTs, history exhausted) the pre-GC anon is 73.5 MB (r3). Candidate (UNMEASURED fix): an idle-time generation collection after a burst, or a smaller trigger; measure RSS against POST latency before choosing. Caution: a full collection also touches every core page (the hook's walk took RSS 164 -> 264 MB), so test gen-1 not :full. Evidence hbox:/tank/fn/scratch/n-mem/r1/ hbox:/tank/fn/scratch/n-mem/r3/.",
+ "file": "host/native/owner.lisp",
+ "id": "MEM-003",
+ "line": "6884",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem",
+ "state": "open",
+ "title": "after a POST burst the owner holds ~25 MB of freed dynamic pages resident: anon 72.9 MB before a full collection, 47.4 MB after (small preset, 1,000 POSTs)",
+ "updated": "2026-10-06T21:30:00Z"
+}

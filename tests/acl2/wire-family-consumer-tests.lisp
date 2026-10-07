@@ -11,6 +11,7 @@
 ; fn-wf-cs-status-encode-agrees' hypothesis is not vacuous.
 (in-package "ACL2")
 (include-book "../../books/wire-family-consumer")
+(include-book "../../books/defkeystone")
 
 (defun wfcs-agree-on-accept (status ack frontier gap)
   (let* ((x (fn-ncl-status-reply-encode status ack frontier gap))
@@ -110,3 +111,192 @@
         (wfcs-reply-agrees :uncertain nil)
         (wfcs-reply-agrees :fault nil)
         (equal (fn-ncl-reply-encode :refused cursor) :bad))))
+
+; ---------------------------------------------------------------------------
+; The agreement keystones with their teeth (TEETH CONTRACT v1).  Each decoder
+; keystone's only hypothesis is the octet-list type, which no decoder
+; answer depends on (a non-octet list is refused by both sides), so the claim
+; keeps it inside the implication and the teeth are two conclusion
+; mutations: a wrong value, and a decoder that accepts trailing octets.  Each
+; encoder keystone's hypothesis (the encoder answers) is removed at an input
+; the encoder refuses, where the conclusion fails: the refused input has no
+; grammar value.
+(defconst *wfcs-status-good* (fn-ncl-status-reply-encode :accepted 3 10 7))
+
+(defteeth fn-wf-cs-status-decode-agrees
+  :claim (() (implies (fn-cbor-octet-listp x)
+                      (let ((r (fn-ncl-status-reply-decode x))
+                            (w (fn-wg-decode *fn-wf-cs-status-reply-grammar* x)))
+                        (and (iff (equal (car r) :consumer-status-reply)
+                                  (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                             (implies (equal (car r) :consumer-status-reply)
+                                      (equal (fn-wg-value w)
+                                             (fn-wf-cs-status-value (nth 1 r) (nth 2 r) (nth 3 r) (nth 4 r))))))))
+  :subject fn-ncl-status-reply-decode
+  :witness ((x *wfcs-status-good*))
+  :mutations ((value-skewed
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-ncl-status-reply-decode x))
+                                   (w (fn-wg-decode *fn-wf-cs-status-reply-grammar* x)))
+                               (and (iff (equal (car r) :consumer-status-reply)
+                                         (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                                    (implies (equal (car r) :consumer-status-reply)
+                                             (equal (fn-wg-value w)
+                                                    (fn-wf-cs-status-value (nth 1 r) (nth 3 r) (nth 2 r) (nth 4 r))))))))
+               ((x *wfcs-status-good*))
+               :fault "a decoder that reads the frontier as the ack and the ack as the frontier")
+              (trailing-octets-accepted
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-ncl-status-reply-decode x))
+                                   (w (fn-wg-decode *fn-wf-cs-status-reply-grammar* x)))
+                               (and (iff (equal (car r) :consumer-status-reply)
+                                         (fn-wg-okp w))
+                                    (implies (equal (car r) :consumer-status-reply)
+                                             (equal (fn-wg-value w)
+                                                    (fn-wf-cs-status-value (nth 1 r) (nth 2 r) (nth 3 r) (nth 4 r))))))))
+               ((x (append *wfcs-status-good* '(0))))
+               :fault "a decoder that accepts a frame followed by a trailing octet")))
+
+(defconst *wfcs-cursor*
+  (fn-cp-cursor-encode (list :cursor '(1) '(2) '(3) '(4) '(5) 0 0 1 7)))
+(defconst *wfcs-reply-good* (fn-ncl-reply-encode :accepted *wfcs-cursor*))
+(defconst *wfcs-request-good* (fn-cwait-request-encode :register '(1) '(2 3)))
+(defconst *wfcs-reasoned-good* (fn-ncr-request-encode :register '(1) '(2 3)))
+
+(defteeth fn-wf-cs-reply-encode-agrees
+  :claim (((encodes (not (equal (fn-ncl-reply-encode status cursor) :bad))))
+          (and (fn-wg-valuep *fn-wf-cs-reply-grammar* (fn-wf-cs-reply-value status cursor))
+               (equal (fn-ncl-reply-encode status cursor)
+                      (fn-wg-encode *fn-wf-cs-reply-grammar* (fn-wf-cs-reply-value status cursor)))))
+  :subject fn-ncl-reply-encode
+  :witness ((status :accepted) (cursor *wfcs-cursor*))
+  :breaks ((encodes ((status :refused) (cursor *wfcs-cursor*))))
+  :mutations ((encodes-the-fault-reply
+               (:conclusion (and (fn-wg-valuep *fn-wf-cs-reply-grammar* (fn-wf-cs-reply-value status cursor))
+                                 (equal (fn-ncl-reply-encode status cursor)
+                                        (fn-wg-encode *fn-wf-cs-reply-grammar* (fn-wf-cs-reply-value :fault nil)))))
+               ((status :accepted) (cursor *wfcs-cursor*))
+               :fault "an encoder that answers every status with the fault frame")))
+
+(defteeth fn-wf-cs-reply-decode-agrees
+  :claim (() (implies (fn-cbor-octet-listp x)
+                      (let ((r (fn-ncl-reply-decode x))
+                            (w (fn-wg-decode *fn-wf-cs-reply-grammar* x)))
+                        (and (iff (equal (car r) :consumer-reply)
+                                  (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                             (implies (equal (car r) :consumer-reply)
+                                      (equal (fn-wg-value w) (fn-wf-cs-reply-value (nth 1 r) (nth 2 r))))))))
+  :subject fn-ncl-reply-decode
+  :witness ((x *wfcs-reply-good*))
+  :mutations ((status-dropped
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-ncl-reply-decode x))
+                                   (w (fn-wg-decode *fn-wf-cs-reply-grammar* x)))
+                               (and (iff (equal (car r) :consumer-reply)
+                                         (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                                    (implies (equal (car r) :consumer-reply)
+                                             (equal (fn-wg-value w) (fn-wf-cs-reply-value :refused (nth 2 r))))))))
+               ((x *wfcs-reply-good*))
+               :fault "a decoder that reports every reply as refused")
+              (trailing-octets-accepted
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-ncl-reply-decode x))
+                                   (w (fn-wg-decode *fn-wf-cs-reply-grammar* x)))
+                               (and (iff (equal (car r) :consumer-reply) (fn-wg-okp w))
+                                    (implies (equal (car r) :consumer-reply)
+                                             (equal (fn-wg-value w) (fn-wf-cs-reply-value (nth 1 r) (nth 2 r))))))))
+               ((x (append *wfcs-reply-good* '(0))))
+               :fault "a decoder that accepts a frame followed by a trailing octet")))
+
+(defteeth fn-wf-cs-request-decode-agrees
+  :claim (() (implies (fn-cbor-octet-listp x)
+                      (let ((r (fn-cwait-request-decode x))
+                            (w (fn-wg-decode *fn-wf-cs-request-grammar* x)))
+                        (and (iff (equal (car r) :consumer)
+                                  (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                             (implies (equal (car r) :consumer)
+                                      (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 r) (nth 2 r) (nth 3 r))))))))
+  :subject fn-cwait-request-decode
+  :witness ((x *wfcs-request-good*))
+  :mutations ((fields-swapped
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-cwait-request-decode x))
+                                   (w (fn-wg-decode *fn-wf-cs-request-grammar* x)))
+                               (and (iff (equal (car r) :consumer)
+                                         (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                                    (implies (equal (car r) :consumer)
+                                             (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 r) (nth 3 r) (nth 2 r))))))))
+               ((x *wfcs-request-good*))
+               :fault "a decoder that reads the group id as the consumer id and the consumer id as the group id")
+              (trailing-octets-accepted
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-cwait-request-decode x))
+                                   (w (fn-wg-decode *fn-wf-cs-request-grammar* x)))
+                               (and (iff (equal (car r) :consumer) (fn-wg-okp w))
+                                    (implies (equal (car r) :consumer)
+                                             (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 r) (nth 2 r) (nth 3 r))))))))
+               ((x (append *wfcs-request-good* '(0))))
+               :fault "a decoder that accepts a frame followed by a trailing octet")))
+
+(defteeth fn-wf-cs-request-encode-agrees
+  :claim (((encodes (not (equal (fn-cwait-request-encode kind first second) :bad))))
+          (and (fn-wg-valuep *fn-wf-cs-request-grammar* (fn-wf-cs-request-value kind first second))
+               (equal (fn-cwait-request-encode kind first second)
+                      (fn-wg-encode *fn-wf-cs-request-grammar* (fn-wf-cs-request-value kind first second)))))
+  :subject fn-cwait-request-encode
+  :witness ((kind :register) (first '(1)) (second '(2 3)))
+  :breaks ((encodes ((kind :wait) (first '(7)) (second 3601))))
+  :mutations ((encodes-the-status-request
+               (:conclusion (and (fn-wg-valuep *fn-wf-cs-request-grammar* (fn-wf-cs-request-value kind first second))
+                                 (equal (fn-cwait-request-encode kind first second)
+                                        (fn-wg-encode *fn-wf-cs-request-grammar*
+                                                      (fn-wf-cs-request-value :position first nil)))))
+               ((kind :register) (first '(1)) (second '(2 3)))
+               :fault "an encoder that answers every command with the position request")))
+
+(defteeth fn-wf-cs-reasoned-request-decode-agrees
+  :claim (() (implies (fn-cbor-octet-listp x)
+                      (let ((r (fn-ncr-request-decode x))
+                            (w (fn-wg-decode *fn-wf-cs-reasoned-request-grammar* x)))
+                        (and (iff (equal (car r) :consumer)
+                                  (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                             (implies (equal (car r) :consumer)
+                                      (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 r) (nth 2 r) (nth 3 r))))))))
+  :subject fn-ncr-request-decode
+  :witness ((x *wfcs-reasoned-good*))
+  :mutations ((fields-swapped
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-ncr-request-decode x))
+                                   (w (fn-wg-decode *fn-wf-cs-reasoned-request-grammar* x)))
+                               (and (iff (equal (car r) :consumer)
+                                         (and (fn-wg-okp w) (null (fn-wg-rest w))))
+                                    (implies (equal (car r) :consumer)
+                                             (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 r) (nth 3 r) (nth 2 r))))))))
+               ((x *wfcs-reasoned-good*))
+               :fault "a decoder that reads the group id as the consumer id and the consumer id as the group id")
+              (trailing-octets-accepted
+               (:conclusion (implies (fn-cbor-octet-listp x)
+                             (let ((r (fn-ncr-request-decode x))
+                                   (w (fn-wg-decode *fn-wf-cs-reasoned-request-grammar* x)))
+                               (and (iff (equal (car r) :consumer) (fn-wg-okp w))
+                                    (implies (equal (car r) :consumer)
+                                             (equal (fn-wg-value w) (fn-wf-cs-request-value (nth 1 r) (nth 2 r) (nth 3 r))))))))
+               ((x (append *wfcs-reasoned-good* '(0))))
+               :fault "a decoder that accepts a frame followed by a trailing octet")))
+
+(defteeth fn-wf-cs-reasoned-request-encode-agrees
+  :claim (((encodes (not (equal (fn-ncr-request-encode kind first second) :bad))))
+          (and (fn-wg-valuep *fn-wf-cs-reasoned-request-grammar* (fn-wf-cs-request-value kind first second))
+               (equal (fn-ncr-request-encode kind first second)
+                      (fn-wg-encode *fn-wf-cs-reasoned-request-grammar*
+                                    (fn-wf-cs-request-value kind first second)))))
+  :subject fn-ncr-request-encode
+  :witness ((kind :register) (first '(1)) (second '(2 3)))
+  :breaks ((encodes ((kind :wait) (first '(7)) (second 3601))))
+  :mutations ((encodes-the-position-request
+               (:conclusion (and (fn-wg-valuep *fn-wf-cs-reasoned-request-grammar* (fn-wf-cs-request-value kind first second))
+                                 (equal (fn-ncr-request-encode kind first second)
+                                        (fn-wg-encode *fn-wf-cs-reasoned-request-grammar*
+                                                      (fn-wf-cs-request-value :position first nil)))))
+               ((kind :register) (first '(1)) (second '(2 3)))
+               :fault "an encoder that answers every command with the position request")))

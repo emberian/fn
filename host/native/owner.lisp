@@ -480,6 +480,9 @@ as at 7aad444ce."
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0)
+  ;; A pull journal: the peer's octet list as ACL2's plan named it (the cache's
+  ;; identity for `fn-pull-plan-for', never rebuilt from PEER).
+  (peer-octets nil)
   ;; Lane owner-offlock: one append (write, fsync, phase) at a time.  The
   ;; batch job appends off the owner mutex while a quantum under it may
   ;; append too (a feed tick, a bound submission's inline commit).

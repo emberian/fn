@@ -1,5 +1,6 @@
 ; fn: the tariff of the authentication layer's first-command replies (lane
-; tariff4, 2026-10-04): CAPABILITIES, STARTTLS and COMPRESS.
+; tariff4, 2026-10-04): CAPABILITIES, STARTTLS, COMPRESS, AUTHINFO and
+; XREDEEM.
 ;
 ; The served step answers these in fn-auth-command (books/nntp-auth.lisp),
 ; ahead of the reader: the gate (480), the compressed-layer refusal and each
@@ -215,6 +216,33 @@
                                   fn-nntp-result-effects fn-auth-sasl-effects
                                   fn-sasl-response-login
                                   fn-auth-find-cred fn-sasl-step fn-sasl-outcome-kind)))))
+
+; XREDEEM: every command reply is one literal line (already, protect,
+; syntax, sequence, password) or none, when PASS holds for the owner's
+; outcome.  The outcome is itself one literal line or none.  Both sit
+; inside the same response-octet bound as AUTHINFO.  The two functions
+; stay closed in the other command theorems.
+(defthm fn-tariff-xredeem-reply-within
+  (implies (fn-nntp-keywordp keyword "XREDEEM")
+           (<= (fn-tariff-effects-octets
+                (fn-post-result-effects (fn-auth-command as config keyword args)))
+               *fn-nntp-max-response-octets*))
+  :hints (("Goal" :in-theory (e/d (fn-auth-command fn-auth-single fn-auth-xredeem)
+                                  (fn-post-make-result fn-post-result-effects
+                                   fn-auth-gatedp fn-auth-compressed-refusedp
+                                   fn-auth-starttls fn-auth-compress
+                                   fn-auth-authinfo fn-auth-postingp
+                                   fn-nntp-multi fn-nntp-single
+                                   fn-nntp-result-effects)))))
+
+(defthm fn-tariff-xredeem-outcome-reply-within
+  (<= (fn-tariff-effects-octets
+       (fn-post-result-effects (fn-auth-redeem-outcome as wire-event)))
+      *fn-nntp-max-response-octets*)
+  :hints (("Goal" :in-theory (e/d (fn-auth-redeem-outcome fn-auth-single)
+                                  (fn-post-make-result fn-post-result-effects
+                                   fn-nntp-multi fn-nntp-single
+                                   fn-nntp-result-effects)))))
 
 ; ---------------------------------------------------------------------------
 ; The peer layer's transit commands (books/peer-inbound.lisp fn-peer-command):

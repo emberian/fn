@@ -1,0 +1,14 @@
+{
+ "category": "lock-discipline",
+ "detail": "Keys (NEW at lane head lock-triage-r1r7):\nR7|fnn-mux-cleanup-attempt|swallow:serious-condition:fault @ host/native/mux.lisp:341 trail: protected form can signal ['fault', 'os']\nR7|fnn-mux-close-wake|swallow:serious-condition:fault @ host/native/mux.lisp:1680 trail: protected form can signal ['fault', 'os']\nR7|fnn-mux-close-wake|swallow:serious-condition:fault @ host/native/mux.lisp:1697 trail: protected form can signal ['fault', 'os']\nR7|fnn-owner-cold-settle|swallow:ignore-errors:fault @ host/native/owner.lisp:6196 trail: protected form can signal ['fault', 'os']\nR7|fnn-owner-publish-captured|swallow:ignore-errors:fault @ host/native/owner.lisp:7410 trail: protected form can signal ['fault', 'os']\nR7|fnn-owner-publish-captured|swallow:ignore-errors:fault @ host/native/owner.lisp:7412 trail: protected form can signal ['fault', 'os']\nR7|fnn-owner-publish-captured|swallow:ignore-errors:fault @ host/native/owner.lisp:7416 trail: protected form can signal ['fault', 'os']\nR7|fnn-web-cleanup|swallow:serious-condition:fault @ host/native/web-host.lisp:147 trail: protected form can signal ['fault', 'os']\n\nHazard: The handlers route the original condition to the fence, then wrap that call so a failure of the install is discarded: owner.lisp:7410-7416 and 6196 (ignore-errors around fnn-owner-fence-service / fnn-owner-fault-service), mux.lisp:341 and 1697, web-host.lisp:147-150 (handler-case around fnn-owner-thread-escape with a nil clause). If the install itself signals, the service stays unfenced after an uncertain or faulted state. mux and web retain the original condition in a debt ledger that blocks the physical end (mux.lisp:471, web-host.lisp:1055), which only defers the failure to close; publish-captured and cold-settle retain nothing.",
+ "file": "host/native/owner.lisp",
+ "fix": "Do not discard the install failure: record it on the same ledger and make the actor boundary re-signal it, or last-resort stop the process with the fence exit code (fnn-exit 3 / 4) when the install fails. Keep the original condition in the record.",
+ "id": "LOCK-R7-ESCALATION-FAILURE-SWALLOWED",
+ "notes": [],
+ "owner": "open",
+ "severity": "medium",
+ "source": "lock-triage-r1r7-20261006",
+ "state": "open",
+ "title": "the failure of the fence or fault install is itself swallowed (ignore-errors / handler-case around fnn-owner-fence-service, -fault-service, -thread-escape)",
+ "updated": "2026-10-06T23:59:35Z"
+}

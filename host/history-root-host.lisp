@@ -2,7 +2,11 @@
 ; Internal publishers supply only results of the guarded concrete producers.
 ; Logical Store/view authority remains the canonical owner installer.
 (in-package "ACL2")
-(ld "owner-host.lisp" :ld-error-action :error)
+; The sibling edge is an include-book (the account-*/index-* discipline),
+; not an `ld': certify-book refuses an ld (LD-FN is not an embedded event
+; form).  In a session that ld'd owner-host earlier the include is
+; redundant and loads nothing.
+(include-book "owner-host")
 (include-book "../books/history-root-credit")
 (include-book "../books/history-paged-adopt")
 

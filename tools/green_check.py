@@ -157,6 +157,19 @@ def standing(record: dict | None) -> str:
     return "green"
 
 
+def standing_counts(records) -> dict[str, int]:
+    """Books per `standing`, the one rule every mode applies: `green` here is
+    green at the book's digest AND closure from a committed manifest, so a
+    green whose dependency moved counts as `stale`, not green."""
+    counted: dict[str, int] = {}
+    for record in records:
+        entry = {"verdict": record.verdict, "deps_moved_since": record.deps_moved,
+                 "certified_archived": bool(record.green and record.green.archived)}
+        name = standing(entry)
+        counted[name] = counted.get(name, 0) + 1
+    return counted
+
+
 def host_of(manifest: dict) -> str:
     """The box a run happened on: `archived_from` first, then its own name."""
     archived = str(manifest.get("archived_from") or "")
@@ -367,6 +380,7 @@ def audit(root: Path = ROOT, roots: list[str] | None = None,
             1 for record in records.values()
             if record.verdict == "green" and record.deps_moved),
         "counts": counts,
+        "standing_counts": standing_counts(records.values()),
         "books_by_verdict": {
             record.book: {
                 "verdict": record.verdict,
@@ -579,28 +593,31 @@ def strict_lines(rows: list[dict]) -> list[str]:
 def worklist(report: dict) -> list[str]:
     """The books the certification lanes owe a run, red first."""
     return [book for book, entry in report["books_by_verdict"].items()
-            if entry["verdict"] in ("red", "never", "absent")]
+            if standing(entry) in ("red", "never", "absent", "stale")]
 
 
 def summary(report: dict) -> list[str]:
-    counts = report["counts"]
+    counts = report["standing_counts"]
     owed = worklist(report)
     shown = " ".join(owed[:8]) or "none"
     more = f" (+{len(owed) - 8} more; --table for all)" if len(owed) > 8 else ""
     unattributed = len(report["manifests_unattributed_failures"])
     return [
         f"green-check: {report['books']} books in the closure of "
-        f"{report['roots']} Makefile roots -- {counts['green']} green at their "
-        f"current digest, {counts['red']} RED at digest, {counts['never']} never "
-        f"at this digest, {counts['absent']} never a requested root in any manifest.",
+        f"{report['roots']} Makefile roots -- {counts.get('green', 0)} green at "
+        f"their current digest and closure, {counts.get('stale', 0)} stale (own "
+        f"digest certified, a dependency moved since; NOT green), "
+        f"{counts.get('unarchived', 0)} unarchived, {counts.get('red', 0)} RED at "
+        f"digest, {counts.get('never', 0)} never at this digest, "
+        f"{counts.get('absent', 0)} never a requested root in any manifest.",
         f"green-check: owed a certification: {shown}{more}",
         f"green-check: {report['manifests']} manifests read "
         f"({report['manifests_archived']} archived, "
         f"{report['manifests'] - report['manifests_archived']} local unarchived, "
         f"{unattributed} failed without per-book attribution); newest green at a "
         f"current digest {report['newest_green'] or 'none at all'}; "
-        f"{report['greens_with_a_moved_dependency']} greens have a dependency "
-        f"that moved since their run.  A green manifest is one host and one "
+        f"{report['greens_with_a_moved_dependency']} of the audit's own greens "
+        f"are stale for a moved dependency (information; counted stale above).  A green manifest is one host and one "
         f"toolchain identity, not a certificate in this tree, and says nothing "
         f"about images.",
     ]

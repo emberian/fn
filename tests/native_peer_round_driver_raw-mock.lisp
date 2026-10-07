@@ -23,7 +23,8 @@
 ;; defect base the optional new logic book is absent; the old worker still
 ;; runs over these identical real kernel leaves and recorded protocol leaves.
 (load-deployed-forms "host/native/owner.lisp"
- '((defvar *fnn-actors*) (defun fnn-actor-declare) (defmacro def-actor)))
+ '((defvar *fnn-actors*) (defun fnn-actor-declare) (defmacro def-actor)
+   (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal)))))
 (load "host/native/pull-service.lisp")
 (dolist (path '("books/peer-round-driver.lisp"))
   (when (probe-file path)
@@ -370,7 +371,8 @@
                     (sb-bsd-sockets:socket-error () nil)))))
          (setq *started* (get-internal-real-time))
          (when (equal *mode* "fault")
-           (setf (fnn-pull-runtime-journals runtime) '(("A" . :journal-a) ("B" . :journal-b))
+           (setf (fnn-pull-runtime-journals runtime) (list (cons "A" (%make-fnn-owner-feed-journal :peer-octets (list 65) :phase :ready))
+                         (cons "B" (%make-fnn-owner-feed-journal :peer-octets (list 66) :phase :ready)))
                  (symbol-function 'fnn-owner-feed-close)
                  (lambda (journal) (declare (ignore journal)) (error 'fnn-os-error :errno sb-posix:eio)))
            (let ((*fnn-read-syscall*
