@@ -168,3 +168,19 @@
                ((h *sleb-h*) (st *sleb-st*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
                :fault "a step that tells an oversized entry from no entry"
                :lemma sleb-lgw-step-mutant-conclusion)))
+(defteeth fn-lgdm-entry-len-bounded-step
+  :claim (() (implies (and (not (fn-lgdm-entry-len-bounded h ps extent max)) (equal (len e) (fn-lgdm-entry-len h ps extent)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max))))
+  :subject fn-lgdm-step
+  :witness ((h *sleb-h*) (ps *sleb-ps*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
+  :mutations ((step-told-apart
+               (:conclusion (implies (and (not (fn-lgdm-entry-len-bounded h ps extent max)) (equal (len e) (fn-lgdm-entry-len h ps extent)) (equal (nth 5 e) (nth 5 h))) (not (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max)))))
+               ((h *sleb-h*) (ps *sleb-ps*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
+               :fault "a probe step that tells an oversized entry from no entry")
+              (without-the-bound-hypothesis
+               (:conclusion (implies (and (equal (len e) (fn-lgdm-entry-len h ps extent)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max))))
+               ((h *sleb-h-ok*) (ps *sleb-ps*) (extent 8192) (max *sleb-max*) (e *sleb-e-ok*) (unit *sleb-unit*))
+               :fault "a claim that drops the oversized hypothesis: the real first entry is probed")
+              (without-the-length-hypothesis
+               (:conclusion (implies (and (not (fn-lgdm-entry-len-bounded h ps extent max)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max))))
+               ((h *sleb-h-ok*) (ps *sleb-ps*) (extent 20) (max *sleb-max*) (e *sleb-e-ok*) (unit *sleb-unit*))
+               :fault "a claim that drops the length hypothesis: the entry is not the one the length named")))
