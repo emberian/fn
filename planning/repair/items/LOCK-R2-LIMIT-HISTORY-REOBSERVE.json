@@ -1,0 +1,17 @@
+{
+ "category": "lock-discipline",
+ "detail": "fnn-owner-limit-serialized (admin.lisp:534) deliberately observes the history off the mutex (comment at admin.lisp:~545, sweep S033). The deciding quantum runs under O (fnn-quantum-control, admin.lisp:~560) and E (fnn-with-observed-mutex *fnn-extent-lock*, admin.lisp:~565), and at admin.lisp:~578 takes `(if (equal values seen) history (fnn-heap-history-observation (fnn-store-root store) values))'. When a concurrent limit change moved the carry between the off-mutex read and the deciding quantum, the else branch runs under O and E: fnn-heap-history-observation (heap.lisp:255-256) -> fnn-heap-history-octets / fnn-heap-log-records (heap.lisp:272) -> fnn-heap-directory-octets (heap.lisp:244) -> fnn-lstat (io.lisp:612) and fnn-list-directory-bounded (io.lisp:835 opendir, 838 readdir, 847 closedir), plus one fnn-lstat per directory entry (heap.lisp:~246).\nKeys: R2|fnn-list-directory-bounded|E:sb-posix:opendir, ...|E:sb-posix:readdir, ...|E:sb-posix:closedir (E sites 2), and the E site of R2|fnn-lstat|E:sb-posix:lstat (admin.lisp:578 chain; the same key is also reached by LOCK-R2-LIVE-RECONFIGURE-IO). The listing is bounded (fnn-heap-listing-bound) but is per-segment lstat I/O.\nReachability: only on a race of two concurrent `store limit' requests (the branch is the documented re-observe path); the loop at admin.lisp:~549 exists precisely to make it rare. The path is live code, not dead: it is the fallback of the S033 design.",
+ "disposition": "LOCAL",
+ "exposure": "conditional",
+ "file": "host/native/admin.lisp",
+ "fix": "Make the deciding quantum refuse-and-retry (return to the observation loop, off the mutexes) instead of observing under them when the carry moved; the ACL2 decision then runs only on a history observed over the carried profile. If instead kept, declare it as an exception citing the race-only reachability.",
+ "id": "LOCK-R2-LIMIT-HISTORY-REOBSERVE",
+ "notes": [],
+ "owner": "unassigned",
+ "scenario": "Two operators change the limit concurrently; the loser's deciding quantum finds values != seen and walks the journal directory while holding O and E.",
+ "severity": "medium",
+ "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
+ "state": "open",
+ "title": "`store limit' re-observes the journal directory (lstat/opendir/readdir/closedir) under the owner and extent mutexes when the carried profile moved",
+ "updated": "2026-10-06T23:55:36Z"
+}

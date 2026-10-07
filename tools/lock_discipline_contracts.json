@@ -65,6 +65,13 @@
    "io_ok": true,
    "why_io": "serializes spare preparers; creation, preallocation and the fence run under it by design, never under O (io.lisp:6333-6337)"
   },
+  "XDURABLE": {
+   "match": [
+    "(fnn-log-durable-lock)"
+   ],
+   "io_ok": true,
+   "why_io": "serializes the two callers of fnn-log-make-durable (the new segment's first fence and the publication) so a rotated segment's name is fenced once and a failed barrier is recorded once and never retried (io.lisp:8498-8541); the file and directory fsyncs under it are its whole purpose. It is taken in no other place, so it guards nothing but that fsync pair and one nested kernel update (K); a caller that holds O does so on its own and is reported under O"
+  },
   "Q": {
    "match": [
     "*fnn-log-queue-mutex*"
@@ -237,7 +244,11 @@
    "XOUTPUT",
    "XOBS",
    "XTRACE",
-   "XFJ"
+   "XFJ",
+   "XDURABLE"
+  ],
+  "XDURABLE": [
+   "K"
   ],
   "C": [
    "G",
@@ -544,6 +555,12 @@
    "fnn-%ssl-shutdown"
   ]
  },
+ "condition_wait_wrappers": {
+  "fnn-observed-condition-wait": {
+   "mutex_arg": 1,
+   "why": "host/native/io.lisp:172: unchanged sb-thread:condition-wait on its (queue mutex) parameters plus observer rows; the checker verifies each condition-wait in the body waits on parameter MUTEX, so a call releases the lock its caller passes exactly as the primitive does"
+  }
+ },
  "leaf_prefixes": {
   "sb-posix:": "io",
   "sb-bsd-sockets:": "socket",
@@ -637,6 +654,20 @@
    "issue": "fnn-extent-issue-window",
    "issue_core": "fn-owner-page-decoded-window-acquire-projected",
    "why": "lane lock-rows-2: the decoded window's one physical read, called only by fnn-extent-decoded-window-run, which fnn-extent-executor-job runs on the persistent worker activation (extent.lisp, the decodedp arm) for a token fnn-extent-issue-window admitted through the decoded acquire; the descriptor is fetched under E in fnn-extent-decoded-window-run and the worker's actual return is announced by the loop only after the job returns"
+  },
+  "fnn-csp-worker-perform": {
+   "kind": "owned-fd",
+   "slot": "fnn-csp-worker-fd",
+   "open_in": "fnn-csp-worker-perform",
+   "open_call": "fnn-open",
+   "close_in": "fnn-csp-worker-loop",
+   "close_call": "fnn-close",
+   "constructor": "%make-fnn-csp-worker",
+   "slot_keyword": ":fd",
+   "thread_roots": [
+    "lambda@host/native/catchup-spool.lisp:fnn-csp-worker-start#lambda1"
+   ],
+   "why": "the :digest/:replay pread is on the catchup spool's own temporary file, not an extent-registry descriptor: the worker thread opens it (catchup-spool.lisp:20, O_CREAT|O_EXCL, fnn-open) and unlinks the name at once, nothing else reads the slot, and the same thread closes it in the loop's cleanup (catchup-spool.lisp:77-81, the slot retired before the close). The check verifies those facts over the source, so a second toucher of the slot, a store from anywhere but that open, or a second thread running the loop breaks the row"
   },
   "fnn-snapshot-source-read-page": {
    "kind": "file-pin",
