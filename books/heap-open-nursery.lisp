@@ -5,9 +5,10 @@
 ; allocates in proportion to the store it reads: on the d5ab87aec image a
 ; 1,000 x 2 KiB store (4,388,380 octets on disk) conses 81.5 MB through the
 ; open, most of it in the checkpoint's decode.  At the figure's trigger
-; (`fn-heap-nursery-trigger', a sixteenth of the dynamic space up to the profile cap, 8 MiB
-; since MEM-007, 64 MiB when this was measured:
-; 48.75 MiB at the small profile's 780 MB figure) that garbage piles up to
+; (`fn-heap-nursery-trigger', max(8 MiB, min(cap, a sixteenth of the dynamic
+; space)); when this was measured the cap was 64 MiB, so 48.75 MiB at the small
+; profile's 780 MB figure; since MEM-007 the cap is 8 MiB and the trigger is
+; exactly 8 MiB at every reservation) that garbage piles up to
 ; the whole trigger before the first collection, so the open's peak resident
 ; set is the live heap plus the trigger, whatever the store's size: a trigger
 ; sized to the profile, not to the use.
