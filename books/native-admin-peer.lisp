@@ -759,49 +759,11 @@ the address and which has no port or TLS mode of its own."
   :keep (equal (fn-cfg-row-b r) slot)
   :body (fn-cfg-row-c r))
 
-(defun fn-native-admin-peer-list-octets-loop (head rev acc)
-  (declare (xargs :guard (true-listp head) :verify-guards nil))
-  (if (consp rev)
-      (fn-native-admin-peer-list-octets-loop
-       head (cdr rev)
-       (append head
-               (true-list-fix (fn-native-admin-peer-label-octets (car rev)))
-               acc))
-    acc))
-
-(defun fn-native-admin-peer-list-octets (head values)
-  (declare (xargs :guard (true-listp head) :verify-guards nil))
-  (mbe :logic
-       (if (consp values)
-           (append head
-                   (true-list-fix (fn-native-admin-peer-label-octets (car values)))
-                   (fn-native-admin-peer-list-octets head (cdr values)))
-         nil)
-       :exec (fn-native-admin-peer-list-octets-loop
-              head (fn-ag-rev-onto values nil) nil)))
-
-(local
- (defthm fn-native-admin-peer-list-octets-loop-of-rev-onto
-   (equal (fn-native-admin-peer-list-octets-loop head (fn-ag-rev-onto values zs) nil)
-          (fn-native-admin-peer-list-octets-loop
-           head zs (fn-native-admin-peer-list-octets head values)))
-   :hints (("Goal" :induct (fn-ag-rev-onto values zs)
-                   :in-theory (union-theories
-                               '(fn-native-admin-peer-list-octets-loop
-                                 fn-native-admin-peer-list-octets fn-ag-rev-onto
-                                 car-cons cdr-cons)
-                               (theory 'minimal-theory))))))
-
-(verify-guards fn-native-admin-peer-list-octets-loop)
-
-(verify-guards fn-native-admin-peer-list-octets
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-native-admin-peer-list-octets
-                                fn-native-admin-peer-list-octets-loop)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here)))
-                  :use ((:instance fn-native-admin-peer-list-octets-loop-of-rev-onto
-                                   (zs nil))))))
+(def-loop fn-native-admin-peer-list-octets (head values)
+  :shape :foldr :over values :elt v
+  :combine (append head (true-list-fix (fn-native-admin-peer-label-octets v)) acc) :init nil
+  :rev fn-ag-rev-onto
+  :guard (true-listp head) :loop-guard (true-listp head))
 
 (defun fn-native-admin-peer-word-octetp (x)
   (declare (xargs :guard t))
