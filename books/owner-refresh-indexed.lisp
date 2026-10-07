@@ -181,7 +181,7 @@
                                    (config (fn-own-config o)) (queue (fn-own-queue o))
                                    (inflight (fn-own-inflight o)) (feeds (fn-own-feeds o))
                                    (node-secret (fn-own-node-secret o))
-                                   (refused (fn-own-refused o))))
+                                   (refused (fn-own-refused o)) (proc (fn-own-proc o))))
            :in-theory (e/d (fn-rix-own-complete-enabled fn-ccar-own-complete-enabled
                             fn-ccar-sn-finish fn-ccar-completion-enabledp-is-reference)
                            (fn-ccar-sn-finish-is-sn-finish

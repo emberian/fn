@@ -24,7 +24,20 @@ The sixteenth argument, by the first rule that applies:
   5. a14 and a15 are the numbered variables `cN-1' `cN' (a theorem over an
      arbitrary owner's fields) -> the next, `cN+1' (name-collision refused);
   6. otherwise the site is REFUSED with a named reason and listed.
-A call with 16 arguments is already converted (the tool is idempotent).  A
+A call with 16 arguments is already converted (the tool is idempotent).
+
+A second pass carries the field through `:instance' hints.  A lemma stated
+over `(fn-own-make .. refused proc)' gained the free variable `proc'; a hint
+`(:instance LEMMA .. (refused (fn-own-refused X)))' that binds every other
+field leaves `proc' free, so the instance no longer describes the owner the
+hint meant (the certify of 2026-10-07 failed exactly there:
+fn-ocmt-own-complete-preserves-ocl-relation,
+fn-rix-own-complete-enabled-is-ccar).  The pass adds `(proc (fn-own-proc X))'
+after the refused binding, or `(proc (fn-oproc-initial))' after `(refused
+nil)' when the node-secret binding is `nil' too, but ONLY when LEMMA is
+defined in the scanned tree (by defthm/defthmd) and its text names `proc' (an
+extra binding ACL2 would refuse).  A lemma it cannot find is REFUSED
+(instance-lemma-not-found), so a macro-generated lemma is listed, not guessed.  A
 list headed `fn-own-make' with any other arity is not a construction (a name
 list in a hint, a reference in a quoted form): it is skipped and listed
 apart.  A file the reader refuses is listed with the reader's reason.
@@ -117,6 +130,88 @@ def transform_text(text, path=None):
     return lr.write(p.text, edits), {"sites": sites, "skipped": skipped}
 
 
+def lemma_texts(files):
+    """{lowercase defthm name: its form's text} over FILES."""
+    import re
+    out = {}
+    head = re.compile(r"\(\s*(?:defthm|defthmd)\s+([^\s()]+)", re.IGNORECASE)
+    for f in files:
+        raw = f.read_bytes().decode("utf-8", "surrogateescape")
+        if "defthm" not in raw.lower():
+            continue
+        try:
+            p = lr.parse(raw)
+        except lr.ReadError:
+            continue
+        for top in p.forms:
+            for node in _forms_with_heads(top, ("defthm", "defthmd")):
+                name = node.items[1]
+                if isinstance(name, lr.Atom):
+                    out[name.low] = p.text[node.start:node.end]
+    return out
+
+
+def _forms_with_heads(node, heads):
+    stack = [node]
+    while stack:
+        n = stack.pop()
+        if isinstance(n, lr.Pre):
+            stack.append(n.node)
+        elif isinstance(n, lr.Lst):
+            if (len(n.items) >= 2 and isinstance(n.items[0], lr.Atom)
+                    and n.items[0].low in heads):
+                yield n
+            stack.extend(n.items)
+
+
+def _binding(node):
+    """(name, value) of a two-item list headed by a symbol, else None."""
+    if (isinstance(node, lr.Lst) and len(node.items) == 2
+            and isinstance(node.items[0], lr.Atom)):
+        return node.items[0].low, node.items[1]
+    return None
+
+
+def transform_instances(text, lemmas, path=None):
+    """(new text, sites) for the :instance pass over TEXT."""
+    p = lr.parse(text)
+    edits, sites = [], []
+    for top in p.forms:
+        for node in _forms_with_heads(top, (":instance",)):
+            binds = [b for b in (_binding(i) for i in node.items[2:]) if b]
+            names = {n for n, _ in binds}
+            if "refused" not in names or FIELD in names:
+                continue
+            line = p.text.count("\n", 0, node.start) + 1
+            site = {"file": path, "line": line, "pass": "instance"}
+            refused_item = next(i for i in node.items[2:]
+                                if _binding(i) and _binding(i)[0] == "refused")
+            value = _binding(refused_item)[1]
+            secret = dict(binds).get("node-secret")
+            x = _call_arg(value, "fn-own-refused")
+            if x is not None:
+                ins = f"({FIELD} ({ACCESSOR} {lr.flat(x)}))"
+            elif (isinstance(value, lr.Atom) and value.low == "nil"
+                  and isinstance(secret, lr.Atom) and secret.low == "nil"):
+                ins = f"({FIELD} {INITIAL})"
+            else:
+                sites.append({**site, "refused": "instance-refused-not-a-carry",
+                              "text": lr.flat(refused_item)[:90]})
+                continue
+            lemma = node.items[1]
+            body = lemmas.get(lemma.low) if isinstance(lemma, lr.Atom) else None
+            if body is None:
+                sites.append({**site, "refused": "instance-lemma-not-found",
+                              "text": lr.flat(lemma)[:90]})
+                continue
+            if FIELD not in body.lower().replace("(", " ").replace(")", " ").split():
+                continue
+            at = refused_item.end
+            edits.append((at, at, " " + ins))
+            sites.append({**site, "rule": "instance-binding"})
+    return lr.write(p.text, edits), sites
+
+
 def lisp_files(paths):
     for r in paths:
         r = Path(r)
@@ -130,12 +225,20 @@ def lisp_files(paths):
 def run(paths, write):
     report = {"converted": 0, "rules": {}, "refused": [], "skipped": [], "unreadable": [],
               "files": 0}
-    for f in lisp_files(paths):
+    files = list(lisp_files(paths))
+    lemmas = None
+    for f in files:
         raw = f.read_bytes().decode("utf-8", "surrogateescape")
-        if "fn-own-make" not in raw.lower():
+        low = raw.lower()
+        if "fn-own-make" not in low and ":instance" not in low:
             continue
         try:
             new, rep = transform_text(raw, str(f))
+            if ":instance" in low and "(refused " in low:
+                if lemmas is None:
+                    lemmas = lemma_texts(files)
+                new, more = transform_instances(new, lemmas, str(f))
+                rep["sites"] += more
         except (lr.ReadError, lr.EditError) as e:
             report["unreadable"].append({"file": str(f), "reason": str(e)[:120]})
             continue

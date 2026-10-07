@@ -783,7 +783,7 @@
                             (inflight nil)
                             (feeds (fn-own-feed-durable o (fn-own-inflight o)))
                             (node-secret (fn-own-node-secret o))
-                            (refused (fn-own-refused o)))
+                            (refused (fn-own-refused o)) (proc (fn-own-proc o)))
                  (:instance fn-own-advance-repins-the-connection
                             (o (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                             (fn-own-next-id o) (fn-own-max-conns o)

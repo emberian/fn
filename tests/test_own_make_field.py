@@ -67,5 +67,42 @@ class Refusals(unittest.TestCase):
         self.assertNotIn("(fn-own-proc", new)
 
 
+class Instances(unittest.TestCase):
+    LEMMAS = {"lem": "(defthm lem (p (fn-own-make a b refused proc)))",
+              "old": "(defthm old (p (fn-own-make a b refused)))"}
+
+    def run_one(self, hint):
+        return omf.transform_instances(hint, self.LEMMAS)
+
+    def test_carry_binding_after_refused(self):
+        new, sites = self.run_one("(:instance lem (x 1) (refused (fn-own-refused (g oc))))")
+        self.assertEqual(new, "(:instance lem (x 1) (refused (fn-own-refused (g oc))) (proc (fn-own-proc (g oc))))")
+        self.assertEqual(sites[0]["rule"], "instance-binding")
+
+    def test_fresh_nil_binding(self):
+        new, _ = self.run_one("(:instance lem (node-secret nil) (refused nil))")
+        self.assertEqual(new, "(:instance lem (node-secret nil) (refused nil) (proc (fn-oproc-initial)))")
+
+    def test_lemma_without_proc_is_left_alone(self):
+        text = "(:instance old (refused (fn-own-refused o)))"
+        new, sites = self.run_one(text)
+        self.assertEqual((new, sites), (text, []))
+
+    def test_already_bound_is_idempotent(self):
+        text = "(:instance lem (refused (fn-own-refused o)) (proc (fn-own-proc o)))"
+        self.assertEqual(self.run_one(text), (text, []))
+
+    def test_unknown_lemma_is_refused(self):
+        text = "(:instance gen (refused (fn-own-refused o)))"
+        new, sites = self.run_one(text)
+        self.assertEqual(new, text)
+        self.assertEqual(sites[0]["refused"], "instance-lemma-not-found")
+
+    def test_other_refused_value_is_refused(self):
+        new, sites = self.run_one("(:instance lem (refused (fn-own-transit-refused o x)))")
+        self.assertEqual(sites[0]["refused"], "instance-refused-not-a-carry")
+        self.assertNotIn("proc", new)
+
+
 if __name__ == "__main__":
     unittest.main()
