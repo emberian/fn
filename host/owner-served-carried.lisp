@@ -171,7 +171,8 @@
                 fn-owner-feed-journal-prefix-size fn-owner-feed-journal-scan
                 fn-owner-feed-lost fn-owner-feed-peers fn-owner-feed-port
                 fn-owner-feed-reconcile-apply fn-owner-feed-reconcile-next
-                fn-owner-feed-reply-chunk fn-owner-feed-restart
+                fn-owner-feed-reply-article fn-owner-feed-reply-chunk
+                fn-owner-feed-reply-sync fn-owner-feed-restart
                 fn-owner-feed-security fn-owner-feed-tick
                 fn-owner-feed-tls-established fn-owner-finish
                 fn-owner-finish-identity fn-owner-finish-submission

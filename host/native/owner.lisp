@@ -6357,6 +6357,32 @@ LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
       (:unavailable (fnn-owner-unavailable-line service cid incoming since now limit class))
       (otherwise (fnn-owner-resource-unavailable-line service cid incoming word class)))))
 
+;;; The peer feed reply's article read (LOCK-R2-FEED-REPLY-PAYLOAD-PREAD),
+;;; the served read's protocol (row A4) for a caller with no connection.  The
+;;; reply chunk commits the consumed framer state, so it cannot be abandoned
+;;; and re-run; ACL2's pure probe (host/owner-host.lisp
+;;; fn-owner-feed-reply-article) reads the article first.  Here it runs with
+;;; the extent realizer in its no-I/O mode: a payload extent not in the cache
+;;; throws the entry it needs and nothing is committed.  The history refresh
+;;; that precedes it (fn-owner-feed-reply-sync, a different item's reads)
+;;; stays outside that mode.  The cold read is issued here, under the owner
+;;; mutex that excludes file retirement (fnn-owner-cold-issue-locked, CID 0
+;;; as fnn-extent-entry-direct's synchronous admission passes), and awaited by
+;;; the caller on its own thread holding no lock (fnn-owner-cold-await, ACL2's
+;;; dependency and line deadlines).
+(defun fnn-owner-feed-reply-probe-locked (service peer-octets octets)
+  "Owner held.  (values :warm ARTICLE): the article (NIL for a reply that
+sends none), read warm, nothing committed; or (values :cold READ): the entry
+needed was not in memory, its read issued for fnn-owner-cold-await."
+  (fnn-core-arena-state 'fn-owner-feed-reply-sync)
+  (let ((got (catch 'fnn-extent-cold
+               (let ((*fnn-extent-no-io* t))
+                 (list :warm (fnn-core-arena-state 'fn-owner-feed-reply-article
+                                                   peer-octets octets))))))
+    (if (eq (car got) :warm)
+        (values :warm (second got))
+      (values :cold (fnn-owner-cold-issue-locked service 0 got)))))
+
 ;;; r71 F7 (lane served-live): an I/O loop never waits for a cold page.
 ;;; fnn-owner-handle-chunk awaits the page on the calling thread
 ;;; (fnn-owner-cold-line), which on a mux loop held every connection the
