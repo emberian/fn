@@ -15833,10 +15833,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgw-unpack-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lzr-nats-text-loop-is-rev-onto"
         },
         {
@@ -15974,10 +15970,6 @@
         {
           "kind": "theorem",
           "name": "fn-wrq-join-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wss-active-rows-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
