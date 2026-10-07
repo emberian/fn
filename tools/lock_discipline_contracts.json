@@ -65,6 +65,11 @@
    "io_ok": true,
    "why_io": "serializes spare preparers; creation, preallocation and the fence run under it by design, never under O (io.lisp:6333-6337)"
   },
+  "SL": {
+   "match": [
+    "(fnn-log-spare-slot-lock)"
+   ]
+  },
   "XDURABLE": {
    "match": [
     "(fnn-log-durable-lock)"
@@ -233,7 +238,7 @@
   }
  },
  "lock_order": {
-  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue).",
+  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); O -> SL and S -> SL (SL, fnn-log-spare-slot-lock, guards only the log's spare slot and its close debt, held for no I/O: the rotation under O and the preparers under S meet there); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue).",
   "O": [
    "G",
    "R",
@@ -257,7 +262,8 @@
    "XOBS",
    "XTRACE",
    "XFJ",
-   "XDURABLE"
+   "XDURABLE",
+   "SL"
   ],
   "XDURABLE": [
    "K"
@@ -324,7 +330,8 @@
    "Q"
   ],
   "S": [
-   "Q"
+   "Q",
+   "SL"
   ],
   "XSYNCER": [
    "Q"

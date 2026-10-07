@@ -7514,7 +7514,7 @@ or the spare of ACL2's next segment is prepared."
   (let* ((log (fnn-store-log store))
          (ks (fnn-log-kernel log)))
     (or (not (fnn-core 'fn-lgc-rotate-needed-p ks))
-        (let ((spare (fnn-log-spare log)))
+        (let ((spare (fnn-log-spare-peek log)))
           (and spare (eql (first spare)
                           (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))))))
 
