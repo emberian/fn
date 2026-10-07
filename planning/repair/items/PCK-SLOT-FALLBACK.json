@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint-host.lisp",
+ "id": "PCK-SLOT-FALLBACK",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pck-host",
+ "state": "open",
+ "title": "A media fault in the newer root slot falls back to the older slot whose S the compaction floor kept: state and prove recovery from the older slot alone (fn-pck-crash-after-compaction covers a torn commit only).",
+ "updated": "2026-10-07T12:00:00Z"
+}

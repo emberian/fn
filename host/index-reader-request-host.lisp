@@ -2,6 +2,10 @@
 ; No owner-host include here: owner-host owns the serialized producer caller.
 (in-package "ACL2")
 (logic)
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/index-reader-request")
 (include-book "../books/index-reader-step")
 (include-book "../books/index-reader-actor")

@@ -40,7 +40,7 @@
                                                :exec fn-octets$c-append-word :protect t))
            :congruent-to fn-octets)))
 
-(def-buffer dbt-buf)
+(def-buffer dbt-buf :view t)
 
 (defun dbt-run ()
   (with-local-stobj dbt-buf

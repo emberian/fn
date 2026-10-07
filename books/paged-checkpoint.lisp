@@ -142,10 +142,22 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (atom recs) nil (cons (fn-pck-enc-row (car recs)) (fn-pck-rows (cdr recs)))))
 
+(defun fn-pck-root-tree-of-capture (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c)))
+
 (defun fn-pck-root-tree (configs recs)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((c (fn-sco-capture configs recs)))
-    (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c))))
+  (fn-pck-root-tree-of-capture (fn-sco-capture configs recs)))
+
+(defthm fn-pck-root-tree-of-extend
+  ; The host's root, taken from the live fold state (the capture extended by
+  ; the delta), is the model's root over the whole history.
+  (implies (and (true-listp delta) (equal c (fn-sco-capture configs prefix)))
+           (equal (fn-pck-root-tree-of-capture (fn-sco-extend c configs delta))
+                  (fn-pck-root-tree configs (append prefix delta))))
+  :hints (("Goal" :in-theory (disable fn-sco-extend fn-sco-capture)
+           :use fn-sco-extend-of-capture)))
 
 (defun fn-pck-sccb-listp (recs)
   (declare (xargs :guard t))
@@ -169,15 +181,22 @@
       (append ps (fn-pck-zero-pages (- *fn-pck-root-pages* (len ps))))
     (adt-tp-take *fn-pck-root-pages* ps)))
 
+(defun fn-pck-root-pages-of-tree (tree)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-pck-fit (fn-pck-row-pages-of (list (fn-pck-enc-row tree)))))
+
 (defun fn-pck-root-pages-of (configs recs)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-pck-fit (fn-pck-row-pages-of (list (fn-pck-enc-row (fn-pck-root-tree configs recs))))))
+  (fn-pck-root-pages-of-tree (fn-pck-root-tree configs recs)))
+
+(defun fn-pck-root-fitsp-tree (tree)
+  (declare (xargs :guard t :verify-guards nil))
+  (<= (len (fn-pck-row-pages-of (list (fn-pck-enc-row tree)))) *fn-pck-root-pages*))
 
 (defun fn-pck-root-fitsp (configs recs)
   ; The host's refusal: a root of more than K pages is not checkpointed.
   (declare (xargs :guard t :verify-guards nil))
-  (<= (len (fn-pck-row-pages-of (list (fn-pck-enc-row (fn-pck-root-tree configs recs)))))
-      *fn-pck-root-pages*))
+  (fn-pck-root-fitsp-tree (fn-pck-root-tree configs recs)))
 
 (defun fn-pck-pages (configs prefix)
   (declare (xargs :guard t :verify-guards nil))
@@ -189,6 +208,27 @@
   (append (adt-tp-number 0 (fn-pck-root-pages-of configs (append prefix delta)))
           (pck-shift *fn-pck-root-pages*
                      (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows delta)))))
+
+(defun fn-pck-dirty-at (cnt tail root-pages delta)
+  ; fn-pck-dirty from the tape's summary (CNT words, TAIL its last partial
+  ; page) and the root pages; no prefix list.
+  (declare (xargs :guard t :verify-guards nil))
+  (append (adt-tp-number 0 root-pages)
+          (pck-shift *fn-pck-root-pages*
+                     (fn-pck-row-extend-dirty-at cnt tail (fn-pck-rows delta)))))
+
+(defthm fn-pck-dirty-at-is-fn-pck-dirty
+  (let ((w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix))))
+    (implies (and (equal cnt (len w))
+                  (equal tail (nthcdr (* *pgs-page-words* (floor (len w) *pgs-page-words*)) w))
+                  (equal root-pages (fn-pck-root-pages-of configs (append prefix delta))))
+             (equal (fn-pck-dirty-at cnt tail root-pages delta)
+                    (fn-pck-dirty configs prefix delta))))
+  :hints (("Goal" :in-theory (e/d (fn-pck-dirty-at fn-pck-dirty)
+                                  (fn-pck-row-extend-dirty-at fn-pck-row-extend-dirty
+                                   fn-pck-root-pages-of))
+           :use ((:instance fn-pck-row-extend-dirty-at-is-extend-dirty
+                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows delta)))))))
 
 (defun fn-pck-delta-page-bound (delta)
   ; The pages the delta's own words take, and the one page it shares with the tape before it.
@@ -583,9 +623,13 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (and v (consp log))
       (let ((c (fn-pck-capture-of-pages (cadr v))))
-        (fn-ock-recover-extended
-         (fn-sco-extend c configs (nthcdr (- (len (fn-sco-records c)) (nfix (car log))) (cdr log)))
-         configs frontier max-conns))
+        ; A log that starts past the checkpoint's S has lost records the replay
+        ; needs: refuse, never replay a wrong suffix.
+        (if (fn-pck-log-retains log (len (fn-sco-records c)))
+            (fn-ock-recover-extended
+             (fn-sco-extend c configs (nthcdr (- (len (fn-sco-records c)) (nfix (car log))) (cdr log)))
+             configs frontier max-conns)
+          :fault))
     :fault))
 
 (defun fn-pck-recover (image r mode log configs frontier max-conns)

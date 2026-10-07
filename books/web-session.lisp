@@ -444,49 +444,16 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-wss-split-loop (a b start sep fn-web-in acc)
-  (declare (xargs :stobjs fn-web-in :measure (nfix (- b a)) :guard (and (and (natp a) (natp b) (natp start) (<= b (fn-octets-len fn-web-in))) (true-listp acc)) :verify-guards nil))
-  (cond ((or (not (natp a)) (not (natp b)) (<= b a))
-         (revappend acc (list (cons (nfix start) (nfix b)))))
-        ((equal (fn-octets-get a fn-web-in) sep)
-         (fn-wss-split-loop (1+ a)
-                            b
-                            (1+ a)
-                            sep
-                            fn-web-in
-                            (cons (cons (nfix start) a) acc)))
-        (t (fn-wss-split-loop (1+ a) b start sep fn-web-in acc))))
-
-(defun fn-wss-split (a b start sep fn-web-in)
-  (declare (xargs :verify-guards nil :stobjs fn-web-in
-                  :guard (and (natp a) (natp b) (natp start) (<= b (fn-octets-len fn-web-in)))
-                  :measure (nfix (- b a))))
-  (mbe :logic
-       (cond ((or (not (natp a)) (not (natp b)) (<= b a)) (list (cons (nfix start) (nfix b))))
-             ((equal (fn-octets-get a fn-web-in) sep)
-              (cons (cons (nfix start) a) (fn-wss-split (1+ a) b (1+ a) sep fn-web-in)))
-             (t (fn-wss-split (1+ a) b start sep fn-web-in)))
-       :exec (fn-wss-split-loop a b start sep fn-web-in nil)))
-
-(local
- (defthm fn-wss-split-loop-is-revappend
-   (equal (fn-wss-split-loop a b start sep fn-web-in acc)
-          (revappend acc (fn-wss-split a b start sep fn-web-in)))
-   :hints (("Goal" :induct (fn-wss-split-loop a b start sep fn-web-in acc)
-                   :in-theory (union-theories '(fn-wss-split-loop fn-wss-split revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-wss-split-loop)
-
-(verify-guards fn-wss-split
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-wss-split)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-wss-split-loop-is-revappend (acc nil))))))
-
+(def-loop fn-wss-split (a b start sep fn-web-in)
+  :shape :step :over (a start)
+  :done (or (not (natp a)) (not (natp b)) (<= b a))
+  :emit (equal (fn-octets-get a fn-web-in) sep)
+  :body (cons (nfix start) a)
+  :next ((1+ a) (1+ a))
+  :skip-next ((1+ a) start)
+  :tail (list (cons (nfix start) (nfix b)))
+  :measure (nfix (- b a))
+  :guard (and (natp a) (natp b) (natp start) (<= b (fn-octets-len fn-web-in))) :stobjs fn-web-in)
 
 (defun fn-wss-spanp (x n)
   (declare (xargs :guard t))

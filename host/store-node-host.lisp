@@ -5,6 +5,10 @@
 ; correspondence and growing-history execution cost explicit when changing
 ; these entries. Do not add whole-store recognition per served operation.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/attach_order_check.py).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/store-observed")
 (include-book "../books/history-columns-relation")
 (include-book "../books/open-frontier")

@@ -19,7 +19,7 @@
 (local (in-theory (disable (tau-system))))
 
 (defconst *hrt-core* 192152584)              ; lane image-floor's fn-host.core
-(defconst *hrt-nursery* (* 64 1024 1024))    ; +fnn-gc-nursery-octets+
+(defconst *hrt-nursery* (* 64 1024 1024))    ; the pre-MEM-007 +fnn-gc-nursery-octets+, passed as the explicit argument
 (defconst *hrt-datasize* (* 1536 *fn-heap-mib*)) ; OpenBSD's default login class
 
 (defun hrt-conclusion (profile core nursery observations connections)

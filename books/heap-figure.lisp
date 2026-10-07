@@ -20,7 +20,7 @@
 ;   CORE     the saved core's length: the image's own dynamic content is at
 ;            most that (the 69046a76 image: 389,141,032 octets).
 ;   NURSERY  the host's collection trigger (host/native/io.lisp
-;            +fnn-gc-nursery-octets+, 64 MiB): what is consed between two
+;            +fnn-gc-nursery-octets+, 8 MiB): what is consed between two
 ;            collections, garbage included.
 ;   L        the list octets: 16 x (2H + R + 3 x HDR), HDR the profile's
 ;            max-header-octets (field 17; the header in flight, below).  Sixteen bytes per octet, one

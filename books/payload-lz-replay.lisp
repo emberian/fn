@@ -8,6 +8,7 @@
 ; are books/payload-lz-record.lisp.
 
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "payload-lz-record")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -76,58 +77,18 @@
 
 ; Executes by a loop (lane depth-debt, PRF-919): the recursion took one
 ; control-stack frame per element of data with no fixed cap.  The :logic is
-; the recursion, unchanged; the :exec is the loop, equal by the lemma below.
-(defun fn-lzr-intern-events-loop (ws zs ps dicts keyring generation acc fn-arena)
-  (declare (xargs :stobjs fn-arena
-                  :guard (and (fn-lzr-dictsp dicts) (fn-prin-keyringp keyring) (natp generation))
-                  :guard-hints (("Goal" :in-theory (disable fn-lzr-intern-event)))))
-  (if (atom ws)
-      (mv (fn-ag-rev-onto acc nil) fn-arena)
-    (let* ((z (and (consp zs) (car zs)))
-           (p (and (consp ps) (consp (car ps)) (car ps)))
-           (file (nfix (and (consp p) (car p))))
-           (position (and (consp p) (cdr p))))
-      (mv-let (row fn-arena)
-        (fn-lzr-intern-event (car ws) z position file dicts keyring generation fn-arena)
-        (if (eq row :bad)
-            (mv :bad fn-arena)
-          (fn-lzr-intern-events-loop (cdr ws) (and (consp zs) (cdr zs)) (and (consp ps) (cdr ps))
-                                     dicts keyring generation (cons row acc) fn-arena))))))
-
-(defun fn-lzr-intern-events (ws zs ps dicts keyring generation fn-arena)
-  (declare (xargs :stobjs fn-arena
-                  :guard (and (fn-lzr-dictsp dicts) (fn-prin-keyringp keyring) (natp generation))
-                  :verify-guards nil))
-  (mbe :logic
-  (if (atom ws)
-      (mv nil fn-arena)
-    (let* ((z (and (consp zs) (car zs)))
-           (p (and (consp ps) (consp (car ps)) (car ps)))
-           (file (nfix (and (consp p) (car p))))
-           (position (and (consp p) (cdr p))))
-      (mv-let (row fn-arena)
-        (fn-lzr-intern-event (car ws) z position file dicts keyring generation fn-arena)
-        (if (eq row :bad)
-            (mv :bad fn-arena)
-          (mv-let (rest fn-arena)
-            (fn-lzr-intern-events (cdr ws) (and (consp zs) (cdr zs)) (and (consp ps) (cdr ps))
-                                  dicts keyring generation fn-arena)
-            (if (eq rest :bad)
-                (mv :bad fn-arena)
-              (mv (cons row rest) fn-arena)))))))
-  :exec (fn-lzr-intern-events-loop ws zs ps dicts keyring generation nil fn-arena)))
-
-(defthm fn-lzr-intern-events-loop-is-rev-onto
-  (equal (fn-lzr-intern-events-loop ws zs ps dicts keyring generation acc fn-arena)
-         (mv-let (r a) (fn-lzr-intern-events ws zs ps dicts keyring generation fn-arena)
-           (mv (if (eq r :bad) :bad (fn-ag-rev-onto acc r)) a)))
-  :hints (("Goal" :induct (fn-lzr-intern-events-loop ws zs ps dicts keyring generation acc
-                                                     fn-arena)
-                  :do-not '(generalize fertilize eliminate-destructors)
-                  :in-theory (disable fn-lzr-intern-event nfix))))
-
-(verify-guards fn-lzr-intern-events
-  :hints (("Goal" :in-theory (disable fn-lzr-intern-event))))
+; the recursion, the :exec the loop (def-loop :fold; the state is the three
+; lists advanced together).
+(def-loop fn-lzr-intern-events (ws zs ps dicts keyring generation fn-arena)
+  :shape :fold :over (ws zs ps) :st fn-arena :done (atom ws) :elt w
+  :let ((z (and (consp zs) (car zs)))
+        (p (and (consp ps) (consp (car ps)) (car ps)))
+        (file (nfix (and (consp p) (car p))))
+        (position (and (consp p) (cdr p))))
+  :row (fn-lzr-intern-event w z position file dicts keyring generation fn-arena)
+  :next ((cdr ws) (and (consp zs) (cdr zs)) (and (consp ps) (cdr ps)))
+  :guard (and (fn-lzr-dictsp dicts) (fn-prin-keyringp keyring) (natp generation))
+  :guard-hints (("Goal" :in-theory (disable fn-lzr-intern-event))))
 
 (defthm fn-lzr-intern-events-true-listp
   (or (true-listp (mv-nth 0 (fn-lzr-intern-events ws zs ps dicts keyring generation fn-arena)))

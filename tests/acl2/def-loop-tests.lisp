@@ -23,6 +23,7 @@
 (include-book "../../books/def-loop")
 (include-book "../../books/octets-stobj")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 ; -----------------------------------------------------------------------------
 ; 1. :map, plain, with an extra formal (the `fn-cl-ring-keys' shape).
@@ -430,6 +431,37 @@
    :stobjs dlt-context :body (dlt-hidden-update dlt-context))
  :unchecked "refused at expansion: :stobjs is read-only, including macro-expanded updaters")
 
+; :step :stobjs: read-only context in the base test, the emit test and the body.
+(def-loop dlt-step-context (xs dlt-context)
+  :shape :step :done (atom xs) :emit (not (equal (car xs) (dlt-value dlt-context)))
+  :body (cons (car xs) (dlt-value dlt-context)) :next (cdr xs) :skip-next (cdr xs)
+  :stobjs dlt-context :guard (true-listp xs))
+(defun dlt-step-context-run (xs)
+  (declare (xargs :guard (true-listp xs)))
+  (with-local-stobj dlt-context
+    (mv-let (out dlt-context)
+      (mv (list (dlt-step-context xs dlt-context)
+                (dlt-step-context-loop xs dlt-context '(z))) dlt-context)
+      out)))
+; positive: 7 is the stored value, so the 7s are skipped and the rest carry it
+(assert-event (equal (dlt-step-context-run '(a 7 b))
+                     '(((a . 7) (b . 7)) (z (a . 7) (b . 7)))))
+; negative: a :step :stobjs naming a non-stobj formal, and an updater hidden in
+; the emit test, are both refused at expansion
+(must-fail-checked
+ (def-loop dlt-step-ordinary (xs ordinary)
+   :shape :step :done (atom xs) :body (car xs) :next (cdr xs) :stobjs ordinary)
+ :unchecked "refused at expansion: :stobjs must name distinct stobj formals")
+(must-fail-checked
+ (def-loop dlt-step-updater (xs dlt-context)
+   :shape :step :done (atom xs) :emit (dlt-hidden-update dlt-context)
+   :body (car xs) :next (cdr xs) :stobjs dlt-context)
+ :unchecked "refused at expansion: :stobjs is read-only, including macro-expanded updaters")
+(must-fail-checked
+ (def-loop dlt-fold-with-stobjs (xs dlt-context)
+   :shape :sum :body 1 :stobjs dlt-context)
+ :unchecked "refused at expansion: :stobjs is a read-only :map or :step option")
+
 ; :map :base: base-first stopping, with a nonempty tail and extra context.
 (def-loop dlt-map-base (xs tail)
   :shape :map :base (or (atom xs) (equal (car xs) :end))
@@ -533,3 +565,294 @@
  (def-loop dlt-nil-base-on-into (xs fn-octets) :shape :into :body (car xs)
    :base nil :into fn-octets :write fn-octets-append-octet :map dlt-octets)
  :unchecked "refused at expansion: :base is a :map or :take option, even for NIL")
+
+; -----------------------------------------------------------------------------
+; 11. :step --- an advance other than (cdr XS).  One library theorem
+; (`fn-dl-step-loop-is-revappend'); an instance owes the two progress facts
+; its own termination proof owes.
+
+(defun dlt-byte (b) (declare (xargs :guard t)) (if (equal b 9) 32 b))
+
+; cddr
+(def-loop dlt-evens (xs) :shape :step :done (atom xs) :elt e :body e :next (cddr xs)
+  :guard (true-listp xs))
+(assert-event (equal (dlt-evens '(1 2 3 4 5)) '(1 3 5)))
+(assert-event (equal (dlt-evens '(1 2 3 4)) '(1 3)))
+(assert-event (equal (dlt-evens nil) nil))
+(assert-event (equal (dlt-evens-loop '(1 2 3) '(z)) (revappend '(z) (dlt-evens '(1 2 3)))))
+
+; a skip with its own advance (the `fn-nov-scrub' shape)
+(def-loop dlt-scrub (bytes)
+  :shape :step :done (atom bytes)
+  :skip (and (equal (car bytes) 13) (consp (cdr bytes)) (equal (cadr bytes) 10))
+  :body (dlt-byte (car bytes)) :next (cdr bytes) :skip-next (cddr bytes)
+  :guard (true-listp bytes))
+(assert-event (equal (dlt-scrub '(1 13 10 9 13 2)) '(1 32 13 2)))
+(assert-event (equal (dlt-scrub '(13 10)) nil))
+(assert-event (equal (dlt-scrub-loop '(1 13 10 9) nil) (dlt-scrub '(1 13 10 9))))
+
+; index up, the measure supplied (the `fn-lgs-range' shape)
+(def-loop dlt-range (from to)
+  :shape :step :over from :done (not (and (natp from) (natp to) (<= from to)))
+  :body from :next (1+ from) :measure (nfix (- (+ 1 (nfix to)) (nfix from)))
+  :guard (and (natp from) (natp to)))
+(assert-event (equal (dlt-range 2 5) '(2 3 4 5)))
+(assert-event (equal (dlt-range 5 2) nil))
+
+; two formals advance together, a :let shared by test and element
+(def-loop dlt-head-n (xs n)
+  :shape :step :over (xs n) :done (or (atom xs) (zp n)) :elt e :body e
+  :next ((cdr xs) (- n 1)) :measure (nfix n)
+  :guard (and (true-listp xs) (natp n)))
+(assert-event (equal (dlt-head-n '(a b c) 2) '(a b)))
+(assert-event (equal (dlt-head-n-loop '(a b c) 2 nil) '(a b)))
+
+(assert-event (equal (cdr (assoc-eq 'dlt-scrub (table-alist 'fn-generated (w state))))
+                     '(:def-loop :shape :step :loop dlt-scrub-loop :bridge dlt-scrub-loop-is-revappend)))
+(assert-event (not (member-equal '(:rewrite fn-dl-step-loop-is-revappend) (current-theory-fn :here (w state)))))
+(assert-event (not (member-equal '(:definition dlt-scrub-loop) (current-theory-fn :here (w state)))))
+
+(local (defthm dlt-sc-natp (natp (acl2-count bytes)) :rule-classes nil))
+(local (defthm dlt-sc-emit
+         (implies (and (not (atom bytes))
+                       (not (not (and (equal (car bytes) 13) (consp (cdr bytes))
+                                      (equal (cadr bytes) 10)))))
+                  (< (acl2-count (cdr bytes)) (acl2-count bytes)))
+         :rule-classes nil))
+(local (defthm dlt-sc-skip
+         (implies (and (not (atom bytes))
+                       (not (not (not (and (equal (car bytes) 13) (consp (cdr bytes))
+                                           (equal (cadr bytes) 10))))))
+                  (< (acl2-count (cddr bytes)) (acl2-count bytes)))
+         :rule-classes nil))
+
+; The library theorem at an instance, as the book states it (the generated
+; bridge is local): the loop is the recursion with the accumulator reversed
+; on, for every input.
+(defthm dlt-scrub-loop-is-revappend
+  (equal (dlt-scrub-loop bytes acc) (revappend acc (dlt-scrub bytes)))
+  :hints (("Goal"
+           :use ((:instance
+                  (:functional-instance
+                   fn-dl-step-loop-is-revappend
+                   (fn-dl-sp-done (lambda (bytes) (atom bytes)))
+                   (fn-dl-sp-emit (lambda (bytes)
+                                    (not (and (equal (car bytes) 13) (consp (cdr bytes))
+                                              (equal (cadr bytes) 10)))))
+                   (fn-dl-sp-f (lambda (bytes) (dlt-byte (car bytes))))
+                   (fn-dl-sp-tail (lambda (bytes) nil))
+                   (fn-dl-sp-ne (lambda (bytes) (cdr bytes)))
+                   (fn-dl-sp-ns (lambda (bytes) (cddr bytes)))
+                   (fn-dl-sp-m (lambda (bytes) (acl2-count bytes)))
+                   (fn-dl-step (lambda (bytes) (dlt-scrub bytes)))
+                   (fn-dl-step-loop (lambda (bytes acc) (dlt-scrub-loop bytes acc))))
+                  (dl-s bytes) (dl-acc acc)))
+           :expand ((dlt-scrub-loop dl-s dl-acc) (dlt-scrub dl-s))
+           :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory)))
+          (if stable-under-simplificationp
+              '(:computed-hint-replacement nil
+                :use ((:instance dlt-sc-emit (bytes dl-ps)) (:instance dlt-sc-skip (bytes dl-ps))
+                      (:instance dlt-sc-natp (bytes dl-ps))))
+            nil)))
+
+; Teeth: the positive witness is inside the loop guard and satisfies the
+; equation (the claim has no hypothesis: REVAPPEND ignores a final cdr, so
+; the loop's guard on the accumulator is not needed for the equation); an
+; accumulator order that appends instead of reversing falsifies the
+; conclusion.
+(defteeth dlt-scrub-loop-is-revappend
+  :claim (() (equal (dlt-scrub-loop bytes acc) (revappend acc (dlt-scrub bytes))))
+  :subject dlt-scrub
+  :witness ((bytes '(1 13 10 9 2)) (acc '(z y)))
+  :breaks ()
+  :mutations ((order
+               (:conclusion (equal (dlt-scrub-loop bytes acc) (append acc (dlt-scrub bytes))))
+               ((bytes '(1 2)) (acc '(z y)))
+               :fault "the accumulator appended in its own order instead of reversed onto the result")))
+
+; Mutations of the instance: a loop that conses the wrong element, and a loop
+; that advances by one where the recursion skips two, each have no bridge.
+(defun dlt-scrub-bad-loop (bytes acc)
+  (declare (xargs :guard (true-listp acc) :measure (acl2-count bytes)))
+  (if (atom bytes) (revappend acc nil)
+    (dlt-scrub-bad-loop (cdr bytes) (cons (car bytes) acc))))
+
+; @mutation-witness
+(must-fail-checked
+ (defthm dlt-scrub-bad-loop-is-revappend
+   (equal (dlt-scrub-bad-loop bytes acc) (revappend acc (dlt-scrub bytes)))
+   :hints (("Goal" :in-theory (enable dlt-scrub dlt-scrub-bad-loop)
+            :induct (dlt-scrub-bad-loop bytes acc))))
+ :step-limit 20000)
+(assert-event (not (equal (dlt-scrub-bad-loop '(9) nil) (dlt-scrub '(9)))))
+
+; A :next that does not shrink the measure is refused by the instance's own
+; termination proof.
+; @mutation-witness
+(must-fail-checked
+ (def-loop dlt-step-stuck (xs) :shape :step :done (atom xs) :elt e :body e :next xs)
+ :unchecked "the progress obligation of :step fails: :next leaves the measure where it was")
+
+; Refusals at expansion.
+(must-fail-checked
+ (def-loop dlt-step-no-done (xs) :shape :step :elt e :body e :next (cdr xs))
+ :unchecked "refused at expansion: :step needs :done and :next")
+(must-fail-checked
+ (def-loop dlt-step-emit-and-skip (xs) :shape :step :done (atom xs) :emit (car xs)
+   :skip (cdr xs) :body 1 :next (cdr xs))
+ :unchecked "refused at expansion: :emit and :skip together")
+(must-fail-checked
+ (def-loop dlt-step-short-next (xs n) :shape :step :over (xs n) :done (atom xs) :body 1
+   :next ((cdr xs)))
+ :unchecked "refused at expansion: one :next term per :over formal")
+(must-fail-checked
+ (def-loop dlt-map-with-done (xs) :shape :map :done (atom xs) :body (car xs))
+ :unchecked "refused at expansion: :done is a :step or :fold option")
+
+; -----------------------------------------------------------------------------
+; 12. :fold --- a stobj threaded through each element, rows collected, a
+; failure value that stops the loop.  One library theorem
+; (`fn-dl-fold-loop-is-revappend').
+
+(defstobj dlt-ctr (dlt-n :type integer :initially 0))
+
+(defun dlt-row (w k dlt-ctr)
+  (declare (xargs :stobjs dlt-ctr :guard (and (natp k) (dlt-ctrp dlt-ctr))))
+  (let ((dlt-ctr (update-dlt-n (+ (nfix k) (dlt-n dlt-ctr)) dlt-ctr)))
+    (if (equal w 0) (mv :bad dlt-ctr) (mv (fix w) dlt-ctr))))
+
+(def-loop dlt-rows (ws k dlt-ctr)
+  :shape :fold :over ws :st dlt-ctr :done (atom ws) :elt w
+  :row (dlt-row w k dlt-ctr) :next (cdr ws)
+  :guard (and (natp k) (dlt-ctrp dlt-ctr)))
+
+; the stobj ends at the sum of the steps taken (a failure stops its count)
+(defun dlt-all (ws k dlt-ctr)
+  (declare (xargs :stobjs dlt-ctr :guard (and (natp k) (dlt-ctrp dlt-ctr))))
+  (mv-let (rows dlt-ctr) (dlt-rows ws k dlt-ctr)
+    (mv rows (dlt-n dlt-ctr) dlt-ctr)))
+
+(defun dlt-run (ws k)
+  (declare (xargs :guard (and (true-listp ws) (natp k))))
+  (with-local-stobj dlt-ctr
+    (mv-let (rows n dlt-ctr)
+      (dlt-all ws k dlt-ctr)
+      (mv rows n))))
+
+(assert-event (mv-let (r n) (dlt-run '(1 2 3) 5) (and (equal r '(1 2 3)) (equal n 15))))
+(assert-event (mv-let (r n) (dlt-run nil 5) (and (equal r nil) (equal n 0))))
+(assert-event (mv-let (r n) (dlt-run '(1 0 3) 5) (and (equal r :bad) (equal n 10))))
+(defun dlt-all-loop (ws k acc dlt-ctr)
+  (declare (xargs :stobjs dlt-ctr :guard (and (natp k) (dlt-ctrp dlt-ctr) (true-listp acc))))
+  (mv-let (rows dlt-ctr) (dlt-rows-loop ws k dlt-ctr acc)
+    (mv rows (dlt-n dlt-ctr) dlt-ctr)))
+(defun dlt-run-loop (ws k acc)
+  (declare (xargs :guard (and (true-listp ws) (natp k) (true-listp acc))))
+  (with-local-stobj dlt-ctr
+    (mv-let (rows n dlt-ctr) (dlt-all-loop ws k acc dlt-ctr) (mv rows n))))
+(assert-event (mv-let (r n) (dlt-run-loop '(4 5) 1 '(z)) (and (equal r '(z 4 5)) (equal n 2))))
+
+(assert-event (equal (cdr (assoc-eq 'dlt-rows (table-alist 'fn-generated (w state))))
+                     '(:def-loop :shape :fold :loop dlt-rows-loop :bridge dlt-rows-loop-is-revappend)))
+(assert-event (not (member-equal '(:rewrite fn-dl-fold-loop-is-revappend) (current-theory-fn :here (w state)))))
+
+; Teeth.  A loop that leaves the rows reversed has no bridge to the recursion.
+(defun dlt-rows-bad-loop (ws k dlt-ctr acc)
+  (declare (xargs :stobjs dlt-ctr :guard (and (natp k) (dlt-ctrp dlt-ctr) (true-listp acc))
+                  :measure (acl2-count ws)))
+  (if (atom ws)
+      (mv acc dlt-ctr)
+    (mv-let (dl-row dlt-ctr) (dlt-row (car ws) k dlt-ctr)
+      (if (eq dl-row :bad)
+          (mv :bad dlt-ctr)
+        (dlt-rows-bad-loop (cdr ws) k dlt-ctr (cons dl-row acc))))))
+
+; @mutation-witness
+(must-fail-checked
+ (defthm dlt-rows-bad-loop-is-revappend
+   (equal (dlt-rows-bad-loop ws k dlt-ctr acc)
+          (mv-let (r a) (dlt-rows ws k dlt-ctr)
+            (mv (if (eq r :bad) :bad (revappend acc r)) a)))
+   :hints (("Goal" :induct (dlt-rows-bad-loop ws k dlt-ctr acc)
+            :in-theory (enable dlt-rows dlt-rows-bad-loop))))
+ :step-limit 20000)
+(defun dlt-all-bad (ws k dlt-ctr)
+  (declare (xargs :stobjs dlt-ctr :guard (and (natp k) (dlt-ctrp dlt-ctr))))
+  (mv-let (rows dlt-ctr) (dlt-rows-bad-loop ws k dlt-ctr nil)
+    (mv rows (dlt-n dlt-ctr) dlt-ctr)))
+(defun dlt-run-bad (ws k)
+  (declare (xargs :guard (and (true-listp ws) (natp k))))
+  (with-local-stobj dlt-ctr
+    (mv-let (rows n dlt-ctr) (dlt-all-bad ws k dlt-ctr) (mv rows n))))
+(assert-event (mv-let (r n) (dlt-run-bad '(4 5) 1) (and (equal r '(5 4)) (equal n 2))))
+
+; Refusals at expansion.
+(must-fail-checked
+ (def-loop dlt-fold-no-st (ws k dlt-ctr) :shape :fold :done (atom ws)
+   :row (dlt-row (car ws) k dlt-ctr) :next (cdr ws))
+ :unchecked "refused at expansion: :fold needs :st, :row, :done and :next")
+(must-fail-checked
+ (def-loop dlt-fold-st-is-over (ws k dlt-ctr) :shape :fold :over (ws dlt-ctr) :st dlt-ctr
+   :done (atom ws) :row (dlt-row (car ws) k dlt-ctr) :next ((cdr ws) dlt-ctr))
+ :unchecked "refused at expansion: :st must not be one of the :over formals")
+(must-fail-checked
+ (def-loop dlt-fold-with-body (ws k dlt-ctr) :shape :fold :st dlt-ctr :done (atom ws)
+   :row (dlt-row (car ws) k dlt-ctr) :body (car ws) :next (cdr ws))
+ :unchecked "refused at expansion: :fold takes :row, not :body")
+(must-fail-checked
+ (def-loop dlt-map-with-row (xs) :shape :map :body (car xs) :row (car xs))
+ :unchecked "refused at expansion: :row is a :fold option")
+
+; -----------------------------------------------------------------------------
+; 13. :foldr --- a right fold with a non-list accumulator, executed as a left
+; fold over the reversal.  One library theorem (`fn-dl-foldr-loop-is-foldr`).
+
+(defun dlt-fput (x trie) (declare (xargs :guard t)) (cons (fix x) trie))
+(defun dlt-rev (x y)
+  (declare (xargs :guard t))
+  (if (consp x) (dlt-rev (cdr x) (cons (car x) y)) y))
+
+; the order is observable: the fold of (1 2 3) puts 3 first
+(def-loop dlt-fold-put (xs base)
+  :shape :foldr :over xs :elt e :combine (dlt-fput e acc) :init base
+  :rev dlt-rev)
+
+(assert-event (equal (dlt-fold-put '(1 2 3) '(z)) '(1 2 3 z)))
+(assert-event (equal (dlt-fold-put nil '(z)) '(z)))
+(assert-event (equal (dlt-fold-put '(1 2 . 3) nil) '(1 2)))
+(assert-event (equal (dlt-fold-put-loop '(3 2 1) '(z) '(z)) '(1 2 3 z)))
+(assert-event (equal (cdr (assoc-eq 'dlt-fold-put (table-alist 'fn-generated (w state))))
+                     '(:def-loop :shape :foldr :loop dlt-fold-put-loop :bridge dlt-fold-put-loop-is-dlt-fold-put)))
+(assert-event (not (member-equal '(:rewrite fn-dl-foldr-loop-is-foldr) (current-theory-fn :here (w state)))))
+
+; a number accumulator, the default reverse (the guard supplies a true list)
+(def-loop dlt-fold-count (xs)
+  :shape :foldr :over xs :elt e :combine (+ 1 (nfix acc)) :init 0 :guard (true-listp xs))
+(assert-event (equal (dlt-fold-count '(a b c)) 3))
+
+; Mutations: a loop that folds the unreversed list (the accumulator order is
+; wrong) has no bridge, and a combine that is not the loop's step does not
+; either.
+(defun dlt-fold-put-bad-loop (xs base acc)
+  (declare (xargs :guard t) (ignorable xs base))
+  (if (consp xs) (dlt-fold-put-bad-loop (cdr xs) base (dlt-fput (car xs) acc)) acc))
+
+; @mutation-witness
+(must-fail-checked
+ (defthm dlt-fold-put-bad-loop-is-fold
+   (equal (dlt-fold-put-bad-loop xs base base) (dlt-fold-put xs base))
+   :hints (("Goal" :in-theory (enable dlt-fold-put dlt-fold-put-bad-loop)
+            :induct (dlt-fold-put xs base))))
+ :step-limit 20000)
+(assert-event (not (equal (dlt-fold-put-bad-loop '(1 2 3) '(z) '(z)) (dlt-fold-put '(1 2 3) '(z)))))
+
+; Refusals at expansion.
+(must-fail-checked
+ (def-loop dlt-foldr-no-combine (xs) :shape :foldr :elt e :init nil)
+ :unchecked "refused at expansion: :foldr needs :elt and :combine")
+(must-fail-checked
+ (def-loop dlt-foldr-with-body (xs) :shape :foldr :elt e :combine (cons e acc) :init nil :body e)
+ :unchecked "refused at expansion: :foldr takes :combine and :init, not :body")
+(must-fail-checked
+ (def-loop dlt-map-with-combine (xs) :shape :map :body (car xs) :combine (car xs))
+ :unchecked "refused at expansion: :combine is a :foldr option")
