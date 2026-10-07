@@ -523,6 +523,7 @@
    "owner": "service",
    "thunk": "thunk",
    "exempt_leaves": ["write-sequence", "finish-output", "sleep"],
+   "exempt_sites": 43,
    "constructor": "fnn-owner-install",
    "owner_makers": ["%make-fnn-owner-service"],
    "failure_custody": ["fnn-owner-retain-run-authority"],

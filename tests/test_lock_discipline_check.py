@@ -1824,7 +1824,7 @@ class PrivateOwnerCommands(unittest.TestCase):
     ROW = {
         "file": "host/native/fixture.lisp", "lock": "O", "owner": "service", "thunk": "thunk",
         "constructor": "fnn-pv-install", "owner_makers": ["%make-fnn-owner-service"],
-        "exempt_leaves": ["write-sequence", "finish-output", "sleep"],
+        "exempt_leaves": ["write-sequence", "finish-output", "sleep"], "exempt_sites": 2,
         "commands": ["fnn-pv-command"], "dispatch": ["fnn-pv-dispatch"],
         "registrars": ["fnn-pv-register"], "table_writers": ["fnn-pv-register"],
         "table_readers": {"*fnn-pv-verbs*": ["fnn-pv-handler"]}, "why": "fixture",
@@ -1840,7 +1840,18 @@ class PrivateOwnerCommands(unittest.TestCase):
             (root / "host" / "native" / "fixture.lisp").write_text(src)
             an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
             found = [f for f in checker.run({"R2"}) if f.rule == "R2"]
-            return sorted(f.key for f in found), checker.private_io
+            return sorted(f.key for f in found if not f.key.startswith("private-owner-sites")), checker.private_io
+
+    def pin_findings(self, **changes):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["private_owner_commands"] = {"fnn-pv-run": dict(self.ROW, **changes)}
+        src = PRELUDE + self.HOST.replace("@BODY@", "").replace("@EXTRA@", "")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f for f in checker.run({"R2"}) if f.key.startswith("private-owner-sites")]
 
     def refused(self, pattern, **kw):
         with self.assertRaisesRegex(ValueError, pattern):
@@ -1920,6 +1931,46 @@ class PrivateOwnerCommands(unittest.TestCase):
 
     def test_an_undeclared_caller_of_the_runner_is_refused(self):
         self.refused("callers", extra="(defun fnn-pv-command-two (root) (fnn-pv-run root (lambda (s) s)))")
+
+    def test_a_row_without_exempt_leaves_is_refused(self):
+        raw_row = dict(self.ROW)
+        del raw_row["exempt_leaves"]
+        with self.assertRaisesRegex(ValueError, "no exempt_leaves"):
+            self.refused_row(raw_row)
+
+    def refused_row(self, row):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["private_owner_commands"] = {"fnn-pv-run": row}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(
+                PRELUDE + self.HOST.replace("@BODY@", "").replace("@EXTRA@", ""))
+            ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+
+    def test_empty_or_unknown_exempt_leaves_are_refused(self):
+        self.refused("no exempt_leaves", exempt_leaves=[])
+        self.refused("leaf names the leaf table knows", exempt_leaves=["not-a-leaf"])
+        self.refused("leaf names the leaf table knows", exempt_leaves="sleep")
+
+    def test_a_row_without_exempt_sites_is_refused(self):
+        raw_row = dict(self.ROW)
+        del raw_row["exempt_sites"]
+        with self.assertRaisesRegex(ValueError, "no exempt_sites"):
+            self.refused_row(raw_row)
+
+    def test_the_pinned_site_count_matching_is_quiet(self):
+        self.assertEqual(self.pin_findings(), [])
+
+    def test_a_rise_in_exempted_sites_is_a_finding(self):
+        found = self.pin_findings(exempt_sites=1)
+        self.assertEqual(len(found), 1)
+        self.assertIn("review it, then raise", found[0].message)
+
+    def test_a_drop_in_exempted_sites_is_a_finding(self):
+        found = self.pin_findings(exempt_sites=3)
+        self.assertEqual(len(found), 1)
+        self.assertIn("lower exempt_sites", found[0].message)
 
     def test_the_real_row_holds_on_the_real_tree(self):
         an, model, checker = ldc.build(ROOT, ROOT / "tools" / "lock_discipline_contracts.json")

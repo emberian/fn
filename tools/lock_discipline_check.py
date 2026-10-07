@@ -2649,9 +2649,19 @@ def verify_private_owner_commands(model) -> dict:
                 continue                    # a fixture host without the runner's file
             raise ValueError(f"{where}: not a function of the analyzed host")
         for key in ("file", "lock", "owner", "thunk", "constructor", "commands", "dispatch", "registrars",
-                    "table_readers", "why"):
+                    "table_readers", "exempt_leaves", "why"):
             if not row.get(key):
-                raise ValueError(f"{where}: no {key}")
+                raise ValueError(f"{where}: no {key} (exempt_leaves is required: a row without it would "
+                                 "exempt every leaf)")
+        if "exempt_sites" not in row:
+            raise ValueError(f"{where}: no exempt_sites (the ratcheted count of exempted R2 site/leaf pairs)")
+        leaves = row["exempt_leaves"]
+        known = {n for names in model.c.leaves.values() for n in names}
+        if not isinstance(leaves, list) or not all(isinstance(n, str) and n in known for n in leaves):
+            raise ValueError(f"{where}: exempt_leaves must be a list of leaf names the leaf table knows")
+        if not isinstance(row["exempt_sites"], int) or isinstance(row["exempt_sites"], bool) \
+                or row["exempt_sites"] < 0:
+            raise ValueError(f"{where}: exempt_sites must be a non-negative integer")
         if row["lock"] not in model.c.locks:
             raise ValueError(f"{where}: lock {row['lock']} is not a declared lock")
         for name in [row["constructor"]] + list(row["commands"]) + list(row["dispatch"]):
@@ -2762,9 +2772,7 @@ def verify_private_owner_commands(model) -> dict:
         slot = exempt.setdefault(row["lock"], {"functions": set(), "rows": [], "scopes": []})
         slot["functions"] |= {runner} | set(row["commands"])
         slot["rows"].append(runner)
-        leaves = row.get("exempt_leaves")
-        slot["scopes"].append((frozenset({runner} | set(row["commands"])),
-                               None if leaves is None else frozenset(leaves)))
+        slot["scopes"].append((frozenset({runner} | set(row["commands"])), frozenset(row["exempt_leaves"]), runner))
     return exempt
 
 
@@ -3313,6 +3321,7 @@ class Checker:
         self.c = model.c
         self.infos = model.infos
         self.findings: list[Finding] = []
+        self.private_io_rows: dict = {}  # runner -> exempted pairs, held to the row's exempt_sites
         self.private_io: dict = {}      # lock -> R2 (site, leaf) pairs exempted as private-owner I/O
         self.excepted = {(r["rule"], r["function"], r.get("key", "*")): r["why"]
                          for r in self.c.raw.get("exceptions", [])}
@@ -3473,10 +3482,12 @@ class Checker:
                     for lock in sorted(locks):
                         if leaf.split(":", 2)[2] in self.c.locks.get(lock, {}).get("io_leaves_ok", []):
                             continue   # this lock's declared non-blocking leaves
-                        if any(name in fns and (leaves is None or leaf.split(":", 2)[2] in leaves)
-                               for fns, leaves in self.m.private_owner.get(lock, {}).get("scopes", ())):
+                        hit = next((r for fns, leaves, r in self.m.private_owner.get(lock, {}).get("scopes", ())
+                                    if name in fns and leaf.split(":", 2)[2] in leaves), None)
+                        if hit is not None:
                             # a command whose owner the checker proved private (verify_private_owner_commands)
                             self.private_io[lock] = self.private_io.get(lock, 0) + 1
+                            self.private_io_rows[hit] = self.private_io_rows.get(hit, 0) + 1
                             continue
                         k = (lock, leaf)
                         row = found.get(k)
@@ -3484,6 +3495,17 @@ class Checker:
                             found[k] = [kind, info, e, how, 1]
                         else:
                             row[4] += 1
+        for runner, row in sorted(self.c.raw.get("private_owner_commands", {}).items()):
+            if runner not in self.infos or runner not in {r for v in self.m.private_owner.values()
+                                                          for r in v["rows"]}:
+                continue
+            have, want = self.private_io_rows.get(runner, 0), row["exempt_sites"]
+            if have != want:
+                advice = ("lower exempt_sites: a site or leaf no longer needs the exemption" if have < want
+                          else "a new site or leaf is exempted: review it, then raise exempt_sites")
+                self.add("R2", self.infos[runner], self.infos[runner].line,
+                         f"private-owner exemption pinned at {want} site/leaf pair(s), found {have}; {advice}",
+                         f"private-owner-sites:{runner}")
         for (lock, leaf), (kind, info, e, how, n) in sorted(found.items(), key=lambda kv: kv[0]):
             lfn, lline, lname = leaf.split(":", 2)
             if isinstance(how, list):
