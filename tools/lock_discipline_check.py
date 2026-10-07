@@ -2768,6 +2768,165 @@ def verified_escalation_wrappers(tree, contracts) -> dict:
     return out
 
 
+def _flat_nodes(forms):
+    """Every list node under FORMS (the forms themselves included), by identity."""
+    stack = list(forms)
+    while stack:
+        x = stack.pop()
+        if isinstance(x, list):
+            yield x
+            stack.extend(x)
+
+
+def _setq_pairs(forms, var):
+    """Every (setq VAR VALUE) / (setf VAR VALUE) form under FORMS, as (form, VALUE)."""
+    out = []
+    for h in ("setq", "setf"):
+        for f in _call_forms(forms, h):
+            out.extend((f, f[k + 1]) for k in range(1, len(f) - 1, 2)
+                       if isinstance(f[k], Sym) and str(f[k]) == var)
+    return out
+
+
+def verify_close_hook_fences(model) -> dict:
+    """contracts `close_hook_fences': {FUNCTION: {flag, hooks, action, exit_call,
+    exit_const, book, why}}.
+
+    A close hook that signals must leave the service's close NOT joined and the
+    process exit uncertain (exit 3), never a clean close.  The row is accepted
+    only when the source of FUNCTION shows every link:
+      (1) FLAG is bound once, to T, and its only assignment is (setq FLAG nil),
+          made by the serious-condition clause of a handler-case around
+          (funcall HOOK ...) in a dolist over (HOOKS ...);
+      (2) the clean-close block is a (when (and FLAG ...) ...) in the scope of
+          that binding, and every assignment of ACTION outside it is one of:
+          (fnn-core 'fn-ort-report-close-action nil ...) (the held value
+          before any hook runs), (fnn-owner-store-settlement service ACTION)
+          (answers held for a held ACTION, books text below), or
+          (fnn-owner-log-settlement) under (unless ACTION ...);
+      (3) the not-joined arm of (if (eq ACTION :joined) THEN ELSE) returns
+          from FUNCTION with (fnn-core 'EXIT_CALL ... EXIT_CONST ACTION);
+      (4) the ACL2 facts the chain leans on are in BOOK as text: EXIT_CALL's
+          not-joined theorem, fn-ort-report-close-action's :held arm, and
+          fn-ort-store-close-action's held first clause.
+    """
+    tree, rows = model.tree, model.c.raw.get("close_hook_fences", {})
+    fences_ok = {}
+    for fname, row in rows.items():
+        where = f"close_hook_fences {fname}"
+        if fname not in tree.defs:
+            continue    # a row for a function this tree does not define exempts nothing
+        for key in ("flag", "hooks", "action", "exit_call", "exit_const", "book", "why"):
+            if not row.get(key):
+                raise ValueError(f"{where}: no {key}")
+        d = tree.defs[fname]
+        flag, hooks, action = row["flag"], row["hooks"], row["action"]
+        body = d.body
+        # (1)
+        lets = [f for h in ("let", "let*") for f in _call_forms(body, h)
+                if any(isinstance(b, list) and len(b) == 2 and str(b[0]) == flag
+                       and isinstance(b[1], Sym) and str(b[1]).lower() == "t"
+                       for b in (f[1] if len(f) > 1 and isinstance(f[1], list) else []))]
+        if len(lets) != 1:
+            raise ValueError(f"{where}: {flag} is not bound to T by exactly one let")
+        let = lets[0]
+        assigns = _setq_pairs(body, flag)
+        if not assigns or any(not (isinstance(v, Sym) and str(v).lower() == "nil") for _, v in assigns):
+            raise ValueError(f"{where}: {flag} is assigned something other than NIL")
+        loops = [f for f in _call_forms(let[2:], "dolist")
+                 if isinstance(f[1], list) and len(f[1]) == 2 and isinstance(f[1][1], list)
+                 and head(f[1][1]) == hooks]
+        if len(loops) != 1:
+            raise ValueError(f"{where}: no single dolist over ({hooks} ...)")
+        loop = loops[0]
+        hook = str(loop[1][0])
+        if len(loop) != 3:
+            raise ValueError(f"{where}: the hook loop has more than one body form")
+        hc = loop[2]
+        ok = (isinstance(hc, list) and head(hc) == "handler-case" and len(hc) == 3
+              and isinstance(hc[1], list) and head(hc[1]) == "funcall" and len(hc[1]) >= 2
+              and isinstance(hc[1][1], Sym) and str(hc[1][1]) == hook
+              and isinstance(hc[2], list) and len(hc[2]) == 3 and str(hc[2][0]) == "serious-condition"
+              and isinstance(hc[2][2], list) and head(hc[2][2]) == "setq" and len(hc[2][2]) == 3
+              and str(hc[2][2][1]) == flag and str(hc[2][2][2]).lower() == "nil")
+        if not ok or len(assigns) != 1:
+            raise ValueError(f"{where}: the hook handler is not exactly (serious-condition ... (setq {flag} nil))"
+                             f" and the only assignment of {flag}")
+        # (2)
+        guards = [f for f in _call_forms(let[2:], "when")
+                  if isinstance(f[1], list) and head(f[1]) == "and" and len(f[1]) > 1
+                  and isinstance(f[1][1], Sym) and str(f[1][1]) == flag]
+        if len(guards) != 1:
+            raise ValueError(f"{where}: the clean-close block is not exactly one (when (and {flag} ...) ...)")
+        guard = guards[0]
+        inside = {id(f) for f in _call_forms(guard[2:], "setq")} | {id(f) for f in _call_forms(guard[2:], "setf")}
+        unless_logs = {id(f) for u in _call_forms(body, "unless")
+                       if len(u) > 1 and isinstance(u[1], Sym) and str(u[1]) == action
+                       for f in _call_forms(u[2:], "setq")}
+        svc = row.get("service", "service")
+        # the hooks run only for a SERVICE: the flag's let is inside (when SERVICE ...)
+        if not any(w[1] is not None and isinstance(w[1], Sym) and str(w[1]) == svc
+                   and any(x is let for x in _flat_nodes(w[2:])) for w in _call_forms(body, "when")):
+            raise ValueError(f"{where}: the hook loop is not inside (when {svc} ...)")
+        # an assignment of NIL under (when (and ... (null SERVICE)) ...): no service, no hooks
+        no_service = set()
+        for w in _call_forms(body, "when"):
+            t = w[1]
+            if isinstance(t, list) and head(t) == "and" and any(
+                    isinstance(c, list) and head(c) == "null" and len(c) == 2
+                    and isinstance(c[1], Sym) and str(c[1]) == svc for c in t[1:]):
+                for h in ("setq", "setf"):
+                    no_service |= {id(f) for f in _call_forms(w[2:], h)}
+        for f, v in _setq_pairs(body, action):
+            if id(f) in inside:
+                continue
+            if isinstance(v, list) and head(v) == "fnn-core" and len(v) >= 4 \
+                    and isinstance(v[1], list) and str(v[1][-1]) == "fn-ort-report-close-action" \
+                    and isinstance(v[2], Sym) and str(v[2]).lower() in ("nil", action.lower()):
+                continue    # :held for NIL, and for a held ACTION (joined only from a joined one)
+            if isinstance(v, list) and head(v) == "fnn-owner-store-settlement" and len(v) == 3 \
+                    and isinstance(v[2], Sym) and str(v[2]) == action:
+                continue
+            if id(f) in unless_logs and isinstance(v, list) and head(v) == "fnn-owner-log-settlement":
+                continue
+            if isinstance(v, Sym) and str(v).lower() == "nil" and id(f) in no_service:
+                continue    # no SERVICE exists: no hook ran, nothing is joined by the flag
+            raise ValueError(f"{where}: {action} is assigned outside the guarded block by a form "
+                             f"that is not a held-preserving one: {render(v, 100)}")
+        # (3)
+        exits = [f for f in _call_forms(body, "if")
+                 if len(f) == 4 and isinstance(f[1], list) and head(f[1]) == "eq" and len(f[1]) == 3
+                 and str(f[1][1]) == action and str(f[1][2]) == ":joined"
+                 and isinstance(f[3], list) and head(f[3]) == "return-from" and str(f[3][1]) == fname]
+        def exit_call(f):
+            return any(isinstance(c, list) and head(c) == "fnn-core" and len(c) >= 3
+                       and isinstance(c[1], list) and str(c[1][-1]) == row["exit_call"]
+                       and any(isinstance(a, Sym) and str(a) == row["exit_const"] for a in c[2:])
+                       and isinstance(c[-1], Sym) and str(c[-1]) == action
+                       for c in _call_forms([f[3]], "fnn-core"))
+        if not any(exit_call(f) for f in exits):
+            raise ValueError(f"{where}: no not-joined arm returns (fnn-core '{row['exit_call']} ... "
+                             f"{row['exit_const']} {action})")
+        # (4)
+        book = (tree.root / row["book"]).read_text()
+        compact = " ".join(book.split())
+        for needle in (
+                "(defthm fn-ort-log-close-held-is-uncertain (implies (not (equal action :joined)) "
+                "(equal (fn-ort-log-close-exit prior uncertain action) uncertain)))",
+                "(defun fn-ort-log-close-exit (prior uncertain action) "
+                "(declare (xargs :guard (and (integerp prior) (integerp uncertain)))) "
+                "(if (equal action :joined) prior uncertain))",
+                "(defun fn-ort-report-close-action (log-action journal-observation) (declare (xargs :guard t)) "
+                "(if (and (equal log-action :joined) (or (equal journal-observation :closed) "
+                "(equal journal-observation :absent))) :joined :held))",
+                "(defun fn-ort-store-close-action (settlement authority-presentp caller-fd-presentp) "
+                "(declare (xargs :guard t)) (cond ((not (equal settlement :joined)) :held)"):
+            if needle not in compact:
+                raise ValueError(f"{where}: {row['book']} no longer contains: {needle[:70]}...")
+        fences_ok[fname] = row
+    return fences_ok
+
+
 def verify_binding_only_specials(model) -> dict:
     """contracts `binding_only_specials': {SPECIAL: why}.
 
@@ -3034,6 +3193,7 @@ class Model:
         self.check_test_only_entries()
         self.private_owner = verify_private_owner_commands(self)
         self.binding_only = verify_binding_only_specials(self)
+        self.close_hook_fences = verify_close_hook_fences(self)
         self.entry_requirements = 0
         self.compute_blocking()
         self.compute_acquires()

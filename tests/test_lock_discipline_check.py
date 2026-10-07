@@ -2664,3 +2664,71 @@ class R7EscalationLoop(unittest.TestCase):
     def test_a_verified_wrapper_row_is_accepted(self):
         rows = {"fnn-owner-install-or-end": {"param": "install", "why": "t"}}
         self.assertEqual(self.swallow(self.GOOD, rows=rows), [])
+
+
+class CloseHookFence(unittest.TestCase):
+    """contracts `close_hook_fences': a failed close hook clears the flag, the
+    clean-close block needs it, and the not-joined arm exits uncertain."""
+
+    BOOK = (ROOT / "books" / "owner-retire-settlement.lisp").read_text()
+    SRC = """
+(defun fnn-run (service)
+  (let ((log-close-action nil))
+    (when service
+      (setq log-close-action (fnn-core 'fn-ort-report-close-action nil :unobserved))
+      (let ((modules-joined t))
+        (dolist (hook (fnn-owner-service-close-hooks service))
+          (handler-case (funcall hook service)
+            (serious-condition () (setq modules-joined nil))))
+        (when (and modules-joined (fnn-drained-p service))
+          (setq log-close-action (fnn-core 'fn-ort-report-close-action log-close-action (fnn-journal-close)))
+          (setq log-close-action :joined))
+        (setq log-close-action (fnn-owner-store-settlement service log-close-action))
+        (if (eq log-close-action :joined)
+            (fnn-ok service)
+          (return-from fnn-run
+            (progn (fnn-err "x")
+                   (fnn-core 'fn-ort-log-close-exit (fnn-code service) +fnn-exit-uncertain+ log-close-action))))))))
+"""
+    ROW = {"fnn-run": {"flag": "modules-joined", "hooks": "fnn-owner-service-close-hooks",
+                       "action": "log-close-action", "exit_call": "fn-ort-log-close-exit",
+                       "exit_const": "+fnn-exit-uncertain+", "book": "books/owner-retire-settlement.lisp",
+                       "why": "test"}}
+
+    def check(self, src=None, book=None, row=None):
+        raw = dict(CONTRACTS.raw, close_hook_fences=row or self.ROW)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "books").mkdir()
+            (root / "books" / "owner-retire-settlement.lisp").write_text(book or self.BOOK)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + (src or self.SRC))
+            ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+
+    def refuses(self, old, new, **kw):
+        self.assertIn(old, kw.get("src", self.SRC))
+        with self.assertRaises(ValueError):
+            self.check(src=self.SRC.replace(old, new))
+
+    def test_the_real_shape_is_accepted(self):
+        self.check()
+
+    def test_a_hook_handler_that_does_not_clear_the_flag_is_refused(self):
+        self.refuses("(serious-condition () (setq modules-joined nil))", "(serious-condition () nil)")
+
+    def test_a_clean_close_block_not_guarded_by_the_flag_is_refused(self):
+        self.refuses("(when (and modules-joined (fnn-drained-p service))", "(when (and (fnn-drained-p service) modules-joined)")
+
+    def test_a_stray_joined_assignment_outside_the_block_is_refused(self):
+        self.refuses("(setq log-close-action (fnn-owner-store-settlement service log-close-action))",
+                     "(setq log-close-action :joined) (setq log-close-action (fnn-owner-store-settlement service log-close-action))")
+
+    def test_an_exit_that_is_not_the_uncertain_one_is_refused(self):
+        self.refuses("+fnn-exit-uncertain+ log-close-action", "+fnn-exit-fault+ log-close-action")
+
+    def test_a_flag_set_back_to_t_is_refused(self):
+        self.refuses("(fnn-journal-close)))", "(fnn-journal-close))) (setq modules-joined t)")
+
+    def test_a_book_that_lost_its_theorem_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.check(book=self.BOOK.replace("fn-ort-log-close-held-is-uncertain", "fn-ort-log-close-renamed"))

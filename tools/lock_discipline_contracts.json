@@ -940,6 +940,17 @@
    "why": "host/native/owner.lisp: runs the off-mutex escalation closure it is given and, when that closure signals, ends the process with ACL2's exit code (fnn-exit). The checker verifies the body ends in (handler-case (funcall install) (serious-condition ... fnn-exit)); a caller's closure must call a classifying_escape_function on the condition it escalates (checked at the escalation loop of fnn-mux-close-wake)."
   }
  },
+ "close_hook_fences": {
+  "fnn-owner-run": {
+   "flag": "modules-joined",
+   "hooks": "fnn-owner-service-close-hooks",
+   "action": "log-close-action",
+   "exit_call": "fn-ort-log-close-exit",
+   "exit_const": "+fnn-exit-uncertain+",
+   "book": "books/owner-retire-settlement.lisp",
+   "why": "A close hook that signals (fnn-pull-service-close re-signals a retained cleanup debt) clears modules-joined; the clean-close block needs it, so log-close-action stays the held value set before the hooks ran, and the not-joined arm returns fn-ort-log-close-exit with +fnn-exit-uncertain+, i.e. exit 3 (theorem fn-ort-log-close-held-is-uncertain). verify_close_hook_fences checks each link against owner.lisp and the book text."
+  }
+ },
  "binding_only_specials": {
   "*fnn-owner-deferred*": "host/native/owner.lisp: the commit quantum's deferred list. It is bound only by let (fnn-owner-commit-start-locked, the next-batch seal in fnn-owner-commit-complete) to a fresh list; the checker verifies that no host form assigns the symbol, that its defvar value is NIL, and that every rebinding is a lexical variable or a list. Outside a quantum it is the constant NIL, so fnn-owner-log, fnn-owner-line-after-barrier and fnn-owner-feed-flush-after-barrier take their direct branch there (the open's key-statement recovery, an offline command)."
  },
