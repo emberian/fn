@@ -1288,6 +1288,32 @@ def report_lines(lines: list[str], verbose: bool = False) -> list[str]:
     return kept
 
 
+EVIDENCE_RSYNC_TRIES = 3
+
+
+def fetch_evidence_dir(host: str, remote: Path, directory: str, local: Path) -> bool:
+    """Copy one run's evidence directory home; True when the copy is complete.
+
+    The manifest goes first and alone: it is what the verdict, the archive and
+    the cache publish read, and one interrupted bulk rsync (hundreds of small
+    log files) used to leave a directory of logs without it, silently, because
+    the exit status was dropped.  The bulk copy is retried, and a copy that
+    still fails says so on stderr with rsync's own words.
+    """
+    source = f"{host}:{remote}/{directory}/"
+    run(["rsync", "-a", "--include=manifest.json", "--exclude=*", source, f"{local}/"],
+        check=False)
+    done = None
+    for _ in range(EVIDENCE_RSYNC_TRIES):
+        done = run(["rsync", "-a", source, f"{local}/"], check=False)
+        if done.returncode == 0:
+            return True
+    print(f"farm.py: rsync of {source} exited {done.returncode} after "
+          f"{EVIDENCE_RSYNC_TRIES} tries; the copy under {local} may be incomplete: "
+          f"{(done.stdout or '').strip()[-300:]}", file=sys.stderr)
+    return False
+
+
 def fetch(host: str, identifier: str, root: Path,
           remote: Path | None = None, cache: str | None = None,
           verbose: bool = False) -> None:
@@ -1303,7 +1329,7 @@ def fetch(host: str, identifier: str, root: Path,
     for directory in sorted(set(EVIDENCE.findall(log))):
         local = root / directory
         local.mkdir(parents=True, exist_ok=True)
-        run(["rsync", "-a", f"{host}:{remote}/{directory}/", f"{local}/"], check=False)
+        fetch_evidence_dir(host, remote, directory, local)
         fetched_manifests.extend(certs.load_manifests(root, local / "manifest.json"))
         # The fetched copy lands under `build/`, which is ignored and which a
         # worktree removal takes with it, so the manifest is also filed under

@@ -1815,6 +1815,47 @@ class WaitReadsTheRunsOwnDirectoryTests(unittest.TestCase):
             self.assertIn("unknown", " ".join(farm.verdict_lines(root, "run-y", 1)))
 
 
+
+class FetchEvidenceDirTests(unittest.TestCase):
+    """A bulk rsync that dies partway must not cost the run its manifest."""
+
+    def test_the_manifest_comes_back_when_the_bulk_copy_fails(self):
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            if "--include=manifest.json" in command:
+                (Path(command[-1]) / "manifest.json").write_text("{}")
+                return subprocess.CompletedProcess(command, 0, "", None)
+            return subprocess.CompletedProcess(command, 23, "connection reset", None)
+
+        with tempfile.TemporaryDirectory() as directory:
+            local = Path(directory)
+            with mock.patch.object(farm, "RUN", fake_run), \
+                    contextlib.redirect_stderr(io.StringIO()) as err:
+                complete = farm.fetch_evidence_dir(
+                    "persvati", Path("/r"), "build/acl2/certify-x", local)
+            self.assertFalse(complete)
+            self.assertTrue((local / "manifest.json").is_file())
+            self.assertIn("exited 23", err.getvalue())
+            self.assertIn("connection reset", err.getvalue())
+            bulk = [c for c in calls if "--include=manifest.json" not in c]
+            self.assertEqual(len(bulk), farm.EVIDENCE_RSYNC_TRIES)
+
+    def test_a_flaky_bulk_copy_is_retried_to_completion(self):
+        codes = iter([23, 0])
+
+        def fake_run(command, **kwargs):
+            if "--include=manifest.json" in command:
+                return subprocess.CompletedProcess(command, 0, "", None)
+            return subprocess.CompletedProcess(command, next(codes), "", None)
+
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(farm, "RUN", fake_run):
+                self.assertTrue(farm.fetch_evidence_dir(
+                    "persvati", Path("/r"), "build/acl2/c", Path(directory)))
+
+
 class RunsOwnManifestTests(unittest.TestCase):
     """obstructions-7 item 63: `wait` takes only this run's manifest, and
     `status RUN` finds the run's record in any worktree."""
