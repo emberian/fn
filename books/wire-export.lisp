@@ -377,6 +377,21 @@
   (list (list "cursor-epoch-zero"
               (list :accepted (list (list nil '(17 34) '(51) '(68) '(85) '(102) 1 1 0 0))) :malformed)))
 
+;; fnct.consumer.poll-reply: the accepted reply with an empty report and with
+;; one, a second cursor, and each other status; and the near misses its
+;; :sized cursor refuses (an empty history field, which the cursor grammar
+;; refuses, and so the length it declares is under its lower bound).
+(defconst *fn-wgx-poll-values*
+  (list (list :accepted (list *fn-wgx-cursor-value* nil))
+        (list :accepted (list *fn-wgx-cursor-value* '(1 2 3 4 5 6 7 8)))
+        (list :accepted (list (cadr *fn-wgx-fncu-values*) (make-list 64 :initial-element 7)))
+        (list :refused nil) (list :uncertain nil) (list :fault nil)))
+(defconst *fn-wgx-poll-refusals*
+  (list (list "cursor-history-empty"
+              (list :accepted (list (list nil nil '(2 3) '(4) '(5 6 7) '(8) 0 9 1 4294967295) nil))
+              :malformed)
+        (list "unknown-status" (list :busy nil) :malformed)))
+
 ;; fnct.reasoned-reply and fnct.line-reply: refused, uncertain and fault
 ;; with their reasons, the unnamed and NONE words, and the field bounds.
 (defconst *fn-wgx-reasoned-values*
@@ -420,6 +435,10 @@
          '(fn-wf-cs-status-encode-agrees fn-wf-cs-status-decode-agrees
            fn-ncl-status-accepted-reply-roundtrip fn-ncl-status-nonaccepted-reply-roundtrip)
          *fn-wgx-status-values* *fn-wgx-status-refusals*)
+   (list "fnct.consumer.poll-reply" *fn-wf-cs-poll-reply-grammar*
+         'fn-ncl-poll-reply-encode 'fn-ncl-poll-reply-decode
+         '(fn-wf-cs-poll-encode-agrees)
+         *fn-wgx-poll-values* *fn-wgx-poll-refusals*)
    (list "fnct.reasoned-reply" *fn-wf-ctl-reasoned-reply-grammar*
          'fn-native-control-reasoned-reply-encode 'fn-nctrl-reasoned-reply-payload-decode
          '(fn-wf-ctl-reasoned-encode-agrees fn-wf-ctl-reasoned-decode-agrees)
@@ -441,9 +460,10 @@
          'fn-wg-encode 'fn-wg-decode nil *fn-wgx-tail-values* *fn-wgx-tail-refusals*)))
 
 (defconst *fn-wgx-exchanges*
-  '(("fnct.consumer.request" "fnct.consumer.reply" "fnct.consumer.status-reply")
+  '(("fnct.consumer.request" "fnct.consumer.reply" "fnct.consumer.status-reply"
+     "fnct.consumer.poll-reply")
     ("fnct.consumer.reasoned-request" "fnct.consumer.reply" "fnct.consumer.status-reply"
-     "fnct.reasoned-reply")
+     "fnct.consumer.poll-reply" "fnct.reasoned-reply")
     ("fnct.store-identity.request" "fnct.store-identity.reply")))
 
 (defun fn-wgx-entry-name (e) (declare (xargs :guard t)) (fn-wg-arg 0 e))
