@@ -253,6 +253,9 @@ class Tree:
     unreadable: dict = field(default_factory=dict)
     sections: dict = field(default_factory=dict)      # def-section name -> (path, line, actors, classes, admits)
     actors: dict = field(default_factory=dict)        # def-actor name -> (path, line, kind, thread-name, roster, join, failure)
+    guard_decls: dict = field(default_factory=dict)   # global -> [(path, line, lock text)] from (fnn-guarded-by VAR LOCK)
+    comment_contracts: list = field(default_factory=list)  # (path, line, global): a refused `guarded-by:' comment
+    guard_problems: list = field(default_factory=list)     # declaration errors, each fails --check
 
 
 GUARDED = re.compile(r"guarded-by:\s*([^(;]+?)\s*(?:\(|\.\s|\.$|$)")
@@ -318,7 +321,28 @@ def collect_tree(root: Path, files: list[str] | None = None) -> Tree:
         lines = text.split("\n")
         for form, line in forms:
             visit_top(tree, form, line, rel, lines)
+    apply_guard_decls(tree)
     return tree
+
+
+def apply_guard_decls(tree: Tree) -> None:
+    """Each global's lock from its (fnn-guarded-by VAR LOCK) form.  A form
+    naming no defvar, two forms for one global, or a `guarded-by:' comment
+    left beside a defvar is a problem --check fails on."""
+    for name, decls in sorted(tree.guard_decls.items()):
+        path, line, lock = decls[0]
+        if len(decls) > 1:
+            tree.guard_problems.append(
+                f"{name} has {len(decls)} fnn-guarded-by forms ({', '.join(f'{p}:{l}' for p, l, _ in decls)})")
+        if name not in tree.globals:
+            tree.guard_problems.append(f"{path}:{line}: fnn-guarded-by names {name}, which no defvar defines")
+            continue
+        gpath, gline, _ = tree.globals[name]
+        tree.globals[name] = (gpath, gline, lock)
+    for path, line, name in tree.comment_contracts:
+        if tree.files.get(path, True):
+            tree.guard_problems.append(
+                f"{path}:{line}: a `guarded-by:' comment beside {name}; declare it as (fnn-guarded-by {name} LOCK)")
 
 
 # def-section (host/native/owner.lisp, lane WRAPPER): a declared owner section
@@ -427,18 +451,25 @@ def visit_top(tree: Tree, form, line: int, rel: str, lines: list[str]) -> None:
                 "macro" if h == "defmacro" else "function", doc, tree.files.get(rel, True))
         (tree.macros if h == "defmacro" else tree.defs)[name] = d
         return
+    if h == "fnn-guarded-by" and len(form) == 3 and isinstance(form[1], Sym):
+        lock = form[2]
+        text = ("(" + " ".join(str(x) for x in lock) + ")") if isinstance(lock, list) else str(lock)
+        tree.guard_decls.setdefault(str(form[1]), []).append((rel, line, text))
+        return
     if h in ("defvar", "defparameter") and len(form) >= 2 and isinstance(form[1], Sym):
         name = str(form[1])
-        guard = None
-        # the annotation is a comment on the same line or the lines after it
+        # The contract is the (fnn-guarded-by VAR LOCK) form that names VAR
+        # (host/native/io.lisp), applied in collect_tree.  A `guarded-by:'
+        # comment bound by position is refused: a moved defvar re-targeted
+        # one silently (CONVERGE-2 row 31).
         for k in range(line - 1, min(line + 2, len(lines))):
             m = GUARDED.search(lines[k])
             if m and (k == line - 1 or lines[k].lstrip().startswith(";")):
-                guard = m.group(1).rstrip(".")
+                tree.comment_contracts.append((rel, k + 1, name))
                 break
             if k > line - 1 and lines[k].lstrip().startswith("("):
                 break
-        tree.globals[name] = (rel, line, guard)
+        tree.globals[name] = (rel, line, None)
         tree.global_inits[name] = form[2] if len(form) >= 3 else None
         if len(form) >= 3 and isinstance(form[2], list) and head(form[2]) == "make-hash-table":
             if ":synchronized" in [str(x) for x in form[2] if isinstance(x, Sym)]:
@@ -5716,6 +5747,7 @@ def main(argv=None) -> int:
     root = Path(args.root).resolve()
     an, model, checker = build(root, Path(args.contracts))
     audit_failures = audit_callbacks(model, checker.c.raw)
+    guard_problems = list(an.tree.guard_problems)
     if args.audit_callbacks:
         for why in audit_failures:
             print("lock_discipline_check: " + why)
@@ -5833,7 +5865,7 @@ def main(argv=None) -> int:
             print(audit_summary(model, checker.c.raw, audit_failures))
     if args.check:
         bad = (verdict["new"] or verdict["stale"] or verdict["enclave_baselined"]
-               or realization_drift or audit_failures)
+               or realization_drift or audit_failures or guard_problems)
         if bad:
             counted = weights(findings)
             cap = args.cap or None
@@ -5854,6 +5886,8 @@ def main(argv=None) -> int:
                 lines.append(f"lock_discipline_check: an enclave finding cannot be baselined: {k}")
             for why in audit_failures:
                 lines.append("lock_discipline_check: CALLBACK-AUDIT " + why)
+            for why in guard_problems:
+                lines.append("lock_discipline_check: GUARDED-BY " + why)
             for line in lines[:cap]:
                 print(line)
             if cap and len(lines) > cap:
