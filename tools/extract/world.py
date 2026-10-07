@@ -301,6 +301,15 @@ if __name__ == "__main__":
             del rest[i:i + 2]
         print(digest(Path(rest[0]) if rest else ROOT, acl2, variant, toolchain_identity))
         sys.exit(0)
+    # Only --check and no argument are modes: any other argument (--help
+    # included) used to fall through and REGENERATE every umbrella, which hid a
+    # stale one from the --check that followed.
+    unknown = [a for a in sys.argv[1:] if a != "--check"]
+    if unknown:
+        print("usage: tools/extract/world.py [--check | --digest TREE [--variant V] "
+              "[--acl2 PATH] [--toolchain-identity ID]]  (unrecognised: %s)" % " ".join(unknown),
+              file=sys.stderr)
+        sys.exit(2)
     check = "--check" in sys.argv
     bad = 0
     generated = render()
