@@ -132,7 +132,10 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # The decision's due half and the budget's derivation are ACL2's, on
         # the due path; the space is observed once and handed to both.
         due = native_cuts.host_function(owner_host, "fn-owner-sco-due")
-        self.assertIn("(fn-ock-publication-blockedp", due)
+        # RL-02: the blocked rule is books/owner-publication-lifecycle.lisp's
+        # fn-opl-blockedp (the budget/space rule for a budget or space deferral,
+        # the abandonment's eligibility by the clock otherwise).
+        self.assertIn("(fn-opl-blockedp", due)
         self.assertIn("(fn-owner-sco-budget override profile)", due)
         self.assertIn("(fn-ockp-space free)", due)
         capture = native_cuts.host_function(owner_host, "fn-owner-sco-capture")

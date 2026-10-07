@@ -64,6 +64,10 @@
     "fnn-store-error"
     ;; a Store write refused before publication (nothing stored).
     "fnn-store-io-refusal"
+    ;; RL-02 (host/native/io.lisp): a checkpoint publication's history image
+    ;; refused by name, a subclass of the one above carrying ACL2's verdict
+    ;; (books/owner-publication-lifecycle.lisp fn-opl-classify reads it).
+    "fnn-history-image-refusal"
     ;; a Store open ACL2 refused by name, and its profile form.
     "fnn-store-open-refusal" "fnn-store-profile-refusal"
     ;; host/native/owner.lisp: a pending admission verdict (:yield,

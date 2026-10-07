@@ -54,13 +54,17 @@
 (defun fixture-load (path names)
   (with-open-file (in path)
     (loop for form = (read in nil :eof) until (eq form :eof) do
-      (when (and (consp form) (member (car form) '(defun defmacro))
+      (when (and (consp form) (member (car form) '(defun defmacro define-condition))
                  (member (second form) names))
         (eval form)
         (setf names (remove (second form) names))
         (when (null names) (return))))))
+;; RL-02: the builder's named refusal, and no developer selector set.
+(define-condition fnn-store-io-refusal (error) ((message :initarg :message :initform "")))
+(defun fnn-checkpoint-image-refusal-test (answer) answer)
 (fixture-load "host/native/io.lisp"
- '(fnn-checkpoint-yield fnn-history-image-row-run fnn-history-image-build
+ '(fnn-history-image-refusal
+   fnn-checkpoint-yield fnn-history-image-row-run fnn-history-image-build
    fnn-history-image-release fnn-with-history-image))
 (let ((events (loop for i below 513 collect (list :all-event i))))
   (fnn-with-history-image

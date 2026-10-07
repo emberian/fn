@@ -2161,6 +2161,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-recover-copy \
 	tests/acl2/store-log-recover-copy-tests \
 	books/store-log-rotate-spare \
+	books/owner-publication-lifecycle \
+	tests/acl2/owner-publication-lifecycle-tests \
 	books/owner-compact-request \
 	tests/acl2/owner-compact-request-tests \
 	books/bp-carry-frame \

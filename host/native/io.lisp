@@ -95,6 +95,12 @@
 ;; 1, like its parent), and the owner relays its kind as :storage-failed so
 ;; the wire names the reason (books/nntp-post.lisp fn-post-store-refusal-line).
 (define-condition fnn-store-io-refusal (fnn-store-error) ())
+;; RL-02: the history image of a checkpoint publication refused by name
+;; (fnn-history-image-build, fnn-history-image-row-run).  VERDICT is ACL2's
+;; word, which books/owner-publication-lifecycle.lisp fn-opl-classify reads
+;; (a pending suffix waits for the history to advance; any other blocks).
+(define-condition fnn-history-image-refusal (fnn-store-io-refusal)
+  ((verdict :initarg :verdict :initform nil :reader fnn-history-image-refusal-verdict)))
 (define-condition fnn-usage-error (fnn-store-error) ())
 ;; A Store open ACL2 refused by name (books/store-open-pre-c1.lisp): a
 ;; refusal (exit 1) that recovery passes through unchanged, never the
@@ -3039,6 +3045,21 @@ and names both."
           value)
       budget)))
 
+(defun fnn-checkpoint-image-refusal-test (answer)
+  "Developer-only FN_NATIVE_CHECKPOINT_IMAGE_REFUSAL=WORD, a labelled
+MUTATION witness of RL-02 (tests/test_native_checkpoint_abandon.py): the
+history image's finished ANSWER with its verdict replaced by (:refused WORD),
+as fn-his-build-finish answers a refusal by name, so the publication's
+abandonment path runs on a real store.  WORD is pending-suffix (the dependency
+class) or image-count (the blocked class).  Else ANSWER."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_CHECKPOINT_IMAGE_REFUSAL")))
+    (cond ((null raw) answer)
+          ((not (member raw '("pending-suffix" "image-count") :test #'string=))
+           (fnn-fault "invalid FN_NATIVE_CHECKPOINT_IMAGE_REFUSAL (expected pending-suffix or image-count)"))
+          ((consp answer)
+           (cons (list :refused (intern (string-upcase raw) :keyword)) (rest answer)))
+          (t answer))))
+
 (defun fnn-state-checkpoint-test-fault ()
   "Developer-only FN_NATIVE_STATE_CHECKPOINT_FAULT=MODEL-CUT:eio|kill selector
 for fn-bs-scp-program's five cuts."
@@ -3761,7 +3782,8 @@ Growth is explicit and remains within the publication's prepaid image budget."
         (when (eq verdict :done) (return t))
         (let ((grow (and (consp verdict) (eq (car verdict) :grow-image))))
           (unless (or (eq verdict :yield) grow)
-            (fnn-refuse-io "history image row refused by name: ~a" verdict))
+            (error 'fnn-history-image-refusal :verdict verdict
+                   :message (format nil "history image row refused by name: ~a" verdict)))
           (fnn-checkpoint-yield "history-pages" ordinal)
           (sb-thread:thread-yield)
           (setq answer (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step)
@@ -3783,15 +3805,17 @@ WRITES); with no position, (values POSITION NIL): no binding, no image."
                           (fnn-checkpoint-yield "history" ordinal)
                           (sb-thread:thread-yield))
                         (fnn-history-image-row-run ev ordinal))
-                (fnn-call 'fn-his-build-finish
-                          (fnn-core 'fn-his-build-source-count records)
-                          *fnn-checkpoint-image-custody*))))
+                (fnn-checkpoint-image-refusal-test
+                 (fnn-call 'fn-his-build-finish
+                           (fnn-core 'fn-his-build-source-count records)
+                           *fnn-checkpoint-image-custody*)))))
         (unless (and (consp answer) (>= (length answer) 3))
           (fnn-fault "ACL2 returned a malformed history image"))
         (destructuring-bind (verdict rec writes count &rest ignored) answer
           (declare (ignore ignored))
           (unless (eq verdict :ok)
-            (fnn-refuse-io "history image refused by name: ~a" verdict))
+            (error 'fnn-history-image-refusal :verdict verdict
+                   :message (format nil "history image refused by name: ~a" verdict)))
           (let ((binding (fnn-core 'fn-his-binding node salt count (second position) rec))
                 (np (fnn-core 'fn-his-np writes 0)))
             (unless (and (integerp np) (> np 0))
@@ -6881,6 +6905,8 @@ tree root), or stop the build."
     ;; S045: one octet of the staged state checkpoint flipped after its
     ;; fence, before the read-back (fnn-state-checkpoint-stage).
     "FN_NATIVE_STATE_CHECKPOINT_READBACK_FLIP"
+    ;; RL-02: the history image refused by name (fnn-checkpoint-image-refusal-test).
+    "FN_NATIVE_CHECKPOINT_IMAGE_REFUSAL"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_HOLDER_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
     ;; lane arena-forget: a labelled MUTATION witness of the reclaim seal
