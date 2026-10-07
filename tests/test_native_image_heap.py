@@ -33,17 +33,19 @@ import unittest
 from pathlib import Path
 
 from tests.native_harness import Client, Node, EXIT, executable, native_image
+from tools.load.workloads import nmem3_clean
 
 IMAGE = native_image("FN_NATIVE_HOST")
 BAR_MIB = 128
-POSTS = 1000
-ARTICLE_OCTETS = 2048
-IDLE_CONNECTIONS = (8, 24)
-IDLE_SECONDS = 20
-SBCL_USER_ARGS = "--dynamic-space-size 1068MB --tls-limit 16384"
-INIT_FLAGS = ("--profile", "development", "--max-transactions", "16384",
-              "--max-history-octets", "8388608", "--max-record-octets", "196608",
-              "--max-groups-per-article", "16", "--max-open-suffix", "128")
+# One definition of the reference workload: tools/load/workloads.json, "rss-small-filled".
+_WORKLOAD = nmem3_clean()
+POSTS = _WORKLOAD["posts"]
+ARTICLE_OCTETS = _WORKLOAD["octets"]
+IDLE_CONNECTIONS = _WORKLOAD["idle_connections"]
+IDLE_SECONDS = _WORKLOAD["idle_seconds"]
+SBCL_USER_ARGS = _WORKLOAD["sbcl_user_args"]
+INIT_FLAGS = _WORKLOAD["init_flags"]
+GROUPS = _WORKLOAD["groups"]
 LINE = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdef\r\n"
 
 
@@ -79,10 +81,10 @@ class ImageHeapBarTests(unittest.TestCase):
             self.skipTest("needs the production image %s" % IMAGE)
         env = {"SBCL_USER_ARGS": SBCL_USER_ARGS}
         node = Node(self, IMAGE, env=env)
-        node.operator("init", *INIT_FLAGS, "fn.letters", "fn.test", env=env, timeout=600,
+        node.operator("init", *INIT_FLAGS, *GROUPS, env=env, timeout=600,
                       expect=EXIT.OK)
         owner = node.start(env=env, timeout=900)
-        time.sleep(3)
+        time.sleep(_WORKLOAD["settle_s"])
         pid = owner.pid
         try:
             with Client(node.port, timeout=120) as c:
@@ -93,7 +95,7 @@ class ImageHeapBarTests(unittest.TestCase):
             held = []
             for count in IDLE_CONNECTIONS:
                 held.extend(Client(node.port, timeout=120, greeting=None) for _ in range(count))
-                time.sleep(2)
+                time.sleep(_WORKLOAD["step_settle_s"])
             # The shipped node refuses connections past its limit with a 400
             # greeting; the workload still opens them, as m3.py and nmem3.py do.
             admitted = sum(1 for c in held if c.greeting[:3] == b"200")
