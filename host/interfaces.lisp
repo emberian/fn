@@ -5,8 +5,8 @@
 ; built: its class (guard-verified or not), the kinds the host entry guard
 ; evaluates (host/native/io.lisp fnn-entry-guard), its keystones.  A
 ; declaration the world refutes stops the build.  tools/interface_emit.py
-; reads these forms (and host/interfaces-extract.lisp's) without evaluating
-; them and generates planning/interfaces.json and tools/extract/roots.sh
+; reads these forms without evaluating them
+; and generates planning/interfaces.json and tools/extract/roots.sh
 ; (the extractor's ROOTS and EXTRA), and gives tools/harness_check.py its
 ; exempt formals; its host-binding check reads the raw host for the
 ; dispatch sites.
@@ -25,6 +25,8 @@
 (include-book "../books/bp-handoff-report")
 (include-book "../books/tcpcl-delivery-invariants")
 (include-book "../books/resource-syncer")
+(include-book "../books/peer-catchup-spool-body")
+(include-book "../books/raw-dispatch-verdict")
 (include-book "../books/response-identity")
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
 ; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
@@ -142,9 +144,6 @@
   :class :common-lisp-compliant
   :kinds ((f natp))
   :root :extract)
-
-; fn-xo-open-store: host/interfaces-extract.lisp (the image does not load
-; host/store-open-host.lisp).
 
 (definterface fn-reader-use-store
   :class :common-lisp-compliant
@@ -276,6 +275,24 @@
 
 ; -----------------------------------------------------------------------------
 ; Applied by the raw host directly, not through fnn-call's entry guard.
+
+; D40/X3: the raw install path (host/native/raw-trap.lisp) applies the
+; verdict book's decisions directly; the image and the extracted core run the
+; same ones over the world's rows and the core's carried rows.
+(definterface fn-rdv-admit
+  :class :common-lisp-compliant
+  :kinds ()
+  :direct "the install path's admission of a raw row over the world's verdicts (host/native/raw-trap.lisp fnn-install-raw-dispatch); a build-time decision, no client data")
+(definterface fn-rdv-carried-problem
+  :class :common-lisp-compliant
+  :kinds ()
+  :direct "the install path's check of the carried tables' row digests (host/native/raw-trap.lisp fnn-check-carried-tables); a load-time decision, no client data")
+(definterface fn-rdv-raw-declared-p
+  :class :program
+  :direct "the install path's selection of the raw-declared rows (host/native/raw-trap.lisp); a build-time decision, no client data")
+(definterface fn-rdv-row-digest
+  :class :program
+  :direct "the install path's digest of a row as the world gives it (host/native/raw-trap.lisp); a build-time decision, no client data")
 
 (definterface fn-octets$c-reserve
   :class :common-lisp-compliant
@@ -5216,22 +5233,6 @@
 
 (definterface fn-bpnc-status-unavailable
   :class :common-lisp-compliant)
-; Called directly only while installing dispatch from the loaded image world.
-(definterface fn-di-raw-with-problem
-  :class :program
-  :direct "Image-build declaration lint over the loaded world; no client data or served decision")
-
-; Actual world ABI/guard and creator-EXEC checks at image installation.
-(definterface fn-di-raw-guarded-problem
-  :class :program
-  :direct "Image-build exact guard and stobj ABI validation over the exported ACL2 world")
-(definterface fn-di-raw-guarded-target
-  :class :program
-  :direct "Image-build resolution of actual compiled callback or registered creator EXEC")
-(definterface fn-di-raw-creatorp
-  :class :program
-  :direct "fnn-install-raw-dispatch identifies exact registered startup creators from the validated immutable image world")
-
 ; Serialized BP listener installation and actual owner configuration control.
 (definterface fn-bplc-step
   :class :common-lisp-compliant
