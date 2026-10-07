@@ -37,6 +37,10 @@
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
 (include-book "books/history-paged-attach")
+;; The paged catalog is the catalog: books/catalog-paged-attach attaches fn-cat-paged
+;; to the generic fn-cat.  After the history attachment (its closure defines
+;; fn-hist), before the first book that introduces fn-cat.
+(include-book "books/catalog-paged-attach")
 ;; The default peer flight profile `init' writes (fn-pfp-default-octets).
 (include-book "books/peer-flight-default")
 (include-book "books/store-config")

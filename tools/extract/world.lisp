@@ -14,6 +14,7 @@
 (include-book "../../books/records-attach-concrete")
 (include-book "../../books/payload-arena-attach")
 (include-book "../../books/history-paged-attach")
+(include-book "../../books/catalog-paged-attach")
 (include-book "../../books/peer-flight-profile")
 (include-book "../../books/peer-flight-default")
 (include-book "../../books/peer-flight-startup")

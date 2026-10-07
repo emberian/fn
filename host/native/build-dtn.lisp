@@ -60,6 +60,10 @@
 ;; comes right after the codec and record attachments, before any of them.
 (include-book "books/payload-arena-attach")
 (include-book "books/history-paged-attach")
+;; The paged catalog is the catalog: books/catalog-paged-attach attaches fn-cat-paged
+;; to the generic fn-cat.  After the history attachment (its closure defines
+;; fn-hist), before the first book that introduces fn-cat.
+(include-book "books/catalog-paged-attach")
 ;; The peer flight books reach `fn-arena' (heap-store-figure includes
 ;; owner-checkpoint-pipeline), so they follow the arena attachment.
 (include-book "books/peer-flight-profile")

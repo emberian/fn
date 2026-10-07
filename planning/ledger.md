@@ -10,9 +10,9 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3088 |
-| Certification roots in the Makefile | 2594 |
-| Books inside the root closure | 2925 |
+| Books read | 3087 |
+| Certification roots in the Makefile | 2593 |
+| Books inside the root closure | 2924 |
 | `defthm` and `defthmd` events | 41731 |
 | `defun` events | 26385 |
 | Functions with verified guards | 4171 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 433 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 312 |
-| Include-hygiene warnings | 3955 |
+| Include-hygiene warnings | 3734 |
 | Host-names warnings | 3669 |
 | Hand-written-record warnings | 19 |
 
@@ -893,7 +893,6 @@ that `make certify` requests.
 | `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
 | `books/identity.lisp` | root | 2 | 20 | 4/0/16/0 | 0 | 0 | 0 |
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/image-world-paged.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/immutable-list.lisp` | closure | 1 | 5 | 0/0/0/5 | 0 | 0 | 0 |

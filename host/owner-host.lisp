@@ -29,6 +29,7 @@
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
 (include-book "../books/payload-arena-attach")
 (include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach")
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
