@@ -67,33 +67,57 @@
                 (flags 0) (k 0))
                :fault "the windows hashed at chunk counters shifted by one")))
 
-; fn-blake3-is-window-composition: its one hypothesis, (fn-b3-octet-listp m),
-; has NO breaking value --- the equation also holds for non-octet objects
-; (checked by evaluation on atoms, non-integers, out-of-range integers and
-; improper lists, 1 to 1100 elements), because both sides read the octets
-; through the same octet coercion --- so the TEETH CONTRACT's removal witness
-; for it does not exist and `defteeth' refuses the claim by name.  Its teeth
-; are evaluated here directly: the positive witnesses on 3 windows (k=0), 2
-; windows (k=0) and 2 windows (k=1), and the mutation that the second window
-; is hashed at the wrong counter.
-(defun fn-b3tt-composition (m k base)
-  (equal (fn-blake3 m)
-         (fn-b3-output-root
-           (fn-b3-window-tree *fn-b3-iv* 0
-             (fn-b3-window-outs *fn-b3-iv* k base m 0)))))
+;; fn-blake3-is-window-composition has no hypothesis: the equation holds for
+; any object read as octets (both sides coerce alike), so the claim's
+; hypothesis list is empty and there is no removal witness to give.  Teeth: a
+; positive witness on 3 windows, and mutations that falsify the equation (a
+; shifted chunk counter; the root flag).
+(defteeth fn-blake3-is-window-composition
+  :claim (()
+          (equal (fn-blake3 m)
+                 (fn-b3-output-root
+                   (fn-b3-window-tree *fn-b3-iv* 0
+                     (fn-b3-window-outs *fn-b3-iv* k 0 m 0)))))
+  :witness ((m (fn-b3tt-input 2500)) (k 0))
+  :breaks ()
+  :mutations ((wrong-counter
+               (:conclusion
+                (equal (fn-blake3 m)
+                       (fn-b3-output-root
+                         (fn-b3-window-tree *fn-b3-iv* 0
+                           (fn-b3-window-outs *fn-b3-iv* k 1 m 0)))))
+               ((m (fn-b3tt-input 2500)) (k 0))
+               :fault "the windows hashed at chunk counters shifted by one")
+              (wrong-flags
+               (:conclusion
+                (equal (fn-blake3 m)
+                       (fn-b3-output-root
+                         (fn-b3-window-tree *fn-b3-iv* 1
+                           (fn-b3-window-outs *fn-b3-iv* k 0 m 0)))))
+               ((m (fn-b3tt-input 2500)) (k 0))
+               :fault "the window tree's parents compressed under a stray flag bit")))
 
+; More positive witnesses: 2 windows (k=0), 2 windows (k=1), the empty input,
+; and a non-octet object (the equation holds there too).
 (assert-event
- (and (fn-b3-octet-listp (fn-b3tt-input 2500))
-      (fn-b3tt-composition (fn-b3tt-input 2500) 0 0)
-      (fn-b3tt-composition (fn-b3tt-input 1025) 0 0)
-      (fn-b3tt-composition (fn-b3tt-input 3000) 1 0)
-      (fn-b3tt-composition nil 0 0))
- :msg "fn-blake3-is-window-composition: witnesses")
-
-(assert-event
- (and (not (fn-b3tt-composition (fn-b3tt-input 2500) 0 1))
-      (not (fn-b3tt-composition (fn-b3tt-input 1025) 0 1)))
- :msg "fn-blake3-is-window-composition: mutant (windows at counters shifted by one)")
+ (and (equal (fn-blake3 (fn-b3tt-input 1025))
+             (fn-b3-output-root
+               (fn-b3-window-tree *fn-b3-iv* 0
+                 (fn-b3-window-outs *fn-b3-iv* 0 0 (fn-b3tt-input 1025) 0))))
+      (equal (fn-blake3 (fn-b3tt-input 3000))
+             (fn-b3-output-root
+               (fn-b3-window-tree *fn-b3-iv* 0
+                 (fn-b3-window-outs *fn-b3-iv* 1 0 (fn-b3tt-input 3000) 0))))
+      (equal (fn-blake3 nil)
+             (fn-b3-output-root
+               (fn-b3-window-tree *fn-b3-iv* 0
+                 (fn-b3-window-outs *fn-b3-iv* 0 0 nil 0))))
+      (equal (fn-blake3 (cons 300 (fn-b3tt-input 1100)))
+             (fn-b3-output-root
+               (fn-b3-window-tree *fn-b3-iv* 0
+                 (fn-b3-window-outs *fn-b3-iv* 0 0
+                                    (cons 300 (fn-b3tt-input 1100)) 0)))))
+ :msg "fn-blake3-is-window-composition: 2 windows at k=0 and k=1, empty, non-octet")
 
 (defteeth fn-b3-stack-fold-of-windows
   :claim (((counter (natp counter)))

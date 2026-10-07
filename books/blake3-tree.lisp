@@ -921,20 +921,81 @@
 ; -----------------------------------------------------------------------------
 ; THE DECOMPOSITION (statements; proofs in progress, see the lanedump):
 
+; The digest reads its input through the octet coercion (`fn-b3-fix-octets'),
+; while the tree reads octets only through `fn-b3-nthx' under `fn-b3-octet'
+; and through the length: the node of any object is the node of its
+; coercion.  So the composition below needs no octet hypothesis.
+
+(local
+ (defthm fn-b3-octet-of-octet
+   (equal (fn-b3-octet (fn-b3-octet x)) (fn-b3-octet x))
+   :hints (("Goal" :in-theory (enable fn-b3-octet)))))
+
+(local
+ (defthm fn-b3-nthx-of-fix-octets
+   (equal (fn-b3-nthx i (fn-b3-fix-octets l))
+          (fn-b3-octet (fn-b3-nthx i l)))
+   :hints (("Goal" :in-theory (enable fn-b3-octet fn-b3-fix-octets)
+            :induct (fn-b3-nthx i l)))))
+
+(local
+ (defthm fn-b3-le-word-of-octets
+   (equal (fn-b3-le-word (fn-b3-octet a) (fn-b3-octet b) (fn-b3-octet c) (fn-b3-octet d))
+          (fn-b3-le-word a b c d))
+   :hints (("Goal" :in-theory (enable fn-b3-le-word)))))
+
+(local
+ (defthm fn-b3-nthcdrx-of-fix-octets
+   (equal (fn-b3-nthcdrx n (fn-b3-fix-octets l))
+          (fn-b3-fix-octets (fn-b3-nthcdrx n l)))
+   :hints (("Goal" :in-theory (enable fn-b3-fix-octets fn-b3-nthcdrx)
+            :induct (fn-b3-nthcdrx n l)))))
+
+(local
+ (defthm fn-b3-firstn-of-fix-octets
+   (equal (fn-b3-firstn n (fn-b3-fix-octets l))
+          (fn-b3-fix-octets (fn-b3-firstn n l)))
+   :hints (("Goal" :in-theory (enable fn-b3-fix-octets fn-b3-firstn)))))
+
+(local
+ (defthm fn-b3-words-of-fix-octets
+   (equal (fn-b3-words k (fn-b3-fix-octets l)) (fn-b3-words k l))
+   :hints (("Goal" :in-theory (e/d (fn-b3-words) (fn-b3-fix-octets))
+            :induct (fn-b3-words k l)))))
+
+(local
+ (defthm fn-b3-chunk-of-fix-octets
+   (equal (fn-b3-chunk cv (fn-b3-fix-octets l) counter flags startp)
+          (fn-b3-chunk cv l counter flags startp))
+   :hints (("Goal" :induct (fn-b3-chunk cv l counter flags startp)
+            :in-theory (disable fn-b3-fix-octets fn-b3-words)
+            :expand ((fn-b3-chunk cv (fn-b3-fix-octets l) counter flags startp)
+                     (fn-b3-chunk cv l counter flags startp))))))
+
+(local
+ (defthm fn-b3-node-of-fix-octets
+   (equal (fn-b3-node key (fn-b3-fix-octets l) counter flags)
+          (fn-b3-node key l counter flags))
+   :hints (("Goal" :induct (fn-b3-node-ind key l counter flags)
+            :in-theory (disable fn-b3-fix-octets fn-b3-chunk fn-b3-firstn fn-b3-nthcdrx)
+            :expand ((fn-b3-node key (fn-b3-fix-octets l) counter flags)
+                     (fn-b3-node key l counter flags))))))
+
 (defthm fn-blake3-is-window-composition
-  ; The digest of the whole is the root of the window composition.
-  (implies (fn-b3-octet-listp m)
-           (equal (fn-blake3 m)
-                  (fn-b3-output-root
-                    (fn-b3-window-tree *fn-b3-iv* 0
-                      (fn-b3-window-outs *fn-b3-iv* k 0 m 0)))))
+  ; The digest of the whole is the root of the window composition, for ANY
+  ; object read as octets (no octet hypothesis: both sides coerce alike).
+  (equal (fn-blake3 m)
+         (fn-b3-output-root
+           (fn-b3-window-tree *fn-b3-iv* 0
+             (fn-b3-window-outs *fn-b3-iv* k 0 m 0))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-b3-node-is-window-tree
                           (key *fn-b3-iv*) (counter 0) (flags 0)
                           (octets m)))
                   :do-not-induct t
                   :in-theory (e/d (fn-blake3 fn-b3-hash)
-                                  (fn-b3-node fn-b3-window-outs fn-b3-window-tree)))))
+                                  (fn-b3-node fn-b3-window-outs fn-b3-window-tree
+                                   fn-b3-fix-octets)))))
 
 ; -----------------------------------------------------------------------------
 ; PAIRING, the held state: the binary-counter stack over a run of window
