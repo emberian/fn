@@ -449,3 +449,17 @@
                                    fn-thlc-request-payload-decode
                                    fn-cwait-request-payload-decode
                                    fn-ncr-request-payload-decode)))))
+
+; The same dispatch with the digest named, the shape tools/reach_check.py
+; reads as tying fn-frb-control-decode to the call the host's site makes:
+; host/native/control.lisp reaches the control dispatch through
+; fn-frb-site-decode, which computes the digest once and calls
+; fn-frb-control-decode-with (books/native-live-buffer.lisp), so the claim of
+; fn-frb-control-decode-is-reference is about the dispatch the running
+; control service executes.
+(defthm fn-frb-control-decode-is-decode-with
+  (implies (equal digest (fn-frb-digest fn-octets))
+           (equal (fn-frb-control-decode fn-octets)
+                  (fn-frb-control-decode-with digest fn-octets)))
+  :hints (("Goal" :in-theory (enable fn-frb-control-decode)))
+  :rule-classes nil)
