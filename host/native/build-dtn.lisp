@@ -384,6 +384,7 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        (load "host/native/trace.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         (load "host/native/extent-decoded.lisp")

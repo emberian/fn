@@ -446,6 +446,13 @@
       (fn-dtrace-rowp (fn-dtrace-project 'fn-dtt-verdict '(1) '((1 2 3 4 5 6 7 8 9))))
       (fn-dtrace-rowp (fn-dtrace-project 'fn-dtt-nothing nil nil))))
 
+; the table the host reads once, without reading the world
+(assert-event
+ (equal (cdr (assoc-eq 'fn-dtt-verdict (fn-dtrace-point-table)))
+        (cdr (assoc-eq 'fn-dtt-verdict (table-alist 'fn-dtrace-points (w state))))))
+(assert-event (equal (strip-cars (fn-dtrace-point-table))
+                     (strip-cars (table-alist 'fn-dtrace-points (w state)))))
+
 ; the theorem the registry's definterface names
 (assert-event
  (equal (getpropc 'fn-dtrace-project-is-a-row 'theorem nil (w state))

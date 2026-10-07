@@ -561,6 +561,11 @@ def generated_names(root: Path = ROOT) -> set[str]:
     for path in sorted((root / "books").glob("*.lisp")):
         for a, b in _GENERATED.findall(path.read_text(encoding="utf-8", errors="replace")):
             names.add((a or b).lower())
+    # books/definterface.lisp's `(fn-dtrace-define-project)' generates the one
+    # entry decision tracing projects a call through, from the :trace table.
+    registry = root / "host" / "interfaces.lisp"
+    if registry.is_file() and "\n(fn-dtrace-define-project)" in registry.read_text(encoding="utf-8"):
+        names.update(("fn-dtrace-project", "fn-dtrace-point-table"))
     return names
 
 

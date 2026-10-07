@@ -1415,6 +1415,35 @@
  (not (fn-native-operator-result-tls-control-path-octets *fn-nop-keys*)))
 (assert-event (fn-nop-help-subjectp "tls"))
 
+; Decision tracing (books/decision-trace-control.lisp): `trace on|off|drain
+; [--since N]' is an accepted plan whose native action is :trace and whose
+; control path the host asks; it opens no store.  Any other word, a trailing
+; one, a non-decimal or a missing --since value is usage.
+(defmacro fn-nop-trace-run (&rest words)
+  `(fn-native-operator-run *fn-nop-minimal-config* (fn-nop-test-argv ',(cons "trace" words))))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-trace-run "on")) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action (fn-nop-trace-run "on")) :trace))
+(assert-event (not (fn-native-operator-result-needs-storep (fn-nop-trace-run "on"))))
+(assert-event (equal (fn-native-operator-result-trace-plan (fn-nop-trace-run "on")) '(:on 0)))
+(assert-event (equal (fn-native-operator-result-trace-plan (fn-nop-trace-run "off")) '(:off 0)))
+(assert-event (equal (fn-native-operator-result-trace-plan (fn-nop-trace-run "drain")) '(:drain 0)))
+(assert-event (equal (fn-native-operator-result-trace-plan (fn-nop-trace-run "drain" "--since" "41"))
+                     '(:drain 41)))
+(assert-event (equal (fn-native-operator-result-trace-control-path-octets (fn-nop-trace-run "on"))
+                     (fn-record-string-octets
+                      (fn-native-config-control-path
+                       (fn-native-operator-result-config (fn-nop-trace-run "on"))))))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-trace-run)) :usage))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-trace-run "flush")) :usage))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-trace-run "on" "now")) :usage))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-trace-run "drain" "--since")) :usage))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-trace-run "drain" "--since" "x")) :usage))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-trace-run "drain" "--since" "1" "2")) :usage))
+(assert-event (equal (fn-native-operator-result-status (fn-nop-trace-run "drain" "--since" "18446744073709551616")) :usage))
+(assert-event (not (fn-native-operator-result-trace-plan (fn-nop-trace-run "flush"))))
+(assert-event (not (fn-native-operator-result-trace-plan *fn-nop-tls*)))
+(assert-event (fn-nop-help-subjectp "trace"))
+
 ; -----------------------------------------------------------------------------
 ; PRF-171 (PKT-451 (C)): `init' under a profile whose field 7 is 100
 ; (fn-nop-init-plain-groups-are-within-the-profile).

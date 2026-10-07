@@ -493,6 +493,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ; Diagnostic spans and decision tracing (fnn-trace-span, the decision
+        ; ring, `trace on|off|drain'): before everything that brackets a span.
+        (load "host/native/trace.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         (load "host/native/extent-decoded.lisp")

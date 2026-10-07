@@ -981,3 +981,8 @@ A paged kind (`fn-nlp-pagedp') is read by `fnn-control-live-pages' instead:
             ;; total-width); a bare refusal stays :refused.
             (:refused (return (if (rest step) step :refused)))
             (t (return :after-submission))))))))
+
+;; Decision tracing (host/native/trace.lisp): FNCT kind 26 is the first arm of
+;; the handler chain; every later handler file chains to what stands here.
+(setq *fnn-trace-control-next-handler* *fnn-hybrid-control-handler*
+      *fnn-hybrid-control-handler* #'fnn-trace-control-handle)

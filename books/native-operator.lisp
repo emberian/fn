@@ -809,7 +809,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "operation" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer" "carry" "retire")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "operation" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "trace" "retention" "account" "motd" "moderation" "article" "consumer" "carry" "retire")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -864,6 +864,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | set-password LOGIN [--principal HEX] [--posting|--no-posting] | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show | delete LOGIN} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, each access rule, and a code's expiry as a UTC time; set-password asks the password twice and writes LOGIN into auth.toml, which a redeemed account's own password then yields to; access sets the groups a login sees and may post to; delete removes a login auth.toml holds, else ends LOGIN's redeemed account: new logins as LOGIN are refused, its posts stay, and a redeemed login is never given out again; refused while a signing binding, a moderator role or a consumer binding names LOGIN; set-password and delete apply to a running node at once; spec nntp Invitation-code accounts, Group access)")
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
+        ((equal subject "trace")
+         "usage: fn operator CONFIG trace on | trace off | trace drain [--since N] (decision tracing of the running owner, off unless the profile has a [trace] table and you turn it on. on: start recording the decisions the books declared traceable into a bounded ring (capacity, classes and sampling from [trace]); off: stop and free the ring; drain: print the recorded rows after sequence N as FN_TRACE JSON lines, freeing the rows up to N, then a decision-summary line whose counters balance: attempts = recorded + dropped + sampled_out. Pass the summary's next minus one as the next --since. A trace is a view over decisions already made; it changes nothing the node serves or stores. Refused by name when there is no [trace] table (not-configured), when already on or off, or when draining a trace that is not on)")
         ((equal subject "tls")
          "usage: fn operator CONFIG tls reload | tls self-signed NAME [NAME ...] [--days N] (self-signed: the image makes a P-256 key and a certificate naming each NAME, a DNS name or an IP address, the first its subject, valid from an hour ago for N days, default 365, and writes them at tls_cert and tls_key; refused when either file exists; then run, or tls reload on a running node. reload: the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
         ((equal subject "carry")
@@ -871,7 +873,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "retire")
          "usage: fn operator CONFIG retire [--drain SECONDS] (the running node refuses new connections, stops pulling, lets its feeds drain for at most SECONDS (0 without --drain; at most 86400), prints per peer what stays undelivered and the obligation ledger, takes a final checkpoint and stops; what stays is released only by carry drop WORK --abandon on the stopped store)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|operation|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry|retire} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|operation|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|trace|account|motd|consumer|carry|retire} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
 
 ;; PRF-097: the peering verbs (specs/peering.md section 9).  Their words are
 ;; values and absolute paths; what the documents say, and whether they are
@@ -981,6 +983,26 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                      (t (fn-nop-result :accepted :plan "tls" config
                                        (list :tls-self-signed names days))))))))
         (t (fn-nop-usage :invalid-tls-command "tls" config words))))
+
+; `trace on | off | drain [--since N]' (books/decision-trace-control.lisp):
+; the plan is (:trace VERB SINCE).  Whether the owner does it is the owner's
+; (books/decision-trace.lisp fn-dtrace-verb, asked by host/native/trace.lisp
+; over the control socket).
+(defun fn-nop-parse-trace (words config)
+  (declare (xargs :guard t))
+  (cond ((and (equal (fn-ncfg-first words) "on") (null (fn-ncfg-rest words)))
+         (fn-nop-result :accepted :plan "trace" config (list :trace :on 0)))
+        ((and (equal (fn-ncfg-first words) "off") (null (fn-ncfg-rest words)))
+         (fn-nop-result :accepted :plan "trace" config (list :trace :off 0)))
+        ((and (equal (fn-ncfg-first words) "drain") (null (fn-ncfg-rest words)))
+         (fn-nop-result :accepted :plan "trace" config (list :trace :drain 0)))
+        ((and (equal (fn-ncfg-first words) "drain")
+              (equal (fn-ncfg-second words) "--since")
+              (null (cddr (cdr words)))
+              (fn-nop-profile-decimal (fn-ncfg-third words)))
+         (fn-nop-result :accepted :plan "trace" config
+                        (list :trace :drain (fn-nop-profile-decimal (fn-ncfg-third words)))))
+        (t (fn-nop-usage :invalid-trace-command "trace" config words))))
 
 ; PKT-869: `carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|*
 ; | drop WORK REASON...}' over the FNWF workflow journal at the absolute path
@@ -1272,6 +1294,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             ((equal command "keys") (fn-nop-parse-keys rest config))
             ((equal command "carry") (fn-nop-parse-carry rest config))
             ((equal command "tls") (fn-nop-parse-tls rest config))
+            ((equal command "trace") (fn-nop-parse-trace rest config))
             ((equal command "account") (fn-nop-parse-account rest argv config))
             (t (fn-nop-usage :unsupported-command command config rest))))))
 
@@ -2114,6 +2137,24 @@ formed and the operator asked for something the node declined to do."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+(defun fn-native-operator-result-trace-plan (result)
+  "(VERB SINCE) of an accepted `trace' plan, else nil."
+  (declare (xargs :guard t))
+  (let ((args (fn-native-operator-result-arguments result)))
+    (if (and (equal (fn-native-operator-result-status result) :accepted)
+             (equal (fn-native-operator-result-command result) "trace")
+             (true-listp args) (equal (len args) 3) (equal (car args) :trace))
+        (cdr args)
+      nil)))
+
+(defun fn-native-operator-result-trace-control-path-octets (result)
+  "The control socket an accepted `trace' asks, as octets."
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-trace-plan result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
@@ -2215,6 +2256,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                        :tls-self-signed))
            :tls-self-signed)
           ((equal (fn-native-operator-result-command result) "tls") :tls)
+          ((equal (fn-native-operator-result-command result) "trace") :trace)
           ((equal (fn-native-operator-result-command result) "show") :show)
           ((equal (fn-native-operator-result-command result) "mission") :mission)
           (t :owner-required))))

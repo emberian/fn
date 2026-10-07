@@ -22,7 +22,7 @@
 ; fixes its summand, which changes no value: `+' fixes its arguments).
 
 (defun fn-store-charge (length)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (natp length)))
   (if (natp length) (fn-charge-for-payload length) 0))
 
 ; D27 (lane caps; the gift of codex/canonical-size a2ab7c2de): the charge

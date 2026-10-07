@@ -1157,6 +1157,11 @@
 (defun fn-di-project-events (entries)
   (declare (xargs :mode :program))
   `(progn
+     ; the table itself, for the host to read once at start without reading the
+     ; world: ((NAME . PLIST) ...), the entries of fn-dtrace-points
+     (defun fn-dtrace-point-table ()
+       (declare (xargs :guard t))
+       ',entries)
      (defun fn-dtrace-project (point args vals)
        (declare (xargs :guard t))
        (case point

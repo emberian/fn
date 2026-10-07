@@ -365,6 +365,16 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-tls-control-path-octets result))
 
+;; `trace on|off|drain' (books/decision-trace-control.lisp): the control socket
+;; host/native/trace.lisp asks, and ACL2's (VERB SINCE).
+(defun fn-native-operator-host-result-trace-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-trace-control-path-octets result))
+
+(defun fn-native-operator-host-result-trace-plan (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-trace-plan result))
+
 ;; Row Q10a: the self-signed pair (books/tls-self-signed.lisp).  The host
 ;; generates the key, reads sixteen random octets and the wall clock, signs
 ;; the body ACL2 renders and writes the two PEM files ACL2 renders.

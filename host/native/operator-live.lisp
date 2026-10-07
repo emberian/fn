@@ -82,6 +82,10 @@
               ;; on the system's only when it serves no TLS and does not
               ;; require the hybrid; otherwise it is refused here by name.
               (fnn-tls-decide-library *fnn-operator-config-octets* certificate)
+              ;; Decision tracing: ACL2's plan of the profile's [trace] table,
+              ;; refused by name before anything listens; off unless the
+              ;; profile says `start = "on"' or the operator turns it on.
+              (fnn-trace-decide-plan *fnn-operator-config-octets*)
               ;; ACL2 already enforced paired presence.  Only a pair ACL2
               ;; accepted (fn-tlsr-start-decide, the decision `tls reload'
               ;; applies; PRF-387) is passed to auth/owner.
@@ -319,3 +323,4 @@ profile bounds the credentials (max-credentials, D27, PRF-102)."
 (fnn-operator-register-action :peering #'fnn-pinv-execute)
 (fnn-operator-register-action :keys #'fnn-keys-execute)
 (fnn-operator-register-action :tls #'fnn-tls-execute)
+(fnn-operator-register-action :trace #'fnn-trace-execute)
