@@ -532,6 +532,14 @@
    "why": "lane lock-model-gaps-2: the developer-trace environment selector read by fnn-owner-custody-trace (owner.lisp:1892); same verification as fnn-err. It signals fnn-fault for a selector name that is not registered, a programming error of the trace's own literal that the trace swallows by design."
   }
  },
+ "status_rethrows": {
+  "fnn-bpnode-app-result": {
+   "file": "host/native/bp-node.lisp",
+   "clause": "fnn-store-indeterminate",
+   "status": ":uncertain",
+   "why": "lane lock-model-gaps-2: host/native/bp-node.lisp:218-228 answers an indeterminate Store/FNRJ/FNWF result as (values :uncertain ...) and its only caller, fnn-bpnode-dispatch-one (:319-341), converts that status back to fnn-indeterminate (:339-341) after driving the delivery effects. The checker verifies the clause ends in (values :uncertain ...) without an early exit, that every reference to the function is a multiple-value-bind value form, and that the bound status reaches (when (eq STATUS :uncertain) (fnn-indeterminate ...)) past no return-from/return/go/throw. The R7 rule then reads the clause as a deferred rethrow, not a swallow."
+  }
+ },
  "dead_thread_guards": [
   {
    "function": "fnn-mux-start",

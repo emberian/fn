@@ -1923,3 +1923,74 @@ class DiagnosticSinkSwallow(unittest.TestCase):
 (defun fnn-err (control &rest args) (fnn-close args))
 (defun fnn-trace-it (x) (ignore-errors (fnn-err "x ~a" x)))
 """)
+
+
+class StatusRethrow(unittest.TestCase):
+    """A handler that hands an indeterminate condition on as a returned status
+    is a deferred rethrow when every caller converts that status back to a
+    signal on every path (contract status_rethrows, verified)."""
+
+    ROW = {"fnn-app-result": {"file": "host/native/fixture.lisp", "clause": "fnn-store-indeterminate",
+                              "status": ":uncertain", "why": "test"}}
+
+    def run7(self, source, row=None):
+        raw = json.loads((ROOT / "tools" / "lock_discipline_contracts.json").read_text())
+        raw["status_rethrows"] = self.ROW if row is None else row
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + source)
+            cpath = root / "contracts.json"
+            cpath.write_text(json.dumps(raw))
+            an, model, checker = ldc.analyze_tree(root, ldc.load_contracts(cpath),
+                                                  ["host/native/fixture.lisp"], {})
+            return [(f.function, f.key) for f in checker.run({"R7"}) if f.rule == "R7"]
+
+    def src(self, caller_body, clause="(values :uncertain 0)", extra=""):
+        return f"""
+(defun fnn-indeterminate (control) (error 'fnn-store-indeterminate :message control))
+(defun fnn-app-core (view) (error 'fnn-store-indeterminate :message view))
+(defun fnn-app-result (view)
+  (handler-case (fnn-app-core view)
+    (fnn-store-indeterminate (e) {clause})))
+(defun fnn-app-step (view)
+  (multiple-value-bind (status detail) (fnn-app-result view)
+    {caller_body}))
+(defun fnn-app-start ()
+  (sb-thread:make-thread (lambda () (fnn-app-step 1)) :name "w"))
+{extra}
+"""
+
+    GOOD = """(when (eq status :uncertain) (fnn-indeterminate "uncertain"))
+    detail"""
+
+    def swallow(self, found):
+        return [k for k in found if k[0] == "fnn-app-result" and k[1].startswith("swallow:")]
+
+    def test_a_converted_status_is_a_deferred_rethrow(self):
+        self.assertEqual(self.swallow(self.run7(self.src(self.GOOD))), [])
+
+    def test_the_same_handler_without_the_row_is_a_swallow(self):
+        found = self.run7(self.src(self.GOOD), row={})
+        self.assertEqual(len(self.swallow(found)), 1, found)
+
+    def test_a_caller_that_drops_the_status_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src("detail"))
+
+    def test_an_early_return_before_the_conversion_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src("""(when (null detail) (return-from fnn-app-step nil))
+    (when (eq status :uncertain) (fnn-indeterminate "uncertain"))"""))
+
+    def test_a_conversion_that_may_return_normally_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src("""(when (eq status :uncertain) (when detail (fnn-indeterminate "u")))"""))
+
+    def test_a_second_caller_that_ignores_the_status_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(self.GOOD, extra="(defun fnn-other (v) (fnn-app-result v))"))
+
+    def test_a_clause_that_returns_another_status_is_a_loud_error(self):
+        with self.assertRaises(ValueError):
+            self.run7(self.src(self.GOOD, clause="(values :ok 0)"))

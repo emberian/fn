@@ -3477,6 +3477,110 @@ class Checker:
         core = (CLASS_TYPE["fault"], CLASS_TYPE["indet"])
         return all(any(self.m.subtype(x, t) for t in core) for x in c)
 
+    def verified_status_rethrows(self) -> dict:
+        """{function: handler clause type} for the declared value-routed
+        deferred rethrows (contract status_rethrows) that hold up against the
+        source.  FUNCTION's HANDLER clause hands the condition on as a returned
+        status: its last form is (values STATUS ...) and it never exits early.
+        Every reference to FUNCTION in the host is a call that is the value
+        form of a (multiple-value-bind (S ...) (FUNCTION ...) BODY...), and BODY
+        reaches, past forms that cannot leave BODY early (no return-from,
+        return, go or throw, even nested), a form (when (eq S STATUS) CALL)
+        whose CALL signals a fault or indeterminate condition on every path.
+        A row that does not verify is a loud error."""
+        out = {}
+        tree = self.an.tree
+        for name, row in sorted(self.c.raw.get("status_rethrows", {}).items()):
+            if name not in self.infos:
+                if not (tree.root / row["file"]).exists():
+                    continue
+                raise ValueError(f"status_rethrows {name}: not a function of the analyzed host")
+            status, clause_type = row["status"], row["clause"]
+
+            def fail(why, name=name):
+                raise ValueError(f"status_rethrows {name}: {why}")
+
+            exits = Analyzer.EXIT_HEADS
+
+            def has_exit(f):
+                stack = [f]
+                while stack:
+                    x = stack.pop()
+                    if isinstance(x, list) and x:
+                        if head(x) in ("quote", "lambda", "function"):
+                            continue
+                        if head(x) in exits:
+                            return True
+                        stack.extend(x)
+                return False
+
+            # the clause hands the condition on as the returned status
+            clauses = []
+            stack = list(tree.defs[name].body)
+            while stack:
+                x = stack.pop()
+                if isinstance(x, list) and x:
+                    if head(x) == "handler-case":
+                        clauses += [cl for cl in x[2:] if isinstance(cl, list) and cl and sym(cl[0]) == clause_type]
+                    stack.extend(x)
+            if not clauses:
+                fail(f"no handler-case clause {clause_type}")
+            for cl in clauses:
+                body = cl[2:]
+                last = body[-1] if body else None
+                if not (isinstance(last, list) and head(last) == "values" and len(last) > 1
+                        and sym(last[1]) == status):
+                    fail(f"the clause {clause_type} does not end in (values {status} ...)")
+                if any(has_exit(f) for f in body):
+                    fail(f"the clause {clause_type} can exit early")
+
+            def converts(forms, var):
+                for f in forms:
+                    if (isinstance(f, list) and head(f) == "when" and len(f) == 3
+                            and isinstance(f[1], list) and head(f[1]) == "eq" and len(f[1]) == 3
+                            and sym(f[1][1]) == var and sym(f[1][2]) == status
+                            and isinstance(f[2], list) and self._converts([f[2]])):
+                        return True
+                    if has_exit(f):
+                        return False
+                    if isinstance(f, list) and head(f) in ("let", "let*") and len(f) > 2:
+                        if any(has_exit(b) for b in (f[1] if isinstance(f[1], list) else [])):
+                            return False
+                        if converts(f[2:], var):
+                            return True
+                        return False
+                return False
+
+            seen = 0
+            for dname, d in tree.defs.items():
+                stack = [(f, None) for f in d.body]
+                while stack:
+                    x, parent = stack.pop()
+                    if isinstance(x, Sym) and str(x) == name and not (
+                            parent is not None and parent and parent[0] is x):
+                        if not (isinstance(parent, list) and parent and head(parent) == "multiple-value-bind"):
+                            if dname != name:
+                                fail(f"{dname} references {name} outside a multiple-value-bind value form")
+                    if not (isinstance(x, list) and x):
+                        continue
+                    if head(x) == name:
+                        fail(f"{dname} calls {name} outside a multiple-value-bind value form")
+                    if head(x) == "multiple-value-bind" and len(x) > 3:
+                        call = x[2]
+                        if isinstance(call, list) and head(call) == name:
+                            seen += 1
+                            vars_ = x[1] if isinstance(x[1], list) else []
+                            if not vars_ or not isinstance(vars_[0], Sym) or not converts(x[3:], str(vars_[0])):
+                                fail(f"{dname}: the status of the call is not converted past early exits")
+                            stack.extend((c, x) for c in call[1:])
+                            stack.extend((c, x) for c in x[3:])
+                            continue
+                    stack.extend((c, x) for c in x)
+            if seen == 0:
+                fail("no caller binds its status")
+            out[name] = clause_type
+        return out
+
     def verified_diagnostic_sinks(self) -> set:
         """The declared diagnostic sinks (contract diagnostic_sinks) that hold
         up against the source: a function of the analyzed host whose call
@@ -3526,6 +3630,7 @@ class Checker:
     def rule_R7(self):
         fences = set(self.c.raw.get("fence_functions", []))
         sinks = self.verified_diagnostic_sinks()
+        status_routed = self.verified_status_rethrows()
         # classify-and-route functions (contract classifying_escape_functions):
         # a fault or indeterminate condition handed to one reaches the fence
         # or fault stop; any other kind is answered to the caller. They count
@@ -3549,6 +3654,8 @@ class Checker:
                     if not caught:
                         continue
                     routes = rethrows or bool(names & fences)
+                    if status_routed.get(name) and spec == status_routed[name] and (caught & {"fault", "indet"}) == {"indet"}:
+                        continue    # handed on as a returned status the callers convert (verified)
                     core = caught & {"fault", "indet"}
                     local = caught & {"socket", "refusal", "connection"}
                     if core and not (routes or names & classifiers or self._converts(forms)) \
