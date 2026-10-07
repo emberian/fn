@@ -1184,24 +1184,32 @@
                                    (stamp (fn-xc-tick fn-xcc))
                                    (c2 (mv-nth 1 (fn-xc-next-stamp fn-xcc))))))))
 
-; OWED (EXT-CACHE-INSTALL-LOOKUP): the combined statement of KEYSTONE 2 over
-; the three cases (present, free, full) is stated below as a comment; its three
-; case theorems above are proved.  The combination needs the post-install
-; scan facts (find over the written table) instead of case-splitting through
-; the install.
-;
-; ; KEYSTONE 2 (install then lookup).  Whatever an install does but refuse, the
-; ; key is then found; a whole entry is found in exactly the slot the install
-; ; answered.  (A refused install is the empty region: see fn-xc-install-placement.)
-; (defthm fn-xc-install-then-lookup-hits
-;   (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
-;                 (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
-;                 (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer
-;                                                       fn-xcs fn-xcc))
-;                             :refused)))
-;            (fn-xc-lookup-after-install))
-;   :hints (("Goal" :do-not-induct t
-;                   :use (fn-xc-install-placement)
-;                   :cases ((fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
-;                                       trailer start fn-xcs)
-;                           (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))))
+(defthm fn-xc-install-nonempty
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer
+                                                     fn-xcs fn-xcc))
+                            :refused)))
+           (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-xc-install-placement) :in-theory (disable fn-xc-install-placement))))
+
+; KEYSTONE 2 (install then lookup).  Whatever an install does but refuse, the
+; key is then found; a whole entry is found in exactly the slot the install
+; answered.  (A refused install is the empty region: see fn-xc-install-placement.)
+(defthm fn-xc-install-then-lookup-hits
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer
+                                                      fn-xcs fn-xcc))
+                            :refused)))
+           (fn-xc-lookup-after-install))
+  :hints (("Goal" :do-not-induct t
+                  :use (fn-xc-install-nonempty fn-xc-install-then-lookup-hits-present
+                        fn-xc-install-then-lookup-hits-free fn-xc-install-then-lookup-hits-full)
+                  :in-theory (disable fn-xc-install-placement fn-xc-lookup-is-find
+                                      fn-xc-install-then-lookup-hits-present fn-xc-install-then-lookup-hits-free
+                                      fn-xc-install-then-lookup-hits-full)
+                  :cases ((fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                                      trailer start fn-xcs)
+                          (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))))
