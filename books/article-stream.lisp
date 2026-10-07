@@ -550,11 +550,112 @@
     (mv-let (out next) (fn-ast-render-one cur fn-arena)
       (fn-ast-render-window-aux next out (- fuel 1) left acc fn-arena)))))
 
+;; THE SPAN RENDERER (row 21, ARTICLE-RENDER-WALKS-FROM-WINDOW).  The aux
+;; above reads a payload one octet per transition, each octet an arena read
+;; and so, on the host, a borrow of its own.  A window render is a run of
+;; transitions over an arena it only reads, so it asks the arena for the span
+;; of octets it is about to consume (fn-arena-get-span: one call, the host's
+;; one borrow per stretch) and consumes them from the chunk.  The chunk lives
+;; in this call alone: the cursor the call returns is the unconsumed
+;; remainder, offset first, so no read-ahead outlives the arena it was read
+;; from.
+(defun fn-ast-span-want ()
+  (declare (xargs :guard t))
+  256)
+
+(defun fn-ast-source-readablep (source fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source))))
+    (and (natp h) (< h (fn-arena-count fn-arena))
+         (< at (fn-arena-payload-len h fn-arena))
+         (not (zp (nfix (fn-ast-at 2 source)))))))
+
+; The chunk is the next octets of the cursor's own payload, as the arena has
+; them, no more than the source's remainder.
+(defun fn-ast-chunk-validp (cur chunk fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (or (null chunk)
+      (let ((source (fn-ast-at 4 cur)))
+        (and (true-listp chunk)
+             (eq (fn-ast-at 0 cur) :payload) (not (consp (fn-ast-at 1 cur)))
+             (fn-ast-source-readablep source fn-arena)
+             (<= (len chunk) (- (fn-arena-payload-len (fn-ast-at 0 source) fn-arena)
+                                (nfix (fn-ast-at 1 source))))
+             (<= (len chunk) (nfix (fn-ast-at 2 source)))
+             (equal chunk (fn-arena-get-span (fn-ast-at 0 source) (nfix (fn-ast-at 1 source))
+                                             (len chunk) fn-arena))))))
+
+(defun fn-ast-render-one-chunk (cur chunk fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-ast-cursorp cur fn-arena)
+                  :guard-hints (("Goal" :in-theory (disable fn-ast-cursorp fn-ast-render-one
+                                                            fn-npw-piecesp)))))
+  (let ((source (fn-ast-at 4 cur)))
+    (if (and (eq (fn-ast-at 0 cur) :payload) (not (consp (fn-ast-at 1 cur)))
+             (fn-ast-source-readablep source fn-arena))
+        (let* ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source)))
+               (chunk (if (consp chunk)
+                          chunk
+                        (fn-arena-get-span h at
+                                           (min (fn-ast-span-want)
+                                                (- (fn-arena-payload-len h fn-arena) at)
+                                                (nfix (fn-ast-at 2 source)))
+                                           fn-arena)))
+               (byte (car chunk)))
+          (mv (if (and (fn-ast-at 5 cur) (equal byte 46)) '(46 46) (list byte))
+              (list :payload nil 0 nil (fn-ast-source-next source) (equal byte 10) nil)
+              (cdr chunk)))
+      (mv-let (out next) (fn-ast-render-one cur fn-arena)
+        (mv out next nil)))))
+
+(defun fn-ast-render-window-aux-chunk (cur pending chunk fuel left acc fn-arena)
+  (declare (xargs :stobjs fn-arena :measure (nfix fuel)
+                  :guard (and (fn-ast-cursorp cur fn-arena) (natp fuel) (natp left)
+                              (true-listp acc))
+                  :guard-hints (("Goal" :in-theory (disable fn-ast-cursorp fn-ast-render-one
+                                                            fn-npw-piecesp)))))
+  (cond
+   ((or (zp fuel) (zp left)
+        (and (not (consp pending)) (eq (fn-ast-at 0 cur) :done)))
+    (mv (revappend acc nil) (list :window pending cur)))
+   ((consp pending)
+    (fn-ast-render-window-aux-chunk cur (cdr pending) chunk (- fuel 1) (- left 1)
+                                    (cons (car pending) acc) fn-arena))
+   (t
+    (mv-let (out next chunk)
+      (fn-ast-render-one-chunk cur chunk fn-arena)
+      (fn-ast-render-window-aux-chunk next out chunk (- fuel 1) left acc fn-arena)))))
+
+;; KEYSTONE fn-ast-render-window-aux-chunk-is-per-octet: the span renderer's
+;; output and cursor are the per-octet renderer's (fn-ast-render-window-aux,
+;; the specification) for every cursor, fuel and bound, from an empty chunk.
+;; The arena is only read, so the span the chunk was read from is the arena
+;; every later octet would have been read from.
+(defthm fn-ast-render-one-chunk-is-render-one
+  (implies (fn-ast-chunk-validp cur chunk fn-arena)
+           (and (equal (mv-nth 0 (fn-ast-render-one-chunk cur chunk fn-arena))
+                       (mv-nth 0 (fn-ast-render-one cur fn-arena)))
+                (equal (mv-nth 1 (fn-ast-render-one-chunk cur chunk fn-arena))
+                       (mv-nth 1 (fn-ast-render-one cur fn-arena)))
+                (fn-ast-chunk-validp (mv-nth 1 (fn-ast-render-one cur fn-arena))
+                                     (mv-nth 2 (fn-ast-render-one-chunk cur chunk fn-arena))
+                                     fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-ast-render-one-chunk fn-ast-chunk-validp
+                                   fn-ast-source-readablep fn-ast-source-byte fn-ast-source-next)
+                                  (fn-ast-render-one fn-ast-cursorp))
+                  :expand ((fn-ast-render-one cur fn-arena)))))
+
+(defthm fn-ast-render-window-aux-chunk-is-per-octet
+  (implies (fn-ast-chunk-validp cur chunk fn-arena)
+           (equal (fn-ast-render-window-aux-chunk cur pending chunk fuel left acc fn-arena)
+                  (fn-ast-render-window-aux cur pending fuel left acc fn-arena)))
+  :hints (("Goal" :induct (fn-ast-render-window-aux-chunk cur pending chunk fuel left acc fn-arena)
+                  :in-theory (disable fn-ast-render-one fn-ast-render-one-chunk fn-ast-chunk-validp))))
+
 (defun fn-ast-render-window (window fuel octets fn-arena)
   (declare (xargs :stobjs fn-arena :guard (fn-ast-windowp window fn-arena)))
-  (fn-ast-render-window-aux (fn-ast-window-cur window)
-                            (fn-ast-window-pending window)
-                            (nfix fuel) (nfix octets) nil fn-arena))
+  (fn-ast-render-window-aux-chunk (fn-ast-window-cur window)
+                                  (fn-ast-window-pending window) nil
+                                  (nfix fuel) (nfix octets) nil fn-arena))
 
 ; A window rendered from a valid window is a valid window, so the plan can carry it.
 (defthm fn-ast-render-window-aux-keeps-windowp
@@ -568,13 +669,17 @@
   (implies (fn-ast-windowp window fn-arena)
            (fn-ast-windowp (mv-nth 1 (fn-ast-render-window window fuel octets fn-arena))
                            fn-arena))
-  :hints (("Goal" :in-theory (e/d (fn-ast-windowp)
+  :hints (("Goal" :in-theory (e/d (fn-ast-windowp fn-ast-chunk-validp)
                                   (fn-ast-render-window-aux fn-ast-cursorp
                                       fn-ast-window-cur fn-ast-window-pending))
                   :expand ((fn-ast-render-window window fuel octets fn-arena))
                   :use ((:instance fn-ast-render-window-aux-keeps-windowp
                           (cur (fn-ast-window-cur window))
                           (pending (fn-ast-window-pending window))
+                          (fuel (nfix fuel)) (left (nfix octets)) (acc nil))
+                        (:instance fn-ast-render-window-aux-chunk-is-per-octet
+                          (cur (fn-ast-window-cur window))
+                          (pending (fn-ast-window-pending window)) (chunk nil)
                           (fuel (nfix fuel)) (left (nfix octets)) (acc nil))))))
 
 (defthm fn-ast-render-window-acc-bound
@@ -592,9 +697,14 @@
            :use ((:instance fn-ast-render-window-acc-bound
                             (cur (fn-ast-window-cur window))
                             (pending (fn-ast-window-pending window))
-                            (fuel (nfix fuel)) (left (nfix octets)) (acc nil)))
-           :in-theory (disable fn-ast-render-window-aux
-                               fn-ast-window-cur fn-ast-window-pending))))
+                            (fuel (nfix fuel)) (left (nfix octets)) (acc nil))
+                 (:instance fn-ast-render-window-aux-chunk-is-per-octet
+                          (cur (fn-ast-window-cur window))
+                          (pending (fn-ast-window-pending window)) (chunk nil)
+                          (fuel (nfix fuel)) (left (nfix octets)) (acc nil)))
+           :in-theory (e/d (fn-ast-chunk-validp)
+                           (fn-ast-render-window-aux
+                            fn-ast-window-cur fn-ast-window-pending)))))
 
 (defthm fn-ast-scan-work-bounded
   (<= (mv-nth 1 (fn-ast-scan-step scan fuel fn-arena)) (nfix fuel))

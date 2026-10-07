@@ -436,6 +436,18 @@
                               (natp i) (< i (fn-arena$a-payload-len h fn-arena$a)))))
   (fn-oct-nth i (fn-oct-nth h fn-arena$a)))
 
+; The span: the N octets of handle H from coordinate AT, one read's worth
+; (row 21).  Its logical value is the list of the gets.
+(defun fn-arena$a-get-span (h at n fn-arena$a)
+  (declare (xargs :guard (and (natp h) (< h (fn-arena$a-count fn-arena$a))
+                              (natp at) (natp n)
+                              (<= (+ at n) (fn-arena$a-payload-len h fn-arena$a)))
+                  :measure (nfix n)))
+  (if (zp n)
+      nil
+    (cons (fn-arena$a-get h at fn-arena$a)
+          (fn-arena$a-get-span h (+ 1 at) (1- n) fn-arena$a))))
+
 (defun fn-arena$a-payload (h fn-arena$a)
   (declare (xargs :guard (and (natp h) (< h (fn-arena$a-count fn-arena$a)))))
   (fn-oct-nth h fn-arena$a))
