@@ -96,7 +96,7 @@
                       (mv :root nil nil nil reads fn-arena fn-octets)
                     (let ((root (cadr d)))
                       (mv-let (verdict acc index reads fn-arena fn-octets)
-                        (pcko-tape 16384 (* 2048 npg) 0 (fn-ssr-seed (nth 1 root)) nil reads
+                        (pcko-tape 16384 (* 2048 npg) 0 (fn-ssr-seed (fn-stxk-initial-context 0)) nil reads
                                    pgs-mem fn-arena fn-octets)
                         (mv verdict (fn-ssr-rows acc)
                             (list (nth 0 root) (nth 1 root) (nth 2 root) (nth 3 root))
@@ -379,13 +379,13 @@
                 (<= (+ 2 (adt-tp-npk (nth 1 w))) 16384)
                 (pcko-ok-treep (fn-scc-decode-tree (adt-tp-unpack (nth 1 w) (nthcdr 2 w))))
                 (pcko-wellp (nthcdr 16384 w))
-                (not (eq (mv-nth 0 (fn-ssr-intern-step (fn-ssr-seed (nth 1 (pcko-root w)))
+                (not (eq (mv-nth 0 (fn-ssr-intern-step (fn-ssr-seed (fn-stxk-initial-context 0))
                                                        (pcko-trees (nthcdr 16384 w))
                                                        nil nil :resident nil fn-arena))
                          :bad)))
            (let* ((ts (pcko-trees (nthcdr 16384 w)))
                   (x (pcko-root w))
-                  (seed (fn-ssr-seed (nth 1 x))))
+                  (seed (fn-ssr-seed (fn-stxk-initial-context 0))))
              (and (equal (mv-nth 0 (fn-pck-x-open npg pgs-mem fn-arena fn-octets)) :ok)
                   (equal (mv-nth 1 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
                          (fn-ssr-rows (mv-nth 0 (fn-ssr-intern-step seed ts nil nil :resident nil fn-arena))))
@@ -401,7 +401,7 @@
            :expand ((fn-pck-x-open npg pgs-mem fn-arena fn-octets))
            :use ((:instance pcko-tape-is-the-fold (pos 16384) (seq 0) (index nil)
                             (reads (+ 2 (adt-tp-npk (nth 1 w))))
-                            (acc (fn-ssr-seed (nth 1 (pcko-root w))))
+                            (acc (fn-ssr-seed (fn-stxk-initial-context 0)))
                             (fn-octets (adt-tp-unpack (nth 1 w) (nthcdr 2 w)))))
            :in-theory (e/d (pcko-root) (nth nthcdr adt-tp-unpack adt-tp-npk fn-scc-decode-tree
                                         pcko-tape pcko-tape-is-the-fold pcko-trees pcko-wellp pcko-cost
@@ -725,10 +725,10 @@
                        (adt-tp-flat (fn-pck-pages configs recs)))
                 (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))
                 (not (eq (mv-nth 0 (fn-ssr-intern-step
-                                    (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs)))
+                                    (fn-ssr-seed (fn-stxk-initial-context 0))
                                     recs nil nil :resident nil fn-arena))
                          :bad)))
-           (let ((seed (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs))))
+           (let ((seed (fn-ssr-seed (fn-stxk-initial-context 0)))
                  (x (fn-pck-root-tree configs recs))
                  (r (fn-pck-x-open npg pgs-mem fn-arena fn-octets)))
              (and (equal (mv-nth 0 r) :ok)
@@ -780,7 +780,7 @@
                 (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))
                 (fn-arena-p fn-arena)
                 (not (eq (mv-nth 0 (fn-ssr-intern-step
-                                    (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs)))
+                                    (fn-ssr-seed (fn-stxk-initial-context 0))
                                     recs nil nil :resident nil fn-arena))
                          :bad)))
            (let ((c (fn-pck-capture-of-pages (fn-pck-pages configs recs)))
@@ -796,14 +796,62 @@
                                pcko-intern-materializes pcko-capture-fields pcko-wire-of-ssr-rows)
            :use ((:instance pcko-open-of-recs) (:instance pcko-capture-fields)
                  (:instance pcko-intern-materializes
-                            (acc (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs))))
+                            (acc (fn-ssr-seed (fn-stxk-initial-context 0)))
                             (ws recs))
                  (:instance pcko-wire-of-ssr-rows
                             (acc (mv-nth 0 (fn-ssr-intern-step
-                                            (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs)))
+                                            (fn-ssr-seed (fn-stxk-initial-context 0))
                                             recs nil nil :resident nil fn-arena)))
                             (fn-arena (mv-nth 1 (fn-ssr-intern-step
-                                                 (fn-ssr-seed (nth 1 (fn-pck-root-tree configs recs)))
+                                                 (fn-ssr-seed (fn-stxk-initial-context 0))
                                                  recs nil nil :resident nil fn-arena))))
                  (:instance fn-ssr-seed-establishes-statep
-                            (identity (nth 1 (fn-pck-root-tree configs recs))))))))
+                            (identity (fn-stxk-initial-context 0)))))))
+
+; -----------------------------------------------------------------------------
+; The words read: the root row (under 8 pages) and the tape's own words, one
+; read each, and the one word that is not a tag.  No term in the store, the
+; arena, the prefix or the number of pages beyond the tape's words.
+
+(defthm pcko-cost-of-seq-words
+  (implies (and (fn-pck-sccb-listp recs) (or (atom tail) (not (equal (car tail) 1))))
+           (equal (pcko-cost (append (pcko-tw recs) tail))
+                  (+ (len (pcko-tw recs)) (if (consp tail) 1 0))))
+  :hints (("Goal" :induct (fn-pck-sccb-listp recs)
+           :in-theory (e/d (pcko-tw fn-pck-rows fn-pck-sccb-listp fn-pck-enc-row adt-tp-seq-words
+                            adt-tp-rw adt-tp-fw)
+                           (adt-tp-unpack adt-tp-npk fn-scc-decode-tree)))))
+
+(defthm pcko-recordsp-sccb
+  (implies (fn-pck-recordsp configs recs) (fn-pck-sccb-listp recs))
+  :hints (("Goal" :in-theory (enable fn-pck-recordsp))))
+
+(defthm fn-pck-x-open-reads-bound
+  ; The words the open reads: the root row (under 8 pages) and the tape's own
+  ; words, once each, and the one word that is not a tag.  No term in the
+  ; store, the arena, the prefix or the page count beyond the tape's words.
+  (implies (and (fn-pck-recordsp configs recs)
+                (fn-pck-root-fitsp configs recs)
+                (equal npg (len (fn-pck-pages configs recs)))
+                (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem)
+                       (adt-tp-flat (fn-pck-pages configs recs)))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))
+                (not (eq (mv-nth 0 (fn-ssr-intern-step
+                                    (fn-ssr-seed (fn-stxk-initial-context 0))
+                                    recs nil nil :resident nil fn-arena))
+                         :bad)))
+           (<= (mv-nth 4 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
+               (+ (* 8 2048)
+                  (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs)))
+                  1)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(pcko-img pcko-tw) (theory 'minimal-theory))
+           :use ((:instance pcko-len-w) (:instance pcko-w-root) (:instance pcko-w-tape-well)
+                 (:instance pcko-npg-ok) (:instance pcko-w-tape)
+                 (:instance pcko-recordsp-sccb)
+                 (:instance adt-tp-car-zeros (n (adt-tp-pad (len (pcko-tw recs)))))
+                 (:instance pcko-cost-of-seq-words
+                            (tail (adt-tp-zeros (adt-tp-pad (len (pcko-tw recs))))))
+                 (:instance pcko-open-is-the-fold
+                            (w (adt-tp-flat (fn-pck-pages configs recs))))))))
