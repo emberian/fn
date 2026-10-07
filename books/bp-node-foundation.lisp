@@ -703,8 +703,13 @@
                       nil (if (>= (len replay-result) 4)
                               (fn-bpn-nth 2 replay-result) nil)
                       nil nil nil new-epoch 0 arrival-frontier)
-       (list (list :restart-ready
-                   (len (fn-bpn-nth 1 replay-result))))))))
+       ; The base restart may propose the durable resolution of an orphan
+       ; :attempting job (fn-bpn-resolve-orphans-step): its :persist effect
+       ; follows :restart-ready, and the host appends it like any other
+       ; base proposal.  Dropping it would leave the base pending forever.
+       (cons (list :restart-ready
+                   (len (fn-bpn-nth 1 replay-result)))
+             (cdr (fn-bpn-answer-effects base-answer)))))))
 
 (defun fn-bpnf-step (st event)
   (declare (xargs :guard
