@@ -896,6 +896,18 @@ an operator's `bp-route' change applies to the next queue and contact."
              (setq after (second view))))
   bp)
 
+(defun fnn-bpnode-report-observation-out (observation)
+  "Print ACL2's answer for one received administrative bundle; the host
+neither retries nor releases anything on it."
+  (case (first observation)
+    (:observed
+     (fnn-out "BP status report observed arrival=~d correlated=~a"
+              (second observation)
+              (if (third observation) "yes" "no")))
+    (:malformed
+     (fnn-out "BP administrative status malformed arrival=~d"
+              (second observation)))))
+
 (defun fnn-bpnode-observe-reports (bp node-id)
   ;; Diagnostic only. ACL2 parses and correlates the received administrative
   ;; payload; this caller neither advances retry nor releases an obligation.
@@ -905,14 +917,7 @@ an operator's `bp-route' change applies to the next queue and contact."
             (fnn-core 'fn-bpn-report-observe-next
                       (fnn-bps-state bp) (fnn-bp-eid node-id) after)
           while observation
-          do (case (first observation)
-               (:observed
-                (fnn-out "BP status report observed arrival=~d correlated=~a"
-                         (second observation)
-                         (if (third observation) "yes" "no")))
-               (:malformed
-                (fnn-out "BP administrative status malformed arrival=~d"
-                         (second observation))))
+          do (fnn-bpnode-report-observation-out observation)
              (setq after (second observation))))
   bp)
 
@@ -1245,8 +1250,12 @@ over N rows takes ceiling(N/64) turns and resumes where it yielded.")
                      (setf (fnn-bp-receipt-cursor-done receipt-contact) nil))))
                   (let ((observation (fnn-core 'fn-bpn-report-observe-next (fnn-bps-state bp)
                                      (fnn-bp-eid node-id) observe-after)))
-                   (setq observe-after (and observation (second observation)))
-                   (when observation (fnn-out "BP status report observation ~s" observation))))
+                   ;; Arrivals only grow, so the cursor stays at the last one
+                   ;; observed: each received report is printed once, not
+                   ;; once per sweep of the loop.
+                   (when observation
+                    (setq observe-after (second observation))
+                    (fnn-bpnode-report-observation-out observation))))
                  (:rotation
                   ;; No retained operation crosses an owner reopen.
                   (when (zerop (hash-table-count (fnn-bpsb-held bank)))
