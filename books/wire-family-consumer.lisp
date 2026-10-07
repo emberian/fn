@@ -1412,3 +1412,127 @@
                             fn-wg-valuep-opener-frame fn-frame-protected fn-frame-trailer
                             fn-ncl-poll-seal fn-ncl-poll-reply-encode fn-wf-cs-poll-payload
                             fn-wf-cs-poll-value)))))
+;
+; The poll CLI's files and the frame it prints under `fn consumer --frame poll'
+; (books/consumer-reason.lisp, fn-ncr-frame-plan).  The host writes the cursor
+; file from (third REPLY) and the report file from (fourth REPLY), REPLY the
+; decode of the reply frame (fn-ncl-poll-reply-decode); under --frame it
+; prints that same frame.  The theorem below is the relation between them, over
+; the functions the host calls: for every frame the owner's encoder produces,
+; the decode's cursor octets (the cursor file's bytes) are the cursor the frame
+; carries behind its four-octet length, namely the :sized field's content, the
+; fncu grammar's encoding of the value's cursor component; and the decode's
+; report octets (the report file's bytes) are the :bytes field.  The frame
+; itself is the grammar's encoding of the value (fn-wf-cs-poll-encode-agrees).
+; The decoder's agreement on ARBITRARY octets is the owed item
+; PROOF-OWED-POLL-REPLY-DECODE-AGREES; this relation is over the encoder's range.
+(defthm fn-wf-cs-poll-open-of-sealed-payload
+  (implies (and (fn-cbor-octet-listp payload)
+                (<= (len payload) *fn-ncl-poll-max-payload*))
+           (equal (fn-ncl-poll-open (fn-ncl-poll-seal payload))
+                  (fn-frame-ok *fn-nctrl-magic* *fn-nctrl-version*
+                               *fn-ncl-poll-reply-kind* payload)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-frame-decode-of-host-framing
+                            (magic *fn-nctrl-magic*)
+                            (version *fn-nctrl-version*)
+                            (kind *fn-ncl-poll-reply-kind*)
+                            (max-payload *fn-ncl-poll-max-payload*)))
+           :in-theory (e/d (fn-ncl-poll-open fn-ncl-poll-seal
+                            fn-frame-inputp fn-frame-magicp
+                            fn-frame-protected fn-frame-header
+                            fn-cbor-u32-bytes-are-octets
+                            fn-frame-octet-listp-of-append)
+                           (fn-frame-decode fn-frame-trailer
+                            fn-frame-protected-prefix
+                            fn-frame-decode-of-host-framing)))))
+(defthm fn-wf-cs-poll-decode-of-accepted-payload
+  (implies (and (fn-cbor-octet-listp cursor) (true-listp cursor)
+                (<= (len cursor) 346)
+                (equal (car (fn-cp-cursor-decode cursor)) :ok)
+                (fn-cbor-octet-listp report) (true-listp report)
+                (<= (len report) *fn-stxa-max-octets*)
+                (<= (len (append (list 0) (fn-cbor-u32-bytes (len cursor)) cursor
+                                 (fn-cbor-u32-bytes (len report)) report))
+                    *fn-ncl-poll-max-payload*))
+           (equal (fn-ncl-poll-reply-decode
+                   (fn-ncl-poll-seal
+                    (append (list 0) (fn-cbor-u32-bytes (len cursor)) cursor
+                            (fn-cbor-u32-bytes (len report)) report)))
+                  (list :consumer-poll-reply :accepted cursor report)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-wf-cs-poll-open-of-sealed-payload
+                            (payload (append (list 0) (fn-cbor-u32-bytes (len cursor)) cursor
+                                             (fn-cbor-u32-bytes (len report)) report))))
+           :in-theory (e/d (fn-ncl-poll-reply-decode fn-ncl-code-status fn-cp-uintp
+                            fn-ncl-poll-event-bytesp fn-frame-octet-listp-of-append
+                            fn-cbor-u32-bytes-are-octets)
+                           (fn-ncl-poll-open fn-ncl-poll-seal fn-frame-decode
+                            fn-cp-read-u32 fn-cp-cursor-decode)))))
+(defthm fn-wf-cs-poll-seal-not-bad
+  (implies (not (equal (fn-ncl-poll-seal payload) :bad))
+           (and (fn-cbor-octet-listp payload)
+                (<= (len payload) *fn-ncl-poll-max-payload*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ncl-poll-seal))))
+(defthm fn-wf-cs-poll-encode-accepted-facts
+  (implies (not (equal (fn-ncl-poll-reply-encode :accepted cursor report) :bad))
+           (and (true-listp cursor) (<= (len cursor) 346)
+                (equal (car (fn-cp-cursor-decode cursor)) :ok)
+                (or (null report) (fn-ncl-poll-event-bytesp report))
+                (equal (fn-ncl-poll-reply-encode :accepted cursor report)
+                       (fn-ncl-poll-seal
+                        (append (list 0) (fn-cbor-u32-bytes (len cursor)) cursor
+                                (fn-cbor-u32-bytes (len report)) report)))
+                (<= (len (append (list 0) (fn-cbor-u32-bytes (len cursor)) cursor
+                                 (fn-cbor-u32-bytes (len report)) report))
+                    *fn-ncl-poll-max-payload*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ncl-poll-reply-encode fn-ncl-status-code)
+                                  (fn-cp-cursor-decode fn-ncl-poll-seal fn-wf-cs-poll-encode-agrees)))))
+(defthm fn-wf-cs-poll-accepted-roundtrip
+  (implies (not (equal (fn-ncl-poll-reply-encode :accepted cursor report) :bad))
+           (equal (fn-ncl-poll-reply-decode
+                   (fn-ncl-poll-reply-encode :accepted cursor report))
+                  (list :consumer-poll-reply :accepted cursor report)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-wf-cs-poll-encode-accepted-facts
+                 (:instance fn-wf-cs-poll-seal-not-bad
+                            (payload (append (list 0) (fn-cbor-u32-bytes (len cursor)) cursor
+                                             (fn-cbor-u32-bytes (len report)) report)))
+                 fn-wf-cs-poll-decode-of-accepted-payload)
+           :in-theory (e/d (fn-ncl-poll-event-bytesp fn-frame-octet-listp-of-append
+                            fn-cbor-u32-bytes-are-octets)
+                           (fn-ncl-poll-seal fn-ncl-poll-reply-decode fn-ncl-poll-reply-encode
+                            fn-cp-cursor-decode fn-wf-cs-poll-encode-agrees)))))
+(defthm fn-wf-cs-poll-encode-accepted-cursor-ok
+  (implies (not (equal (fn-ncl-poll-reply-encode :accepted cursor report) :bad))
+           (equal (car (fn-cp-cursor-decode cursor)) :ok))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ncl-poll-reply-encode fn-ncl-status-code)
+                                  (fn-cp-cursor-decode fn-ncl-poll-seal fn-wf-cs-poll-encode-agrees)))))
+(defthmd fn-wf-cs-poll-value-accepted-fields
+  (equal (fn-wf-cs-poll-value :accepted cursor report)
+         (list :accepted (list (fn-wf-fncu-value (cadr (fn-cp-cursor-decode cursor))) report)))
+  :hints (("Goal" :in-theory (enable fn-wf-cs-poll-value))))
+(defthm fn-wf-cs-poll-cursor-file-is-the-frames-sized-field
+  (implies (not (equal (fn-ncl-poll-reply-encode :accepted cursor report) :bad))
+           (let ((frame (fn-ncl-poll-reply-encode :accepted cursor report))
+                 (value (fn-wf-cs-poll-value :accepted cursor report)))
+             (and (equal (third (fn-ncl-poll-reply-decode frame)) cursor)
+                  (equal (fn-wg-encode *fn-wf-fncu-grammar* (car (cadr value)))
+                         (third (fn-ncl-poll-reply-decode frame)))
+                  (equal (fourth (fn-ncl-poll-reply-decode frame))
+                         (cadr (cadr value))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-wf-cs-poll-accepted-roundtrip
+                 fn-wf-cs-poll-encode-accepted-cursor-ok
+                 (:instance fn-wf-cs-cursor-ok-sized (c cursor)))
+           :in-theory (e/d (fn-wf-cs-poll-value-accepted-fields)
+                           (fn-ncl-poll-reply-decode fn-ncl-poll-reply-encode fn-wg-encode
+                            fn-wg-valuep fn-wf-cs-poll-value fn-wf-cs-poll-encode-agrees
+                            fn-cp-cursor-decode fn-wf-fncu-value fn-ncl-poll-seal)))))

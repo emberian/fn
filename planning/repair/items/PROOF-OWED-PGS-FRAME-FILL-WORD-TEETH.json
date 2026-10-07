@@ -1,0 +1,11 @@
+{
+ "file": "books/assumptions-pgs-host-io.lisp",
+ "id": "PROOF-OWED-PGS-FRAME-FILL-WORD-TEETH",
+ "notes": [],
+ "owner": "deputy-s",
+ "severity": "medium",
+ "source": "lane s-frame-fill",
+ "state": "open",
+ "title": "A-PGS-HOST-IO frame form: fn-pgs-fill-frame-word and -word-outside are derived from fn-pgs-fill-frame-is-frame-put (nothing added to the assumption); tests/acl2/pgs-frame-fill-tests exercises the keystone fn-pgb-frame-put-is-frame-put-of-words at the top of the u64 range with a big-endian tooth, but no test attaches fn-pgs-fill-frame to the real host function and compares its state with the logical put on a page file (the laptop REPL comparison in the lane report is the only run of that)",
+ "updated": "2026-10-07T02:30:00Z"
+}

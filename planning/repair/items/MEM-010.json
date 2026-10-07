@@ -1,0 +1,14 @@
+{
+ "category": "bug",
+ "detail": "3e53d7bc5 production, small preset, 1 connection, 1,000 POSTs, 16 GB cgroup, hbox load ~20. hbox:/tank/fn/scratch/n-mem/pB0/owner.err lines 501 and 639-641: after `accepted post ... t17-000581` the owner logged `HISTORY root retained current representation: live history root allocation refused: (REFUSED MEMORY-BUDGET-EXHAUSTED)` four times (history-root.lisp:49 fnn-owner-history-root-fund); my client stayed in POST 582 for 14 minutes until killed. Eleven other identical-workload runs completed. Possible confounds I could not exclude: my sampler thread, and an orphan owner of mine (pid 190436, an earlier aborted run, running on the same box) at the time. Reproduce before treating as a product bug; if real, a refused funding during a served POST must answer the client, not leave it waiting.",
+ "file": "host/native/history-root.lisp",
+ "id": "MEM-010",
+ "line": "49",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem",
+ "state": "open",
+ "title": "one run of twelve stalled after 582 POSTs: live history root allocation refused (REFUSED MEMORY-BUDGET-EXHAUSTED), client hung",
+ "updated": "2026-10-06T23:00:00Z"
+}

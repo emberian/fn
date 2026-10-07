@@ -37,6 +37,58 @@ class HboxNativeDryRunTests(unittest.TestCase):
                      env={"FN_NATIVE_SERIAL_IMAGES": "1"})
         self.assertFalse([l for l in serial.stdout.splitlines() if l.startswith("pstep image-")])
 
+    def test_acquire_without_a_complete_origin_certifies_the_closure_once_and_retries(self):
+        import re
+        import tempfile
+        answer = dry("--box", "hbox", "--images", "developer,production,dtn-developer", "HEAD",
+                     "tests.test_native_log")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        out = answer.stdout
+        self.assertIn("acquire_step acquire default", out)
+        self.assertIn("acquire_step acquire-dtn dtn", out)
+        self.assertLess(out.index("step certify "), out.index("acquire_step acquire default"))
+        function = re.search(r"^ORIGIN_DONE=0\nacquire_step\(\) \{.*?^\}\n", out, re.S | re.M).group(0)
+        # The decision, run against stubs: python3 acquire fails "no complete" until
+        # certify-origin has run; every call is logged.
+        harness = """
+T=. L=$PWD/logs CACHE=c ACL2=a
+mkdir -p $L; echo books/x > $L/roots.txt
+finish() { echo "FINISH $1"; exit $1; }
+step() { name=$1; shift; echo "STEP $name $*"; touch $L/certified; }
+python3() {
+    case "$*" in
+      *acquire*) echo "ACQ $*" >> $L/calls
+          if [ "$MODE" = fast ] || [ -f $L/certified ] && [ "$MODE" != stillred ]; then echo ok; return 0; fi
+          echo "profile=default result=none of the 108 candidate artifact sets is complete rejected=0"; return 1;;
+      *loadfail*) return 1;;
+    esac
+}
+""" + function + """
+acquire_step acquire default
+acquire_step acquire-dtn dtn
+echo REACHED
+"""
+        def run(mode):
+            with tempfile.TemporaryDirectory() as d:
+                done = subprocess.run(["sh", "-c", harness], cwd=d, capture_output=True, text=True,
+                                      env={**os.environ, "MODE": mode}, timeout=30)
+                calls = Path(d, "logs", "calls").read_text().count("ACQ")
+                return done, calls
+        done, calls = run("fast")
+        self.assertIn("REACHED", done.stdout)
+        self.assertNotIn("STEP certify-origin", done.stdout)
+        self.assertEqual(calls, 2, done.stdout)
+        done, calls = run("red-until-certified")
+        self.assertIn("REACHED", done.stdout, done.stdout + done.stderr)
+        self.assertEqual(done.stdout.count("STEP certify-origin"), 1, done.stdout)
+        self.assertIn("--closure", done.stdout)
+        self.assertEqual(calls, 3, done.stdout)  # fail, retry ok, dtn ok
+        done, calls = run("stillred")
+        self.assertIn("FINISH 1", done.stdout)
+        self.assertNotIn("REACHED", done.stdout)
+        self.assertEqual(done.stdout.count("STEP certify-origin"), 1)
+        self.assertEqual(calls, 2)
+
     def test_default_prefix_does_not_require_unrequested_dtn_certificates(self):
         answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)

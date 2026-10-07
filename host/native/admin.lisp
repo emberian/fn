@@ -372,7 +372,8 @@ deferral stands, and `status' names it)."
                 (lambda ()
                   (fnn-admin-test-fault "compaction")
                   (fnn-owner-core 'fn-owner-sco-request
-                                  (fnn-checkpoint-budget-test-override nil) free)))))
+                                  (fnn-checkpoint-budget-test-override nil) free
+                                  (fnn-owner-monotonic-ms))))))
     (unless (member word '(:requested :coalesced :nothing-to-compact :blocked))
       (fnn-fault "owner returned a malformed compaction answer ~a" word))
     (fnn-err "COMPACTION request answer=~(~a~)" word)
@@ -449,7 +450,8 @@ The reply names the word."
                 (lambda ()
                   (fnn-admin-test-fault "reclaim")
                   (fnn-owner-core 'fn-owner-orc-request mode
-                                  (fnn-checkpoint-budget-test-override nil) free)))))
+                                  (fnn-checkpoint-budget-test-override nil) free
+                                  (fnn-owner-monotonic-ms))))))
     (unless (member word '(:requested :in-flight :queued :blocked :no-recorded-instant
                            :offline-only))
       (fnn-fault "owner returned a malformed reclaim answer ~a" word))

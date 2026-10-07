@@ -482,8 +482,12 @@ budget=...`, the profile's checkpoint budget and the free space). The open
 refuses by name, exit 1: `history-short-of-checkpoint` (a segment the
 checkpoint does not cover is missing), `checkpoint-damaged`,
 `log-chain-broken` (a segment that validates under another predecessor);
-a writable open finishes an interrupted drop. An I/O error in the drop is
-uncertain (3); rerunning `store compact` finishes it.
+no open unlinks a segment: a drop interrupted between unlinks leaves the
+covered segments, which the open scans past and keeps, and the next
+checkpoint install's drop, after its own root fence, takes them
+(RL-01-CHECKPOINT-NAME-BEFORE-DROP: the checkpoint an open reads may be
+named only in the page cache after a failed root fence). An I/O error in
+the drop is uncertain (3); rerunning `store compact` finishes it.
 
 Compaction relieves disk and the open's work, not the budget: `transactions-used`
 counts committed records and is unchanged. Measured on 40,000 articles of

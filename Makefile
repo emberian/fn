@@ -297,6 +297,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defrecord-tests \
 	books/def-loop \
 	tests/acl2/def-loop-tests \
+	books/def-buffer \
+	tests/acl2/def-buffer-tests \
+	tests/acl2/pgs-frame-fill-tests \
 	books/def-representation-lib \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
@@ -1035,6 +1038,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/decoded-window-span \
 	tests/acl2/page-window-executor-tests \
 	tests/acl2/page-window-read-tests \
+	books/mux-accept-slot \
+	tests/acl2/mux-accept-slot-tests \
 	tests/acl2/page-window-span-tests \
 	tests/acl2/page-window-admission-tests \
 	tests/acl2/page-window-lease-tests \
@@ -2044,6 +2049,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-header-query \
 	tests/acl2/legacy-header-query-tests \
 	tests/acl2/article-stream-server-tests \
+	books/article-select-index \
 	books/article-stream-owner \
 	tests/acl2/article-stream-owner-tests \
 	tests/acl2/catalog-availability-tests \
@@ -2156,7 +2162,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-route-programs-tests \
 	books/store-log-open-barriers \
 	tests/acl2/store-log-open-barriers-tests \
+	books/store-log-recover-copy \
+	tests/acl2/store-log-recover-copy-tests \
 	books/store-log-rotate-spare \
+	books/owner-publication-lifecycle \
+	tests/acl2/owner-publication-lifecycle-tests \
 	books/owner-compact-request \
 	tests/acl2/owner-compact-request-tests \
 	books/bp-carry-frame \

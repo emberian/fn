@@ -142,71 +142,6 @@
         (not (fn-lg-all-relp run 0 (slp-genesis) (slp-max))))))
 
 ; -----------------------------------------------------------------------------
-; The recovery program.  The durable content: two records, a torn unit of
-; garbage, two zero units.
-
-(defun slp-content ()
-  (declare (xargs :guard t :verify-guards nil))
-  (append (slp-log (list (slp-r 1) (slp-r 2)) (slp-genesis)) '(9 9 9 9 0 0 0 0 0 0 0 0)))
-
-(defun slp-recovered-relp (bs genesis)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((ks (fn-lg-recovered-kernel bs 0 genesis (slp-max) 0))
-         (run (fn-lg-run bs ks (fn-lg-recover-program) nil 0))
-         (final (slp-last-state run)))
-    (and (equal (len run) 4)
-         (fn-lgk-relp (car final) (cdr final) 0 genesis (slp-max)))))
-
-; The retained hypotheses, asserted in every witness.
-(defun slp-recover-hyps (bs genesis)
-  (declare (xargs :guard t :verify-guards nil))
-  (list (posp (fn-bs-unit bs)) (and (assoc-equal 0 (fn-bs-inodes bs)) t)
-        (true-listp (fn-bs-durable-content bs 0))
-        (equal (mod (len (fn-bs-durable-content bs 0)) (fn-bs-unit bs)) 0)
-        (fn-frame-digestp genesis)
-        (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) 0))
-        (not (fn-bs-ops-for-ino (fn-bs-pending bs) 0))))
-
-(assert-event
- (let* ((bs (slp-bs (slp-content) nil))
-        (ks (fn-lg-recovered-kernel bs 0 (slp-genesis) (slp-max) 0)))
-   (and (equal (slp-recover-hyps bs (slp-genesis)) '(t t t t t t t))
-        (slp-recovered-relp bs (slp-genesis))
-        (equal (fn-lgk-committed ks) (list (slp-r 1) (slp-r 2)))
-        (equal (fn-lgk-frontier ks) (- (len (slp-content)) 12)))))
-
-; Removal: the log's own write pending (the 7th hypothesis false).
-(assert-event
- (let ((bs (slp-bs (slp-content) (list (list :write 0 (len (slp-content)) '(1 2 3 4))))))
-   (and (equal (slp-recover-hyps bs (slp-genesis)) '(t t t t t t nil))
-        (not (slp-recovered-relp bs (slp-genesis))))))
-
-; Removal: another inode's write pending (the owner's obligation false).
-(assert-event
- (let ((bs (fn-bs-make (slp-unit) (list (cons 0 (slp-content)) (cons 1 '(0 0 0 0))) nil
-                       (list (list :write 1 0 '(5 5 5 5))) 2)))
-   (and (equal (slp-recover-hyps bs (slp-genesis)) '(t t t t t nil t))
-        (not (slp-recovered-relp bs (slp-genesis))))))
-
-; Removal: not whole units (two octets more).
-(assert-event
- (let ((bs (slp-bs (append (slp-content) '(0 0)) nil)))
-   (and (equal (slp-recover-hyps bs (slp-genesis)) '(t t t nil t t t))
-        (not (slp-recovered-relp bs (slp-genesis))))))
-
-; Removal: a genesis that is not a digest.
-(assert-event
- (let ((bs (slp-bs (slp-content) nil)))
-   (and (equal (slp-recover-hyps bs '(1 2)) '(t t t t nil t t))
-        (not (slp-recovered-relp bs '(1 2))))))
-
-; Removal: the segment's inode absent.
-(assert-event
- (let ((bs (fn-bs-make (slp-unit) (list (cons 1 (slp-content))) nil nil 2)))
-   (and (equal (slp-recover-hyps bs (slp-genesis)) '(t nil t t t t t))
-        (not (slp-recovered-relp bs (slp-genesis))))))
-
-; -----------------------------------------------------------------------------
 ; T2 (fn-lg-batch-crash-is-a-prefix), hypothesis-removal witnesses.  The
 ; store: durable D = the log of (r1 r2) from genesis, Z = 256 zero octets,
 ; the one pending write of the batch (r3 r4) at (len D), chained from the
@@ -330,8 +265,7 @@
    (and (equal (fn-lgd-octets s) codes)
         (equal ks (fn-lgt-recover codes (slp-genesis) (slp-unit) (slp-max) 1))
         (equal (fn-lgk-committed ks) (list (slp-r 1) (slp-r 2)))
-        (equal (mv-list 2 (fn-lg-recover-tail ks (len codes)))
-               (list (- (len codes) 8) 8)))))
+        (equal (fn-lgk-frontier ks) (- (len codes) 8)))))
 
 ; The workload record carries its txid through the codec.
 (assert-event

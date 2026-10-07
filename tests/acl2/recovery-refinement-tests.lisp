@@ -42,10 +42,12 @@
 (defun rrt-ks0 ()
   (declare (xargs :guard t :verify-guards nil))
   (fn-lgk-recover (rrt-content) (rrt-genesis) (rrt-unit) (rrt-max) 3))
-(defun rrt-recover-run ()
+;; the state the open's copy leaves (books/store-log-recover-copy.lisp K1):
+;; the read's validated prefix, then zeros, nothing pending
+(defun rrt-bs0 ()
   (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-run (rrt-store (rrt-content) nil) (rrt-ks0) (fn-lg-recover-program) nil 0))
-(defun rrt-bs0 () (declare (xargs :guard t :verify-guards nil)) (car (car (last (rrt-recover-run)))))
+  (let ((f (fn-lgk-frontier (rrt-ks0))))
+    (rrt-store (append (fn-bs-take f (rrt-content)) (fn-bs-zeros (- (len (rrt-content)) f))) nil)))
 ; A third record prepared and appended: the batch in flight.
 (defun rrt-ks1 () (declare (xargs :guard t :verify-guards nil)) (fn-lgk-prepare (rrt-ks0) (rrt-r 3)))
 (defun rrt-append-run ()

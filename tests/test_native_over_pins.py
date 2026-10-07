@@ -24,6 +24,7 @@ class NativeOverPinsTests(unittest.TestCase):
     # Reuse the existing productive fixture without inheriting its tests.
     setUp = expiry.ExpiryMixin.setUp
     node = expiry.ExpiryMixin.node
+    reclaim_live = expiry.ExpiryMixin.reclaim_live  # D53: node() reads it
     post_all = expiry.ExpiryMixin.post_all
     filled = expiry.ExpiryMixin.filled
     reclaim = expiry.ExpiryMixin.reclaim
@@ -273,8 +274,22 @@ class NativeOverPinsTests(unittest.TestCase):
             try:
                 client.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
                 client.send(("ARTICLE %s\r\n" % msgid("big")).encode())
+                sent = time.monotonic()
                 time.sleep(5)                  # past the idle limit, reading nothing
-                self.assertTrue(client.line().startswith(b"220 "))
+                # NATIVE-R2-OVER-PINS-LARGE-ARTICLE: the preflight and each
+                # payload window are bounded work (books/profile-limits.lisp
+                # :read-window-octets; the span borrow), so the status line
+                # leaves within three minutes (48 windows of 256 KiB, each one
+                # whole-prefix digest, ~1.5 s at 12 MiB), not after 768 of them.
+                client.sock.settimeout(180)
+                try:
+                    status = client.line()
+                except (socket.timeout, TimeoutError):
+                    status = b""
+                self.assertTrue(status.startswith(b"220 "),
+                                "no 220 within 180 s for a 12 MiB ARTICLE (%.0f s since the command)"
+                                % (time.monotonic() - sent))
+                client.sock.settimeout(300)
                 got = 0
                 while True:
                     row = client.line()

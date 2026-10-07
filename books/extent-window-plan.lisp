@@ -4,6 +4,7 @@
 ; traverses those bytes. A requested window is one scheduling quantum;
 ; subsequent windows continue the same payload without a stored-data cap.
 (in-package "ACL2")
+(include-book "profile-limits")
 (include-book "packed-octets")
 
 ; State = (phase file eoff elen woff wn expected pos ticket incarnation lease poff plen offset).
@@ -20,7 +21,7 @@
            (<= offset plen))
       (fn-ewp-state (if (zp elen) :trailer :scan)
                     file eoff elen (+ (- poff eoff) offset)
-                    (min 16384 (- plen offset)) expected 0 ticket incarnation lease poff plen offset)
+                    (min (fn-profile-limit :read-window-octets) (- plen offset)) expected 0 ticket incarnation lease poff plen offset)
     (fn-ewp-state :bounds file eoff elen 0 0 expected 0 ticket incarnation lease poff plen offset)))
 
 (defun fn-ewp-demand (s)
@@ -157,7 +158,7 @@
   (implies (and (natp file) (natp eoff) (natp elen) (natp poff)
                 (natp plen) (natp offset) (natp expected))
            (let ((s (fn-ewp-begin file eoff elen poff plen offset ticket incarnation lease expected)))
-             (and (natp (nth 5 s)) (<= (nth 5 s) 16384)
+             (and (natp (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets))
                   (implies (not (equal (nth 0 s) :bounds))
                            (and (<= (nth 4 s) elen)
                                 (<= (+ (nth 4 s) (nth 5 s)) elen))))))

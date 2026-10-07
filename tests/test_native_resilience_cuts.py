@@ -61,8 +61,8 @@ class CutScenarioTableTests(unittest.TestCase):
         self.assertEqual([s.id for s in adapter.family_scenarios("recovery")],
                          ["native-recovery-" + n for n in
                           ("recover-replayed", "recover-barrier-1", "recover-barrier-2",
-                           "recover-barrier-3", "recovery-stage-unlinked", "log-truncated",
-                           "log-recovered")])
+                           "recover-barrier-3", "recovery-stage-unlinked", "log-copied",
+                           "log-copy-fenced", "log-swapped", "log-recovered")])
         for s in adapter.family_scenarios("recovery"):
             self.assertEqual([f.boundary for f in s.faults],
                              [adapter.ORPHAN_BOUNDARY, s.id[len("native-recovery-"):]])

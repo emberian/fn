@@ -21,6 +21,7 @@
 ;              symbol-class (:program, :ideal, :common-lisp-compliant), the
 ;              function symbols of its `unnormalized-body' (BOTH sides of
 ;              each mbe, since the body keeps (return-last 'mbe1-raw E L)),
+;              the function symbols of its translated `guard' (guard_callees),
 ;              its defattach attachment (tools/extract/frontend.lisp's
 ;              reading), whether it is constrained or non-executable, and
 ;              `mbe': one [LOGIC, EXEC] pair per mbe in the body whose :exec
@@ -187,6 +188,11 @@
          (state (xt-json-sym (symbol-class name w) channel state))
          (state (princ$ ",\"callees\":" channel state))
          (state (xt-json-symlist (if body (all-fnnames body) nil) channel state))
+         ; the translated :guard's function symbols: the saved image runs with
+         ; guard-checking t (host/native/io.lisp), so a guard is evaluated and
+         ; its calls are calls
+         (state (princ$ ",\"guard_callees\":" channel state))
+         (state (xt-json-symlist (all-fnnames (getpropc name 'guard *t* w)) channel state))
          (state (princ$ ",\"formals\":" channel state))
          (state (xt-json-symlist (getpropc name 'formals nil w) channel state))
          ; the alias shape: the body is one application of a named function to

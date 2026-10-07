@@ -66,9 +66,9 @@
  (let* ((msg (make-list 16449 :initial-element 7)) (digest (fn-blake3 msg))
         (answer (ewst-example msg (append msg digest) 1 16448 0 (fn-bch-pack digest))))
    (and (equal (car answer) :verified)
-        (equal (cadr answer) '(23 47 59 7 101 16384))
+        (equal (cadr answer) '(23 47 59 7 101 16448))
         (equal (caddr answer) 16481)
-        (equal (cadddr answer) (make-list 16384 :initial-element 7)))))
+        (equal (cadddr answer) (make-list 16448 :initial-element 7)))))
 
 ; Distinct damaged-prefix / wrong commitment / short read failures.
 (assert-event

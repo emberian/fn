@@ -92,7 +92,8 @@ def mutate(kind, **kw):
 POST_CUTS = ("frontier-reserved", "record-completing", "finish-consumed", "finish-durable",
              "log-written", "log-fenced")
 RECOVERY_CUTS = ("recover-replayed", "recover-barrier-1", "recover-barrier-2", "recover-barrier-3")
-LOG_CUTS = ("log-written", "log-fenced", "log-truncated", "log-recovered", "log-extended", "log-extent-fenced")
+LOG_CUTS = ("log-written", "log-fenced", "log-copied", "log-copy-fenced", "log-swapped", "log-recovered",
+            "log-extended", "log-extent-fenced")
 
 
 def cases():
@@ -133,7 +134,7 @@ def cases():
                                      [post(1), post(2, fault=fault), recover(), post(3)])
     for cut in LOG_CUTS:
         steps = [post(1)]
-        if cut in ("log-truncated", "log-recovered"):
+        if cut in ("log-copied", "log-copy-fenced", "log-swapped", "log-recovered"):
             steps += [recover(env={"FN_NATIVE_LOG_FAULT": cut}), recover(), post(2)]
         elif cut.startswith("log-exten"):
             steps += [dict(post(2), payloads={"big": article(2, size=400000, msgid="<big@x.invalid>")},
