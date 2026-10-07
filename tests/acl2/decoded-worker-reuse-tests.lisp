@@ -2,6 +2,7 @@
 ; completion token. Corrupted carry mutations are labelled separately.
 (in-package "ACL2")
 (include-book "../../books/decoded-worker-job")
+(include-book "../../books/defkeystone")
 
 (defun-nx fn-dwrt-running ()
   (let* ((ledger (mv-nth 1 (fn-prl-register
@@ -71,3 +72,115 @@
         (equal (fn-pww-source-incarnation (cadr assign)) 48)
         (null (fn-pww-controller (cadr assign)))))
  :rule-classes nil)
+
+; fn-dwa-retirement-revokes-prior-authority and fn-dwa-refused-retirement-
+; preserves-carry (TEETH CONTRACT v1).  Both claims are over mv-nth of
+; fn-dwa-retire, so the witnesses are ground theorems (lemma debt,
+; TEETH-OWED-MV-CLAIM); the antecedent stays inside the implication, so the
+; mutations drop it at the other state or break one conclusion.
+(defthm dwat-revokes-witness
+  (implies (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil)))) :reusable)
+           (let ((next (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil))))))
+             (and (equal (fn-pww-token next) nil)
+                  (equal (fn-pww-root next) nil)
+                  (equal (fn-pww-source-incarnation next) nil)
+                  (equal (fn-pww-controller next) nil)
+                  (equal (fn-pww-pending-action next) nil)
+                  (equal (fn-pww-storage-receipt next) nil)
+                  (equal (fn-pww-borrow-phase next) :none)
+                  (equal (fn-pww-phase next) :uninstalled))))
+  :rule-classes nil)
+
+(defthm dwat-revokes-mut1
+  (and (implies (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil)))) :reusable)
+           (let ((next (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil))))))
+             (and (equal (fn-pww-token next) nil)
+                  (equal (fn-pww-root next) nil)
+                  (equal (fn-pww-source-incarnation next) nil)
+                  (equal (fn-pww-controller next) nil)
+                  (equal (fn-pww-pending-action next) nil)
+                  (equal (fn-pww-storage-receipt next) nil)
+                  (equal (fn-pww-borrow-phase next) :none)
+                  (equal (fn-pww-phase next) :uninstalled))))
+       (not (implies (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil)))) :reusable)
+           (equal (fn-pww-token (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil))))) (nth 2 (fn-dwrt-returned nil))))))
+  :rule-classes nil)
+
+(defthm dwat-revokes-mut2
+  (and (implies (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running)))) :reusable)
+           (let ((next (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running))))))
+             (and (equal (fn-pww-token next) nil)
+                  (equal (fn-pww-root next) nil)
+                  (equal (fn-pww-source-incarnation next) nil)
+                  (equal (fn-pww-controller next) nil)
+                  (equal (fn-pww-pending-action next) nil)
+                  (equal (fn-pww-storage-receipt next) nil)
+                  (equal (fn-pww-borrow-phase next) :none)
+                  (equal (fn-pww-phase next) :uninstalled))))
+       (not (implies t (let ((next (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-running)) (nth 1 (fn-dwrt-running)) (nth 2 (fn-dwrt-running)) (nth 3 (fn-dwrt-running))))))
+             (and (equal (fn-pww-token next) nil)
+                  (equal (fn-pww-root next) nil)
+                  (equal (fn-pww-source-incarnation next) nil)
+                  (equal (fn-pww-controller next) nil)
+                  (equal (fn-pww-pending-action next) nil)
+                  (equal (fn-pww-storage-receipt next) nil)
+                  (equal (fn-pww-borrow-phase next) :none)
+                  (equal (fn-pww-phase next) :uninstalled))))))
+  :rule-classes nil)
+
+(defthm dwat-revokes-mut3
+  (and (implies (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil)))) :reusable)
+           (let ((next (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil))))))
+             (and (equal (fn-pww-token next) nil)
+                  (equal (fn-pww-root next) nil)
+                  (equal (fn-pww-source-incarnation next) nil)
+                  (equal (fn-pww-controller next) nil)
+                  (equal (fn-pww-pending-action next) nil)
+                  (equal (fn-pww-storage-receipt next) nil)
+                  (equal (fn-pww-borrow-phase next) :none)
+                  (equal (fn-pww-phase next) :uninstalled))))
+       (not (implies (equal (mv-nth 0 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil)))) :reusable)
+           (let ((next (mv-nth 1 (fn-dwa-retire (nth 0 (fn-dwrt-returned nil)) (nth 1 (fn-dwrt-returned nil)) (nth 2 (fn-dwrt-returned nil)) (nth 3 (fn-dwrt-returned nil))))))
+             (equal (fn-pww-phase next) :assigned)))))
+  :rule-classes nil)
+
+(defteeth fn-dwa-retirement-revokes-prior-authority
+  :claim (() (implies (equal (mv-nth 0 (fn-dwa-retire ledger worker token carry)) :reusable)
+           (let ((next (mv-nth 1 (fn-dwa-retire ledger worker token carry))))
+             (and (equal (fn-pww-token next) nil)
+                  (equal (fn-pww-root next) nil)
+                  (equal (fn-pww-source-incarnation next) nil)
+                  (equal (fn-pww-controller next) nil)
+                  (equal (fn-pww-pending-action next) nil)
+                  (equal (fn-pww-storage-receipt next) nil)
+                  (equal (fn-pww-borrow-phase next) :none)
+                  (equal (fn-pww-phase next) :uninstalled)))))
+  :subject fn-dwa-retire
+  :witness-lemma dwat-revokes-witness
+  :witness ((ledger (nth 0 (fn-dwrt-returned nil))) (worker (nth 1 (fn-dwrt-returned nil))) (token (nth 2 (fn-dwrt-returned nil))) (carry (nth 3 (fn-dwrt-returned nil))))
+  :mutations ((token-kept
+               (:conclusion (implies (equal (mv-nth 0 (fn-dwa-retire ledger worker token carry)) :reusable)
+           (equal (fn-pww-token (mv-nth 1 (fn-dwa-retire ledger worker token carry))) token)))
+               ((ledger (nth 0 (fn-dwrt-returned nil))) (worker (nth 1 (fn-dwrt-returned nil))) (token (nth 2 (fn-dwrt-returned nil))) (carry (nth 3 (fn-dwrt-returned nil))))
+               :fault "a retirement that leaves the retired token in the carry"
+               :lemma dwat-revokes-mut1)
+              (no-reusable-hypothesis
+               (:conclusion (implies t (let ((next (mv-nth 1 (fn-dwa-retire ledger worker token carry))))
+             (and (equal (fn-pww-token next) nil)
+                  (equal (fn-pww-root next) nil)
+                  (equal (fn-pww-source-incarnation next) nil)
+                  (equal (fn-pww-controller next) nil)
+                  (equal (fn-pww-pending-action next) nil)
+                  (equal (fn-pww-storage-receipt next) nil)
+                  (equal (fn-pww-borrow-phase next) :none)
+                  (equal (fn-pww-phase next) :uninstalled)))))
+               ((ledger (nth 0 (fn-dwrt-running))) (worker (nth 1 (fn-dwrt-running))) (token (nth 2 (fn-dwrt-running))) (carry (nth 3 (fn-dwrt-running))))
+               :fault "a statement that wipes the carry even when the retirement is refused"
+               :lemma dwat-revokes-mut2)
+              (phase-left-assigned
+               (:conclusion (implies (equal (mv-nth 0 (fn-dwa-retire ledger worker token carry)) :reusable)
+           (let ((next (mv-nth 1 (fn-dwa-retire ledger worker token carry))))
+             (equal (fn-pww-phase next) :assigned))))
+               ((ledger (nth 0 (fn-dwrt-returned nil))) (worker (nth 1 (fn-dwrt-returned nil))) (token (nth 2 (fn-dwrt-returned nil))) (carry (nth 3 (fn-dwrt-returned nil))))
+               :fault "a retirement that leaves the carry assigned"
+               :lemma dwat-revokes-mut3)))
