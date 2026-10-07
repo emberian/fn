@@ -1,3 +1,43 @@
+; fn: the exec open of the paged checkpoint (lane s-pck-host, 2026-10-07;
+; STORAGE-PROGRAM-20261006.md section 3.3, phase 2c-1).
+;
+; The model.  `fn-pck-capture-of-pages' (paged-checkpoint.lisp) decodes a page
+; list into a capture C: the records (wire trees) from the events tape, the
+; four fold roots (cpr, identity, consumer, topic) from the root region, the
+; event index rebuilt from the records.  The host does not hold trees: it holds
+; ROWS interned in the payload arena (books/store-intern.lisp, `fn-row-wire-of'
+; reads a row's wire back) and the four roots.
+;
+; The exec.  `fn-pck-x-open NPG pgs-mem fn-arena fn-octets' reads the NPG-page
+; image in `pgs-mem' word by word through `pcko-w' (the only reader; every call
+; site counts its read): the root row from words 0 .. 8*2048, then the events
+; tape from word 8*2048 to NPG*2048, one record at a time -- the tag word 1, the
+; octet count, the packed octets into the buffer `fn-octets' (`pcko-copy', a
+; record that crosses a page boundary is read through the contiguous word
+; array), the tree decoded from the buffer, and interned with `fn-ssr-intern-step'
+; (:resident) into `fn-arena', until a word that is not the tag.  No whole-tape
+; word list, no page list.  The intern fold starts from `fn-stxk-initial-context
+; 0', the seed of the host's full recovery (books/statement-recover-stream.lisp,
+; fn-ssr-recovery-rows-are-the-raw-rows-without-snapshots), so the rows are the
+; ones a replay of the same records makes.
+; Answer: (mv VERDICT ROWS ROOTS INDEX READS fn-arena fn-octets), VERDICT :ok or
+; a refusal by name (:root, :record, :intern, :truncated).
+;
+; THE KEYSTONES.
+;   fn-pck-x-open-is-the-capture    for the writer's pages of (configs recs), the
+;       open answers :ok, the arena rows read back as the capture's records, the
+;       roots and the index are the capture's.
+;   fn-pck-x-open-reads-bound       the words read are at most 8*2048 + the tape's
+;       own words + 1 (the root row, the tape once, the one word that is not a
+;       tag): no term in the store, the arena, the prefix or the page count.
+; Scope, named.  (1) The last premise (the records intern from the initial
+; identity context without a refusal) is owed PCK-OPEN-INTERN-NOT-BAD: it is a
+; property of the history, not of the encoding.  (2) The image is given by its
+; words (`pgs-x-words' equals the flattened pages); that the host filled and
+; verified the pages is the driver's (2c-2).  (3) The tree is decoded from the
+; buffer through `fn-octets-list' (one transient octet list per record, the
+; residual PCK-OPEN-DECODE-LIST).  (4) Equations over the logic of the stobjs.
+
 (in-package "ACL2")
 (include-book "paged-checkpoint-image")
 (include-book "paged-checkpoint-exec")
@@ -7,8 +47,6 @@
 
 ; Inherited rules that loop on a symbolic length.
 (in-theory (disable pckx-npk-step pckx-npk-bound))
-
-(defconst *pcko-stub* t)
 
 ; -----------------------------------------------------------------------------
 ; The exec.  Every word of the image is read by `pcko-w' at the call site that
@@ -38,9 +76,14 @@
   (declare (xargs :guard (natp n)))
   (floor (+ n 7) 8))
 
+(defun pcko-nth (i x)
+  ; Field I of the root tree (a list of the four fold roots).
+  (declare (xargs :guard (natp i)))
+  (if (true-listp x) (nth i x) nil))
+
 (defun pcko-tree (fn-octets)
   ; The tree the buffer's program decodes to, or :refused.
-  (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-octets :guard (fn-octets-p fn-octets) :verify-guards nil))
   (let ((d (fn-scc-decode-tree (fn-octets-list fn-octets))))
     (if (and (consp d) (eq (car d) :ok) (consp (cdr d))) (list :ok (cadr d)) :refused)))
 
@@ -50,6 +93,10 @@
   ; (mv verdict acc index reads fn-arena fn-octets).
   (declare (xargs :stobjs (pgs-mem fn-arena fn-octets)
                   :measure (nfix (- (nfix lim) (nfix pos)))
+                  :guard (and (natp pos) (natp lim) (natp seq) (natp reads)
+                              (<= lim (pgs-x-len 0 pgs-mem))
+                              (or (eq acc :bad) (fn-ssr-statep acc))
+                              (fn-octets-p fn-octets))
                   :verify-guards nil))
   (if (and (natp pos) (natp lim) (< pos lim))
       (if (eql (pcko-w pos pgs-mem) 1)
@@ -99,7 +146,7 @@
                         (pcko-tape 16384 (* 2048 npg) 0 (fn-ssr-seed (fn-stxk-initial-context 0)) nil reads
                                    pgs-mem fn-arena fn-octets)
                         (mv verdict (fn-ssr-rows acc)
-                            (list (nth 0 root) (nth 1 root) (nth 2 root) (nth 3 root))
+                            (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root))
                             index reads fn-arena fn-octets)))))))
           (mv :root nil nil nil 2 fn-arena fn-octets)))
     (mv :root nil nil nil (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))) 1 0)
@@ -237,6 +284,51 @@
 
 (in-theory (disable pcko-nw))
 
+; -----------------------------------------------------------------------------
+; Guards.
+
+(defthm pcko-w-natp
+  (implies (and (pgs-memp pgs-mem) (natp i) (< i (pgs-x-len 0 pgs-mem)))
+           (and (natp (pcko-w i pgs-mem)) (unsigned-byte-p 64 (pcko-w i pgs-mem))))
+  :hints (("Goal" :in-theory (enable pcko-w) :use ((:instance pgs-u64-of-x-word (sel 0))))))
+
+(defthm pcko-floor-pos (implies (and (natp n) (< 0 n)) (< 0 (floor (+ 7 n) 8))))
+
+(verify-guards pcko-copy)
+
+(defthm pcko-copy-reads-natp
+  (implies (natp reads) (natp (mv-nth 0 (pcko-copy pos n reads pgs-mem fn-octets))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (pcko-copy pos n reads pgs-mem fn-octets))))
+
+(defthm pcko-copy-reads-natp-car
+  (implies (natp reads) (natp (car (pcko-copy pos n reads pgs-mem fn-octets))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (pcko-copy pos n reads pgs-mem fn-octets))))
+
+(defthm pcko-copy-preserves-octets
+  (implies (and (fn-octets-p fn-octets) (natp n) (natp pos) (<= (+ pos (floor (+ n 7) 8)) (pgs-x-len 0 pgs-mem)))
+           (and (fn-octets-p (mv-nth 1 (pcko-copy pos n reads pgs-mem fn-octets)))
+                (fn-octets-p (cadr (pcko-copy pos n reads pgs-mem fn-octets)))))
+  :hints (("Goal" :induct (pcko-copy pos n reads pgs-mem fn-octets))))
+
+(defthm pcko-cbor-octets-adt
+  (implies (fn-cbor-octet-listp x) (adt-octetsp x))
+  :hints (("Goal" :induct (len x)
+           :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp adt-octetsp))))
+
+(defthm pcko-octets-p-scc
+  (implies (fn-octets-p x) (fn-scc-octet-listp x))
+  :hints (("Goal" :in-theory (e/d (fn-oct-octets-p-is-octet-listp pck-octet-listp-is-octetsp)
+                                  ())
+           :use pcko-cbor-octets-adt)))
+
+(defthm pcko-floor-npk
+  (implies (natp n) (equal (floor (+ 7 n) 8) (adt-tp-npk n)))
+  :hints (("Goal" :use pcko-nw-is-npk :in-theory (enable pcko-nw))))
+
+(verify-guards pcko-tree)
+
 (defthm pcko-tree-of-list
   (equal (pcko-tree buf)
          (let ((d (fn-scc-decode-tree buf)))
@@ -261,6 +353,16 @@
            (fn-ssr-intern-step mid ts nil nil :resident nil fn-arena))))
   :hints (("Goal" :use ((:instance fn-ssr-resident-step-of-append (a (list x)) (b ts) (dicts nil)))
            :in-theory (disable fn-ssr-resident-step-of-append))))
+
+(defthm pcko-intern-statep
+  (implies (and (fn-ssr-statep acc)
+                (not (eq (car (fn-ssr-intern-step acc ws rs ps mode dicts fn-arena)) :bad)))
+           (fn-ssr-statep (car (fn-ssr-intern-step acc ws rs ps mode dicts fn-arena))))
+  :hints (("Goal" :use fn-ssr-intern-step-preserves-statep
+           :in-theory (disable fn-ssr-intern-step-preserves-statep))))
+
+(verify-guards pcko-tape)
+(verify-guards fn-pck-x-open)
 
 (defun pcko-x (pos w)
   ; The tree of the row at POS.
@@ -390,7 +492,7 @@
                   (equal (mv-nth 1 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
                          (fn-ssr-rows (mv-nth 0 (fn-ssr-intern-step seed ts nil nil :resident nil fn-arena))))
                   (equal (mv-nth 2 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
-                         (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x)))
+                         (list (pcko-nth 0 x) (pcko-nth 1 x) (pcko-nth 2 x) (pcko-nth 3 x)))
                   (equal (mv-nth 3 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
                          (fn-cei-build-aux ts 0 nil))
                   (equal (mv-nth 4 (fn-pck-x-open npg pgs-mem fn-arena fn-octets))
@@ -717,6 +819,13 @@
   :hints (("Goal" :in-theory (disable fn-pck-pages pcko-tw) :use pcko-len-pages))
   :rule-classes nil)
 
+(defthm pcko-nth-is-nth
+  (implies (true-listp x) (equal (pcko-nth i x) (nth i x))))
+
+(defthm pcko-root-tree-true-listp
+  (true-listp (fn-pck-root-tree configs recs))
+  :hints (("Goal" :in-theory (enable fn-pck-root-tree fn-pck-root-tree-of-capture))))
+
 (defthm pcko-open-of-recs
   (implies (and (fn-pck-recordsp configs recs)
                 (fn-pck-root-fitsp configs recs)
@@ -739,7 +848,7 @@
                   (equal (mv-nth 5 r)
                          (mv-nth 1 (fn-ssr-intern-step seed recs nil nil :resident nil fn-arena))))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(pcko-img) (theory 'minimal-theory))
+           :in-theory (union-theories '(pcko-img pcko-nth-is-nth pcko-root-tree-true-listp) (theory 'minimal-theory))
            :use ((:instance pcko-len-w) (:instance pcko-w-root) (:instance pcko-w-tape-well)
                  (:instance pcko-npg-ok)
                  (:instance pcko-open-is-the-fold

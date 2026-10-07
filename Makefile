@@ -312,6 +312,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-exec \
 	books/paged-checkpoint-stage \
 	books/paged-checkpoint-image \
+	books/paged-checkpoint-open \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
 	tests/acl2/def-representation-pages-tests \
@@ -320,6 +321,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/paged-checkpoint-exec-tests \
 	tests/acl2/paged-checkpoint-stage-tests \
 	tests/acl2/paged-checkpoint-image-tests \
+	tests/acl2/paged-checkpoint-open-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
