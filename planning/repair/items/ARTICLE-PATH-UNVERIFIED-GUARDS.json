@@ -1,0 +1,13 @@
+{
+ "file": "books/article-stream.lisp",
+ "id": "ARTICLE-PATH-UNVERIFIED-GUARDS",
+ "notes": [
+  "10-07 08:24 lane/p-ast-guard: verify guards across article-stream and article-stream-owner (7 + 13 :verify-guards nil defuns), confirm host calls the executable, stdout-empty test, small-preset ARTICLE timing before/after"
+ ],
+ "owner": "p-ast-guard",
+ "severity": "high",
+ "source": "E finding via coordinator 2026-10-07",
+ "state": "in-progress",
+ "title": "Served ARTICLE path runs unverified *1* functions: fn-ast-render-window-aux and the article-stream(-owner) step functions are :verify-guards nil, so every ARTICLE takes the guard-checking slow path and the owner prints an ACL2 Warning [Guards] on stdout",
+ "updated": "2026-10-07T12:24:26Z"
+}
