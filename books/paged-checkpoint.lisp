@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "def-representation-pages")
-(include-book "pagestore")
+(include-book "pagestore-keystones")
 (include-book "owner-checkpoint-open")
 (include-book "store-checkpoint-buffer")
 (include-book "def-representation")
@@ -129,7 +129,9 @@
 (defun fn-pck-fit (ps)
   ; Exactly K pages: PS padded with zero pages (or cut, when it does not fit).
   (declare (xargs :guard t :verify-guards nil))
-  (adt-tp-take *fn-pck-root-pages* (append ps (fn-pck-zero-pages *fn-pck-root-pages*))))
+  (if (<= (len ps) *fn-pck-root-pages*)
+      (append ps (fn-pck-zero-pages (- *fn-pck-root-pages* (len ps))))
+    (adt-tp-take *fn-pck-root-pages* ps)))
 
 (defun fn-pck-root-pages-of (configs recs)
   (declare (xargs :guard t :verify-guards nil))
@@ -175,6 +177,9 @@
   (implies (fn-pck-sccb-listp recs) (fn-pck-row$ap (fn-pck-rows recs)))
   :hints (("Goal" :in-theory (enable fn-pck-row$ap adt-seq-p adt-rec-p adt-val-okp fn-pck-enc-row))))
 
+(defthm pck-len-zero-pages
+  (equal (len (fn-pck-zero-pages n)) (nfix n)))
+
 (defthm pck-len-fit
   (equal (len (fn-pck-fit ps)) *fn-pck-root-pages*)
   :hints (("Goal" :in-theory (enable fn-pck-fit))))
@@ -182,8 +187,11 @@
 (defthm pck-len-root-pages-of
   (equal (len (fn-pck-root-pages-of configs recs)) *fn-pck-root-pages*))
 
+(defthm pck-true-listp-zero-pages
+  (true-listp (fn-pck-zero-pages n)))
+
 (defthm pck-true-listp-fit
-  (true-listp (fn-pck-fit ps))
+  (implies (true-listp ps) (true-listp (fn-pck-fit ps)))
   :hints (("Goal" :in-theory (enable fn-pck-fit))))
 
 (in-theory (disable fn-pck-row-pages-of fn-pck-row-of-pages fn-pck-row-extend-dirty
@@ -248,3 +256,272 @@
                            (fn-pck-row-extend-dirty-bound))
            :use ((:instance fn-pck-row-extend-dirty-bound
                             (a (fn-pck-rows prefix)) (xs (fn-pck-rows delta)))))))
+
+; -----------------------------------------------------------------------------
+; 5. Reading the image back.
+
+(defun fn-pck-dec-row (row)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((d (fn-scc-decode-tree (car row))))
+    (if (and (consp d) (eq (car d) :ok) (consp (cdr d))) (cadr d) nil)))
+
+(defun fn-pck-dec-rows (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom rows) nil (cons (fn-pck-dec-row (car rows)) (fn-pck-dec-rows (cdr rows)))))
+
+(in-theory (disable fn-pck-dec-row fn-pck-enc-row))
+
+(defthm pck-dec-row-of-enc-row
+  (implies (fn-sccb-treep x) (equal (fn-pck-dec-row (fn-pck-enc-row x)) x))
+  :hints (("Goal" :in-theory (enable fn-pck-dec-row fn-pck-enc-row)
+           :use ((:instance fn-scc-decode-tree-of-encode)
+                 (:instance fn-sccb-treep-is-treep)))))
+
+(defthm pck-dec-rows-of-rows
+  (implies (fn-pck-sccb-listp recs) (equal (fn-pck-dec-rows (fn-pck-rows recs)) recs))
+  :hints (("Goal" :in-theory (e/d (fn-pck-rows fn-pck-dec-rows fn-pck-sccb-listp)
+                                  (fn-pck-dec-row fn-pck-enc-row)))))
+
+(defun fn-pck-capture-of-pages (pages)
+  ; The capture the pages hold: the records from the events tape, the four
+  ; fold roots from the root region, the event index rebuilt from the records.
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((root (fn-pck-dec-row (car (fn-pck-row-of-pages (adt-tp-take *fn-pck-root-pages* pages)))))
+         (recs (fn-pck-dec-rows (fn-pck-row-of-pages (nthcdr *fn-pck-root-pages* pages)))))
+    (fn-sco-make recs (nth 0 root) (nth 1 root) (nth 2 root) (nth 3 root)
+                 (fn-cei-build-aux recs 0 nil))))
+
+(defun fn-pck-open (disk r mode configs frontier suffix max-conns)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((v (pgs-view (pgs-open disk r mode))))
+    (if v
+        (fn-ock-recover-extended
+         (fn-sco-extend (fn-pck-capture-of-pages (second v)) configs suffix)
+         configs frontier max-conns)
+      :fault)))
+
+(defun fn-pck-disk-holds (disk r mode configs prefix)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((o (pgs-open disk r mode)))
+    (and (equal (car o) :ok)
+         (equal (fourth o) (fn-pck-pages configs prefix)))))
+
+; --- the zero padding of the root region reads as nothing
+
+(defthm pck-append-zeros
+  (implies (and (natp a) (natp b))
+           (equal (append (adt-tp-zeros a) (adt-tp-zeros b)) (adt-tp-zeros (+ a b))))
+  :hints (("Goal" :in-theory (enable adt-tp-zeros) :induct (adt-tp-zeros a))))
+
+(defthm pck-flat-zero-pages
+  (equal (adt-tp-flat (fn-pck-zero-pages n)) (adt-tp-zeros (* (nfix n) *pgs-page-words*)))
+  :hints (("Goal" :in-theory (e/d (adt-tp-flat fn-pck-zero-pages)
+                                  ((:executable-counterpart adt-tp-zeros) pck-append-zeros))
+           :induct (fn-pck-zero-pages n))
+          ("Subgoal *1/2" :use ((:instance pck-append-zeros (a *pgs-page-words*)
+                                           (b (* *pgs-page-words* (+ -1 n))))))))
+
+(defthm pck-flat-append
+  (equal (adt-tp-flat (append p q)) (append (adt-tp-flat p) (adt-tp-flat q)))
+  :hints (("Goal" :in-theory (enable adt-tp-flat))))
+
+(defthm pck-natp-pad
+  (natp (adt-tp-pad n))
+  :hints (("Goal" :in-theory (enable adt-tp-pad))))
+
+(defthm pck-of-pages-zero-padded
+  ; The pages of a sequence followed by zero pages read back as the sequence.
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a))
+           (equal (adt-tp-of-pages s (append (adt-tp-pages-of s a) (fn-pck-zero-pages m))) a))
+  :hints (("Goal" :in-theory (e/d (adt-tp-of-pages adt-tp-pages-of)
+                                  (adt-tp-seq-roundtrip adt-tp-car-zeros adt-tp-flat-of-pages
+                                   pck-append-zeros))
+           :use ((:instance adt-tp-flat-of-pages (w (adt-tp-seq-words s a)))
+                 (:instance pck-append-zeros (a (adt-tp-pad (len (adt-tp-seq-words s a))))
+                            (b (* (nfix m) *pgs-page-words*)))
+                 (:instance adt-tp-seq-roundtrip
+                            (tail (adt-tp-zeros (+ (adt-tp-pad (len (adt-tp-seq-words s a)))
+                                                   (* (nfix m) *pgs-page-words*)))))
+                 (:instance adt-tp-car-zeros
+                            (n (+ (adt-tp-pad (len (adt-tp-seq-words s a)))
+                                  (* (nfix m) *pgs-page-words*))))))))
+
+(defthm pck-of-pages-zero-padded-inst
+  (implies (fn-pck-row$ap a)
+           (equal (fn-pck-row-of-pages (append (fn-pck-row-pages-of a) (fn-pck-zero-pages m))) a))
+  :hints (("Goal" :use ((:instance pck-of-pages-zero-padded (s *fn-pck-row-schema*))
+                        fn-pck-row-pages-schema-ok)
+           :in-theory (e/d (fn-pck-row-of-pages fn-pck-row-pages-of fn-pck-row$ap)
+                           (pck-of-pages-zero-padded)))))
+
+(defthm pck-of-pages-of-inst
+  (implies (fn-pck-row$ap a) (equal (fn-pck-row-of-pages (fn-pck-row-pages-of a)) a))
+  :hints (("Goal" :use fn-pck-row-of-pages-of-pages-of)))
+
+(defthm pck-take-root
+  (implies (true-listp r)
+           (equal (adt-tp-take (len r) (append r c)) r))
+  :hints (("Goal" :use ((:instance adt-tp-take-of-append (n (len r)) (a r) (b c))
+                        (:instance adt-tp-take-all (n (len r)) (w r))))))
+
+(defthm pck-nthcdr-root
+  (equal (nthcdr (len r) (append r c)) c))
+
+(defthm pck-ap-enc-row
+  (implies (fn-sccb-treep x) (fn-pck-row$ap (list (fn-pck-enc-row x))))
+  :hints (("Goal" :use ((:instance pck-rows-ap (recs (list x))))
+           :in-theory (e/d (fn-pck-rows fn-pck-sccb-listp) (pck-rows-ap)))))
+
+(in-theory (disable fn-pck-root-tree))
+
+(defthm pck-root-decodes
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs) (true-listp t0))
+           (equal (fn-pck-dec-row (car (fn-pck-row-of-pages
+                                        (adt-tp-take *fn-pck-root-pages*
+                                                     (append (fn-pck-root-pages-of configs recs) t0)))))
+                  (fn-pck-root-tree configs recs)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-root-fitsp fn-pck-recordsp fn-pck-root-pages-of fn-pck-fit)
+                           (pck-of-pages-zero-padded-inst pck-take-root fn-pck-row-of-pages
+                            fn-pck-row-pages-of))
+           :use ((:instance pck-take-root (r (fn-pck-root-pages-of configs recs)) (c t0))
+                 (:instance pck-of-pages-zero-padded-inst
+                            (a (list (fn-pck-enc-row (fn-pck-root-tree configs recs))))
+                            (m (- *fn-pck-root-pages*
+                                  (len (fn-pck-row-pages-of
+                                        (list (fn-pck-enc-row (fn-pck-root-tree configs recs))))))))
+                 (:instance pck-ap-enc-row (x (fn-pck-root-tree configs recs)))
+                 (:instance pck-dec-row-of-enc-row (x (fn-pck-root-tree configs recs)))))))
+
+(defthm pck-capture-of-pages
+  (implies (and (true-listp recs) (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs))
+           (equal (fn-pck-capture-of-pages (fn-pck-pages configs recs))
+                  (fn-sco-capture configs recs)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-capture-of-pages fn-pck-pages fn-pck-root-tree fn-sco-capture)
+                           (pck-root-decodes pck-of-pages-of-inst pck-nthcdr-root
+                            fn-pck-root-pages-of fn-pck-row-of-pages fn-pck-row-pages-of
+                            fn-pck-rows fn-pck-dec-rows))
+           :use ((:instance pck-root-decodes (t0 (fn-pck-row-pages-of (fn-pck-rows recs))))
+                 (:instance pck-nthcdr-root (r (fn-pck-root-pages-of configs recs))
+                            (c (fn-pck-row-pages-of (fn-pck-rows recs))))
+                 (:instance pck-of-pages-of-inst (a (fn-pck-rows recs)))
+                 (:instance pck-rows-ap (recs recs))
+                 (:instance pck-dec-rows-of-rows)
+                 (:instance pck-len-root-pages-of (recs recs))))))
+
+; -----------------------------------------------------------------------------
+; 6. PCK-OPEN
+
+(defun pck-ind-k (k x)
+  (if (zp k) x (pck-ind-k (1- k) (- x *pgs-page-words*))))
+
+(defthm pck-k-le-npages
+  (implies (and (natp k) (natp x) (<= (* *pgs-page-words* k) x))
+           (<= k (adt-tp-npages x)))
+  :hints (("Goal" :induct (pck-ind-k k x))
+          ("Subgoal *1/2" :use ((:instance adt-tp-npages-open (n x))))))
+
+(defthm pck-floor-le-npages
+  (implies (natp x) (<= (floor x *pgs-page-words*) (adt-tp-npages x)))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance adt-tp-floor-bounds)
+                        (:instance pck-k-le-npages (k (floor x *pgs-page-words*))))
+           :in-theory (disable adt-tp-floor-bounds pck-k-le-npages))))
+
+(defthm pck-lp-shift-number
+  (implies (and (natp k) (natp k0) (natp l) (<= k0 l))
+           (pgs-lpages-ok (pgs-dirty-lpages (pck-shift k (adt-tp-number k0 ps))) (+ k l) k))
+  :hints (("Goal" :do-not-induct t :in-theory (disable pck-lpages-ok-number)
+           :use ((:instance pck-lpages-ok-number (k (+ k k0)) (lo k) (n (+ k l)))))))
+
+(defthm pck-floor-le-len-pages
+  (<= (floor (len w) *pgs-page-words*) (len (adt-tp-pages w)))
+  :hints (("Goal" :use ((:instance pck-floor-le-npages (x (len w)))
+                        (:instance adt-tp-len-pages))
+           :in-theory (disable pck-floor-le-npages adt-tp-len-pages adt-tp-pages-long))))
+
+(defthm pck-lpages-ok-shifted-dirty
+  ; The tape's dirty pages, behind K pages in front, are numbered in order and
+  ; each at most the length reached.
+  (implies (and (true-listp w) (natp k))
+           (pgs-lpages-ok (pgs-dirty-lpages (pck-shift k (adt-tp-dirty w n)))
+                          (+ k (len (adt-tp-pages w))) k))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (adt-tp-dirty) (pck-lp-shift-number pck-floor-le-len-pages adt-tp-pages-long))
+           :use ((:instance pck-lp-shift-number
+                            (k0 (floor (len w) *pgs-page-words*)) (l (len (adt-tp-pages w)))
+                            (ps (adt-tp-pages (append (nthcdr (* *pgs-page-words* (floor (len w) *pgs-page-words*)) w) n))))
+                 (:instance pck-floor-le-len-pages)
+                 (:instance adt-tp-floor-bounds (x (len w)))))))
+
+(defthm pck-dirty-lpages-ok
+  (pgs-lpages-ok (pgs-dirty-lpages (fn-pck-dirty configs prefix delta))
+                 (len (fn-pck-pages configs prefix)) 0)
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-dirty fn-pck-pages fn-pck-row-pages-of fn-pck-row-extend-dirty
+                            adt-tp-pages-of adt-tp-extend-dirty)
+                           (pck-lpages-ok-shifted-dirty pck-lpages-ok-number-then adt-tp-pages-long
+                            fn-pck-root-pages-of fn-pck-rows adt-tp-dirty pck-shift))
+           :use ((:instance pck-lpages-ok-shifted-dirty (k *fn-pck-root-pages*)
+                            (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix)))
+                            (n (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows delta))))
+                 (:instance pck-lpages-ok-number-then (lo 0)
+                            (n (len (fn-pck-pages configs prefix)))
+                            (ps (fn-pck-root-pages-of configs (append prefix delta)))
+                            (l2 (pgs-dirty-lpages
+                                 (pck-shift *fn-pck-root-pages*
+                                            (adt-tp-dirty (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix))
+                                                          (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows delta)))))))
+                 (:instance pck-len-root-pages-of (recs (append prefix delta)))))))
+
+(defthm pck-disk-holds-facts
+  (implies (fn-pck-disk-holds disk r mode configs prefix)
+           (and (equal (car (pgs-open disk r mode)) :ok)
+                (equal (fourth (pgs-open disk r mode)) (fn-pck-pages configs prefix))))
+  :hints (("Goal" :in-theory (e/d (fn-pck-disk-holds) (pgs-open fn-pck-pages)))))
+
+(defthm pck-open-view-after-commit
+  (implies (and (true-listp prefix) (true-listp delta)
+                (fn-pck-sccb-listp (append prefix delta))
+                (fn-pck-disk-holds disk r mode configs prefix)
+                (pgs-alloc-inv alloc disk))
+           (equal (pgs-view (pgs-open (pgs-commit disk r mode (fn-pck-dirty configs prefix delta) alloc) r mode))
+                  (list (pgs-next-txid (pgs-root-slots r disk))
+                        (fn-pck-pages configs (append prefix delta)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory) '(pck-disk-holds-facts))
+           :use ((:instance pgs-open-after-commit (dirty (fn-pck-dirty configs prefix delta)))
+                 (:instance fn-pck-dirty-is-the-delta)
+                 (:instance pck-disk-holds-facts)
+                 (:instance pck-dirty-lpages-ok)))))
+
+(defthm pck-recordsp-sccb
+  (implies (fn-pck-recordsp configs recs) (fn-pck-sccb-listp recs))
+  :hints (("Goal" :in-theory (enable fn-pck-recordsp))))
+
+(defthm pck-true-listp-append
+  (implies (and (true-listp a) (true-listp b)) (true-listp (append a b)))
+  :rule-classes nil)
+
+; PCK-OPEN
+(defthm fn-pck-open-after-commit-is-full-recover
+  (implies (and (true-listp prefix) (true-listp delta) (true-listp suffix)
+                (fn-pck-recordsp configs (append prefix delta))
+                (fn-pck-root-fitsp configs (append prefix delta))
+                (fn-pck-disk-holds disk r mode configs prefix)
+                (pgs-alloc-inv alloc disk))
+           (equal (fn-pck-open (pgs-commit disk r mode (fn-pck-dirty configs prefix delta) alloc)
+                               r mode configs frontier suffix max-conns)
+                  (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-pck-open (:executable-counterpart consp) associativity-of-append
+                                        (:rewrite car-cons) (:rewrite cdr-cons)))
+           :use ((:instance pck-open-view-after-commit)
+                 (:instance pck-capture-of-pages (recs (append prefix delta)))
+                 (:instance fn-owner-recover-from-checkpoint-equals-full-recover
+                            (prefix (append prefix delta)))
+                 (:instance pck-sccb-listp-of-append (a prefix) (b delta))
+                 (:instance pck-recordsp-sccb (recs (append prefix delta)))
+                 (:instance pck-true-listp-append (a prefix) (b delta))))))
