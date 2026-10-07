@@ -59,13 +59,10 @@ and [the current view](current.md). Release scope is
    (`build/coordinator/id-claims.jsonl`); `next_id.py check` lists your new
    ids against it before you report.
 4. **Report what the tools say**: theorem statements, host function, teeth
-   book, the `green_check` line, run id and committed manifest, evidence
-   file, and what you did not do. "Committed" means the line in
-   `planning/evidence-index.tsv`: `evidence_manifests.py add RUN` uploads the
-   manifest to the evidence archive (hbox `/tank/fn/evidence`, by sha256) and
-   stages that line; `evidence_store.py put PATH` does the same for a report,
-   log or transcript under `planning/evidence/`. A reader fetches by hash
-   (`evidence_store.py cat PATH`, or any tool, through build/evidence-cache).
+   book, the `green_check` line, run id (the run dir stays on its box;
+   a book's certification is the cert-cache entry `green_check` reads), report
+   file, and what you did not do. A report a reader needs is a short committed
+   file; a log stays on the box and is named `box:path`.
 5. **The coordinator merges as lanes land**, regenerates the ledger and
    `current.md` in the merge (never hand-resolving a generated file),
    checks new registry IDs against the claims ledger (`next_id.py check`;

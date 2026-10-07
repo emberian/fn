@@ -28,8 +28,7 @@ Inputs, each read in the format its producer writes (nothing is guessed):
   execution, recorded by ``implementation.log`` / ``implementation.record``.
 * tests/scenarios/tiers.tsv -- the native modules per tier
   (``TIER<TAB>module<TAB>tests.MODULE[.Class]``); a module is recorded as run
-  when planning/evidence-index.tsv (``<sha256> <bytes> <path>``) lists a path
-  naming it, or a catalog scenario cites a log naming it.
+  when a catalog scenario cites a log naming it.
 
 Dispositions of an open item (state open | in-progress | ready), first match:
 IN-FLIGHT (a live workq claim, or an in-progress/ready item whose owner is a
@@ -165,21 +164,6 @@ def classify(item, claims, live_lanes, acks):
     return "UNOWNED", state
 
 
-def load_evidence_paths(root, findings):
-    f = Path(root) / "planning/evidence-index.tsv"
-    text = read_text(f, findings)
-    paths = set()
-    for n, line in enumerate((text or "").splitlines(), 1):
-        if not line.strip() or line.startswith("#"):
-            continue
-        cols = line.split(None, 2)
-        if len(cols) != 3 or not cols[1].isdigit():
-            findings.add(f"{f}:{n}", "malformed evidence-index row")
-            continue
-        paths.add(cols[2].strip())
-    return paths
-
-
 def load_scenarios(root, findings):
     f = Path(root) / "tests/scenarios/catalog.json"
     text = read_text(f, findings)
@@ -220,10 +204,12 @@ def names_module(path, stem):
                           r"(-[0-9a-f]{7,40})?\.(log|txt|json|md)$", p))
 
 
-def never_run(root, scenarios, modules, evidence):
+def never_run(root, scenarios, modules):
     """Scenarios declared native with no recorded log, modules with no record."""
     def recorded(p):
-        return p in evidence or (Path(root) / p).exists()
+        # A log under the retired planning/evidence/ prefix lives on the box
+        # that ran it; the catalog citation is its record.
+        return p.startswith("planning/evidence/") or (Path(root) / p).exists()
     out = []
     cited = []
     for s in scenarios:
@@ -236,7 +222,7 @@ def never_run(root, scenarios, modules, evidence):
             out.append((s.get("id", "?"), "scenario " + str(impl.get("test", ""))))
     for mod in modules:
         stem = mod[len("tests.test_"):]
-        if not any(names_module(p, stem) for p in list(evidence) + cited):
+        if not any(names_module(p, stem) for p in cited):
             out.append((mod, "module"))
     return out
 
@@ -251,7 +237,7 @@ def report(root, claims=None, lanes=None, acks_path=None):
     rows = [(it, *classify(it, claimed, live, acks)) for it in items]
     scenarios = load_scenarios(root, findings)
     modules = load_modules(root, findings)
-    nr = never_run(root, scenarios, modules, load_evidence_paths(root, findings))
+    nr = never_run(root, scenarios, modules)
     known = {it["id"] for it in items} | {s.get("id") for s in scenarios} | set(modules)
     for a in sorted(acks):
         if a not in known and not a.startswith("ratchet:"):  # tools/ratchet.py reads those

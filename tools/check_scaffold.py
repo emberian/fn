@@ -13,11 +13,10 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools import ledger  # noqa: E402  (after ROOT is on the path)
-sys.path.insert(0, str(ROOT / "tools"))
-import evidence_store  # noqa: E402
 ERRORS: list[str] = []
-UNAVAILABLE: list[str] = []
-REFUSED: list[str] = []
+# Citations under these prefixes name reports that left the tree (D71): they
+# stay as text and are not resolved.
+HISTORICAL_PREFIXES = ("planning/evidence/", "docs/evidence/")
 IGNORED = {".git", ".venv", ".cache", "build", "var", "__pycache__"}
 # The shared allocator pads to three digits; it does not stop at 999.
 REQUIREMENT_ID = r"[A-Z]{3}-\d{3,}"
@@ -27,17 +26,6 @@ SCENARIO_ID = r"SCN-\d{3,}"
 
 def fail(message: str) -> None:
     ERRORS.append(message)
-
-
-def unavailable(message: str) -> None:
-    """Uncertain, not failed: an indexed target whose bytes cannot be read."""
-    UNAVAILABLE.append(message)
-
-
-def refused(message: str) -> None:
-    """Refused evidence: an indexed target whose bytes are there and do not
-    hash to its index line (a working-tree file or the archive object)."""
-    REFUSED.append(message)
 
 
 def prose(path: Path) -> str:
@@ -69,25 +57,7 @@ def link(target: str, base: Path, context: str) -> None:
         fail(f"{context}: local link escapes repository: {target}")
         return
     rel = dest.relative_to(ROOT).as_posix()
-    if evidence_store.indexed(ROOT, rel):
-        # Evidence the index names: the link holds only if the bytes it
-        # reaches hash to the index line -- a working-tree file at that path
-        # is checked against it, never accepted as itself (r61 F2), and with
-        # none here the object must fetch and verify (a name is not bytes).
-        try:
-            if parts.fragment:
-                dest = evidence_store.materialize(ROOT, rel)
-            else:
-                evidence_store.read_bytes(ROOT, rel)
-        except evidence_store.EvidenceRefused as error:
-            refused(f"{context}: indexed target does not match its index line: {target}: {error}")
-            return
-        except evidence_store.EvidenceUnavailable as error:
-            unavailable(f"{context}: indexed target cannot be read: {target}: {error}")
-            return
-        if not parts.fragment:
-            return
-    elif not dest.exists() and evidence_store.is_dir(ROOT, rel):
+    if rel.startswith(HISTORICAL_PREFIXES) and not dest.exists():
         return
     if not dest.exists():
         fail(f"{context}: missing target: {target}")
@@ -135,7 +105,7 @@ def evidence(entry: dict, advanced: set[str]) -> None:
             fail(f"{entry['id']}: evidence must name a repository file")
         else:
             link(path, ROOT / "README.md", entry["id"])
-            if not evidence_store.exists(ROOT, path):
+            if not path.startswith(HISTORICAL_PREFIXES) and not (ROOT / path).exists():
                 fail(f"{entry['id']}: evidence is not a file: {path}")
 
 
@@ -163,16 +133,9 @@ def scenario_implementation(ident: str, entry: dict) -> None:
         fail(f"{ident}: implementation.test is missing")
         return
     module_rel = test if "/" in test else test.replace(".", "/") + ".py"
-    if not evidence_store.exists(ROOT, module_rel):
+    module = ROOT / module_rel
+    if not module.is_file():
         fail(f"{ident}: implementation.test {test} does not resolve to a file")
-        return
-    try:
-        module = evidence_store.materialize(ROOT, module_rel)
-    except evidence_store.EvidenceRefused as error:
-        refused(f"{ident}: implementation.test {test} does not match its index line: {error}")
-        return
-    except evidence_store.EvidenceUnavailable as error:
-        unavailable(f"{ident}: implementation.test {test} cannot be read: {error}")
         return
     cases = impl.get("cases", [])
     if not isinstance(cases, list) or any(not isinstance(c, str) or not c for c in cases):
@@ -188,42 +151,28 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     if not isinstance(impl.get("native"), bool):
         fail(f"{ident}: implementation.native must say whether a native image ran it")
     log, record = impl.get("log"), impl.get("record")
+    historical = []
     for field, value in (("log", log), ("record", record)):
-        # Committed = tracked, or named by the evidence index (its bytes in
-        # the archive; tools/evidence_store.py).
-        if not isinstance(value, str) or not evidence_store.exists(ROOT, value):
+        if not isinstance(value, str) or not value:
+            fail(f"{ident}: implementation.{field} must name a file: {value!r}")
+            return
+        if value.startswith(HISTORICAL_PREFIXES) and not (ROOT / value).exists():
+            historical.append(value)
+        elif not (ROOT / value).exists():
             fail(f"{ident}: implementation.{field} must be a committed file: {value!r}")
             return
     if not record.endswith(".md"):
         fail(f"{ident}: implementation.record must be an evidence record (.md)")
-    # Through the store, so the bytes read are the ones the index names
-    # (the working tree no longer carries planning/evidence).
-    try:
-        body = evidence_store.read_bytes(ROOT, log).decode("utf-8", errors="replace")
-        prose = evidence_store.read_bytes(ROOT, record).decode("utf-8", errors="replace")
-    except evidence_store.EvidenceRefused as error:
-        refused(f"{ident}: implementation log/record does not match its index line: {error}")
-        return
-    except evidence_store.EvidenceUnavailable as error:
-        unavailable(f"{ident}: implementation log/record cannot be read: {error}")
-        return
+    if historical:
+        return  # a cited report that left the tree cannot be cross-read
+    body = (ROOT / log).read_text(encoding="utf-8", errors="replace")
+    prose = (ROOT / record).read_text(encoding="utf-8", errors="replace")
     names = {module.stem, module.name} | {c.split(".")[-1] for c in cases}
     log_named = Path(log).name in prose
     if not (module.name in prose or module.stem in prose or log_named):
         fail(f"{ident}: {record} names neither {test} nor {Path(log).name}")
     if not any(name in body for name in names) and not log_named:
         fail(f"{ident}: neither {log} names {test} nor {record} names the log")
-
-
-def exit_status(errors: list, refused_: list, unavailable_: list) -> int:
-    """4 when evidence is refused (bytes that do not hash to their index
-    line), else 1 for any structural error, else 3 when evidence could not
-    be read (uncertain), else 0: never collapse 3 or 4 into 1 (r65 F4)."""
-    if refused_:
-        return evidence_store.EXIT_REFUSED
-    if errors:
-        return 1
-    return evidence_store.EXIT_UNAVAILABLE if unavailable_ else 0
 
 
 def conflict_markers() -> None:
@@ -306,26 +255,17 @@ def main() -> int:
     if set(definitions) != set(requirements):
         fail(f"requirement definitions/registry differ: {sorted(set(definitions) ^ set(requirements))}")
 
-    # Every indexed file the registries name is read (verified) below: one
-    # fetch for all of them, never one round trip each.
-    named = [path for entries in (requirements, proofs, scenarios)
-             for entry in entries.values()
-             for path in list(entry.get("evidence") or [])
-             + [(entry.get("implementation") or {}).get(key)
-                for key in ("log", "record", "test")]
-             if isinstance(path, str)]
-    try:
-        evidence_store.prefetch(ROOT, named)
-    except evidence_store.EvidenceError:
-        pass  # each read below reports its own object (UNAVAILABLE or REFUSED)
-
     for entries, statuses, advanced in [
         (requirements, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
-        (proofs, {"planned", "uncertified-at-current-digest", "certified"}, {"certified"}),
+        (proofs, None, set()),   # a proof's status is computed (green_check), never stored
         (scenarios, {"specified", "implemented", "validated", "deferred"}, {"implemented", "validated"}),
     ]:
         for ident, entry in entries.items():
-            if entry.get("status") not in statuses:
+            if statuses is None:
+                if "status" in entry:
+                    fail(f"{ident}: a proof target stores no status; it is computed "
+                         "from the cert cache (python3 tools/ledger.py --write drops it)")
+            elif entry.get("status") not in statuses:
                 fail(f"{ident}: invalid status")
             if entry.get("milestone") not in milestones:
                 fail(f"{ident}: unknown milestone")
@@ -352,8 +292,6 @@ def main() -> int:
         references(entry.get("assumptions", []), assumptions, ident)
         if not entry.get("statement"):
             fail(f"{ident}: missing proposed statement")
-        if entry.get("status") == "certified" and not entry.get("events"):
-            fail(f"{ident}: certification needs actual ACL2 event references")
         reverse = {r for r, value in requirements.items() if ident in value.get("proof_targets", [])}
         if reverse != set(entry.get("requirements", [])):
             fail(f"{ident}: requirement/proof links are not reciprocal "
@@ -400,14 +338,10 @@ def main() -> int:
     if set(requirements) - covered:
         fail(f"requirements without scenario specifications: {sorted(set(requirements) - covered)}")
 
-    if ERRORS or UNAVAILABLE or REFUSED:
+    if ERRORS:
         for error in ERRORS:
             print(f"ERROR: {error}", file=sys.stderr)
-        for message in REFUSED:
-            print(f"REFUSED: {message}", file=sys.stderr)
-        for message in UNAVAILABLE:
-            print(f"UNAVAILABLE: {message}", file=sys.stderr)
-        return exit_status(ERRORS, REFUSED, UNAVAILABLE)
+        return 1
     print(f"Scaffold OK: {len(markdown)} Markdown files, {len(requirements)} requirements, "
           f"{len(proofs)} proof targets, {len(scenarios)} scenario specifications.")
     print("Ledger OK: cited events exist, are not SUSPECT, and the ledger builds.")
@@ -421,10 +355,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except evidence_store.EvidenceError as exc:
-        print(f"{evidence_store.outcome(exc)}: committed evidence cannot be accepted: {exc}",
-              file=sys.stderr)
-        sys.exit(evidence_store.exit_code(exc))
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         print(f"ERROR: malformed scaffold: {exc}", file=sys.stderr)
         sys.exit(1)

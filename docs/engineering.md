@@ -47,7 +47,7 @@ The map of fn for someone changing it. Commands and rules are in
 | what is true now | `planning/now.md`; `python3 tools/current_view.py` (computed) |
 | what is broken | `python3 planning/repair/repair.py report` (computed) |
 | which examples must work | `tests/scenarios/catalog.json` |
-| what ran, on what | `planning/evidence-index.tsv`; bytes via `python3 tools/evidence_store.py cat PATH` |
+| what ran, on what | the committed report, or `box:path` for a log that stays on the box |
 | what is deployed | `docs/nodes/fsn1.md`, `docs/nodes/hbox.md` |
 | what the RFCs say | `docs/references.md` |
 
