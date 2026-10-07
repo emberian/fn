@@ -2,8 +2,19 @@
 (in-package "ACL2")
 (include-book "../books/native-admin")
 (include-book "../books/accounts")
-(ld "store-node-host.lisp" :ld-error-action :error)
-(ld "owner-host.lisp" :ld-error-action :error)
+; The sibling edges are include-books (the account-*/index-* discipline),
+; not `ld's: certify-book refuses an ld (LD-FN is not an embedded event
+; form).  In a session that ld'd them earlier the includes are redundant
+; and load nothing; store-host comes with store-node-host's include of it.
+; owner-host comes FIRST: its book closure carries the guard-verified twins
+; of store-host's defuns (books/store-octet-entry.lisp is the extracted
+; alias of host/store-host.lisp's fn-store-octets->string), and ACL2
+; refuses a book's guard-verified definition over an existing unverified
+; one while the identical-defun skip works in the other direction -- the
+; same reason owner-host.lisp keeps its store-node-host include after its
+; books.
+(include-book "owner-host")
+(include-book "store-node-host")
 
 (defun fn-native-admin-host-plan (argv) (fn-native-admin-plan argv))
 (defun fn-native-admin-host-status (result) (fn-native-admin-result-status result))

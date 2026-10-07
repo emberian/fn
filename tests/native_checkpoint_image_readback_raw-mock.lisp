@@ -34,7 +34,8 @@
  (load-deployed-forms "host/native/io.lisp"
   '((defun fnn-history-image-release) (defmacro fnn-with-history-image))))
 (load-deployed-forms "host/native/io.lisp"
- '((define-condition fnn-store-io-refusal) (defun fnn-refuse-io)
+ '((define-condition fnn-store-io-refusal) (define-condition fnn-history-image-refusal)
+   (defun fnn-refuse-io)
    (defstruct (fnn-store (:constructor %make-fnn-store)))
    (defmacro fnn-unwind-cleanups)
    (deftype fnn-octets) (defun fnn-make-octets) (defun fnn-octets)
@@ -47,6 +48,8 @@
    (defun fnn-state-checkpoint-write) (defun fnn-state-checkpoint-stage)
    (defun fnn-state-checkpoint-verify) (defun fnn-state-checkpoint-install)))
 (defconstant +fnn-o-nofollow+ sb-posix:o-nofollow)
+;; No developer selector is set: RL-02's forced image refusal is the identity.
+(defun fnn-checkpoint-image-refusal-test (answer) answer)
 (when *readback-new*
  (load-deployed-forms "host/native/io.lisp" '((defun fnn-history-image-readback))))
 (defvar *directory* (second sb-ext:*posix-argv*))

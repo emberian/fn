@@ -231,6 +231,7 @@
                 fn-owner-runtime-operation-binding-install-internal
                 fn-owner-sasl-context fn-owner-sco-capture fn-owner-sco-due
                 fn-owner-sco-note-base-payloads fn-owner-sco-note-durable
+                fn-owner-sco-publication-abandoned
                 fn-owner-sco-publication-done fn-owner-sco-request
                 fn-owner-served-carried-word fn-owner-served-post-word
                 fn-owner-set-auth-config fn-owner-shed-outcome

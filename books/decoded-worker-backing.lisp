@@ -1,6 +1,7 @@
 ; Conservative fixed backing inventory for the private decoded constructor.
 ; Selected fn-crl SBCL layout projection, NOT complete allocation funding.
 (in-package "ACL2")
+(include-book "profile-limits")
 (include-book "cold-read-layout")
 
 (defun fn-dwb-parent-octets ()
@@ -22,11 +23,12 @@
   (declare (xargs :guard t))
   (+ (fn-crl-array-octets 1 8) (fn-crl-array-octets 20 8)))
 
-; Likewise the actual requested-window child is the direct 16384-byte vector.
+; Likewise the actual requested-window child is the direct fn-ew-buffer vector,
+; the profile's :read-window-octets (books/extent-window-buffer.lisp).
 ; The 32 parent allowance is conservative, not an observed native allocation.
 (defun fn-dwb-requested-window-octets ()
   (declare (xargs :guard t))
-  (+ (fn-crl-array-octets 1 8) (fn-crl-array-octets 16384 1)))
+  (+ (fn-crl-array-octets 1 8) (fn-crl-array-octets (fn-profile-limit :read-window-octets) 1)))
 
 (defun fn-dwb-octet-buffers-octets ()
   (declare (xargs :guard t))

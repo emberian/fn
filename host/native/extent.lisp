@@ -142,10 +142,14 @@ permanent baseline, never refunded when an association is removed."
           ;; count (admission needs an idle worker): no backing to size
           *fnn-extent-cache-tokens* (make-hash-table :test #'eq :size cache-capacity :rehash-threshold 1.0 :rehash-size 1))))
 
-(defun fnn-extent-register (path)
+(defun fnn-extent-register (path &optional (open-path path))
   "Reserve ACL2's fresh incarnation name and funded path lease before open.
 Failed constructors spend the name; refund only after definite OS release.
-The core explicitly distinguishes an unfunded offline registration."
+The core explicitly distinguishes an unfunded offline registration.
+OPEN-PATH, when not PATH, is the file the descriptor opens while PATH is
+the name it is registered (and later dropped) under: the writable open's
+copy of the active segment, registered before it is renamed onto PATH
+(fnn-log-recover)."
   (let ((id nil) (funded nil))
     (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
       (destructuring-bind (word next issued)
@@ -162,7 +166,7 @@ The core explicitly distinguishes an unfunded offline registration."
     (let ((fd nil) (installed nil))
       (unwind-protect
            (progn
-             (setq fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+             (setq fd (fnn-open open-path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
              (let* ((st (fnn-fstat fd))
                     (incarnation (cons (sb-posix:stat-dev st) (sb-posix:stat-ino st))))
                (fnn-with-observed-mutex (*fnn-extent-lock* :extent)

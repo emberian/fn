@@ -330,21 +330,34 @@ through OpenSSL_version_num and names itself in OpenSSL_version)."
         (format nil "~{~a~^; ~}" (nreverse reasons))
       "OpenSSL reported no queued detail")))
 
-(defun fnn-tls-load-libraries ()
+(defun fnn-tls-library-selection ()
+  "Observe which libcrypto/libssl pairs exist: (:ok CONFIGURED PINNED SYSTEM),
+or (:error CONDITION) for a failure, which the locked caller re-signals
+where its handlers classify it.  Pure filesystem
+observation, so a caller runs it before taking *fnn-tls-initialize-lock* or
+the reload mutex; nothing is recorded or loaded here."
+  (handler-case
+      (let* ((configured (fnn-tls-configured-library-pair))
+             (pinned (and configured
+                          (probe-file (first configured))
+                          (probe-file (second configured))
+                          configured)))
+        (list :ok configured pinned
+              (and (not pinned)
+                   (fnn-tls-select-pair (fnn-tls-system-library-candidates)))))
+    (error (condition) (list :error condition))))
+
+(defun fnn-tls-load-libraries (selection)
   "Select one complete pair before loading either member; never mix two.
+SELECTION is fnn-tls-library-selection's observation, taken off the lock.
 The pinned prefix's pair when it holds one; otherwise the system's, with
 the missing prefix recorded in *fnn-tls-pinned-missing* for `run' to decide
 on (fn-tlsk-library-decide, D59).  Nothing here refuses for the prefix."
-  (let* ((configured (fnn-tls-configured-library-pair))
-         (pinned (and configured
-                      (probe-file (first configured))
-                      (probe-file (second configured))
-                      configured))
-         (pair (or *fnn-tls-pinned-libraries*
-                   pinned
-                   (fnn-tls-select-pair (fnn-tls-system-library-candidates)))))
-    (unless (or *fnn-tls-pinned-libraries* pinned (null configured))
-      (setq *fnn-tls-pinned-missing* (fnn-tls-openssl-prefix)))
+  (when (eq (first selection) :error) (error (second selection)))
+  (destructuring-bind (configured pinned system) (rest selection)
+    (let ((pair (or *fnn-tls-pinned-libraries* pinned system)))
+      (unless (or *fnn-tls-pinned-libraries* pinned (null configured))
+        (setq *fnn-tls-pinned-missing* (fnn-tls-openssl-prefix)))
     (unless pair
       (let ((prefix (fnn-tls-openssl-prefix)))
         (error 'fnn-tls-unavailable
@@ -364,12 +377,17 @@ on (fn-tlsk-library-decide, D59).  Nothing here refuses for the prefix."
       (error (condition)
         (error 'fnn-tls-unavailable
                :detail (format nil "pinned OpenSSL pair cannot be loaded~@[ (no pair under ~a; the system's was tried)~]: ~a"
-                               *fnn-tls-pinned-missing* condition))))))
+                               *fnn-tls-pinned-missing* condition)))))))
 
 (defun fnn-tls-initialize ()
   "Load the system libssl pair once and check its version and symbols.  This establishes facility availability, not a
 configured server context and never a protected client session."
-  (sb-thread:with-mutex (*fnn-tls-initialize-lock*)
+  ;; The filesystem is observed before the lock, only while an initialization
+  ;; may still be owed; the locked branch uses it and re-checks the state.
+  (let ((selection (when (sb-thread:with-mutex (*fnn-tls-initialize-lock*)
+                           (not (member *fnn-tls-state* '(:ready :unavailable))))
+                     (fnn-tls-library-selection))))
+   (sb-thread:with-mutex (*fnn-tls-initialize-lock*)
     (case *fnn-tls-state*
       (:ready t)
       (:unavailable
@@ -378,7 +396,7 @@ configured server context and never a protected client session."
       (t
        (handler-case
            (progn
-             (setq *fnn-tls-libraries* (fnn-tls-load-libraries))
+             (setq *fnn-tls-libraries* (fnn-tls-load-libraries selection))
              (let ((missing (fnn-tls-missing-symbols)))
                (when missing
                  (error 'fnn-tls-unavailable
@@ -400,7 +418,7 @@ configured server context and never a protected client session."
            (setq *fnn-tls-state* :unavailable)
            (error 'fnn-tls-unavailable
                   :detail (format nil "OpenSSL ABI cannot initialize: ~a"
-                                  condition))))))))
+                                  condition)))))))))
 
 (defun fnn-tls-reset ()
   "Forget serialized loader readiness and pair before saved-image service."
@@ -521,6 +539,14 @@ the session.")
     (ignore-errors (funcall *fnn-tls-session-hook* channel)))
   channel)
 
+(defun fnn-tls-require-initialized ()
+  "The library was initialized by the caller, before any lock of its own:
+fnn-tls-initialize observes the filesystem, which a reload's mutex never holds."
+  (unless (sb-thread:with-mutex (*fnn-tls-initialize-lock*)
+            (eq *fnn-tls-state* :ready))
+    (error 'fnn-tls-unavailable
+           :detail "the TLS library was used before it was initialized")))
+
 (defun fnn-tls-server-candidate (certificate-path private-key-path)
   "Build one server SSL_CTX from the pair and report what the library
 observed.  Returns (values POINTER CHAIN KEY MATCH DETAIL): POINTER is the
@@ -529,8 +555,9 @@ SSL_CTX_use_certificate_chain_file, SSL_CTX_use_PrivateKey_file and
 SSL_CTX_check_private_key returned 1 (the key and the chain are each
 attempted; the match only when both loaded), and DETAIL the first failure's
 text, the chain's before the key's.  A context the
-library cannot create at all is a config error."
-  (fnn-tls-initialize)
+library cannot create at all is a config error.  The caller has initialized
+the library (fnn-tls-initialize), which a reload does before its mutex."
+  (fnn-tls-require-initialized)
   (unless (and (stringp certificate-path) (> (length certificate-path) 0)
                (stringp private-key-path) (> (length private-key-path) 0))
     (error 'fnn-tls-config-error :detail "certificate and private-key paths are required"))

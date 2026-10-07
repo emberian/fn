@@ -44,7 +44,7 @@
 ; This checks the actual incremental primitive's guard before every call.
 (defun fn-ews-boundp (s pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state :guard (true-listp s)))
-  (and (natp (nth 3 s)) (natp (nth 5 s)) (<= (nth 5 s) 16384)
+  (and (natp (nth 3 s)) (natp (nth 5 s)) (<= (nth 5 s) (fn-profile-limit :read-window-octets))
        (natp (nth 7 s)) (<= (nth 7 s) (nth 3 s))
        (fn-ews-capture-matches (pgs-dc-capture pgs-digest-state) s)
        (equal (pgs-dc-lease pgs-digest-state) (nth 10 s))

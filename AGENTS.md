@@ -115,8 +115,10 @@ the 2026-09-22 proof-engineering review. Green is not true.
   agents are live in it. Work in your own worktree under `build/lanes/`;
   the coordinator merges.
 - About ten useful lanes; claims announce intent and lock nothing. Lanes
-  coordinate through their `LANEDUMP.md`; the coordinator names each lane's
-  model in its brief.
+  coordinate through `build/coordinator/lanedumps/<lane>.md` (first section: a
+  continuation, at most 150 lines; a root `LANEDUMP.md` stays untracked scratch
+  and `tools/lanedump_check.py` refuses a tracked one); the coordinator names
+  each lane's model in its brief.
 - Orient to the plan, not to another audit. Waves, not per-cut
   qualification: qualify one immutable candidate at convergence while the
   next wave runs. A regression the cut finds does not freeze unrelated
@@ -153,3 +155,63 @@ files or secrets, print credential files, or include keys in command arguments o
 logs. `~/.zai-key` is available to a credential-aware client, not a file to display.
 This authorization is for model consultation, not messages to people, deployment
 or publication. Future lane briefs inherit this practice.
+
+## Working fast without lying (ember, 2026-10-06/07)
+
+The coordinator's standing rules are `build/coordinator/DEPUTY-RULES.md`; this is
+the part every lane needs.
+
+- **Iterate in the REPL, certify at READY.** Proof work happens in
+  `tools/proof_repl.py` (cached dependencies, seconds per `defthm`) on persvati,
+  hbox or the laptop pool; pass `--certify-missing` when a dependency's cert is
+  missing and `--load-limit 0` for long events. One-shot `tools/acl2` loads and
+  `certify-book` are the gate, not the inner loop. Certify of record is hbox or
+  persvati (`farm.py`); a laptop cert is the author's check only (arm64).
+- **Fast gates to merge, full gates at convergence.** A lane merges on its own
+  narrow evidence: `--affected-by` certify of the books it touched, the filtered
+  tests it touched, `host_check --load` if it touched `host/`, and no contract
+  breach. Images, natives, host-ld, full-tree `green_check` and `check-fast` run
+  in a convergence phase on a tagged dev sha; every red there is attributed to
+  the lane that caused it and goes back to it. Merging continues during
+  convergence, fixes only. Say which mode and which closure every green number
+  covers (`green_check --profile default` is not the tree).
+- **Transformations, not hand edits.** More than ~5 identical sites is a tool in
+  `tools/` with tests: read books with a position-keeping reader
+  (`tools/lisp_rewrite.py`), rewrite structurally, confine the byte diff to the
+  rewritten form, refuse what it can't transform by named reason, emit the
+  residual. Hand conversions already done are its fixtures. `ast-grep` where a
+  tree-sitter grammar exists; the reader for Lisp.
+- **Pull the next known step into the lane in hand.** Fix the defect, don't just
+  own it; drain the class, not the book; prove the corollary the next lane needs;
+  fix the root a checker reveals, not the instance. Owed items are for work that
+  needs a different lane or a decision. Same gates, bigger steps; keep the
+  continuation file current so a big step that dies is resumable.
+- **No process kills on shared hosts.** Never `kill`, `pkill`, `killall` or
+  `systemctl stop` anything you did not start, and never by name or user match
+  (a `pkill -x sbcl -u hbox` took down the production node on 2026-10-07). Stop
+  your own job by the PID you recorded, or give every long command a `timeout`
+  so there is nothing to kill. Report a dead process; don't restart it.
+- **Context is a budget.** `wc -l` before any Read; over 800 lines is grep plus
+  ±60; never a worktree `LANEDUMP.md`; long output to `/tmp/<lane>-<what>.log`
+  and read its tail. Commit within 30 minutes, proof lanes per lemma. A lane
+  that dies of prompt length is restarted from its continuation file, never
+  resumed.
+- **Push `HEAD:lane/<name>` only**; the integrator is the only writer of
+  `origin/dev` and merges in trains with one regeneration per train
+  (`tools/train.py`). Certificates for one image come from one origin; a set
+  that doesn't compose is recertified into one, never patched.
+- **Statement-first for programs.** A multi-lane program (storage, extraction,
+  generators) starts with a written program doc: current invariants with
+  file:line, target definitions and keystone statements with their teeth,
+  dependencies on other programs, memory and I/O estimates against the bar,
+  then the lane plan. Lanes code after the doc exists.
+- **Measure before you cut.** A memory or performance claim carries a measured
+  before/after on a quiet hbox (RSS, not reservation; the bar is 128 MB for the
+  whole resident process, core included). A measuring script's own buffers are
+  not the subject.
+- **No migration or compatibility duty** (D68): old layouts and their readers
+  are deleted with their proofs, not carried.
+- **Extra lanes on `claude-grok`** (`claude-grok -p '<task>' --output-format
+  json`) for bounded mechanical work with the gate command in the brief. Review
+  and revise its output yourself rather than iterating with it; no shell on the
+  farms beyond one certify command, no kills, no pushes to dev.

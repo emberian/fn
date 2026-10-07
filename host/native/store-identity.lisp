@@ -39,8 +39,9 @@ the owner's; a render never observes a half-applied transition)."
 (setq *fnn-hybrid-control-handler* #'fnn-store-identity-control-handle)
 
 (defun fnn-command-store-identity (args)
-  "`fn identity CONTROL': print ACL2's line for the owner's reply and exit by
-its class (0 accepted, 1 refused by name, 3 no readable reply)."
+  "`fn identity [--frame] CONTROL': print ACL2's line for the owner's reply (or,
+with --frame, the reply frame's octets as hex) and exit by its class (0
+accepted, 1 refused by name, 3 no readable reply)."
   (let ((plan (and (<= (length args) 2)
                    (every (lambda (word) (<= (length word) 512)) args)
                    (fnn-core 'fn-stid-host-cli-plan
@@ -59,8 +60,12 @@ its class (0 accepted, 1 refused by name, 3 no readable reply)."
             (fnn-err "fn-store-identity-~(~a~)-v1 transport" status)
             (fnn-core 'fn-native-control-host-status-exit-code status))
         (let ((value (fnn-core 'fn-stid-host-reply-read (fnn-octet-list frame))))
-          (fnn-out "~a" (fnn-octets-string
-                         (fnn-octets (fnn-core 'fn-stid-host-line value))))
+          ;; ACL2's plan said `--frame': the reply frame's octets as hex, in
+          ;; place of the line; the exit class is the same.
+          (if (eq (third plan) :frame)
+              (fnn-out "~a" (fnn-hex frame))
+            (fnn-out "~a" (fnn-octets-string
+                           (fnn-octets (fnn-core 'fn-stid-host-line value)))))
           (fnn-core 'fn-stid-host-exit-code value))))))
 
 (fnn-register-verb "identity"

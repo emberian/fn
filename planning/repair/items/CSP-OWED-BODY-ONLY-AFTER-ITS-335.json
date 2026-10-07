@@ -1,0 +1,17 @@
+{
+ "category": "proof-owed",
+ "detail": "Intended statement: for every :local effect (:local j . octets) of fn-csp-step other than the IHAVE of fn-csp-try-offer, conns[j] of the post-state is (msgid . :streaming) or (msgid . :verdict), and conns[j] left (msgid . :await335) only through fn-csp-local-await335 on a code-335 reply while mode was :offer and slot = j; at most one conn is :streaming and it is fn-csp-slot. Cites PRF-1335/1336 (the offer window; header of books/peer-catchup-spool.lisp). Needs defteeth (positive witness a reachable state built by fn-csp-begin plus steps, per-hypothesis breaks, a mutation) before it counts.",
+ "file": "books/peer-catchup-spool.lisp",
+ "id": "CSP-OWED-BODY-ONLY-AFTER-ITS-335",
+ "notes": [
+  "10-06 22:01 K1 proved: fn-csp-body-only-after-its-335 and fn-csp-streaming-only-from-335 in books/peer-catchup-spool-body.lisp (own book, 3.8 s; spool book stays 8.06 s). Teeth in tests/acl2/peer-catchup-spool-tests.lisp. Dropped from the item's detail: 'at most one conn is :streaming' (not proved; only the 335 creation and the slot discipline are)."
+ ],
+ "owner": "catchup",
+ "severity": "high",
+ "sha": "dcece7415",
+ "slice": "peer-services",
+ "source": "catchup3",
+ "state": "ready",
+ "title": "Catch-up spool controller owes K1 fn-csp-body-only-after-its-335: a body window or terminator is written on conn j only after the local 335 to the IHAVE bound to j, and only for the single filling record",
+ "updated": "2026-10-07T02:01:39Z"
+}

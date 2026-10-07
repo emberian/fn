@@ -1,0 +1,18 @@
+{
+ "acceptance": "defteeth in tests/acl2/article-stream-owner-tests.lisp for the five keystones",
+ "category": "proof-owed",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "books/article-stream-owner.lisp",
+ "id": "ARTICLE-INDEX-TEETH",
+ "notes": [
+  "10-07 02:14 READY: tests/acl2/article-stream-owner-teeth-tests.lisp (2 defteeth + ground witnesses for the 4 stobj keystones); certify run-20261007T054148Z-d5b0 passed"
+ ],
+ "owner": "article-index",
+ "severity": "low",
+ "sha": "b9e8c2588",
+ "source": "ARTICLE-INDEX",
+ "state": "ready",
+ "title": "Teeth owed for the ARTICLE catalog-index keystones (fn-asto-selection-start-cat-number, -current, -msgid, -msgid-unpinned; fn-asx-walk-is-lookup, fn-asx-msgid-walk-is-lookup): a positive witness inside the guard and a negative that falsifies the conclusion with a mutated lookup (wrong number, wrong message-id, withdrawn row)",
+ "updated": "2026-10-07T06:14:07Z"
+}

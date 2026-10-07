@@ -109,6 +109,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import callgraph  # noqa: E402
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from tools import ratchet  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "reach-baseline.json"
@@ -557,10 +559,42 @@ def _as_tree(form):
     return str(form)
 
 
+GLOBAL_ACCESSORS = {"f-get-global", "f-put-global", "get-global", "put-global",
+                    "boundp-global", "f-boundp-global", "assign", "@", "makunbound-global"}
+
+
+def global_names(form) -> set[str]:
+    """The symbols FORM quotes as the name of a state global."""
+    found: set[str] = set()
+
+    def walk(tree):
+        if not isinstance(tree, list):
+            return
+        if (tree and str(tree[0]).lower() in GLOBAL_ACCESSORS and len(tree) > 1
+                and isinstance(tree[1], list) and len(tree[1]) == 2
+                and str(tree[1][0]).lower() == "quote"):
+            found.add(str(tree[1][1]).lower())
+        for sub in tree:
+            walk(sub)
+    walk(form)
+    return found
+
+
+def load_world(path):
+    """tools/coverage.py's World over PATH (a `coverage.py dump'), or None
+    when none is asked for (it is opt-in: the dump is a box artifact, never
+    committed): then the call graph is the text reader's alone."""
+    if not path or path == "none":
+        return None
+    path = pathlib.Path(path)
+    import coverage
+    return coverage.World(json.loads(path.read_text(encoding="utf-8")))
+
+
 class Graph:
     """The call graph, and what a host line can reach through it."""
 
-    def __init__(self) -> None:
+    def __init__(self, world: "pathlib.Path | str | None" = None) -> None:
         self.books = sorted(ROOT.glob("books/*.lisp"))
         self.hosts = (sorted(ROOT.glob("host/*.lisp"))
                       + sorted(ROOT.glob("host/native/*.lisp")))
@@ -611,6 +645,9 @@ class Graph:
         bodies.update({n: f for n, (_, f) in host_defs.items()})
         self.edges = {name: self.mentions(form, name)
                       for name, form in bodies.items()}
+        self.world = load_world(world)
+        if self.world is not None:
+            self.edges = self.world_edges(bodies)
         for constrained, bound in attached.items():
             self.edges.setdefault(constrained, set()).update(bound)
 
@@ -662,6 +699,35 @@ class Graph:
                                     self.via[nxt] = name
                                     work.append(nxt)
         self.reachable = seen & set(self.book_defs)
+
+    def world_edges(self, bodies: dict) -> dict:
+        """What each definition CALLS, from the certified world where it speaks.
+
+        A text mention is not a call: `(f-get-global 'fn-x state)' names a
+        global that shares its name with the function `fn-x'.  For a function
+        the world defines, the edges are its translated body's calls, its
+        translated guard's (the image runs with guard-checking t) and its
+        attachment, plus the text's mentions that are not GLOBAL NAMES
+        (a quoted symbol in a global accessor) and not calls the world
+        already answers: a term builder's quoted symbol is code it emits, and
+        a macro's expansion is only in the text.  An abstract-stobj export
+        keeps its text edges: the world holds only its :logic, and the image
+        runs its :exec.  Names the world does not define (host files, the
+        generated recognizers) keep their text."""
+        functions = self.world.functions
+        edges = {}
+        for name, text in self.edges.items():
+            record = functions.get(name)
+            if record is None or name in self.export_of:
+                edges[name] = text
+                continue
+            calls = set(record["callees"]) | set(record["guard_callees"])
+            if record["attachment"]:
+                calls.add(record["attachment"])
+            quoted = global_names(bodies.get(name))
+            edges[name] = ({c for c in calls if c in self.known and c != name}
+                           | {c for c in text if c not in calls and c not in quoted})
+        return edges
 
     def abbreviation(self, name: str):
         """(formals, body, macro?) when NAME is an unreached proof-only
@@ -1432,6 +1498,15 @@ def unresolved_failures(unresolved, triaged: dict) -> list[str]:
     return sorted(out)
 
 
+def baseline_raise_refused(findings) -> bool:
+    """A --baseline rewrite may drop orphans, never add one without an ACKS.md
+    ratchet line (tools/ratchet.py); prints the refusal and returns True."""
+    old = ratchet.old_rows("reach_check", BASELINE,
+                           lambda: {k: 1 for k in load_baseline().get("accepted", {})})
+    return ratchet.report("reach_check", ratchet.refused(
+        "reach_check", old, {f.key(): 1 for f in findings}))
+
+
 def write_baseline(findings) -> None:
     current = load_baseline()
     existing = current.get("accepted", {})
@@ -1463,9 +1538,12 @@ def main(argv=None) -> int:
                              "these books define (the graph is still the whole tree's)")
     parser.add_argument("--explain", metavar="EVENT",
                         help="print what this reader takes EVENT's subject to be and why it is or is not hosted")
+    parser.add_argument("--world", metavar="PATH",
+                        help="the coverage.py world dump the call graph reads (opt-in; "
+                             "default: the text reader alone; the dump is written by coverage.py dump)")
     arguments = parser.parse_args(argv)
 
-    graph = Graph()
+    graph = Graph(world=arguments.world)
     for relative, error in sorted(graph.unreadable.items()):
         print(f"reach_check: {relative} unreadable, its definitions are missing: {error}")
     if arguments.explain:
@@ -1524,6 +1602,8 @@ def main(argv=None) -> int:
     findings, hosted, unresolved = audit(graph, chosen)
 
     if arguments.baseline:
+        if baseline_raise_refused(findings):
+            return 1
         write_baseline(findings)
         print(f"reach_check: baseline rewritten with {len(findings)} accepted "
               f"orphan(s) in {BASELINE.relative_to(ROOT)}")

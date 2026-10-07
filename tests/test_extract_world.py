@@ -28,6 +28,17 @@ def tree(directory: str) -> Path:
     return root
 
 
+class UnknownArgumentTests(unittest.TestCase):
+    def test_an_unrecognised_argument_writes_nothing_and_fails(self):
+        generated = sorted(world.render())
+        before = {p: p.read_bytes() for p in generated if p.exists()}
+        for flag in ("--help", "--chek"):
+            run = subprocess.run([sys.executable, str(ROOT / "tools" / "extract" / "world.py"), flag],
+                                 capture_output=True, text=True)
+            self.assertEqual(run.returncode, 2, run.stderr)
+            self.assertEqual(before, {p: p.read_bytes() for p in generated if p.exists()})
+
+
 class DigestTests(unittest.TestCase):
     def test_the_key_moves_with_every_input_and_nothing_is_written(self):
         with tempfile.TemporaryDirectory() as directory:

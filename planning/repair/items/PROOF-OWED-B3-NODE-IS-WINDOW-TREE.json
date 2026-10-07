@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "file": "books/blake3-tree.lisp",
+ "id": "PROOF-OWED-B3-NODE-IS-WINDOW-TREE",
+ "notes": [
+  "10-06 19:54 proved as fn-b3-node-is-window-tree in books/blake3-tree.lisp with the added hypothesis (natp counter): false for counter -1 (node of (1 2 3) at -1 differs from the window tree, which reads counters through nfix). Teeth: tests/acl2/blake3-tree-tests.lisp. Certify of record pending."
+ ],
+ "owner": "streaming",
+ "severity": "medium",
+ "slice": "blake3",
+ "source": "streaming",
+ "state": "landed",
+ "title": "blake3-tree owes fn-b3-node-is-window-tree: (equal (fn-b3-node key octets counter flags) (fn-b3-window-tree key flags (fn-b3-window-outs key k counter octets flags))); strong induction on len octets via fn-b3-node-splits-at-left-chunks and the lockstep lemmas.",
+ "updated": "2026-10-06T23:54:12Z"
+}

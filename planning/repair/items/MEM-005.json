@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "detail": "Measured on 3e53d7bc5dbd72de73042b46e6174d316ef7a63d fn-host bare image with a reachability walk (deep-prod.txt, conses/vectors/strings/hash tables newly reached, symbols and functions not followed): symbol plist indicator *UNDO-STACK* 9,313,952 bytes on 24,014 symbols (sample: (PROGN (MAYBE-UNTRACE! 'F) (MAYBE-UNMEMOIZE 'F) (SETF ...))), the world alist 11,216,080 bytes (130,861 triples after fnn-strip-world; the developer image has 931,876 triples, 337 MB), the per-symbol world plist (ACL2_INVISIBLE::*CURRENT-ACL2-WORLD-KEY*) a further 8,002,800 bytes. fnn-strip-world (strip-world.lisp:126-143) clears the undo ring and kept-property stacks but never the *UNDO-STACK* indicator. The bytes are file-backed core, not anon: they count in RSS only when a collection scans them, and in the 2G cgroup as page cache. An in-process removal cannot measure the saving (pseudo-static core pages are not freed by a collection; checked: removing the indicator changed dynamic usage by +44 kB), so it needs an image build. Candidate for the image slot, after the TLS item. Evidence hbox:/tank/fn/scratch/n-mem/deep-prod.txt, hbox:/tank/fn/scratch/n-mem/probe2.lisp.",
+ "file": "host/native/strip-world.lisp",
+ "id": "MEM-005",
+ "line": "126",
+ "notes": [
+  "2026-10-06 N-MEM step 2: reachability walk joined to /proc/self/pagemap (S/s5/heap/heap-x0.txt): *UNDO-STACK* 8.3 MB (2.4 resident), world-key plists 6.3 (5.9), world alist 11.2 (3.0), ACL2-ARRAY 1.1 (0.2) = 26.9 MB in core, 11.5 MB resident. The strategist's 20 MB is right in the core and wrong in RSS. Needs an image build to confirm. Not train-ready."
+ ],
+ "owner": "deputy-N",
+ "severity": "low",
+ "source": "n-mem",
+ "state": "open",
+ "title": "the production image keeps 26.9 MB of ACL2 undo-stack forms and a doubled world; 11.5 MB of it is resident at start (not 20)",
+ "updated": "2026-10-06T23:00:00Z"
+}

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from tools import proof_cost
+from tools import proof_cost, ratchet
 
 
 class ProofCostTests(unittest.TestCase):
@@ -103,9 +103,14 @@ class ProofCostTests(unittest.TestCase):
             root = Path(directory)
             self.fixture_book(root, "books/base", '(in-package "ACL2")\n')
             self.fixture_book(root, "books/top",
-                              '(in-package "ACL2")\n(include-book "base")\n')
+                              '(in-package "ACL2")\n(include-book "base")\n'
+                              '(defun top-f (x) x)\n')
+            self.fixture_book(root, "books/umbrella",
+                              '(in-package "ACL2")\n(include-book "top")\n')
             with mock.patch.object(proof_cost.ledger, "makefile_roots",
-                                   return_value=["books/top"]):
+                                   return_value=["books/umbrella"]):
+                # The umbrella's closure is read without a ledger; the umbrella
+                # itself (include-book forms only) is the image build's cost.
                 self.assertEqual(proof_cost.current_books(root),
                                  {"books/top", "books/base"})
 
@@ -423,9 +428,15 @@ class ProofCostTests(unittest.TestCase):
                                    return_value={"books/new", "books/old"}), \
                     mock.patch.object(proof_cost, "history", return_value=computed), \
                     mock.patch("sys.stdout"):
-                self.assertEqual(proof_cost.main(
-                    ["--baseline", str(path), "--write-baseline",
-                     "--allow-regression"]), 0)
+                argv = ["--baseline", str(path), "--write-baseline", "--allow-regression"]
+                # Adding a row is a raise: refused without its ACKS.md ratchet line.
+                acks = Path(directory) / "ACKS.md"
+                acks.write_text("# none\n")
+                with mock.patch.object(ratchet, "ACKS", acks):
+                    self.assertEqual(proof_cost.main(argv), 1)
+                    self.assertNotIn("books/new", proof_cost.load_baseline(path))
+                    acks.write_text("ratchet:proof_cost:books/new \u2014 test decision \u2014 the test\n")
+                    self.assertEqual(proof_cost.main(argv), 0)
             written = proof_cost.load_baseline(path)
             self.assertEqual(written["books/new"]["seconds"], 12.0)
             self.assertEqual(written["books/old"]["seconds"], 40.0,

@@ -3,11 +3,16 @@
  "detail": "test_peer_set_and_peer_login_make_the_record_while_serving, tests/test_native_protected_peering.py:337. Red on bdd4f40c4 and 55ff708a6: hbox:/tank/fn/scratch/fill-wt/native-fill-peer-55 (scenario_suite run peer --image-set 55ff708a6), logs/stderr/test-tests.test_native_protected_peering/ steps 10-12. The other refusals in the same test (no-such-peer, tls-needs-server-name) do name their reason, so only the login path drops it.",
  "file": "host/native/peer-invite.lisp",
  "id": "FILL-PEER-LOGIN-REFUSAL-REASON",
- "notes": [],
+ "notes": [
+  "10-06 03:0X claimed by serve-next: scope=['host/native/peer-invite.lisp']",
+  "10-06 03:0X DIAGNOSED (serve-next successor #2): the reason was computed and dropped twice on the login path only. fnn-operator-apply-admin returns (values exit detail) -- detail is ACL2's reply word via fn-native-control-host-reply-detail (operator-control-client.lisp fnn-operator-live-admin; the sibling `peer set' refusals no-such-peer/tls-needs-server-name render through fnn-operator-execute-admin's multiple-value-bind exactly this way). The login path: fnn-pinv-login-apply wrapped the call in (values ...) which strips the second value, and fnn-pinv-login bound and returned only the exit, so fnn-pinv-execute's (multiple-value-bind (exit live-detail)) always got NIL -> 'refused operator peer' with no reason. FIX (host-only, no new decision): fnn-pinv-login-apply passes both values through; fnn-pinv-login binds (exit detail), names the detail on its refusal line ('; the owner said: ~a'), and returns both values so fnn-operator-emit-status renders 'refused operator peer refused needs-send' beside it. host_check --load and --interfaces green at the fix commit.",
+  "10-06 03:00 FIX LANDED lane/serve-next 33a1b20ea (host/native/peer-invite.lisp only); green-after owed: synthetic overlay (55ff708a6 + the one host file, body-only defun changes the overlay carries) since the branch's own book/interface changes since 55ff708a6 refuse a whole-branch overlay. Red-before: hbox fill-wt/native-fill-peer-55 (this item's detail field).",
+  "10-06 02:20 VERIFIED green-after: hbox native-pinv-reason-green (run of serve-next, image set 55ff708a65318fb0ed8553f5ebf2c66d154f7323 -- the red-before's own set -- + synthetic overlay 5bc69a166 = that tree with ONLY host/native/peer-invite.lisp from 33a1b20ea; plan applied the two defun body changes into developer+production): tests.test_native_protected_peering OK, 6 ran 0 skipped, the item's exact assertion (needs-send in the early login's stdout/stderr, line 337) passed and the S5 witness records refusals [no-such-peer, tls-needs-server-name, needs-send, passwords-differ]. Red-before: fill-wt/native-fill-peer-55 same set (steps 10-12, 'refused operator peer' with no reason). LANDED at 33a1b20ea."
+ ],
  "owner": "unowned",
  "severity": "medium",
  "source": "fill-20261004",
- "state": "open",
+ "state": "landed",
  "title": "peer login before a send pattern exists is refused ('peer login: peer set set-b --login was not accepted (exit 1)') but the refusal never names the reason: tests.test_native_protected_peering expects 'needs-send' in stdout/stderr and gets only 'refused operator peer'",
- "updated": "2026-10-04T19:37:04Z"
+ "updated": "2026-10-06T02:20:00Z"
 }

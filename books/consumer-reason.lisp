@@ -176,16 +176,42 @@
 ; unchanged (`fn-ncr-cli-plan-without-the-flag-by-definition').
 
 (defconst *fn-ncr-json-flag* '(45 45 106 115 111 110)) ; --json
+(defconst *fn-ncr-frame-flag* '(45 45 102 114 97 109 101)) ; --frame
+
+; `fn consumer --frame COMMAND ...' is COMMAND's plan, for the commands whose
+; replies a client reads as frames (status, position, ack, poll), wrapped as
+; (:frame PLAN): the host prints the reply frame's octets as hex instead of
+; the line.  Any other command, or a plan that is not a run, is (:usage :frame).
+(defun fn-ncr-frame-plan (plan)
+  (declare (xargs :guard t))
+  (if (and (consp plan) (equal (car plan) :run) (consp (cdr plan))
+           (member-equal (cadr plan) '(:status :position :ack :poll)))
+      (list :frame plan)
+    (list :usage :frame)))
+
+; A plan is wrapped only when it is a run of status, position, ack or poll;
+; every other plan (a usage, a help, a run of any other operation) is
+; (:usage :frame).
+(defthm fn-ncr-frame-plan-wraps-only-those-runs
+  (implies (equal (car (fn-ncr-frame-plan plan)) :frame)
+           (and (consp plan) (equal (car plan) :run) (consp (cdr plan))
+                (member-equal (cadr plan) '(:status :position :ack :poll))
+                (equal (fn-ncr-frame-plan plan) (list :frame plan))))
+  :rule-classes nil)
 
 (defun fn-ncr-cli-plan (command argv)
   (declare (xargs :guard t))
-  (if (equal command *fn-ncr-json-flag*)
-      (list :json (fn-cwait-cli-plan (and (consp argv) (car argv))
-                                     (and (consp argv) (cdr argv))))
-    (fn-cwait-cli-plan command argv)))
+  (cond ((equal command *fn-ncr-json-flag*)
+         (list :json (fn-cwait-cli-plan (and (consp argv) (car argv))
+                                        (and (consp argv) (cdr argv)))))
+        ((equal command *fn-ncr-frame-flag*)
+         (fn-ncr-frame-plan (fn-cwait-cli-plan (and (consp argv) (car argv))
+                                               (and (consp argv) (cdr argv)))))
+        (t (fn-cwait-cli-plan command argv))))
 
 (defthm fn-ncr-cli-plan-without-the-flag-by-definition
-  (implies (not (equal command *fn-ncr-json-flag*))
+  (implies (and (not (equal command *fn-ncr-json-flag*))
+                (not (equal command *fn-ncr-frame-flag*)))
            (equal (fn-ncr-cli-plan command argv)
                   (fn-cwait-cli-plan command argv))))
 

@@ -1,0 +1,12 @@
+{
+ "category": "host-owed",
+ "file": "books/resource-vector-tree.lisp",
+ "id": "HOST-OWED-PRF-1209-RESOURCE-TREE",
+ "notes": "[\"Unreached keystones (planning/reach-baseline.json, ade31f2e9): PRF-1209:fn-rt-destroy-revokes-the-sub-bank, fn-rt-run-keeps-okp, fn-rt-step-keeps-okp, fn-rt-step-refused-keeps-the-tree, fn-rt-sub-bank-steps-keep-the-root. The host call that would reach them: the served owner path must hold the node accounting as ONE resource-vector tree and charge every definterface :operation entry through fn-rt-step (batches through fn-rt-run, bank teardown through the destroy op) at the owner kernel, in place of the per-family fn-ocap-* seam, which does not host them (design stage 6, MODE 2026-10-01 section 3 and rule 3: no gate before its producer, so the producer must land first). Until then reach-baseline carries them as HOST TRIAGE OWED.\"]",
+ "owner": "resource-ledger",
+ "severity": "medium",
+ "source": "p-teeth",
+ "state": "open",
+ "title": "PRF-1209 host owed: no served path calls fn-rt-step, fn-rt-run or fn-rt-destroy, so the five resource-vector-tree keystones are unreached",
+ "updated": "2026-10-06T23:38:24Z"
+}

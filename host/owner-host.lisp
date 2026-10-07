@@ -304,11 +304,14 @@
 (include-book "../books/owner-retire-counted")
 (include-book "../books/owner-connection-callbacks")
 ;
-; Loaded here, not left to a bridge's `ld' order: this file uses names
-; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
-; must get them too.  A second `ld' of a file already in the session
-; re-admits identical definitions, which ACL2 accepts as redundant.
-(ld "store-node-host.lisp" :ld-error-action :error)
+; The sibling edge is an include-book, the discipline the account-*/index-*
+; host books already follow for this file: certify-book refuses an `ld'
+; (LD-FN is not an embedded event form), and the ld that stood here is why
+; owner-host had never certified at current content (the store-node names
+; this file uses are store-node-host's either way).  In a session that
+; ld'd store-node-host earlier the include is redundant and loads nothing;
+; store-host comes with store-node-host's include of it.
+(include-book "store-node-host")
 
 ; The posting configuration: the groups served at the live configuration
 ; generation, the node's own <path-identity> from the ONE slot that holds it
@@ -818,7 +821,7 @@
 ; any suffix, never a second in flight, never past a deferral.  A decision
 ; made with nothing in flight that is not :due ends the request (there was
 ; nothing left to compact, or a deferral blocks it and says so itself).
-(defun fn-owner-sco-due (override free state)
+(defun fn-owner-sco-due (override free now state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
     (if (not profile)
@@ -827,12 +830,17 @@
                    (fn-owner-sco-global 'fn-owner-sco-durable state)
                    (fn-owner-sco-count state)
                    (fn-bs-profile-max-open-suffix profile)
-                   (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                   (fn-opl-attempted (fn-owner-sco-deferred state)
+                                     (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                                     (fn-owner-sco-count state)
+                                     now)
                    (fn-owner-sco-global 'fn-owner-sco-inflight state)
-                   (fn-ock-publication-blockedp
+                   (fn-opl-blockedp
                     (fn-owner-sco-deferred state)
                     (fn-owner-sco-budget override profile)
-                    (fn-ockp-space free))
+                    (fn-ockp-space free)
+                    (fn-owner-sco-count state)
+                    now)
                    (fn-owner-sco-global 'fn-owner-sco-requested state))))
         (cond ((eq next :coalesce)
                (let ((state (f-put-global 'fn-owner-sco-pending t state)))
@@ -852,7 +860,7 @@
 ; statvfs the host took before the quantum); :requested and :coalesced leave
 ; the request standing for the next decisions, :blocked and
 ; :nothing-to-compact leave nothing.
-(defun fn-owner-sco-request (override free state)
+(defun fn-owner-sco-request (override free now state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
     (if (not profile)
@@ -860,12 +868,17 @@
       (let ((word (fn-ock-request-word
                    (fn-owner-sco-global 'fn-owner-sco-durable state)
                    (fn-owner-sco-count state)
-                   (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                   (fn-opl-attempted (fn-owner-sco-deferred state)
+                                     (fn-owner-sco-global 'fn-owner-sco-attempted state)
+                                     (fn-owner-sco-count state)
+                                     now)
                    (fn-owner-sco-global 'fn-owner-sco-inflight state)
-                   (fn-ock-publication-blockedp
+                   (fn-opl-blockedp
                     (fn-owner-sco-deferred state)
                     (fn-owner-sco-budget override profile)
-                    (fn-ockp-space free)))))
+                    (fn-ockp-space free)
+                    (fn-owner-sco-count state)
+                    now))))
         (let ((state (f-put-global 'fn-owner-sco-requested
                                    (and (member-eq word '(:requested :coalesced)) t)
                                    state)))
@@ -902,6 +915,11 @@
          (state (f-put-global 'fn-owner-sco-attempted count state))
          ; the publication in flight, bound to the count it captures
          (state (f-put-global 'fn-owner-sco-inflight count state))
+         ; RL-02: the capture's identity, its serial
+         ; (books/owner-publication-lifecycle.lisp fn-opl-next-serial): the
+         ; count alone is not one (a :backoff retry recaptures it)
+         (serial (fn-opl-next-serial (fn-owner-sco-global 'fn-owner-sco-serial state)))
+         (state (f-put-global 'fn-owner-sco-serial serial state))
          ; PKT-868: the capture answers a standing request.
          (state (f-put-global 'fn-owner-sco-requested nil state)))
     (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
@@ -923,7 +941,10 @@
                    (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v)))
                              (fn-gen-node (cadr v))
                            nil)
-                         (fn-gen-verdict-salt v)))))))
+                         (fn-gen-verdict-salt v)))
+                 ; RL-02: the serial the settlement of an abandonment names
+                 ; (fn-owner-sco-publication-abandoned)
+                 serial))))
 
 ; Row S3b (lane operability-7): `store export DIR' on the running owner
 ; (host/native/owner.lisp fnn-owner-export-request).  fn-owner-oex-capture,
@@ -1046,12 +1067,41 @@
          (state (if durablep
                     (f-put-global 'fn-owner-sco-durable (fn-sco-sequence next) state)
                   state))
+         ; RL-02: a durable checkpoint ends every deferral; a verdict that is
+         ; one replaces it; any other non-durable ending leaves a standing
+         ; deferral (the abandonment's, recorded by
+         ; fn-owner-sco-publication-abandoned) as it is.
          (state (f-put-global 'fn-owner-sco-deferred
-                              (if (and (consp verdict) (eq (car verdict) :deferred))
-                                  verdict
-                                nil)
+                              (cond ((and (consp verdict) (eq (car verdict) :deferred))
+                                     verdict)
+                                    (durablep nil)
+                                    (t (fn-owner-sco-global 'fn-owner-sco-deferred state)))
                               state)))
     (value (if durablep (fn-sco-sequence next) :none))))
+
+; RL-02 (books/owner-publication-lifecycle.lisp): a publication that captured
+; and ended without a durable checkpoint and without a budget or space deferral
+; settles its own capture here, under the owner mutex, in the host's done
+; quantum.  COUNT and SERIAL are the capture's (the slot's key and the capture's
+; identity, the last two values fn-owner-sco-capture handed over), OUTCOME what
+; the thread observed ((:unencodable), (:image-refused VERDICT), (:io-refusal),
+; (:job-failure CLASS)), NOW the owner's monotonic clock in milliseconds.  ACL2
+; (fn-opl-settle) decides: the capture that holds the slot frees it and the
+; outcome is recorded as the owner's deferral, classified by what could make
+; another attempt meaningful; one that does not hold it (settled already, or
+; the slot is another capture's) changes nothing.  Answers the recorded
+; deferral (its reason, class and attempts are what the host logs), or :stale
+; for a capture that did not hold the slot.
+(defun fn-owner-sco-publication-abandoned (count serial outcome now state)
+  (declare (xargs :stobjs state :guard t))
+  (let* ((pass (fn-owner-sco-global 'fn-owner-orc-pass state))
+         (inflight (fn-owner-sco-global 'fn-owner-sco-inflight state))
+         (current (fn-owner-sco-global 'fn-owner-sco-serial state))
+         (deferred (fn-owner-sco-global 'fn-owner-sco-deferred state))
+         (r (fn-opl-settle count serial outcome now pass inflight current deferred))
+         (state (f-put-global 'fn-owner-sco-inflight (cadr r) state))
+         (state (f-put-global 'fn-owner-sco-deferred (caddr r) state)))
+    (value (if (fn-opl-holdsp count serial pass inflight current) (caddr r) :stale))))
 
 ;; Q16 (lane online-reclaim): `store reclaim' on a running owner
 ;; (books/owner-reclaim.lisp).  The pass runs on its own thread
@@ -1084,7 +1134,7 @@
 ; installs, books/owner-reclaim-pass.lisp) and `store reclaim', which first
 ; records the instant at the clock through the live reconfiguration
 ; (fn-owner-orc-instant-stage) and then runs the same pass over it.
-(defun fn-owner-orc-request (mode override free state)
+(defun fn-owner-orc-request (mode override free now state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((profile (fn-owner-store-profile state))
          (dry (eq mode :dry-run))
@@ -1099,9 +1149,11 @@
             (fn-owner-orc-pass state)
             (and (not dry) (fn-owner-sco-global 'fn-owner-sco-inflight state))
             (and (not dry) profile
-                 (fn-ock-publication-blockedp (fn-owner-sco-deferred state)
-                                              (fn-owner-sco-budget override profile)
-                                              (fn-ockp-space free)))
+                 (fn-opl-blockedp (fn-owner-sco-deferred state)
+                                  (fn-owner-sco-budget override profile)
+                                  (fn-ockp-space free)
+                                  (fn-owner-sco-count state)
+                                  now))
             (or dry (eq mode :reclaim) (fn-rci-recordedp v))))))))
 
 (defun fn-owner-orc-request-status (word)
@@ -4500,7 +4552,7 @@
  (let* ((readerOC (fn-ocfg-at-reader-view oc views))
         (w (fn-asto-first-event readerOC id start end fn-octets))
         (stop (if w (fn-wsp-next w) end))
-        (capture (and w (fn-asto-capture readerOC id w cache fn-arena))))
+        (capture (and w (fn-asto-capture readerOC id w cache fn-arena fn-cat))))
   (if (not capture)
       (fn-av-mca-read-span credits oc views id start stop cache sched slots reserve fn-octets fn-arena fn-cat)
     (let* ((result (fn-asto-captured-result oc capture (- stop start)))

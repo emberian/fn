@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "file": "tests/acl2/store-log-recover-copy-tests.lisp",
+ "id": "TEETH-OWED-LGRC-2",
+ "notes": [
+  "10-06 N-M1D5-AUDIT filed: lane m1-durable-5 (130da57bf) replaced dev's P10 run-lemma chain (books/store-log-route-programs.lisp, TEETH-21 in tests/acl2/store-log-route-programs-tests.lisp, origin/dev) with books/store-log-recover-copy.lisp and dropped the teeth below without re-expressing them. OLD: defteeth fn-lg-run-of-append-when-complete: :breaks complete (fn-lg-run-completep bs ks a ino) with (slk-appended-bs)/(slk-appended-ks), a ((:write-at :segment :batch)) refused, b ((:cut \"log-written\")) -> the run of (append a b) is NOT a's run followed by b's run from a's final state. NEW: that composition law has no referent (fn-lg-run-completep, fn-lg-run-final, fn-lg-run-last-when-complete, fn-lg-recover-program deleted; the open composes the copy's final state with fn-lg-open-program through fn-lgrc-final in fn-lgrc-open-keeps-the-relation-at-every-cut). OWED: the analogue is the final-state hypothesis of that keystone: a ground witness where the copy attempt is interrupted/refused (outs with a refusal, and a prefix of fn-lgrc-attempt-ops ending before the rename) so fn-lgrc-final is the pre-copy store s, and fn-lgk-relp of that final against (fn-lgt-recover o ...) at ino = next-ino is NOT established (the pre-copy store does not bind the read prefix: RL-01 red on the old program is the existing witness for this, tests 'RL-01 RED', extend it to name the keystone). Bites fn-lgrc-open-keeps-the-relation-at-every-cut and fn-lgrc-attempt-makes-the-read-prefix-durable."
+ ],
+ "owner": "m1-durable-5",
+ "severity": "medium",
+ "slice": "log-recover",
+ "source": "N-M1D5-AUDIT",
+ "state": "open",
+ "title": "teeth owed: composition requires the first run to complete (old defteeth fn-lg-run-of-append-when-complete, break complete)",
+ "updated": "2026-10-06T23:59:00Z"
+}

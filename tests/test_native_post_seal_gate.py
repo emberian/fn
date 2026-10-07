@@ -35,6 +35,7 @@ class NativePostSealGate(unittest.TestCase):
     image = IMAGE
     setUp = expiry.ExpiryMixin.setUp
     node = expiry.ExpiryMixin.node
+    reclaim_live = expiry.ExpiryMixin.reclaim_live  # D53: node() reads it
     post_all = expiry.ExpiryMixin.post_all
     owner_lines = expiry.ExpiryMixin.owner_lines
 

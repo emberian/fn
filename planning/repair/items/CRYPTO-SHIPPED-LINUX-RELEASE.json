@@ -1,0 +1,16 @@
+{
+ "category": "crypto-shipped",
+ "file": "packaging/install-native.sh",
+ "id": "CRYPTO-SHIPPED-LINUX-RELEASE",
+ "line": "123",
+ "notes": [
+  "10-06 20:26 RULINGS-20261006 ruling 3, D59. AMBIGUOUS: packaging/install-native.sh:99 default prefix is the build box /tank/fn/toolchains/openssl-3.5.8 when no frozen openssl/; :123-125 comment says a node that serves no TLS may fall back to the system pair; :250 dlopen-requirements text says the same; :143-145 non-frozen non-ldconfig path. packaging/fn:57-66 sets FN_OPENSSL_PREFIX only when libexec/fn/openssl exists, otherwise tls.lisp defaults to /tank then system. packaging/freeze-native-image.sh:14-15 comment says the system pair the host falls back to stays the system's; :70 default prefix /tank; :156-158 launcher LD_LIBRARY_PATH=lib (lib/ holds no libssl: fine). SYSTEM-PATH: tools/runpath_check.py:134-139 and :619 SYSTEM_TLS_BY[linux] allows libssl.so.3/libcrypto.so.3 as system names: remove so a system libssl reference fails the check. tools/cut_release.sh:400 smoke-tests the tarball in debian:12 after apt-get install libssl3: remove the apt install so the test proves the bundle. Conversion: image must always contain openssl/lib; installer and freeze refuse otherwise; no system fallback text; replace /tank defaults with an explicit required input."
+ ],
+ "owner": "deputy-N",
+ "refs": "RULINGS-20261006 ruling 3; D59",
+ "severity": "medium",
+ "source": "crypto-audit",
+ "state": "open",
+ "title": "Linux release still permits a system-pair fallback and requires a system libssl in gates (AMBIGUOUS)",
+ "updated": "2026-10-07T00:26:35Z"
+}

@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "detail": "Measured on published image set 3e53d7bc5dbd72de73042b46e6174d316ef7a63d fn-host (production), small-preset store reopened, heap 1068 MB, 14 threads, anonymous bytes read from /proc/PID/smaps_rollup 2 s after LISTENING: --tls-limit 65536 anon 29,860 kB (RSS 125,272); 16384 anon 18,704 (RSS 114,280); 4096 anon 15,916 (RSS 111,792). Per-thread mappings in smaps show ~1.04 MB resident anon each. Evidence hbox:/tank/fn/scratch/n-mem/EVIDENCE.txt, hbox:/tank/fn/scratch/n-mem/tr.py. books/profile-limits.lisp:37 says the served world passed 16384 at LOAD (image build), and tools/build_native_host.sh:251-274 sets the launcher's limit; the saved core started and served at 16384 and 4096 in this measurement, but no test suite was run at those values. The fix is a runtime-launcher value (cut_release.sh / build_native_host.sh), not a book decision; before it lands, the native modules that load the world and the world-deps check must run at the lower value, filtered. Also read profile-limits :thread-runtime-mib 4 (accounting term, 35 threads) against the measured ~1 MB per thread.",
+ "file": "books/profile-limits.lisp",
+ "id": "MEM-001",
+ "line": "37",
+ "notes": [
+  "2026-10-06 N-MEM step 2: TRAIN-READY (launcher value). End to end on 3e53d7bc5, 1,000 POSTs + 32 idle connections opened and closed, idle-after-close: tls-limit 65536 RSS 133.0 / anon 35.7 MB; 16384 -> 120.0 / 23.1 (-13.0 RSS); 4096 -> 117.0 / 19.8 (-16.0); all served with no error. Evidence hbox:/tank/fn/scratch/n-mem/t16384, t4096, s2. Gate: world-deps check and the world-loading native modules, filtered."
+ ],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem",
+ "state": "open",
+ "title": "launcher runs at --tls-limit 65536: each thread's thread-local storage costs 512 KiB anonymous RSS; 16384 saves 11.2 MB and 4096 saves 14.0 MB on the 14-thread owner",
+ "updated": "2026-10-06T23:00:00Z"
+}
