@@ -2878,3 +2878,8 @@
                                       fn-mpxt-build-saturatedp fn-mpxt-build-append))))
 
 (in-theory (disable fn-mpxt-build-saturatedp fn-mpxt-build-health))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-mpxt-subsetp-member))

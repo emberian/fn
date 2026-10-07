@@ -4,11 +4,20 @@
  "file": "host/native/io.lisp",
  "fix": "Guard the debts list and the observation with one mutex (declare it in lock_discipline_contracts.json), or an atomic push (compare-and-swap) with the observation read in the same section as the open; apply to both globals.",
  "id": "LOCK-R1B-IMMUTABLE-CLOSE-DEBT-UNLOCKED",
- "notes": [],
+ "natives_owed": [
+  "tests/native_immutable_close_source.lisp",
+  "tests/native_bp_lock_return_source.lisp",
+  "tests/native_log_terminal_source.lisp",
+  "tests/native_io_progress_raw.lisp"
+ ],
+ "notes": [
+  "Fixed at cb032de77: both close-debt lists (immutable and publication) are pushed and observed under *fnn-close-debts-lock* (lock XCLOSEDEBT, edges O->XCLOSEDEBT and E->XCLOSEDEBT declared). Key R1b|fnn-immutable-close-handle|*fnn-immutable-close-debts*:unlocked-write gone, none added. natives_owed: tests/native_immutable_close_source.lisp, tests/native_bp_lock_return_source.lisp, tests/native_log_terminal_source.lisp, tests/native_io_progress_raw.lisp."
+ ],
  "owner": "open",
  "severity": "low",
+ "sha": "cb032de77",
  "source": "lock-triage-r1b-20261006",
- "state": "open",
+ "state": "ready",
  "title": "*fnn-immutable-close-debts* is pushed and read with no lock from concurrent staged writers (R1b)",
- "updated": "2026-10-07T00:05:48Z"
+ "updated": "2026-10-07T06:09:00Z"
 }

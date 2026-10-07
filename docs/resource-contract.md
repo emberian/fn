@@ -1049,6 +1049,7 @@ Constants the rows quote, read from the books that define them.
 | `*fn-otm-cadence-default-ms*` | 1,000 | ms, the committer's clock cadence | `books/owner-time-model.lisp` |
 | `:stack-kib` | 1,024 | KiB, every thread's control stack | `books/profile-limits.lisp` |
 | `:tls-limit` | 65,536 | symbols, SBCL thread-local storage (not Transport Layer Security) | `books/profile-limits.lisp` |
+| `:run-tls-limit` | 16,384 | symbols, SBCL thread-local storage the saved launcher runs at | `books/profile-limits.lisp` |
 | `:max-connections` | 32 | served connections, default | `books/profile-limits.lisp` |
 | `:control-clients` | 16 | control clients | `books/profile-limits.lisp` |
 | `:gc-nursery-mib` | 64 | MiB, the collector's nursery | `books/profile-limits.lisp` |
@@ -1079,7 +1080,7 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 0 debt entries (data-sized recursion on a host-called path with no bound), 199 bounded.
+- Depth lint baseline (tools/depth_baseline.json): 0 debt entries (data-sized recursion on a host-called path with no bound), 200 bounded.
 - Named assumptions: 25 `A-*` rows in specs/failures.md, 12 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 

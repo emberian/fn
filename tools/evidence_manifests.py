@@ -250,7 +250,7 @@ def run_id_of(path: Path) -> str | None:
 
 # Two fields the archive adds.  They say which run this is and where its
 # logs were left; everything else in the file is the producer's own record.
-ADDED = ("run_id", "archived_from")
+ADDED = evidence_store.ADDED
 
 
 def _is_remote(origin: str) -> bool:

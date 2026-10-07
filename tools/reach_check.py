@@ -109,6 +109,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import callgraph  # noqa: E402
+import lisp_source  # noqa: E402
+from lisp_source import code_only, forms, read_sexp  # noqa: E402,F401
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from tools import ratchet  # noqa: E402
 
@@ -123,6 +125,44 @@ BASELINE = ROOT / "planning" / "reach-baseline.json"
 DEFUN = re.compile(r"\((?:defun|defund|defun-nx|define|defmacro)\s+([a-zA-Z0-9<>=/*+$-]+)")
 DEFTHM = re.compile(r"\((?:defthm|defthmd)\s+([a-zA-Z0-9<>=/*+${}-]+)")
 SYMBOL = re.compile(r"[a-zA-Z][a-zA-Z0-9<>=/*+${}-]*")
+
+
+def campaign_names(directory: "pathlib.Path | None" = None) -> dict[str, str]:
+    """name -> campaign file, for every string constant a campaign's CODE
+    holds (Python's own parse; module, class and function docstrings are
+    prose and left out).  A campaign drives the native host through crash
+    cuts and judges each cut with the book program it names: that is the
+    tie between a model program and the host, and it is read from the
+    campaign itself, not declared beside it."""
+    import ast
+    directory = directory if directory is not None else ROOT / "tests" / "campaign"
+    found: dict[str, str] = {}
+    for path in sorted(directory.glob("*.py")):
+        if path.name.startswith("test_") or path.name == "__init__.py":
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, UnicodeDecodeError):
+            continue
+        docs = set()
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                                 ast.AsyncFunctionDef)) and node.body:
+                first = node.body[0]
+                if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+                    docs.add(id(first.value))
+        try:
+            rel = str(path.relative_to(ROOT))
+        except ValueError:
+            rel = str(path)
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                    and id(node) not in docs):
+                for symbol in SYMBOL.findall(node.value):
+                    found.setdefault(symbol.lower(), rel)
+    return found
+
+
 NAME = r"[a-zA-Z0-9<>=/*+$-]+"
 ATTACH_ONE = re.compile(rf"\(defattach\s+({NAME})\s+({NAME})")
 ATTACH_PAIR = re.compile(rf"\(\s*({NAME})\s+({NAME})\s*\)")
@@ -211,7 +251,8 @@ def memoised(kind: str, rel: str, text: str, compute):
         atexit.register(_memo_save)
     if _MEMO_SALT is None:
         salt = hashlib.sha256(b"fn-reach-file-memo-1\0" + sys.version.encode())
-        for source in (pathlib.Path(__file__), pathlib.Path(callgraph.ledger.__file__)):
+        for source in (pathlib.Path(__file__), pathlib.Path(callgraph.ledger.__file__),
+                       pathlib.Path(lisp_source.__file__)):
             salt.update(source.resolve().read_bytes())
         _MEMO_SALT = salt.digest()
     digest = hashlib.sha256(_MEMO_SALT)
@@ -260,41 +301,6 @@ def defined(symbols, table) -> set:
     return {symbol for symbol in symbols if symbol in table}
 
 
-def forms(text: str) -> list[str]:
-    """Top-level forms, tracking parens outside strings and comments."""
-    out: list[str] = []
-    depth, start, i, n, in_string = 0, None, 0, len(text), False
-    while i < n:
-        char = text[i]
-        if in_string:
-            if char == "\\":
-                i += 2
-                continue
-            if char == '"':
-                in_string = False
-            i += 1
-            continue
-        if char == ";":
-            newline = text.find("\n", i)
-            i = n if newline < 0 else newline + 1
-            continue
-        if char == '"':
-            in_string = True
-            i += 1
-            continue
-        if char == "(":
-            if depth == 0:
-                start = i
-            depth += 1
-        elif char == ")":
-            depth -= 1
-            if depth == 0 and start is not None:
-                out.append(text[start:i + 1])
-                start = None
-        i += 1
-    return out
-
-
 def definitions(paths, pattern=DEFUN):
     """name -> (file, whole form), for every definition the pattern opens."""
     found = {}
@@ -309,28 +315,6 @@ def definitions(paths, pattern=DEFUN):
                 found[match.group(1).lower()] = (
                     str(path.relative_to(ROOT)), form)
     return found
-
-
-SEXP_TOKEN = re.compile(r'\s+|;[^\n]*|"(?:\\.|[^"\\])*"|[()]|[^\s()";]+')
-
-
-def read_sexp(text: str):
-    """The first s-expression of TEXT as nested lists of atom strings
-    (strings and comments dropped): enough to read a macro's keywords."""
-    stack: list[list] = [[]]
-    for token in SEXP_TOKEN.findall(text):
-        if not token.strip() or token.startswith((";", '"')):
-            continue
-        if token == "(":
-            stack.append([])
-        elif token == ")":
-            done = stack.pop()
-            stack[-1].append(done)
-            if len(stack) == 1:
-                return done
-        else:
-            stack[-1].append(token.lower())
-    return stack[-1][0] if stack[-1] else None
 
 
 def flatten(tree) -> str:
@@ -473,9 +457,8 @@ def stobj_attachments(paths) -> dict[str, set[str]]:
 
 # The builds whose loads are the running server's host lines, each with the
 # directory ACL2 runs it from: the two images, and the extraction world the
-# served product (the SBCL core) is extracted from, which adds the FN-XO
-# ports (host/store-open-host.lisp, store-write-host.lisp,
-# interfaces-extract.lisp).  A host file no build loads is not a host line
+# served product (the SBCL core) is extracted from, which loads the image's
+# host files (tools/extract/world.py).  A host file no build loads is not a host line
 # and seeds nothing (PKT-412); tools/host_loaded_check.py refuses one (Q7k).
 IMAGE_BUILDS = {"host/native/build.lisp": ".",
                 "host/native/build-dtn.lisp": ".",
@@ -668,7 +651,7 @@ class Graph:
             if str(path.relative_to(ROOT)) not in self.loaded_hosts:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
-            for symbol in defined(self.symbols(text), self.book_defs):
+            for symbol in defined(self.code_symbols(text), self.book_defs):
                 if symbol not in seen:
                     seen.add(symbol)
                     self.via[symbol] = str(path.relative_to(ROOT))
@@ -699,6 +682,21 @@ class Graph:
                                     self.via[nxt] = name
                                     work.append(nxt)
         self.reachable = seen & set(self.book_defs)
+        # Campaign-tied: book functions a crash campaign names in its code,
+        # and what they call, that no host line reaches.  A separate verdict:
+        # the host is checked AGAINST these programs, it does not run them,
+        # so an event about them is neither hosted nor an orphan.
+        self.tied_via: dict[str, str] = {}
+        work = [(name, campaign) for name, campaign in campaign_names().items()
+                if name in self.book_defs and name not in seen]
+        while work:
+            name, campaign = work.pop()
+            if name in self.tied_via or name in seen:
+                continue
+            self.tied_via[name] = campaign
+            work.extend((nxt, campaign) for nxt in self.edges.get(name, ())
+                        if nxt in self.book_defs)
+        self.tied = set(self.tied_via)
 
     def world_edges(self, bodies: dict) -> dict:
         """What each definition CALLS, from the certified world where it speaks.
@@ -811,6 +809,15 @@ class Graph:
     @staticmethod
     def symbols(text: str) -> set[str]:
         return {s.lower() for s in SYMBOL.findall(text)}
+
+    @staticmethod
+    def code_symbols(text: str) -> set[str]:
+        """The symbols a host file's CODE names: comments, #| |# blocks and
+        string literals (docstrings, log text) removed first.  A docstring
+        that cites a book program is prose, not a call (CONVERGE-2 row 14:
+        fn-lgrc-program and fn-lg-open-program counted as reached through
+        io.lisp docstrings, which no host code evaluates)."""
+        return {s.lower() for s in SYMBOL.findall(code_only(text))}
 
     def mentions(self, form, own: str) -> set[str]:
         """What a definition names: callgraph's edge for a read form, the
@@ -1600,6 +1607,8 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 2
     findings, hosted, unresolved = audit(graph, chosen)
+    tied = [f for f in findings if set(f.subjects) & graph.tied]
+    findings = [f for f in findings if not set(f.subjects) & graph.tied]
 
     if arguments.baseline:
         if baseline_raise_refused(findings):
@@ -1632,6 +1641,12 @@ def main(argv=None) -> int:
         if by_proof:
             worst = ", ".join(f"{p} {n}" for p, n in by_proof.most_common(5))
             print(f"reach_check: orphans concentrate in {worst}")
+        if tied:
+            by_campaign = collections.Counter(
+                graph.tied_via[sorted(set(f.subjects) & graph.tied)[0]] for f in tied)
+            print(f"reach_check: {len(tied)} event(s) campaign-tied (their subject is a "
+                  "model program a crash campaign judges the host with, not run by it): "
+                  + ", ".join(f"{c} {n}" for c, n in by_campaign.most_common()))
         for finding in fresh:
             print(f"reach_check: NEW unreachable subject -- {finding.render()}")
         if stale:
@@ -1649,9 +1664,9 @@ def main(argv=None) -> int:
         if graph.unloaded_hosts:
             print("host files no image build loads (no seeds): "
                   + ", ".join(graph.unloaded_hosts))
-        print(f"{hosted} registry events hosted, {len(findings)} orphaned, "
-              f"{len(fresh)} of those unbaselined, {len(unresolved)} "
-              f"unresolvable here")
+        print(f"{hosted} registry events hosted, {len(tied)} campaign-tied, "
+              f"{len(findings)} orphaned, {len(fresh)} of those unbaselined, "
+              f"{len(unresolved)} unresolvable here")
 
     for proof_id, event, export, linking in graph.correspondence_bridged:
         print(f"reach_check: {proof_id}:{event} hosted through the named "

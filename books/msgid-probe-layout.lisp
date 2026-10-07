@@ -228,3 +228,8 @@
 
 (in-theory (disable fn-mpl-tag-at fn-mpl-seq-at fn-mpl-next fn-mpl-write-slot
                     fn-mpl-place fn-mpl-remaining fn-mpl-reachable))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable (:rewrite fn-mpl-cursor-field-bounds)))

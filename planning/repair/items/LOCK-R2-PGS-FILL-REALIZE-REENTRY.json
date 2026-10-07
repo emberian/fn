@@ -1,4 +1,5 @@
 {
+ "blocked_on": "R2 keys on fn-pgs-fill-frame need Deputy P phase model for fnn-owner-live-reconfigure-locked (E) and an ACL2 statement that the history is loaded before any O quantum (O)",
  "category": "lock-discipline",
  "detail": "Two residuals of the lock-triage-r2 UNSURE keys R2|fn-pgs-fill-realize|E:fnn-extent-pread and R2|fn-pgs-fill-realize|O:fnn-extent-pread (and the shared pread keys on that chain).\n(1) E path, latent crash: fnn-owner-limit-serialized (admin.lisp:534) holds O and E (fnn-with-observed-mutex *fnn-extent-lock*) and calls fn-owner-limit-use (owner-host.lisp:1311) -> fn-owner-record-debt (:1295) -> fn-hist-debt-carried (books/history-columns-store.lisp:106). Its invalid-cache fallback `(fn-cvec-record-debt (fn-sf-records (fn-sn-files s)))` -> fn-sfr-list -> fn-hrs-disk-history -> ... -> fn-hrs-fill-run -> fn-pgs-fill-realize, which re-takes *fnn-extent-lock* with a non-recursive with-mutex (host/native/extent.lisp:1717, :wait-p t) while limit-serialized already holds E: a recursive-lock error if ever reached. It is unreachable in steady state because the carried cache is set at install (owner-host.lisp:642-645) and by recovery (books/owner-recovery-retain.lisp:56-57), and the arm needs (consp cache), (car cache) <= count to fail. Not proven in ACL2 here; the valid-cache lemmas exist (fn-cvec-full-debt-cache-is-valid) but do not state that the arm is dead.\n(2) O path: fn-host-hist-sync (host/store-node-host.lisp:101-106) takes the whole-history disk load (fn-hist-refresh with reload -> fn-sf-records -> disk pages -> fn-pgs-fill-realize preads) on the first call after an open (fn-store-sn-hist-reload set only by fn-store-sn-reset at open: store-open-host.lisp:601, store-write-host.lisp:1204). The first call is meant to be the history-root row loop at install (owner.lisp:1630 fnn-owner-history-root-maintain -> history-root.lisp:88 refresh -> fn-owner-hroot-row, history-root-host.lisp:77) before serving. But history-root.lisp:96-99 returns before any row when fn-owner-hroot-begin does not answer :building. Then the first runtime fn-host-hist-sync (e.g. fnn-owner-inspect-request admin.lisp:394 -> fn-store-sn-lookup-foundp, store-node-host.lisp:1558; or the feed reply, owner-host.lisp:5355) loads the whole history from disk inside the owner quantum (O held; fill-realize does not hold E at the pread there). The fn-owner-install-profile fold (owner-host.lisp:640) reads fn-sf-records directly and does NOT sync the stobj, so it does not consume the flag.",
  "disposition": "LOCAL",
@@ -6,12 +7,23 @@
  "file": "host/native/extent.lisp",
  "fix": "(1) Prove in ACL2 that fn-hist-debt-carried's fallback arm is dead for every owner state limit-use runs in (the cache-valid invariant: set at install, kept by commit and recovery, car <= count), or make fn-pgs-fill-realize not re-take E when the thread already holds it (take the descriptor and base before the E region, or look up under the caller's lock). (2) Make the first stobj sync an explicit startup step before serving (call fn-host-hist-sync from install regardless of fn-owner-hroot-begin's answer), or declare the first-use load as a startup-phase exception and prove the flag consumed there.",
  "id": "LOCK-R2-PGS-FILL-REALIZE-REENTRY",
- "notes": [],
+ "natives_owed": [
+  "tests/test_native_limits_live.py",
+  "tests/test_native_page_io.py",
+  "tests/native_limit_pool_raw-mock.lisp",
+  "tests/native_history_root_raw-mock.lisp",
+  "tests/native_owner_install_cleanup_source.lisp"
+ ],
+ "notes": [
+  "Fixed at 05c318793: (1) fn-pgs-fill-frame (renamed from fill-realize) reads its descriptor tables directly when it holds *fnn-extent-lock* (sb-thread:holding-mutex-p), so the limit quantum and fnn-owner-live-reconfigure-locked (via fn-own-refresh) no longer signal a recursive-lock error; fnn-owner-limit-serialized reads fn-owner-limit-use before the extent lock. (2) fnn-owner-history-sync-first (history-root.lisp) runs ACL2's fn-owner-hroot-row 0 from install, consuming fn-store-sn-hist-reload at startup. The R2 keys R2|fn-pgs-fill-frame|E:fnn-extent-pread and |O:fnn-extent-pread do NOT go: the E key remains through fnn-owner-live-reconfigure-locked (Deputy P live-reconfigure phase model), the O key is path-insensitive reachability from 70 O sites (fn-host-hist-sync is reachable from every ACL2 O-quantum). Lock gate: 0 gone, 0 added. natives_owed: tests/test_native_limits_live.py, tests/test_native_page_io.py, tests/native_limit_pool_raw-mock.lisp, tests/native_history_root_raw-mock.lisp, tests/native_owner_install_cleanup_source.lisp.",
+  "10-07 C5 (CONVERGE-3 row 1): R3|fn-pgs-fill-frame|naked:fnn-extent-pread (the old fill-realize key, re-keyed by the rename) FIXED on lane/lock-row1-c5: the page pread and the short-read path lookup now run inside the extent-lock region that looked up the descriptor (the caller's own hold, or the with-mutex), so a page file closed under the lock cannot hand the read a reused descriptor number; this also removes a recursive-lock error on the short-read path for a caller already holding E. lock_discipline_check models the held arm of (if (sb-thread:holding-mutex-p L) ...) as L's region. The R2 keys E and O on fn-pgs-fill-frame stay with this item (E now also on the not-held arm's pread, as before 05c318793); the four fnn-extent-read-stall keys are filed on LOCK-R2-FEED-REPLY-PAYLOAD-PREAD."
+ ],
  "owner": "unassigned",
  "scenario": "(1) any invalid or missing carried debt cache during a live `store limit' faults with a recursive-lock error instead of answering. (2) install's history-root refresh refuses before its first row: the first inspect, lookup or feed reply after start reads the entire on-disk history under O.",
  "severity": "medium",
+ "sha": "05c318793",
  "source": "lock-triage-r2b on lane/lock-triage-r2",
- "state": "open",
+ "state": "partial",
  "title": "History page fill (fn-pgs-fill-realize) re-takes the extent mutex non-recursively under limit-serialized, and the whole-history disk load can run under the owner mutex",
- "updated": "2026-10-07T00:06:13Z"
+ "updated": "2026-10-07T20:30:00Z"
 }

@@ -23,9 +23,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-receiver-repin-tests \
 	tests/acl2/connection-receiver-repin-state-tests \
 	books/obligation-view-cursor \
+	books/obligation-view-cursor-refinement \
+	tests/acl2/obligation-view-cursor-tests \
 	books/retention-obligation-view \
 	books/obligation-view-budget \
 	books/view-delta-cursor \
+	books/view-delta-cursor-refinement \
+	tests/acl2/view-delta-cursor-tests \
 	books/index-reader-actor \
 	books/index-reader-receiver-issuer \
 	tests/acl2/index-reader-render-establishment-tests \
@@ -317,6 +321,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
+	books/raw-dispatch-verdict \
+	tests/acl2/raw-dispatch-verdict-tests \
 	tests/acl2/defevent-tests \
 	tests/acl2/def-carried-tests \
 	books/def-holder \
@@ -635,6 +641,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/heap-figure \
 	books/heap-open-nursery \
 	tests/acl2/heap-open-nursery-tests \
+	books/send-progress \
+	tests/acl2/send-progress-tests \
+	books/idle-collection \
+	tests/acl2/idle-collection-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
 	books/cold-read-reservation \
@@ -2415,7 +2425,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world \
 	books/image-world-dtn \
 	books/image-world-store-test \
-	books/image-world-paged \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
     books/pagestore-digest-block-predicate \
@@ -2485,6 +2494,8 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-bootstrap-export-tests \
     tests/acl2/allocation-turn-body-authority-tests \
     tests/acl2/allocation-turn-slots-tests \
+    tests/acl2/allocation-turn-source-cost-tests \
+    tests/acl2/consumer-remote-client-contract-tests \
     books/page-read-counter-transaction \
     books/page-read-issue-source-cost \
     books/recovery-prs-install \
@@ -2568,6 +2579,7 @@ ACL2_BOOKS ?= books/defrecord \
     books/owner-report-owner-accessors \
     books/allocation-turn-body-authority \
     books/allocation-turn-slots \
+    books/allocation-turn-source-cost \
     books/index-backing-writer-step \
     books/index-backing-table-seal \
     books/index-backing-reinsert \
@@ -2621,9 +2633,9 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/records-shape books/statement books/statement-invariants
 
 # The extraction differential (A-EXTRACT, specs/failures.md; lane extract-2):
-# the world extracted to a CHICKEN program and compared with the developer
-# image -- the served transcripts, the boundary probes, a real store's replies
-# and the per-function differential -- on hbox (tools/extract/check.sh; from
+# the world extracted to fn-core (bare SBCL) and compared with the developer
+# image -- the served transcripts, the boundary probes, a real store's replies,
+# the stateful and owner differentials -- on hbox (tools/extract/check.sh; from
 # elsewhere tools/extract/remote_check.sh ships the tree with hbox_native.sh).
 EXTRACT_REV ?= .
 extract-check:
@@ -2689,6 +2701,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_unhooked
 	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_proof_repl_smoke
 	@$(CHECK_EXECUTE)
 
 check-fast-lane:

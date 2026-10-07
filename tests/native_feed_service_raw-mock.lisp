@@ -95,6 +95,13 @@
     (error "unexpected owner feed step: ~s" name))
   (push (second args) *test-reply-inputs*)
   (or (pop *test-words*) (error "too many reply actions")))
+;; The reply's article is read first by ACL2's pure probe (host/native/owner.lisp
+;; fnn-owner-feed-reply-probe-locked); here every probe is warm and sends none.
+(defvar *test-probes* 0)
+(defun fnn-owner-feed-reply-probe-locked (service peer-octets octets)
+  (declare (ignore service peer-octets octets))
+  (incf *test-probes*)
+  (values :warm nil))
 ;; The publication's word, and the line fnn-feed-reply-step logs after a reply
 ;; outcome (on :ready the IHAVE fallback after a 500/501 to MODE STREAM,
 ;; PRF-207, is that publication's log line).

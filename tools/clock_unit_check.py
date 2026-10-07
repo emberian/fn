@@ -37,7 +37,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from tools import ratchet  # noqa: E402
+from tools import lisp_source, ratchet  # noqa: E402
 BASELINE = os.path.join(ROOT, "tools", "clock_unit_baseline.json")
 EXEMPT = {"books/clock.lisp", "books/clock-unit.lisp"}
 ARITH = {"+", "-", "*", "/", "floor", "ceiling", "truncate", "round", "mod",
@@ -46,81 +46,23 @@ FIELDS = {"fn-clock-wall", "fn-clock-wall-error", "fn-clock-monotonic"}
 WRAPPERS = {"nfix", "ifix"}
 
 
-def tokens(text):
-    """Yield (token, line) for parens and atoms; skip comments, strings,
-    block comments and character literals."""
-    i, n, line = 0, len(text), 1
-    while i < n:
-        c = text[i]
-        if c == "\n":
-            line += 1
-            i += 1
-        elif c in " \t\r\f":
-            i += 1
-        elif c == ";":
-            while i < n and text[i] != "\n":
-                i += 1
-        elif text.startswith("#|", i):
-            depth = 1
-            i += 2
-            while i < n and depth:
-                if text.startswith("|#", i):
-                    depth -= 1
-                    i += 2
-                elif text.startswith("#|", i):
-                    depth += 1
-                    i += 2
-                else:
-                    if text[i] == "\n":
-                        line += 1
-                    i += 1
-        elif c == '"':
-            i += 1
-            while i < n and text[i] != '"':
-                if text[i] == "\\":
-                    i += 1
-                elif text[i] == "\n":
-                    line += 1
-                i += 1
-            i += 1
-            yield ("<string>", line)
-        elif text.startswith("#\\", i):
-            i += 3
-            while i < n and text[i] not in " \t\r\n()":
-                i += 1
-            yield ("<char>", line)
-        elif c in "()":
-            yield (c, line)
-            i += 1
-        elif c in "'`,":
-            i += 1
-            if i < n and text[i] == "@":
-                i += 1
-        else:
-            j = i
-            while j < n and text[j] not in " \t\r\n()\";":
-                j += 1
-            yield (text[i:j].lower(), line)
-            i = j
-
-
 def forms(text):
     """Parse into nested lists of (atom, line) leaves; lists carry their
-    opening line as ('(', line, [children])."""
-    stack = [("(", 0, [])]
-    for tok, line in tokens(text):
-        if tok == "(":
-            stack.append(("(", line, []))
-        elif tok == ")":
-            if len(stack) > 1:
-                done = stack.pop()
-                stack[-1][2].append(done)
-        else:
-            stack[-1][2].append((tok, line))
-    while len(stack) > 1:
-        done = stack.pop()
-        stack[-1][2].append(done)
-    return stack[0][2]
+    opening line as ('(', line, [children]).  A string reads as '<string>'
+    (at the line it ends), a character literal as '<char>', quote marks are
+    dropped."""
+    line = lisp_source.line_numberer(text)
+
+    def convert(node):
+        if isinstance(node, lisp_source.List):
+            return ("(", line(node.start), [convert(c) for c in node.items])
+        if isinstance(node, lisp_source.Str):
+            return ("<string>", line(node.end - 1))
+        if node.text.startswith("#\\"):
+            return ("<char>", line(node.start))
+        return (node.text.lower(), line(node.start))
+
+    return [convert(n) for n in lisp_source.read_all(text)]
 
 
 def head(node):

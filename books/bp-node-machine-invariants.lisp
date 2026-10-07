@@ -763,15 +763,6 @@
        true-listp zp (:type-prescription len))
      (theory 'minimal-theory)))))
 
-(defthm fn-bpn-key-memberp-of-resume-jobs
-  (equal (fn-bpn-job-key-memberp key (fn-bpn-resume-jobs jobs))
-         (fn-bpn-job-key-memberp key jobs))
-  :hints (("Goal"
-           :induct (fn-bpn-resume-jobs jobs)
-           :in-theory
-           (enable fn-bpn-resume-jobs fn-bpn-job-key-memberp
-                   fn-bpn-find-job fn-bpn-job-key-of-job-with-status))))
-
 (defthm fn-bpn-key-memberp-of-nil
   (not (fn-bpn-job-key-memberp key nil))
   :hints (("Goal" :in-theory (enable fn-bpn-job-key-memberp
@@ -784,33 +775,6 @@
               (fn-bpn-job-listp jobs)))
   :hints (("Goal" :expand ((fn-bpn-job-listp (cons job jobs)))
                    :in-theory (disable fn-bpn-jobp fn-bpn-job-key))))
-
-(defthm fn-bpn-resume-jobs-preserves-job-listp
-  (implies (fn-bpn-job-listp jobs)
-           (fn-bpn-job-listp (fn-bpn-resume-jobs jobs)))
-  :hints (("Goal"
-           :induct (fn-bpn-resume-jobs jobs)
-           :in-theory
-           (union-theories
-            '(fn-bpn-resume-jobs fn-bpn-job-listp fn-bpn-job-listp-of-cons
-              fn-bpn-job-with-status-is-a-job
-              fn-bpn-job-key-of-job-with-status
-              fn-bpn-key-memberp-of-resume-jobs
-              fn-bpn-key-memberp-of-nil
-              fn-bpn-jobp-components fn-bpn-job-statusp fn-bpn-member)
-            (theory 'minimal-theory)))))
-
-(defthm fn-bpn-len-of-resume-jobs
-  (equal (len (fn-bpn-resume-jobs jobs)) (len jobs))
-  :hints (("Goal" :induct (fn-bpn-resume-jobs jobs)
-                   :in-theory (enable fn-bpn-resume-jobs))))
-
-(defthm fn-bpn-jobs-octets-of-resume-jobs
-  (equal (fn-bpn-jobs-octets (fn-bpn-resume-jobs jobs))
-         (fn-bpn-jobs-octets jobs))
-  :hints (("Goal" :induct (fn-bpn-resume-jobs jobs)
-                   :in-theory (enable fn-bpn-resume-jobs
-                                      fn-bpn-jobs-octets))))
 
 (defthm fn-bpn-restart-state-with-preserves-machine-invariant
   (implies
@@ -873,6 +837,11 @@
 (defthm fn-bpn-effect-listp-of-singleton
   (equal (fn-bpn-effect-listp (list effect))
          (fn-bpn-effectp effect))
+  :hints (("Goal" :in-theory (enable fn-bpn-effect-listp))))
+
+(defthm fn-bpn-effect-listp-of-cons
+  (equal (fn-bpn-effect-listp (cons effect effects))
+         (and (fn-bpn-effectp effect) (fn-bpn-effect-listp effects)))
   :hints (("Goal" :in-theory (enable fn-bpn-effect-listp))))
 
 (defthm fn-bpn-effect-listp-of-nil
@@ -943,6 +912,79 @@
               car-cons cdr-cons true-listp)
             (theory 'minimal-theory)))))
 
+(defthm fn-bpn-find-attempting-is-a-job
+  (implies (and (fn-bpn-job-listp jobs)
+                (fn-bpn-find-attempting jobs))
+           (and (fn-bpn-jobp (fn-bpn-find-attempting jobs))
+                (equal (fn-bpn-job-status (fn-bpn-find-attempting jobs))
+                       :attempting)))
+  :hints (("Goal"
+           :induct (fn-bpn-find-attempting jobs)
+           :in-theory
+           (e/d (fn-bpn-find-attempting fn-bpn-job-listp)
+                (fn-bpn-jobp)))))
+
+(defthm fn-bpn-resolution-record-is-typed
+  (implies (and (fn-bpn-jobp job)
+                (fn-bpn-machine-u64p token))
+           (fn-bpn-lifecycle-recordp (fn-bpn-resolution-record token job)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-terminal-record-is-typed
+                            (key (fn-bpn-job-key job))
+                            (kind :requeued) (reason :uncertain))
+                 (:instance fn-bpn-job-key-is-typed))
+           :in-theory (e/d (fn-bpn-resolution-record fn-bpn-member)
+                           (fn-bpn-jobp fn-bpn-job-key
+                            fn-bpn-terminal-record-is-typed
+                            fn-bpn-job-key-is-typed)))))
+
+(defthm fn-bpn-resolve-orphans-step-preserves-machine-invariant
+  (implies (fn-bpn-machine-invariantp st)
+           (fn-bpn-machine-invariantp
+            (fn-bpn-answer-state (fn-bpn-resolve-orphans-step st))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-invariant-components)
+                 (:instance fn-bpn-machine-statep-components)
+                 (:instance fn-bpn-find-attempting-is-a-job
+                            (jobs (fn-bpn-machine-state-jobs st)))
+                 (:instance fn-bpn-resolution-record-is-typed
+                            (token (fn-bpn-machine-state-next-token st))
+                            (job (fn-bpn-find-attempting
+                                  (fn-bpn-machine-state-jobs st))))
+                 (:instance fn-bpn-propose-preserves-machine-invariant
+                            (record (fn-bpn-resolution-record
+                                     (fn-bpn-machine-state-next-token st)
+                                     (fn-bpn-find-attempting
+                                      (fn-bpn-machine-state-jobs st))))
+                            (success nil)
+                            (refusal *fn-bpn-resolution-refusal*)
+                            (uncertain *fn-bpn-resolution-uncertainty*)))
+           :in-theory
+           (union-theories
+            '(fn-bpn-resolve-orphans-step fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-nil fn-bpn-effectp fn-bpn-member
+              fn-bpn-machine-statep-components car-cons true-listp)
+            (theory 'minimal-theory)))))
+
+(defthm fn-bpn-resolve-orphans-step-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-resolve-orphans-step st)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-propose-effects-are-typed
+                            (record (fn-bpn-resolution-record
+                                     (fn-bpn-machine-state-next-token st)
+                                     (fn-bpn-find-attempting
+                                      (fn-bpn-machine-state-jobs st))))
+                            (success nil)
+                            (refusal *fn-bpn-resolution-refusal*)
+                            (uncertain *fn-bpn-resolution-uncertainty*)))
+           :in-theory
+           (union-theories
+            '(fn-bpn-resolve-orphans-step fn-bpn-answer-constructor-accessors
+              fn-bpn-effect-listp-of-nil fn-bpn-effectp fn-bpn-member
+              car-cons true-listp)
+            (theory 'minimal-theory)))))
+
 (defthm fn-bpn-persist-result-step-effects-are-typed
   (implies (fn-bpn-machine-statep st)
            (fn-bpn-effect-listp
@@ -953,6 +995,7 @@
            :in-theory
            (union-theories
             '(fn-bpn-persist-result-step fn-bpn-answer-constructor-accessors
+              fn-bpn-resolve-orphans-step-effects-are-typed
               fn-bpn-effect-listp-of-singleton
               fn-bpn-effect-listp-of-nil
               fn-bpn-maybe-pendingp fn-bpn-pendingp)
@@ -993,7 +1036,8 @@
            :in-theory
            (union-theories
             '(fn-bpn-restart-step fn-bpn-answer-constructor-accessors
-              fn-bpn-effect-listp-of-singleton
+              fn-bpn-resolve-orphans-step-effects-are-typed
+              fn-bpn-effect-listp-of-singleton fn-bpn-effect-listp-of-cons
               fn-bpn-effectp fn-bpn-member car-cons cdr-cons
               true-listp)
             (theory 'minimal-theory)))))
@@ -1082,6 +1126,7 @@
     (union-theories
      '(fn-bpn-persist-result-step
        fn-bpn-apply-record-preserves-machine-invariant
+       fn-bpn-resolve-orphans-step-preserves-machine-invariant
        fn-bpn-apply-inapplicable-record-is-noop
        fn-bpn-answer-constructor-accessors fn-bpn-machine-boolp)
      (theory 'minimal-theory)))))
@@ -1172,25 +1217,14 @@
                            (fn-bpn-machine-state-max-jobs st)
                            (fn-bpn-machine-state-max-octets st))
                           records))))
-     (:instance fn-bpn-restart-state-with-preserves-machine-invariant
+     (:instance fn-bpn-resolve-orphans-step-preserves-machine-invariant
                 (st (nth 1
                          (fn-bpn-replay-records
                           (fn-bpn-initial-machine-state
                            (fn-bpn-machine-state-config st)
                            (fn-bpn-machine-state-max-jobs st)
                            (fn-bpn-machine-state-max-octets st))
-                          records)))
-                (jobs
-                 (fn-bpn-resume-jobs
-                  (fn-bpn-machine-state-jobs
-                   (nth 1
-                        (fn-bpn-replay-records
-                         (fn-bpn-initial-machine-state
-                          (fn-bpn-machine-state-config st)
-                          (fn-bpn-machine-state-max-jobs st)
-                          (fn-bpn-machine-state-max-octets st))
-                         records)))))
-                (fenced nil))
+                          records))))
      (:instance fn-bpn-restart-state-with-preserves-machine-invariant
                 (st (nth 1
                          (fn-bpn-replay-records
@@ -1215,8 +1249,7 @@
        fn-bpn-sequence-fault-state-has-invariant
        fn-bpn-restart-state-with-preserves-machine-invariant
        fn-bpn-next-token-of-initial-machine-state
-       fn-bpn-resume-jobs-preserves-job-listp
-       fn-bpn-len-of-resume-jobs fn-bpn-jobs-octets-of-resume-jobs
+       fn-bpn-resolve-orphans-step-preserves-machine-invariant
        fn-bpn-machine-boolp)
      (theory 'minimal-theory)))))
 
@@ -1299,3 +1332,532 @@
 
 ;; The *1* class (Q4a item 2, bp-remainder-5): host-called entries and their callees.
 (verify-guards fn-bpn-machine-invariantp)
+
+;; Restart-resolution keystone (CONVERGE-2 row 17, lane c2-fnbs-fence).
+;; A restart that finds a job :attempting (its process died before the outcome
+;; record) must make that job :queued DURABLY, through the append path, before
+;; any new :attempting record for it exists; otherwise the log holds two
+;; :attempting records in a row for the job and the next restart's replay
+;; refuses it (fnbs-or-base).
+(defthm fn-bpn-find-job-of-replace-same-key
+  (implies (and (fn-bpn-find-job key jobs)
+                (equal (fn-bpn-job-key replacement) key))
+           (equal (fn-bpn-find-job key (fn-bpn-replace-job key replacement jobs))
+                  replacement))
+  :hints (("Goal"
+           :induct (fn-bpn-replace-job key replacement jobs)
+           :in-theory (enable fn-bpn-replace-job fn-bpn-find-job))))
+
+(defthm fn-bpn-job-status-of-job-with-status
+  (implies (fn-bpn-job-statusp status)
+           (equal (fn-bpn-job-status (fn-bpn-job-with-status job status token))
+                  status))
+  :hints (("Goal" :in-theory (enable fn-bpn-job-with-status))))
+
+(defthm fn-bpn-find-job-of-find-attempting
+  (implies (and (fn-bpn-job-listp jobs)
+                (fn-bpn-find-attempting jobs))
+           (equal (fn-bpn-find-job
+                   (fn-bpn-job-key (fn-bpn-find-attempting jobs)) jobs)
+                  (fn-bpn-find-attempting jobs)))
+  :hints (("Goal"
+           :induct (fn-bpn-find-attempting jobs)
+           :in-theory (e/d (fn-bpn-find-attempting fn-bpn-find-job
+                            fn-bpn-job-listp fn-bpn-job-key-memberp)
+                           (fn-bpn-jobp fn-bpn-job-key)))))
+
+(defthm fn-bpn-replay-records-of-append
+  (implies (equal (car (fn-bpn-replay-records st first)) :ready)
+           (equal (fn-bpn-replay-records st (append first second))
+                  (fn-bpn-replay-records
+                   (nth 1 (fn-bpn-replay-records st first)) second)))
+  :hints (("Goal"
+           :induct (fn-bpn-replay-records st first)
+           :in-theory (e/d (fn-bpn-replay-records)
+                           (fn-bpn-record-applicablep fn-bpn-apply-record)))))
+
+(defthm fn-bpn-resolution-record-key-and-token
+  (and (equal (fn-bpn-record-key (fn-bpn-resolution-record token job))
+              (fn-bpn-job-key job))
+       (equal (fn-bpn-record-token (fn-bpn-resolution-record token job))
+              token)
+       (equal (fn-cbor-ag-car (fn-bpn-resolution-record token job))
+              :requeued))
+  :hints (("Goal" :in-theory (enable fn-bpn-resolution-record fn-bpn-record-key
+                                     fn-bpn-record-token fn-bpn-nth
+                                     fn-bpn-job-key))))
+
+; The resolution record is applicable to the replayed state that has an
+; orphan :attempting job, and applying it makes that job :queued again.
+(defthm fn-bpn-resolution-record-is-applicable-to-orphan
+  (implies (and (fn-bpn-machine-invariantp st)
+                (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))
+           (fn-bpn-record-applicablep
+            st
+            (fn-bpn-resolution-record
+             (fn-bpn-machine-state-next-token st)
+             (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-invariant-components)
+                 (:instance fn-bpn-machine-statep-components)
+                 (:instance fn-bpn-find-attempting-is-a-job
+                            (jobs (fn-bpn-machine-state-jobs st)))
+                 (:instance fn-bpn-find-job-of-find-attempting
+                            (jobs (fn-bpn-machine-state-jobs st)))
+                 (:instance fn-bpn-resolution-record-is-typed
+                            (token (fn-bpn-machine-state-next-token st))
+                            (job (fn-bpn-find-attempting
+                                  (fn-bpn-machine-state-jobs st)))))
+           :in-theory (e/d (fn-bpn-record-applicablep fn-bpn-member)
+                           (fn-bpn-jobp fn-bpn-job-key fn-bpn-lifecycle-recordp
+                            fn-bpn-resolution-record
+                            fn-bpn-find-job fn-bpn-machine-statep
+                            fn-bpn-machine-invariantp
+                            fn-bpn-resolution-record-is-typed
+                            fn-bpn-find-attempting-is-a-job
+                            fn-bpn-find-job-of-find-attempting)))))
+
+(defthm fn-bpn-resolution-requeues-the-orphan
+  (implies (and (fn-bpn-machine-invariantp st)
+                (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))
+           (let* ((job (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))
+                  (next (fn-bpn-apply-record
+                         st (fn-bpn-resolution-record
+                             (fn-bpn-machine-state-next-token st) job))))
+             (and (equal (fn-bpn-job-status
+                          (fn-bpn-find-job (fn-bpn-job-key job)
+                                           (fn-bpn-machine-state-jobs next)))
+                         :queued)
+                  (equal (fn-bpn-machine-state-next-token next)
+                         (1+ (fn-bpn-machine-state-next-token st))))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-invariant-components)
+                 (:instance fn-bpn-machine-statep-components)
+                 (:instance fn-bpn-find-attempting-is-a-job
+                            (jobs (fn-bpn-machine-state-jobs st)))
+                 (:instance fn-bpn-find-job-of-find-attempting
+                            (jobs (fn-bpn-machine-state-jobs st)))
+                 (:instance fn-bpn-resolution-record-is-applicable-to-orphan)
+                 (:instance fn-bpn-next-token-of-applicable-record
+                            (record (fn-bpn-resolution-record
+                                     (fn-bpn-machine-state-next-token st)
+                                     (fn-bpn-find-attempting
+                                      (fn-bpn-machine-state-jobs st))))))
+           :in-theory (e/d (fn-bpn-apply-record fn-bpn-state-with-accessors
+                            fn-bpn-member fn-bpn-find-job-of-replace-same-key
+                            fn-bpn-job-status-of-job-with-status
+                            fn-bpn-job-key-of-job-with-status
+                            fn-bpn-job-statusp)
+                           (fn-bpn-job-with-status fn-bpn-replace-job fn-bpn-jobp fn-bpn-job-key fn-bpn-lifecycle-recordp
+                            fn-bpn-resolution-record fn-bpn-find-job
+                            fn-bpn-machine-statep fn-bpn-machine-invariantp
+                            fn-bpn-record-applicablep
+                            fn-bpn-find-attempting-is-a-job
+                            fn-bpn-find-job-of-find-attempting
+                            fn-bpn-resolution-record-is-applicable-to-orphan
+                            fn-bpn-next-token-of-applicable-record)))))
+
+; The property whose failure fenced fnbs-or-base (CONVERGE-2 row 17): once the
+; restart's resolution of the orphan :attempting job is in the log, a later
+; :attempting record for that job is applicable, and the replay is :ready.
+(defthm fn-bpn-replay-of-resolution-then-attempt-is-ready
+  (implies
+   (and (fn-bpn-machine-invariantp st)
+        (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st))
+        (fn-bpn-lifecycle-recordp attempt)
+        (equal (fn-cbor-ag-car attempt) :attempting)
+        (equal (fn-bpn-record-key attempt)
+               (fn-bpn-job-key
+                (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st))))
+        (equal (fn-bpn-record-token attempt)
+               (1+ (fn-bpn-machine-state-next-token st))))
+   (equal
+    (car (fn-bpn-replay-records
+          st
+          (list (fn-bpn-resolution-record
+                 (fn-bpn-machine-state-next-token st)
+                 (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))
+                attempt)))
+    :ready))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-resolution-record-is-applicable-to-orphan)
+                 (:instance fn-bpn-resolution-requeues-the-orphan))
+           :in-theory (e/d (fn-bpn-replay-records fn-bpn-record-applicablep
+                            fn-bpn-member)
+                           (fn-bpn-resolution-record
+                            fn-bpn-find-attempting fn-bpn-apply-record
+                            fn-bpn-find-job fn-bpn-job-key
+                            fn-bpn-lifecycle-recordp
+                            fn-bpn-machine-invariantp
+                            fn-bpn-resolution-record-is-applicable-to-orphan
+                            fn-bpn-resolution-requeues-the-orphan)))))
+
+(defthm fn-bpn-replay-ready-state-is-quiescent
+  (implies (and (equal (car (fn-bpn-replay-records st records)) :ready)
+                (not (fn-bpn-machine-state-pending st))
+                (not (fn-bpn-machine-state-fenced st)))
+           (and (not (fn-bpn-machine-state-pending
+                      (nth 1 (fn-bpn-replay-records st records))))
+                (not (fn-bpn-machine-state-fenced
+                      (nth 1 (fn-bpn-replay-records st records))))))
+  :hints (("Goal"
+           :induct (fn-bpn-replay-records st records)
+           :in-theory (e/d (fn-bpn-replay-records fn-bpn-apply-record
+                            fn-bpn-state-with)
+                           (fn-bpn-record-applicablep)))))
+
+(defthm fn-bpn-replay-ready-next-token
+  (implies (and (equal (car (fn-bpn-replay-records st records)) :ready)
+                (natp (fn-bpn-machine-state-next-token st)))
+           (equal (fn-bpn-machine-state-next-token
+                   (nth 1 (fn-bpn-replay-records st records)))
+                  (+ (fn-bpn-machine-state-next-token st) (len records))))
+  :hints (("Goal"
+           :induct (fn-bpn-replay-records st records)
+           :in-theory (e/d (fn-bpn-replay-records
+                            fn-bpn-next-token-of-applicable-record)
+                           (fn-bpn-record-applicablep fn-bpn-apply-record)))))
+
+(defthm fn-bpn-resolve-orphans-step-proposes-the-resolution
+  (implies
+   (and (fn-bpn-machine-statep st)
+        (not (fn-bpn-machine-state-pending st))
+        (not (fn-bpn-machine-state-fenced st))
+        (< (fn-bpn-machine-state-next-token st) *fn-bpn-machine-max-records*)
+        (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))
+   (let ((answer (fn-bpn-resolve-orphans-step st))
+         (record (fn-bpn-resolution-record
+                  (fn-bpn-machine-state-next-token st)
+                  (fn-bpn-find-attempting (fn-bpn-machine-state-jobs st)))))
+     (and (equal (fn-bpn-answer-effects answer)
+                 (list (list :persist (fn-bpn-machine-state-next-token st)
+                             record)))
+          (equal (fn-bpn-pending-record
+                  (fn-bpn-machine-state-pending (fn-bpn-answer-state answer)))
+                 record)
+          (equal (fn-bpn-machine-state-jobs (fn-bpn-answer-state answer))
+                 (fn-bpn-machine-state-jobs st)))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-statep-components))
+           :in-theory (e/d (fn-bpn-resolve-orphans-step fn-bpn-propose
+                            fn-bpn-answer-constructor-accessors
+                            fn-bpn-state-with-accessors)
+                           (fn-bpn-find-attempting fn-bpn-resolution-record
+                            fn-bpn-machine-statep)))))
+
+(defthm fn-bpn-initial-machine-state-is-quiescent
+  (implies (and (fn-bpn-configp config)
+                (fn-bpn-machine-limitp max-jobs)
+                (fn-bpn-machine-limitp max-octets))
+           (and (not (fn-bpn-machine-state-pending
+                      (fn-bpn-initial-machine-state config max-jobs max-octets)))
+                (not (fn-bpn-machine-state-fenced
+                      (fn-bpn-initial-machine-state config max-jobs max-octets)))))
+  :hints (("Goal" :in-theory (enable fn-bpn-initial-machine-state))))
+
+(defthm fn-bpn-restart-step-of-ready-replay
+  (implies
+   (equal (car (fn-bpn-replay-records
+                (fn-bpn-initial-machine-state
+                 (fn-bpn-machine-state-config st)
+                 (fn-bpn-machine-state-max-jobs st)
+                 (fn-bpn-machine-state-max-octets st))
+                records))
+          :ready)
+   (equal (fn-bpn-restart-step st records :ready)
+          (let* ((replayed (nth 1 (fn-bpn-replay-records
+                                   (fn-bpn-initial-machine-state
+                                    (fn-bpn-machine-state-config st)
+                                    (fn-bpn-machine-state-max-jobs st)
+                                    (fn-bpn-machine-state-max-octets st))
+                                   records)))
+                 (resolved (fn-bpn-resolve-orphans-step replayed)))
+            (fn-bpn-answer
+             (fn-bpn-answer-state resolved)
+             (cons (list :restart-ready
+                         (len (fn-bpn-machine-state-jobs replayed)))
+                   (fn-bpn-answer-effects resolved))))))
+  :hints (("Goal" :in-theory (e/d (fn-bpn-restart-step)
+                                  (fn-bpn-replay-records
+                                   fn-bpn-initial-machine-state
+                                   fn-bpn-resolve-orphans-step)))))
+
+
+
+(defthm fn-bpn-attempt-after-orphan-attempt-is-inapplicable
+  (implies (and (equal (fn-cbor-ag-car record) :attempting)
+                (equal (fn-bpn-job-status
+                        (fn-bpn-find-job (fn-bpn-record-key record)
+                                         (fn-bpn-machine-state-jobs st)))
+                       :attempting))
+           (not (fn-bpn-record-applicablep st record)))
+  :hints (("Goal" :in-theory (enable fn-bpn-record-applicablep))))
+
+(defconst *fn-bpn-fence-witness-job*
+  (fn-bpn-make-job '(119 49) '(97) 1 nil nil nil nil nil nil :attempting 5))
+
+(defconst *fn-bpn-fence-witness-state*
+  (fn-bpn-make-machine-state nil (list *fn-bpn-fence-witness-job*)
+                             nil nil nil 6 4 1000))
+
+(defthm fn-bpn-old-restart-log-fences
+  (equal (car (fn-bpn-replay-records
+               *fn-bpn-fence-witness-state*
+               (list (list :attempting 6 '(119 49) '(97) 1))))
+         :fault)
+  :rule-classes nil)
+
+(defthm fn-bpn-resolved-restart-log-replays-ready
+  (equal (car (fn-bpn-replay-records
+               *fn-bpn-fence-witness-state*
+               (list (fn-bpn-resolution-record
+                      6 *fn-bpn-fence-witness-job*)
+                     (list :attempting 7 '(119 49) '(97) 1))))
+         :ready)
+  :rule-classes nil)
+
+(defthm fn-bpn-restart-proposes-the-resolution-first
+  (implies
+   (and (fn-bpn-machine-invariantp st)
+        (true-listp records)
+        (< (len records) *fn-bpn-machine-max-records*)
+        (equal (car (fn-bpn-replay-records
+                     (fn-bpn-initial-machine-state
+                      (fn-bpn-machine-state-config st)
+                      (fn-bpn-machine-state-max-jobs st)
+                      (fn-bpn-machine-state-max-octets st))
+                     records))
+               :ready)
+        (fn-bpn-find-attempting
+         (fn-bpn-machine-state-jobs
+          (nth 1 (fn-bpn-replay-records
+                  (fn-bpn-initial-machine-state
+                   (fn-bpn-machine-state-config st)
+                   (fn-bpn-machine-state-max-jobs st)
+                   (fn-bpn-machine-state-max-octets st))
+                  records)))))
+   (let* ((replayed (nth 1 (fn-bpn-replay-records
+                            (fn-bpn-initial-machine-state
+                             (fn-bpn-machine-state-config st)
+                             (fn-bpn-machine-state-max-jobs st)
+                             (fn-bpn-machine-state-max-octets st))
+                            records)))
+          (job (fn-bpn-find-attempting (fn-bpn-machine-state-jobs replayed)))
+          (record (fn-bpn-resolution-record
+                   (fn-bpn-machine-state-next-token replayed) job))
+          (answer (fn-bpn-restart-step st records :ready)))
+     (and (equal (fn-bpn-answer-effects answer)
+                 (list (list :restart-ready
+                             (len (fn-bpn-machine-state-jobs replayed)))
+                       (list :persist
+                             (fn-bpn-machine-state-next-token replayed)
+                             record)))
+          (equal (fn-bpn-pending-record
+                  (fn-bpn-machine-state-pending
+                   (fn-bpn-answer-state answer)))
+                 record)
+          (equal (fn-bpn-machine-state-jobs (fn-bpn-answer-state answer))
+                 (fn-bpn-machine-state-jobs replayed)))))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-invariant-components)
+                 (:instance fn-bpn-machine-statep-components)
+                 (:instance fn-bpn-initial-machine-state-has-invariant
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-initial-machine-state-is-quiescent
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-next-token-of-initial-machine-state
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-replay-records-preserves-machine-invariant
+                            (st (fn-bpn-initial-machine-state
+                            (fn-bpn-machine-state-config st)
+                            (fn-bpn-machine-state-max-jobs st)
+                            (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-machine-invariant-components
+                            (st (nth 1 (fn-bpn-replay-records (fn-bpn-initial-machine-state
+                            (fn-bpn-machine-state-config st)
+                            (fn-bpn-machine-state-max-jobs st)
+                            (fn-bpn-machine-state-max-octets st)) records))))
+                 (:instance fn-bpn-replay-ready-state-is-quiescent
+                            (st (fn-bpn-initial-machine-state
+                            (fn-bpn-machine-state-config st)
+                            (fn-bpn-machine-state-max-jobs st)
+                            (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-replay-ready-next-token
+                            (st (fn-bpn-initial-machine-state
+                            (fn-bpn-machine-state-config st)
+                            (fn-bpn-machine-state-max-jobs st)
+                            (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-resolve-orphans-step-proposes-the-resolution
+                            (st (nth 1 (fn-bpn-replay-records (fn-bpn-initial-machine-state
+                            (fn-bpn-machine-state-config st)
+                            (fn-bpn-machine-state-max-jobs st)
+                            (fn-bpn-machine-state-max-octets st)) records)))))
+           :in-theory (e/d (fn-bpn-restart-step-of-ready-replay
+                            fn-bpn-answer-constructor-accessors)
+                           (fn-bpn-replay-records fn-bpn-find-attempting
+                            fn-bpn-resolution-record fn-bpn-machine-invariantp
+                            fn-bpn-machine-statep fn-bpn-resolve-orphans-step
+                            fn-bpn-initial-machine-state fn-bpn-restart-step
+                            fn-bpn-jobp fn-bpn-lifecycle-recordp
+                            fn-bpn-effectp fn-bpn-pendingp
+                            fn-bpn-maybe-pendingp fn-bpn-machine-boolp
+                            fn-bpn-machine-limitp fn-bpn-machine-u64p
+                            fn-bpn-job-listp fn-bpn-contact-listp
+                            fn-bpn-routep fn-bpn-job-statusp)))))
+
+; The keystone: the log the restart extends -- its replayed records, then the
+; resolution it proposes, then a later :attempting record for the same job --
+; replays :ready.  Without the resolution that last record is inapplicable
+; (see fn-bpn-attempt-after-orphan-attempt-is-inapplicable), which is what
+; fenced fnbs-or-base on the next restart.
+(defthm fn-bpn-restart-log-with-resolution-and-later-attempt-replays-ready
+  (implies
+   (and (fn-bpn-machine-invariantp st)
+        (true-listp records)
+        (< (len records) *fn-bpn-machine-max-records*)
+        (equal (car (fn-bpn-replay-records
+                     (fn-bpn-initial-machine-state
+                      (fn-bpn-machine-state-config st)
+                      (fn-bpn-machine-state-max-jobs st)
+                      (fn-bpn-machine-state-max-octets st))
+                     records))
+               :ready)
+        (fn-bpn-find-attempting
+         (fn-bpn-machine-state-jobs
+          (nth 1 (fn-bpn-replay-records
+                  (fn-bpn-initial-machine-state
+                   (fn-bpn-machine-state-config st)
+                   (fn-bpn-machine-state-max-jobs st)
+                   (fn-bpn-machine-state-max-octets st))
+                  records))))
+        (fn-bpn-lifecycle-recordp attempt)
+        (equal (fn-cbor-ag-car attempt) :attempting)
+        (equal (fn-bpn-record-key attempt)
+               (fn-bpn-job-key
+                (fn-bpn-find-attempting
+                 (fn-bpn-machine-state-jobs
+                  (nth 1 (fn-bpn-replay-records
+                          (fn-bpn-initial-machine-state
+                           (fn-bpn-machine-state-config st)
+                           (fn-bpn-machine-state-max-jobs st)
+                           (fn-bpn-machine-state-max-octets st))
+                          records))))))
+        (equal (fn-bpn-record-token attempt) (+ 1 (len records))))
+   (equal
+    (car (fn-bpn-replay-records
+          (fn-bpn-initial-machine-state
+           (fn-bpn-machine-state-config st)
+           (fn-bpn-machine-state-max-jobs st)
+           (fn-bpn-machine-state-max-octets st))
+          (append records
+                  (list (fn-bpn-resolution-record
+                         (len records)
+                         (fn-bpn-find-attempting
+                          (fn-bpn-machine-state-jobs
+                           (nth 1 (fn-bpn-replay-records
+                                   (fn-bpn-initial-machine-state
+                                    (fn-bpn-machine-state-config st)
+                                    (fn-bpn-machine-state-max-jobs st)
+                                    (fn-bpn-machine-state-max-octets st))
+                                   records)))))
+                        attempt))))
+    :ready))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-invariant-components)
+                 (:instance fn-bpn-machine-statep-components)
+                 (:instance fn-bpn-initial-machine-state-has-invariant
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-next-token-of-initial-machine-state
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-replay-records-preserves-machine-invariant
+                            (st (fn-bpn-initial-machine-state
+                                 (fn-bpn-machine-state-config st)
+                                 (fn-bpn-machine-state-max-jobs st)
+                                 (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-replay-ready-next-token
+                            (st (fn-bpn-initial-machine-state
+                                 (fn-bpn-machine-state-config st)
+                                 (fn-bpn-machine-state-max-jobs st)
+                                 (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-replay-records-of-append
+                            (st (fn-bpn-initial-machine-state
+                                 (fn-bpn-machine-state-config st)
+                                 (fn-bpn-machine-state-max-jobs st)
+                                 (fn-bpn-machine-state-max-octets st)))
+                            (first records)
+                            (second
+                             (list (fn-bpn-resolution-record
+                                    (len records)
+                                    (fn-bpn-find-attempting
+                                     (fn-bpn-machine-state-jobs
+                                      (nth 1 (fn-bpn-replay-records
+                                              (fn-bpn-initial-machine-state
+                                               (fn-bpn-machine-state-config st)
+                                               (fn-bpn-machine-state-max-jobs st)
+                                               (fn-bpn-machine-state-max-octets st))
+                                              records)))))
+                                   attempt)))
+                 (:instance fn-bpn-replay-of-resolution-then-attempt-is-ready
+                            (st (nth 1 (fn-bpn-replay-records
+                                        (fn-bpn-initial-machine-state
+                                         (fn-bpn-machine-state-config st)
+                                         (fn-bpn-machine-state-max-jobs st)
+                                         (fn-bpn-machine-state-max-octets st))
+                                        records)))))
+           :in-theory (e/d ()
+                           (fn-bpn-replay-records fn-bpn-find-attempting
+                            fn-bpn-resolution-record fn-bpn-machine-invariantp
+                            fn-bpn-machine-statep fn-bpn-resolve-orphans-step
+                            fn-bpn-initial-machine-state fn-bpn-restart-step
+                            fn-bpn-jobp fn-bpn-lifecycle-recordp
+                            fn-bpn-effectp fn-bpn-pendingp
+                            fn-bpn-maybe-pendingp fn-bpn-machine-boolp
+                            fn-bpn-machine-limitp fn-bpn-machine-u64p
+                            fn-bpn-job-listp fn-bpn-contact-listp
+                            fn-bpn-routep fn-bpn-job-statusp
+                            fn-bpn-replay-of-resolution-then-attempt-is-ready
+                            fn-bpn-replay-records-of-append
+                            fn-bpn-record-key fn-bpn-record-token
+                            fn-bpn-job-key)))))
+
+; While the resolution (or any proposal) is pending, no step proposes another
+; record: the machine's next durable record for the orphan is the resolution.
+(defthm fn-bpn-start-one-leaves-state-while-pending
+  (implies (fn-bpn-machine-state-pending st)
+           (and (equal (fn-bpn-answer-state (fn-bpn-start-one st peer)) st)
+                (equal (fn-bpn-answer-effects (fn-bpn-start-one st peer)) nil)))
+  :hints (("Goal" :in-theory (enable fn-bpn-start-one fn-bpn-answer-constructor-accessors))))
+
+(defthm fn-bpn-forward-result-step-leaves-state-while-pending
+  (implies (fn-bpn-machine-state-pending st)
+           (and (equal (fn-bpn-answer-state
+                        (fn-bpn-forward-result-step st key outcome))
+                       st)
+                (equal (fn-bpn-answer-effects
+                        (fn-bpn-forward-result-step st key outcome))
+                       nil)))
+  :hints (("Goal" :in-theory (enable fn-bpn-forward-result-step fn-bpn-answer-constructor-accessors))))
+
+(defthm fn-bpn-clock-step-leaves-state-while-pending
+  (implies (fn-bpn-machine-state-pending st)
+           (and (equal (fn-bpn-answer-state (fn-bpn-clock-step st obs)) st)
+                (equal (fn-bpn-answer-effects (fn-bpn-clock-step st obs)) nil)))
+  :hints (("Goal" :in-theory (enable fn-bpn-clock-step fn-bpn-answer-constructor-accessors))))
+
+(defthm fn-bpn-enqueue-step-leaves-state-while-pending
+  (implies (fn-bpn-machine-state-pending st)
+           (equal (fn-bpn-answer-state
+                   (fn-bpn-enqueue-step st work attempt generation sequence
+                                        route peer adu obs))
+                  st))
+  :hints (("Goal" :in-theory (enable fn-bpn-enqueue-step fn-bpn-answer-constructor-accessors))))

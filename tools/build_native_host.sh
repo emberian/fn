@@ -49,50 +49,7 @@ if [ "$WORLD" != "$DEFAULT_WORLD" ] && [ "$BUILD" = host/native/build.lisp ]; th
       developer) DEFAULT_IMAGE=build/fn-host-developer-stripped ;;
     esac
 fi
-# FN_NATIVE_CATALOG=paged (lane paged-catalog-3): the default build script
-# with its umbrella replaced by books/image-world-paged (tools/extract/world.py:
-# the same books with books/catalog-paged-attach right after the history's
-# attachment, itself after the arena's), so the catalog's rows live on typed columns and a byte pool.
-# The script itself is unchanged; the variant is written beside the log and
-# the image is named -paged.  Default: the old implementation (old).
-CATALOG="${FN_NATIVE_CATALOG:-old}"
-RUN_BUILD="$BUILD"
-case "$CATALOG" in
-  old)
-    case "$BUILD" in
-      */native-build-paged.lisp|native-build-paged.lisp)
-        echo "build_native_host: $BUILD is a paged build script; FN_NATIVE_CATALOG=old refuses it; use FN_NATIVE_CATALOG=paged with host/native/build.lisp" >&2; exit 2 ;;
-    esac
-    if grep -Fq '(include-book "books/image-world-paged")' "$BUILD"; then
-        echo "build_native_host: $BUILD includes books/image-world-paged; FN_NATIVE_CATALOG=old refuses it; use FN_NATIVE_CATALOG=paged with host/native/build.lisp" >&2; exit 2
-    fi ;;
-  paged)
-    if [ "$BUILD" != host/native/build.lisp ]; then
-        echo "build_native_host: FN_NATIVE_CATALOG=paged is the default build script's variant only" >&2; exit 2
-    fi
-    if ! grep -q '^(include-book "books/image-world")$' "$BUILD"; then
-        echo "build_native_host: $BUILD does not include books/image-world on a line of its own" >&2; exit 2
-    fi
-    mkdir -p build
-    RUN_BUILD=build/native-build-paged.lisp
-    sed 's|^(include-book "books/image-world")$|(include-book "books/image-world-paged")|' "$BUILD" > "$RUN_BUILD"
-    DEFAULT_IMAGE="$DEFAULT_IMAGE-paged" ;;
-  *) echo "build_native_host: FN_NATIVE_CATALOG must be old or paged" >&2; exit 2 ;;
-esac
 IMAGE="${FN_NATIVE_IMAGE:-$DEFAULT_IMAGE}"
-# The image's name says its catalog (Codex r21 F2): an inherited
-# FN_NATIVE_CATALOG=paged with an explicit FN_NATIVE_IMAGE built a paged core
-# under the old catalog's name, which image_set then linked as production.
-# A paged image's name ends in -paged and no other's does; the catalog is
-# also recorded beside the image ($IMAGE.catalog), which tools/image_set.py
-# publishes in the set's manifest and checks on link and link-run.
-case "$CATALOG:$IMAGE" in
-  paged:*-paged|old:*) ;;
-  paged:*) echo "build_native_host: FN_NATIVE_CATALOG=paged builds an image named *-paged; $IMAGE is not" >&2; exit 2 ;;
-esac
-case "$CATALOG:$IMAGE" in
-  old:*-paged) echo "build_native_host: $IMAGE is a paged image's name; set FN_NATIVE_CATALOG=paged" >&2; exit 2 ;;
-esac
 # TLS is the system's libssl (OpenSSL 3.0+ or LibreSSL 3+; tls.lisp checks
 # every function it calls at build and at start).  FN_OPENSSL_PREFIX is
 # optional: set, it names another matched libcrypto/libssl pair.
@@ -166,7 +123,7 @@ fi
 rc=0
 FN_NATIVE_PROFILE="$PROFILE" FN_NATIVE_IMAGE="$IMAGE" FN_NATIVE_WORLD="$WORLD" \
      ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
-     "$ACL2" < "$RUN_BUILD" > "$LOG" 2>&1 || rc=$?
+     "$ACL2" < "$BUILD" > "$LOG" 2>&1 || rc=$?
 if [ "$rc" -ne 0 ]; then
     echo "build_native_host: acl2 exited with status $rc; see $LOG" >&2
     openssl_hint
@@ -255,12 +212,15 @@ fi
 # The launcher ACL2's save-exec writes execs SBCL with --tls-limit 16384
 # (acl2-init.lisp hard-codes it).  The served world passed that limit at
 # load (batch AV, "Thread local storage exhausted"), so images build under
-# the 65536 wrapper (tools/hbox_native.sh); the saved launcher runs at the
-# same limit, or run time could exhaust what build time did not.  The
-# frozen launchers (packaging/freeze-native-image.sh) copy this exec line.
-# The limit is the profile's (books/profile-limits.lisp :tls-limit), which the
-# build prints (FN_NATIVE_TLS_LIMIT, as it prints the stack below);
-# FN_TLS_LIMIT still overrides it for an experiment.
+# the 65536 wrapper (tools/hbox_native.sh; books/profile-limits.lisp
+# :tls-limit); the saved launcher RUNS at the profile's :run-tls-limit
+# (20480: MEM-001 measured 16384 at -13 MB RSS end to end on the 14-thread
+# owner, every thread's storage being resident; 20480 keeps the image's own
+# TLS index under the 25% budget above), which the build prints
+# (FN_NATIVE_TLS_LIMIT, as it prints the stack below).  The TLS budget above
+# is held against that run limit.  The frozen launchers
+# (packaging/freeze-native-image.sh) copy this exec line.  FN_TLS_LIMIT
+# still overrides it for an experiment.
 BUILT_TLS_LIMIT=$(sed -n 's/.*FN_NATIVE_TLS_LIMIT \([0-9][0-9]*\).*/\1/p' "$LOG" | tail -1)
 if [ -z "$BUILT_TLS_LIMIT" ]; then
     echo "build_native_host: the build printed no FN_NATIVE_TLS_LIMIT; see $LOG" >&2
@@ -295,6 +255,40 @@ if [ -n "$STACK_KIB" ]; then
         echo "build_native_host: could not set the launcher's --control-stack-size" >&2; exit 1; }
     grep -q -- "--control-stack-size ${STACK_KIB}KB " "$IMAGE" || {
         echo "build_native_host: the launcher does not run at ${STACK_KIB} KiB of control stack" >&2; exit 1; }
+    # The heap (MEM-002).  ACL2's launcher passes --dynamic-space-size 32000
+    # whatever the store: a start that names no figure faults every core page
+    # and measured 259 MB RSS where the same start at 1068 MB is 34 MB
+    # (build/coordinator/MEMORY-20261006.md row 8).  The default is the small
+    # preset's figure, ACL2's own: the image's `operator CONFIG init' under
+    # the preset's fields (books/heap-figure.lisp *fn-heap-small-request*;
+    # tests/test_native_heap_from_profile.py SMALL_FLAGS) prints it as
+    # `reservation=MB', the figure packaging/fn's heap probe decides for that
+    # profile.  A larger store's start passes its own figure (the installed
+    # launcher, FN_TEST_HEAP_MB, SBCL_USER_ARGS: SBCL takes the last option).
+    # FN_NATIVE_DEFAULT_HEAP_MB overrides the probe for an experiment.
+    HEAP_MB=${FN_NATIVE_DEFAULT_HEAP_MB:-}
+    if [ -z "$HEAP_MB" ]; then
+        PROBE=$(mktemp -d "${TMPDIR:-/tmp}/fn-heap-probe.XXXXXX") || exit 1
+        printf '[store]\npath = "%s/store"\n' "$PROBE" > "$PROBE/fn.toml"
+        CORE_MB=$(( ($(wc -c < "$IMAGE.core") + 1048575) / 1048576 + 128 ))
+        PROBE_OUT=$(SBCL_USER_ARGS="--dynamic-space-size $CORE_MB" "$IMAGE" --fn operator "$PROBE/fn.toml" init \
+            --profile development --max-transactions 16384 --max-history-octets 8388608 \
+            --max-record-octets 196608 --max-groups-per-article 16 --max-open-suffix 128 \
+            local.test 2>&1) || { echo "build_native_host: the heap probe (init, small preset) failed: $PROBE_OUT" >&2
+                                  rm -rf "$PROBE"; exit 1; }
+        rm -rf "$PROBE"
+        HEAP_MB=$(printf '%s\n' "$PROBE_OUT" | sed -n 's/^init: .* reservation=\([0-9][0-9]*\) MB .*/\1/p' | tail -1)
+    fi
+    case $HEAP_MB in
+        ''|*[!0-9]*) echo "build_native_host: the heap probe printed no reservation: ${PROBE_OUT:-}" >&2; exit 1 ;;
+    esac
+    grep -q -- '--dynamic-space-size 32000 ' "$IMAGE" || {
+        echo "build_native_host: the launcher $IMAGE names no --dynamic-space-size 32000; see $LOG" >&2; exit 1; }
+    sed "s/--dynamic-space-size 32000 /--dynamic-space-size $HEAP_MB /" "$IMAGE" > "$IMAGE.heap" && \
+        chmod 755 "$IMAGE.heap" && mv "$IMAGE.heap" "$IMAGE" || {
+        echo "build_native_host: could not set the launcher's --dynamic-space-size" >&2; exit 1; }
+    grep -q -- "--dynamic-space-size $HEAP_MB " "$IMAGE" || {
+        echo "build_native_host: the launcher does not run at $HEAP_MB MB of heap" >&2; exit 1; }
 else
     case "$BUILD" in
         host/native/build.lisp|host/native/build-dtn.lisp)
@@ -302,6 +296,6 @@ else
     esac
     echo "build_native_host: $BUILD prints no stack figure; the launcher keeps ACL2's 64 MiB (not a served image)" >&2
 fi
-echo "$CATALOG" > "$IMAGE.catalog"
+echo paged > "$IMAGE.catalog"
 echo "$SOURCE_RECORD" > "$IMAGE.source"
-echo "built $IMAGE profile=$PROFILE world=$WORLD catalog=$CATALOG source=$SOURCE_RECORD ($(du -h "$IMAGE.core" | cut -f1) core)"
+echo "built $IMAGE profile=$PROFILE world=$WORLD catalog=paged source=$SOURCE_RECORD ($(du -h "$IMAGE.core" | cut -f1) core)"

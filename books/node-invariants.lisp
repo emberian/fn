@@ -225,3 +225,9 @@
     fn-node-pending-message-is-new
     fn-node-find-binding-absent))
 (in-theory (disable fn-node-invariants-vocabulary))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-member-of-subset
+                    fn-not-member-of-subset))

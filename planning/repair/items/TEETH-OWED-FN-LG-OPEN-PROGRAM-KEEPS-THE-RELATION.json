@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-lg-open-program-keeps-the-relation; books/store-log-route-programs.lisp:86; statement: (implies (fn-lgk-relp bs ks ino genesis max) (fn-lg-all-relp (fn-lg-run bs ks (fn-lg-open-program) nil ino) ino genesis max)); owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/store-log-route-programs.lisp",
+ "id": "TEETH-OWED-FN-LG-OPEN-PROGRAM-KEEPS-THE-RELATION",
+ "keystone": "fn-lg-open-program-keeps-the-relation",
+ "line": 86,
+ "notes": [],
+ "owner": "log-2",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-lg-open-program-keeps-the-relation is a new registry keystone with no generated teeth: declare (defteeth fn-lg-open-program-keeps-the-relation ...) in a tests/acl2 book",
+ "updated": "2026-10-07T16:49:45Z"
+}

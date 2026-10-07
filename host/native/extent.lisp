@@ -68,15 +68,20 @@ Missing wait/pin/other owner edges leave full PageIO replay unavailable."
                (fnn-native-observation-reason *fnn-native-observer*) :observer-fault)))))
 
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "fn extent realizer"))
-(defvar *fnn-extent-fds* (make-hash-table))   ; guarded-by: *fnn-extent-lock* (file id -> fd)
-(defvar *fnn-extent-paths* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> path)
+(defvar *fnn-extent-fds* (make-hash-table))   ; (file id -> fd)
+(fnn-guarded-by *fnn-extent-fds* *fnn-extent-lock*)
+(defvar *fnn-extent-paths* (make-hash-table)) ; (file id -> path)
+(fnn-guarded-by *fnn-extent-paths* *fnn-extent-lock*)
 (defvar *fnn-extent-incarnations* (make-hash-table))
-;; guarded-by: *fnn-extent-lock* (file id -> (device . inode) of the file opened)
-(defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
+(fnn-guarded-by *fnn-extent-incarnations* *fnn-extent-lock*)
+;; (file id -> (device . inode) of the file opened)
+(defvar *fnn-extent-bases* (make-hash-table)) ; (file id -> page 0's offset)
+(fnn-guarded-by *fnn-extent-bases* *fnn-extent-lock*)
 (defvar *fnn-extent-next-id* nil)
 (defvar *fnn-extent-cache* nil)
 (defvar *fnn-extent-cache-tokens* (make-hash-table :test #'eq))
-;; guarded-by: *fnn-extent-lock* (every reader and writer: fnn-extent-cache-
+(fnn-guarded-by *fnn-extent-cache-tokens* *fnn-extent-lock*)
+;; (every reader and writer: fnn-extent-cache-
 ;; forget/-store, both "Extent lock held", and the pool install under it).
 ;; Verified vector -> immutable charged token. Capacity is a static pool
 ;; allowance, not a per-entry credit that eviction pretends to reclaim.
@@ -84,14 +89,16 @@ Missing wait/pin/other owner edges leave full PageIO replay unavailable."
 ;; entries, each under the descriptor identity it was verified for
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
 (defvar *fnn-extent-issued* nil)
-;; guarded-by: *fnn-extent-lock*.  ACL2's issued table (books/page-read-direct.lisp
+(fnn-guarded-by *fnn-extent-issued* *fnn-extent-lock*)
+;; ACL2's issued table (books/page-read-direct.lisp
 ;; fn-pio-issuedp: an alist TOKEN -> ownership row, PRF-1057), kept exactly as
 ;; ACL2 returns it and written only through its helpers (fn-pio-issued-put /
 ;; -remove, fn-pio-direct-admit / -cancel / -settle); at most the worker count
 ;; long.  A row is removed only by actual worker completion, never a request's
 ;; timeout.
 (defvar *fnn-extent-file-holds* nil)
-;; guarded-by: *fnn-extent-lock*.  ACL2's holds table (def-holder fn-pio-file-holds,
+(fnn-guarded-by *fnn-extent-file-holds* *fnn-extent-lock*)
+;; ACL2's holds table (def-holder fn-pio-file-holds,
 ;; books/page-read-direct.lisp): per file incarnation the tokens of the direct
 ;; reads that pin it; fnn-extent-close asks fn-pio-direct-quiet-p of it (one
 ;; lookup) instead of walking the issued rows (KEYSTONE
@@ -220,7 +227,11 @@ device.  While the named file exists a pread does not return, as a read from
 a device under maintenance does not (tests/test_native_slow_disk.py).  Every
 physical payload pread passes here: the whole-extent realizer's
 (fnn-extent-pread) and the window workers' (fnn-extent-window-pread, raw and
-decoded), always off the owner and extent locks."
+decoded).  The cold reads (the served line's and the peer feed reply's, both
+issued under the owner mutex and read by a worker: fnn-extent-prefetch) and
+the window workers' hold neither lock.  The synchronous realizer miss
+(fnn-extent-entry-direct, reached with *fnn-extent-no-io* unbound) does hold
+both (e.g. the history refresh, LOCK-R2-PGS-FILL-REALIZE-REENTRY)."
   (let ((stall (fnn-developer-selector "FN_NATIVE_TEST_READ_STALL_FILE")))
     (when (and stall (plusp (length stall)))
       (loop while (probe-file stall) do (sleep 0.05)))))
@@ -512,8 +523,17 @@ a job that signalled, cancelled or not.  Nothing here settles or signals."
 ;;; is what the scalar borrow of its own coordinate answers; a span refuses
 ;;; wherever the scalar does); the host only chooses where a span starts and
 ;;; ends, and when ACL2 refuses it asks the scalar exactly as before.
-(defstruct (fnn-window-span (:constructor make-fnn-window-span (token key base len dst)))
-  token key base len dst)
+(defstruct (fnn-window-span (:constructor make-fnn-window-span (token key base len dst &optional below)))
+  token key base len dst
+  ;; BELOW: the window's start when ACL2's scalar borrow refused a coordinate
+  ;; below it (:unavailable); every coordinate below the start is then that
+  ;; same refusal (fn-owner-page-window-byte-at-below-the-window-is-one-word,
+  ;; books/page-window-span.lisp fn-pwr-byte-at-below-the-window-is-the-outcome),
+  ;; so the arena's walk of the earlier octets, served by the verified-window
+  ;; cache while a later window is the borrowed one, asks ACL2 once, not per
+  ;; octet.  Cleared with the span, and by the job's cancellation (a
+  ;; cancelled job answers :cancelled, not :unavailable).
+  below)
 
 (defconstant +fnn-extent-span-capacity+ 16384)
 
@@ -549,6 +569,12 @@ I, else borrow a span from I and read it, else the scalar borrow."
         (key (list file eoff elen poff plen trailer)))
     (when (and span (eq (fnn-window-span-token span) token)
                (eq (fnn-cold-worker-phase worker) :returned)
+               (fnn-window-span-below span)
+               (< i (fnn-window-span-below span))
+               (equal (fnn-window-span-key span) key))
+      (return-from fnn-extent-window-span-octet (values :unavailable nil)))
+    (when (and span (eq (fnn-window-span-token span) token)
+               (eq (fnn-cold-worker-phase worker) :returned)
                (<= (fnn-window-span-base span) i)
                (< i (+ (fnn-window-span-base span) (fnn-window-span-len span)))
                (equal (fnn-window-span-key span) key))
@@ -562,7 +588,15 @@ I, else borrow a span from I and read it, else the scalar borrow."
             (progn
               (setf (fnn-cold-worker-span worker) (make-fnn-window-span token key i (- j i) dst))
               (values :byte (fn-ew-span-bytesi 0 dst)))
-            (fnn-extent-window-byte-at worker token file eoff elen poff plen trailer i))))))
+            (multiple-value-bind (word byte)
+                (fnn-extent-window-byte-at worker token file eoff elen poff plen trailer i)
+              (when (and (eq word :unavailable) (integerp (eighth token)) (< i (eighth token)))
+                (if (and span (eq (fnn-window-span-token span) token)
+                         (equal (fnn-window-span-key span) key))
+                    (setf (fnn-window-span-below span) (eighth token))
+                  (setf (fnn-cold-worker-span worker)
+                        (make-fnn-window-span token key 0 0 dst (eighth token)))))
+              (values word byte)))))))
 
 (defvar *fnn-extent-window-mode* nil)
 (defvar *fnn-extent-window-worker* nil)
@@ -621,7 +655,9 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ;;; quanta are shaped to); the oldest is evicted, and its exact :cached row
 ;;; released (fn-prl-evict), on insertion and when its file retires
 ;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW).
-(defvar *fnn-extent-window-cache* nil) ; guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-window-cache* nil)
+(fnn-guarded-by *fnn-extent-window-cache* *fnn-extent-lock*)
+(defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
 
 (defun fnn-extent-window-cache-insert (token plan window)
   "Extent lock held, the :cached row already ACL2's.  Front insertion; the
@@ -633,8 +669,10 @@ tokens of the entries evicted past the bound (the caller releases them)."
         (setq *fnn-extent-window-cache* (subseq *fnn-extent-window-cache* 0 limit))
         evicted))))
 
-(defvar *fnn-extent-cache-span* nil)  ; (entry key base len), guarded-by: *fnn-extent-lock*
-(defvar *fnn-extent-cache-span-dst* nil) ; the span's one buffer, guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-cache-span* nil)  ; (entry key base len)
+(fnn-guarded-by *fnn-extent-cache-span* *fnn-extent-lock*)
+(defvar *fnn-extent-cache-span-dst* nil) ; the span's one buffer
+(fnn-guarded-by *fnn-extent-cache-span-dst* *fnn-extent-lock*)
 
 (defun fnn-extent-window-cache-byte (file eoff elen poff plen trailer i)
   "A cached window's payload byte I of this exact descriptor, or NIL.  The
@@ -764,6 +802,8 @@ the job is released.  Values :released (or a stale word) and whether cached."
                                 (fnn-cold-worker-row worker) token)
       (declare (ignore ignored))
       (when (eq word :cancelled) (setf (fnn-cold-worker-row worker) row))
+      (when (and (eq word :cancelled) (fnn-cold-worker-span worker))
+        (setf (fnn-window-span-below (fnn-cold-worker-span worker)) nil))
       (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
         (let ((*print-pretty* nil))
           (if (fn-pwz-tokenp token)
@@ -1493,7 +1533,8 @@ only observed worker relinquishment allows owner settlement/publication."
 ;;; count is ACL2's (fn-pio-direct-workers, a profile-limits row the
 ;;; launcher's thread reservation counts).
 (defvar *fnn-extent-direct-next* nil)
-;; guarded-by: *fnn-extent-lock* (the direct read counter, advanced only by
+(fnn-guarded-by *fnn-extent-direct-next* *fnn-extent-lock*)
+;; (the direct read counter, advanced only by
 ;; fn-pio-direct-admit)
 
 (defun fnn-extent-direct-start ()
@@ -1623,7 +1664,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;;; that reads octet by octet (fn-arena$x-get) decodes once; the key is the
 ;;; whole descriptor identity (file, entry, expected trailer, block, length)
 ;;; and the dictionary's identity (EQ: one shared list per dictionary).
-(defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
+;;; (*fnn-extent-lz-last*, the one decoded payload kept, is declared with the other extent caches.)
 
 (defun fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
   (when *fnn-extent-window-mode*
@@ -1669,7 +1710,8 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;;; one caller, fn-arena$x-get (books/payload-arena-extent.lisp), has that
 ;;; guard.  RULING 1 (2026-10-06, RULINGS-20261006.md) authorises this edit to
 ;;; a forbidden-zone file.
-(defvar *fnn-extent-lz-buffer-key* nil)       ; (key . dict) fn-dlz holds, guarded-by: *fnn-extent-lock*
+(defvar *fnn-extent-lz-buffer-key* nil)       ; (key . dict) fn-dlz holds
+(fnn-guarded-by *fnn-extent-lz-buffer-key* *fnn-extent-lock*)
 (defvar *fnn-dlz* nil)
 
 (defun fnn-live-dlz ()
@@ -1780,21 +1822,31 @@ Anything but :stale removes the row (the file pin) and idles the worker."
     (error 'fnn-extent-fault
            :message (format nil "history-page-read: frame ~a at word ~a is outside the page store"
                             sel base)))
-  (multiple-value-bind (fd base-off)
-      (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-        (values (gethash file *fnn-extent-fds*) (gethash file *fnn-extent-bases* 0)))
-    (unless (and fd (integerp addr) (<= 0 addr))
-      (error 'fnn-extent-fault
-             :message (format nil "history-page-read: no page file ~a (page ~a)" file addr)))
-    (let* ((st (fnn-live-pgb))
-           (got (fnn-extent-pread fd (svref st 0) (+ base-off (* addr 16384)))))
-      (unless (= got 16384)
-        (let ((path (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-                      (gethash file *fnn-extent-paths*))))
-          (error 'fnn-extent-fault
-                 :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
-                                  addr path got))))
-      (fn-pgb-frame-put sel base st pgs-mem))))
+  (let ((st (fnn-live-pgb)))
+    ;; R3: the pread runs inside the extent-lock region that looked up its
+    ;; descriptor, so a page file closed or replaced under the lock cannot
+    ;; hand this read a descriptor number the kernel has reused.  A caller
+    ;; already inside the extent lock (the limit and live reconfiguration
+    ;; quanta reach this through ACL2's history refresh) reads under its own
+    ;; hold: with-mutex is not recursive.  The short-read fault names the
+    ;; path from the same region, for the same reason.
+    (flet ((read-page ()
+             (let ((fd (gethash file *fnn-extent-fds*))
+                   (base-off (gethash file *fnn-extent-bases* 0)))
+               (unless (and fd (integerp addr) (<= 0 addr))
+                 (error 'fnn-extent-fault
+                        :message (format nil "history-page-read: no page file ~a (page ~a)"
+                                         file addr)))
+               (let ((got (fnn-extent-pread fd (svref st 0) (+ base-off (* addr 16384)))))
+                 (unless (= got 16384)
+                   (error 'fnn-extent-fault
+                          :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
+                                           addr (gethash file *fnn-extent-paths*) got)))))))
+      (if (sb-thread:holding-mutex-p *fnn-extent-lock*)
+          (read-page)
+        (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+          (read-page))))
+    (fn-pgb-frame-put sel base st pgs-mem)))
 
 (defun acl2_*1*_acl2::fn-pgs-fill-frame (file addr sel base pgs-mem)
   (fn-pgs-fill-frame file addr sel base pgs-mem))
@@ -1814,21 +1866,17 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;;; drives it.
 
 (defvar *fnn-extent-retired* nil)
-;; guarded-by: the owner mutex (file ids not yet found quiet)
+(fnn-guarded-by *fnn-extent-retired* (fnn-owner-service-lock))
+;; (file ids not yet found quiet)
 (defvar *fnn-extent-pending* nil)
-;; guarded-by: the owner mutex ((S . IDS) ...: quiet file ids waiting for
+(fnn-guarded-by *fnn-extent-pending* (fnn-owner-service-lock))
+;; ((S . IDS) ...: quiet file ids waiting for
 ;; the readers pinned at or below the stamp S)
 (defvar *fnn-extent-checkpoint-id* nil)
-(defvar *fnn-extent-image-id* nil
-  "The file id the history image was registered under at the open
-(host/native/io.lisp fnn-state-checkpoint-adopt-image, fnn-extent-register-at):
-fn-pgs-fill-frame preads it OFF the extent lock for the process's life, so
-it is never retired -- a CHECKED exclusion (fnn-owner-release-extents faults
-by name if it ever enters the retired set), the file resource's :excluded
-root history-image (books/page-read-direct.lisp, def-holder fn-pio-file-holds;
-c05 finding F1).")
-;; guarded-by: the owner mutex (the realizer id of the installed checkpoint
+(fnn-guarded-by *fnn-extent-checkpoint-id* (fnn-owner-service-lock))
+;; (the realizer id of the installed checkpoint
 ;; the last reseat pointed payloads at)
+;; *fnn-extent-image-id* is declared in host/native/io.lisp, which sets it first and loads before this file.
 
 (defun fnn-extent-ids-of-paths (paths)
   "The registered file ids whose path is one of PATHS."

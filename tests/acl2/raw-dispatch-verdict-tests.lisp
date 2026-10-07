@@ -1,0 +1,319 @@
+; Teeth for books/raw-dispatch-verdict.lisp (D40 verdicts judged in the
+; world; lane extract, 2026-10-05).
+;
+;   1. A world with a raw-declared entry definterface accepts, a registered
+;      creator, and a raw row written into fn-interfaces past definterface
+;      that the world refutes (a row judged problematic).
+;   2. The verdicts: one per raw-declared row, the refuted one carrying its
+;      problem and no target, the creator its role.  The table takes exactly
+;      the world's judgment; a forged clean verdict for the refuted row, a
+;      verdict for an entry that is not raw-declared and a verdict with a
+;      different digest are each refused by the table's guard, alone or in
+;      a :clear.
+;   3. Admission (fn-rdv-admit), as fnn-install-raw-dispatch asks it: the
+;      clean row admitted with its judged target; the refuted row refused;
+;      a row whose digest differs from the judged one refused; an unjudged
+;      name refused.  The keystone's premise is inhabited (the clean row)
+;      and each of its conclusions fails without the premise.
+
+(in-package "ACL2")
+(include-book "../../books/raw-dispatch-verdict")
+(include-book "../../books/payload-kinds") ; *fn-entry-guard-kinds*
+(include-book "../../books/defkeystone")
+(include-book "must-fail-checked")
+
+; ---------------------------------------------------------------------------
+; 1. The world.
+
+(defstobj fn-rdvt-st (fn-rdvt-fld :type integer :initially 1))
+
+(defun fn-rdvt-positivep (fn-rdvt-st)
+  (declare (xargs :stobjs fn-rdvt-st))
+  (< 0 (fn-rdvt-fld fn-rdvt-st)))
+
+(defun fn-rdvt-r (n fn-rdvt-st)
+  (declare (xargs :stobjs fn-rdvt-st
+                  :guard (and (natp n) (fn-rdvt-positivep fn-rdvt-st))))
+  (update-fn-rdvt-fld (+ n (fn-rdvt-fld fn-rdvt-st)) fn-rdvt-st))
+
+(defthm fn-rdvt-positive-is-positive
+  (implies (fn-rdvt-positivep fn-rdvt-st)
+           (fn-rdvt-positivep fn-rdvt-st)))
+
+(defthm fn-rdvt-r-keeps-positive
+  (implies (and (natp n) (fn-rdvt-positivep fn-rdvt-st))
+           (fn-rdvt-positivep (fn-rdvt-r n fn-rdvt-st))))
+
+(defthm fn-rdvt-unrelated
+  (equal (len (list x)) 1))
+
+(definterface fn-rdvt-r
+  :class :common-lisp-compliant
+  :kinds ((n natp))
+  :raw-with (fn-rdvt-positive-is-positive fn-rdvt-r-keeps-positive))
+
+(definterface create-fn-rdvt-st
+  :class :common-lisp-compliant
+  :raw-guarded (0 nil (fn-rdvt-st)))
+
+; definterface refuses this row ...
+(defun fn-rdvt-bad (n fn-rdvt-st)
+  (declare (xargs :stobjs fn-rdvt-st
+                  :guard (and (natp n) (fn-rdvt-positivep fn-rdvt-st))))
+  (update-fn-rdvt-fld (+ n (fn-rdvt-fld fn-rdvt-st)) fn-rdvt-st))
+
+(defconst *fn-rdvt-bad-kvs*
+  '(:class :common-lisp-compliant :kinds ((n natp)) :raw-with (fn-rdvt-unrelated)))
+
+(must-fail-checked
+ (definterface fn-rdvt-bad :class :common-lisp-compliant :kinds ((n natp))
+   :raw-with (fn-rdvt-unrelated))
+ :unchecked "definterface refuses a :raw-with whose theorem concludes nothing")
+
+; ... and here it is in the table anyway: what the install's re-check exists
+; for (a row written past definterface, or one a later event made false).
+(table fn-interfaces 'fn-rdvt-bad *fn-rdvt-bad-kvs*)
+
+; a declared entry that is not raw-dispatched gets no verdict
+(definterface fn-rdvt-positivep :class :common-lisp-compliant)
+
+; ---------------------------------------------------------------------------
+; 2. The verdicts.
+
+(defconst *fn-rdvt-r-kvs*
+  '(:class :common-lisp-compliant :kinds ((n natp))
+    :raw-with (fn-rdvt-positive-is-positive fn-rdvt-r-keeps-positive)))
+
+(assert-event
+ (equal (strip-cars (fn-rdv-verdicts (table-alist 'fn-interfaces (w state)) (w state)))
+        ; the table's newest first
+        '(fn-rdvt-bad create-fn-rdvt-st fn-rdvt-r)))
+
+(assert-event
+ (let ((v (fn-rdv-judge 'fn-rdvt-r *fn-rdvt-r-kvs* (w state))))
+   (and (equal (fn-rdv-verdict-digest v)
+               (fn-rdv-row-digest 'fn-rdvt-r *fn-rdvt-r-kvs* (w state)))
+        (equal (len (fn-rdv-verdict-digest v)) 32)
+        (null (fn-rdv-verdict-problem v))
+        (eq (fn-rdv-verdict-target v) 'fn-rdvt-r)
+        (null (fn-rdv-verdict-creatorp v)))))
+
+(assert-event
+ (let ((v (fn-rdv-judge 'fn-rdvt-bad *fn-rdvt-bad-kvs* (w state))))
+   (and (fn-rdv-verdict-problem v)
+        (search "refused declaration" (car (fn-rdv-verdict-problem v)))
+        (null (fn-rdv-verdict-target v))
+        (null (fn-rdv-verdict-creatorp v)))))
+
+(assert-event
+ (let ((v (fn-rdv-judge 'create-fn-rdvt-st
+                        (cdr (assoc-eq 'create-fn-rdvt-st (table-alist 'fn-interfaces (w state))))
+                        (w state))))
+   (and (null (fn-rdv-verdict-problem v))
+        (eq (fn-rdv-verdict-target v) 'create-fn-rdvt-st)
+        (eq (fn-rdv-verdict-creatorp v) t))))
+
+; The digest is of the judged row: another declaration of the same entry is
+; another digest.
+(assert-event
+ (not (equal (fn-rdv-row-digest 'fn-rdvt-r *fn-rdvt-r-kvs* (w state))
+             (fn-rdv-row-digest 'fn-rdvt-r
+                                '(:class :common-lisp-compliant :kinds ((n natp))
+                                  :raw-with (fn-rdvt-r-keeps-positive))
+                                (w state)))))
+
+; The guard refuses a forged verdict: the refuted row judged clean ...
+(must-fail-checked
+ (make-event
+  `(table fn-raw-dispatch-verdicts 'fn-rdvt-bad
+          '(,(fn-rdv-row-digest 'fn-rdvt-bad *fn-rdvt-bad-kvs* (w state)) nil fn-rdvt-bad nil)))
+ :unchecked "the table guard refuses a verdict the world does not give")
+; ... a verdict for a declared entry that is not raw-dispatched ...
+(must-fail-checked
+ (make-event
+  `(table fn-raw-dispatch-verdicts 'fn-rdvt-positivep
+          '(,(fn-rdv-row-digest 'fn-rdvt-positivep '(:class :common-lisp-compliant) (w state))
+            nil fn-rdvt-positivep nil)))
+ :unchecked "the table guard refuses a verdict on an entry with no raw declaration")
+; ... and the clean row's verdict over another digest.
+(must-fail-checked
+ (table fn-raw-dispatch-verdicts 'fn-rdvt-r '((1 2 3) nil fn-rdvt-r nil))
+ :unchecked "the table guard refuses a verdict over a row it did not judge")
+
+; ... and a whole table with any forged pair (the guard reads each pair of
+; a :clear too).  A table that OMITS a raw row is the unjudged case of 3.
+(must-fail-checked
+ (table fn-raw-dispatch-verdicts nil '((fn-rdvt-r (1) nil fn-rdvt-r nil)) :clear)
+ :unchecked "the table guard reads every pair of a :clear")
+
+; The world's judgment is accepted whole (host/raw-dispatch-verdicts.lisp's
+; event).
+(make-event
+ `(table fn-raw-dispatch-verdicts nil
+         ',(fn-rdv-verdicts (table-alist 'fn-interfaces (w state)) (w state))
+         :clear))
+
+(assert-event
+ (equal (fn-rdv-refused-names (table-alist 'fn-raw-dispatch-verdicts (w state)))
+        '(fn-rdvt-bad)))
+
+; ---------------------------------------------------------------------------
+; 3. Admission.
+
+(defun fn-rdvt-admit (name kvs state)
+  (declare (xargs :mode :program :stobjs state))
+  ; fnn-install-raw-dispatch's question, over this world
+  (mv-let (problem target creatorp)
+    (fn-rdv-admit name (fn-rdv-row-digest name kvs (w state))
+                  (table-alist 'fn-raw-dispatch-verdicts (w state)))
+    (list problem target creatorp)))
+
+; the clean row: admitted, with its judged target
+(assert-event (equal (fn-rdvt-admit 'fn-rdvt-r *fn-rdvt-r-kvs* state)
+                     '(nil fn-rdvt-r nil)))
+(assert-event (equal (fn-rdvt-admit 'create-fn-rdvt-st '(:class :common-lisp-compliant
+                                                       :raw-guarded (0 nil (fn-rdvt-st)))
+                                    state)
+                     '(nil create-fn-rdvt-st t)))
+; the row judged problematic: refused, by name, with the judged problem
+(assert-event
+ (let ((r (fn-rdvt-admit 'fn-rdvt-bad *fn-rdvt-bad-kvs* state)))
+   (and (car r) (null (cadr r))
+        (search "was judged refused" (car (car r))))))
+; the clean entry under a row it was not judged on: refused
+(assert-event
+ (let ((r (fn-rdvt-admit 'fn-rdvt-r '(:class :common-lisp-compliant :kinds ((n natp))
+                                      :raw-with (fn-rdvt-r-keeps-positive))
+                         state)))
+   (and (car r) (null (cadr r))
+        (search "is not the row its verdict judged" (car (car r))))))
+; a name never judged: refused
+(assert-event
+ (let ((r (fn-rdvt-admit 'fn-rdvt-positivep '(:class :common-lisp-compliant :raw-with (x))
+                         state)))
+   (and (car r) (search "no raw-dispatch verdict" (car (car r))))))
+; no digest at all (a row the host could not read) admits nothing, even
+; against a verdict whose digest is also absent
+(assert-event (mv-let (p tg c) (fn-rdv-admit 'x nil '((x nil nil x nil)))
+                (declare (ignore tg c))
+                p))
+
+; The keystone's premise is inhabited ...
+(assert-event (mv-let (p tg c) (fn-rdv-admit 'x '(1) '((x (1) nil x nil)))
+                (declare (ignore c))
+                (and (null p) (eq tg 'x))))
+; ... and each of its conclusions fails without it.
+(must-fail-checked (thm (fn-rdv-lookup name verdicts)))
+(must-fail-checked (thm (consp digest)))
+(must-fail-checked
+ (thm (equal (fn-rdv-verdict-digest (cdr (fn-rdv-lookup name verdicts))) digest)))
+(must-fail-checked
+ (thm (not (fn-rdv-verdict-problem (cdr (fn-rdv-lookup name verdicts))))))
+
+; ---------------------------------------------------------------------------
+; 4. The teeth of the two keystones (GEN: defteeth).  The subject is the
+; admission the host calls (host/native/raw-trap.lisp fnn-install-raw-dispatch,
+; in the image and the extracted core alike); each mutation names the check
+; of fn-rdv-admit whose deletion it models, witnessed at a clean admission.
+
+(defteeth fn-rdv-admits-only-a-clean-judged-row
+  :claim (((clean (not (mv-nth 0 (fn-rdv-admit name digest verdicts)))))
+          (let ((v (cdr (fn-rdv-lookup name verdicts))))
+            (and (fn-rdv-lookup name verdicts)
+                 (consp digest)
+                 (equal (fn-rdv-verdict-digest v) digest)
+                 (not (fn-rdv-verdict-problem v)))))
+  :subject fn-rdv-admit
+  :witness ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+  :breaks ((clean ((name 'x) (digest '(1)) (verdicts '((x (2) nil x nil))))))
+  :mutations ((unjudged-row
+               (:conclusion (not (mv-nth 0 (fn-rdv-admit name digest nil))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+               :fault "an admit that dispatches a row no verdict judged")
+              (unread-row
+               (:conclusion (not (mv-nth 0 (fn-rdv-admit name nil verdicts))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+               :fault "an admit that takes a row it could not read (no digest) dispatches it raw")
+              (digest-unchecked
+               (:conclusion (not (mv-nth 0 (fn-rdv-admit name (append digest '(0)) verdicts))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+               :fault "an admit that skips the digest comparison dispatches a row changed since its verdict")
+              (problem-ignored
+               (:conclusion (not (mv-nth 0 (fn-rdv-admit
+                                            name digest
+                                            (cons (list name digest t name nil) verdicts)))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil x nil))))
+               :fault "an admit that ignores the judged problem dispatches a refused row"))
+  :must-fail t)
+
+(defteeth fn-rdv-admit-returns-the-judged-target
+  :claim (((clean (not (mv-nth 0 (fn-rdv-admit name digest verdicts)))))
+          (and (equal (mv-nth 1 (fn-rdv-admit name digest verdicts))
+                      (fn-rdv-verdict-target (cdr (fn-rdv-lookup name verdicts))))
+               (equal (mv-nth 2 (fn-rdv-admit name digest verdicts))
+                      (fn-rdv-verdict-creatorp (cdr (fn-rdv-lookup name verdicts))))))
+  :subject fn-rdv-admit
+  :witness ((name 'x) (digest '(1)) (verdicts '((x (1) nil other nil))))
+  :breaks ((clean ((name 'x) (digest '(1)) (verdicts '((x (2) nil other nil))))))
+  :mutations ((judged-target-ignored
+               (:conclusion (equal name
+                                   (fn-rdv-verdict-target
+                                    (cdr (fn-rdv-lookup name verdicts)))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil other nil))))
+               :fault "an admit that returns the row's own name instead of the judged target applies the wrong raw function")
+              (judged-role-ignored
+               (:conclusion (equal t
+                                   (fn-rdv-verdict-creatorp
+                                    (cdr (fn-rdv-lookup name verdicts)))))
+               ((name 'x) (digest '(1)) (verdicts '((x (1) nil other nil))))
+               :fault "an admit that grants the registered creator role to every admitted row traps the wrong dispatch"))
+  :must-fail t)
+
+; X3: carried tables.  The load-side check names a dropped table and an
+; edited, added or missing row.
+
+(defconst *rdv-carried-digests* (fn-rdv-table-digests 'tt '((a . 1) (b . 2))))
+(defconst *rdv-manifest* (list (cons 'tt *rdv-carried-digests*)))
+
+(assert-event (not (fn-rdv-carried-problem *rdv-manifest* (list (cons 'tt '((a . 1) (b . 2)))))))
+; a table the core did not carry: refused by its name
+(assert-event (equal (fn-rdv-carried-problem *rdv-manifest* nil) '(:table-missing tt)))
+; one edited row: refused by table and key
+(assert-event (equal (fn-rdv-carried-problem *rdv-manifest* (list (cons 'tt '((a . 1) (b . 3)))))
+                     '(:row-changed tt b)))
+(assert-event (equal (fn-rdv-carried-problem *rdv-manifest* (list (cons 'tt '((a . 1)))))
+                     '(:row-missing tt b)))
+(assert-event (equal (fn-rdv-carried-problem *rdv-manifest* (list (cons 'tt '((a . 1) (b . 2) (c . 3)))))
+                     '(:row-added tt c)))
+; the second table of a manifest is checked too
+(assert-event (equal (fn-rdv-carried-problem
+                      (append *rdv-manifest* (list (cons 'uu (fn-rdv-table-digests 'uu '((k . v))))))
+                      (list (cons 'tt '((a . 1) (b . 2)))))
+                     '(:table-missing uu)))
+
+(defteeth fn-rdv-table-verified-only-if-it-is-the-digested-table
+  :claim (((clean (not (fn-rdv-table-problem table carried alist))))
+          (equal carried (fn-rdv-table-digests table alist)))
+  :subject fn-rdv-table-problem
+  :witness ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 1)))))
+  :breaks ((clean ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 2)))))))
+  :mutations ((row-changed
+               (:conclusion (not (fn-rdv-table-problem table carried '((a . 2)))))
+               ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 1)))))
+               :fault "a check that passes a row edited after its digest was taken")
+              (row-added
+               (:conclusion (not (fn-rdv-table-problem table carried '((a . 1) (b . 2)))))
+               ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 1)))))
+               :fault "a check that passes a table with a row the world never digested")
+              (row-dropped
+               (:conclusion (not (fn-rdv-table-problem
+                                  table (fn-rdv-table-digests 'tt '((a . 1) (b . 2))) alist)))
+               ((table 'tt) (alist '((a . 1))) (carried (fn-rdv-table-digests 'tt '((a . 1)))))
+               :fault "a check that passes a table with a digested row dropped"))
+  :must-fail t)
+
+; No `(defteeth-check)' here: this book declares teeth for its own plain
+; defthms, not for a generator's keystones, and its closure (via
+; books/state-digest's chain to books/def-keyset-check) carries other
+; books' fn-teeth-owed rows that are dev-wide debt (keystone_emit's gate),
+; not this book's to discharge.

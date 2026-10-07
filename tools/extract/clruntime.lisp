@@ -1,30 +1,34 @@
 ;;; tools/extract/clruntime.lisp -- the hand runtime of the Common Lisp
 ;;; product (lane extract-writable; A-TARGET-COMPILER, specs/failures.md):
-;;; the few ACL2 runtime names the extracted definitions (tools/extract/cl.py)
+;;; the few ACL2 runtime names the extracted definitions (tools/extract/forms-export.lisp)
 ;;; and host/native's raw Lisp call, over this process's own objects.  No
-;;; ACL2: no world, no prover, no *1* machinery beyond what cl.py emits.
+;;; ACL2: no world, no prover, no *1* machinery beyond the forms ACL2 installed.
 ;;; Everything here is in the trust boundary beside the compiler.
 (in-package "ACL2")
 
 (defparameter *the-live-state* (intern "The Live State Itself" "ACL2_INVISIBLE"))
 
-;;; --- state globals: ACL2's f-get-global/f-put-global over a table whose
-;;; initial values are the image's at extraction (core-world.lisp) -----------
-(defvar *xl-globals* (make-hash-table :test 'eq :synchronized t))
-(defun xl-set-global (sym value) (setf (gethash sym *xl-globals*) value))
+;;; --- state globals.  ACL2 keeps a state global X as the value of its global symbol, X's name in
+;;; the package ACL2_GLOBAL_<X's package> (acl2-fns.lisp:75 global-symbol, ACL2 8.7), and the emitted
+;;; definitions read it there: an inlined `(f-get-global 'safe-mode state)' is the special variable
+;;; ACL2_GLOBAL_ACL2::SAFE-MODE, and boundp-global1 (axioms.lisp:15903) is (boundp (global-symbol x)).
+;;; These accessors use the same cells, so a global the host puts is the one every emitted reader
+;;; sees.  global-symbol itself is ACL2's, emitted into defs.lisp.  Initial values are the image's at
+;;; extraction (core-world.lisp, xl-set-global).
+(defun xl-set-global (sym value) (setf (symbol-value (global-symbol sym)) value))
 (defun f-get-global (sym state)
   (declare (ignore state))
-  (multiple-value-bind (v found) (gethash sym *xl-globals*)
-    (if found v (error "ACL2 state global ~s is unbound in this core" sym))))
+  (let ((g (global-symbol sym)))
+    (if (boundp g) (symbol-value g) (error "ACL2 state global ~s is unbound in this core" sym))))
 (defun get-global (sym state) (f-get-global sym state))
 (defun f-put-global (sym value state)
   (declare (ignore state))
-  (setf (gethash sym *xl-globals*) value)
+  (setf (symbol-value (global-symbol sym)) value)
   *the-live-state*)
 (defun put-global (sym value state) (f-put-global sym value state))
 (defun f-boundp-global (sym state)
   (declare (ignore state))
-  (nth-value 1 (gethash sym *xl-globals*)))
+  (boundp (global-symbol sym)))
 (defun boundp-global (sym state) (f-boundp-global sym state))
 
 ;;; --- the world: the properties host/native reads of an entry
@@ -65,12 +69,15 @@ Presence is distinct from a present NIL value; no classes are inferred here."
 (defun guard (sym ignored wrld)
   (declare (ignore ignored))
   (getpropc sym 'guard :missing-world-metadata wrld))
+;;; Tables: the world snapshot's only (core-export.lisp: every table an emitted form reads by name, found
+;;; by forms-export.lisp's closure walk, and the host's install tables, each with X3's per-row digests).
+;;; A table the snapshot does not carry is refused by name.
 (defun table-alist (sym wrld)
   (unless *xl-world-snapshot-loaded-p*
     (error "Selected ACL2 world snapshot is unavailable"))
-  (unless (assoc 'table-alist (gethash sym *xl-props*) :test #'eq)
-    (error "Selected ACL2 table metadata is unavailable for ~s" sym))
-  (getpropc sym 'table-alist nil wrld))
+  (if (assoc 'table-alist (gethash sym *xl-props*) :test #'eq)
+      (getpropc sym 'table-alist nil wrld)
+    (error "Selected ACL2 table metadata is unavailable for ~s" sym)))
 (defun get-stobj-creator (sym wrld)
   (getpropc sym :xl-stobj-creator nil wrld))
 (defun get-stobj-recognizer (sym wrld)
@@ -87,7 +94,7 @@ Presence is distinct from a present NIL value; no classes are inferred here."
   (declare (ignore wrld))
   (getpropc fn 'stobjs-in nil))
 
-;;; --- the live stobjs (cl.py's xl-make-live-stobjs fills this at start) ----
+;;; --- the live stobjs (forms-export.lisp's xl-make-live-stobjs fills this at start) ----
 (defvar *xl-user-stobj-alist* nil)
 (defvar *xl-live-stobjs-initialized-p* nil)
 (defvar *xl-stobj-table-keys* (make-hash-table :test 'eq))
@@ -107,6 +114,19 @@ Presence is distinct from a present NIL value; no classes are inferred here."
   (or (gethash name *xl-stobj-table-keys*)
       (error "stobj-table key is not in the extracted stobj registry: ~s" name)))
 (defun user-stobj-alist (state) (declare (ignore state)) *xl-user-stobj-alist*)
+
+;;; --- the guard-violation throw.  ACL2 8.7 axioms.lisp:2881 throw-raw-ev-fncall: inside LD
+;;; (*ld-level* > 0, raw mode off), which is where the image runs fn, it is (throw 'raw-ev-fncall val);
+;;; its other branch formats VAL with ev-fncall-msg over the live world, i.e. ACL2's evaluator, for a
+;;; top-level REPL this core does not have.  host/native's fnn-call catches the tag as the image's does.
+(defun throw-raw-ev-fncall (val) (throw 'raw-ev-fncall val))
+;;; guard-raw (translate.lisp:7616): the guard a primitive's *1* puts in its guard-violation value,
+;;; untranslated in the extraction world and carried by defs.lisp's guard: units (forms-export.lisp).
+(defvar *xl-guard-raw* (make-hash-table :test 'eq))
+(defun guard-raw (fn wrld)
+  (declare (ignore wrld))
+  (multiple-value-bind (g found) (gethash fn *xl-guard-raw*)
+    (if found g (hard-error 'guard-raw (format nil "no guard carried for ~s" fn) nil))))
 
 ;;; --- ACL2's error path.  A guard violation or hard error inside an entry
 ;;; halts it; host/native's fnn-call catches the throw and reports the fault

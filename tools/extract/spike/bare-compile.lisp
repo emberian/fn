@@ -1,0 +1,7 @@
+(setq *compile-verbose* nil *compile-print* nil)
+(setq sb-impl::*default-external-format* :latin-1)
+(defvar *d* (sb-ext:posix-getenv "SPIKE_OUT"))
+(load (concatenate 'string *d* "spike-packages.lisp") :external-format :latin-1)
+(with-compilation-unit ()
+  (compile-file (concatenate 'string *d* "spike-defs.lisp") :output-file (concatenate 'string *d* "spike-defs.fasl") :external-format :latin-1))
+(sb-ext:exit :code 0)

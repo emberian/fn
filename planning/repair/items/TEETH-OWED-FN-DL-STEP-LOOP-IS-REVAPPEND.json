@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-dl-step-loop-is-revappend; books/def-loop.lisp:396; statement: (equal (fn-dl-step-loop dl-s dl-acc) (revappend dl-acc (fn-dl-step dl-s))); owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/def-loop.lisp",
+ "id": "TEETH-OWED-FN-DL-STEP-LOOP-IS-REVAPPEND",
+ "keystone": "fn-dl-step-loop-is-revappend",
+ "line": 396,
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-dl-step-loop-is-revappend is a new registry keystone with no generated teeth: declare (defteeth fn-dl-step-loop-is-revappend ...) in a tests/acl2 book",
+ "updated": "2026-10-07T16:49:45Z"
+}

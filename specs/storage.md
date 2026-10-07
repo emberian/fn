@@ -990,7 +990,7 @@ image's events then the suffix's, and every verified page holds H's placed
 image; every export keeps it. The exports are pure and a read of a row
 whose page is not verified answers (:need-page P PHYS). The one retry loop
 (`fn-hrecs-read`) serves each need by one fill (the host's byte primitive
-`fn-pgs-fill-realize` at the address the table names for P, then the page
+`fn-pgs-fill-frame` at the address the table names for P, then the page
 store's digest check) and asks again. Proved: an :ok answer is record SEQ of
 H (or (:refused :seq) past its end); the loop keeps H, its faithfulness and
 the page file's relation (`fn-hrecs-disk-faithful`: the page file holds the
@@ -1012,7 +1012,7 @@ SUFFIX holds the records appended since. `fn-sf-records` of a based field is
 `fn-hrs-disk-history` HANDLE followed by the suffix's list; the image's
 history is DEFINED, not assumed: the decode opens the page store from the
 root record (the directory run and every table page from the file through
-`fn-pgs-fill-realize`, each checked by the page store's open), adopts the
+`fn-pgs-fill-frame`, each checked by the page store's open), adopts the
 header and reads rows 0..N-1 by the retry loop (each page it needs filled
 from the file and digest-checked). It answers exactly N rows; a decode that
 is not clean (the open or a page refused) is a fault by name

@@ -59,6 +59,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tools"))
+import lisp_source  # noqa: E402
 
 from tests.campaign.native_cuts import ALL_CUTS  # noqa: E402
 
@@ -120,65 +122,21 @@ def tokenize(text: str):
 
 
 def positioned_tokens(text: str):
-    """(offset, token) for each token of TEXT; `tokenize` drops the offset."""
-    i, n = 0, len(text)
-    while i < n:
-        c = text[i]
-        start = i
-        if c.isspace():
-            i += 1
-        elif c == ";":
-            j = text.find("\n", i)
-            i = n if j < 0 else j
-        elif text.startswith("#|", i):
-            j = text.find("|#", i)
-            i = n if j < 0 else j + 2
-        elif c in "()":
-            yield start, c
-            i += 1
-        elif c == "'":
-            yield start, "'"
-            i += 1
-        elif c == "`":
-            yield start, "`"
-            i += 1
-        elif c == ",":
-            if text.startswith(",@", i):
-                yield start, ",@"
-                i += 2
-            else:
-                yield start, ","
-                i += 1
-        elif text.startswith("#'", i):
-            yield start, "#'"
-            i += 2
-        elif text.startswith("#\\", i):
-            j = i + 3
-            while j < n and (text[j].isalnum() or text[j] in "-_"):
-                j += 1
-            yield start, text[i:j]
-            i = j
-        elif c == '"':
-            j, buf = i + 1, []
-            while j < n and text[j] != '"':
-                if text[j] == "\\":
-                    j += 1
-                buf.append(text[j])
-                j += 1
-            yield start, Str("".join(buf))
-            i = j + 1
-        elif c == "|":
-            j = text.find("|", i + 1)
-            if j < 0:  # an unterminated |symbol| runs to the end, not back to 0
-                j = n - 1
-            yield start, text[i:j + 1]
-            i = j + 1
-        else:
-            j = i
-            while j < n and not text[j].isspace() and text[j] not in "()'\";`,":
-                j += 1
-            yield start, text[i:j].lower()
-            i = j
+    """(offset, token) for each token of TEXT; `tokenize` drops the offset.
+    A token is "(" or ")", a quote mark (' ` , ,@ #'), a Str (its escapes
+    resolved), or an atom: lower-cased, except a character literal and a
+    |bar symbol|, which keep their case."""
+    for kind, start, end in lisp_source.tokens(text):
+        raw = text[start:end]
+        if kind == "open":
+            yield start, "("
+        elif kind == "close":
+            yield start, ")"
+        elif kind == "string":
+            yield start, Str(lisp_source.string_value(raw))
+        elif kind != "comment":
+            yield start, raw if kind == "quote" or raw[0] == "|" or raw.startswith("#\\") \
+                else raw.lower()
 
 
 _PREFIX = {"'": "quote", "`": "quasiquote", ",": "unquote", ",@": "unquote",

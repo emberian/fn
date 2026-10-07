@@ -15,3 +15,8 @@
 (defthm fn-cpr-config-firstp-has-config
   (implies (fn-cpr-config-firstp configs events) (consp configs))
   :hints (("Goal" :in-theory (enable fn-cpr-config-firstp))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-cpr-config-firstp-has-config))

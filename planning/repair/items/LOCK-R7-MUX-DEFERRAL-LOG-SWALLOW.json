@@ -3,11 +3,18 @@
  "file": "host/native/mux.lisp",
  "fix": "Route the mux service-log writes through the verified diagnostic sink, or re-signal as fnn-fault uniformly, with host_check --load.",
  "id": "LOCK-R7-MUX-DEFERRAL-LOG-SWALLOW",
- "notes": [],
+ "natives_owed": [
+  "tests/test_native_mux.py",
+  "tests/test_native_mux_budget_observe.py"
+ ],
+ "notes": [
+  "Fixed at 5d2ed7234: the ignore-errors around the deferral line in fnn-mux-reserve is removed; a malformed ACL2 line is fnn-fault's and reaches the accept loop boundary, as fnn-owner-retire-refuse's identical fnn-log-line already does. Key R7|fnn-mux-reserve|swallow:ignore-errors:fault gone, none added. Not changed: the same wrapper in the I/O-loop sinks (fnn-mux-handshake-refused, fnn-mux-tls-log, fnn-mux-z-in, fnn-mux-take-inbox, ...) stays baselined, because a log failure there would end a whole loop with its connections; that is a separate decision for Deputy C. natives_owed: tests/test_native_mux.py, tests/test_native_mux_budget_observe.py (accept path with a pending-accept deferral)."
+ ],
  "owner": "deputy-N",
  "severity": "low",
+ "sha": "5d2ed7234",
  "source": "lock-triage-sn-lock-20261007",
- "state": "open",
+ "state": "ready",
  "title": "fnn-mux-reserve swallows a failure of the once-per-episode deferral service-log line (R7)",
- "updated": "2026-10-07T02:59:37Z"
+ "updated": "2026-10-07T06:17:11Z"
 }

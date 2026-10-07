@@ -225,12 +225,15 @@ class NativeBpNodeTests(unittest.TestCase):
             path.write_bytes(acl2_octets(bridge.call(form)))
             return path
 
-    def send_deletion_request(self, port):
-        return self.invoke(
-            "tcpcl", "send", "127.0.0.1", port,
-            self.deletion_request_bundle(), self.tmp / "deletion-sender-spool",
-            "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
-        )
+    def start_deletion_request(self, port):
+        """The same send, left running: a node paused at a durable cut holds
+        its retained session open, so `tcpcl send' (which waits for the
+        peer's SESS_TERM) cannot return until the node is released."""
+        return start(
+            [IMAGE, "--fn", "tcpcl", "send", "127.0.0.1", port,
+             self.deletion_request_bundle(), self.tmp / "deletion-sender-spool",
+             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0],
+            cwd=ROOT, env=environment())
 
     def unrouted_transit_bundle(self):
         """ACL2 authors the older wire; Python only carries its octets."""
@@ -1000,20 +1003,28 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"BP forwarding transfer uncertain", first)
         self.assertIn(b"status=uncertain", first)
         self.assertIsNone(receiver.poll(), "node stopped after a connection fault")
-        # The same process serves again, and re-offers the row in-process.
+        # The retained serve loop re-offers the row on its own forward turns
+        # (S025), with no restart and no further inbound transfer: retries 2
+        # and 3 follow in the same process, every one a cut session that
+        # costs only its own connection, and at the bound the row is stranded.
+        offers = first.count(b"BP forwarding attempt durable")
+        for _ in range(2):
+            more = self.wait_for_output(
+                receiver, b"BP forwarding result durable", timeout=120)
+            self.assertIn(b"status=uncertain", more)
+            offers += more.count(b"BP forwarding attempt durable")
+        self.assertEqual(offers, 3)
+        stranded_in_serve = self.wait_for_output(
+            receiver, b"BP forwarding stranded", timeout=120)
+        self.assertIn(b"retries=3", stranded_in_serve)
+        self.assertIsNone(receiver.poll())
+        # The same process still serves inbound transfers once the row is
+        # stranded, and does not offer the stranded row again.
         self.assertEqual(send_younger("u-spool-2").returncode, EXIT.OK)
-        second = self.wait_for_output(
-            receiver, b"BP forwarding result durable", timeout=120)
-        self.assertIn(b"BP forwarding attempt durable", second)
-        self.assertIn(b"status=uncertain", second)
         self.assertIsNone(receiver.poll())
         receiver.stop(grace=5)
 
         args = self.dispatch_receiver_args()
-        for _ in range(2):
-            cut = run(args, cwd=ROOT, timeout=240)
-            self.assertEqual(cut.returncode, EXIT.OK, cut.stdout + cut.stderr)
-            self.assertIn(b"status=uncertain", cut.stdout)
         stranded = run(args, cwd=ROOT, timeout=240)
         self.assertEqual(stranded.returncode, EXIT.OK, stranded.stderr)
         self.assertNotIn(b"BP forwarding attempt durable", stranded.stdout)
@@ -1382,7 +1393,8 @@ class NativeBpNodeTests(unittest.TestCase):
     def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
         """Spec 4.3.2: an uncertain receipt transfer is connection-local.
 
-        The receiver's own `serve' pass sends the owed receipt; the relay
+        The receiver's own `serve' pass sends the owed receipt on a retained
+        outgoing session (bp-node-machine S025 consumer); the relay
         severs that connection after 80 client octets, after the TCPCL
         session is up and the transfer has started.  ACL2 reads it as
         :uncertain and requeues the job under its own identity; the pass
@@ -1404,8 +1416,12 @@ class NativeBpNodeTests(unittest.TestCase):
         out, err = receiver.communicate(timeout=120)
         self.assertEqual(receiver.returncode, EXIT.OK, out + err)
         self.assertIn(b"BP node receipt queued", out)
-        self.assertIn(b"BP node receipt contact peer=dtn://sender/", out)
-        self.assertIn(b"BP node receipt transfer uncertain", out)
+        # A listening node sends its owed receipt on a retained outgoing
+        # session (S025), not on `fnn-bpnode-send-receipts' (the one-shot
+        # `dispatch' pass); the retained turn reports the cut transfer as
+        # ACL2's requeue reason, and the node still exits 0.
+        self.assertIn(b"TCPCL bp-service uncertain outbound-failed", out)
+        self.assertIn(b"BP forwarding retained reason=uncertain", out)
         dropped = [x for x in out.splitlines()
                    if x.startswith(b"BP transport work=")]
         self.assertEqual(len(dropped), 1, out)
@@ -1635,8 +1651,11 @@ class NativeBpNodeTests(unittest.TestCase):
             old.settimeout(20)
             old.sendall(contact)
             self.assertEqual(self.read_exact(old, len(contact)), contact)
-            self.assertEqual(self.read_exact(old, len(server_init)), server_init)
+            # The passive node admits the peer from its announced node ID
+            # before it emits any frame past the contact header (4f4a2d293),
+            # so its SESS_INIT answers the client's rather than preceding it.
             old.sendall(init)
+            self.assertEqual(self.read_exact(old, len(server_init)), server_init)
             active = receiver.announcement(b"BP NODE GENERATION ", timeout=30)
             self.assertTrue(active.rstrip().endswith(b"SESSION " + str(old_generation).encode()), active)
             new_port = free_port()
@@ -1654,7 +1673,12 @@ class NativeBpNodeTests(unittest.TestCase):
             # after its listening descriptor has been retired.
             old.sendall(keepalive)
             self.assertEqual(self.read_exact(old, len(keepalive)), keepalive)
-        # The old session has closed; a new acceptance belongs to the installed generation.
+        # The old session has closed.  Its retained context ends in the node's
+        # own turn (the summary line precedes the listener model's
+        # :retained-closed step); until then the model still holds that row,
+        # and the runtime line names the oldest retained session.  Wait for
+        # the close, then a new acceptance belongs to the installed generation.
+        self.wait_for_output(receiver, b"TCPCL bp-node summary", timeout=30)
         with socket.create_connection(("127.0.0.1", new_port), timeout=15) as new:
             accepted = receiver.announcement(b"BP NODE GENERATION ", timeout=30)
             self.assertTrue(accepted.rstrip().endswith(b"SESSION " + installed.split()[3]), accepted)
@@ -1727,13 +1751,17 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertFalse((self.receiver_store / "control.sock").exists())
 
     def test_control_listener_retires_after_one_normal_bp_session(self):
-        peer, peer_port = self.start_node(False, once=False)
-        self.relay.route(peer_port)
         receiver, port = self.start_node(True, control=True)
         socket_path = self.receiver_store / "control.sock"
         self.assertTrue(socket_path.exists())
+        # The sender's bp-service and the sender's node share one journal,
+        # and a node owns its journal's spool for its whole life (one writer
+        # per journal, 21dad2b2f): the request goes out before the sender's
+        # node starts to take the return receipt (CONVERGE-2 row 22).
         sent = self.send_request(port, "control-one-session")
         self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        peer, peer_port = self.start_node(False, once=False)
+        self.relay.route(peer_port)
         self.assertEqual(receiver.wait(timeout=120), EXIT.OK, receiver.diagnostics())
         self.assertFalse(socket_path.exists())
         peer.stop(grace=5)
@@ -1839,11 +1867,14 @@ class NativeBpNodeTests(unittest.TestCase):
         receiver, port = self.start_node(
             True, extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE": "1"},
         )
-        sent = self.send_deletion_request(port)
-        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
-        self.wait_for_output(receiver, b"BP NODE KIND5 DURABLE", timeout=120)
+        sender = self.start_deletion_request(port)
+        self.addCleanup(sender.stop, 5)
+        durable = self.wait_for_output(receiver, b"BP NODE KIND5 DURABLE", timeout=120)
+        # The transport acknowledgment preceded the paused kind-5 cut.
+        self.assertIn(b"(:SEND :XFER-ACK", durable)
         receiver.kill()
         receiver.wait(timeout=15)
+        sender.stop(5)
         time.sleep(1.8)
 
         # The kind-10 record is durable before the outbound sequence/job cut.

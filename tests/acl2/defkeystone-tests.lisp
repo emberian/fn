@@ -147,6 +147,51 @@
                                          nil *fn-dkt-sample-spec*)
                      *fn-dkt-sample-teeth*))
 
+; A claim over a multiple-value call, the way theorems state it (under
+; MV-NTH): the assert-events cannot run that text (a multiply valued call
+; cannot be an argument outside a theorem context), so fn-dt-expand bridges
+; each multiple-output call with MV-LIST -- definitionally the identity --
+; and the witnesses run.  This sample pins that: the defteeth below would
+; fail to translate, unbridged, at its own witness event.
+
+(defun fn-dkt-two (x)
+  (declare (xargs :guard t))
+  (mv (nfix x) t))
+
+(defthm fn-dkt-two-first-is-x
+  (implies (natp x) (equal (mv-nth 0 (fn-dkt-two x)) x))
+  :rule-classes nil)
+
+(defteeth fn-dkt-two-first-is-x
+  :claim (((nat (natp x))) (equal (mv-nth 0 (fn-dkt-two x)) x))
+  :subject fn-dkt-two
+  :witness ((x 3))
+  :breaks ((nat ((x -1))))
+  :mutations ((second-output (:conclusion (equal (mv-nth 1 (fn-dkt-two x)) x))
+                             ((x 3))
+                             :fault "a two that answers x twice"))
+  :must-fail t)
+
+;; The bridge's unused-formal shapes (a lambda formal the bridged body no
+;; longer uses): a variable or constant actual goes; a call actual stays and
+;; its formal is declared IGNORABLE, so the term still translates.  Each pin
+;; is the exact output; the last is that output run, with a call actual.
+(assert-event
+ (equal (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 z) (w state))
+        '((lambda (x) (mv-nth '0 (mv-list 2 (fn-dkt-two x)))) '3)))
+(assert-event
+ (equal (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2)) (w state))
+        '((lambda (x y) (declare (ignorable y)) (mv-nth '0 (mv-list 2 (fn-dkt-two x))))
+          '3 (cons '1 '2))))
+(assert-event
+ (equal (fn-dt-bridge '((lambda (x y w) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2) (len q)) (w state))
+        '((lambda (x y w) (declare (ignorable y w)) (mv-nth '0 (mv-list 2 (fn-dkt-two x))))
+          '3 (cons '1 '2) (len q))))
+(assert-event
+ (let ((tm (fn-dt-bridge '((lambda (x y) (mv-nth '0 (fn-dkt-two x))) '3 (cons '1 '2)) (w state))))
+   (mv-let (bad term) (fn-dt-translate tm (w state))
+     (and (not bad) (consp term)))))
+
 ; ---------------------------------------------------------------------------
 ; 3. Refusals, each by name (world-free).
 
