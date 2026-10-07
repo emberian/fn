@@ -1,0 +1,282 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 648,
+    "refused": 0
+   },
+   "arm": null,
+   "bars": [
+    {
+     "bar": "L-POST",
+     "checks": [
+      {
+       "cmp": "ge",
+       "metric": "post.rate_c1",
+       "reason": "box loaded (load 23.1 > 8)",
+       "threshold": 10,
+       "value": 5.85
+      },
+      {
+       "cmp": "ge",
+       "metric": "post.rate_c8",
+       "reason": "box loaded (load 23.1 > 8)",
+       "threshold": 10,
+       "value": 26.31
+      }
+     ],
+     "quantity": "sustained POSTs/s, closed loop, on tmpfs, at 1 and 8 connections",
+     "reason": "box loaded (load 23.1 > 8)",
+     "source": "operator-internals 'What one node sustains'; 2026-09-26 v1 target",
+     "verdict": "NOT-MEASURED"
+    },
+    {
+     "bar": "T-POST",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "post.p50_ms.c1",
+       "reason": "box loaded (load 23.13 at start, 24.52 at end; a time bar needs <= 4 at both)",
+       "threshold": 20,
+       "value": 141.909
+      },
+      {
+       "cmp": "le",
+       "metric": "post.p99_ms.c1",
+       "reason": "metric absent from the run",
+       "threshold": 250,
+       "value": null
+      },
+      {
+       "cmp": "le",
+       "metric": "post.cpu_ms_per_op.c1",
+       "reason": "metric absent from the run",
+       "threshold": 16,
+       "value": null
+      }
+     ],
+     "quantity": "durable POST (last line to 240), 2 KiB, 1 connection: p50 / p99 and owner CPU per POST, on ZFS",
+     "reason": "box loaded (load 23.13 at start, 24.52 at end; a time bar needs <= 4 at both); metric absent from the run",
+     "source": "ruling 17 (LOAD-PROGRAM 1a)",
+     "verdict": "NOT-MEASURED"
+    },
+    {
+     "bar": "T-RATE",
+     "checks": [
+      {
+       "cmp": "ge",
+       "metric": "post.rate_c1r3",
+       "reason": "metric absent from the run",
+       "threshold": 10,
+       "value": null
+      },
+      {
+       "cmp": "ge",
+       "metric": "post.rate_c8r3",
+       "reason": "metric absent from the run",
+       "threshold": 10,
+       "value": null
+      }
+     ],
+     "quantity": "sustained POSTs/s, closed loop, 1 and 8 connections, 3 readers: >= 10 /s on ZFS, >= 50 /s on tmpfs",
+     "reason": "metric absent from the run",
+     "source": "ruling 17 (LOAD-PROGRAM 1a)",
+     "verdict": "NOT-MEASURED"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "zfs",
+    "loadavg_end": [
+     24.52,
+     23.1,
+     21.92
+    ],
+    "loadavg_start": [
+     23.13,
+     22.66,
+     21.72
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "W1",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "100000",
+    "--max-history-octets",
+    "268435456",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 5243MB --control-stack-size 1024KB"
+   },
+   "hook": null,
+   "image": {
+    "core_sha256": "fc94e5059e8211e5fd03e3c049bd7e3323fa07a8cd76b12d5cac7ad0f48d8efc",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host --fn operator /tank/fn/scratch/load-harness/work-zfs/pr-zfs/W1-image-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "post.p50_ms.c1": 141.909,
+    "post.p50_ms.c8": 251.994,
+    "post.p99_ms.c1": null,
+    "post.p99_ms.c8": 1050.973,
+    "post.rate_c1": 5.85,
+    "post.rate_c8": 26.31,
+    "posts.admitted": 648,
+    "posts.refused": 0,
+    "rss_kib.anon": 92596,
+    "rss_kib.file": 220496,
+    "rss_kib.hwm": 346844,
+    "rss_kib.vmrss": 313092
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.546,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 30820,
+      "file": 220496,
+      "hwm": 268304,
+      "vmrss": 251316
+     },
+     "name": "open",
+     "open_s": 0.546,
+     "seconds": 0.546
+    },
+    {
+     "arc_bytes": null,
+     "background_readers": 0,
+     "cmd": {
+      "POST": {
+       "max_ms": 854.882,
+       "n": 120,
+       "p50_ms": 141.909,
+       "p95_ms": 375.525,
+       "p99_ms": null
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 120,
+      "refused": 0
+     },
+     "cpu_ms_per_op": 75.75,
+     "cpu_s": 9.09,
+     "gc": null,
+     "io": {
+      "read_bytes": 1318294,
+      "write_bytes": 1021235
+     },
+     "kind": "post",
+     "load": [
+      24.11,
+      22.93,
+      21.84
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 88036,
+      "file": 220496,
+      "hwm": 308532,
+      "peak_anon": 87844,
+      "peak_vmrss": 308340,
+      "pss": 260068,
+      "threads": 14,
+      "vmrss": 308532
+     },
+     "name": "c1",
+     "octets": 2048,
+     "ops": 120,
+     "rate": {
+      "post_per_s": 5.851
+     },
+     "seconds": 20.511,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "background_readers": 0,
+     "cmd": {
+      "POST": {
+       "max_ms": 1051.106,
+       "n": 528,
+       "p50_ms": 251.994,
+       "p95_ms": 669.095,
+       "p99_ms": 1050.973
+      }
+     },
+     "connections": 8,
+     "counts": {
+      "admitted": 528,
+      "refused": 0
+     },
+     "cpu_ms_per_op": 13.049,
+     "cpu_s": 6.89,
+     "gc": null,
+     "io": {
+      "read_bytes": 30613624,
+      "write_bytes": 12362639
+     },
+     "kind": "post",
+     "load": [
+      24.52,
+      23.1,
+      21.92
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 92596,
+      "file": 220496,
+      "hwm": 346844,
+      "peak_anon": 125772,
+      "peak_vmrss": 346268,
+      "pss": 265353,
+      "threads": 19,
+      "vmrss": 313092
+     },
+     "name": "c8",
+     "octets": 2048,
+     "ops": 528,
+     "rate": {
+      "post_per_s": 26.307
+     },
+     "seconds": 20.071,
+     "status": "ok"
+    }
+   ],
+   "preset": "filled",
+   "refusals": {},
+   "rep": 1,
+   "seconds": 46.6,
+   "started_utc": "2026-10-07T22:57:20Z",
+   "status": "complete",
+   "store": {},
+   "target": "image",
+   "trace": null,
+   "workload": "post-rate"
+  }
+ ],
+ "evidence": null,
+ "label": "pr-zfs",
+ "rev": "0b4d3b18385a53209146a78296e282d06c17e573",
+ "schema": 1
+}

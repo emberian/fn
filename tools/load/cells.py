@@ -6,6 +6,8 @@ a metric is absent (`not_measured`).  Pure functions over JSON: laptop-testable.
 """
 from __future__ import annotations
 
+import re
+
 from .result import fit_exponent
 
 
@@ -37,7 +39,7 @@ def derive(workload, phases):
     for p in phases:
         if p.get("status") == "not-implemented":
             nm.setdefault("*", p.get("reason"))
-    fn = {"post-rate": _post_rate, "readers": _readers, "article-sizes": _sizes, "growth": _growth,
+    fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers, "article-sizes": _sizes, "growth": _growth,
           "m1-durable": _durable, "smoke": _smoke}.get(workload)
     if fn:
         fn(phases, m, nm)
@@ -63,14 +65,20 @@ def _smoke(phases, m, nm):
 
 
 def _post_rate(phases, m, nm):
-    for tag in ("c1", "c8"):
+    for tag in ("c1", "c8", "c1r3", "c8r3"):
         ph = _phase(phases, tag)
         if ph and _rate(ph) is not None:
             m["post.rate_" + tag] = round(_rate(ph), 2)
             st = _cmd(ph, "POST")
             m["post.p50_ms." + tag], m["post.p99_ms." + tag] = st.get("p50_ms"), st.get("p99_ms")
-        else:
+            if ph.get("cpu_ms_per_op") is not None:
+                m["post.cpu_ms_per_op." + tag] = ph["cpu_ms_per_op"]
+            if st.get("p99_ms") is None and st.get("n") is not None:
+                nm["post.p99_ms." + tag] = "fewer than 200 POSTs (%d)" % st["n"]
+        elif tag in ("c1", "c8") or ph is not None:
             nm["post.rate_" + tag] = "phase %s did not complete" % tag
+        else:
+            nm["post.rate_" + tag] = "phase %s not in this cell" % tag
 
 
 def _readers(phases, m, nm):
@@ -89,6 +97,14 @@ def _readers(phases, m, nm):
         po = _cmd(ph, "POST")
         if po.get("p50_ms") is not None:
             m["post.p50_ms." + tag] = po["p50_ms"]
+        if ph.get("cpu_ms_per_op") is not None:
+            m["cpu_ms_per_op." + tag] = ph["cpu_ms_per_op"]
+    if m.get("article.p99_ms.R16") is not None and m.get("article.p99_ms.R1"):
+        m["article.p99_ratio_16_1"] = round(m["article.p99_ms.R16"] / m["article.p99_ms.R1"], 2)
+    elif "article.p99_ms.R1" in m or "article.p99_ms.R16" in m:
+        nm["article.p99_ratio_16_1"] = "needs R1 and R16 in one cell"
+    else:
+        nm["article.p99_ratio_16_1"] = "R1 and R16 phases not run"
     if not any(k.startswith("article.p99_ms.") for k in m) and not any(k.startswith("article.p99_ms.") for k in nm):
         nm["article.p99_ms.R16"] = "R16 phase did not complete"
     if "article.p99_ms.R16" not in m and "article.p99_ms.R16" not in nm:
@@ -136,3 +152,140 @@ def _durable(phases, m, nm):
         else:
             m["durable.exact"] = 1 if v.get("mismatches") == 0 and v["verified"] > 0 else 0
         m["durable.mismatches"] = v.get("mismatches")
+
+
+ANON_GROUPS = [   # S's grouping of the owner's stobjs (room names them after the stobj)
+    ("catalog rows", r"^(FN-CAT\$P|FN-CROW.*|FN-ARENA-PAGE)$"),
+    ("message-id table", r"^(FN-MLH|FN-MLG|FN-MLT|FN-MPXT2?)$"),
+    ("dense map", r"^(FN-DMAP\$C|FN-DPG)$"),
+    ("history", r"^(FN-HIST\$[CP]|FN-HRECS\$[CS])$"),
+    ("payload arena", r"^FN-ARENA\$[CLPX]$"),
+    ("page pool", r"^(FN-PAGE-READ-POOL|PGS-MEM|PGS-GC|PGS-DIGEST-STATE)$"),
+    ("per-connection", r"^FNN-CONNECTION-CUSTODY$"),
+]
+
+
+def parse_census(text):
+    """{'raw': {...}, 'live': {...}}: dynamic usage, `groups` (owner structures per S's grouping, octets of
+    the instance plus the vectors it points to, from the hook's OWNER lines), and `by_type` (SBCL's own
+    per-type totals from `room`, and instance-usage's per-structure totals)."""
+    out = {}
+    for sect in re.split(r"^=== ", text, flags=re.M)[1:]:
+        name = sect.split()[0].lower()
+        du = re.search(r"dynamic-usage (\d+)", sect)
+        by = {}
+        for mo in re.finditer(r"^([A-Z][A-Za-z0-9*$%+() -]*?):\n\s+([\d,]+) bytes, ([\d,]+) objects", sect, flags=re.M):
+            if not mo.group(1).startswith("Summary"):
+                by["room:" + mo.group(1).strip()] = int(mo.group(2).replace(",", ""))
+        inst = sect.split("--- instance-usage", 1)[1].split("--- owner", 1)[0] if "--- instance-usage" in sect else ""
+        for mo in re.finditer(r"^\s+(\S+)\s+([\d,]+) bytes,\s+([\d,]+) objects", inst, flags=re.M):
+            by["inst:" + mo.group(1)] = int(mo.group(2).replace(",", ""))
+        owner = {}
+        for mo in re.finditer(r"^OWNER (\S+) instances (\d+) self (\d+) slots (\d+)", sect, flags=re.M):
+            owner[mo.group(1).split(":")[-1].upper()] = int(mo.group(3)) + int(mo.group(4))
+        groups = {}
+        for gname, rx in ANON_GROUPS:
+            groups[gname] = sum(v for k, v in owner.items() if re.match(rx, k))
+        groups["owner structures, unlisted"] = sum(v for k, v in owner.items() if not any(re.match(rx, k) for _, rx in ANON_GROUPS))
+        out[name] = {"dynamic_usage": int(du.group(1)) if du else None, "groups": groups, "owner": owner,
+                     "by_type": dict(sorted(by.items(), key=lambda kv: -kv[1])[:40])}
+    return out
+
+
+def _mem_vs_size(phases, m, nm):
+    op = _phase(phases, "open")
+    if op:
+        m["open_s.replay"] = op.get("open_s")
+        if op.get("open_cpu_s") is not None:
+            m["open_cpu_s.replay"] = op["open_cpu_s"]
+    ar = _phase(phases, "at-rest")
+    if ar and ar.get("mem"):
+        mm = ar["mem"]
+        m["rss.at_rest.vmrss"], m["rss.at_rest.anon"], m["rss.at_rest.file"] = mm["vmrss"], mm["anon"], mm["file"]
+        m["rss.peak.hwm"] = mm["hwm"]
+        m["rss.peak.anon"] = mm.get("peak_anon")
+    ce = _phase(phases, "census")
+    if ce and ce.get("census"):
+        for kind, body in ce["census"].items():
+            for g, v in body["groups"].items():
+                m["anon.%s.%s" % (kind, g.replace(" ", "_"))] = v
+            m["anon.%s.dynamic_usage" % kind] = body["dynamic_usage"]
+            for t, v in list(body["by_type"].items())[:12]:
+                m["anon.%s.type.%s" % (kind, t)] = v
+    elif ce:
+        nm["anon.raw.dynamic_usage"] = ce.get("census_error") or "census produced no file"
+    pu = _phase(phases, "publish")
+    if pu and pu.get("publish_wall_s") is not None:
+        m["publish.wall_s"], m["publish.cpu_s"] = pu["publish_wall_s"], pu["publish_cpu_s"]
+        m["publish.write_octets"] = pu["publish_touched_octets"]
+        m["store.octets"] = pu["store_octets_after"]
+        for comp, v in (pu.get("sizes_after") or {}).items():
+            m["size." + comp] = v
+    nm["publish.stall_max_s"] = "longest POST stall during an online publication needs W8 (POSTs while a publication runs)"
+    rc = _phase(phases, "reopen-checkpoint")
+    if rc:
+        m["open_s.checkpoint"] = rc.get("open_s")
+        if rc.get("open_cpu_s") is not None:
+            m["open_cpu_s.checkpoint"] = rc["open_cpu_s"]
+
+
+def _commands(phases, m, nm):
+    ph = _phase(phases, "commands")
+    if not ph:
+        nm["cmd.p99_ms.max"] = "commands phase did not complete"
+        return
+    worst = None
+    for name, st in (ph.get("cmd") or {}).items():
+        for k in ("p50_ms", "p99_ms"):
+            if st.get(k) is not None:
+                m["cmd.%s.%s" % (k, name)] = st[k]
+        if st.get("p99_ms") is not None:
+            worst = max(worst or 0, st["p99_ms"])
+        elif st.get("n"):
+            nm["cmd.p99_ms." + name] = "fewer than 200 samples"
+    for name, v in (ph.get("cpu_ms_per_op_by_cmd") or {}).items():
+        m["cmd.cpu_ms_per_op." + name] = v
+    if worst is not None:
+        m["cmd.p99_ms.max"] = worst
+
+
+def merge_sweep(cell_id, workload, subs):
+    """Merge sub-cells (key, n, cell result) into the cell the bars judge: metrics suffixed @KEY, and for
+    every metric present at 3 or more sizes its fitted exponent against n (`NAME.exponent`)."""
+    first = subs[0][2]
+    merged = {k: first[k] for k in ("workload", "target", "arm", "rep", "preset", "flags", "git", "image", "hook", "launch",
+                                    "heap", "trace", "loopback_only", "max_connections") if k in first}
+    merged.update({"cell": cell_id, "members": [c["cell"] for _, _, c in subs], "phases": [],
+                   "box": dict(first["box"]), "seconds": round(sum(c.get("seconds") or 0 for _, _, c in subs), 1)})
+    merged["box"]["loadavg_end"] = subs[-1][2]["box"].get("loadavg_end")
+    merged["box"]["loadavg_start"] = first["box"].get("loadavg_start")
+    merged["noisy"] = any(c.get("noisy") for _, _, c in subs)
+    ok = all(c.get("status") == "complete" for _, _, c in subs)
+    merged["status"] = "complete" if ok else "incomplete: " + ", ".join("%s %s" % (k, c.get("status")) for k, _, c in subs if c.get("status") != "complete")
+    metrics, nm, series = {}, {}, {}
+    for key, n, c in subs:
+        for name, v in (c.get("metrics") or {}).items():
+            metrics["%s@%s" % (name, key)] = v
+            if isinstance(v, (int, float)):
+                series.setdefault(name, []).append((n, v))
+        for name, why in (c.get("not_measured") or {}).items():
+            nm.setdefault("%s@%s" % (name, key), why)
+            nm.setdefault(name, why)
+    for name, pts in series.items():
+        if len(pts) >= 3 and not name.startswith(("posts.", "gc.")):
+            e = fit_exponent(pts)
+            if e is not None:
+                metrics[name + ".exponent"] = e
+    cmd_exp = [v for k, v in metrics.items() if k.startswith("cmd.p99_ms.") and k.endswith(".exponent") and not k.startswith("cmd.p99_ms.max")]
+    if cmd_exp:
+        metrics["cmd.p99_exponent.max"] = max(cmd_exp)
+    for name in ("cmd.p99_ms.max",):
+        vals = [v for k, v in metrics.items() if k.startswith(name + "@")]
+        if vals:
+            metrics[name] = max(vals)
+    merged["metrics"], merged["not_measured"] = metrics, nm
+    merged["refusals"] = {}
+    for _, _, c in subs:
+        for k, v in (c.get("refusals") or {}).items():
+            merged["refusals"][k] = merged["refusals"].get(k, 0) + v
+    return merged

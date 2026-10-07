@@ -99,6 +99,86 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual({c["threshold"] for c in by["L-POST"]["checks"]}, {10})
 
 
+class TimeBarTests(unittest.TestCase):
+    def setUp(self):
+        self.bars = result.load_bars()
+
+    def cr(self, **box):
+        b = {"name": "persvati", "cores": 16, "loadavg_start": [2.0, 2, 2], "loadavg_end": [2.5, 2, 2], "fs": "zfs", "pinned": [0, 1, 2, 3]}
+        b.update(box)
+        return cell_result(cell="W1", workload="post-rate", box=b,
+                           metrics={"post.p50_ms.c1": 18.0, "post.p99_ms.c1": 200.0, "post.cpu_ms_per_op.c1": 10.0,
+                                    "post.rate_c1r3": 12.0, "post.rate_c8r3": 30.0}, not_measured={})
+
+    def rows(self, cr):
+        return {r["bar"]: r for r in result.judge_cell(cr, self.bars)}
+
+    def test_quiet_pinned_zfs_cell_is_judged(self):
+        rows = self.rows(self.cr())
+        self.assertEqual(rows["T-POST"]["verdict"], "PASS")
+        self.assertEqual(rows["T-RATE"]["verdict"], "PASS")     # the tmpfs checks do not apply on zfs
+
+    def test_time_bar_is_not_measured_when_load_exceeds_4_at_either_end(self):
+        for box in ({"loadavg_start": [4.5, 4, 4]}, {"loadavg_end": [6.0, 5, 5]}):
+            row = self.rows(self.cr(**box))["T-POST"]
+            self.assertEqual(row["verdict"], "NOT-MEASURED")
+            self.assertIn("box loaded", row["reason"])
+            self.assertEqual(row["checks"][0]["value"], 18.0)   # the figures stay in the row
+
+    def test_time_bar_needs_pinned_cores(self):
+        row = self.rows(self.cr(pinned=None))["T-POST"]
+        self.assertEqual(row["verdict"], "NOT-MEASURED")
+        self.assertIn("pinned", row["reason"])
+
+    def test_zfs_checks_do_not_apply_on_tmpfs_and_tmpfs_floor_is_50(self):
+        cr = self.cr(fs="tmpfs")
+        rows = self.rows(cr)
+        self.assertEqual(rows["T-RATE"]["verdict"], "FAIL")      # 12/s < 50/s on tmpfs
+        self.assertEqual(rows["T-POST"]["checks"][-1]["metric"], "post.cpu_ms_per_op.c1")
+        self.assertEqual(len(rows["T-POST"]["checks"]), 1)       # only the CPU check applies
+
+    def test_cpu_over_16_ms_per_post_fails(self):
+        cr = self.cr()
+        cr["metrics"]["post.cpu_ms_per_op.c1"] = 17.0
+        self.assertEqual(self.rows(cr)["T-POST"]["verdict"], "FAIL")
+
+
+class SweepTests(unittest.TestCase):
+    def sub(self, key, n, open_s):
+        return (key, n, {"cell": "W15@" + key, "status": "complete", "target": "image", "box": {"name": "hbox", "loadavg_start": [1, 1, 1]},
+                         "metrics": {"open_s.checkpoint": open_s, "rss.at_rest.vmrss": 100000 + n}, "not_measured": {}, "refusals": {}})
+
+    def test_merge_suffixes_and_fits_exponents(self):
+        subs = [self.sub("1k", 1000, 1.0), self.sub("10k", 10000, 10.0), self.sub("100k", 100000, 100.0)]
+        m = cells.merge_sweep("W15", "mem-vs-size", subs)
+        self.assertEqual(m["metrics"]["open_s.checkpoint@10k"], 10.0)
+        self.assertAlmostEqual(m["metrics"]["open_s.checkpoint.exponent"], 1.0, places=2)
+        self.assertLess(m["metrics"]["rss.at_rest.vmrss.exponent"], 0.2)
+        self.assertEqual(m["status"], "complete")
+
+    def test_incomplete_member_marks_the_merged_cell(self):
+        subs = [self.sub("1k", 1000, 1.0), self.sub("10k", 10000, 10.0)]
+        subs[1][2]["status"] = "error"
+        self.assertIn("10k error", cells.merge_sweep("W15", "mem-vs-size", subs)["status"])
+
+    def test_sub_cells_are_not_judged_twice(self):
+        cr = cell_result(cell="W15@1k", sub=True)
+        self.assertEqual(result.judge_cell(cr, result.load_bars()), [])
+
+    def test_census_groups_by_owner_structure(self):
+        text = ("=== RAW dynamic-usage 1000\n--- room\nCONS:\n    5,000 bytes, 10 objects, 100% dynamic.\n\n"
+                "--- instance-usage\n\nTop 80 dynamic instance types:\n  FN-CAT$P   4,000 bytes,   12 objects (3 per object).\n"
+                "--- owner\nOWNER ACL2::FN-CAT$P instances 2 self 100 slots 4000\nOWNER ACL2::FN-MLH instances 1 self 10 slots 290\n"
+                "OWNER ACL2::FN-NEW-THING instances 1 self 5 slots 5\n")
+        c = cells.parse_census(text)["raw"]
+        self.assertEqual(c["dynamic_usage"], 1000)
+        self.assertEqual(c["groups"]["catalog rows"], 4100)
+        self.assertEqual(c["groups"]["message-id table"], 300)
+        self.assertEqual(c["groups"]["owner structures, unlisted"], 10)
+        self.assertEqual(c["by_type"]["room:CONS"], 5000)
+        self.assertEqual(c["by_type"]["inst:FN-CAT$P"], 4000)
+
+
 class StatsTests(unittest.TestCase):
     def test_p99_is_null_under_200_samples(self):
         st = result.lat_stats([0.001] * 199)

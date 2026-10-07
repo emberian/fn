@@ -49,7 +49,10 @@ from tools.load import workloads as wl              # noqa: E402
 
 BOX_BASE = "/tank/fn/scratch/load-harness"
 # One-off hook files live in the evidence dir (not tools/load): O2's FN_TRACE spans replace them.
-HOOK = ROOT / "planning" / "evidence" / "load" / "hooks" / "w13-idle-gc.lisp"
+HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
+HOOK = HOOKS / "w13-idle-gc.lisp"
+CENSUS_HOOK = HOOKS / "w15-census.lisp"
+FIXTURES = "/tank/fn/scratch/fixtures-0b4d3b183"
 CLK = os.sysconf("SC_CLK_TCK") if hasattr(os, "sysconf") else 100
 
 
@@ -157,12 +160,17 @@ class Target:
             self._sha = sha256_file(self.core)
         return self._sha
 
-    def launcher(self, workdir, use_hook, env):
-        """(launcher path, env) with the hook loaded before the node starts."""
-        if not use_hook:
+    def launcher(self, workdir, hooks, env):
+        """(launcher path, env) with the hook files loaded before the node starts."""
+        if not hooks:
             return self.path, env
+        if len(hooks) == 1:
+            hook = hooks[0]
+        else:
+            hook = Path(workdir) / "hooks.lisp"
+            hook.write_text("".join('(load "%s")\n' % h for h in hooks))
         if self.kind == "fn-core":
-            env = dict(env, XL_HOOK=str(HOOK))
+            env = dict(env, XL_HOOK=str(hook))
             return self.path, env
         wrap = Path(workdir) / "hooked"
         shutil.rmtree(wrap, ignore_errors=True)
@@ -174,7 +182,7 @@ class Target:
         pat = re.compile(r"""--eval (['"])\(acl2::sbcl-restart\)\1""")
         if not pat.search(text):
             raise CellError("launcher %s has no --eval (acl2::sbcl-restart) to put the hook before" % self.path)
-        text = pat.sub(lambda mo: '--eval "(load \\"%s\\")" --eval "(acl2::sbcl-restart)"' % HOOK, text)
+        text = pat.sub(lambda mo: '--eval "(load \\"%s\\")" --eval "(acl2::sbcl-restart)"' % hook, text)
         out = wrap / self.path.name
         out.write_text(text)
         out.chmod(0o755)
@@ -182,16 +190,17 @@ class Target:
 
 
 class Node:
-    def __init__(self, target, work, flags, groups, sbcl_args, use_hook, gc_log, extra_env, interval, heap_mode="decided"):
+    def __init__(self, target, work, flags, groups, sbcl_args, hooks, gc_log, extra_env, interval, heap_mode="decided", max_connections=None):
         self.target, self.work, self.flags, self.groups = target, Path(work), flags, groups
         self.heap_mode, self.decided = heap_mode, None
         self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE", SBCL_USER_ARGS=sbcl_args)
         for k in ("ACL2_SYSTEM_BOOKS", "FN_HOST", "FN_PROF_OUT", "FN_PROF_HOOK", "XL_HOOK"):
             self.env.pop(k, None)
         self.env.update(extra_env)
-        if use_hook:
+        self.max_connections = max_connections
+        if hooks:
             self.env["FN_LOAD_GC_LOG"] = str(gc_log)
-        self.launcher, self.env = target.launcher(self.work, use_hook, self.env)
+        self.launcher, self.env = target.launcher(self.work, hooks, self.env)
         self.gc_log = Path(gc_log)
         self.proc, self.pid, self.port = None, None, None
         self.config = self.work / "fn.toml"
@@ -205,8 +214,9 @@ class Node:
         with socket.socket() as s:
             s.bind(("127.0.0.1", 0))
             self.port = s.getsockname()[1]
-        self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n'
-                               % (self.store, self.port, self.work / "c.sock"))
+        server = "[server]\nmax_connections = %d\n" % self.max_connections if self.max_connections else ""
+        self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n%s'
+                               % (self.store, self.port, self.work / "c.sock", server))
 
     def argv(self, *words):
         return [str(self.launcher), "--fn", "operator", str(self.config), *words]
@@ -254,6 +264,8 @@ class Node:
                 break
         threading.Thread(target=lambda: [None for _ in iter(lambda: self.proc.stdout.read(4096), b"")], daemon=True).start()
         self.open_s = time.monotonic() - t0
+        snap = proc_snapshot(self.pid)
+        self.open_cpu_s = snap["cpu_s"] if snap else None
         return self.open_s
 
     def stop(self, grace=300):
@@ -336,6 +348,65 @@ def post_one(conn, ctr, octets, retries=40):
     return None
 
 
+def store_files(root):
+    """relative path -> (octets, mtime_ns) for every file under the store."""
+    out = {}
+    for dp, _, fns in os.walk(root):
+        for fn in fns:
+            fp = Path(dp) / fn
+            with contextlib.suppress(OSError):
+                st = fp.stat()
+                out[str(fp.relative_to(root))] = (st.st_size, st.st_mtime_ns)
+    return out
+
+
+def components(files):
+    """Octets per component: files grouped by path with digit runs and hex names folded to '#'."""
+    out = collections.Counter()
+    for k, (size, _) in files.items():
+        out[re.sub(r"[0-9a-f]{8,}|\d+", "#", k)] += size
+    return dict(out)
+
+
+def mid(x):
+    """A message-id: the string itself (discovered from OVER) or the id of our own article i."""
+    return x if isinstance(x, str) else _clients()[0].msgid(x)
+
+
+def discover_ids(port, group="fn.test", want=300):
+    """Message-ids of the newest `want` articles of the first group that answers (a fixture's articles are not ours)."""
+    m, _ = _clients()
+    c = m.Conn(port, buffered=True)
+    try:
+        g = c.line("GROUP %s" % group).split()
+        if not g or g[0] != b"211":
+            lst = c.line("LIST ACTIVE")
+            names = []
+            if lst[:1] == b"2":
+                while True:
+                    ln = c.readline()
+                    if ln == b".\r\n" or not ln:
+                        break
+                    names.append(ln.split()[0].decode())
+            group = next((n for n in names if n.startswith("fn.")), names[0] if names else group)
+            g = c.line("GROUP %s" % group).split()
+        hi = int(g[3])
+        lo = max(int(g[2]), hi - want + 1)
+        if c.line("OVER %d-%d" % (lo, hi))[:3] != b"224":
+            return [], group
+        ids = []
+        while True:
+            ln = c.readline()
+            if ln == b".\r\n" or not ln:
+                break
+            f = ln.decode("latin-1").rstrip("\r\n").split("\t")
+            if len(f) >= 5 and f[4].startswith("<"):
+                ids.append(f[4])
+        return ids, group
+    finally:
+        c.close()
+
+
 def read_dot(conn):
     n = 0
     while True:
@@ -404,15 +475,36 @@ class Run:
                 c.close()
             except Exception as e:      # noqa: BLE001 - recorded, not hidden
                 errs.append(repr(e))
+        bg_stop, bg_n, bg_errs = threading.Event(), itertools.count(), []
+
+        def background():
+            try:
+                c = self.conn()
+                if c is None:
+                    return
+                known = list(self.ctr.known) or list(range(self.args_known_floor()))
+                j = 0
+                while known and not bg_stop.is_set():
+                    timed_cmd(c, "ARTICLE %s" % mid(known[(j * 7919) % len(known)]))
+                    next(bg_n)
+                    j += 1
+                c.close()
+            except Exception as e:      # noqa: BLE001
+                bg_errs.append(repr(e))
         t0 = time.monotonic()
+        bg = [threading.Thread(target=background) for _ in range(ph.get("background_readers", 0))]
         ths = [threading.Thread(target=worker, args=(k,)) for k in range(conns)]
-        for t in ths:
+        for t in bg + ths:
             t.start()
         for t in ths:
             t.join()
+        bg_stop.set()
+        for t in bg:
+            t.join()
         secs = time.monotonic() - t0
         allv = [d for v in lat for d in v]
-        out = {"cmd": {"POST": res_mod.lat_stats(allv)}, "rate": {"post_per_s": round(len(allv) / secs, 3) if secs else None},
+        errs += bg_errs
+        out = {"background_readers": ph.get("background_readers", 0), "cmd": {"POST": res_mod.lat_stats(allv)}, "rate": {"post_per_s": round(len(allv) / secs, 3) if secs else None},
                "connections": conns, "octets": octets}
         if errs:
             out["errors"] = errs
@@ -453,7 +545,7 @@ class Run:
                         d, rep, _ = timed_cmd(c, "OVER %d-%d" % win)
                         good = rep.startswith(b"224")
                     else:
-                        mid = _clients()[0].msgid(known[(j * 7919) % len(known)])
+                        mid = mid(known[(j * 7919) % len(known)])
                         d, rep, _ = timed_cmd(c, "ARTICLE %s" % mid)
                         good = rep.startswith(b"220")
                     j += readers if readers > 1 else 1
@@ -516,6 +608,51 @@ class Run:
 
     def args_known_floor(self):
         return self.spec.get("_preloaded", 0)
+
+    def phase_commands(self, ph):
+        """Per-command latency and owner CPU per command on one connection: the standing T-CMD row."""
+        m, _ = _clients()
+        reps = ph.get("reps", 300)
+        known = list(self.ctr.known) or list(range(self.args_known_floor()))
+        if not known:
+            raise CellError("no articles for the command row")
+        c = self.conn()
+        g = c.line("GROUP fn.test").split()
+        hi = int(g[3]) if len(g) >= 4 else 0
+        lo = max(1, hi - 39)
+        pick = lambda k: mid(known[(k * 7919) % len(known)])
+        plan = {"GROUP": lambda k: ("GROUP fn.test", False), "OVER40": lambda k: ("OVER %d-%d" % (lo, hi), True),
+                "STAT": lambda k: ("STAT %s" % pick(k), False), "HEAD": lambda k: ("HEAD %s" % pick(k), True),
+                "LIST": lambda k: ("LIST", True)}
+        out, cpu_ms, bad = {}, {}, {}
+        for name, mk in plan.items():
+            ts, c0 = [], (proc_snapshot(self.node.pid) or {}).get("cpu_s")
+            for k in range(reps):
+                text, multi = mk(k)
+                t0 = time.perf_counter()
+                rep = c.line(text)
+                if multi and rep[:1] == b"2":
+                    read_dot(c)
+                ts.append(time.perf_counter() - t0)
+                if rep[:1] != b"2":
+                    bad[name] = refusal_name(rep)
+            c1 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
+            out[name] = res_mod.lat_stats(ts)
+            if c0 is not None and c1 is not None:
+                cpu_ms[name] = round((c1 - c0) * 1000.0 / reps, 3)
+        c.close()
+        ts = []
+        c0 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
+        for _ in range(reps):
+            t0 = time.perf_counter()
+            cc = m.Conn(self.node.port, buffered=True)
+            ts.append(time.perf_counter() - t0)
+            cc.sock.close()
+        c1 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
+        out["greeting"] = res_mod.lat_stats(ts)
+        if c0 is not None and c1 is not None:
+            cpu_ms["greeting"] = round((c1 - c0) * 1000.0 / reps, 3)
+        return {"cmd": out, "cpu_ms_per_op_by_cmd": cpu_ms, "bad_replies": bad or None}
 
     # hold / idle --------------------------------------------------------
     def phase_hold(self, ph):
@@ -608,6 +745,42 @@ class Run:
         c.close()
         return {"verified": len(ids), "mismatches": mism, "first_mismatch": first_bad}
 
+    def phase_census(self, ph):
+        """SBCL's accounting of the dynamic space (the one-off w15-census.lisp hook), raw and after a full GC."""
+        d = Path(self.node.work) / "census"
+        for f in ("done", "go", "census.txt", "census.err"):
+            with contextlib.suppress(OSError):
+                (d / f).unlink()
+        (d / "go").write_text("")
+        t0 = time.monotonic()
+        while not (d / "done").exists():
+            if time.monotonic() - t0 > 900:
+                raise CellError("census hook did not finish in 900 s (is the hook loaded?)")
+            time.sleep(0.5)
+        keep = Path(self.args.out) / ("census-%s.txt" % re.sub(r"[^A-Za-z0-9]+", "_", self.cell_id))
+        shutil.copy(d / "census.txt", keep) if (d / "census.txt").exists() else None
+        err = (d / "census.err").read_text() if (d / "census.err").exists() else None
+        return {"census_file": keep.name, "census": cells_mod.parse_census((d / "census.txt").read_text("utf-8", "replace"))
+                if (d / "census.txt").exists() else None, "census_error": err, "census_s": round(time.monotonic() - t0, 1)}
+
+    def phase_publish(self, ph):
+        """Stop the owner, publish a checkpoint offline: wall, CPU, octets in files it touched, component sizes."""
+        import resource
+        self.node.stop()
+        before = store_files(self.node.store)
+        r0 = resource.getrusage(resource.RUSAGE_CHILDREN)
+        rc, secs, tail = self.node.verb("checkpoint")
+        r1 = resource.getrusage(resource.RUSAGE_CHILDREN)
+        if rc != 0:
+            raise CellError("store checkpoint exit %d: %s" % (rc, tail))
+        after = store_files(self.node.store)
+        touched = sum(v[0] for k, v in after.items() if before.get(k) != v)
+        return {"publish_wall_s": round(secs, 3),
+                "publish_cpu_s": round((r1.ru_utime + r1.ru_stime) - (r0.ru_utime + r0.ru_stime), 3),
+                "publish_touched_octets": touched, "store_octets_before": sum(v[0] for v in before.values()),
+                "store_octets_after": sum(v[0] for v in after.values()),
+                "sizes_before": components(before), "sizes_after": components(after), "checkpoint_report": tail.strip()[-200:]}
+
     def phase_unimplemented(self, ph):
         return {"status": "not-implemented", "reason": ph["reason"]}
 
@@ -635,6 +808,21 @@ def prepare_store(node, run, spec, cache_dir, key):
         node.start()
         return {}
     n, octets = st["preload"], st.get("octets", 2048)
+    fixture = Path(run.args.fixtures) / st["fixture"].format(N=n) / "store" if st.get("fixture") else None
+    if fixture is not None and fixture.is_dir():
+        shutil.copytree(fixture, node.store, symlinks=True)
+        node.write_config()
+        lock = node.store / "writer.lock"
+        lock.touch()
+        lock.chmod(0o600)
+        node.start()
+        ids, group = discover_ids(node.port)
+        if not ids:
+            raise CellError("fixture %s: no article ids discoverable through OVER" % fixture)
+        run.ctr.known = ids
+        run.ctr._ids = itertools.count(10 ** 6)       # our own POSTs never collide with the fixture's ids
+        run.spec["_group"] = group
+        return {"preloaded": n, "source": "fixture %s" % fixture, "group": group}
     cached = Path(cache_dir) / ("%s-%d-%d" % (key, n, octets))
     if cached.is_dir() and (cached / "store").is_dir():
         shutil.copytree(cached / "store", node.store, symlinks=True)
@@ -663,28 +851,38 @@ def prepare_store(node, run, spec, cache_dir, key):
 
 # ---------------------------------------------------------------- one cell
 
-def run_cell(cell, target, arm, rep, args, data, res, write):
+def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
     spec = cell.spec
     label = "%s-%s-%s-r%d" % (re.sub(r"[^A-Za-z0-9]+", "_", cell.id), target.kind, arm or "x", rep)
     work = Path(args.work) / label
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
     use_hook = bool(arm) or args.gc_hook
+    hooks = [HOOK] if use_hook else []
     env_extra = {"FN_LOAD_IDLE_GC": "off"} if arm == "A" else {}
+    if spec.get("census"):
+        hooks.append(CENSUS_HOOK)
+        (work / "census").mkdir()
+        env_extra["FN_LOAD_CENSUS_DIR"] = str(work / "census")
     node = Node(target, work, wl.init_flags(data, spec["preset"]), spec["groups"], args.sbcl_user_args or data["sbcl_user_args"],
-                use_hook, work / "gc.log", env_extra, spec.get("sampler_s", 1.0),
-                spec.get("heap", "decided"))
+                hooks, work / "gc.log", env_extra, spec.get("sampler_s", 1.0),
+                spec.get("heap", "decided"), spec.get("max_connections"))
     ctr = Counters()
     run = Run(node, spec, ctr, args)
+    run.cell_id = cell.id
     cr = {"trace": None, "cell": cell.id, "workload": cell.workload, "target": target.kind, "arm": arm, "rep": rep,
           "preset": spec["preset"], "flags": node.flags, "git": args.rev, "status": "running",
           "image": {"path": str(target.path), "core_sha256": target.core_sha256, "tree_sha": target.tree_sha},
-          "hook": ("%s%s" % (HOOK.name, " idle-gc-off" if arm == "A" else "")) if use_hook else None,
+          "hook": ("+".join(h.name for h in hooks) + (" idle-gc-off" if arm == "A" else "")) if hooks else None,
+          "max_connections": spec.get("max_connections"),
           "launch": "%s --fn operator %s run (SBCL_USER_ARGS=%r)" % (node.launcher, node.config, node.env["SBCL_USER_ARGS"]),
           "started_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "phases": [],
           "box": {"name": args.box, "cores": len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count(),
-                  "loadavg_start": loadavg(), "arc_bytes_start": arc_size(), "fs": fs_type(work)},
+                  "loadavg_start": loadavg(), "arc_bytes_start": arc_size(),
+                  "pinned": sorted(os.sched_getaffinity(0)) if args.cores else None, "fs": fs_type(work)},
           "loopback_only": True}
+    if sub:
+        cr["sub"] = True
     res["cells"].append(cr)
     write()
     t_cell = time.monotonic()
@@ -732,6 +930,9 @@ def run_cell(cell, target, arm, rep, args, data, res, write):
                 rec["io"] = {"read_bytes": (after["io"].get("read_bytes", 0) - ((before or {}).get("io") or {}).get("read_bytes", 0)),
                              "write_bytes": (after["io"].get("write_bytes", 0) - ((before or {}).get("io") or {}).get("write_bytes", 0))} if before and before["cpu_s"] is not None and ph["kind"] != "reopen" else None
                 rec["cpu_s"] = round(after["cpu_s"] - before["cpu_s"], 2) if before and after.get("cpu_s") is not None and ph["kind"] != "reopen" else None
+            ops = sum((st or {}).get("n", 0) for st in (rec.get("cmd") or {}).values())
+            if ops and rec.get("cpu_s") is not None:
+                rec["ops"], rec["cpu_ms_per_op"] = ops, round(rec["cpu_s"] * 1000.0 / ops, 3)
             rec["gc"] = gc_delta() if use_hook else None
             rec["load"] = loadavg()
             rec["arc_bytes"] = arc_size()
@@ -754,13 +955,28 @@ def run_cell(cell, target, arm, rep, args, data, res, write):
         cr["box"]["arc_bytes_end"] = arc_size()
         cr["noisy"] = (cr["box"]["loadavg_start"][0] > 2 * cr["box"]["cores"]) if cr["box"]["cores"] else False
         cr["metrics"], cr["not_measured"] = cells_mod.derive(cell.workload, cr["phases"])
-        cr["bars"] = res_mod.judge_cell(cr, args.bars)
+        cr["bars"] = [] if sub else res_mod.judge_cell(cr, args.bars)
         with contextlib.suppress(OSError):
             (work / "samples.json").write_text(json.dumps(node.sampler.series))
         write()
         if not args.keep:
             shutil.rmtree(work / "store", ignore_errors=True)
     return cr
+
+
+def run_sweep(cell_id, cell, target, arm, rep, args, data, res, write):
+    """One cell over several store sizes: a sub-cell per size, then the merged cell that the bars judge."""
+    subs = []
+    for key in cell.spec["sweep"]:
+        sc = wl.resolve("%s@%s" % (cell_id, key), data)
+        cr = run_cell(sc, target, arm, rep, args, data, res, write, sub=True)
+        subs.append((key, data["stores"][key], cr))
+        print(res_mod.print_line(cr, []), flush=True)
+    merged = cells_mod.merge_sweep(cell_id, cell.workload, subs)
+    merged["bars"] = res_mod.judge_cell(merged, args.bars)
+    res["cells"].append(merged)
+    write()
+    return merged
 
 
 def cmd_run(args):
@@ -771,9 +987,16 @@ def cmd_run(args):
     args.work = args.work or ("/dev/shm/fn-load-%s" % args.label)
     Path(args.work).mkdir(parents=True, exist_ok=True)
     args.cache = args.cache or ("%s/stores" % BOX_BASE)
+    args.fixtures = args.fixtures or FIXTURES
     targets = [Target("image", p) for p in args.image] + [Target("fn-core", p) for p in args.fn_core]
     if not targets:
         raise SystemExit("run needs --image and/or --fn-core")
+    if args.cores:
+        cores = set()
+        for part in args.cores.split(","):
+            a, _, b = part.partition("-")
+            cores |= set(range(int(a), int(b or a) + 1))
+        os.sched_setaffinity(0, cores)
     args.rev = args.rev or next((t.tree_sha for t in targets if t.tree_sha), None) or _git_rev()
     res = {"schema": 1, "label": args.label, "rev": args.rev, "cells": [], "evidence": args.evidence}
     status = out / "status"
@@ -792,7 +1015,10 @@ def cmd_run(args):
             for rep in range(1, args.repeat + 1):
                 for target in targets:
                     for arm in arms:
-                        cr = run_cell(wl.resolve(cell_id, data), target, arm, rep, args, data, res, write)
+                        if cell.spec.get("sweep") and "@" not in cell_id:
+                            cr = run_sweep(cell_id, cell, target, arm, rep, args, data, res, write)
+                        else:
+                            cr = run_cell(wl.resolve(cell_id, data), target, arm, rep, args, data, res, write)
                         line = res_mod.print_line(cr, cr["bars"])
                         print(line, flush=True)
                         with open(out / "cells.jsonl", "a") as f:
@@ -833,7 +1059,8 @@ def cmd_box(args):
         inner += ["--image", img]
     for core in args.fn_core:
         inner += ["--fn-core", core]
-    for flag, val in (("--arms", args.arms), ("--rev", args.rev), ("--sbcl-user-args", args.sbcl_user_args)):
+    for flag, val in (("--arms", args.arms), ("--rev", args.rev), ("--sbcl-user-args", args.sbcl_user_args),
+                      ("--work", args.work), ("--cores", args.cores)):
         if val:
             inner += [flag, val]
     if args.gc_hook:
@@ -889,12 +1116,14 @@ def main(argv=None):
         q.add_argument("--sbcl-user-args", default=None)
         q.add_argument("--label", required=True)
         q.add_argument("--box", default="local")
+        q.add_argument("--work", default=None, help="work dir (default /dev/shm/fn-load-LABEL: tmpfs); a path on ZFS for the disk rows")
+        q.add_argument("--cores", default=None, help="pin the run to these cores, e.g. 0-7 (a time cell needs its own cores)")
     r = sub.add_parser("run")
     common(r)
     r.add_argument("--out", required=True)
-    r.add_argument("--work", default=None)
     r.add_argument("--cache", default=None, help="preloaded-store cache dir")
     r.add_argument("--keep", action="store_true")
+    r.add_argument("--fixtures", default=None, help="fixture root (default %s)" % FIXTURES)
     r.add_argument("--evidence", default=None)
     b = sub.add_parser("box")
     common(b)

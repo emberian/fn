@@ -81,6 +81,8 @@ def judge_cell(cr, bars):
 
     A check may name `fs` (zfs, tmpfs): it applies only to a cell on that filesystem.  A `latency` bar is
     NOT-MEASURED above load 8; a `time` bar (ruling 17) needs load <= 4 at start and end and pinned cores."""
+    if cr.get("sub"):          # a member of a sweep: the merged cell is judged, not its members
+        return []
     head = cell_head(cr.get("cell", ""))
     box = cr.get("box") or {}
     load1 = (box.get("loadavg_start") or [None])[0]

@@ -17,7 +17,10 @@ HERE = Path(__file__).resolve().parent
 PATH = HERE / "workloads.json"
 
 PHASE_KINDS = {
-    "post": {"count", "duration_s", "octets", "connections", "rate_per_s"},
+    "post": {"count", "duration_s", "octets", "connections", "rate_per_s", "background_readers"},
+    "commands": {"reps"},
+    "census": set(),
+    "publish": set(),
     "read": {"readers", "count", "duration_s", "cmd", "poster"},
     "hold": {"steps", "step_settle_s", "close"},
     "idle": {"seconds"},

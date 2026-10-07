@@ -1,0 +1,270 @@
+{
+ "cells": [
+  {
+   "admitted": {
+    "admitted": 5648,
+    "refused": 6
+   },
+   "arm": null,
+   "bars": [
+    {
+     "bar": "L-POST",
+     "checks": [
+      {
+       "cmp": "ge",
+       "metric": "post.rate_c1",
+       "reason": "box loaded (load 20.2 > 8)",
+       "threshold": 10,
+       "value": 148.05
+      },
+      {
+       "cmp": "ge",
+       "metric": "post.rate_c8",
+       "reason": "box loaded (load 20.2 > 8)",
+       "threshold": 10,
+       "value": 133.93
+      }
+     ],
+     "quantity": "sustained POSTs/s, closed loop, on tmpfs, at 1 and 8 connections",
+     "reason": "box loaded (load 20.2 > 8)",
+     "source": "operator-internals 'What one node sustains'; 2026-09-26 v1 target",
+     "verdict": "NOT-MEASURED"
+    },
+    {
+     "bar": "T-POST",
+     "checks": [
+      {
+       "cmp": "le",
+       "metric": "post.cpu_ms_per_op.c1",
+       "reason": "metric absent from the run",
+       "threshold": 16,
+       "value": null
+      }
+     ],
+     "quantity": "durable POST (last line to 240), 2 KiB, 1 connection: p50 / p99 and owner CPU per POST, on ZFS",
+     "reason": "metric absent from the run",
+     "source": "ruling 17 (LOAD-PROGRAM 1a)",
+     "verdict": "NOT-MEASURED"
+    },
+    {
+     "bar": "T-RATE",
+     "checks": [
+      {
+       "cmp": "ge",
+       "metric": "post.rate_c1r3",
+       "reason": "metric absent from the run",
+       "threshold": 50,
+       "value": null
+      },
+      {
+       "cmp": "ge",
+       "metric": "post.rate_c8r3",
+       "reason": "metric absent from the run",
+       "threshold": 50,
+       "value": null
+      }
+     ],
+     "quantity": "sustained POSTs/s, closed loop, 1 and 8 connections, 3 readers: >= 10 /s on ZFS, >= 50 /s on tmpfs",
+     "reason": "metric absent from the run",
+     "source": "ruling 17 (LOAD-PROGRAM 1a)",
+     "verdict": "NOT-MEASURED"
+    }
+   ],
+   "box": {
+    "arc_bytes_end": null,
+    "arc_bytes_start": null,
+    "cores": 16,
+    "fs": "tmpfs",
+    "loadavg_end": [
+     23.06,
+     22.64,
+     21.71
+    ],
+    "loadavg_start": [
+     20.21,
+     22.17,
+     21.52
+    ],
+    "name": "hbox",
+    "pinned": null
+   },
+   "cell": "W1",
+   "exit_code": 0,
+   "flags": [
+    "--profile",
+    "development",
+    "--max-transactions",
+    "100000",
+    "--max-history-octets",
+    "268435456",
+    "--max-record-octets",
+    "196608",
+    "--max-groups-per-article",
+    "16",
+    "--max-open-suffix",
+    "128"
+   ],
+   "git": "0b4d3b18385a53209146a78296e282d06c17e573",
+   "heap": {
+    "mode": "decided",
+    "sbcl_user_args": "--dynamic-space-size 5243MB --control-stack-size 1024KB"
+   },
+   "hook": null,
+   "image": {
+    "core_sha256": "fc94e5059e8211e5fd03e3c049bd7e3323fa07a8cd76b12d5cac7ad0f48d8efc",
+    "path": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host",
+    "tree_sha": "0b4d3b18385a53209146a78296e282d06c17e573"
+   },
+   "launch": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host --fn operator /dev/shm/fn-load-pr-tmpfs/W1-image-x-r1/fn.toml run (SBCL_USER_ARGS='--dynamic-space-size 1068MB --tls-limit 16384')",
+   "loopback_only": true,
+   "metrics": {
+    "post.p50_ms.c1": 5.673,
+    "post.p50_ms.c8": 45.479,
+    "post.p99_ms.c1": 59.822,
+    "post.p99_ms.c8": 466.44,
+    "post.rate_c1": 148.05,
+    "post.rate_c8": 133.93,
+    "posts.admitted": 5648,
+    "posts.refused": 6,
+    "rss_kib.anon": 136804,
+    "rss_kib.file": 220480,
+    "rss_kib.hwm": 416080,
+    "rss_kib.vmrss": 357284
+   },
+   "noisy": false,
+   "not_measured": {},
+   "open_s": 0.123,
+   "phases": [
+    {
+     "gc": null,
+     "kind": "open",
+     "mem": {
+      "anon": 30860,
+      "file": 220480,
+      "hwm": 268288,
+      "vmrss": 251340
+     },
+     "name": "open",
+     "open_s": 0.123,
+     "seconds": 0.123
+    },
+    {
+     "arc_bytes": null,
+     "background_readers": 0,
+     "cmd": {
+      "POST": {
+       "max_ms": 154.141,
+       "n": 2962,
+       "p50_ms": 5.673,
+       "p95_ms": 10.255,
+       "p99_ms": 59.822
+      }
+     },
+     "connections": 1,
+     "counts": {
+      "admitted": 2962,
+      "refused": 0
+     },
+     "cpu_ms_per_op": 10.571,
+     "cpu_s": 31.31,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      22.06,
+      22.44,
+      21.62
+     ],
+     "measure": false,
+     "mem": {
+      "anon": 90408,
+      "file": 220480,
+      "hwm": 394716,
+      "peak_anon": 156588,
+      "peak_vmrss": 377068,
+      "pss": 262604,
+      "threads": 15,
+      "vmrss": 310888
+     },
+     "name": "c1",
+     "octets": 2048,
+     "ops": 2962,
+     "rate": {
+      "post_per_s": 148.052
+     },
+     "seconds": 20.007,
+     "status": "ok"
+    },
+    {
+     "arc_bytes": null,
+     "background_readers": 0,
+     "cmd": {
+      "POST": {
+       "max_ms": 736.193,
+       "n": 2686,
+       "p50_ms": 45.479,
+       "p95_ms": 88.246,
+       "p99_ms": 466.44
+      }
+     },
+     "connections": 8,
+     "counts": {
+      "admitted": 2686,
+      "refused": 6
+     },
+     "cpu_ms_per_op": 11.727,
+     "cpu_s": 31.5,
+     "gc": null,
+     "io": {
+      "read_bytes": 0,
+      "write_bytes": 0
+     },
+     "kind": "post",
+     "load": [
+      23.06,
+      22.64,
+      21.71
+     ],
+     "measure": true,
+     "mem": {
+      "anon": 136804,
+      "file": 220480,
+      "hwm": 416080,
+      "peak_anon": 174496,
+      "peak_vmrss": 394976,
+      "pss": 308665,
+      "threads": 15,
+      "vmrss": 357284
+     },
+     "name": "c8",
+     "octets": 2048,
+     "ops": 2686,
+     "rate": {
+      "post_per_s": 133.929
+     },
+     "seconds": 20.056,
+     "status": "ok"
+    }
+   ],
+   "preset": "filled",
+   "refusals": {
+    "440-posting-not-permitted-now": 6
+   },
+   "rep": 1,
+   "seconds": 43.7,
+   "started_utc": "2026-10-07T22:56:31Z",
+   "status": "complete",
+   "store": {},
+   "target": "image",
+   "trace": null,
+   "workload": "post-rate"
+  }
+ ],
+ "evidence": null,
+ "label": "pr-tmpfs",
+ "rev": "0b4d3b18385a53209146a78296e282d06c17e573",
+ "schema": 1
+}

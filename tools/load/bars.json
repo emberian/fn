@@ -202,6 +202,231 @@
    "file": "tools/load/workloads.json",
    "owner": "deputy-S",
    "severity": "high"
+  },
+  {
+   "id": "T-POST",
+   "quantity": "durable POST (last line to 240), 2 KiB, 1 connection: p50 / p99 and owner CPU per POST, on ZFS",
+   "cell": "W1",
+   "workload": "post-rate",
+   "time": true,
+   "checks": [
+    {
+     "metric": "post.p50_ms.c1",
+     "cmp": "le",
+     "threshold": 20,
+     "fs": "zfs"
+    },
+    {
+     "metric": "post.p99_ms.c1",
+     "cmp": "le",
+     "threshold": 250,
+     "fs": "zfs"
+    },
+    {
+     "metric": "post.cpu_ms_per_op.c1",
+     "cmp": "le",
+     "threshold": 16
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
+  },
+  {
+   "id": "T-READ",
+   "quantity": "ARTICLE 2 KiB p50 / p99 at 16 readers beside one poster; p99(16) / p99(1)",
+   "cell": "W2",
+   "workload": "readers",
+   "time": true,
+   "checks": [
+    {
+     "metric": "article.p50_ms.R16",
+     "cmp": "le",
+     "threshold": 5
+    },
+    {
+     "metric": "article.p99_ms.R16",
+     "cmp": "le",
+     "threshold": 50
+    },
+    {
+     "metric": "article.p99_ratio_16_1",
+     "cmp": "le",
+     "threshold": 2
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
+  },
+  {
+   "id": "T-CMD",
+   "quantity": "per-command p99 for GROUP, OVER-40, STAT, HEAD, LIST, greeting at 1k/10k/40k, and its exponent against n",
+   "cell": "T-CMD",
+   "workload": "commands",
+   "time": true,
+   "checks": [
+    {
+     "metric": "cmd.p99_ms.max",
+     "cmp": "le",
+     "threshold": 50
+    },
+    {
+     "metric": "cmd.p99_exponent.max",
+     "cmp": "le",
+     "threshold": 0.2
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
+  },
+  {
+   "id": "T-RATE",
+   "quantity": "sustained POSTs/s, closed loop, 1 and 8 connections, 3 readers: >= 10 /s on ZFS, >= 50 /s on tmpfs",
+   "cell": "W1",
+   "workload": "post-rate",
+   "time": true,
+   "checks": [
+    {
+     "metric": "post.rate_c1r3",
+     "cmp": "ge",
+     "threshold": 10,
+     "fs": "zfs"
+    },
+    {
+     "metric": "post.rate_c8r3",
+     "cmp": "ge",
+     "threshold": 10,
+     "fs": "zfs"
+    },
+    {
+     "metric": "post.rate_c1r3",
+     "cmp": "ge",
+     "threshold": 50,
+     "fs": "tmpfs"
+    },
+    {
+     "metric": "post.rate_c8r3",
+     "cmp": "ge",
+     "threshold": 50,
+     "fs": "tmpfs"
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
+  },
+  {
+   "id": "T-CATCH",
+   "quantity": "catch-up import pace at 1k / 10k / 100k",
+   "cell": "W6a",
+   "workload": "catchup",
+   "time": true,
+   "checks": [
+    {
+     "metric": "catchup.rate_1000",
+     "cmp": "ge",
+     "threshold": 35
+    },
+    {
+     "metric": "catchup.rate_10000",
+     "cmp": "ge",
+     "threshold": 35
+    },
+    {
+     "metric": "catchup.rate_100000",
+     "cmp": "ge",
+     "threshold": 35
+    },
+    {
+     "metric": "catchup.time_exponent",
+     "cmp": "le",
+     "threshold": 1.1
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
+  },
+  {
+   "id": "T-OPEN",
+   "quantity": "owner start to LISTENING from checkpoint at 50k (the fixture nearest F6's 40k, so stricter) and the exponent of open time against n (full replay and checkpoint)",
+   "cell": "W15",
+   "workload": "mem-vs-size",
+   "time": true,
+   "checks": [
+    {
+     "metric": "open_s.checkpoint@50k",
+     "cmp": "le",
+     "threshold": 10
+    },
+    {
+     "metric": "open_s.checkpoint.exponent",
+     "cmp": "le",
+     "threshold": 1.0
+    },
+    {
+     "metric": "open_s.replay.exponent",
+     "cmp": "le",
+     "threshold": 1.0
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
+  },
+  {
+   "id": "T-PUB",
+   "quantity": "publication (checkpoint) wall at 40k; longest POST stall while it runs <= 2 s; octets written O(changed)",
+   "cell": "W15",
+   "workload": "mem-vs-size",
+   "time": true,
+   "checks": [
+    {
+     "metric": "publish.stall_max_s",
+     "cmp": "le",
+     "threshold": 2.0
+    },
+    {
+     "metric": "publish.write_octets.exponent",
+     "cmp": "le",
+     "threshold": 0.5
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
+  },
+  {
+   "id": "T-LIN",
+   "quantity": "ARTICLE time vs article size: t(8N)/t(N) and the fitted exponent",
+   "cell": "W14",
+   "workload": "article-sizes",
+   "time": true,
+   "checks": [
+    {
+     "metric": "article.ratio_8n_over_n",
+     "cmp": "le",
+     "threshold": 15.0
+    },
+    {
+     "metric": "article.exponent",
+     "cmp": "le",
+     "threshold": 1.1
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
   }
  ]
 }
