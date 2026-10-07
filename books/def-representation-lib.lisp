@@ -312,3 +312,30 @@
            (true-listp (nth h a)))
   :hints (("Goal" :use adt-octetsp-of-nth-of-scalar-seq
                   :in-theory (disable adt-octetsp-of-nth-of-scalar-seq))))
+
+; The paged foundation's row of a scalar :octets sequence: the length and
+; offset columns and the pool, read through the paged readers
+; (`adt-pg-rget', `adt-pg-pget': the directory and page walks the generated
+; NAME$C-RGET0/1 and NAME$C-PGET bridge to).  The flat row lemma above, over
+; the flat view, with the paged reads equal to the view's `nth'.
+(defthm adt-pg-corr-scalar-octets-row
+  (implies (and (adt-pg-corr '((:octets)) *adt-pg-rows* *adt-pg-octets* c (adt-wrap1 a))
+                (natp h) (< h (len a)))
+           (and (natp (adt-pg-rget 0 h *adt-pg-rows* c))
+                (equal (adt-pg-rget 1 h *adt-pg-rows* c) (len (nth h a)))
+                (implies (and (natp i) (< i (len (nth h a))))
+                         (equal (adt-pg-pget (+ (adt-pg-rget 0 h *adt-pg-rows* c) i) *adt-pg-octets* c)
+                                (nth i (nth h a))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (adt-pg-corr adt-pg-okp)
+                                  (adt-corr adt-pg-rget adt-pg-pget adt-pg-rokp adt-pg-pokp adt-pg-flat
+                                   adt-pg-col adt-pg-rtab adt-pg-ptab))
+           :use ((:instance adt-corr-scalar-octets-row (c (adt-pg-flat '((:octets)) c)))
+                 adt-pg-corr-count-bound
+                 (:instance adt-pg-rget-is-nth (m 2) (r *adt-pg-rows*) (ci 0) (n h))
+                 (:instance adt-pg-rget-is-nth (m 2) (r *adt-pg-rows*) (ci 1) (n h))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 0))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 1))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 2))
+                 (:instance adt-pg-len-col-pokp (q *adt-pg-octets*)))
+           :do-not-induct t)))
