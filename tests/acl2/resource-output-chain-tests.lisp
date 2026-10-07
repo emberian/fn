@@ -501,3 +501,18 @@
           (settled ((ledger (rcx-l2))) :lemma rcx-fn-rlo-physical-settled-chain-without-settled))
   :mutations ((slot-not-freed (:conclusion (fn-rlo-free-chainp rows (mv-nth 1 (fn-rlo-physical token opgen receipt ledger)))) ((rows '(3)) (token (rcx-tok)) (opgen 8) (receipt :terminal) (ledger (rcx-l4))) :fault "a settlement that does not push the slot on the free chain" :lemma rcx-fn-rlo-physical-settled-chain-mutant-slot-not-freed)))
 
+
+(defthm rcx-fn-rlo-install-establishes-free-chain-witness
+  (and (eq (car (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (rcx-l0))) :installed) (fn-rlo-free-chainp (fn-rlo-free-range 2 4) (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (rcx-l0))))))
+(defthm rcx-fn-rlo-install-establishes-free-chain-without-installed
+  (and (not (eq (car (fn-rlo-install 1073741824 536870912 nil nil 4 (rcx-l0))) :installed)) (not (fn-rlo-free-chainp (fn-rlo-free-range 2 4) (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil nil 4 (rcx-l0)))))))
+(defthm rcx-fn-rlo-install-establishes-free-chain-mutant-range-from-3
+  (and (eq (car (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (rcx-l0))) :installed) (fn-rlo-free-chainp (fn-rlo-free-range 2 4) (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (rcx-l0)))) (not (fn-rlo-free-chainp (fn-rlo-free-range 3 4) (mv-nth 1 (fn-rlo-install 1073741824 536870912 nil '(16777216 1048576) 4 (rcx-l0)))))))
+(defteeth fn-rlo-install-establishes-free-chain
+  :claim (((installed (eq (car (fn-rlo-install dynamic store-need cold policy slots ledger)) :installed))) (fn-rlo-free-chainp (fn-rlo-free-range 2 slots) (mv-nth 1 (fn-rlo-install dynamic store-need cold policy slots ledger))))
+  :subject fn-rlo-install
+  :witness-lemma rcx-fn-rlo-install-establishes-free-chain-witness
+  :witness ((dynamic 1073741824) (store-need 536870912) (cold nil) (policy '(16777216 1048576)) (slots 4) (ledger (rcx-l0)))
+  :breaks ((installed ((policy nil)) :lemma rcx-fn-rlo-install-establishes-free-chain-without-installed))
+  :mutations ((range-from-3 (:conclusion (fn-rlo-free-chainp (fn-rlo-free-range 3 slots) (mv-nth 1 (fn-rlo-install dynamic store-need cold policy slots ledger)))) ((dynamic 1073741824) (store-need 536870912) (cold nil) (policy '(16777216 1048576)) (slots 4) (ledger (rcx-l0))) :fault "an install whose chain skips the first free slot" :lemma rcx-fn-rlo-install-establishes-free-chain-mutant-range-from-3)))
+
