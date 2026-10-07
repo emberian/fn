@@ -338,43 +338,11 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-exp-count-address-loop (address rev acc)
-  (declare (xargs :guard (rationalp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-exp-count-address-loop address
-                                 (cdr rev)
-                                 (+ (if (equal (fn-exp-entry-address (car rev)) address)
-                                        1
-                                      0)
-                                    acc))
-    acc))
-
-(defun fn-exp-count-address (address conns)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp conns)
-           (+ (if (equal (fn-exp-entry-address (car conns)) address) 1 0)
-              (fn-exp-count-address address (cdr conns)))
-         0)
-       :exec (fn-exp-count-address-loop address (fn-ag-rev-onto conns nil) 0)))
-
-(local
- (defthm fn-exp-count-address-loop-of-rev-onto
-   (equal (fn-exp-count-address-loop address (fn-ag-rev-onto conns zs) 0)
-          (fn-exp-count-address-loop address zs (fn-exp-count-address address conns)))
-   :hints (("Goal" :induct (fn-ag-rev-onto conns zs)
-                   :in-theory (union-theories '(fn-exp-count-address-loop fn-exp-count-address fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-exp-count-address-loop)
-
-(verify-guards fn-exp-count-address
-  :hints (("Goal" :in-theory (union-theories '(fn-exp-count-address fn-exp-count-address-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-exp-count-address-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-exp-count-address (address conns)
+  :shape :foldr :over conns :elt c
+  :combine (+ (if (equal (fn-exp-entry-address c) address) 1 0) acc) :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (rationalp acc))
 
 (defun fn-exp-ids (conns)
   (declare (xargs :guard t))
