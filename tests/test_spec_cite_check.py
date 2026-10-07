@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-import spec_cite_check as scc  # noqa: E402
+from cite import names as scc  # noqa: E402
 
 DEFINED = {"fn-bpn-limits-compose-at-the-codec-widths", "fn-sn-step"}
 SPEC = ("specs/bp.md",
@@ -87,7 +87,7 @@ class SpecCiteCheckTests(unittest.TestCase):
     def test_no_citation_is_filed_stale(self):
         # BM08: the listing is repaired prose or a reasoned exemption, never a parked debt.
         import json
-        listing = json.loads((Path(scc.__file__).resolve().parent / "spec_cite_exemptions.json").read_text())
+        listing = json.loads(scc.EXEMPTIONS.read_text())
         self.assertEqual(listing["stale"], {})
 
 

@@ -16,18 +16,13 @@ data of the Python unit tests -- whose file this one is, so its own fake paths
 below are covered by the same rule.
 """
 
-import importlib.util
 from pathlib import Path
 import sys
 import tempfile
 import unittest
 
-SPEC = importlib.util.spec_from_file_location(
-    "cite_check", Path(__file__).resolve().parents[1] / "tools" / "cite_check.py"
-)
-cite_check = importlib.util.module_from_spec(SPEC)
-sys.modules["cite_check"] = cite_check
-SPEC.loader.exec_module(cite_check)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from cite import paths as cite_check  # noqa: E402
 
 
 class ScanTests(unittest.TestCase):
@@ -195,12 +190,12 @@ class ScanTests(unittest.TestCase):
     def test_a_catalogue_of_absent_paths_does_not_count_itself(self):
         # The checker's own examples and its triage name absent paths on
         # purpose; counting them would measure the writing, not the tree.
-        found = self.scan({"tools/cite_check.py": "e.g. `books/gone.lisp`\n"})
+        found = self.scan({"tools/cite/paths.py": "e.g. `books/gone.lisp`\n"})
         self.assertEqual([(f.klass, f.tier) for f in found],
                          [("catalogue", "catalogue")])
         self.assertEqual(sorted(cite_check.CATALOGUE),
                          ["planning/lanes/HANDOFF-w11-phantom-cites.md",
-                          "tests/test_cite_check.py", "tools/cite_check.py"])
+                          "tests/test_cite_check.py", "tools/cite/paths.py"])
 
     def test_an_evidence_record_names_what_was_certified_then(self):
         found = self.silent({"tests/evidence/2026-09-18-store.json":
