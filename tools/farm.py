@@ -115,6 +115,11 @@ HOSTS = {
         "load_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls256k",
         "sbcl": "/tank/fn/sbcl/bin/sbcl",
         "cache": "~/fn-certcache",
+        # A worktree pushed to the box has no .git, so evidence_store's
+        # default cache is a cold build/evidence-cache per tree (a ~15 min
+        # one-object-per-rsync stall on the first run); one seeded cache
+        # shared by every tree is warm.
+        "evidence_cache": "~/fn-evidence-cache",
         "wrap": "",
     },
     "hbox": {
@@ -923,6 +928,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         f"FN_ACL2={acl2_shell_word(host, acl2)} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
         f"FN_CERT_CACHE={settings['cache']} "
+        + (f"FN_EVIDENCE_CACHE={settings['evidence_cache']} "
+           if settings.get("evidence_cache") else "")
         + (f"FN_SBCL={settings['sbcl']} PATH={os.path.dirname(settings['sbcl'])}:$PATH "
            if settings.get("sbcl") else "")
         +

@@ -609,6 +609,9 @@ class CacheTests(unittest.TestCase):
         script = farm.remote_script("persvati", Path("/home/ember/fn-lanes/w5"),
                                     "run-1", [], 4, 60, [])
         self.assertIn("FN_CERT_CACHE=~/fn-certcache", script)
+        self.assertIn("FN_EVIDENCE_CACHE=~/fn-evidence-cache", script)
+        self.assertNotIn("FN_EVIDENCE_CACHE", farm.remote_script(
+            "hbox", Path("/tank/fn/scratch/w5"), "run-1", [], 4, 60, []))
         self.assertIn("FN_CERT_ORIGIN_KIND=run", script)
 
     def test_wait_publishes_the_new_pairs_into_the_boxs_cache_too(self):
