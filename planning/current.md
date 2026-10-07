@@ -36,7 +36,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [P9](#p9) keep until release, refuse the unaffordable | `fn-sbud-prepare-refuses-at-budget` | yes | yes: `certify-20261007T125115Z-1652524` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P10](#p10) every cut is a model crash point | `fn-lgrc-open-keeps-the-relation-at-every-cut` | yes | yes: `certify-20261007T152214Z-3049451` | no: source changed since 69046a76 | no: dev source not on the node |
 | [P11](#p11) bundles across an outage | `fn-bpnp-step-session-offer-is-the-scan-choice` | yes | no: closure moved | no: source changed since 69046a76 | no: profile not deployed |
-| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | no: closure moved | no: source changed since 69046a76 | no: profile not deployed |
+| [M4](#m4) disconnected exchange | `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` | yes | cache only: `certify-20261007T172259Z-2458947` | no: source changed since 69046a76 | no: profile not deployed |
 | [M5](#m5) maintenance: compaction and reclaim over the record log | `fn-lgr-decide-checkpoints-the-rewrite` | yes | yes: `certify-20261007T125115Z-1652524` | lab only: `10674f330` | no: dev source not on the node |
 | [M6](#m6) the human client | `fn-served-step-list-counts-is-the-archive-counts` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [T17](#t17) the Message-ID index on the served path | `fn-nntp-archive-command-pinned-msgid-arms-are-the-scan` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
@@ -44,14 +44,14 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 | [operator-init-resume](#operator-init-resume) resumable developer init compatibility | `fn-nir-resume-admits-identical-initial-contract-across-stamps` | yes | yes: `certify-20261007T152214Z-3049451` | no: no matching image evidence | no: profile not deployed |
 | [PRF-1266](#prf-1266) STARTTLS after authentication | `fn-auth-starttls-after-authentication-is-refused-without-reset` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
 | [PRF-1269](#prf-1269) peer reader access | `fn-auth-view-excludes-unreadable-groups-on-any-connection` | yes | no: caller bridge pending | no: caller bridge pending | no: caller bridge pending |
-| [PRF-1268](#prf-1268) published handshake charges | `fn-cbud-live-held-charges-current-and-active` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
+| [PRF-1268](#prf-1268) published handshake charges | `fn-cbud-live-held-charges-current-and-active` | yes | yes: `certify-20261007T172259Z-2458947` | no: no matching image evidence | no: dev source not on the node |
 | [operator-journal-stream](#operator-journal-stream) incremental decision journal replay | `fn-otjs-report-refines-journal-report` | yes | yes: `certify-20261007T152214Z-3049451` | no: no matching image evidence | no: profile not deployed |
-| [PRF-1021](#prf-1021) operator configuration preserves resource policy | `fn-ncpath-config-octets-load-the-resolved-configuration` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
+| [PRF-1021](#prf-1021) operator configuration preserves resource policy | `fn-ncpath-config-octets-load-the-resolved-configuration` | yes | yes: `certify-20261007T172259Z-2458947` | no: no matching image evidence | no: dev source not on the node |
 | [bp-source-window](#bp-source-window) bounded private TCPCL logical window | `fn-tcim-turn-boundary` | yes | cache only: `certify-20261007T091629Z-3851785` | no: no matching image evidence | no: profile not deployed |
 | [bp-source-control](#bp-source-control) KEEPALIVE while exact received-source ACK remains held | `fn-tclsctl-never-releases-ack` | yes | yes: `certify-20261007T152214Z-3049451` | no: no matching image evidence | no: profile not deployed |
-| [operator-default-launch](#operator-default-launch) DEFAULT launcher and configured next-run resource projection | `fn-prstartup-accepted-default-launch-fits-machine` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
+| [operator-default-launch](#operator-default-launch) DEFAULT launcher and configured next-run resource projection | `fn-prstartup-accepted-default-launch-fits-machine` | yes | yes: `certify-20261007T172259Z-2458947` | no: no matching image evidence | no: dev source not on the node |
 | [durable-after-ack](#durable-after-ack) durable after acknowledgement (Mini M1) | `fn-lgu-acknowledged-records-are-recovered-at-every-cut` | yes | yes: `certify-20261007T125115Z-1652524` | no: no matching image evidence | no: dev source not on the node |
-| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | no: closure moved | no: no matching image evidence | no: dev source not on the node |
+| [store-identity](#store-identity) store identity by command (Mini M4) | `fn-stid-reply-of-a-genesis-decodes` | yes | yes: `certify-20261007T172259Z-2458947` | no: no matching image evidence | no: dev source not on the node |
 
 ## Records
 
@@ -120,7 +120,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **live reconfiguration.** No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.
 
 - Host-called subject: `fn-oclc-publish` at host/owner-host.lisp:1740, equated by `fn-oclc-publish-is-publish` (books/config-owner-carried.lisp:465).
-- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (uncertified-at-current-digest)); certified at the current source and closure by `certify-20261007T125115Z-1652524` (earliest archived).
+- Keystone: `fn-ocl-no-reader-observes-a-half-change` (books/config-owner-publish.lisp:180; PRF-028 (certified)); certified at the current source and closure by `certify-20261007T125115Z-1652524` (earliest archived).
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix and native modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); absent from it: `books/config-owner-carried.lisp`.
 - Deployed: no: node image `a3553e6b`; changed since it: `host/owner-host.lisp`.
 - Latest positive result: CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
@@ -192,7 +192,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **disconnected exchange.** A request carried by a relay listed on the receiver's boundary is judged as its author's own direct request; an unlisted carrier is refused.
 
 - Host-called subject: `fn-bpah-request-trustedp` at host/bp-native-app-host.lisp:53.
-- Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:249; PRF-075 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260929T063140Z-3488990` passed this source of `books/bp-transit-join.lisp`, and since then `books/acceptance-alloc.lisp`, `books/accounts.lisp`, `books/article-header-census.lisp` and 168 more changed.
+- Keystone: `fn-bpaj-carried-request-is-judged-as-the-authors-direct-request` (books/bp-transit-join.lisp:249; PRF-075 (uncertified-at-current-digest)); no archived manifest records it passed at the current source and closure; `certify-20261007T172259Z-2458947` installed a cached pair for them, made by a run not archived.
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile dtn developer and production images, frozen (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/bp-transit-join.lisp`, `host/bp-native-app-host.lisp`.
 - Deployed: no: the node runs default, this needs dtn.
 - Latest positive result: on frozen c3420013 through dtn7-rs with 0, 1 and 2 relays and four nodes, Python-bridge and native `bp-obligation request` authoring: B's application decides once apart from transport; the receipt releases exactly the requested pin when B is the neighbour or listed `releases-for`, `receipt-refused` and pinned without it; an unlisted carrier is refused `source-not-carried` ([qual-dtn-c3420013](evidence/qual-dtn-c3420013-2026-09-25.md)).
@@ -288,7 +288,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **published handshake charges.** Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.
 
 - Host-called subject: `fn-owner-connection-held-refresh` at host/owner-host.lisp:1744.
-- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261003T104044Z-1503690` passed this source of `books/connection-budget.lisp`, and since then `books/acceptance-alloc.lisp`, `books/article.lisp`, `books/assumptions-pgs-host-io.lisp` and 90 more changed.
+- Keystone: `fn-cbud-live-held-charges-current-and-active` (books/connection-budget.lisp:800; PRF-1268 (certified)); certified at the current source and closure by `certify-20261007T172259Z-2458947` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; changed since it: `books/connection-budget.lisp`, `host/owner-host.lisp`.
 - Latest positive result: Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.
@@ -312,7 +312,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **operator configuration preserves resource policy.** The operator loads relative paths resolved under its config directory while retaining both explicit cold/output resource policies; canonical show reloads the complete normalized configuration.
 
 - Host-called subject: `fn-native-operator-host-run-at` at host/native/operator.lisp:1228.
-- Keystone: `fn-ncpath-config-octets-load-the-resolved-configuration` (books/native-config-paths.lisp:184; in no registry row); no archived manifest certifies the current closure; `certify-20261006T024232Z-2942710` passed this source of `books/native-config-paths.lisp`, and since then `books/def-loop.lisp`, `books/native-config.lisp`, `books/profile-limits.lisp` changed.
+- Keystone: `fn-ncpath-config-octets-load-the-resolved-configuration` (books/native-config-paths.lisp:184; in no registry row); certified at the current source and closure by `certify-20261007T172259Z-2458947` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/native-config-paths.lisp`.
 - Latest positive result: Canonical rendering/source171+325 and resolverbb089: show+tests normal115041Z-1706527 PASS; paths/show+paths tests normal120245Z-1732642 PASS at75ad7a81a. Complete output-only/combined resource fixtures pass; exact manifests archived and indexed.
@@ -348,7 +348,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **DEFAULT launcher and configured next-run resource projection.** For an accepted DEFAULT run with no explicit cold policy, the extended selected reservation fits the captured least positive machine allowance; STATUS and HEALTH use the same actual configuration policy chain. This is a partial selected storage projection.
 
 - Host-called subject: `fn-prstartup-extend-operation-reservation` at host/native/heap.lisp:422, equated by `fn-prstartup-operation-extension-refines-default-by-definition` (books/page-read-startup.lisp:615).
-- Keystone: `fn-prstartup-accepted-default-launch-fits-machine` (books/page-read-startup.lisp:594; PRF-1301 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20261007T094958Z-4182361` passed this source of `books/page-read-startup.lisp`, and since then `books/acceptance-alloc.lisp`, `books/article.lisp`, `books/byte-store-invariants.lisp` and 68 more changed.
+- Keystone: `fn-prstartup-accepted-default-launch-fits-machine` (books/page-read-startup.lisp:594; PRF-1301 (certified)); certified at the current source and closure by `certify-20261007T172259Z-2458947` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/page-read-startup.lisp`.
 - Latest positive result: Actual DEFAULT/output/peer heap source consumers, real inert peer policy files, retained private-bank constructor cuts and snapshot/peer terminal conjunction pass. Foundation69b owns actual protected nursery growth and current-worker machine admission; source guard evidence remains separate from normal certification. Earlier manifests remain valid for their exact source coordinates.
@@ -372,7 +372,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **store identity by command (Mini M4).** IDENTITY: `fn identity CONTROL` asks the running owner (FNCT kind 24, a :read control) and prints the reply (kind 25) that ACL2 encodes over the exported wire grammar: the open's genesis format, node, schema and profile digests, the consumer arm (unbootstrapped, or bootstrapped with non-empty history id and incarnation), the created and running revisions and the BLAKE3 of specs/wire-grammar.json; Mini pins its decoder by that digest.
 
 - Host-called subject: `fn-stid-host-reply` at host/native/store-identity.lisp:23, equated by `fn-stid-value-is-a-reply-value` (books/store-identity.lisp:290).
-- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:325; in no registry row); no archived manifest certifies the current closure; `certify-20261007T053453Z-2350685` passed this source of `books/store-identity.lisp`, and since then `books/acceptance-alloc.lisp`, `books/article.lisp`, `books/byte-store-invariants.lisp` and 30 more changed.
+- Keystone: `fn-stid-reply-of-a-genesis-decodes` (books/store-identity.lisp:325; in no registry row); certified at the current source and closure by `certify-20261007T172259Z-2458947` (earliest archived).
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: node image `a3553e6b`; absent from it: `books/store-identity.lisp`, `host/native/store-identity.lisp`.
 - Latest positive result: M4 on dev ad33dd8c4 (merge dce7b2333 of f84daa568, with the may-seal fix 5ea752578): tests.test_native_store_identity 2 ran OK on the published set ad33dd8c4 (developer image), boxq bq10050444-0146, run hbox:/tank/fn/scratch/mini-contract-3/native-bq10050444-0146; books certified lat1 certify-20261004T202723Z-407947 and certify-20261004T203446Z-443120.

@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3090 |
-| Certification roots in the Makefile | 2604 |
-| Books inside the root closure | 2935 |
-| `defthm` and `defthmd` events | 41814 |
-| `defun` events | 26407 |
+| Books read | 3092 |
+| Certification roots in the Makefile | 2606 |
+| Books inside the root closure | 2937 |
+| `defthm` and `defthmd` events | 41822 |
+| `defun` events | 26418 |
 | Functions with verified guards | 4172 |
 | Functions declared `:verify-guards nil` and never verified | 3468 |
-| Functions left at the default with an explicit guard | 14466 |
+| Functions left at the default with an explicit guard | 14477 |
 | Functions left at the default with no guard | 4301 |
 | `assert-event` checks | 28339 |
-| `must-fail` checks | 2799 |
+| `must-fail` checks | 2805 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
-| Theorems flagged SUSPECT by shape | 1520 |
+| Theorems flagged SUSPECT by shape | 1521 |
 | Export-hygiene warnings | 433 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 316 |
-| Include-hygiene warnings | 3702 |
-| Host-names warnings | 3423 |
+| Include-hygiene warnings | 3707 |
+| Host-names warnings | 3424 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -1591,6 +1591,7 @@ that `make certify` requests.
 | `books/scheduler-peers.lisp` | root | 26 | 22 | 2/0/20/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 64 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/scram.lisp` | root | 34 | 53 | 0/0/53/0 | 0 | 0 | 0 |
+| `books/send-progress.lisp` | root | 8 | 11 | 0/0/11/0 | 0 | 0 | 1 |
 | `books/served-access-revoke.lisp` | root | 7 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/served-auth-wire-bridge.lisp` | root | 15 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/served-availability.lisp` | root | 14 | 8 | 1/0/5/2 | 0 | 0 | 1 |
@@ -2938,6 +2939,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 105 | 0 | 0 |
 | `tests/acl2/scram-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
+| `tests/acl2/send-progress-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 6 | 0 |
 | `tests/acl2/serve-depth-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 36 | 0 | 0 |
 | `tests/acl2/served-access-revoke-tests.lisp` | root | 0 | 13 | 0/4/2/7 | 38 | 0 | 0 |
 | `tests/acl2/served-auth-wire-bridge-tests.lisp` | root | 8 | 0 | 0/0/0/0 | 1 | 0 | 0 |
@@ -4251,6 +4253,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scrs-handshaking-of-with-wire` | `books/served-catalog-chain.lisp` | 1704 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scrs-result-of-counted-make` | `books/served-catalog-chain.lisp` | 2159 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sctr-plan-segments-nil` | `books/store-checkpoint-tables-reader.lisp` | 592 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sccr-plan-segments and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sccr-plan-segments and the conclusion is that branch's value |
+| `fn-send-progress-verdict-answers` | `books/send-progress.lisp` | 215 | arm-of-definition: the hypotheses select one IF/COND arm of fn-send-progress-verdict and the conclusion is that arm's value |
 | `fn-served-conn-archive-of-fn-served-make-conn` | `books/served.lisp` | 601 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-conn-archive-of-fn-served-make-conn-indexed` | `books/served.lisp` | 483 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-conn-archive-of-fn-served-make-conn-pinned` | `books/served.lisp` | 551 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

@@ -105,7 +105,7 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         # build's own :tls-limit stays 65536).
         launcher = self.launcher_text
         self.assertIn("--tls-limit {} ".format(TLS), launcher)
-        self.assertEqual(TLS, 16384)
+        self.assertEqual(TLS, 20480)
         self.assertLess(TLS, profile_limits.get("tls-limit"))
         # MEM-002: the launcher's default heap is the small preset's figure
         # the image's own init probe printed, not ACL2's 32000, and the probe

@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-rcw-canon-acc-steps-is-the-checkpoint-capture; books/reclaim-chunked-walk.lisp:363; statement: (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena)) (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0))) (and (equal (eq r :bad) (eq all :bad)) (implies (no ...; owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/reclaim-chunked-walk.lisp",
+ "id": "TEETH-OWED-FN-RCW-CANON-ACC-STEPS-IS-THE-CHECKPOINT-CAPTURE",
+ "keystone": "fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
+ "line": 363,
+ "notes": [],
+ "owner": "reclaim",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-rcw-canon-acc-steps-is-the-checkpoint-capture is a new registry keystone with no generated teeth: declare (defteeth fn-rcw-canon-acc-steps-is-the-checkpoint-capture ...) in a tests/acl2 book",
+ "updated": "2026-10-07T16:49:45Z"
+}
