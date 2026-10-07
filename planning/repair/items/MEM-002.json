@@ -1,0 +1,14 @@
+{
+ "category": "performance",
+ "detail": "Measured (image set 3e53d7bc5dbd72de73042b46e6174d316ef7a63d fn-host, --eval (sleep 6) before acl2::sbcl-restart, read at 3 s, three repeats): SBCL_USER_ARGS --dynamic-space-size 32000 -> VmRSS 259,508 kB, anon 47,492, file 210,497; 1068 -> 34,148 / 7,528 / 24,821; 4096 -> 34,508; 256 -> 34,480. So with the 32000 default SBCL faults every core page and ~40 MB more anon at start; the installed node passes the figure (host/native/heap.lisp fnn-heap-reservation) and is not affected (an unrelated live node sbcl under /tank/fn/node showed 61.5 MB RSS in ps), but every harness, test and tool that starts the published launcher without a figure measures and runs 225 MB heavier. Cause not established (not read from SBCL source); first step is strace of the 32000 start. Evidence hbox:/tank/fn/scratch/n-mem/EVIDENCE.txt, hbox:/tank/fn/scratch/n-mem/bare.sh.",
+ "file": "tools/build_native_host.sh",
+ "id": "MEM-002",
+ "line": "251",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem",
+ "state": "open",
+ "title": "the published fn-host launcher defaults to --dynamic-space-size 32000: a start with no figure is 259 MB RSS, the same start at 1068 MB is 34 MB",
+ "updated": "2026-10-06T21:30:00Z"
+}

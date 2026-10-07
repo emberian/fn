@@ -1,0 +1,16 @@
+{
+ "category": "crypto-shipped",
+ "file": "host/native/tls.lisp",
+ "id": "CRYPTO-SHIPPED-HOST-TLS",
+ "line": "85",
+ "notes": [
+  "10-06 20:26 RULINGS-20261006 ruling 3, D59 (D35 withdrawn). SYSTEM-PATH: tls.lisp:85-87 default prefix is /tank/fn/toolchains/openssl-3.5.8 on linux, NIL elsewhere; :123-136 fnn-tls-system-library-candidates (homebrew openssl@3 dylibs, bare libcrypto.so.3, OpenBSD libssl.so); :343-347 falls back to that list when the pinned pair is missing and records *fnn-tls-pinned-missing*; :362-367 error text says the system's was tried. Also host/native/tls-reload.lisp:99, host/native/operator-live.lisp:81 and books/tls-key-exchange.lisp:189-215 (fn-tlsk-library-decide: runs on the fallback when no TLS is served). Conversion: delete fnn-tls-system-library-candidates and the fallback; a missing shipped pair is always a refusal at start (no no-TLS exemption, since libcrypto is also used by bpsec-crypto.lisp:67); no absolute /tank default in the core: the prefix is the image's own openssl dir on every platform; drop fn-tlsk-library-decide's fallback arm and its theorems."
+ ],
+ "owner": "deputy-N",
+ "refs": "RULINGS-20261006 ruling 3; D59",
+ "severity": "high",
+ "source": "crypto-audit",
+ "state": "open",
+ "title": "tls.lisp selects/falls back to a system libcrypto/libssl pair (SYSTEM-PATH); no shipped default off Linux",
+ "updated": "2026-10-07T00:26:35Z"
+}

@@ -1,0 +1,14 @@
+{
+ "category": "lock-discipline",
+ "detail": "Keys (NEW at lane head lock-triage-r1r7):\nR7|fnn-owner-maybe-reopen-log|swallow:error:fault,indet @ host/native/owner.lisp:8407 trail: protected form can signal ['fault', 'indet', 'os']\n\nHazard: owner.lisp:8403-8412 wraps open, fnn-log-swap-fd and fnn-owner-log in (handler-case ... (error (condition) (fnn-err ...))). Only an ambiguous close of the old descriptor is retained in the log debt ledger and re-raised at the next tick (owner.lisp:8392-8393); a fault from the malformed-line check in fnn-owner-log (owner.lisp:499-500) or any other core fault is logged as 'service log reopen failed' and consumed.",
+ "file": "host/native/owner.lisp",
+ "fix": "Catch only the OS errors of the open (fnn-os-error) and let faults and indeterminate conditions escape to the maintenance actor's boundary, or classify the condition and route fault and indeterminate to fnn-owner-thread-escape.",
+ "id": "LOCK-R7-REOPEN-LOG-ERROR-SWALLOW",
+ "notes": [],
+ "owner": "open",
+ "severity": "low",
+ "source": "lock-triage-r1r7-20261006",
+ "state": "open",
+ "title": "fnn-owner-maybe-reopen-log: an error clause logs and continues for fault and indeterminate conditions of the reopen",
+ "updated": "2026-10-06T23:59:35Z"
+}

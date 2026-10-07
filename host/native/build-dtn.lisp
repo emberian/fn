@@ -311,6 +311,10 @@
 (include-book "books/heap-reservation")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")
+;; host/native/heap.lisp fnn-heap-extend-reservation calls fn-rrv-extend-reservation
+;; on every launch (D53: the live reclaim is the operator's opt-in, and the
+;; ACL2 decision, not the host, says what the reserve is when it is off).
+(include-book "books/reclaim-reservation")
 ;; host/native/owner.lisp's output and syncer resources, the served plan's
 ;; line window and the response identity, as in the default image (where the
 ;; last two arrive through host/interfaces.lisp, which this image omits).

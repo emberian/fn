@@ -1,0 +1,12 @@
+{
+ "category": "proof-owed",
+ "file": "books/store-log-durable.lisp",
+ "id": "TEETH-OWED-CONSTRAINED-DECODE",
+ "notes": "[\"Keystones: fn-lg-open-program-keeps-the-relation-at-every-cut (books/store-log-route-programs.lisp:237; fn-assume-log-sole-pending-writer), fn-lgu-recover-program-establishes-the-relation, fn-lgu-open-run-acknowledges-only-recoverable-records, fn-lgu-host-kernel-acknowledges-only-recoverable-records (books/store-log-durable.lisp; fn-lg-recovered-kernel reads fn-record-decode-exact). Ground evaluation stops at the constrained function and the attachment proofs ignore it, so no ground or executable witness exists. The test-book comments (store-log-durable-tests, store-log-route-programs-tests) already say so. Owed: a witness mode that evaluates under the attached definition (an attachment-aware :witness, or a witness-lemma proved by :use of the attachment), then their defteeth. Also owed for fn-lgw-entry-len-bounded-step: the dropped bound/length hypothesis removals (same cause).\"]",
+ "owner": "teeth-gate",
+ "severity": "medium",
+ "source": "p-teeth",
+ "state": "open",
+ "title": "defteeth cannot witness the four lg/lgu keystones: fn-record-decode-exact is a constrained function the prover cannot evaluate",
+ "updated": "2026-10-07T00:19:44Z"
+}

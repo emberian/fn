@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "file": "books/blake3-tree.lisp",
+ "id": "PROOF-OWED-B3-APPEND-WINDOW",
+ "notes": [
+  "10-06 19:54 proved as fn-b3-append-window in books/blake3-tree.lisp with added hypotheses (natp counter) and (consp prefix): empty prefix is false (window-outs of nil is one window, the stack merges with it); counter -1 false. Teeth in tests/acl2/blake3-tree-tests.lisp. Certify of record pending."
+ ],
+ "owner": "streaming",
+ "severity": "medium",
+ "slice": "blake3",
+ "source": "streaming",
+ "state": "landed",
+ "title": "blake3-tree owes fn-b3-append-window: absorbing one more window (cv-push of its node) into the stack held over whole windows of prefix, then folding, equals the node of prefix ++ window.",
+ "updated": "2026-10-06T23:54:13Z"
+}

@@ -1,0 +1,16 @@
+{
+ "category": "lock-discipline",
+ "detail": "Keys (NEW at lane head lock-triage-r1r7):\nR7|fnn-pull-worker|swallow:serious-condition:fault,indet @ host/native/pull-service.lisp:1183 trail: protected form can signal ['fault', 'indet', 'os', 'refusal']\n\nHazard: pull-service.lisp:1181-1194: the release handler captures the first cleanup condition in FAILURE; the tail is (when (and failure (null primary)) (error failure)), a conjunction, so with a primary escape in flight the failure is stored at pull-service.lisp:1192 (cleanup-debt) and not rethrown here. It is not lost: fnn-pull-service-close rethrows it at pull-service.lisp:1259-1260, a retained debt blocks removal of the runtime (pull-service.lisp:1229), and the primary goes through fnn-pull-worker-guarded to fnn-owner-thread-escape (pull-service.lisp:1196-1200). R7 recognises only a tail that is exactly (when V ...) with V rethrown on every path.",
+ "file": "host/native/pull-service.lisp",
+ "fix": "Rethrow locally (signal the first failure after recording the debt, whatever the primary), or teach R7 a declared debt-rethrow contract: a debt slot plus the one function that re-signals it, with a test that fails when the reader does not rethrow on every path.",
+ "id": "LOCK-R7-PULL-WORKER-DEBT-RETHROW",
+ "notes": [
+  "10-06 20:26 NOT FIXED (lane lock-host-fix-2): a local rethrow is not behaviour-preserving. The release handler runs as terminal cleanup of the worker while a primary escape may be unwinding (primary captured by the handler-bind at pull-service.lisp:1128). Signalling the cleanup failure there would supersede the primary, so fnn-pull-worker-guarded would hand the LATER cleanup condition to fnn-owner-thread-escape instead of the primary and the primary's classification (fence vs fault) would be lost; and fnn-pull-service-close (pull-service.lisp:1259) would then re-signal the same debt a second time. The semantics need the cross-function debt: slot at :1192 plus the one re-signalling reader. The resolution is the item's second option: a declared R7 debt-rethrow contract (debt slot plus its re-signalling function, with a test that fails if the reader does not rethrow on every path), a checker/contract edit."
+ ],
+ "owner": "open",
+ "severity": "low",
+ "source": "lock-triage-r1r7-20261006",
+ "state": "open",
+ "title": "fnn-pull-worker: the captured cleanup failure is rethrown in another function (model gap the strict R7 rule rightly cannot clear)",
+ "updated": "2026-10-07T00:26:08Z"
+}

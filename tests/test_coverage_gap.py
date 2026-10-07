@@ -126,6 +126,10 @@ class Dispositions(unittest.TestCase):
         r = self.t.run()
         self.assertTrue(any("GHOST" in f for f in r["findings"]))
 
+    def test_a_ratchet_ack_names_a_baseline_row_not_an_item(self):
+        self.t.acks.write_text("ratchet:loop_call_check:f.lisp \u2014 r \u2014 w\n")
+        self.assertEqual(self.t.run()["findings"], [])
+
     def test_stale_status_md_is_a_finding(self):
         self.t.item("A")
         self.t.items.append("phantom")

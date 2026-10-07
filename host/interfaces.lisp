@@ -2301,13 +2301,17 @@
 ; The catch-up round: the bounded spool controller (books/peer-catchup-spool,
 ; its framer and digest cursor) that host/native/pull-service.lisp drives.
 (definterface fn-csp-begin
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((window natp)))
 
 (definterface fn-csp-step
   :class :common-lisp-compliant
   :keystones (fn-csp-step-keeps-window
               (fn-csp-write-spools-whole-or-fails-by-name :via fn-csp-write)
-              (fn-csp-framer-window-accounts-for-every-octet :via fn-csp-framer-window)))
+              (fn-csp-framer-window-accounts-for-every-octet :via fn-csp-framer-window)
+              fn-csp-step-settles-one-verdict-exactly-once
+              fn-csp-step-final-verdict-journals
+              fn-csp-window-bounds-in-flight))
 
 (definterface fn-csp-done-p :class :common-lisp-compliant)
 (definterface fn-csp-close :class :common-lisp-compliant)

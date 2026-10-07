@@ -1,0 +1,16 @@
+{
+ "category": "crypto-shipped",
+ "file": "host/native/tls.lisp",
+ "id": "CRYPTO-SHIPPED-MACOS",
+ "line": "128",
+ "notes": [
+  "10-06 20:26 RULINGS-20261006 ruling 3, D59. SYSTEM-PATH: host/native/tls.lisp:85-87 default prefix NIL on non-linux; :128-132 /opt/homebrew/opt/openssl@3, /usr/local/opt/openssl@3 and bare libcrypto.3.dylib; packaging/install-native.sh:147-157 searches /opt/homebrew and /usr/local/opt openssl@3 and libsodium dylibs; host/native/crypto.lisp:42-48 same for libsodium (libsodium is outside this ruling's libssl scope but follows the same pattern; flag to N). Conversion: macOS image bundles openssl/lib/libcrypto.3.dylib and libssl.3.dylib (3.5.8), launcher exports FN_OPENSSL_PREFIX, remove homebrew search; if macOS is not a supported release platform, delete the darwin branches instead."
+ ],
+ "owner": "deputy-N",
+ "refs": "RULINGS-20261006 ruling 3; D59",
+ "severity": "medium",
+ "source": "crypto-audit",
+ "state": "open",
+ "title": "macOS has no shipped prefix and loads Homebrew/system openssl@3 (SYSTEM-PATH)",
+ "updated": "2026-10-07T00:26:35Z"
+}

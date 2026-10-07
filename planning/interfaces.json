@@ -1664,6 +1664,7 @@
       "raw_guarded": null,
       "dispatched_from": [],
       "applied_directly_in": [
+        "host/native/bp-listener-control.lisp",
         "host/native/owner.lisp"
       ]
     },
@@ -10591,7 +10592,8 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/owner.lisp"
+        "host/native/owner.lisp",
+        "host/native/pull-service.lisp"
       ],
       "applied_directly_in": []
     },
@@ -13430,7 +13432,12 @@
       "subsystem": "peer/feed",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "window",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -13462,6 +13469,15 @@
         {
           "theorem": "fn-csp-framer-window-accounts-for-every-octet",
           "via": "fn-csp-framer-window"
+        },
+        {
+          "theorem": "fn-csp-step-settles-one-verdict-exactly-once"
+        },
+        {
+          "theorem": "fn-csp-step-final-verdict-journals"
+        },
+        {
+          "theorem": "fn-csp-window-bounds-in-flight"
         }
       ],
       "extraction": null,
@@ -26013,8 +26029,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/hybrid-control.lisp",
-        "host/native/pattern.lisp"
+        "host/native/hybrid-control.lisp"
       ],
       "applied_directly_in": []
     },
