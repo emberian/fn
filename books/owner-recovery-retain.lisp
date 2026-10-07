@@ -311,6 +311,44 @@
               fn-prc-carryp-of-refresh (:executable-counterpart fn-prc-carryp))
             (theory 'minimal-theory)))))
 
+;; What the install installs: the recovered owner value it was handed, exactly,
+;; bound.  The two facts the process record's carry stands on (books/owner-
+;; process-carry.lisp fn-owner-recovery-carries-proc): the host builds the
+;; value it hands this function with fn-owner-carry-proc, and everything the
+;; install does after the one put of the owner is a write of another global.
+(defthm fn-owner-install-extended-installs-oc
+  (implies (and (not (equal oc :fault))
+                (fn-onb-open-okp (fn-ocfg-owner oc)))
+           (equal (fn-owner-ocfg
+                   (mv-nth 5 (fn-owner-install-extended
+                              oc extended key fn-arena fn-cat fn-hist state)))
+                  oc))
+  :hints (("Goal" :in-theory
+           (union-theories
+            '(fn-owner-install-extended mv-nth nth zp car-cons cdr-cons
+              (:executable-counterpart zp) (:executable-counterpart binary-+)
+              (:executable-counterpart unary--) (:executable-counterpart equal)
+              fn-owner-ocfg-of-other-global-put
+              fn-owner-ocfg-of-retain-carry-put fn-orr-installed-open-ocfg
+              fn-orr-writer-enter-frame fn-orr-writer-leave-frame)
+            (theory 'minimal-theory)))))
+
+(defthm fn-owner-install-extended-binds-owner
+  (implies (and (not (equal oc :fault))
+                (fn-onb-open-okp (fn-ocfg-owner oc)))
+           (boundp-global 'fn-owner
+                          (mv-nth 5 (fn-owner-install-extended
+                                     oc extended key fn-arena fn-cat fn-hist state))))
+  :hints (("Goal" :in-theory
+           (union-theories
+            '(fn-owner-install-extended mv-nth nth zp car-cons cdr-cons
+              (:executable-counterpart zp) (:executable-counterpart binary-+)
+              (:executable-counterpart unary--) (:executable-counterpart equal)
+              fn-owner-bound-of-other-global-put
+              fn-owner-bound-of-retain-carry-put fn-owner-open-owner-bound
+              fn-orr-writer-enter-frame fn-orr-writer-leave-frame)
+            (theory 'minimal-theory)))))
+
 ; The exact recovery and key producers discharge the cold entry's literal
 ; guard. This implication is a guard bridge, not a separate keystone.
 (defthm fn-owner-recovery-producers-imply-install-guard-by-definition

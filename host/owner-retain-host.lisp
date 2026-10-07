@@ -131,6 +131,32 @@
                             (oc (fn-owner-ocfg state)) (secret ring))
                  (:instance fn-owner-retain-statep-implies-lgoc (state state))))))
 
+(defthm fn-owner-install-reclaim-live-preserves-retain-state
+  (implies (fn-owner-retain-statep state)
+           (fn-owner-retain-statep (fn-owner-install-reclaim-live live state)))
+  :hints (("Goal" :in-theory '(fn-owner-install-reclaim-live fn-owner-replace-core
+                               fn-owner-core fn-owner-ocfg
+                               mv-nth nth zp car-cons cdr-cons
+                               (:executable-counterpart zp)
+                               fn-orh-retain-statep-of-install-ocfg)
+           :use ((:instance fn-ohr-with-proc-preserves-carried-relation
+                            (oc (fn-owner-ocfg state))
+                            (proc (fn-oproc-with-reclaim-live (fn-own-proc (fn-ocfg-owner (fn-owner-ocfg state))) (and live t))))
+                 (:instance fn-owner-retain-statep-implies-lgoc (state state))))))
+
+(defthm fn-owner-install-sco-serial-preserves-retain-state
+  (implies (fn-owner-retain-statep state)
+           (fn-owner-retain-statep (fn-owner-install-sco-serial serial state)))
+  :hints (("Goal" :in-theory '(fn-owner-install-sco-serial fn-owner-replace-core
+                               fn-owner-core fn-owner-ocfg
+                               mv-nth nth zp car-cons cdr-cons
+                               (:executable-counterpart zp)
+                               fn-orh-retain-statep-of-install-ocfg)
+           :use ((:instance fn-ohr-with-proc-preserves-carried-relation
+                            (oc (fn-owner-ocfg state))
+                            (proc (fn-oproc-with-sco-serial (fn-own-proc (fn-ocfg-owner (fn-owner-ocfg state))) serial)))
+                 (:instance fn-owner-retain-statep-implies-lgoc (state state))))))
+
 (defthm fn-owner-apply-limit-profile-preserves-retain-state
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-apply-limit-profile values state))))
@@ -244,3 +270,87 @@
                                (:executable-counterpart zp)))))
 (assert-event (fn-owner-io-safep nil :log-reserve :ok))
 (assert-event (not (fn-owner-io-safep nil :no-such-operation :ok)))
+
+; -----------------------------------------------------------------------------
+; The process record the owner carries (lane owner-globals-28; books/owner-
+; process.lisp, books/owner-process-carry.lisp).  The two host-installed
+; members -- the live-reclaim opt-in and the publication capture serial -- are
+; written only by the installers below, each through fn-owner-replace-core.
+
+(defthm fn-owner-install-sco-serial-installs-serial
+  (implies (boundp-global 'fn-owner state)
+           (equal (fn-oproc-sco-serial
+                   (fn-owner-proc (fn-owner-install-sco-serial serial state)))
+                  serial))
+  :hints (("Goal" :in-theory (e/d (fn-owner-install-sco-serial fn-owner-replace-core
+                                   fn-owner-proc fn-owner-core-is-configured-owner-by-definition
+                                   fn-ocfg-with-owner fn-own-with-proc
+                                   fn-oproc-with-sco-serial)
+                                  ()))))
+
+; KEYSTONE (c).  What fn-owner-sco-capture does to the owner (its two lines:
+; the next serial of the owner's, then the install): the serial after is
+; (fn-opl-next-serial before), which exceeds the one before, so the capture
+; identity (RL-02, books/owner-publication-lifecycle.lisp) is monotone while
+; fn-owner-recovery-carries-proc keeps it across a second install.
+(defthm fn-owner-sco-capture-serial-is-next
+  (implies (boundp-global 'fn-owner state)
+           (equal (fn-oproc-sco-serial
+                   (fn-owner-proc
+                    (fn-owner-install-sco-serial
+                     (fn-opl-next-serial (fn-oproc-sco-serial (fn-owner-proc state)))
+                     state)))
+                  (fn-opl-next-serial (fn-oproc-sco-serial (fn-owner-proc state)))))
+  :hints (("Goal" :use ((:instance fn-owner-install-sco-serial-installs-serial
+                                   (serial (fn-opl-next-serial
+                                            (fn-oproc-sco-serial (fn-owner-proc state)))))))))
+
+(defthm fn-owner-sco-capture-serial-is-monotone
+  (implies (boundp-global 'fn-owner state)
+           (< (nfix (fn-oproc-sco-serial (fn-owner-proc state)))
+              (fn-oproc-sco-serial
+               (fn-owner-proc
+                (fn-owner-install-sco-serial
+                 (fn-opl-next-serial (fn-oproc-sco-serial (fn-owner-proc state)))
+                 state)))))
+  :hints (("Goal" :use (fn-owner-sco-capture-serial-is-next)
+           :in-theory (e/d (fn-opl-next-serial) (fn-owner-sco-capture-serial-is-next)))))
+
+(defthm fn-owner-install-reclaim-live-reads-back
+  (implies (boundp-global 'fn-owner state)
+           (equal (fn-owner-reclaim-live-p (fn-owner-install-reclaim-live live state))
+                  (and live t)))
+  :hints (("Goal" :in-theory (e/d (fn-owner-install-reclaim-live fn-owner-reclaim-live-p
+                                   fn-owner-replace-core fn-owner-proc
+                                   fn-owner-core-is-configured-owner-by-definition
+                                   fn-ocfg-with-owner fn-own-with-proc
+                                   fn-oproc-with-reclaim-live)
+                                  ()))))
+
+(defthm fn-owner-reclaim-live-p-when-no-owner
+  (implies (not (boundp-global 'fn-owner state))
+           (equal (fn-owner-reclaim-live-p state) nil))
+  :hints (("Goal" :in-theory (enable fn-owner-reclaim-live-p fn-owner-proc))))
+
+; The two members are independent: each installer keeps the other.
+(defthm fn-owner-install-reclaim-live-keeps-serial
+  (implies (boundp-global 'fn-owner state)
+           (equal (fn-oproc-sco-serial
+                   (fn-owner-proc (fn-owner-install-reclaim-live live state)))
+                  (fn-oproc-sco-serial (fn-owner-proc state))))
+  :hints (("Goal" :in-theory (e/d (fn-owner-install-reclaim-live fn-owner-replace-core
+                                   fn-owner-proc fn-owner-core-is-configured-owner-by-definition
+                                   fn-ocfg-with-owner fn-own-with-proc
+                                   fn-oproc-with-reclaim-live)
+                                  ()))))
+
+(defthm fn-owner-install-sco-serial-keeps-reclaim-live
+  (implies (boundp-global 'fn-owner state)
+           (equal (fn-oproc-reclaim-live
+                   (fn-owner-proc (fn-owner-install-sco-serial serial state)))
+                  (fn-oproc-reclaim-live (fn-owner-proc state))))
+  :hints (("Goal" :in-theory (e/d (fn-owner-install-sco-serial fn-owner-replace-core
+                                   fn-owner-proc fn-owner-core-is-configured-owner-by-definition
+                                   fn-ocfg-with-owner fn-own-with-proc
+                                   fn-oproc-with-sco-serial)
+                                  ()))))

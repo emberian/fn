@@ -437,7 +437,7 @@
 ; The swapped owner: the rebuilt owner's Store and view; the live owner's
 ; connections (each re-pinned to the rebuilt view: O(connections)), next
 ; id, bounds, commit pipeline, ledger, clock, facts, posting
-; configuration, feeds, key ring and refused-offer memory.
+; configuration, feeds, key ring, refused-offer memory and process record.
 (defun fn-orcp-swap-base (live rebuilt)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store rebuilt) (fn-own-view rebuilt)

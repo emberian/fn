@@ -26,6 +26,10 @@
 ;   fn-owner-install-profile          fn-osb-install         fn-ohr-osb-install-preserves-carried-relation (PRF-925)
 ;   fn-owner-feed-install-port-result fn-own-with-feeds      fn-ohr-with-feeds-preserves-carried-relation (PRF-925)
 ;   fn-owner-install-node-secret      fn-own-with-node-secret fn-ohr-with-node-secret-preserves-carried-relation (PRF-925)
+;   fn-owner-install-reclaim-live, fn-owner-install-sco-serial
+;                                     fn-own-with-proc        fn-ohr-with-proc-preserves-carried-relation (owner-globals-28)
+;   fn-owner-recover-extended, -from-store-open (the carry)
+;                                     fn-owner-carry-proc     fn-ohr-with-proc-preserves-carried-relation, through fn-owner-carry-proc-preserves-carried-relation (books/owner-process-carry.lisp)
 ;   fn-owner-reconfigure-complete     fn-oclc-publish        fn-lgoc-publish-preserves-invariant (PRF-286)
 ;   fn-owner-reconfigure-unstage      fn-psrv-unstage        fn-psrv-unstage-preserves-invariant (PRF-290)
 ;   fn-owner-io                       fn-olr-ocfg-order/-reserve, fn-rcon-ocfg-io  fn-lgoc-log-order/-log-reserve/-rcon-io-preserves-invariant (PRF-286)
@@ -306,6 +310,19 @@
                   (equal (fn-own-clock o2) (fn-own-clock o))
                   (equal (fn-own-facts o2) (fn-own-facts o)))))
   :hints (("Goal" :in-theory (enable fn-own-with-node-secret))))
+(defthm fn-ohr-with-proc-keeps-control
+  (implies (fn-own-shapep o)
+           (let ((o2 (fn-own-with-proc o proc)))
+             (and (fn-own-shapep o2)
+                  (equal (fn-own-store o2) (fn-own-store o))
+                  (equal (fn-own-view o2) (fn-own-view o))
+                  (equal (fn-own-conns o2) (fn-own-conns o))
+                  (equal (fn-own-next-id o2) (fn-own-next-id o))
+                  (equal (fn-own-max-conns o2) (fn-own-max-conns o))
+                  (equal (fn-own-ledger-field o2) (fn-own-ledger-field o))
+                  (equal (fn-own-clock o2) (fn-own-clock o))
+                  (equal (fn-own-facts o2) (fn-own-facts o)))))
+  :hints (("Goal" :in-theory (enable fn-own-with-proc))))
 (defthm fn-ohr-configure-keeps-control
   (implies (fn-own-shapep o)
            (let ((o2 (fn-own-configure o config)))
@@ -365,6 +382,11 @@
            (fn-ocl-relation (fn-ocfg-with-owner oc (fn-own-with-node-secret (fn-ocfg-owner oc) secret))))
   :hints (("Goal" :use ((:instance fn-ohr-ocl-relation-with-owner-of-same-control-field
                                    (o2 (fn-own-with-node-secret (fn-ocfg-owner oc) secret)))))))
+(defthm fn-ohr-with-proc-preserves-ocl-relation
+  (implies (fn-ocl-relation oc)
+           (fn-ocl-relation (fn-ocfg-with-owner oc (fn-own-with-proc (fn-ocfg-owner oc) proc))))
+  :hints (("Goal" :use ((:instance fn-ohr-ocl-relation-with-owner-of-same-control-field
+                                   (o2 (fn-own-with-proc (fn-ocfg-owner oc) proc)))))))
 (defthm fn-ohr-osb-install-preserves-ocl-relation
   (implies (fn-ocl-relation oc)
            (fn-ocl-relation (fn-ocfg-with-owner oc (mv-nth 1 (fn-osb-install (fn-ocfg-owner oc) profile)))))
@@ -561,6 +583,11 @@
   (implies (fn-lgoc-invariantp oc)
            (fn-lgoc-invariantp (fn-ocfg-with-owner oc (fn-own-with-node-secret (fn-ocfg-owner oc) secret))))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (fn-ocfg-with-owner oc (fn-own-with-node-secret (fn-ocfg-owner oc) secret)))))
+           :in-theory (disable fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-osb-install fn-bs-profile-admittedp))))
+(defthm fn-ohr-with-proc-preserves-carried-relation
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (fn-ocfg-with-owner oc (fn-own-with-proc (fn-ocfg-owner oc) proc))))
+  :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store (x (fn-ocfg-with-owner oc (fn-own-with-proc (fn-ocfg-owner oc) proc)))))
            :in-theory (disable fn-ocfg-fault fn-ocfg-close fn-ocfg-advance fn-ocfg-reconfigure fn-ocfg-pass fn-ocfg-with-owner fn-osb-install fn-bs-profile-admittedp))))
 (defthm fn-ohr-osb-install-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)

@@ -489,6 +489,33 @@
         (value :installed))
     (value :refused))))
 
+;; The process record (books/owner-process.lisp, the owner's last field): the
+;; host-installed per-process state lives in the owner value, not in a global
+;; beside it.  Each writer replaces one member and keeps the other; nothing
+;; else writes the record (every owner step copies it, the recovery installs
+;; carry the prior owner's: books/owner-state-accessors.lisp
+;; fn-owner-carry-proc).  The operator's live-reclaim opt-in, installed once
+;; per run by fn-owner-connection-budget.
+(defun fn-owner-install-reclaim-live (live state)
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
+                  :verify-guards t))
+  (fn-owner-replace-core
+   (fn-own-with-proc (fn-owner-core state)
+                     (fn-oproc-with-reclaim-live (fn-own-proc (fn-owner-core state))
+                                                 (and live t)))
+   state))
+
+;; The checkpoint publication's capture serial (RL-02), written by
+;; fn-owner-sco-capture.
+(defun fn-owner-install-sco-serial (serial state)
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
+                  :verify-guards t))
+  (fn-owner-replace-core
+   (fn-own-with-proc (fn-owner-core state)
+                     (fn-oproc-with-sco-serial (fn-own-proc (fn-owner-core state))
+                                               serial))
+   state))
+
 ; Every projection `fn-owner-install-effects' makes EXCEPT the reply octets,
 ; which are never built as a list here: `fn-owner-output' is NIL and the reply is
 ; the effects' (the native host renders the step's plan off the mutex,
@@ -530,7 +557,8 @@
   (if (not (eq (fn-owner-history-reset-status state) :history-reset-clear))
       (mv nil :history-source-held fn-arena fn-cat fn-hist state)
     (fn-owner-install-extended
-     (fn-ock-recover-extended extended config-records frontier max-conns)
+     (fn-owner-carry-proc
+      (fn-ock-recover-extended extended config-records frontier max-conns) state)
      extended (fn-mpxt-key-of-entry nil) fn-arena fn-cat fn-hist state)))
 
 ; The owner from the Store open this process just ran
@@ -556,7 +584,8 @@
         (mv nil :fault fn-arena fn-cat fn-hist state)
       (let ((state (f-put-global 'fn-store-sco-open nil state)))
         (fn-owner-install-extended
-         (fn-ock-install (cadr opened) (caddr opened) max-conns)
+         (fn-owner-carry-proc (fn-ock-install (cadr opened) (caddr opened) max-conns)
+                              state)
          (car opened) (fn-mpxt-key-of-entry entry) fn-arena fn-cat fn-hist state))))))
 
 ; The recoveries below were the retired Python bridge's (tools/run_owner.py,
@@ -764,8 +793,9 @@
 
 
 ;; The owner's publication (books/owner-checkpoint-open.lisp).  These read
-;; the owner and write only the four fn-owner-sco-* globals: the served
-;; owner `fn-owner' is never written here.
+;; the owner and write the fn-owner-sco-* globals; the one write of the served
+;; owner `fn-owner' is the capture's serial, kept in the owner's process
+;; record (fn-owner-install-sco-serial: books/owner-process.lisp).
 
 ; fn-owner-sco-global: defined by books/owner-state-accessors.lisp under the same name.
 
@@ -923,8 +953,10 @@
          ; RL-02: the capture's identity, its serial
          ; (books/owner-publication-lifecycle.lisp fn-opl-next-serial): the
          ; count alone is not one (a :backoff retry recaptures it)
-         (serial (fn-opl-next-serial (fn-owner-sco-global 'fn-owner-sco-serial state)))
-         (state (f-put-global 'fn-owner-sco-serial serial state))
+         ; (kept in the owner's process record, fn-owner-install-sco-serial:
+         ; monotone across a second owner install of the process)
+         (serial (fn-opl-next-serial (fn-oproc-sco-serial (fn-owner-proc state))))
+         (state (fn-owner-install-sco-serial serial state))
          ; PKT-868: the capture answers a standing request.
          (state (f-put-global 'fn-owner-sco-requested nil state)))
     (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
@@ -1111,7 +1143,7 @@
                     (theory 'minimal-theory))))))
   (let* ((pass (fn-owner-sco-global 'fn-owner-orc-pass state))
          (inflight (fn-owner-sco-global 'fn-owner-sco-inflight state))
-         (current (fn-owner-sco-global 'fn-owner-sco-serial state))
+         (current (fn-oproc-sco-serial (fn-owner-proc state)))
          (deferred (fn-owner-sco-global 'fn-owner-sco-deferred state))
          (r (fn-opl-settle count serial outcome now pass inflight current deferred))
          (state (f-put-global 'fn-owner-sco-inflight (cadr r) state))
@@ -1130,15 +1162,13 @@
   (fn-owner-sco-global 'fn-owner-orc-pass state))
 
 ; The operator's opt-in (`[resources] reclaim_live', books/reclaim-
-; reservation.lisp): installed once per run by fn-owner-connection-budget
-; (below), NIL until then (an offline or unconfigured owner has no live
+; reservation.lisp): installed once per run into the owner's process
+; record by fn-owner-connection-budget (below), NIL until then (an offline or unconfigured owner has no live
 ; reclaim).  Defined here, above fn-owner-orc-request which reads it: the
 ; ld build order refuses a forward call.
 (defun fn-owner-reclaim-live-p (state)
   (declare (xargs :stobjs state :guard t))
-  (and (f-boundp-global 'fn-owner-reclaim-live state)
-       (f-get-global 'fn-owner-reclaim-live state)
-       t))
+  (and (fn-oproc-reclaim-live (fn-owner-proc state)) t))
 
 ; The answer to the request (fn-orc-request-word) over the owner's own
 ; observations: the pass in flight, the publication in flight, a deferral
@@ -1647,7 +1677,7 @@
          (state (f-put-global 'fn-owner-credit-reserve
                               (fn-heap-article-reserve-octets profile)
                               state))
-         (state (f-put-global 'fn-owner-reclaim-live (and live t) state))
+         (state (fn-owner-install-reclaim-live live state))
          (state (fn-owner-put-credits (fn-mca-initial profile core nursery live) state))
          (state (f-put-global 'fn-owner-connection-budget-line
                               (fn-record-string-octets

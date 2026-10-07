@@ -54,7 +54,12 @@
 (load-deployed-forms "books/history-columns-store.lisp"
  '((defun fn-hist-octets-advance) (defun fn-hist-bytes-carried)))
 (load-deployed-forms "books/owner-reclaim.lisp" '((defun fn-orc-capture-word)))
-(load-deployed-forms "books/owner-state-accessors.lisp" '((defun fn-owner-sco-global)))
+(load-deployed-forms "books/acceptance-alloc.lisp" '((defun fn-ag-car) (defun fn-ag-cdr)))
+(load-deployed-forms "books/owner-process.lisp"
+ '((defun fn-oproc-reclaim-live) (defun fn-oproc-initial) (defun fn-oproc-make)))
+(load-deployed-forms "books/owner.lisp" '((defun fn-own-proc)))
+(load-deployed-forms "books/owner-state-accessors.lisp"
+ '((defun fn-owner-sco-global) (defun fn-owner-proc)))
 (load-deployed-forms "host/owner-host.lisp"
  '((defun fn-owner-record-octets) (defun fn-owner-sco-count) (defun fn-owner-orc-pass)
    (defun fn-owner-reclaim-live-p) (defun fn-owner-orcp-capture)))
@@ -97,7 +102,10 @@
 (defun fn-sbud-bytes-used (store) (reduce #'+ store :initial-value 0))
 (defun fn-owner-credits (state) (gethash :credits state))
 (defun fn-owner-put-credits (credits state) (setf (gethash :credits state) credits) state)
-(defun fn-owner-core (state) (declare (ignore state)) :owner)
+;; The owner value the process record lives in: a sixteen-field list whose last
+;; field is the record (fn-own-proc), read through the deployed fn-owner-proc.
+(defun fn-owner-core (state) (gethash :owner state))
+(defun owner-with-proc (live) (append (make-list 15) (list (list live 0))))
 (defun fn-own-max-conns (owner) (declare (ignore owner)) 10)
 (defun fn-owner-orc-capture (mode clock override free revision state)
  (declare (ignore mode clock override free revision))
@@ -113,8 +121,10 @@
         (credits (fn-mcr-make (+ reserve 20) 0 0 reserve 0 0 '((:other . (0 . 10))))))
   (setf (gethash :records *the-live-state*) '(100 200)
         (gethash :credits *the-live-state*) credits
-        ;; the operator's opt-in (D53), installed by the connection budget
-        (gethash 'fn-owner-reclaim-live *the-live-state*) t)
+        ;; the operator's opt-in (D53), installed by the connection budget into
+        ;; the owner's process record
+        (gethash 'fn-owner *the-live-state*) t
+        (gethash :owner *the-live-state*) (owner-with-proc t))
   (unless (eq cache-mode :missing)
    (setf (gethash 'fn-owner-record-octets *the-live-state*)
          (if (eq cache-mode :ahead) '(9 . 900) '(1 . 100))))
@@ -168,7 +178,9 @@
         (credits (fn-mcr-make 99999 0 0 60000 0 0 '((:other . (0 . 10))))))
   (setf (gethash :records *the-live-state*) '(100 200)
         (gethash :credits *the-live-state*) credits)
-  (when (eq installed :nil) (setf (gethash 'fn-owner-reclaim-live *the-live-state*) nil))
+  (when (eq installed :nil)
+   (setf (gethash 'fn-owner *the-live-state*) t
+         (gethash :owner *the-live-state*) (owner-with-proc nil)))
   (let ((answer (fnn-owner-core 'fn-owner-orcp-capture :recorded :clock nil 99999 :revision)))
    (census-check (equal answer '(:deferred :offline-only nil))
                  "without the opt-in the capture is refused by name")

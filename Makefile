@@ -1796,6 +1796,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-port-replay-tests \
 	books/owner-feed \
 	books/owner-process \
+	books/owner-process-carry \
 	books/owner-feed-port \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
