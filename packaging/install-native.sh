@@ -130,20 +130,10 @@ elif [ "$frozen" = yes ] && [ -z "$openssl_lib" ]; then
   echo "install-native: cannot check the system's TLS library (no ldconfig)" >&2; exit 4
 else
   sodium_path=
-  crypto_path=
-  ssl_path=
   for dependency in /opt/homebrew/opt/libsodium/lib/libsodium.dylib /usr/local/opt/libsodium/lib/libsodium.dylib; do
     [ ! -f "$dependency" ] || sodium_path=$dependency
   done
-  for dependency in /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib /usr/local/opt/openssl@3/lib/libcrypto.3.dylib; do
-    [ ! -f "$dependency" ] || crypto_path=$dependency
-  done
-  for dependency in /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib /usr/local/opt/openssl@3/lib/libssl.3.dylib; do
-    [ ! -f "$dependency" ] || ssl_path=$dependency
-  done
   [ -n "$sodium_path" ] || { echo "install-native: libsodium shared library is unavailable" >&2; exit 4; }
-  [ -n "$crypto_path" ] && [ -n "$ssl_path" ] || {
-    echo "install-native: OpenSSL 3 shared libraries are unavailable" >&2; exit 4; }
 fi
 
 profile_out=$(mktemp "${TMPDIR:-/tmp}/fn-native-profile.XXXXXX") || exit 4
@@ -254,7 +244,7 @@ install -m 0755 packaging/install.sh "$destdir$prefix/install.sh"
   if [ -n "$crypto_inventory" ]; then
     printf '%s\n' "$crypto_inventory" | grep -E 'libsodium\.so|libcrypto\.so|libssl\.so'
   elif [ "$frozen" = no ]; then
-    $hash_command "$sodium_path" "$crypto_path" "$ssl_path"
+    $hash_command "$sodium_path"
   fi
 } > "$sharedir/native-artifacts.txt"
 
