@@ -81,7 +81,11 @@
     (:read-window-octets 262144 "octets"
      "the payload window one protected window read verifies and publishes (books/extent-window-plan.lisp fn-ewp-begin): each job digests the whole protected prefix, so a payload of P octets costs P / this many prefix digests per pass")
     (:tls-handshake-source-overrides 64 "entries"
-     "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")))
+     "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")
+    (:send-stall-seconds 10 "seconds"
+     "how long a queued reply may go with no octet leaving the kernel's send queue and none accepted into it before the owner refuses the send by name, send-stalled (books/send-progress.lisp); today's fixed 10 s, now a no-progress window instead of a total deadline")
+    (:send-min-octets-per-second 4096 "octets per second"
+     "the least pace, over a whole reply that leaves a backlog in the kernel's send queue, at which a reader may drain before the owner refuses it by name, reader-too-slow (books/send-progress.lisp); 4096 admits the slowest reader the native tests name (38 KB/s, 1 MiB per 27.4 s) nine times over, and an operator tightens it against a slow-read attack")))
 
 ; The row's VALUE, at macroexpansion: (fn-profile-limit :stack-kib) is the
 ; literal 1024 wherever it appears, and an unknown KEY is refused there.

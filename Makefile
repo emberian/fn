@@ -639,6 +639,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/heap-figure \
 	books/heap-open-nursery \
 	tests/acl2/heap-open-nursery-tests \
+	books/send-progress \
+	tests/acl2/send-progress-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
 	books/cold-read-reservation \
