@@ -141,6 +141,10 @@ openssl_hint() {
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
 mkdir -p build
 rm -f "$IMAGE" "$IMAGE.core" "$IMAGE.world-deps" "$IMAGE.catalog" "$IMAGE.source"
+# A rebuilt image voids the directory's provenance stamp (tools/image_set.py
+# stamp writes it after a batch's builds; a stale one would bind a fixture to
+# the image this build replaces).
+rm -f "$(dirname "$IMAGE")/MANIFEST.json" "$(dirname "$IMAGE")/TREE_SHA"
 # The image's source identity, read before the build and written beside the
 # image after it ($IMAGE.source): tools/image_set.py publish labels a set
 # SHA only when every image records `commit SHA` (S057/S063, sweep

@@ -4,8 +4,7 @@
 ;
 ; books/recovery-refinement.lisp proves the composition over the image
 ; medium's interface (the constrained fn-rr-medium-*); this book is to
-; discharge the interface (an OBLIGATION, not yet proved: the book is
-; written, not admitted) with the store's functions, the ones
+; discharge the interface with the store's functions, the ones
 ; host/store-node-host.lisp calls at open: fn-sco-capture, fn-sco-open,
 ; fn-cpo-open-observed and fn-sco-select (books/store-checkpoint-open.lisp),
 ; by functional instantiation.  The constraints are the keystones
@@ -20,13 +19,14 @@
 ; that is :bad is refused by both opens (the store instance's hypothesis
 ; names it).
 ;
-; STATUS (2026-10-01): WRITTEN, NOT ADMITTED.  Its include chain reaches the
-; node tower, which is red at dev 896c48c16 (books/store-events-carried.lisp
-; fn-evc-consumer-shape, books/store-node-traces.lisp
-; fn-snt-record-directory-preserves-relation: stage 0's record-shape revert,
-; design section 5), so no REPL could load it; nothing below is a claim
-; until that tower is green and this book certifies.  The registry rows
-; PRF-1212 and PRF-1213 say so.
+; STATUS (2026-10-07): ADMITTED (lane s-pck-2; a Makefile root).  The
+; interface's three constraints are discharged by the store's open:
+; fn-sn-recover-from-checkpoint-equals-full-recover (PRF-083), the select
+; bound (fn-rrs-select-bounds, from fn-sco-select-bounds-the-suffix), and the
+; holding constraint fn-rrs-full-open-holds-its-records, from
+; fn-cpo-open-success-exact-image (the opened files carry exactly the
+; observed journal).  The functional instance and the keystone below are
+; proved.  What stays MODEL-LEVEL is stated under THE HOST'S OPEN.
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 ;
@@ -60,8 +60,8 @@
 ; A successful open (fn-sn-open-okp) holds a record when the opened Store's
 ; files carry it among their records (fn-sf-records of fn-sn-files: the
 ; open builds them from the replayed events, fn-sf-make :recovering).  The
-; interface's third constraint over these two is the instance's obligation
-; (OBLIGATION, not yet proved here): a successful fn-cpo-open-observed of
+; interface's third constraint over these two is fn-rrs-full-open-holds-its-
+; records below: a successful fn-cpo-open-observed of
 ; EVENTS holds every member of EVENTS.
 (defun fn-rrs-open-okp (result)
   (declare (xargs :guard t :verify-guards nil))
@@ -69,6 +69,28 @@
 (defun fn-rrs-holds (result r)
   (declare (xargs :guard t :verify-guards nil))
   (member-equal r (fn-sf-records (fn-sn-files (fn-sn-open-state result)))))
+
+; The interface's third constraint over the store's open: a successful
+; fn-cpo-open-observed of EVENTS holds every member of EVENTS.  The opened
+; Store's files carry exactly the observed journal
+; (fn-cpo-open-success-exact-image, books/config-observed.lisp).
+(defthm fn-rrs-full-open-holds-its-records
+  (implies (and (member-equal r records)
+                (fn-rrs-open-okp (fn-cpo-open-observed configs frontier records)))
+           (fn-rrs-holds (fn-cpo-open-observed configs frontier records) r))
+  :hints (("Goal"
+           :use ((:instance fn-cpo-open-success-exact-image (events records)))
+           :in-theory (e/d (fn-rrs-open-okp fn-rrs-holds)
+                           (fn-cpo-open-observed fn-sn-open-okp)))))
+
+; The interface's select constraint, as a rewrite rule over the store's
+; selection (fn-sco-select-bounds-the-suffix, books/store-checkpoint-open.lisp,
+; is rule-classes nil).
+(defthm fn-rrs-select-bounds
+  (implies (equal (car (fn-sco-select status s count k)) :checkpoint)
+           (and (natp s) (natp count) (<= s count)))
+  :hints (("Goal" :use ((:instance fn-sco-select-bounds-the-suffix
+                                   (sequence s))))))
 
 (defthm fn-rrs-open-is-the-full-open-of-the-recovered-records
   (implies (equal ckpt (fn-sco-capture configs (take s records)))
@@ -84,10 +106,10 @@
                   (fn-rr-medium-open-okp fn-rrs-open-okp)
                   (fn-rr-medium-holds fn-rrs-holds)
                   (fn-rr-open fn-rrs-open)))
-           :in-theory (union-theories '(fn-rrs-open)
-                                      (theory 'minimal-theory)))
-          ("Subgoal 2" :use ((:instance fn-sco-select-bounds-the-suffix
-                                        (sequence s) (count count))))))
+           :in-theory (union-theories '(fn-rrs-open fn-rrs-full-open-holds-its-records
+                                        fn-sn-recover-from-checkpoint-equals-full-recover
+                                        fn-rrs-select-bounds)
+                                      (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; 2. THE KEYSTONE over the store: the log's records decoded, the capture of
@@ -130,7 +152,12 @@
                  (:instance fn-rrs-open-is-the-full-open-of-the-recovered-records
                             (records (fn-srs-decode
                                       (fn-rr-recovered-records image ino genesis (fn-bs-unit bs)
-                                                               max next-txid)))))
+                                                               max next-txid))))
+                 (:instance fn-rrs-full-open-holds-its-records
+                            (records (fn-srs-decode
+                                      (fn-rr-recovered-records image ino genesis (fn-bs-unit bs)
+                                                               max next-txid)))
+                            (r e)))
            :in-theory (union-theories '(fn-rr-tree-sequence-memberp)
                                       (theory 'minimal-theory)))))
 

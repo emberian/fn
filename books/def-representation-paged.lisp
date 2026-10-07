@@ -1228,6 +1228,20 @@
       pg
     (adt-pg-fresh (1+ ci) (1- m) r (update-nth ci (resize-list (resize-list (nth ci pg) 0 0) r 0) pg))))
 
+; The generated -FRESH-UNFOLDS theorems open adt-pg-fresh a constant number
+; of times; the rewriter declines the second opening (the recursive call's
+; argument grows), so they unroll by these two instead of the definition.
+(defthmd adt-pg-fresh-unroll
+  (implies (and (syntaxp (quotep m)) (not (zp m)))
+           (equal (adt-pg-fresh ci m r pg)
+                  (adt-pg-fresh (+ 1 ci) (+ -1 m) r
+                                (update-nth ci (resize-list (resize-list (nth ci pg) 0 0) r 0) pg))))
+  :hints (("Goal" :in-theory (enable adt-pg-fresh))))
+
+(defthmd adt-pg-fresh-done
+  (implies (zp m) (equal (adt-pg-fresh ci m r pg) pg))
+  :hints (("Goal" :in-theory (enable adt-pg-fresh))))
+
 ; A table page made ready: its page array emptied, then T fresh page headers
 ; (D is the page stobj's creator).
 (defun adt-pg-tready (d tp)

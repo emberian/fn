@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "PCK-DELTA",
+ "notes": [
+  "10-07 proved in books/paged-checkpoint.lisp on lane/s-pck (statements per Deputy S review; DELTA and BOUND need no fitsp)"
+ ],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "landed",
+ "title": "(defthm fn-pck-dirty-is-the-delta (equal (pgs-apply-dirty (fn-pck-pages configs prefix) (fn-pck-dirty configs prefix delta)) (fn-pck-pages configs (append prefix delta)))): a checkpoint writes exactly what changed. Generic half proved (fn-crow-pages-of-append-is-apply-dirty via adt-tp-dirty-is-the-delta, books/def-representation-pages.lisp); owed: the root-page and record-region composition, blocked on the records question in the lane report.",
+ "updated": "2026-10-07T04:10:00Z"
+}

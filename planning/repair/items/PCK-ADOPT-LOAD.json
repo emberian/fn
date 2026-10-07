@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "PCK-ADOPT-LOAD",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "PCK-ADOPT with H = the logical catalog fn-sca-load-held-rows (books/catalog-availability-owner-load.lisp:87; keyed form served-catalog-owner-keyed.lisp:20, equal by fn-sca-load-held-rows-keyed-is-load-held-rows) builds from a cleared catalog over the records of the store opened from prefix (arguments as in owner-recovery-retain.lisp:226-232). Intended statement: (implies (and (fn-cat-rowsp H) (fn-pck-carriedp H) (equal H (fn-pck-held-of-prefix configs prefix))) <the PCK-ADOPT conclusion>), i.e. (equal (fn-crow-of-pages (fn-pck-cat-pages H)) (fn-pck-crow-rows (fn-pck-held-of-prefix configs prefix))), with fn-pck-held-of-prefix the fn-cat$a value of that load. Stays out of the book until provable; PCK-ADOPT keeps H free.",
+ "updated": "2026-10-07T04:30:00Z"
+}

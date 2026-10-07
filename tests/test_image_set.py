@@ -398,5 +398,67 @@ class LinkRunTests(unittest.TestCase):
             self.assertFalse((tree / "build" / "fn-host-developer").exists())
 
 
+
+
+class StampTests(unittest.TestCase):
+    """`stamp`: a run tree's own build gets the published set's provenance
+    coordinates (MANIFEST.json, TREE_SHA) from the builder's source records,
+    so a composed fixture can bind an unpublished convergence build
+    (CONVERGE-20261007-1 red #3)."""
+
+    setUp = ImageSetTests.setUp
+    quiet = ImageSetTests.quiet
+
+    def provenance(self, *files):
+        sys.path.insert(0, str(ROOT))
+        from tests import native_image_provenance
+        return [native_image_provenance._published_source(self.tree / "build" / file)
+                for file in files]
+
+    def test_stamp_binds_a_commit_build_for_the_composed_fixture(self):
+        self.assertEqual(self.quiet(image_set.stamp, self.tree)[0], 0)
+        build = self.tree / "build"
+        self.assertEqual((build / "TREE_SHA").read_text().strip(), SHA)
+        manifest = json.loads((build / "MANIFEST.json").read_text())
+        self.assertEqual(sorted(manifest["images"]), ["developer", "production"])
+        self.assertIn("stamped_utc", manifest)
+        self.assertNotIn("published_utc", manifest)
+        self.assertEqual(self.provenance("fn-host", "fn-host-developer"), [SHA, SHA])
+        # A launcher changed after the stamp no longer matches it.
+        (build / "fn-host").write_text("#!/bin/sh\n")
+        with self.assertRaisesRegex(ValueError, "launcher differs"):
+            self.provenance("fn-host")
+
+    def test_stamp_leaves_a_worktree_build_unstamped_and_clears_a_stale_stamp(self):
+        build = self.tree / "build"
+        self.assertEqual(self.quiet(image_set.stamp, self.tree)[0], 0)
+        (build / "fn-host.source").write_text(f"worktree {SHA}+dirty\n")
+        code, err = self.quiet(image_set.stamp, self.tree)
+        self.assertEqual(code, 0)
+        self.assertIn("not stamped", err)
+        self.assertFalse((build / "MANIFEST.json").exists())
+        self.assertFalse((build / "TREE_SHA").exists())
+        with self.assertRaises(OSError):
+            self.provenance("fn-host")
+
+    def test_stamp_refuses_mixed_commit_sources(self):
+        build = self.tree / "build"
+        (build / "fn-host.source").write_text(f"commit {'b' * 40}\n")
+        code, err = self.quiet(image_set.stamp, self.tree)
+        self.assertEqual(code, 0)
+        self.assertIn("not stamped", err)
+        self.assertIn("b" * 40, err)
+        self.assertFalse((build / "MANIFEST.json").exists())
+
+    def test_stamp_refuses_a_linked_build(self):
+        self.assertEqual(self.quiet(image_set.publish, self.tree, SHA, self.base)[0], 0)
+        other = self.root / "lane-tree"
+        self.assertEqual(self.quiet(image_set.link, SHA, other, ["developer"], self.base)[0], 0)
+        code, err = self.quiet(image_set.stamp, other)
+        self.assertEqual(code, 1)
+        self.assertIn("did not build", err)
+        self.assertFalse((other / "build" / "MANIFEST.json").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

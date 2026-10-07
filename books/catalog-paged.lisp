@@ -55,6 +55,7 @@
 (include-book "catalog-logic")
 ;; The live links' meaning and the commit/withdrawal keystones (gate C).
 (include-book "catalog-live-links")
+(include-book "def-representation-pages")
 (include-book "def-representation")
 (include-book "def-representation-tree")
 ;; The (group . number)-keyed tables as dense per-group runs (stage 4).
@@ -92,7 +93,8 @@
   (esc :bool)
   (aux :tree)
   (nums :tree)
-  :write-once t)
+  :write-once t
+  :pages t)
 
 ; -----------------------------------------------------------------------------
 ; 2. The foundation: the row store beside the old foundation (its tables,

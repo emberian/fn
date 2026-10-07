@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "tests/acl2/paged-checkpoint-tests.lisp",
+ "id": "PCK-ADOPT-CARRIED-TOOTH",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "Tooth owed for fn-pck-adopt-is-the-catalog's decode conjunct: a must-fail with a WELL-FORMED catalog row that is an overflow row (fn-cat-rowp true, fn-cp-overflow-of true, e.g. a row whose remainder or numbers tree fn-sccb-treep refuses), so that fn-cat-rowsp holds and only fn-pck-carriedp fails; with a concrete witness that the decode differs from H. The current tooth (pckt-decode-uncarried) uses the non-row 7, which also breaks fn-cat-rowsp and does not isolate carriedp.",
+ "updated": "2026-10-07T13:00:00Z"
+}

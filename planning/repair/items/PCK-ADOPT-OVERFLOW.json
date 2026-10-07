@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "PCK-ADOPT-OVERFLOW",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "PCK-ADOPT excludes rows the columns cannot carry (fn-cp-overflow-of, the overflow cells); the host must fall back to rebuild when fn-pck-carriedp fails. Owed: overflow cells on pages.",
+ "updated": "2026-10-07T04:10:00Z"
+}
