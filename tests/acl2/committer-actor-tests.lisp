@@ -67,3 +67,17 @@
                ((s *cmtt-captured*) (event '(:observe t 1 t)))
                :fault "an actor that runs the pipeline on a stop observation")))
 
+(defteeth fn-cmt-wrong-snapshot-ticket-faults
+  :claim (() (implies (and (equal (fn-cmt-field 0 s) :snapshot)
+                           (equal (fn-cmt-field 0 event) :snapshot)
+                           (not (equal (fn-cmt-field 1 event) (nfix (fn-cmt-field 1 s)))))
+                      (equal (cadr (fn-cmt-step s event)) '(:exit :fault))))
+  :subject fn-cmt-step
+  :witness ((s *cmtt-issued*) (event '(:snapshot 2 ((0 2)))))
+  :mutations ((wrong-ticket-accepted
+               (:conclusion (implies (and (equal (fn-cmt-field 0 s) :snapshot)
+                                          (equal (fn-cmt-field 0 event) :snapshot)
+                                          (not (equal (fn-cmt-field 1 event) (nfix (fn-cmt-field 1 s)))))
+                                     (equal (cadr (fn-cmt-step s event)) '(:again))))
+               ((s *cmtt-issued*) (event '(:snapshot 2 ((0 2)))))
+               :fault "an actor that takes the capture of a snapshot answered for another ticket")))
