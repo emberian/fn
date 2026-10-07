@@ -79,6 +79,44 @@ class Findings(unittest.TestCase):
         self.assertIn("covers only a new keystone", found[0])
 
 
+def gen(name, book="tests/acl2/t.lisp", claim="c1", **more):
+    return entry(name, "generated", owner_book=book, claim_digest=claim, owed_met=None, **more)
+
+
+class Vanished(unittest.TestCase):
+    def findings(self, current, base_entries, exists=lambda path: True):
+        stored = ke.stored({e["name"]: dict(e, complete=False) for e in current})
+        return ke.manifest_findings({e["name"]: e for e in current}, {"entries": base_entries},
+                                    REV, {"entries": stored}, {}, exists)
+
+    def test_a_base_generated_entry_that_vanishes_is_a_finding(self):
+        found = self.findings([entry("a")], [gen("old"), entry("a")])
+        self.assertEqual(len(found), 1)
+        self.assertIn("old had generated teeth in the base (tests/acl2/t.lisp)", found[0])
+
+    def test_a_rename_shows_as_old_gone_plus_new_generated(self):
+        current = [entry("a"), gen("new")]
+        self.assertEqual(self.findings(current, [gen("old"), entry("a")]), [])
+        renamed, lost = ke.vanished_generated({e["name"]: e for e in current},
+                                              {"entries": [gen("old")]})
+        self.assertEqual((renamed, lost), ({"old": ["new"]}, []))
+
+    def test_a_rename_into_a_different_claim_is_not_a_rename(self):
+        found = self.findings([gen("new", claim="c2")], [gen("old")])
+        self.assertEqual(len(found), 1)
+
+    def test_a_rename_into_hand_is_not_a_rename(self):
+        found = self.findings([entry("new")], [gen("old")])
+        self.assertTrue(any("old had generated teeth" in f for f in found), found)
+
+    def test_an_entry_whose_book_is_deleted_is_exempt(self):
+        self.assertEqual(self.findings([entry("a")], [gen("old"), entry("a")],
+                                       exists=lambda path: False), [])
+
+    def test_an_entry_still_present_is_not_vanished(self):
+        self.assertEqual(self.findings([gen("old")], [gen("old")]), [])
+
+
 class ItemReading(unittest.TestCase):
     def test_only_open_teeth_owed_items_are_read(self):
         with tempfile.TemporaryDirectory() as tmp:

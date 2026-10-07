@@ -38,7 +38,10 @@ with it:
   open repair item planning/repair/items/TEETH-OWED-<NAME>.json, category
   `teeth-owed`, names it: counted and printed, not a finding; the item is a
   finding itself once the keystone has teeth, leaves the registry, or was
-  already in the base; tools/teeth_owed_file.py files them); a new `deferred`
+  already in the base; tools/teeth_owed_file.py files them); a base `generated`
+  entry that vanishes with no generated successor of the same owner book and
+  claim (a rename shows as old gone plus new generated, printed as `renamed`;
+  an entry whose book is deleted is exempt); a new `deferred`
   exemption (rejected by default; a base deferred is grandfathered); an
   owed row not met; a stale committed manifest.  Counts are printed from
   the sets: coverage counts only certified generated entries whose
@@ -401,14 +404,44 @@ def untoothed_new(current: dict[str, dict], base: dict | None) -> list[str]:
                   if name not in known and entry["class"] != "generated")
 
 
+def vanished_generated(current: dict[str, dict], base: dict | None,
+                       book_exists=None) -> tuple[dict[str, list[str]], list[dict]]:
+    """The base's `generated` entries absent from CURRENT: (renamed, lost).
+    RENAMED maps the old name to the current generated entries with the same
+    owner book and claim digest (a rename shows as old gone plus new
+    generated); LOST lists those with no such successor, except an entry
+    whose owner book no longer exists (its keystone went with the book)."""
+    book_exists = book_exists or (lambda path: (ROOT / path).exists())
+    renamed: dict[str, list[str]] = {}
+    lost: list[dict] = []
+    for old in (base or {}).get("entries", []):
+        if old["class"] != "generated" or old["name"] in current:
+            continue
+        successors = sorted(n for n, e in current.items()
+                            if e["class"] == "generated"
+                            and e.get("owner_book") == old.get("owner_book")
+                            and e.get("claim_digest") == old.get("claim_digest"))
+        if successors:
+            renamed[old["name"]] = successors
+        elif book_exists(old.get("owner_book", "")):
+            lost.append(old)
+    return renamed, lost
+
+
 def manifest_findings(current: dict[str, dict], base: dict | None, why: str,
                       committed: dict | None,
-                      owed: dict[str, dict] | None = None) -> list[str]:
+                      owed: dict[str, dict] | None = None,
+                      book_exists=None) -> list[str]:
     problems: list[str] = []
     if base is None:
         return [f"teeth gate: {why}"]
     owed = owed or {}
     base_entries = {entry["name"]: entry for entry in base.get("entries", [])}
+    for old in vanished_generated(current, base, book_exists)[1]:
+        problems.append(f"teeth gate: {old['name']} had generated teeth in the base "
+                        f"({old.get('owner_book')}) and is gone from the manifest with no "
+                        f"generated successor (same book and claim): a deletion or rename "
+                        f"must leave an owed or generated entry, never nothing")
     for name, item in sorted(owed.items()):
         entry = current.get(name)
         if entry is None:
@@ -503,6 +536,9 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
               f"manifest ({why}); commit it, then planning/teeth-base.json naming that "
               f"revision")
         stale = problems
+    for old_name, new_names in sorted(vanished_generated(current, base)[0].items()):
+        print(f"keystone_emit: renamed: {old_name} -> {', '.join(new_names)} (generated "
+              f"teeth, same book and claim)")
     owed_new = [n for n in untoothed_new(current, base) if n in owed]
     print(manifest_counts(current, len(owed_new)))
     for name in owed_new:
