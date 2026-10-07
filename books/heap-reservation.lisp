@@ -321,7 +321,6 @@
                             (+ (* 1024 (fn-heap-reserve-stack-kib r))
                                *fn-heap-thread-runtime-octets*)))
                       (fn-heap-machine-octets observations)))))
- :rule-classes nil
   :hints (("Goal" :in-theory (union-theories
                               '(fn-heap-reserve-of fn-heap-reserve-storeless
                                 fn-heap-reservation-octets fn-heap-reserve-threads
@@ -1906,3 +1905,8 @@
   :hints (("Goal" :in-theory (theory 'minimal-theory)
            :use ((:instance fn-heap-capture-budget-grows-with-history-and-record)
                  (:instance fn-heap-figure-octets-grows-given-the-capture-budget)))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-heap-reserve-of-holds-the-decision))

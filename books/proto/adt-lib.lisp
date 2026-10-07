@@ -366,8 +366,7 @@
 
 (defthm adt-prefix-eq-nth
   (implies (and (adt-prefix-eq p q n) (natp j) (< j (nfix n)))
-           (equal (nth j q) (nth j p)))
- :rule-classes nil)
+           (equal (nth j q) (nth j p))))
 
 (defthm adt-prefix-eq-refl (adt-prefix-eq p p n))
 
@@ -950,7 +949,6 @@
 
 (defthm adt-nth-of-atom
   (implies (atom x) (equal (nth n x) nil))
- :rule-classes nil
   :hints (("Goal" :in-theory (enable nth))))
 
 (defthm adt-get-fields-of-corr
@@ -1455,3 +1453,9 @@
            :in-theory (e/d (adt-canon) (adt-corr-build adt-corr-empty adt-empty-c)))))
 
 (in-theory (disable adt-empty-c adt-build adt-canon))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable adt-nth-of-atom
+                    adt-prefix-eq-nth))

@@ -500,7 +500,6 @@
   (implies (and (fn-sf-prefixp xs ys)
                 (member-equal x xs))
            (member-equal x ys))
- :rule-classes nil
   :hints (("Goal" :induct (fn-sf-prefixp xs ys)
            :in-theory (enable fn-sf-prefixp member-equal))))
 
@@ -621,7 +620,6 @@
                                              ghost-successes)
                 (member-equal pair externally-emitted))
            (member-equal pair ghost-successes))
- :rule-classes nil
   :hints (("Goal" :induct
            (fn-sf-ghost-covers-emittedp externally-emitted
                                         ghost-successes))))
@@ -681,3 +679,9 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-sf-member-preserved-by-prefix)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-sf-covered-emitted-member-is-ghost-member
+                    fn-sf-member-preserved-by-prefix))

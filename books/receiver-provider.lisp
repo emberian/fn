@@ -66,7 +66,6 @@
                (equal (mv-nth 1 (fn-rxc-fill-range token n limits fuel fn-rx-carry)) 0)
                (equal (mv-nth 2 (fn-rxc-fill-range token n limits fuel fn-rx-carry)) n)
                (equal (mv-nth 3 (fn-rxc-fill-range token n limits fuel fn-rx-carry)) (- fuel n))))
- :rule-classes nil
  :hints (("Goal" :in-theory (enable fn-rxc-fill-range))))
 (defthm fn-rxc-fill-range-refusal-preserves-fuel
  (implies (not (equal (mv-nth 0 (fn-rxc-fill-range token n limits fuel fn-rx-carry))
@@ -86,7 +85,6 @@
                (equal (mv-nth 1 (fn-rxp-fill-range token n limits fuel fn-rx-provider)) 0)
                (equal (mv-nth 2 (fn-rxp-fill-range token n limits fuel fn-rx-provider)) n)
                (equal (mv-nth 3 (fn-rxp-fill-range token n limits fuel fn-rx-provider)) (- fuel n))))
- :rule-classes nil
  :hints (("Goal" :in-theory (enable fn-rxp-fill-range fn-rxc-fill-range
                                   fn-rxc-currentp fn-rxp-token
                                   fn-rxp-instance fn-rxp-capacity))))
@@ -166,3 +164,9 @@
                         (mv-nth 1 (fn-rxp-fence token fn-rx-provider))))
         (mv-nth 1 (fn-rxp-fence token fn-rx-provider)))
  :hints (("Goal" :in-theory (enable fn-rxp-fence fn-rxc-fence fn-rxc-currentp))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-rxc-fill-range-copy-bounds
+                    fn-rxp-fill-range-copy-bounds))

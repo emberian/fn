@@ -161,7 +161,6 @@
 (defthm fn-bs-k8-name-absent-from-list-has-no-entry
   (implies (not (member-equal name (strip-cars alist)))
            (equal (assoc-equal name alist) nil))
- :rule-classes nil
   :hints (("Goal" :induct (assoc-equal name alist))))
 
 (defthm fn-bs-k8-op-list-does-not-write-nil
@@ -609,3 +608,8 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-bs-k8-name-absent-from-list-has-no-entry)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bs-k8-name-absent-from-list-has-no-entry))

@@ -52,7 +52,6 @@
 
 (defthm fn-pol-stmt-is-consp
   (implies (fn-stmt-p s) (consp s))
- :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-stmt-p))))
 
 (defthm fn-pol-candidatep-implies-authority-stmt
@@ -169,8 +168,7 @@
 (defthm fn-pol-candidates-members-are-candidates
   (implies (member-equal p (fn-pol-candidates lace keyring group authority))
            (and (member-equal p lace)
-                (fn-pol-candidatep p keyring group authority)))
- :rule-classes nil)
+                (fn-pol-candidatep p keyring group authority))))
 
 (defthm fn-pol-member-candidate-is-in-candidates
   (implies (and (member-equal p lace)
@@ -431,3 +429,9 @@
     (:d fn-pol-first-authority-stmt)))
 
 (in-theory (disable fn-pol-invariants-vocabulary))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-pol-candidates-members-are-candidates
+                    fn-pol-stmt-is-consp))

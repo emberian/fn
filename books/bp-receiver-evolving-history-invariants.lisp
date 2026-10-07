@@ -329,7 +329,6 @@
 (defthm fn-bprv-prefix-preserves-member
   (implies (and (fn-sf-prefixp h1 h2) (member-equal x h1))
            (member-equal x h2))
- :rule-classes nil
   :hints (("Goal" :induct (fn-sf-prefixp h1 h2)
            :in-theory (enable fn-sf-prefixp))))
 
@@ -711,3 +710,8 @@
            :in-theory (e/d (fn-bpr-receipt-adu)
                            (fn-bprv-output-implies-statep
                             fn-bprr-replay-rest-preserves-statep)))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bprv-prefix-preserves-member))

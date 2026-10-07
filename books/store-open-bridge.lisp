@@ -542,7 +542,6 @@
                  (fn-cpo-open-observed configs
                                        (fn-bs-scan-frontier (fn-bs-scan-store image))
                                        (fn-bs-scanned-rows (fn-sn-files s) image arena)))))
- :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-sweep-round-keeps-every-cut-reopenable
                  (:instance fn-cpo-open-observed-is-sn-open-observed-on-the-kernel
@@ -558,3 +557,8 @@
 ;; enables it where it is used.
 (in-theory (disable (:definition fn-sob-identity-typedp)
                     (:rewrite fn-sob-cpo-opens-on-configured-image)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bs-sweep-round-keeps-every-cut-reopenable-of-host-open))

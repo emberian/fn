@@ -430,7 +430,6 @@
                 (fn-wire-octet-listp octets)
                 (fn-wire-next-event (fn-wire-next-loop wire-state octets)))
            (consp octets))
- :rule-classes nil
   :hints (("Goal"
            :induct (fn-wire-next-loop wire-state octets)
            :in-theory (e/d (fn-wire-next-loop
@@ -445,7 +444,6 @@
                 (fn-wire-octet-listp octets)
                 (fn-wire-next-event (fn-wire-next wire-state octets)))
            (consp octets))
- :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-wire-next-loop-event-needs-input))
            :in-theory (e/d (fn-wire-next)
@@ -827,3 +825,9 @@
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-wire-next-event-needs-input)
                     (:rewrite fn-wire-next-loop-event-needs-input)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-wire-next-event-needs-input
+                    fn-wire-next-loop-event-needs-input))

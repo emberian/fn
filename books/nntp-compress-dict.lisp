@@ -181,8 +181,7 @@
                   (equal (cadr r) (fn-zdn-digest-of-dict (car stored)))
                   (cadr r)
                   (member-equal (cadr r) digests)
-                  (equal (fn-zdn-dict-of-digest (cadr r)) (car stored)))))
- :rule-classes nil)
+                  (equal (fn-zdn-dict-of-digest (cadr r)) (car stored))))))
 
 (defthm fn-zdn-choose-complete
   (implies (and (consp stored)
@@ -323,3 +322,7 @@
 
 (in-theory (disable fn-zdn-choose fn-zdn-request fn-zdn-capability-line))
 
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-zdn-choose-stored-only-shared))

@@ -294,7 +294,6 @@
 (defthm fn-bprv-acceptable-implies-consp-record
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (consp record))
- :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-bpr-request-acceptablep fn-record-p))))
 (defthm fn-bprv-derived-context-record-binds
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
@@ -389,3 +388,8 @@
            (fn-bprv-context-backedp store config (fn-bpr-find-context work-id contexts) fn-arena))
   :hints (("Goal" :induct (fn-bpr-find-context work-id contexts)
      :in-theory (enable fn-bpr-find-context))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bprv-acceptable-implies-consp-record))

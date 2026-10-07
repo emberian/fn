@@ -914,8 +914,7 @@
 ; this book applies it to is an alist by fn-bs-alistp-of-dir-entries.
 (defthm fn-bs-assoc-of-name-in-entries
   (implies (and (alistp alist) (member-equal name (strip-cars alist)))
-           (assoc-equal name alist))
- :rule-classes nil)
+           (assoc-equal name alist)))
 
 ; -----------------------------------------------------------------------------
 ; 6. The record list of a prefix of the transaction namespace.
@@ -3101,3 +3100,8 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-bs-natural-head-is-no-other-wire-event)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bs-assoc-of-name-in-entries))

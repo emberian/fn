@@ -290,7 +290,6 @@
 (defthm fn-sccr-nth-is-cell
   (implies (and (fn-octets-p fn-octets) (natp i) (< i (len fn-octets)))
            (equal (nth i fn-octets) (fn-sccr-cell i fn-octets)))
- :rule-classes nil
   :hints (("Goal" :use fn-sccr-cell-is-nth)))
 
 (defthm fn-sccr-cell-below-256
@@ -901,3 +900,8 @@
                     (:rewrite fn-sccr-open-segment-of-frame)
                     (:rewrite fn-sccr-cbor-octet-listp-is-scc-octet-listp)
                     (:rewrite fn-sccr-scc-octet-listp-is-cbor-octet-listp)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-sccr-nth-is-cell))

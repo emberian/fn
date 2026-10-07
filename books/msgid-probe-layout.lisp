@@ -165,7 +165,7 @@
                 (natp (nth 0 cursor)) (< (nth 0 cursor) pages)
                 (natp (nth 1 cursor))
                 (natp (nth 2 cursor)) (< (nth 2 cursor) *fn-mpxt-page-slots*)))
-  :rule-classes (:forward-chaining)
+  :rule-classes (:rewrite :forward-chaining)
   :hints (("Goal" :in-theory (enable fn-mpr-cursorp))))
 
 (defthm fn-mpl-place-preserves-existing-reachable
@@ -228,3 +228,8 @@
 
 (in-theory (disable fn-mpl-tag-at fn-mpl-seq-at fn-mpl-next fn-mpl-write-slot
                     fn-mpl-place fn-mpl-remaining fn-mpl-reachable))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-mpl-cursor-field-bounds))

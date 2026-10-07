@@ -53,8 +53,7 @@
 (defthm fn-retain-release-disjoint-member
   (implies (and (not (intersection-equal xs ys))
                 (member-equal x xs))
-           (not (member-equal x ys)))
- :rule-classes nil)
+           (not (member-equal x ys))))
 
 (defthm fn-retain-release-remove-preserves-disjointness
   (implies (and (fn-retain-no-duplicatesp (fn-retain-obligation-ids pins))
@@ -164,3 +163,8 @@
     fn-retain-release-remove-keeps-other-pin
     fn-retain-release-remove-keeps-other-members))
 (in-theory (disable fn-retention-invariants-vocabulary))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-retain-release-disjoint-member))

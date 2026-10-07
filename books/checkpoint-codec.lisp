@@ -1216,7 +1216,6 @@
   (implies (fn-cpc-result-okp
             (fn-cpc-decode octets groups capacity max-frontier max-sequence))
            (consp octets))
- :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-cpc-read-bytes fn-cpc-read-item
                                      fn-cbor-octet-listp fn-cbor-at-mostp))))
 
@@ -2005,3 +2004,8 @@
                     fn-cpc-frame-seal fn-cpc-frame-decode fn-cpc-frame-open
                     fn-cpc-selection-protected fn-cpc-selection-encode
                     fn-cpc-selection-decode))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-cpc-accepted-is-consp))

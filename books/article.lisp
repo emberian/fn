@@ -726,8 +726,7 @@
 
 (defthm fn-article-nonempty-true-list-is-consp
   (implies (and (true-listp xs) xs)
-           (consp xs))
- :rule-classes nil)
+           (consp xs)))
 
 (defthm fn-article-natp-one-less
   (implies (and (natp n) (not (zp n)))
@@ -937,3 +936,8 @@
                     (:definition fn-article-next-line-aux)
                     (:definition fn-article-parse-lines)
                     (:rewrite fn-article-header-rev-add-line-recomposes)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-article-nonempty-true-list-is-consp))

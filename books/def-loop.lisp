@@ -198,8 +198,7 @@
   (local (defun fn-dl-mb-base (xs) (atom xs)))
   (local (defun fn-dl-mb-fixp () nil))
   (defthm fn-dl-mb-base-progress
-    (implies (not (fn-dl-mb-base xs)) (consp xs))
- :rule-classes nil))
+    (implies (not (fn-dl-mb-base xs)) (consp xs))))
 
 (defun fn-dl-map-base (dl-xs)
   (if (fn-dl-mb-base dl-xs)
@@ -862,3 +861,8 @@
               ',into ',write ',write-theory ',map ',acc ',loop ',keep-order
               ',(if (and (not (eq shape :take)) base-p (null base)) '(quote nil) base)
               ',loop-guard ',acc-fix ',stobjs state)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-dl-mb-base-progress))

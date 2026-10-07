@@ -550,8 +550,7 @@
 
 (defthm fn-fs-section-class-ok-only-for-a-declared-class
   (implies (fn-fs-section-class-ok classes class)
-           (member-equal class classes))
- :rule-classes nil)
+           (member-equal class classes)))
 
 (defthm fn-fs-unwind-faults-an-unexplained-exit
   (equal (equal (fn-fs-unwind completed decided) :fault)
@@ -643,8 +642,7 @@
            (and (consp event) (consp (cdr event))
                 (or (and (equal (car event) :joined) (cadr event))
                     (and (equal st :spawning)
-                         (equal (car event) :spawned) (not (cadr event))))))
- :rule-classes nil)
+                         (equal (car event) :spawned) (not (cadr event)))))))
 
 (defthm fn-fs-actor-failed-join-retains-custody
   (and (equal (fn-fs-actor-step st '(:joined nil)) st)
@@ -732,3 +730,9 @@
                     fn-fs-actor-exit-kind fn-fs-actor-step fn-fs-actor-registered-p
                     fn-fs-actor-receipt fn-fs-actor-join-action fn-fs-receipt-action fn-fs-inbox-admit
                     fn-fs-actor-declp))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-fs-actor-only-physical-end-or-failed-spawn-deregisters
+                    fn-fs-section-class-ok-only-for-a-declared-class))

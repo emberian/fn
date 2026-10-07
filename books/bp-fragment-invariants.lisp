@@ -62,7 +62,6 @@
   (implies (and (fn-bpf-bytes-agreep bytes offset payload)
                 (natp offset) (natp k) (< k (len bytes)))
            (equal (nth k bytes) (nth (+ offset k) payload)))
- :rule-classes nil
   :hints (("Goal" :induct (fn-bpf-agreep-nth-induction bytes offset k))))
 
 (defthm fn-bpf-cell-of-of-agreeing-fragment
@@ -758,3 +757,8 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-bpf-first-index-nil-means-no-marker)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bpf-bytes-agreep-nth))

@@ -125,12 +125,10 @@
 
 (defthm fn-bs-keys-belowp-bounds-known-key
   (implies (and (fn-bs-keys-belowp x n) (assoc-equal k x))
-           (< k n))
- :rule-classes nil)
+           (< k n)))
 (defthm fn-bs-keys-belowp-excludes-bound
   (implies (fn-bs-keys-belowp x n)
-           (not (assoc-equal n x)))
- :rule-classes nil)
+           (not (assoc-equal n x))))
 (defthm fn-bs-keys-belowp-monotone
   (implies (and (fn-bs-keys-belowp x n) (natp m) (<= n m))
            (fn-bs-keys-belowp x m)))
@@ -860,3 +858,9 @@
 (in-theory (disable (:rewrite fn-bs-inode-tablep-keys-are-inos)
                     (:rewrite fn-bs-keys-belowp-excludes-bound)
                     (:rewrite fn-bs-op-listp-implies-true-listp)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bs-keys-belowp-bounds-known-key
+                    fn-bs-keys-belowp-excludes-bound))

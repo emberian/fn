@@ -100,8 +100,7 @@
 (defthm fn-bpn-lifecycle-record-bindingsp-pairs-the-records
   (implies (fn-bpn-lifecycle-record-bindingsp names records token)
            (and (true-listp records)
-                (equal (len records) (len names))))
- :rule-classes nil)
+                (equal (len records) (len names)))))
 
 ; A completed replay advances the machine frontier once per record.
 (defthm fn-bpn-replay-records-ready-advances-the-frontier-per-record
@@ -159,3 +158,8 @@
                  (:instance fn-bpn-replay-records-ready-advances-the-frontier-per-record
                             (st base))))
           ("Subgoal 1" :in-theory (enable fn-bpn-machine-invariantp))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bpn-lifecycle-record-bindingsp-pairs-the-records))

@@ -266,7 +266,6 @@
              (and (equal (car result) :accepted)
                   (equal (fn-tcl-delivery-plan-status plan) :accepted)
                   (fn-tcl-delivery-plan-progress-p plan))))
- :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-tcl-delivery-plan fn-tcl-delivery-plan-messages
                                      fn-tcl-delivery-plan-status
                                      fn-tcl-delivery-plan-progress-p))))
@@ -279,3 +278,8 @@
                  (fn-tcl-delivery-plan messages xfer-id result))))
   :hints (("Goal" :in-theory (enable fn-tcl-delivery-plan fn-tcl-delivery-plan-status
                                      fn-tcl-delivery-plan-progress-p))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-tcl-acknowledged-custody-is-progressed-in-its-turn))

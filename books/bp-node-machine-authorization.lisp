@@ -826,7 +826,6 @@
            (fn-bpn-pending-success-effects pending)
            (fn-bpn-pending-refusal-effect pending)
            (fn-bpn-pending-uncertainty-effect pending)))))
- :rule-classes nil
   :hints
   (("Goal"
     :use ((:instance fn-bpn-lifecycle-invariant-authorizes-pending))
@@ -902,3 +901,8 @@
        fn-bpn-pending-authorizedp fn-bpn-lifecycle-invariantp
        fn-bpn-member fn-cbor-ag-car car-cons cdr-cons true-listp)
      (theory 'minimal-theory)))))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record))

@@ -153,7 +153,6 @@
               (and (fn-oqw-all-ok (take 5 words)) (<= 5 (len words))))
          (implies (equal (fn-oqw-final :batch (fn-oqw-start :batch) words) :done)
                   (equal trace (fn-oqw-phases :batch)))))
- :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-oqw-trace fn-oqw-final))))
 
 ; A failed effect ends the job: the step after a phase that answered
@@ -220,3 +219,8 @@
                                   (fn-otb-gen fn-otb-told fn-otb-minus)))))
 
 (in-theory (disable fn-oqw-step fn-oqw-receipt))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-oqw-batch-effect-order))

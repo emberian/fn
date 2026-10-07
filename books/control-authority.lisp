@@ -872,7 +872,6 @@
 (defthm fn-ctl-authorize-execute-is-nonempty
   (implies (equal (car (fn-ctl-authorize verdict verb groups rows)) :execute)
            (consp groups))
- :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-ctl-verified-principal
                                       fn-ctl-covers-every-p))))
 
@@ -1220,8 +1219,7 @@
 ; nothing and reorders nothing.
 (defthm fn-ctl-visible-filter-is-a-subset
   (implies (member-equal a (fn-ctl-visible-filter xs ws articles verdicts))
-           (member-equal a xs))
- :rule-classes nil)
+           (member-equal a xs)))
 (defthm fn-cfg-namespace-patternp-is-a-label
   (implies (fn-cfg-namespace-patternp x) (fn-cfg-labelp x))
   :rule-classes :forward-chaining
@@ -1263,3 +1261,9 @@
                     (:definition fn-ctl-withdrawalp)
                     (:definition fn-ctl-withdrawn-by-p)
                     (:rewrite fn-ctl-authorize-execute-is-nonempty)))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-ctl-authorize-execute-is-nonempty
+                    fn-ctl-visible-filter-is-a-subset))

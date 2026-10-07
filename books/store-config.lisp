@@ -218,7 +218,6 @@
                 (and (fn-store-group-code-in name groups)
                      (member-equal (fn-store-group-code-in name groups)
                                    (fn-store-codes-from-groups names groups)))))
- :rule-classes nil
   :hints (("Goal" :induct (fn-store-codes-from-groups names groups))))
 
 ; Over a table parameter the inversion needs one hypothesis the compiled
@@ -246,3 +245,8 @@
     fn-store-codes-from-groups-member))
 
 (in-theory (disable fn-store-config-vocabulary))
+
+; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
+; a structural primitive of bare variables, kept for this book's proofs
+; and disabled for every book that includes it (enable or :use them).
+(in-theory (disable fn-store-codes-from-groups-member))
