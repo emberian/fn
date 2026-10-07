@@ -5,6 +5,7 @@
 (include-book "heap-reservation")
 (include-book "heap-store-figure")
 (include-book "profile-limits")
+(include-book "output-reservation")
 
 (defun fn-bph-decimal-characters (chars value)
  (declare (xargs :guard (and (true-listp chars) (natp value))))
@@ -178,4 +179,27 @@
                 (:instance fn-heap-grow-runtime-dynamic-covers-addition
                   (dynamic (* *fn-heap-mib* (nfix (nth 1 base))))
                   (extra (fn-bpsp-node-capacity profile node transfer segment))
+                  (nursery-cap (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))))))
+
+; The extension that runs after the BP extension in the probe's chain
+; (host/native/heap.lisp fnn-heap-extend-reservation: orv wraps this one) never
+; lowers the megabytes: an accepted output extension of a heap decision has at
+; least its megabytes, so the dynamic space the keystone above names only grows.
+(defthm fn-bph-output-extension-never-lowers-the-megabytes
+ (implies (and (equal (car (fn-orv-extend-reservation base policy core observations)) :heap)
+               (true-listp base) (natp (nth 1 base)))
+          (and (equal (car base) :heap)
+               (<= (nth 1 base)
+                   (nth 1 (fn-orv-extend-reservation base policy core observations)))))
+ :hints (("Goal" :in-theory (e/d (fn-orv-extend-reservation fn-crv-nth)
+                                 (fn-heap-mb-of fn-heap-reservation-octets fn-heap-machine-octets
+                                  fn-heap-grow-runtime-dynamic fn-orv-policy-p))
+          :use ((:instance fn-heap-mb-of-covers
+                  (octets (fn-heap-grow-runtime-dynamic
+                           (* *fn-heap-mib* (nfix (nth 1 base)))
+                           (nfix (nth 0 policy))
+                           (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))))
+                (:instance fn-heap-grow-runtime-dynamic-covers-addition
+                  (dynamic (* *fn-heap-mib* (nfix (nth 1 base))))
+                  (extra (nfix (nth 0 policy)))
                   (nursery-cap (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))))))
