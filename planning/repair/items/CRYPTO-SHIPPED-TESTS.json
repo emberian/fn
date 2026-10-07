@@ -1,0 +1,16 @@
+{
+ "category": "crypto-shipped",
+ "file": "tests/test_native_tls_key_exchange.py",
+ "id": "CRYPTO-SHIPPED-TESTS",
+ "line": "60",
+ "notes": [
+  "10-06 20:26 RULINGS-20261006 ruling 3, D59. SYSTEM-PATH: tests/test_native_tls_key_exchange.py:60-90 system_prefix builds a symlinked prefix of the system pair, :200-215 tests refusals on it, :238-250 test_a_missing_prefix_on_a_node_without_tls_runs_on_the_system_pair asserts the fallback exists. AMBIGUOUS: tests/native_harness.py:1126-1131 chooses caller FN_OPENSSL_PREFIX else OPENSSL_SHIPPED (confirm no path to the system pair); tests/native_tls_transport.lisp and tests/native_tls_client.lisp load libssl directly (check which). Conversion: once the fallback is deleted, replace the fallback test with missing-prefix-always-refuses, keep the system-3.x-pair test only as a negative (pair lacking ML-KEM refused under hybrid-required) via explicit FN_OPENSSL_PREFIX, and make the harness fail rather than default when no shipped pair is found. tools/reader_clients/Dockerfile:7 apt installs the openssl CLI for client tooling: not the node's library, leave."
+ ],
+ "owner": "deputy-N",
+ "refs": "RULINGS-20261006 ruling 3; D59",
+ "severity": "medium",
+ "source": "crypto-audit",
+ "state": "open",
+ "title": "tests assert and depend on the system-pair fallback (SYSTEM-PATH)",
+ "updated": "2026-10-07T00:26:35Z"
+}
