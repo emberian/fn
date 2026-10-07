@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "PCK-CRASH",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "open",
+ "title": "(defthm fn-pck-crash-recovers-from-old-or-new ...): every cut of the commit recovers the full open of prefix++delta++suffix, given (fn-pck-log-retains log (len prefix)); teeth: retention from (+ (len prefix) (len delta)) must fail. Composes pgs-open-after-crash (hypothesis pgs-writes-faithful, A-CRYPTO).",
+ "updated": "2026-10-07T03:00:00Z"
+}
