@@ -1534,3 +1534,55 @@
                   :do-not-induct t
                   :use ((:instance fn-xc-lru-is-least (i (fn-xc-lo 1 fn-xcc)) (hi (fn-xc-hi 1 fn-xcc)) (best nil) (j j))
                         (:instance fn-xc-lru-is-least (i (fn-xc-lo 2 fn-xcc)) (hi (fn-xc-hi 2 fn-xcc)) (best nil) (j j))))))
+
+; =============================================================================
+; The ledger.  The token an eviction hands back is a :cached row's key; the
+; ledger's eviction (fn-prl-evict) releases exactly that row's demand and
+; removes exactly that binding.  The slot's token is rebuilt from its columns,
+; so what the host hands the ledger is what ACL2 stored, never what the host
+; remembers.
+(local
+ (defthm fn-xc-revappend-no-binding
+   (implies (and (not (fn-prl-binding token a)) (not (fn-prl-binding token b)))
+            (not (fn-prl-binding token (revappend a b))))
+   :hints (("Goal" :in-theory (enable fn-prl-binding) :induct (revappend a b)))))
+
+(local
+ (defthm fn-xc-remove-aux-no-binding
+   (implies (not (fn-prl-binding token rev))
+            (not (fn-prl-binding token (fn-prl-remove-aux token rows rev))))
+   :hints (("Goal" :in-theory (enable fn-prl-binding fn-prl-remove-aux)
+                   :induct (fn-prl-remove-aux token rows rev)))))
+
+(local
+ (defthm fn-xc-removed-binding-is-absent
+   (not (fn-prl-binding token (fn-prl-remove token rows)))
+   :hints (("Goal" :in-theory (enable fn-prl-remove fn-prl-binding)))))
+
+(defthm fn-xc-eviction-releases-exactly-the-slots-charge
+  (implies (and (fn-xcsp fn-xcs) (natp v) (< v (fn-xcs-count fn-xcs))
+                (fn-xc-slot-token v fn-xcs)
+                (let ((row (cdr (fn-prl-binding (fn-xc-slot-token v fn-xcs) (fn-prl-nth 3 ledger)))))
+                  (and (equal (fn-prl-nth 1 row) :cached)
+                       (true-listp (fn-prl-nth 1 ledger))
+                       (true-listp (fn-prl-nth 0 row)))))
+           (let* ((token (fn-xc-slot-token v fn-xcs))
+                  (row (cdr (fn-prl-binding token (fn-prl-nth 3 ledger))))
+                  (r (fn-prl-evict ledger token))
+                  (l2 (mv-nth 1 r)))
+             (and (equal (mv-nth 0 r) :evicted)
+                  (equal (fn-prl-nth 1 l2)
+                         (fn-prs-release-reusable (fn-prl-nth 1 ledger) (fn-prl-nth 0 row)))
+                  (not (fn-prl-binding token (fn-prl-nth 3 l2)))
+                  (equal (fn-prl-nth 3 l2) (fn-prl-remove token (fn-prl-nth 3 ledger)))
+                  (equal (fn-prl-nth 0 l2) (fn-prl-nth 0 ledger))
+                  (equal (fn-prl-nth 2 l2) (fn-prl-nth 2 ledger))
+                  (equal (fn-prl-baseline l2) (fn-prl-baseline ledger)))))
+  :hints (("Goal" :in-theory (e/d (fn-prl-evict fn-prl-build fn-prl-nth fn-prl-baseline) (fn-prl-binding fn-prl-remove)))))
+
+; A slot that holds no charge hands back nothing, so the host releases nothing for it.
+(defthm fn-xc-chargeless-slot-hands-back-no-token
+  (implies (and (fn-xcsp fn-xcs) (natp v) (< v (fn-xcs-count fn-xcs))
+                (not (fn-xcs-get-tokp v fn-xcs)))
+           (equal (fn-xc-slot-token v fn-xcs) nil))
+  :hints (("Goal" :in-theory (enable fn-xc-slot-token))))
