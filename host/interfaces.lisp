@@ -6102,6 +6102,9 @@
   :class :common-lisp-compliant
   :keystones (fn-dtrace-no-ring-leaves-the-reservation
               fn-dtrace-extended-reservation-holds-the-ring))
+(definterface fn-dtrace-core-with-ring
+  :class :common-lisp-compliant
+  :keystones (fn-dtrace-core-with-ring-keeps-the-core))
 (definterface fn-dtrace-verb
   :class :common-lisp-compliant
   :keystones (fn-dtrace-verb-never-enables-without-a-plan

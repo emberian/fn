@@ -778,7 +778,7 @@ SYNC_HOFS = {"mapc", "mapcar", "mapcan", "maplist", "mapl", "mapcon", "maphash",
              "count-if", "some", "every", "notany", "notevery", "sort", "stable-sort", "reduce",
              "member-if", "assoc-if", "rassoc-if", "remove", "delete", "find", "position", "member",
              "assoc", "count", "subst-if", "handler-bind", "funcall", "apply", "map", "map-into",
-             "sb-ext:with-timeout", "fnn-owner-measured"}
+             "sb-ext:with-timeout", "fnn-trace-span"}
 STORE_HOFS = {"push", "pushnew", "setf", "setq", "list", "list*", "cons", "vector", "acons", "values"}
 WRITE_FORMS = {"setq", "setf", "psetf", "psetq", "incf", "decf", "push", "pushnew", "pop", "remf"}
 
@@ -1167,7 +1167,7 @@ class Analyzer:
             parts.append(self.walk(f, ctx or Ctx(), env, d.line))
         info.sig = sig_union(parts)
         if record:
-            # a template that splices its body twice (fnn-owner-measured's two
+            # a template that splices its body twice (fnn-trace-span's two
             # branches) walks the same source twice: keep one of each
             seen = set()
             unique = []

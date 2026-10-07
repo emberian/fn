@@ -20,7 +20,7 @@ FNFD fsync takes MS longer).
   * a stalled feed journal holds a POST's batch, and meanwhile another
     connection's GROUP (a :reader quantum) and the operator's `health' (an
     :inspect quantum) answer at once; the device coming back answers 240;
-  * the owner's hold per commit quantum (FN_OWNER_MEASURE=1, label
+  * the owner's hold per commit quantum (a [trace] table starting on, label
     `commit') stays below one FNFD fsync's injected latency, whatever that
     latency: the fsyncs are not inside any hold;
   * a duplicate POST, refused at its drain with frames to write, is still
@@ -34,17 +34,14 @@ import threading
 import time
 import unittest
 
-from tests.native_harness import EXIT_OK, Node, native_image, node_log_on_failure, read_line_within, refused_port, requires
+from tests.native_harness import (EXIT_OK, Node, native_image, node_log_on_failure, owner_measure,
+                                  read_line_within, refused_port, requires, trace_spans)
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
-MEASURE = re.compile(rb"^fn-owner-measure (\S+) holds=(\d+) held-us=(\d+) max-us=(\d+) bytes=(\d+)"
-                     rb" max-bytes=(\d+)$", re.M)
-
-
 def measured(log):
-    """{label: (holds, held-us, max-us)} from the owner's FN_OWNER_MEASURE report."""
-    return {m.group(1).decode(): tuple(int(m.group(i)) for i in (2, 3, 4))
-            for m in MEASURE.finditer(log)}
+    """{label: (holds, held-us, max-us)} from the span rows the owner prints at
+    stop (a [trace] table that starts on; tests.native_harness.owner_measure)."""
+    return {label: row[:3] for label, row in owner_measure(log).items()}
 
 
 @requires(DEVELOPER)
@@ -138,8 +135,8 @@ class OwnerOfflockNativeTests(unittest.TestCase):
     def test_the_owner_hold_per_commit_excludes_the_feed_fsync(self):
         fsync_ms = int(os.environ.get("FN_OFFLOCK_FEED_FSYNC_MS", "100"))
         posts = int(os.environ.get("FN_OFFLOCK_POSTS", "12"))
-        owner = self.node.start(env={"FN_OWNER_MEASURE": "1",
-                                     "FN_NATIVE_TEST_FEED_FSYNC_MS": str(fsync_ms)})
+        trace_spans(self.node)
+        owner = self.node.start(env={"FN_NATIVE_TEST_FEED_FSYNC_MS": str(fsync_ms)})
         with node_log_on_failure(owner):
             conn, stream = self.connect()
             latency = []

@@ -419,13 +419,6 @@ share this boundary, including standalone BP owners."
 ;; native storage to this same observed machine decision. DEFAULT adds the
 ;; selected fixed backing only for a served run, before output allocation;
 ;; ACL2 chooses both the scope and the reservation.
-(defvar *fnn-heap-trace-ring-octets* 0
-  "The decision trace ring's octets, ACL2's (fn-dtrace-ring-octets of the
-admitted [trace] plan): 0 without a [trace] table, which is the default.  Set by
-the launcher probe from the configuration it reads (fnn-heap-operator-profile),
-by `run' when it decides the plan (host/native/trace.lisp), and read by the
-reservation extension below.")
-
 (defun fnn-heap-extend-reservation (base action cold-resources output-resources root core machine
                                     profile observed &optional peer reclaim-live bp-terms)
   "The same policy extensions for the launch probe and next-run diagnostics.

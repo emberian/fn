@@ -19,7 +19,7 @@ import unittest
 
 from tests.native_harness import (
     EXIT_OK, EXIT_UNCERTAIN, Client, Node, article as make_article, dot_stuff,
-    executable)
+    executable, owner_measure, trace_spans)
 from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
 MIB4 = 4 * 1024 * 1024
@@ -236,8 +236,8 @@ class PostHeapUnderMutexTests(JoinFixture):
     build the article as a cons list (16 octets of heap per octet) under the
     owner mutex.
 
-    The owner runs with FN_OWNER_MEASURE=1 (host/native/owner.lisp
-    fnn-owner-measured): at stop it prints, per gate class, the holds, the
+    The owner runs with a [trace] table that starts on (host/native/trace.lisp
+    fnn-trace-span): at stop it prints, per gate class, the holds, the
     time held and the octets SBCL allocated, in all and in the largest single
     hold.  One 3 MiB POST on the 4 MiB profile (the size LargeArticleTests
     admits); the largest hold of any class must allocate less than one list
@@ -251,22 +251,20 @@ class PostHeapUnderMutexTests(JoinFixture):
         size = 3 * 1024 * 1024
         created = self.op("init", *INIT_PROFILE, "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
-        owner = self.node.start(image=self.image, env={"FN_OWNER_MEASURE": "1"})
+        trace_spans(self.node)
+        owner = self.node.start(image=self.image)
         try:
             rows = self.post_and_reread([size])
         finally:
             self.node.stop()
-        report = owner.stderr.since(0).decode("utf-8", "replace")
-        table = {}
-        for line in report.splitlines():
-            if line.startswith("fn-owner-measure "):
-                words = line.split()
-                table[words[1]] = {k: int(v) for k, v in
-                                   (w.split("=", 1) for w in words[2:])}
-                print(line, flush=True)
+        table = {label: {"holds": r[0], "held-us": r[1], "max-us": r[2], "bytes": r[3],
+                         "max-bytes": r[4]}
+                 for label, r in owner_measure(owner.stderr.since(0)).items()}
+        for label, row in table.items():
+            print(label, row, flush=True)
         self.assertTrue(rows[size][0].startswith("240"), rows)
         self.assertTrue(rows[size][1], "the 3 MiB POST did not reread identical")
-        self.assertTrue(table, "no fn-owner-measure report on stderr")
+        self.assertTrue(table, "no span rows on stderr")
         largest = max(row.get("max-bytes", row["bytes"]) for row in table.values())
         print("largest hold allocated", largest, "octets;",
               round(largest / size, 2), "x the article", flush=True)

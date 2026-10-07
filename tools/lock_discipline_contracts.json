@@ -229,6 +229,12 @@
    ],
    "why": "lane lock-rows-2: the opt-in native trace collector's private mutex (host/native/trace.lisp fnn-trace-begin/-finish/-snapshot): a leaf taken by fnn-trace-span, and so by every fnn-owner-measured use, under whatever lock the measured form runs under; its critical sections only reserve or complete one row (no hook, I/O, ACL2 or other lock)"
   },
+  "XDTRACE": {
+   "match": [
+    "(fnn-dtrace-ring-lock)"
+   ],
+   "why": "lane obs-decision-trace: the decision ring's private mutex (host/native/trace.lisp fnn-dtrace-admit-attempt, -store, -count-dropped, -snapshot): a leaf taken when fnn-call or fnn-core-mv returns a TRACED name, so under whatever lock the core call runs under; its critical sections only advance counters and copy fields into a preallocated row (no hook, I/O, ACL2 or other lock): the row's lists are made by fn-dtrace-project before the lock is taken and the JSON is rendered after it is released"
+  },
   "XOBS": {
    "match": [
     "(fnn-native-observation-lock)"
@@ -284,24 +290,29 @@
    "XFJ",
    "XDURABLE",
    "SL",
-   "XCLOSEDEBT"
+   "XCLOSEDEBT",
+   "XDTRACE"
   ],
   "XDURABLE": [
-   "K"
+   "K",
+   "XDTRACE"
   ],
   "XMUXSLOT": [
-   "M"
+   "M",
+   "XDTRACE"
   ],
   "C": [
    "G",
    "Q",
    "J",
-   "XOBS"
+   "XOBS",
+   "XDTRACE"
   ],
   "G": [
    "Q",
    "J",
-   "XOBS"
+   "XOBS",
+   "XDTRACE"
   ],
   "R": [
    "A",
@@ -309,13 +320,15 @@
    "Q",
    "J",
    "XOBS",
-   "XMUXSLOT"
+   "XMUXSLOT",
+   "XDTRACE"
   ],
   "K": [
    "E",
    "Q",
    "J",
-   "XOBS"
+   "XOBS",
+   "XDTRACE"
   ],
   "E": [
    "XOUTPUT",
@@ -329,10 +342,12 @@
   "A": [
    "Q",
    "J",
-   "XOBS"
+   "XOBS",
+   "XDTRACE"
   ],
   "XCTLBUF": [
-   "O"
+   "O",
+   "XDTRACE"
   ],
   "XFEED": [
    "O"
@@ -341,26 +356,58 @@
    "O"
   ],
   "J": [
-   "Q"
+   "Q",
+   "XDTRACE"
   ],
   "XTLSRELOAD": [
    "XTLSCTX",
    "Q",
    "J",
-   "XTLSINIT"
+   "XTLSINIT",
+   "XDTRACE"
   ],
   "M": [
    "XOBS"
   ],
   "XWEB": [
-   "Q"
+   "Q",
+   "XDTRACE"
   ],
   "S": [
    "Q",
-   "SL"
+   "SL",
+   "XDTRACE"
   ],
   "XSYNCER": [
-   "Q"
+   "Q",
+   "XDTRACE"
+  ],
+  "L": [
+   "XDTRACE"
+  ],
+  "Q": [
+   "XDTRACE"
+  ],
+  "W": [
+   "XDTRACE"
+  ],
+  "XCTL": [
+   "XDTRACE"
+  ],
+  "XFJ": [
+   "XDTRACE"
+  ],
+  "XIDLEGC": [
+   "XDTRACE"
+  ],
+  "XOUTPUT": [
+   "XDTRACE"
+  ],
+  "XPFB": [
+   "XDTRACE"
+  ],
+  "XTLSKX": [
+   "XDTRACE"
   ]
  },
  "direct_owner_sites": [
@@ -378,7 +425,7 @@
   "fnn-with-control-buffer",
   "fnn-mux-guarded",
   "fnn-owner-attempt-handlers",
-  "fnn-owner-measured",
+  "fnn-trace-span",
   "fnn-posix",
   "fnn-unwind-cleanups",
   "fnn-with-history-image",
@@ -409,22 +456,54 @@
   "fnn-native-observed-thread-thunk"
  ],
  "realization_via": {
-  "fnn-arena-pin": ["fnn-arena-pins-step"],
-  "fnn-arena-unpin": ["fnn-arena-pins-step"],
-  "fnn-arena-retire": ["fnn-arena-pins-step"],
-  "fnn-arena-clear-p": ["fnn-arena-pins-step"],
-  "fnn-log-reseat-fenced": ["fnn-arena-retire"],
-  "fnn-log-batch-finish": ["fnn-log-reseat-fenced"],
-  "fnn-finish": ["fnn-log-reseat-fenced"],
-  "fnn-owner-commit-complete-locked": ["fnn-log-batch-finish"],
-  "fnn-owner-publish-prepared": ["fnn-finish"],
-  "fnn-owner-attempt": ["fnn-owner-publish-prepared"],
-  "fnn-owner-release-pending-extents-locked": ["fnn-arena-clear-p"],
-  "fnn-owner-reclaim-pass": ["fnn-arena-pin"],
-  "fnn-owner-response-pin": ["fnn-owner-response-pin-step"],
-  "fnn-owner-response-unpin": ["fnn-owner-response-pin-step"],
-  "fnn-owner-cold-transfer-result-locked": ["fnn-extent-direct-settle"],
-  "fnn-extent-executor-loop": ["fnn-extent-executor-actual-return"]
+  "fnn-arena-pin": [
+   "fnn-arena-pins-step"
+  ],
+  "fnn-arena-unpin": [
+   "fnn-arena-pins-step"
+  ],
+  "fnn-arena-retire": [
+   "fnn-arena-pins-step"
+  ],
+  "fnn-arena-clear-p": [
+   "fnn-arena-pins-step"
+  ],
+  "fnn-log-reseat-fenced": [
+   "fnn-arena-retire"
+  ],
+  "fnn-log-batch-finish": [
+   "fnn-log-reseat-fenced"
+  ],
+  "fnn-finish": [
+   "fnn-log-reseat-fenced"
+  ],
+  "fnn-owner-commit-complete-locked": [
+   "fnn-log-batch-finish"
+  ],
+  "fnn-owner-publish-prepared": [
+   "fnn-finish"
+  ],
+  "fnn-owner-attempt": [
+   "fnn-owner-publish-prepared"
+  ],
+  "fnn-owner-release-pending-extents-locked": [
+   "fnn-arena-clear-p"
+  ],
+  "fnn-owner-reclaim-pass": [
+   "fnn-arena-pin"
+  ],
+  "fnn-owner-response-pin": [
+   "fnn-owner-response-pin-step"
+  ],
+  "fnn-owner-response-unpin": [
+   "fnn-owner-response-pin-step"
+  ],
+  "fnn-owner-cold-transfer-result-locked": [
+   "fnn-extent-direct-settle"
+  ],
+  "fnn-extent-executor-loop": [
+   "fnn-extent-executor-actual-return"
+  ]
  },
  "gated_macros": {
   "fnn-section-envelope": {
@@ -555,12 +634,24 @@
    "lock": "O",
    "owner": "service",
    "thunk": "thunk",
-   "exempt_leaves": ["write-sequence", "finish-output", "sleep"],
-   "exempt_leaf_functions": ["fnn-emit", "fnn-carry-execute", "fnn-bpo-request-pause"],
+   "exempt_leaves": [
+    "write-sequence",
+    "finish-output",
+    "sleep"
+   ],
+   "exempt_leaf_functions": [
+    "fnn-emit",
+    "fnn-carry-execute",
+    "fnn-bpo-request-pause"
+   ],
    "exempt_sites": 28,
    "constructor": "fnn-owner-install",
-   "owner_makers": ["%make-fnn-owner-service"],
-   "failure_custody": ["fnn-owner-retain-run-authority"],
+   "owner_makers": [
+    "%make-fnn-owner-service"
+   ],
+   "failure_custody": [
+    "fnn-owner-retain-run-authority"
+   ],
    "commands": [
     "fnn-command-bpo-owner-status",
     "fnn-command-bpo-owner-undertake",
@@ -569,20 +660,34 @@
     "fnn-command-bpo-owner-recover",
     "fnn-carry-execute"
    ],
-   "dispatch": ["fnn-dispatch-bp-obligation", "fnn-carry-execute"],
-   "registrars": ["fnn-register-verb", "fnn-operator-register-action"],
-   "table_writers": ["fnn-register-verb", "fnn-unregister-verb", "fnn-operator-register-action"],
+   "dispatch": [
+    "fnn-dispatch-bp-obligation",
+    "fnn-carry-execute"
+   ],
+   "registrars": [
+    "fnn-register-verb",
+    "fnn-operator-register-action"
+   ],
+   "table_writers": [
+    "fnn-register-verb",
+    "fnn-unregister-verb",
+    "fnn-operator-register-action"
+   ],
    "table_readers": {
-    "*fnn-verbs*": ["fnn-verb-handler"],
-    "*fnn-operator-surface-executors*": ["fnn-operator-dispatch-plan"]
+    "*fnn-verbs*": [
+     "fnn-verb-handler"
+    ],
+    "*fnn-operator-surface-executors*": [
+     "fnn-operator-dispatch-plan"
+    ]
    },
    "why": "LOCK-R2-OFFLINE-ONESHOT-HOLD. The BP obligation one-shot commands (`fn bp-obligation ...', `fn operator ... carry ...') open their own owner (fnn-owner-install), run the command's thunk in fnn-quantum-command and close it. The owner is a let variable of the runner, constructed there and nowhere else, handed only to host functions that do not store it, start an actor on it or give it to a thread; the checker proves each of those and that the commands are reached only from the two dispatch functions, which are registered only in the verb and operator-action tables, read only by fn-native-entry's dispatch and fnn-operator-dispatch-plan. So no other actor can wait on the owner mutex, and the stdout markers (and the developer-image pause that waits after printing one, which the process-death cut tests depend on) are held across, not moved. The one publication of an owner, fnn-owner-retain-run-authority, is checked to be called only on a freshly made throwaway (the failed Store open) or inside a handler clause that re-signals the error, where the install never returns an owner."
   }
  },
  "test_only_entries": {
   "fnn-pull-worker-guarded": {
-  "file": "host/native/pull-service.lisp",
-  "why": "lane lock-model-gaps: the guarded wrapper of the pull worker (host/native/pull-service.lisp:1196-1200). The running host never calls it: fnn-pull-service-start spawns (lambda () (fnn-pull-worker runtime)) under the def-actor starter's own escape (:1205-1222), and only tests/native_feed_credential_raw-mock.lisp:201 calls the wrapper. Without this row it counts as a second, main-thread actor of everything the pull worker touches."
+   "file": "host/native/pull-service.lisp",
+   "why": "lane lock-model-gaps: the guarded wrapper of the pull worker (host/native/pull-service.lisp:1196-1200). The running host never calls it: fnn-pull-service-start spawns (lambda () (fnn-pull-worker runtime)) under the def-actor starter's own escape (:1205-1222), and only tests/native_feed_credential_raw-mock.lisp:201 calls the wrapper. Without this row it counts as a second, main-thread actor of everything the pull worker touches."
   }
  },
  "diagnostic_sinks": {
@@ -606,7 +711,9 @@
    "file": "host/native/owner.lisp",
    "results_param": "results",
    "tag": ":fnn-extent-cold",
-   "arm_calls": ["fnn-owner-cold-line"],
+   "arm_calls": [
+    "fnn-owner-cold-line"
+   ],
    "why": "lane lock-model-gaps-2: the mux loop never waits for a cold page (owner.lisp:6310-6326). fnn-owner-handle-chunk-step answers (values :cold READ) when the read's first value is :fnn-extent-cold and calls fnn-owner-chunk-results only in the else branch (:6339-6343); chunk-results calls fnn-owner-cold-line, which awaits the page, only in its :fnn-extent-cold arm (:5698). Reached through that one edge the arm is dead, so R9 does not count the await. The checker verifies the guard, that the argument is an unassigned local, and that every call to cold-line in chunk-results sits in that arm; the other callers of chunk-results (fnn-owner-handle-chunk, fnn-owner-cold-line itself) are not pruned."
   }
  ],
@@ -877,7 +984,8 @@
   "stop": [],
   "allowed": {
    "*fnn-entry-guard-specs*": "read-mostly guard-spec cache, filled once per entry name (io.lisp:1278); F6: to move to image build time",
-   "*fnn-trailing-stobjs*": "read-mostly trailing-stobj cache (io.lisp:352-379); same disposition"
+   "*fnn-trailing-stobjs*": "read-mostly trailing-stobj cache (io.lisp:352-379); same disposition",
+   "XDTRACE": "lane obs-decision-trace: the decision ring's leaf mutex, taken only after the target has RETURNED (fnn-dtrace-note, from fnn-call's :ok arm) and only when the operator turned tracing on and the name is in the traced set; the dispatch administration before the invocation takes no lock and tracing off tests one special variable. Counter updates and one preallocated row store under it; no I/O, ACL2 or other lock. Reviewed by deputy C."
   }
  },
  "failure_scopes": {
@@ -904,6 +1012,10 @@
   "fnn-owner-fault-service": {
    "scope": "fence",
    "why": "the fault fence itself"
+  },
+  "fnn-dtrace-note": {
+   "scope": "private",
+   "why": "a diagnostic offer to the ring: a failure while projecting or storing a row is counted as a dropped row (fnn-dtrace-count-dropped, attempts = recorded + dropped + sampled-out) and swallowed on purpose, because the call it describes has already returned its values to its caller and a trace must never change what the node does; the core's own faults are raised by fnn-call before this runs"
   }
  },
  "handoff_queues": {
@@ -967,7 +1079,41 @@
   "fnn-tcl-spool-release": "the transfer's spool lock descriptor handed to the release (tcpcl.lisp:278); unlocked and closed independently, an ambiguous return retained in *fnn-tcl-spool-close-debts*, never retried",
   "fnn-app-journal-close": "the application journal's lock fd (fnn-app-journal-lock-fd), consumed here before the close (workflow.lisp:34); unlocked and closed once, custody of an ambiguous return retained via fnn-app-retain-close-debt"
  },
- "unlocked_publication": {},
+ "unlocked_publication": {
+  "*fnn-dtrace*": {
+   "writers": [
+    "fnn-dtrace-start",
+    "fnn-dtrace-stop",
+    "fnn-trace-reset"
+   ],
+   "why": "lane obs-decision-trace: the decision ring pointer, NIL when tracing is off. Written only by the operator's trace verb (the control handler, under the control buffer) and at `run' before listening; a single pointer store, published after the ring is built. Every reader loads it once into a local (fnn-call, fnn-core-mv-traced, fnn-dtrace-note, fnn-dtrace-drain) and works on that ring, whose own state is under the ring's leaf mutex; a call that races a switch is traced or not, never half-traced. It decides nothing the node serves."
+  },
+  "*fnn-trace-state*": {
+   "writers": [
+    "fnn-trace-start",
+    "fnn-trace-reset"
+   ],
+   "why": "lane obs-decision-trace: the span collector pointer, published by the same trace verb and read once into a local by fnn-trace-span, as *fnn-dtrace*"
+  },
+  "*fnn-trace-parent*": {
+   "writers": [
+    "fnn-trace-reset"
+   ],
+   "why": "lane obs-decision-trace: reset to NIL at `run' start and by `trace off'; inside spans it is only rebound (let*), so the other threads' bindings are their own"
+  },
+  "*fnn-trace-parent-state*": {
+   "writers": [
+    "fnn-trace-reset"
+   ],
+   "why": "lane obs-decision-trace: as *fnn-trace-parent*"
+  },
+  "*fnn-test-clock-memo*": {
+   "writers": [
+    "fnn-test-clock-readings"
+   ],
+   "why": "lane obs-decision-trace: the developer selector FN_NATIVE_TEST_CLOCK parsed once from the environment; every thread that computes it computes the same list, so a race stores equal values (a production image reads no selector and stores NIL)"
+  }
+ },
  "escalation_wrappers": {
   "fnn-owner-install-or-end": {
    "param": "install",
@@ -991,7 +1137,10 @@
  "nonblocking_close_sites": {
   "fnn-mux-close-wake": {
    "close_call": "sb-posix:close",
-   "slots": ["fnn-mux-loop-wake-read", "fnn-mux-loop-wake-write"],
+   "slots": [
+    "fnn-mux-loop-wake-read",
+    "fnn-mux-loop-wake-write"
+   ],
    "pipe_call": "sb-posix:pipe",
    "why": "close(2) of a pipe end does not block (Deputy C2 ruling 2026-10-07). verify_pipe_close_sites checks that the descriptor closed here is a let-bound read of the two wake slots, that every store into those slots in the host is NIL or a result of (sb-posix:pipe) (fnn-mux-start), and that no constructor call passes a slot keyword, so the slots hold only pipe ends."
   }

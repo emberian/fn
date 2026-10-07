@@ -6,9 +6,9 @@ names fixture stores (comma-separated names under FN_OPEN_DEPTH_FIXTURES;
 hbox: n1k-2k,n10k-2k,syn100k-2k).  For each store it serves one
 `OVER low-high` of the first group twice, at ACL2's own quantum
 (fn-splan-cursor-window, no override) and at one quantum for the whole range
-(FN_NATIVE_OVER_WINDOW=100000000), under FN_OWNER_MEASURE=1, and prints one
+(FN_NATIVE_OVER_WINDOW=100000000), under a [trace] table that starts on, and prints one
 line per run and measure label from the owner's own account of its mutex
-holds (host/native/owner.lisp FN_OWNER_MEASURE; label over-cursor for the
+holds (host/native/trace.lisp spans; label over-cursor for the
 cursor quanta, other for the rest of the session, the OVER step included;
 holds, their total and longest duration, the octets allocated while held):
 
@@ -32,14 +32,13 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.native_harness import Client, Node, executable, native_image
+from tests.native_harness import Client, Node, executable, native_image, owner_measure, trace_spans
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
 NAMES = [n for n in os.environ.get("FN_OVER_COST_FIXTURES", "").replace(":", ",").split(",") if n]
 WHOLE = "100000000"
 OPEN_SECONDS = 3600
-MEASURE = re.compile(rb"fn-owner-measure (\S+) holds=(\d+) held-us=(\d+) max-us=(\d+) bytes=(\d+)")
 
 
 @unittest.skipUnless(executable(IMAGE), "an executable FN_NATIVE_DEVELOPER_HOST is required")
@@ -60,7 +59,8 @@ class NativeOverCursorCost(unittest.TestCase):
         return node
 
     def overview(self, node, window):
-        env = {"FN_OWNER_MEASURE": "1"}
+        trace_spans(node)
+        env = {}
         if window:
             env["FN_NATIVE_OVER_WINDOW"] = window
         owner = node.start(env=env, timeout=OPEN_SECONDS, limit=64 << 20)
@@ -93,8 +93,7 @@ class NativeOverCursorCost(unittest.TestCase):
                 client.close(False)
         finally:
             node.stop(process=owner, grace=OPEN_SECONDS)
-        labels = {m.group(1).decode(): tuple(int(g) for g in m.groups()[1:])
-                  for m in MEASURE.finditer(owner.stderr.since(0))}
+        labels = {label: row[:4] for label, row in owner_measure(owner.stderr.since(0)).items()}
         self.assertTrue(labels, owner.stderr.since(0)[-2000:])
         self.assertEqual(len(reply), count)
         return count, reply, seconds, labels

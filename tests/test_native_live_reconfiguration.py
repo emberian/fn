@@ -31,7 +31,8 @@ a source inspection being reported as runtime evidence.
 import unittest
 
 from tests.campaign import native_cuts
-from tests.native_harness import EXIT_OK, EXIT_REFUSED, ROOT, Node, native_image, requires
+from tests.native_harness import (EXIT_OK, EXIT_REFUSED, ROOT, Node, native_image, owner_measure,
+                                  requires, trace_spans)
 
 
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -205,6 +206,7 @@ class LiveReconfigurationImageTests(unittest.TestCase):
 
     def setUp(self):
         self.node = Node(self, IMAGE)
+        trace_spans(self.node)
         self.root, self.store = self.node.root, self.node.store_path
         self.node.init()
 
@@ -332,8 +334,8 @@ class LiveReconfigurationCostTests(unittest.TestCase):
     authorization now uses the owner's carried history and observes one name
     (the next generation's file).
 
-    Measured with FN_OWNER_MEASURE=1 (the owner's per-class hold report at
-    stop): the control holds of 20 `group create's at about 500
+    Measured with a [trace] table that starts on (the owner's span rows per
+    class at stop): the control holds of 20 `group create's at about 500
     generations against 20 on a fresh store.  The witness of correctness
     at the same depth: an occupied next name is refused by name (:occupied)
     and leaves the history unchanged."""
@@ -350,16 +352,14 @@ class LiveReconfigurationCostTests(unittest.TestCase):
             self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
 
     def measured(self, prefix, count):
-        owner = self.node.start(env={"FN_OWNER_MEASURE": "1"})
+        owner = self.node.start()
         self.creates(prefix, count)
         self.node.stop(process=owner)
-        rows = {}
-        for line in owner.stderr.since(0).decode("utf-8", "replace").splitlines():
-            if line.startswith("fn-owner-measure "):
-                words = line.split()
-                rows[words[1]] = {k: int(v) for k, v in
-                                  (w.split("=", 1) for w in words[2:])}
-                print("S033", prefix, line, flush=True)
+        rows = {label: {"holds": r[0], "held-us": r[1], "max-us": r[2], "bytes": r[3],
+                        "max-bytes": r[4]}
+                for label, r in owner_measure(owner.stderr.since(0)).items()}
+        for label, row in rows.items():
+            print("S033", prefix, label, row, flush=True)
         self.assertIn("control", rows, rows)
         return rows["control"]
 

@@ -518,7 +518,13 @@ none, and for a table the start will refuse by name)."
                 (if (fnn-developer-image-p) :developer :production))
     0))
 
-(defvar *fnn-heap-trace-ring-octets*)
+(defvar *fnn-heap-trace-ring-octets* 0
+  "The decision trace ring's octets, ACL2's (fn-dtrace-ring-octets of the
+admitted [trace] plan): 0 without a [trace] table, which is the default.  Set by
+the launcher probe from the configuration it reads (fnn-heap-operator-profile),
+by `run' when it decides the plan (host/native/trace.lisp), and read by the
+reservation extension below.")
+
 
 (defun fnn-trace-decide-plan (config-octets)
   "At `run': ACL2's plan of the profile's [trace] table.  A refusal stops the

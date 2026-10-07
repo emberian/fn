@@ -124,8 +124,6 @@
   (harness-stub-reached 'fnn-owner-journal-open "host/native/owner.lisp"))
 (defun fnn-owner-log-settlement ()
   (harness-stub-reached 'fnn-owner-log-settlement "host/native/owner.lisp"))
-(defun fnn-owner-measure-report ()
-  (harness-stub-reached 'fnn-owner-measure-report "host/native/owner.lisp"))
 (defun fnn-owner-output-drained-p (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-output-drained-p "host/native/owner.lisp"))

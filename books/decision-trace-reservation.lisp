@@ -71,3 +71,19 @@
            :in-theory (e/d (fn-dtrace-extend-reservation fn-crv-nth fn-ncfg-nth)
                            (fn-heap-grow-runtime-dynamic-covers-addition fn-heap-mb-of-covers
                             fn-heap-grow-runtime-dynamic fn-heap-mb-of)))))
+
+; The connection budget divides the machine by the resident figure of a
+; connection (books/connection-budget.lisp), whose fixed part counts the
+; image's core.  The ring is fixed resident content the run holds as soon as
+; `trace on' allocates it, so the core the budget is given is the core file's
+; octets and the ring's: ACL2 adds them, the host passes the sum on.
+(defun fn-dtrace-core-with-ring (core ring-octets)
+  (declare (xargs :guard t))
+  (if (natp core) (+ core (nfix ring-octets)) core))
+
+(defthm fn-dtrace-core-with-ring-keeps-the-core
+  (and (equal (fn-dtrace-core-with-ring core 0) core)
+       (implies (natp core) (<= core (fn-dtrace-core-with-ring core ring)))
+       (implies (and (natp core) (natp ring))
+                (equal (fn-dtrace-core-with-ring core ring) (+ core ring))))
+  :rule-classes nil)

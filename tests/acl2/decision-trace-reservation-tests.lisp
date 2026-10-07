@@ -4,6 +4,8 @@
 
 (in-package "ACL2")
 (include-book "../../books/decision-trace-reservation")
+(include-book "../../books/connection-budget")
+(include-book "../../books/owner-credits")
 
 (defconst *fn-dtrr-base* '(:heap 200 16 nil 1024 8))
 (defconst *fn-dtrr-big* (list (* 64 1024 1048576)))   ; a 64 GiB machine
@@ -39,3 +41,22 @@ path = \"/s\"
 ; a refused base is not extended
 (assert-event (equal (fn-dtrace-extend-reservation '(:refused :x 1 nil) 4096 *fn-dtrr-core* *fn-dtrr-big*)
                      '(:refused :x 1 nil)))
+
+; THE CONNECTION BUDGET (host/native/mux.lisp fnn-mux-budget-install passes
+; the core file and the ring, ACL2's sum, as the budget's core): on the small
+; preset at 8 MiB nursery, 2 GiB machine, 1,536 MiB dynamic space, 34 threads,
+; 1 MiB stacks, the largest ring (capacity 65,536) takes the admitted
+; connection count from 2,744 (no [trace]) to 2,435; no ring leaves it alone.
+(defun fn-dtrr-limit (ring)
+  (let ((core (fn-dtrace-core-with-ring 143232000 ring)))
+    (fn-cbud-limit (* 2048 1048576) (* 1536 1048576)
+                   (fn-mca-figure-octets *fn-heap-small-profile* core 8388608 nil)
+                   core 34 1048576 0 32768 nil)))
+(assert-event (equal (fn-dtrr-limit 0) 2744))
+(assert-event (equal (fn-dtrr-limit
+                      (fn-dtrace-ring-octets (fn-dtrace-admit '(nil 65536 nil nil nil) :production)))
+                     2435))
+(assert-event (< (fn-dtrr-limit 67112960) (fn-dtrr-limit 0)))
+; a smaller ring costs less than a larger one
+(assert-event (<= (fn-dtrr-limit 67112960) (fn-dtrr-limit 1052672)))
+(assert-event (<= (fn-dtrr-limit 1052672) (fn-dtrr-limit 0)))

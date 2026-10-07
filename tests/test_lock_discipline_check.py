@@ -1020,7 +1020,7 @@ class R5R6R8R10(unittest.TestCase):
 
     def test_actual_section_envelope_keeps_owner_callback_lock(self):
         wanted = {"fnn-section-envelope", "fnn-with-observed-owner",
-                  "fnn-owner-measured", "fnn-section-run", "fnn-owner-serialized"}
+                  "fnn-trace-span", "fnn-section-run", "fnn-owner-serialized"}
         forms = ldc.read_forms((ROOT / "host/native/owner.lisp").read_text())
         src = self.observed_mutex_template() + "\n" + "\n".join(
             ldc.render(f, limit=100000) for f, _ in forms
@@ -1333,7 +1333,7 @@ class DurableLockRow(unittest.TestCase):
         self.assertEqual(len(hits), 1, hits)   # the struct slot is implicit; one with-mutex
         self.assertIn("with-mutex", hits[0][1])
         self.assertTrue(CONTRACTS.raw["locks"]["XDURABLE"]["io_ok"])
-        self.assertEqual(CONTRACTS.raw["lock_order"]["XDURABLE"], ["K"])
+        self.assertEqual(CONTRACTS.raw["lock_order"]["XDURABLE"], ["K", "XDTRACE"])
 
 
 class R3OwnedFd(unittest.TestCase):
@@ -1774,7 +1774,9 @@ class LeafLockRows(unittest.TestCase):
         order = CONTRACTS.raw["lock_order"]
         for row in ("XPWAKE", "XTLSKX"):
             self.assertIn(row, CONTRACTS.raw["locks"])
-            self.assertNotIn(row, order)
+            # the decision ring's mutex (XDTRACE) is the one lock every lock may
+            # enclose: a traced fnn-call returning under any lock offers its row
+            self.assertEqual(order.get(row, []), order.get(row, []) and ["XDTRACE"])
             self.assertFalse(CONTRACTS.raw["locks"][row].get("io_ok"))
             self.assertFalse(any(row in later for later in order.values()))
         self.assertEqual(CONTRACTS.raw["locks"]["XPWAKE"]["match"], ["(fnn-pull-runtime-wake-lock)"])
