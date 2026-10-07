@@ -17,38 +17,14 @@
 (in-package "ACL2")
 (include-book "posting-account")
 (include-book "article-fields")
+(include-book "def-loop")
 
 ; The octets of a text, a string's character codes or an octet list as is.
 ; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
 ; operator data (D27: no fixed cap), one control-stack frame per element.
-(defun fn-ipp-codes-loop (chars acc)
-  (declare (xargs :guard (character-listp chars)))
-  (if (consp chars)
-      (fn-ipp-codes-loop (cdr chars) (cons (char-code (car chars)) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-ipp-codes (chars)
-  (declare (xargs :guard (character-listp chars) :verify-guards nil))
-  (mbe :logic (if (consp chars)
-                  (cons (char-code (car chars)) (fn-ipp-codes (cdr chars)))
-                nil)
-       :exec (fn-ipp-codes-loop chars nil)))
-
-(defthm fn-ipp-codes-loop-is-rev-onto
-  (equal (fn-ipp-codes-loop chars acc)
-         (fn-ag-rev-onto acc (fn-ipp-codes chars)))
-  :hints (("Goal" :induct (fn-ipp-codes-loop chars acc)
-                  :in-theory (union-theories
-                              '(fn-ipp-codes-loop fn-ipp-codes fn-ag-rev-onto
-                                car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
-
-(verify-guards fn-ipp-codes
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-ipp-codes fn-ag-rev-onto fn-ipp-codes-loop-is-rev-onto
-                                character-listp)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
+(def-loop fn-ipp-codes (chars)
+  :shape :map :over chars :guard (character-listp chars)
+  :body (char-code (car chars)))
 
 (defun fn-ipp-octets (text)
   (declare (xargs :guard t))

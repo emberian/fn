@@ -8,6 +8,7 @@
 ; bounded and is still applied one event at a time by the host.
 (in-package "ACL2")
 (include-book "feed-wire-input")
+(include-book "def-loop")
 (include-book "owner-feed")
 (include-book "feed-auth-profile")
 
@@ -240,32 +241,10 @@ every transit server has."
 ; per configured feed peer, operator data with no fixed cap (D27).  Equal by
 ; fn-fc-table-remove-loop-is-rev-onto (books/rev-onto.lisp); guards are
 ; verified below with the book's other functions.
-(defun fn-fc-table-remove-loop (peer table acc)
-  (declare (xargs :guard t))
-  (if (consp table)
-      (fn-fc-table-remove-loop
-       peer (cdr table)
-       (if (and (consp (car table)) (equal peer (car (car table))))
-           acc
-         (cons (car table) acc)))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-fc-table-remove (peer table)
-  (mbe :logic (if (consp table)
-                  (if (and (consp (car table)) (equal peer (car (car table))))
-                      (fn-fc-table-remove peer (cdr table))
-                    (cons (car table) (fn-fc-table-remove peer (cdr table))))
-                nil)
-       :exec (fn-fc-table-remove-loop peer table nil)))
-
-(defthm fn-fc-table-remove-loop-is-rev-onto
-  (equal (fn-fc-table-remove-loop peer table acc)
-         (fn-ag-rev-onto acc (fn-fc-table-remove peer table)))
-  :hints (("Goal" :induct (fn-fc-table-remove-loop peer table acc)
-                  :in-theory (union-theories
-                              '(fn-fc-table-remove-loop fn-fc-table-remove
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-fc-table-remove (peer table)
+  :shape :map :over table :elt e
+  :keep (and (consp e) (equal peer (car e))) :keep-order :skip-first
+  :body e)
 
 (defun fn-fc-table-put (peer st table)
   (cons (cons peer st) (fn-fc-table-remove peer table)))
@@ -602,12 +581,6 @@ not stream, nil when it does."
 (verify-guards fn-fc-table-unique-namesp)
 (verify-guards fn-fc-tablep)
 (verify-guards fn-fc-table-lookup)
-(verify-guards fn-fc-table-remove
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-fc-table-remove fn-ag-rev-onto
-                                fn-fc-table-remove-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-fc-table-put)
 (verify-guards fn-fc-streaming-refusal-p)
 (verify-guards fn-fc-stopped-reason)

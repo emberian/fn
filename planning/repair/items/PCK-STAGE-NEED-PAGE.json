@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint-stage.lisp",
+ "id": "PCK-STAGE-NEED-PAGE",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pck-host",
+ "state": "open",
+ "title": "fn-pck-x-stage-is-the-dirty assumes every tape position the delta writes is resident (pcks-res: pgs-vi = 2). Under a lazy open pgs-x-write answers (:need-page LP) for a page not yet read: state and prove the retry (read the page with fn-pgs-fill-frame, then stage again) reaches the same dirty set, and that a stage that stopped at :need-page left no word of the delta partly written beyond the pages already written.",
+ "updated": "2026-10-07T15:00:00Z"
+}

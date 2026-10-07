@@ -52,7 +52,7 @@
      "concurrent control-socket clients the owner serves")
     (:thread-runtime-mib 4 "MiB"
      "SBCL's per-thread runtime beside its control stack (binding stack, alien stack, thread-local storage)")
-    (:gc-nursery-mib 64 "MiB"
+    (:gc-nursery-mib 8 "MiB"
      "the collection trigger's cap: every dynamic space of 1 GiB or more collects after this much allocation")
     (:max-connections 32 "connections"
      "fn.toml's [server] max_connections when it names none")

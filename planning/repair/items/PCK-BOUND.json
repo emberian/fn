@@ -1,0 +1,15 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint.lisp",
+ "id": "PCK-BOUND",
+ "notes": [
+  "10-07 proved in books/paged-checkpoint.lisp on lane/s-pck (statements per Deputy S review; DELTA and BOUND need no fitsp)"
+ ],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck",
+ "state": "landed",
+ "title": "(defthm fn-pck-dirty-bound (<= (len (fn-pck-dirty configs prefix delta)) (+ *fn-pck-root-pages* (fn-pck-delta-page-bound delta)))): no term in (len prefix). Generic half proved (fn-crow-append-dirty-bound); owed: the composition.",
+ "updated": "2026-10-07T04:10:00Z"
+}

@@ -37,7 +37,8 @@ sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 '''
 STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/evidence_manifests.py", "tools/lock_discipline_check.py",
-         "tools/secrets_check.py", "planning/repair/repair.py"]
+         "tools/secrets_check.py", "planning/repair/repair.py",
+         "tools/main_last_check.py"]
 
 
 def sh(cwd, *argv, env=None, check=True):
@@ -204,6 +205,16 @@ class PushTests(TrainBase):
         self.ready()
         before = self.origin_rev("dev")
         g = self.train("gate", extra_env={"STUB_RC_ledger_check": "1"})
+        self.assertNotEqual(g.returncode, 0)
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+
+    def test_push_refused_when_main_last_check_fails(self):
+        # a misplaced __main__ block reached dev once through a piped gate
+        self.ready()
+        before = self.origin_rev("dev")
+        g = self.train("gate", extra_env={"STUB_RC_main_last_check_": "1"})
         self.assertNotEqual(g.returncode, 0)
         p = self.train("push")
         self.assertNotEqual(p.returncode, 0, p.stdout)

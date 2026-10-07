@@ -15,61 +15,32 @@
 ; set.  The host binds `fn-bpaj-listener-ports'.
 (in-package "ACL2")
 (include-book "bp-session-admission")
+(include-book "def-loop")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpaj-listener-row-portp (port)
   (declare (xargs :guard t))
   (and (fn-record-uint32p port) (natp port) (< 0 port) (<= port 65535)))
 
+(verify-guards fn-bpaj-listener-row-portp)
+
 ; The rows are operator data with no fixed cap (D27): the two walks below
 ; execute by loops (lane depth-debt, PRF-919), (mbe :logic <the recursion,
 ; unchanged> :exec <a loop>).  The listener rows are a right fold (each
 ; row's test reads the suffix's answer), folded over the reversed rows.
-(defun fn-bpaj-listener-rows-loop (rev all acc)
-  (declare (xargs :guard (alistp acc) :measure (acl2-count rev)))
-  (if (consp rev)
-      (fn-bpaj-listener-rows-loop
-       (cdr rev) all
-       (let* ((row (car rev))
-              (name (fn-cfg-row-a row))
-              (port (fn-cfg-row-n row)))
-         (if (and (equal (fn-cfg-row-b row) "bp-boundary-listener")
-                  (equal (fn-cfg-row-c row) "127.0.0.1")
-                  (fn-bpaj-listener-row-portp port)
-                  (equal (fn-bpaj-loopback-candidates all all port)
-                         (list name))
-                  (not (assoc-equal port acc)))
-             (cons (cons port name) acc)
-           acc)))
-    acc))
-
-(defun fn-bpaj-listener-rows (rows all)
-  (declare (xargs :guard t :measure (acl2-count rows)))
-  (mbe :logic
-       (if (consp rows)
-           (let* ((row (car rows))
-                  (name (fn-cfg-row-a row))
-                  (port (fn-cfg-row-n row))
-                  (rest (fn-bpaj-listener-rows (cdr rows) all)))
-             (if (and (equal (fn-cfg-row-b row) "bp-boundary-listener")
-                      (equal (fn-cfg-row-c row) "127.0.0.1")
-                      (fn-bpaj-listener-row-portp port)
-                      (equal (fn-bpaj-loopback-candidates all all port)
-                             (list name))
-                      (not (assoc-equal port rest)))
-                 (cons (cons port name) rest)
-               rest))
-         nil)
-       :exec (fn-bpaj-listener-rows-loop (fn-ag-rev-onto rows nil) all nil)))
-
-(defthm fn-bpaj-listener-rows-loop-of-rev-onto
-  (equal (fn-bpaj-listener-rows-loop (fn-ag-rev-onto rows zs) all nil)
-         (fn-bpaj-listener-rows-loop zs all (fn-bpaj-listener-rows rows all)))
-  :hints (("Goal" :induct (fn-ag-rev-onto rows zs)
-                  :in-theory (union-theories
-                              '(fn-bpaj-listener-rows-loop fn-bpaj-listener-rows
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-bpaj-listener-rows (rows all)
+  :shape :foldr :over rows :elt r
+  :combine (let* ((row r) (name (fn-cfg-row-a row)) (port (fn-cfg-row-n row)))
+                 (if (and (equal (fn-cfg-row-b row) "bp-boundary-listener")
+                          (equal (fn-cfg-row-c row) "127.0.0.1")
+                          (fn-bpaj-listener-row-portp port)
+                          (equal (fn-bpaj-loopback-candidates all all port) (list name))
+                          (not (assoc-equal port acc)))
+                     (cons (cons port name) acc)
+                     acc))
+  :init nil
+  :rev fn-ag-rev-onto
+  :loop-guard (alistp acc))
 
 (defun fn-bpaj-listener-set (cfg)
   (declare (xargs :guard t))
@@ -78,30 +49,9 @@
         (fn-bpaj-listener-rows rows rows))
     nil))
 
-(defun fn-bpaj-listener-port-list-loop (set acc)
-  (declare (xargs :guard t))
-  (if (consp set)
-      (fn-bpaj-listener-port-list-loop
-       (cdr set) (cons (if (consp (car set)) (car (car set)) nil) acc))
-    (fn-ag-rev-onto acc nil)))
-
-(defun fn-bpaj-listener-port-list (set)
-  (declare (xargs :guard t))
-  (mbe :logic (if (consp set)
-                  (cons (if (consp (car set)) (car (car set)) nil)
-                        (fn-bpaj-listener-port-list (cdr set)))
-                nil)
-       :exec (fn-bpaj-listener-port-list-loop set nil)))
-
-(defthm fn-bpaj-listener-port-list-loop-is-rev-onto
-  (equal (fn-bpaj-listener-port-list-loop set acc)
-         (fn-ag-rev-onto acc (fn-bpaj-listener-port-list set)))
-  :hints (("Goal" :induct (fn-bpaj-listener-port-list-loop set acc)
-                  :in-theory (union-theories
-                              '(fn-bpaj-listener-port-list-loop
-                                fn-bpaj-listener-port-list
-                                fn-ag-rev-onto car-cons cdr-cons)
-                              (theory 'minimal-theory)))))
+(def-loop fn-bpaj-listener-port-list (set)
+  :shape :map :over set :elt s
+  :body (if (consp s) (car s) nil))
 
 ; The host's question: the ports `bp-node serve' binds.
 (defun fn-bpaj-listener-ports (cfg)
@@ -232,22 +182,7 @@
 (defthm fn-bpaj-listener-ports-are-distinct
   (no-duplicatesp-equal (fn-bpaj-listener-ports cfg)))
 
-(verify-guards fn-bpaj-listener-row-portp)
-(verify-guards fn-bpaj-listener-rows-loop)
-(verify-guards fn-bpaj-listener-rows
-  :hints (("Goal" :use ((:instance fn-bpaj-listener-rows-loop-of-rev-onto
-                         (rows rows) (zs nil)))
-                  :in-theory (disable fn-bpaj-listener-rows-loop-of-rev-onto
-                                      fn-bpaj-loopback-candidates
-                                      fn-bpaj-listener-row-portp))))
 (verify-guards fn-bpaj-listener-set)
-(verify-guards fn-bpaj-listener-port-list-loop)
-(verify-guards fn-bpaj-listener-port-list
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-bpaj-listener-port-list fn-ag-rev-onto
-                                fn-bpaj-listener-port-list-loop-is-rev-onto)
-                              (union-theories (theory 'minimal-theory)
-                                              (executable-counterpart-theory :here))))))
 (verify-guards fn-bpaj-listener-ports)
 (verify-guards fn-bpaj-listener-name)
 (verify-guards fn-bpaj-loopback-channel)

@@ -381,14 +381,30 @@
            (equal (fn-oct-word7 i fn-octets$c) (fn-oct-word-down i 7 fn-octets$c)))
   :hints (("Goal" :expand ((:free (i k) (fn-oct-word-down i k fn-octets$c))))))
 
+(defun-inline fn-oct-word4 (i fn-octets$c)
+  ; The four-octet word unrolled (the u32 halves of a page's u64 words are read
+  ; with it): inline, so the sum stays in the caller's fixnum arithmetic.
+  (declare (xargs :stobjs fn-octets$c
+                  :guard (and (natp i) (<= (+ i 4) (fn-octets$c-buf-length fn-octets$c)))))
+  (+ (fn-octets$c-bufi i fn-octets$c)
+     (* 256 (+ (fn-octets$c-bufi (+ 1 i) fn-octets$c)
+     (* 256 (+ (fn-octets$c-bufi (+ 2 i) fn-octets$c)
+     (* 256 (fn-octets$c-bufi (+ 3 i) fn-octets$c))))))))
+
+(defthm fn-oct-word4-is-word-down
+  (implies (natp i)
+           (equal (fn-oct-word4 i fn-octets$c) (fn-oct-word-down i 4 fn-octets$c)))
+  :hints (("Goal" :in-theory (enable fn-oct-word4$inline)
+           :expand ((:free (i k) (fn-oct-word-down i k fn-octets$c))))))
+
 (defun fn-octets$c-get-word (i k fn-octets$c)
   (declare (xargs :stobjs fn-octets$c
                   :guard (and (natp i) (natp k) (<= (+ i k) (fn-octets$c-fill fn-octets$c))
                               (fn-octets$c-wfp fn-octets$c))))
   (mbe :logic (fn-oct-word-down i k fn-octets$c)
-       :exec (if (eql k 7)
-                 (fn-oct-word7 i fn-octets$c)
-               (fn-oct-word-down i k fn-octets$c))))
+       :exec (cond ((eql k 4) (fn-oct-word4 i fn-octets$c))
+                   ((eql k 7) (fn-oct-word7 i fn-octets$c))
+                   (t (fn-oct-word-down i k fn-octets$c)))))
 
 (defun fn-oct-word-loop (w dst end fn-octets$c)
   ; buf[dst] := w mod 256, w := w div 256, for DST below END.  W is a

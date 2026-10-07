@@ -13,6 +13,7 @@
 ;; it can neither split a line nor invent a ninth field.
 
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "article-fields")
 (include-book "acceptance-alloc")
 
@@ -29,40 +30,18 @@
       byte
     32))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nov-scrub-loop (bytes acc)
-  (declare (xargs :measure (acl2-count bytes) :guard (true-listp acc) :verify-guards nil))
-  (if (consp bytes)
-      (if (and (equal (fn-ag-car bytes) 13)
-               (consp (fn-ag-cdr bytes))
-               (equal (fn-ag-car (fn-ag-cdr bytes)) 10))
-          (fn-nov-scrub-loop (fn-ag-cdr (fn-ag-cdr bytes)) acc)
-        (fn-nov-scrub-loop (fn-ag-cdr bytes)
-                           (cons (fn-nov-scrub-byte (fn-ag-car bytes)) acc)))
-    (revappend acc nil)))
+(verify-guards fn-nov-scrub-byte)
 
-(defun fn-nov-scrub (bytes)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count bytes)))
-  (mbe :logic
-       (if (consp bytes)
-           (if (and (equal (fn-ag-car bytes) 13)
-                    (consp (fn-ag-cdr bytes))
-                    (equal (fn-ag-car (fn-ag-cdr bytes)) 10))
-               (fn-nov-scrub (fn-ag-cdr (fn-ag-cdr bytes)))
-             (cons (fn-nov-scrub-byte (fn-ag-car bytes))
-                   (fn-nov-scrub (fn-ag-cdr bytes))))
-         nil)
-       :exec (fn-nov-scrub-loop bytes nil)))
-
-(local
- (defthm fn-nov-scrub-loop-is-revappend
-   (equal (fn-nov-scrub-loop bytes acc)
-          (revappend acc (fn-nov-scrub bytes)))
-   :hints (("Goal" :induct (fn-nov-scrub-loop bytes acc)
-                   :in-theory (union-theories '(fn-nov-scrub-loop fn-nov-scrub revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
+; A CRLF pair is dropped, every other octet scrubbed (def-loop :step: the
+; advance skips two on a pair).
+(def-loop fn-nov-scrub (bytes)
+  :shape :step :done (atom bytes)
+  :skip (and (equal (fn-ag-car bytes) 13)
+             (consp (fn-ag-cdr bytes))
+             (equal (fn-ag-car (fn-ag-cdr bytes)) 10))
+  :body (fn-nov-scrub-byte (fn-ag-car bytes))
+  :next (fn-ag-cdr bytes) :skip-next (fn-ag-cdr (fn-ag-cdr bytes))
+  :guard t)
 
 
 ; RFC 3977 section 8.3.2: the field is the header content, that is, the header
@@ -98,19 +77,6 @@
             (and (fn-article-fieldp (car (fn-article-get-headers view name)))
                  (true-listp (car (fn-article-get-headers view name)))))
    :hints (("Goal" :in-theory (enable fn-article-get-headers fn-article-syntax-p)))))
-
-(verify-guards fn-nov-scrub-byte)
-
-(verify-guards fn-nov-scrub-loop)
-
-(verify-guards fn-nov-scrub
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-nov-scrub)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-nov-scrub-loop-is-revappend (acc nil))))))
 
 (verify-guards fn-nov-value-content)
 
