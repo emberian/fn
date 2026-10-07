@@ -2039,6 +2039,7 @@
     "books/legacy-header-query",
     "tests/acl2/legacy-header-query-tests",
     "tests/acl2/article-stream-server-tests",
+    "books/article-select-index",
     "books/article-stream-owner",
     "tests/acl2/article-stream-owner-tests",
     "tests/acl2/catalog-availability-tests",
@@ -2583,26 +2584,26 @@
     "tests/acl2/withdrawal-index-carried-tests"
   ],
   "totals": {
-    "books": 3074,
-    "books_in_root_closure": 2910,
-    "roots": 2579,
-    "theorems": 41263,
-    "functions": 26166,
+    "books": 3075,
+    "books_in_root_closure": 2911,
+    "roots": 2580,
+    "theorems": 41323,
+    "functions": 26185,
     "assert_events": 28201,
     "must_fails": 2730,
     "prover_refusals": 0,
     "encapsulates": 257,
     "guards": {
       "verified": 4054,
-      "declared-off": 3409,
-      "default-guarded": 14492,
-      "default-unguarded": 4211
+      "declared-off": 3416,
+      "default-guarded": 14495,
+      "default-unguarded": 4220
     },
-    "suspect_theorems": 1499,
+    "suspect_theorems": 1505,
     "export_hygiene_warnings": 423,
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 300,
-    "include_hygiene_warnings": 4125,
+    "include_hygiene_warnings": 4126,
     "host_names_warnings": 3660,
     "hand_written_record_warnings": 19
   },
@@ -4602,14 +4603,45 @@
       "read_error": null
     },
     {
+      "book": "books/article-select-index.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 44,
+      "functions": 17,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 3,
+        "default-unguarded": 9
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-stream",
+        "served-catalog"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-asx-find-article-car",
+        "fn-asx-find-article-cdr",
+        "fn-asx-step-of-done"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/article-stream-owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
-      "functions": 28,
+      "theorems": 20,
+      "functions": 30,
       "guards": {
         "verified": 0,
-        "declared-off": 12,
+        "declared-off": 14,
         "default-guarded": 16,
         "default-unguarded": 0
       },
@@ -4621,6 +4653,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "article-select-index",
         "article-stream",
         "article-stream-server",
         "owner-credits",
@@ -4629,7 +4662,10 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-asto-plan-unavailable-without-a-preflight-by-definition"
+        "fn-asto-capture-selection-restricted",
+        "fn-asto-capture-selection-unrestricted",
+        "fn-asto-plan-unavailable-without-a-preflight-by-definition",
+        "fn-asto-view-of-unrestricted"
       ],
       "read_error": null
     },
@@ -91041,12 +91077,63 @@
       ]
     },
     {
+      "theorem": "fn-asto-capture-selection-restricted",
+      "book": "books/article-stream-owner.lisp",
+      "line": 335,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-capture-selection and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-asto-capture-selection and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-asto-capture-selection-unrestricted",
+      "book": "books/article-stream-owner.lisp",
+      "line": 340,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-capture-selection and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-asto-capture-selection and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-asto-plan-unavailable-without-a-preflight-by-definition",
       "book": "books/article-stream-owner.lisp",
-      "line": 428,
+      "line": 700,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-plan-unavailable and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-asto-plan-unavailable and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-asto-view-of-unrestricted",
+      "book": "books/article-stream-owner.lisp",
+      "line": 329,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-archive and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-asx-find-article-car",
+      "book": "books/article-select-index.lisp",
+      "line": 464,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-find-article and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-find-article and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-asx-find-article-cdr",
+      "book": "books/article-select-index.lisp",
+      "line": 458,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-find-article and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-asx-step-of-done",
+      "book": "books/article-select-index.lisp",
+      "line": 306,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-ast-select-step and the conclusion is that arm's value"
       ]
     },
     {
@@ -109355,6 +109442,13 @@
         "line": 4,
         "include": "article-work-budget",
         "included": "books/article-work-budget.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-select-index.lisp",
+        "line": 2,
+        "include": "article-stream",
+        "included": "books/article-stream.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

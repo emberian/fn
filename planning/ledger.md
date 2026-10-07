@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3074 |
-| Certification roots in the Makefile | 2579 |
-| Books inside the root closure | 2910 |
-| `defthm` and `defthmd` events | 41263 |
-| `defun` events | 26166 |
+| Books read | 3075 |
+| Certification roots in the Makefile | 2580 |
+| Books inside the root closure | 2911 |
+| `defthm` and `defthmd` events | 41323 |
+| `defun` events | 26185 |
 | Functions with verified guards | 4054 |
-| Functions declared `:verify-guards nil` and never verified | 3409 |
-| Functions left at the default with an explicit guard | 14492 |
-| Functions left at the default with no guard | 4211 |
+| Functions declared `:verify-guards nil` and never verified | 3416 |
+| Functions left at the default with an explicit guard | 14495 |
+| Functions left at the default with no guard | 4220 |
 | `assert-event` checks | 28201 |
 | `must-fail` checks | 2730 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
-| Theorems flagged SUSPECT by shape | 1499 |
+| Theorems flagged SUSPECT by shape | 1505 |
 | Export-hygiene warnings | 423 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 300 |
-| Include-hygiene warnings | 4125 |
+| Include-hygiene warnings | 4126 |
 | Host-names warnings | 3660 |
 | Hand-written-record warnings | 19 |
 
@@ -158,7 +158,8 @@ that `make certify` requests.
 | `books/article-properties.lisp` | root | 42 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/article-public-bound.lisp` | root | 19 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/article-public-work.lisp` | root | 13 | 7 | 0/0/0/7 | 0 | 0 | 2 |
-| `books/article-stream-owner.lisp` | root | 4 | 28 | 0/12/16/0 | 0 | 0 | 1 |
+| `books/article-select-index.lisp` | root | 44 | 17 | 0/5/3/9 | 0 | 0 | 3 |
+| `books/article-stream-owner.lisp` | root | 20 | 30 | 0/14/16/0 | 0 | 0 | 4 |
 | `books/article-stream-server.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/article-stream.lisp` | root | 7 | 34 | 1/6/27/0 | 0 | 0 | 0 |
 | `books/article-subject.lisp` | root | 34 | 14 | 1/0/13/0 | 0 | 0 | 0 |
@@ -3207,7 +3208,13 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-arx-entry-of-extent` | `books/payload-arena-extent.lisp` | 194 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
 | `fn-arx-entry-of-resident` | `books/payload-arena-extent.lisp` | 208 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
 | `fn-arx-view-empty` | `books/payload-arena-extent.lisp` | 258 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-view and the conclusion is that arm's value |
-| `fn-asto-plan-unavailable-without-a-preflight-by-definition` | `books/article-stream-owner.lisp` | 428 | arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-plan-unavailable and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-asto-plan-unavailable and the conclusion is that branch's value |
+| `fn-asto-capture-selection-restricted` | `books/article-stream-owner.lisp` | 335 | arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-capture-selection and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-asto-capture-selection and the conclusion is that branch's value |
+| `fn-asto-capture-selection-unrestricted` | `books/article-stream-owner.lisp` | 340 | arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-capture-selection and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-asto-capture-selection and the conclusion is that branch's value |
+| `fn-asto-plan-unavailable-without-a-preflight-by-definition` | `books/article-stream-owner.lisp` | 700 | arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-plan-unavailable and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-asto-plan-unavailable and the conclusion is that branch's value |
+| `fn-asto-view-of-unrestricted` | `books/article-stream-owner.lisp` | 329 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-archive and the conclusion is that arm's value |
+| `fn-asx-find-article-car` | `books/article-select-index.lisp` | 464 | arm-of-definition: the hypotheses select one IF/COND arm of fn-find-article and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-find-article and the conclusion is that branch's value |
+| `fn-asx-find-article-cdr` | `books/article-select-index.lisp` | 458 | branch-of-definition: the hypothesis negates a branch test of fn-find-article and the conclusion is that branch's value |
+| `fn-asx-step-of-done` | `books/article-select-index.lisp` | 306 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ast-select-step and the conclusion is that arm's value |
 | `fn-ats-body-prepaid-continuation-retains-accounting-by-definition` | `books/allocation-turn-slots.lisp` | 382 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-prepay-body-internal and the conclusion is that arm's value |
 | `fn-ats-finish-stale-keeps-other-turns-by-definition` | `books/allocation-turn-slots.lisp` | 347 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ats-finish-owned and the conclusion is that arm's value |
 | `fn-atsc-issuer-preserves-baseline-coordinate` | `books/allocation-turn-source-cost.lisp` | 645 | preserves-no-subject-call: the statement never calls fn-atsc-issuer or a fn-atsc-issuer- transition |
