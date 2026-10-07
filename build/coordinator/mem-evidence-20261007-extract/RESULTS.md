@@ -23,10 +23,34 @@ One first run read 18.0 MB (cold page cache; the process was still loading its c
 
 Because core.sh saves nothing when load dies, I built a measurement-only variant (`core-main-partial.lisp`: the one line `(load host-block.lisp)` wrapped in handler-case, core name changed; `build-partial.sh`). It is therefore **everything except the host: packages, clruntime, defs (the fn closure), core-world data; no host/native code at all** (the load died on host file 1). `inv-partial.txt` (`heap-inventory.lisp`, N's pagemap-by-type code verbatim) joined to pagemap on the freshly started core:
 
-- saved core 79.6 MB (the ACL2 image: 251 MB). Dynamic usage 57.6 MB; immobile 19.5; read-only 13.9; static ~0. Objects total 159.9 MB, of which 157.7 resident when the inventory ran.
-- Biggest by type (MB allocated): (unsigned-byte 8) vectors 73.2; conses 35.1 (core-world data); SBCL code 11.6; simple-vectors 7.6; fn-books code 5.6; compiled-debug-info 3.6; bit arrays 3.0; base strings 2.5; char32 strings 2.0; SBCL symbols 1.2; fn-books symbols 0.8; ACL2-package code 0.27.
-- The 73 MB of octet vectors and 35 MB of conses are the thing to look at: the ACL2 image held 25.7 and 109.8 MB of those in total, so the core-world export is carrying large byte arrays (likely the carried tables and constants) that the host reads little of. Not attributed further here.
-- Prediction: this core idles at **51.4 MB VmRSS at tls 16384 (53.4 at 65536)**, anon 34.3 MB, core-mapping 15.2 MB (`idle-partial.log`, 2 runs each). It is mostly ANON, not file-backed: unlike the ACL2 image, SBCL has read this core's dynamic space into private memory. The host adds its ~2.1 MB of code plus runtime state on top. **M1's < 60 MB identity target is therefore tight (51.4 + host); the lever is the 73 MB of octet vectors and the 35 MB of conses, not the code.** An mmap-able core layout would show up in the Rss-of-core column.
+- saved core 79.6 MB (the ACL2 image: 251 MB). Corrected inventory `inv-partial2.txt` (heap 1068 MB, pagemap taken BEFORE any heap walk): dynamic usage 69 MB incl. the script, immobile 19.5, read-only 13.9. Objects 95.6 MB of which **43.5 MB resident at start**. (The first inventory of this lane, 160 MB / 73 MB octets / 157 MB resident, was wrong twice: it ran at heap 32000 so the pagemap buffer for the dynamic-space region was itself a 65 MB (unsigned-byte 8) vector, and it walked the heap before taking residency. Discarded; the 73 MB of octet vectors never existed. Real u8 vectors: 7.6 MB total, largest 37 KB.)
+- Resident at start by type (MB, `PM` lines of inv-partial2.txt): SBCL code 11.0; conses 7.0 of 35.2 allocated; simple-vectors 6.3 of 7.6; octets 2.8 of 9.9 (incl. the script's 2 MB pagemap buffer); base strings 1.6; bit arrays 1.3; SBCL symbols 1.2; fn-books symbols 0.8. fn-books code does not appear in the top: it is in the immobile space (see REGION lines).
+- Prediction: idle **51.4 MB VmRSS at tls 16384 (53.4 at 65536)** (measured, `idle-partial.log`), anon 34.3 MB, core-mapping 15.2 MB. That is the 37.8 MB stock floor plus 13.6 MB for the fn closure and world data, with no host code and no fn start. The host's ~2.1 MB of code plus startup state must fit in 8.6 MB for M1 < 60.
+
+## Owner attribution of the cons and octet bytes (`attribute.lisp`; `attr-partial.txt` = partial core, `attr-image.txt` = the 3e53d7bc5 image before restart)
+
+Method: walk from every symbol-value, every plist, every function closure and every code component's constants, first reach wins, with pagemap residency per object (taken before the walk). Partial core: u8 7.7 MB (all small), conses 26.1 MB attributed, other 8.5 MB.
+
+| # | owner | MB (cons+other+u8) | resident at start | image carries the same? | lazy or profile-sized? |
+|---|---|---|---|---|---|
+| 1 | `acl2::*xl-props*` (hash table, core-world.lisp: the host-read world rows, 131k triples' plists) | 22.9 cons + 1.1 table = 24.0 | 0.6 | the same data is 25.8 MB in the image as three views (CURRENT-ACL2-WORLD 11.0, `*UNDO-STACK*` plist 8.2, world-key plists 6.3), so the core has one view, a net saving | already lazy: 0.6 of 24 MB resident. X3 will shrink it to the carried table rows |
+| 2 | code-constants of SBCL's own code | 0.4 cons + 2.9 other + 0.06 u8 = 3.4 | 1.5 | yes (stock SBCL) | not ours |
+| 3 | code-constants of fn-books code | 1.3 cons + 0.3 other = 1.6 | 0.05 | yes | no |
+| 4 | `sb-vm::rsi-tn` (compiler register tables) | 0.3 + 0.9 = 1.2 | 1.1 | yes (stock) | not ours |
+| 5 | code-constants of ACL2-package code | 0.35 + 0.59 = 0.94 | 0.06 | image carries ACL2 code, the core only what the closure needs | no |
+| 6 | `sb-c::*backend-template-names*` | 0.1 + 0.5 = 0.6 | 0.6 | yes (stock) | not ours |
+| 7 | `sb-kernel::*ctype-list-hashset*` | 0.34 + 0.03 = 0.4 | 0.4 | yes (stock) | not ours |
+| 8 | `acl2::*xl-user-stobj-alist*` (live stobjs) | 0.03 u8 | 0.03 | the image's `*saved-user-stobj-alist*` is the same size | the live stobjs are small here: the fn stobjs are NOT created at preset size at load. They are created by the start path (M1/M2 measures it) |
+| 9 | `sb-vm::*linkage-name-map*` | 0.17 | 0.17 | yes | stock |
+| 10 | `sb-disassem::*instructions*` | 0.16 | 0.07 | yes | stock |
+
+The partial core carries no other store-sized object: no `defconst` of any size appears above 0.01 MB. For comparison the image's top conses are `CURRENT-ACL2-WORLD` 11.0 MB, `*UNDO-STACK*` 8.2, the world-key plists 6.3 and `*fn-wgx-file-octets*` 1.3 (those are the 11.5 MB of resident prover state N found, absent from the core).
+
+Verdict on M1: nothing in the core is large and resident except what the stock SBCL floor already pays. The one big non-stock object is `*xl-props*` (24 MB allocated, 0.6 MB resident, because it is only touched when the host reads a row). M1 < 60 is reachable if start-up touches under 8.6 MB beyond the floor + closure. The risk is the start path (stobj creation at preset size, the open), which this core cannot show: M1/M2 will.
+
+## The 9 undefined-function warnings (X2's first findings; `undefined-warnings.txt`, from the defs.lisp compile against the Oct 5 world)
+
+`ACL2::FN-PGS-FILL-FRAME` (2 uses), `ACL2::FN-DURABLE-REALIZE-LZ` (2), `ACL2::FN-DURABLE-REALIZE-OCTET`, `ACL2::FN-DURABLE-REALIZE-OCTETS`, `ACL2::FN-ARENA-STORED`, `ACL2::FN-SIG-VERIFY`, `ACL2::FNN-COUNTERPART`, `ACL2::CONGRUENT-STOBJ-REP`, and the variable `ACL2::FN-CAT`. The first four are in the storage line S is changing (fill-frame, durable realize); some may not exist in a world matched to 1e190ff19.
 
 ## M1: not started
 

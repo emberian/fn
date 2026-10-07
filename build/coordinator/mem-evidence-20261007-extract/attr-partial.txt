@@ -1,0 +1,66 @@
+UNREACHED-U8 89488 res=YES
+UNREACHED-U8 65446544 res=YES
+UNREACHED-U8-TOTAL count 39193 bytes 73163792
+TOP-U8 (bytes res owner) 61088 27824 (:CODE-CONSTANTS :SBCL)
+TOP-U8 (bytes res owner) 33344 33088 (:VALUE #<PACKAGE "ACL2">
+                                      *XL-USER-STOBJ-ALIST*)
+TOP-U8 (bytes res owner) 32784 32784 (:VALUE #<PACKAGE "SB-KERNEL">
+                                      SB-KERNEL::*CTYPE-LIST-HASHSET*)
+TOP-U8 (bytes res owner) 23744 23744 (:VALUE #<PACKAGE "SB-UNICODE">
+                                      SB-UNICODE::+CHARACTER-MISC-DATABASE+)
+TOP-U8 (bytes res owner) 8208 8208 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*CTYPE-SET-HASHSET*)
+TOP-U8 (bytes res owner) 4672 4672 (:VALUE #<PACKAGE "SB-C">
+                                    SB-C::*BACKEND-TEMPLATE-NAMES*)
+TOP-U8 (bytes res owner) 4112 4112 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*FUN-TYPE-HASHSET*)
+TOP-U8 (bytes res owner) 2064 2064 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*UNION-TYPE-HASHSET*)
+TOP-U8 (bytes res owner) 2064 2064 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*VALUES-TYPE-HASHSET*)
+TOP-U8 (bytes res owner) 1408 0 (:CODE-CONSTANTS :FN-BOOKS)
+TOP-U8 (bytes res owner) 1040 1040 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*NUMERIC-UNION-TYPE-HASHSET*)
+TOP-U8 (bytes res owner) 528 528 (:VALUE #<PACKAGE "SB-KERNEL">
+                                  SB-KERNEL::*INTERSECTION-TYPE-HASHSET*)
+TOP-CONS (bytes res owner) 22942496 490448 (:VALUE #<PACKAGE "ACL2"> *XL-PROPS*)
+TOP-CONS (bytes res owner) 1347312 47296 (:CODE-CONSTANTS :FN-BOOKS)
+TOP-CONS (bytes res owner) 376416 363616 (:CODE-CONSTANTS :SBCL)
+TOP-CONS (bytes res owner) 353200 58352 (:CODE-CONSTANTS :ACL2-OTHER)
+TOP-CONS (bytes res owner) 297104 293376 (:VALUE #<PACKAGE "SB-VM">
+                                          SB-VM::RSI-TN)
+TOP-CONS (bytes res owner) 94128 94016 (:VALUE #<PACKAGE "SB-C">
+                                        SB-C::*BACKEND-TEMPLATE-NAMES*)
+TOP-CONS (bytes res owner) 66496 66496 (:VALUE #<PACKAGE "SB-KERNEL">
+                                        SB-KERNEL::**TYPE-INTERSECTION2-CACHE-VECTOR**)
+TOP-CONS (bytes res owner) 64032 64032 (:VALUE #<PACKAGE "SB-KERNEL">
+                                        SB-KERNEL::**TYPE-UNION2-CACHE-VECTOR**)
+TOP-CONS (bytes res owner) 51072 51072 (:VALUE #<PACKAGE "SB-KERNEL">
+                                        SB-KERNEL::**%TYPE-INTERSECTION-CACHE-VECTOR**)
+TOP-CONS (bytes res owner) 51056 51056 (:VALUE #<PACKAGE "SB-KERNEL">
+                                        SB-KERNEL::*UNION-TYPE-HASHSET*)
+TOP-CONS (bytes res owner) 50336 28416 (:VALUE #<PACKAGE "SB-PCL">
+                                        SB-PCL::*FGENS*)
+TOP-CONS (bytes res owner) 49376 43312 (:VALUE #<PACKAGE "SB-DISASSEM">
+                                        SB-DISASSEM::*INSTRUCTIONS*)
+TOP-OTHER (bytes res owner) 2895120 1068608 (:CODE-CONSTANTS :SBCL)
+TOP-OTHER (bytes res owner) 1064432 87904 (:VALUE #<PACKAGE "ACL2"> *XL-PROPS*)
+TOP-OTHER (bytes res owner) 942224 837536 (:VALUE #<PACKAGE "SB-VM">
+                                           SB-VM::RSI-TN)
+TOP-OTHER (bytes res owner) 590160 32 (:CODE-CONSTANTS :ACL2-OTHER)
+TOP-OTHER (bytes res owner) 511008 511008 (:VALUE #<PACKAGE "SB-C">
+                                           SB-C::*BACKEND-TEMPLATE-NAMES*)
+TOP-OTHER (bytes res owner) 342976 342976 (:VALUE #<PACKAGE "SB-KERNEL">
+                                           SB-KERNEL::*CTYPE-LIST-HASHSET*)
+TOP-OTHER (bytes res owner) 289872 144 (:CODE-CONSTANTS :FN-BOOKS)
+TOP-OTHER (bytes res owner) 231712 1744 (:CODE-CONSTANTS :OTHER)
+TOP-OTHER (bytes res owner) 168672 168672 (:VALUE #<PACKAGE "SB-VM">
+                                           SB-VM::*LINKAGE-NAME-MAP*)
+TOP-OTHER (bytes res owner) 163280 65840 (:VALUE #<PACKAGE "SB-DISASSEM">
+                                          SB-DISASSEM::*INSTRUCTIONS*)
+TOP-OTHER (bytes res owner) 146256 146256 (:VALUE #<PACKAGE "SB-VM">
+                                           SB-VM::*IMMOBILE-CODEBLOB-VECTOR*)
+TOP-OTHER (bytes res owner) 142752 142752 (:VALUE #<PACKAGE "SB-KERNEL">
+                                           SB-KERNEL::*FUN-TYPE-HASHSET*)
+SUM u8 179168 cons 26106320 other 8519680
+DONE

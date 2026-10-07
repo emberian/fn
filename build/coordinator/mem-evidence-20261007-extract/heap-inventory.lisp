@@ -96,6 +96,6 @@
       (format s "SPACE ~s ~d~%" sp n))))
 (let ((out (sb-ext:posix-getenv "INV_OUT")))
   (with-open-file (s out :direction :output :if-exists :supersede)
-    (nm-space-report s) (nm-pagemap-report s)
+    (nm-pagemap-report s) (nm-space-report s)
     (format s "RSS-AT-END ~a~%" (with-open-file (st "/proc/self/status") (loop for l = (read-line st nil) while l when (search "VmRSS" l) return l)))))
 (sb-ext:exit :code 0 :abort t)

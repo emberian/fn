@@ -1,0 +1,62 @@
+UNREACHED-U8-TOTAL count 113532 bytes 20455136
+TOP-U8 (bytes res owner) 61152 44656 (:CODE-CONSTANTS :SBCL)
+TOP-U8 (bytes res owner) 34176 0 (:VALUE #<PACKAGE "ACL2">
+                                  *SAVED-USER-STOBJ-ALIST*)
+TOP-U8 (bytes res owner) 23744 23744 (:VALUE #<PACKAGE "SB-UNICODE">
+                                      SB-UNICODE::+CHARACTER-MISC-DATABASE+)
+TOP-U8 (bytes res owner) 16400 16400 (:VALUE #<PACKAGE "SB-KERNEL">
+                                      SB-KERNEL::*CTYPE-LIST-HASHSET*)
+TOP-U8 (bytes res owner) 4672 4672 (:VALUE #<PACKAGE "SB-C">
+                                    SB-C::*BACKEND-TEMPLATE-NAMES*)
+TOP-U8 (bytes res owner) 4112 4112 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*CTYPE-SET-HASHSET*)
+TOP-U8 (bytes res owner) 4112 4112 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*FUN-TYPE-HASHSET*)
+TOP-U8 (bytes res owner) 3152 544 (:CODE-CONSTANTS :ACL2-OTHER)
+TOP-U8 (bytes res owner) 2176 1168 (:CODE-CONSTANTS :FN-BOOKS)
+TOP-U8 (bytes res owner) 2064 2064 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*UNION-TYPE-HASHSET*)
+TOP-U8 (bytes res owner) 2064 2064 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*VALUES-TYPE-HASHSET*)
+TOP-U8 (bytes res owner) 1040 1040 (:VALUE #<PACKAGE "SB-KERNEL">
+                                    SB-KERNEL::*NUMERIC-UNION-TYPE-HASHSET*)
+TOP-CONS (bytes res owner) 11020304 366336 (:VALUE
+                                            #<PACKAGE "ACL2_GLOBAL_ACL2">
+                                            ACL2_GLOBAL_ACL2::CURRENT-ACL2-WORLD)
+TOP-CONS (bytes res owner) 8194384 271472 (:PLIST *UNDO-STACK*)
+TOP-CONS (bytes res owner) 6284496 233792 (:PLIST
+                                           ACL2_INVISIBLE::*CURRENT-ACL2-WORLD-KEY*)
+TOP-CONS (bytes res owner) 1307008 0 (:VALUE #<PACKAGE "ACL2">
+                                      *FN-WGX-FILE-OCTETS*)
+TOP-CONS (bytes res owner) 1166752 159616 (:CODE-CONSTANTS :OTHER)
+TOP-CONS (bytes res owner) 1034336 569456 (:CODE-CONSTANTS :SBCL)
+TOP-CONS (bytes res owner) 750432 98032 (:VALUE #<PACKAGE "ACL2">
+                                         *EVER-KNOWN-PACKAGE-ALIST*)
+TOP-CONS (bytes res owner) 672624 402384 (:CODE-CONSTANTS :ACL2-OTHER)
+TOP-CONS (bytes res owner) 639984 111856 (:CODE-CONSTANTS :FN-BOOKS)
+TOP-CONS (bytes res owner) 524864 6448 (:VALUE #<PACKAGE "ACL2">
+                                        *FN-LZD-SHIPPED*)
+TOP-CONS (bytes res owner) 524288 0 (:VALUE #<PACKAGE "ACL2"> *FN-ZIN-ZEROS*)
+TOP-CONS (bytes res owner) 524288 0 (:VALUE #<PACKAGE "ACL2">
+                                     *FN-LZD-BASELINE-1*)
+TOP-OTHER (bytes res owner) 3003296 1395808 (:CODE-CONSTANTS :SBCL)
+TOP-OTHER (bytes res owner) 2453600 122192 (:CODE-CONSTANTS :ACL2-OTHER)
+TOP-OTHER (bytes res owner) 2419088 34128 (:CODE-CONSTANTS :OTHER)
+TOP-OTHER (bytes res owner) 1151072 949520 (:VALUE #<PACKAGE "SB-VM">
+                                            SB-VM::RSI-TN)
+TOP-OTHER (bytes res owner) 509504 509424 (:VALUE #<PACKAGE "SB-C">
+                                           SB-C::*BACKEND-TEMPLATE-NAMES*)
+TOP-OTHER (bytes res owner) 482096 263104 (:CODE-CONSTANTS :HOST)
+TOP-OTHER (bytes res owner) 479856 4368 (:VALUE #<PACKAGE "ACL2">
+                                         *SHARP-ATSIGN-AR*)
+TOP-OTHER (bytes res owner) 433280 433280 (:VALUE #<PACKAGE "SB-VM">
+                                           SB-VM::*LINKAGE-NAME-MAP*)
+TOP-OTHER (bytes res owner) 377840 232352 (:CODE-CONSTANTS :FN-BOOKS)
+TOP-OTHER (bytes res owner) 332192 332192 (:VALUE #<PACKAGE "SB-VM">
+                                           SB-VM::*IMMOBILE-CODEBLOB-VECTOR*)
+TOP-OTHER (bytes res owner) 170912 170512 (:VALUE #<PACKAGE "SB-KERNEL">
+                                           SB-KERNEL::*CTYPE-LIST-HASHSET*)
+TOP-OTHER (bytes res owner) 163280 97808 (:VALUE #<PACKAGE "SB-DISASSEM">
+                                          SB-DISASSEM::*INSTRUCTIONS*)
+SUM u8 165184 cons 35362592 other 13851680
+DONE
