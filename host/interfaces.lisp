@@ -2301,7 +2301,8 @@
 ; The catch-up round: the bounded spool controller (books/peer-catchup-spool,
 ; its framer and digest cursor) that host/native/pull-service.lisp drives.
 (definterface fn-csp-begin
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((window natp)))
 
 (definterface fn-csp-step
   :class :common-lisp-compliant
