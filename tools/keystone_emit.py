@@ -36,7 +36,8 @@ with it:
   entry no longer generated (a downgrade); a name absent from the base that
   is not generated is TOOTHLESS: no per-name finding, but a member of the
   ledger "keystones without teeth: N (ceiling C)", printed by name (and in
-  --json); the gate fails when N exceeds the shrink-only ceiling in
+  --json); the gate fails when N differs from the shrink-only ceiling (above it: a new
+  toothless keystone; below it: lower the ceiling in the same commit) in
   planning/teeth-ceiling.json (`ratchet:keystone_emit:toothless`; --write-ceiling
   lowers it and raises it only with that ACKS.md line, tools/ratchet.py).  The
   count cannot see a swap: teeth added to one keystone while another is added
@@ -497,6 +498,9 @@ def toothless_findings(toothless: list[str], ceiling: dict) -> list[str]:
                 f"{ceiling[CEILING_ROW]}: give the new keystone teeth (defteeth ...), or "
                 f"ACK the raise ({ratchet.token('keystone_emit', CEILING_ROW)} in "
                 f"planning/repair/ACKS.md, then --write-ceiling)"]
+    if len(toothless) < ceiling[CEILING_ROW]:
+        return [f"teeth gate: {len(toothless)} keystones without teeth is below the ceiling "
+                f"{ceiling[CEILING_ROW]}: lower it (--write-ceiling) in this commit"]
     return []
 
 
@@ -548,9 +552,6 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
           f"(ceiling {ceiling.get(CEILING_ROW, 'unset')})")
     for name in toothless:
         print(f"keystone_emit: toothless: {name}")
-    if len(toothless) < ceiling.get(CEILING_ROW, 0):
-        print(f"keystone_emit: the ceiling is {ceiling[CEILING_ROW] - len(toothless)} above "
-              f"the count: --write-ceiling lowers it")
     LEDGER[:] = toothless
     if write and problems == stale:
         dropped = sorted({e["name"] for e in (committed or {}).get("entries", [])}
@@ -614,6 +615,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="with --write-manifest: write the FIRST manifest when no base "
                              "and no manifest exist (never again)")
     arguments = parser.parse_args(argv)
+    json_out = sys.stdout
+    if arguments.json:
+        sys.stdout = sys.stderr  # stdout carries only the JSON object
 
     keystones = [Keystone(book, line, form) for book, line, form in forms_in()]
     # `:id :test` marks a test of the macro itself (tests/acl2/defkeystone-
@@ -674,7 +678,7 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.json:
         print(json.dumps({"toothless": sorted(LEDGER), "count": len(LEDGER),
                           "ceiling": load_ceiling().get(CEILING_ROW),
-                          "findings": problems}, indent=1))
+                          "findings": problems}, indent=1), file=json_out)
         return 1 if problems else 0
     if not (arguments.check and not problems):
         for keystone in wellformed:

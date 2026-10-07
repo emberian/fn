@@ -72,9 +72,14 @@ class Ceiling(unittest.TestCase):
         self.assertEqual(len(found), 1)
         self.assertIn("ratchet:keystone_emit:toothless", found[0])
 
-    def test_n_at_or_below_the_ceiling_passes(self):
+    def test_n_equal_to_the_ceiling_passes(self):
         self.assertEqual(ke.toothless_findings(["a", "b"], {"toothless": 2}), [])
-        self.assertEqual(ke.toothless_findings(["a"], {"toothless": 2}), [])
+
+    def test_n_below_the_ceiling_fails_until_it_is_lowered(self):
+        found = ke.toothless_findings(["a"], {"toothless": 2})
+        self.assertEqual(len(found), 1)
+        self.assertIn("below the ceiling 2", found[0])
+        self.assertIn("--write-ceiling", found[0])
 
     def test_a_missing_ceiling_fails(self):
         self.assertEqual(len(ke.toothless_findings([], {})), 1)
