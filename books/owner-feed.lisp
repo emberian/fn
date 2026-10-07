@@ -879,47 +879,14 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-own-feed-dist-names-of-pieces-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-own-feed-dist-names-of-pieces-loop (cdr rev)
-                                             (let ((name (fn-path-trim (car rev)))
-                                                   (rest acc))
-                                               (if (and (fn-own-feed-dist-namep name)
-                                                        (not (equal rest :malformed)))
-                                                   (cons (fn-own-feed-fold name) rest)
-                                                 :malformed)))
-    acc))
-
-(defun fn-own-feed-dist-names-of-pieces (pieces)
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp pieces)
-           (let ((name (fn-path-trim (car pieces)))
-                 (rest (fn-own-feed-dist-names-of-pieces (cdr pieces))))
-             (if (and (fn-own-feed-dist-namep name) (not (equal rest :malformed)))
-                 (cons (fn-own-feed-fold name) rest)
-               :malformed))
-         nil)
-       :exec (fn-own-feed-dist-names-of-pieces-loop (fn-ag-rev-onto pieces nil) nil)))
-
-(local
- (defthm fn-own-feed-dist-names-of-pieces-loop-of-rev-onto
-   (equal (fn-own-feed-dist-names-of-pieces-loop (fn-ag-rev-onto pieces zs) nil)
-          (fn-own-feed-dist-names-of-pieces-loop zs (fn-own-feed-dist-names-of-pieces pieces)))
-   :hints (("Goal" :induct (fn-ag-rev-onto pieces zs)
-                   :in-theory (union-theories '(fn-own-feed-dist-names-of-pieces-loop fn-own-feed-dist-names-of-pieces fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-own-feed-dist-names-of-pieces-loop)
-
-(verify-guards fn-own-feed-dist-names-of-pieces
-  :hints (("Goal" :in-theory (union-theories '(fn-own-feed-dist-names-of-pieces fn-own-feed-dist-names-of-pieces-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-own-feed-dist-names-of-pieces-loop-of-rev-onto (zs nil))))))
-
+(def-loop fn-own-feed-dist-names-of-pieces (pieces)
+  :shape :foldr :over pieces :elt p
+  :combine (let ((name (fn-path-trim p)) (rest acc))
+                (if (and (fn-own-feed-dist-namep name) (not (equal rest :malformed)))
+                    (cons (fn-own-feed-fold name) rest)
+                    :malformed))
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-own-feed-dist-list (value)
   (declare (xargs :guard t))
