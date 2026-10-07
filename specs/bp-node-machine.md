@@ -1451,10 +1451,14 @@ node.
   durable `:finished` or by expiry (`fn-bpn-clock-step`). Work per contact
   is bounded; the number of contacts is the operator's.
 - **The host.** `fnn-bps-send-effect-next` records the transfer reading in the
-  service; under `bp-node serve` and `dispatch` (transfer scope
-  `:connection`, set by `fnn-bpnode-send-receipts`) it does not become the
-  process outcome, and the pass prints `BP node receipt transfer uncertain`
-  and continues (exit 0 for the pass). `bp-contact tick` and `bp-service
+  service; under `bp-node dispatch` (transfer scope `:connection`, set by
+  `fnn-bpnode-send-receipts`) it does not become the process outcome, and
+  the pass prints `BP node receipt transfer uncertain` and continues (exit 0
+  for the pass). A listening `bp-node serve` does not run that pass: its
+  retained loop sends the owed receipt on a retained outgoing session
+  (`fnn-bpnode-receipt-turn`, S025) and prints the requeue as
+  `BP forwarding retained reason=uncertain`; the job is requeued by the same
+  ACL2 record and the next serve turn or `dispatch` pass offers it again. `bp-contact tick` and `bp-service
   run` keep scope `:process`: their caller asked for the transfer, so an
   uncertain one is their answer (exit 3) and a refused one exit 2, although
   ACL2 has requeued the job exactly as under `serve`.
