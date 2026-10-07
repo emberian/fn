@@ -1447,3 +1447,68 @@ class R2WaitWrapper(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class R1bDynamicBinding(unittest.TestCase):
+    """A `let' of a defvar makes every access in its dynamic extent name the
+    binding of the thread that ran the `let', not the shared global."""
+
+    BASE = """
+(defvar *fnn-dyn-flag* nil)
+(defun fnn-dyn-note () (setf *fnn-dyn-flag* t))
+(defun fnn-dyn-run ()
+  (let ((*fnn-dyn-flag* nil))
+    (fnn-dyn-note)
+    *fnn-dyn-flag*))
+(defun fnn-dyn-start-a ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-run)) :name "dyn a"))
+(defun fnn-dyn-start-b ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-run)) :name "dyn b"))
+"""
+
+    def r1b(self, source):
+        return [k for k in keys(run(source, ["R1b"]), "R1b") if "fnn-dyn-flag" in k[1]]
+
+    def test_a_flag_rebound_around_every_use_is_thread_local(self):
+        self.assertEqual(self.r1b(self.BASE), [])
+
+    def test_a_second_caller_outside_the_binding_keeps_the_finding(self):
+        found = self.r1b(self.BASE + """
+(defun fnn-dyn-other () (fnn-dyn-note))
+(defun fnn-dyn-start-c ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-other)) :name "dyn c"))
+""")
+        self.assertTrue(found)
+
+    def test_a_write_outside_the_let_keeps_the_finding(self):
+        found = self.r1b(self.BASE + """
+(defun fnn-dyn-bare () (setf *fnn-dyn-flag* 1))
+(defun fnn-dyn-start-c ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-bare)) :name "dyn c"))
+(defun fnn-dyn-start-d ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-bare)) :name "dyn d"))
+""")
+        self.assertTrue(found)
+
+    def test_a_thread_started_inside_the_binding_does_not_inherit_it(self):
+        found = self.r1b("""
+(defvar *fnn-dyn-flag* nil)
+(defun fnn-dyn-note () (setf *fnn-dyn-flag* t))
+(defun fnn-dyn-spawn ()
+  (let ((*fnn-dyn-flag* nil))
+    (sb-thread:make-thread (lambda () (fnn-dyn-note)) :name "dyn a")
+    (sb-thread:make-thread (lambda () (fnn-dyn-note)) :name "dyn b")))
+""")
+        self.assertTrue(found)
+
+    def test_a_lexical_variable_named_like_a_special_is_not_special(self):
+        found = self.r1b("""
+(defvar *fnn-dyn-flag* nil)
+(defun fnn-dyn-note () (setf *fnn-dyn-flag* t))
+(defun fnn-dyn-run (flag) (let ((flag 1)) (fnn-dyn-note) flag))
+(defun fnn-dyn-start-a ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-run 1)) :name "dyn a"))
+(defun fnn-dyn-start-b ()
+  (sb-thread:make-thread (lambda () (fnn-dyn-run 2)) :name "dyn b"))
+""")
+        self.assertTrue(found)

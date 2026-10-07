@@ -635,6 +635,9 @@ class Event:
     line: int
     ctx: Ctx
     extra: object = None
+    # specials dynamically rebound (a `let' of a defvar) around this event,
+    # in its own defun: the access names this thread's binding, not the global
+    bound: frozenset = frozenset()
 
 
 @dataclass
@@ -753,6 +756,7 @@ class Analyzer:
         self.run_targets: list = []   # (fn, param) of the argument position a walked closure was passed at
         self._writes_cache: dict = {}  # fn name -> frozenset of names its body writes
         self.cur_def = None
+        self.rebound: list = []       # specials let-bound around the form being walked
         self.defer_vars: list = []    # variables whose captured conditions are rethrown on every exit path
         self.leaf_kinds = self._leaf_table()
         self.region_of = {}
@@ -1042,6 +1046,7 @@ class Analyzer:
         self.cur = info
         self.cur_def = d
         self.defer_vars = []
+        self.rebound = []
         self.recording = record
         if not record:
             self.pass1_name = name
@@ -1064,7 +1069,7 @@ class Analyzer:
             seen = set()
             unique = []
             for e in info.events:
-                k = (e.kind, e.name, e.line, e.ctx, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
+                k = (e.kind, e.name, e.line, e.ctx, e.bound, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
                 if k not in seen:
                     seen.add(k)
                     unique.append(e)
@@ -1082,7 +1087,7 @@ class Analyzer:
 
     def ev(self, kind, name, line, ctx, extra=None):
         if self.recording:
-            self.cur.events.append(Event(kind, name, line, ctx, extra))
+            self.cur.events.append(Event(kind, name, line, ctx, extra, frozenset(self.rebound)))
 
     def walk_body(self, forms, ctx, env, line):
         return sig_union([self.walk(f, ctx, env, line_of(f, line)) for f in forms])
@@ -1355,6 +1360,7 @@ class Analyzer:
         parts = []
         noio = ctx.noio
         cond2 = ctx.cond
+        rebinds = []
         if h in BINDING_FORMS:
             for b in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
                 if isinstance(b, list) and b:
@@ -1364,7 +1370,7 @@ class Analyzer:
                     if name == "*fnn-extent-no-io*":
                         noio = not (init is None or (isinstance(init, Sym) and str(init) == "nil"))
                     elif name.startswith("*") and name in self.tree.globals:
-                        pass
+                        rebinds.append(name)
                     else:
                         env2[name] = init
                         if cond2 and cond2[0] == name:
@@ -1386,11 +1392,14 @@ class Analyzer:
             [str(b[0]) if isinstance(b, list) and b else str(b) for b in
              (form[1] if h in BINDING_FORMS and len(form) > 1 and isinstance(form[1], list) else [])], body)
         mark = len(self.defer_vars)
+        rmark = len(self.rebound)
         self.defer_vars.extend(deferred)
+        self.rebound.extend(rebinds)
         try:
             parts.append(self.walk_body(body, ctx2, env2, line))
         finally:
             del self.defer_vars[mark:]
+            del self.rebound[rmark:]
         return sig_union(parts)
 
     EXIT_HEADS = {"return-from", "return", "go", "throw"}
@@ -1680,9 +1689,9 @@ class Analyzer:
             if self.recording:
                 lam = Def(rid, creator.path, line, [], [Node([fn[1]])], "lambda", "", creator.loaded)
                 lam.body[0].line = line
-                saved = (self.cur, self.recording)
+                saved = (self.cur, self.recording, self.rebound, self.defer_vars)
                 info = self.walk_def(rid, lam, True, thread_of=(creator.name, line, tname))
-                self.cur, self.recording = saved
+                self.cur, self.recording, self.rebound, self.defer_vars = saved
             self.ev("thread", rid, line, ctx, tname)
         else:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
@@ -1739,9 +1748,11 @@ class Analyzer:
             return rid
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
                 "lambda", "", self.cur.loaded)
-        saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None), self.defer_vars)
+        saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None), self.defer_vars,
+                 self.rebound)
         self.walk_def(rid, d, True, thread_of=thread_of, env={k: None for k in env})
-        self.cur, self.cur_def, self.recording, self.gate_class, self.defer_vars = saved
+        (self.cur, self.cur_def, self.recording, self.gate_class, self.defer_vars,
+         self.rebound) = saved
         return rid
 
     def walk_handler_case(self, form, ctx, env, line):
@@ -2116,6 +2127,7 @@ class Model:
         self.compute_requirements()
         self.compute_actors()
         self.compute_mustheld()
+        self.compute_mustbound()
 
     def declare_callback_contexts(self) -> None:
         """contracts `callback_contexts': {LAMBDA-ID: {"runs_in": ENTRY, "why"}}.
@@ -2512,6 +2524,34 @@ class Model:
                     changed = True
         self.mustheld = {n: (h if h is not None else frozenset()) for n, h in held.items()}
 
+    def compute_mustbound(self) -> None:
+        """mustbound[f]: the specials every call of F reaches it under a `let'
+        rebinding of (its callers' own, or their callers').  A root starts with
+        none: a thread sees the global value, not its spawner's binding."""
+        top = None
+        bound: dict[str, frozenset | None] = {n: top for n in self.infos}
+        for n in self.roots:
+            bound[n] = frozenset()
+        changed = True
+        rounds = 0
+        while changed and rounds < 50:
+            changed = False
+            rounds += 1
+            for name in self.infos:
+                if name in self.roots:
+                    continue
+                acc = None
+                for caller, e in self.callers.get(name, ()):
+                    b = bound.get(caller)
+                    if b is None:
+                        continue
+                    here = b | e.bound
+                    acc = here if acc is None else acc & here
+                if acc is not None and acc != bound[name]:
+                    bound[name] = acc
+                    changed = True
+        self.mustbound = {n: (b if b is not None else frozenset()) for n, b in bound.items()}
+
 
 # --------------------------------------------------------------------------
 # findings
@@ -2619,6 +2659,8 @@ class Checker:
                 g = self.an.tree.globals.get(e.name)
                 if g and e.name.startswith("+"):
                     continue
+                if e.name in e.bound or e.name in self.m.mustbound.get(name, frozenset()):
+                    continue        # the access names a thread-local dynamic binding
                 held = e.ctx.locks | self.m.mustheld.get(name, frozenset())
                 actors = {self.m.actor_of(r) for r in self.m.actors.get(name, ())}
                 if not actors or actors == {"startup"} or "STARTUP" in held:
