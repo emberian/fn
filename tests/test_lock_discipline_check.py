@@ -1575,3 +1575,115 @@ class R1bSynchronizedTable(unittest.TestCase):
   (fnn-sync-poke *fnn-sync-memo* k)
   (setf (gethash k *fnn-sync-memo*) k))
 """))
+
+
+class RealThreadRows(unittest.TestCase):
+    """The catchup spool worker and the developer REPL are declared threads:
+    their rows are checked against the real host, so a row whose registry,
+    join site or handler stops matching the code fails here."""
+
+    SPOOL = ("fnn-csp-worker-start", "fn catchup spool")
+    REPL = ("fnn-dev-repl-start", "fn trusted developer REPL")
+
+    @classmethod
+    def setUpClass(cls):
+        an, model, checker = ldc.analyze_tree(ROOT, ldc.load_contracts(
+            Path(os.environ.get("LMG_CONTRACTS", str(ROOT / "tools" / "lock_discipline_contracts.json")))))
+        cls.found = [f for f in checker.run({"R4"}) if f.rule == "R4"]
+
+    def about(self, function):
+        return [(f.key, f.message) for f in self.found if f.function == function]
+
+    def test_the_catchup_spool_thread_is_declared_and_its_row_holds(self):
+        self.assertEqual(self.about(self.SPOOL[0]), [])
+
+    def test_the_developer_repl_thread_is_declared_and_its_row_holds(self):
+        self.assertEqual(self.about(self.REPL[0]), [])
+
+    def test_the_rows_name_the_registry_and_join_the_code_has(self):
+        rows = CONTRACTS.raw["threads"]
+        self.assertEqual(rows[self.SPOOL[0]]["registry"], "fnn-csp-worker-thread")
+        self.assertEqual(rows[self.SPOOL[0]]["join"], "fnn-csp-worker-join-now")
+        self.assertEqual(rows[self.REPL[0]]["registry"], "fnn-control-state-accept-thread")
+        self.assertEqual(rows[self.REPL[0]]["join"], "fnn-dev-repl-close")
+
+    def test_a_thread_stored_nowhere_is_refused(self):
+        found = run("""
+(defun fnn-csp-worker-start (worker)
+  (sb-thread:make-thread (lambda () (fnn-csp-worker-loop worker)) :name "fn catchup spool"))
+(defun fnn-csp-worker-loop (worker)
+  (handler-case (fnn-fault "x") (serious-condition (c) c)))
+(defun fnn-csp-worker-join-now (worker) (sb-thread:join-thread (fnn-csp-worker-thread worker)))
+""", ["R4"])
+        self.assertIn(("fnn-csp-worker-start", "unregistered:fnn-csp-worker-thread"), keys(found, "R4"))
+
+    def test_a_join_site_that_never_joins_is_refused(self):
+        found = run("""
+(defun fnn-dev-repl-start (control)
+  (setf (fnn-control-state-accept-thread control)
+        (sb-thread:make-thread (lambda () (fnn-dev-repl-loop control)) :name "fn trusted developer REPL")))
+(defun fnn-dev-repl-loop (control)
+  (handler-case (fnn-fault "x") (serious-condition (c) c)))
+(defun fnn-dev-repl-close (control) (setf (fnn-control-state-stopping control) t))
+""", ["R4"])
+        self.assertIn(("fnn-dev-repl-start", "no-join:fnn-dev-repl-close"), keys(found, "R4"))
+
+    def test_a_thread_whose_loop_handles_nothing_is_refused(self):
+        found = run("""
+(defun fnn-dev-repl-start (control)
+  (setf (fnn-control-state-accept-thread control)
+        (sb-thread:make-thread (lambda () (fnn-dev-repl-loop control)) :name "fn trusted developer REPL")))
+(defun fnn-dev-repl-loop (control) (fnn-fault "x"))
+(defun fnn-dev-repl-close (control) (sb-thread:join-thread (fnn-control-state-accept-thread control)))
+""", ["R4"])
+        self.assertTrue(any(k[1].startswith("no-handler:") for k in keys(found, "R4")))
+
+
+class LeafLockRows(unittest.TestCase):
+    """XPWAKE (fnn-pull-runtime-wake-lock) and XTLSKX (*fnn-tls-kx-lock*) are
+    leaves: no order edge out of them, no blocking work under them."""
+
+    @classmethod
+    def setUpClass(cls):
+        an, model, checker = ldc.analyze_tree(ROOT, ldc.load_contracts(
+            Path(os.environ.get("LMG_CONTRACTS", str(ROOT / "tools" / "lock_discipline_contracts.json")))))
+        cls.found = [f for f in checker.run({"R2", "R5"}) if f.rule in ("R2", "R5")]
+
+    def test_every_region_of_both_locks_in_the_real_host_resolves_to_its_row(self):
+        names = ("fnn-pull-runtime-wake", "fnn-pull-wakes-seen", "fnn-tls-decide-key-exchange",
+                 "fnn-tls-key-exchange-observation", "fnn-tls-note-session")
+        self.assertEqual([(f.function, f.key) for f in self.found
+                          if f.function in names and f.key.startswith("unresolved:lock object")], [])
+
+    def test_no_real_region_of_either_lock_blocks_or_nests(self):
+        # the manual grab-mutex of fnn-pull-ready-wait stays unresolved (gap 10)
+        mine = [f for f in self.found if ("XPWAKE" in f.key or "XTLSKX" in f.key)
+                and not f.key.startswith("unresolved:manual grab-mutex")]
+        self.assertEqual([(f.function, f.key) for f in mine], [])
+
+    def test_the_rows_are_leaves(self):
+        order = CONTRACTS.raw["lock_order"]
+        for row in ("XPWAKE", "XTLSKX"):
+            self.assertIn(row, CONTRACTS.raw["locks"])
+            self.assertNotIn(row, order)
+            self.assertFalse(CONTRACTS.raw["locks"][row].get("io_ok"))
+            self.assertFalse(any(row in later for later in order.values()))
+        self.assertEqual(CONTRACTS.raw["locks"]["XPWAKE"]["match"], ["(fnn-pull-runtime-wake-lock)"])
+        self.assertEqual(CONTRACTS.raw["locks"]["XTLSKX"]["match"], ["*fnn-tls-kx-lock*"])
+
+    def test_io_under_the_tls_record_lock_is_refused(self):
+        found = run("""
+(defun fnn-tls-note-session (channel)
+  (sb-thread:with-mutex (*fnn-tls-kx-lock*)
+    (sb-posix:fsync channel)))
+""", ["R2"])
+        self.assertIn(("fnn-tls-note-session", "XTLSKX:sb-posix:fsync"), keys(found, "R2"))
+
+    def test_the_owner_mutex_under_the_wake_lock_is_an_undeclared_edge(self):
+        found = run("""
+(defun fnn-pull-runtime-wake (runtime service)
+  (sb-thread:with-mutex ((fnn-pull-runtime-wake-lock runtime))
+    (sb-thread:with-mutex ((fnn-owner-service-lock service))
+      (incf (fnn-pull-runtime-wakes runtime)))))
+""", ["R5"])
+        self.assertTrue(any("XPWAKE" in str(k[1]) for k in keys(found, "R5")), keys(found, "R5"))

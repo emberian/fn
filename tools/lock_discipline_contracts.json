@@ -218,6 +218,18 @@
     "(fnn-native-observation-lock)"
    ],
    "why": "lane ACTORS: the native observer's private record mutex (host/native/owner.lisp fnn-native-observation-reserve/-complete/-events): a leaf taken for a row update by fnn-with-observed-owner/-mutex and fnn-observed-condition-wait under whatever lock they observe; it calls no hook, I/O, ACL2 or other lock"
+  },
+  "XPWAKE": {
+   "match": [
+    "(fnn-pull-runtime-wake-lock)"
+   ],
+   "why": "lane lock-model-gaps: one pull runtime's wake counter and waitqueue (host/native/pull-service.lisp:59-62, fnn-pull-runtime-wake :1085-1090, fnn-pull-wakes-seen :1092-1094, the timed wait fnn-pull-ready-wait :1096-1109). A leaf: every region is an increment, a read or a condition-broadcast/-wait on its own queue, with no call into the owner, a lock, the log or I/O while held."
+  },
+  "XTLSKX": {
+   "match": [
+    "*fnn-tls-kx-lock*"
+   ],
+   "why": "lane lock-model-gaps: the decided key exchange record *fnn-tls-kx* (host/native/tls-reload.lisp:68). A leaf with three regions (:72 a copy-list, :91 the decision's setq of the group list and record, :131 one tally bump through a pure ACL2 core call); ACL2's session-line core call and the log write at :130 run before it is taken, never under it."
   }
  },
  "lock_order": {
@@ -722,6 +734,18 @@
    "join": "fnn-control-close",
    "fault_policy": "connection",
    "why": "local control listener (control.lisp:529)"
+  },
+  "fnn-csp-worker-start": {
+   "registry": "fnn-csp-worker-thread",
+   "join": "fnn-csp-worker-join-now",
+   "fault_policy": "result",
+   "why": "the catchup spool worker (catchup-spool.lisp:105-108): the thread is stored in the worker record before it is returned (the caller's retain, :105, publishes custody earlier); fnn-csp-worker-join-now (:143-151) joins it only once thread-alive-p is false; the loop turns a serious-condition from one operation into the status and condition the owner takes (:62, fnn-csp-worker-take :128-134), and a cleanup failure into cleanup-condition (:86) that join-now returns"
+  },
+  "fnn-dev-repl-start": {
+   "registry": "fnn-control-state-accept-thread",
+   "join": "fnn-dev-repl-close",
+   "fault_policy": "private",
+   "why": "the trusted developer REPL accept loop (dev-repl.lisp:216-235): the thread is stored in the control record, which *fnn-dev-repl* holds (:224), and fnn-dev-repl-close joins it (:247-256). It starts only when fnn-developer-selector finds FN_NATIVE_DEV_REPL, which is honoured only on a developer image (io.lisp:6958-6962), over a socket chmod 600 (dev-repl.lisp:205) whose peer must be the owner (:179); the loop prints a connection failure and keeps serving (:191), so a fault in an evaluation is the owner boundary's (fnn-dev-evaluate), never this thread's"
   }
  },
  "after_deregistration_ok": [
