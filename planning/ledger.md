@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3088 |
 | Certification roots in the Makefile | 2594 |
 | Books inside the root closure | 2925 |
-| `defthm` and `defthmd` events | 41730 |
+| `defthm` and `defthmd` events | 41731 |
 | `defun` events | 26385 |
 | Functions with verified guards | 4171 |
 | Functions declared `:verify-guards nil` and never verified | 3501 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 433 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 312 |
-| Include-hygiene warnings | 3944 |
-| Host-names warnings | 3667 |
+| Include-hygiene warnings | 3955 |
+| Host-names warnings | 3669 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -1121,7 +1121,7 @@ that `make certify` requests.
 | `books/obligation-view-cursor.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/octet-text.lisp` | root | 124 | 66 | 3/0/60/3 | 0 | 0 | 0 |
 | `books/octet-window.lisp` | root | 6 | 1 | 0/1/0/0 | 0 | 0 | 0 |
-| `books/octets-stobj.lisp` | root | 108 | 52 | 6/1/39/6 | 0 | 0 | 2 |
+| `books/octets-stobj.lisp` | root | 109 | 52 | 6/1/39/6 | 0 | 0 | 2 |
 | `books/open-frontier-wire.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/open-frontier.lisp` | closure | 34 | 5 | 0/2/3/0 | 0 | 0 | 1 |
 | `books/operation-diagnostics.lisp` | root | 6 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -3349,7 +3349,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpnpf-node-profile-read-older-branch-by-definition` | `books/bp-node-profile.lisp` | 664 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnpf-node-profile-read and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-bpnpf-node-profile-read and the conclusion is that branch's value |
 | `fn-bpnpf-read-absent` | `books/bp-node-profile.lisp` | 337 | arm-of-definition: constant arguments select one IF/COND arm of fn-bpnpf-read and the conclusion is that arm's value |
 | `fn-bpnpp-premises-components` | `books/bp-node-progress-premises.lisp` | 132 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpnp-step-guard-premisesp |
-| `fn-bpnrb-mrun-all-of-no-goals` | `books/bp-node-rotation-buffer.lisp` | 503 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnrb-mrun-all and the conclusion is that arm's value |
+| `fn-bpnrb-mrun-all-of-no-goals` | `books/bp-node-rotation-buffer.lisp` | 482 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnrb-mrun-all and the conclusion is that arm's value |
 | `fn-bpnrs-persist-step-when-uncertain` | `books/bp-node-rotation-step.lisp` | 44 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnp-rotation-persist-step and the conclusion is that arm's value |
 | `fn-bpp-adu-key-ignores-destination-for-any-object` | `tests/acl2/bp-primary-tests.lisp` | 527 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type-by-definition` | `books/bp-primary-invariants.lisp` | 404 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3787,7 +3787,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ocs-member-uncertain-word-told-uncertain` | `books/owner-commit-steps.lisp` | 388 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ocs-member-release and the conclusion is that arm's value |
 | `fn-oct-list-from-empty` | `books/octets-stobj.lisp` | 99 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-list-from and the conclusion is that arm's value |
 | `fn-oct-set-conns-keeps-feeds` | `books/owner-outcome-counted.lisp` | 205 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-oct-slice-list-empty` | `books/octets-stobj.lisp` | 1218 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value |
+| `fn-oct-slice-list-empty` | `books/octets-stobj.lisp` | 1234 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value |
 | `fn-octl-injection-of-with-wire` | `books/owner-control-read.lisp` | 56 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-octl-reply-of-with-wire` | `books/owner-control-read.lisp` | 61 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-octl-result-effects-of-cons` | `books/owner-control-read.lisp` | 90 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-nntp-result-effects |
@@ -4597,7 +4597,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-tlsk-unknown-policy-refuses` | `books/tls-key-exchange.lisp` | 174 | arm-of-definition: the hypotheses select one IF/COND arm of fn-tlsk-decide and the conclusion is that arm's value |
 | `fn-vcu-done-meaning-by-definition` | `books/view-delta-cursor-refinement.lisp` | 152 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
 | `fn-vdc-put-nonstring-key-is-unchanged` | `books/view-delta-concrete.lisp` | 133 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vdc-put and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-vdc-put and the conclusion is that branch's value |
-| `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1370 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
+| `fn-web-client-address-without-proxy-unfolds` | `books/web-request.lisp` | 1327 | arm-of-definition: the hypotheses select one IF/COND arm of fn-web-client-address and the conclusion is that arm's value |
 | `fn-wf-ctl-bad-of-error` | `books/wire-family-control.lisp` | 354 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncline-reply-payload-decode and the conclusion is that arm's value |
 | `fn-wg-encode-opener-base64-lines` | `books/wire-grammar.lisp` | 1132 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
 | `fn-wg-encode-opener-bytes` | `books/wire-grammar.lisp` | 1114 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-encode and the conclusion is that arm's value |
@@ -4655,7 +4655,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-wr-car-txt` | `books/web-render.lisp` | 962 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wr-car-url` | `books/web-render.lisp` | 963 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wr-slice-empty` | `books/web-render.lisp` | 360 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value |
-| `fn-wrq-slice-empty` | `books/web-request.lisp` | 952 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value |
+| `fn-wrq-slice-empty` | `books/web-request.lisp` | 909 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-oct-slice-list and the conclusion is that branch's value |
 | `fn-wscan-feed-byte-ordinary` | `books/wire-scan.lisp` | 360 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed-byte and the conclusion is that branch's value |
 | `fn-wsp-events-of-fn-wsp-make` | `books/wire-span.lisp` | 60 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wsp-next-of-fn-wsp-make` | `books/wire-span.lisp` | 63 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
