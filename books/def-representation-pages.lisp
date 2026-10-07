@@ -645,3 +645,30 @@
 (defthm adt-tp-pages-of-wordsp
   (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (adt-tp-seq-lens-ok s a))
            (adt-tp-pages-wordsp (adt-tp-pages-of s a))))
+
+; -----------------------------------------------------------------------------
+; 5. Appending a LIST of rows (a checkpoint's delta is many records).  The
+; words of the delta are one append to the tape, so the dirty set is the same
+; one `adt-tp-dirty' computes, and its bound is the pages the delta's own
+; words take, plus the one page it shares with the tape before it.
+
+(defun adt-tp-extend-dirty (s a xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (adt-tp-dirty (adt-tp-seq-words s a) (adt-tp-seq-words s xs)))
+
+(defun adt-tp-rows-pages (s xs)
+  (declare (xargs :verify-guards nil :guard t))
+  (adt-tp-npages (len (adt-tp-seq-words s xs))))
+
+(defthm adt-tp-pages-of-extend-is-apply-dirty
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (adt-seq-p s xs))
+           (equal (pgs-apply-dirty (adt-tp-pages-of s a) (adt-tp-extend-dirty s a xs))
+                  (adt-tp-pages-of s (append a xs))))
+  :hints (("Goal" :in-theory (disable adt-tp-dirty-is-the-delta)
+           :use ((:instance adt-tp-dirty-is-the-delta
+                            (w (adt-tp-seq-words s a)) (n (adt-tp-seq-words s xs)))))))
+
+(defthm adt-tp-extend-dirty-bound
+  (<= (len (adt-tp-extend-dirty s a xs)) (+ 1 (adt-tp-rows-pages s xs)))
+  :hints (("Goal" :in-theory (disable adt-tp-dirty-bound)
+           :use ((:instance adt-tp-dirty-bound (w (adt-tp-seq-words s a)) (n (adt-tp-seq-words s xs)))))))
