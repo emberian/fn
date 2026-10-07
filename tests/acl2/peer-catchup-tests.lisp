@@ -228,11 +228,13 @@
                                " 262144"))))
 
 (defun cut-csp-state (cursor limit)
-  ; A ready session at CURSOR, the request already sent.
+  ; A ready session at CURSOR, the request already sent: the state
+  ; fn-csp-begin returns (a one-connection window, so the scripted replies
+  ; below answer in order), its session the ready one the auth exchange
+  ; would have produced.
   (let ((session (fn-cu-session (fn-fc-make-state (fn-fwi-initial-state) nil :ready 0 :clear)
                                 (fn-cu-begin cursor *cut-wildmat*) nil :clear)))
-    (list :status session nil nil nil 0 0 nil (fn-cu-cursor-chain cursor)
-          nil nil 0 limit 0 nil nil nil)))
+    (fn-csp-with (car (fn-csp-begin nil cursor nil limit 1)) :session session)))
 
 (defun cut-drive (s effects wire chunk disk replies local journals fuel)
   ; (word state local-octets journals). REPLIES answers each local offer,
@@ -244,7 +246,7 @@
     (let* ((effect (car effects)) (kind (car effect))
            (disk (if (eq kind :spool-write)
                      (append (take (cadr effect) disk) (caddr effect)) disk))
-           (local (if (eq kind :local) (append local (cdr effect)) local))
+           (local (if (eq kind :local) (append local (cddr effect)) local))
            (journals (if (eq kind :journal) (append journals (list (cdr effect))) journals))
            (answer (and (member-eq kind '(:open-local :local))
                         (not (eq (fn-csp-mode s) :local-write))))
@@ -256,7 +258,9 @@
               (:spool-read (list :spool-read :ok (caddr effect)
                                  (take (caddr effect) (nthcdr (cadr effect) disk))))
               ((:open-local :local)
-               (if answer (cons :local (cut-line (car replies))) '(:local-window)))
+               (if answer
+                   (list* :local (cadr effect) (cut-line (car replies)))
+                 (list :local-window (cadr effect))))
               (otherwise nil)))
            (replies (if answer (cdr replies) replies)))
       (if event

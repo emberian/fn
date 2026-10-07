@@ -320,3 +320,26 @@
                ((s (fn-csp-with *csp-v-s* :mode :header)) (j *csp-v-j*)
                 (octets *csp-v-235*) (msgid *csp-v-msgid*))
                :fault "a verdict that is treated as closing the batch while the spool cursor is still reading records")))
+
+; Teeth: fn-csp-window-bounds-in-flight.  The witness is the reachable
+; verdict-owed state of a two-connection window with one record in flight; a
+; tick leaves it, so the bound is attained (one binding of W = 2).
+(defteeth fn-csp-window-bounds-in-flight
+  :claim (((window (equal (fn-csp-window s) w))
+           (table (equal (len (fn-csp-conns s)) w))
+           (slot (< (nfix (fn-csp-slot s)) w)))
+          (let ((s2 (car (fn-csp-step s event))))
+            (and (equal (fn-csp-window s2) w)
+                 (equal (len (fn-csp-conns s2)) w)
+                 (<= (fn-csp-conns-bound (fn-csp-conns s2)) w))))
+  :subject fn-csp-step
+  :witness ((s *csp-v-s*) (w 2) (event '(:tick)))
+  :breaks ((window ((s (fn-csp-with *csp-v-s* :window 3))))
+           (table ((s (fn-csp-with *csp-v-s* :conns (list :free :free :free)))))
+           (slot ((s (fn-csp-with *csp-v-s* :mode :terminator :slot 5)))))
+  :mutations ((nothing-in-flight
+               (:conclusion
+                (let ((s2 (car (fn-csp-step s event))))
+                  (<= (fn-csp-conns-bound (fn-csp-conns s2)) 0)))
+               ((s *csp-v-s*) (w 2) (event '(:tick)))
+               :fault "a bound that admits no record in flight, so the window would not carry the pipelined offers it exists for")))

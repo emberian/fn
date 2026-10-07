@@ -1257,3 +1257,320 @@
                        (fn-csp-conns-set (fn-csp-conns s)
                                          (nfix (fn-csp-slot s))
                                          (cons (fn-csp-msgid s) :verdict))))))))))
+
+; -----------------------------------------------------------------------------
+; The window bounds what is in flight (PRF-1335/1336, K2)
+
+(defun fn-csp-conns-inv (s w)
+  ; K2's invariant: the connection table has exactly W entries, W the
+  ; begin's positive window, and the bound slot (if any) is one of them.
+  (declare (xargs :guard t))
+  (and (posp w)
+       (equal (fn-csp-window s) w)
+       (equal (len (fn-csp-conns s)) w)
+       (< (nfix (fn-csp-slot s)) w)))
+
+(local (defthm fn-csp-conns-set-keeps-len
+  (implies (< (nfix j) (len conns))
+           (equal (len (fn-csp-conns-set conns j c)) (len conns)))
+  :hints (("Goal" :induct (fn-csp-conns-set conns j c)
+                  :in-theory (enable fn-csp-conns-set)))))
+
+(local (defthm fn-csp-free-conn-in-range
+  (implies (fn-csp-free-conn conns k)
+           (and (natp (fn-csp-free-conn conns k))
+                (< (fn-csp-free-conn conns k) (+ (nfix k) (len conns)))))
+  :hints (("Goal" :induct (fn-csp-free-conn conns k)))))
+
+(local (defthm fn-csp-unopened-conn-in-range
+  (implies (fn-csp-unopened-conn conns k)
+           (and (natp (fn-csp-unopened-conn conns k))
+                (< (fn-csp-unopened-conn conns k) (+ (nfix k) (len conns)))))
+  :hints (("Goal" :induct (fn-csp-unopened-conn conns k)))))
+
+(local (defthm fn-pull-at-past-end
+  (implies (<= (len l) (nfix j)) (equal (fn-pull-at (nfix j) l) nil))
+  :hints (("Goal" :induct (fn-pull-at j l)))))
+
+
+(local (defthm fn-csp-free-conn-0-in-range
+  (implies (fn-csp-free-conn conns 0)
+           (< (fn-csp-free-conn conns 0) (len conns)))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :use (:instance fn-csp-free-conn-in-range (k 0))))))
+(local (defthm fn-csp-free-conn-0-natp
+  (implies (fn-csp-free-conn conns 0) (natp (fn-csp-free-conn conns 0)))
+  :hints (("Goal" :use (:instance fn-csp-free-conn-in-range (k 0))))))
+(local (defthm fn-csp-unopened-conn-0-in-range
+  (implies (fn-csp-unopened-conn conns 0)
+           (< (fn-csp-unopened-conn conns 0) (len conns)))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :use (:instance fn-csp-unopened-conn-in-range (k 0))))))
+(local (defthm fn-csp-unopened-conn-0-natp
+  (implies (fn-csp-unopened-conn conns 0) (natp (fn-csp-unopened-conn conns 0)))
+  :hints (("Goal" :use (:instance fn-csp-unopened-conn-in-range (k 0))))))
+(local (defthm fn-csp-try-offer-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-try-offer s)) w))
+  :hints (("Goal" :in-theory (enable fn-csp-try-offer fn-csp-conns-inv)))))
+
+(local (defthm fn-csp-conns-of-len
+  (equal (len (fn-csp-conns-of n c)) (nfix n))
+  :hints (("Goal" :in-theory (enable fn-csp-conns-of)))))
+
+(local (defthm fn-csp-fail-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-fail s reason)) w))
+  :hints (("Goal" :in-theory (enable fn-csp-fail fn-csp-conns-inv fn-csp-session-with-round)))))
+
+(local (defthm fn-csp-session-with-round-keeps-conns-inv
+  (equal (fn-csp-conns-inv (fn-csp-session-with-round s r) w) (fn-csp-conns-inv s w))
+  :hints (("Goal" :in-theory (enable fn-csp-session-with-round fn-csp-conns-inv)))))
+
+(local (defthm fn-csp-batch-finish-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-batch-finish s)) w))
+  :hints (("Goal" :in-theory (enable fn-csp-batch-finish fn-csp-conns-inv)))))
+
+(local (defthm fn-csp-record-done-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-record-done s)) w))
+  :hints (("Goal" :in-theory (e/d (fn-csp-record-done fn-csp-conns-inv) (fn-csp-batch-finish))
+                  :use ((:instance fn-csp-batch-finish-keeps-conns-inv
+                          (s (fn-csp-with s :slot nil :skip nil :framer nil :msgid nil))))))))
+
+(local (defthm fn-csp-read-replay-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-read-replay s)) w))
+  :hints (("Goal" :in-theory (e/d (fn-csp-read-replay fn-csp-conns-inv)
+                                  (fn-csp-record-done fn-csp-fail))
+                  :use (fn-csp-record-done-keeps-conns-inv
+                        (:instance fn-csp-fail-keeps-conns-inv (reason :short-spool)))))))
+
+(local (defthm fn-csp-local-window-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-local-window s j)) w))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-window) (fn-csp-fail))
+                  :use ((:instance fn-csp-fail-keeps-conns-inv (reason :local-refused)))))))
+
+(local (defthm fn-csp-conns-inv-of-state
+  (equal (fn-csp-conns-inv (list a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19) w)
+         (and (posp w) (equal a17 w) (equal (len a18) w)
+              (< (nfix a19) w)))
+  :hints (("Goal" :in-theory (enable fn-csp-conns-inv)))))
+
+(local (defthm fn-csp-conns-inv-of-symbol
+  (implies (syntaxp (symbolp s))
+           (equal (fn-csp-conns-inv s w)
+                  (and (posp w) (equal (fn-pull-at 17 s) w) (equal (len (fn-pull-at 18 s)) w)
+                       (< (nfix (fn-pull-at 19 s)) w))))
+  :hints (("Goal" :in-theory (enable fn-csp-conns-inv)))))
+
+(local (defthm fn-csp-conns-inv-facts
+  (implies (fn-csp-conns-inv s w)
+           (and (posp w) (equal (fn-pull-at 17 s) w) (equal (len (fn-pull-at 18 s)) w)
+                (consp (fn-pull-at 18 s))
+                (< (nfix (fn-pull-at 19 s)) w)))
+  :hints (("Goal" :in-theory (enable fn-csp-conns-inv-of-symbol)))
+  :rule-classes :forward-chaining))
+
+(local (defthm fn-csp-fail-keeps-conns-inv-f
+  (implies (and (posp w) (equal (fn-pull-at 17 s) w))
+           (fn-csp-conns-inv (car (fn-csp-fail s reason)) w))
+  :hints (("Goal" :in-theory (enable fn-csp-fail fn-csp-conns-inv fn-csp-session-with-round)))))
+
+; The leaf lemmas again, over the invariant's three facts (so they rewrite on a
+; rebuilt state, which is a list of fields, not a variable).
+(local (defthm fn-csp-len-cdr-of-consp
+  (implies (and (consp x) (equal (len x) w)) (equal (+ 1 (len (cdr x))) w))))
+
+(local (defthm fn-csp-nfix-below
+  (implies (and (< x w) (< 0 w)) (< (nfix x) w))
+  :hints (("Goal" :in-theory (enable nfix)))))
+
+(local (in-theory (disable fn-csp-conns-inv fn-csp-conns-inv-of-symbol)))
+
+(local (defthm fn-csp-session-with-round-pull-at-17
+  (equal (fn-pull-at 17 (fn-csp-session-with-round s r)) (fn-pull-at 17 s))
+  :hints (("Goal" :in-theory (enable fn-csp-session-with-round)))))
+(local (defthm fn-csp-session-with-round-pull-at-18
+  (equal (fn-pull-at 18 (fn-csp-session-with-round s r)) (fn-pull-at 18 s))
+  :hints (("Goal" :in-theory (enable fn-csp-session-with-round)))))
+(local (defthm fn-csp-session-with-round-pull-at-19
+  (equal (fn-pull-at 19 (fn-csp-session-with-round s r)) (fn-pull-at 19 s))
+  :hints (("Goal" :in-theory (enable fn-csp-session-with-round)))))
+
+(local (defthm fn-csp-local-opened-keeps-conns-inv
+  (implies (and (fn-csp-conns-inv s w) (equal conns (fn-csp-conns s))
+                (< (nfix j) (len conns)))
+           (fn-csp-conns-inv (car (fn-csp-local-opened s j code conns)) w))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-opened fn-csp-conns-inv-of-symbol) (fn-csp-fail fn-csp-record-done fn-csp-batch-finish fn-csp-session-with-round fn-cu-count))
+                  :use ((:instance fn-csp-fail-keeps-conns-inv (reason :local-refused)))))))
+
+(local (defthm fn-csp-local-await335-keeps-conns-inv
+  (implies (and (fn-csp-conns-inv s w) (equal conns (fn-csp-conns s))
+                (< (nfix j) (len conns)))
+           (fn-csp-conns-inv (car (fn-csp-local-await335 s j code c conns round)) w))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-await335 fn-csp-conns-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-record-done fn-csp-batch-finish
+                                   fn-csp-session-with-round fn-cu-count))
+                  :use ((:instance fn-csp-fail-keeps-conns-inv (reason :local-deferred))
+                        (:instance fn-csp-fail-keeps-conns-inv (reason :local-refused))
+                        (:instance fn-csp-record-done-keeps-conns-inv
+                          (s (fn-csp-with (fn-csp-session-with-round
+                                            s (fn-cu-with round :counts
+                                                          (fn-cu-count (fn-cu-r-counts round) 1)))
+                                          :conns (fn-csp-conns-set conns j :free) :slot nil))))))))
+
+(local (defthm fn-csp-local-verdict-keeps-conns-inv
+  (implies (and (fn-csp-conns-inv s w) (equal conns (fn-csp-conns s))
+                (< (nfix j) (len conns)))
+           (fn-csp-conns-inv (car (fn-csp-local-verdict s j code conns round)) w))
+  :hints (("Goal" :in-theory (e/d (fn-csp-local-verdict fn-csp-conns-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-record-done fn-csp-batch-finish
+                                   fn-csp-session-with-round fn-cu-count))
+                  :use ((:instance fn-csp-fail-keeps-conns-inv (reason :local-deferred))
+                        (:instance fn-csp-fail-keeps-conns-inv (reason :local-refused))
+                        (:instance fn-csp-batch-finish-keeps-conns-inv
+                          (s (fn-csp-with (fn-csp-session-with-round
+                                            s (fn-cu-with round :counts
+                                                          (fn-cu-count (fn-cu-r-counts round)
+                                                                       (if (equal code 235) 0 2))))
+                                          :conns (fn-csp-conns-set conns j :free)))))))))
+
+(local (defthm fn-csp-consp-not-len-0
+  (implies (consp x) (not (equal (len x) 0)))))
+
+(local (defthm fn-pull-at-past-end-natp
+  (implies (and (natp j) (<= (len l) j)) (equal (fn-pull-at j l) nil))
+  :hints (("Goal" :use fn-pull-at-past-end))))
+
+(local (defthm fn-csp-local-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w)
+           (fn-csp-conns-inv (car (fn-csp-local s j octets)) w))
+  :hints (("Goal"
+           :in-theory (e/d (fn-csp-local fn-csp-conn)
+                           (fn-csp-fail fn-csp-record-done fn-csp-batch-finish
+                            fn-csp-local-opened fn-csp-local-await335 fn-csp-local-verdict))
+           :cases ((< (nfix j) (len (fn-csp-conns s))))
+           :use ((:instance fn-csp-fail-keeps-conns-inv (reason :local-refused))
+                 (:instance fn-csp-local-opened-keeps-conns-inv
+                   (code (fn-pull-local-code octets)) (conns (fn-csp-conns s)))
+                 (:instance fn-csp-local-await335-keeps-conns-inv
+                   (code (fn-pull-local-code octets)) (conns (fn-csp-conns s))
+                   (c (fn-csp-conn j s)) (round (fn-cu-s-round (fn-csp-session s))))
+                 (:instance fn-csp-local-verdict-keeps-conns-inv
+                   (code (fn-pull-local-code octets)) (conns (fn-csp-conns s))
+                   (round (fn-cu-s-round (fn-csp-session s)))))))))
+
+(local (defthm fn-csp-write-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-write s emission resume)) w))
+  :hints (("Goal" :in-theory (e/d (fn-csp-write fn-csp-conns-inv-of-symbol) (fn-csp-fail fn-csp-session-with-round))
+                  :use ((:instance fn-csp-fail-keeps-conns-inv (reason :spool-quota)))))))
+
+(local (defthm fn-csp-hash-effect-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-hash-effect s)) w))
+  :hints (("Goal" :in-theory (e/d (fn-csp-hash-effect fn-csp-conns-inv-of-symbol) (fn-csp-fail))
+                  :use ((:instance fn-csp-fail-keeps-conns-inv (reason :spool-hash)))))))
+
+(local (defthm fn-csp-write-keeps-conns-inv-f
+  (implies (and (posp w) (equal (fn-pull-at 17 s) w) (equal (len (fn-pull-at 18 s)) w)
+                (< (nfix (fn-pull-at 19 s)) w))
+           (fn-csp-conns-inv (car (fn-csp-write s emission resume)) w))
+  :hints (("Goal" :use (fn-csp-write-keeps-conns-inv
+                        (:instance fn-csp-conns-inv-of-symbol (s s)))
+                  :in-theory (theory 'minimal-theory)))))
+(local (defthm fn-csp-try-offer-keeps-conns-inv-f
+  (implies (and (posp w) (equal (fn-pull-at 17 s) w) (equal (len (fn-pull-at 18 s)) w)
+                (< (nfix (fn-pull-at 19 s)) w))
+           (fn-csp-conns-inv (car (fn-csp-try-offer s)) w))
+  :hints (("Goal" :use (fn-csp-try-offer-keeps-conns-inv
+                        (:instance fn-csp-conns-inv-of-symbol (s s)))
+                  :in-theory (theory 'minimal-theory)))))
+(local (defthm fn-csp-hash-effect-keeps-conns-inv-f
+  (implies (and (posp w) (equal (fn-pull-at 17 s) w) (equal (len (fn-pull-at 18 s)) w)
+                (< (nfix (fn-pull-at 19 s)) w))
+           (fn-csp-conns-inv (car (fn-csp-hash-effect s)) w))
+  :hints (("Goal" :use (fn-csp-hash-effect-keeps-conns-inv
+                        (:instance fn-csp-conns-inv-of-symbol (s s)))
+                  :in-theory (theory 'minimal-theory)))))
+(local (defthm fn-csp-read-replay-keeps-conns-inv-f
+  (implies (and (posp w) (equal (fn-pull-at 17 s) w) (equal (len (fn-pull-at 18 s)) w)
+                (< (nfix (fn-pull-at 19 s)) w))
+           (fn-csp-conns-inv (car (fn-csp-read-replay s)) w))
+  :hints (("Goal" :use (fn-csp-read-replay-keeps-conns-inv
+                        (:instance fn-csp-conns-inv-of-symbol (s s)))
+                  :in-theory (theory 'minimal-theory)))))
+(local (defthm fn-csp-record-done-keeps-conns-inv-f
+  (implies (and (posp w) (equal (fn-pull-at 17 s) w) (equal (len (fn-pull-at 18 s)) w)
+                (< (nfix (fn-pull-at 19 s)) w))
+           (fn-csp-conns-inv (car (fn-csp-record-done s)) w))
+  :hints (("Goal" :use (fn-csp-record-done-keeps-conns-inv
+                        (:instance fn-csp-conns-inv-of-symbol (s s)))
+                  :in-theory (theory 'minimal-theory)))))
+
+(local (defthm fn-csp-after-header-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w)
+           (fn-csp-conns-inv (car (fn-csp-after-header s line rest used)) w))
+  :hints (("Goal" :do-not '(generalize eliminate-destructors)
+                  :in-theory (e/d (fn-csp-after-header fn-csp-conns-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-write fn-csp-try-offer fn-csp-session-with-round
+                                   fn-cu-parse-status fn-cu-parse-header fn-cu-batch-end
+                                   fn-cu-batch-next fn-cu-batch-morep fn-cu-batch-claim
+                                   fn-cu-u64-hex fn-record-string-octets
+                                   fn-pull-at-past-end-natp fn-pull-at-past-end nfix))))))
+
+(local (defthm fn-csp-after-header-keeps-conns-inv-f
+  (implies (and (posp w) (equal (fn-pull-at 17 s) w) (equal (len (fn-pull-at 18 s)) w)
+                (< (nfix (fn-pull-at 19 s)) w))
+           (fn-csp-conns-inv (car (fn-csp-after-header s line rest used)) w))
+  :hints (("Goal" :use (fn-csp-after-header-keeps-conns-inv
+                        (:instance fn-csp-conns-inv-of-symbol (s s)))
+                  :in-theory (theory 'minimal-theory)))))
+
+(local (defthm fn-csp-next-keeps-conns-inv
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-next s)) w))
+  :hints (("Goal" :do-not '(generalize eliminate-destructors)
+                  :in-theory (e/d (fn-csp-next fn-csp-conns-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-write fn-csp-after-header
+                                   fn-csp-read-replay fn-csp-hash-effect fn-csp-header-window
+                                   fn-csp-framer-window fn-csp-framer-window-accounts-for-every-octet
+                                   fn-csp-record-done fn-csp-try-offer fn-csp-session-with-round
+                                   fn-pull-at-past-end-natp fn-pull-at-past-end nfix
+                                   (:rewrite fn-csp-conns-set-is-update-nth)))))))
+
+(local (defthm fn-csp-step-keeps-conns-inv-lemma
+  (implies (fn-csp-conns-inv s w) (fn-csp-conns-inv (car (fn-csp-step s event)) w))
+  :hints (("Goal" :do-not '(generalize eliminate-destructors)
+                  :in-theory (e/d (fn-csp-step fn-csp-conns-inv-of-symbol)
+                                  (fn-csp-fail fn-csp-next fn-csp-local fn-csp-local-window
+                                   fn-cu-session-step-pair fn-cu-session-readyp
+                                   fn-blake3-stobj fn-cu-chainp fn-pull-event-octets fn-csp-session
+                                   fn-csp-session-with-round nfix
+                                   fn-pull-at-past-end-natp fn-pull-at-past-end))))))
+
+(defun fn-csp-conns-bound (conns)
+  ; The records in flight: the connections holding a (msgid . phase) binding.
+  (declare (xargs :guard t))
+  (if (atom conns) 0
+    (+ (if (consp (car conns)) 1 0) (fn-csp-conns-bound (cdr conns)))))
+
+(local (defthm fn-csp-conns-bound-at-most-len
+  (<= (fn-csp-conns-bound conns) (len conns))
+  :rule-classes :linear))
+
+(defthm fn-csp-window-bounds-in-flight
+  ; KEYSTONE (PRF-1335/1336, the window bounds what is in flight).  Whatever
+  ; arrives, the controller keeps its connection table at exactly W entries
+  ; -- W the begin's window, the operator's log-batch-records -- so at most W
+  ; records are in flight (a binding is one Message-ID on one connection),
+  ; the window never widens, and no connection index outside the table is
+  ; ever bound.  Every update of the table is at an index drawn from the
+  ; table itself (the lowest :free or :unopened entry, the filling slot, or
+  ; the conn a reply names that holds a binding), or resets it to W fresh
+  ; entries on failure.  Inductive over every step event.
+  (implies (and (equal (fn-csp-window s) w)
+                (equal (len (fn-csp-conns s)) w)
+                (< (nfix (fn-csp-slot s)) w))
+           (let ((s2 (car (fn-csp-step s event))))
+             (and (equal (fn-csp-window s2) w)
+                  (equal (len (fn-csp-conns s2)) w)
+                  (<= (fn-csp-conns-bound (fn-csp-conns s2)) w))))
+  :hints (("Goal" :use ((:instance fn-csp-step-keeps-conns-inv-lemma)
+                        (:instance fn-csp-conns-bound-at-most-len
+                                   (conns (fn-csp-conns (car (fn-csp-step s event))))))
+                  :in-theory (e/d (fn-csp-conns-inv) (fn-csp-step fn-csp-conns-bound fn-csp-conns-bound-at-most-len)))))
