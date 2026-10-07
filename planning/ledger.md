@@ -11,8 +11,8 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 3087 |
-| Certification roots in the Makefile | 2600 |
-| Books inside the root closure | 2931 |
+| Certification roots in the Makefile | 2601 |
+| Books inside the root closure | 2932 |
 | `defthm` and `defthmd` events | 41736 |
 | `defun` events | 26365 |
 | Functions with verified guards | 4171 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 312 |
 | Include-hygiene warnings | 3953 |
-| Host-names warnings | 3634 |
+| Host-names warnings | 3633 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -2269,7 +2269,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 48 | 10 | 0 |
 | `tests/acl2/consumer-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 71 | 1 | 0 |
 | `tests/acl2/consumer-remote-buffer-tests.lisp` | root | 1 | 2 | 0/0/2/0 | 2 | 0 | 0 |
-| `tests/acl2/consumer-remote-client-contract-tests.lisp` | - | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
+| `tests/acl2/consumer-remote-client-contract-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/consumer-remote-collection-state-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `tests/acl2/consumer-remote-collection-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-remote-completion-tests.lisp` | root | 0 | 15 | 0/12/3/0 | 19 | 0 | 0 |

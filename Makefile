@@ -2490,6 +2490,7 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/allocation-turn-body-authority-tests \
     tests/acl2/allocation-turn-slots-tests \
     tests/acl2/allocation-turn-source-cost-tests \
+    tests/acl2/consumer-remote-client-contract-tests \
     books/page-read-counter-transaction \
     books/page-read-issue-source-cost \
     books/recovery-prs-install \

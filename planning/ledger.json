@@ -2480,6 +2480,7 @@
     "tests/acl2/allocation-turn-body-authority-tests",
     "tests/acl2/allocation-turn-slots-tests",
     "tests/acl2/allocation-turn-source-cost-tests",
+    "tests/acl2/consumer-remote-client-contract-tests",
     "books/page-read-counter-transaction",
     "books/page-read-issue-source-cost",
     "books/recovery-prs-install",
@@ -2605,8 +2606,8 @@
   ],
   "totals": {
     "books": 3087,
-    "books_in_root_closure": 2931,
-    "roots": 2600,
+    "books_in_root_closure": 2932,
+    "roots": 2601,
     "theorems": 41736,
     "functions": 26365,
     "assert_events": 28286,
@@ -2624,7 +2625,7 @@
     "enabled_projection_warnings": 78,
     "teeth_form_warnings": 312,
     "include_hygiene_warnings": 3953,
-    "host_names_warnings": 3634,
+    "host_names_warnings": 3633,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -66495,8 +66496,8 @@
     },
     {
       "book": "tests/acl2/consumer-remote-client-contract-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 2,
       "guards": {
@@ -128347,7 +128348,7 @@
       },
       {
         "book": "tests/acl2/consumer-remote-client-contract-tests.lisp",
-        "line": 6,
+        "line": 5,
         "include": "../../books/records-attach",
         "included": "books/records-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -140382,182 +140383,175 @@
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-owner-store",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-sn-consumer",
         "source": "books/store-node.lisp",
         "reason": "defined in books/store-node.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-sf-records-count",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 27,
+        "line": 28,
         "name": "fn-owner-config",
         "source": "books/owner-config-state.lisp",
         "reason": "defined in books/owner-config-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 27,
+        "line": 28,
         "name": "fn-own-config",
         "source": "books/owner.lisp",
         "reason": "defined in books/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 27,
+        "line": 28,
         "name": "fn-owner-core",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 102,
+        "line": 103,
         "name": "fn-owner-store-profile",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 102,
+        "line": 103,
         "name": "fn-store-profile-max-consumers",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 152,
+        "line": 153,
         "name": "fn-owner-profile-carry",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 152,
+        "line": 153,
         "name": "fn-bs-pf",
         "source": "books/byte-store-frame.lisp",
         "reason": "defined in books/byte-store-frame.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 152,
+        "line": 153,
         "name": "*fn-bs-pf-max-record-octets*",
         "source": "books/byte-store-frame.lisp",
         "reason": "defined in books/byte-store-frame.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-host.lisp",
-        "line": 186,
+        "line": 187,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-owner-history-current-view",
         "source": "host/history-owner-view-host.lisp",
         "reason": "defined in host/history-owner-view-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-owner-store",
         "source": "books/owner-state-accessors.lisp",
         "reason": "defined in books/owner-state-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-sn-consumer",
         "source": "books/store-node.lisp",
         "reason": "defined in books/store-node.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-sf-records-count",
         "source": "books/store-files.lisp",
         "reason": "defined in books/store-files.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-sn-files",
         "source": "books/owner-report-owner-accessors.lisp",
         "reason": "defined in books/owner-report-owner-accessors.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-owner-remote-query-record-ceiling",
         "source": "host/consumer-remote-host.lisp",
         "reason": "defined in host/consumer-remote-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-owner-account-root-state",
         "source": "books/consumer-account-state.lisp",
         "reason": "defined in books/consumer-account-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 13,
+        "line": 14,
         "name": "fn-owner-account-carries-read",
         "source": "books/consumer-account-carries-state.lisp",
         "reason": "defined in books/consumer-account-carries-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 48,
+        "line": 49,
         "name": "fn-crp-begin",
         "source": "books/consumer-remote-query-profile.lisp",
         "reason": "defined in books/consumer-remote-query-profile.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 80,
-        "name": "fn-owner-remote-scan-step-internal",
-        "source": "books/consumer-remote-source-scan.lisp",
-        "reason": "defined in books/consumer-remote-source-scan.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/consumer-remote-reader-host.lisp",
-        "line": 80,
+        "line": 81,
         "name": "fn-crp-tick",
         "source": "books/consumer-remote-query-profile.lisp",
         "reason": "defined in books/consumer-remote-query-profile.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/consumer-remote-reader-host.lisp",
-        "line": 80,
+        "line": 81,
         "name": "fn-crp-finish",
         "source": "books/consumer-remote-query-profile.lisp",
         "reason": "defined in books/consumer-remote-query-profile.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
