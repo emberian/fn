@@ -35,7 +35,9 @@
 
 (defconst *fn-profile-limits*
   '((:tls-limit 65536 "symbols"
-     "SBCL's thread-local storage per thread (--tls-limit): the served world passed SBCL's default 16384 at load, so images build and run at this")
+     "SBCL's thread-local storage per thread (--tls-limit) the image BUILD runs at: the served world passed SBCL's default 16384 at load (batch AV), so images build at this")
+    (:run-tls-limit 16384 "symbols"
+     "SBCL's thread-local storage per thread (--tls-limit) the saved launcher RUNS at: every thread's storage is resident (512 KiB at 65536), and the served world starts and serves at 16384 (MEM-001, build/coordinator/MEMORY-20261006.md row 5)")
     (:stack-kib 1024 "KiB"
      "every thread's control stack (--control-stack-size), whatever the store profile")
     (:default-stack-kib 2048 "KiB"
