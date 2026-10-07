@@ -12,14 +12,14 @@ stale. Counts describe artifacts, not coverage; see
 | --- | --- |
 | Books read | 3061 |
 | Certification roots in the Makefile | 2566 |
-| Books inside the root closure | 2885 |
-| `defthm` and `defthmd` events | 40639 |
-| `defun` events | 26027 |
+| Books inside the root closure | 2896 |
+| `defthm` and `defthmd` events | 40647 |
+| `defun` events | 26026 |
 | Functions with verified guards | 4054 |
 | Functions declared `:verify-guards nil` and never verified | 3377 |
 | Functions left at the default with an explicit guard | 14416 |
-| Functions left at the default with no guard | 4180 |
-| `assert-event` checks | 28039 |
+| Functions left at the default with no guard | 4179 |
+| `assert-event` checks | 28041 |
 | `must-fail` checks | 2718 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 423 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 297 |
-| Include-hygiene warnings | 4060 |
-| Host-names warnings | 3579 |
+| Include-hygiene warnings | 4102 |
+| Host-names warnings | 3648 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -177,7 +177,7 @@ that `make certify` requests.
 | `books/auth-secret.lisp` | root | 21 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/blake3-stobj.lisp` | root | 53 | 15 | 2/2/8/3 | 0 | 0 | 6 |
 | `books/blake3-string.lisp` | root | 60 | 12 | 0/1/9/2 | 0 | 0 | 6 |
-| `books/blake3-tree.lisp` | root | 110 | 24 | 0/10/14/0 | 0 | 0 | 5 |
+| `books/blake3-tree.lisp` | root | 118 | 24 | 0/10/14/0 | 0 | 0 | 5 |
 | `books/blake3.lisp` | root | 42 | 44 | 8/0/36/0 | 0 | 0 | 0 |
 | `books/body-chunks-span.lisp` | closure | 14 | 5 | 2/0/3/0 | 0 | 0 | 1 |
 | `books/body-chunks.lisp` | closure | 107 | 37 | 2/0/32/3 | 0 | 0 | 1 |
@@ -922,7 +922,7 @@ that `make certify` requests.
 | `books/index-backing-writer.lisp` | root | 0 | 6 | 2/0/4/0 | 0 | 0 | 0 |
 | `books/index-connection-holder.lisp` | closure | 1 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/index-connection-issuer.lisp` | closure | 1 | 10 | 0/0/10/0 | 0 | 0 | 0 |
-| `books/index-connection-repin-prepare.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/index-connection-repin-prepare.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-connection-repin.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/index-connection-rx-repin.lisp` | root | 0 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/index-generation-issuer.lisp` | root | 1 | 4 | 2/0/2/0 | 0 | 0 | 0 |
@@ -934,19 +934,19 @@ that `make certify` requests.
 | `books/index-query-resources.lisp` | closure | 11 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/index-query-slot-issuer.lisp` | root | 0 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/index-range-controller.lisp` | root | 4 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/index-range-render-custody.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/index-range-render-custody.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-reader-actor.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/index-reader-receipt-phase.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-reader-receiver-issuer.lisp` | root | 0 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/index-reader-render-establishment.lisp` | closure | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/index-reader-render-ready.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/index-reader-render-registry.lisp` | - | 0 | 2 | 2/0/0/0 | 0 | 0 | 0 |
-| `books/index-reader-render-slot.lisp` | - | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/index-reader-render-ready.lisp` | closure | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/index-reader-render-registry.lisp` | closure | 0 | 2 | 2/0/0/0 | 0 | 0 | 0 |
+| `books/index-reader-render-slot.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/index-reader-request-shape.lisp` | closure | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/index-reader-request.lisp` | root | 0 | 28 | 4/0/24/0 | 0 | 0 | 0 |
 | `books/index-reader-response-issuer.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/index-reader-rx-source-completion.lisp` | root | 0 | 1 | 1/0/0/0 | 0 | 0 | 0 |
-| `books/index-reader-step.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 1 |
+| `books/index-reader-step.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/index-writer-operation-demand.lisp` | root | 16 | 20 | 9/0/11/0 | 0 | 0 | 1 |
 | `books/index-writer-source-fence.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-writer-ticket.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -1337,7 +1337,7 @@ that `make certify` requests.
 | `books/payload-lz-replay.lisp` | root | 14 | 8 | 2/0/6/0 | 0 | 0 | 1 |
 | `books/payload-lz-scalar-realizer.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/payload-lz-value.lisp` | root | 8 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/payload-view-arena.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/payload-view-arena.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/payload-view-lease.lisp` | closure | 12 | 10 | 0/0/10/0 | 0 | 0 | 2 |
 | `books/payload-window-profile-width.lisp` | root | 13 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/payload-window-register-width.lisp` | root | 62 | 4 | 0/0/3/1 | 0 | 0 | 0 |
@@ -1470,7 +1470,7 @@ that `make certify` requests.
 | `books/reader-output-storage.lisp` | closure | 4 | 9 | 0/1/8/0 | 0 | 0 | 0 |
 | `books/reader-response-disposition.lisp` | root | 1 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/receive-octet-buffer.lisp` | closure | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/receiver-capacity-current.lisp` | - | 3 | 7 | 7/0/0/0 | 0 | 0 | 0 |
+| `books/receiver-capacity-current.lisp` | closure | 3 | 7 | 7/0/0/0 | 0 | 0 | 0 |
 | `books/receiver-custody-row.lisp` | root | 1 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/receiver-held-ticket.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/receiver-index-custody.lisp` | root | 1 | 3 | 0/0/2/1 | 0 | 0 | 0 |
@@ -1480,7 +1480,7 @@ that `make certify` requests.
 | `books/receiver-query-binding.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/receiver-query-custody-producer.lisp` | root | 2 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/receiver-query-freshness.lisp` | root | 1 | 4 | 3/0/1/0 | 0 | 0 | 0 |
-| `books/receiver-render-custody.lisp` | - | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/receiver-render-custody.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/receiver-turn-controller.lisp` | root | 25 | 37 | 0/0/8/29 | 0 | 0 | 1 |
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-chunked-seal.lisp` | root | 17 | 4 | 0/4/0/0 | 0 | 0 | 1 |
@@ -1508,7 +1508,7 @@ that `make certify` requests.
 | `books/recovery-initial-operation-lineage.lisp` | closure | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-open-origin.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-page-file-controller.lisp` | - | 0 | 4 | 1/3/0/0 | 0 | 0 | 0 |
-| `books/recovery-payload-view.lisp` | - | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/recovery-payload-view.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/recovery-profile-buffer.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-profile-envelope.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/recovery-prs-install.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1640,7 +1640,7 @@ that `make certify` requests.
 | `books/served-tls-prefix.lisp` | root | 47 | 11 | 1/3/7/0 | 0 | 0 | 2 |
 | `books/served.lisp` | root | 171 | 89 | 7/5/77/0 | 0 | 0 | 54 |
 | `books/sha256.lisp` | root | 30 | 31 | 2/0/29/0 | 0 | 0 | 0 |
-| `books/snapshot-capture-lease.lisp` | - | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/snapshot-capture-lease.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/snapshot-decode-remap.lisp` | root | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/snapshot-held-remap.lisp` | root | 7 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/snapshot-initial-custody.lisp` | - | 2 | 12 | 0/0/12/0 | 0 | 0 | 0 |
@@ -1972,7 +1972,7 @@ that `make certify` requests.
 | `tests/acl2/blake3-stobj-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 38 | 0 | 0 |
 | `tests/acl2/blake3-string-tests.lisp` | root | 2 | 17 | 0/0/17/0 | 72 | 0 | 0 |
 | `tests/acl2/blake3-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 35 | 0 | 0 |
-| `tests/acl2/blake3-tree-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 16 | 0 | 0 |
+| `tests/acl2/blake3-tree-tests.lisp` | root | 0 | 2 | 0/0/1/1 | 18 | 0 | 0 |
 | `tests/acl2/body-chunks-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 20 | 0 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 27 | 0 | 0 |
 | `tests/acl2/bp-app-handoff-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 38 | 8 | 0 |
