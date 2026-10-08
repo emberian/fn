@@ -602,12 +602,24 @@ def _ascii_gate(t: Train) -> int:
     return 1 if hits else 0
 
 
+def _launches_native_image(path: Path) -> bool:
+    """A suite that imports tests/native_harness starts the built image
+    (tests/test_bp_node_native.py and the other BP suites are named
+    *_native.py, not test_native_*; train 54 ran one and it found no image)."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return re.search(r"^\s*(from\s+tests\.native_harness\s+import|from\s+native_harness\s+import|"
+                     r"import\s+(tests\.)?native_harness\b)", text, re.M) is not None
+
+
 def unit_tests(root: Path, changed: list[str]) -> list[str]:
     """UNIT_TESTS, then the tests of what the train changed, in order, once each."""
     tests = list(UNIT_TESTS)
     for path in changed:
         p = Path(path)
-        if p.name.startswith("test_native_"):
+        if p.name.startswith("test_native_") or _launches_native_image(root / p):
             # needs a native image (build/fn-host-*); N's native gate on the
             # box is its gate, not this tree
             continue
