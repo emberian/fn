@@ -505,6 +505,39 @@
                            (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))
                            file))))
 
+(defthm pck-payload-true-listp
+  (true-listp (fn-pck-payload w))
+  :hints (("Goal" :in-theory (enable fn-pck-payload)
+           :use pck-record-with-payload-facts)))
+
+(defthm pck-resolve-answer-bound
+  ; An answer that is a list is a resolution: the ref lies inside the file.
+  (implies (and (true-listp ans) (equal (fn-cpl-resolve ref file) ans))
+           (and (fn-cpl-refp ref) (true-listp file)
+                (<= (+ (car ref) (cadr ref)) (len file))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cpl-resolve))))
+
+(defthm pck-resolve-of-tail
+  (implies (and (true-listp file) (true-listp tail)
+                (equal (fn-cpl-resolve (fn-cpl-ref b (len (fn-pck-payload w))) file)
+                       (fn-pck-payload w)))
+           (equal (fn-cpl-resolve (fn-cpl-ref b (len (fn-pck-payload w))) (append file tail))
+                  (fn-pck-payload w)))
+  :hints (("Goal" :in-theory (disable fn-cpl-resolve-ignores-a-tail)
+           :use ((:instance pck-resolve-answer-bound (ans (fn-pck-payload w))
+                            (ref (fn-cpl-ref b (len (fn-pck-payload w)))))
+                 (:instance fn-cpl-resolve-ignores-a-tail
+                            (ref (fn-cpl-ref b (len (fn-pck-payload w)))))))))
+
+(defthm pck-resolvesp-of-tail
+  ; The uncommitted tail of the payload file (a delta partly appended) changes
+  ; no committed ref.
+  (implies (and (true-listp file) (true-listp tail) (fn-pck-resolvesp recs base file))
+           (fn-pck-resolvesp recs base (append file tail)))
+  :hints (("Goal" :induct (fn-pck-plen recs base)
+           :in-theory (e/d (fn-pck-resolvesp) (fn-pck-payload fn-cpl-resolve fn-cpl-ref)))))
+
 (defthm pck-dec-row-of-enc-row
   (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp off)
                 (equal (fn-cpl-resolve (fn-cpl-ref off (len (fn-pck-payload w))) file)
@@ -753,6 +786,7 @@
 (defthm pck-open-view-after-commit
   (implies (and (true-listp prefix) (true-listp delta)
                 (fn-pck-sccb-listp (append prefix delta))
+                (fn-pck-plen-okp (append prefix delta))
                 (fn-pck-disk-holds disk r mode configs prefix)
                 (pgs-alloc-inv alloc disk))
            (equal (pgs-view (pgs-open (pgs-commit disk r mode (fn-pck-dirty configs prefix delta) alloc) r mode))
@@ -778,10 +812,11 @@
   (implies (and (true-listp prefix) (true-listp delta) (true-listp suffix)
                 (fn-pck-recordsp configs (append prefix delta))
                 (fn-pck-root-fitsp configs (append prefix delta))
+                (fn-pck-resolvesp (append prefix delta) 0 file)
                 (fn-pck-disk-holds disk r mode configs prefix)
                 (pgs-alloc-inv alloc disk))
            (equal (fn-pck-open (pgs-commit disk r mode (fn-pck-dirty configs prefix delta) alloc)
-                               r mode configs frontier suffix max-conns)
+                               r mode file configs frontier suffix max-conns)
                   (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories (theory 'minimal-theory)
@@ -793,6 +828,7 @@
                             (prefix (append prefix delta)))
                  (:instance pck-sccb-listp-of-append (a prefix) (b delta))
                  (:instance pck-recordsp-sccb (recs (append prefix delta)))
+                 (:instance pck-recordsp-parts (recs (append prefix delta)))
                  (:instance pck-true-listp-append (a prefix) (b delta))))))
 
 ; -----------------------------------------------------------------------------
@@ -847,10 +883,11 @@
   ; checkpoint's S on is REST.
   (implies (and (true-listp recs)
                 (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                (fn-pck-resolvesp recs 0 file)
                 (fn-pck-log-retains log (len recs))
                 (equal (nthcdr (car log) (append recs rest)) (cdr log))
                 (equal v (list tx (fn-pck-pages configs recs))))
-           (equal (fn-pck-recover-view v log configs frontier max-conns)
+           (equal (fn-pck-recover-view v file log configs frontier max-conns)
                   (fn-ock-recover-extended (fn-sco-extend (fn-sco-capture configs recs) configs rest)
                                            configs frontier max-conns)))
   :hints (("Goal" :do-not-induct t
@@ -887,9 +924,12 @@
                 (fn-pck-root-fitsp configs prefix)
                 (fn-pck-log-retains log (len prefix))
                 (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log))
+                (fn-pck-resolvesp prefix 0 file)
+                (implies (equal v (list t1 (fn-pck-pages configs (append prefix delta))))
+                         (fn-pck-resolvesp (append prefix delta) 0 file))
                 (member-equal v (list (list t1 (fn-pck-pages configs (append prefix delta)))
                                       (list t0 (fn-pck-pages configs prefix)))))
-           (equal (fn-pck-recover-view v log configs frontier max-conns)
+           (equal (fn-pck-recover-view v file log configs frontier max-conns)
                   (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (member-equal fn-pck-log-retains)
@@ -908,7 +948,13 @@
 
 ; PCK-CRASH
 (defthm fn-pck-crash-recovers-from-old-or-new
-  (let ((p (pgs-plan-commit disk r mode (fn-pck-dirty configs prefix delta) alloc)))
+  ; FILE is the payload file at the crash: the old payloads are durable in it
+  ; (they were fsynced by the earlier publication), and when the crashed root
+  ; is the NEW one its payloads are in it too (the publication fsyncs the
+  ; payload file before the root commits).  Octets beyond the committed length
+  ; (a partly appended delta) are in FILE and are never referenced.
+  (let* ((p (pgs-plan-commit disk r mode (fn-pck-dirty configs prefix delta) alloc))
+         (v (pgs-view (pgs-open (pgs-crash disk r (second p) keep (third p) sv) r mode))))
     (implies (and (true-listp prefix) (true-listp delta) (true-listp suffix)
                   (fn-pck-recordsp configs (append prefix delta))
                   (fn-pck-recordsp configs prefix)
@@ -920,15 +966,19 @@
                   (or (equal sv (pgs-slot (third p) (pgs-root-slots r disk)))
                       (equal sv (fourth p))
                       (not (pgs-rec-valid sv)))
+                  (fn-pck-resolvesp prefix 0 file)
+                  (implies (equal v (list (pgs-next-txid (pgs-root-slots r disk))
+                                          (fn-pck-pages configs (append prefix delta))))
+                           (fn-pck-resolvesp (append prefix delta) 0 file))
                   (fn-pck-log-retains log (len prefix))
                   (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log)))
              (equal (fn-pck-recover (pgs-crash disk r (second p) keep (third p) sv)
-                                    r mode log configs frontier max-conns)
+                                    r mode file log configs frontier max-conns)
                     (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories (theory 'minimal-theory)
                                       '(fn-pck-recover pck-open-view-after-commit pck-view-of-old
-                                        pck-recordsp-sccb pck-sccb-listp-of-append
+                                        pck-recordsp-sccb pck-sccb-listp-of-append pck-recordsp-parts
                                         (:executable-counterpart consp)))
            :use ((:instance pgs-open-after-crash (dirty (fn-pck-dirty configs prefix delta)))
                  (:instance pck-disk-holds-facts)
