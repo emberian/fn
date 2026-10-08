@@ -724,6 +724,25 @@
    "registry": true
   },
   {
+   "book_digest": "3c535f275272b9ba21eb67f55f40577ee82059c48cb05200c3119b747da60b54",
+   "bounds": [],
+   "claim_digest": "0f13b21dc91df350b48a0b1acf06620f6812c693c54c6149c1f6080df6bcd2da",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-art-body-crlfp-refines",
+   "owed_met": null,
+   "owner_book": "tests/acl2/packed-body-crlf-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-art-body-crlfp",
+   "witness": "executable"
+  },
+  {
    "book_digest": "78c5cb78bb9db1732e4e9afd8f94f1cb5d9144a209477c2c8f039715e45e7c19",
    "bounds": [],
    "claim_digest": "4311cd344d30592260f3c715ed859a16423321eb272826a86c4caa0388b5b8d8",
@@ -15390,6 +15409,44 @@
    "class": "hand",
    "name": "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned",
    "registry": true
+  },
+  {
+   "book_digest": "877e9f213d37261e76ea291ffaa971c34b72636f569e9c4502da2117848016ff",
+   "bounds": [],
+   "claim_digest": "b6024390828b93c80eb44a52afd448f5d06a10e3a56974c2f00b521e606914ba",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-poa-length-is-unpack-length",
+   "owed_met": null,
+   "owner_book": "tests/acl2/packed-octet-access-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-poa-length",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "877e9f213d37261e76ea291ffaa971c34b72636f569e9c4502da2117848016ff",
+   "bounds": [],
+   "claim_digest": "0846d19f37cd6984c3348947d796da97f4443c49487a60f3ec85198ecb779ca8",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-poa-octet-is-indexed-octet",
+   "owed_met": null,
+   "owner_book": "tests/acl2/packed-octet-access-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-poa-octet",
+   "witness": "executable"
   },
   {
    "class": "hand",
