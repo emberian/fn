@@ -884,7 +884,7 @@
    "workload": "fault-index-saturation-reopen",
    "checks": [
     {
-     "metric": "faults.P2-IDENTITY.violations",
+     "metric": "faults.P5-RECOVERY.violations",
      "cmp": "eq",
      "threshold": 0
     }

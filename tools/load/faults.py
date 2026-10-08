@@ -1479,7 +1479,11 @@ def index_saturation(run, ph):
         for epoch in ('before', 'after'):
             if epoch == 'after':
                 node.stop()
-                campaign.start(node, h)
+                try:
+                    campaign.start(node, h)
+                except Exception as exc:  # a store accepted under this budget must reopen under it (ADMISSION-RESERVES-NOT-REOPEN)
+                    notes['restart_refused'] = str(exc)[-200:]
+                    raise
             health[epoch] = list(map(int, f4_request(node, h, campaign, 'health')[0].split()))
             with Client(node.port, h, campaign.deadline) as c:
                 for mid in list(existing) + absent:
@@ -1501,6 +1505,12 @@ def index_saturation(run, ph):
     findings, checked = verify_index_saturation(h.ops, health, existing, absent)
     if not notes.get('complete'):
         checked = []
+    if 'before' in health:
+        # The restart arm was reached: a refused restart is a P5 finding whatever else completed.
+        checked = list(checked) + ['P5-RECOVERY']
+        if notes.get('restart_refused'):
+            findings = list(findings) + [('P5-RECOVERY', 'restart after a refusal-free run refused: '
+                                          + notes['restart_refused'])]
     if not checked:
         notes.setdefault('reason', 'unplaced > 0 before and after restart, or complete identity probes, not witnessed')
-    return fault_result(campaign, h, findings, checked, notes, ['P2-IDENTITY'])
+    return fault_result(campaign, h, findings, checked, notes, ['P2-IDENTITY', 'P5-RECOVERY'])
