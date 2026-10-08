@@ -267,6 +267,13 @@ class NewWitnessClasses(unittest.TestCase):
         self.assertIsNone(self.parts(extra=":stobjs ((cell cell)) :instances (run loop)"))
         self.assertIsNone(self.parts(extra=":stobjs ((cell cell)) :witness-lemma fact"))
 
+    def test_stobj_refinements_require_stobjs_and_only_proof_hints(self):
+        self.assertIsNotNone(self.parts(extra=":stobjs ((cell (fill x cell))) "
+            ":stobj-checks (((p cell) (check cell) :hints ((\"Goal\" :in-theory nil))))"))
+        self.assertIsNone(self.parts(extra=":stobj-checks (((p cell) (check cell)))"))
+        self.assertIsNone(self.parts(extra=":stobjs ((cell (fill x cell))) "
+            ":stobj-checks (((p cell) (check cell) :rule-classes nil))"))
+
     def parts(self, removal="(:assumption assumed)", extra=""):
         return ke.ledger.defteeth_parts(ke.ledger.read_forms(f"""
           (defteeth example :claim (((trust (assumed x))) (equal x 1))

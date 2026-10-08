@@ -1199,7 +1199,7 @@ def defrecord_export_expansion(form: list) -> list:
 # (`fn-dk-refusal`) expands to nothing here: certification is the authority
 # on the refusal, and a guess at a refused form's events would be a lie.
 
-DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":instances", ":stobjs", ":breaks",
+DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":instances", ":stobjs", ":stobj-checks", ":breaks",
                  ":mutations", ":corrupt", ":visits", ":allocation", ":must-fail",
                  ":hints"}
 DEFKEYSTONE_KEYS = DEFTEETH_KEYS | {":id", ":restates", ":hyps", ":rule-classes",
@@ -1347,6 +1347,14 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
             _dk_bindingsp(_dk_nil(options[":stobjs"]))
             and ":instances" not in options and ":witness-lemma" not in options):
         return None
+    if ":stobj-checks" in options:
+        checks = _dk_nil(options[":stobj-checks"])
+        if not (options.get(":stobjs") and isinstance(checks, list)
+                and all(isinstance(c, list) and len(c) in (2, 4)
+                        and isinstance(c[0], list) and c[0]
+                        and isinstance(c[1], list) and c[1]
+                        and (len(c) == 2 or str(c[2]) == ":hints") for c in checks)):
+            return None
     witness = options.get(":witness")
     if not (witness and _dk_bindingsp(witness)):
         return None

@@ -10,7 +10,6 @@
   "fn-dl-map-skip-loop-is-revappend",
   "fn-dl-step-loop-is-revappend",
   "fn-dl-sum-loop-is-plus",
-  "fn-dl-thread-loop-is-revappend",
   "fn-dwj-retired-job-refuses-scalar-publication",
   "fn-lg-open-program-keeps-the-relation",
   "fn-lgc-failed-barrier-recovers-a-prefix",
