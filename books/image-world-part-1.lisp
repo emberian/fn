@@ -183,3 +183,6 @@
 (include-book "bp-held-projection")
 (include-book "bp-recovery-guards")
 (include-book "bp-recovery-profile")
+(include-book "bp-node-retire")
+(include-book "bp-node-rotation-due")
+(include-book "bp-report-observe")

@@ -106,3 +106,65 @@ def composition_events():
   (equal (fn-opub-observe (fn-opub-{name} {args})) {fields})
   :hints (("Goal" :in-theory (enable fn-opub-{name} fn-opub-observe))))''')
     return '\n\n'.join(events) + '\n'
+
+
+def record_family(source, fields, prefix, slot):
+    """Move complete bound/read idioms and threaded writes to a carried record.
+
+    FIELDS maps physical global names to record keywords. Quoted templates,
+    strings and unrelated forms are retained byte-for-byte. A lone boundness
+    observation refuses: nil default preserves values, not physical boundness.
+    """
+    parsed = lr.parse(source)
+
+    def head(n):
+        return n.items[0].low if (isinstance(n, lr.Lst) and n.items
+                                  and isinstance(n.items[0], lr.Atom)) else ''
+
+    def symbol(n):
+        if isinstance(n, lr.Pre) and n.prefix == "'" and isinstance(n.node, lr.Atom):
+            return n.node.low
+        if head(n) == 'quote' and len(n.items) == 2 and isinstance(n.items[1], lr.Atom):
+            return n.items[1].low
+        return None
+
+    def field_call(n, heads):
+        return (isinstance(n, lr.Lst) and head(n) in heads and len(n.items) == 3
+                and symbol(n.items[1]) in fields)
+
+    def get(key, state):
+        return f'({prefix}-get {fields[key]} (fn-ost-{slot} {visit(state)}))'
+
+    def visit(n):
+        if not isinstance(n, lr.Lst) or head(n) == 'quote':
+            return source[n.start:n.end]
+        items = n.items
+        if head(n) == 'and' and len(items) == 3:
+            bound, read = items[1:]
+            if (field_call(bound, ('boundp-global', 'f-boundp-global'))
+                    and field_call(read, ('f-get-global', 'get-global'))
+                    and symbol(bound.items[1]) == symbol(read.items[1])
+                    and isinstance(bound.items[2], lr.Atom)
+                    and isinstance(read.items[2], lr.Atom)
+                    and bound.items[2].low == read.items[2].low):
+                if n.has_comment:
+                    raise ValueError('bound/read contains a comment: preserve it explicitly')
+                return get(symbol(read.items[1]), read.items[2])
+        key = symbol(items[1]) if len(items) > 1 else None
+        if key in fields:
+            if head(n) in ('boundp-global', 'f-boundp-global'):
+                raise ValueError('standalone physical boundness needs an explicit refinement')
+            if head(n) in ('f-get-global', 'get-global') and len(items) == 3:
+                return get(key, items[2])
+            if head(n) == 'f-put-global' and len(items) == 4:
+                if not isinstance(items[3], lr.Atom) or items[3].low != 'state':
+                    raise ValueError('family migration requires a threaded state binding')
+                return (f'(fn-ost-install-{slot}\n'
+                        f' ({prefix}-put {fields[key]} {visit(items[2])} '
+                        f'(fn-ost-{slot} state)) state)')
+        return lr.write(source[n.start:n.end],
+                        [(c.start-n.start, c.end-n.start, visit(c))
+                         for c in items if isinstance(c, lr.Lst)])
+
+    return lr.write(source, [(n.start, n.end, visit(n)) for n in parsed.forms
+                             if isinstance(n, lr.Lst)])

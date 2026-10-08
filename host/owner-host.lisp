@@ -25,6 +25,7 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+(include-book "../books/owner-authority-state")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
 (include-book "../books/payload-arena-attach")
@@ -56,6 +57,7 @@
 ; parked with D43's revert, and no served entry dispatches it since the POST
 ; precheck returned to the 7aad444ce check (host/native/owner.lisp).
 (include-book "../books/owner-config")
+(include-book "../books/owner-authority-transitions")
 (include-book "../books/owner-authority-proposal-state")
 (include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-progress-carried")
@@ -100,6 +102,7 @@
 (include-book "../books/owner-reclaim-seal")
 (include-book "../books/owner-recovery-retain")
 (include-book "../books/owner-admission-recovery")
+(include-book "../books/owner-authority-recovery")
 (include-book "../books/owner-cursor-domain")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
@@ -1558,37 +1561,12 @@
 ; from NIL metadata or the existence of the logical CP7 value.
 (defun fn-owner-authority-publication-install (full4 state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((word (fn-cp-nth 0 full4))
-         (next (fn-cp-nth 1 full4))
-         (metadata (fn-cp-nth 2 full4))
-         (published-root (fn-cp-nth 3 full4))
-         (old-sidecar (and (boundp-global 'fn-owner-account-root-state state)
-                           (f-get-global 'fn-owner-account-root-state state)))
-         (epoch (fn-owner-canonical-epoch state))
-         (old-canonical (fn-owner-canonical-state state)))
-    (if published-root
-        ; Wrong collector after durability requires recovery, never rollback.
-        (value :recovery-required)
-      (let* ((cp (fn-sn-consumer (fn-own-store (fn-ocfg-owner next))))
-             (authority (fn-cp-nth 6 cp))
-             (sidecar
-               (and old-sidecar
-                    (if (and (equal word :durable) metadata
-                             (equal (fn-cp-nth 0 old-sidecar) :ready)
-                             (equal epoch (fn-cp-nth 1 old-sidecar))
-                             (equal (fn-cp-nth 3 authority) (fn-cp-nth 2 old-sidecar)))
-                        (list :ready epoch (fn-cp-nth 3 authority)
-                              (fn-cp-nth 1 authority) (fn-cp-nth 4 old-sidecar)
-                              (fn-cp-nth 5 old-sidecar))
-                      ; Unavailable keeps the adopted root/footprint aliases;
-                      ; NIL published root never means empty authorization.
-                      (cons :unavailable (cdr old-sidecar)))))
-             (state (fn-owner-install-ocfg next state))
-             (state (f-put-global 'fn-owner-account-carries metadata state))
-             (state (f-put-global 'fn-owner-account-root-state sidecar state))
-             (state (f-put-global 'fn-owner-canonical-state
-                       (and old-canonical
-                            (cons :unavailable (cdr old-canonical))) state)))
+  (mv-let (installp word next authority)
+    (fn-oauth-publication (fn-ost-authority state) full4
+                          (fn-owner-canonical-epoch state))
+    (if (not installp) (value word)
+      (let* ((state (fn-owner-install-ocfg next state))
+             (state (fn-ost-install-authority authority state)))
         (value word)))))
 
 (defun fn-owner-reconfigure-complete (generation state)

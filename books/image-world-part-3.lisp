@@ -7,6 +7,7 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
+(include-book "owner-authority-recovery")
 (include-book "owner-cursor-domain")
 (include-book "owner-retire")
 (include-book "config-owner-live")

@@ -164,3 +164,7 @@
 (include-book "native-operator")
 (include-book "store-log-route")
 (include-book "store-log-kernel-concrete")
+(include-book "store-log-stream")
+(include-book "store-log-damage")
+(include-book "store-log-entry-bound")
+(include-book "store-log-lineage")
