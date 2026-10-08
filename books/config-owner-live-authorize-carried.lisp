@@ -188,17 +188,26 @@
                    lock-owned (equal observation :present) profile)))
   :hints (("Goal" :in-theory '(fn-olau-authorize-observed))))
 
+; Reader events preserve this projection regardless of stage or pending slot.
+(local
+ (defthm fn-olau-reader-events-preserve-configuration
+   (implies (member-equal (car event) '(:open :close :read :octets :fault))
+            (equal (fn-ocfg-config (fn-ocfg-step oc event fn-arena))
+                   (fn-ocfg-config oc)))
+   :hints (("Goal" :in-theory
+            (union-theories (theory 'minimal-theory)
+             '(car-cons cdr-cons member-equal fn-ocfg-config-of-fn-ocfg-make
+               fn-ocfg-step fn-ocfg-open fn-ocfg-close fn-ocfg-read
+               fn-ocfg-read-step fn-ocfg-fault fn-ocfg-with-read-owner))))))
+
 ; KEYSTONE A2: the captured decision survives every permitted reader event.
 (defthm fn-olau-authorize-carried-across-reader-events
-  (implies (and (fn-ocfg-staged oc)
-                (not (fn-own-pending (fn-ocfg-owner oc)))
-                (member-equal (car event) '(:open :close :read :octets :fault))
-                (implies (equal (car event) :close) (natp (cadr event))))
+  (implies (member-equal (car event) '(:open :close :read :octets :fault))
            (equal (fn-olau-authorize-carried (fn-ocfg-step oc event fn-arena)
                                              record lock-owned occupied profile)
                   (fn-olau-authorize-carried oc record lock-owned occupied profile)))
   :hints (("Goal" :in-theory
            '(fn-olau-authorize-carried fn-olau-authorize
              fn-olau-publication-authorize fn-olau-next-name member-equal
-             fn-orl-staged-record-holds-the-configuration
+             fn-olau-reader-events-preserve-configuration
              fn-orl-reader-events-preserve-store))))
