@@ -9547,6 +9547,9 @@
         "tests/acl2/owner-log-route-tests.lisp",
         "tests/test_native_commit_log.py",
         "planning/evidence/commit-onto-log-2026-09-27.md"
+      ],
+      "events": [
+        "fn-olr-crash-reads-a-prefix-of-the-history"
       ]
     },
     {
@@ -12978,7 +12981,10 @@
         "tests/acl2/store-import-stream-tests.lisp",
         "host/native/io.lisp"
       ],
-      "progress_note": "Lane obligations-paged-archive 2026-09-28: store import read every record of the archive into one list (and the MANIFEST whole) before one fn-sxp-import-plan call; now two streamed passes."
+      "progress_note": "Lane obligations-paged-archive 2026-09-28: store import read every record of the archive into one list (and the MANIFEST whole) before one fn-sxp-import-plan call; now two streamed passes.",
+      "events": [
+        "fn-sxi-stream-plan-is-the-import-plan"
+      ]
     },
     {
       "id": "PRF-370",
@@ -13000,7 +13006,11 @@
         "tests/campaign/native_cuts.py",
         "tests/test_native_store_export.py"
       ],
-      "progress_note": "Lane obligations-paged-archive 2026-09-28 (coordinator decision): the export fsynced every entry (about 40 files/s on hbox ZFS); now one sync, MANIFEST last."
+      "progress_note": "Lane obligations-paged-archive 2026-09-28 (coordinator decision): the export fsynced every entry (about 40 files/s on hbox ZFS); now one sync, MANIFEST last.",
+      "events": [
+        "fn-sxd-crash-is-incomplete-or-complete",
+        "fn-sxd-import-verdict-is-incomplete-or-complete"
+      ]
     },
     {
       "id": "PRF-372",
@@ -20245,6 +20255,9 @@
         "books/recovery-refinement.lisp",
         "tests/acl2/recovery-refinement-tests.lisp"
       ],
+      "events": [
+        "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new"
+      ],
       "progress_note": "The five cuts are the program's outer operations; the host's write loops have process-death points inside the single :write-all (fnn-checkpoint-write-steps' per-step fault kill, fnn-history-image-write's page writes; the Codex review of 2d1b10ed7, F6): their mapping to model crash points is PRF-1223. The concurrent half (a batch in flight during the publication) is PRF-1214's fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight."
     },
     {
@@ -22827,6 +22840,97 @@
         "fn-prl-row-sum-bound-reserve-natural",
         "fn-prl-row-sum-covers-bound-reserve",
         "fn-prl-convert-growth-under-row-sum-invp"
+      ]
+    },
+    {
+      "id": "PRF-1344",
+      "title": "Critical evidence package for the existing authorization keystones",
+      "statement": "Ruling 22: the 289 existing authorization keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1345",
+      "title": "Critical evidence package for the existing durability keystones",
+      "statement": "Ruling 22: the 411 existing durability keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1346",
+      "title": "Critical evidence package for the existing extraction keystones",
+      "statement": "Ruling 22: the 9 existing extraction keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1347",
+      "title": "Critical evidence package for the existing identity-binding keystones",
+      "statement": "Ruling 22: the 105 existing identity-binding keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1348",
+      "title": "Critical evidence package for the existing ownership-reclamation keystones",
+      "statement": "Ruling 22: the 186 existing ownership-reclamation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1349",
+      "title": "Critical evidence package for the existing parser-boundary keystones",
+      "statement": "Ruling 22: the 320 existing parser-boundary keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1350",
+      "title": "Critical evidence package for the existing resource-reservation keystones",
+      "statement": "Ruling 22: the 232 existing resource-reservation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "planning/critical-owed.json"
       ]
     }
   ]
