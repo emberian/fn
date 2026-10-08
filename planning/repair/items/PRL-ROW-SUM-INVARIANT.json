@@ -1,0 +1,17 @@
+{
+ "category": "custody",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/page-read-ledger.lisp",
+ "id": "PRL-ROW-SUM-INVARIANT",
+ "locus": "page-read-ledger",
+ "notes": [
+  "the page-read ledger carries charged >= the sum of the bound rows' demands (per resource), preserved by admit/register/issue/settle/evict/close/reserve-growth; it discharges fn-prl-convert-growth-when-charged-covers-the-reserve's charged-covers hypothesis across draws, and it is the real custody claim (no release refunds another row's charge). Today release-reusable nfix-clamps."
+ ],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "source": "p-growth-reserve lane, S4 audit 2026-10-08",
+ "state": "deferred",
+ "title": "Page-read ledger row-sum invariant: charged covers the bound rows' demands",
+ "updated": "2026-10-08T00:00:00Z"
+}
