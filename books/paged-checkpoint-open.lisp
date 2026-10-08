@@ -44,6 +44,7 @@
 (include-book "store-checkpoint-buffer")
 (include-book "statement-recover-stream")
 (include-book "payload-extent")
+(include-book "checkpoint-payloads-extent")
 (include-book "consumer-event-index")
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -88,20 +89,6 @@
   (let ((d (fn-scc-decode-tree (fn-octets-list fn-octets))))
     (if (and (consp d) (eq (car d) :ok) (consp (cdr d))) (list :ok (cadr d)) :refused)))
 
-;; The frame trailer the row carries as four words (8 octets to a word,
-;; big-endian), as the 32 octets the payload file wrote after the frame, and the
-;; natural the extent descriptor commits to (fn-arx-trailer-nat).
-(defun pcko-be (w)
-  (declare (xargs :guard (natp w)))
-  (list (mod (floor w 72057594037927936) 256) (mod (floor w 281474976710656) 256)
-        (mod (floor w 1099511627776) 256) (mod (floor w 4294967296) 256)
-        (mod (floor w 16777216) 256) (mod (floor w 65536) 256)
-        (mod (floor w 256) 256) (mod w 256)))
-
-(defun pcko-trailer (d0 d1 d2 d3)
-  (declare (xargs :guard (and (natp d0) (natp d1) (natp d2) (natp d3))))
-  (fn-arx-trailer-nat (append (pcko-be d0) (pcko-be d1) (pcko-be d2) (pcko-be d3))))
-
 (defun pcko-recp (tree)
   ; The row's metadata tree is a record's: tagged :r around the held row (handle 0).
   (declare (xargs :guard t))
@@ -130,13 +117,14 @@
   ; octet is read.  Any other row interns its event as before.  (mv acc fn-arena).
   (declare (xargs :stobjs fn-arena :verify-guards nil
                   :guard (and (fn-ssr-statep acc) (natp fid) (natp off) (natp len)
-                              (natp d0) (natp d1) (natp d2) (natp d3))))
+                              (natp d0) (natp d1) (natp d2) (natp d3))
+                  :guard-hints (("Goal" :in-theory (e/d (fn-arn-extent-guardp) (fn-arx-trailer-nat fn-cpl-unpack-words))))))
   (if (pcko-recp tree)
       (if (<= 37 off)
           (let* ((h (fn-arena-count fn-arena))
                  (row (pcko-reseat (cadr tree) h))
                  (fn-arena (fn-arena-seal-extent fid (- off 37) (+ len 37) off len
-                                                 (pcko-trailer d0 d1 d2 d3) fn-arena))
+                                                 (fn-arx-trailer-nat (fn-cpl-unpack-words (list d0 d1 d2 d3))) fn-arena))
                  (identity (fn-replay-identity-step (fn-ssr-at 3 acc) row)))
             (if (equal (fn-stxk-context-kind identity) :ok)
                 (mv (fn-ssr-publish acc row row identity) fn-arena)
@@ -144,14 +132,58 @@
         (mv :bad fn-arena))
     (fn-ssr-intern-step acc (list (pcko-ev tree)) nil nil :resident nil fn-arena)))
 
-(defun pcko-tape (pos lim seq acc index reads fid pgs-mem fn-arena fn-octets)
+(verify-guards pcko-ref-step)
+
+(defthm pcko-intern-bad-is-absorbing
+  (equal (fn-ssr-intern-step :bad ws rs ps mode dicts fn-arena) (mv :bad fn-arena))
+  :hints (("Goal" :in-theory (enable fn-ssr-intern-step))))
+
+(defthm pcko-intern-nil
+  (equal (fn-ssr-intern-step acc nil rs ps mode dicts fn-arena) (mv acc fn-arena))
+  :hints (("Goal" :in-theory (enable fn-ssr-intern-step))))
+
+(defthm pcko-intern-cons
+  (implies (syntaxp (not (equal ts ''nil)))
+   (equal (fn-ssr-intern-step acc (cons x ts) nil nil :resident nil fn-arena)
+         (mv-let (mid fn-arena)
+           (fn-ssr-intern-step acc (list x) nil nil :resident nil fn-arena)
+           (fn-ssr-intern-step mid ts nil nil :resident nil fn-arena))))
+  :hints (("Goal" :use ((:instance fn-ssr-resident-step-of-append (a (list x)) (b ts) (dicts nil)))
+           :in-theory (disable fn-ssr-resident-step-of-append))))
+
+(defthm pcko-intern-statep
+  (implies (and (fn-ssr-statep acc)
+                (not (eq (car (fn-ssr-intern-step acc ws rs ps mode dicts fn-arena)) :bad)))
+           (fn-ssr-statep (car (fn-ssr-intern-step acc ws rs ps mode dicts fn-arena))))
+  :hints (("Goal" :use fn-ssr-intern-step-preserves-statep
+           :in-theory (disable fn-ssr-intern-step-preserves-statep))))
+
+(defthm pcko-ref-step-statep
+  (implies (and (fn-ssr-statep acc)
+                (not (eq (mv-nth 0 (pcko-ref-step acc tree off len d0 d1 d2 d3 fid fn-arena)) :bad)))
+           (fn-ssr-statep (mv-nth 0 (pcko-ref-step acc tree off len d0 d1 d2 d3 fid fn-arena))))
+  :hints (("Goal" :in-theory (e/d (pcko-ref-step) (fn-ssr-intern-step fn-ssr-publish fn-replay-identity-step))
+           :use ((:instance fn-ssr-publish-preserves-statep (row (pcko-reseat (cadr tree) (fn-arena-count fn-arena)))
+                            (wire (pcko-reseat (cadr tree) (fn-arena-count fn-arena)))
+                            (identity (fn-replay-identity-step (fn-ssr-at 3 acc) (pcko-reseat (cadr tree) (fn-arena-count fn-arena)))))
+                 (:instance pcko-intern-statep (ws (list (pcko-ev tree))) (rs nil) (ps nil) (mode :resident) (dicts nil))))))
+
+(defthm pcko-ref-step-statep-car
+  (implies (and (fn-ssr-statep acc)
+                (not (eq (car (pcko-ref-step acc tree off len d0 d1 d2 d3 fid fn-arena)) :bad)))
+           (fn-ssr-statep (car (pcko-ref-step acc tree off len d0 d1 d2 d3 fid fn-arena))))
+  :hints (("Goal" :use pcko-ref-step-statep :in-theory (disable pcko-ref-step-statep pcko-ref-step))))
+
+(defun pcko-tape (pos lim acc reads fid pgs-mem fn-arena fn-octets)
   ; The events tape from word POS to LIM: tag, octet count, packed metadata
   ; octets, then the ref (offset, length) and the trailer words, one row at a
   ; time, until a word that is not the tag.
-  ; (mv verdict acc index reads fn-arena fn-octets).
+  ; (mv verdict acc reads fn-arena fn-octets).  No event index is built: the
+  ; Store's index is retired (books/store-node.lisp, field 13), and nothing on the
+  ; served path reads it.
   (declare (xargs :stobjs (pgs-mem fn-arena fn-octets)
                   :measure (nfix (- (nfix lim) (nfix pos)))
-                  :guard (and (natp pos) (natp lim) (natp seq) (natp reads) (natp fid)
+                  :guard (and (natp pos) (natp lim) (natp reads) (natp fid)
                               (<= lim (pgs-x-len 0 pgs-mem))
                               (fn-ssr-statep acc)
                               (fn-octets-p fn-octets))
@@ -169,30 +201,29 @@
                         (pcko-copy (+ pos 2) n (+ reads 2) pgs-mem fn-octets)
                         (let ((d (pcko-tree fn-octets)))
                           (if (eq d :refused)
-                              (mv :record acc index reads fn-arena fn-octets)
+                              (mv :record acc reads fn-arena fn-octets)
                             (mv-let (acc2 fn-arena)
                               (pcko-ref-step acc (cadr d) (pcko-w tl pgs-mem) (pcko-w (+ tl 1) pgs-mem)
                                              (pcko-w (+ tl 2) pgs-mem) (pcko-w (+ tl 3) pgs-mem)
                                              (pcko-w (+ tl 4) pgs-mem) (pcko-w (+ tl 5) pgs-mem)
                                              fid fn-arena)
                               (if (eq acc2 :bad)
-                                  (mv :intern acc2 index (+ reads 6) fn-arena fn-octets)
-                                (pcko-tape npos lim (1+ seq) acc2
-                                           (fn-cei-put seq (fn-ag-car (fn-ssr-at 0 acc2)) index)
+                                  (mv :intern acc2 (+ reads 6) fn-arena fn-octets)
+                                (pcko-tape npos lim acc2
                                            (+ reads 6) fid
                                            pgs-mem fn-arena fn-octets)))))))
-                  (mv :truncated acc index (+ reads 2) fn-arena fn-octets)))
-            (mv :truncated acc index (+ reads 1) fn-arena fn-octets))
-        (mv :ok acc index (+ reads 1) fn-arena fn-octets))
-    (mv :ok acc index reads fn-arena fn-octets)))
+                  (mv :truncated acc (+ reads 2) fn-arena fn-octets)))
+            (mv :truncated acc (+ reads 1) fn-arena fn-octets))
+        (mv :ok acc (+ reads 1) fn-arena fn-octets))
+    (mv :ok acc reads fn-arena fn-octets)))
 
 (defun fn-pck-x-open (npg pgs-mem fid fn-arena fn-octets)
   ; The open of the NPG-page image in PGS-MEM against the payload file FID: the
   ; root row from words 0 .. 8*2048, then the events tape from word 8*2048 to
   ; NPG*2048, row by row.
-  ; (mv VERDICT ROWS ROOTS INDEX READS fn-arena fn-octets): VERDICT :ok or a
-  ; refusal by name; ROWS the arena rows, ROOTS the four fold roots, INDEX the
-  ; event index over the rows, READS the words read.
+  ; (mv VERDICT ROWS ROOTS READS fn-arena fn-octets): VERDICT :ok or a
+  ; refusal by name; ROWS the arena rows, ROOTS the four fold roots, READS the
+  ; words read.
   (declare (xargs :stobjs (pgs-mem fn-arena fn-octets) :verify-guards nil))
   (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid)
            (eql (pcko-w 0 pgs-mem) 1))
@@ -204,16 +235,16 @@
                 (pcko-copy 2 n 2 pgs-mem fn-octets)
                 (let ((d (pcko-tree fn-octets)))
                   (if (eq d :refused)
-                      (mv :root nil nil nil reads fn-arena fn-octets)
+                      (mv :root nil nil reads fn-arena fn-octets)
                     (let ((root (cadr d)))
-                      (mv-let (verdict acc index reads fn-arena fn-octets)
-                        (pcko-tape 16384 (* 2048 npg) 0 (fn-ssr-seed (fn-stxk-initial-context 0)) nil reads fid
+                      (mv-let (verdict acc reads fn-arena fn-octets)
+                        (pcko-tape 16384 (* 2048 npg) (fn-ssr-seed (fn-stxk-initial-context 0)) reads fid
                                    pgs-mem fn-arena fn-octets)
                         (mv verdict (fn-ssr-rows acc)
                             (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root))
-                            index reads fn-arena fn-octets)))))))
-          (mv :root nil nil nil 2 fn-arena fn-octets)))
-    (mv :root nil nil nil (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))) 1 0)
+                            reads fn-arena fn-octets)))))))
+          (mv :root nil nil 2 fn-arena fn-octets)))
+    (mv :root nil nil (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))) 1 0)
         fn-arena fn-octets)))
 
 ; -----------------------------------------------------------------------------
@@ -319,10 +350,20 @@
          (+ 8 (adt-tp-npk (cadr l)) (pcko-cost (adt-tp-restf *fn-pck-row-schema* (cdr l)))))
         (t 1)))
 
+(defthm pcko-nthcdr-six
+  (implies (natp n)
+           (equal (nthcdr (+ 6 n) x) (nthcdr n (cdr (cdr (cdr (cdr (cdr (cdr x)))))))))
+  :hints (("Goal" :in-theory (disable pck-nthcdr-nthcdr pgs-nthcdr-nthcdr pgs-cdr-nthcdr pgs-nthcdr-too-far)
+           :expand ((nthcdr (+ 6 n) x) (nthcdr (+ 5 n) (cdr x)) (nthcdr (+ 4 n) (cdr (cdr x)))
+                    (nthcdr (+ 3 n) (cdr (cdr (cdr x)))) (nthcdr (+ 2 n) (cdr (cdr (cdr (cdr x)))))
+                    (nthcdr (+ 1 n) (cdr (cdr (cdr (cdr (cdr x))))))))))
+
 (defthm pcko-restf-is-nthcdr
   (equal (adt-tp-restf *fn-pck-row-schema* w)
          (nthcdr (+ 6 (adt-tp-npk (car w))) (cdr w)))
-  :hints (("Goal" :expand ((adt-tp-restf *fn-pck-row-schema* w)))))
+  :hints (("Goal" :expand ((adt-tp-restf *fn-pck-row-schema* w))
+           :in-theory (disable pcko-nthcdr-six)
+           :use ((:instance pcko-nthcdr-six (n (adt-tp-npk (car w))) (x (cdr w)))))))
 
 (defthm pcko-nw-is-npk
   (implies (natp n) (equal (pcko-nw n) (adt-tp-npk n)))
@@ -338,6 +379,11 @@
   (implies (and (pgs-memp pgs-mem) (natp i) (< i (pgs-x-len 0 pgs-mem)))
            (and (natp (pcko-w i pgs-mem)) (unsigned-byte-p 64 (pcko-w i pgs-mem))))
   :hints (("Goal" :in-theory (enable pcko-w) :use ((:instance pgs-u64-of-x-word (sel 0))))))
+
+(defthm pcko-w-natp-w
+  (implies (and (pgs-memp pgs-mem) (natp i) (< i (pgs-w-length pgs-mem)))
+           (and (natp (pcko-w i pgs-mem)) (unsigned-byte-p 64 (pcko-w i pgs-mem))))
+  :hints (("Goal" :in-theory (enable pcko-w pgs-x-len) :use ((:instance pgs-u64-of-x-word (sel 0))))))
 
 (defthm pcko-floor-pos (implies (and (natp n) (< 0 n)) (< 0 (floor (+ 7 n) 8))))
 
@@ -384,39 +430,6 @@
 
 (in-theory (disable pcko-tree))
 
-(defthm pcko-intern-bad-is-absorbing
-  (equal (fn-ssr-intern-step :bad ws rs ps mode dicts fn-arena) (mv :bad fn-arena))
-  :hints (("Goal" :in-theory (enable fn-ssr-intern-step))))
-
-(defthm pcko-intern-nil
-  (equal (fn-ssr-intern-step acc nil rs ps mode dicts fn-arena) (mv acc fn-arena))
-  :hints (("Goal" :in-theory (enable fn-ssr-intern-step))))
-
-(defthm pcko-intern-cons
-  (implies (syntaxp (not (equal ts ''nil)))
-   (equal (fn-ssr-intern-step acc (cons x ts) nil nil :resident nil fn-arena)
-         (mv-let (mid fn-arena)
-           (fn-ssr-intern-step acc (list x) nil nil :resident nil fn-arena)
-           (fn-ssr-intern-step mid ts nil nil :resident nil fn-arena))))
-  :hints (("Goal" :use ((:instance fn-ssr-resident-step-of-append (a (list x)) (b ts) (dicts nil)))
-           :in-theory (disable fn-ssr-resident-step-of-append))))
-
-(defthm pcko-intern-statep
-  (implies (and (fn-ssr-statep acc)
-                (not (eq (car (fn-ssr-intern-step acc ws rs ps mode dicts fn-arena)) :bad)))
-           (fn-ssr-statep (car (fn-ssr-intern-step acc ws rs ps mode dicts fn-arena))))
-  :hints (("Goal" :use fn-ssr-intern-step-preserves-statep
-           :in-theory (disable fn-ssr-intern-step-preserves-statep))))
-
-(defthm pcko-ref-step-statep
-  (implies (and (fn-ssr-statep acc)
-                (not (eq (mv-nth 0 (pcko-ref-step acc tree off len d0 d1 d2 d3 fid fn-arena)) :bad)))
-           (fn-ssr-statep (mv-nth 0 (pcko-ref-step acc tree off len d0 d1 d2 d3 fid fn-arena))))
-  :hints (("Goal" :in-theory (e/d (pcko-ref-step) (fn-ssr-intern-step fn-ssr-publish fn-replay-identity-step))
-           :use ((:instance fn-ssr-publish-preserves-statep (row (pcko-reseat (cadr tree) (fn-arena-count fn-arena)))
-                            (wire (pcko-reseat (cadr tree) (fn-arena-count fn-arena)))
-                            (identity (fn-replay-identity-step (fn-ssr-at 3 acc) (pcko-reseat (cadr tree) (fn-arena-count fn-arena)))))
-                 (:instance pcko-intern-statep (ws (list (pcko-ev tree))) (rs nil) (ps nil) (mode :resident) (dicts nil))))))
-
-(verify-guards pcko-tape)
+(verify-guards pcko-tape
+  :hints (("Goal" :in-theory (disable pcko-ref-step pcko-w pcko-copy pcko-tree))))
 (verify-guards fn-pck-x-open)
