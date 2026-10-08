@@ -451,6 +451,7 @@
   (implies (and (fn-record-p w) (natp h))
            (equal (fn-intern-row-at w k g h)
                   (pcko-reseat (fn-intern-row-at w k g 0) h)))
+  :rule-classes nil
   :hints (("Goal" :in-theory (e/d (pcko-reseat fn-intern-row-at) ()))))
 
 (defthm pcko-held-not-hstxa
@@ -833,3 +834,324 @@
           ("Subgoal *1/2" :expand ((pcko-sim recs base st acc fid fn-arena)))
           ("Subgoal *1/1" :use pcko-tape-nil
            :in-theory (e/d (fn-pck-rows-from adt-tp-seq-words pcko-sim) (pcko-tape pcko-tape-nil)))))
+
+; -----------------------------------------------------------------------------
+; The tape's fold is full recovery's.  AGREE: the open's accumulator and the
+; model's fold state share keyring, generation and identity context (they differ
+; in the rows' handles only).
+
+; The arena is read through its interface, never through the opened list view.
+(in-theory (disable fn-arena-payload-is-nth fn-arena-count-is-len fn-arena-seal-list-is-append
+                    fn-arena-p-is-payload-listp fn-arena-get-is-nth fn-arena-payload-len-is-len-nth))
+
+(defun pcko-agree (acc st)
+  (and (fn-ssr-statep acc) (fn-ssr-statep st)
+       (equal (fn-ssr-at 1 acc) (fn-ssr-at 1 st))
+       (equal (fn-ssr-at 2 acc) (fn-ssr-at 2 st))
+       (equal (fn-ssr-at 3 acc) (fn-ssr-at 3 st))))
+
+(defthm pcko-count-seal-list
+  (equal (fn-arena-count (fn-arena-seal-list xs fn-arena)) (1+ (fn-arena-count fn-arena)))
+  :hints (("Goal" :in-theory (enable fn-arena-seal-list fn-arena-count))))
+
+(defthm pcko-count-seal-extent
+  (equal (fn-arena-count (fn-arena-seal-extent file eoff elen poff plen trailer fn-arena))
+         (1+ (fn-arena-count fn-arena)))
+  :hints (("Goal" :use fn-arena-seal-extent-payload :in-theory (disable fn-arena-seal-extent-payload))))
+
+(defun pcko-ie-delta (w)
+  (declare (xargs :guard t))
+  (cond ((fn-record-p w) 1)
+        ((and (fn-stxa-p w) (fn-record-p (fn-replay-composite-record w))) 1)
+        (t 0)))
+
+(defthm pcko-ie-count
+  (equal (fn-arena-count (mv-nth 1 (fn-intern-event w keyring generation fn-arena)))
+         (+ (fn-arena-count fn-arena) (pcko-ie-delta w)))
+  :hints (("Goal" :in-theory (e/d (pcko-ie-delta) (fn-intern-event fn-record-p fn-stxa-p fn-replay-composite-record
+                                                   pcko-count-seal-list))
+           :use (fn-intern-event-arena pcko-count-seal-list))))
+
+(defthm pcko-ie-row-of-count
+  ; The row an event interns depends on the arena only through its count.
+  (implies (equal (fn-arena-count a) (fn-arena-count b))
+           (equal (mv-nth 0 (fn-intern-event w keyring generation a))
+                  (mv-nth 0 (fn-intern-event w keyring generation b))))
+  :hints (("Goal" :in-theory (e/d (fn-intern-event) (fn-cat-intern-list fn-cat-intern-list-is-row-at-count fn-replay-composite-record))
+           :use ((:instance fn-cat-intern-list-is-row-at-count (fn-arena a))
+                 (:instance fn-cat-intern-list-is-row-at-count (fn-arena b))
+                 (:instance fn-cat-intern-list-is-row-at-count (w (fn-replay-composite-record w)) (fn-arena a))
+                 (:instance fn-cat-intern-list-is-row-at-count (w (fn-replay-composite-record w)) (fn-arena b))))))
+
+(defthm pcko-f1
+  ; One event of full recovery's resident fold.
+  (implies (fn-ssr-statep acc)
+           (let* ((row (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) a)))
+                  (ar (mv-nth 1 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) a)))
+                  (identity (fn-replay-identity-step (fn-ssr-at 3 acc) row)))
+             (and (equal (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil a))
+                         (if (or (eq row :bad) (not (equal (fn-stxk-context-kind identity) :ok)))
+                             :bad
+                           (fn-ssr-publish acc row w identity)))
+                  (equal (mv-nth 1 (fn-ssr-intern-step acc (list w) nil nil :resident nil a)) ar))))
+  :hints (("Goal" :expand ((fn-ssr-intern-step acc (list w) nil nil :resident nil a)
+                           (fn-ssr-intern-step (fn-ssr-publish acc (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) a))
+                                                               w (fn-replay-identity-step (fn-ssr-at 3 acc)
+                                                                                         (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) a))))
+                                               nil nil nil :resident nil
+                                               (mv-nth 1 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) a))))
+           :in-theory (disable fn-intern-event fn-ssr-publish fn-replay-identity-step fn-ssr-at fn-stxk-context-kind))))
+
+(defthm pcko-ie-row-of-record
+  (implies (fn-record-p w)
+           (equal (mv-nth 0 (fn-intern-event w keyring generation a))
+                  (fn-intern-row-at w keyring generation (fn-arena-count a))))
+  :hints (("Goal" :in-theory (e/d (fn-intern-event) (fn-cat-intern-list fn-cat-intern-list-is-row-at-count fn-replay-composite-record))
+           :use ((:instance fn-cat-intern-list-is-row-at-count (fn-arena a))))))
+
+(defthm pcko-count-natp (natp (fn-arena-count a))
+  :hints (("Goal" :in-theory (enable fn-arena-count)))
+  :rule-classes :type-prescription)
+
+(defthm pcko-row-f-of-record
+  ; The row full recovery interns for a record is the tape's held row reseated
+  ; at the arena's count.
+  (implies (and (fn-record-p w) (pcko-agree acc st) (not (equal (pck-ssr1 st w) :bad)))
+           (equal (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) b))
+                  (pcko-reseat (fn-pck-row0 st w) (fn-arena-count b))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(pcko-agree (:type-prescription pcko-count-natp)) (theory 'minimal-theory))
+           :use ((:instance pcko-ie-row-of-record (keyring (fn-ssr-at 1 acc)) (generation (fn-ssr-at 2 acc)) (a b))
+                 (:instance pcko-intern-row-at-reseat (k (fn-ssr-at 1 acc)) (g (fn-ssr-at 2 acc)) (h (fn-arena-count b)))
+                 (:instance pck-row0-is-the-row)
+                 (:instance pcko-count-natp (a b))))))
+
+(defthm pcko-publish-wire
+  (implies (and (not (fn-stxk-p w1)) (not (fn-stxk-p w2)))
+           (equal (fn-ssr-publish acc row w1 id) (fn-ssr-publish acc row w2 id)))
+  :hints (("Goal" :in-theory (enable fn-ssr-publish))))
+
+(defthm pcko-ref-step-held
+  ; The ref-step of a record row: the held row reseated at the arena's count,
+  ; the extent sealed.
+  (implies (and (fn-held-p r) (<= 37 off))
+           (and (equal (mv-nth 0 (pcko-ref-step acc (list :r r) off len d0 d1 d2 d3 fid a))
+                       (let* ((row (pcko-reseat r (fn-arena-count a)))
+                              (identity (fn-replay-identity-step (fn-ssr-at 3 acc) row)))
+                         (if (equal (fn-stxk-context-kind identity) :ok)
+                             (fn-ssr-publish acc row row identity)
+                           :bad)))
+                (equal (mv-nth 1 (pcko-ref-step acc (list :r r) off len d0 d1 d2 d3 fid a))
+                       (fn-arena-seal-extent fid (- off 37) (+ len 37) off len
+                                             (fn-arx-trailer-nat (fn-cpl-unpack-words (list d0 d1 d2 d3))) a))))
+  :hints (("Goal" :in-theory (e/d (pcko-ref-step pcko-recp) (fn-replay-identity-step fn-ssr-publish pcko-reseat fn-ssr-at
+                                                             fn-stxk-context-kind fn-arena-seal-extent fn-held-p)))))
+
+(defthm pcko-ie-delta-of-record
+  (implies (fn-record-p w) (equal (pcko-ie-delta w) 1))
+  :hints (("Goal" :in-theory (enable pcko-ie-delta))))
+
+(defthm pcko-count-snoc
+  (equal (fn-arena-count (fn-oct-snoc a x)) (+ 1 (fn-arena-count a)))
+  :hints (("Goal" :in-theory (enable fn-arena-count))))
+
+(defthm pcko-ref-of-held
+  ; The ref-step of a record row against full recovery's step, with the held
+  ; row abstract: full recovery's row is the row reseated at the count.
+  (implies (and (fn-held-p r) (<= 37 off) (fn-ssr-statep acc) (fn-record-p w)
+                (equal (fn-arena-count a) (fn-arena-count b))
+                (equal (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) b))
+                       (pcko-reseat r (fn-arena-count b))))
+           (and (equal (mv-nth 0 (pcko-ref-step acc (list :r r) off len d0 d1 d2 d3 fid a))
+                       (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil b)))
+                (equal (fn-arena-count (mv-nth 1 (pcko-ref-step acc (list :r r) off len d0 d1 d2 d3 fid a)))
+                       (fn-arena-count (mv-nth 1 (fn-ssr-intern-step acc (list w) nil nil :resident nil b))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable pcko-ref-step fn-intern-event fn-ssr-publish fn-replay-identity-step fn-ssr-at
+                               fn-stxk-context-kind pcko-reseat fn-record-p fn-ssr-intern-step pcko-ref-step-held
+                               pcko-f1 pcko-ie-count pcko-publish-wire fn-held-p fn-stxk-p)
+           :use ((:instance pcko-f1 (a b))
+                 (:instance pcko-ref-step-held)
+                 (:instance pcko-ie-count (keyring (fn-ssr-at 1 acc)) (generation (fn-ssr-at 2 acc)) (fn-arena b))
+                 (:instance pcko-ie-delta-of-record)
+                 (:instance pcko-publish-wire (w1 w) (w2 (pcko-reseat r (fn-arena-count a))) (row (pcko-reseat r (fn-arena-count a)))
+                            (id (fn-replay-identity-step (fn-ssr-at 3 acc) (pcko-reseat r (fn-arena-count a)))))
+                 (:instance fn-record-is-no-other-wire-event (x w))
+                 (:instance fn-held-is-no-wire-event (x (pcko-reseat r (fn-arena-count a))))
+                 (:instance pcko-reseat-held-p (row r) (h (fn-arena-count a)))
+                 (:instance pcko-count-natp)
+                 (:instance pcko-count-snoc (x (fn-durable-octets fid off len)))))))
+
+(defthm pcko-meta-of-record
+  (implies (fn-record-p w) (equal (fn-pck-meta w st) (list :r (fn-pck-row0 st w))))
+  :hints (("Goal" :in-theory (enable fn-pck-meta))))
+
+(defthm pcko-ref-of-record
+  (implies (and (fn-record-p w) (pcko-agree acc st) (natp base)
+                (not (equal (pck-ssr1 st w) :bad))
+                (equal (fn-arena-count a) (fn-arena-count b)))
+           (and (equal (mv-nth 0 (pcko-ref acc w base st fid a))
+                       (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil b)))
+                (equal (fn-arena-count (mv-nth 1 (pcko-ref acc w base st fid a)))
+                       (fn-arena-count (mv-nth 1 (fn-ssr-intern-step acc (list w) nil nil :resident nil b))))))
+  :hints (("Goal" :do-not-induct t
+           :expand ((pcko-ref acc w base st fid a))
+           :in-theory (disable pcko-ref-step fn-pck-row0 fn-pck-payload pcko-tw fn-intern-event fn-ssr-publish
+                               fn-replay-identity-step fn-ssr-at fn-stxk-context-kind pck-ssr1 pcko-reseat
+                               fn-record-p fn-ssr-intern-step pcko-ref-of-held pcko-row-f-of-record
+                               pck-row0-wire pck-row0-is-the-row fn-held-p fn-pck-meta)
+           :use ((:instance pck-row0-wire)
+                 (:instance pcko-row-f-of-record (b b))
+                 (:instance pcko-ref-of-held (r (fn-pck-row0 st w)) (off (+ 37 base)) (len (len (fn-pck-payload w)))
+                            (d0 (car (pcko-tw w))) (d1 (cadr (pcko-tw w))) (d2 (caddr (pcko-tw w)))
+                            (d3 (cadddr (pcko-tw w))))))))
+
+(defthm pcko-ref-step-other
+  (implies (not (pcko-recp tree))
+           (equal (pcko-ref-step acc tree off len d0 d1 d2 d3 fid a)
+                  (fn-ssr-intern-step acc (list (pcko-ev tree)) nil nil :resident nil a)))
+  :hints (("Goal" :in-theory (e/d (pcko-ref-step) (fn-ssr-intern-step)))))
+
+(defthm pcko-intern-step-of-count
+  ; One event's fold step depends on the arena only through its count.
+  (implies (and (fn-ssr-statep acc) (equal (fn-arena-count a) (fn-arena-count b)))
+           (and (equal (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil a))
+                       (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil b)))
+                (equal (fn-arena-count (mv-nth 1 (fn-ssr-intern-step acc (list w) nil nil :resident nil a)))
+                       (fn-arena-count (mv-nth 1 (fn-ssr-intern-step acc (list w) nil nil :resident nil b))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-intern-event fn-ssr-publish fn-replay-identity-step fn-ssr-at fn-stxk-context-kind
+                               fn-ssr-intern-step pcko-f1 pcko-ie-row-of-count pcko-ie-count)
+           :use ((:instance pcko-f1 (a a)) (:instance pcko-f1 (a b))
+                 (:instance pcko-ie-row-of-count (keyring (fn-ssr-at 1 acc)) (generation (fn-ssr-at 2 acc)))
+                 (:instance pcko-ie-count (keyring (fn-ssr-at 1 acc)) (generation (fn-ssr-at 2 acc)) (fn-arena a))
+                 (:instance pcko-ie-count (keyring (fn-ssr-at 1 acc)) (generation (fn-ssr-at 2 acc)) (fn-arena b))))))
+
+(defthm pcko-meta-of-other
+  (implies (not (fn-record-p w)) (equal (fn-pck-meta w st) (list :o w)))
+  :hints (("Goal" :in-theory (enable fn-pck-meta))))
+
+(defthm pcko-recp-of-o (not (pcko-recp (list :o w)))
+  :hints (("Goal" :in-theory (enable pcko-recp))))
+
+(defthm pcko-ev-of-list (equal (pcko-ev (list x w)) w)
+  :hints (("Goal" :in-theory (enable pcko-ev))))
+
+(defthm pcko-ref-of-other
+  (implies (and (not (fn-record-p w)) (fn-ssr-statep acc)
+                (equal (fn-arena-count a) (fn-arena-count b)))
+           (and (equal (mv-nth 0 (pcko-ref acc w base st fid a))
+                       (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil b)))
+                (equal (fn-arena-count (mv-nth 1 (pcko-ref acc w base st fid a)))
+                       (fn-arena-count (mv-nth 1 (fn-ssr-intern-step acc (list w) nil nil :resident nil b))))))
+  :hints (("Goal" :do-not-induct t
+           :expand ((pcko-ref acc w base st fid a))
+           :in-theory (union-theories '(pcko-meta-of-other) (theory 'minimal-theory))
+           :use ((:instance pcko-ref-step-other (tree (list :o w)) (off (+ 37 base)) (len (len (fn-pck-payload w)))
+                            (d0 (car (pcko-tw w))) (d1 (cadr (pcko-tw w))) (d2 (caddr (pcko-tw w)))
+                            (d3 (cadddr (pcko-tw w))))
+                 pcko-recp-of-o (:instance pcko-ev-of-list (x :o))
+                 pcko-intern-step-of-count))))
+
+; -----------------------------------------------------------------------------
+; The fold states stay in agreement.
+
+(defthm pcko-identity-of-hstxa
+  (implies (and (fn-stxa-p w) (fn-held-p h1) (fn-held-p h2))
+           (equal (fn-replay-identity-step ctx (fn-hstxa-make w h1))
+                  (fn-replay-identity-step ctx (fn-hstxa-make w h2))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-replay-identity-step fn-store-event-sequence fn-replay-identity-wire)
+                           (fn-held-p fn-stxa-p fn-hsig-article-event-carried-bindsp fn-hsig-article-event-revoked-bindsp
+                            fn-stxk-fault fn-replay-identity-advance fn-stxk-p fn-stxe-p))
+           :use ((:instance fn-hstxa-is-no-wire-event (x (fn-hstxa-make w h1)))
+                 (:instance fn-hstxa-is-no-wire-event (x (fn-hstxa-make w h2)))
+                 (:instance fn-hstxa-is-not-held (x (fn-hstxa-make w h1)))
+                 (:instance fn-hstxa-is-not-held (x (fn-hstxa-make w h2)))
+                 (:instance fn-hstxa-p-of-make (stxa w) (held h1))
+                 (:instance fn-hstxa-p-of-make (stxa w) (held h2))))))
+
+(defthm pcko-publish-agree
+  ; The rows do not enter the keyring, generation or identity slots.
+  (implies (and (fn-ssr-statep acc) (fn-ssr-statep st)
+                (equal (fn-ssr-at 1 acc) (fn-ssr-at 1 st)) (equal (fn-ssr-at 2 acc) (fn-ssr-at 2 st))
+                (equal (fn-ssr-at 3 acc) (fn-ssr-at 3 st)))
+           (and (equal (fn-ssr-at 1 (fn-ssr-publish acc r1 w id)) (fn-ssr-at 1 (fn-ssr-publish st r2 w id)))
+                (equal (fn-ssr-at 2 (fn-ssr-publish acc r1 w id)) (fn-ssr-at 2 (fn-ssr-publish st r2 w id)))
+                (equal (fn-ssr-at 3 (fn-ssr-publish acc r1 w id)) (fn-ssr-at 3 (fn-ssr-publish st r2 w id)))))
+  :hints (("Goal" :in-theory (enable fn-ssr-publish fn-ssr-state fn-ssr-at))))
+
+(defthm pcko-held-p-of-row-at
+  (implies (and (fn-record-p w) (natp g) (natp h))
+           (fn-held-p (fn-intern-row-at w k g h)))
+  :hints (("Goal" :in-theory (enable fn-record-p fn-held-p fn-record-internals fn-held-internals fn-hf-p fn-hc-p
+                                     fn-hf-startp fn-hc-verdictp fn-intern-row-at))))
+
+(defthm pcko-ie-identity-eq-record
+  (implies (and (fn-record-p w) (natp generation))
+           (equal (fn-replay-identity-step c (mv-nth 0 (fn-intern-event w k generation a)))
+                  (fn-replay-identity-step c (mv-nth 0 (fn-intern-event w k generation b)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-intern-event fn-replay-identity-step fn-intern-row-at pcko-reseat fn-held-p
+                               pcko-ie-row-of-record pcko-identity-of-reseat
+                               pcko-held-p-of-row-at pcko-count-natp fn-record-p)
+           :use ((:instance pcko-ie-row-of-record (keyring k) (a a))
+                 (:instance pcko-ie-row-of-record (keyring k) (a b))
+                 (:instance pcko-intern-row-at-reseat (g generation) (h (fn-arena-count a)))
+                 (:instance pcko-intern-row-at-reseat (g generation) (h (fn-arena-count b)))
+                 (:instance pcko-identity-of-reseat (ctx c) (row (fn-intern-row-at w k generation 0)) (h (fn-arena-count a)))
+                 (:instance pcko-identity-of-reseat (ctx c) (row (fn-intern-row-at w k generation 0)) (h (fn-arena-count b)))
+                 (:instance pcko-held-p-of-row-at (g generation) (h 0))
+                 (:instance pcko-count-natp (a a)) (:instance pcko-count-natp (a b))))))
+
+(defthm pcko-ie-identity-eq
+  ; The identity fold sees the same row whatever arena the event is interned
+  ; into: the rows differ in the handle only.
+  (implies (natp generation)
+           (and (iff (equal (mv-nth 0 (fn-intern-event w k generation a)) :bad)
+                     (equal (mv-nth 0 (fn-intern-event w k generation b)) :bad))
+                (equal (fn-replay-identity-step c (mv-nth 0 (fn-intern-event w k generation a)))
+                       (fn-replay-identity-step c (mv-nth 0 (fn-intern-event w k generation b))))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-record-p w) (and (fn-stxa-p w) (fn-record-p (fn-replay-composite-record w))))
+           :in-theory (e/d (fn-intern-event) (fn-cat-intern-list fn-cat-intern-list-is-row-at-count
+                                              fn-replay-composite-record fn-record-p fn-stxa-p fn-wire-event-p
+                                              fn-intern-row-at fn-replay-identity-step fn-held-p
+                                              pcko-identity-of-hstxa pcko-held-p-of-row-at))
+           :use ((:instance fn-cat-intern-list-is-row-at-count (keyring k) (fn-arena a))
+                 (:instance fn-cat-intern-list-is-row-at-count (keyring k) (fn-arena b))
+                 (:instance fn-cat-intern-list-is-row-at-count (keyring k) (w (fn-replay-composite-record w)) (fn-arena a))
+                 (:instance fn-cat-intern-list-is-row-at-count (keyring k) (w (fn-replay-composite-record w)) (fn-arena b))
+                 (:instance pcko-ie-identity-eq-record)
+                 (:instance pcko-held-p-of-row-at (w (fn-replay-composite-record w)) (g generation) (h (fn-arena-count a)))
+                 (:instance pcko-held-p-of-row-at (w (fn-replay-composite-record w)) (g generation) (h (fn-arena-count b)))
+                 (:instance pcko-identity-of-hstxa (ctx c) (h1 (fn-intern-row-at (fn-replay-composite-record w) k generation (fn-arena-count a)))
+                            (h2 (fn-intern-row-at (fn-replay-composite-record w) k generation (fn-arena-count b))))
+                 (:instance pcko-count-natp (a a)) (:instance pcko-count-natp (a b))))))
+
+(defthm pcko-step-agree
+  ; One event of full recovery's fold leaves the open's accumulator in
+  ; agreement with the model's next fold state, and does not fault when the
+  ; model's step does not.
+  (implies (and (pcko-agree acc st) (not (equal (pck-ssr1 st w) :bad)))
+           (let ((acc2 (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil b))))
+             (and (not (equal acc2 :bad))
+                  (pcko-agree acc2 (pck-ssr1 st w)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (pcko-agree) (fn-intern-event fn-ssr-publish fn-replay-identity-step fn-ssr-at
+                                         fn-stxk-context-kind fn-ssr-intern-step pcko-f1 pck-ssr1-is-the-step
+                                         pcko-ie-identity-eq pcko-publish-agree fn-ssr-publish-preserves-statep
+                                         pck-ssr1))
+           :use ((:instance pck-ssr1-is-the-step)
+                 (:instance pcko-f1 (a b))
+                 (:instance pcko-f1 (acc st) (a nil))
+                 (:instance pcko-ie-identity-eq (k (fn-ssr-at 1 acc)) (generation (fn-ssr-at 2 acc)) (a b) (b nil)
+                            (c (fn-ssr-at 3 acc)))
+                 (:instance pck-statep-generation (acc acc))
+                 (:instance pck-ssr1-statep)
+                 (:instance fn-ssr-publish-preserves-statep (row (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) b)))
+                            (wire w)
+                            (identity (fn-replay-identity-step (fn-ssr-at 3 acc) (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) b)))))
+                 (:instance pcko-publish-agree (r1 (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) b)))
+                            (r2 (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 st) (fn-ssr-at 2 st) nil)))
+                            (id (fn-replay-identity-step (fn-ssr-at 3 acc) (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) b)))))))))
