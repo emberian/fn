@@ -1694,6 +1694,23 @@
                        '(fn-bpn-restart-step fn-bpn-seeded-machine-state-of-no-jobs)
                        (theory 'minimal-theory)))))
 
+;; The orphan resolution proposes a record; it never changes the owed jobs or
+;; the token counter (the record's own application does, later).
+(defthm fn-bpn-resolve-orphans-step-keeps-jobs-and-token
+  (implies (fn-bpn-machine-statep st)
+           (and (equal (fn-bpn-machine-state-jobs
+                        (fn-bpn-answer-state (fn-bpn-resolve-orphans-step st)))
+                       (fn-bpn-machine-state-jobs st))
+                (equal (fn-bpn-machine-state-next-token
+                        (fn-bpn-answer-state (fn-bpn-resolve-orphans-step st)))
+                       (fn-bpn-machine-state-next-token st))))
+  :hints (("Goal" :in-theory (e/d (fn-bpn-resolve-orphans-step fn-bpn-propose
+                                   fn-bpn-answer-constructor-accessors)
+                                  (fn-bpn-machine-statep)))))
+
+;; R1: restarting over no records from a seed answers the seed's jobs and
+;; token counter, an orphan :attempting job included (its resolution is a
+;; proposal).
 (defthm fn-bpn-restart-step-from-of-no-records
   (implies
    (and (fn-bpn-machine-statep
@@ -1701,8 +1718,7 @@
                                       (fn-bpn-machine-state-max-jobs st)
                                       (fn-bpn-machine-state-max-octets st)
                                       jobs token))
-        (<= token *fn-bpn-machine-max-records*)
-        (not (fn-bpn-find-attempting jobs)))
+        (<= token *fn-bpn-machine-max-records*))
    (and (equal (fn-bpn-machine-state-jobs
                 (fn-bpn-answer-state
                  (fn-bpn-restart-step-from st nil :ready jobs token)))
@@ -1713,6 +1729,8 @@
                token)))
   :hints (("Goal"
            :use ((:instance fn-bpn-machine-statep-components (st (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token)))
+                 (:instance fn-bpn-resolve-orphans-step-keeps-jobs-and-token
+                            (st (nth 1 (fn-bpn-replay-records (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token) nil))))
                  (:instance fn-bpn-seeded-machine-state-accessors
                             (config (fn-bpn-machine-state-config st))
                             (max-jobs (fn-bpn-machine-state-max-jobs st))
@@ -1724,6 +1742,82 @@
                            (fn-bpn-seeded-machine-state
                             fn-bpn-restart-step-from fn-bpn-find-attempting
                             fn-bpn-machine-statep)))))
+
+;; R1: the seed a restart replays over is a machine state when its jobs fit the
+;; limits and the token is a u64, and a restart over no records from a state's
+;; own jobs and token answers them (or fences on a seed past the lifecycle
+;; bound, which the foundation's recovery step then does not install).
+(defthm fn-bpn-make-machine-state-without-pending-is-a-machine-state
+  (implies (and (fn-bpn-configp config)
+                (fn-bpn-machine-limitp max-jobs)
+                (fn-bpn-machine-limitp max-octets)
+                (fn-bpn-job-listp jobs)
+                (<= (len jobs) max-jobs)
+                (<= (fn-bpn-jobs-octets jobs) max-octets)
+                (fn-bpn-contact-listp contacts)
+                (fn-bpn-machine-boolp fenced)
+                (fn-bpn-machine-u64p token))
+           (fn-bpn-machine-statep
+            (fn-bpn-make-machine-state config jobs contacts nil fenced token
+                                       max-jobs max-octets)))
+  :hints (("Goal" :in-theory (enable fn-bpn-machine-statep fn-bpn-machine-recordp
+                                     fn-bpn-maybe-pendingp))))
+
+(defthm fn-bpn-seeded-machine-state-is-a-machine-state
+  (implies (and (fn-bpn-configp config)
+                (fn-bpn-machine-limitp max-jobs)
+                (fn-bpn-machine-limitp max-octets)
+                (fn-bpn-job-listp jobs)
+                (<= (len jobs) max-jobs)
+                (<= (fn-bpn-jobs-octets jobs) max-octets)
+                (fn-bpn-machine-u64p token))
+           (fn-bpn-machine-statep
+            (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token)))
+  :hints (("Goal" :use ((:instance fn-bpn-make-machine-state-without-pending-is-a-machine-state
+                                   (contacts nil) (fenced nil)))
+           :in-theory (union-theories '(fn-bpn-seeded-machine-state fn-bpn-contact-listp
+                                        fn-bpn-machine-boolp)
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-bpn-restart-step-from-of-own-seed-keeps-owed-work
+  (implies (and (fn-bpn-machine-statep st)
+                (<= (fn-bpn-machine-state-next-token st)
+                    *fn-bpn-machine-max-records*))
+           (and (equal (fn-bpn-machine-state-jobs
+                        (fn-bpn-answer-state
+                         (fn-bpn-restart-step-from
+                          st nil :ready (fn-bpn-machine-state-jobs st)
+                          (fn-bpn-machine-state-next-token st))))
+                       (fn-bpn-machine-state-jobs st))
+                (equal (fn-bpn-machine-state-next-token
+                        (fn-bpn-answer-state
+                         (fn-bpn-restart-step-from
+                          st nil :ready (fn-bpn-machine-state-jobs st)
+                          (fn-bpn-machine-state-next-token st))))
+                       (fn-bpn-machine-state-next-token st))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpn-restart-step-from-of-no-records
+                            (jobs (fn-bpn-machine-state-jobs st))
+                            (token (fn-bpn-machine-state-next-token st)))
+                 (:instance fn-bpn-seeded-machine-state-is-a-machine-state
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st))
+                            (jobs (fn-bpn-machine-state-jobs st))
+                            (token (fn-bpn-machine-state-next-token st)))
+                 (:instance fn-bpn-machine-statep-components))
+           :in-theory (disable fn-bpn-restart-step-from-of-no-records
+                               fn-bpn-seeded-machine-state-is-a-machine-state
+                               fn-bpn-restart-step-from fn-bpn-machine-statep
+                               fn-bpn-seeded-machine-state))))
+
+(defthm fn-bpn-restart-step-from-faults-on-an-oversized-seed
+  (implies (< *fn-bpn-machine-max-records* token)
+           (equal (car (car (fn-bpn-answer-effects
+                             (fn-bpn-restart-step-from st records sequence-ready jobs token))))
+                  :restart-fault))
+  :hints (("Goal" :in-theory (enable fn-bpn-restart-step-from fn-bpn-restart-seed-fitsp
+                                     fn-bpn-answer-constructor-accessors))))
 
 (defthm fn-bpn-attempt-after-orphan-attempt-is-inapplicable
   (implies (and (equal (fn-cbor-ag-car record) :attempting)

@@ -236,3 +236,26 @@
                             fn-bpn-replay-records fn-bpn-machine-invariantp
                             fn-bpn-machine-state-next-token)))))
 
+;; A recovery of an empty namespace from START answers :ready with frontier START,
+;; which agrees with any machine whose token counter is START (within the
+;; lifecycle bound): a rotated generation with no records yet.
+(defthm fn-bpn-host-lifecycle-recovery-from-nothing-agrees
+  (implies (and (natp start)
+                (fn-bpn-machine-statep st)
+                (<= start *fn-bpn-machine-max-records*)
+                (equal (fn-bpn-machine-state-next-token st) start))
+           (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+                   (fn-bpn-lifecycle-recovery-from nil nil start) st)
+                  t))
+  :hints (("Goal" :in-theory (e/d (fn-bpn-host-lifecycle-recovery-agrees-p
+                                   fn-bpn-lifecycle-recovery-agrees-with-statep
+                                   fn-bpn-lifecycle-recovery-from
+                                   fn-bpn-lifecycle-recovery-next-token
+                                   fn-bpn-lifecycle-namespace-plan-from
+                                   fn-bpn-lifecycle-namespace-plan-aux
+                                   fn-bpn-lifecycle-namespace-planp
+                                   fn-bpn-lifecycle-plan-record-names
+                                   fn-bpn-lifecycle-plan-next-token
+                                   fn-bpn-lifecycle-record-bindingsp
+                                   fn-bpn-lifecycle-max-namespace-entries)
+                                  (fn-bpn-machine-statep)))))

@@ -19,6 +19,7 @@
 (include-book "bp-node-progress")
 (include-book "bp-node-rotation-codec")
 (include-book "bp-clock-domain")
+(include-book "bp-node-host-machine")
 (set-verify-guards-eagerness 0)
 
 ; What the selected file means.  No file: generation 0, no checkpoint.
@@ -59,6 +60,35 @@
                          (fn-bpn-machine-state-fenced base)
                          (fn-bpnr-checkpoint-next-token ck))
     base))
+
+;; The state the host recovers a selected generation into (R3): ST with its
+;; base machine replaced by fn-bpnr-replay-base, the base the replay runs over,
+;; so the owed jobs and token counter of the checkpoint are installed before
+;; the restart.  ST itself when the plan names no checkpoint; NIL when the
+;; seeded base is not a machine state (the checkpoint's jobs exceed the
+;; profile's max-jobs or max-octets), on which the host fences.
+(defun fn-bpnr-seed-state (st plan)
+  (declare (xargs :guard t))
+  (let ((ck (fn-bpnr-plan-checkpoint plan)))
+    (if (fn-bpnr-checkpointp ck)
+        (let ((seeded (fn-bpnr-replay-base ck (fn-bpnf-base st))))
+          (if (fn-bpn-machine-statep seeded)
+              (fn-bpnf-with-base st seeded)
+            nil))
+      st)))
+
+;; The token a generation's first lifecycle record is named by (R2): the
+;; selected checkpoint's token counter, 0 without a checkpoint.
+(defun fn-bpnr-plan-start-token (plan)
+  (declare (xargs :guard t))
+  (let ((ck (fn-bpnr-plan-checkpoint plan)))
+    (if (fn-bpnr-checkpointp ck)
+        (fn-bpnr-checkpoint-next-token ck)
+      0)))
+
+(verify-guards fn-bpnr-replay-base)
+(verify-guards fn-bpnr-seed-state)
+(verify-guards fn-bpnr-plan-start-token)
 
 ; The replay of one generation's rows from its checkpoint.  Without a
 ; checkpoint it is exactly fn-bpnf-family-replay-rows.
@@ -971,6 +1001,274 @@
                        '(fn-bpnr-checkpoint-of-statep
                          fn-bpnp-rotation-quiescentp fn-frame-natp
                          fn-bpnr-plan-checkpoint-of-selected)
+                       (theory 'minimal-theory)))))
+
+;; R5 support.  The foundation's recovery step restarts the base from its own
+;; jobs and token counter (R4); with no lifecycle records it answers the state
+;; it was given or the restart, and either way the base keeps its owed work.
+(local (defthm fn-bpnr-answer-state-of-answer
+  (equal (fn-bpnf-answer-state (fn-bpnf-answer st effects)) st)
+  :hints (("Goal" :in-theory (enable fn-bpnf-answer-state fn-bpnf-answer fn-bpn-nth fn-cbor-ag-car)))))
+
+(local (defthm fn-bpnr-base-of-state-with-arrival
+  (equal (fn-bpnf-base (fn-bpnf-state-with-arrival b h o hs c i w e n na)) b)
+  :hints (("Goal" :in-theory (enable fn-bpnf-base fn-bpnf-state-with-arrival fn-bpn-nth fn-cbor-ag-car)))))
+
+
+(defthm fn-bpnf-recover-fnbs-step-answers-st-or-the-restart
+  (or (equal (fn-bpnf-answer-state
+              (fn-bpnf-recover-fnbs-step st new-epoch base-records sequence-ready replay))
+             st)
+      (and (equal (fn-bpnf-base
+                   (fn-bpnf-answer-state
+                    (fn-bpnf-recover-fnbs-step st new-epoch base-records sequence-ready replay)))
+                  (fn-bpn-answer-state
+                   (fn-bpn-restart-step-from
+                    (fn-bpnf-base st) base-records sequence-ready
+                    (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+                    (fn-bpn-machine-state-next-token (fn-bpnf-base st)))))
+           (equal (car (car (fn-bpn-answer-effects
+                             (fn-bpn-restart-step-from
+                              (fn-bpnf-base st) base-records sequence-ready
+                              (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+                              (fn-bpn-machine-state-next-token (fn-bpnf-base st))))))
+                  :restart-ready)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnf-recover-fnbs-step fn-bpnr-answer-state-of-answer
+                         fn-bpnr-base-of-state-with-arrival car-cons)
+                       (theory 'minimal-theory)))))
+
+
+(defthm fn-bpnf-recover-fnbs-step-of-no-base-records-keeps-owed-work
+  (implies (fn-bpn-machine-statep (fn-bpnf-base st))
+           (and (equal (fn-bpn-machine-state-jobs
+                        (fn-bpnf-base
+                         (fn-bpnf-answer-state
+                          (fn-bpnf-recover-fnbs-step st new-epoch nil :ready replay))))
+                       (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                (equal (fn-bpn-machine-state-next-token
+                        (fn-bpnf-base
+                         (fn-bpnf-answer-state
+                          (fn-bpnf-recover-fnbs-step st new-epoch nil :ready replay))))
+                       (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
+                (fn-bpn-machine-statep
+                 (fn-bpnf-base (fn-bpnf-answer-state
+                          (fn-bpnf-recover-fnbs-step st new-epoch nil :ready replay))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnf-recover-fnbs-step-answers-st-or-the-restart
+                            (base-records nil) (sequence-ready :ready))
+                 (:instance fn-bpn-restart-step-from-of-own-seed-keeps-owed-work
+                            (st (fn-bpnf-base st)))
+                 (:instance fn-bpn-restart-step-from-preserves-machine-invariant
+                            (st (fn-bpnf-base st)) (records nil) (sequence-ready :ready)
+                            (jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                            (token (fn-bpn-machine-state-next-token (fn-bpnf-base st))))
+                 (:instance fn-bpn-machine-invariant-components
+                            (st (fn-bpn-answer-state
+                                 (fn-bpn-restart-step-from
+                                  (fn-bpnf-base st) nil :ready
+                                  (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+                                  (fn-bpn-machine-state-next-token (fn-bpnf-base st))))))
+                 (:instance fn-bpn-restart-step-from-faults-on-an-oversized-seed
+                            (st (fn-bpnf-base st)) (records nil) (sequence-ready :ready)
+                            (jobs (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+                            (token (fn-bpn-machine-state-next-token (fn-bpnf-base st)))))
+           :in-theory (union-theories '(fn-bpnf-base) (theory 'minimal-theory)))))
+
+(defthm fn-bpnr-replay-base-is-a-machine-state
+  (implies (and (fn-bpnr-checkpointp ck)
+                (fn-bpn-machine-statep base)
+                (null (fn-bpn-machine-state-pending base))
+                (fn-bpn-machine-statep other)
+                (equal (fn-bpnr-checkpoint-jobs ck) (fn-bpn-machine-state-jobs other))
+                (equal (fn-bpnr-checkpoint-next-token ck)
+                       (fn-bpn-machine-state-next-token other))
+                (equal (fn-bpn-machine-state-max-jobs base)
+                       (fn-bpn-machine-state-max-jobs other))
+                (equal (fn-bpn-machine-state-max-octets base)
+                       (fn-bpn-machine-state-max-octets other)))
+           (fn-bpn-machine-statep (fn-bpnr-replay-base ck base)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpn-machine-statep-components (st base))
+                 (:instance fn-bpn-machine-statep-components (st other))
+                 (:instance fn-bpn-make-machine-state-without-pending-is-a-machine-state
+                            (config (fn-bpn-machine-state-config base))
+                            (jobs (fn-bpn-machine-state-jobs other))
+                            (contacts (fn-bpn-machine-state-contacts base))
+                            (fenced (fn-bpn-machine-state-fenced base))
+                            (token (fn-bpn-machine-state-next-token other))
+                            (max-jobs (fn-bpn-machine-state-max-jobs base))
+                            (max-octets (fn-bpn-machine-state-max-octets base))))
+           :in-theory (union-theories '(fn-bpnr-replay-base fn-bpn-state-with)
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-bpnr-recover-auto-event-carries-the-base-records
+  (and (equal (fn-bpn-nth 2 (fn-bpnr-recover-auto-event st base-records sequence-ready rows plan))
+              base-records)
+       (equal (fn-bpn-nth 3 (fn-bpnr-recover-auto-event st base-records sequence-ready rows plan))
+              sequence-ready))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-bpnr-recover-auto-event fn-bpn-nth fn-cbor-ag-car car-cons cdr-cons
+                                (:e zp) (:e natp) (:e not) (:e binary-+) (:e equal))
+                              (theory 'minimal-theory)))))
+
+(local (defthm fn-bpnr-state-with-arrival-is-a-cons
+  (consp (fn-bpnf-state-with-arrival b h o hs c i w e n na))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-bpnf-state-with-arrival)))))
+
+(defthm fn-bpnr-seed-state-over-a-selected-checkpoint
+  (implies
+   (and (fn-bpnr-checkpointp ckk)
+        (fn-bpn-machine-statep (fn-bpnf-base fresh))
+        (null (fn-bpn-machine-state-pending (fn-bpnf-base fresh)))
+        (fn-bpn-machine-statep other)
+        (equal (fn-bpnr-checkpoint-jobs ckk) (fn-bpn-machine-state-jobs other))
+        (equal (fn-bpnr-checkpoint-next-token ckk)
+               (fn-bpn-machine-state-next-token other))
+        (equal (fn-bpn-machine-state-max-jobs (fn-bpnf-base fresh))
+               (fn-bpn-machine-state-max-jobs other))
+        (equal (fn-bpn-machine-state-max-octets (fn-bpnf-base fresh))
+               (fn-bpn-machine-state-max-octets other)))
+   (let ((seeded (fn-bpnr-seed-state fresh (list :selected ckk))))
+     (and seeded
+          (fn-bpn-machine-statep (fn-bpnf-base seeded))
+          (equal (fn-bpn-machine-state-jobs (fn-bpnf-base seeded))
+                 (fn-bpnr-checkpoint-jobs ckk))
+          (equal (fn-bpn-machine-state-next-token (fn-bpnf-base seeded))
+                 (fn-bpnr-checkpoint-next-token ckk)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnr-replay-base-is-a-machine-state
+                            (ck ckk) (base (fn-bpnf-base fresh)))
+                 (:instance fn-bpnr-replay-base-seeds-checkpoint
+                            (ck ckk) (base (fn-bpnf-base fresh))))
+           :in-theory (union-theories
+                       '(fn-bpnr-seed-state fn-bpnr-plan-checkpoint-of-selected
+                         fn-bpnf-with-base fn-bpnr-base-of-state-with-arrival
+                         fn-bpnr-state-with-arrival-is-a-cons)
+                       (theory 'minimal-theory)))))
+
+(defthm fn-bpnr-recovery-over-a-selected-checkpoint-keeps-owed-work
+  (implies
+   (and (fn-bpnr-checkpointp ckk)
+        (equal plan (list :selected ckk))
+        (fn-bpn-machine-statep (fn-bpnf-base fresh))
+        (null (fn-bpn-machine-state-pending (fn-bpnf-base fresh)))
+        (fn-bpn-machine-statep other)
+        (<= (fn-bpn-machine-state-next-token other) *fn-bpn-machine-max-records*)
+        (equal (fn-bpnr-checkpoint-jobs ckk) (fn-bpn-machine-state-jobs other))
+        (equal (fn-bpnr-checkpoint-next-token ckk)
+               (fn-bpn-machine-state-next-token other))
+        (equal (fn-bpn-machine-state-max-jobs (fn-bpnf-base fresh))
+               (fn-bpn-machine-state-max-jobs other))
+        (equal (fn-bpn-machine-state-max-octets (fn-bpnf-base fresh))
+               (fn-bpn-machine-state-max-octets other))
+        (equal seeded (fn-bpnr-seed-state fresh plan))
+        (equal event (fn-bpnr-recover-auto-event seeded nil :ready nil plan))
+        (equal answer (fn-bpnf-recover-fnbs-step
+                       seeded (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+                       (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
+   (and (not (null seeded))
+        (equal (fn-bpn-machine-state-jobs
+                (fn-bpnf-base (fn-bpnf-answer-state answer)))
+               (fn-bpn-machine-state-jobs other))
+        (equal (fn-bpn-machine-state-next-token
+                (fn-bpnf-base (fn-bpnf-answer-state answer)))
+               (fn-bpn-machine-state-next-token other))
+        (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+                (fn-bpn-lifecycle-recovery-from
+                 nil nil (fn-bpnr-plan-start-token plan))
+                (fn-bpnf-base (fn-bpnf-answer-state answer)))
+               t)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnr-seed-state-over-a-selected-checkpoint)
+                 (:instance fn-bpnf-recover-fnbs-step-of-no-base-records-keeps-owed-work
+                            (st (fn-bpnr-seed-state fresh (list :selected ckk)))
+                            (new-epoch (fn-bpn-nth 1 (fn-bpnr-recover-auto-event
+                                        (fn-bpnr-seed-state fresh (list :selected ckk))
+                                        nil :ready nil (list :selected ckk))))
+                            (replay (fn-bpn-nth 4 (fn-bpnr-recover-auto-event
+                                        (fn-bpnr-seed-state fresh (list :selected ckk))
+                                        nil :ready nil (list :selected ckk)))))
+                 (:instance fn-bpn-machine-statep-components (st other))
+                 (:instance fn-bpn-host-lifecycle-recovery-from-nothing-agrees
+                            (start (fn-bpnr-checkpoint-next-token ckk))
+                            (st (fn-bpnf-base (fn-bpnf-answer-state answer)))))
+           :in-theory (union-theories
+                       '(fn-bpnr-recover-auto-event-carries-the-base-records fn-bpnr-plan-start-token fn-bpnr-plan-checkpoint-of-selected
+                         fn-bpn-machine-u64p)
+                       (theory 'minimal-theory)))))
+
+;; KEYSTONE (R5: rotate, then restart).  If the machine proposes the
+;; publication of a rotation of ST (whose base satisfies the machine
+;; invariant), then recovery over the published file with no later lifecycle
+;; records (no base records, sequence ready, no received rows) -- from any
+;; fresh state FRESH of the same profile whose base has no pending proposal --
+;; seeds the base (the host never fences on its own rotation file), and the
+;; recovered base machine has exactly ST's base jobs and token counter, whose
+;; namespace frontier the host's agreement check accepts for an empty
+;; namespace read from the checkpoint's token.
+(defthm fn-bpnp-rotation-restart-keeps-owed-work
+  (implies
+   (and (equal (car (car (fn-bpnf-answer-effects
+                          (fn-bpnp-rotate-step st generation ck))))
+               :persist-checkpoint)
+        (fn-bpn-machine-invariantp (fn-bpnf-base st))
+        (fn-bpn-machine-statep (fn-bpnf-base fresh))
+        (null (fn-bpn-machine-state-pending (fn-bpnf-base fresh)))
+        (equal (fn-bpn-machine-state-max-jobs (fn-bpnf-base fresh))
+               (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))
+        (equal (fn-bpn-machine-state-max-octets (fn-bpnf-base fresh))
+               (fn-bpn-machine-state-max-octets (fn-bpnf-base st)))
+        (equal plan
+               (fn-bpnr-selection-plan
+                t
+                (fn-bpnr-checkpoint-octets
+                 (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                     (fn-bpnp-rotate-step st generation ck))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                (fn-bpnr-depth-budget
+                 (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))
+        (equal seeded (fn-bpnr-seed-state fresh plan))
+        (equal event (fn-bpnr-recover-auto-event seeded nil :ready nil plan))
+        (equal answer (fn-bpnf-recover-fnbs-step
+                       seeded (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+                       (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
+   (and (not (null seeded))
+        (equal (fn-bpn-machine-state-jobs
+                (fn-bpnf-base (fn-bpnf-answer-state answer)))
+               (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+        (equal (fn-bpn-machine-state-next-token
+                (fn-bpnf-base (fn-bpnf-answer-state answer)))
+               (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
+        (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+                (fn-bpn-lifecycle-recovery-from
+                 nil nil (fn-bpnr-plan-start-token plan))
+                (fn-bpnf-base (fn-bpnf-answer-state answer)))
+               t)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnp-rotate-step-proposes-only-own-projection)
+                 (:instance fn-bpnr-selection-plan-of-octets
+                            (ck (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+                            (budget (fn-bpnr-depth-budget
+                                     (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))
+                 (:instance fn-bpnr-rotation-checkpoint-is-a-checkpoint
+                            (e (fn-bpnf-epoch st)))
+                 (:instance fn-bpnr-rotation-checkpoint-fields
+                            (e (fn-bpnf-epoch st)))
+                 (:instance fn-bpnr-recovery-over-a-selected-checkpoint-keeps-owed-work
+                            (ckk (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+                            (other (fn-bpnf-base st)))
+                 (:instance fn-bpn-machine-invariant-components
+                            (st (fn-bpnf-base st))))
+           :in-theory (union-theories
+                       '(fn-bpnr-checkpoint-of-statep fn-bpnp-rotation-quiescentp
+                         fn-frame-natp)
                        (theory 'minimal-theory)))))
 
 ;; The credit reset (only a :durable answer for the issued, pending
