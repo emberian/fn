@@ -13,6 +13,17 @@
 (local (in-theory (enable fn-cbor-invariants-vocabulary)))
 (local (in-theory (enable fn-frame-octet-vocabulary)))
 
+(local (defthm fn-frame-len-2-conses-local-rewrite
+  (implies (equal (len xs) 2)
+           (and (consp xs) (consp (cdr xs))))
+  :hints (("Goal" :by fn-frame-len-2-conses))))
+
+(local (defthm fn-frame-len-4-conses-local-rewrite
+  (implies (equal (len xs) 4)
+           (and (consp xs) (consp (cdr xs))
+                (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
+  :hints (("Goal" :by fn-frame-len-4-conses))))
+
 ; -----------------------------------------------------------------------------
 ; Field grammar for journal payloads
 ;

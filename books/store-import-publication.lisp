@@ -33,6 +33,11 @@
 (include-book "byte-store-programs")
 (include-book "byte-store-invariants")
 
+(local (defthmd fn-bs-keys-belowp-excludes-bound-local-rewrite
+  (implies (fn-bs-keys-belowp x n)
+           (not (assoc-equal n x)))
+  :hints (("Goal" :by fn-bs-keys-belowp-excludes-bound))))
+
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
 ;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
@@ -1885,7 +1890,7 @@
               (:rewrite fn-bs-imp-ops-for-name-of-append)
               (:rewrite fn-bs-imp-ops-for-name-of-selections)
               (:rewrite fn-bs-imp-quiet-entry-lands-unchanged)
-              (:rewrite fn-bs-keys-belowp-excludes-bound)
+              (:rewrite fn-bs-keys-belowp-excludes-bound-local-rewrite)
               (:rewrite fn-bs-ops-for-dir-of-ops-for-ino)
               (:rewrite fn-bs-pending-of-fn-bs-make) (:rewrite nth-0-cons)
               (:rewrite nth-add1) (:rewrite zp-open) (:type-prescription fn-bs-fsync-dir)

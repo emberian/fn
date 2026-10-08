@@ -128,7 +128,13 @@
            (< k n))))
 (defthm fn-bs-keys-belowp-excludes-bound
   (implies (fn-bs-keys-belowp x n)
-           (not (assoc-equal n x))))
+           (not (assoc-equal n x)))
+ :rule-classes nil)
+
+(local (defthm fn-bs-keys-belowp-excludes-bound-local-rewrite
+  (implies (fn-bs-keys-belowp x n)
+           (not (assoc-equal n x)))
+  :hints (("Goal" :by fn-bs-keys-belowp-excludes-bound))))
 (defthm fn-bs-keys-belowp-monotone
   (implies (and (fn-bs-keys-belowp x n) (natp m) (<= n m))
            (fn-bs-keys-belowp x m)))
@@ -815,7 +821,6 @@
     fn-bs-put-assoc-preserves-inode-tablep fn-bs-dir-tablep-entries-are-entries
     fn-bs-put-assoc-preserves-entriesp fn-bs-del-assoc-preserves-entriesp
     fn-bs-put-assoc-preserves-dir-tablep
-    fn-bs-keys-belowp-excludes-bound
     fn-bs-keys-belowp-monotone fn-bs-put-assoc-preserves-keys-belowp
     fn-bs-zeros-are-octets fn-bs-take-is-true-list
     fn-bs-take-of-octets-are-octets fn-bs-nthcdr-of-octets-are-octets
@@ -856,11 +861,5 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-bs-inode-tablep-keys-are-inos)
-                    (:rewrite fn-bs-keys-belowp-excludes-bound)
                     (:rewrite fn-bs-op-listp-implies-true-listp)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable
-                    fn-bs-keys-belowp-excludes-bound))

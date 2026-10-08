@@ -17,21 +17,46 @@
 (include-book "store-node-host")
 
 (defun fn-native-admin-host-plan (argv) (fn-native-admin-plan argv))
+
+(definterface fn-native-admin-host-plan
+  :class ::ideal)
 (defun fn-native-admin-host-status (result) (fn-native-admin-result-status result))
+
+(definterface fn-native-admin-host-status
+  :class ::ideal)
 (defun fn-native-admin-host-reason (result) (fn-native-admin-result-reason result))
+
+(definterface fn-native-admin-host-reason
+  :class ::ideal)
 (defun fn-native-admin-host-queryp (result) (fn-native-admin-result-queryp result))
+
+(definterface fn-native-admin-host-queryp
+  :class ::ideal)
 (defun fn-native-admin-host-owner-requestp (result)
   (fn-native-admin-result-owner-requestp result))
+
+(definterface fn-native-admin-host-owner-requestp
+  :class ::ideal)
 (defun fn-native-admin-host-reclaim-mode (result)
   (fn-native-admin-result-reclaim-mode result))
+
+; host/native/admin.lisp dispatches it (lane online-reclaim).
+(definterface fn-native-admin-host-reclaim-mode
+  :class :ideal)
 (defun fn-native-admin-host-report-kind (result)
   (fn-native-admin-result-report-kind result))
+
+(definterface fn-native-admin-host-report-kind
+  :class ::ideal)
 (defun fn-native-admin-host-query-report (plan state)
   ; `peer list' or `control list' over the configuration the store just
   ; replayed; books/native-admin.lisp selects and renders.
   (declare (xargs :stobjs state :mode :program))
   (value (fn-native-admin-query-report
           plan (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
+
+(definterface fn-native-admin-host-query-report
+  :class ::program)
 (defun fn-native-admin-host-owner-reconfigure (id plan fn-arena state)
   ; The live arm.  The delta list, labels as strings, is ACL2's
   ; (`fn-native-admin-plan-deltas', books/native-admin.lisp); this bridge
@@ -181,24 +206,54 @@
               kind (fn-native-admin-result-name plan)
               (fn-native-admin-result-capacity plan)
               stamp state)))))
+
+(definterface fn-native-admin-host-apply
+  :class ::program)
 (defun fn-native-admin-host-config-name (generation)
   (fn-native-admin-config-name generation))
+
+(definterface fn-native-admin-host-config-name
+  :class ::ideal)
 (defun fn-native-admin-host-clock-observation (monotonic wall has-wall)
   (fn-native-admin-clock-observation monotonic wall has-wall))
+
+(definterface fn-native-admin-host-clock-observation
+  :class ::ideal)
 (defun fn-native-admin-host-clock-status (result)
   (fn-native-admin-clock-status result))
+
+(definterface fn-native-admin-host-clock-status
+  :class ::ideal)
 (defun fn-native-admin-host-clock-stamp (result)
   (fn-native-admin-clock-stamp result))
+
+(definterface fn-native-admin-host-clock-stamp
+  :class ::ideal)
 (defun fn-native-admin-host-publication-status (result)
   (fn-native-admin-publication-status result))
+
+(definterface fn-native-admin-host-publication-status
+  :class ::ideal)
 (defun fn-native-admin-host-publication-reason (result)
   (fn-native-admin-publication-reason result))
+
+(definterface fn-native-admin-host-publication-reason
+  :class ::ideal)
 (defun fn-native-admin-host-publication-generation (result)
   (fn-native-admin-publication-generation result))
+
+(definterface fn-native-admin-host-publication-generation
+  :class ::ideal)
 (defun fn-native-admin-host-publication-name (result)
   (fn-native-admin-publication-name result))
+
+(definterface fn-native-admin-host-publication-name
+  :class ::ideal)
 (defun fn-native-admin-host-publication-jpub (result)
   (fn-native-admin-publication-jpub result))
+
+(definterface fn-native-admin-host-publication-jpub
+  :class ::ideal)
 
 ;;; ---------------------------------------------------------------------
 ;;; Invitation-code accounts (PRF-164, PKT-439).  Every decision is
@@ -207,16 +262,32 @@
 ;; The operator's side: the code's text from the host's CSPRNG octets, its
 ;; digest, and the digest-only admin argv.  The code is never an argument.
 (defun fn-acct-host-entropy-octets () *fn-acct-code-entropy-octets*)
+
+(definterface fn-acct-host-entropy-octets
+  :class ::ideal)
 (defun fn-acct-host-salt-octets () *fn-authsec-salt-octets*)
+
+(definterface fn-acct-host-salt-octets
+  :class ::ideal)
 (defun fn-acct-host-code-text (entropy) (fn-acct-code-text entropy))
+
+(definterface fn-acct-host-code-text
+  :class ::ideal)
 (defun fn-acct-host-code-digest-text (code-octets)
   (declare (xargs :guard (fn-cbor-octet-listp code-octets) :verify-guards nil))
   (fn-acct-code-digest-text code-octets))
+
+(definterface fn-acct-host-code-digest-text
+  :class ::ideal
+  :kinds ((code-octets fn-cbor-octet-listp)))
 (defun fn-acct-host-invite-argv (digest seconds)
   (list (fn-record-string-octets "account")
         (fn-record-string-octets "invite")
         (fn-record-string-octets digest)
         (fn-record-string-octets (fn-acct-decimal-text seconds))))
+
+(definterface fn-acct-host-invite-argv
+  :class ::ideal)
 
 ;; The owner's side.  Whether connection ID holds for an XREDEEM
 ;; (books/nntp-auth.lisp fn-auth-redeem-waitp).
@@ -224,6 +295,9 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
     (value (and conn (fn-auth-redeem-waitp (fn-own-conn-session conn)) t))))
+
+(definterface fn-acct-host-owner-redeem-waitingp
+  :class ::program)
 
 ;; The stage fnn-owner-live-reconfigure-locked runs under the owner mutex:
 ;; the bounded plan over the LIVE configuration value, at the owner's clock,
@@ -259,6 +333,9 @@
   (value (fn-acct-redeem-word (f-get-global 'fn-acct-redeem-plan state)
                               published)))
 
+(definterface fn-acct-host-owner-redeem-word
+  :class ::program)
+
 ;; The one service-log line: the outcome and the reason class, never the
 ;; code, its digest, the login's password or the verifier.
 (defun fn-acct-host-owner-redeem-log-line (published state)
@@ -278,6 +355,9 @@
                                   (not (equal published :accepted)))
                              " publication-refused" ""))))))
 
+(definterface fn-acct-host-owner-redeem-log-line
+  :class ::program)
+
 ;; The host's re-entry after the publication: the (:account-outcome WORD)
 ;; event through the same owner step (:tls-established) takes.
 (defun fn-owner-account-outcome (id word fn-arena state)
@@ -285,8 +365,11 @@
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
+      (let* ((result (fn-scar-ocfg-read-step (fn-owner-ocfg state)
                                         id (list :account-outcome word) fn-arena))
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
+
+(definterface fn-owner-account-outcome
+  :class ::program)

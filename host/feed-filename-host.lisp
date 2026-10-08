@@ -4,21 +4,45 @@
 (include-book "../books/feed-filename")
 (defun fn-feed-filename-host-okp (name) (declare (xargs :mode :program))
   (not (equal (fn-feed-filename-components name) :bad)))
+
+(definterface fn-feed-filename-host-okp
+  :class ::program)
 (defun fn-feed-filename-host-count (name) (declare (xargs :mode :program))
   (len (fn-feed-filename-components name)))
+
+(definterface fn-feed-filename-host-count
+  :class ::program)
 (defun fn-feed-filename-host-nth (n xs) (declare (xargs :mode :program))
   (if (and (natp n) (consp xs))
       (if (zp n) (car xs) (fn-feed-filename-host-nth (1- n) (cdr xs))) nil))
 (defun fn-feed-filename-host-component (name index) (declare (xargs :mode :program))
   (fn-feed-filename-host-nth index (fn-feed-filename-components name)))
+
+(definterface fn-feed-filename-host-component
+  :class ::program)
 (defun fn-feed-filename-host-max-components () (declare (xargs :mode :program))
   *fn-ff-max-components*)
+
+(definterface fn-feed-filename-host-max-components
+  :class ::program)
 (defun fn-feed-filename-host-max-v1-chunks () (declare (xargs :mode :program))
   *fn-ff-max-v1-chunks*)
+
+(definterface fn-feed-filename-host-max-v1-chunks
+  :class ::program)
 (defun fn-feed-filename-host-observation-limit () (declare (xargs :mode :program))
   (fn-feed-filename-observation-limit))
+
+(definterface fn-feed-filename-host-observation-limit
+  :class ::program)
 (defun fn-feed-filename-host-observation-remaining (remaining observed)
   (declare (xargs :mode :program))
   (fn-feed-filename-observation-remaining remaining observed))
+
+(definterface fn-feed-filename-host-observation-remaining
+  :class ::program)
 (defun fn-feed-filename-host-decode (components) (declare (xargs :mode :program))
   (fn-feed-filename-from-components components))
+
+(definterface fn-feed-filename-host-decode
+  :class ::program)
