@@ -7,9 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
-(include-book "owner-identity-intern")
-(include-book "owner-identity-served")
-(include-book "owner-prepare-outcome")
 (include-book "owner-commit-ocl")
 (include-book "owner-served-invariants")
 (include-book "owner-feed-port")
@@ -72,6 +69,8 @@
 (include-book "owner-time-journal")
 (include-book "owner-stop-drain")
 (include-book "owner-time-admission")
+(include-book "owner-reconfig-phased")
+(include-book "owner-time-reconfig")
 (include-book "owner-time-held")
 (include-book "owner-article-slots")
 (include-book "owner-credits")

@@ -9,14 +9,15 @@ import argparse
 import hashlib
 import json
 from proof_repl import forms, form_head
+import interface_emit
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def selected(path, names=None):
+def selected(path, names=None, only=None):
     for form in forms(path.read_text()):
         head = form_head(form)
-        if head in {'in-package', 'include-book'}:
+        if head in {'in-package', 'include-book'} or (only and head != only):
             continue
         if names is None:
             yield form
@@ -45,16 +46,21 @@ def emit(root, dependencies, output, declarations=True):
             'fn-owner-page-decoded-job-byte-at', 'fn-owner-page-decoded-job-retire', 'fn-owner-page-decoded-window-price-status',
             'fn-owner-page-decoded-window-acquire-projected', 'fn-owner-page-window-discovery-kind'}),
     ]
+    decl_names = {
+        'create-fn-decoded-job', 'fn-dwj-reserve', 'fn-dwj-begin', 'fn-dwj-one', 'fn-dwj-read-observation',
+        'fn-owner-page-decoded-job-assign', 'fn-owner-page-decoded-job-outcome',
+        'fn-owner-page-decoded-job-byte-at', 'fn-owner-page-decoded-job-retire', 'fn-pwz-cold-descriptor', 'fn-pwz-nth',
+        'fn-owner-page-decoded-window-price-status', 'fn-oct-nth',
+        'fn-owner-page-decoded-window-acquire-projected', 'fn-owner-page-window-discovery-kind'}
     if declarations:
-        selections.append(('host/interfaces.lisp', {
-            'create-fn-decoded-job', 'fn-dwj-reserve', 'fn-dwj-begin', 'fn-dwj-one', 'fn-dwj-read-observation',
-            'fn-owner-page-decoded-job-assign', 'fn-owner-page-decoded-job-outcome',
-            'fn-owner-page-decoded-job-byte-at', 'fn-owner-page-decoded-job-retire', 'fn-pwz-cold-descriptor', 'fn-pwz-nth',
-            'fn-owner-page-decoded-window-price-status', 'fn-oct-nth',
-            'fn-owner-page-decoded-window-acquire-projected', 'fn-owner-page-window-discovery-kind'}))
-    for relative, names in selections:
+        # declared where defined (tools/interfaces_relocate.py): the definterface
+        # forms are in the host files that define the entries
+        for relative in interface_emit.declaration_files(root):
+            if list(selected(root / relative, decl_names, 'definterface')):
+                selections.append((relative, decl_names, 'definterface'))
+    for relative, names, *only in selections:
         path = root / relative
-        result.extend(selected(path, names))
+        result.extend(selected(path, names, *only))
         inputs.append({'file': relative, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
     output.write_text('\n\n'.join(result) + '\n')
     output.with_suffix('.json').write_text(json.dumps({

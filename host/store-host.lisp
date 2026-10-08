@@ -74,6 +74,7 @@
 (include-book "../books/store-log-segments")
 (include-book "../books/store-log-extend")
 (include-book "../books/store-init-log-publication")
+(include-book "../books/definterface")
 
 ; The field checks of the Store's prepares (the metadata text domain, the
 ; Message-ID grammar, the composed POST verdicts) are ACL2's:
@@ -126,6 +127,10 @@
                   :guard (fn-octet-list-listp octet-records)))
   (fn-srs-decode octet-records))
 
+(definterface fn-store-decode-records
+  :class ::program
+  :kinds ((octet-records fn-octet-list-listp)))
+
 ; The intern (fn-intern-events; KEYSTONES fn-intern-events-materializes,
 ; -keep-coordinates, -contexts-okp) into a LOCAL arena, for a decision over
 ; a history that is not the live Store's (the administrative candidate
@@ -148,6 +153,10 @@
   (declare (xargs :mode :program
                   :guard (fn-cbor-octet-listp octets)))
   (fn-srs-record-sequence octets))
+
+(definterface fn-store-record-sequence
+  :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program
@@ -175,6 +184,9 @@
         *fn-frame-max-workflow-payload* *fn-frame-max-receipt-payload*
         *fn-frame-max-inbound-payload* *fn-frame-max-text*
         *fn-frame-max-blob* *fn-frame-max-identity*))
+
+(definterface fn-store-frame-constants
+  :class ::ideal)
 
 (defun fn-store-frame-result (frame)
   ; (:ok payload) or (:error reason) for a frame whose payload is opaque.
@@ -313,6 +325,9 @@
       (fn-id-subject-of-payload payload)
     nil))
 
+(definterface fn-store-subject-id-of-payload
+  :class ::ideal)
+
 (defun fn-store-obligation-id-of (msgid subject)
   ; The canonical obligation-v1 identity, preimage and digest both in ACL2.
   (if (and (fn-cbor-octet-listp msgid)
@@ -322,11 +337,17 @@
       (fn-id-obligation-of msgid subject)
     nil))
 
+(definterface fn-store-obligation-id-of
+  :class ::ideal)
+
 (defun fn-store-identity-text (identity)
   ; The one rendering of a canonical identity into a string, for the three
   ; boundaries that cannot carry octets: the store record metadata fields, the
   ; workflow journal JSON and the NNTP header value.
   (if (fn-cbor-octet-listp identity) (fn-id-text identity) nil))
+
+(definterface fn-store-identity-text
+  :class ::ideal)
 
 ; Durable store metadata.  `tools/run_store.py' calls only these wrappers for
 ; config.json and allocation-frontier.json.  Their grammar, bounds, profile
@@ -336,9 +357,18 @@
 (defun fn-store-metadata-config-frame (profile)
   (fn-bs-config-frame-for-profile profile))
 
+(definterface fn-store-metadata-config-frame
+  :class ::ideal
+  :delegates fn-bs-config-frame-for-profile)
+
 (defun fn-store-metadata-config-decode (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-bs-config-decode octets))
+
+(definterface fn-store-metadata-config-decode
+  :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-bs-config-decode)
 
 ;; The open of config.json every open path reads (PKT-471,
 ;; books/store-profile-open.lisp): (:opened VALUES), (:refused :store-format)
@@ -348,8 +378,17 @@
   (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-spo-config-open octets))
 
+(definterface fn-store-metadata-config-open
+  :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp))
+  :delegates fn-spo-config-open)
+
 (defun fn-store-metadata-config-refusal-text (verdict)
   (fn-spo-refusal-text verdict))
+
+(definterface fn-store-metadata-config-refusal-text
+  :class ::ideal
+  :delegates fn-spo-refusal-text)
 
 ;; The Python `init --profile WORD': WORD's octets are read by the native
 ;; operator's own preset parser (`fn-nop-profile-preset-word',
@@ -367,6 +406,10 @@
 ;; profile, whose commits go through the record log.
 (defun fn-store-profile-logp (values)
   (fn-bs-profile-logp values))
+
+(definterface fn-store-profile-logp
+  :class ::ideal
+  :delegates fn-bs-profile-logp)
 
 ;; The log's next txid at an open (lane commit-onto-log): one past the largest
 ;; txid of every record the log holds, of every event kind (the codec's
@@ -394,6 +437,9 @@
   (declare (xargs :mode :program))
   (fn-store-log-next-txid-loop (list record) (nfix acc)))
 
+(definterface fn-store-log-next-txid-step
+  :class ::program)
+
 ;; The same fold over records the replay has already decoded
 ;; (books/store-recover-stream.lisp fn-srs-decode) is ACL2's:
 ;; books/open-frontier-wire.lisp fn-ofw-wire-next, the replay's frontier fold
@@ -405,10 +451,22 @@
   (declare (xargs :mode :program))
   (max (nfix a) (nfix b)))
 
+(definterface fn-store-log-next-txid-join
+  :class ::program)
+
 ;; The record log's layout (books/store-log-route.lisp).
 (defun fn-store-log-segment-name () (fn-olr-segment-name))
+
+(definterface fn-store-log-segment-name
+  :class ::ideal)
 (defun fn-store-log-unit () (fn-olr-unit))
+
+(definterface fn-store-log-unit
+  :class ::ideal)
 (defun fn-store-log-initial-extent () (fn-olr-initial-extent))
+
+(definterface fn-store-log-initial-extent
+  :class ::ideal)
 ;; The active segment observed at SIZE octets (codex r72 F1).  Whole units
 ;; (fn-lg-extent-okp) is the log's own shape: :whole.  Otherwise it can only
 ;; be a rotation that died between its create and the end of its zero fill
@@ -423,10 +481,17 @@
         ((null first-nonzero) :complete-rotation)
         (t (list :refused :segment-misaligned))))
 
+(definterface fn-store-log-partial-segment-verdict
+  :class ::ideal)
+
 ;; The store profile (D27, format 8): every value the host reads from it is
 ;; one of these accessors over the decoded values, never a list position.
 (defun fn-store-profile-admittedp (values)
   (fn-bs-profile-admittedp values))
+
+(definterface fn-store-profile-admittedp
+  :class ::ideal
+  :delegates fn-bs-profile-admittedp)
 
 (defun fn-store-profile-init-verdict (request)
   (fn-bs-profile-init-verdict request))
@@ -437,6 +502,10 @@
 ;; R, the segment size of the state checkpoint (P3).
 (defun fn-store-profile-max-record-octets (values)
   (fn-bs-profile-max-record-octets values))
+
+(definterface fn-store-profile-max-record-octets
+  :class ::ideal
+  :delegates fn-bs-profile-max-record-octets)
 
 ;; The operator's namespace counts (D27, PRF-102).  The host reads each once
 ;; from the profile it opened and hands the natural to the ACL2 subject that
@@ -453,6 +522,10 @@
 (defun fn-store-profile-report (values)
   (fn-bs-profile-report values))
 
+(definterface fn-store-profile-report
+  :class ::ideal
+  :delegates fn-bs-profile-report)
+
 ;; The Python store's view (tools/run_store.py): the persisted format (8, the
 ;; one format), then T, H, R and A, every one ACL2's reading.
 (defun fn-store-profile-summary (values)
@@ -466,12 +539,22 @@
 (defun fn-store-metadata-frontier-frame (n)
   (fn-bs-frontier-encode n))
 
+(definterface fn-store-metadata-frontier-frame
+  :class ::ideal)
+
 (defun fn-store-metadata-frontier-decode (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-bs-frontier-decode octets))
 
+(definterface fn-store-metadata-frontier-decode
+  :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp)))
+
 (defun fn-store-metadata-frontier-next (n)
   (fn-bs-frontier-next n))
+
+(definterface fn-store-metadata-frontier-next
+  :class ::ideal)
 
 ;; The replay bound every open checks per record: H plus T records' encoding
 ;; overhead (books/store-replay-bound.lisp; every history the profile admits
@@ -495,6 +578,10 @@
         :bad
       (fn-store-codes-from-groups names domain))))
 
+(definterface fn-store-group-codes
+  :class ::ideal
+  :kinds ((name-octets fn-octet-list-listp) (domain-octets fn-octet-list-listp)))
+
 ; The whole POST admission boundary is `fn-sbud-post-boundary'
 ; (books/store-budget-naming.lisp), over the persisted PROFILE the caller was
 ; handed at open; both hosts call it by that name.  No host constant enters it.
@@ -505,6 +592,9 @@
 (defun fn-store-compress-min-octets (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-lzr-config-min (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
+
+(definterface fn-store-compress-min-octets
+  :class ::program)
 ;; -----------------------------------------------------------------------------
 ;; The genesis (books/store-genesis.lisp; lane format-bump-10).  `init' and
 ;; `store import' write the file ACL2 builds from the host's recorded
@@ -515,15 +605,30 @@
 (defun fn-store-genesis-file-name ()
   (fn-gen-file-name))
 
+(definterface fn-store-genesis-file-name
+  :class ::ideal)
+
 (defun fn-store-genesis-octets (node salt created revision profile)
   (fn-gen-octets-for node salt created revision profile))
+
+(definterface fn-store-genesis-octets
+  :class ::ideal
+  :delegates fn-gen-octets-for)
 
 (defun fn-store-genesis-open (octets profile)
   (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-gen-open octets profile))
 
+(definterface fn-store-genesis-open
+  :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp)))
+
 (defun fn-store-genesis-refusal-text (verdict)
   (fn-gen-refusal-text verdict))
+
+(definterface fn-store-genesis-refusal-text
+  :class ::ideal
+  :delegates fn-gen-refusal-text)
 
 ;; The chain value segment 1 starts from: the verdict's trailer.
 (defun fn-store-genesis-chain (verdict)
@@ -532,12 +637,18 @@
       (caddr verdict)
     nil))
 
+(definterface fn-store-genesis-chain
+  :class ::ideal)
+
 ;; The open's verdict, kept for this process: the owner's install reads the
 ;; salt from it (fn-gen-verdict-salt), `store digest' its record.
 (defun fn-store-genesis-install (verdict state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-store-genesis verdict state)))
     (mv nil t state)))
+
+(definterface fn-store-genesis-install
+  :class ::program)
 
 ;; The store's identity the history image's binding names
 ;; (books/history-image-binding.lisp): the genesis record's node identity and
@@ -548,3 +659,7 @@
   (let ((v (and (boundp-global 'fn-store-genesis state) (f-get-global 'fn-store-genesis state))))
     (value (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v))) (fn-gen-node (cadr v)) nil)
                  (fn-gen-verdict-salt v)))))
+
+; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner).
+(definterface fn-store-genesis-ident
+  :class ::program)

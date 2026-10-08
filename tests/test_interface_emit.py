@@ -43,8 +43,8 @@ def reading(**over) -> dict:
 class DeclarationTests(unittest.TestCase):
     def test_forms_parse(self):
         decls = interface_emit.declarations(tree(SOURCE))
-        self.assertEqual([d["name"] for d in decls], ["fn-a", "fn-c", "fn-d", "create-fn-e"])
-        a = decls[0]
+        self.assertEqual([d["name"] for d in decls], ["create-fn-e", "fn-a", "fn-c", "fn-d"])  # sorted by name
+        a = decls[1]
         self.assertEqual(a["class"], "common-lisp-compliant")
         self.assertEqual(a["kinds"], [["octets", "fn-cbor-octet-listp"]])
         self.assertEqual(a["keystones"], [{"theorem": "fn-a-thm"},
@@ -533,10 +533,16 @@ class KeystoneFormulaTests(unittest.TestCase):
             ["git", "-C", str(ROOT), "show", commit_map.resolve(self.HISTORIC) + ":books/bp-heap-command.lisp"],
             capture_output=True, text=True, check=True).stdout
 
+    # the entry's definition: its call closure is what a :via target must be in
+    ENTRY = ('(defun fn-bph-extend-reservation (x) (fn-bph-helper x))\n'
+             '(defun fn-bph-helper (x) (fn-bpsp-node-startup x))\n'
+             '(defun fn-bpsp-node-startup (x) x)\n(defun fn-bpsp-node-capacity (x) x)\n')
+
     def fixture(self, via: str, book: str | None = None) -> Path:
         root = tree('(in-package "ACL2")\n' + self.DECLARATION.format(via=via))
         (root / "books").mkdir()
         (root / "books" / "bp-heap-command.lisp").write_text(book or self.historic_book())
+        (root / "books" / "aa-entry.lisp").write_text('(in-package "ACL2")\n' + self.ENTRY)
         return root
 
     def check(self, root: Path):
@@ -551,6 +557,46 @@ class KeystoneFormulaTests(unittest.TestCase):
 
     def test_a_via_target_the_formula_does_call_passes(self):
         self.assertEqual(self.check(self.fixture("fn-bpsp-node-startup")), ([], []))
+
+    def test_a_via_target_outside_the_entrys_call_closure_is_refused(self):
+        # f338968d1: fn-oct-transit stopped calling fn-oop-transit-outcome, the
+        # :via of fn-owner-transit-outcome; host-ld said so at an image build.
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+                '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n')
+        root = self.fixture("fn-bpsp-node-capacity", book)
+        problems, unresolved = self.check(root)
+        self.assertEqual(unresolved, [])
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("fn-bpsp-node-capacity is not in fn-bph-extend-reservation's call closure",
+                      problems[0])
+        # the same keystone passes once the entry calls the target, directly or through a helper
+        (root / "books" / "aa-entry.lisp").write_text(
+            '(in-package "ACL2")\n' + self.ENTRY.replace(
+                "(fn-bpsp-node-startup x))\n(defun fn-bpsp-node-startup",
+                "(fn-bpsp-node-capacity (fn-bpsp-node-startup x)))\n(defun fn-bpsp-node-startup"))
+        self.assertEqual(self.check(root), ([], []))
+
+    def test_a_via_closure_is_read_through_a_macro_template_and_its_calls(self):
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+                '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n'
+                '(defun fn-bpsp-node-capacity (x) x)\n'
+                '(defmacro def-gen (&key rows) `(defun fn-bph-extend-reservation (x) (fn-pick x ,@rows)))\n'
+                '(def-gen :rows ((fn-bpsp-node-capacity x)))\n')
+        root = self.fixture("fn-bpsp-node-capacity", book)
+        (root / "books" / "aa-entry.lisp").write_text('(in-package "ACL2")\n')
+        self.assertEqual(self.check(root), ([], []))
+        (root / "books" / "bp-heap-command.lisp").write_text(book.replace("((fn-bpsp-node-capacity x))", "()"))
+        self.assertEqual(len(self.check(root)[0]), 1)
+
+    def test_an_entry_the_reader_finds_no_definition_for_is_listed_not_failed(self):
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+                '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n')
+        root = self.fixture("fn-bpsp-node-capacity", book)
+        (root / "books" / "aa-entry.lisp").write_text('(in-package "ACL2")\n')
+        problems, unresolved = self.check(root)
+        self.assertEqual(problems, [])
+        self.assertEqual(len(unresolved), 1)
+        self.assertIn("call closure not decidable", unresolved[0])
 
     def test_a_comment_or_docstring_cannot_satisfy_it(self):
         book = ('(in-package "ACL2")\n; fn-bpsp-node-capacity is the capacity\n'

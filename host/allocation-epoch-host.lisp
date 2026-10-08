@@ -111,14 +111,5 @@
  :hints (("Goal" :in-theory (disable nth update-nth fn-aec-observed-occupancy fn-aec-collect-complete)))
  :rule-classes nil)
 
-(definterface fn-aec-pool-collection-request-internal
- :class :common-lisp-compliant
- :raw-with (fn-aech-request-preserves-carried-state fn-aech-request-preserves-existing-roots))
 
-(definterface fn-aec-pool-collect-observed-internal
- :class :common-lisp-compliant
- :raw-with (fn-aech-observed-preserves-carried-state fn-aech-observed-preserves-existing-roots))
 
-(definterface fn-aec-pool-uncertain-internal
- :class :common-lisp-compliant
- :raw-with (fn-aech-uncertain-preserves-carried-state fn-aec-pool-uncertainty-retains-charge-and-identities))

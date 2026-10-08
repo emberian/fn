@@ -39,3 +39,7 @@
     (value (fn-served-reply-octets
             (fn-ag-append (fn-served-result-effects opened)
                           (fn-served-result-effects ran))))))
+
+(definterface fn-reader-model-octets
+  :class :common-lisp-compliant
+  :root :extract)

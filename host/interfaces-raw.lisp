@@ -7,23 +7,23 @@
 (include-book "../books/history-paged-adopt")
 (include-book "../books/history-records")
 (include-book "../books/resource-vector-exec")
+(definterface create-fn-decoded-job :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-decoded-job)))
+(definterface create-fn-hist$p :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hist$p)))
+(definterface create-fn-hrecs$c :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$c)))
+(definterface create-fn-hrecs$s :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$s)))
 (definterface create-fn-resource-ledger :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-resource-ledger)))
+(definterface fn-hist$p-append :class :common-lisp-compliant :kinds () :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-append-keeps-wfp))
+(definterface fn-hist$p-candidate-word :class :common-lisp-compliant :kinds ((expected-count natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
+(definterface fn-hist$p-read :class :common-lisp-compliant :kinds ((ordinal natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-read-is-history-row))
+(definterface fn-hist$p-root-index-next :class :common-lisp-compliant :kinds ((ordinal natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-index-next-keeps-wfp))
+(definterface fn-hroot-index-demand :class :common-lisp-compliant :kinds ((ordinal natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-root-is-physical))
+(definterface fn-hroot-read-demand :class :common-lisp-compliant :kinds ((ordinal natp) (retained natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-root-is-physical))
 ; outside the DTN image: fn-owner-control-submit :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-io :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
-; outside the DTN image: fn-owner-take :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-known-abort :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-prepare-consumer :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-prepare-identity :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-prepare-retention :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-prepare-topic :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-refuse-reservation :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
-(definterface create-fn-hrecs$c :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$c)))
-(definterface create-fn-hrecs$s :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$s)))
-(definterface create-fn-hist$p :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hist$p)))
-(definterface fn-hroot-index-demand :class :common-lisp-compliant :kinds ((ordinal natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-root-is-physical))
-(definterface fn-hroot-read-demand :class :common-lisp-compliant :kinds ((ordinal natp) (retained natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-root-is-physical))
-(definterface fn-hist$p-root-index-next :class :common-lisp-compliant :kinds ((ordinal natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-index-next-keeps-wfp))
-(definterface fn-hist$p-read :class :common-lisp-compliant :kinds ((ordinal natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-read-is-history-row))
-(definterface fn-hist$p-append :class :common-lisp-compliant :kinds () :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-append-keeps-wfp))
-(definterface fn-hist$p-candidate-word :class :common-lisp-compliant :kinds ((expected-count natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
-(definterface create-fn-decoded-job :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-decoded-job)))
+; outside the DTN image: fn-owner-take :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load

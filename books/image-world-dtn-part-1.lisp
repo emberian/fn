@@ -156,3 +156,7 @@
 (include-book "store-budget-naming")
 (include-book "store-profile-facts")
 (include-book "store-genesis")
+(include-book "store-replay-bound")
+(include-book "store-profile-open")
+(include-book "store-mount-identity")
+(include-book "store-host-boundary")
