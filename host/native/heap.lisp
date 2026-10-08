@@ -173,6 +173,10 @@ CORE and MACHINE are each captured once for both ACL2 reservation steps."
            (core (fnn-heap-image-observation))
            (machine (fnn-heap-observations))
            (observed (and profile (fnn-heap-history-observation absolute-root profile)))
+           (*fnn-heap-trace-ring-octets*
+             (if *fnn-operator-config-octets*
+                 (fnn-heap-config-trace-ring-octets *fnn-operator-config-octets*)
+               *fnn-heap-trace-ring-octets*))
            (base (fnn-core 'fn-heap-status-decide profile core
                            +fnn-gc-nursery-octets+ machine observed)))
       (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line
@@ -306,6 +310,13 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
                                  config-path (fnn-core 'fn-native-config-host-max-octets)))
                  (result (fnn-operator-run-at config-path config-octets argv-octets))
                  (root (fnn-core 'fn-native-operator-host-result-store-root result)))
+            ;; The decision trace ring is part of a run's reservation
+            ;; (books/decision-trace-reservation.lisp), ACL2's plan of this
+            ;; configuration's [trace] table; no other action holds one.
+            (setq *fnn-heap-trace-ring-octets*
+                  (if (eq (fnn-core 'fn-native-operator-host-result-native-action result) :run)
+                      (fnn-heap-config-trace-ring-octets config-octets)
+                    0))
             (when (and (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
                        (stringp root))
               (values
@@ -417,6 +428,7 @@ fn-prstartup-launch-admits-owner-protected).  The live reclaim's reserve (the
 operator's opt-in, `[resources] reclaim_live', books/reclaim-reservation.lisp)
 extends the store decision first, so the cold and output allowances are added
 to a space that already holds it."
+  (fnn-core 'fn-dtrace-extend-reservation
   (fnn-core 'fn-orv-extend-reservation
             (fnn-core 'fn-bph-extend-reservation
             (fnn-core 'fn-pfr-extend-operation-reservation
@@ -429,7 +441,8 @@ to a space that already holds it."
                                 (fnn-extent-cache-limit) core machine profile observed)
                       action peer core machine)
             bp-terms core machine)
-            output-resources core machine))
+            output-resources core machine)
+  *fnn-heap-trace-ring-octets* core machine))
 
 (defun fnn-heap-bp-terms (argv)
   "A `bp-node serve' command's BP terms, observed as fnn-bp-session-install

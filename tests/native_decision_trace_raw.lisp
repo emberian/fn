@@ -21,7 +21,7 @@
   ((subject :initarg :subject) (tag :initarg :tag) (cause :initarg :cause)))
 (load-deployed-forms "host/native/io.lisp"
                      '((defun fnn-fixed-callback-fail) (defun fnn-call)
-                       (defun fnn-core-mv-traced) (defmacro fnn-core-mv) (defun fnn-core)))
+                       (defmacro fnn-core-mv) (defun fnn-core)))
 
 ;;; The mock ACL2 world.  Each entry returns what its name says.
 (defparameter *mock-entries* (make-hash-table :test 'eq))

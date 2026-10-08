@@ -167,7 +167,7 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         owner = (ROOT / "host/native/owner.lisp").read_text(encoding="utf-8")
         forms = self._forms("host/native/owner.lisp")
         envelope = self._definition(forms, "defmacro", "fnn-section-envelope")
-        paths = list(self._ancestors(envelope, "fnn-owner-measured"))
+        paths = list(self._ancestors(envelope, "fnn-trace-span"))
         self.assertEqual(len(paths), 1)
         self.assertIn("fnn-owner-shared-action-locked", [head(p) for p in paths[0]])
         # The owner mutex, taken through the observed form

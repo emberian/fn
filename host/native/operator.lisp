@@ -31,8 +31,9 @@
     ;; requests 9 to 11 (host/native/peer-invite.lisp); keys redecide as
     ;; request 12 (host/native/keys.lisp); tls reload as request 19
     ;; (host/native/tls-reload.lisp); moderation approve|reject and article
-    ;; withdraw as request 21.
-    ((:peering :keys :tls :moderate) :control)
+    ;; withdraw as request 21; trace on|off|drain as request 26
+    ;; (host/native/trace.lisp).
+    ((:peering :keys :tls :moderate :trace) :control)
     ;; PKT-869: carry list|inspect|pause|resume|drop over the FNWF journal
     ;; (host/native/bp-obligation.lisp).
     (:carry :workflow)))

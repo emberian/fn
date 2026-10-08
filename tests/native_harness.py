@@ -1138,6 +1138,47 @@ def installed_launcher(image):
         return _INSTALLED[image]
 
 
+def trace_spans(node, *, capacity=65536, allocation="process"):
+    """Append a `[trace]` table that starts the owner's span ring on (the
+    replacement of the FN_OWNER_MEASURE=1 environment switch, which no longer
+    exists: tracing is the profile's table and the operator's verb).  The
+    owner prints its span rows when it stops (`owner_measure`)."""
+    if "[trace]" in node.config.read_text(encoding="utf-8"):
+        return node
+    node.config.write_text(node.config.read_text(encoding="utf-8") + (
+        '\n[trace]\ncapacity = {}\nallocation = "{}"\nstart = "on"\n'.format(
+            capacity, allocation)), encoding="utf-8")
+    return node
+
+
+def owner_measure(stderr):
+    """{label: (holds, held_us, max_us, bytes, max_bytes)} from the FN_TRACE
+    span rows an owner printed at stop (the old `fn-owner-measure` report, per
+    gate label: other, control, over-cursor, commit, feed-flush ...).  The
+    ring must not have dropped a span, or the totals would be short; the
+    allocation column is process-wide (tools/native_trace.py)."""
+    import json
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode("utf-8", "replace")
+    table = {}
+    dropped = 0
+    for line in stderr.splitlines():
+        if not line.startswith("FN_TRACE "):
+            continue
+        event = json.loads(line[len("FN_TRACE "):])
+        if event.get("type") == "summary":
+            dropped += event.get("dropped", 0)
+        elif event.get("type") == "span":
+            holds, held, most, used, most_used = table.get(event["phase"], (0, 0, 0, 0, 0))
+            allocated = event.get("allocated_bytes") or 0
+            table[event["phase"]] = (holds + 1, held + event["duration_us"],
+                                     max(most, event["duration_us"]), used + allocated,
+                                     max(most_used, allocated))
+    if dropped:
+        raise AssertionError("the span ring dropped {} spans; raise [trace] capacity".format(dropped))
+    return table
+
+
 class Node:
     """One node's scratch tree and the verbs a test runs on it.
 

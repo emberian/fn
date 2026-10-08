@@ -20,6 +20,10 @@
 
 (in-package "ACL2")
 (include-book "../books/definterface")
+(include-book "../books/decision-trace-points") ; the projections :trace names
+(include-book "../books/decision-trace-config") ; the [trace] table's plan
+(include-book "../books/decision-trace-reservation") ; the ring's place in the reservation
+(include-book "../books/decision-trace-control") ; trace on|off|drain, kinds 26 and 27
 ; Keystones the declarations below name, in books no host file otherwise
 ; brings into the image world (decision-keystones-5; host_check --books).
 (include-book "../books/bp-handoff-report")
@@ -517,7 +521,12 @@
 
 (definterface fn-lgc-append-admitsp
   :class :common-lisp-compliant
-  :kinds ((c true-listp)))
+  :kinds ((c true-listp))
+  :trace (:class :verdict
+          :inputs ()
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses ((t) (nil))))
 
 (definterface fn-lgc-append-octets
   :class :common-lisp-compliant
@@ -549,7 +558,12 @@
 
 (definterface fn-lgu-take-verdict
   :class :common-lisp-compliant
-  :keystones (fn-lgu-take-verdict-admits-exactly-log-records))
+  :keystones (fn-lgu-take-verdict-admits-exactly-log-records)
+  :trace (:class :verdict
+          :inputs ()
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses ((:admissible) (:record-exceeds-log-frame))))
 
 (definterface fn-lgu-log-max
   :class :common-lisp-compliant
@@ -678,7 +692,12 @@
 
 (definterface fn-lgdm-verdict
   :class :common-lisp-compliant
-  :kinds ((st true-listp) (ps true-listp)))
+  :kinds ((st true-listp) (ps true-listp))
+  :trace (:class :verdict
+          :inputs ()
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses (((:complete 5)) ((:broken 5)) ((:damaged 5 2 3 4)) ((:torn 5 1)))))
 
 (definterface fn-lgs-listing-bound
   :class :common-lisp-compliant)
@@ -834,14 +853,24 @@
               fn-otm-peer-reader-read-only-while-shedding
               fn-otm-past-the-deadline-sheds
               fn-otm-full-sheds
-              fn-otm-decisions-read-only-the-journal-state))
+              fn-otm-decisions-read-only-the-journal-state)
+  :trace (:class :verdict
+          :inputs ((s (:with fn-otm-jseq)))
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses ((:shed) (:admit))))
 
 (definterface fn-otm-commit-event
   :class :common-lisp-compliant
   :keystones (fn-otm-commit-event-is-ocp-commit-event))
 
 (definterface fn-otm-committer-wake
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :trace (:class :schedule
+          :inputs ((s (:with fn-otm-jseq)))
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses ((:wait) (:collect) (:start-next))))
 
 (definterface fn-otm-disk
   :class :common-lisp-compliant
@@ -856,7 +885,12 @@
 
 (definterface fn-otm-disk-step
   :class :common-lisp-compliant
-  :keystones (fn-otm-disk-step-unfolds))
+  :keystones (fn-otm-disk-step-unfolds)
+  :trace (:class :schedule
+          :inputs ((s (:with fn-otm-jseq)))
+          :outcome fn-dtrace-disk-step-record
+          :decision fn-dtrace-disk-step-word
+          :witnesses (((:none (nil nil (0 0 7 nil)) nil nil)) ((:became-stalled (nil nil (5 0 9 nil)) nil nil)))))
 
 (definterface fn-otm-init
   :class :common-lisp-compliant)
@@ -907,7 +941,12 @@
 
 (definterface fn-otm-next
   :class :common-lisp-compliant
-  :keystones (fn-otm-next-is-ocp-next))
+  :keystones (fn-otm-next-is-ocp-next)
+  :trace (:class :schedule
+          :inputs ((s (:with fn-otm-jseq)))
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses ((:read nil) (:commit nil) (:inspect nil))))
 
 (definterface fn-otm-note-step
   :class :common-lisp-compliant)
@@ -934,7 +973,12 @@
 
 (definterface fn-otm-wait-ms
   :class :common-lisp-compliant
-  :keystones (fn-otm-decisions-read-only-the-journal-state))
+  :keystones (fn-otm-decisions-read-only-the-journal-state)
+  :trace (:class :schedule
+          :inputs ((s (:with fn-otm-jseq)))
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses ((nil) (250))))
 
 (definterface fn-otm-wall-reading
   :class :common-lisp-compliant
@@ -1061,7 +1105,12 @@
 (definterface fn-store-charge
   :class :common-lisp-compliant
   :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge
-              fn-store-charge-of-profile-article-is-representable))
+              fn-store-charge-of-profile-article-is-representable)
+  :trace (:class :tariff
+          :inputs ((length (:with fn-dtrace-atom-clip)))
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses ((0) (4096))))
 
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
@@ -1535,7 +1584,12 @@
 
 (definterface fn-own-intent-refusal-word
   :class :common-lisp-compliant
-  :keystones (fn-own-intent-refusal-word-is-a-refusal))
+  :keystones (fn-own-intent-refusal-word-is-a-refusal)
+  :trace (:class :refusal
+          :inputs ()
+          :outcome fn-dtrace-v0-clip
+          :decision fn-dtrace-v0
+          :witnesses ((:feed-queue-full) (:refused))))
 
 (definterface fn-owner-account-outcome
   :class ::program)
@@ -1641,7 +1695,12 @@
   :class ::program)
 
 (definterface fn-owner-connection-budget
-  :class ::program)
+  :class ::program
+  :trace (:class :tariff
+          :inputs ()
+          :outcome fn-dtrace-v1-clip
+          :decision fn-dtrace-v1
+          :witnesses ((nil :hold nil) (nil :refused nil))))
 
 (definterface fn-owner-consumer-local-ack
   :class :common-lisp-compliant
@@ -1694,7 +1753,12 @@
   :class ::program)
 
 (definterface fn-owner-exposure-charge
-  :class ::program)
+  :class ::program
+  :trace (:class :tariff
+          :inputs ()
+          :outcome fn-dtrace-v1-clip
+          :decision fn-dtrace-v1
+          :witnesses ((nil :proceed nil) (nil 250 nil))))
 
 (definterface fn-owner-exposure-idle
   :class ::program
@@ -2050,7 +2114,12 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-served-post-word
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :trace (:class :verdict
+          :inputs ()
+          :outcome fn-dtrace-v1-clip
+          :decision fn-dtrace-v1
+          :witnesses ((nil :durable-key-change-refused nil) (nil :refused nil) (nil :durable nil))))
 
 (definterface fn-owner-set-auth-config
   :class :common-lisp-compliant)
@@ -4168,6 +4237,12 @@
 (definterface fn-native-operator-host-result-tls-control-path-octets
   :class ::program)
 
+(definterface fn-native-operator-host-result-trace-control-path-octets
+  :class ::program)
+
+(definterface fn-native-operator-host-result-trace-plan
+  :class ::program)
+
 (definterface fn-native-operator-host-store-outcome
   :class ::program)
 
@@ -5719,7 +5794,12 @@
   :class :program
   :keystones ((fn-tariff-family-preview-charges-before-effect :via fn-tariff-family-preview)
               (fn-tariff-article-prices-the-served-row :via fn-tariff-article-number-charge)
-              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-msgid-charge)))
+              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-msgid-charge))
+  :trace (:class :tariff
+          :inputs ()
+          :outcome fn-dtrace-v1-clip
+          :decision fn-dtrace-v1
+          :witnesses ((nil (:unpriced :stat) nil) (nil (:article 120) nil))))
 (definterface fn-owner-output-refusal-line-at
   :class :program
   :keystones ((fn-oadl-refusal-is-one-line :via fn-oadl-refusal-span)))
@@ -5996,3 +6076,64 @@
 (definterface fn-stid-host-reply-read :class ::program)
 (definterface fn-stid-host-line :class ::program)
 (definterface fn-stid-host-exit-code :class ::program)
+
+;; DECISION TRACING, the host's plan and its control frames (books/decision-trace*.lisp).
+(definterface fn-dtrace-config-plan
+  :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
+  :keystones (fn-dtrace-no-table-no-ring))
+(definterface fn-dtrace-plan-kind :class :common-lisp-compliant)
+(definterface fn-dtrace-plan-refusal :class :common-lisp-compliant)
+(definterface fn-dtrace-plan-classes :class :common-lisp-compliant)
+(definterface fn-dtrace-plan-capacity :class :common-lisp-compliant)
+(definterface fn-dtrace-plan-sample-every :class :common-lisp-compliant)
+(definterface fn-dtrace-plan-allocation :class :common-lisp-compliant)
+(definterface fn-dtrace-plan-start-p :class :common-lisp-compliant)
+(definterface fn-dtrace-plan-rss-every :class :common-lisp-compliant)
+(definterface fn-dtrace-ring-octets
+  :class :common-lisp-compliant
+  :keystones (fn-dtrace-ring-octets-natp))
+(definterface fn-dtrace-config-ring-octets
+  :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
+  :keystones (fn-dtrace-no-table-no-ring))
+(definterface fn-dtrace-extend-reservation
+  :class :common-lisp-compliant
+  :keystones (fn-dtrace-no-ring-leaves-the-reservation
+              fn-dtrace-extended-reservation-holds-the-ring))
+(definterface fn-dtrace-core-with-ring
+  :class :common-lisp-compliant
+  :keystones (fn-dtrace-core-with-ring-keeps-the-core))
+(definterface fn-dtrace-verb
+  :class :common-lisp-compliant
+  :keystones (fn-dtrace-verb-never-enables-without-a-plan
+              fn-dtrace-verb-drains-only-a-running-trace))
+(definterface fn-dtrace-verb-status :class :common-lisp-compliant)
+(definterface fn-dtrace-request-encode
+  :class :common-lisp-compliant
+  :keystones (fn-dtrace-request-round-trips))
+(definterface fn-dtrace-request-decode
+  :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
+  :keystones (fn-dtrace-request-round-trips))
+(definterface fn-dtrace-reply-encode
+  :class :common-lisp-compliant
+  :exempt ((lines "the drain's lines, rendered by the host from ACL2's records and sealed here under the frame's own bound (fn-frame-values-okp)"))
+  :keystones (fn-dtrace-reply-round-trips))
+(definterface fn-dtrace-reply-read
+  :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
+  :keystones (fn-dtrace-reply-round-trips))
+(definterface fn-dtrace-status-line :class :common-lisp-compliant)
+(definterface fn-dtrace-drain-limit :class :common-lisp-compliant)
+
+; DECISION TRACING (books/decision-trace.lisp).  The one entry the host calls
+; to project a traced call into a row, generated from the table the
+; declarations above filled (fn-dtrace-points); it is the end of this file so
+; that it sees every declaration.  An extraction root: fn-core serves with it.
+(fn-dtrace-define-project)
+(definterface fn-dtrace-point-table :class :common-lisp-compliant)
+(definterface fn-dtrace-project
+  :class :common-lisp-compliant
+  :root :extract
+  :keystones (fn-dtrace-project-is-a-row))

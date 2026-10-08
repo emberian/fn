@@ -383,6 +383,7 @@
         ; restart revalidation as host/native/build.lisp, in the same order.
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
+        (load "host/native/trace.lisp")
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")

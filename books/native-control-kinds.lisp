@@ -34,6 +34,7 @@
 (include-book "peer-invite")
 (include-book "native-hybrid-control")
 (include-book "wire-family-identity")
+(include-book "decision-trace-control") ; kind 26: trace on|off|drain
 
 ; -----------------------------------------------------------------------------
 ; The kinds.
@@ -45,7 +46,8 @@
         *fn-pinv-redecide-kind* *fn-pinv-bindings-kind*))
 
 (defconst *fn-ctlk-read-kinds*
-  (list *fn-tlsr-request-kind* *fn-wf-identity-request-kind*))
+  (list *fn-tlsr-request-kind* *fn-wf-identity-request-kind*
+        *fn-dtrace-request-kind*))
 
 (defun fn-ctlk-word (kind)
   (declare (xargs :guard t))
@@ -169,6 +171,8 @@
 (defthm fn-ctlk-every-handled-frame-is-classified
   (and (implies (fn-tlsr-request-decode octets)
                 (equal (fn-ctlk-frame-handler octets) :read))
+       (implies (fn-dtrace-request-decode octets)
+                (equal (fn-ctlk-frame-handler octets) :read))
        (implies (fn-pinv-bindings-request-decode octets)
                 (equal (fn-ctlk-frame-handler octets) :store))
        (implies (fn-pinv-redecide-request-decode octets)
@@ -188,6 +192,7 @@
        (implies (fn-native-hybrid-control-revoke-next-decode octets)
                 (equal (fn-ctlk-frame-handler octets) :store)))
   :hints (("Goal" :use ((:instance fn-ctlk-nctrl-open-kind (kind *fn-tlsr-request-kind*))
+                        (:instance fn-ctlk-nctrl-open-kind (kind *fn-dtrace-request-kind*))
                         (:instance fn-ctlk-nhctrl-open-values-kind (kind *fn-pinv-bindings-kind*) (specs *fn-pinv-request-spec*))
                         (:instance fn-ctlk-nhctrl-open-values-kind (kind *fn-pinv-redecide-kind*) (specs *fn-pinv-request-spec*))
                         (:instance fn-ctlk-nhctrl-open-values-kind (kind *fn-pinv-issue-kind*) (specs *fn-pinv-request-spec*))
@@ -199,6 +204,7 @@
                         (:instance fn-ctlk-nhctrl-open-values-kind (kind *fn-nhctrl-enroll-next-kind*) (specs *fn-nhctrl-enroll-next-spec*))
                         (:instance fn-ctlk-nhctrl-open-values-kind (kind *fn-nhctrl-revoke-next-kind*) (specs *fn-nhctrl-revoke-next-spec*)))
                   :in-theory (e/d (fn-tlsr-request-decode
+                                   fn-dtrace-request-decode
                                    fn-pinv-bindings-request-decode
                                    fn-pinv-redecide-request-decode
                                    fn-pinv-request-decode fn-pinv-request-kindp

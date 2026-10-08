@@ -38,8 +38,7 @@ sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/evidence_manifests.py", "tools/lock_discipline_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
-         "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
-         "tools/build_lists_check.py"]
+         "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in planning/interfaces.json specs/wire-grammar.json; do
@@ -306,7 +305,7 @@ class BoxStepTests(TrainBase):
         self.assertEqual(g.returncode, 0, g.stdout)
         st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
         self.assertEqual(st["gates"]["box_step"]["inherits_from"], self.box()["sha"])
-        for check in ("interface_emit --check", "world --check", "build_lists_check", "host_check --read",
+        for check in ("interface_emit --check", "world --check", "host_check --build-lists", "host_check --read",
                       "host_check --world"):
             self.assertIn(check, " | ".join(self.stub_log()))
         p = self.train("push")

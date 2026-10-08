@@ -53,7 +53,8 @@ def repl(args):
             if line in (':quit', ':exit'):
                 return 0
             if line == ':help':
-                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH,\n:acl2 FORM, :acl2-file PATH, :paste, :trace on|timing|report|hotspots [N]|off, :quit\n'
+                print(':operation, :threads, :apropos TEXT, :describe FORM, :load PATH,\n:acl2 FORM, :acl2-file PATH, :paste, :quit\n'
+                      'Tracing is the operator verb `trace on|off|drain` (try it in `fn_dev.py shell`).\n'
                       'Enter one Common Lisp form, or PROGN for a batch.\n'
                       '*fnn-dev-service* is the current owner; fnn-core calls the core.\n'
                       'Reader evaluation (#.) is disabled. File paths name server source.\n'
@@ -74,19 +75,13 @@ def repl(args):
                 line = '(princ (fn-record-octets-string (fn-native-operation-host-report *the-live-state*)))'
             elif line == ':threads':
                 line = '(mapcar (function sb-thread:thread-name) (sb-thread:list-all-threads))'
-            elif line == ':trace on':
-                line = '(progn (fnn-trace-start :allocation :process) :tracing)'
-            elif line == ':trace timing':
-                line = '(progn (fnn-trace-start) :tracing)'
-            elif line == ':trace report':
-                line = '(fnn-trace-report *standard-output*)'
-            elif line == ':trace hotspots' or line.startswith(':trace hotspots '):
-                count = 10 if line == ':trace hotspots' else int(line[len(':trace hotspots '):])
-                if count <= 0:
-                    raise ValueError('trace hotspot count must be positive')
-                line = f'(fnn-trace-hotspots *standard-output* {count})'
-            elif line == ':trace off':
-                line = '(setf *fnn-trace-state* nil)'
+            elif line.split()[:1] == [':trace']:
+                # The environment switches and these shortcuts are gone: tracing
+                # is `fn operator CONFIG trace on|off|drain`, decided by the
+                # books and applied by the running owner (docs/operator.md).
+                print('tracing is the operator verb: fn operator CONFIG trace on|off|drain '
+                      '(or `fn_dev.py shell`, then `trace on`)', file=sys.stderr)
+                continue
             elif line.startswith(':describe '):
                 line = '(describe ' + line[10:] + ')'
             elif line.startswith(':apropos '):

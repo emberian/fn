@@ -25,6 +25,12 @@
 (defun fnn-mux-read-class (loop conn)
   (declare (ignorable loop conn))
   (harness-stub-reached 'fnn-mux-read-class "host/native/mux.lisp"))
+(defun fnn-mux-send-look (conn)
+  (declare (ignorable conn))
+  (harness-stub-reached 'fnn-mux-send-look "host/native/mux.lisp"))
+(defun fnn-mux-send-observation (conn)
+  (declare (ignorable conn))
+  (harness-stub-reached 'fnn-mux-send-observation "host/native/mux.lisp"))
 (defun fnn-mux-write-now (conn)
   (declare (ignorable conn))
   (harness-stub-reached 'fnn-mux-write-now "host/native/mux.lisp"))
@@ -136,16 +142,9 @@
 (defun fnn-owner-response-identity (service connection class)
   (declare (ignore service connection class))
   '(:response 7 1 1))
-;; The render's measurement envelope (fnn-owner-measured); measurement and
-;; the trace collector are off here, so it runs its body.
-(defvar *fnn-owner-measure* nil)
-(defvar *fnn-trace-state* nil)
-(defvar *fnn-trace-operation* nil)
-(defvar *fnn-trace-connection-generation* nil)
-(with-open-file (stream "host/native/owner.lisp")
-  (loop for form = (read stream nil :eof) until (eq form :eof)
-        when (and (consp form) (eq (car form) 'defmacro) (eq (cadr form) 'fnn-owner-measured))
-          do (eval form) (return)))
+;; The render's span (fnn-trace-span, host/native/trace.lisp): the trace
+;; collector is off here, so it runs its body.
+(load "host/native/trace.lisp")
 ;; The scalar window activation the cursor step runs under (no response
 ;; capture here, so no window is retained: it calls its thunk).
 (defvar *fnn-response-capture* nil)

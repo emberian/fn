@@ -120,7 +120,8 @@ resident-size descriptor."
 
 (defun fnn-trace-start (&key (capacity 4096) (sample-every 1) allocation (rss-every 0))
   "A bounded diagnostic buffer. ALLOCATION is NIL, :PROCESS or
-:ISOLATED-PROCESS. Isolation is a caller assertion, never inferred from CID."
+:ISOLATED-PROCESS. Isolation is a caller assertion, never inferred from CID.
+RSS-EVERY is the plan's resident-size sampling interval in requests (0: never)."
   (unless (and (integerp capacity) (plusp capacity)
                (integerp sample-every) (plusp sample-every)
                (member allocation '(nil :process :isolated-process))
@@ -484,8 +485,9 @@ on anything but the leaf lock, and its result is meaningless to the caller."
                                   record))))
         (serious-condition () (ignore-errors (fnn-dtrace-count-dropped ring)))))))
 
-;;; The call sites.  Off: one special-variable test at entry and one local
-;;; test at exit.  On: a hash lookup of NAME; only a traced name reads the clock.
+;;; The call sites (macros, so host/native/io.lisp holds no trace branch).  Off:
+;;; one special-variable test.  On: a hash lookup of NAME; only a traced name
+;;; reads the clock.
 (defmacro fnn-dtrace-around ((name args) &body body)
   "Run BODY (which returns the list of the call's values) and offer it to the
 ring when NAME is traced.  The values are returned unchanged."
@@ -495,6 +497,24 @@ ring when NAME is traced.  The values are returned unchanged."
             (,values (progn ,@body)))
        (when ,point (fnn-dtrace-note ,point ,name ,args ,values ,start))
        ,values)))
+
+(defun fnn-dtrace-around-mv-traced (name thunk)
+  "Run THUNK (a fixed callback, returning its scalar MVs) and offer the values
+it returned to the ring.  A fixed callback has no argument list here, so it can
+record its outcome only: its declared inputs are all :redact.  The values are
+returned unchanged."
+  (let ((point (fnn-dtrace-lookup name)))
+    (if point
+        (let* ((start (fnn-trace-now))
+               (vals (multiple-value-list (funcall thunk))))
+          (fnn-dtrace-note point name nil vals start)
+          (values-list vals))
+      (funcall thunk))))
+
+(defmacro fnn-dtrace-around-mv (name thunk)
+  `(if *fnn-dtrace*
+       (fnn-dtrace-around-mv-traced ,name ,thunk)
+     (funcall ,thunk)))
 
 (defun fnn-dtrace-snapshot (ring since limit)
   "Under the ring lock: free the rows at most SINCE, copy the next LIMIT live
@@ -583,3 +603,137 @@ span report's companion: tools/native_trace.py reads both)."
     (when text
       (write-string text stream)
       (finish-output stream))))
+
+;;; ---------------------------------------------------------------------------
+;;; The operator's switch: `fn operator CONFIG trace on|off|drain'.
+;;;
+;;; ACL2 decides everything that is a decision (books/decision-trace.lisp):
+;;; the PLAN from the profile's [trace] table at start (fn-dtrace-config-plan;
+;;; a refused table stops the start by name), and what a verb does given the
+;;; plan and whether tracing is on now (fn-dtrace-verb).  The host reads the
+;;; plan's fields, applies the action, and renders rows.  The request is
+;;; FNCT kind 26, the reply kind 27, sealed by ACL2; the kind is :read.
+
+(defvar *fnn-trace-plan* nil
+  "ACL2's admitted plan for this run: (:off) without a [trace] table, else
+(:plan ...).  NIL before `run' decides it.")
+
+(defun fnn-trace-turn-on (plan)
+  "Start the span state and the decision ring from PLAN's fields (read through
+ACL2's accessors); both are freed together by `fnn-trace-reset'."
+  (let ((classes (fnn-core 'fn-dtrace-plan-classes plan))
+        (capacity (fnn-core 'fn-dtrace-plan-capacity plan))
+        (every (fnn-core 'fn-dtrace-plan-sample-every plan))
+        (allocation (fnn-core 'fn-dtrace-plan-allocation plan))
+        (rss-every (fnn-core 'fn-dtrace-plan-rss-every plan)))
+    ;; Labelled developer mutation witness (DT-3): an enabled trace that
+    ;; consumes an entropy draw changes every octet that follows the draw.
+    (when (fnn-developer-selector "FN_NATIVE_TEST_TRACE_PERTURB")
+      (fnn-csprng-octets 1 "trace perturbation"))
+    (fnn-trace-start :capacity capacity :sample-every every :allocation allocation
+                     :rss-every rss-every)
+    (fnn-dtrace-start (fnn-core 'fn-dtrace-point-table)
+                      :classes classes :capacity capacity :sample-every every
+                      ;; Labelled developer mutation witness (DT-1h): each row
+                      ;; takes the previous traced call's outcome.
+                      :skew (and (fnn-developer-selector "FN_NATIVE_TEST_TRACE_SKEW") t))))
+
+(defun fnn-heap-config-trace-ring-octets (config-octets)
+  "The ring octets ACL2's plan of CONFIG-OCTETS' [trace] table commits (0 for
+none, and for a table the start will refuse by name)."
+  (if config-octets
+      (fnn-core 'fn-dtrace-config-ring-octets (fnn-octet-list config-octets)
+                (if (fnn-developer-image-p) :developer :production))
+    0))
+
+(defvar *fnn-heap-trace-ring-octets* 0
+  "The decision trace ring's octets, ACL2's (fn-dtrace-ring-octets of the
+admitted [trace] plan): 0 without a [trace] table, which is the default.  Set by
+the launcher probe from the configuration it reads (fnn-heap-operator-profile),
+by `run' when it decides the plan (host/native/trace.lisp), and read by the
+reservation extension below.")
+
+
+(defun fnn-trace-decide-plan (config-octets)
+  "At `run': ACL2's plan of the profile's [trace] table.  A refusal stops the
+start by name; a plan that starts on starts the ring before anything listens."
+  (let* ((plan (fnn-core 'fn-dtrace-config-plan
+                         (and config-octets (fnn-octet-list config-octets))
+                         (if (fnn-developer-image-p) :developer :production)))
+         (kind (fnn-core 'fn-dtrace-plan-kind plan)))
+    (when (eq kind :refused)
+      (fnn-refuse "the [trace] table is refused: ~(~a~)" (fnn-core 'fn-dtrace-plan-refusal plan)))
+    (setq *fnn-trace-plan* plan
+          *fnn-heap-trace-ring-octets* (fnn-core 'fn-dtrace-ring-octets plan))
+    (when (and (eq kind :plan) (fnn-core 'fn-dtrace-plan-start-p plan))
+      (fnn-trace-turn-on plan))
+    plan))
+
+(defun fnn-trace-control-answer (verb since)
+  "The sealed kind-27 reply to one trace request: ACL2's decision, applied."
+  (let* ((decision (fnn-core 'fn-dtrace-verb verb *fnn-trace-plan* (fnn-dtrace-enabled-p)))
+         (action (first decision)))
+    (flet ((reply (status reason lines)
+             (let ((octets (fnn-core 'fn-dtrace-reply-encode status reason lines)))
+               (unless (fnn-octet-list-p octets)
+                 (fnn-fault "ACL2 refused a trace reply"))
+               octets)))
+      (case action
+        (:enable (fnn-trace-turn-on *fnn-trace-plan*)
+         (reply :accepted nil (fnn-core 'fn-dtrace-status-line :on)))
+        (:disable (fnn-trace-reset)
+         (reply :accepted nil (fnn-core 'fn-dtrace-status-line :off)))
+        (:drain
+         ;; Rendering happens here, after the ring lock is released; the rows
+         ;; pass through one octet list of at most (drain-limit) rows, an
+         ;; operator action, not the served path.
+         (let ((text (fnn-dtrace-drain since (fnn-core 'fn-dtrace-drain-limit))))
+           (reply :accepted nil
+                  (if text
+                      (fnn-octet-list (fnn-string-octets text))
+                    (fnn-core 'fn-dtrace-status-line :off)))))
+        (t (multiple-value-bind (status reason)
+               (values-list (fnn-core 'fn-dtrace-verb-status decision))
+             (reply status reason (fnn-core 'fn-dtrace-status-line :refused))))))))
+
+(defun fnn-trace-execute (result)
+  "Execute an accepted `trace' plan over the control socket and print the
+owner's lines."
+  (let* ((control (fnn-core 'fn-native-operator-host-result-trace-control-path-octets result))
+         (plan (fnn-core 'fn-native-operator-host-result-trace-plan result))
+         (path (and (fnn-octet-list-p control) (consp control)
+                    (fnn-octets-string (fnn-octets control)))))
+    (handler-case
+        (if (or (null path) (null plan))
+            (progn (fnn-operator-emit-status :refused "trace"
+                                             "the configuration names no control socket")
+                   +fnn-exit-refused+)
+          (multiple-value-bind (frame stage)
+              (fnn-control-exchange path (fnn-core 'fn-dtrace-request-encode
+                                                   (first plan) (second plan)))
+            (let ((read (and frame (fnn-core 'fn-dtrace-reply-read (fnn-octet-list frame)))))
+              (if (not (consp read))
+                  (let* ((status (fnn-control-transport-outcome stage))
+                         (code (fnn-core 'fn-native-control-host-status-exit-code status)))
+                    (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "trace")
+                    code)
+                (destructuring-bind (status word lines) read
+                  (when (and (fnn-octet-list-p lines) (consp lines))
+                    (let ((text (fnn-octets-string (fnn-octets lines))))
+                      (fnn-out "~a" text)
+                      (unless (and (plusp (length text))
+                                   (char= (char text (1- (length text))) #\Newline))
+                        (fnn-out "~%"))))
+                  (let ((code (fnn-core 'fn-native-control-host-status-exit-code status)))
+                    (fnn-operator-emit-status
+                     (fnn-operator-status-of-exit-code code) "trace"
+                     (let ((detail (and (fnn-octet-list-p word)
+                                        (fnn-core 'fn-native-control-host-reply-detail
+                                                  status word))))
+                       (and (fnn-octet-list-p detail) (consp detail)
+                            (fnn-octets-string (fnn-octets detail)))))
+                    code))))))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "trace" condition)
+          code)))))

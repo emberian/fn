@@ -167,6 +167,25 @@ class DefLoopBridgeTests(unittest.TestCase):
             "(implies (acl2-numberp total) "
             "(equal (count-ints-loop xs total) (+ total (count-ints xs))))")
 
+    def test_fold_returns_rows_and_the_threaded_state(self):
+        # books/def-loop.lisp fn-dl-fold-events: both defuns return (mv ROWS ST);
+        # modelled as a :map they returned one value (host_shape_check then
+        # refused store-host.lisp's mv-let over fn-intern-events).
+        events = ledger.def_loop_expansion(ledger.read_forms(
+            "(def-loop intern (ws keyring st) :shape :fold :over ws :st st :done (atom ws) "
+            ":elt w :row (step w keyring st) :next (cdr ws))")[0])
+        loop, wrapper = events[0], events[1]
+        self.assertEqual(loop[-1], ledger.read_forms(
+            "(if (atom ws) (mv (revappend acc nil) st) "
+            "(mv-let (dl-row st) (step (car ws) keyring st) "
+            "(if (eq dl-row :bad) (mv :bad st) (intern-loop (cdr ws) keyring st (cons dl-row acc)))))")[0])
+        self.assertEqual(wrapper[-1][2], ledger.read_forms(
+            "(if (atom ws) (mv nil st) "
+            "(mv-let (dl-row st) (step (car ws) keyring st) "
+            "(if (eq dl-row :bad) (mv :bad st) "
+            "(mv-let (dl-rest st) (intern (cdr ws) keyring st) "
+            "(if (eq dl-rest :bad) (mv :bad st) (mv (cons dl-row dl-rest) st))))))")[0])
+
     def test_into(self):
         self.check_bridge(
             "(def-loop write-octets (xs buffer extra) :shape :into :into buffer "

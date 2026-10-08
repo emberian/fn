@@ -144,8 +144,6 @@
   (harness-stub-reached 'fnn-owner-journal-open "host/native/owner.lisp"))
 (defun fnn-owner-log-settlement ()
   (harness-stub-reached 'fnn-owner-log-settlement "host/native/owner.lisp"))
-(defun fnn-owner-measure-report ()
-  (harness-stub-reached 'fnn-owner-measure-report "host/native/owner.lisp"))
 (defun fnn-owner-monotonic-ms ()
   (harness-stub-reached 'fnn-owner-monotonic-ms "host/native/owner.lisp"))
 (defun fnn-owner-page-read-startup (root max-connections cold-resources output-resources retain)

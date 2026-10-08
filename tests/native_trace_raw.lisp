@@ -14,12 +14,12 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-mux-read-class (loop conn)
-  (declare (ignorable loop conn))
-  (harness-stub-reached 'fnn-mux-read-class "host/native/mux.lisp"))
 (defun fnn-owner-output-issue (service identity &optional capture)
   (declare (ignorable service identity capture))
   (harness-stub-reached 'fnn-owner-output-issue "host/native/owner.lisp"))
+(defun fnn-owner-peer-read-class (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-peer-read-class "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 
 (defun trace-disabled-loop (n)

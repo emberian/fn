@@ -1256,6 +1256,19 @@ kept in the store and changed with commands. `run` refuses `[posting] agent`,
 `[anchor]` and `[acl2]` (set the node's name with `policy set path-identity`).
 Restart after editing the file.
 
+`[trace]` (absent by default: no ring, nothing allocated, nothing charged)
+lets the running node record the decisions its books declared traceable
+(see [decision traces](#decision-traces)): `classes` (`"all"`, or a comma list
+of `verdict`, `refusal`, `tariff`, `schedule`, `plan`), `capacity` (rows, 1 to
+65,536, default 1,024), `sample_every` (default 1), `allocation` (`"none"`,
+`"process"`, or `"isolated-process"` on a developer image), `start` (`"on"`
+starts recording at `run`; default `"off"`), `rss_every` (default 0). The
+ring is charged to the heap the launcher reserves, 4,096 octets plus 1,024 a
+row: **the largest capacity, 65,536 rows, costs 67,112,960 octets, +65 MB on
+the small preset** (603 MB to 668 MB), and takes the connections the node will
+admit there from 2,744 to 2,435; capacity 1,024 is +2 MB. A `[trace]` table the
+books refuse stops `run` with the key's name.
+
 A path that does not start with `/` is inside the folder `fn.toml` is in,
 whatever folder you run `fn` from: `path = "store"` next to
 `/var/lib/fn/fn.toml` is `/var/lib/fn/store`. `mission` writes the paths
@@ -1371,6 +1384,21 @@ with `policy set max-transactions N` (and `max-history-octets`,
 - `run`: what the service runs.
 
 
+### Decision traces
+
+`fn operator CONFIG trace on`, `trace off` and `trace drain [--since N]` switch
+and read the running node's decision trace. It is off in every image until the
+profile has a `[trace]` table and you turn it on; a trace is a view over
+decisions the books already made and changes nothing the node serves or
+stores (the decision journal stays the record). `drain` prints the rows after
+sequence N as `FN_TRACE {"v":2,"type":"decision",...}` lines (the point, its
+class, the recorded inputs and outcome, start and duration, and for scheduling
+decisions the journal's sequence number) and a `decision-summary` line whose
+counters balance: `attempts = recorded + dropped + sampled_out`. Pass the
+summary's `next` minus one as the next `--since`. A full ring drops and counts;
+it never waits. `tools/native_trace.py` reads the lines. The old
+`FN_TRACE*` and `FN_OWNER_MEASURE` environment variables are gone.
+
 ### Interactive development and live inspection
 
 `python3 tools/fn_dev.py shell --executable /path/to/fn --config fn.toml`
@@ -1405,11 +1433,7 @@ arbitrary Lisp evaluation, source loading, or all event computation.
 `--eval '(+ 20 22)'` is the noninteractive form. The existing `fn acl2 session`
 starts a separate process; this socket attaches to an already running owner.
 
-`:trace on` starts bounded structured timing plus **process-wide allocation**
-sampling; `:trace timing` records only timing. Run work, use `:trace report`,
-then `:trace off`. Allocation deltas include concurrent threads and nested
-spans; they do not measure retained heap. An active report may show incomplete
-spans. Output truncation and trace-buffer drops are reported separately.
+Tracing is the operator verb above (`trace on|off|drain`), not a REPL shortcut.
 
 This is an explicit trusted debugger, enabled only on a developer process.
 The socket is mode 0600 and verifies the connecting UID; existing paths are

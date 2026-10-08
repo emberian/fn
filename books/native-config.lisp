@@ -242,7 +242,7 @@
   (declare (xargs :guard t))
   (member-equal name '("store" "listener" "auth" "posting" "anchor"
                        "acl2" "log" "control" "alerts" "ops" "web" "resources"
-                       "tls")))
+                       "tls" "trace")))
 
 (defun fn-ncfg-key-allowedp (table key)
   (declare (xargs :guard t))
@@ -267,6 +267,11 @@
         ; The TLS key-exchange policy (books/tls-key-exchange.lisp reads this
         ; table; the owner's configuration record does not carry it).
         ((equal table "tls") (equal key "key_exchange"))
+        ; Decision tracing (books/decision-trace-config.lisp reads this table;
+        ; the owner's configuration record does not carry it).
+        ((equal table "trace")
+         (member-equal key '("classes" "capacity" "sample_every" "allocation"
+                             "start" "rss_every")))
         ((equal table "resources")
          (member-equal key '("cold_heap_octets" "cold_workers"
                             "cold_descriptors" "cold_read_ids" "cold_file_ids"

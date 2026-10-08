@@ -2096,7 +2096,10 @@ the run's (exit 1), named on stderr and in the service log."
          ;; Observed before the section: a stat of the core file and the
          ;; machine's memory figures are I/O the owner mutex never holds.
          (machine (fnn-heap-machine-octets))
-         (core (fnn-heap-core-octets))
+         ;; the core file's octets and the decision trace ring's (ACL2 adds
+         ;; them: books/decision-trace-reservation.lisp), 0 without a ring
+         (core (fnn-core 'fn-dtrace-core-with-ring (fnn-heap-core-octets)
+                         *fnn-heap-trace-ring-octets*))
          (decision
            (fnn-owner-serialized
             service nil

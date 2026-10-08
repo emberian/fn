@@ -531,8 +531,8 @@ stop, caught before the first POST instead of at the second."
       (fnn-refuse "owner startup hook refused")))
   :accepted)
 
-;;; Shared opt-in diagnostic span macro, also used by native adapters.
-(load "host/native/trace.lisp")
+;;; The diagnostic span macro and the decision ring (host/native/trace.lisp)
+;;; are loaded by the build before this file.
 
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
