@@ -1653,7 +1653,7 @@
                                                         (list (adt-sym name "$C-SEAL-BUFFER")))
                                                  adt-scalar-seq-p adt-val-okp
                                                  ,@vocab-lemmas ,@lemmas
-                                                 ,@(and octet-seq (list nth-a nth-c 'adt-nth-beyond-len))
+                                                 ,@(and octet-seq (list nth-a nth-c 'adt-nth-beyond-len-local-rewrite))
                                                  ,@(and paged (list count-of))
                                                  ,@(and paged (member-eq 'reserve roles) (not modelp)
                                                         (list (adt-sym name "$A-RESERVE")))
@@ -1687,6 +1687,13 @@
        ; The logical side: the list of values (generated, or the given model).
        ,@(and (not modelp) (rep-sc-logic-events name kind ap a exports source invariant))
        ,@(and octet-seq (rep-octet-seq-defs st ap a nth-a nth-c count-of get-c paged))
+       ; The library's `nth' past the end of a list is a theorem, not a rule
+       ; (:rule-classes nil); the obligations below enable this local twin.
+       ,@(and octet-seq
+              '((local (defthmd adt-nth-beyond-len-local-rewrite
+                         (implies (and (natp i) (<= (len a) i))
+                                  (equal (nth i a) nil))
+                         :hints (("Goal" :by adt-nth-beyond-len))))))
        ,@(and paged (member-eq 'reserve roles) (not modelp)
               `((defun ,(adt-sym name "$A-RESERVE") (rows octets ,a)
                   (declare (xargs :guard (and (,ap ,a) (natp rows) (natp octets))) (ignore rows octets))

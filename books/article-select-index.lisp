@@ -2,6 +2,11 @@
 (include-book "article-stream")
 (include-book "served-catalog")
 (in-theory (disable fn-scat-membership-number-is-number-in))
+(local (in-theory (disable (tau-system))))
+; Rules of the included catalog books that the proofs below never use but
+; whose hypotheses they backchain on (true-listp, nth of natural lists).
+(local (in-theory (disable fn-mpxl-pagesp-true-listp fn-scram-printable-facts
+                           (:type-prescription adt-nth-of-all-elt-p-natp))))
 
 (defun-nx fn-asx-prefix-equalp (group row-group at)
   (if (zp at)
@@ -230,7 +235,9 @@
                   (equal (fn-ast-at 2 r) (fn-ast-at 2 it))
                   (equal (fn-ast-at 3 r) (fn-ast-at 3 it)))))
   :hints (("Goal" :use ((:instance fn-asx-step-reaches-spec-extra
-                                   (extra (- fuel (fn-asx-need it))))))))
+                                   (extra (- fuel (fn-asx-need it)))))
+                  :in-theory (disable fn-asx-need fn-asx-goodp fn-ast-select-step
+                                      fn-ast-select-donep fn-asx-spec fn-ast-at))))
 
 ; -----------------------------------------------------------------------------
 ; The specification is the archive-list reads the old selection computed.

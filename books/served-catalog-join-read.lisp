@@ -15,7 +15,7 @@
 (include-book "served-catalog-join-conns")
 (include-book "owner-reader-read")
 
-(local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
+(local (in-theory (disable fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
                            fn-nntp-index-msgid-okp fn-cp-id-length-bound)))
 

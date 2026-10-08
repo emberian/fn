@@ -56,7 +56,7 @@
 ; flight carries a caller's held submission.  Answers (mv ACTION PHASE NEXT
 ; HELD).  Events of the held path: at :idle, :started-held (START captured a
 ; batch for a caller that holds its submission) and :started-none-held
-; (nothing was queued: the caller submits at once); in flight, the job's
+; (no member kept: run the :frames job off O before submission); in flight, the job's
 ; :fenced / :failed and COMPLETE's :completed, as the pipeline's.
 (defun fn-och-step (phase next held event)
   (declare (xargs :guard t))
@@ -67,11 +67,15 @@
            (mv :sync :staged nil t))
           ((and (not (member-eq phase '(:staged :fenced :failed)))
                 (eq event :started-none-held))
-           (mv :submit :idle nil nil))
+           (mv :frames :staged nil t))
           (t (mv-let (action phase next) (fn-ocp-commit-step phase next event)
                (mv action phase next nil)))))
+   ((and (eq event :crash) (fn-ocs-in-flight-p phase)) (mv :stop :failed nil t))
    ((eq phase :staged)
-    (cond ((eq event :fenced) (mv :complete :fenced nil t))
+    (cond ((eq event :frames-fenced) (mv :submit :idle nil nil))
+          ((eq event :frames-failed) (mv :stop :failed nil t))
+          ((eq event :frames-fault) (mv :fault :failed nil t))
+          ((eq event :fenced) (mv :complete :fenced nil t))
           ((eq event :failed) (mv :stop :failed nil t))
           (t (mv :fault :staged nil t))))
    ((eq phase :fenced)
@@ -114,7 +118,10 @@
                                                    (if (eq outcome :fenced) :fenced :failed))
                                (declare (ignore p2))
                                (if (eq a2 :complete) '(:complete :submit) '(:stop)))))))
-                ((eq a1 :none) '(:submit))
+                ((eq a1 :none)
+                 (append (fn-oqw-trace :frames (fn-oqw-start :frames) words)
+                         (case (fn-oqw-final :frames (fn-oqw-start :frames) words)
+                           (:done '(:submit)) (:uncertain '(:stop)) (otherwise '(:fault)))))
                 ((eq a1 :stop) '(:stop))
                 (t '(:fault))))))
 
@@ -163,7 +170,12 @@
       ((eq a1 :sync)
        (append (fn-och-off (fn-och-job-trace words))
                (fn-och-q2 p1 n1 h1 (fn-oqw-outcome-of-final (fn-och-job-final words)))))
-      ((eq a1 :submit) '((:owner . :submit)))
+      ((eq a1 :frames)
+       (append (fn-och-off (fn-oqw-trace :frames (fn-oqw-start :frames) words))
+               (case (fn-oqw-final :frames (fn-oqw-start :frames) words)
+                 (:done '((:owner . :submit)))
+                 (:uncertain '((:owner . :stop)))
+                 (otherwise '((:owner . :fault))))))
       ((eq a1 :stop) '((:owner . :stop)))
       (t '((:owner . :fault)))))))
 
@@ -388,3 +400,39 @@
   (iff (equal (fn-och-held-outcome (fn-och-job-final words) nil) :submitted)
        (member-equal :submit (fn-och-inline :started words))))
 
+
+; The no-member drain has the queued-work :frames job's own outcome.
+(defun fn-och-frames-event (final)
+  (declare (xargs :guard t))
+  (case final
+    (:done :frames-fenced)
+    (:uncertain :frames-failed)
+    (otherwise :frames-fault)))
+
+; Effects of the actual step: all queued-work phases are I/O, including
+; :intents (FNFD append, journal barrier, then the drain's refusal replies).
+(defun fn-och-action-effects (action)
+  (declare (xargs :guard t))
+  (case action
+    (:sync (fn-och-off (fn-oqw-phases :batch)))
+    (:frames (fn-och-off (fn-oqw-phases :frames)))
+    (otherwise (list (cons :owner action)))))
+
+(defthm fn-och-frames-held-until-the-job-returns
+  (and (equal (fn-och-step :idle nil nil :started-none-held)
+              '(:frames :staged nil t))
+       (equal (mv-nth 0 (fn-och-step :staged nil t (fn-och-frames-event final)))
+              (case final (:done :submit) (:uncertain :stop) (otherwise :fault)))
+       (iff (mv-nth 3 (fn-och-step :staged nil t (fn-och-frames-event final)))
+            (not (equal final :done)))))
+
+; Process death at either boundary between the caller's quanta, or within
+; an off-owner job, is a crash observation. No completion can turn that
+; uncertain job into a submission. Persistent FNFD bytes are separately
+; recovered by feed-journal's :crash/scan model; scheduler state is volatile.
+(defthm fn-och-held-crash-never-submits
+  (implies (and held (fn-ocs-in-flight-p phase))
+           (mv-let (action phase2 next2 held2) (fn-och-step phase next held :crash)
+             (and (equal action :stop)
+                  (equal phase2 :failed)
+                  (equal (mv-nth 0 (fn-och-step phase2 next2 held2 :completed)) :none)))))

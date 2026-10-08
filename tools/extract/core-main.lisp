@@ -17,6 +17,12 @@
 ;; it.  Not `load': loading a source file gives every compiled form a debug source holding its own copy of
 ;; the file's form-position table so far, which for defs.lisp's ~25,000 forms was 1.29 GB of
 ;; (unsigned-byte 32) vectors in the saved core (EXTRACTION-PROGRAM-20261007.md section 6).
+;; Every form evaluated here is compiled with STORE-SOURCE-FORM 0.  Otherwise SBCL keeps each function's
+;; whole macroexpanded source form in its debug source (a CORE-DEBUG-SOURCE's FORM): at dev f2629613e the
+;; build's dynamic usage is 66.3 MiB with this policy and 98.4 MiB without it, and the core is 100.2 MB.
+;; Those cold conses sat between the objects the server reads, so a long-resident core's 64 KiB
+;; fault-around windows mapped them in (CONVERGE-3 row 23).
+(proclaim '(optimize (sb-c:store-source-form 0)))
 (defun cl-user::xl-eval-forms (path external-format)
   (with-open-file (in path :external-format external-format)
     (let ((*package* *package*) (*readtable* *readtable*) (eof (list nil)))
