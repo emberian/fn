@@ -1,53 +1,42 @@
-; The octets one connection's reply may have rendered ahead of its reader
-; (item LOAD-F5-SLOW-READER-ISOLATION; F5 on g41: four readers with a 4 KiB
-; receive buffer and a one-octet read pulled 512 KiB articles; the fast
-; clients' p99 rose 6.2x and the process grew 87.6 MB).
+; Observed send-window admission, item LOAD-F5-SLOW-READER-ISOLATION.
+; Statement: with one writer, exact NOTSENT observations before each render,
+; and render quanta <= Q, NOTSENT + PENDING < W + Q at every legal prefix.
+; A reader with no transmissions therefore causes < W + Q total rendering.
 ;
-; The reply is rendered a window at a time and the next window only when the
-; socket took the last one (host/native/mux.lisp fnn-mux-flush), but the
-; kernel took them: a socket's send queue is 3.4 MB on the CONVERGE-2 image
-; (books/send-progress.lisp), so a stopped reader had the owner scan and render
-; seven 512 KiB articles ahead of it -- 13 seconds of owner-mutex quanta and
-; 400 MB a second of allocation per four readers -- before the first write
-; blocked.  The host now sets TCP_NOTSENT_LOWAT on every served socket to
-; (fn-send-window-octets): the kernel accepts a write only while it holds
-; fewer than that many unsent octets, so the same stopped reader costs the
-; owner one window past the row and nothing after.
-;
-; The model.  A connection holds NOTSENT octets the kernel has not yet sent and
-; PENDING octets of the window the host rendered and has not yet handed over;
-; RENDERED and TRANSMITTED count the octets of the reply so far.  The events:
-;
-;   (:render N)    the host renders the next window of N octets, 0 < N <= Q
-;                  (Q is the largest window any plan renders); only when
-;                  nothing of the last window is pending (fnn-mux-flush);
-;   (:write N)     the host hands N <= PENDING octets to the kernel, which
-;                  accepts them only while NOTSENT < W (the lowat gate; the
-;                  kernel's tcp_stream_memory_free);
-;   (:transmit N)  the network takes N <= NOTSENT octets (the reader reads).
-;
-; The gate is the kernel's behaviour, an assumption this book does not prove:
-; tests/test_native_over_pins.py checks it on the running owner (the kernel's
-; send queue of a stopped reader against this bound).  GATEP nil is the gate
-; removed, the hypothesis-removal witness.
-;
-; Keystones:
-;   fn-sw-buffered-bounded   in every legal trace, whatever the reply's size
-;     and the reader's pace, NOTSENT + PENDING < W + 2Q: the connection holds
-;     fewer than W + 2Q octets rendered and not transmitted;
-;   fn-sw-stalled-reader-bounded   a reader that transmits nothing makes the
-;     owner render fewer than W + 2Q octets in all, however many windows the
-;     reply has: the cost of a stalled connection is O(1) in the reply.
+; TCP_NOTSENT_LOWAT controls writable notification, NOT acceptance of eager
+; nonblocking writes. Train 51 on hbox refuted the former book's premise.
+; The host now reads SIOCOUTQNSD, and fn-send-window-render-p admits rendering
+; only below W. No decision about the queue size is made by host Lisp.
+; :render requires empty PENDING and admission; :write moves any prefix of
+; PENDING into NOTSENT; :transmit removes a prefix of NOTSENT. Between the
+; observation and rendering the sole socket writer cannot increase NOTSENT.
+; Q must include transport expansion (TLS/compression) for a wire-byte claim;
+; this arithmetic model does not prove those facilities or the ioctl ABI.
+; GATEP nil exhibits the old eager writer: no finite render-ahead bound.
 
 (in-package "ACL2")
 (include-book "profile-limits")
+(include-book "defkeystone")
 
 (defconst *fn-sw-window* (fn-profile-limit :send-window-octets))
 
-; The entry the host calls: the lowat it sets on each served socket.
+; The profile value also supplies the POLLOUT wakeup threshold.
 (defun fn-send-window-octets ()
   (declare (xargs :guard t))
   *fn-sw-window*)
+
+(defun fn-sw-render-p (notsent w)
+  (declare (xargs :guard (and (natp notsent) (natp w))))
+  (< notsent w))
+
+; The host supplies SIOCOUTQNSD immediately before rendering a quantum.
+(defun fn-send-window-render-p (notsent)
+  (declare (xargs :guard (natp notsent)))
+  (fn-sw-render-p notsent (fn-send-window-octets)))
+
+(defthm fn-send-window-render-p-by-definition
+  (equal (fn-send-window-render-p notsent)
+         (fn-sw-render-p notsent (fn-send-window-octets))))
 
 ; State: (NOTSENT PENDING RENDERED TRANSMITTED).
 (defun fn-sw-statep (st)
@@ -66,9 +55,10 @@
     (cond ((not (posp n)) nil)
           ((eq kind :render)
            (and (equal pending 0) (<= n q)
+                (or (not gatep) (fn-sw-render-p notsent w))
                 (list notsent n (+ rendered n) transmitted)))
           ((eq kind :write)
-           (and (<= n pending) (or (not gatep) (< notsent w))
+           (and (<= n pending)
                 (list (+ notsent n) (- pending n) rendered transmitted)))
           ((eq kind :transmit)
            (and (<= n notsent)
@@ -92,14 +82,13 @@
          (fn-sw-no-transmit-p (cdr evs)))))
 
 ; What a reachable state satisfies: the pending window is one window at most,
-; the kernel holds fewer than W + Q unsent (the gate admits a write only below
-; W, and a write is at most one pending window), and the octets rendered are
-; the ones unsent, pending and transmitted.
+; NOTSENT + PENDING is below W + Q. Render admission tests the observation;
+; writes merely move octets between the two, and transmission decreases it.
 (defun fn-sw-inv (st w q)
   (declare (xargs :guard t))
   (and (fn-sw-statep st) (natp w) (posp q)
        (<= (nth 1 st) q)
-       (< (nth 0 st) (+ w q))
+       (< (+ (nth 0 st) (nth 1 st)) (+ w q))
        (equal (nth 2 st) (+ (nth 0 st) (nth 1 st) (nth 3 st)))))
 
 (defthm fn-sw-step-keeps-inv
@@ -117,13 +106,13 @@
   (implies (and (natp w) (posp q)) (fn-sw-inv *fn-sw-start* w q))
   :hints (("Goal" :in-theory (enable fn-sw-inv fn-sw-statep))))
 
-; KEYSTONE.  Rendered and not transmitted stays under W + 2Q, at the end of
+; Trace lemma.  Rendered and not transmitted stays under W + Q, at the end of
 ; every legal trace and so at every prefix of one.
 (defthm fn-sw-buffered-bounded
   (implies (and (natp w) (posp q)
                 (fn-sw-run *fn-sw-start* evs w q t))
            (let ((st (fn-sw-run *fn-sw-start* evs w q t)))
-             (< (+ (nth 0 st) (nth 1 st)) (+ w (* 2 q)))))
+             (< (+ (nth 0 st) (nth 1 st)) (+ w q))))
   :hints (("Goal" :use ((:instance fn-sw-run-keeps-inv (st *fn-sw-start*))
                         (:instance fn-sw-start-inv))
            :in-theory (e/d (fn-sw-inv) (fn-sw-run-keeps-inv fn-sw-start-inv))))
@@ -136,13 +125,13 @@
   :hints (("Goal" :in-theory (enable fn-sw-step)
                   :induct (fn-sw-run st evs w q gatep))))
 
-; KEYSTONE.  A reader that transmits nothing: the owner renders under W + 2Q
+; Trace lemma.  A reader that transmits nothing: the owner renders under W + Q
 ; octets in all, however long the reply.
 (defthm fn-sw-stalled-reader-bounded
   (implies (and (natp w) (posp q)
                 (fn-sw-no-transmit-p evs)
                 (fn-sw-run *fn-sw-start* evs w q t))
-           (< (nth 2 (fn-sw-run *fn-sw-start* evs w q t)) (+ w (* 2 q))))
+           (< (nth 2 (fn-sw-run *fn-sw-start* evs w q t)) (+ w q)))
   :hints (("Goal" :use ((:instance fn-sw-run-keeps-inv (st *fn-sw-start*))
                         (:instance fn-sw-start-inv)
                         (:instance fn-sw-no-transmit-no-transmitted (st *fn-sw-start*) (gatep t)))
@@ -150,46 +139,26 @@
                                         fn-sw-start-inv fn-sw-run))))
   :rule-classes nil)
 
-; The entry at the profile's row: the bound the host's setting carries, for
-; the largest window Q any plan renders.
-(defthm fn-send-window-octets-bounds-the-connection
-  (implies (and (posp q)
-                (fn-sw-run *fn-sw-start* evs (fn-send-window-octets) q t))
-           (let ((st (fn-sw-run *fn-sw-start* evs (fn-send-window-octets) q t)))
-             (< (+ (nth 0 st) (nth 1 st)) (+ (fn-send-window-octets) (* 2 q)))))
-  :hints (("Goal" :use ((:instance fn-sw-buffered-bounded (w (fn-send-window-octets))))
-           :in-theory (disable fn-send-window-octets)))
+ ; The deployed admission decision bounds the next rendered quantum.
+(defthm fn-send-window-render-p-bounds-the-quantum
+  (implies (and (and (natp notsent) (natp n) (natp q) (<= n q))
+                (fn-send-window-render-p notsent))
+           (< (+ notsent n) (+ (fn-send-window-octets) q)))
   :rule-classes nil)
 
-; ---- teeth ----
+(defteeth fn-send-window-render-p-bounds-the-quantum
+  :claim (((quantum (and (natp notsent) (natp n) (natp q) (<= n q)))
+           (admitted (fn-send-window-render-p notsent)))
+          (< (+ notsent n) (+ (fn-send-window-octets) q)))
+  :subject fn-send-window-render-p
+  :witness ((notsent 65535) (n 16384) (q 16384))
+  :breaks ((quantum ((notsent 65535) (n 2) (q 0)))
+           (admitted ((notsent 65536) (n 16384) (q 16384))))
+  :mutations ((ignore-quantum (:conclusion (< (+ notsent n) (fn-send-window-octets)))
+               ((notsent 65535) (n 16384) (q 16384))
+               :fault "An admitted render quantum may cross the notification threshold.")))
 
-; Positive: the bound is not vacuous.  With W = 6 and Q = 4 a legal trace holds
-; 12 octets (above W) and the bound is 14.
-(defthm fn-sw-window-exceeds-w-within-the-bound
-  (let ((st (fn-sw-run *fn-sw-start*
-                       '((:render 4) (:write 4) (:render 4) (:write 4) (:render 4))
-                       6 4 t)))
-    (and (equal st '(8 4 12 0))
-         (< 6 (+ (nth 0 st) (nth 1 st)))
-         (< (+ (nth 0 st) (nth 1 st)) (+ 6 (* 2 4)))))
-  :rule-classes nil)
-
-; The gate refuses a write at or past W: the same trace one write further is
-; not legal.
-(defthm fn-sw-gate-refuses-a-write-past-w
-  (and (null (fn-sw-run *fn-sw-start*
-                        '((:render 4) (:write 4) (:render 4) (:write 4)
-                          (:render 4) (:write 4))
-                        6 4 t))
-       (fn-sw-run *fn-sw-start*
-                  '((:render 4) (:write 4) (:render 4) (:write 4)
-                    (:render 4) (:write 4))
-                  6 4 nil))
-  :rule-classes nil)
-
-; Hypothesis removal: without the gate a stalled reader has the owner render
-; without bound.  Ten windows, no transmit, W = 6, Q = 4: 40 octets rendered,
-; far past W + 2Q = 14, and the same trace with the gate is not legal.
+; ---- teeth: the full legal trace and a removed admission gate ----
 (defun fn-sw-ten-windows ()
   (declare (xargs :guard t))
   '((:render 4) (:write 4) (:render 4) (:write 4) (:render 4) (:write 4)
@@ -197,12 +166,67 @@
     (:render 4) (:write 4) (:render 4) (:write 4) (:render 4) (:write 4)
     (:render 4) (:write 4)))
 
-(defthm fn-sw-gate-removed-the-bound-fails
-  (let ((open (fn-sw-run *fn-sw-start* (fn-sw-ten-windows) 6 4 nil))
-        (gated (fn-sw-run *fn-sw-start* (fn-sw-ten-windows) 6 4 t)))
-    (and open
-         (fn-sw-no-transmit-p (fn-sw-ten-windows))
-         (equal (nth 2 open) 40)
-         (<= (+ 6 (* 2 4)) (nth 2 open))
-         (null gated)))
+(defthm fn-sw-observed-render-admission-bounds
+  (implies (and (and (natp w) (posp q)
+                     (fn-sw-run *fn-sw-start* evs w q gatep))
+                (equal gatep t))
+           (< (+ (nth 0 (fn-sw-run *fn-sw-start* evs w q gatep))
+                 (nth 1 (fn-sw-run *fn-sw-start* evs w q gatep)))
+              (+ w q)))
+  :hints (("Goal" :use fn-sw-buffered-bounded
+           :in-theory (disable fn-sw-run)))
   :rule-classes nil)
+
+(defteeth fn-sw-observed-render-admission-bounds
+  :claim (((legal (and (natp w) (posp q)
+                       (fn-sw-run *fn-sw-start* evs w q gatep)))
+           (admission (equal gatep t)))
+          (< (+ (nth 0 (fn-sw-run *fn-sw-start* evs w q gatep))
+                (nth 1 (fn-sw-run *fn-sw-start* evs w q gatep))) (+ w q)))
+  :subject fn-send-window-render-p
+  :witness ((w 6) (q 4) (gatep t)
+            (evs '((:render 4) (:write 4) (:render 4))))
+  :breaks ((legal ((w 0) (q 0) (gatep t) (evs nil)))
+           (admission ((w 6) (q 4) (gatep nil) (evs (fn-sw-ten-windows)))))
+  :mutations ((no-overshoot (:conclusion
+                            (<= (+ (nth 0 (fn-sw-run *fn-sw-start* evs w q gatep))
+                                   (nth 1 (fn-sw-run *fn-sw-start* evs w q gatep))) w))
+               ((w 6) (q 4) (gatep t) (evs '((:render 4) (:write 4) (:render 4))))
+               :fault "Dropping the last admitted quantum understates retained bytes.")))
+
+(defthm fn-sw-observed-stalled-reader-bounded
+  (implies (and (and (natp w) (posp q)
+                     (fn-sw-run *fn-sw-start* evs w q gatep))
+                (equal gatep t)
+                (fn-sw-no-transmit-p evs))
+           (< (nth 2 (fn-sw-run *fn-sw-start* evs w q gatep)) (+ w q)))
+  :hints (("Goal" :use fn-sw-stalled-reader-bounded
+           :in-theory (disable fn-sw-run fn-sw-no-transmit-p)))
+  :rule-classes nil)
+
+(defteeth fn-sw-observed-stalled-reader-bounded
+  :claim (((legal (and (natp w) (posp q)
+                       (fn-sw-run *fn-sw-start* evs w q gatep)))
+           (admission (equal gatep t))
+           (stopped (fn-sw-no-transmit-p evs)))
+          (< (nth 2 (fn-sw-run *fn-sw-start* evs w q gatep)) (+ w q)))
+  :subject fn-send-window-render-p
+  :witness ((w 6) (q 4) (gatep t) (evs '((:render 4) (:write 4) (:render 4))))
+  :breaks ((legal ((w 0) (q 0) (gatep t) (evs nil)))
+           (admission ((w 6) (q 4) (gatep nil) (evs (fn-sw-ten-windows))))
+           (stopped ((w 6) (q 4) (gatep t)
+                     (evs '((:render 4) (:write 4) (:transmit 4)
+                            (:render 4) (:write 4) (:transmit 4) (:render 4))))))
+  :mutations ((omit-last-render (:conclusion
+                                (<= (nth 2 (fn-sw-run *fn-sw-start* evs w q gatep)) w))
+               ((w 6) (q 4) (gatep t) (evs '((:render 4) (:write 4) (:render 4))))
+               :fault "The last admitted quantum remains rendered with a stopped reader.")))
+
+(defthm fn-sw-admission-refuses-render-at-window
+  (and (not (fn-send-window-render-p (fn-send-window-octets)))
+       (not (fn-sw-run *fn-sw-start*
+                       '((:render 4) (:write 4) (:render 4) (:write 4) (:render 4)) 6 4 t))
+       (equal (fn-sw-run *fn-sw-start* (fn-sw-ten-windows) 6 4 nil) '(40 0 40 0)))
+  :rule-classes nil)
+
+(defteeth-check)

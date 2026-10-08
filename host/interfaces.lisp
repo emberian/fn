@@ -2832,7 +2832,12 @@
 
 (definterface fn-send-window-octets
   :class :common-lisp-compliant
-  :keystones (fn-send-window-octets-bounds-the-connection))
+  :kinds ())
+
+(definterface fn-send-window-render-p
+  :class :common-lisp-compliant
+  :kinds ((notsent natp))
+  :keystones (fn-send-window-render-p-bounds-the-quantum))
 
 (definterface fn-idle-gc-quiet
   :class :common-lisp-compliant

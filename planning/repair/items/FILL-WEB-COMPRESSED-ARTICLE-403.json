@@ -3,11 +3,17 @@
  "detail": "Red on hbox batch 3 (bdd4f40c4), lat1 batch 4 (55ff708a6) and lat1:/tank/fn/scratch/fill-wt/native-fill-smoke-lat1 (fill-smoke-lat1, set 55ff708a6, tests.test_native_web 2 of 15). Not a box effect (same two fail on hbox). tests/test_native_web.py:250 article_bytes.",
  "file": "host/native/web-host.lisp",
  "id": "FILL-WEB-COMPRESSED-ARTICLE-403",
- "notes": [],
+ "notes": [
+  {
+   "author": "Codex / lane send-window-2",
+   "date": "2026-10-08",
+   "note": "Related train-51 RemoteDisconnected at test_native_web.py:255 is the first HTTP ARTICLE GET, before restart; the copied stderr contains operator output, not the class node trace. The unchanged train-51 image passed the isolated test and all 15 web tests in controls sw2-web-control and sw2-web-control-all on hbox, so the original intermittent close is not conclusively attributed. Two concrete host deadline defects are repaired: the 15-second intake deadline no longer includes server rendering after ACL2 reports a complete request, and completed ready/render/replay quanta reset line-since (as the NNTP mux already does). Wire windows now use existing ACL2 send-progress verdicts, including no-readiness stall checks; named timeout/cold/send logs distinguish future closes. Deterministic tests execute the deployed consumers and the send-progress book bodies; restoring either old deadline defect makes their assertions fail. This does not close the earlier native NNTP 403 item."
+  }
+ ],
  "owner": "unowned",
  "severity": "medium",
  "source": "fill-20261004",
  "state": "open",
  "title": "tests.test_native_web test_compressed_article_uses_physical_windows_through_web_and_restart (plain and TLS classes): the first ARTICLE of a compressed article answers '403 article temporarily unavailable; a page it needs was not read within 5000 ms' instead of 220",
- "updated": "2026-10-04T19:15:49Z"
+ "updated": "2026-10-08T21:58:03Z"
 }
