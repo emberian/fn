@@ -54,12 +54,13 @@ list. The selection/retained-log decision belongs to the caller's ACL2 entry."
       (values nil (fnn-call 'fn-pck-x-open (fnn-core 'pgs-rec-npages rec)
                             mem payload-file arena octets)))))
 
-(defun fnn-pck-commit-pages (pages-fd payload-fd lpages n txid alloc slot mem octets)
+(defun fnn-pck-commit-pages (pages-fd payload-fd lpages n txid alloc adopted-slot mem octets)
   "Execute a page-store commit and return ACL2's plan or refusal.
-SLOT and TXID must be ACL2's choices from the adopted slots; this I/O layer
-never selects them. Payload frames are already written at committed PLEN.
+ADOPTED-SLOT is the open's result; pgs-x-commit-slot chooses the write slot.
+TXID is ACL2's next transaction output. Payload frames are already written at committed PLEN.
 A post-plan I/O failure requires recovery because MEM contains new tables."
-  (let ((plan (first (fnn-call 'pgs-x-commit lpages n txid alloc slot mem octets))))
+  (let* ((slot (fnn-core 'pgs-x-commit-slot adopted-slot))
+         (plan (first (fnn-call 'pgs-x-commit lpages n txid alloc slot mem octets))))
     (unless (eq (first plan) :plan)
       (return-from fnn-pck-commit-pages plan))
     (handler-case
