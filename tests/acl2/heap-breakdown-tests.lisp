@@ -47,7 +47,7 @@
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
                 '((:image-dynamic . 147604131)
-                  (:state-history . 17039424)
+                  (:state-history . 16793728)
                   (:state-handles . 786432)
                   (:state-records . 136314880)
                   (:state-record-headers . 67108864)
@@ -59,8 +59,8 @@
                   (:octet-buffers . 50725002)
                   (:articles . 3441664)
                   (:history-roots . 56760640)
-                  (:collector-room . 88464235)
-                  (:megabyte-rounding . 74920)
+                  (:collector-room . 88429136)
+                  (:megabyte-rounding . 355715)
                   (:image-outside-heap . 214012928)
                   (:thread-stacks . 35651584)
                   (:thread-runtime . 142606336))))
@@ -73,10 +73,11 @@
 ;; MB with the header charged to the history budget (lane heap-pool), 470 MB
 ;; with the articles in flight charged as packed submissions (lane
 ;; chunked-body-2), 472 MB with THE SWITCH's keyed index, 534 MB with the
-;; history roots' reserve (lane mem10-hroot).
+;; history roots' reserve (lane mem10-hroot), 533 MB with the paged arena's
+;; 16 KiB pool page (c6bf5db63).
 (assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core*
                                                                  *hbt-nursery* nil))
-                534))
+                533))
 (assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
 
 ;; The hypothesis is needed: `store compact' reserves the larger of its list
