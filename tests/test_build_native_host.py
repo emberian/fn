@@ -112,6 +112,14 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         # named the preset's fields (books/heap-figure.lisp).
         self.assertIn("--dynamic-space-size 1068 ", launcher)
         self.assertNotIn("--dynamic-space-size 32000", launcher)
+        # The launcher decides its heap per command, through the one
+        # fn_decide_heap packaging/fn defines (a default-profile store and a
+        # BP node decide more than the small preset's figure).
+        self.assertIn("fn_decide_heap() {", launcher)
+        self.assertIn('fn_decide_command_heap "$@"', launcher)
+        self.assertEqual(launcher.splitlines()[0], "#!/bin/sh")
+        self.assertEqual(launcher.count("fn_decide_heap() {"),
+                         (ROOT / "packaging" / "fn").read_text().count("fn_decide_heap() {"))
         self.assertIn("--max-history-octets 8388608", self.probe_text)
         # HST-016: the ML-DSA-65 library is built into lib/ beside the image
         # and named to the build; no OpenSSL prefix is needed.

@@ -15,8 +15,7 @@ import unittest
 
 from tests.native_harness import (
     Acl2Session,
-    EXIT, Node, acl2_nat, acl2_octets, acl2_result, decided_words_launch, environment, free_port,
-    native_image,
+    EXIT, Node, acl2_nat, acl2_octets, acl2_result, environment, free_port, native_image,
     requires, run, scratch, start)
 from tests.test_bp_contact_relay_native import ByteRelay
 from tests.bp_producer import post_articles
@@ -160,18 +159,14 @@ class NativeBpNodeTests(unittest.TestCase):
             self.assertEqual(routed.returncode, EXIT.OK, routed.stderr)
         receipts = self.receiver_receipts if receiver else self.tmp / "sender-fnrj"
         workflow = self.tmp / "receiver-fnwf" if receiver else self.sender_workflow
-        words = ["bp-node", "serve", "-" if configured else str(listen_port),
-                 str(journal), str(store), str(receipts), str(workflow),
-                 node, peer, node, "native-policy", node,
-                 "127.0.0.1", str(self.relay.port),
-                 "1" if once else "0", "3600000", "2", "32", str(transfer_mru),
-                 "0", "0", *(["--control-config", str(config)] if control else [])]
-        # The node starts at the heap its own probe decides for these words
-        # (the store's read pool and the BP sessions it funds), as an installed
-        # node does; the image launcher's saved figure is the small preset's.
-        decided = decided_words_launch(self, IMAGE, words)
-        process = start([IMAGE, "--fn", *words], cwd=ROOT,
-                        env=environment({**decided, **(extra_env or {})}))
+        process = start(
+            [IMAGE, "--fn", "bp-node", "serve", "-" if configured else str(listen_port),
+             str(journal), str(store), str(receipts), str(workflow),
+             node, peer, node, "native-policy", node,
+             "127.0.0.1", str(self.relay.port),
+             "1" if once else "0", "3600000", "2", "32", str(transfer_mru),
+             "0", "0", *(["--control-config", str(config)] if control else [])],
+            cwd=ROOT, env=environment(extra_env))
         self.addCleanup(process.stop, 5)
         if control:
             process.announcement(b"BP NODE CONTROL ", timeout=45)
