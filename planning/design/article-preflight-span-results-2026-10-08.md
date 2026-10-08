@@ -1,176 +1,253 @@
 # s-xc2 span implementation evidence, 2026-10-08
 
-NOT READY. Implementation stopped under Deputy S's explicit condition 2:
-a served scalar tombstone-prefix read remains in `books/article-arena-reads.lisp`,
-outside the approved proof-book set. No push. P's `origin/lane/p-xc-span`
-was absent at every `timeout 30 git ls-remote origin lane/p-xc-span` poll,
-including the final poll; JOB 2 and `:duplicate` handling remain pending.
+NOT READY. Round 6 merges P and removes the last served scalar prefix read,
+but two requirements remain open: the loop-call ratchet is 129 against 123,
+and P's single span export can miss a later cached window after selecting
+an earlier exhausted window. No push. The latter is recorded as
+`planning/repair/items/EXTENT-CACHE-SPAN-COVERAGE.json`; P owns that book.
 
-## Commits and proved scope
+## Round 6 commits
 
-- `5e1aaea3f`: S1 span scan, guards, exact scan-state/fuel equality, and real-arena teeth.
-- `4b5cc6ad1`: owner preflight routing and profile-backed span size. Added
-  `fn-ast-span-want` to host/interfaces.lisp; generated interfaces.json and
-  tools/extract/roots.sh with `FN_LAPTOP_OK=1 python3 tools/interface_emit.py --write`.
-- `f9b52c012`: A-DURABLE-LZ span seam, compressed arena dispatch/refinement,
-  compressed concrete-arena witness, native decoded span realization and host-path test.
-- `fc7817600`: native test closure loader; no realizer/decoder/cache decision stubs.
+- `390c1f177`: merge origin/lane/p-xc-span@95d685b69. The only conflict was
+  planning/interfaces.json, restored from the incoming branch and regenerated.
+  P's proof books were merged without edits.
+- `04765fb2c`: prefix equality and teeth statement, committed before proof.
+- `fd6f3bf2f`: proved span prefix, unchanged public guard, real-arena teeth.
+- `6dbb26aea`: native fn-xc-span-at seam, duplicate/present uncached result,
+  declared interface and generated host worlds/interface manifest.
+- `3f4a6328f`: warm raw-cache host-path test and shared native closure loader.
 
-S1 (`books/article-stream.lisp:373`) has exactly `(natp fuel)` as premise.
-Its standalone persvati admission was 230,605 prover steps / 1.59 s. Span
-size normalizes arbitrary limits locally; the equality does not depend on
-the selected profile. `fn-ast-span-want` at :777 reads :read-window-octets
-(262144); native extent.lisp:625 calls that ACL2 accessor at host load.
+Earlier accepted S1/S3 proofs and implementation are in 5e1aaea3f,
+4b5cc6ad1, f9b52c012 and fc7817600. This round's affected certification
+covers their current dependency closure, including the new prefix book.
 
-S3's assumption is beside the existing A-DURABLE-LZ realizer in
-assumptions-durable.lisp. The list of nth decoded answers equals the existing
-scalar seam. `payload-arena-extent.lisp:488` returns nil without realization
-for zero and uses one decoded-span realization for a positive compressed
-span. `fn-arena$x-get-span-is-the-octet-loop` at :1303 proves the refinement;
-`tests/acl2/payload-arena-extent-tests.lisp:425` is a ground witness on an
-actual sealed compressed arena, including its well-formedness and bounds.
+## Prefix statement committed before proof
 
-Native host-path evidence: tests/test_native_extent_decoded_span.py ran on
-persvati using developer core native-sxc-9b6958f93 plus the current extent
-function closure. Real compressed file preads drive actual private decoder
-jobs, ledger return/cache transitions, slot lookup, and span/scalar reads.
-The test compares every byte with the original 20000-octet payload for a
-2048-octet read, [16380,16396) crossing the decoded-window boundary, a tail
-and zero. No rebuild/full-node/W2L qualification is claimed. The warm core
-retains its structure/startup capacity; these cases are below both its
-16 KiB capacity and the new profile capacity.
+For the same arena state, handle H, prefix and offset I, the new span prefix
+predicate equals the existing byte prefix predicate whenever `(natp i)`.
+This is the existing premise of `fn-nntp-arena-prefixp-is-rcl-prefixp`, and
+is already in the public prefix function's guard; no new caller premise
+is added. Neither arena well-formedness nor prefix bounds are theorem
+premises. The implementation checks the complete prefix's bounds locally
+before its single `fn-arena-get-span` call; an empty prefix needs no read,
+and a prefix that cannot fit returns nil. The public function keeps the
+old byte predicate as its logical meaning, with the proved span predicate
+as its executable arm. Its original guard stays unchanged.
 
-## Served chain and residual scalar inventory
+The positive witness uses the actual eight-octet reclaim magic followed by
+payload data in an arena. The negative witness changes the eighth octet:
+the correct predicate refuses it, while a mutant that drops the last
+prefix octet accepts it. A must-fail event asserts their false equality.
 
-The original per-octet payload scan was owner.lisp:842
-fnn-owner-render-next-quantum -> :786 fnn-owner-ready-plan-step ->
-host/owner-host.lisp:4613 fn-owner-article-ready-plan-step ->
-article-stream-owner.lisp:620 fn-ast-scan-step -> source-byte -> arena scalar
-getter -> native extent lock. The owner call at :620 now calls
-fn-ast-scan-step-span. It folds one arena span per chunk; its scalar fallback
-is only taken when the source is not readable, in which case source-byte
-cannot call fn-arena-get. Render enters article-stream.lisp:926
-fn-ast-render-window -> :881 aux-chunk -> :797 render-one-chunk -> arena span.
+The theorem is `fn-nntp-arena-prefixp-span-is-byte`,
+books/article-arena-reads.lisp:56. Persvati admitted it in 4,253 steps / 0.03 s;
+its wrapper and consumers verified guards unchanged. The six-form teeth
+session admitted every form (0 refused), including the must-fail. Positive,
+changed-last-octet, insufficient remaining bytes and empty prefix cases are
+in tests/acl2/article-arena-reads-tests.lisp.
 
-Direct remaining scalar-realizer callers (excluding declarations, theorem
-terms, comments, and test-only calls):
+## Served caller inventory
 
-| Caller | Site | Status |
+Original mechanism: host/native/owner.lisp:842 fnn-owner-render-next-quantum
+-> :786 fnn-owner-ready-plan-step -> host/owner-host.lisp:4613
+fn-owner-article-ready-plan-step -> books/article-stream-owner.lisp:620
+preflight scan -> source-byte -> fn-arena-get -> durable scalar realizer
+-> extent lock. Preflight now calls fn-ast-scan-step-span; a readable source
+uses fn-arena-get-span. Its fallback cannot read a durable byte because the
+source is unreadable. Render uses fn-ast-render-window (:926) -> aux-chunk
+(:881) -> render-one-chunk (:797); readable payloads use spans (:807).
+Metadata pieces are literals/decimal pieces, not the generic :span variant.
+The generic byte renderer remains the model; readable served payloads are
+intercepted by the chunk renderer.
+
+ARTICLE/HEAD/BODY tombstone checks at article-stream-owner.lisp:358/:529,
+OVER at served-columns.lisp:260/:266, and HDR Xref at
+nntp-reader-compat.lisp:316/:475 all call fn-nntp-article-tombstonep.
+Its arena arm now reaches article-arena-reads.lisp:70 (the MBE executable
+arm) -> :53 fn-arena-get-span. The byte predicate at :19 is the logical
+model and a test reference only. Public guards were not changed.
+OVER/HDR column fallbacks read whole payloads through fn-arena-payload;
+they do not call the durable scalar realizers. Thus the traced valid
+ARTICLE/HEAD/BODY/OVER/HDR execution paths contain zero scalar realizer
+calls. This is a source-chain inventory, not a new reachability theorem.
+
+Remaining direct scalar-realizer references, excluding declarations,
+comments, theorem terms and tests:
+
+| Caller | File:line | Execution scope |
 | --- | --- | --- |
-| fn-arena$x-get -> fn-durable-realize-octet | books/payload-arena-extent.lisp:461 | Still reachable through served tombstone prefix; stop condition. |
-| fn-arena$x-get -> fn-durable-realize-lz-octet | books/payload-arena-extent.lisp:463 | Same remaining served prefix on compressed extents. |
-| fn-durable-span-spec -> fn-durable-realize-octet | books/assumptions-durable.lisp:106 | Logical specification of the raw span seam; native span overrides it. |
-| executable counterpart -> fn-durable-realize-octet | host/native/extent.lisp:1724 | Scalar forwarding wrapper, still reachable via the prefix. |
-| executable counterpart -> fn-durable-realize-lz-octet | host/native/extent.lisp:1899 | Scalar forwarding wrapper, still reachable via the prefix. |
-| fn-durable-realize-octet -> fnn-extent-window-realize-octet | host/native/extent.lisp:1719 | The window-mode scalar route, still reachable via the prefix. |
+| fn-arena$x-get -> fn-durable-realize-octet | books/payload-arena-extent.lisp:461 | Generic scalar arena API; no traced served command calls it after span routing. |
+| fn-arena$x-get -> fn-durable-realize-lz-octet | books/payload-arena-extent.lisp:463 | Same generic scalar API. |
+| fn-durable-span-spec -> fn-durable-realize-octet | books/assumptions-durable.lisp:106 | Logical raw-span model; native span overrides this seam. |
+| executable counterpart -> fn-durable-realize-octet | host/native/extent.lisp:1720 | Scalar forwarding wrapper, no traced served caller. |
+| executable counterpart -> fn-durable-realize-lz-octet | host/native/extent.lisp:1895 | Scalar forwarding wrapper and independent native test reference. |
+| fn-durable-realize-octet -> fnn-extent-window-realize-octet | host/native/extent.lisp:1715 | Scalar window route, no traced served caller. |
 
-**Residual served chain:** article-stream-owner.lisp:358
-fn-asto-payload-preflight and :529 fn-asto-finish call
-fn-nntp-article-tombstonep -> article-arena-reads.lisp:97
-fn-nntp-arena-prefixp -> :25 fn-arena-get -> the scalar durable getter.
-OVER's served-columns.lisp:260 tombstone fallback, and HDR's Xref
-compatibility tombstone tests (nntp-reader-compat.lisp:316/:475), reach it too.
-The magic is eight octets (`reclaim-tombstone.lisp:30`); an ordinary article
-whose first byte is nonzero mismatches on the first scalar read. This is
-bounded control work but violates the instruction to remove every served
-scalar durable caller. No permission is inferred to change this extra book.
+Other generic scalar users: legacy-parser-cursor.lisp:266/:331 and
+legacy-header-query.lisp:39 are unwired; nov-piece-window.lisp:70's :span
+piece is unreachable-in-composition for the ARTICLE metadata producers
+(article-stream.lisp:421/:525/:586). query-payload-scalar.lisp:33 belongs
+to the parked captured POST adapter (host/native/post-captured-parked.lisp).
+consumer-remote-visible-buffer.lisp:135 is an internal collection writer
+whose report-advance adapter has no public issuer/native call. The native
+current-octet acquisition helper at extent.lisp:797 has no native caller.
 
-Other inventoried scalar components: legacy-parser-cursor.lisp:266/:331 and
-legacy-header-query.lisp:39 have no current native served entry; the :span
-arm of nov-piece-window.lisp:70 is unreachable-in-composition for ARTICLE's
-produced metadata pieces (article-stream.lisp:421, :525, :586). The payload
-branch is intercepted by render-one-chunk. query-payload-scalar.lisp:33 is
-reached by the captured POST comparator in post-identity-captured-host.lisp:58;
-its native adapter is explicitly parked and not loaded
-(host/native/post-captured-parked.lisp:1). consumer-remote-visible-buffer.lisp:135
-belongs to the internal collection writer; its report-advance adapter has
-no public issuer or native call (consumer-remote-report-host.lisp:58).
-The old native current-octet acquisition helper at extent.lisp:801 has no
-native caller. These are source-chain findings, not new reachability proofs.
+## Raw cache seam and cost scope
 
-## Cost scope
+host/native/extent.lisp:744 fnn-extent-window-cache-run holds one extent
+lock, obtains backing via ACL2's fn-xc-lookup result, and calls fn-xc-span-at
+once. ACL2 computes j, copies bytes and touches recency. The host candidate
+loop and j computation are gone. The new interface declares kinds in book
+formal order and cites all three export keystones; the unused
+fn-owner-page-window-cache-span-at definterface was removed.
 
-For a warm 2 KiB payload fitting one cache window and one owner quantum,
-preflight plus rendering now take **two data-span lock acquisitions**, one
-per pass. The actual reply still includes the scalar tombstone checks: when
-both owner checks run on an ordinary non-NUL-leading article they add one
-lock each, before other control/ledger locks. Thus the whole reply is not
-claimed to meet the two-lock target or condition 2. No new W2L result exists.
-The accepted S4 statement remains a W2L target: sum the window/quantum/span
-intersections per pass; byte-fold CPU work stays O(N). ACL2 visit bounds do
-not alone prove a host mutex acquisition count.
+fnn-extent-window-cache-insert (:832) returns the exact row token for release
+and cachedp=nil on :present/:duplicate, without fault or backing replacement.
+The raw release and decoded cache-attempt propagate cachedp; the already
+cached ledger row is evicted through the existing exact release operation.
+The kernel duplicate/disjointness teeth are P's tests/acl2/extent-cache-span-tests.
+The warm fixture does not claim a new native exercise of P's duplicate branch.
 
-## Gates
+A warm 2 KiB payload fitting one window and one owner quantum needs one
+full-payload span realization for preflight and one for rendering: two locks
+for those passes. The two owner tombstone checks each add one short span
+lock when both execute: **four span-read lock acquisitions in that case**,
+plus other control/ledger locks. This is O(1), not the W2L per-octet shape.
+The two-lock whole-reply target is not measured or claimed; no W2L rerun or
+rebuilt native image was made. Longer payloads count window/quantum/span
+intersections. The coverage gap below prevents claiming all warm stretches
+are served from cache by the current one-call export.
 
-Certification command:
-`timeout 180 python3 tools/farm.py submit persvati --lane --affected-by books/article-stream.lisp --affected-by books/payload-arena-extent.lisp --jobs 2`
+## Warm native host-path tests
 
-Run `run-20261008T122812Z-4696`, manifest
-`build/acl2/certify-20261008T122929Z-3240729/manifest.json`: 9 roots, 425 closure
-books, 254 cached, 171 newly certified, 0 failures, 270.62 seconds. This
-covers the changed proof closure at f9b52c012, including both new teeth books
-and article-stream-owner; later fixture-only edits do not change it.
-D26 overs at two jobs:
+On persvati, from /home/ember/fn-gates/s-xc2-repl:
 
-- `books/article-select-index`: 10.747 s
-- `books/catalog-logic`: 13.345 s
-- `books/history-records`: 10.202 s
-- `books/owner-credits`: 18.714 s
-- `books/payload-arena-extent`: 14.852 s
-- `books/served-catalog`: 13.196 s
-- `books/store-node-invariants-base`: 10.444 s
+```sh
+FN_XC2_NATIVE_CORE=/home/ember/fn-gates/sxc-c3/native-sxc-9b6958f93/tree/build/fn-host-developer.core \
+FN_XC2_SBCL=/tank/fn/sbcl/bin/sbcl \
+timeout 45 python3 -m unittest tests.test_native_extent_cache_span tests.test_native_extent_decoded_span -v
+```
 
-Verbatim gate tails:
+Raw test ID:
+`NativeExtentCacheSpanTests.test_warm_raw_extent_is_one_span_export_and_preserves_cold_miss`.
+It admits the current P span definitions and guards in the warm developer
+ACL2 session, then loads this tree's native function closure. It drives
+actual pread/digest/return/cache transitions over a real 2048-byte extent,
+compares every byte and observes exactly one fn-xc-span-at dispatch. Tail,
+zero and exact cold-descriptor identity miss are checked. There is no
+realizer, hit-decision or dispatcher stub; counting forwards every dispatch.
+
+Decoded test ID:
+`NativeExtentDecodedSpanTests.test_actual_compressed_extent_span_matches_scalar_across_window`.
+Actual compressed preads and private decoder jobs feed slot-cache reads;
+span = scalar = original bytes for 2048 bytes, [16380,16396) across a decoded
+window boundary, tail and zero. Both tests use the warm core's existing
+structure/startup layout and unchanged lookup/touch/window ABI plus current
+native seams. They are not full-image integration evidence. The helper
+native_extent_span_loader.lisp loads the complete current extent-function
+closure rather than shadowing dependencies with stubs.
+
+## Generators and gates
+
+Commands run:
+
+```sh
+git show origin/lane/p-xc-span:planning/interfaces.json > planning/interfaces.json
+FN_LAPTOP_OK=1 python3 tools/interface_emit.py --write
+python3 tools/extract/world.py
+FN_LAPTOP_OK=1 python3 tools/interface_emit.py --write
+```
+
+The world generator placed extent-cache-span in image-world-part-2,
+image-world-dtn-part-2, image-world-store-test-part-1 and the two extraction
+world files from host/page-read-host.lisp's include row. No generated file
+was hand-merged. Interface generation was rerun after declaration changes.
+
+Persvati REPL: prefix theorem/guards/teeth admitted; P's whole span book
+loaded 16 forms in 5.56 s / 2,165,718 steps. The coverage witness below is
+REPL evidence, not a new certified repository theorem.
+
+```sh
+timeout 180 python3 tools/farm.py submit persvati --lane \
+  --affected-by books/article-stream.lisp \
+  --affected-by books/payload-arena-extent.lisp \
+  --affected-by books/article-arena-reads.lisp \
+  --affected-by books/extent-cache-span.lisp --jobs 2
+```
+
+run-20261008T153641Z-62b0 / certify-20261008T153712Z-752406:
+16 roots, 474 books in the affected dependency closure, 369 cached,
+105 newly certified, 0 failures, 229.135 s. Current proof forms are covered;
+the manifest's revision is the pre-commit dirty snapshot used for submission.
+No laptop certification or image build. Triage: real 0 / cascade 0 /
+must-fail 0 / limit 0 / killed 0 / other 0; echo 3, clean 102.
+
+D26 overs at two jobs: article-select-index 12.143 s, article-stream-owner
+11.286 s, heap-store-figure 10.349 s, history-paged 11.543 s,
+owner-checkpoint-writer 12.558 s, owner-credits 22.221 s, page-read-startup
+10.489 s, served-catalog 22.665 s. article-stream was 8.683 s;
+article-arena-reads 0.767 s and its teeth 1.116 s. Payload-arena-extent was
+cached in this run; its previous two-job 14.852 s D26 defect remains.
+
+Filtered pytest discovery ran `rg -l "extent" tests/*.py | head` and the
+article analogue. The selected pytest modules were bp_fragment_node_native,
+def_loop_drain, harness_check, host_check_world, guarded_by,
+host_check_tables, lock_discipline_check, lisp_rewrite, native_extent_identity,
+native_extent_decoded_span, native_article_subject, native_article_slots,
+native_article_quiet. Result: 496 passed, 26 skipped, 42 subtests passed.
+The CLI/helper-only matches were not passed to pytest. The loop ratchet was
+run separately: 1 failed, 4 passed. After the new raw fixture and shared loader,
+the affected harness check plus both new seam modules gave 1 passed, 2 skipped
+locally (native cores unavailable locally); both native tests passed on persvati.
+No unfiltered suite was run.
+
+Verbatim gate tails follow (all commands carried timeout; host/interface/keystone
+used FN_LAPTOP_OK=1 for the explicitly requested local gates).
 
 ```text
-host_check --load: 58 of 58 raw files loaded in one bare acl2 in 3.4 s; 0 finding(s); 77 undefined names and 28 load-time calls belong to the certified world (not loaded here); 46 other compiler warnings
+host_check --load: 58 of 58 raw files loaded in one bare acl2 in 4.0 s; 0 finding(s); 77 undefined names and 28 load-time calls belong to the certified world (not loaded here); 46 other compiler warnings
 interface_emit: 1844 declared; 1794 of the raw host's 1794 dispatched entries; 24 extraction roots, 6 EXTRA; 0 finding(s)
 keystone_emit: 14 defkeystone form(s) in 4 book(s), 0 finding(s)
-== certify triage certify-20261008T122929Z-3240729: 171 book logs
+deleted-name rg: no output; exit 1 (no matches).
+== certify triage certify-20261008T153712Z-752406: 105 book logs
    real 0 / cascade 0 / must-fail 0 / limit 0 / killed 0 / other 0
-   (not failures: echo 6, clean 165)
+   (not failures: echo 3, clean 102)
+
+test_warm_raw_extent_is_one_span_export_and_preserves_cold_miss (tests.test_native_extent_cache_span.NativeExtentCacheSpanTests.test_warm_raw_extent_is_one_span_export_and_preserves_cold_miss) ... ok
+test_actual_compressed_extent_span_matches_scalar_across_window (tests.test_native_extent_decoded_span.NativeExtentDecodedSpanTests.test_actual_compressed_extent_span_matches_scalar_across_window) ... ok
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.172s
+Ran 2 tests in 3.811s
 
 OK
-.                                                                        [100%]
-1 passed in 0.93s
-=========================== short test summary info ============================
-FAILED tests/test_loop_call_check.py::SiteTests::test_the_tree_is_at_its_baseline
-!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
-1 failed, 455 passed, 42 subtests passed in 129.76s (0:02:09)
-s.sssssssssssssss                                                        [100%]
-1 passed, 16 skipped in 0.18s
+
+496 passed, 26 skipped, 42 subtests passed in 165.45s (0:02:45)
+1 passed, 2 skipped in 1.03s
+1 failed, 4 passed in 0.32s
+
 loop_call_check: host/native/admin.lisp: 1 per-iteration call/lock loops, not in the baseline
-loop_call_check: host/native/extent.lisp: 11 per-iteration call/lock loops, baseline 8
+loop_call_check: host/native/extent.lisp: 10 per-iteration call/lock loops, baseline 8
 loop_call_check: host/native/immutable-publish.lisp: 2 per-iteration call/lock loops, baseline 1
 loop_call_check: host/native/io.lisp: 33 per-iteration call/lock loops, baseline 32
 loop_call_check: host/native/mux.lisp: 3 per-iteration call/lock loops, baseline 2
-loop_call_check: 130 host loops that call ACL2 or take a lock per iteration in 30 files (baseline 123)
+loop_call_check: 129 host loops that call ACL2 or take a lock per iteration in 30 files (baseline 123)
 ```
 
-host_check --load exited 0; its bare-ACL2 limitation is in the tail above.
-interface_emit --check and keystone_emit --check exited 0.
-The deleted-name rg exited 1 with no output (the expected no-hit result).
-The filtered Python run stopped at the existing loop baseline failure; the
-remaining extent/article files ran separately. Native image-dependent tests
-skip locally; the new seam test ran successfully on persvati with unittest
-(the remote system Python lacks pytest). No unfiltered suite ran.
+## Remaining host loops and stopping boundary
 
-The required discovery command `rg -l "extent" tests/*.py | head` included
-check_control_unwind_effects.py, a CLI checker rather than a pytest module;
-it was not passed to pytest. Other discovered pytest modules plus explicit
-native extent/article files were selected. Initial fixture-stub classification
-failure was fixed and its exact tree check rerun successfully. No baseline
-was raised. secrets_check reported zero findings before each commit.
-
-## Every loop named by the remaining ratchet
-
-`python3 tools/loop_call_check.py --list` reports 130 sites (baseline 123).
-P's raw cache loop removal is pending; it cannot by itself remove all seven
-excess sites. The complete current list follows, including repeated sites
-inside the same function:
+The ratchet counts 129, down from 130; it enforces per-file baselines, so
+shrinking an unrelated file would not resolve the five file-level reds.
+All remaining names are listed below. Extent has ten counted sites:
+cache-take (two nested sites), window-run, executor-loop/start/stop,
+cache-release, entry-direct, lz-buffer-span, close. The raw cache-run site
+is gone. Decoded cache-run retains its candidate loop (P's export is kind 2).
+The other excess file sites include admin's owner-limit-serialized retry,
+immutable-drain-cleanups, log-drain-spare-discards, and mux-close-wake.
+The latter three preserve off-lock physical effects and receipt settlement;
+admin preserves re-observation after concurrent carry changes. Their bodies
+were not moved into helpers to conceal the counted work. No ratchet baseline
+or lock rule was weakened. Removing these sites needs their actual batching
+or concurrency protocols addressed, beyond replacing the raw warm-cache seam.
 
 ```text
 host/native/admin.lisp:fnn-owner-limit-serialized loop [call+lock]
@@ -199,7 +276,6 @@ host/native/extent-decoded.lisp:fnn-extent-decoded-window-run loop [call+lock]
 host/native/extent.lisp:fnn-extent-cache-take dolist [call]
 host/native/extent.lisp:fnn-extent-cache-take loop [call]
 host/native/extent.lisp:fnn-extent-window-run loop [call+lock]
-host/native/extent.lisp:fnn-extent-window-cache-run loop [call]
 host/native/extent.lisp:fnn-extent-executor-loop loop [lock]
 host/native/extent.lisp:fnn-extent-executor-start dotimes [call+lock]
 host/native/extent.lisp:fnn-extent-executor-stop dolist [call]
@@ -303,29 +379,53 @@ host/native/tcpcl.lisp:fnn-tcl-pump-out loop [call]
 host/native/web-host.lisp:fnn-web-semantic-body loop [lock]
 host/native/web-host.lisp:fnn-web-semantic-body loop [lock]
 host/native/workflow.lisp:fnn-app-read-records dolist [call]
-loop_call_check: host/native/admin.lisp: 1 per-iteration call/lock loops, not in the baseline
-loop_call_check: host/native/extent.lisp: 11 per-iteration call/lock loops, baseline 8
-loop_call_check: host/native/immutable-publish.lisp: 2 per-iteration call/lock loops, baseline 1
-loop_call_check: host/native/io.lisp: 33 per-iteration call/lock loops, baseline 32
-loop_call_check: host/native/mux.lisp: 3 per-iteration call/lock loops, baseline 2
-loop_call_check: 130 host loops that call ACL2 or take a lock per iteration in 30 files (baseline 123)
 ```
 
+## P export coverage gap: admitted counterexample
 
-## Round 6: prefix statement, before proof
+The API accepts one backing window, while its lookup searches only a start
+bound (`extent-cache.lisp:267-282`). For p=C, the earlier window [0,C) is
+selected before [C,C+3). The first export call computes j=C and misses; the
+second, from the later slot with its matching backing, returns :span.
+The host cannot choose that later backing or retry candidates without the
+loop this brief explicitly removes. `fn-xc-span-at-answers-an-owed-hit`
+requires the initially selected token/plan to supply a byte; this example
+does not satisfy that premise for the first slot, so it does not refute P's
+theorem. It refutes the sufficiency of that contract for the requested
+all-warm-stretches host behavior. The cache still throws the full cold
+descriptor; this is a false miss, not unauthorized bytes.
 
-For the same arena state, handle H, prefix and offset I, the new span prefix
-predicate equals the existing byte prefix predicate whenever `(natp i)`.
-This is the existing premise of `fn-nntp-arena-prefixp-is-rcl-prefixp`, and
-is already in the public prefix function's guard; no new caller premise
-is added. Neither arena well-formedness nor prefix bounds are theorem
-premises. The implementation checks the complete prefix's bounds locally
-before its single `fn-arena-get-span` call; an empty prefix needs no read,
-and a prefix that cannot fit returns nil. The public function keeps the
-old byte predicate as its logical meaning, with the proved span predicate
-as its executable arm. Its original guard stays unchanged.
+Replay in a persvati REPL on books/extent-cache-span:
+`timeout 120 python3 tools/proof_repl.py send-file s-xc2-raw-span build/s-xc2-preflight/coverage-witness.lisp --host persvati`.
+The file's exact form is below. Result: one form, zero refused, 322 prover
+steps / 0.13 s. This is proof-search evidence, not a repository certificate.
+P must supply a coverage-aware selection/backing protocol or an ACL2-directed
+continuation before this lane can claim the required general warm behavior.
 
-The positive witness uses the actual eight-octet reclaim magic followed by
-payload data in an arena. The negative witness changes the eighth octet:
-the correct predicate refuses it, while a mutant that drops the last
-prefix octet accepts it. A must-fail event asserts their false equality.
+```lisp
+(defthm xc2-full-window-can-hide-a-later-span
+ (let* ((c *fn-ew-span-capacity*) (plen (+ c 3))
+        (t0 (list :window 7 11 100 plen 100 plen 0 77))
+        (t1 (list :window 8 11 100 plen 100 plen c 77))
+        (s0 (list :verified 11 100 plen 0 c 77 0 7 47 t0 100 plen 0))
+        (s1 (list :verified 11 100 plen c 3 77 0 8 47 t1 100 plen c))
+        (ledger (list nil nil nil
+                  (list (cons t0 '((300000 0 0 0 0) :cached nil))
+                        (cons t1 '((300000 0 0 0 0) :cached nil))) nil))
+        (slots (list (list 2 t 7 0 11 100 plen 100 plen 0 0 0 77 0)
+                     (list 2 t 8 0 11 100 plen 100 plen 0 0 c 77 1)))
+        (cells '(2 0 2))
+        (window (list (append '(4 5 6) (make-list (- c 3) :initial-element 0))))
+        (dst (list (make-list c :initial-element 0))))
+   (and (fn-xcsp slots) (fn-xccp cells) (fn-xc-readyp slots cells)
+        (fn-pwr-plan-matches-token s0 t0) (fn-pwr-plan-matches-token s1 t1)
+        (fn-ewp-publication s0) (fn-ewp-publication s1)
+        (fn-pwc-cachedp ledger t0) (fn-pwc-cachedp ledger t1)
+        (equal (mv-nth 0 (fn-xc-span-at 0 ledger s0 11 100 plen 100 plen 77 c plen
+                                     slots cells window dst)) :miss)
+        (equal (mv-nth 0 (fn-xc-span-at 1 ledger s1 11 100 plen 100 plen 77 c plen
+                                     slots cells window dst)) :span)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories (enable fn-xc-span-at fn-xc-slot-token fn-xc-token)
+                                            (executable-counterpart-theory :here)))))
+```

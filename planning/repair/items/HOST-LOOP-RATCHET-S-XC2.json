@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "severity": "high",
+ "slice": "storage",
+ "id": "HOST-LOOP-RATCHET-S-XC2",
+ "owner": "deputy-S",
+ "state": "open",
+ "source": "Codex s-xc2 round 6, host integration 6dbb26aea",
+ "title": "Loop-call gate remains 129 against 123 after raw cache span-loop removal",
+ "notes": [
+  "Per-file reds: host/native/admin.lisp 1 vs absent; extent.lisp 10 vs 8; immutable-publish.lisp 2 vs 1; io.lisp 33 vs 32; mux.lisp 3 vs 2. Full 129-site inventory is in planning/design/article-preflight-span-results-2026-10-08.md. No baseline change.",
+  "Extent sites: cache-take outer and inner loops, window-run, executor-loop, executor-start, executor-stop, cache-release, entry-direct, lz-buffer-span, close. fnn-extent-window-cache-run is no longer a host candidate loop. Decoded cache-run remains outside P's kind-2 export.",
+  "Other excess-site mechanisms include owner-limit-serialized concurrent carry retry, immutable-drain-cleanups off-lock unlink/fsync receipts, log-drain-spare-discards exact custody settlement, and mux-close-wake off-lock descriptor close receipts. Batching or core/protocol work must preserve those boundaries; moving loop bodies into helpers would conceal the work without meeting the requirement. Exit: all file counts at or below existing baselines with corresponding semantic evidence, no rebaseline."
+ ],
+ "updated": "2026-10-08"
+}

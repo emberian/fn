@@ -1,0 +1,16 @@
+{
+ "category": "performance",
+ "severity": "high",
+ "slice": "storage",
+ "id": "EXTENT-CACHE-SPAN-COVERAGE",
+ "owner": "deputy-P",
+ "state": "open",
+ "source": "Codex s-xc2 round 6; P export 95d685b69; native integration 6dbb26aea",
+ "title": "One-call raw span cache misses a later window after an earlier exhausted slot",
+ "notes": [
+  "fn-xc-slot-matchp (books/extent-cache.lisp:267) requires start<=p but has no window end. fn-xc-span-at binds the first such slot and a supplied single plan/window; it returns :miss when p>=start+count. With raw windows [0,C) and [C,C+3), lookup from 0 selects the exhausted first slot for p=C, while from 1 serves three bytes. The removed host candidate loop previously retried the later slot.",
+  "Persvati REPL admitted xc2-full-window-can-hide-a-later-span in 322 steps / 0.13 s: well-formed ready table, token-matching published plans, both rows cached, from=0 miss and from=1 span. Full replay form in planning/design/article-preflight-span-results-2026-10-08.md. This is a positive counterexample, not a failed proof search.",
+  "Exit: P supplies an ACL2 coverage decision selecting the containing slot (with backing binding protocol), or an ACL2-directed continuation across candidate backing values, and proves no owed later hit is skipped. Host must not decide coverage. s-xc2 stops here because P owns extent-cache*. The current one-call host path returns the complete cold descriptor on this false miss; bytes remain protected, but the warm-read requirement is unmet."
+ ],
+ "updated": "2026-10-08"
+}
