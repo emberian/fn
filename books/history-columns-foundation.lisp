@@ -121,3 +121,12 @@
           :clear fn-hist$a-clear :query fn-hist$a-msgid-records)
   :lemmas (fn-hist-hash-natp fn-hist-article-matches-implies-key
            fn-hist-query-of-atom fn-hist-query-of-cons))
+
+; The instance lemmas serve the generated proofs above; they are not part of
+; the theory an includer inherits.  (The hand foundation exported none of
+; them, and an exported `fn-hist-held-msgid-stringp' relieves the STRINGP
+; hypothesis of books/bp-ingress.lisp's
+; fn-bpi-node-wire-committedp-is-committed-over-alpha in contexts where it
+; did not fire before, changing books/bp-receipt.lisp's proof.)
+(in-theory (disable fn-hist-held-msgid-stringp fn-hist-article-matches-implies-key
+                    fn-hist-query-of-atom fn-hist-query-of-cons))

@@ -34,6 +34,7 @@
 (include-book "peer-invite")
 (include-book "native-hybrid-control")
 (include-book "wire-family-identity")
+(include-book "live-profile-control")
 (include-book "control-observation")
 
 ; -----------------------------------------------------------------------------
@@ -65,7 +66,11 @@
 ; fnn-control-handle-client).
 (defun fn-ctlk-frame-handler (fn-octets)
   (declare (xargs :stobjs fn-octets :guard t))
-  (fn-ctlk-word (fn-ctlk-header-kind fn-octets)))
+  (let ((kind (fn-ctlk-header-kind fn-octets)))
+    (if (and (equal kind *fn-lpf-request-kind*)
+             (not (fn-lpf-request-size-p (fn-octets-len fn-octets))))
+        nil
+      (fn-ctlk-word kind))))
 
 ; -----------------------------------------------------------------------------
 ; An opened frame's kind is its header's.

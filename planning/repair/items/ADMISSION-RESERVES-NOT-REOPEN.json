@@ -1,0 +1,16 @@
+{
+ "category": "recovery",
+ "id": "ADMISSION-RESERVES-NOT-REOPEN",
+ "owner": "deputy-N",
+ "severity": "high",
+ "state": "open",
+ "source": "L fault cell F4 on train 45 (617a83910), 2026-10-08",
+ "file": "books/page-read-startup.lisp",
+ "line": "1",
+ "title": "admission accepts work the running heap cannot reopen: a refusal-free run is refused at its next start under the same heap and machine budget",
+ "detail": "F4 on the train-45 developer image (filled preset: development, 100000 transactions, 256 MiB history; heap re-decided by the image's own probe at each start, inside a 32G systemd scope): the owner accepted about 2,400 POSTs (2,102 colliding Message-IDs, shared-prefix IDs, reposts) with no refusal, then the restart under the same budget refused 'cold startup refused: the process heap does not hold the store's protected runtime' (hbox:/dev/shm/fn-load-f4e-t45/F4-image-x-r1/fault-0001/owner.{1,2}.err). The same store copy reopens outside that scope. Mechanism (S): the schema-3 checkpoint open re-interns every record with its payload into the heap arena (store-checkpoint-arena-load), while admission charges a POST's payload as a durable extent, not as heap. Required statement: every admitted POST keeps the open's own protected-runtime figure (the function the cold-startup check uses) within the running heap, or the POST is refused by name. Structural fix: S's paged checkpoint (s-pck-2c-host: payloads stay extents). Interim: S states the protected-runtime term in admission from the open's function. Tooth: L's cell F4R (bar P5-REOPEN-F4R: after a refusal-free first run, restart under the same heap and machine budget reaches LISTENING).",
+ "notes": [
+  "2026-10-08 (N): filed from L's F4; S joins on the store term."
+ ],
+ "updated": "2026-10-08T21:10:00Z"
+}

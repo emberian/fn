@@ -124,83 +124,91 @@ carrier to observe."
   :refused)
 
 (defun fnn-pinv-owner-issue (service received)
-  (fnn-owner-serialized
-   service nil
-   (lambda ()
-     ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
-     (block issue
-     (let ((observed (fnn-pinv-observe received)))
-       (unless observed
-         (return-from issue
-           (fnn-pinv-refused :invite '(:refused :carrier))))
-       (let ((plan (fnn-core 'fn-pinv-host-issue-plan received
-                             (first observed) (second observed) (third observed)
-                             (fnn-owner-core 'fn-pinv-host-owner-invitations)
-                             (fnn-owner-core 'fn-owner-hybrid-snapshots))))
-         (if (not (eq (first plan) :issue))
-             (fnn-pinv-refused :invite plan)
-           (fnn-owner-live-reconfigure-locked
-            service
-            (lambda (cid)
-              (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure cid
-                                (second plan)))))))))))
+  (let ((deltas nil))
+  (fnn-owner-live-reconfigure (run drive fnn-owner-serialized service nil)
+      (word reason)
+    :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure pcid deltas))
+    :before
+    ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
+    (block issue
+      (let ((observed (fnn-pinv-observe received)))
+        (unless observed
+          (return-from issue
+            (fnn-pinv-refused :invite '(:refused :carrier))))
+        (let ((plan (fnn-core 'fn-pinv-host-issue-plan received
+                              (first observed) (second observed) (third observed)
+                              (fnn-owner-core 'fn-pinv-host-owner-invitations)
+                              (fnn-owner-core 'fn-owner-hybrid-snapshots))))
+          (if (not (eq (first plan) :issue))
+              (fnn-pinv-refused :invite plan)
+            (progn
+              (setq deltas (second plan))
+              (fnn-rc-begin run nil)
+              (drive))))))
+    :continue (if (eq word :refused) (values word reason) word))))
+
+(defun fnn-pinv-owner-enrol-accepted (service received observed)
+  "The enrolment of an accepted invitation's inviter (or ACL2's answer that
+there is nothing to enrol), in the quantum that follows the configuration."
+  (destructuring-bind (sequence txid generation)
+      (fnn-owner-core 'fn-owner-next-store-coordinates)
+    (let ((step (fnn-core 'fn-pinv-host-accept-step
+                          sequence txid generation received
+                          (first observed) (second observed) (third observed)
+                          (fnn-owner-core 'fn-owner-hybrid-snapshots))))
+      ;; PKT-473: (:current) is ACL2's answer for an inviter this
+      ;; keyring already holds at the invitation's keys: nothing to enrol.
+      (case (first step)
+        (:enrol (fnn-owner-identity-commit service (second step))
+                :accepted)
+        (:current
+         (fnn-err "peer accept: the inviter's current keys; nothing to enrol")
+         :accepted)
+        (t (fnn-pinv-refused :accept step))))))
 
 (defun fnn-pinv-owner-accept (service received)
   "PRF-160: an invitation that names the inviter's address configures the
 inviter as a peer in one configuration record (books/peer-invite.lisp
-fn-pinv-accept-record-plan); the enrolment follows it."
-  (fnn-owner-serialized
-   service nil
-   (lambda ()
-     ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
-     (block accept
-     (let ((observed (fnn-pinv-observe received)))
-       (unless observed
-         (return-from accept
-           (fnn-pinv-refused :accept '(:refused :carrier))))
-       (let ((plan (fnn-core 'fn-par-host-accept-record-plan received
+fn-pinv-accept-record-plan); the enrolment follows it, in the quantum that
+decides the record (fnn-owner-live-reconfigure's continuation)."
+  (let ((accepted-observed nil) (deltas nil))
+  (fnn-owner-live-reconfigure (run drive fnn-owner-serialized service nil)
+      (published reason)
+    :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure-deltas pcid deltas))
+    :before
+    ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
+    (block accept
+      (let ((observed (fnn-pinv-observe received)))
+        (unless observed
+          (return-from accept
+            (fnn-pinv-refused :accept '(:refused :carrier))))
+        (let ((plan (fnn-core 'fn-par-host-accept-record-plan received
                               (first observed) (second observed) (third observed)
                               (fnn-owner-core 'fn-owner-hybrid-snapshots)
                               (fnn-owner-core 'fn-pinv-host-owner-peers)
                               (fnn-owner-core 'fn-store-genesis-ident)
                               (fnn-owner-core 'fn-owner-config-generation))))
-         (case (first plan)
-           (:resume
-            (fnn-err "peer accept: resumed committed inviter adoption; nothing to configure or enrol")
-            (return-from accept :accepted))
-           (:configure
-            (let ((published
-                    (fnn-owner-live-reconfigure-locked
-                     service
-                     (lambda (cid)
-                       (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure-deltas
-                                         cid (second plan))))))
-              (unless (eq published :accepted)
-                (return-from accept published))
-              ;; The model's crash point between the configuration record and
-              ;; the kind-3 record (fn-pinv-accept-record-fold-configures-the-
-              ;; inviter); a developer image dies here on request.
-              (when (fnn-developer-selector "FN_PEER_TEST_STOP_AFTER_CONFIGURE")
-                (fnn-err "peer accept: developer stop after the peer record")
-                (sb-ext:exit :code 137 :abort t))))
-           (:enrol nil)
-           (t (return-from accept
-                (fnn-pinv-refused :accept plan)))))
-       (destructuring-bind (sequence txid generation)
-           (fnn-owner-core 'fn-owner-next-store-coordinates)
-         (let ((step (fnn-core 'fn-pinv-host-accept-step
-                               sequence txid generation received
-                               (first observed) (second observed) (third observed)
-                               (fnn-owner-core 'fn-owner-hybrid-snapshots))))
-           ;; PKT-473: (:current) is ACL2's answer for an inviter this
-           ;; keyring already holds at the invitation's keys: nothing to enrol.
-           (case (first step)
-             (:enrol (fnn-owner-identity-commit service (second step))
-                     :accepted)
-             (:current
-              (fnn-err "peer accept: the inviter's current keys; nothing to enrol")
-              :accepted)
-             (t (fnn-pinv-refused :accept step))))))))))
+          (case (first plan)
+            (:resume
+             (fnn-err "peer accept: resumed committed inviter adoption; nothing to configure or enrol")
+             (return-from accept :accepted))
+            (:configure
+             (setq accepted-observed observed deltas (second plan))
+             (fnn-rc-begin run nil)
+             (return-from accept (drive)))
+            (:enrol (return-from accept (fnn-pinv-owner-enrol-accepted service received observed)))
+            (t (return-from accept (fnn-pinv-refused :accept plan)))))))
+    :continue
+    (if (eq published :accepted)
+        (progn
+          ;; The model's crash point between the configuration record and
+          ;; the kind-3 record (fn-pinv-accept-record-fold-configures-the-
+          ;; inviter); a developer image dies here on request.
+          (when (fnn-developer-selector "FN_PEER_TEST_STOP_AFTER_CONFIGURE")
+            (fnn-err "peer accept: developer stop after the peer record")
+            (sb-ext:exit :code 137 :abort t))
+          (fnn-pinv-owner-enrol-accepted service received accepted-observed))
+      published))))
 
 (defun fnn-pinv-owner-enrol-confirmed (service received observed)
   "The enrolment the configuration now permits: ACL2 asks the invitations
@@ -223,46 +231,48 @@ slot again, so only a row consumed by exactly this acceptance yields one."
 (defun fnn-pinv-owner-confirm (service received invitation)
   "PRF-124: one configuration record consumes the invitation and configures
 the invitee as a peer (books/peer-invite.lisp fn-pinv-confirm-record-plan);
-the enrolment follows it."
-  (fnn-owner-serialized
-   service nil
-   (lambda ()
-     ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
-     (block confirm
-     (let ((observed (fnn-pinv-observe received)))
-       (unless observed
-         (return-from confirm
-           (fnn-pinv-refused :confirm '(:refused :carrier))))
-       ;; SCEN-PINV-CONFIRM-ARITY: the confirm plan takes the invitations,
-       ;; snapshots and peers (books/peer-invite.lisp
-       ;; fn-pinv-confirm-record-plan); the store ident and configuration
-       ;; generation are the accept retry's (books/peer-invite-retry.lisp),
-       ;; which has no confirm form.  Spelled out so the arity lint reads it.
-       (let ((plan (fnn-core 'fn-pinv-host-confirm-record-plan
-                             received invitation
-                             (first observed) (second observed) (third observed)
-                             (fnn-owner-core 'fn-pinv-host-owner-invitations)
-                             (fnn-owner-core 'fn-owner-hybrid-snapshots)
-                             (fnn-owner-core 'fn-pinv-host-owner-peers))))
-         (case (first plan)
-           (:configure
-            (let ((published
-                    (fnn-owner-live-reconfigure-locked
-                     service
-                     (lambda (cid)
-                       (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure-deltas
-                                         cid (second plan))))))
-              (unless (eq published :accepted)
-                (return-from confirm published))
-              ;; The model's crash point between the configuration record
-              ;; and the kind-3 record (fn-pinv-confirm-record-fold-consumes-
-              ;; and-configures); a developer image dies here on request.
-              (when (fnn-developer-selector "FN_PEER_TEST_STOP_AFTER_CONSUME")
-                (fnn-err "peer confirm: developer stop after consumption")
-                (sb-ext:exit :code 137 :abort t))
-              (fnn-pinv-owner-enrol-confirmed service received observed)))
-           (:enrol (fnn-pinv-owner-enrol-confirmed service received observed))
-           (t (fnn-pinv-refused :confirm plan)))))))))
+the enrolment follows it, in the quantum that decides the record
+(fnn-owner-live-reconfigure's continuation)."
+  (let ((confirmed-observed nil) (deltas nil))
+  (fnn-owner-live-reconfigure (run drive fnn-owner-serialized service nil)
+      (published reason)
+    :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure-deltas pcid deltas))
+    :before
+    ;; The quantum's value is the answer; no early return crosses its boundary (lane failure-scope: an unwind no condition explains is a fault).
+    (block confirm
+      (let ((observed (fnn-pinv-observe received)))
+        (unless observed
+          (return-from confirm
+            (fnn-pinv-refused :confirm '(:refused :carrier))))
+        ;; SCEN-PINV-CONFIRM-ARITY: the confirm plan takes the invitations,
+        ;; snapshots and peers (books/peer-invite.lisp
+        ;; fn-pinv-confirm-record-plan); the store ident and configuration
+        ;; generation are the accept retry's (books/peer-invite-retry.lisp),
+        ;; which has no confirm form.  Spelled out so the arity lint reads it.
+        (let ((plan (fnn-core 'fn-pinv-host-confirm-record-plan
+                              received invitation
+                              (first observed) (second observed) (third observed)
+                              (fnn-owner-core 'fn-pinv-host-owner-invitations)
+                              (fnn-owner-core 'fn-owner-hybrid-snapshots)
+                              (fnn-owner-core 'fn-pinv-host-owner-peers))))
+          (case (first plan)
+            (:configure
+             (setq confirmed-observed observed deltas (second plan))
+             (fnn-rc-begin run nil)
+             (drive))
+            (:enrol (fnn-pinv-owner-enrol-confirmed service received observed))
+            (t (fnn-pinv-refused :confirm plan))))))
+    :continue
+    (if (eq published :accepted)
+        (progn
+          ;; The model's crash point between the configuration record
+          ;; and the kind-3 record (fn-pinv-confirm-record-fold-consumes-
+          ;; and-configures); a developer image dies here on request.
+          (when (fnn-developer-selector "FN_PEER_TEST_STOP_AFTER_CONSUME")
+            (fnn-err "peer confirm: developer stop after consumption")
+            (sb-ext:exit :code 137 :abort t))
+          (fnn-pinv-owner-enrol-confirmed service received confirmed-observed))
+      published))))
 
 (defvar *fnn-pinv-next-handler* *fnn-hybrid-control-handler*)
 

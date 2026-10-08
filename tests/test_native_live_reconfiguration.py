@@ -140,27 +140,31 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
 
     def test_the_live_arm_is_the_event_sequence_the_theorem_names(self):
         # reconfigure, close the private connection, publish, complete.  The
-        # sequence is `fnn-owner-live-reconfigure-locked' (shared with the
-        # peering verbs, host/native/peer-invite.lisp); the admin arm stages
-        # through it with `fn-native-admin-host-owner-reconfigure'.
-        start = self.native_admin.index("(defun fnn-owner-live-reconfigure-locked")
-        body = self.native_admin[start:self.native_admin.index(
-            "(defun fnn-owner-live-admin-serialized", start)]
-        order = [body.index(word) for word in (
-            "'fn-owner-open", "(funcall stage cid)",
-            "'fn-owner-close", "(fnn-admin-publish", "'fn-owner-reconfigure-complete")]
+        # order is ACL2's (books/owner-reconfig-phased.lisp fn-orp-step, run by
+        # `fnn-owner-live-reconfigure' in host/native/admin.lisp, shared with
+        # the peering verbs, host/native/peer-invite.lisp); the admin arm
+        # stages through it with `fn-native-admin-host-owner-reconfigure'.
+        def fn(name):
+            at = self.native_admin.index("(defun " + name + " ")
+            return self.native_admin[at:self.native_admin.index("\n(def", at + 10)]
+        stage = fn("fnn-rc-do-stage")
+        order = [stage.index(word) for word in (
+            "'fn-owner-open", "(funcall stage cid)", "'fn-owner-close")]
         self.assertEqual(order, sorted(order))
+        self.assertIn("(fnn-admin-publish-effect", fn("fnn-rc-do-publish"))
+        self.assertIn("'fn-owner-reconfigure-complete", fn("fnn-rc-do-complete"))
+        self.assertIn("(fnn-call 'fn-orp-step", fn("fnn-rc-advance"))
         start = self.native_admin.index("(defun fnn-owner-live-admin-serialized")
-        arm = self.native_admin[start:self.native_admin.index("(defun fnn-admin-query", start)]
+        arm = self.native_admin[start:self.native_admin.index("(defun fnn-admin-publish-record", start)]
         self.assertIn("'fn-native-admin-host-owner-reconfigure", arm)
-        self.assertIn("(fnn-owner-live-reconfigure-locked", arm)
+        self.assertIn("(fnn-owner-live-reconfigure", arm)
 
     def test_the_live_arm_reads_the_open_connection_id_as_an_id(self):
         # `fn-owner-open' answers an integer id or NIL; `fnn-owner-action'
         # faults on anything but a keyword, so reading the id through it
         # stopped the owner on every live request (dabebb84, V0-CFG-LIVE).
-        start = self.native_admin.index("(defun fnn-owner-live-reconfigure-locked")
-        body = self.native_admin[start:self.native_admin.index("(defun fnn-admin-query", start)]
+        start = self.native_admin.index("(defun fnn-rc-do-stage ")
+        body = self.native_admin[start:self.native_admin.index("(defun fnn-rc-do-authorize", start)]
         self.assertIn("(fnn-owner-core 'fn-owner-open)", body)
         self.assertNotIn("(fnn-owner-action 'fn-owner-open)", body)
         def body_of(text, head):
@@ -323,10 +327,16 @@ class LiveReconfigurationImageTests(unittest.TestCase):
 GENERATIONS = 500
 
 
+def history_policy_requests(count):
+    """Grow configuration history while keeping the live group names fixed."""
+    for i in range(count):
+        yield ("group", "policy", "fn.test", "n" if i % 2 == 0 else "y")
+
+
 @requires(IMAGE)
 class LiveReconfigurationCostTests(unittest.TestCase):
     """Sweep S033: a live reconfiguration reads no configuration history
-    under the owner mutex.  Before it, fnn-owner-live-reconfigure-locked
+    under the owner mutex.  Before it, the live reconfiguration
     listed the configuration directory and read and decoded every record
     file while it held the mutex, so its hold grew with the history.  The
     authorization now uses the owner's carried history and observes one name
@@ -334,7 +344,9 @@ class LiveReconfigurationCostTests(unittest.TestCase):
 
     Measured with FN_OWNER_MEASURE=1 (the owner's per-class hold report at
     stop): the control holds of 20 `group create's at about 500
-    generations against 20 on a fresh store.  The witness of correctness
+    generations against 20 on a fresh store. Depth comes from alternating
+    fn.test's posting policy, keeping the group-name projection bounded.
+    The witness of correctness
     at the same depth: an occupied next name is refused by name (:occupied)
     and leaves the history unchanged."""
 
@@ -369,7 +381,12 @@ class LiveReconfigurationCostTests(unittest.TestCase):
     def test_reconfiguration_hold_does_not_grow_with_the_history(self):
         shallow = self.measured("fn.shallow", 20)
         owner = self.node.start()
-        self.creates("fn.depth", GENERATIONS)
+        # 500 new names exceed fn-cfg-delta-reason's line-projection ceiling
+        # before the depth measurement. Policy changes still publish one
+        # record each, preserving the history-depth control and 20 timed creates.
+        for request in history_policy_requests(GENERATIONS):
+            changed = self.node.operator(*request)
+            self.assertEqual(changed.returncode, EXIT_OK, changed.stderr.decode())
         self.node.stop(process=owner)
         deep = self.measured("fn.deep", 20)
         depth = len(self.config_files())

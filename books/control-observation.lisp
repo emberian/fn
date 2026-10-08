@@ -30,7 +30,8 @@
     (15 nil :bounded) (16 nil :bounded)
     (17 nil :bounded) (18 nil :bounded) (19 :read :bounded)
     (20 nil :bounded) (21 nil :bounded) (22 nil :bounded)
-    (23 nil :bounded) (24 :read :bounded) (25 nil :bounded)))
+    (23 nil :bounded) (24 :read :bounded) (25 nil :bounded)
+    (26 :read :bounded) (27 nil :bounded)))
 
 (defun fn-nco-handler-kinds (rows handler)
   (declare (xargs :guard (alistp rows)))
@@ -72,10 +73,11 @@
               '(:bounded :bounded :bounded :bounded :bounded :bounded
                 :bounded :bounded :bounded :bounded :bounded :bounded
                 :bounded :bounded :bounded :bounded :bounded :bounded
-                :bounded :bounded :bounded :bounded :bounded :bounded :bounded))
+                :bounded :bounded :bounded :bounded :bounded :bounded :bounded
+                :bounded :bounded))
        (equal (fn-nco-handler-kinds *fn-nco-kind-table* :store)
               '(4 5 6 7 8 9 10 11 12 14))
-       (equal (fn-nco-handler-kinds *fn-nco-kind-table* :read) '(19 24)))
+       (equal (fn-nco-handler-kinds *fn-nco-kind-table* :read) '(19 24 26)))
   :rule-classes nil)
 
 ; Policy bounds a status exchange and the delay before another exchange,

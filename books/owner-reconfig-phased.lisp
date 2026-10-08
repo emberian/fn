@@ -452,6 +452,16 @@
     nil))
 
 ; -----------------------------------------------------------------------------
+; The real pool conversion answers :protected-growth-admitted on success.
+; Keep the event vocabulary at the ACL2 boundary, including unknown verdicts.
+(defun fn-orp-convert-event (verdict)
+  (declare (xargs :guard t))
+  (if (eq verdict :protected-growth-admitted) :converted :fault))
+
+(defthm fn-orp-convert-event-by-definition
+  (equal (fn-orp-convert-event verdict)
+         (if (equal verdict :protected-growth-admitted) :converted :fault)))
+
 ; The step the host calls.  The host holds PHASE; it calls
 ; (fn-orp-step PHASE RESERVE EVENT) with what the effects it last ran
 ; observed, and runs the effects answered, in order, each where its label

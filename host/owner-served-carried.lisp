@@ -72,7 +72,8 @@
                  :witness ((fn-owner-retain-witness-oc) nil (make-list 32 :initial-element 0)
                            (create-fn-arena$a) (create-fn-cat$a) (create-fn-hist$a)
                            (fn-owner-retain-witness-state))))
-  :transitions (; the pilot's (books/owner-retain-carried.lisp)
+  :transitions ((fn-owner-cfg-capture fn-owner-cfg-capture-state-by-definition)
+                ; the pilot's (books/owner-retain-carried.lisp)
                 (fn-owner-prepare-identity fn-owner-prepare-identity-preserves-retain-state)
                 (fn-owner-prepare-consumer fn-owner-prepare-consumer-preserves-retain-state)
                 (fn-owner-prepare-topic fn-owner-prepare-topic-preserves-retain-state)
@@ -140,8 +141,7 @@
                 fn-owner-bplc-turn-plan fn-owner-cat-may-seal
                 fn-owner-cat-prepare-sealed fn-owner-catalog-capture-context
                 fn-owner-catalog-root-reserve fn-owner-catchup-plans
-                fn-owner-cfg-native-admin-authorize-carried
-                fn-owner-cfg-next-name fn-owner-checkpoint-clone-phase
+                fn-owner-checkpoint-clone-phase
                 fn-owner-chunk-span fn-owner-clock-observation
                 fn-owner-compress-min-octets fn-owner-compress-owed
                 fn-owner-config-generation fn-owner-config-served
@@ -167,8 +167,7 @@
                 fn-owner-feed-auth-policy fn-owner-feed-backoff-ms
                 fn-owner-feed-configure fn-owner-feed-dial-open
                 fn-owner-feed-has-queued fn-owner-feed-host
-                fn-owner-feed-journal-begin fn-owner-feed-journal-offset
-                fn-owner-feed-journal-prefix-size fn-owner-feed-journal-scan
+                fn-owner-feed-journal-prefix-size fn-owner-feed-journal-replay
                 fn-owner-feed-lost fn-owner-feed-peers fn-owner-feed-port
                 fn-owner-feed-reconcile-apply fn-owner-feed-reconcile-next
                 fn-owner-feed-reply-article fn-owner-feed-reply-chunk
@@ -224,7 +223,7 @@
                 fn-owner-proxy-step fn-owner-proxy-timeout-line
                 fn-owner-publication-verdict fn-owner-pull-plans
                 fn-owner-queue-head-served-p fn-owner-read-octets
-                fn-owner-reader-views-capture fn-owner-reconfigure-authorizedp
+                fn-owner-reader-views-capture
                 fn-owner-reconfigure-complete fn-owner-reconfigure-deltas
                 fn-owner-reconfigure-unstage fn-owner-recover-from-store-open
                 fn-owner-remote-ingress fn-owner-remote-operation-preflight

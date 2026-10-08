@@ -11282,6 +11282,63 @@
    "witness": "executable"
   },
   {
+   "book_digest": "d6b6c48cfd4d45134a8395c5b9f6b33a01bb50e6fb5c54d4575cddd85072070a",
+   "bounds": [],
+   "claim_digest": "6bdf8952ef81b1506a8cad299467e554a92543eb5e865ecf5082740a49d535ab",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-lpf-reply-is-bounded",
+   "owed_met": null,
+   "owner_book": "books/live-profile-control.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-lpf-reply",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "d6b6c48cfd4d45134a8395c5b9f6b33a01bb50e6fb5c54d4575cddd85072070a",
+   "bounds": [],
+   "claim_digest": "aa0fafc132598dc1e98ce683cd0f86b38aa8a424bb852b93150caa1eaf731259",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-lpf-reply-round-trip",
+   "owed_met": null,
+   "owner_book": "books/live-profile-control.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lpf-reply-read",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "d6b6c48cfd4d45134a8395c5b9f6b33a01bb50e6fb5c54d4575cddd85072070a",
+   "bounds": [],
+   "claim_digest": "60e792e1a4e366915afdf0c74a6b59b6b4d95b0474522fbf9c24cf7d7878b9fe",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-lpf-request-is-recognized",
+   "owed_met": null,
+   "owner_book": "books/live-profile-control.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lpf-request-p",
+   "witness": "executable"
+  },
+  {
    "book_digest": "b9932f582a655edd44230b9cc739d3ac8ef5964f8a2f9e48d4ca4ebe61444469",
    "bounds": [],
    "claim_digest": "bf8cc6aa0c252ef7d49af947dfefd0a19227c50cbf6d4225adadbf6d98e5420e",
