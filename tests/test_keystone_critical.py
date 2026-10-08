@@ -236,5 +236,22 @@ class Gate(unittest.TestCase):
         self.assertNotIn("certified", stored[0])
 
 
+class LowerStale(unittest.TestCase):
+    def test_a_stale_row_is_dropped_a_live_one_kept_nothing_added(self):
+        current = {"live": teeth("live"), "demoted": {"name": "demoted", "registry": True}}
+        cbase = {n: {"class": "durability", "statement_digest": "d1"} for n in ("live", "demoted", "gone")}
+        owed = {n: {"class": "durability", "item": "PRF-1345"} for n in ("live", "demoted", "gone")}
+        new_base, new_owed, dropped = kc.lower_stale(current, cbase, owed)
+        self.assertEqual((sorted(new_base), sorted(new_owed)), (["live"], ["live"]))
+        self.assertEqual(sorted(dropped["owed:durability"]), ["demoted", "gone"])
+        self.assertEqual(sorted(dropped["base:durability"]), ["demoted", "gone"])
+        self.assertEqual(new_owed["live"], owed["live"])
+
+    def test_a_new_critical_is_never_added(self):
+        current = {"fresh": teeth("fresh")}
+        new_base, new_owed, dropped = kc.lower_stale(current, {}, {})
+        self.assertEqual((new_base, new_owed, dropped), ({}, {}, {}))
+
+
 if __name__ == "__main__":
     unittest.main()

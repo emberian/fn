@@ -36,6 +36,7 @@ changed since the critical base is a finding).  Redundant hypotheses are not det
 
     python3 tools/keystone_critical.py --report        # classes, examples, package status
     python3 tools/keystone_critical.py --write-critical-base   # the cutover, once
+    python3 tools/keystone_critical.py --lower-stale           # shrink the owed and base rows
     python3 tools/keystone_critical.py --claim-owed    # claim items for unlisted existing criticals
 """
 from __future__ import annotations
@@ -278,6 +279,46 @@ def write_critical_base(current: dict[str, dict]) -> int:
     return 0
 
 
+def lower_stale(current: dict[str, dict], cbase: dict, owed: dict) -> tuple[dict, dict, dict[str, list[str]]]:
+    """Shrink-only: (cbase, owed, dropped-by-class) without the rows whose
+    keystone is gone from the registry or no longer critical.  Never adds or
+    edits a row; a result that held a row the inputs lacked is refused."""
+    live = {n for n, e in current.items() if e.get("critical")}
+    dropped: dict[str, list[str]] = {}
+    new_base = {n: r for n, r in cbase.items() if n in live}
+    new_owed = {n: r for n, r in owed.items() if n in live}
+    for table, kept, rows in (("base", new_base, cbase), ("owed", new_owed, owed)):
+        for n in rows:
+            if n not in kept:
+                dropped.setdefault(f"{table}:{rows[n].get('class', '?')}", []).append(n)
+    if not (set(new_base) <= set(cbase) and set(new_owed) <= set(owed)):
+        raise ValueError("lower-stale would add a row")
+    return new_base, new_owed, dropped
+
+
+def lower_stale_main(write: bool = True) -> int:
+    _, current = _current()
+    cbase, owed = load_critical_base(), load_owed()
+    if cbase is None:
+        print("planning/critical-base.json is missing")
+        return 1
+    new_base, new_owed, dropped = lower_stale(current, cbase, owed)
+    for key, names in sorted(dropped.items()):
+        print(f"dropped {len(names)} {key}")
+    if not dropped:
+        print("nothing stale")
+        return 0
+    if write:
+        base_doc = json.loads(CBASE.read_text(encoding="utf-8"))
+        base_doc["entries"] = new_base
+        CBASE.write_text(json.dumps(base_doc, indent=1) + "\n", encoding="utf-8")
+        owed_doc = json.loads(OWED.read_text(encoding="utf-8"))
+        owed_doc["items"] = new_owed
+        OWED.write_text(json.dumps(owed_doc, indent=1) + "\n", encoding="utf-8")
+        print(f"wrote {CBASE.name} ({len(new_base)}) and {OWED.name} ({len(new_owed)})")
+    return 0
+
+
 def load_declared() -> dict:
     return _load(EVIDENCE, "entries")
 
@@ -381,10 +422,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--claim-owed", action="store_true")
     parser.add_argument("--write", action="store_true", help="with --claim-owed: claim and write")
+    parser.add_argument("--lower-stale", action="store_true",
+                        help="drop owed and critical-base rows whose keystone is gone or no "
+                             "longer critical (shrink-only; never adds a row)")
     parser.add_argument("--write-critical-base", action="store_true",
                         help="write planning/critical-base.json once (the gate's cutover)")
     parser.add_argument("--lane", default=Path.cwd().name)
     args = parser.parse_args(argv)
+    if args.lower_stale:
+        return lower_stale_main()
     if args.write_critical_base:
         return write_critical_base(_current()[1])
     if args.claim_owed:
