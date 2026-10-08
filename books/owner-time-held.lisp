@@ -123,3 +123,35 @@
                 (iff (fn-otm-committer-may-start s)
                      (not (fn-ocs-in-flight-p (fn-otm-phase-of s)))))))
 
+
+; KEYSTONE.  The held caller's answer over the host's own quantum-2 sequence
+; (host/native/owner.lisp fnn-owner-held-complete): the batch's word
+; (:fenced or :failed) through fn-otm-held-event, then :completed, or
+; :completed-stopping when that step was :complete and the owner is stopping,
+; then fn-och-caller-answer of the action.  For the batch quantum 1 left held
+; at :staged it is the held outcome of S7 (fn-och-held-caller-answer): the
+; submission is taken exactly when the job ran every phase and the owner is
+; not stopping.
+(defthm fn-otm-held-quantum-2-answers-the-held-outcome
+  (implies (and (fn-otm-held s)
+                (equal (fn-otm-phase-of s) :staged)
+                (member-equal word '(:fenced :failed)))
+           (mv-let (step s2) (fn-otm-held-event s word)
+             (equal (fn-och-caller-answer
+                     (mv-nth 0 (fn-otm-held-event
+                                s2 (if (and (equal step :complete) stopping)
+                                       :completed-stopping
+                                     :completed))))
+                    (fn-och-held-outcome (if (equal word :fenced) :done :uncertain)
+                                         stopping))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-oqw-outcome-of-final)
+                           (fn-otm-held-event fn-otm-phase-of fn-otm-next-of fn-otm-held
+                            fn-otm-with-step fn-otm-disk fn-otm-clock))
+           :use ((:instance fn-otm-held-event-is-the-held-step (event word))
+                 (:instance fn-otm-held-event-is-the-held-step
+                            (s (mv-nth 1 (fn-otm-held-event s word)))
+                            (event :completed))
+                 (:instance fn-otm-held-event-is-the-held-step
+                            (s (mv-nth 1 (fn-otm-held-event s word)))
+                            (event :completed-stopping))))))
