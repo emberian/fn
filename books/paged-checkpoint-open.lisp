@@ -1155,3 +1155,82 @@
                  (:instance pcko-publish-agree (r1 (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) b)))
                             (r2 (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 st) (fn-ssr-at 2 st) nil)))
                             (id (fn-replay-identity-step (fn-ssr-at 3 acc) (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) b)))))))))
+
+(defun-nx pcko-s-ind (recs base st acc fid a b)
+  (if (atom recs)
+      (list a b)
+    (let ((acc2 (mv-nth 0 (pcko-ref acc (car recs) base st fid a)))
+          (a2 (mv-nth 1 (pcko-ref acc (car recs) base st fid a)))
+          (b2 (mv-nth 1 (fn-ssr-intern-step acc (list (car recs)) nil nil :resident nil b))))
+      (if (eq acc2 :bad)
+          (list a2 b2)
+        (pcko-s-ind (cdr recs) (pcko-next-base (car recs) base) (pck-ssr1 st (car recs)) acc2 fid a2 b2)))))
+
+; The step lemmas are used by name.
+(in-theory (disable pcko-ref-of-held pcko-ref-of-record pcko-ref-of-other pcko-intern-step-of-count
+                    pcko-ie-row-of-count pcko-ref-step-held pcko-ref-step-other pcko-f1 pcko-ie-count
+                    pcko-ie-row-of-record pcko-row-f-of-record pcko-step-agree pcko-ie-identity-eq
+                    pcko-ie-identity-eq-record pcko-publish-agree))
+
+(defthm pcko-ref-is-the-step
+  ; The ref-step of any event is full recovery's step on that event.
+  (implies (and (pcko-agree acc st) (natp base) (not (equal (pck-ssr1 st w) :bad))
+                (equal (fn-arena-count a) (fn-arena-count b)))
+           (and (equal (mv-nth 0 (pcko-ref acc w base st fid a))
+                       (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil b)))
+                (equal (fn-arena-count (mv-nth 1 (pcko-ref acc w base st fid a)))
+                       (fn-arena-count (mv-nth 1 (fn-ssr-intern-step acc (list w) nil nil :resident nil b))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (pcko-agree) (pcko-ref fn-ssr-intern-step fn-record-p))
+           :use (pcko-ref-of-record pcko-ref-of-other)))
+  :rule-classes nil)
+
+(defthm pcko-sim-cons-step
+  (let* ((w1 (car recs))
+         (ref (pcko-ref acc w1 base st fid a))
+         (acc2 (mv-nth 0 ref))
+         (a2 (mv-nth 1 ref))
+         (b2 (mv-nth 1 (fn-ssr-intern-step acc (list w1) nil nil :resident nil b)))
+         (st1 (pck-ssr1 st w1))
+         (base1 (pcko-next-base w1 base)))
+    (implies (and (consp recs) (true-listp recs) (pcko-agree acc st) (natp base)
+                  (not (equal (fn-pck-st-of st recs) :bad))
+                  (equal (fn-arena-count a) (fn-arena-count b))
+                  (implies (and (true-listp (cdr recs)) (pcko-agree acc2 st1) (natp base1)
+                                (not (equal (fn-pck-st-of st1 (cdr recs)) :bad))
+                                (equal (fn-arena-count a2) (fn-arena-count b2)))
+                           (let ((s (pcko-sim (cdr recs) base1 st1 acc2 fid a2))
+                                 (f (fn-ssr-intern-step acc2 (cdr recs) nil nil :resident nil b2)))
+                             (and (not (equal (mv-nth 0 s) :bad))
+                                  (equal (mv-nth 0 s) (mv-nth 0 f))
+                                  (equal (fn-arena-count (mv-nth 1 s)) (fn-arena-count (mv-nth 1 f)))))))
+             (let ((s (pcko-sim recs base st acc fid a))
+                   (f (fn-ssr-intern-step acc recs nil nil :resident nil b)))
+               (and (not (equal (mv-nth 0 s) :bad))
+                    (equal (mv-nth 0 s) (mv-nth 0 f))
+                    (equal (fn-arena-count (mv-nth 1 s)) (fn-arena-count (mv-nth 1 f)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable pcko-ref fn-ssr-intern-step pck-ssr1 pcko-agree pcko-next-base fn-pck-st-of pcko-sim
+                               pcko-step-agree)
+           :expand ((pcko-sim recs base st acc fid a) (fn-pck-st-of st recs))
+           :use ((:instance pcko-intern-cons (x (car recs)) (ts (cdr recs)) (fn-arena b))
+                 (:instance pcko-ref-is-the-step (w (car recs)))
+                 (:instance pcko-step-agree (w (car recs)))))))
+
+(defthm pcko-sim-is-the-fold
+  ; The tape's fold is full recovery's fold over the records, row for row.
+  (implies (and (true-listp recs) (pcko-agree acc st) (natp base)
+                (not (equal (fn-pck-st-of st recs) :bad))
+                (equal (fn-arena-count a) (fn-arena-count b)))
+           (let ((s (pcko-sim recs base st acc fid a))
+                 (f (fn-ssr-intern-step acc recs nil nil :resident nil b)))
+             (and (not (equal (mv-nth 0 s) :bad))
+                  (equal (mv-nth 0 s) (mv-nth 0 f))
+                  (equal (fn-arena-count (mv-nth 1 s)) (fn-arena-count (mv-nth 1 f))))))
+  :hints (("Goal" :induct (pcko-s-ind recs base st acc fid a b) :do-not-induct t
+           :in-theory (disable pcko-ref fn-ssr-intern-step pck-ssr1 pcko-agree pcko-next-base fn-pck-st-of pcko-sim))
+          ("Subgoal *1/3" :use pcko-sim-cons-step)
+          ("Subgoal *1/2" :expand ((fn-pck-st-of st recs))
+           :use ((:instance pcko-ref-is-the-step (w (car recs))) (:instance pcko-step-agree (w (car recs)))))
+          ("Subgoal *1/1" :in-theory (e/d (pcko-sim fn-ssr-intern-step pcko-agree fn-ssr-statep) (pcko-ref pck-ssr1)))))
