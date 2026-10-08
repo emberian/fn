@@ -1851,6 +1851,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/pagestore-exec \
 	books/pagestore-gc \
 	tests/acl2/pagestore-tests \
+	books/pagestore-commit-slot \
+	tests/acl2/pagestore-commit-slot-tests \
 	books/pagestore-refine \
 	tests/acl2/pagestore-refine-tests \
 	books/pagestore-digest-cursor-counter \
