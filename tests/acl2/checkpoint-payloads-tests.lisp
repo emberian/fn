@@ -195,3 +195,21 @@
         (equal (cpl-test-verdict (fn-arx-trailer-nat (fn-cpl-trailer '(1 2 3))) read prefix)
                :trailer)
         (equal (cpl-test-verdict commit read (update-nth 38 77 prefix)) :digest))))
+
+; The descriptor the open seals for a ref: absolute offsets, the prefix is
+; header ++ payload (the trailer is read after it), the commitment packs the
+; trailer.  The guard of fn-arena-seal-extent holds; the RELATIVE reading
+; (poff 37) names a different, wrong extent for a frame that does not start at 0.
+(assert-event
+ (let* ((ref (cadr *cpl-refs*)) (tr (cadr (caddr *cpl-plan*)))
+        (e (fn-cpl-extent 1 ref tr)))
+   (and (equal ref '(119 2))
+        (equal (subseq e 0 5) '(1 82 39 119 2))
+        (equal (nth 5 e) (fn-arx-trailer-nat tr))
+        (fn-arn-extent-guardp (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e))
+        ;; the extent [eoff, eoff+elen) of the file is header ++ payload, and the
+        ;; 32 octets after it are the trailer
+        (equal (take 39 (nthcdr 82 *cpl-full*)) (fn-cpl-prefix '(4 5)))
+        (equal (take 32 (nthcdr 121 *cpl-full*)) tr)
+        (equal (take 2 (nthcdr 119 *cpl-full*)) '(4 5))
+        (not (equal (take 2 (nthcdr 37 *cpl-full*)) '(4 5))))))

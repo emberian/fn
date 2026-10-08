@@ -200,6 +200,15 @@
             (append h p (fn-scc-seal nil h p))))
    :hints (("Goal" :in-theory (enable fn-cpl-frame fn-scc-frames)))))
 
+; The frame's layout: the 37-octet fn-scc header, the payload, the 32-octet
+; trailer (the frame digest of header ++ payload).
+(defthm fn-cpl-frame-layout
+  (equal (fn-cpl-frame p)
+         (append (fn-scc-header 0 1 (len p) 0) p (fn-cpl-trailer p)))
+  :hints (("Goal" :use cpl-frame-shape
+           :in-theory (e/d (fn-cpl-trailer) (cpl-frame-shape fn-cpl-frame))))
+  :rule-classes nil)
+
 (local
  (defthm cpl-u64-octets (fn-scc-octet-listp (fn-scc-u64 n k))
    :hints (("Goal" :in-theory (enable fn-scc-u64 fn-scc-octetp)))))
@@ -266,8 +275,8 @@
 (local (defthm cpl-u64-len (equal (len (fn-scc-u64 n k)) (nfix k))
          :hints (("Goal" :in-theory (enable fn-scc-u64)))))
 (local (defthm cpl-len-append (equal (len (append a b)) (+ (len a) (len b)))))
-(local (defthm cpl-header-len (equal (len (fn-scc-header 0 1 l 0)) 37)
-         :hints (("Goal" :in-theory (e/d (fn-scc-header cpl-u64-len) ())))))
+(defthm cpl-header-len (equal (len (fn-scc-header 0 1 l 0)) 37)
+  :hints (("Goal" :in-theory (e/d (fn-scc-header cpl-u64-len) ()))))
 
 (defthm fn-cpl-frame-len
   (implies (fn-cpl-payloadp p)
