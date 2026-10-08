@@ -44,6 +44,8 @@ class ControlReceipt(unittest.TestCase):
             "(defconst *fn-nctrl-unnamed-reason-word* '(117 110 110 97 109 101 100))",
             diag.selected(ROOT/'books/native-control-reason.lisp', ['fn-nctrl-word-chars-octets', 'fn-nctrl-reason-word']),
             definitions('books/control-receipt-wire.lisp'),
+            diag.selected(ROOT/'host/native/io.lisp', ['fnn-core', 'fnn-core-state']),
+            diag.selected(ROOT/'host/native/owner.lisp', ['fnn-owner-core']),
             diag.selected(ROOT/'books/native-admin-shape.lisp', ['fn-native-admin-result']),
             diag.selected(ROOT/'books/native-admin.lisp', ['fn-native-admin-arg', 'fn-native-admin-control-plan']),
             diag.selected(ROOT/'books/owner-compact-request.lisp', ['fn-ock-request-status']),

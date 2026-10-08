@@ -317,7 +317,7 @@ Every status exchange has ACL2's reply bound; there is no work deadline."
         (funcall *fnn-control-observe-pause* (fnn-core 'fn-nco-wait-seconds))
         (multiple-value-bind (observed reason detail)
             (fnn-control-admin-once path-octets query)
-          (setf observed (fnn-core 'fn-nco-client-status observed reason))
+          (setf observed (fnn-core 'fn-nco-client-observed-status observed reason))
           (unless (fnn-core 'fn-nco-client-waitp observed reason)
             ;; An uncertain/lost observation retains the receipt for an
             ;; explicit later status. Release only a received terminal result.

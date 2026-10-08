@@ -25,7 +25,7 @@
 ;;; production has no injection branch (fnn-developer-selector).
 
 (defparameter +fnn-admin-sections+
-  '("compaction" "inspect" "export" "reclaim" "reclaim-instant"
+  '("compaction" "compaction-status" "inspect" "export" "reclaim" "reclaim-instant"
     "limit-carry" "limit" "admin")
   "This file's owner sections, by the name FN_NATIVE_ADMIN_FAULT uses.")
 
@@ -369,7 +369,7 @@ Observe its durable frontier/deferral through ACL2 until terminal."
                        (list (fnn-owner-core 'fn-owner-sco-request
                                              (fnn-checkpoint-budget-test-override nil) free
                                              (fnn-owner-monotonic-ms))
-                             (fnn-owner-core 'fn-owner-sco-count)))))
+                             (fnn-core 'fn-owner-sco-count *the-live-state*)))))
          (word (first admission)) (target (second admission)))
     (unless (member word '(:requested :coalesced :nothing-to-compact :blocked))
       (fnn-fault "owner returned a malformed compaction answer ~a" word))
@@ -380,7 +380,9 @@ Observe its durable frontier/deferral through ACL2 until terminal."
         (let ((observed
                 (fnn-quantum-control
                  service nil
-                 (lambda () (fnn-owner-core 'fn-nco-owner-publication-word target)))))
+                 (lambda ()
+                   (fnn-admin-test-fault "compaction-status")
+                   (fnn-core 'fn-nco-owner-publication-word target *the-live-state*)))))
           (case observed
             ((:compacted :blocked) (setq word observed) (return))
             (:requested (sleep (fnn-core 'fn-nco-wait-seconds)))

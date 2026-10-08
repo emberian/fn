@@ -112,3 +112,19 @@
     (:conclusion (fn-nco-client-waitp (fn-nco-client-status status word) word))
     ((status :accepted) (word (fn-nctrl-reason-word :receipt-unknown)))
     :fault "an unknown receipt keeps polling after process death")))
+
+(defteeth fn-nco-lost-owner-after-receipt-is-uncertain
+  :claim (((lost (equal word (fn-nctrl-reason-word :no-owner))))
+          (and (equal (fn-nco-client-observed-status status word) :uncertain)
+               (not (fn-nco-client-waitp (fn-nco-client-observed-status status word) word))
+               (not (fn-nco-client-releasep (fn-nco-client-observed-status status word)))
+               (equal (fn-outcome-code
+                       (fn-outcome-of-status (fn-nco-client-observed-status status word))) 3)))
+  :subject fn-nco-client-observed-status
+  :witness ((status :refused) (word (fn-nctrl-reason-word :no-owner)))
+  :breaks ((lost ((word (fn-nctrl-reason-word :blocked)))))
+  :mutations
+  ((forgot-accepted-job
+    (:conclusion (equal (fn-nco-client-observed-status status word) :refused))
+    ((status :refused) (word (fn-nctrl-reason-word :no-owner)))
+    :fault "owner death turns an acknowledged job into a known refusal")))

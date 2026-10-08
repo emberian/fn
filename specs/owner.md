@@ -108,6 +108,10 @@ Receipts are process-local, scoped by a fresh startup entropy observation and
 ACL2's increasing serial. A status query for a receipt this owner does not hold
 answers `receipt-unknown`, distinct from requested and terminal completion
 words. The CLI maps that observation to uncertain (exit 3) and stops polling.
+If the acknowledged owner's socket is no longer reachable, the status poll's
+`no-owner` observation likewise stops with exit 3; it cannot turn the earlier
+acknowledgement into a known refusal. An initial request with no owner still
+has the ordinary refusal contract.
 This covers death/restart and unissued serials; persistence across process
 death is not claimed beyond this observation contract. The pending job cannot
 be orphaned by an owner transition. Eventual execution still relies on host

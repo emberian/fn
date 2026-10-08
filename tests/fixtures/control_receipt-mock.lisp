@@ -36,6 +36,9 @@
 (defvar *fnn-control-frame-list* nil)
 (defvar *fnn-control-observe-pause* nil)
 (defvar *prints* nil)
+(defvar *the-live-state* :fixture-state)
+(defvar *publication-observations* nil)
+(defvar *admin-sections* nil)
 (defun fnn-octets (xs) (coerce xs '(vector (unsigned-byte 8))))
 (defun fnn-octets-string (xs) (map 'string #'code-char xs))
 (defun fnn-octet-list-p (xs) (fn-cbor-octet-listp xs))
@@ -43,10 +46,22 @@
   (declare (ignore socket maximum)) (fnn-octets '(1)))
 (defun fnn-control-answering (&rest args) (declare (ignore args)))
 (defun fnn-octets-ctl-fill (x) x)
-(defun fnn-core (name &rest args)
+(defun fnn-arena-then-state (name) (declare (ignore name)) (list *the-live-state*))
+(defun fnn-call (name &rest args)
+  ; Preserve the real scalar versus error-triple ABI at this runtime seam.
+  ; fnn-core, fnn-core-state and fnn-owner-core below are production code.
   (case name
-    (fn-native-control-host-decode-frame (list *reasoned* nil (list :admin *argv*)))
-    (otherwise (apply name args))))
+    (fn-native-control-host-decode-frame (list (list *reasoned* nil (list :admin *argv*))))
+    (fn-owner-sco-request
+     (assert (eq (car (last args)) *the-live-state*))
+     (list nil :requested *the-live-state*))
+    (fn-owner-sco-count
+     (assert (equal args (list *the-live-state*))) (list 42))
+    (fn-nco-owner-publication-word
+     (assert (equal (cdr args) (list *the-live-state*)))
+     (assert *publication-observations*)
+     (list (apply #'fn-nco-publication-word (first args) (pop *publication-observations*))))
+    (otherwise (multiple-value-list (apply name args)))))
 (defun fnn-owner-disk-admit (service) (declare (ignore service)) :admit)
 (defun fnn-control-test-after-submit (status) (declare (ignore status)))
 (defun fnn-control-send-reply (socket status)
@@ -115,9 +130,13 @@
 (defvar *client-state* nil)
 (defvar *polls* 0)
 (defvar *elapsed* 0)
+(defvar *client-no-owner* nil)
 (defun fnn-control-admin-once (path argv)
   (declare (ignore path))
   (incf *polls*)
+  (when *client-no-owner*
+    (return-from fnn-control-admin-once
+      (values :refused (fn-nctrl-reason-word :no-owner) nil)))
   (let* ((r (fn-nco-wire-step *client-state* argv)) (reply (second r)))
     (setf *client-state* (first r))
     (values (second reply) (fn-nctrl-reason-word (third reply))
@@ -168,6 +187,20 @@
     (assert (equal word (fn-nctrl-reason-word :receipt-unknown)))
     (assert (= (fn-outcome-code (fn-outcome-of-status status)) 3))
     (assert (= *polls* 2))))
+; The owner can also die without a replacement listening. A no-owner
+; observation after ACK stops with uncertainty; an initial refusal stays so.
+(let ((*client-state* (fn-nco-initial "before-death"))
+      (*polls* 0) (*prints* nil) (*client-no-owner* nil)
+      (*fnn-control-observe-pause*
+        (lambda (seconds) (declare (ignore seconds)) (setf *client-no-owner* t))))
+  (multiple-value-bind (status word) (fnn-control-admin nil (caar *fn-nco-store-verbs*))
+    (assert (eq status :uncertain))
+    (assert (equal word (fn-nctrl-reason-word :no-owner)))
+    (assert (= (fn-outcome-code (fn-outcome-of-status status)) 3))
+    (assert (= *polls* 2))))
+(let ((*client-no-owner* t) (*polls* 0))
+  (assert (eq (fnn-control-admin nil (caar *fn-nco-store-verbs*)) :refused))
+  (assert (= *polls* 1)))
 ; A serial never issued has the same observation contract.
 (let* ((st (cadr (fn-nco-owner-step (fn-nco-initial "live")
                                    (list :request (caar *fn-nco-store-verbs*)))))
@@ -183,26 +216,19 @@
 
 ; Actual compaction worker waits for ACL2's terminal observation; it never
 ; reports its initial requested/coalesced word as completion.
-(defvar *publication-observations* nil)
 (defun fnn-owner-service-store (service) service)
 (defun fnn-disk-free-octets (store) (declare (ignore store)) 1000000)
-(defun fnn-admin-test-fault (section) (declare (ignore section)))
+(defun fnn-admin-test-fault (section) (push section *admin-sections*))
 (defun fnn-checkpoint-budget-test-override (x) x)
 (defun fnn-owner-monotonic-ms () 0)
 (defun fnn-quantum-control (service cid thunk)
   (declare (ignore service cid)) (funcall thunk))
 (defun fnn-owner-maybe-publish (service) (declare (ignore service)))
-(defun fnn-owner-core (name &rest args)
-  (case name
-    (fn-owner-sco-request :requested)
-    (fn-owner-sco-count 42)
-    (fn-nco-owner-publication-word
-     (assert *publication-observations*)
-     (apply #'fn-nco-publication-word (first args) (pop *publication-observations*)))
-    (otherwise (error "unexpected owner entry ~s" name))))
-(let ((*publication-observations* '((1 42 nil (:deferred :old)) (42 nil nil nil))))
+(let ((*publication-observations* '((1 42 nil (:deferred :old)) (42 nil nil nil)))
+      (*admin-sections* nil))
   (assert (equal (fnn-owner-compaction-request :owner) '(:reason :accepted :compacted)))
-  (assert (null *publication-observations*)))
+  (assert (null *publication-observations*))
+  (assert (equal (reverse *admin-sections*) '("compaction" "compaction-status" "compaction-status"))))
 (let ((*publication-observations* '((1 nil nil (:deferred :space)))))
   (assert (equal (fnn-owner-compaction-request :owner) '(:reason :refused :blocked))))
 (format t "PASS control receipt~%")

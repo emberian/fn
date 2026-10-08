@@ -6020,6 +6020,8 @@
 (definterface fn-nco-client-heldp :class :common-lisp-compliant)
 (definterface fn-nco-client-status :class :common-lisp-compliant
   :keystones (fn-nco-unknown-receipt-stops-with-exit-3))
+(definterface fn-nco-client-observed-status :class :common-lisp-compliant
+  :keystones (fn-nco-lost-owner-after-receipt-is-uncertain))
 (definterface fn-nco-client-waitp :class :common-lisp-compliant)
 (definterface fn-nco-epoch-octets :class :common-lisp-compliant)
 (definterface fn-nco-initial :class :common-lisp-compliant)

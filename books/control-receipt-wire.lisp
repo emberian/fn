@@ -62,6 +62,14 @@
   (declare (xargs :guard t))
   (if (equal word (fn-nctrl-reason-word :receipt-unknown)) :uncertain status))
 
+; S3b also covers death before a new owner is listening: after ACK,
+; no-owner is loss of observation, never proof that the job was refused.
+(defun fn-nco-client-observed-status (status word)
+  (declare (xargs :guard t))
+  (if (equal word (fn-nctrl-reason-word :no-owner))
+      :uncertain
+    (fn-nco-client-status status word)))
+
 (defun fn-nco-client-waitp (status word)
   (declare (xargs :guard t))
   (or (eq status :busy)
@@ -109,4 +117,13 @@
                 (not (fn-nco-client-waitp (fn-nco-client-status status word) word))
                 (equal (fn-outcome-code
                         (fn-outcome-of-status (fn-nco-client-status status word))) 3)))
+  :rule-classes nil)
+
+(defthm fn-nco-lost-owner-after-receipt-is-uncertain
+  (implies (equal word (fn-nctrl-reason-word :no-owner))
+           (and (equal (fn-nco-client-observed-status status word) :uncertain)
+                (not (fn-nco-client-waitp (fn-nco-client-observed-status status word) word))
+                (not (fn-nco-client-releasep (fn-nco-client-observed-status status word)))
+                (equal (fn-outcome-code
+                        (fn-outcome-of-status (fn-nco-client-observed-status status word))) 3)))
   :rule-classes nil)
