@@ -391,8 +391,8 @@
   (if (zp k) nil (cons (mod (nfix w) 256) (adt-tp-unw (1- k) (floor (nfix w) 256)))))
 
 (defun adt-tp-npk (n)
-  ; The words N octets take.
-  (declare (xargs :verify-guards nil :guard t :measure (nfix n)))
+  ; The words N octets take. Runtime callers supply an octet count (natural).
+  (declare (xargs :guard (natp n) :measure (nfix n)))
   (if (zp n) 0 (+ 1 (adt-tp-npk (nfix (- n 8))))))
 
 (defun adt-tp-unpack (n ws)
