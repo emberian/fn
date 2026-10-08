@@ -6,6 +6,10 @@
 ; only the export of this table) admit raw dispatch from the same verdicts.
 ; A declaration added after this event has no verdict and is refused.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/raw-dispatch-verdict")
 
 (make-event

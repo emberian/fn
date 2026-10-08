@@ -10,7 +10,7 @@
 ;; file is a real checkpoint file (a zero-argument function: its trailer
 ;; calls the attached digest, which a defconst does not see).
 (defconst *bpret-budget* (fn-bpnr-depth-budget 8))
-(defun bpret-ck () (fn-bpnr-checkpoint 2 nil nil '(4 . 0) 0 0))
+(defun bpret-ck () (fn-bpnr-checkpoint 2 nil nil '(4 . 0) 0 0 nil 0))
 (defun bpret-selection () (fn-bpnr-checkpoint-octets (bpret-ck) *bpret-budget*))
 (defun bpret-tree ()
   (list (cons "lifecycle" (list :dir (cons "a" '(:file 1)) (cons "b" '(:file 2))))

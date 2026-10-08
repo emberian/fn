@@ -1,6 +1,54 @@
 {
  "about": "Critical evidence for the thirteen p-teeth-critical claims. Trace references name the defteeth whose fixtures run the real steps. Native log crash campaigns check the model program against the host's cuts; they do not execute that program. Failed-barrier clean-cache coverage is separately owed in TEETH-CRITICAL-HOST-TESTS.",
  "entries": {
+  "fn-bpn-step-preserves-lifecycle-invariant": {
+   "subject": "fn-bpn-step",
+   "host_test": "tests/test_bp_node_native.py::test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
+   "trace_witness": "tests/acl2/bp-node-machine-authorization-tests.lisp::fn-bpn-step-preserves-lifecycle-invariant",
+   "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send"
+  },
+  "fn-bpnj-rotation-restart-succeeds-with-owed-work": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-recovery-tests.lisp::fn-bpnj-rotation-restart-succeeds-with-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotation-recovery-seeds-owed-jobs": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-recovery-seeds-owed-jobs",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotation-restart-keeps-owed-work": {
+   "subject": "fn-bpnr-seed-state",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-restart-keeps-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-checkpoint-recovery-equals-full-machine": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-equivalence-tests.lisp::fn-bpnr-checkpoint-recovery-equals-full-machine",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-recover-from-checkpoint-equals-full-recover": {
+   "subject": "fn-bphp-recover-auto-event",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-recover-from-checkpoint-equals-full-recover",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-rotation-crash-recovers-old-or-new": {
+   "subject": "fn-bphp-recover-auto-event",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_killed_at_each_cut_keeps_held_rows",
+   "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-rotation-crash-recovers-old-or-new",
+   "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename"
+  },
   "fn-dwj-retired-job-refuses-scalar-publication": {
    "subject": "fn-dwj-retire",
    "host_test": "tests/test_native_decoded_custody.py::test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",

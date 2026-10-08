@@ -3095,6 +3095,26 @@
         {
           "kind": "theorem",
           "name": "fn-bpnrd-rotation-keeps-every-held-family"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-checkpoint-recovery-equals-full-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-rotation-restart-succeeds-with-owed-work"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotation-restart-keeps-owed-work"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotation-recovery-seeds-owed-jobs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work"
         }
       ]
     },

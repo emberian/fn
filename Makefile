@@ -1225,6 +1225,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-rotation-due \
 	tests/acl2/bp-node-rotation-due-tests \
+	tests/acl2/bp-node-rotation-recovery-tests \
+	tests/acl2/bp-node-rotation-equivalence-tests \
+	tests/acl2/bp-node-rotation-critical-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-node-forward-retry \

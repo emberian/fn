@@ -10,7 +10,7 @@
   (fn-bphp-recover-auto-event *bphpt-st* nil :ready (bpnfr-replay-rows) '(:none)))
 (defun bprpft-held () (declare (xargs :guard t :verify-guards nil)) (car (fn-bpn-nth 1 (fn-bpn-nth 4 (bprpft-event)))))
 (defun bprpft-plan () (declare (xargs :guard t :verify-guards nil))
-  (list :selected (fn-bpnr-checkpoint-of-event (bprpft-event) 1)))
+  (list :selected (fn-bpnr-checkpoint-of-event (bprpft-event) 1 *bphpt-st*)))
 
 ; Positive: fragment payload is only five octets; the bound reads total eight.
 ; fn-bprpf-admitted-row-has-bounded-adu, full antecedent and conclusion.

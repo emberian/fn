@@ -588,6 +588,17 @@ class PushTests(TrainBase):
                                       "tools/z.py", "tools/absent.py", "books/b.lisp"])
         self.assertEqual(got, list(train.UNIT_TESTS) + ["tests/test_y.py", "tests/test_z.py"])
 
+    def test_suites_that_start_the_native_image_are_left_to_the_native_gate(self):
+        root = Path(tempfile.mkdtemp(prefix="train-unit-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "tests").mkdir()
+        (root / "tests" / "test_bp_x_native.py").write_text(
+            "import unittest\nfrom tests.native_harness import (\n    Node,\n)\n")
+        (root / "tests" / "test_plain_native.py").write_text(
+            "import unittest\n# mentions native_harness in a comment only\n")
+        got = train.unit_tests(root, ["tests/test_bp_x_native.py", "tests/test_plain_native.py"])
+        self.assertEqual(got, list(train.UNIT_TESTS) + ["tests/test_plain_native.py"])
+
     def test_a_missing_fixed_suite_fails_the_gate(self):
         self.ready()
         (self.work / "tests/test_farm.py").unlink()

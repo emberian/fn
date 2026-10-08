@@ -1,5 +1,8 @@
 ; Program bridge for the native administrative plan.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/history-paged-attach")
 (include-book "../books/native-admin")
 (include-book "../books/accounts")
 ; The sibling edges are include-books (the account-*/index-* discipline),
