@@ -2,6 +2,9 @@
 ; Entry executes inside the genuine funded ninep provider operation; it is
 ; not a constructor permit and never takes a publication/root from native.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/history-paged-attach")
 (include-book "../books/ninep-mounted-directory")
 (include-book "../books/definterface")
 

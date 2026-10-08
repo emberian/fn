@@ -1,6 +1,10 @@
 ; Actual retained writer executor. Native holds owner exclusion over sealed
 ; prepare, gate, BODY, reservation and arena capture. No host demand authority.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "index-writer-begin-host")
 (include-book "../books/index-backing-writer-step")
 (include-book "../books/allocation-turn-raw-bridge")

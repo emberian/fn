@@ -1,6 +1,9 @@
 ; Production recovery-only view and INITIAL role transaction. Source WIP:
 ; exact includes/caller admission are pending, never substitute live PVL.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/history-paged-attach")
 (include-book "snapshot-initial-host")
 (include-book "page-read-host")
 (include-book "../books/recovery-payload-view")

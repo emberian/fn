@@ -3,6 +3,10 @@
 ; Actual incoming source/attachment producer. No host-supplied context, source,
 ; frontier, demand or prepared controller is accepted by the public ABI.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (logic)
 (include-book "../books/index-incoming-request")
 (include-book "../books/owner-incoming-freshness")

@@ -1,6 +1,9 @@
 ; Actual INITIAL entry: source and complete request family are read from
 ; their internal owners. No supplied demand/receipt/table argument exists.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/history-paged-attach")
 (include-book "../books/snapshot-initial-custody")
 (include-book "../books/runtime-operation-source")
 (include-book "recovery-initial-source-host")

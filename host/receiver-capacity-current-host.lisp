@@ -1,6 +1,10 @@
 ; Exact frozen DATA6 current-RX source forms from a550e0f13/17-rx-callers.
 ; Include assembly only; no new admission, runtime funding or activation claim.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/receiver-capacity-current")
 (include-book "receiver-turn-resource-host")
 (include-book "../books/page-read-counter-transaction")

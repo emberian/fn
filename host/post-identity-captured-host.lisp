@@ -1,6 +1,10 @@
 ; Actual retained captured-controller caller. PROGRAM assembly only; source,
 ; cost, inverse, producer and native qualification obligations remain open.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/post-identity-captured-holder")
 (include-book "../books/runtime-operation-source")
 (include-book "index-incoming-request-host")
