@@ -4557,22 +4557,6 @@
                        (len (fn-own-conns (fn-owner-core state)))
                        (fn-owner-exposure-now state)))
 
-; The refresh's word as ACL2 classifies it (books/history-root-credit.lisp
-; fn-hroot-refresh-status), held for `status' and `health' to render
-; (books/history-root-status.lisp fn-hrs-line).  Every word the host got is
-; noted: a building/installed word clears a refusal, a refusal or an
-; unrecognised word replaces it.  Returns the status for the host's log.
-(defun fn-owner-hroot-note (word state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((status (fn-hroot-refresh-status word))
-         (state (f-put-global 'fn-owner-history-root-status status state)))
-    (value status)))
-
-(defun fn-owner-hroot-status-lines (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-hrs-line (and (boundp-global 'fn-owner-history-root-status state)
-                    (f-get-global 'fn-owner-history-root-status state))))
-
 ; Step 8 (catalog slice): the read runs books/served-catalog-chain.lisp
 ; fn-scr-ocfg-read-span, the same chain with the catalog carried to the
 ; retrieval arms (fn-scr-ocfg-read-span-is-reference-under-ocl-relation);

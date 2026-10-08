@@ -15,12 +15,16 @@
  (declare (xargs :guard t))
  (if (consp roots)
      (let* ((entry (car roots)) (row (if (consp entry) (cdr entry) nil)))
+       (if (and (consp entry) (equal (car entry) :last-refresh))
+           ; the last refresh's status (books/history-root-credit.lisp
+           ; fn-hroot-table-note) is not a generation row and holds nothing
+           (fn-history-root-roster-heldp (cdr roots))
        (or (not (consp entry))
            (and row (or (not (true-listp row))
                         (not (equal (len row) 3))
                         (not (member-eq (car row) '(:building :live :retired)))
                         (not (null (caddr row)))))
-           (fn-history-root-roster-heldp (cdr roots))))
+           (fn-history-root-roster-heldp (cdr roots)))))
    (not (null roots))))
 (defun fn-owner-history-reset-status (state)
  (declare (xargs :stobjs state :guard t))
