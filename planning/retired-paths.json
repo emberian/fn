@@ -193,6 +193,12 @@
     "tools/hazard_rules_check.py": "deleted on dev in aeb4905df (the hazard-rule classifier and its check); no check now catches a new primitive-lhs rewrite rule. The `Hazard rules (...)` header comments in books/ predate the removal and still describe the rules disabled",
     "host/store-open-host.lisp": "deleted in 04fb4e0c7 (2026-10-07): a CHICKEN-era store port; the extraction world now loads only the image's host files (Ruling 2: one extractor, bare-SBCL)",
     "host/store-write-host.lisp": "deleted in 04fb4e0c7 (2026-10-07): a CHICKEN-era store port; the extraction world now loads only the image's host files (Ruling 2: one extractor, bare-SBCL)",
-    "tools/extract/build.sh": "deleted in 4e8b3bb37 with the CHICKEN extractor; gate.py targets fn-core vs the image"
+    "tools/extract/build.sh": "deleted in 4e8b3bb37 with the CHICKEN extractor; gate.py targets fn-core vs the image",
+    "planning/current.md": "retired by lane x-views-out: a pure function of the tree; `python3 tools/current_view.py` prints it (recoverable with `git show a13cfe7fa:PATH`)",
+    "planning/ledger.md": "retired by lane x-views-out: `python3 tools/ledger.py --stdout` prints it, `--write` saves build/ledger/ledger.md (recoverable with `git show a13cfe7fa:PATH`)",
+    "planning/ledger.json": "retired by lane x-views-out: `python3 tools/ledger.py --write` saves build/ledger/ledger.json (recoverable with `git show a13cfe7fa:PATH`)",
+    "planning/repair/STATUS.md": "retired by lane x-views-out: `python3 planning/repair/repair.py report` prints it (recoverable with `git show a13cfe7fa:PATH`)",
+    "planning/host-realization.json": "retired by lane x-views-out: `python3 tools/lock_discipline_check.py --emit-realization` prints the table (recoverable with `git show a13cfe7fa:PATH`)",
+    "planning/reorg-dry-run.txt": "retired by lane x-views-out: a one-shot dry-run log (recoverable with `git show a13cfe7fa:PATH`)"
   }
 }
