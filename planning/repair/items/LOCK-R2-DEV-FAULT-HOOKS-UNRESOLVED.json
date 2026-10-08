@@ -1,0 +1,20 @@
+{
+ "id": "LOCK-R2-DEV-FAULT-HOOKS-UNRESOLVED",
+ "category": "lock-discipline",
+ "file": "host/native/io.lisp",
+ "line": "8060",
+ "owner": "deputy-C",
+ "severity": "medium",
+ "slice": "host",
+ "source": "lane lock-wrapper-io: lock_discipline_check now reports a funcall of a non-literal special variable under a lock",
+ "state": "open",
+ "title": "Two developer fault hooks (*fnn-record-barrier-fault-observer*, io.lisp:8060; *fnn-identity-reservation-callback*, io.lisp:9105) are funcalled under the owner mutex O with a function the checker cannot see",
+ "keys": [
+  "R2|fnn-log-fence|O:funcall:*fnn-record-barrier-fault-observer*",
+  "R2|fnn-log-reserve|O:funcall:*fnn-identity-reservation-callback*"
+ ],
+ "notes": [
+  "Both defvars are NIL in normal operation and are dynamically bound by developer and test cuts (comments at io.lisp:1981-1984), so production never runs a hook; but a bound hook runs under O and the checker cannot classify what it does. Decision owed: either the hooks are retired from the served image (compiled out of the production path, then the keys vanish), or each bound hook is a named defun the seam resolves (#'NAME init with a classifiable body), or the contract records them as developer-only cuts with a bound. Not the checker's to decide; no exception row was added."
+ ],
+ "updated": "2026-10-07T00:00:00Z"
+}

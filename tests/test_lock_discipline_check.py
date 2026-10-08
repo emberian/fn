@@ -3002,5 +3002,56 @@ class HolderCutMap(unittest.TestCase):
         self.assertIn("+fnn-holder-cuts+ names fn-ghost-decided, which no def-holder declares", text)
 
 
+class R2SpecialSeam(unittest.TestCase):
+    """I/O reached through (funcall *special* ...) -- the syscall seams fnn-write-all and
+    fnn-read-fd use -- counts as the init form's I/O; an unclassifiable seam under a lock
+    that may not do I/O is reported, never silent."""
+    SEAM = """
+(defvar *fnn-test-write-syscall*
+  (lambda (fd octets offset count) (sb-unix:unix-write fd octets offset count)))
+(defun fnn-test-write-all (fd octets)
+  (funcall *fnn-test-write-syscall* fd octets 0 (length octets)))
+"""
+    LEAF = "(sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service)) %s)"
+
+    def r2(self, src):
+        return run(src, ["R2"])
+
+    def test_a_wrapper_over_a_syscall_seam_under_a_leaf_lock_is_red(self):
+        src = self.SEAM + "(defun fnn-leaf-user (service fd o)\n  " + self.LEAF % "(fnn-test-write-all fd o)" + ")\n"
+        found = [f for f in self.r2(src) if f.rule == "R2" and f.category == "violation"]
+        self.assertEqual([f.key for f in found], ["XSYNCER:sb-unix:unix-write"])
+
+    def test_a_direct_fsync_under_the_leaf_lock_stays_red(self):
+        src = "(defun fnn-leaf-user (service fd)\n  " + self.LEAF % "(sb-posix:fsync fd)" + ")\n"
+        found = [f for f in self.r2(src) if f.rule == "R2" and f.category == "violation"]
+        self.assertEqual([f.key for f in found], ["XSYNCER:sb-posix:fsync"])
+
+    def test_an_unclassifiable_seam_under_a_leaf_lock_is_unresolved(self):
+        src = """
+(defvar *fnn-test-opaque* nil)
+(defun fnn-test-opaque-call (fd) (funcall *fnn-test-opaque* fd))
+(defun fnn-leaf-user (service fd)
+  """ + self.LEAF % "(fnn-test-opaque-call fd)" + ")\n"
+        found = self.r2(src)
+        self.assertEqual([(f.function, f.category) for f in found if f.rule == "R2"],
+                         [("fnn-test-opaque-call", "unresolved")])
+
+    def test_an_unclassifiable_seam_under_no_lock_or_an_io_ok_lock_is_quiet(self):
+        src = """
+(defvar *fnn-test-opaque* nil)
+(defun fnn-test-opaque-call (fd) (funcall *fnn-test-opaque* fd))
+(defun fnn-no-lock (fd) (fnn-test-opaque-call fd))
+"""
+        self.assertEqual([f for f in self.r2(src) if f.rule == "R2"], [])
+
+    def test_a_pure_host_function_under_the_leaf_lock_stays_clean(self):
+        src = """
+(defun fnn-test-pure (x) (+ x 1))
+(defun fnn-leaf-user (service x)
+  """ + self.LEAF % "(fnn-test-pure x)" + ")\n"
+        self.assertEqual([f for f in self.r2(src) if f.rule == "R2"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
