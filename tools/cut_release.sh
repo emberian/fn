@@ -397,7 +397,7 @@ cd $S/fresh && cp $S/release/$tb $S/release/SHA256SUMS . && sha256sum -c --ignor
 tar xzf $tb && sh fn/install.sh --prefix $S/fresh/opt/fn --node $S/fresh/node --no-service
 cd $T && FN_RELEASE_TARBALL=$S/release/$tb python3 -m unittest -v tests.test_release_tarball 2> $S/release-test.log; tail -1 $S/release-test.log
 [ \"\$(tail -1 $S/release-test.log)\" = OK ] || { echo 'test_release_tarball: not OK with no skips'; exit 1; }
-docker run --rm -v $S/release:/r:ro debian:12 sh -c 'apt-get update -qq >/dev/null && apt-get install -y -qq libssl3 >/dev/null && cd /tmp && tar xzf /r/$tb && fn/bin/fn --version' > $S/debian12-version.txt
+docker run --rm -v $S/release:/r:ro debian:12 sh -c 'cd /tmp && tar xzf /r/$tb && fn/bin/fn --version' > $S/debian12-version.txt
 [ \"\$(cat $S/debian12-version.txt)\" = 'fn $VERSION ($SHORT)' ] || { echo \"Debian 12: \$(cat $S/debian12-version.txt)\"; exit 1; }
 grep -F $tb $S/release/SHA256SUMS"
   if [ "$DRY" = yes ]; then

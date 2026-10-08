@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools import crypto_shipped as cs  # noqa: E402
 
-LANDED = ()
+LANDED = ("linux", "boxes", "macos", "tests")
 
 MINI = {
     "profiles": {"linux": {"desc": "x"}, "docs": {"desc": "x", "requires_flag": "--after-tls"}},

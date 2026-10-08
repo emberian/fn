@@ -506,12 +506,12 @@
    "file": "tests/test_build_native_host.py",
    "old": [
     "import pathlib",
-    "import subprocess"
+    "import re"
    ],
    "new": [
     "import pathlib",
     "import platform",
-    "import subprocess"
+    "import re"
    ]
   },
   {
@@ -519,7 +519,7 @@
    "kind": "test-build-system-pair",
    "file": "tests/test_build_native_host.py",
    "old": [
-    "    def test_old_catalog_refuses_paged_build_by_name_before_running_acl2(self):"
+    "    def test_a_failed_acl2_names_its_real_exit_status(self):"
    ],
    "new": [
     "    @unittest.skipUnless(platform.system() == \"Linux\", \"the shipped-prefix rule is Linux's (D64)\")",
@@ -531,7 +531,7 @@
     "                self.assertIn(\"OpenSSL 3.5.8\", answer.stderr)",
     "                self.assertNotIn(\"built \", answer.stdout)",
     "",
-    "    def test_old_catalog_refuses_paged_build_by_name_before_running_acl2(self):"
+    "    def test_a_failed_acl2_names_its_real_exit_status(self):"
    ]
   },
   {
