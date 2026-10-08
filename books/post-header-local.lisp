@@ -55,7 +55,15 @@
    (implies (fn-art-rest-shielded-headp h)
             (equal (fn-pb-fixed-linep n (append h b))
                    (fn-pb-fixed-linep n h)))
-   :hints (("Goal" :induct (fn-pb-fixed-linep n h)))))
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-pb-fixed-linep fn-art-rest-shielded-headp
+                              fn-art-double-crlfp fn-art-crlfp binary-append
+                              natp true-listp car-cons cdr-cons default-car default-cdr
+                              commutativity-of-+)
+                            (theory 'minimal-theory))
+            :expand ((append h b) (append (cdr h) b)
+                     (fn-pb-fixed-linep n (append h b)))
+            :induct (fn-pb-fixed-linep n h)))))
 
 (defthm fn-art-fixed-line-on-append
   (implies (fn-art-shielded-headp h)
@@ -99,7 +107,12 @@
                    (if (equal (fn-inj-strip line h) :no)
                        :no
                      (append (fn-inj-strip line h) b))))
-   :hints (("Goal" :in-theory (enable fn-inj-strip)
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-inj-strip true-listp len binary-append
+                              car-cons cdr-cons default-car default-cdr
+                              commutativity-of-+ (:type-prescription len))
+                            (theory 'minimal-theory))
+            :expand ((append h b) (fn-inj-strip line (append h b)))
             :induct (fn-inj-strip line h)))))
 (local
  (defthm fn-art-strip-needs-length
@@ -112,7 +125,13 @@
                  (<= n (len line))
                  (fn-pb-fixed-linep n line))
             (fn-pb-fixed-linep n h))
-   :hints (("Goal" :in-theory (enable fn-inj-strip)
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-inj-strip fn-pb-fixed-linep fn-art-line-pair-induct
+                              len natp car-cons cdr-cons default-car default-cdr
+                              commutativity-of-+ (:type-prescription len))
+                            (theory 'minimal-theory))
+            :expand ((fn-inj-strip line h) (fn-inj-strip (cdr line) (cdr h))
+                     (fn-pb-fixed-linep n line) (fn-pb-fixed-linep n h))
             :induct (fn-art-line-pair-induct n line h)))))
 
 (defthm fn-art-strip-line-on-append
@@ -184,12 +203,26 @@
 (local
  (defthm fn-art-drop-within-head
    (implies (and (natp n) (<= n (len h)))
-            (equal (nthcdr n (append h b)) (append (nthcdr n h) b)))))
+            (equal (nthcdr n (append h b)) (append (nthcdr n h) b)))
+   :hints (("Goal"
+            :in-theory
+            (union-theories '(nthcdr natp zp len binary-append car-cons cdr-cons
+                              default-cdr default-car commutativity-of-+
+                              (:type-prescription len))
+                            (theory 'minimal-theory))
+            :expand ((nthcdr n (append h b)) (nthcdr n h))
+            :induct (nthcdr n h)))))
 (local
  (defthm fn-art-take-within-head
    (implies (and (natp n) (<= n (len h)))
             (equal (fn-inj-take n (append h b)) (fn-inj-take n h)))
-   :hints (("Goal" :in-theory (enable fn-inj-take)))))
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-inj-take natp nfix zp len binary-append
+                              car-cons cdr-cons default-car default-cdr
+                              commutativity-of-+ (:type-prescription len))
+                            (theory 'minimal-theory))
+            :expand ((append h b) (fn-inj-take n (append h b)))
+            :induct (fn-inj-take n h)))))
 
 (local
  (defthm fn-art-rest-head-consp
@@ -230,8 +263,18 @@
                  (fn-pb-line-textp prefix))
             (equal (fn-pb-opensp prefix (append h b))
                    (fn-pb-opensp prefix h)))
-   :hints (("Goal" :in-theory (e/d (fn-pb-opensp fn-inj-strip)
-                                  (fn-art-rest-shielded-headp))))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory
+            (union-theories '(fn-art-shielded-headp fn-art-crlfp fn-pb-opensp
+                              fn-inj-strip fn-pb-line-textp binary-append
+                              fn-art-strip-text-no-match-append fn-art-consp-append
+                              fn-art-car-append fn-art-cdr-append
+                              fn-art-rest-head-cons-forward fn-art-rest-head-consp
+                              fn-art-rest-head-after-ordinary-octet
+                              true-listp car-cons cdr-cons default-car default-cdr)
+                            (theory 'minimal-theory))
+            :expand ((append h b) (fn-pb-line-textp prefix) (fn-inj-strip prefix h)
+                     (fn-inj-strip prefix (append h b)))))))
 
 (defthm fn-art-ipp-date-head-local
   (implies (fn-art-shielded-headp h)
