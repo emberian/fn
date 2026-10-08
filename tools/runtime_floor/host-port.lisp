@@ -37,6 +37,11 @@
   (declare (ignore plen trailer))
   (aref (rp-extent-entry file eoff elen) (+ (- poff eoff) i)))
 
+(defun fn-durable-realize-span (file eoff elen poff plen trailer i n)
+  (declare (ignore plen trailer))
+  (let ((entry (rp-extent-entry file eoff elen)) (start (+ (- poff eoff) i)))
+    (coerce (subseq entry start (+ start n)) 'list)))
+
 (defun fn-durable-realize-octets (file eoff elen poff plen trailer)
   (declare (ignore trailer))
   (let ((entry (rp-extent-entry file eoff elen)) (start (- poff eoff)))

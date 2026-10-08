@@ -94,7 +94,7 @@ red cases of a red one, the rest carried; `--all` runs everything.  A cached
 verdict satisfies no claim: a claim names a live run's id.
 
 A pass shows: the behaviour, on that image, for that run.  It is evidence to
-file (`tools/evidence_store.py put`), never a proof; a skipped test is not a
+report (a short committed file, or `box:path` for a log), never a proof; a skipped test is not a
 pass, and a module's image tests count only with the image's identity named.
 
 ## Overlay: a host edit's native verdict without an image build

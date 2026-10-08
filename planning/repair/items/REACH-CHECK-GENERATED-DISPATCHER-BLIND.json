@@ -1,0 +1,14 @@
+{
+ "id": "REACH-CHECK-GENERATED-DISPATCHER-BLIND",
+ "category": "checker",
+ "file": "tools/reach_check.py",
+ "owner": "deputy-C",
+ "severity": "medium",
+ "state": "open",
+ "source": "P5 on PRF-1020 (reach-seams-c finding (c)), 2026-10-08",
+ "title": "reach_check's source mode does not see calls inside make-event-generated definitions, so a subject reached only through a generated dispatcher is reported unreachable",
+ "detail": "On dev bda30d1a6 the OVER cursor arm is dispatched on the served path: fn-scr-step (books/owner-time-admission.lisp) -> fn-scr-command (books/served-catalog-chain.lisp:250) -> fn-proto-archive-command-cat, which make-event generates from *fn-proto-served-table* (books/protocol-served.lisp:105); the OVER/XOVER rows' range form (books/protocol-served-table.lisp:657-659) calls fn-nntp-over-range-ovw. Runtime evidence: CONVERGE-3 row 44's stack overflow in fn-qplan-rest-cursor-step exists only on that path. The source-parse call graph has no defun text for the generated dispatcher, so the edge is missing and PRF-1020's three events read as unreachable. reach_check --world (certified-world edges, world_edges ~701) sees it.",
+ "fix": "Make the class impossible in source mode: a callee that some book names but that has no textual definition (a make-event or generator product) is an UNKNOWN edge, not an absent one. A subject whose only path to the host runs through such a callee is reported 'needs --world' (with the generated name), never 'unreachable'; --world remains the judge. Teeth: a fixture with a make-event-generated dispatcher calling the subject: source mode says needs --world, --world says reached. Do NOT add a second reader of the protocol table and do NOT add bridging theorems that restate a generator's expansion.",
+ "notes": [],
+ "updated": "2026-10-08T03:54:03Z"
+}

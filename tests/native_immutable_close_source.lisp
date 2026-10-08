@@ -1,6 +1,26 @@
 (load "tests/native_rotation_cleanup_source-mock.lisp")
 (in-package "ACL2")
 
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-immutable-drain-cleanups (&optional stage)
+  (declare (ignorable stage))
+  (harness-stub-reached 'fnn-immutable-drain-cleanups "host/native/immutable-publish.lisp"))
+(defun fnn-immutable-publish-deferred (publication stage final final-directory octets &key cleanup-directory observer operation-label fault-observer registered-step)
+  (declare (ignorable publication stage final final-directory octets cleanup-directory observer operation-label fault-observer registered-step))
+  (harness-stub-reached 'fnn-immutable-publish-deferred "host/native/immutable-publish.lisp"))
+;;; ---- derived stubs: END ----
+
 (defun true-listp (x) (if (consp x) (true-listp (cdr x)) (null x)))
 (defun len (x) (length x))
 (defun booleanp (x) (member x '(t nil)))
@@ -90,7 +110,8 @@
   (with-open-file (in path)
     (loop for f = (read in nil :eof) until (eq f :eof) do
       (when (and (consp f) (member (car f) '(defvar defun))
-                 (member (second f) '(*fnn-publication-close-debts* fnn-publication-close-observation)))
+                 (member (second f) '(*fnn-close-debts-lock* *fnn-publication-close-debts*
+                    fnn-publication-close-debts-p fnn-publication-close-observation)))
         (eval f)))))
 (assert (fboundp 'fnn-publication-close-observation))
 (let ((*fnn-publication-close-debts* (list (list 91 "/root" *physical*)))

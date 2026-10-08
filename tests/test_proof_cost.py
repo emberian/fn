@@ -22,7 +22,7 @@ class ProofCostTests(unittest.TestCase):
                     results: dict[str, str] | None = None,
                     jobs: int | None = 2):
         run_id = f"certify-{stamp}-1"
-        run = proof_cost.green_check.Run(run_id, host, True, sources)
+        run = proof_cost.Run(run_id, host, sources)
         manifest = {
             "run_id": run_id, "acl2_toolchain_identity": toolchain,
             "source_digests_sha256": sources,

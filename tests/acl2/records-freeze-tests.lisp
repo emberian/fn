@@ -42,7 +42,7 @@
       (eq (symbol-class 'fn-rfz-resolve (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arena$l-seal-list (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arena$l-payload (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arena$c-seal-list (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-arena-bytes$c-append1 (w state)) :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
 ; Ground values: two articles, a retention event between them, the history.

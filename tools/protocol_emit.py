@@ -457,19 +457,56 @@ def wire_octets(timeout: int = 900) -> bytes:
     return bytes.fromhex("".join(text.replace("\\", "").split()))
 
 
+WIRE_STAMP = ROOT / "build" / "cache" / "wire-emit.json"
+
+
+def _wire_key() -> str:
+    """What fn-wgx-file is a function of: the wire book's closure key (its
+    closure's read forms, tools/certs.py) and the ACL2 that evaluates it."""
+    import hashlib
+    import os
+    import certs  # noqa: E402
+    key, _ = certs.closure_key(ROOT, WIRE_BOOK)
+    return hashlib.sha256((key + "\0" + os.environ.get("FN_ACL2", "")).encode()).hexdigest()
+
+
+def _stamped(key: str) -> bytes | None:
+    """The octets this tree last evaluated at KEY, if the file still holds them."""
+    import hashlib
+    try:
+        stamp = json.loads(WIRE_STAMP.read_text())
+        current = WIRE_FILE.read_bytes()
+    except (OSError, ValueError):
+        return None
+    if stamp.get("key") == key and stamp.get("sha256") == hashlib.sha256(current).hexdigest():
+        return current
+    return None
+
+
 def wire(write: bool) -> int:
+    import hashlib
+    key = _wire_key()
+    octets = _stamped(key)
+    if octets is not None:
+        print("protocol_emit --wire: closure key unchanged since this tree evaluated it; "
+              "%s is fn-wgx-file (%d octets)" % (WIRE_FILE.relative_to(ROOT), len(octets)))
+        return 0
     octets = wire_octets()
     json.loads(octets)  # a file Mini's JSON reader cannot read is no export
     if write:
         WIRE_FILE.parent.mkdir(parents=True, exist_ok=True)
         WIRE_FILE.write_bytes(octets)
         print("protocol_emit --wire: wrote %s (%d octets)" % (WIRE_FILE.relative_to(ROOT), len(octets)))
+        WIRE_STAMP.parent.mkdir(parents=True, exist_ok=True)
+        WIRE_STAMP.write_text(json.dumps({"key": key, "sha256": hashlib.sha256(octets).hexdigest()}))
         return 0
     current = WIRE_FILE.read_bytes() if WIRE_FILE.exists() else b""
     if current != octets:
         print("FAIL %s differs from fn-wgx-file (books/wire-export.lisp); "
               "run python3 tools/protocol_emit.py --wire --write" % WIRE_FILE.relative_to(ROOT))
         return 1
+    WIRE_STAMP.parent.mkdir(parents=True, exist_ok=True)
+    WIRE_STAMP.write_text(json.dumps({"key": key, "sha256": hashlib.sha256(octets).hexdigest()}))
     print("protocol_emit --wire: %s is fn-wgx-file (%d octets)" % (WIRE_FILE.relative_to(ROOT), len(octets)))
     return 0
 

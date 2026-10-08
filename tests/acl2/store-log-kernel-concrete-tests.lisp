@@ -12,6 +12,7 @@
 ; what the correspondence carries.
 (in-package "ACL2")
 (include-book "../../books/store-log-kernel-concrete")
+(include-book "../../books/defkeystone")
 ; The record codec seam's attachment: the log's txid reads the record through
 ; fn-record-decode-exact (books/store-log-txid.lisp).
 (include-book "../../books/codec-attach")
@@ -309,3 +310,68 @@
 ; R and nothing-in-flight: their removal witnesses are the logical twin's
 ; (store-log-extend-tests); the concrete statement adds only the kernel it
 ; runs, which fn-lg-extend-run-keeps-the-kernel shows the run never reads.
+
+; --- KEYSTONE fn-lgc-take-never-joins-the-batch-in-flight (PRF-288) ----------
+; A concrete kernel with a batch in flight ((9 9)) and an open batch ((1 2)):
+; the take joins the open batch and the batch in flight is unchanged.
+(defconst *slc-tk* (fn-lgc-make 0 nil 0 7 '((1 2)) '((9 9)) 0 :appended))
+(defconst *slc-take* (fn-lgc-take *slc-tk* '(3 4) 7 1 10 64 1000000 512))
+(assert-event (equal (car *slc-take*) :taken))
+(assert-event (equal (fn-lgc-inflight (cadr *slc-take*)) '((9 9))))
+(assert-event (equal (fn-lgc-batch (cadr *slc-take*)) '((1 2) (3 4))))
+; At the operator's bound (count 1 >= bmax 1) the take answers :full and
+; changes nothing (the host waits for the barrier, then commits the batch).
+(defconst *slc-tk-full* (fn-lgc-take *slc-tk* '(3 4) 7 1 10 1 1000000 512))
+(assert-event (and (equal (car *slc-tk-full*) :full)
+                   (equal (cadr *slc-tk-full*) *slc-tk*)))
+; Mutation witness (labelled): a take that put the record into INFLIGHT would
+; change it -- the keystone's first conjunct refuses that shape.
+(assert-event (not (equal (fn-lgc-inflight
+                           (fn-lgc-make 0 nil 0 8 '((1 2)) '((9 9) (3 4)) 0 :appended))
+                          (fn-lgc-inflight *slc-tk*))))
+
+;; The generated keystone's teeth (TEETH CONTRACT v1).  The theorem has no
+;; hypothesis (it holds of every concrete kernel), so no removal is owed.
+(defteeth fn-lgc-take-never-joins-the-batch-in-flight
+  :claim (() (let ((a (fn-lgc-take c record txid count octets bmax omax unit)))
+    (and (equal (fn-lgc-inflight (cadr a)) (fn-lgc-inflight c))
+         (implies (equal (car a) :taken)
+                  (equal (fn-lgc-batch (cadr a))
+                         (append (true-list-fix (fn-lgc-batch c)) (list record)))))))
+  :subject fn-lgc-take
+  :witness ((c *slc-tk*) (record '(3 4)) (txid 7) (count 1) (octets 10) (bmax 64) (omax 1000000) (unit 512))
+  :breaks nil
+  :mutations ((record-joins-the-batch-in-flight
+               (:conclusion (let ((a (fn-lgc-take c record txid count octets bmax omax unit)))
+    (and (equal (fn-lgc-inflight (cadr a)) (append (fn-lgc-inflight c) (list record)))
+         (implies (equal (car a) :taken)
+                  (equal (fn-lgc-batch (cadr a))
+                         (append (true-list-fix (fn-lgc-batch c)) (list record)))))))
+               ((c *slc-tk*) (record '(3 4)) (txid 7) (count 1) (octets 10) (bmax 64) (omax 1000000) (unit 512))
+               :fault "a take that puts the record into the batch in flight")
+              (record-is-dropped
+               (:conclusion (let ((a (fn-lgc-take c record txid count octets bmax omax unit)))
+    (and (equal (fn-lgc-inflight (cadr a)) (fn-lgc-inflight c))
+         (implies (equal (car a) :taken)
+                  (equal (fn-lgc-batch (cadr a))
+                         (true-list-fix (fn-lgc-batch c)))))))
+               ((c *slc-tk*) (record '(3 4)) (txid 7) (count 1) (octets 10) (bmax 64) (omax 1000000) (unit 512))
+               :fault "a take that answers :taken but does not append the record to the open batch")))
+
+;; The owed rows of this world are held met here, as (defteeth-check) does, less
+;; the two def-keyset-check bridges of books/store-files.lisp
+;; (fn-sf-success-listp) and books/retention.lisp (fn-retain-ks-disjointp),
+;; whose defteeth are in tests/acl2/store-files-teeth-tests.lisp and
+;; tests/acl2/retention-tests.lisp, each of which holds its rows met.
+(make-event
+ (let ((problem (fn-dt-owed-problem
+                 (remove1-assoc-eq 'fn-sf-success-listp-ks-is-logic
+                  (remove1-assoc-eq 'fn-sf-success-listp-walk-is-logic
+                   (remove1-assoc-eq 'fn-retain-ks-disjointp-ks-is-logic
+                    (remove1-assoc-eq 'fn-retain-ks-disjointp-walk-is-logic
+                                      (table-alist 'fn-teeth-owed (w state))))))
+                 (table-alist 'fn-teeth (w state))
+                 (w state))))
+   (if problem
+       (er soft 'defteeth-check "~@0." problem)
+     (value '(value-triple :teeth-complete)))))

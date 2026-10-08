@@ -457,6 +457,13 @@ export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
 # the tank's ZFS cost 4.7 s at load 33 and one command 194 s (tooling-truth-3).
 export FN_TEST_DURABLE_TMP=\${FN_TEST_DURABLE_TMP:-/var/tmp}
 export FN_ACL2=\$ACL2 FN_CERT_CACHE=\$CACHE FN_CERT_ORIGIN_KIND=run
+# One install per run (tools/certs.py INSTALL_RECORD): the install step and
+# the incremental certify share this id, so the certify reuses the install
+# step's selection instead of running it again.
+export FN_INSTALL_RUN=\$S-\$\$
+# One content-hash memo per run tree (tools/certs.py content_hash): the
+# install, certify and acquire steps stat a file another step already read.
+export FN_CONTENT_HASH_FILE=\$T/build/.content-hashes.json
 # The book reader's per-text cache (tools/ledger.py), shared by this box's
 # runs: content-addressed, so a fresh tree reads only what changed.
 export FN_LEDGER_FORMS_CACHE=\${FN_LEDGER_FORMS_CACHE:-$BASE/.ledger-forms}
@@ -516,6 +523,7 @@ need() {
 finish() {
     echo "== load at end: \$(uptime)"
     (cd \$S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > \$S/SHA256SUMS 2>/dev/null
+    python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null
     echo \$1 > \$S/status
     echo "== done status \$1; \$S/SHA256SUMS"
     exit \$1
@@ -565,8 +573,8 @@ step interfaces-check static_gate interfaces-check tools/interface_emit.py --che
 # Reject a missing native entry before spending time on certification.
 step host-books static_gate host-books tools/host_check.py --books
 # A certified host file attaches the image's stobj implementation before the
-# generic it implements (CONVERGE-1 red 1; tools/attach_order_check.py).
-step attach-order static_gate attach-order tools/attach_order_check.py
+# generic it implements (CONVERGE-1 red 1; tools/host_check.py --attach-order).
+step attach-order static_gate attach-order tools/host_check.py --attach-order
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)

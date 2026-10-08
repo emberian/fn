@@ -2012,7 +2012,7 @@
 ; runs each effect it names where its label says.
 (definterface fn-orp-step
   :class :common-lisp-compliant
-  :keystones ((fn-orp-step-runs-the-phased-run :step-of fn-orp-trace)))
+  :keystones (fn-orp-step-holds-the-owner-only-in-quanta))
 
 (definterface fn-owner-reconfigure-authorizedp
   :class :common-lisp-compliant)
@@ -3194,6 +3194,10 @@
 (definterface fn-bpnjc-contact-cursor
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-open-establishes-the-relation))
+
+(definterface fn-bpnjc-answer
+  :class :common-lisp-compliant
+  :keystones (fn-bpnjc-answer-is-contact-next))
 
 (definterface fn-bpnjc-contact-next
   :class :common-lisp-compliant
@@ -5786,6 +5790,7 @@
 (definterface fn-owner-hroot-resize :class :program)
 (definterface fn-owner-hroot-transient :class :program)
 (definterface fn-owner-hroot-begin :class :program)
+(definterface fn-owner-hroot-note :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
 (definterface fn-owner-hroot-frontier-value :class :program)
 (definterface fn-owner-hroot-row :class :program)

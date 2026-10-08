@@ -4,9 +4,9 @@
   "coverage": {
     "declared": 1829,
     "declared_and_dispatched": 1780,
-    "guard_verified": 1081,
-    "with_keystone": 288,
-    "with_fold_keystone_only": 4,
+    "guard_verified": 1080,
+    "with_keystone": 287,
+    "with_fold_keystone_only": 3,
     "raw_dispatched": 20
   },
   "raw_dispatched": [
@@ -4932,7 +4932,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-otm-hold-next",
+      "name": "fn-otm-next",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
@@ -4940,56 +4940,7 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-otm-hold-admits-only-inspect-commit-and-reader"
-        },
-        {
-          "theorem": "fn-otm-hold-next-without-the-hold-is-next"
-        }
-      ],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [
-        "host/native/owner.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-otm-hold-begin",
-      "subsystem": "store",
-      "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-otm-hold-begin-and-end"
-        }
-      ],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [
-        "host/native/owner.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-otm-hold-end",
-      "subsystem": "store",
-      "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-otm-hold-begin-and-end"
+          "theorem": "fn-otm-next-is-ocp-next"
         }
       ],
       "extraction": null,
@@ -8144,7 +8095,7 @@
     },
     {
       "name": "fn-acct-host-owner-redeem-waitingp",
-      "subsystem": "admin/operator",
+      "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "program",
       "kinds": [],
@@ -8157,7 +8108,6 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/admin.lisp",
         "host/native/owner.lisp"
       ],
       "applied_directly_in": []
@@ -10051,6 +10001,44 @@
       "applied_directly_in": []
     },
     {
+      "name": "fn-owner-feed-journal-begin",
+      "subsystem": "owner",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [
+        "host/native/owner.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
+      "name": "fn-owner-feed-journal-offset",
+      "subsystem": "owner",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [
+        "host/native/owner.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
       "name": "fn-owner-feed-journal-prefix-size",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
@@ -10065,19 +10053,22 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/admin.lisp",
         "host/native/owner.lisp"
       ],
       "applied_directly_in": []
     },
     {
-      "name": "fn-owner-feed-journal-replay",
+      "name": "fn-owner-feed-journal-scan",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "program",
       "kinds": [
         [
           "peer-octets",
+          "fn-cbor-octet-listp"
+        ],
+        [
+          "frame",
           "fn-cbor-octet-listp"
         ]
       ],
@@ -10876,7 +10867,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/admin.lisp"
+        "host/native/auth.lisp"
       ],
       "applied_directly_in": []
     },
@@ -11460,31 +11451,6 @@
       "raw_guarded": null,
       "dispatched_from": [
         "host/native/owner.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-orp-step",
-      "subsystem": "admin/operator",
-      "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-orp-step-runs-the-phased-run",
-          "step_of": "fn-orp-trace",
-          "status": "keystone via fold; host-loop correspondence owed"
-        }
-      ],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [
-        "host/native/admin.lisp"
       ],
       "applied_directly_in": []
     },
@@ -12736,7 +12702,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/admin.lisp"
+        "host/native/auth.lisp"
       ],
       "applied_directly_in": []
     },
@@ -14225,25 +14191,6 @@
     },
     {
       "name": "fn-feed-journal-phase-step",
-      "subsystem": "peer/feed",
-      "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [
-        "host/native/owner.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-feed-journal-scan",
       "subsystem": "peer/feed",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
@@ -18794,6 +18741,30 @@
       "keystones": [
         {
           "theorem": "fn-bpnjc-open-establishes-the-relation"
+        }
+      ],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [
+        "host/native/bp-node.lisp",
+        "host/native/bp-service.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
+      "name": "fn-bpnjc-answer",
+      "subsystem": "bp",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [
+        {
+          "theorem": "fn-bpnjc-answer-is-contact-next"
         }
       ],
       "extraction": null,
@@ -35370,6 +35341,25 @@
     },
     {
       "name": "fn-owner-hroot-begin",
+      "subsystem": "owner",
+      "declared_in": "host/interfaces.lisp",
+      "class": "program",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [
+        "host/native/history-root.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
+      "name": "fn-owner-hroot-note",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "program",

@@ -1,0 +1,9 @@
+test_nmem3_clean_resident_set_is_within_the_bar (tests.test_native_image_heap.ImageHeapBarTests.test_nmem3_clean_resident_set_is_within_the_bar) ... FN_IMAGE_HEAP {"vmrss": 124.6, "rssanon": 21.0, "rssfile": 103.5, "vmhwm": 163.9, "posts": 1000, "connections": 32, "admitted": 31, "image": "/tank/fn/scratch/load-bars-now/native-heap2/tree/build/fn-host", "launch": "/tank/fn/scratch/load-bars-now/native-heap2/tree/build/fn-host --fn operator /tmp/fn-native-83amqml2/node/fn.toml run", "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384", "bar_mb": 128.0, "workload": "nmem3-clean"}
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 33.028s
+
+OK
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_image_heap", "tests": 1, "failures": 0, "errors": 0, "skipped": 0, "executed": 1, "skips": [], "timings": [["tests.test_native_image_heap.ImageHeapBarTests.test_nmem3_clean_resident_set_is_within_the_bar", 33.028]], "cases": [["tests.test_native_image_heap.ImageHeapBarTests.test_nmem3_clean_resident_set_is_within_the_bar", "ok"]], "only_cases": null}
+FN_TEST_BUDGET_RESULT: verdict stored a94cf1e2f009 -> /tank/fn/scratch/.verdicts/native-module/a94cf1e2f009f942f4d13ba452cbb199a07e16b67565253f32f8d7ed62122450.json

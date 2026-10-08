@@ -6,7 +6,7 @@
 ;
 ; A served step answers with EFFECTS (books/served.lisp); its reply is
 ; `fn-served-reply-octets' of them.  Until this book the octets were written
-; into the live octet buffer UNDER the owner mutex (books/served-reply-buffer
+; into the live octet buffer UNDER the owner mutex (the retired
 ; fn-served-reply-to-buffer, PRF-192) and copied out before the mutex was
 ; released: a 3 MiB ARTICLE held every other connection for the whole walk.
 ;
@@ -51,7 +51,7 @@
 (in-package "ACL2")
 (include-book "served-plan-window")
 (include-book "served-plan-shape")
-(include-book "served-reply-buffer")
+(include-book "served")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md

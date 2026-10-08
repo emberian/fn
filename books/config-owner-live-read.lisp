@@ -27,13 +27,8 @@
 ; clusters that are tried or opened here and never apply (accumulated
 ; persistence over the book, 2026-09-27): consp and car conclusions with
 ; free-variable hypotheses, and the group and message-id index builders.
-(local (in-theory (disable fn-snrt-new-success-is-actual-matching-durable-completion
-                           fn-wire-next-loop-event-needs-input
-                           fn-wire-next-event-needs-input
-                           fn-ctl-authorize-execute-is-nonempty
+(local (in-theory (disable
                            fn-cpr-config-firstp-has-config
-                           fn-own-feed-never-offers-a-loop
-                           fn-digest-octetsp-implies-octet-listp
                            fn-prov-structured-is-not-a-string
                            fn-ctl-refresh-visible-is-visible fn-gidx-refresh-is-build
                            fn-gidx-put fn-gidx-put-all fn-gidx-build-entries

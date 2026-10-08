@@ -134,8 +134,9 @@ history it read, as before."
 
 (defun fnn-admin-publish-effect (store record authorization)
   "Execute ACL2's publication plan for RECORD: the immutable publication's
-steps (open, write, fsync, link, directory fsync, unlink, close), which set
-*fnn-section-step*.  Answers (values OUTCOME GENERATION NAME), OUTCOME the
+steps (open, write, fsync, link, directory fsync, close), which set
+*fnn-section-step*; the stage cleanup is queued, and the caller drains it
+(fnn-immutable-drain-cleanups) after releasing its locks.  Answers (values OUTCOME GENERATION NAME), OUTCOME the
 publication's own classification (books/journal-publish.lisp: :durable,
 :refused or :uncertain).  It touches no owner state: the offline command and
 a live reconfiguration's window A (fnn-owner-live-reconfigure) both run it."
@@ -146,7 +147,7 @@ a live reconfiguration's window A (fnn-owner-live-reconfigure) both run it."
     (unless (and (integerp generation) (>= generation 0)
                  (stringp name) (= (length name) 12) (null (position #\/ name)))
       (fnn-fault "ACL2 returned an invalid administrative publication plan"))
-    (values (fnn-immutable-publish-effect
+    (values (fnn-immutable-publish-deferred
              (fnn-core 'fn-native-admin-host-publication-jpub authorization)
              (fnn-admin-stage-path store) final directory (fnn-octets record)
              :cleanup-directory (fnn-staging store))
@@ -485,17 +486,21 @@ it refuses (its reason kept)."
   "Effect (:off . :publish): ACL2's publication plan executed, off O and E.
 The outcome is the publication's own word; an uncertain one fences the store
 and the service when quantum 2 re-signals it."
-  (multiple-value-bind (outcome generation name)
-      (fnn-admin-publish-effect (fnn-owner-service-store (fnn-rc-service run))
-                                (fnn-rc-record run) (fnn-rc-authorization run))
-    (setf (fnn-rc-generation run) generation
-          (fnn-rc-name run) name)
-    (when (eq outcome :uncertain)
-      (setf (fnn-rc-fence-store run) t
-            (fnn-rc-condition run)
-            (make-condition 'fnn-store-indeterminate
-                            :message "configuration record publication is uncertain")))
-    outcome))
+  (unwind-protect
+       (multiple-value-bind (outcome generation name)
+           (fnn-admin-publish-effect (fnn-owner-service-store (fnn-rc-service run))
+                                     (fnn-rc-record run) (fnn-rc-authorization run))
+         (setf (fnn-rc-generation run) generation
+               (fnn-rc-name run) name)
+         (when (eq outcome :uncertain)
+           (setf (fnn-rc-fence-store run) t
+                 (fnn-rc-condition run)
+                 (make-condition 'fnn-store-indeterminate
+                                 :message "configuration record publication is uncertain")))
+         outcome)
+    ;; The queued stage cleanup (the unlink and its directory fsync) runs
+    ;; here, with no lock held.
+    (fnn-immutable-drain-cleanups)))
 
 (defun fnn-rc-do-feed-io (run peer)
   "Effect (:off . (:feed-io . PEER)): open, read and repair PEER's journal
@@ -1117,9 +1122,11 @@ already durable publication appear to fail merely by advancing the history."
            (or (fnn-admin-authorize-carried store config-records record names)
                (fnn-admin-authorize store (fnn-history-records store)
                                     config-records record names))))
-    (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
-      (values generation name
-              (fnn-admin-verify-under-lock store record authorization)))))
+    (fnn-unwind-cleanups
+        ((multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
+           (values generation name
+                   (fnn-admin-verify-under-lock store record authorization))))
+      (fnn-immutable-drain-cleanups))))
 
 (defun fnn-admin-query (root plan)
   "Execute one read-only ACL2 configuration query against ROOT.

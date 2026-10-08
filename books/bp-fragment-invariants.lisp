@@ -58,11 +58,11 @@
        (list bytes offset k)
      (fn-bpf-agreep-nth-induction (cdr bytes) (+ 1 offset) (- k 1)))))
 
-(defthm fn-bpf-bytes-agreep-nth
+(local (defthm fn-bpf-bytes-agreep-nth
   (implies (and (fn-bpf-bytes-agreep bytes offset payload)
                 (natp offset) (natp k) (< k (len bytes)))
            (equal (nth k bytes) (nth (+ offset k) payload)))
-  :hints (("Goal" :induct (fn-bpf-agreep-nth-induction bytes offset k))))
+  :hints (("Goal" :induct (fn-bpf-agreep-nth-induction bytes offset k)))))
 
 (defthm fn-bpf-cell-of-of-agreeing-fragment
   (implies (and (fn-bpf-fragmentp f)
@@ -758,7 +758,3 @@
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-bpf-first-index-nil-means-no-marker)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bpf-bytes-agreep-nth))

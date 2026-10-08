@@ -1,0 +1,12 @@
+{
+ "file": "specs/views-9p.md",
+ "id": "NINEP-DEVELOPER-PROGRAM",
+ "note": "Scope: 13 books (books/ninep-{dispatch,fields,group-buckets,group-directory-source,header,mount,mounted-directory,qids,refusal,session,stat-stream,transport,version}), 6 host files (host/ninep-{mount,mounted-directory,protocol,session,stat-stream,transport}-host.lisp) plus host/native/ninep.lisp, specs/views-9p.md, and 14 test books tests/acl2/ninep-*-tests. State at dev 0b4d3b183: 7 books and 11 tests are Makefile ACL2_BOOKS roots; books/ninep-group-directory-source and its test sit in the Makefile's parked list; tests/acl2/ninep-transport-tests and ninep-stat-stream-host-tests carry UNHOOKED headers (H-5, small-reds 2026-10-04); host/ninep-mount-host and host/ninep-mounted-directory-host have no includer; no image build (host/native/build*.lisp) loads any 9P host file; planning/host-parked.json parks all 7 host files under 'F07 9P (PARK out of the Makefile)'; PRF-1202 and PRF-1207 are planned. Needed: (1) P: every ninep book and test a Makefile root again (drop the two UNHOOKED headers, unpark ninep-group-directory-source), certified in the developer closure; fix forward what does not certify. (2) C: the developer image profile (host/native/build.lisp, developer images only; production unchanged) loads the 6 host files and host/native/ninep.lisp; host_check --load/--world/--interfaces clean for them; host-parked.json rows removed by its tool. (3) P with C: a convergence row per red; PRF-1202/1207 move from planned when their keystones are proved. No deletion.",
+ "notes": [],
+ "owner": "P",
+ "severity": "medium",
+ "source": "coordinator ruling 12, 2026-10-07 (CONVERGE-3 row 7): 9P is kept, not deleted under D68",
+ "state": "open",
+ "title": "The F07 9P views are kept and hooked into the developer image profile as a program: every ninep book certifies in the developer closure and every 9P host file loads in the developer image",
+ "updated": "2026-10-07T22:40:00Z"
+}

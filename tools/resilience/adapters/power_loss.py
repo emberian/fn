@@ -59,7 +59,6 @@ from __future__ import annotations
 import argparse
 import collections
 import json
-import os
 from pathlib import Path
 import re
 import sys
@@ -75,7 +74,7 @@ from tools.resilience import checker  # noqa: E402
 BOUNDARY = "power-loss"
 RECOVERY_BOUNDARY = "recovery-power-loss"
 GROUP = "fn.test"
-EVIDENCE = ROOT / "planning/evidence/power-loss-2026-09-26/full/cuts-full.jsonl"
+EVIDENCE = ROOT / "tests/fixtures/evidence/power-loss-2026-09-26/cuts-full.jsonl"
 RECOVERED = re.compile(r"recovered transactions=(\d+) articles=(\d+)")
 PHASE_OP = {"checkpoint": "checkpoint", "compact": "reclaim", "reclaim": "reclaim",
             "retention": "reclaim", "reference-reclaimed": "probe", "reference": "probe",
@@ -101,22 +100,7 @@ def _post_of(mid: str, posts: list):
 
 
 def records(path=EVIDENCE) -> list:
-    """Read indexed logical names as verified evidence, including local shadows."""
-    sys.path.insert(0, str(ROOT / "tools"))
-    import evidence_store  # noqa: PLC0415
-    path = Path(path)
-    absolute = Path(os.path.abspath(path))
-    logical = None
-    for base in (ROOT.absolute(), ROOT.resolve()):
-        try:
-            logical = absolute.relative_to(base).as_posix()
-            break
-        except ValueError:
-            pass
-    text = (evidence_store.read_text(ROOT, logical)
-            if logical is not None and evidence_store.indexed(ROOT, logical)
-            else path.read_text())
-    return [json.loads(line) for line in text.splitlines() if line.strip()]
+    return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
 
 
 def attempted(rec: dict) -> int:

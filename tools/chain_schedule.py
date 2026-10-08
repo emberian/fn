@@ -3,7 +3,7 @@
 and how many ACL2 processes to run so that chain finishes soonest.
 
     python3 tools/chain_schedule.py fit      # refit the slowdown curves from
-                                             # planning/evidence/manifests
+                                             # the build/acl2 run dirs
 
 `tools/shape_books.py --critical` / `--chain BOOK` print the chain;
 `tools/certify_books.py --jobs auto` (the farm's default) plans with this.
@@ -54,20 +54,17 @@ import sys
 from typing import Iterable
 
 ROOT = Path(__file__).resolve().parent.parent
-HISTORY = ROOT / "planning" / "evidence" / "manifests"
-# What quiet_walls needs of each archived manifest, keyed by file name with
-# its size and mtime: the archive is ~400 MB of JSON (2,458 manifests, up to
-# 2.4 MB each) and every `--jobs auto` and shape_books call re-read all of it
-# (tooling-obstructions, 2026-09-28).  build/ is per tree and ignored; a stale
-# or unreadable summary is rebuilt, never trusted over the file.
+HISTORY = ROOT / "build" / "acl2"
+# What quiet_walls needs of each run manifest, keyed by run name with its
+# SHA-256: manifests run to 2.4 MB and every `--jobs auto` and shape_books call
+# would re-parse all of them (tooling-obstructions, 2026-09-28).  build/ is per
+# tree and ignored; a stale or unreadable summary is rebuilt, never trusted
+# over the file.
 SUMMARY = ROOT / "build" / "wall-summary.json"
 SUMMARY_VERSION = 2  # 2: keyed by the SHA-256 of the bytes read
-# (manifest name, UNAVAILABLE | REFUSED) for each archived manifest a
-# summaries() call had to skip; scheduling reads it, no claim does.
-UNREADABLE: list[tuple[str, str]] = []
 
 # (knee, slope) of s(L) per box, from `python3 tools/chain_schedule.py fit`
-# on 2026-09-28 over planning/evidence/manifests at 48a736d5e: persvati
+# on 2026-09-28 over the then-archived manifests at 48a736d5e: persvati
 # 42,222 book runs of 1,416 books (reference: each book's median below
 # load/core 0.25), mean |log error| 0.22; hbox 10,555 runs of 450 books
 # (reference below 0.35: hbox has too few quieter runs), 0.32.  Bucket
@@ -136,54 +133,30 @@ def manifest_summary(manifest: object) -> dict | None:
 
 
 def history_entries(history: Path) -> list[tuple[str, list, object]]:
-    """(name, stamp, read) for every `*certify-*.json` manifest in HISTORY.
-
-    The default history is the evidence archive's manifests: the committed
-    index's (read by hash, stamped by hash, verified on every read;
-    tools/evidence_store.py) plus any filed here and not yet added (stamped
-    by size and mtime).  An indexed name is ALWAYS the index's: a working-tree
-    file at that path is never read as itself (r61 F9).  `read` returns the
-    bytes (an indexed one verified against its line on every read); the
-    stamp only names the entry.  Another directory is read from disk alone.
-    """
-    entries: dict[str, tuple[str, list, object]] = {}
-    default = history.resolve() == HISTORY.resolve()
-    indexed: set[str] = set()
-    if default:
-        import evidence_store  # noqa: PLC0415
-        rel_dir = HISTORY.relative_to(ROOT).as_posix()
-        indexed = {rel.rsplit("/", 1)[-1] for rel in evidence_store.read_index(ROOT)
-                   if rel.startswith(rel_dir + "/")}
-    if history.is_dir():
-        for path in history.glob("*certify-*.json"):
-            if path.name in indexed:
-                continue
-            try:
-                stat = path.stat()
-            except OSError:
-                continue
-            entries[path.name] = (path.name, [stat.st_size, stat.st_mtime_ns],
-                                  lambda path=path: path.read_bytes())
-    if default:
-        index = evidence_store.read_index(ROOT)
-        rel_dir = HISTORY.relative_to(ROOT).as_posix()
-        for rel in evidence_store.glob(ROOT, rel_dir + "/*certify-*.json"):
-            name = rel.rsplit("/", 1)[-1]
-            if name in entries or rel not in index:
-                continue
-            entries[name] = (name, ["sha256", index[rel][0]],
-                             lambda rel=rel: evidence_store.read_bytes(ROOT, rel))
-    return list(entries.values())
+    """(name, stamp, read) for every certify manifest under HISTORY: a run
+    dir `*certify-*/manifest.json` (named by the dir) or a flat
+    `*certify-*.json`.  The stamp is size and mtime; it only names the entry."""
+    entries: list[tuple[str, list, object]] = []
+    if not history.is_dir():
+        return entries
+    for path in [*history.glob("*certify-*/manifest.json"), *history.glob("*certify-*.json")]:
+        name = path.name if path.parent == history else path.parent.name + ".json"
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        entries.append((name, [stat.st_size, stat.st_mtime_ns],
+                        lambda path=path: path.read_bytes()))
+    return entries
 
 
 def summaries(paths: list, summary: Path | None) -> list[dict | None]:
     """Each entry's manifest_summary, from the SUMMARY file where it is current.
 
     An entry is `history_entries`' (name, stamp, read); a bare Path is read
-    from disk.  Every entry's bytes are read on every call (an archived one
-    verified against its index line); the SUMMARY file only saves parsing
+    from disk.  Every entry's bytes are read on every call; the SUMMARY file only saves parsing
     them, keyed by the SHA-256 of the bytes read now, so no cached summary
-    stands in for bytes that were not read, changed, or are gone (r61 F9).
+    stands in for bytes that were not read, changed, or are gone.
     The file is this tool's own cache under build/, trusted as build/ is."""
     known: dict = {}
     if summary is not None:
@@ -193,7 +166,6 @@ def summaries(paths: list, summary: Path | None) -> list[dict | None]:
                 known = loaded.get("files") or {}
         except (OSError, ValueError, AttributeError):
             known = {}
-    import evidence_store  # noqa: PLC0415
     found, fresh, changed = [], {}, False
     for item in paths:
         if isinstance(item, Path):
@@ -208,16 +180,6 @@ def summaries(paths: list, summary: Path | None) -> list[dict | None]:
         try:
             data = read()
         except OSError:
-            found.append(None)
-            continue
-        except evidence_store.EvidenceError as error:
-            # An archived manifest that is unavailable (cold cache,
-            # archive unreachable) or refused (bytes that do not hash to
-            # the index line).  Scheduling cost, not a claim: skip it, say
-            # so, never raise, never cache the miss (r61 F9).
-            UNREADABLE.append((name, evidence_store.outcome(error)))
-            print(f"chain_schedule: skipping {name}: {evidence_store.outcome(error)}: "
-                  f"{error}", file=sys.stderr)
             found.append(None)
             continue
         stamp = ["sha256", hashlib.sha256(data).hexdigest()]
@@ -253,7 +215,7 @@ def quiet_walls(books: Iterable[str], history: Path | None = None,
     `RECENT` measurements on HOST, or on any box when HOST has none (the
     laptop, a fresh box).  Archived run ids carry a UTC stamp after
     `certify-`, which orders them in time.  A missing or unreadable
-    manifest is skipped.  The archive's manifests are read through the
+    manifest is skipped.  The run manifests are read through the
     SUMMARY cache (another history only with an explicit `summary`).
     """
     if history is None:

@@ -31,6 +31,8 @@ sys.path.insert(0, os.getcwd())
 from tests.native_harness import ROOT  # noqa: E402
 from tests.test_native_checkpoint import IMAGE  # noqa: E402
 from tests.test_native_pack_chain import NativePackChainTests, PROFILE_FLAGS  # noqa: E402
+sys.path.insert(0, os.path.join(os.getcwd(), "tools"))
+from rep_measure import decided_heap_env  # noqa: E402
 
 ENV = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
 ENV.pop("ACL2_SYSTEM_BOOKS", None)
@@ -67,8 +69,8 @@ def start_owner(config, deadline):
     """Start the owner; return (process, seconds to LISTENING, VmHWM KiB then)."""
     started = time.monotonic()
     process = subprocess.Popen([str(IMAGE), "--fn", "operator", str(config), "run"],
-                               cwd=ROOT, env=ENV, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+                               cwd=ROOT, env=decided_heap_env(IMAGE, config, ENV),
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     buffered = b""
     while True:
         while b"\n" in buffered:

@@ -201,7 +201,8 @@
 
 (defthm fn-frame-not-consp-when-len-zero
   (implies (equal (len a) 0) (not (consp a)))
-  :hints (("Goal" :expand ((len a)))))
+  :hints (("Goal" :expand ((len a))))
+  :rule-classes nil)
 
 (defthm fn-frame-split-of-append
   (implies (and (true-listp a) (equal (len a) (nfix n)))
@@ -218,13 +219,6 @@
 
 (defthm fn-frame-len-4-conses
   (implies (equal (len xs) 4)
-           (and (consp xs) (consp (cdr xs))
-                (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
-  :hints (("Goal" :expand ((len xs) (len (cdr xs)) (len (cdr (cdr xs)))
-                           (len (cdr (cdr (cdr xs))))))))
-
-(defthm fn-frame-len-8-conses
-  (implies (equal (len xs) 8)
            (and (consp xs) (consp (cdr xs))
                 (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
   :hints (("Goal" :expand ((len xs) (len (cdr xs)) (len (cdr (cdr xs)))
@@ -324,9 +318,9 @@
     fn-frame-split-suffix-true-listp fn-frame-split-prefix-octets
     fn-frame-split-suffix-octets fn-frame-split-exists
     fn-frame-split-exists-consp fn-frame-split-suffix-len
-    fn-frame-split-reassembles fn-frame-not-consp-when-len-zero
+    fn-frame-split-reassembles
     fn-frame-split-of-append fn-frame-len-2-conses fn-frame-len-4-conses
-    fn-frame-len-8-conses fn-frame-symbol-listp-true-listp
+    fn-frame-symbol-listp-true-listp
     fn-frame-u16-from-natp fn-frame-u32-from-natp
     fn-frame-octet-listp-of-append fn-frame-len-of-append
     fn-frame-u16-bytes-len fn-frame-u32-bytes-len
@@ -337,9 +331,9 @@
              fn-frame-split-suffix-true-listp fn-frame-split-prefix-octets
              fn-frame-split-suffix-octets fn-frame-split-exists
              fn-frame-split-exists-consp fn-frame-split-suffix-len
-             fn-frame-split-reassembles fn-frame-not-consp-when-len-zero
+             fn-frame-split-reassembles
              fn-frame-split-of-append fn-frame-len-2-conses
-             fn-frame-len-4-conses fn-frame-len-8-conses
+             fn-frame-len-4-conses
              fn-frame-symbol-listp-true-listp fn-frame-u16-from-natp
              fn-frame-u32-from-natp fn-frame-octet-listp-of-append
              fn-frame-len-of-append fn-frame-u16-bytes-len
@@ -353,14 +347,10 @@
 ;; enables it where it is used.
 (in-theory (disable (:linear fn-frame-at-mostp-bounds-len)
                     (:rewrite fn-frame-len-2-conses)
-                    (:rewrite fn-frame-len-4-conses)
-                    (:rewrite fn-frame-len-8-conses)
-                    (:rewrite fn-frame-not-consp-when-len-zero)))
+                    (:rewrite fn-frame-len-4-conses)))
 
 ; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
 ; a structural primitive of bare variables, kept for this book's proofs
 ; and disabled for every book that includes it (enable or :use them).
 (in-theory (disable fn-frame-len-2-conses
-                    fn-frame-len-4-conses
-                    fn-frame-len-8-conses
-                    fn-frame-not-consp-when-len-zero))
+                    fn-frame-len-4-conses))
