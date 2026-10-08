@@ -580,6 +580,8 @@ class Run:
             raise CellError("no articles to read: the store is empty and nothing was POSTed")
         lat = [[] for _ in range(readers)]
         bad = collections.Counter()
+        bad_win = collections.Counter()        # refusals per whole second since the phase began, by reply code
+        t_phase = time.monotonic()
         done = itertools.count()
         errs = []
         lock = threading.Lock()
@@ -611,6 +613,7 @@ class Run:
                         lat[k].append(d)
                     else:
                         bad[refusal_name(rep)] += 1
+                        bad_win[(int(time.monotonic() - t_phase), rep[:3].decode("latin-1"))] += 1
                 c.close()
             except Exception as e:      # noqa: BLE001
                 errs.append(repr(e))
@@ -659,9 +662,88 @@ class Run:
             out["cmd"]["POST"] = res_mod.lat_stats(plat)
         if bad:
             out["bad_replies"] = dict(bad)
+            codes = sorted({c for _, c in bad_win})
+            out["bad_per_window"] = {c: {"total": sum(v for (w, cc), v in bad_win.items() if cc == c),
+                                         "windows": len({w for (w, cc) in bad_win if cc == c}),
+                                         "max_per_1s": max(v for (w, cc), v in bad_win.items() if cc == c),
+                                         "of_windows": int(secs) + 1} for c in codes}
         if errs:
             out["errors"] = errs
             self.errors += errs
+        return out
+
+    def phase_publish_live(self, ph):
+        """W8 stall row: open-loop POSTs at rate_per_s on one connection; after before_s a checkpoint is requested from the
+        running owner (`store checkpoint` with an owner is a request to it, docs/operator-internals.md); the window runs until
+        the owner logs the publication done.  Reports the longest POST stall (intended send to 240), p99 of POSTs whose
+        intended time is inside the window, window duration, VmHWM before and after."""
+        rate, octets = ph["rate_per_s"], ph["octets"]
+        before_s, after_s, max_wait = ph.get("before_s", 5), ph.get("after_s", 5), ph.get("max_wait_s", 600)
+        c = self.conn()
+        if c is None:
+            raise CellError("no connection for the POST stream")
+        errp = self.node.work / ("owner.%d.err" % self.node.err_n)
+        err0 = errp.stat().st_size if errp.exists() else 0
+        hwm0 = (proc_snapshot(self.node.pid) or {}).get("hwm")
+        gap = 1.0 / rate
+        recs = []                       # (intended, done, latency or None)
+        stop = threading.Event()
+
+        def poster():
+            try:
+                t0 = time.perf_counter()
+                k = 0
+                while not stop.is_set():
+                    intended = t0 + k * gap
+                    now = time.perf_counter()
+                    if intended > now:
+                        time.sleep(intended - now)
+                    d = post_one(c, self.ctr, octets)
+                    done = time.perf_counter()
+                    recs.append((intended, done, (done - intended) if d is not None else None))
+                    k += 1
+            except Exception as e:      # noqa: BLE001
+                self.errors.append(repr(e))
+        th = threading.Thread(target=poster)
+        th.start()
+        t_start = time.perf_counter()
+        time.sleep(before_s)
+        t_req = time.perf_counter()
+        w0 = time.monotonic()
+        req = subprocess.run(self.node.argv("store", "checkpoint"), env=self.node.env, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, timeout=600)
+        reply = req.stdout.decode("utf-8", "replace").strip()[-300:]
+        t_end, end_line = None, None
+        deadline = time.monotonic() + max_wait
+        if req.returncode == 0 and reply.split()[:1] != ["nothing-to-compact"]:
+            while time.monotonic() < deadline:
+                new = errp.read_bytes()[err0:].decode("utf-8", "replace") if errp.exists() else ""
+                done_lines = [ln for ln in new.splitlines() if ln.startswith("CHECKPOINT auto ") and "failed" not in ln and "refused" not in ln]
+                if done_lines:
+                    t_end, end_line = time.perf_counter(), done_lines[-1]
+                    break
+                time.sleep(0.2)
+        time.sleep(after_s)
+        stop.set()
+        th.join()
+        hwm1 = (proc_snapshot(self.node.pid) or {}).get("hwm")
+        out = {"cmd": {}, "hwm_before_kib": hwm0, "hwm_after_kib": hwm1, "request_reply": reply, "request_rc": req.returncode,
+               "owner_log": end_line}
+        ok = [r for r in recs if r[2] is not None]
+        if t_end is None:
+            out["status"] = "not-measured"
+            out["reason"] = "no 'CHECKPOINT auto' line within %d s of the request (reply: %s)" % (max_wait, reply)
+            return out
+        inwin = [r[2] for r in ok if t_req <= r[0] <= t_end]
+        before = [r[2] for r in ok if r[0] < t_req]
+        dones = sorted(r[1] for r in ok if t_req - 1 <= r[1] <= t_end + 1)
+        out["window_s"] = round(t_end - t_req, 3)
+        out["window_posts"] = len(inwin)
+        out["stall_max_s"] = round(max(inwin), 4) if inwin else None
+        out["done_gap_max_s"] = round(max((b - a for a, b in zip(dones, dones[1:])), default=0), 4)
+        out["cmd"]["POST"] = res_mod.lat_stats(inwin) if inwin else {}
+        out["cmd"]["POST_before"] = res_mod.lat_stats(before) if before else {}
+        out["posts_refused_or_failed"] = len(recs) - len(ok)
         return out
 
     def args_known_floor(self):
@@ -1083,6 +1165,10 @@ def prepare_store(node, run, spec, cache_dir, key):
         lock = node.store / "writer.lock"
         lock.touch()
         lock.chmod(0o600)
+        rb = subprocess.run([str(node.launcher), "--fn", "store", str(node.store), "rebind-filesystem"], env=node.env,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=900)     # a copy on another filesystem than the fixture's (PKT-579)
+        if rb.returncode != 0:
+            raise CellError("fixture rebind-filesystem exit %d: %s" % (rb.returncode, rb.stdout[-400:].decode("utf-8", "replace")))
         node.start()
         ids, group = discover_ids(node.port)
         if not ids:

@@ -24,6 +24,7 @@ PHASE_KINDS = {
     "census": set(),
     "prof": {"article_kib", "reps"},
     "publish": set(),
+    "publish_live": {"rate_per_s", "octets", "before_s", "after_s", "max_wait_s"},
     "read": {"readers", "count", "duration_s", "cmd", "poster"},
     "hold": {"steps", "step_settle_s", "close"},
     "idle": {"seconds"},

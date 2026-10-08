@@ -40,7 +40,7 @@ def derive(workload, phases):
         if p.get("status") == "not-implemented":
             nm.setdefault("*", p.get("reason"))
     fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers, "article-sizes": _sizes, "growth": _growth,
-          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "prof-ops": _prof}.get(workload)
+          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "publish-stall": _stall, "prof-ops": _prof}.get(workload)
     if fn:
         fn(phases, m, nm)
     if workload == "rss-small-filled" and "rss_kib.hwm" not in m:
@@ -335,6 +335,25 @@ def _commands(phases, m, nm):
         m["cmd.p99_ms.max"] = worst
 
 
+def _stall(phases, m, nm):
+    ph = _phase(phases, "publish-live")
+    if not ph or ph.get("status") not in (None, "ok"):
+        nm["publish.stall_max_s"] = (ph or {}).get("reason") or "publish-live phase did not complete"
+        return
+    m["publish.stall_max_s"] = ph.get("stall_max_s")
+    m["publish.window_s"] = ph.get("window_s")
+    m["publish.window_posts"] = ph.get("window_posts")
+    m["publish.done_gap_max_s"] = ph.get("done_gap_max_s")
+    st = (ph.get("cmd") or {}).get("POST") or {}
+    if st.get("p99_ms") is not None:
+        m["publish.post_p99_ms"] = st["p99_ms"]
+    elif st.get("n"):
+        nm["publish.post_p99_ms"] = "fewer than 200 POSTs inside the window (n=%d); max reported as publish.stall_max_s" % st["n"]
+    if st.get("p50_ms") is not None:
+        m["publish.post_p50_ms"] = st["p50_ms"]
+    m["publish.hwm_before_kib"], m["publish.hwm_after_kib"] = ph.get("hwm_before_kib"), ph.get("hwm_after_kib")
+
+
 def merge_sweep(cell_id, workload, subs):
     """Merge sub-cells (key, n, cell result) into the cell the bars judge: metrics suffixed @KEY, and for
     every metric present at 3 or more sizes its fitted exponent against n (`NAME.exponent`)."""
@@ -368,7 +387,7 @@ def merge_sweep(cell_id, workload, subs):
     cmd_exp = [v for k, v in metrics.items() if k.startswith("cmd.p99_ms.") and k.endswith(".exponent") and not k.startswith("cmd.p99_ms.max")]
     if cmd_exp:
         metrics["cmd.p99_exponent.max"] = max(cmd_exp)
-    for name in ("cmd.p99_ms.max",):
+    for name in ("cmd.p99_ms.max", "publish.stall_max_s"):
         vals = [v for k, v in metrics.items() if k.startswith(name + "@")]
         if vals:
             metrics[name] = max(vals)

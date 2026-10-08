@@ -384,21 +384,34 @@
   },
   {
    "id": "T-PUB",
-   "quantity": "publication (checkpoint) of a 50k store: octets written O(changed) not O(store) (exponent against n <= 0.5); longest POST stall while it runs <= 2 s (time check)",
+   "quantity": "publication (checkpoint) of a 50k store: octets written O(changed) not O(store) (exponent against n <= 0.5); the POST stall half is T-PUB-STALL (W8S)",
    "cell": "W15",
    "workload": "mem-vs-size",
    "time": false,
+   "checks": [
+    {
+     "metric": "publish.write_octets.exponent",
+     "cmp": "le",
+     "threshold": 0.5
+    }
+   ],
+   "source": "ruling 17 (LOAD-PROGRAM 1a)",
+   "file": "tools/load/bars.json",
+   "owner": "deputy-L",
+   "severity": "medium"
+  },
+  {
+   "id": "T-PUB-STALL",
+   "quantity": "longest POST stall (intended send to 240) while an online publication runs, POSTs at 20/s, 10k and 50k stores; window duration, p99 inside the window and VmHWM reported",
+   "cell": "W8S",
+   "workload": "publish-stall",
+   "time": true,
    "checks": [
     {
      "metric": "publish.stall_max_s",
      "cmp": "le",
      "threshold": 2.0,
      "time": true
-    },
-    {
-     "metric": "publish.write_octets.exponent",
-     "cmp": "le",
-     "threshold": 0.5
     }
    ],
    "source": "ruling 17 (LOAD-PROGRAM 1a)",
