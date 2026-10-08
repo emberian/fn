@@ -48,6 +48,8 @@
      "the I/O loops every served connection is multiplexed on")
     (:cold-workers 4 "threads"
      "the persistent workers that read a cold page off the owner mutex while the page pool is unfunded: a stalled read holds one, and a miss past them is refused by name (books/page-read-direct.lisp)")
+    (:cold-wait-queue 64 "requests"
+     "the served requests that may wait for a cold-read worker at once (books/cold-read-wait.lisp): a miss that finds every worker busy and fewer than this many waiting joins the queue and is answered or refused only at its dependency deadline; one more is refused by name at arrival")
     (:control-clients 16 "clients"
      "concurrent control-socket clients the owner serves")
     (:thread-runtime-mib 4 "MiB"
