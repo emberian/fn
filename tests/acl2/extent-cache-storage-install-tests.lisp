@@ -1,6 +1,7 @@
 ; Install pair, table-decision, and profile-init teeth.
 (in-package "ACL2")
 (include-book "extent-cache-storage-fixtures")
+(set-ignore-ok t)
 
 (xcs5-ground fn-xc-install-entry-bytes-installs-the-table-decision-positive-witness ((file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (compressed 3) (trailer 77) (decoded 3) (dict-id 0) (p 1) (end 2) (k 0) (i 0) (dst *xcs5-dst*) (from 0) (slots (mv-nth 1 (fn-xc-init-all 1 0 nil nil))) (cells (mv-nth 2 (fn-xc-init-all 1 0 nil nil))) (entries *xcs5-empty-entries*) (ledger *xcs5-entry-ledger*) (token *xcs5-et*) (stage *xcs5-bytes*)) (and (fn-xc-readyp slots cells) (<= (fn-xc-ne cells) (fn-xce-keys-length entries)) (natp elen) (equal (len stage) (+ elen *fn-frame-trailer-octets*)) (equal (take 5 (fn-xc-install-entry-bytes file eoff elen trailer token slots cells entries stage)) (fn-xc-install-entry file eoff elen trailer token slots cells))))
 

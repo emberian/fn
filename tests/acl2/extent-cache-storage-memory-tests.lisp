@@ -1,6 +1,7 @@
 ; Charged residency and actual retirement teeth.
 (in-package "ACL2")
 (include-book "extent-cache-storage-fixtures")
+(set-ignore-ok t)
 
 (xcs5-ground fn-xce-every-resident-row-is-charged-positive-witness ((file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (compressed 3) (trailer 77) (decoded 3) (dict-id 0) (p 1) (end 2) (k 0) (i 0) (dst *xcs5-dst*) (from 0) (slots (mv-nth 3 (xcs5-entry-build))) (cells (mv-nth 4 (xcs5-entry-build))) (entries (mv-nth 5 (xcs5-entry-build))) (ledger *xcs5-entry-ledger*) (token *xcs5-et*) (stage *xcs5-bytes*)) (and (fn-xce-fundedp ledger slots entries) (and (natp i) (< i (fn-xce-keys-length entries))) (let ((n (len (nth i (nth 1 entries))))) (and (<= n (fn-xce-cached-charge ledger (fn-xc-slot-token i slots))) (implies (posp n) (and (< i (fn-xcs-count slots)) (equal (fn-xcs-get-kind i slots) 1) (fn-xc-slot-token i slots) (equal (fn-prl-nth 1 (cdr (fn-prl-binding (fn-xc-slot-token i slots) (fn-prl-nth 3 ledger)))) :cached)))))))
 

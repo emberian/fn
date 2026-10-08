@@ -1,6 +1,7 @@
 ; Generated closed teeth; source claims are checked against admitted theorems.
 (in-package "ACL2")
 (include-book "extent-cache-storage-fixtures")
+(set-ignore-ok t)
 
 (xcs5-ground fn-xc-entry-span-at-answers-from-a-matching-slot-positive-witness ((file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (compressed 3) (trailer 77) (decoded 3) (dict-id 0) (p 1) (end 2) (k 0) (i 0) (dst *xcs5-dst*) (from 0) (slots (mv-nth 3 (xcs5-entry-build))) (cells (mv-nth 4 (xcs5-entry-build))) (entries (mv-nth 5 (xcs5-entry-build))) (ledger *xcs5-entry-ledger*) (token *xcs5-et*) (stage *xcs5-bytes*)) (and (let* ((r (fn-xc-entry-span-at from file eoff elen poff plen trailer p end slots cells entries dst)) (s (mv-nth 2 r)) (n (mv-nth 1 r))) (declare (ignorable r s n)) (equal (mv-nth 0 r) :span)) (let* ((r (fn-xc-entry-span-at from file eoff elen poff plen trailer p end slots cells entries dst)) (s (mv-nth 2 r)) (n (mv-nth 1 r))) (declare (ignorable r s n)) (and (natp s) (<= from s) (< s (fn-xc-ne cells)) (fn-xc-slot-matchp s nil 1 file eoff elen 0 0 0 0 trailer 0 slots) (equal (nth s (nth 0 entries)) (fn-xc-entry-key file eoff elen trailer (fn-xc-slot-token s slots))) (equal (len (nth s (nth 1 entries))) (+ elen *fn-frame-trailer-octets*)) (<= eoff poff) (<= (+ poff plen) (+ eoff elen)) (posp n) (<= (+ p n) end) (<= (+ p n) plen) (<= n *fn-ew-span-capacity*)))))
 
