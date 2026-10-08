@@ -12,12 +12,13 @@ it in planning/teeth-obligations.json (`critical`, `statement_digest`) and its
 THE EVIDENCE PACKAGE (deputy P's five parts), per critical keystone:
 
   premises        a positive defteeth witness asserting the whole antecedent:
-                  generated teeth, witness `executable` or `instance`, the
+                  generated teeth, witness `executable`, `instance`, or a world-checked ground `lemma`, the
                   owner book certified at its digest
   wrong_answer    a hypothesis-removal witness (a reachable removal) or an
                   edit mutation, from the same defteeth
   host_test       DECLARED in planning/critical-evidence.json: the entry's
-                  :subject is reached by a host line (reach_check) and a named
+                  :subject is reached by a host line, or a campaign-tied log
+                  program whose host sequence and cuts pass their checker; a named
                   test (`tests/...::marker`) exists and mentions the subject
   trace_witness   DECLARED there: a test that produces the state by running
                   the host or its ACL2 step from init and asserts the claim;
@@ -161,9 +162,13 @@ def package(entry: dict, declared: dict | None, reachable, root: Path = ROOT) ->
     if entry.get("class") != "generated":
         out["premises"] = out["wrong_answer"] = "no defteeth/defkeystone teeth"
     else:
-        out["premises"] = (None if entry.get("witness") in ("executable", "instance")
+        # defteeth accepts a ground lemma only when its world formula equals
+        # the CLOSED full premise-and-conclusion conjunction. It establishes
+        # satisfiability even for non-executable crash-image predicates.
+        # Reachability still needs the separate trace_witness declaration.
+        out["premises"] = (None if entry.get("witness") in ("executable", "instance", "lemma")
                            and entry.get("certified")
-                           else "no certified executable/instance positive witness")
+                           else "no certified executable/instance/ground-lemma positive witness")
         removals = entry.get("removals", {})
         out["wrong_answer"] = (None if removals.get("reachable") or
                                str(entry.get("mutations", "")).startswith("edits:")
@@ -180,7 +185,7 @@ def package(entry: dict, declared: dict | None, reachable, root: Path = ROOT) ->
         if not subject:
             out["host_test"] = "no :subject declared"
         elif not reachable(subject):
-            out["host_test"] = f"{subject} is reached by no host line (reach_check)"
+            out["host_test"] = f"{subject} is reached by no host line or checked log campaign (reach_check)"
     return out
 
 
@@ -329,12 +334,34 @@ def load_owed() -> dict:
 
 def lazy_reachable():
     graph = []
+    checked_programs: dict[str, bool] = {}
 
     def reachable(subject: str) -> bool:
         if not graph:
             import reach_check
             graph.append(reach_check.Graph())
-        return subject in graph[0].reachable
+        if subject in graph[0].reachable:
+            return True
+        # The host implements these model programs as I/O, rather than
+        # calling their Lisp list constructors. Require both reach_check's
+        # campaign tie and the existing source-to-model sequence/cut check.
+        if subject not in graph[0].tied:
+            return False
+        from tests.campaign import native_cuts
+        if subject not in native_cuts.LOG_PROGRAM_HOSTS and subject != "fn-lg-open-program":
+            return False
+        if subject not in checked_programs:
+            try:
+                if subject == "fn-lg-open-program":
+                    native_cuts.verify_recovery_order()
+                    valid = not native_cuts.verify_log_route_arms()
+                else:
+                    native_cuts.verify_log_cut_map()
+                    valid = True
+            except (AssertionError, OSError, ValueError):
+                valid = False
+            checked_programs[subject] = valid
+        return checked_programs[subject]
     return reachable
 
 

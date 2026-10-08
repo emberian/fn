@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -74,6 +75,39 @@ class Mapping(unittest.TestCase):
             path.write_text('{"classes": ["durability"], "rows": [{"class": "durability"}]}')
             with self.assertRaises(ValueError):
                 kc.load_map(path)
+
+
+class ModelProgramReach(unittest.TestCase):
+    def test_campaign_program_requires_the_existing_cut_check(self):
+        import reach_check
+        from tests.campaign import native_cuts
+        graph = type("Graph", (), {"reachable": set(), "tied": {"fn-lgrc-program"}})()
+        with mock.patch.object(reach_check, "Graph", return_value=graph):
+            with mock.patch.object(native_cuts, "verify_log_cut_map") as check:
+                reachable = kc.lazy_reachable()
+                self.assertTrue(reachable("fn-lgrc-program"))
+                self.assertTrue(reachable("fn-lgrc-program"))
+                check.assert_called_once()
+            with mock.patch.object(native_cuts, "verify_log_cut_map", side_effect=AssertionError("missing fence")):
+                self.assertFalse(kc.lazy_reachable()("fn-lgrc-program"))
+            graph.tied = {"unmapped-model"}
+            self.assertFalse(kc.lazy_reachable()("unmapped-model"))
+            graph.tied = set()
+            self.assertFalse(kc.lazy_reachable()("fn-lgrc-program"))
+
+    def test_open_program_requires_order_and_route_checks(self):
+        import reach_check
+        from tests.campaign import native_cuts
+        graph = type("Graph", (), {"reachable": set(), "tied": {"fn-lg-open-program"}})()
+        with mock.patch.object(reach_check, "Graph", return_value=graph), \
+                mock.patch.object(native_cuts, "verify_recovery_order") as order, \
+                mock.patch.object(native_cuts, "verify_log_route_arms", return_value=[]):
+            self.assertTrue(kc.lazy_reachable()("fn-lg-open-program"))
+            order.assert_called_once()
+            with mock.patch.object(native_cuts, "verify_log_route_arms", return_value=["skipped cut"]):
+                self.assertFalse(kc.lazy_reachable()("fn-lg-open-program"))
+            order.side_effect = AssertionError("barrier reordered")
+            self.assertFalse(kc.lazy_reachable()("fn-lg-open-program"))
 
 
 class Marking(unittest.TestCase):
@@ -189,11 +223,27 @@ class Gate(unittest.TestCase):
         self.assertTrue(any("reached by no host line" in f for f in found), found)
 
     def test_no_positive_witness_or_wrong_answer_witness_fails(self):
-        for bad in (teeth("k", witness="lemma"), teeth("k", certified=False),
+        for bad in (teeth("k", witness="prose"), teeth("k", certified=False),
+                    teeth("k", witness="lemma", certified=False),
                     teeth("k", removals={"reachable": 0}, mutations="deferred"),
                     {"name": "k", "class": "hand", "registry": True, "critical": "durability"}):
             found, _ = self.run_gate([bad], [], {"k": self.full})
             self.assertTrue(any("HARD FAIL" in f for f in found), bad)
+
+    def test_certified_ground_lemma_needs_the_same_full_package(self):
+        # ACL2's defteeth checks exact closed formula equality for this mode;
+        # a quantified crash-image predicate cannot be executed by assert-event.
+        entry = teeth("k", witness="lemma", removals={"lemma": 1})
+        found, summary = self.run_gate([entry], [], {"k": self.full})
+        self.assertEqual((found, summary["complete"]), ([], 1))
+        for absent in ("trace_witness", "host_test", "mutation"):
+            declared = {k: v for k, v in self.full.items() if k != absent}
+            found, _ = self.run_gate([entry], [], {"k": declared})
+            self.assertTrue(any(absent + " (" in f for f in found), found)
+        # A logical removal alone still does not establish a wrong answer on
+        # a reachable path: this case must supply an edit mutation.
+        found, _ = self.run_gate([dict(entry, mutations="deferred")], [], {"k": self.full})
+        self.assertTrue(any("wrong_answer (" in f for f in found), found)
 
     def test_existing_critical_without_the_package_needs_an_owed_item(self):
         found, _ = self.run_gate([teeth("k")], ["k"])

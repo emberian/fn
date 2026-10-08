@@ -32,6 +32,8 @@ EXIT_UNCERTAIN, EXIT_USAGE, KILLED = 3, 5, -9
 def executable(path: Path) -> bool:
     return path.is_file() and os.access(path, os.X_OK)
 
+# Critical host path: the campaign checks fn-lg-open-program through
+# fnn-recover-log and fnn-store-recovery-barriers, including every cut.
 
 class NativeCutTableTests(unittest.TestCase):
     def test_the_table_agrees_with_the_host(self):
