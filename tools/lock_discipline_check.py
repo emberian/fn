@@ -3931,13 +3931,14 @@ class Checker:
         self.excepted = {(r["rule"], r["function"], r.get("key", "*")): r["why"]
                          for r in self.c.raw.get("exceptions", [])}
 
-    def add(self, rule, info: FnInfo, line, message, key, trail=None, category="violation", weight=1):
+    def add(self, rule, info: FnInfo, line, message, key, trail=None, category="violation", weight=1,
+            origin_loaded=None):
         exc = (self.excepted.get((rule, info.name, key)) or self.excepted.get((rule, info.name, "*")))
         if exc and category == "violation":
             category = "exception"
             message = message + " [declared: " + exc + "]"
         self.findings.append(Finding(rule, category, info.name, info.path, line, message, key,
-                                     trail or [], info.loaded, weight))
+                                     trail or [], info.loaded if origin_loaded is None else origin_loaded, weight))
 
     def rule_unresolved(self, only):
         """An event the walk could not decide is reported, never assumed safe."""
@@ -4104,9 +4105,16 @@ class Checker:
                         k = (lock, leaf)
                         row = found.get(k)
                         if row is None:
-                            found[k] = [kind, info, e, how, 1]
+                            found[k] = [kind, info, e, how, 1, info.loaded]
                         else:
                             row[4] += 1
+                            # The default report audits loaded lock origins,
+                            # not loaded I/O leaves. Prefer a live trail when
+                            # parked and live regions reach the same leaf;
+                            # --all-files still retains every region's count.
+                            if info.loaded and not row[5]:
+                                row[:4] = [kind, info, e, how]
+                            row[5] = row[5] or info.loaded
         for runner, row in sorted(self.c.raw.get("private_owner_commands", {}).items()):
             if runner not in self.infos or runner not in {r for v in self.m.private_owner.values()
                                                           for r in v["rows"]}:
@@ -4118,7 +4126,7 @@ class Checker:
                 self.add("R2", self.infos[runner], self.infos[runner].line,
                          f"private-owner exemption pinned at {want} site/leaf pair(s), found {have}; {advice}",
                          f"private-owner-sites:{runner}")
-        for (lock, leaf), (kind, info, e, how, n) in sorted(found.items(), key=lambda kv: kv[0]):
+        for (lock, leaf), (kind, info, e, how, n, origin_loaded) in sorted(found.items(), key=lambda kv: kv[0]):
             lfn, lline, lname = leaf.split(":", 2)
             if isinstance(how, list):
                 trail = how
@@ -4136,12 +4144,12 @@ class Checker:
                          f"unresolved callee {lname}: its function is not a literal the checker can classify, "
                          f"and it runs while holding {lock}; reached from {n} site(s) under {lock}, "
                          f"e.g. {info.name} ({info.path}:{e.line})",
-                         f"{lock}:{lname}", trail, "unresolved", weight=n)
+                         f"{lock}:{lname}", trail, "unresolved", weight=n, origin_loaded=origin_loaded)
                 continue
             self.add("R2", leaf_info, int(lline),
                      f"{kind} leaf {lname} runs while holding {lock}; reached from {n} site(s) under {lock}, "
                      f"e.g. {info.name} ({info.path}:{e.line})",
-                     f"{lock}:{lname}", trail, weight=n)
+                     f"{lock}:{lname}", trail, weight=n, origin_loaded=origin_loaded)
 
     # R3 ----------------------------------------------------------------------
     def rule_R3(self):

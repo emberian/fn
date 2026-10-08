@@ -13,6 +13,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import json
 from pathlib import Path
 
@@ -56,6 +57,72 @@ def analyzed(source):
 
 def keys(findings, rule):
     return [(f.function, f.key) for f in findings if f.rule == rule]
+
+
+class R2LoadedOrigins(unittest.TestCase):
+    """Loaded-image scope follows the held region, not its shared I/O leaf."""
+
+    LEAF = '(defun fixture-open (path) (sb-posix:open path 0))'
+
+    @staticmethod
+    def held(name):
+        return f'''(defun {name} (service path)
+          (sb-thread:with-mutex ((fnn-owner-service-lock service))
+            (fixture-open path)))'''
+
+    def findings(self, sources, loaded):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            native = root / 'host/native'
+            native.mkdir(parents=True)
+            for name, source in sources.items():
+                (native / name).write_text(source)
+            (native / 'build.lisp').write_text('\n'.join(
+                f'(load "host/native/{name}")' for name in loaded))
+            _, _, checker = ldc.analyze_tree(root, CONTRACTS, reach={})
+            return checker.run({'R2'})
+
+    def test_parked_origin_does_not_become_live_through_loaded_leaf(self):
+        all_files = self.findings(
+            {'leaf.lisp': self.LEAF, 'parked.lisp': self.held('parked')},
+            ['leaf.lisp'])
+        self.assertEqual(keys(all_files, 'R2'), [('fixture-open', 'O:sb-posix:open')])
+        self.assertEqual([f for f in all_files if f.loaded], [])
+        self.assertIn('parked (', all_files[0].trail[0])
+
+    def test_loaded_origin_is_not_hidden_by_a_parked_leaf(self):
+        findings = self.findings(
+            {'leaf.lisp': self.LEAF, 'live.lisp': self.held('live')},
+            ['live.lisp'])
+        self.assertEqual(keys([f for f in findings if f.loaded], 'R2'),
+                         [('fixture-open', 'O:sb-posix:open')])
+
+    def test_either_origin_order_keeps_the_live_trail_and_all_sites(self):
+        for parked_file, live_file in [('a.lisp', 'z.lisp'), ('z.lisp', 'a.lisp')]:
+            with self.subTest(parked_file=parked_file):
+                findings = self.findings(
+                    {'leaf.lisp': self.LEAF, parked_file: self.held('parked'),
+                     live_file: self.held('live')}, ['leaf.lisp', live_file])
+                self.assertEqual(len(findings), 1)
+                self.assertTrue(findings[0].loaded)
+                self.assertEqual(findings[0].weight, 2)
+                self.assertIn('live (', findings[0].trail[0])
+
+    def test_ablation_of_origin_provenance_reproduces_the_false_live_key(self):
+        add = ldc.Checker.add
+
+        def leaf_based_add(checker, *args, **kwargs):
+            kwargs.pop('origin_loaded', None)
+            return add(checker, *args, **kwargs)
+
+        # Remove just the new provenance input; the unchanged old add() then
+        # copies the loaded leaf's flag and invents the live held path.
+        with patch.object(ldc.Checker, 'add', leaf_based_add):
+            findings = self.findings(
+                {'leaf.lisp': self.LEAF, 'parked.lisp': self.held('parked')},
+                ['leaf.lisp'])
+        self.assertEqual(keys([f for f in findings if f.loaded], 'R2'),
+                         [('fixture-open', 'O:sb-posix:open')])
 
 
 class R3Reads(unittest.TestCase):
