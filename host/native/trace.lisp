@@ -402,6 +402,14 @@ returned unchanged."
           (values-list vals))
       (funcall thunk))))
 
+(defmacro fnn-dtrace-around-mv (name body)
+  "BODY (a fixed callback's scalar-MV form) with its values offered to the ring
+when NAME is traced.  Off: BODY inline after one special-variable test -- no
+closure and no funcall.  On: the same BODY in a closure."
+  `(if *fnn-dtrace*
+       (fnn-dtrace-around-mv-traced ,name (lambda () ,body))
+     ,body))
+
 (defun fnn-dtrace-snapshot (ring since limit)
   "Under the ring lock: free the rows at most SINCE, copy the next LIMIT live
 rows and the counters.  Everything that formats runs after this returns."
