@@ -6,9 +6,7 @@ processes; they do not turn the older Python/native differential finding into
 a claim about this source revision.
 """
 
-import os
 import re
-import subprocess
 import unittest
 
 from tests import test_native_checkpoint_auto as checkpoint_auto
@@ -77,27 +75,21 @@ class NativeRecoveryKeyringCheckpointTests(checkpoint_auto.AutoCheckpointFixture
         self.init_development()
         principal = self.root / "principal.bin"
         principal.write_bytes(bytes([85]) * 32)
-        ed_public = self.root / "ed-public.bin"
-        ml_private, ml_public = self.root / "ml-private.pem", self.root / "ml-public.pem"
-        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
-        for args in (("genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private),
-                     ("pkey", "-in", ml_private, "-pubout", "-out", ml_public)):
-            made = subprocess.run([openssl, *map(str, args)], capture_output=True, timeout=60)
-            self.assertEqual(made.returncode, 0, made.stderr)
+        keysets = (self.root / "author-keys-1", self.root / "author-keys-2")
+        # Like test_native_friends_feed, use the image's libsodium and
+        # libfn-mldsa65 through peer keygen, not the system OpenSSL context.
+        # This writes key files only; hybrid-enroll below records both
+        # generations under the same author principal.
+        for keys in keysets:
+            self.node.operator("peer", "keygen", keys, expect=EXIT_OK)
 
         ids = ("<capture-before@example.invalid>", "<capture-after@example.invalid>")
-        # Two distinct RFC 8032 public keys; rotation changes the author's
-        # enrollment, not the node's Cancel-Lock secret.
-        public_keys = (
-            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
-            "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c")
         expected = (b"0 unverified malformed keyring 1\r\n",
                     b"0 unverified malformed keyring 2\r\n")
         owner = self.node.start()
-        for generation, (message_id, public) in enumerate(zip(ids, public_keys), 1):
-            ed_public.write_bytes(bytes.fromhex(public))
+        for generation, (message_id, keys) in enumerate(zip(ids, keysets), 1):
             self.node.invoke("hybrid-enroll", self.control, str(generation), principal,
-                             ed_public, ml_public, expect=EXIT_OK)
+                             keys / "ed-public.bin", keys / "ml-public.pem", expect=EXIT_OK)
             with self.node.session(timeout=30, greeting=(b"200",)) as client:
                 offered, accepted = client.post(article(
                     message_id, headers=("FN-Statement: malformed",)))
