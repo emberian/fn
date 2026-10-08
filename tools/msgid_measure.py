@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import statistics
@@ -31,6 +32,32 @@ sys.path.insert(0, str(ROOT))
 from tests.native_harness import wait_for_announcement  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
 from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
+
+
+def decided_heap_env(image, config, env):
+    """ENV with the heap and control stack the image's own probe decides for
+    CONFIG's served run (`heap -- operator CONFIG run`: the store profile, the
+    peer flight profile and this machine), as packaging/fn's installed branch
+    and tests/native_harness.py decided_launch start an owner.  A developer
+    image's launcher otherwise starts at its saved figure, which since MEM-002
+    (memset) is the small preset's, so a store initialized at a larger
+    profile is refused at cold start ("the process heap does not hold the
+    store's protected runtime", books/page-read-startup.lisp).  A caller that
+    sets SBCL_USER_ARGS or FN_TEST_HEAP_MB keeps its own figure."""
+    if "SBCL_USER_ARGS" in env or "FN_TEST_HEAP_MB" in env:
+        return env
+    probe = subprocess.run([str(image), "--fn", "heap", "--", "operator", str(config), "run"],
+                           env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out = probe.stdout.decode("utf-8", "replace")
+    heap = re.search(r"heap=(\d+) MB", out)
+    stack = re.search(r"stack=(\d+) KB", out)
+    if probe.returncode != 0 or not (heap and stack):
+        raise RuntimeError("heap probe for {} exited {}: {}{}".format(
+            config, probe.returncode, out, probe.stderr.decode("utf-8", "replace")))
+    decided = dict(env)
+    decided["SBCL_USER_ARGS"] = "--dynamic-space-size {}MB --control-stack-size {}KB".format(
+        heap.group(1), stack.group(1))
+    return decided
 
 
 def digest(path):
@@ -155,7 +182,8 @@ def main():
                       encoding="ascii")
     stderr = open(work / "owner.stderr", "wb")
     proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
-                            env=env, stdout=subprocess.PIPE, stderr=stderr)
+                            env=decided_heap_env(image, config, env),
+                            stdout=subprocess.PIPE, stderr=stderr)
     out = {"image": str(image), "launcher_sha256": digest(image),
            "core_sha256": digest(str(image) + ".core"), "articles": a.articles,
            "samples": a.samples, "port": port, "nodelay": a.nodelay}
