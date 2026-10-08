@@ -661,14 +661,7 @@ It runs the existing producer and records exactly one terminal observation."
            (when listener
              (setf (fnn-control-state-listener control) nil)
              (fnn-socket-shut listener)))
-         (let* ((path (fnn-control-state-path control))
-                (info (fnn-lstat path)))
-           (when (and (fnn-control-socket-path-p info)
-                      (= (sb-posix:stat-dev info)
-                         (fnn-control-state-device control))
-                      (= (sb-posix:stat-ino info)
-                         (fnn-control-state-inode control)))
-             (fnn-unlink path))))
+         (fnn-control-unlink-installed control (fnn-control-state-path control)))
     (fnn-control-release-lease control)))
 
 (defun fnn-control-owner-run-normalized

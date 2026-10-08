@@ -729,6 +729,52 @@ distinguish an unobserved refusal from a durable acceptance."
   :hints (("Goal" :in-theory (enable fn-native-control-liveness
                                      fn-native-control-liveness-offlinep))))
 
+; The socket node a closing run may unlink.  A run unlinks the node at its
+; control path only when it installed a socket (its device and inode are
+; set) and the node there is that same socket; a run that never bound (its
+; lease was refused, its bind failed) installed nothing and removes nothing,
+; whatever node another store's owner has at the path.  OBSERVED-DEV and
+; OBSERVED-INO are the lstat of a socket node at the path, or NIL when the
+; path holds no socket.
+(defun fn-native-control-socket-removal (installed-dev installed-ino
+                                                       observed-dev observed-ino)
+  (declare (xargs :guard t))
+  (if (and (integerp installed-dev) (integerp installed-ino)
+           (equal installed-dev observed-dev)
+           (equal installed-ino observed-ino))
+      :remove
+    :keep))
+
+; KEYSTONE.  The subject is `fn-native-control-socket-removal', which the host
+; calls through `fn-native-control-host-socket-removal' (host/native/control.lisp
+; fnn-control-close, bp-control.lisp, dev-repl.lisp).  The node is removed
+; exactly when this run installed one and the node observed is the installed
+; one; a run that installed nothing never removes.
+(defthm fn-native-control-socket-removal-decides
+  (and (iff (equal (fn-native-control-socket-removal
+                    installed-dev installed-ino observed-dev observed-ino)
+                   :remove)
+            (and (integerp installed-dev) (integerp installed-ino)
+                 (equal installed-dev observed-dev)
+                 (equal installed-ino observed-ino)))
+       (member-equal (fn-native-control-socket-removal
+                      installed-dev installed-ino observed-dev observed-ino)
+                     '(:remove :keep)))
+  :hints (("Goal" :in-theory (enable fn-native-control-socket-removal))))
+
+; Teeth.  The positive witness: the installed socket is removed.  The
+; hypothesis-removal witnesses: with the installed identity unset the same
+; observed node is kept (the failed-startup shape), and so is a node of
+; another identity.
+(defthm fn-native-control-socket-removal-teeth
+  (and (equal (fn-native-control-socket-removal 16777220 4242 16777220 4242)
+              :remove)
+       (equal (fn-native-control-socket-removal nil nil 16777220 4242) :keep)
+       (equal (fn-native-control-socket-removal 16777220 4242 16777220 4243)
+              :keep)
+       (equal (fn-native-control-socket-removal 16777220 4242 nil nil) :keep))
+  :hints (("Goal" :in-theory (enable fn-native-control-socket-removal))))
+
 (defun fn-native-control-max-active-clients ()
   "The fixed local transport worker ceiling selected by ACL2 policy."
   (declare (xargs :guard t))
