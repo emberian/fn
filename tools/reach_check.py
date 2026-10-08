@@ -33,7 +33,7 @@ WHAT IT MEASURES.  The call graph over `books/*.lisp' and `host/*.lisp',
 seeded from every function a LOADED host file defines (one the image
 builds, host/native/build.lisp and build-dtn.lisp, or the extraction world
 tools/extract/world-host.lisp `ld' or `load'; a host file no build loads
-seeds nothing, PKT-412, and tools/host_loaded_check.py refuses it), every book
+seeds nothing, PKT-412, and tools/host_check.py --loaded refuses it), every book
 symbol a loaded host file names.  Python development and checking tools
 seed nothing: their book-symbol mentions are not served host lines.
 A `defabsstobj' export is a function whose body is its :logic and
@@ -459,11 +459,11 @@ def stobj_attachments(paths) -> dict[str, set[str]]:
 # directory ACL2 runs it from: the two images, and the extraction world the
 # served product (the SBCL core) is extracted from, which loads the image's
 # host files (tools/extract/world.py).  A host file no build loads is not a host line
-# and seeds nothing (PKT-412); tools/host_loaded_check.py refuses one (Q7k).
+# and seeds nothing (PKT-412); tools/host_check.py --loaded refuses one (Q7k).
 IMAGE_BUILDS = {"host/native/build.lisp": ".",
                 "host/native/build-dtn.lisp": ".",
                 "tools/extract/world-host.lisp": "tools/extract"}
-# A test image's build: what it loads is loaded (host_loaded_check), but a
+# A test image's build: what it loads is loaded (host_check --loaded), but a
 # test image is not the server, so it seeds nothing here.
 TEST_IMAGE_BUILDS = {"host/native/build-store-test.lisp": "."}
 RAW_LOAD = re.compile(r'\(load\s+"([^"]+\.lisp)"')

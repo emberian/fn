@@ -2672,7 +2672,7 @@ site:
 # --load FILE, and the certified-world class check (host_check's default).
 # On a box: tools/remote_check.sh auto --install-roots books/image-world --cmd 'make host-convert-check FILE=host/native/x.lisp'
 host-convert-check:
-	@$(PYTHON) tools/host_convert_check.py $(FILE)
+	@$(PYTHON) tools/host_check.py --convert $(FILE)
 
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
@@ -2831,8 +2831,7 @@ check:
 # Every host file is loaded by a build (Q7k): an image, the extraction world
 # or the store-test image; a prototype, a retired host or a test harness in
 # host/ is refused (KNOWN, shrink-only, names an exception with why).
-	@$(CHECK_STEP) $(PYTHON) tools/host_loaded_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_loaded_check
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --loaded
 # Every tests/*.sh witness says its class (raw: tests.test_native_raw_scripts
 # runs it; needs-image/needs-acl2: the convergence checklist names it;
 # helper) and a scenario-catalog row cites it (KNOWN shrink-only).
@@ -2887,7 +2886,7 @@ check:
 # with no non-empty witness of the same function in the book pins a defect
 # as the expected value (stx-model: stx-policy's empty laces).  Warn-only;
 # tools/null_witness_allow.json names the accepted ones.
-	@$(CHECK_STEP) $(PYTHON) tools/null_witness_lint.py
+	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --null-witness
 # Two static lints over the harness, both from the 2026-09-19 incident: a
 # host entry point gained a required keyword-only argument, two callers in
 # tests/ were never updated, and both integration labs were dead for a day
@@ -2908,13 +2907,13 @@ check:
 # (tests/acl2/must-fail-checked.lisp), which translates the body's claim
 # first and so makes certification refuse such a tooth; this fails on a bare
 # must-fail unless its line declares `; must-fail-ok: <reason>`.
-# `--convert` rewrites bare ones after a merge.  Static, no ACL2.
-	@$(CHECK_STEP) $(PYTHON) tools/must_fail_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_must_fail_check
+# `--must-fail --convert` rewrites bare ones after a merge.  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --must-fail
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_teeth_check.MustFailCheckTests tests.test_teeth_check.NullWitnessTests
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
-	@$(CHECK_STEP) $(PYTHON) tools/holder_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --holders
 # Every node thread runs on a 1,024 KiB control stack, and a non-tail
 # recursion costs a frame per step: LIST ACTIVE and GROUP stopped the owner
 # past ~30,000 articles in fn-nntp-group-low (PKT-877), the open in
@@ -2985,12 +2984,11 @@ check:
 # `tools/tls_check.py --measure BUILD` names each compiled file's cost.
 	@$(CHECK_STEP) $(PYTHON) tools/tls_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_tls_check
-	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
-	@$(CHECK_STEP) $(PYTHON) tools/attach_order_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --build-lists
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --attach-order
 # A host macro used before its definition in load order compiles as a
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
-	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --macro-order
 # The raw files loaded in build.lisp's order into one bare ACL2 with SBCL's
 # warnings on (seconds, no image build): errors, arity, macro order and names
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
@@ -3038,8 +3036,6 @@ check:
 # are grandfathered in a baseline that only shrinks. Static, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/evidence_size_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_evidence_size_check
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_attach_order_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
@@ -3198,7 +3194,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
-	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check tests.test_holder_check
+	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check tests.test_lock_discipline_check.HolderCheck tests.test_lock_discipline_check.HolderCutMap
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

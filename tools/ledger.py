@@ -962,6 +962,31 @@ def def_loop_bodies(name: str, formals: list, options: dict) -> tuple:
     rec = term(name, *next_args)
     again = lambda value: term(loop, *next_args, value)
     test = term("consp", xs)
+    if shape == ":fold":
+        # books/def-loop.lisp fn-dl-fold-events: ST threads through every step;
+        # ROW is an (mv ROW-VALUE ST) term and both bodies return (mv ROWS ST).
+        # The recursion's state is the list SVARS of the formals NEXT changes.
+        fold_st = options.get(":st")
+        fail = option(":fail", ":bad")
+        svars = [xs] if not isinstance(options.get(":over"), list) else list(options[":over"])
+        terms = [option(":next")] if len(svars) == 1 else [subst(t) for t in options.get(":next", [])]
+        call_args = [terms[svars.index(f)] if f in svars else f for f in formals]
+        recur, step_loop = term(name, *call_args), lambda row: term(loop, *call_args, row)
+        done_test, bindings = option(":done"), option(":let")
+        let_wrap = (lambda x: term("let*", bindings, x)) if present(bindings) else (lambda x: x)
+        mvs = lambda *v: term("mv", *v)
+        failed = lambda var: term("if", term("eq", var, fail), mvs(fail, fold_st))
+        logic = term("if", done_test, mvs(Sym("nil"), fold_st),
+                     let_wrap(term("mv-let", [Sym("dl-row"), fold_st], option(":row"),
+                                   failed(Sym("dl-row"))
+                                   + [term("mv-let", [Sym("dl-rest"), fold_st], recur,
+                                           failed(Sym("dl-rest"))
+                                           + [mvs(term("cons", Sym("dl-row"), Sym("dl-rest")), fold_st)])])))
+        loop_body = term("if", done_test, mvs(term("revappend", acc, Sym("nil")), fold_st),
+                         let_wrap(term("mv-let", [Sym("dl-row"), fold_st], option(":row"),
+                                       failed(Sym("dl-row"))
+                                       + [step_loop(term("cons", Sym("dl-row"), acc))])))
+        return logic, loop_body
     if shape == ":into":
         logic = term("if", test,
                      term("let", [[st, [options.get(":write"), body, st]]], rec), st)

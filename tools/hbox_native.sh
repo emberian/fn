@@ -573,8 +573,8 @@ step interfaces-check static_gate interfaces-check tools/interface_emit.py --che
 # Reject a missing native entry before spending time on certification.
 step host-books static_gate host-books tools/host_check.py --books
 # A certified host file attaches the image's stobj implementation before the
-# generic it implements (CONVERGE-1 red 1; tools/attach_order_check.py).
-step attach-order static_gate attach-order tools/attach_order_check.py
+# generic it implements (CONVERGE-1 red 1; tools/host_check.py --attach-order).
+step attach-order static_gate attach-order tools/host_check.py --attach-order
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)

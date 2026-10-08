@@ -68,7 +68,7 @@ BOX_CMD = (
     "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export && "
     "python3 tools/interface_emit.py --write && python3 tools/interface_emit.py --check && "
     "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check && "
-    "python3 tools/extract/world.py --check && python3 tools/build_lists_check.py && "
+    "python3 tools/extract/world.py --check && python3 tools/host_check.py --build-lists && "
     "python3 tools/host_check.py --read && python3 tools/host_check.py --world"
 )
 
@@ -79,7 +79,7 @@ EMIT_STEPS = (
     ("interface_emit", "python3 tools/interface_emit.py --write --check"),
     ("protocol_emit", "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check"),
     ("world", "python3 tools/extract/world.py --check"),
-    ("build_lists", "python3 tools/build_lists_check.py"),
+    ("build_lists", "python3 tools/host_check.py --build-lists"),
     ("host_read", "python3 tools/host_check.py --read"),
     ("host_world", "python3 tools/host_check.py --world"),
 )
@@ -97,7 +97,7 @@ BOX_PATHS = ("books", "specs", "tests/acl2")
 LOCAL_BOX_CHECKS = (
     ("interface_emit", ["tools/interface_emit.py", "--check"]),
     ("world", ["tools/extract/world.py", "--check"]),
-    ("build_lists", ["tools/build_lists_check.py"]),
+    ("build_lists", ["tools/host_check.py", "--build-lists"]),
     ("host_read", ["tools/host_check.py", "--read"]),
     ("host_world", ["tools/host_check.py", "--world"]),
 )

@@ -3,6 +3,7 @@
 ;;; frontier agreement; the host carries the corresponding physical handle.
 (in-package "ACL2")
 (defvar *fnn-history-roots* (make-hash-table :test 'eql))
+(fnn-guarded-by *fnn-history-roots* (fnn-owner-service-lock))
 
 (defun fnn-history-root-abandon-held (generation candidate)
   "Owner gate held. Dispose only a definitely private, unleased candidate.
