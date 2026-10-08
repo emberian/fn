@@ -1649,7 +1649,11 @@ one ring, so the table's key and the served boundary's are one source."
                      ;; batches by the committer thread.
                      :batching (fnn-store-logp store)
                      :stopping nil))
-              (fnn-owner-history-root-maintain service)
+              ;; The first history root refresh is not here: it draws the
+              ;; history-root reserve, which only the run's ledger holds
+              ;; (fnn-owner-run, after fnn-mux-budget-install; the default
+              ;; ledger's reserve is 0).  The history load stays an install
+              ;; step.
               (fnn-owner-history-sync-first service)
               (progn
                 (setf (fnn-owner-service-feeds service)
@@ -8979,6 +8983,12 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   ;; machine (books/connection-budget.lisp), refused by name
                   ;; before anything listens; then the I/O loops.
                   (fnn-mux-budget-install service tls-context)
+                  ;; The first history root refresh, under the ledger that
+                  ;; funds the reserve (fn-mca-initial): at the install it
+                  ;; met the default ledger's reserve of 0 and was refused
+                  ;; by name on every open.  The history is loaded already
+                  ;; (fnn-owner-history-sync-first, in the install).
+                  (fnn-owner-history-root-maintain service)
                   (sb-thread:with-mutex ((fnn-owner-service-lock service))
                     (fnn-payload-lifecycle-start service))
                   (fnn-owner-start-committer service)
