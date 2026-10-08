@@ -17,10 +17,12 @@
 ;     [:subject FN]                         ; the host-called function; REQUIRED
 ;                                           ; when a bound is stated
 ;     :witness ((VAR VAL) ...)              ; the positive witness, executable;
+;     [:instances (GENERATED-FN GENERATED-LOOP)] ; use the generator-recorded
+;                                           ; functional substitution at :witness
 ;     [:witness-lemma THM]                  ; or a named ground theorem instead of
 ;                                           ; evaluation (its formula is checked)
 ;     :breaks ((Li ((VAR VAL) ...) [:logical "why outside the guard domain"]
-;                  [:lemma THM]) ...)       ; one per Li
+;                  [:lemma THM]) | (Li (:assumption FN)) ...) ; one per Li
 ;     :mutations ((L (:conclusion C2) | (:hypothesis Li H2) ((VAR VAL) ...)
 ;                    :fault "the fault it models" [:logical "why"] [:lemma THM]) ...)
 ;                | (:not-applicable "why") | (:deferred "why")
@@ -65,6 +67,18 @@
 ; predicate no evaluator runs is witnessed by a proved ground fact, never
 ; pretended executed).
 ;
+; ASSUMPTION REMOVALS.  (LABEL (:assumption FN)) requires FN to be a
+; constrained signature without a body and a transitive callee of the
+; labelled hypothesis.  No counterexample is claimed or executed; its row
+; is :assumption, distinct from reachable, logical and lemma removals.
+;
+; GENERATED INSTANCES.  :instances (NAME LOOP) requires a generator's
+; fn-teeth-instances row naming this exact theorem and pair of functions.
+; Its recorded functional substitution is applied to the WHOLE witness and
+; every mutation/removal.  The resulting checks must be closed terms, and
+; execute normally.  The witness row is :instance, not direct execution of
+; the abstract theorem's constrained stand-ins.
+;
 ; MUTATIONS (c04 1c) are CHECKED EDITS of the claim, never a free term, each
 ; naming the FAULT it models (:fault "..."): (:conclusion C2) is the claim
 ; with C2 for C (refused when C2 is C, nil or t); (:hypothesis Li H2) has H2
@@ -105,7 +119,7 @@
 ;
 ; ROW IDENTITY.  ROW = (:by defteeth|defkeystone :claim CLAIM :formula
 ; FORMULA :subject FN :witness :executable|:lemma :hyps (L...)
-; :removals ((L :reachable|:logical|:lemma) ...)
+; :removals ((L :reachable|:logical|:lemma|:assumption) ...)
 ; :mutations ((L :conclusion|:hypothesis "fault") ...) | :not-applicable | :deferred
 ; :corrupt (L...) :visits ((L V B :attains|:not-attained :rests-on (A...)
 ; :derived-by RECORD|nil) ...) :allocation (...)).  FORMULA is the world's theorem at declaration: a
@@ -145,7 +159,7 @@
 
 
 (defconst *fn-dk-spec-keys*
-  '(:claim :subject :witness :witness-lemma :breaks :mutations :corrupt
+  '(:claim :subject :witness :witness-lemma :instances :breaks :mutations :corrupt
     :visits :allocation :must-fail :hints))
 
 (defconst *fn-dk-keys*
@@ -277,13 +291,21 @@
        (or (null (assoc-keyword :fault opts))
            (fn-dk-reasonp (fn-dk-get :fault opts)))))
 
+(defun fn-dk-assumption-breakp (x)
+  (declare (xargs :mode :program))
+  (and (true-listp x) (equal (len x) 2)
+       (true-listp (cadr x)) (equal (len (cadr x)) 2)
+       (eq (car (cadr x)) :assumption)
+       (symbolp (cadr (cadr x))) (cadr (cadr x))))
+
 (defun fn-dk-break-entryp (x)
   (declare (xargs :mode :program))
   ; (LABEL BINDINGS [:logical "why"] [:lemma THM])
   (and (true-listp x) (<= 2 (len x))
        (symbolp (car x)) (car x)
-       (fn-dk-bindingsp (cadr x))
-       (fn-dk-entry-optsp (cddr x) '(:logical :lemma))))
+       (or (fn-dk-assumption-breakp x)
+           (and (fn-dk-bindingsp (cadr x))
+                (fn-dk-entry-optsp (cddr x) '(:logical :lemma))))))
 
 (defun fn-dk-break-entriesp (x)
   (declare (xargs :mode :program))
@@ -427,6 +449,11 @@
      ((not (and (fn-dk-get :witness kvs)
                 (fn-dk-bindingsp (fn-dk-get :witness kvs))))
       (list :no-witness name))
+     ((and (assoc-keyword :instances kvs)
+           (not (and (symbol-listp (fn-dk-get :instances kvs))
+                     (equal (len (fn-dk-get :instances kvs)) 2)
+                     (not (fn-dk-get :witness-lemma kvs)))))
+      (list :bad-instances (fn-dk-get :instances kvs)))
      ((and (assoc-keyword :witness-lemma kvs)
            (not (and (symbolp (fn-dk-get :witness-lemma kvs)) (fn-dk-get :witness-lemma kvs))))
       (list :bad-witness-lemma (fn-dk-get :witness-lemma kvs)))
@@ -556,14 +583,17 @@
   (if (atom labels)
       nil
     (let* ((entry (assoc-eq (car labels) breaks))
-           (b (fn-dk-override witness (cadr entry)))
+           (b (if (fn-dk-assumption-breakp entry) nil
+                (fn-dk-override witness (cadr entry))))
            (retained (fn-dk-without i hyps)))
       (append
-       (list (fn-dk-witness-event
+       (if (fn-dk-assumption-breakp entry)
+           nil
+         (list (fn-dk-witness-event
               name (concatenate 'string "without " (symbol-name (car labels)))
               b (append retained (list `(not ,(nth i hyps)) `(not ,concl)))
-              (cddr entry)))
-       (and must-fail
+              (cddr entry))))
+       (and must-fail (not (fn-dk-assumption-breakp entry))
             `((local (must-fail-checked
                       (defthm ,(packn-pos (list name '-without- (car labels)) name)
                         ,(fn-dk-implies retained concl)
@@ -676,7 +706,9 @@
   (declare (xargs :mode :program))
   (if (atom labels)
       nil
-    (cons (list (car labels) (fn-dk-witness-kind (cddr (assoc-eq (car labels) breaks))))
+    (cons (list (car labels) (if (fn-dk-assumption-breakp (assoc-eq (car labels) breaks))
+                                 :assumption
+                               (fn-dk-witness-kind (cddr (assoc-eq (car labels) breaks)))))
           (fn-dk-removal-rows (cdr labels) breaks))))
 
 (defun fn-dk-mutation-rows (mutations)
@@ -697,7 +729,9 @@
               :claim ,claim
               :formula ,formula
               :subject ,(fn-dk-get :subject kvs)
-              :witness ,(if (assoc-keyword :witness-lemma kvs) :lemma :executable)
+              :witness ,(cond ((assoc-keyword :instances kvs) :instance)
+                              ((assoc-keyword :witness-lemma kvs) :lemma)
+                              (t :executable))
               :hyps ,(fn-dk-claim-labels claim)
               :removals ,(fn-dk-removal-rows (fn-dk-claim-labels claim) (fn-dk-get :breaks kvs))
               :mutations ,(if (fn-dk-exemptionp mutations)
@@ -1035,6 +1069,95 @@
                            (t (fn-dt-derivation-problem name kind (cdr entries)
                                                         subject w)))))))))))
 
+; The generator records the very substitution used in its functional
+; instantiation proof.  A witness cannot supply or edit this substitution.
+(defun fn-dt-instance-problem (name instances w)
+  (declare (xargs :mode :program))
+  (and instances
+       (let ((row (cdr (assoc-eq (car instances) (table-alist 'fn-teeth-instances w)))))
+         (cond ((not (equal (fn-dk-get :functions row) instances))
+                (list :not-generated-instance instances))
+               ((not (eq (fn-dk-get :lemma row) name))
+                (list :instance-of-other-lemma instances name))
+               (t nil)))))
+
+(mutual-recursion
+ (defun fn-dt-instantiate (term subst)
+   (declare (xargs :mode :program))
+   (cond ((atom term) term)
+         ((eq (car term) 'quote) term)
+         ((consp (car term))
+          (sublis-var (pairlis$ (cadr (car term))
+                               (fn-dt-instantiate-list (cdr term) subst))
+                      (fn-dt-instantiate (caddr (car term)) subst)))
+         (t (let* ((args (fn-dt-instantiate-list (cdr term) subst))
+                   (replacement (cadr (assoc-eq (car term) subst))))
+              (cond ((not replacement) (cons (car term) args))
+                    ((symbolp replacement) (cons replacement args))
+                    (t (sublis-var (pairlis$ (cadr replacement) args)
+                                   (caddr replacement))))))))
+ (defun fn-dt-instantiate-list (terms subst)
+   (declare (xargs :mode :program))
+   (if (atom terms) nil
+     (cons (fn-dt-instantiate (car terms) subst)
+           (fn-dt-instantiate-list (cdr terms) subst)))))
+
+(defun fn-dt-instance-subst (subst w)
+  (declare (xargs :mode :program))
+  (if (atom subst) nil
+    (let ((replacement (cadr (car subst))))
+      (if (symbolp replacement)
+          (cons (car subst) (fn-dt-instance-subst (cdr subst) w))
+        (mv-let (bad body)
+          (fn-dt-translate (car (last replacement)) w)
+          (if bad (er hard 'defteeth "Invalid generator substitution: ~x0" (car subst))
+            (cons (list (caar subst) (list 'lambda (cadr replacement) body))
+                  (fn-dt-instance-subst (cdr subst) w))))))))
+
+(defun fn-dt-instance-events (events subst w)
+  (declare (xargs :mode :program))
+  (if (atom events) nil
+    (let ((event (car events)))
+      (cons
+       (if (not (eq (car event) 'assert-event)) event
+         (mv-let (bad term) (fn-dt-translate (cadr event) w)
+           (if bad (er hard 'defteeth "Invalid instance witness: ~x0" event)
+             (let ((ground (fn-dt-instantiate term subst)))
+               (if (all-vars ground)
+                   (er hard 'defteeth "Instance witness is not ground: ~x0" ground)
+                 `(assert-event ,ground ,@(cddr event)))))))
+       (fn-dt-instance-events (cdr events) subst w)))))
+
+; Follow translated calls through executable definitions, with a visited set:
+; a wrapper around a constrained assumption is still an assumption premise.
+(defun fn-dt-calls-assumption (pending target seen w)
+  (declare (xargs :mode :program))
+  (cond ((atom pending) nil)
+        ((eq (car pending) target) t)
+        ((member-eq (car pending) seen)
+         (fn-dt-calls-assumption (cdr pending) target seen w))
+        (t (let ((body (getpropc (car pending) 'unnormalized-body nil w)))
+             (fn-dt-calls-assumption
+              (append (and body (all-fnnames body)) (cdr pending))
+              target (cons (car pending) seen) w)))))
+
+(defun fn-dt-assumption-problem (breaks claim w)
+  (declare (xargs :mode :program))
+  (if (atom breaks)
+      nil
+    (let* ((entry (car breaks))
+           (fn (cadr (cadr entry))))
+      (if (not (fn-dk-assumption-breakp entry))
+          (fn-dt-assumption-problem (cdr breaks) claim w)
+        (mv-let (bad hyp)
+          (fn-dt-translate (cadr (assoc-eq (car entry) (car claim))) w)
+          (cond ((or (not (getpropc fn 'constrainedp nil w))
+                     (getpropc fn 'unnormalized-body nil w))
+                 (list :not-constrained (car entry) fn))
+                ((or bad (not (fn-dt-calls-assumption (all-fnnames hyp) fn nil w)))
+                 (list :assumption-not-called (car entry) fn))
+                (t (fn-dt-assumption-problem (cdr breaks) claim w))))))))
+
 (defun fn-dt-expand (name by kvs state)
   (declare (xargs :mode :program :stobjs state))
   ; the event list of (defteeth NAME . KVS) in the current world, or a soft error
@@ -1042,17 +1165,25 @@
          (claim (fn-dk-get :claim kvs))
          (subject (fn-dk-get :subject kvs))
          (problem (or (fn-dt-world-problem name claim w)
+                      (fn-dt-assumption-problem (fn-dk-get :breaks kvs) claim w)
+                      (fn-dt-instance-problem name (fn-dk-get :instances kvs) w)
                       (fn-dt-derivation-problem name :visits (fn-dk-get :visits kvs)
                                                 subject w)
                       (fn-dt-derivation-problem name :allocation
                                                 (fn-dk-get :allocation kvs) subject w))))
     (if problem
         (er soft by "~x0: ~@1" name (fn-dk-refusal-text problem))
-      (value (cons 'progn
-                   (fn-dt-bridge-events
-                    (fn-dk-teeth-events name by claim
-                                        (getpropc name 'theorem nil w) kvs)
-                    w))))))
+      (let* ((events (fn-dk-teeth-events name by claim
+                                        (getpropc name 'theorem nil w) kvs))
+             (instances (fn-dk-get :instances kvs))
+             (row (cdr (assoc-eq (car instances) (table-alist 'fn-teeth-instances w)))))
+        (value (cons 'progn
+                     (fn-dt-bridge-events
+                      (if instances
+                          (fn-dt-instance-events events
+                           (fn-dt-instance-subst (fn-dk-get :substitution row) w) w)
+                        events)
+                      w)))))))
 
 (defun fn-teeth-form (name kvs)
   (declare (xargs :mode :program))

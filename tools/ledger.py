@@ -1199,7 +1199,7 @@ def defrecord_export_expansion(form: list) -> list:
 # (`fn-dk-refusal`) expands to nothing here: certification is the authority
 # on the refusal, and a guess at a refused form's events would be a lie.
 
-DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":breaks",
+DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":instances", ":breaks",
                  ":mutations", ":corrupt", ":visits", ":allocation", ":must-fail",
                  ":hints"}
 DEFKEYSTONE_KEYS = DEFTEETH_KEYS | {":id", ":restates", ":hyps", ":rule-classes",
@@ -1305,6 +1305,17 @@ def _dk_constantp(x: object) -> bool:
         and str(x[1]) in ("nil", "t")
 
 
+def _dk_assumption_breakp(entry: list) -> bool:
+    return (len(entry) == 2 and isinstance(entry[1], list) and len(entry[1]) == 2
+            and str(entry[1][0]) == ":assumption" and isinstance(entry[1][1], Sym)
+            and str(entry[1][1]) != "nil")
+
+
+def _dk_removal_kind(entry: list) -> Sym:
+    return (Sym(":assumption") if _dk_assumption_breakp(entry)
+            else _dk_witness_kind(keyword_plist(entry[2:])))
+
+
 def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
     """The parsed parts of a defteeth SPEC (or the SPEC a defkeystone form
     stands for), or None where `fn-dk-spec-refusal` refuses: the same checks,
@@ -1318,6 +1329,12 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
     witness = options.get(":witness")
     if not (witness and _dk_bindingsp(witness)):
         return None
+    if ":instances" in options:
+        instances = options[":instances"]
+        if not (isinstance(instances, list) and len(instances) == 2
+                and all(isinstance(fn, Sym) for fn in instances)
+                and ":witness-lemma" not in options):
+            return None
     if ":witness-lemma" in options and not (isinstance(options[":witness-lemma"], Sym)
                                            and str(options[":witness-lemma"]) != "nil"):
         return None
@@ -1330,8 +1347,10 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
     by_label: dict[str, list] = {}
     for entry in breaks:
         if not (isinstance(entry, list) and len(entry) >= 2 and isinstance(entry[0], Sym)
-                and str(entry[0]) != "nil" and _dk_bindingsp(entry[1])
-                and _dk_entry_opts(entry[2:], {":logical", ":lemma"}) is not None):
+                and str(entry[0]) != "nil"
+                and (_dk_assumption_breakp(entry)
+                     or (_dk_bindingsp(entry[1])
+                         and _dk_entry_opts(entry[2:], {":logical", ":lemma"}) is not None))):
             return None
         if str(entry[0]) in by_label:
             return None
@@ -1541,7 +1560,7 @@ def _dk_witness_kind(opts: dict) -> Sym:
 def teeth_row(parts: dict, by: str, formula: object = None) -> list:
     """``(table fn-teeth 'NAME ROW)`` as `fn-dk-row` writes it; FORMULA is
     the world's theorem, nil in this static reading."""
-    removals = [[label, _dk_witness_kind(keyword_plist(parts["breaks"][str(label)][2:]))]
+    removals = [[label, _dk_removal_kind(parts["breaks"][str(label)])]
                 for label in parts["labels"]]
     mutations: object = (Sym(parts["exemption"]) if parts["exemption"]
                          else [[m[0], m[1][0], keyword_plist(m[3:])[":fault"]]
@@ -1549,8 +1568,9 @@ def teeth_row(parts: dict, by: str, formula: object = None) -> list:
     row = [Sym(":by"), Sym(by), Sym(":claim"), parts["claim"],
            Sym(":formula"), Sym("nil") if formula is None else formula,
            Sym(":subject"), parts["subject"] if parts["subject"] is not None else Sym("nil"),
-           Sym(":witness"), Sym(":lemma") if ":witness-lemma" in parts["options"]
-           else Sym(":executable"),
+           Sym(":witness"), (Sym(":instance") if ":instances" in parts["options"]
+                             else Sym(":lemma") if ":witness-lemma" in parts["options"]
+                             else Sym(":executable")),
            Sym(":hyps"), list(parts["labels"]) or Sym("nil"),
            Sym(":removals"), removals or Sym("nil"),
            Sym(":mutations"), mutations,
@@ -1586,6 +1606,8 @@ def teeth_events(parts: dict, by: str, formula: object = None) -> list:
         {":lemma": options[":witness-lemma"]} if ":witness-lemma" in options else {})]
     for index, label in enumerate(labels):
         entry = parts["breaks"][str(label)]
+        if _dk_assumption_breakp(entry):
+            continue
         bindings = _dk_override(witness, entry[1])
         retained = hyps[:index] + hyps[index + 1:]
         events.append(_dk_witness_event(

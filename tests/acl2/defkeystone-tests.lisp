@@ -581,3 +581,53 @@
    :visits ((steps (+ 1 (len xs)) (+ 1 (len xs)) :attains ((xs '(1 2)))
                    :derived-by fn-dkt-walk)))
  :unchecked "defteeth refuses by name (:underived-record :not-called): V does not call fn-dkt-walk-route-visits")
+
+; A named assumption remains an explicit trust boundary, even with an
+; executable attachment for this test.  Its removal is never reachable.
+(encapsulate
+  (((fn-dkt-assume *) => *))
+  (local (defun fn-dkt-assume (x) (equal x 1)))
+  (defthm fn-dkt-assume-definition
+    (equal (fn-dkt-assume x) (equal x 1))))
+(defun fn-dkt-assume-exec (x)
+  (declare (xargs :guard t))
+  (equal x 1))
+(defattach fn-dkt-assume fn-dkt-assume-exec)
+(defun fn-dkt-assume-wrapper (x) (fn-dkt-assume x))
+(defthm fn-dkt-assumed-one
+  (implies (fn-dkt-assume-wrapper x) (equal x 1))
+  :rule-classes nil)
+(must-fail-checked
+ (defteeth fn-dkt-assumed-one
+   :claim (((trust (fn-dkt-assume-wrapper x))) (equal x 1))
+   :witness ((x 1))
+   :breaks ((trust (:assumption fn-dkt-assume-exec)))
+   :mutations ((two (:conclusion (equal x 2)) () :fault "Replace one with two.")))
+ :unchecked "An executable function is not an encapsulated signature.")
+(must-fail-checked
+ (defteeth fn-dkt-add-adds-source
+   :claim (((nat (natp x)) (small (< x 10))) (<= (fix y) (fn-dkt-add x y)))
+   :witness ((x 3) (y 4))
+   :breaks ((nat (:assumption fn-dkt-assume)) (small ((x 10))))
+   :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
+                       :fault "Replace inclusive bound with strict bound.")))
+ :unchecked "A constrained function unrelated to the labelled hypothesis is refused.")
+(defteeth fn-dkt-assumed-one
+  :claim (((trust (fn-dkt-assume-wrapper x))) (equal x 1))
+  :witness ((x 1))
+  :breaks ((trust (:assumption fn-dkt-assume)))
+  :mutations ((two (:conclusion (equal x 2)) () :fault "Replace one with two.")))
+(assert-event
+ (equal (fn-dk-get :removals
+                  (cdr (assoc-eq 'fn-dkt-assumed-one (table-alist 'fn-teeth (w state)))))
+        '((trust :assumption))))
+(must-fail-checked
+ (defteeth fn-dkt-add-adds-source
+   :claim (((nat (natp x)) (small (< x 10))) (<= (fix y) (fn-dkt-add x y)))
+   :instances (fn-dkt-add fn-dkt-assume-exec)
+   :witness ((x 3) (y 4))
+   :breaks ((nat ((x -1))) (small ((x 10))))
+   :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
+                       :fault "Replace inclusive bound with strict bound.")))
+ :unchecked "Functions not produced by the generator cannot witness its lemma.")
+(defteeth-check)

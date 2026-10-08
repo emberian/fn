@@ -236,5 +236,54 @@ class WriteManifest(unittest.TestCase):
         self.assertIn("toothless: new", out)
 
 
+class NewWitnessClasses(unittest.TestCase):
+    def parts(self, removal="(:assumption assumed)", extra=""):
+        return ke.ledger.defteeth_parts(ke.ledger.read_forms(f"""
+          (defteeth example :claim (((trust (assumed x))) (equal x 1))
+            :witness ((x 1)) {extra}
+            :breaks ((trust {removal}))
+            :mutations ((two (:conclusion (equal x 2)) () :fault "wrong value")))
+        """)[0])
+
+    def test_assumption_has_its_own_removal_class_and_no_assertion(self):
+        parts = self.parts()
+        self.assertIsNotNone(parts)
+        self.assertEqual(str(ke.ledger._dk_removal_kind(parts["breaks"]["trust"])),
+                         ":assumption")
+        events = ke.ledger.teeth_events(parts, "defteeth")
+        assertions = [e for e in events if ke.ledger.head(e) == "assert-event"]
+        self.assertEqual(len(assertions), 2)  # whole witness + mutation
+        self.assertNotIn("without TRUST", ke.ledger.source_text(events))
+
+    def test_bad_assumption_syntax_is_not_a_declaration(self):
+        for removal in ("(:assumption)", "(:assumption nil)",
+                        "(:assumption (f x))", "(:assumption f extra)"):
+            with self.subTest(removal=removal):
+                self.assertIsNone(self.parts(removal))
+
+    def test_instance_is_recorded_separately_from_executable(self):
+        parts = self.parts(extra=":instances (run run-loop)")
+        row = ke.ledger.teeth_row(parts, "defteeth")[3][1]
+        self.assertEqual(str(ke.ledger.keyword_plist(row)[":witness"]), ":instance")
+        self.assertIsNone(self.parts(extra=":instances (run)"))
+        self.assertIsNone(self.parts(extra=":instances (run loop) :witness-lemma fact"))
+
+    def test_manifest_does_not_count_assumptions_as_reachable_or_complete(self):
+        parts = self.parts()
+        book = SimpleNamespace(teeth_declared={"example": parts}, teeth_owed={})
+        tree = SimpleNamespace(books={"tests/acl2/t.lisp": book})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests/acl2").mkdir(parents=True)
+            (root / "tests/acl2/t.lisp").write_text("fixture")
+            proofs = root / "proofs.json"
+            proofs.write_text('{"proofs": [{"events": ["example"]}]}')
+            with mock.patch.object(ke, "ROOT", root), mock.patch.object(ke, "PROOFS", proofs):
+                result = ke.obligations(tree, {"tests/acl2/t.lisp": True})["example"]
+        self.assertEqual(result["removals"],
+                         {"reachable": 0, "logical": 0, "lemma": 0, "assumption": 1})
+        self.assertFalse(result["complete"])
+
+
 if __name__ == "__main__":
     unittest.main()

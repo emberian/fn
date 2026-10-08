@@ -1092,6 +1092,11 @@
                                             (union-theories (theory 'minimal-theory)
                                                             (executable-counterpart-theory :here))))))
       (in-theory (disable ,loop))
+      (table fn-teeth-instances ',name
+             '(:lemma fn-dl-thread-loop-is-revappend :functions (,name ,loop)
+               :substitution
+               ,(cddr (cadr (fn-dl-th-inst 'fn-dl-thread-loop-is-revappend name formals xs st acc
+                                           loop done rows-let next-let make st-of rows-of m)))))
       (table fn-generated ',name '(:def-loop :shape :thread :loop ,loop :bridge ,bridge)))))
 
 ; -----------------------------------------------------------------------------

@@ -1589,22 +1589,24 @@ class DefkeystoneExpansionTests(unittest.TestCase):
         self.assertIn("fn-dkt-add-adds", names)
         # the weakened theorems are asked to FAIL, so they are not theorems
         self.assertNotIn("fn-dkt-add-adds-without-natp", names)
-        # must-fail is opt-in (:must-fail t): only fn-dkt-add-adds-again's
-        # weakened and mutant statements are registered and paired
+        # must-fail is opt-in: the adder and multiple-value examples
+        # register their weakened and mutant statements.
         self.assertEqual(book.paired_must_fails,
                          {"fn-dkt-add-adds-again-without-natp",
                           "fn-dkt-add-adds-again-without-small",
-                          "fn-dkt-add-adds-again-mutant-weaker"})
-        # three generated must-fails, nine literal ones around refused forms
-        # (the ninth: a :derived-by whose V does not call the route twin)
-        self.assertEqual(book.must_fails, 12)
+                          "fn-dkt-add-adds-again-mutant-weaker",
+                          "fn-dkt-two-first-is-x-without-nat",
+                          "fn-dkt-two-first-is-x-mutant-second-output"})
+        # Five generated checks plus twelve refused source forms.
+        self.assertEqual(book.must_fails, 17)
         # a defteeth's bound is a theorem of its book, from the claim
         self.assertIn("fn-dkt-add-adds-source-visits-steps", names)
         # a restating defkeystone declares the teeth of the REGISTRY keystone
         # it restates (fn-dkt-add-adds-source), as the defteeth does
         self.assertEqual(set(book.teeth_declared),
                          {"fn-dkt-add-adds-source", "fn-dkt-add-adds-again",
-                          "fn-dkt-walk-of-true-list"})
+                          "fn-dkt-walk-of-true-list", "fn-dkt-two-first-is-x",
+                          "fn-dkt-assumed-one"})
         # a bound :derived-by a def-cost row is a theorem of its book too
         self.assertIn("fn-dkt-walk-of-true-list-visits-steps", names)
         self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})

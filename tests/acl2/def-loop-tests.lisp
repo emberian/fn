@@ -20,6 +20,7 @@
 ; the D27 form of a render that conses nothing.
 
 (in-package "ACL2")
+(include-book "../../books/defkeystone")
 (include-book "../../books/def-loop")
 (include-book "../../books/octets-stobj")
 (include-book "../../books/rev-onto")
@@ -897,3 +898,22 @@
 (def-loop dlt-concat-hintless (xs)
   :shape :concat :over xs :elt x :body (list x) :loop-guard-hints nil)
 (assert-event (equal (dlt-concat-hintless '(a b)) '(a b)))
+
+; The entire abstract equation, at a nonempty generated :thread instance.
+; The substitution comes from def-loop's proof, including its result views.
+(defteeth fn-dl-thread-loop-is-revappend
+  :claim (()
+    (equal (fn-dl-thread-loop dl-xs dl-st dl-acc)
+           (fn-dl-th-make (fn-dl-th-st-of (fn-dl-thread dl-xs dl-st))
+                         (revappend dl-acc (fn-dl-th-rows-of (fn-dl-thread dl-xs dl-st))))))
+  :instances (dlt-th-run dlt-th-run-loop)
+  :witness ((dl-xs '(1 2 3)) (dl-st 10) (dl-acc '(8 9)))
+  :breaks ()
+  :mutations ((forward-accumulator
+    (:conclusion
+      (equal (fn-dl-thread-loop dl-xs dl-st dl-acc)
+             (fn-dl-th-make (fn-dl-th-st-of (fn-dl-thread dl-xs dl-st))
+                           (append dl-acc (fn-dl-th-rows-of (fn-dl-thread dl-xs dl-st))))))
+    () :fault "Splice the accumulated rows without reversing their order.")))
+
+(defteeth-check)
