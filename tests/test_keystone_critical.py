@@ -230,6 +230,20 @@ class Gate(unittest.TestCase):
             found, _ = self.run_gate([bad], [], {"k": self.full})
             self.assertTrue(any("HARD FAIL" in f for f in found), bad)
 
+    def test_positive_witness_kind_and_current_certification_are_distinct(self):
+        for mode in ("executable", "instance", "lemma"):
+            with self.subTest(mode=mode):
+                entry = teeth("k", witness=mode, certified=False)
+                pkg = kc.package(entry, self.full, lambda s: True, self.root)
+                self.assertEqual(pkg["premises"],
+                                 "positive witness book is not certified at its current closure key")
+                found, _ = self.run_gate([entry], [], {"k": self.full})
+                self.assertTrue(any("HARD FAIL" in f for f in found), found)
+                found, summary = self.run_gate([dict(entry, certified=True)], [], {"k": self.full})
+                self.assertEqual((found, summary["complete"]), ([], 1))
+        pkg = kc.package(teeth("k", witness="prose"), self.full, lambda s: True, self.root)
+        self.assertEqual(pkg["premises"], "no executable/instance/ground-lemma positive witness")
+
     def test_certified_ground_lemma_needs_the_same_full_package(self):
         # ACL2's defteeth checks exact closed formula equality for this mode;
         # a quantified crash-image predicate cannot be executed by assert-event.

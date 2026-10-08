@@ -166,9 +166,12 @@ def package(entry: dict, declared: dict | None, reachable, root: Path = ROOT) ->
         # the CLOSED full premise-and-conclusion conjunction. It establishes
         # satisfiability even for non-executable crash-image predicates.
         # Reachability still needs the separate trace_witness declaration.
-        out["premises"] = (None if entry.get("witness") in ("executable", "instance", "lemma")
-                           and entry.get("certified")
-                           else "no certified executable/instance/ground-lemma positive witness")
+        if entry.get("witness") not in ("executable", "instance", "lemma"):
+            out["premises"] = "no executable/instance/ground-lemma positive witness"
+        elif not entry.get("certified"):
+            out["premises"] = "positive witness book is not certified at its current closure key"
+        else:
+            out["premises"] = None
         removals = entry.get("removals", {})
         out["wrong_answer"] = (None if removals.get("reachable") or
                                str(entry.get("mutations", "")).startswith("edits:")
