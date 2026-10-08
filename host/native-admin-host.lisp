@@ -285,7 +285,7 @@
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
+      (let* ((result (fn-scar-ocfg-read-step (fn-owner-ocfg state)
                                         id (list :account-outcome word) fn-arena))
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))

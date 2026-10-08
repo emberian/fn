@@ -15,6 +15,8 @@
 (defconst *sr-arena* nil)
 (bpr-lift fn-ocfg-read-tls-prefix 3)
 (bpr-lift fn-scar-ocfg-read-tls-prefix 3)
+(bpr-lift fn-ocfg-read-step 3)
+(bpr-lift fn-scar-ocfg-read-step 3)
 (defconst *scar-t-carried*
   (in-arena-fn-scar-ocfg-read-tls-prefix *sr-arena* *scar-t-oc* 1 *ocl-t-live-group-command*))
 (defconst *scar-t-reference*
@@ -96,3 +98,55 @@
 (assert-event
  (not (equal (fn-ocfg-owner (fn-own-tls-result-owner *scar-t-carried*))
              *scar-t-o*)))
+
+; -----------------------------------------------------------------------------
+; The host's wire events (PRF-1357): the SASL context event every accept
+; sends, carried.  Connection 1 of the same witness takes the context.
+
+(defconst *scar-t-seed* (make-list 32 :initial-element 7))
+(defconst *scar-t-event* (list :sasl-context *scar-t-seed* nil))
+(defconst *scar-t-ev-carried*
+  (in-arena-fn-scar-ocfg-read-step *sr-arena* *scar-t-oc* 1 *scar-t-event*))
+(defconst *scar-t-ev-reference*
+  (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-oc* 1 *scar-t-event*))
+(defconst *scar-t-ev-conn*
+  (fn-own-find-conn 1 (fn-own-conns (fn-ocfg-owner (cdr *scar-t-ev-carried*)))))
+
+; Positive witness: the whole antecedent (the relation, the view trie's
+; correspondence) and the conclusion, and the event did its work: no reply,
+; the connection kept, the context installed in its session, the store kept.
+(assert-event (and (fn-ocl-relation *scar-t-oc*)
+                   (fn-scar-view-indexedp *scar-t-o*)))
+(assert-event (equal *scar-t-ev-carried* *scar-t-ev-reference*))
+(assert-event (null (car *scar-t-ev-carried*)))
+(assert-event (and *scar-t-ev-conn*
+                   (equal (fn-auth-session-ctx (fn-own-conn-session *scar-t-ev-conn*))
+                          (list :sasl-context *scar-t-seed* nil))))
+(assert-event (equal (fn-own-store (fn-ocfg-owner (cdr *scar-t-ev-carried*)))
+                     (fn-own-store *scar-t-o*)))
+(assert-event (not (equal (fn-ocfg-owner (cdr *scar-t-ev-carried*)) *scar-t-o*)))
+
+(assert-event
+ (and (eq (symbol-class 'fn-scar-ocfg-read-step (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-scar-own-read-step-full (w state)) :common-lisp-compliant)))
+
+; Hypothesis removal: on the bad-node owner the carried step trusts the
+; pointer and keeps the connection with its context, the reference refuses the
+; session and drops the connection.
+(assert-event
+ (not (equal (in-arena-fn-scar-ocfg-read-step *sr-arena* *scar-t-bad-oc* 1 *scar-t-event*)
+             (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-bad-oc* 1 *scar-t-event*))))
+(assert-event
+ (fn-own-find-conn
+  1 (fn-own-conns
+     (fn-ocfg-owner
+      (cdr (in-arena-fn-scar-ocfg-read-step *sr-arena* *scar-t-bad-oc* 1 *scar-t-event*))))))
+(assert-event
+ (not (fn-own-find-conn
+       1 (fn-own-conns
+          (fn-ocfg-owner
+           (cdr (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-bad-oc* 1 *scar-t-event*)))))))
+(must-fail-checked
+ (defthm fn-scar-t-event-step-is-reference-without-relation
+   (equal (fn-scar-ocfg-read-step *scar-t-bad-oc* 1 *scar-t-event* fn-arena)
+          (fn-ocfg-read-step *scar-t-bad-oc* 1 *scar-t-event* fn-arena))))
