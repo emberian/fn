@@ -1829,6 +1829,31 @@
 ; then repeats that same decision without walking earlier declined slots.
 (include-book "page-window-span")
 
+; Shared endpoint calculation: a scheduling quantum, never a data ceiling.
+(defun fn-xc-span-end (p end plen start count)
+  (declare (xargs :guard (and (natp p) (natp end) (natp plen))))
+  (min (min end plen)
+       (min (+ p *fn-ew-span-capacity*) (+ (nfix start) (nfix count)))))
+
+(defthm fn-xc-span-end-bounds
+  (implies (and (natp p) (natp end) (natp plen))
+           (and (natp (fn-xc-span-end p end plen start count))
+                (<= (fn-xc-span-end p end plen start count) end)
+                (<= (fn-xc-span-end p end plen start count) plen)
+                (<= (fn-xc-span-end p end plen start count) (+ p *fn-ew-span-capacity*))
+                (<= (fn-xc-span-end p end plen start count) (+ (nfix start) (nfix count)))))
+  :rule-classes :rewrite
+  :hints (("Goal" :in-theory (enable fn-xc-span-end))))
+
+(defthm fn-xc-span-end-positive
+  (implies (and (natp p) (natp end) (natp plen) (natp start) (natp count)
+                (< p end) (< p plen) (< p (+ start count)))
+           (< p (fn-xc-span-end p end plen start count)))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-xc-span-end))))
+
+(in-theory (disable fn-xc-span-end))
+
 (defun fn-xc-span-at (from ledger plan file eoff elen poff plen trailer p end
                          fn-xcs fn-xcc fn-ew-buffer fn-ew-span)
   (declare (xargs :stobjs (fn-xcs fn-xcc fn-ew-buffer fn-ew-span)
@@ -1840,9 +1865,7 @@
     (if (and (equal word :hit) (natp slot) (< slot (fn-xcs-count fn-xcs))
              (natp p) (natp end) (natp plen))
         (let* ((token (fn-xc-slot-token slot fn-xcs))
-               (j (min (min end plen)
-                       (min (+ p *fn-ew-span-capacity*)
-                            (+ (nfix (fn-prl-nth 7 token)) (nfix (nth 5 plan)))))))
+               (j (fn-xc-span-end p end plen (fn-prl-nth 7 token) (nth 5 plan))))
           (if (< p j)
               (mv-let (answer fn-ew-span)
                 (fn-pwc-span-at ledger token plan file eoff elen poff plen trailer
@@ -1921,14 +1944,14 @@
 
 ; KEYSTONE: one cached ledger row has at most one slot.
 (defthm fn-xc-held-token-has-one-slot
-  (implies (and (fn-xc-token-disjointp fn-xcs)
-                (fn-xc-holds i token fn-xcs)
-                (fn-xc-holds k token fn-xcs))
+  (implies (and (fn-xc-token-disjointp slots)
+                (fn-xc-holds i token slots)
+                (fn-xc-holds k token slots))
            (equal i k))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-xc-token-disjointp fn-xc-holds)
-           :use ((:instance fn-xc-token-disjoint-from-pair (n 0))
-                 (:instance fn-xc-token-disjoint-from-pair (n 0) (i k) (k i))))))
+           :use ((:instance fn-xc-token-disjoint-from-pair (n 0) (fn-xcs slots))
+                 (:instance fn-xc-token-disjoint-from-pair (n 0) (i k) (k i) (fn-xcs slots))))))
 
 (defthm fn-xc-slot-token-after-write
   (implies (and (fn-xc-write-okp i kind tokp tid tcid file eoff elen a b c d start trailer stamp fn-xcs)
@@ -1938,3 +1961,291 @@
                       (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer)
                     (fn-xc-slot-token j fn-xcs))))
   :hints (("Goal" :in-theory (enable fn-xc-slot-token))))
+
+(defthm fn-xc-install-duplicate-iff-conflict
+  (iff (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)
+       (mv-nth 1 (fn-xc-install-conflict kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)))
+  :hints (("Goal" :in-theory (enable fn-xc-install))))
+
+; KEYSTONE: the duplicate answer names an existing charge, changes nothing,
+; and is equivalent to the search finding a holder outside the target.
+; The companion completeness theorem quantifies over every possible holder.
+(defthm fn-xc-install-duplicate-is-already-held
+  (let* ((choice (fn-xc-install-conflict kind tokp tid tcid file eoff elen a b c d start trailer slots cells))
+         (target (mv-nth 0 choice)) (holder (mv-nth 1 choice))
+         (token (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer))
+         (r (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer slots cells)))
+    (and (iff (equal (mv-nth 0 r) :duplicate)
+              (and token (fn-xc-holds holder token slots) (not (equal holder target))))
+         (implies (equal (mv-nth 0 r) :duplicate)
+                  (and (equal (mv-nth 1 r) target) (equal (mv-nth 2 r) nil)
+                       (equal (mv-nth 3 r) slots) (equal (mv-nth 4 r) cells)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-install fn-xc-install-conflict fn-xc-holds)
+           :use (:instance fn-xc-find-token-except-sound (fn-xcs slots)
+                            (token (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer))
+                            (i 0)
+                            (target (or (fn-xc-find (fn-xc-lo kind cells) (fn-xc-hi kind cells) t
+                                                   kind file eoff elen a b c d trailer start slots)
+                                        (fn-xc-find-free (fn-xc-lo kind cells) (fn-xc-hi kind cells) slots)
+                                        (fn-xc-lru (fn-xc-lo kind cells) (fn-xc-hi kind cells) nil slots)))))))
+
+(defthm fn-xc-install-duplicate-for-every-other-holder
+  (let* ((choice (fn-xc-install-conflict kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))
+         (target (mv-nth 0 choice))
+         (token (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer)))
+    (implies (and (natp target) (fn-xc-holds j token fn-xcs) (not (equal j target)))
+             (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-install-conflict fn-xc-holds)
+           :use (:instance fn-xc-find-token-except-complete
+                            (token (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer))
+                            (i 0)
+                            (target (or (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t
+                                                   kind file eoff elen a b c d trailer start fn-xcs)
+                                        (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)
+                                        (fn-xc-lru (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) nil fn-xcs)))))))
+
+(in-theory (disable fn-xc-write-okp))
+(defthm fn-xc-write-okp-slot
+  (implies (fn-xc-write-okp i kind tokp tid tcid file eoff elen a b c d start trailer stamp fn-xcs)
+           (and (natp i) (< i (fn-xcs-count fn-xcs))))
+  :hints (("Goal" :in-theory (enable fn-xc-write-okp))))
+
+(defthm fn-xc-token-absent-except-at
+  (implies (and (not (fn-xc-find-token-except token target 0 fn-xcs)) token
+                (natp j) (< j (fn-xcs-count fn-xcs)) (not (equal j target)))
+           (not (equal token (fn-xc-slot-token j fn-xcs))))
+  :hints (("Goal" :use (:instance fn-xc-find-token-except-complete (i 0)))))
+
+(defthm fn-xc-token-absent-except-tail
+  (implies (and (not (fn-xc-find-token-except token target 0 fn-xcs)) token
+                (natp n) (natp target) (< target n))
+           (fn-xc-token-apart-from token n fn-xcs))
+  :hints (("Goal" :induct (fn-xc-token-apart-from token n fn-xcs)
+           :in-theory (enable fn-xc-token-apart-from))
+          ("Subgoal *1/2" :use (:instance fn-xc-token-absent-except-at (j n)))
+          ("Subgoal *1/1" :use (:instance fn-xc-token-absent-except-at (j n)))))
+
+(defthm fn-xc-token-apart-from-after-write
+  (implies (and (fn-xc-write-okp i kind tokp tid tcid file eoff elen a b c d start trailer stamp fn-xcs)
+                (natp n) (fn-xc-token-apart-from token n fn-xcs)
+                (or (< i n)
+                    (not (equal token (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer)))))
+           (fn-xc-token-apart-from token n
+             (fn-xc-write i kind tokp tid tcid file eoff elen a b c d start trailer stamp fn-xcs)))
+  :hints (("Goal" :induct (fn-xc-token-apart-from token n fn-xcs)
+           :in-theory (enable fn-xc-token-apart-from))))
+
+(defthm fn-xc-token-disjoint-from-after-write
+  (implies (and (fn-xc-write-okp i kind tokp tid tcid file eoff elen a b c d start trailer stamp fn-xcs)
+                (natp n) (fn-xc-token-disjoint-from n fn-xcs)
+                (not (fn-xc-find-token-except
+                       (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer) i 0 fn-xcs)))
+           (fn-xc-token-disjoint-from n
+             (fn-xc-write i kind tokp tid tcid file eoff elen a b c d start trailer stamp fn-xcs)))
+  :hints (("Goal" :induct (fn-xc-token-disjoint-from n fn-xcs)
+           :in-theory (enable fn-xc-token-disjoint-from)
+           :expand ((:free (s) (fn-xc-token-disjoint-from n s))))
+          ("Subgoal *1/1" :use (:instance fn-xc-token-absent-except-at
+                                 (token (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer))
+                                 (target i) (j n)))))
+
+(defthm fn-xc-write-preserves-token-disjointp
+  (implies (and (fn-xc-write-okp i kind tokp tid tcid file eoff elen a b c d start trailer stamp fn-xcs)
+                (fn-xc-token-disjointp fn-xcs)
+                (not (fn-xc-find-token-except
+                       (fn-xc-token kind tokp tid tcid file eoff elen a b c d start trailer) i 0 fn-xcs)))
+           (fn-xc-token-disjointp
+             (fn-xc-write i kind tokp tid tcid file eoff elen a b c d start trailer stamp fn-xcs)))
+  :hints (("Goal" :in-theory (enable fn-xc-token-disjointp))))
+
+(defthm fn-xc-token-apart-from-after-touch
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (natp n))
+           (equal (fn-xc-token-apart-from token n (mv-nth 1 (fn-xc-touch i fn-xcs fn-xcc)))
+                  (fn-xc-token-apart-from token n fn-xcs)))
+  :hints (("Goal" :induct (fn-xc-token-apart-from token n fn-xcs)
+           :in-theory (enable fn-xc-token-apart-from fn-xc-touch))))
+
+(defthm fn-xc-touch-count
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc))
+           (equal (fn-xcs-count (mv-nth 1 (fn-xc-touch i fn-xcs fn-xcc))) (fn-xcs-count fn-xcs)))
+  :hints (("Goal" :in-theory (enable fn-xc-touch))))
+(defthm fn-xc-slot-token-after-touch-total
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (natp j))
+           (equal (fn-xc-slot-token j (mv-nth 1 (fn-xc-touch i fn-xcs fn-xcc)))
+                  (fn-xc-slot-token j fn-xcs)))
+  :hints (("Goal" :in-theory (enable fn-xc-touch))))
+
+(defthm fn-xc-token-disjoint-from-after-touch
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (natp n))
+           (equal (fn-xc-token-disjoint-from n (mv-nth 1 (fn-xc-touch i fn-xcs fn-xcc)))
+                  (fn-xc-token-disjoint-from n fn-xcs)))
+  :hints (("Goal" :induct (fn-xc-token-disjoint-from n fn-xcs)
+           :in-theory (enable fn-xc-token-disjoint-from)
+           :expand ((:free (s) (fn-xc-token-disjoint-from n s))))))
+
+(defthm fn-xc-touch-preserves-token-disjointp
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-token-disjointp fn-xcs))
+           (fn-xc-token-disjointp (mv-nth 1 (fn-xc-touch i fn-xcs fn-xcc))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-token-disjointp))))
+
+(defthm fn-xc-free-count
+  (implies (and (fn-xcsp fn-xcs) (natp i))
+           (equal (fn-xcs-count (mv-nth 2 (fn-xc-free i fn-xcs))) (fn-xcs-count fn-xcs)))
+  :hints (("Goal" :in-theory (enable fn-xc-free))))
+
+(defthm fn-xc-slot-token-after-free
+  (implies (and (fn-xcsp fn-xcs) (natp i) (natp j) (< j (fn-xcs-count fn-xcs)))
+           (equal (fn-xc-slot-token j (mv-nth 2 (fn-xc-free i fn-xcs)))
+                  (if (equal j i) nil (fn-xc-slot-token j fn-xcs))))
+  :hints (("Goal" :in-theory (enable fn-xc-free fn-xc-slot-token fn-xc-token fn-xcs-set-kind-is-update-nth
+                    fn-xcs-get-kind-is-nth fn-xcs-get-tokp-is-nth fn-xcs-get-tid-is-nth fn-xcs-get-tcid-is-nth fn-xcs-get-file-is-nth fn-xcs-get-eoff-is-nth fn-xcs-get-elen-is-nth fn-xcs-get-a-is-nth fn-xcs-get-b-is-nth fn-xcs-get-c-is-nth fn-xcs-get-d-is-nth fn-xcs-get-start-is-nth fn-xcs-get-trailer-is-nth))))
+
+(in-theory (disable fn-xc-free fn-xc-yield))
+(defthm fn-xc-token-apart-from-after-free
+  (implies (and (fn-xcsp fn-xcs) (natp i) (natp n) token
+                (fn-xc-token-apart-from token n fn-xcs))
+           (fn-xc-token-apart-from token n (mv-nth 2 (fn-xc-free i fn-xcs))))
+  :hints (("Goal" :induct (fn-xc-token-apart-from token n fn-xcs)
+           :in-theory (enable fn-xc-token-apart-from))))
+
+(defthm fn-xc-token-disjoint-from-after-free
+  (implies (and (fn-xcsp fn-xcs) (natp i) (natp n) (fn-xc-token-disjoint-from n fn-xcs))
+           (fn-xc-token-disjoint-from n (mv-nth 2 (fn-xc-free i fn-xcs))))
+  :hints (("Goal" :induct (fn-xc-token-disjoint-from n fn-xcs)
+           :in-theory (enable fn-xc-token-disjoint-from)
+           :expand ((fn-xc-token-disjoint-from n (mv-nth 2 (fn-xc-free i fn-xcs)))))))
+
+(defthm fn-xc-free-preserves-token-disjointp
+  (implies (and (fn-xcsp fn-xcs) (natp i) (fn-xc-token-disjointp fn-xcs))
+           (fn-xc-token-disjointp (mv-nth 2 (fn-xc-free i fn-xcs))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-token-disjointp))))
+
+(defthm fn-xc-yield-preserves-token-disjointp
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-token-disjointp fn-xcs))
+           (fn-xc-token-disjointp (mv-nth 3 (fn-xc-yield fn-xcs fn-xcc))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-yield)
+           :use (:instance fn-xc-free-preserves-token-disjointp
+                            (i (or (fn-xc-lru (fn-xc-lo 1 fn-xcc) (fn-xc-hi 1 fn-xcc) nil fn-xcs)
+                                   (fn-xc-lru (fn-xc-lo 2 fn-xcc) (fn-xc-hi 2 fn-xcc) nil fn-xcs)))))))
+
+(defthm fn-xc-install-preserves-token-disjointp
+  (implies (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-token-disjointp fn-xcs))
+           (fn-xc-token-disjointp
+             (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-install fn-xc-install-conflict fn-xc-write-okp)
+           :use ((:instance fn-xc-touch-preserves-token-disjointp
+                            (i (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t
+                                           kind file eoff elen a b c d trailer start fn-xcs)))
+                 (:instance fn-xc-write-preserves-token-disjointp
+                            (i (or (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)
+                                   (fn-xc-lru (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) nil fn-xcs)))
+                            (stamp (fn-xc-tick fn-xcc)))))))
+
+(defthm fn-xc-find-result-bounded
+  (implies (fn-xc-find i hi exactp kind file eoff elen a b c d trailer pos fn-xcs)
+           (and (natp (fn-xc-find i hi exactp kind file eoff elen a b c d trailer pos fn-xcs))
+                (< (fn-xc-find i hi exactp kind file eoff elen a b c d trailer pos fn-xcs) hi)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-xc-find i hi exactp kind file eoff elen a b c d trailer pos fn-xcs)
+           :in-theory (enable fn-xc-find))))
+
+(defthm fn-xc-lookup-result-bounded
+  (implies (equal (mv-nth 0 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p fn-xcs fn-xcc)) :hit)
+           (and (natp (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p fn-xcs fn-xcc)))
+                (< (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p fn-xcs fn-xcc)) (fn-xcs-count fn-xcs))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-lookup fn-xc-readyp fn-xc-hi fn-xc-lo)
+           :use (:instance fn-xc-find-result-bounded
+                            (i (if (< from (fn-xc-ne fn-xcc)) (fn-xc-ne fn-xcc) from))
+                            (hi (+ (fn-xc-ne fn-xcc) (fn-xc-nw fn-xcc)))
+                            (exactp nil) (kind 2) (a poff) (b plen) (c 0) (d 0) (pos p)))))
+
+(defthm fn-xc-cached-span-facts
+  (implies (equal (mv-nth 0 (fn-pwc-span-at ledger token plan file eoff elen poff plen trailer p j fn-ew-buffer fn-ew-span)) :span)
+           (and (fn-pwc-cachedp ledger token)
+                (natp (fn-prl-nth 7 token)) (natp (nth 5 plan))
+                (<= j plen) (<= j (+ (fn-prl-nth 7 token) (nth 5 plan)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwc-span-at))))
+
+(defthm fn-xc-cached-span-is-returned
+  (implies (and (natp p) (natp j) (< p j) (natp k) (< k (- j p))
+                (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)
+                (equal (mv-nth 0 (fn-pwc-span-at ledger token plan file eoff elen poff plen trailer p j fn-ew-buffer fn-ew-span)) :span))
+           (and (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) fn-ew-buffer)) :byte)
+                (equal (nth k (nth 0 (mv-nth 1 (fn-pwc-span-at ledger token plan file eoff elen poff plen trailer p j fn-ew-buffer fn-ew-span))))
+                       (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) fn-ew-buffer)))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-xc-cached-span-facts
+                         (:instance fn-pwc-span-at-is-the-cached-bytes (s plan) (i p))
+                         (:instance fn-pwc-a-hit-is-the-published-window
+                                    (ledger returned-ledger) (ledger2 ledger) (s plan) (i (+ p k)))))))
+
+(defthm fn-xc-span-at-is-the-returned-bytes
+(let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
+                           slots cells window dst))
+         (token (fn-xc-slot-token (mv-nth 2 r) slots)))
+    (implies
+     (and (natp k)
+          (< k (mv-nth 1 r))
+          (equal (fn-pwr-outcome returned-ledger worker token plan) :ready))
+     (and (equal (mv-nth 0 r) :span)
+          (posp (mv-nth 1 r))
+          (<= (mv-nth 1 r) *fn-ew-span-capacity*)
+          (<= (+ p (mv-nth 1 r)) end)
+          (<= (+ p (mv-nth 1 r)) plen)
+          (<= (+ p (mv-nth 1 r))
+              (+ (fn-prl-nth 7 token) (nth 5 plan)))
+          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
+                                          file eoff elen poff plen trailer
+                                          (+ p k) window))
+                 :byte)
+          (equal (nth k (nth 0 (mv-nth 3 r)))
+                 (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan
+                                          file eoff elen poff plen trailer
+                                          (+ p k) window))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-span-at)
+           :use ((:instance fn-xc-span-end-bounds (start (fn-prl-nth 7 (fn-xc-slot-token (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) slots))) (count (nth 5 plan)))
+                 (:instance fn-xc-cached-span-facts (fn-ew-buffer window) (fn-ew-span dst) (token (fn-xc-slot-token (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) slots)) (j (fn-xc-span-end p end plen (fn-prl-nth 7 (fn-xc-slot-token (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) slots)) (nth 5 plan))))
+                 (:instance fn-xc-cached-span-is-returned (fn-ew-buffer window) (fn-ew-span dst) (token (fn-xc-slot-token (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) slots)) (j (fn-xc-span-end p end plen (fn-prl-nth 7 (fn-xc-slot-token (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) slots)) (nth 5 plan))))))))
+
+
+(defthm fn-xc-span-at-answers-an-owed-hit
+  (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
+         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
+         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
+                           slots cells window dst)))
+    (implies
+     (and (equal (mv-nth 0 hit) :hit)
+          (fn-pwc-cachedp ledger token)
+          (natp end)
+          (< p end)
+          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
+                                          file eoff elen poff plen trailer p window))
+                 :byte))
+     (and (equal (mv-nth 0 r) :span)
+          (posp (mv-nth 1 r))
+          (equal (mv-nth 2 r) (mv-nth 1 hit)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-span-at fn-pwc-span-at fn-pwr-byte-at fn-pwr-byte fn-pwr-outcome)
+           :use ((:instance fn-xc-lookup-result-bounded (fn-xcs slots) (fn-xcc cells))
+                 (:instance fn-xc-span-end-bounds (start (fn-prl-nth 7 (fn-xc-slot-token (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) slots))) (count (nth 5 plan)))
+                 (:instance fn-xc-span-end-positive (start (fn-prl-nth 7 (fn-xc-slot-token (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) slots))) (count (nth 5 plan)))))))
+
+(defthm fn-xc-span-at-hit-touches-only-the-selected-slot
+  (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
+                         slots cells window dst)))
+    (implies (equal (mv-nth 0 r) :span)
+             (and (equal (mv-nth 4 r)
+                         (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells)))
+                  (equal (mv-nth 5 r)
+                         (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-xc-span-at))))

@@ -25,6 +25,92 @@
    "counterexample": "Ground-evaluated fn-xc-install-can-duplicate-a-charged-window and fn-xc-write-can-duplicate-a-charged-window: two live raw-window slots can both hold (:window 7 11 100 3 100 3 0 77). Install distinguishes c=0/c=1, while slot-token omits c. Well-formed/readyp alone does not imply uniqueness.",
    "minimal_fix": "Round 2: before install writes, reject a nonnil proposed token held outside the selected victim, across all slots; retain ordinary :present behavior and use :refused on a charge conflict. Primitive write needs the corresponding absence-except-target precondition. Merely canonicalizing new fields does not cover an existing noncanonical well-formed table. No false unconditional preservation lemma proposed.",
    "validation": "interface_emit regeneration: 0 findings at merge f563f1b18. Ground span gives count 2 and bytes 2,3; exclusive-end control misses. Nonempty two-distinct-token control passes. Exact no-hint defthm forms plus positive/removal/mutation sketches; new theorem proofs and gate deferred to round 2/deputy."
+  },
+  {
+   "author": "Codex p-xc-span",
+   "round": 2,
+   "status": "K1/K2 and duplicate theorem proved in persvati REPL; teeth and certification in progress",
+   "install": "da8a65c87 adds :duplicate before mutations, using one shared fn-xc-token constructor and a search across all slots except the chosen target. fn-xc-write remains unchecked.",
+   "proofs": [
+    "fn-xc-span-at-is-the-returned-bytes",
+    "fn-xc-span-at-answers-an-owed-hit",
+    "fn-xc-span-at-hit-touches-only-the-selected-slot",
+    "fn-xc-install-duplicate-is-already-held",
+    "fn-xc-install-duplicate-for-every-other-holder",
+    "fn-xc-held-token-has-one-slot",
+    "fn-xc-install-preserves-token-disjointp",
+    "fn-xc-write-preserves-token-disjointp",
+    "fn-xc-touch-preserves-token-disjointp",
+    "fn-xc-free-preserves-token-disjointp",
+    "fn-xc-yield-preserves-token-disjointp"
+   ],
+   "restated_statements": [
+    {
+     "name": "fn-xc-install-when-present",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-when-free",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-when-full",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-present",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-free",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-full",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-present",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-fills-a-free-slot",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-evicts-the-least-recently-used",
+     "old": "Original antecedent",
+     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-occupancy (via fn-xc-install-hyps)",
+     "old": "Original hypotheses, including answer != :refused",
+     "new": "Same hypotheses AND answer != :duplicate; conclusion unchanged"
+    },
+    {
+     "name": "fn-xc-install-placement",
+     "old": "Unchanged well-formed/install-okp antecedent; answer in (:installed :replaced :present :refused)",
+     "new": "Same antecedent; answer vocabulary also includes :duplicate. Duplicate returns the selected target, retaining every existing placement/geometry conclusion."
+    }
+   ],
+   "alpha_renaming": "New public K1 theorems, held-token uniqueness, and duplicate-is-already-held use slots/cells/window/dst as names of logical snapshot variables, enabling defteeth to bind ground values. This is alpha-renaming; executable signatures and logical claims are unchanged.",
+   "endpoint": "fn-xc-span-end factors the existing four-way min; fn-xc-span-at signature is unchanged. Its scalar refinement proof dropped from 8,350,004 steps / 25.41s to 1,172,923 steps / 2.23s in the REPL.",
+   "ready_source": "fnn-extent-window-release, host/native/extent.lisp:940, calls fn-owner-page-window-executor-cache with the returned worker row, token and plan. Its :cached branch at :948 inserts that token/plan/window. fn-owner-page-window-executor-cache-refines-pwc-by-definition connects the wrapper to fn-pwc-cache; fn-pwc-cache-only-a-published-window proves :ready before caching and cachedp afterward.",
+   "host_duplicate_contract": "S/s-xc2: on :duplicate release the job row as an uncached borrow, with no fault. fn-xc-install-duplicate-is-already-held proves the cache table and clock are unchanged; this theorem does not mutate or account for the ledger.",
+   "followup": "XC-KEY-DEAD-COLUMNS remains open under deputy-S; descriptor matching is unchanged for all kinds."
   }
  ],
  "owner": "C",
@@ -32,5 +118,5 @@
  "source": "CONVERGE-2 row 21, coordinator 2026-10-07 15:40",
  "state": "open",
  "title": "The ARTICLE renderer walks the payload from octet 0 while the borrowed window is the payload's last one, so every octet below the window start asks the wrong question; row21-span's below slot memoizes that answer",
- "updated": "2026-10-08T10:20:11Z"
+ "updated": "2026-10-08T11:08:51Z"
 }
