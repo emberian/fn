@@ -1,0 +1,17 @@
+{
+ "id": "OWNER-CAPTURE-NIL0-INTERN",
+ "category": "correctness",
+ "file": "books/store-checkpoint-arena.lisp",
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pck-2c-host",
+ "state": "open",
+ "title": "Use recovery fold context for retained checkpoint articles",
+ "notes": [
+  "Ground evidence: persvati pckroot4 loaded statement-recover-stream-tests; enroll snapshot, article1, rotate snapshot, article2 (*ssrt-a* ++ *ssrt-b*) produces four rows on each path. Snapshot rows 0/2 agree; article rows 1/3 differ. Article2 recovery context = ((:UNVERIFIED :MALFORMED 2) NIL 2); fn-srs / fn-scka-intern-one nil/0 context = ((:UNVERIFIED :MALFORMED 0) NIL 0).",
+  "Trace: store-checkpoint-arena.lisp:70 fn-scka-intern-one uses nil/0; :578 fn-scka-canon-rows feeds owner NEXT. paged-checkpoint.lisp:209 pck-ssr1-is-the-step identifies the correct fn-ssr-intern-step fold. s-capture-intern owns shared books/store-checkpoint-fold.lisp; this lane reuses it for derived model and owner carrier and deletes the nil/0 path.",
+  "Required regression: checkpoint reopen after rotation versus replay open compares an article context. No no-snapshot hypothesis, no compatible schema-3 fallback."
+ ],
+ "updated": "2026-10-08"
+}
