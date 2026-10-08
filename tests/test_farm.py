@@ -171,6 +171,24 @@ class SubmitTests(unittest.TestCase):
             self.assertIn("FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k", script)
             self.assertIn("FN_CERT_CACHE=/tank/fn/certcache", script)
 
+    def test_fn_farm_mem_max_sizes_the_swarm_build_cgroup(self):
+        for value, expected in (("48G", "env SWARM_MEM_MAX=48G swarm-build python3"),
+                                ("", "swarm-build python3")):
+            fake = Fake([])
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                with driving(fake, root / "cache"), \
+                        mock.patch.dict(os.environ, {"FN_FARM_MEM_MAX": value}):
+                    farm.submit("hbox", root, [], jobs=8, timeout_seconds=1800,
+                                affected_by=[])
+                script = fake.runner_script()
+                self.assertIn(expected, script)
+                self.assertIn("swarm-build python3 tools/certify_books.py", script)
+                self.assertEqual("SWARM_MEM_MAX" in script, bool(value))
+        for bad in ("48G; touch /tmp/x", "0G", "48"):
+            with self.assertRaises(SystemExit):
+                farm.swarm_memory(bad)
+
     def test_default_toolchain_paths_reach_cache_preflight(self):
         self.assertIn(
             'acl2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k;',
