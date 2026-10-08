@@ -160,7 +160,7 @@
    ]
   },
   "post-rate": {
-   "about": "Closed-loop POSTs/s at 1 and 8 connections, alone and beside 3 readers (L-POST, T-POST, T-RATE). A 1000-article store is preloaded for the readers. The variant names the preset: post-rate/small, /development, /default.",
+   "about": "Closed-loop POSTs/s at 1 and 8 connections, alone and beside 3 readers (L-POST, T-POST, T-RATE). A 1000-article store is preloaded for the readers. The variant names the preset: post-rate/small, /development, /default. At the development preset the store cannot hold the 1000-article preload (it admits ~127 2 KiB POSTs, then refuses 441 'posting failed the store'), so that variant starts empty (variant_preload) and its POST phases run into the same bound: read its admitted/refused counts beside the rate.",
    "preset": "filled",
    "groups": [
     "fn.letters",
@@ -212,6 +212,9 @@
    },
    "policy": {
     "exposure-connections": 64
+   },
+   "variant_preload": {
+    "development": 0
    }
   },
   "readers": {
@@ -477,7 +480,7 @@
       "development",
       "default"
      ],
-     "max_try": 4096,
+     "max_try": 32768,
      "measure": true
     }
    ]

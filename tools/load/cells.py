@@ -328,7 +328,9 @@ def _commands(phases, m, nm):
         if st.get("p99_ms") is not None:
             worst = max(worst or 0, st["p99_ms"])
         elif st.get("n"):
-            nm["cmd.p99_ms." + name] = "fewer than 200 samples"
+            nm["cmd.p99_ms." + name] = "fewer than 200 samples (n=%d, time budget); max %s ms" % (st["n"], st.get("max_ms"))
+            if st.get("max_ms") is not None:
+                worst = max(worst or 0, st["max_ms"])      # a command under 200 samples is judged on its worst sample
     for name, v in (ph.get("cpu_ms_per_op_by_cmd") or {}).items():
         m["cmd.cpu_ms_per_op." + name] = v
     if worst is not None:
@@ -344,6 +346,8 @@ def _stall(phases, m, nm):
     m["publish.window_s"] = ph.get("window_s")
     m["publish.window_posts"] = ph.get("window_posts")
     m["publish.done_gap_max_s"] = ph.get("done_gap_max_s")
+    m["publish.window_late_max_s"] = ph.get("window_late_max_s")
+    m["publish.achieved_per_s"] = ph.get("achieved_per_s_in_window")
     st = (ph.get("cmd") or {}).get("POST") or {}
     if st.get("p99_ms") is not None:
         m["publish.post_p99_ms"] = st["p99_ms"]

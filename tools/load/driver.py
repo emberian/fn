@@ -48,6 +48,7 @@ from tools.load import cells as cells_mod          # noqa: E402
 from tools.load import result as res_mod            # noqa: E402
 from tools.load import workloads as wl              # noqa: E402
 
+NOFILE = [None]            # soft RLIMIT_NOFILE the run raised itself to (recorded in each cell box dict)
 BOX_BASE = "/tank/fn/scratch/load-harness"
 # One-off hook files live in the evidence dir (not tools/load): O2's FN_TRACE spans replace them.
 HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
@@ -700,7 +701,7 @@ class Run:
                         time.sleep(intended - now)
                     d = post_one(c, self.ctr, octets)
                     done = time.perf_counter()
-                    recs.append((intended, done, (done - intended) if d is not None else None))
+                    recs.append((intended, done, d, (done - intended) if d is not None else None))
                     k += 1
             except Exception as e:      # noqa: BLE001
                 self.errors.append(repr(e))
@@ -734,11 +735,14 @@ class Run:
             out["status"] = "not-measured"
             out["reason"] = "no 'CHECKPOINT auto' line within %d s of the request (reply: %s)" % (max_wait, reply)
             return out
-        inwin = [r[2] for r in ok if t_req <= r[0] <= t_end]
+        inwin = [r[2] for r in ok if t_req <= r[0] <= t_end]          # a POST's own wall: send to 240
         before = [r[2] for r in ok if r[0] < t_req]
+        behind = [r[3] for r in ok if t_req <= r[0] <= t_end]         # from the intended send time (includes a backlog)
         dones = sorted(r[1] for r in ok if t_req - 1 <= r[1] <= t_end + 1)
         out["window_s"] = round(t_end - t_req, 3)
         out["window_posts"] = len(inwin)
+        out["window_late_max_s"] = round(max(behind), 4) if behind else None
+        out["achieved_per_s_in_window"] = round(len(inwin) / (t_end - t_req), 2) if t_end > t_req else None
         out["stall_max_s"] = round(max(inwin), 4) if inwin else None
         out["done_gap_max_s"] = round(max((b - a for a, b in zip(dones, dones[1:])), default=0), 4)
         out["cmd"]["POST"] = res_mod.lat_stats(inwin) if inwin else {}
@@ -767,7 +771,10 @@ class Run:
         out, cpu_ms, bad = {}, {}, {}
         for name, mk in plan.items():
             ts, c0 = [], (proc_snapshot(self.node.pid) or {}).get("cpu_s")
+            t_cmd = time.monotonic()
             for k in range(reps):
+                if k >= 10 and time.monotonic() - t_cmd > ph.get("budget_s", 90):
+                    break          # a command that costs seconds (LIST is O(n)) stops at its time budget; n is recorded and p99 stays null
                 text, multi = mk(k)
                 t0 = time.perf_counter()
                 rep = c.line(text)
@@ -779,7 +786,7 @@ class Run:
             c1 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
             out[name] = res_mod.lat_stats(ts)
             if c0 is not None and c1 is not None:
-                cpu_ms[name] = round((c1 - c0) * 1000.0 / reps, 3)
+                cpu_ms[name] = round((c1 - c0) * 1000.0 / max(1, len(ts)), 3)
         c.close()
         ts = []
         c0 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
@@ -1237,7 +1244,7 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
           "box": {"name": args.box, "cores": len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count(),
                   "loadavg_start": loadavg(), "arc_bytes_start": arc_size(),
                   "pinned": sorted(os.sched_getaffinity(0)) if args.cores else None,
-                  "busy_cores_set": ("%d-%d" % (min(os.sched_getaffinity(0)), max(os.sched_getaffinity(0)))) if args.cores else None,
+                  "nofile_soft": NOFILE[0], "busy_cores_set": ("%d-%d" % (min(os.sched_getaffinity(0)), max(os.sched_getaffinity(0)))) if args.cores else None,
                   "busy_cores_start": busy_cores(sorted(os.sched_getaffinity(0))) if args.cores else None, "fs": fs_type(work)},
           "loopback_only": True}
     if sub:
@@ -1355,7 +1362,18 @@ def run_sweep(cell_id, cell, target, arm, rep, args, data, res, write):
     return merged
 
 
+def raise_nofile(want=65536):
+    """The driver and the owner it starts inherit RLIMIT_NOFILE: lift the soft limit so a capacity or reader cell is not capped by 1024."""
+    import resource
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    new = want if hard == resource.RLIM_INFINITY else min(want, hard)
+    if new > soft:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (new, hard))
+    return resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+
+
 def cmd_run(args):
+    NOFILE[0] = raise_nofile()
     data = wl.load()
     args.bars = res_mod.load_bars()
     args.data = data

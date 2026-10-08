@@ -105,6 +105,8 @@ def resolve(cell_id, data=None):
     if variant:
         if variant in spec.get("variants", ()):
             spec["preset"] = variant
+            if variant in spec.get("variant_preload", {}):
+                spec.setdefault("store", {})["preload"] = spec["variant_preload"][variant]
         elif re.fullmatch(r"R\d+", variant):
             phases = [p for p in spec["phases"] if p["name"] == variant]
             if not phases:
