@@ -104,12 +104,21 @@
          (cdr names) (+ 1 token) (cons name records) stages))
        (t (list :fault :lifecycle-namespace))))))
 
+; A generation that starts from a checkpoint names its first record by the
+; checkpoint's token counter, so the plan binds the record names to the
+; contiguous tokens START, START+1, ...  The namespace from token 0 is the
+; START = 0 instance.
+(defun fn-bpn-lifecycle-namespace-plan-from (names start)
+  (declare (xargs :guard t))
+  (if (and (natp start)
+           (true-listp names)
+           (<= (len names) (fn-bpn-lifecycle-max-namespace-entries)))
+      (fn-bpn-lifecycle-namespace-plan-aux names start nil nil)
+    (list :fault :namespace-entry-bound)))
+
 (defun fn-bpn-lifecycle-namespace-plan (names)
   (declare (xargs :guard t))
-  (if (and (true-listp names)
-           (<= (len names) (fn-bpn-lifecycle-max-namespace-entries)))
-      (fn-bpn-lifecycle-namespace-plan-aux names 0 nil nil)
-    (list :fault :namespace-entry-bound)))
+  (fn-bpn-lifecycle-namespace-plan-from names 0))
 
 (defun fn-bpn-lifecycle-namespace-planp (plan)
   (declare (xargs :guard t))
@@ -144,16 +153,20 @@
          (fn-bpn-lifecycle-record-bindingsp
           (cdr names) (cdr records) (+ 1 token)))))
 
-(defun fn-bpn-lifecycle-recovery (observed-names decoded-records)
+(defun fn-bpn-lifecycle-recovery-from (observed-names decoded-records start)
   (declare (xargs :guard t))
-  (let ((plan (fn-bpn-lifecycle-namespace-plan observed-names)))
+  (let ((plan (fn-bpn-lifecycle-namespace-plan-from observed-names start)))
     (if (and (fn-bpn-lifecycle-namespace-planp plan)
              (fn-bpn-lifecycle-record-bindingsp
-              (fn-bpn-lifecycle-plan-record-names plan) decoded-records 0))
+              (fn-bpn-lifecycle-plan-record-names plan) decoded-records start))
         (list :ready decoded-records
               (fn-bpn-lifecycle-plan-hidden-stages plan)
               (fn-bpn-lifecycle-plan-next-token plan))
       (list :fault :lifecycle-namespace-record-binding))))
+
+(defun fn-bpn-lifecycle-recovery (observed-names decoded-records)
+  (declare (xargs :guard t))
+  (fn-bpn-lifecycle-recovery-from observed-names decoded-records 0))
 
 ; The native host needs only these flat projections.  RESTART itself remains
 ; fn-bpn-step; this predicate checks that its carried machine frontier is the
