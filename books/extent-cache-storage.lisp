@@ -68,6 +68,15 @@
               (mv word slot evicted fn-xcs fn-xcc fn-xce fn-xce-stage))
           (mv word slot evicted fn-xcs fn-xcc fn-xce fn-xce-stage))))))
 
+(defun fn-xcw-store-counted (row plan count fn-xcw fn-ew-buffer)
+  (declare (xargs :stobjs (fn-xcw fn-ew-buffer)
+                  :guard (and (natp row) (< row (fn-xcw-plans-length fn-xcw))
+                              (natp count) (<= count (fn-profile-limit :read-window-octets)))))
+  (let ((fn-xcw (update-fn-xcw-plansi row plan fn-xcw)))
+    (stobj-let ((fn-xcw-win (fn-xcw-winsi row fn-xcw))) (fn-xcw-win)
+      (fn-xcw-copy 0 count 0 fn-ew-buffer fn-xcw-win)
+      fn-xcw)))
+
 (defun fn-xc-install-decoded-bytes (token z fn-xcs fn-xcc fn-xcw fn-ew-buffer)
   (declare (xargs :stobjs (fn-xcs fn-xcc fn-xcw fn-ew-buffer)
                   :guard (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc))
@@ -83,11 +92,9 @@
            (if (and (member-equal word '(:installed :replaced)) (natp slot)
                     (<= base slot)
                     (< (nfix (- slot base)) (fn-xcw-plans-length fn-xcw)))
-               (let* ((row (nfix (- slot base)))
-                      (fn-xcw (update-fn-xcw-plansi row z fn-xcw)))
-                 (stobj-let ((fn-xcw-win (fn-xcw-winsi row fn-xcw))) (fn-xcw-win)
-                   (fn-xcw-copy 0 (fn-pwz-token-window-length token) 0 fn-ew-buffer fn-xcw-win)
-                   (mv word slot evicted fn-xcs fn-xcc fn-xcw)))
+               (let ((fn-xcw (fn-xcw-store-counted (nfix (- slot base)) z
+                               (fn-pwz-token-window-length token) fn-xcw fn-ew-buffer)))
+                 (mv word slot evicted fn-xcs fn-xcc fn-xcw))
              (mv word slot evicted fn-xcs fn-xcc fn-xcw)))))))
 
 (defun fn-xc-decoded-span-row (slot ledger file eoff elen poff compressed trailer decoded dict-id p end

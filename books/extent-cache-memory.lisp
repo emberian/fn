@@ -18,20 +18,18 @@
           fn-xce))
     fn-xce))
 
-(defun fn-xc-free-bytes (slot fn-xcs fn-xcc fn-xce)
-  (declare (xargs :stobjs (fn-xcs fn-xcc fn-xce)
-                  :guard (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (natp slot))))
-  (let ((entryp (and (fn-xc-cellsp fn-xcc) (< slot (fn-xc-ne fn-xcc)))))
-    (mv-let (word token fn-xcs) (fn-xc-free slot fn-xcs)
-      (let ((fn-xce (if (and entryp (equal word :freed)) (fn-xce-drop slot fn-xce) fn-xce)))
-        (mv word token fn-xcs fn-xce)))))
+(defun fn-xc-free-bytes (slot fn-xcs fn-xce)
+  (declare (xargs :stobjs (fn-xcs fn-xce)
+                  :guard (and (fn-xcsp fn-xcs) (natp slot))))
+  (mv-let (word token fn-xcs) (fn-xc-free slot fn-xcs)
+    (let ((fn-xce (if (equal word :freed) (fn-xce-drop slot fn-xce) fn-xce)))
+      (mv word token fn-xcs fn-xce))))
 
 (defun fn-xc-yield-bytes (fn-xcs fn-xcc fn-xce)
   (declare (xargs :stobjs (fn-xcs fn-xcc fn-xce)
                   :guard (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc))))
   (mv-let (word slot token fn-xcs) (fn-xc-yield fn-xcs fn-xcc)
-    (let ((fn-xce (if (and (equal word :yielded) (natp slot)
-                          (fn-xc-cellsp fn-xcc) (< slot (fn-xc-ne fn-xcc)))
+    (let ((fn-xce (if (and (equal word :yielded) (natp slot))
                      (fn-xce-drop slot fn-xce) fn-xce)))
       (mv word slot token fn-xcs fn-xce))))
 
@@ -50,17 +48,19 @@
                               (fn-xce-stage-clear fn-xce-stage) fn-xce-stage)))
         (mv word slot evicted fn-xcs fn-xcc fn-xce fn-xce-stage)))))
 
-(defun-nx fn-xce-funded-rows (i rows ledger slots)
-  (declare (xargs :measure (acl2-count rows)))
-  (if (consp rows)
-      (and (or (equal (len (car rows)) 0)
-               (and (natp i) (< i (fn-xcs-count slots))
-                    (equal (fn-xcs-get-kind i slots) 1)
-                    (<= (len (car rows)) (fn-xce-cached-charge ledger (fn-xc-slot-token i slots)))))
-           (fn-xce-funded-rows (1+ (nfix i)) (cdr rows) ledger slots))
-    t))
+(defun-nx fn-xce-row-fundedp (i ledger slots entries)
+  (let ((n (len (nth i (nth 1 entries)))))
+    (or (equal n 0)
+        (and (natp i) (< i (fn-xcs-count slots))
+             (equal (fn-xcs-get-kind i slots) 1)
+             (<= n (fn-xce-cached-charge ledger (fn-xc-slot-token i slots)))))))
+(defun-nx fn-xce-funded-through (n ledger slots entries)
+  (declare (xargs :measure (nfix n)))
+  (if (zp n) t
+    (and (fn-xce-row-fundedp (1- n) ledger slots entries)
+         (fn-xce-funded-through (1- n) ledger slots entries))))
 (defun-nx fn-xce-fundedp (ledger slots entries)
-  (fn-xce-funded-rows 0 (nth 1 entries) ledger slots))
+  (fn-xce-funded-through (fn-xce-keys-length entries) ledger slots entries))
 
 (defthm fn-xce-drop-releases-the-row
   (implies (and (natp slot) (< slot (fn-xce-keys-length entries)))
@@ -73,7 +73,7 @@
                 (equal (nth other (nth 1 (fn-xce-drop slot entries))) (nth other (nth 1 entries)))))
   :rule-classes nil)
 (defthm fn-xc-free-bytes-is-the-table-decision
-  (equal (take 3 (fn-xc-free-bytes slot slots cells entries)) (fn-xc-free slot slots))
+  (equal (take 3 (fn-xc-free-bytes slot slots entries)) (fn-xc-free slot slots))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-xc-free))))
 (defthm fn-xc-yield-bytes-is-the-table-decision
