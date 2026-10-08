@@ -36,3 +36,35 @@
               nth car-cons cdr-cons (:executable-counterpart zp)
               (:executable-counterpart binary-+))
             (theory 'minimal-theory)))))
+
+(defthm fn-pck-root-extend-carried-keeps-cursor
+  (let ((out (fn-pck-root-extend-carried roots ix rest s delta f plen)))
+    (implies (and (fn-pck-cpr-cursorp (fn-sco-at 0 roots) ix rest configs)
+                  (fn-sco-pausedp (caar out)))
+             (fn-pck-cpr-cursorp (caar out) (cadr out) (caddr out) configs)))
+  :hints (("Goal"
+           :use ((:instance fn-pck-cpr-resume-from-keeps-cursor
+                            (r (fn-sco-at 0 roots)) (events delta)))
+           :in-theory
+           (union-theories '(fn-pck-root-extend-carried car-cons cdr-cons)
+                           (theory 'minimal-theory)))))
+
+(defthm fn-pck-root-extend-carried-from-root-tree
+  (implies (and (equal s (len (fn-sco-records c)))
+                (fn-pck-cpr-cursorp (fn-sco-cpr c) ix rest configs))
+           (equal
+            (car (fn-pck-root-extend-carried
+                  (fn-pck-root-tree-of-capture c old-f old-plen)
+                  ix rest s delta f plen))
+            (fn-pck-root-tree-of-capture (fn-sco-extend c configs delta) f plen)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-pck-root-extend-carried-is-the-capture-root
+                            (roots (list (fn-sco-cpr c) (fn-sco-identity c)
+                                         (fn-sco-consumer c) (fn-sco-topic c)))))
+           :in-theory
+           (union-theories
+            '(fn-pck-root-extend-carried fn-pck-root-tree-of-capture fn-sco-at
+              nth car-cons cdr-cons (:executable-counterpart zp)
+              (:executable-counterpart binary-+))
+            (theory 'minimal-theory)))))

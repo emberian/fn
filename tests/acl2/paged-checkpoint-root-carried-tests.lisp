@@ -11,7 +11,7 @@
   (declare (xargs :mode :program))
   (fn-pck-root-extend-carried roots ix rest s delta f plen))
 
-(defthm pckrc-whole-antecedent
+(defthm pckrc-open-producer-whole-antecedent
   (and (equal *pckrc-roots*
               (list (fn-sco-cpr *pckc-base*) (fn-sco-identity *pckc-base*)
                     (fn-sco-consumer *pckc-base*) (fn-sco-topic *pckc-base*)))
@@ -19,7 +19,7 @@
        (fn-pck-cpr-cursorp (fn-sco-cpr *pckc-base*) *pckc-ix*
                            *pckc-rest* *sfi-t-configs*))
   :rule-classes nil
-  :hints (("Goal" :use pckc-positive-has-the-whole-cursor-invariant
+  :hints (("Goal" :use pckc-open-producer-has-the-whole-cursor-invariant
            :in-theory (disable fn-pck-cpr-cursorp))))
 
 (assert-event
@@ -50,3 +50,9 @@
           '(fn-cnode-statep fn-rii-ix-of fn-sco-drop fn-sco-nthcdr
             fn-sco-extend fn-rii-sco-extend fn-cei-build-aux fn-cei-branch-get)
           calls))))
+
+(assert-event
+ (equal (pckrc-raw (fn-pck-root-tree-of-capture *pckc-base* '(:old-f) 1)
+                    *pckc-ix* *pckc-rest* 2 *pckc-delta* '(:new-f) 39)
+        (pckrc-raw *pckrc-roots* *pckc-ix* *pckc-rest* 2
+                    *pckc-delta* '(:new-f) 39)))

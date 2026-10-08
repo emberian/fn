@@ -15,6 +15,17 @@
   (and (fn-sfi-cpr-carriedp r ix)
        (equal rest (fn-sco-nthcdr (nfix (fn-sco-at 2 r)) configs))))
 
+(defthm fn-pck-cpr-cursor-at-open
+  (implies (fn-sfi-carry c)
+           (fn-pck-cpr-cursorp
+            (fn-sco-cpr c) (fn-sfi-carry c)
+            (fn-sco-nthcdr (nfix (fn-sco-at 2 (fn-sco-cpr c))) configs)
+            configs))
+  :hints (("Goal" :use fn-sfi-carry-is-carried
+           :in-theory (e/d (fn-pck-cpr-cursorp)
+                           (fn-sfi-cpr-carriedp fn-sfi-carry fn-sco-cpr
+                            fn-sco-at fn-sco-nthcdr fn-sfi-carry-is-carried)))))
+
 (defun fn-pck-cpr-resume-from (r rest events ix)
   (declare (xargs :guard (fn-sfi-cpr-carriedp r ix) :verify-guards nil))
   (let* ((cs (fn-sco-at 2 r))

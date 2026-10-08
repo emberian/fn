@@ -27,11 +27,11 @@
 (defconst *pckc-out*
   (list (fn-sco-cpr *sfi-t-base*) (fn-sfi-carry *sfi-t-base*) nil))
 
-(defthm pckc-positive-has-the-whole-cursor-invariant
+(defthm pckc-open-producer-has-the-whole-cursor-invariant
   (fn-pck-cpr-cursorp *pckc-r* *pckc-ix* *pckc-rest* *sfi-t-configs*)
-  :hints (("Goal" :use ((:instance fn-sfi-carry-is-carried (c *pckc-base*)))
-           :in-theory (e/d (fn-pck-cpr-cursorp)
-                           (fn-sfi-cpr-carriedp fn-sfi-carry-is-carried)))))
+  :hints (("Goal" :use ((:instance fn-pck-cpr-cursor-at-open (c *pckc-base*)
+                            (configs *sfi-t-configs*)))
+           :in-theory (disable fn-pck-cpr-cursorp fn-pck-cpr-cursor-at-open))))
 
 (assert-event
  (and (consp *pckc-delta*)
@@ -89,3 +89,12 @@
          (rest (nthcdr (fn-sco-at 2 r) *sfi-t-configs*)))
     (equal (car (pckc-raw-resume r rest *sfi-t-q-dup* *sfi-t-ix-wrong*))
            (fn-sco-cpr-resume r *sfi-t-configs* *sfi-t-q-dup*)))))
+
+(assert-event
+ (let ((bad (fn-sco-make nil '(:fault) nil nil nil nil)))
+   (and (not (fn-sfi-carry bad))
+        (not (fn-pck-cpr-cursorp (fn-sco-cpr bad) nil nil nil)))))
+(must-fail-checked
+ (assert-event
+  (let ((bad (fn-sco-make nil '(:fault) nil nil nil nil)))
+    (fn-pck-cpr-cursorp (fn-sco-cpr bad) (fn-sfi-carry bad) nil nil))))
