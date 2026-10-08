@@ -1435,11 +1435,14 @@
         ; first, even where a consumer's snapshot export hid it (books/store-
         ; records-field.lisp in books/owner's world), with adt-nth-0 off (the
         ; paged bridges' NTH normal form).  Afterwards every one of those runes
-        ; returns to the state the caller's theory gave it (a local snapshot),
-        ; so the caller's later proofs keep their incoming theory.  No
-        ; encapsulate: a defabsstobj :attachable re-run in an encapsulate's
-        ; second pass trips ACL2's type-prescription ASSERT$
-        ; (tests/acl2/def-representation-tests, 2026-10-08).
+        ; returns to the state the caller's theory gave it (a snapshot),
+        ; so the caller's later proofs keep their incoming theory.  Not
+        ; local: the generated definitions' type prescriptions depend on the
+        ; theory they are admitted in, and an include pass that skipped a local
+        ; enable recomputes them differently -- ACL2's type-prescription
+        ; ASSERT$ in tests/acl2/def-representation-tests at certify step 3
+        ; (2026-10-08).  Non-local, the events replay identically on include,
+        ; and their net effect on the includer's theory is nil.
         (let* ((snap (adt-sym name "-CALLER-THEORY"))
                (libs '(union-theories
                        (theory 'adt-lib-exported)
@@ -1459,11 +1462,11 @@
                                            nil))))
           (value
            `(progn
-              (local (deftheory ,snap (current-theory :here)))
-              (local (in-theory (union-theories (current-theory :here) ,libs)))
-              (local (in-theory (if (logical-namep 'adt-nth-0 world)
-                                    (disable adt-nth-0)
-                                  (current-theory :here))))
+              (deftheory ,snap (current-theory :here))
+              (in-theory (union-theories (current-theory :here) ,libs))
+              (in-theory (if (logical-namep 'adt-nth-0 world)
+                             (disable adt-nth-0)
+                           (current-theory :here)))
               ,(if pages
                    ; the instance's events, then its page image and marking
                    `(progn ,events
@@ -1471,9 +1474,9 @@
                            (table fn-generated ',name
                                   ',(append (cadr (cadddr (car (last events)))) '(:pages t))))
                  events)
-              (local (in-theory (union-theories
-                                 (set-difference-theories (current-theory :here) ,touched)
-                                 (intersection-theories ,touched (theory ',snap)))))))))))))
+              (in-theory (union-theories
+                          (set-difference-theories (current-theory :here) ,touched)
+                          (intersection-theories ,touched (theory ',snap))))))))))))
 
 (defun rep-fields-of (args)
   (if (or (endp args) (keywordp (car args)))
