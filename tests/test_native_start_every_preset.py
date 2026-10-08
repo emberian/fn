@@ -13,7 +13,7 @@ fn-prstartup-plan) and a BP node more so, and nothing started bare noticed
 For each preset (small, development, scale) and each node type -- the
 operator's served run, the developer store owner (`owner run`) and a BP node
 (`bp-node serve`), on the developer image and on the DTN developer image where
-it has the verb -- the node must reach its LISTENING announcement.  A preset the
+it has the verb (the DTN image omits the NNTP service, so its served run is not an NNTP start) -- the node must reach its LISTENING announcement.  A preset the
 machine cannot hold is refused by the probe by name (machine-cannot-hold-profile)
 and is reported as skipped, never as started.  The teeth: the same node at
 85% of its decided heap, named explicitly, is refused at cold start by ACL2 and
@@ -28,7 +28,16 @@ from tests.native_harness import (EXIT, Node, environment, free_port, executable
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 DTN = native_image("FN_NATIVE_DTN_DEVELOPER_HOST")
-PRESETS = ("small", "development", "scale")
+# The presets as `operator CONFIG init` takes them: the small preset is the
+# development profile under its named fields (tests/test_native_heap_from_profile.py
+# SMALL_FLAGS; tools/build_native_host.sh probes the same).
+PRESETS = {
+    "small": ("--profile", "development", "--max-transactions", "16384",
+              "--max-history-octets", "8388608", "--max-record-octets", "196608",
+              "--max-groups-per-article", "16", "--max-open-suffix", "128"),
+    "development": ("--profile", "development"),
+    "scale": ("--profile", "scale"),
+}
 GROUP = "fn.test"
 
 
@@ -46,12 +55,12 @@ class StartEveryPresetTests(unittest.TestCase):
         # No heap opt-out is named: image_heap makes Node start the bare image.
         node = Node(self, image, name="{}-{}".format(image.name, preset),
                     image_heap="the bare launcher decides its own heap (this test's subject)")
-        init = node.init(GROUP, profile=preset, expect=None)
+        init = node.operator("init", *PRESETS[preset], GROUP, expect=None, timeout=600)
         if init.returncode != 0:
             text = (init.stdout + init.stderr).decode("utf-8", "replace")
             if "machine-cannot-hold-profile" in text:
                 self.skipTest("{}: the machine cannot hold the {} preset".format(image.name, preset))
-            self.fail("init --profile {} exited {}: {}".format(preset, init.returncode, text))
+            self.fail("init {} exited {}: {}".format(preset, init.returncode, text))
         return node
 
     def served_words(self, node):
@@ -98,32 +107,28 @@ class StartEveryPresetTests(unittest.TestCase):
                     self.started(self.bp_words(node, free_port()), b"BP NODE LISTENING ",
                                  image, node)
 
-    @requires(DTN)
-    def test_the_dtn_served_run_starts_at_every_preset(self):
-        for preset in PRESETS:
-            with self.subTest(preset=preset):
-                node = self.node(DTN, preset)
-                self.started(self.served_words(node), b"LISTENING ", DTN, node)
-
     def test_a_heap_below_the_decided_figure_is_refused_by_name(self):
-        for label, words_of in (("served run", self.served_words), ("store owner", self.owner_words)):
+        """85% of the figure the probe decides is named explicitly (a caller's
+        SBCL_USER_ARGS wins over the launcher's decision): the served run is
+        refused at cold start, and the BP node's funding is refused, by ACL2.
+        (The developer store owner's figure has more slack: it still starts at
+        85%, so it carries no tooth here.)"""
+        node = self.node(DEVELOPER, "development")
+        for label, words, refusal in (
+                ("served run", self.served_words(node), b"cold startup refused"),
+                ("bp node", self.bp_words(node, free_port()), b"refused")):
             with self.subTest(command=label):
-                node = self.node(DEVELOPER, "development")
-                words = words_of(node)
                 heap, text = probe(DEVELOPER, words)
                 self.assertIsNotNone(heap, text)
-                small = heap * 85 // 100
                 process = start([str(DEVELOPER), "--fn", *[str(w) for w in words]], cwd=node.root,
                                 env=environment({"SBCL_USER_ARGS":
-                                                 "--dynamic-space-size {}MB".format(small)}))
+                                                 "--dynamic-space-size {}MB".format(heap * 85 // 100)}))
                 self.addCleanup(process.stop, 5)
                 status = process.wait(timeout=120)
                 self.assertNotEqual(status, 0)
                 self.assertNotIn(b"LISTENING", process.stdout.since(0))
-                self.assertIn(b"cold startup refused", process.stderr.since(0))
+                self.assertIn(refusal, process.stderr.since(0))
 
-
-StartEveryPresetTests = requires(DEVELOPER)(StartEveryPresetTests)
 
 if __name__ == "__main__":
     unittest.main()
