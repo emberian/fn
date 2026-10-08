@@ -11,9 +11,8 @@ The same classifier over the two archived runs the review cites agrees with
 what the freeze lanes found by hand and then some: 2 independent of 53
 failures in `certify-20260922T121645Z-3620455`, and in
 `certify-20260922T075332Z-1349583` the two books the lane named plus three
-test books whose own errors were buried under 90 cascades.  (Spelling run ids
-is safe only here: `tools/evidence_manifests.py` excludes `tests/test_*.py`
-from its citation sweep, because a run id in a unit test is a fixture.)
+test books whose own errors were buried under 90 cascades.  (A run id in a
+unit test is a fixture.)
 
 The farm is faked the way `tests/test_farm.py` fakes it, through the module
 seam `farm.RUN`, so these tests read the exact commands a triage round would
@@ -156,6 +155,20 @@ def digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+_EMPTY_CACHE = tempfile.TemporaryDirectory()
+
+
+def setUpModule():
+    """Every audit asks an empty local cache: nothing is certified, and no
+    test reaches a record box over ssh."""
+    triage.green_check.configure(cache=_EMPTY_CACHE.name, identity="record")
+
+
+def tearDownModule():
+    triage.green_check.configure()
+    _EMPTY_CACHE.cleanup()
+
+
 # The synthetic repository must not read the machine's git configuration:
 # with the user's global `commit.gpgsign=true` every commit here waited on the
 # signing agent for ~35 s and then failed (exit 128), and the class ran past
@@ -169,43 +182,13 @@ def git(root: Path, *arguments: str) -> None:
                    env=GIT_ENVIRONMENT)
 
 
-def write_manifest(root: Path, run_id: str, *, passed: dict[str, str],
-                   failed: dict[str, str] = {}) -> None:
-    """One archived manifest with the fields the pass rule reads."""
-    requested = sorted({**passed, **failed})
-    markers = {name: f"FN_CERTIFY_SUCCESS {run_id} {name}" for name in requested}
-    body = {
-        "run_id": run_id,
-        "status": "passed" if not failed else "failed",
-        "archived_from": f"testbox:/tmp/{run_id}",
-        "requested_books": requested,
-        "expected_success_markers": [markers[name] for name in requested],
-        "observed_success_markers": [markers[name] for name in passed],
-        "book_results": {name: ("passed" if name in passed else "failed")
-                         for name in requested},
-        "book_failures": {name: ["no certificate on disk"] for name in failed},
-        "source_digests_sha256": {f"{name}.lisp": found for name, found
-                                  in {**passed, **failed}.items()},
-        "certificate_digests_sha256": {name: digest(f"cert {run_id} {name}")
-                                       for name in passed},
-        "acl2_exit_codes": {name: 0 for name in requested},
-    }
-    archive = root / "planning" / "evidence" / "manifests"
-    archive.mkdir(parents=True, exist_ok=True)
-    (archive / f"{run_id}.json").write_text(json.dumps(body), encoding="utf-8")
-
-
 OLD_B = '(in-package "ACL2")\n(include-book "a")\n(defthm b-old t)\n'
 NEW_B = '(in-package "ACL2")\n(include-book "a")\n(defthm b-new nil)\n'
 
 
 def synthetic_tree(root: Path) -> None:
-    """Three books, a git history for the middle one, and two manifests.
-
-    `books/b` was green yesterday at `OLD_B` and carries `NEW_B` now, which
-    is the only shape a substitution can act on.  `books/a` and `books/c`
-    are green and never-green at their current bytes respectively.
-    """
+    """Three books and a git history for the middle one: `books/b` held
+    `OLD_B` and carries `NEW_B` now."""
     books = root / "books"
     books.mkdir(parents=True, exist_ok=True)
     (books / "a.lisp").write_text('(in-package "ACL2")\n(defthm a t)\n')
@@ -219,18 +202,11 @@ def synthetic_tree(root: Path) -> None:
     (books / "b.lisp").write_text(NEW_B)
     git(root, "add", "books/b.lisp")
     git(root, "commit", "-q", "-m", "widen b under its invariants")
-    write_manifest(root, "certify-20260921T090000Z-1",
-                   passed={"books/a": digest((books / "a.lisp").read_text()),
-                           "books/b": digest(OLD_B),
-                           "books/c": digest((books / "c.lisp").read_text())})
-    write_manifest(root, "certify-20260922T090000Z-2",
-                   passed={"books/a": digest((books / "a.lisp").read_text())},
-                   failed={"books/b": digest(NEW_B),
-                           "books/c": digest((books / "c.lisp").read_text())})
 
 
 class LastGreenSourceTests(unittest.TestCase):
-    """Which bytes to substitute, and the three reasons there are none."""
+    """The cert cache keeps no history of older digests, so there is no last
+    green source to substitute, and the plan says why."""
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -238,80 +214,28 @@ class LastGreenSourceTests(unittest.TestCase):
         synthetic_tree(self.root)
         self.audit = triage.green_check.audit(
             self.root, ["books/c", "books/b", "books/a"])
-        self.runs = {run.run_id: run
-                     for run, _ in triage.green_check.manifests(self.root)}
 
     def tearDown(self):
         self.directory.cleanup()
 
-    def test_it_finds_the_commit_whose_bytes_are_the_green_digest(self):
-        answer = triage.substitution_for(self.root, self.audit, self.runs,
-                                         "books/b", digest(NEW_B))
-        self.assertNotIsInstance(answer, str)
-        substitution, blob = answer
+    def test_a_book_has_no_last_green_to_substitute(self):
+        answer = triage.substitution_for(self.root, self.audit, "books/b", digest(NEW_B))
+        self.assertIsInstance(answer, str)
+        self.assertIn("keeps no history", answer)
+
+    def test_source_at_digest_still_finds_the_commit_holding_given_bytes(self):
+        revision, subject, blob = triage.source_at_digest(
+            self.root, "books/b", digest(OLD_B))
         self.assertEqual(blob.decode(), OLD_B)
-        self.assertEqual(substitution.digest, digest(OLD_B))
-        self.assertEqual(substitution.subject, "the green b")
-        self.assertIn("last green digest", substitution.sentence())
-        self.assertIn(substitution.revision[:12], substitution.sentence())
-
-    def test_a_book_green_at_the_digest_it_carries_cannot_be_substituted(self):
-        """Its failure is dependency drift, and saying so is the finding."""
-        answer = triage.substitution_for(self.root, self.audit, self.runs,
-                                         "books/c", self.audit[
-                                             "books_by_verdict"]["books/c"][
-                                             "digest_sha256"])
-        self.assertIsInstance(answer, str)
-        self.assertIn("digest it already carries", answer)
-
-    def test_a_book_with_no_green_anywhere_cannot_be_substituted(self):
-        answer = triage.substitution_for(self.root, self.audit, self.runs,
-                                         "books/nowhere", "0" * 64)
-        self.assertIsInstance(answer, str)
-        self.assertIn("never green", answer)
+        self.assertEqual(subject, "the green b")
 
     def test_the_plan_reads_off_this_tree_with_no_farm_and_no_acl2(self):
-        """`--dry-run`: what a round would substitute, before spending one."""
+        """`--dry-run`: what a round would do, before spending one."""
         lines = triage.plan(self.root, ["books/c"])
         self.assertIn("3 books under 1 root;", lines[0])
+        self.assertIn("3 uncertified", lines[0])
         said = "\n".join(lines)
-        self.assertIn("triage: books/b: assuming books/b at its last green",
-                      said)
-        self.assertNotIn("books/a", said)  # green at its digest; nothing owed
-
-    def test_a_green_digest_no_commit_holds_is_reported_as_such(self):
-        self.runs["certify-20260921T090000Z-1"].sources["books/b.lisp"] = "f" * 64
-        answer = triage.substitution_for(self.root, self.audit, self.runs,
-                                         "books/b", digest(NEW_B))
-        self.assertIsInstance(answer, str)
-        self.assertIn("no commit in this repository", answer)
-
-
-class PlanStaleTests(unittest.TestCase):
-    """A book certified at its own bytes over a moved dependency is owed a
-    run: the plan must count it stale and list it, not skip it as green."""
-
-    def test_the_plan_lists_a_stale_book_and_does_not_count_it_green(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory).resolve()
-            books = root / "books"
-            books.mkdir()
-            old = '(in-package "ACL2")\n(defthm dep t)\n'
-            (books / "dep.lisp").write_text(old)
-            (books / "top.lisp").write_text(
-                '(in-package "ACL2")\n(include-book "dep")\n')
-            top = digest((books / "top.lisp").read_text())
-            write_manifest(root, "certify-20260921T090000Z-1",
-                           passed={"books/dep": digest(old), "books/top": top})
-            new = old + "; moved\n"
-            (books / "dep.lisp").write_text(new)
-            write_manifest(root, "certify-20260922T090000Z-2",
-                           passed={"books/dep": digest(new)})
-            lines = triage.plan(root, ["books/top"])
-            self.assertIn("1 stale", lines[0])
-            self.assertTrue(any(line.startswith("triage: books/top: stale")
-                                for line in lines), lines)
-            self.assertFalse(any("books/dep" in line for line in lines[1:]))
+        self.assertIn("triage: books/b: cannot substitute", said)
 
 
 # --------------------------------------------------------------------------
@@ -424,7 +348,11 @@ def manifest_for(results: dict[str, str], walls: dict[str, float],
 
 
 class WholeTriageTests(unittest.TestCase):
-    """Two rounds over a three-book closure, with nothing published."""
+    """The ordinary loop over a three-book closure, with nothing published.
+
+    The cert cache keeps no last-green history, so no source is substituted
+    and the loop stops after the round that finds the independent red.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -438,10 +366,6 @@ class WholeTriageTests(unittest.TestCase):
                 {"books/a": 1.0, "books/b": 12.5, "books/c": 0.1}),
              "logs": {"books/b": OWN.format(name="B", book="b"),
                       "books/c": CASCADE.format(remote=cls.remote)}},
-            {"manifest": manifest_for(
-                {"books/a": "passed", "books/b": "passed", "books/c": "failed"},
-                {"books/a": 1.0, "books/b": 0.4, "books/c": 31.0}),
-             "logs": {"books/c": OWN.format(name="C", book="c")}},
         ]
         cls.box = FakeBox(rounds)
         with mock.patch.object(farm, "RUN", cls.box), \
@@ -460,43 +384,29 @@ class WholeTriageTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.directory.cleanup()
 
-    def test_two_rounds_answer_a_two_deep_chain(self):
-        self.assertEqual(len(self.report["rounds"]), 2)
+    def test_one_round_names_the_independent_red_and_its_cascade(self):
+        self.assertEqual(len(self.report["rounds"]), 1)
         self.assertEqual(self.report["rounds"][0]["kinds"],
                          {"independent": 1, "timeout": 0, "unexplained": 0,
                           "blocked": 0, "cascade": 1})
-        self.assertEqual(self.report["rounds"][1]["kinds"]["independent"], 1)
 
-    def test_every_independent_red_is_reported_with_its_round(self):
+    def test_the_independent_red_is_reported_with_its_round(self):
         found = {one["book"]: one for one in self.report["findings"]}
-        self.assertEqual(sorted(found), ["books/b", "books/c"])
         self.assertEqual(found["books/b"]["round"], 1)
-        self.assertEqual(found["books/c"]["round"], 2)
-        self.assertIn("FN-C-HOLDS", found["books/c"]["first_error"])
-        self.assertIn("Subgoal 2.1'", found["books/c"]["key_checkpoint"])
+        self.assertEqual(found["books/b"]["kind"], "independent")
+        self.assertIn("FN-B-HOLDS", found["books/b"]["first_error"])
+        self.assertIn("Subgoal 2.1'", found["books/b"]["key_checkpoint"])
 
-    def test_the_assumption_stack_names_the_substituted_book(self):
-        found = {one["book"]: one for one in self.report["findings"]}
-        self.assertEqual(found["books/b"]["assuming"], [])
-        self.assertEqual(len(found["books/c"]["assuming"]), 1)
-        self.assertIn("assuming books/b at its last green digest",
-                      found["books/c"]["assuming"][0])
-        self.assertEqual([one["book"] for one in self.report["substitutions"]],
-                         ["books/b"])
-
-    def test_the_substitution_goes_to_the_box_and_not_to_the_worktree(self):
+    def test_no_source_is_substituted_and_the_worktree_is_untouched(self):
+        self.assertEqual(self.report["substitutions"], [])
         sent = [command for command in self.box.commands
-                if command[0] == "rsync"
-                and command[-1].endswith("/books/b.lisp")]
-        self.assertEqual(len(sent), 1, sent)
-        self.assertEqual(sent[0][-1], f"persvati:{self.remote}/books/b.lisp")
-        self.assertEqual(Path(sent[0][-2]).read_text(), OLD_B)
-        # The worktree still carries what it carried.
+                if command[0] == "rsync" and command[-1].endswith("/books/b.lisp")]
+        self.assertEqual(sent, [])
         self.assertEqual((self.root / "books" / "b.lisp").read_text(), NEW_B)
 
     def test_every_runner_invocation_carries_no_publish(self):
         scripts = self.box.runner_scripts()
-        self.assertEqual(len(scripts), 2)
+        self.assertEqual(len(scripts), 1)
         for script in scripts:
             self.assertIn("--no-publish", script)
             self.assertIn("--closure", script)
@@ -511,19 +421,13 @@ class WholeTriageTests(unittest.TestCase):
                       if "certs.py" in script and "publish" in script]
         self.assertEqual(publishing, [])
         self.assertFalse((self.root / "build" / "acl2").exists())
-        archive = self.root / "planning" / "evidence" / "manifests"
-        self.assertEqual(sorted(path.name for path in archive.glob("*.json")),
-                         ["certify-20260921T090000Z-1.json",
-                          "certify-20260922T090000Z-2.json"])
+        self.assertFalse((self.root / "planning" / "evidence").exists())
 
     def test_the_report_says_what_it_is_not(self):
         document = triage.markdown(self.report)
         self.assertIn("not evidence of certification", document)
-        self.assertIn("assuming books/b at its last green digest", document)
-        self.assertIn("## Independent reds (2)", document)
+        self.assertIn("## Independent reds (1)", document)
         self.assertIn("Key checkpoint", document)
-        # A certify run id in the report would read as a certification claim
-        # and would fail `tools/evidence_manifests.py check` when committed.
         self.assertNotIn(self.box.evidence.split("/")[-1], document)
 
     def test_the_report_is_written_where_it_says_it_is(self):

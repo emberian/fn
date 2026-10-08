@@ -3176,6 +3176,10 @@
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-open-establishes-the-relation))
 
+(definterface fn-bpnjc-answer
+  :class :common-lisp-compliant
+  :keystones (fn-bpnjc-answer-is-contact-next))
+
 (definterface fn-bpnjc-contact-next
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-offer-keeps-the-relation
@@ -4643,13 +4647,25 @@
 (definterface fn-his-build-source-count
   :class :common-lisp-compliant
   :kinds ((records true-listp)))
-(definterface fn-his-build-yieldp
-  :class :common-lisp-compliant
-  :kinds ((ordinal natp)))
 
 (definterface fn-his-build-begin
   :class :common-lisp-compliant
   :kinds ((salt natp)))
+
+(definterface fn-his-build-quantum :class :common-lisp-compliant)
+(definterface fn-his-plan-begin :class :common-lisp-compliant)
+(definterface fn-his-place-begin :class :common-lisp-compliant)
+(definterface fn-his-plan-run
+  :class :common-lisp-compliant
+  :kinds ((dl-k natp)))
+(definterface fn-his-build-open
+  :class :common-lisp-compliant)
+(definterface fn-his-build-place-run
+  :class :common-lisp-compliant
+  :kinds ((k natp)))
+(definterface fn-his-build-close
+  :class :common-lisp-compliant
+  :kinds ((np natp)))
 
 (definterface fn-his-row-begin
   :class :common-lisp-compliant)
@@ -5779,6 +5795,7 @@
 (definterface fn-owner-hroot-resize :class :program)
 (definterface fn-owner-hroot-transient :class :program)
 (definterface fn-owner-hroot-begin :class :program)
+(definterface fn-owner-hroot-note :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
 (definterface fn-owner-hroot-frontier-value :class :program)
 (definterface fn-owner-hroot-row :class :program)
@@ -5857,7 +5874,7 @@
 (definterface fn-bph-node-transfer :class :common-lisp-compliant :kinds ((argv true-listp)))
 ; The probe's BP extension and the node's startup check read one capacity figure.
 (definterface fn-bph-extend-reservation :class :common-lisp-compliant
-  :keystones ((fn-bph-extended-reservation-holds-bp-sessions :via fn-bpsp-node-capacity)))
+  :keystones (fn-bph-extended-reservation-holds-bp-sessions))
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
 ; STATUS/HEALTH project the accepted configuration, never run-only NIL fields.
 (definterface fn-native-operator-host-result-config :class :program)
@@ -5899,7 +5916,7 @@
 (definterface fn-bpsp-read-bound :class :common-lisp-compliant)
 (definterface fn-bpsp-root-release-ready :class :common-lisp-compliant)
 (definterface fn-bpsp-node-startup :class :common-lisp-compliant
-  :keystones ((fn-bpsp-node-startup-holds-the-capacity :via fn-bpsp-node-capacity)))
+  :keystones (fn-bpsp-node-startup-holds-the-capacity))
 (definterface fn-bpsp-write :class :common-lisp-compliant)
 (definterface fn-bpsrx-abort-plan :class :common-lisp-compliant)
 (definterface fn-bpsrx-authorizedp :class :common-lisp-compliant)

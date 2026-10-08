@@ -38,23 +38,31 @@
 #      except each --ship PATH (a file or directory of this worktree, e.g.
 #      an uncommitted helper script the --cmd runs), copied in as it is here
 #      (obstructions-5 item 38);
-#   5. first installs the box cache's certificates for the tree's bytes
-#      (tools/certs.py install; its summary heads the log; --no-install-certs
-#      skips it; so does an unchanged tree: build/.certs-installed holds the
-#      digest of `git ls-tree` of books/ host/ tests/acl2/ Makefile, FN_ACL2
-#      and the cache directory's mtime and entry count, which move whenever
-#      an entry lands, and the last install's summary is repeated -- the
-#      install re-verified ~1,100 books for 15-30 minutes on every run,
-#      2026-10-04; on hbox CHECK_JOBS defaults to 6, as two 12-job checks
-#      took the box to load 36 beside the Mini swarm), then the image umbrellas as ONE set (certs.py
-#      install-umbrellas: per-book pairs from different origins did not
-#      compose under include-book books/image-world on either box;
-#      obstructions-7 item 64): without them make check's host_check prints NOT RUN for both
-#      images and check-lane fails for every lane (batch AZ, tooling-obstructions,
-#      2026-09-28); then runs `make T` there (T = check-lane by default; `--cmd
+#   5. installs certificates from the box cache, scoped to what the run needs.
+#      `--install-roots "R1 R2 ..."` runs `tools/certs.py install R1 R2 ...`
+#      (the roots' include closure only), plus `install-umbrellas` when a root
+#      is an image-world umbrella (per-book pairs from different origins did
+#      not compose under include-book books/image-world; obstructions-7
+#      item 64).  With --cmd or --regen and no --install-roots NOTHING is
+#      installed: a command that loads books installs its own closure
+#      (certify_books --incremental, proof_repl); train 25's box step spent
+#      17.5 of its 22 minutes in a whole-tree install its command did not need
+#      (2026-10-06).  A make TARGET (default check-lane: host_check needs both
+#      images) still installs the whole tree, as before, skipped when
+#      build/.certs-installed holds the digest of `git ls-tree` of books/ host/
+#      tests/acl2/ Makefile, FN_ACL2 and the cache directory's entry count (its
+#      mtime is not in it: every publish moves that); --install-certs forces
+#      the whole-tree install for a --cmd, --no-install-certs suppresses every
+#      install.  The log gets `== phase install|command START END Ns` lines and,
+#      for a --cmd that is a plain `A && B && ...` chain (no quotes, pipes or
+#      other operators), `== step N START END Ns rc=R: A` per link, so a
+#      caller sees where the time went.  On hbox CHECK_JOBS defaults to 6, as
+#      two 12-job checks took the box to load 36 beside the Mini swarm.
+#      Then
+#      then runs `make T` there (T = check-lane by default; `--cmd
 #      'COMMAND'` runs that shell command in the tree instead, e.g. one test
-#      module; `--regen` runs tools/ledger.py --write, tools/current_view.py
-#      --write and tools/hot_path_check.py --refresh-stale and fetches the five
+#      module; `--regen` runs tools/ledger.py --write and
+#      tools/hot_path_check.py --refresh-stale and fetches the two committed
 #      files they write) with the box's own
 #      FN_ACL2 and FN_CERT_CACHE (tools/farm.py HOSTS), under swarm-build on
 #      hbox, logging to --log BOXPATH (a path ON THE BOX; default
@@ -65,7 +73,7 @@
 #      auto: tools/chain_schedule.py) unless this shell sets FN_CERTIFY_JOBS;
 #   6. prints the log's step table, copies the log to
 #      build/remote-check/BOX-T.log here, rsyncs each --fetch PATH (a file or
-#      directory of the tree, e.g. planning/ledger.json) back into this
+#      directory of the tree, e.g. planning/proofs.json) back into this
 #      worktree, and exits with make's own status.  A fetched file is written
 #      here only when this worktree's copy is still the one shipped in step 4:
 #      one edited, committed or merged here while the box ran is kept, and the
@@ -116,7 +124,8 @@ TARGET=check-lane
 FETCH=
 SHIP=
 DIRTY=1
-INSTALL=1
+INSTALL=auto
+ROOTS=
 TREE=
 LOG=
 CMD=
@@ -141,6 +150,9 @@ while [ $# -gt 0 ]; do
             else BASELINE_OUT=$2; FETCH="$FETCH $2"; fi
             shift 2 ;;
         --no-dirty) DIRTY=0; shift ;;
+        --install-roots) [ $# -ge 2 ] || usage
+            case $2 in *[!A-Za-z0-9._/\ -]*|'') echo "remote_check: --install-roots '$2': book names (books/x), spaces between" >&2; exit 2 ;; esac
+            ROOTS="$ROOTS $2"; shift 2 ;;
         --install-certs) INSTALL=1; shift ;;
         --no-install-certs) INSTALL=0; shift ;;
         --cmd) [ $# -ge 2 ] || usage; CMD=$2; TARGET=cmd; shift 2 ;;
@@ -156,10 +168,27 @@ if [ -n "$CMD" ] && [ $REGEN = 1 ]; then echo "remote_check: --cmd and --regen a
 if [ $REGEN = 1 ]; then
     # hot_path_check --refresh-stale drops listed finds that no longer occur
     # (item 76: dev's own STALE entries kept `make check` red at every head).
-    CMD='python3 tools/ledger.py --write && python3 tools/current_view.py --write && python3 tools/hot_path_check.py --refresh-stale'
-    FETCH="$FETCH planning/ledger.json planning/ledger.md planning/proofs.json planning/current.md planning/hot-path-findings.json"
+    CMD='python3 tools/ledger.py --write && python3 tools/hot_path_check.py --refresh-stale'
+    FETCH="$FETCH planning/proofs.json planning/hot-path-findings.json"
 fi
 sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+# What gets installed first: roots (closure-scoped), the whole tree, or nothing.
+if [ $INSTALL = 0 ]; then MODE=none
+elif [ -n "$ROOTS" ]; then MODE=roots
+elif [ $INSTALL = 1 ] || [ -z "$CMD" ]; then MODE=tree
+else MODE=none; fi
+# A plain `A && B && ...` --cmd runs link by link under `st`, which logs
+# `== step` lines; anything with quotes or other operators runs as one step.
+STEPPED=
+case $CMD in
+    *[\'\"\`\$\;\|\(\)\<\>\\]*) ;;
+    *' && '*) STEPPED=1 ;;
+esac
+if [ -n "$STEPPED" ]; then
+    STEPFN='st() { n=$1; l=$2; shift 2; s=$(date +%s); t=$(date -u +%FT%TZ); "$@"; r=$?; echo "== step $n $t $(date -u +%FT%TZ) $(( $(date +%s) - s ))s rc=$r: $l"; return $r; }'
+    STEPS=$(printf '%s\n' "$CMD" | awk -F' && ' -v q="'" '{ for (i = 1; i <= NF; i++) printf "%sst %d %s%s%s sh -c %s%s%s", (i > 1 ? " && " : ""), i, q, $i, q, q, $i, q }')
+    CMD="$STEPFN; $STEPS"
+fi
 if [ -n "$CMD" ]; then RUN="sh -c $(sq "$CMD")"; else RUN="make $TARGET"; fi
 if [ -n "$SINCE$BASELINE$BASELINE_OUT" ]; then
     [ -z "$CMD" ] || { echo "remote_check: --changed-since, --baseline and --write-baseline are for a make target, not --cmd/--regen" >&2; exit 2; }
@@ -189,6 +218,10 @@ fi
 # The tests point these at a local directory and a local shell.
 BASE=${FN_REMOTE_CHECK_BASE:-$BASE}
 WRAP=${FN_REMOTE_CHECK_WRAP-$WRAP}
+# The wrap runs as an argument of the phase timer (a shell function), where a
+# leading VAR=value is a command name, not an assignment; `env` reads both
+# spellings ("SWARM_MEM_MAX=16G swarm-build" and "swarm-build").
+[ -z "$WRAP" ] || WRAP="env $WRAP"
 SSH=${FN_REMOTE_CHECK_SSH:-ssh -o ServerAliveInterval=30 -o ControlMaster=auto -o ControlPersist=600 -o ControlPath=~/.ssh/fn-remote-check-%r@%h:%p}
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
@@ -318,8 +351,19 @@ echo "remote_check: $RUN in $BOX:$TREE (log $BOX:$LOG)"
 # the log's last line: an ssh session that ends early (exit 255) used to be
 # reported as make's status while make kept running (scale-latency,
 # 2026-09-28).  A poll that cannot reach the box is retried.
+# The install phase, as shell for the run script (literal: no escaping).
+case $MODE in
+    none) INSTALLCODE=': ' ;;
+    roots)
+        INSTALLCODE='do_install() { mkdir -p build; python3 tools/certs.py install '"$ROOTS"' > build/.certs-install.log 2>&1; echo "== certs install ('"${ROOTS# }"'): $(grep -E "^ *installed" build/.certs-install.log | tail -n 1)"'
+        case " $ROOTS " in *' books/image-world'*) INSTALLCODE="$INSTALLCODE"'; python3 tools/certs.py install-umbrellas > build/.certs-umbrellas.log 2>&1; echo "== certs install-umbrellas: $(tail -n 1 build/.certs-umbrellas.log)"' ;; esac
+        INSTALLCODE="$INSTALLCODE"'; }; ph install do_install' ;;
+    tree)
+        INSTALLCODE='do_install() { if [ -f tools/certs.py ]; then DG=$( { git ls-tree -r HEAD -- books host tests/acl2 Makefile; echo "$FN_ACL2"; ls -1 "$FN_CERT_CACHE" 2>/dev/null | wc -l; } | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-16); if [ "$(cat build/.certs-installed 2>/dev/null)" = "$DG" ]; then echo "== certs install: skipped, source and cache digest $DG unchanged since this tree last install, which said: $(grep -E "^ *installed" build/.certs-install.log | tail -n 1)"; echo "== certs install-umbrellas: (as last time) $(tail -n 1 build/.certs-umbrellas.log)"; else mkdir -p build; rm -f build/.certs-installed; python3 tools/certs.py install > build/.certs-install.log 2>&1; echo "== certs install: $(grep -E "^ *installed" build/.certs-install.log | tail -n 1)"; python3 tools/certs.py install-umbrellas > build/.certs-umbrellas.log 2>&1; echo "== certs install-umbrellas: $(tail -n 1 build/.certs-umbrellas.log)"; echo "$DG" > build/.certs-installed; fi; fi; }; ph install do_install' ;;
+esac
+PHFN='ph() { pn=$1; shift; ps=$(date +%s); pt=$(date -u +%FT%TZ); "$@"; pr=$?; echo "== phase $pn $pt $(date -u +%FT%TZ) $(( $(date +%s) - ps ))s"; return $pr; }'
 remote "cat > $LOG.run.sh" <<RUNSCRIPT || { echo "remote_check: cannot write the run script on $BOX" >&2; exit 3; }
-cd $TREE && $ENVS; eval "\$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; export CHECK_JOBS=\${CHECK_JOBS:-$CHECK_JOBS_DEFAULT}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ -f tools/native_env.py ] && ! python3 tools/native_env.py sbcl-check; then echo "== make exit 3"; exit 3; fi; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then DG=\$( { git ls-tree -r HEAD -- books host tests/acl2 Makefile; echo "\$FN_ACL2"; stat -c %Y:%h "\$FN_CERT_CACHE" 2>/dev/null || stat -f %m:%l "\$FN_CERT_CACHE"; } | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-16); if [ "\$(cat build/.certs-installed 2>/dev/null)" = "\$DG" ]; then echo "== certs install: skipped, source and cache digest \$DG unchanged since this tree's last install, which said: \$(grep -E '^ *installed' build/.certs-install.log | tail -n 1)"; echo "== certs install-umbrellas: (as last time) \$(tail -n 1 build/.certs-umbrellas.log)"; else mkdir -p build; rm -f build/.certs-installed; python3 tools/certs.py install > build/.certs-install.log 2>&1; echo "== certs install: \$(grep -E '^ *installed' build/.certs-install.log | tail -n 1)"; python3 tools/certs.py install-umbrellas > build/.certs-umbrellas.log 2>&1; echo "== certs install-umbrellas: \$(tail -n 1 build/.certs-umbrellas.log)"; echo "\$DG" > build/.certs-installed; fi; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
+cd $TREE && $ENVS; eval "\$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; export CHECK_JOBS=\${CHECK_JOBS:-$CHECK_JOBS_DEFAULT}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ -f tools/native_env.py ] && ! python3 tools/native_env.py sbcl-check; then echo "== make exit 3"; exit 3; fi; $PHFN; $INSTALLCODE; ph command $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
 RUNSCRIPT
 # The local record attach reads when this side dies (item 77).
 RECORDED=$ROOT/build/remote-check/$BOX.run

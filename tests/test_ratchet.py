@@ -10,7 +10,7 @@ from unittest import mock
 
 from tools import (clock_unit_check, cost_obligations, evidence_size_check, list_codec_check,
                    loop_call_check, owner_globals_check, proof_cost, ratchet, reach_check,
-                   scenario_suite)
+                   premise_audit, scenario_suite, throughput_gate)
 
 DASH = "—"
 
@@ -266,6 +266,53 @@ class EvidenceSize(Base):
         self.ack("evidence_size_check", "new.log")
         write({"old.log", "new.log"})
         self.assertEqual(rows(), {"old.log", "new.log"}, "an ACKed row is added")
+
+
+class PremiseAudit(Base):
+    def test_triad(self):
+        path = self.dir / "premise-baseline.json"
+        path.write_text(json.dumps({"accepted": {"a": "why", "b": "why"}}))
+        read = lambda: set(json.loads(path.read_text())["accepted"])
+
+        def write(names):
+            findings = {n: {"class": "never concluded"} for n in names}
+            with mock.patch.object(premise_audit, "BASELINE", path):
+                return premise_audit.write_baseline(findings)
+        self.assertEqual(self.quiet(write, ["a", "b", "c"]), 1, "a new row must be refused")
+        self.assertEqual(read(), {"a", "b"}, "a refused write leaves the baseline alone")
+        self.assertEqual(self.quiet(write, ["a"]), 0, "a shrink passes")
+        self.assertEqual(read(), {"a"})
+        self.ack("premise_audit", "c")
+        self.assertEqual(self.quiet(write, ["a", "c"]), 0, "an ACKed row is added")
+        self.assertEqual(read(), {"a", "c"})
+
+
+class ThroughputGate(Base):
+    def test_triad(self):
+        tg = throughput_gate
+        path = self.dir / "throughput-baseline.json"
+        path.write_text(json.dumps({"metrics": {m: {"value": 2.0, "floor": 0.5} for m in tg.METRICS}}))
+        read = lambda: {"post_median_ms": json.loads(path.read_text())["metrics"]["post_median_ms"]["value"]}
+
+        def write(n):
+            run = dict({m: 1.0 for m in tg.METRICS}, post_median_ms=float(n), revision="r" * 40,
+                       core_sha256="c")
+            for name in ("release", "dev"):
+                (self.dir / f"{name}.json").write_text(json.dumps(run))
+            args = mock.Mock(release=str(self.dir / "release.json"), dev=str(self.dir / "dev.json"),
+                             allow_regression=False)
+            with mock.patch.object(tg, "BASELINE", path), mock.patch.object(tg, "ROOT", self.dir):
+                try:
+                    return tg.write_baseline(args)
+                except SystemExit:
+                    return 1
+        self.assertEqual(self.quiet(write, 3), 1, "a raise must be refused")
+        self.assertEqual(read(), {"post_median_ms": 2.0}, "a refused write leaves the baseline alone")
+        self.assertEqual(self.quiet(write, 1), 0, "a lowering passes")
+        self.assertEqual(read(), {"post_median_ms": 1.0})
+        self.ack("throughput_gate", "post_median_ms")
+        self.assertEqual(self.quiet(write, 3), 0, "an ACKed raise passes")
+        self.assertEqual(read(), {"post_median_ms": 3.0})
 
 
 if __name__ == "__main__":

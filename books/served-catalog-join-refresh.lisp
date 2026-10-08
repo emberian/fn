@@ -104,10 +104,10 @@
            (iff (fn-midx-lookup m (fn-midx-build v2)) (fn-ctl-has-msgid-p m v2)))
   :hints (("Goal" :in-theory (disable fn-midx-build fn-midx-lookup))))
 
-(defthm fn-scj-string-msgid-of-member
+(local (defthm fn-scj-string-msgid-of-member
   (implies (and (fn-midx-string-article-listp v) (member-equal x v))
            (and (stringp (fn-article-msgid x)) (consp x)))
-  :hints (("Goal" :in-theory (enable fn-midx-string-article-listp))))
+  :hints (("Goal" :in-theory (enable fn-midx-string-article-listp)))))
 
 
 (defthm fn-scj-drop-via-is-keep
@@ -177,7 +177,3 @@
        (equal (fn-held-numbers (fn-held-with-withdrawn h w)) (fn-held-numbers h)))
   :hints (("Goal" :in-theory (enable fn-held-with-withdrawn fn-record-internals fn-held-internals))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-scj-string-msgid-of-member))

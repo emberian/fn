@@ -40,7 +40,7 @@
    (defmacro fnn-unwind-cleanups)
    (deftype fnn-octets) (defun fnn-make-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defmacro fnn-posix) (defun fnn-open)
-   (defun fnn-close) (defvar *fnn-immutable-close-debts*)
+   (defun fnn-close) (defvar *fnn-close-debts-lock*) (defvar *fnn-immutable-close-debts*)
    (defun fnn-immutable-close-observation) (defun fnn-immutable-close-handle)
    (defun fnn-unlink) (defun fnn-durable-step) (defun fnn-replace)
    (defun fnn-read-exact-fd) (defun fnn-write-staged-at) (defun fnn-checkpoint-yield)
@@ -69,11 +69,16 @@
 ;; fnn-history-image-build): one stobj it creates, builds row by row and
 ;; releases on every exit.  Recorded here: the rows build nothing, the
 ;; finished image is one page of 42s at address 0.
-(defun fnn-history-image-row-run (ev ordinal) (declare (ignore ev ordinal)) t)
+(defun fnn-history-image-plan (records quantum)
+ (declare (ignore quantum)) (list (length records) '(0 0 0 0 0)))
+(defun fnn-history-image-place-run (records quantum starts np)
+ (declare (ignore quantum starts np)) (list (length records) '(0 0 0 0 0) nil))
 (defun fnn-call (subject &rest args)
  (case subject
   (fn-his-build-begin (check (eq (second args) :private-snapshot) "build into the private image")
                       (list :ok))
+  (fn-his-build-open (list nil '(1 1 1 1 1) 1 :private-snapshot))
+  (fn-his-build-close (list :ok :private-snapshot))
   (fn-his-build-finish (check (eq (second args) :private-snapshot) "finish the private image")
                        (setq *snapshot* (make-list 2048 :initial-element 42))
                        (list :ok :record '((1 0 0)) (first args)))
@@ -85,8 +90,7 @@
     fn-his-np fn-his-words fn-his-readback-header-p fn-his-readback-page)
    (apply (symbol-function subject) args))
   (create-fn-hrecs$c :private-snapshot)
-  (fn-his-build-yieldp nil)
-  (fn-his-build-source-count (length (first args)))
+  (fn-his-build-quantum 256)
   (fn-his-binding :binding)
   (fn-store-sco-segment-header-octets 37)
   (fn-store-sco-trailer-octets 1)

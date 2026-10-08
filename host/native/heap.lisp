@@ -380,6 +380,23 @@ normalized store root for the pre-open DEFAULT backing reservation."
            (declare (ignore peer))
            (values profile (if (integerp connections) connections 0) action observed cold-resources output-resources root
                    nil reclaim-live)))
+        ;; The developer owner (`owner run ROOT PORT ONCE MAX-CONNECTIONS'):
+        ;; a served run over ROOT's store, sized as the operator's run is by
+        ;; that store's profile.  Left to the final clause it answered
+        ;; profile=none, 1024 MB, below what the store's read pool needs.
+        ((and (string= (or (first argv) "") "owner") (string= (or (second argv) "") "run")
+              (third argv))
+         (let* ((root (fnn-absolute (third argv)))
+                (profile (fnn-heap-store-profile root))
+                (connections (or (ignore-errors (parse-integer (sixth argv))) 0)))
+           ;; OBSERVED as the operator's run observes it (ACL2 says which
+           ;; actions are sized by the store on disk): left NIL the figure is
+           ;; the profile's whole bound, 3026 MB against the 1934 MB the
+           ;; operator's run decides for the same store.
+           (values profile connections :run
+                   (and profile (fnn-core 'fn-heap-operation-observes-p :run)
+                        (fnn-heap-history-observation root profile))
+                   nil nil root)))
         ((and (string= (or (first argv) "") "store") (third argv))
          (let ((profile (fnn-heap-store-profile (second argv))))
            (values profile 0 nil

@@ -15,6 +15,9 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-exit (code)
+  (declare (ignorable code))
+  (harness-stub-reached 'fnn-exit "host/native/io.lisp"))
 (defun fnn-tls-close-channel (channel)
   (declare (ignorable channel))
   (harness-stub-reached 'fnn-tls-close-channel "host/native/tls.lisp"))
@@ -72,6 +75,7 @@
 (in-package "ACL2")
 (eval (source-form (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp")
                    "(defmacro fnn-unwind-cleanups "))
+(eval (source-form "host/native/owner.lisp" "(defun fnn-owner-install-or-end "))
 (let ((path (or (sb-ext:posix-getenv "FN_WEB_HOST_SOURCE") "host/native/web-host.lisp")))
   (dolist (prefix '("(defstruct (fnn-web-reactor-face " "(defstruct (fnn-web-reactor-conn "
                     "(defstruct (fnn-web-job " "(defun fnn-web-cleanup " "(defun fnn-web-finish "

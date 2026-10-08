@@ -29,6 +29,7 @@
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
 (include-book "../books/payload-arena-attach")
 (include-book "../books/history-paged-attach")
+(include-book "../books/history-root-status")
 (include-book "../books/catalog-paged-attach")
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
@@ -250,9 +251,6 @@
 ; -done/-leave) and the PROXY header on a trusted path (fn-owner-proxy-*);
 ; books/tls-proxy includes the budget, the decision and the source.
 (include-book "../books/tls-proxy")
-; PRF-192: the served reply as a range of the octet buffer (fn-served-reply-to-buffer;
-; since HST-023 the host renders the step's plan off the mutex instead).
-(include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PKT-828: a reader quantum during a batch's barrier runs at the reader view
 ; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture); the span read
@@ -420,6 +418,11 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-olau-next-name (fn-owner-ocfg state))))
 
+; Capture under the owner mutex; window A authorizes this immutable value.
+(defun fn-owner-cfg-capture (state)
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
+  (value (fn-owner-ocfg state)))
+
 (defun fn-owner-cfg-native-admin-authorize-carried
     (record-octets lock-owned occupied profile state)
   (declare (xargs :stobjs state
@@ -492,8 +495,7 @@
 ; Every projection `fn-owner-install-effects' makes EXCEPT the reply octets,
 ; which are never built as a list here: `fn-owner-output' is NIL and the reply is
 ; the effects' (the native host renders the step's plan off the mutex,
-; fn-owner-chunk-span and books/served-plan.lisp, HST-023; before it the
-; octet buffer of PRF-192, books/served-reply-buffer.lisp).
+; fn-owner-chunk-span and books/served-plan.lisp, HST-023).
 
 
 (defun fn-owner-install-effects (effects state)
@@ -3480,7 +3482,7 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((counted (fn-oct-transit (fn-owner-ocfg state) id kind reason word
                                   (fn-owner-feed-pending state)))
-         (result (car counted))
+         (result (fn-oct-result counted))
          (state (f-put-global 'fn-owner-feed-pending (cdr counted) state))
          (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
@@ -3577,7 +3579,7 @@
                                   (fn-owner-intent-carry state)
                                   (fn-owner-parse-carry state)
                                   (fn-owner-feed-pending state)))
-         (result (car counted))
+         (result (fn-oct-result counted))
          (state (f-put-global 'fn-owner-feed-pending (cdr counted) state))
          (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
@@ -4554,6 +4556,22 @@
                        (fn-owner-exposure-limits state)
                        (len (fn-own-conns (fn-owner-core state)))
                        (fn-owner-exposure-now state)))
+
+; The refresh's word as ACL2 classifies it (books/history-root-credit.lisp
+; fn-hroot-refresh-status), held for `status' and `health' to render
+; (books/history-root-status.lisp fn-hrs-line).  Every word the host got is
+; noted: a building/installed word clears a refusal, a refusal or an
+; unrecognised word replaces it.  Returns the status for the host's log.
+(defun fn-owner-hroot-note (word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((status (fn-hroot-refresh-status word))
+         (state (f-put-global 'fn-owner-history-root-status status state)))
+    (value status)))
+
+(defun fn-owner-hroot-status-lines (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-hrs-line (and (boundp-global 'fn-owner-history-root-status state)
+                    (f-get-global 'fn-owner-history-root-status state))))
 
 ; Step 8 (catalog slice): the read runs books/served-catalog-chain.lisp
 ; fn-scr-ocfg-read-span, the same chain with the catalog carried to the

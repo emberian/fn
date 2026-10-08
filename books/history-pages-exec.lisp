@@ -140,10 +140,10 @@
            (equal (adt-unle w (take u y)) (adt-unle w y)))
   :hints (("Goal" :induct (fn-hp-u-ind w u y) :in-theory (enable take))))
 
-(defthm fn-hp-nth-col-sizes
+(local (defthm fn-hp-nth-col-sizes
   (implies (and (adt-col-sizes-ok ws n useds) (natp r) (< r (len ws)))
            (equal (nth r useds) (* (nfix (nth r ws)) (nfix n))))
-  :hints (("Goal" :induct (fn-hp-r-ind r ws starts useds) :in-theory (enable nth))))
+  :hints (("Goal" :induct (fn-hp-r-ind r ws starts useds) :in-theory (enable nth)))))
 
 (local
  (defthm fn-hp-nthcdr-take-x
@@ -435,7 +435,3 @@
                             fn-hp-iw fn-hp-image fn-hp-okp adt-unle adt-regs fn-hp-rows adt-starts-l adt-end-l
                             adt-lens fn-hp-lens fn-hp-starts adt-placement-ok fn-hp-placement-ok-of-image)))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-hp-nth-col-sizes))

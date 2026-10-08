@@ -10,7 +10,7 @@ implementations and finish their integration, rather than build replacement
 prototypes without consumers.
 
 The [active plan](planning/overnight-2026-10-03.md) coordinates current work.
-The [repair ledger](planning/repair/STATUS.md),
+The repair ledger (`python3 planning/repair/repair.py report`),
 [requirements](planning/requirements.json), and [proof registry](planning/proofs.json)
 remain authoritative for individual obligations. This file groups related work
 into executable slices; its headings are navigation anchors, not new requirement
@@ -553,7 +553,7 @@ Historical-image evidence does not validate new code. Source integration keeps
 moving; full qualification is for a meaningful convergence or operational claim.
 Live rollout remains a separate authorized task.
 Anchors: [empirical matrix](planning/empirical-workloads.md),
-[current capability evidence](planning/current.md), [active plan](planning/overnight-2026-10-03.md).
+current capability evidence (`python3 tools/current_view.py`), [active plan](planning/overnight-2026-10-03.md).
 
 ### Sleeping-agent exchange
 

@@ -1399,6 +1399,20 @@ def fund_peer_flights(node, policy=PEER_FLIGHT_POLICY):
         b"FNP1" + b"".join(v.to_bytes(8, "big") for v in policy))
 
 
+def table_reply(code, tag):
+    """The reply line books/protocol-table.lisp gives status CODE under TAG
+    (`(224 :accepted :reader :overview "224 overview information follows")`),
+    as the octets the wire carries.  The table is the design of record for reply
+    text; a test that hand-copies a line drifts from it (train 27:
+    test_native_over_window asserted a capitalized 224 line)."""
+    table = (ROOT / "books" / "protocol-table.lisp").read_text(encoding="utf-8")
+    lines = set(re.findall(r'\(%d :[a-z-]+ :[a-z-]+ :%s "([^"]*)"\)' % (code, re.escape(tag)), table))
+    if len(lines) != 1:
+        raise AssertionError("protocol table gives {} reply lines for {} {}: {}".format(
+            len(lines), code, tag, sorted(lines)))
+    return lines.pop().encode("ascii") + b"\r\n"
+
+
 def decided_launch(node, image=None):
     """The environment of a run at the heap and control stack the installed
     launcher (packaging/fn) decides for NODE's served run: its own probe,

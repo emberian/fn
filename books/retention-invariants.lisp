@@ -50,10 +50,10 @@
             (fn-retain-obligation-ids (fn-retain-remove-id id pins))))
   :hints (("Goal" :induct (fn-retain-remove-id id pins))))
 
-(defthm fn-retain-release-disjoint-member
+(local (defthm fn-retain-release-disjoint-member
   (implies (and (not (intersection-equal xs ys))
                 (member-equal x xs))
-           (not (member-equal x ys))))
+           (not (member-equal x ys)))))
 
 (defthm fn-retain-release-remove-preserves-disjointness
   (implies (and (fn-retain-no-duplicatesp (fn-retain-obligation-ids pins))
@@ -156,7 +156,6 @@
     fn-retain-release-remove-sum
     fn-retain-release-remove-id-members
     fn-retain-release-remove-preserves-unique-ids
-    fn-retain-release-disjoint-member
     fn-retain-release-remove-preserves-disjointness
     fn-retain-release-sum-nonnegative
     fn-retain-release-charge-bounded-by-sum
@@ -164,7 +163,3 @@
     fn-retain-release-remove-keeps-other-members))
 (in-theory (disable fn-retention-invariants-vocabulary))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-retain-release-disjoint-member))

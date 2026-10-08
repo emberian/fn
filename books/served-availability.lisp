@@ -2,6 +2,7 @@
 ; of the same root. Capture this projection during view preparation.
 (in-package "ACL2")
 (include-book "served-columns")
+(include-book "def-loop")
 
 (defun fn-scat-article-availablep (article fn-cat)
   (declare (xargs :stobjs fn-cat :guard t))
@@ -9,34 +10,10 @@
     (and (fn-hnov-p (fn-hf-nov facts))
          (not (fn-hnov-tomb (fn-hf-nov facts))))))
 
-(defun fn-scat-available-articles-loop (articles acc fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (true-listp acc)))
-  (if (consp articles)
-      (fn-scat-available-articles-loop
-        (cdr articles)
-        (if (fn-scat-article-availablep (car articles) fn-cat)
-            (cons (car articles) acc) acc) fn-cat)
-    (revappend acc nil)))
-
-(defun fn-scat-available-articles (articles fn-cat)
-  (declare (xargs :stobjs fn-cat :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp articles)
-           (if (fn-scat-article-availablep (car articles) fn-cat)
-               (cons (car articles) (fn-scat-available-articles (cdr articles) fn-cat))
-             (fn-scat-available-articles (cdr articles) fn-cat))
-         nil)
-       :exec (fn-scat-available-articles-loop articles nil fn-cat)))
-
-(local (defthm fn-scat-available-articles-loop-is-revappend
-  (equal (fn-scat-available-articles-loop articles acc fn-cat)
-         (revappend acc (fn-scat-available-articles articles fn-cat)))
-  :hints (("Goal" :induct (fn-scat-available-articles-loop articles acc fn-cat)
-           :in-theory (disable fn-scat-article-availablep)))))
-
-(verify-guards fn-scat-available-articles
-  :hints (("Goal" :use ((:instance fn-scat-available-articles-loop-is-revappend
-                                  (acc nil))))))
+(def-loop fn-scat-available-articles (articles fn-cat)
+  :shape :map :over articles :elt a :stobjs fn-cat
+  :keep (fn-scat-article-availablep a fn-cat)
+  :body a)
 
 ; Logical bytes reference. It is not evaluated per served command.
 (defun fn-nntp-available-articles (articles fn-arena)

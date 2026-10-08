@@ -98,8 +98,7 @@
                             (node (fn-cnode-node (fn-sco-at 1 r)))))
            :in-theory (e/d (fn-sfk-carried-check fn-sfi-cpr-carriedp)
                            (fn-rii-okp fn-rii-ix-of fn-cnode-statep fn-sco-pausedp
-                            fn-sco-at fn-cnode-node
-                            fn-sfi-carried-msgid-trie-is-the-rebuilt-trie)))))
+                            fn-sco-at fn-cnode-node)))))
 
 ; The three shape answers refute it by the invariant's own conjuncts.
 (defthm fn-sfk-check-shape-answers-are-not-carried

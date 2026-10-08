@@ -21,7 +21,8 @@
 (local (in-theory (enable fn-splan-cursor-window fn-splan-rest-cursor-step fn-splan-cursor-step
                           fn-splan-cw-octets fn-splan-cw-remaining fn-splan-cw-drain
                           fn-splan-fresh-cursorp fn-splan-fresh-effectsp
-                          fn-splan-cw-rest-okp fn-splan-cw-okp)))
+                          fn-splan-cw-rest-okp fn-splan-cw-okp
+                          fn-splan-rest-empties fn-splan-empties)))
 
 (defconst *spct-p0* (append (fn-record-string-octets "Subject: a") '(13 10 13 10 65 13 10)))
 (defconst *spct-p1* (append (fn-record-string-octets "Subject: b") '(13 10 13 10 66 13 10)))
@@ -205,6 +206,94 @@
          (not (equal old (spct-old s *spct-range* nil)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-splan-arm-reference))))
+
+;; EMPTY QUANTA LEAVE NOTHING BEHIND (CONVERGE-3 row 44;
+;; fn-splan-rest-cursor-step-adds-no-empty-effect).  A cursor over a sparse
+;; stretch (numbers 4-60 of a three-article group: no line in any quantum of
+;; one number) answers only its next cursor: after twenty empty quanta the
+;; plan is still one cursor effect with no effect in front of it, so the work
+;; the next at-cursor scan does is the same as at the first.  The legacy step
+;; (a reply effect for every quantum, empty or not) left one octet-less effect
+;; per empty quantum -- spct-legacy-quanta below -- and breaks the keystone's
+;; inequality at the first one.
+(defconst *spct-sparse*
+  (fn-splan-of-effects (list (fn-ovw-cursor-effect (fn-ovw-cursor "fn.test" 4 60 3 nil t nil)))))
+
+(defun spct-quanta (p wl n fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil :measure (nfix n)))
+  (if (zp n)
+      p
+    (mv-let (status p2) (fn-splan-cursor-step p wl fn-arena fn-cat)
+      (declare (ignore status))
+      (spct-quanta p2 wl (- n 1) fn-arena fn-cat))))
+
+;; The step as it was: its reply effect is consed even when it holds no octets,
+;; and the effects in front of the cursor are kept.
+(defun spct-legacy-quantum (rest wl fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (if (consp rest)
+      (if (fn-splan-cursor-effectp (car rest))
+          (mv-let (octets next) (fn-ovw-step (car (cdr (car rest))) wl fn-arena fn-cat)
+            (cons (fn-nntp-reply-effect octets)
+                  (if next (cons (fn-ovw-cursor-effect next) (cdr rest)) (cdr rest))))
+        (cons (car rest) (spct-legacy-quantum (cdr rest) wl fn-arena fn-cat)))
+    rest))
+
+(defun spct-legacy-quanta (rest wl n fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil :measure (nfix n)))
+  (if (zp n)
+      rest
+    (spct-legacy-quanta (spct-legacy-quantum rest wl fn-arena fn-cat) wl (- n 1) fn-arena fn-cat)))
+
+(defthm spct-empty-quanta-leave-nothing-behind-witness
+  (let ((p20 (spct-quanta *spct-sparse* 1 20 *spct-a* *spct-c*))
+        (p40 (spct-quanta *spct-sparse* 1 40 *spct-a* *spct-c*)))
+    (and (fn-splan-cw-okp *spct-sparse*)
+         (fn-splan-at-cursorp *spct-sparse*)
+         (equal (fn-splan-empties *spct-sparse*) 0)
+         ;; twenty and forty quanta later: the same single cursor effect, the
+         ;; next one, with nothing in front of it
+         (fn-splan-cw-okp p20)
+         (fn-splan-at-cursorp p20)
+         (equal (len (fn-splan-rest p20)) 1)
+         (equal (fn-splan-empties p20) 0)
+         (equal (fn-splan-rest p20)
+                (list (fn-ovw-cursor-effect (fn-ovw-cursor "fn.test" 24 60 3 nil t nil))))
+         (equal (len (fn-splan-rest p40)) 1)
+         (equal (fn-splan-empties p40) 0)
+         ;; the keystone's inequality at both
+         (<= (fn-splan-empties p20) (fn-splan-empties *spct-sparse*))
+         (<= (fn-splan-empties p40) (fn-splan-empties p20))))
+  :rule-classes nil)
+
+;; The legacy step's red: twenty empty quanta, twenty octet-less effects (and
+;; the rest twenty-one effects long) in front of the cursor.
+(defthm spct-legacy-step-accumulates-witness
+  (let ((rest (spct-legacy-quanta (fn-splan-rest *spct-sparse*) 1 20 *spct-a* *spct-c*)))
+    (and (equal (fn-splan-rest-empties rest) 20)
+         (equal (len rest) 21)
+         (fn-splan-rest-at-cursorp rest)))
+  :rule-classes nil)
+
+;; MUST-FAIL: the keystone's inequality for the legacy step, at the first
+;; empty quantum.
+(must-fail-checked
+ (defthm spct-legacy-step-adds-no-empty-effect
+   (<= (fn-splan-rest-empties
+        (spct-legacy-quantum (fn-splan-rest *spct-sparse*) 1 *spct-a* *spct-c*))
+       (fn-splan-rest-empties (fn-splan-rest *spct-sparse*)))
+   :rule-classes nil))
+
+;; A quantum that does find lines still answers them in a reply effect ahead of
+;; the next cursor: the one non-empty effect the window renders and consumes.
+(defthm spct-nonempty-quantum-keeps-its-reply-witness
+  (let* ((p (fn-splan-of-effects (spct-effects (spct-session "fn.test") *spct-range* nil)))
+         (r (mv-nth 1 (fn-splan-cursor-step p 1 *spct-a* *spct-c*))))
+    (and (equal (len (fn-splan-rest r)) 2)
+         (consp (fn-srb-effect-octets (car (fn-splan-rest r))))
+         (equal (fn-splan-empties r) 0)
+         (fn-splan-rest-at-cursorp (cdr (fn-splan-rest r)))))
+  :rule-classes nil)
 
 ;; THE QUANTUM'S GUARD IS O(1) (Codex r67 F1; lane served-catalog-live).  With
 ;; no raw dispatch the counterpart evaluates the host-called entry's guard on

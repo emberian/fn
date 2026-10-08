@@ -678,8 +678,8 @@ values (nil, nil, 0, nil, the first class, nil, nil, nil, nil). Because it
 is a state, not a separate projection record, a fixed-point statement over
 it is well typed (T6). Clearing every attempt and delivery marker, anchored
 or not, is the design's `clear-inflight`; as built, `fn-bpn-restart-step`
-applies `fn-bpn-resume-jobs`, which returns every `:attempting` job to
-`:queued`; `fn-bpn-reanchor st obs` is §4.5's
+applies `fn-bpn-resolve-orphans-step`, which resolves an `:attempting` job
+through the append path as a `:requeued` record with the `:uncertain` reason; `fn-bpn-reanchor st obs` is §4.5's
 re-anchoring. These three are the vocabulary of T6.
 
 ### 2.7 No whole-state revalidation on the served path
@@ -3320,7 +3320,7 @@ reception decision with an explicit carrier flag. The native
 validated fragment as a kind-5 retained carrier; application reception still
 rejects a partial fragment, and `fn-bpah-pending-view` still excludes it from
 Store. After durable kind-5 reception or cold recovery, the service takes one
-clock observation and asks `fn-bpnf-family-next` for an eligible family. The
+clock observation and asks `fn-bpfj-next-candidate` for an eligible family. The
 selector checks every selected fragment under that same observation, including
 the offset-zero source, without dropping expired or unknown-age members from
 the coherence set. It scans past an ineligible family so another complete,
@@ -3473,21 +3473,21 @@ lengths). `fn-bpfw-reassemble-is-spec` equates it, on every input, with
 recognizer. `fn-bpf-reassemble-is-capped-spec` shows the old reference is
 that spec restricted to the caps. `fn-bpnf-fragment-query`, the query that
 `fn-bpnf-family-plan` calls, now calls the sweep. The family selector
-`fn-bpnf-family-next` (host: `fnn-bps-fragment-progress`, after every
-accepted arrival) runs `fn-bpnf-family-select` (PRF-136): one pass reads each
-held row's primary block and collects the family keys of the offset-zero
-fragments (`fn-bpnf-zero-family-keys`); the walk then plans a row, which
-re-encodes its bundle (`fn-bpnf-heldp`) and reassembles its family, only
-when the row's family holds its offset-zero fragment, and plans each such
-family at most once per call. `fn-bpnf-family-select-is-aux` equates it with
-the per-member selector, anchor included (as `fn-bpnf-family-next-memo-is-aux`
-did the memo it replaces); `fn-bpnf-family-select-plans-bound` bounds the
-rows planned by the rows whose family holds offset zero, and
-`fn-bpnf-family-select-steps-bound` bounds a call that plans nothing by
-|held| x (1 + |zero| + |tried|) header steps. An arrival into a family whose
-offset-zero fragment has not arrived re-encodes no held row. A family whose
-offset-zero fragment is held is still planned on every arrival until it is
-complete (PKT-308). Measured once in a proof session on persvati
+`fn-bpfj-next-candidate` (host: `fnn-bps-fragment-effects`, reached from
+`fnn-bps-fragment-progress` after every accepted arrival) plans no family (PRF-136,
+PRF-1051): one pass reads each held row's primary block and collects the family keys
+of the offset-zero fragments (`fn-bpnf-zero-family-keys`); the walk then tests only the
+representative row of a family in that list and not yet tried (the family's first
+candidate row, `fn-bpfj-family-rep`) for readiness: an active fragment, unique at its
+arrival, whose source rows are live under the observation and cover the declared total.
+`fn-bpfj-next-candidate-is-a-ready-family-representative` states what it answers: nil
+unless nothing is issued, the machine does not wait and the next arrival is in frame,
+and otherwise `(:ready arrival key)` of a zero-sourced family not in TRIED whose
+representative is ready. An arrival into a family whose offset-zero fragment has not
+arrived re-encodes no held row. The host plans the chosen family afterwards; a family
+whose plan is then not ready joins TRIED and the host asks again. The reference
+selector `fn-bpnf-family-next` and its memoised and walking forms were retired with
+their equalities and bounds: the node does not ask them. Measured once in a proof session on persvati
 (not a native image): a 10 MiB ADU arriving as 5,120 4 KiB fragments, each
 twice and in no particular order, reassembles in 0.62 s with 673 MB
 allocated as octet lists.
@@ -4226,7 +4226,7 @@ D's wire evidence exists.
 This replaces the phase-2/phase-3 briefs. Each slice lands its behaviour
 with the safety and replay theorems that behaviour's ACKs depend on; there
 is no proof-after-implementation interval (§12, D-10). Within a phase,
-edited books are disjoint; every lane follows [how we work](../planning/how-we-work.md):
+edited books are disjoint; every lane follows [AGENTS.md](../AGENTS.md):
 its own worktree, its own closure certified before it reports, 300 s per
 book for discovery, 1800 s once for the final closure, `green_check
 --changed-since <base> --strict`, an evidence file
