@@ -14,6 +14,7 @@
     python3 tools/host_check.py --build-lists   # static: the DTN image loads what the default image loads
     python3 tools/host_check.py --attach-order  # static: attach book precedes its stobj generic
     python3 tools/host_check.py --macro-order [FILE...]  # static: no raw macro used before its defmacro
+    python3 tools/host_check.py --trace-view [FILE...]  # static: no decision depends on a trace (DT-4)
 
 `--loaded` (Q7k, 2026-09-29; `make check` runs it): a host file no build loads
 is refused, so a theorem is never counted as hosted through a file no running
@@ -1703,6 +1704,169 @@ def read_check(files: list[str]) -> list[str]:
     return findings
 
 
+# --- --trace-view: a trace is a view, it decides nothing (DT-4, 2026-10-07) ---
+#
+# Protects observability program keystone DT-4.  Decision tracing records what
+# `fnn-call' returned and must never change what the node does: the tracing
+# module (host/native/trace.lisp, prefixes `fnn-dtrace-' and `fnn-trace-')
+# hands nothing back that another host file uses.  Outside that file:
+#
+#   * `fnn-dtrace-enabled-p' is not named at all (whether tracing is on is
+#     nothing a decision may branch on);
+#   * the row-making functions (`fnn-dtrace-note', `-store', `-lookup', ...)
+#     are not named at all: a row is made only by the macros
+#     `fnn-dtrace-around' and `fnn-dtrace-around-mv', which fnn-call and
+#     fnn-core-mv wrap their bodies in;
+#   * a call of any other `fnn-dtrace-*' or `fnn-trace-*' function has its
+#     value neither BOUND (let, let*, multiple-value-bind, setq, setf), nor
+#     BRANCHED on (if, when, unless, cond, case, and, or), nor RETURNED (the
+#     last form of a defun or lambda).  Used for its effect, or as an argument
+#     of a form that does not bind or branch, it is allowed.
+#
+# The macros `fnn-trace-span', `fnn-dtrace-around' and `fnn-dtrace-around-mv'
+# return their body's values unchanged and are transparent to the rule: their
+# body forms are checked as in a progn.  A function REFERENCE (#'fnn-trace-
+# execute) is not a call.  `--trace-view [FILE...]' defaults to every file
+# under host/ but host/native/trace.lisp; no ACL2.
+
+TRACE_FILE = "host/native/trace.lisp"
+TRACE_PREFIXES = ("fnn-dtrace-", "fnn-trace-")
+TRACE_TRANSPARENT = {"fnn-trace-span", "fnn-dtrace-around", "fnn-dtrace-around-mv"}
+TRACE_BANNED = {"fnn-dtrace-enabled-p", "fnn-dtrace-note", "fnn-dtrace-store",
+                "fnn-dtrace-lookup", "fnn-dtrace-admit-attempt",
+                "fnn-dtrace-count-dropped", "fnn-dtrace-snapshot",
+                "fnn-dtrace-around-mv-traced"}
+TRACE_BINDERS = {"let", "let*", "multiple-value-bind", "setq", "setf", "psetq",
+                 "psetf", "defvar", "defparameter"}
+TRACE_BRANCHERS = {"if", "when", "unless", "cond", "case", "ecase", "typecase",
+                   "and", "or", "not"}
+TRACE_QUOTES = {"quote", "function"}
+
+
+def _trace_names(form, found: list) -> None:
+    """Every symbol of FORM that names a banned function, even as data."""
+    import ledger
+    if isinstance(form, ledger.Sym):
+        if str(form).lower() in TRACE_BANNED:
+            found.append(str(form).lower())
+    elif isinstance(form, list):
+        for item in form:
+            _trace_names(item, found)
+
+
+def _trace_walk(form, ctx, line, out: list) -> None:
+    """Walk FORM; CTX is None, 'bound', 'branched' or 'returned': what becomes of
+    the value of FORM."""
+    import ledger
+    if not isinstance(form, list) or not form:
+        return
+    h = ledger.head(form)
+    h = h.lower() if h else None
+    if h in TRACE_QUOTES:
+        return
+    tracing = (h is not None and h.startswith(TRACE_PREFIXES)
+               and h not in TRACE_TRANSPARENT)
+    if tracing and ctx is not None:
+        out.append((line, "the value of (%s ...) is %s" % (
+            h, {"bound": "bound", "branched": "branched on", "returned": "returned"}[ctx])))
+    body_ctx = None if tracing else ctx
+
+    def progn(forms, last):
+        for index, sub in enumerate(forms):
+            _trace_walk(sub, last if index == len(forms) - 1 else None, line, out)
+
+    if h in ("progn", "prog1", "multiple-value-prog1", "unwind-protect") or h in TRACE_TRANSPARENT:
+        rest = form[1:]
+        if h in TRACE_TRANSPARENT and rest:
+            _trace_walk(rest[0], None, line, out)      # the span's spec
+            rest = rest[1:]
+        progn(rest, body_ctx)
+    elif h in ("let", "let*") and len(form) > 1 and isinstance(form[1], list):
+        for binding in form[1]:
+            if isinstance(binding, list) and len(binding) > 1:
+                _trace_walk(binding[1], "bound", line, out)
+        progn(form[2:], body_ctx)
+    elif h == "multiple-value-bind" and len(form) > 2:
+        _trace_walk(form[2], "bound", line, out)
+        progn(form[3:], body_ctx)
+    elif h in ("setq", "setf", "psetq", "psetf"):
+        for value in form[2::2]:
+            _trace_walk(value, "bound", line, out)
+    elif h in ("defun", "defmacro", "defmethod") and len(form) > 3:
+        progn(form[3:], "returned")
+    elif h == "lambda" and len(form) > 2:
+        progn(form[2:], "returned")
+    elif h in ("flet", "labels") and len(form) > 2:
+        for fn in form[1] if isinstance(form[1], list) else []:
+            if isinstance(fn, list) and len(fn) > 2:
+                progn(fn[2:], "returned")
+        progn(form[2:], body_ctx)
+    elif h in ("if", "when", "unless") and len(form) > 1:
+        _trace_walk(form[1], "branched", line, out)
+        if h == "if":
+            for sub in form[2:]:
+                _trace_walk(sub, body_ctx, line, out)
+        else:
+            progn(form[2:], body_ctx)
+    elif h in ("cond", "case", "ecase", "typecase"):
+        for index, clause in enumerate(form[1:]):
+            if not isinstance(clause, list) or not clause:
+                continue
+            if h == "cond":
+                _trace_walk(clause[0], "branched", line, out)
+                progn(clause[1:], body_ctx)
+            else:
+                if index == 0:
+                    _trace_walk(clause, "branched", line, out)      # the key form
+                else:
+                    progn(clause[1:], body_ctx)
+    elif h in ("and", "or", "not"):
+        for sub in form[1:]:
+            _trace_walk(sub, "branched", line, out)
+    else:
+        # a call or an unknown macro: its arguments are not bound or branched on here
+        for sub in form[1:]:
+            _trace_walk(sub, None, line, out)
+
+
+def trace_view_findings(files: list[Path]) -> list[str]:
+    """One finding per tracing result used by a decision (see the section above)."""
+    import ledger
+    findings = []
+    for path in files:
+        shown = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+        if str(shown) == TRACE_FILE:
+            continue
+        try:
+            forms = ledger.Reader(path.read_text(encoding="utf-8")).top_level()
+        except (OSError, UnicodeDecodeError, ledger.ReadError) as error:
+            findings.append(f"{shown}: unreadable: {error}")
+            continue
+        for form, line in forms:
+            banned: list = []
+            _trace_names(form, banned)
+            for name in sorted(set(banned)):
+                findings.append(f"{shown}:{line}: names {name}, which only {TRACE_FILE} may "
+                                "(a row is made by fnn-dtrace-around / fnn-dtrace-around-mv; "
+                                "whether tracing is on decides nothing)")
+            used: list = []
+            _trace_walk(form, None, line, used)
+            for where, what in used:
+                findings.append(f"{shown}:{where}: {what}: a trace is a view, no decision "
+                                "may depend on it (DT-4)")
+    return findings
+
+
+def trace_view_main(names: list[str]) -> int:
+    files = ([ROOT / name for name in names] if names
+             else sorted(p for p in (ROOT / "host").rglob("*.lisp")))
+    findings = trace_view_findings(files)
+    for one in findings:
+        print(f"FAIL {one}")
+    print("host_check --trace-view: %d file(s), %d finding(s)" % (len(files), len(findings)))
+    return 1 if findings else 0
+
+
 # --- --loaded: a host file no build loads (Q7k, 2026-09-29) ------------------
 #
 # Protects the claim "this theorem is hosted": a file under host/ is a host
@@ -2623,6 +2787,9 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--convert", action="store_true",
                         help="every pre-image gate for a host-code conversion, in order "
                              "(FILEs reach --load); on a build box, not the laptop")
+    mode.add_argument("--trace-view", action="store_true",
+                        help="static: no host file outside host/native/trace.lisp binds, "
+                             "branches on or returns a tracing result (DT-4; no ACL2)")
     mode.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
@@ -2640,6 +2807,8 @@ def main(argv: list[str] | None = None) -> int:
         return attach_order_main()
     if args.macro_order:
         return macro_order_main(args.files)
+    if args.trace_view:
+        return trace_view_main(args.files)
     if args.read:
         findings = read_check(args.files)
         for one in findings:
