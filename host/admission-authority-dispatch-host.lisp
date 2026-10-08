@@ -1,4 +1,3 @@
-; UNHOOKED stage 0 (2026-10-08, D46): includes the D46-unhooked books/admission-semantic-node (via host/admission-semantic-node-host), which needs the reverted fn-evc-authorityp; out of the Makefile roots and every image world (planning/unhooked.json)
 ; Internal first-family orchestration. A genuine canonical operation allowance
 ; must precede these allocating calls. This supplies no issuer or native grant.
 (in-package "ACL2")
