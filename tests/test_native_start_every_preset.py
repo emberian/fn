@@ -50,6 +50,9 @@ def probe(image, words):
     return (int(figure.group(1)) if figure else None), text
 
 
+# Every case starts the developer image (the bp-node case adds the DTN image
+# where it is built), so the class skips, naming it, when that image is absent.
+@requires(DEVELOPER)
 class StartEveryPresetTests(unittest.TestCase):
     def node(self, image, preset):
         # No heap opt-out is named: image_heap makes Node start the bare image.
