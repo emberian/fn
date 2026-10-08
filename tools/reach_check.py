@@ -1667,7 +1667,8 @@ def main(argv=None) -> int:
     parser.add_argument("--summary", action="store_true",
                         help="one line, the shape `make check` prints")
     parser.add_argument("--strict", action="store_true",
-                        help="exit non-zero on an orphan not in the baseline")
+                        help="exit non-zero on an orphan not in the baseline, or on an event "
+                             "that needs --world (clears only in a --world run)")
     parser.add_argument("--baseline", action="store_true",
                         help="rewrite planning/reach-baseline.json from this run")
     parser.add_argument("--book", action="append", default=[], metavar="PATH",
@@ -1829,7 +1830,14 @@ def main(argv=None) -> int:
         print(f"reach_check: UNRESOLVED event with no disposition: {key}")
     for relative in sorted(graph.unreadable):
         print(f"reach_check: UNREADABLE book {relative}: its events cannot be judged")
-    failed = fresh or untriaged or untriaged_unresolved or graph.unreadable
+    # needs --world is no pass: it clears only when a --world run finds the
+    # generated function in the certified world (then the subject is judged
+    # hosted or orphaned).  No baseline holds it.
+    for finding in sorted(blind, key=Finding.key):
+        print(f"reach_check: NEEDS --world -- {finding.proof_id}:{finding.event} "
+              f"(through {', '.join(generated_through(graph, finding))}); "
+              "--strict fails until a --world run judges it")
+    failed = fresh or blind or untriaged or untriaged_unresolved or graph.unreadable
     return 1 if (arguments.strict and failed) else 0
 
 

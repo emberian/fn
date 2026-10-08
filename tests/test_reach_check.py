@@ -859,26 +859,50 @@ class GeneratedDispatcherTests(unittest.TestCase):
             blind = {f.key(): reach_check.generated_through(graph, f) for f in findings}
             self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
 
-    def test_the_summary_gives_the_class_its_own_line_and_strict_stays_green(self):
+    def strict(self, root, extra=()):
+        baseline = root / "baseline.json"
+        baseline.write_text(json.dumps({"accepted": {"PRF-T2:fn-t-lone-prop": "SPEC: fixture"},
+                                        "unresolved": {}}))
+        out = io.StringIO()
+        loaded = reach_check.loaded_host_files(root=root)
+        with patch.object(reach_check, "ROOT", root), patch.object(reach_check, "BASELINE", baseline), \
+                patch.object(reach_check, "loaded_host_files", return_value=loaded), \
+                patch.object(reach_check, "load_rows", return_value=self.ROWS), \
+                redirect_stdout(out):
+            code = reach_check.main(["--strict", "--summary", *extra])
+        return code, out.getvalue()
+
+    def stub_world(self, root):
+        records = [{"name": name, "book": "/x/books/t.lisp", "class": ":ideal",
+                    "callees": calls, "guard_callees": [], "attachment": None,
+                    "formals": [], "alias": None, "mbe": []}
+                   for name, calls in (("fn-t-dispatch", ["fn-t-subject"]),
+                                       ("fn-t-subject", []), ("fn-t-lone", []),
+                                       ("fn-t-textual", []), ("fn-t-live", ["fn-t-textual"]))]
+        dump = root / "world.json"
+        dump.write_text(json.dumps({"functions": records, "theorems": []}))
+        return dump
+
+    def test_needs_world_fails_strict_in_source_mode_with_its_own_line(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.tree(root)
-            baseline = root / "baseline.json"
-            baseline.write_text(json.dumps({"accepted": {"PRF-T2:fn-t-lone-prop": "SPEC: fixture"},
-                                            "unresolved": {}}))
-            out = io.StringIO()
-            loaded = reach_check.loaded_host_files(root=root)
-            with patch.object(reach_check, "ROOT", root), patch.object(reach_check, "BASELINE", baseline), \
-                    patch.object(reach_check, "loaded_host_files", return_value=loaded), \
-                    patch.object(reach_check, "load_rows", return_value=self.ROWS), \
-                    redirect_stdout(out):
-                code = reach_check.main(["--strict", "--summary"])
-            text = out.getvalue()
-            self.assertEqual(code, 0, text)
+            code, text = self.strict(root)
+            self.assertEqual(code, 1, text)
             self.assertIn("1 event(s) need --world", text)
             self.assertIn("fn-t-dispatch 1", text)
+            self.assertIn("NEEDS --world -- PRF-T1:fn-t-subject-prop", text)
             self.assertNotIn("NEW unreachable", text)
             self.assertIn("1 have a subject a host line reaches, 1 do not", text)
+
+    def test_needs_world_passes_strict_when_a_world_run_judges_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            code, text = self.strict(root, ["--world", str(self.stub_world(root))])
+            self.assertEqual(code, 0, text)
+            self.assertNotIn("need --world", text)
+            self.assertIn("2 have a subject a host line reaches, 1 do not", text)
 
     def test_a_subject_with_no_path_stays_unreachable(self):
         with tempfile.TemporaryDirectory() as tmp:
