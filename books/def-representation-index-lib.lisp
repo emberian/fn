@@ -56,9 +56,9 @@
 (defun ix-grow (c)
   (declare (xargs :guard t :verify-guards nil))
   (let ((n (nth 1 c)) (cap (len (nth 0 c))))
-    (if (< (nfix n) cap)
+    (if (< n cap)
         c
-      (update-nth 0 (resize-list (nth 0 c) (max 16 (* 2 (max (nfix n) cap))) nil) c))))
+      (update-nth 0 (resize-list (nth 0 c) (max 16 (* 2 (max n cap))) nil) c))))
 
 (defun ix-append (ev c)
   (declare (xargs :guard t :verify-guards nil))
@@ -486,8 +486,7 @@
 
 (local (in-theory (disable ix-corr)))
 
-(local
- (defthm ix-corr-facts
+(defthm ix-corr-facts
    (implies (ix-corr c a)
             (and (ix-cp c)
                  (true-listp a)
@@ -506,7 +505,7 @@
             :use ((:instance ix-count-of-build (s (nth 3 c)))
                   (:instance ix-room-of-build (s (nth 3 c)))
                   (:instance ix-at-of-build (s (nth 3 c)))
-                  (:instance ix-msgid-records-of-build (s (nth 3 c))))))))
+                  (:instance ix-msgid-records-of-build (s (nth 3 c)))))))
 
 
 (defthm ix-append-preserves-corr
@@ -553,11 +552,10 @@
            ("Subgoal *1/1" :use ((:instance ix-append-preserves-corr
                                             (a h) (ev (car events))))))))
 
-(local
- (defthm ix-empty-establishes-correspondence
+(defthm ix-empty-establishes-correspondence
    (implies (unsigned-byte-p 32 salt) (ix-corr (ix-empty salt) nil))
    :hints (("Goal" :in-theory (enable ix-corr ix-empty ix-cp
-                                      ix-build)))))
+                                      ix-build))))
 
 ; Shared fold boundary for alternate physical history implementations. The
 ; index is shared by ordinals while its events may reside in another backing.
