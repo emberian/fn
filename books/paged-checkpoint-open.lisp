@@ -20,7 +20,7 @@
 ; 0', the seed of the host's full recovery (books/statement-recover-stream.lisp,
 ; fn-ssr-recovery-rows-are-the-raw-rows-without-snapshots), so the rows are the
 ; ones a replay of the same records makes.
-; Answer: (mv VERDICT ROWS ROOTS INDEX READS fn-arena fn-octets), VERDICT :ok or
+; Answer: (mv VERDICT ROWS ROOTS READS fn-arena fn-octets F PLEN), VERDICT :ok or
 ; a refusal by name (:root, :record, :intern, :truncated).
 ;
 ; THE KEYSTONES.
@@ -229,9 +229,10 @@
   ; The open of the NPG-page image in PGS-MEM against the payload file FID: the
   ; root row from words 0 .. 8*2048, then the events tape from word 8*2048 to
   ; NPG*2048, row by row.
-  ; (mv VERDICT ROWS ROOTS READS fn-arena fn-octets): VERDICT :ok or a
+  ; (mv VERDICT ROWS ROOTS READS fn-arena fn-octets F PLEN): VERDICT :ok or a
   ; refusal by name; ROWS the arena rows, ROOTS the four fold roots, READS the
-  ; words read.
+  ; words read. F and committed PLEN come from this same root decode. A later
+  ; publication writes at PLEN; an interrupted payload append may extend EOF.
   (declare (xargs :stobjs (pgs-mem fn-arena fn-octets) :verify-guards nil))
   (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid)
            (eql (pcko-w 0 pgs-mem) 1))
@@ -243,17 +244,18 @@
                 (pcko-copy 2 n 2 pgs-mem fn-octets)
                 (let ((d (pcko-tree fn-octets)))
                   (if (eq d :refused)
-                      (mv :root nil nil reads fn-arena fn-octets)
+                      (mv :root nil nil reads fn-arena fn-octets nil nil)
                     (let ((root (cadr d)))
                       (mv-let (verdict acc reads fn-arena fn-octets)
                         (pcko-tape 16384 (* 2048 npg) (fn-ssr-seed (fn-stxk-initial-context 0)) reads fid
                                    pgs-mem fn-arena fn-octets)
                         (mv verdict (fn-ssr-rows acc)
                             (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root))
-                            reads fn-arena fn-octets)))))))
-          (mv :root nil nil 2 fn-arena fn-octets)))
+                            reads fn-arena fn-octets
+                            (pcko-nth 4 root) (pcko-nth 5 root))))))))
+          (mv :root nil nil 2 fn-arena fn-octets nil nil)))
     (mv :root nil nil (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))) 1 0)
-        fn-arena fn-octets)))
+        fn-arena fn-octets nil nil)))
 
 ; -----------------------------------------------------------------------------
 ; The image as a list, and the copy.
@@ -1343,7 +1345,9 @@
                     (mv verdict (fn-ssr-rows acc)
                         (let ((root (cadr (fn-scc-decode-tree prog))))
                           (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root)))
-                        reads a2 oct2))))
+                        reads a2 oct2
+                        (pcko-nth 4 (cadr (fn-scc-decode-tree prog)))
+                        (pcko-nth 5 (cadr (fn-scc-decode-tree prog)))))))
   :hints (("Goal" :do-not-induct t
            :expand ((fn-pck-x-open npg pgs-mem fid a octets))
            :in-theory (e/d (pcko-nw-is-npk) (pcko-tape pcko-w nth fn-scc-decode-tree adt-tp-npk adt-tp-unpack
@@ -1475,7 +1479,10 @@
 (defthm pcko-mvn3 (equal (mv-nth 3 x) (car (cdr (cdr (cdr x))))))
 (defthm pcko-mvn4 (equal (mv-nth 4 x) (car (cdr (cdr (cdr (cdr x)))))))
 (defthm pcko-mvn5 (equal (mv-nth 5 x) (car (cdr (cdr (cdr (cdr (cdr x))))))))
-(in-theory (disable pcko-mvn0 pcko-mvn1 pcko-mvn2 pcko-mvn3 pcko-mvn4 pcko-mvn5))
+(defthm pcko-mvn6 (equal (mv-nth 6 x) (nth 6 x)))
+(defthm pcko-mvn7 (equal (mv-nth 7 x) (nth 7 x)))
+(in-theory (disable pcko-mvn0 pcko-mvn1 pcko-mvn2 pcko-mvn3 pcko-mvn4 pcko-mvn5
+                    pcko-mvn6 pcko-mvn7))
 
 (defthm pcko-open-abstract
   (implies (and (pcko-img w pgs-mem) (true-listp w) (natp npg) (<= 8 npg) (equal (len w) (* 2048 npg))
@@ -1494,6 +1501,8 @@
                   (not (equal (mv-nth 0 s) :bad))
                   (equal (mv-nth 1 r) (fn-ssr-rows (mv-nth 0 s)))
                   (equal (mv-nth 2 r) (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root)))
+                  (equal (mv-nth 6 r) (pcko-nth 4 root))
+                  (equal (mv-nth 7 r) (pcko-nth 5 root))
                   (equal (mv-nth 3 r) (+ 2 (adt-tp-npk (len prog)) (len tws) (if (consp zp) 1 0)))
                   (equal (mv-nth 4 r) (mv-nth 1 s)))))
   :hints (("Goal" :do-not-induct t
@@ -1501,6 +1510,7 @@
                                         (:executable-counterpart binary-+) (:executable-counterpart not)
                                         (:executable-counterpart unary--)
                                         pcko-mvn0 pcko-mvn1 pcko-mvn2 pcko-mvn3 pcko-mvn4 pcko-mvn5
+                                        pcko-mvn6 pcko-mvn7 nth zp
                                         fn-pck-seed car-cons cdr-cons)
                                       (theory 'minimal-theory))
            :use ((:instance pcko-open-form (octets octets))
@@ -1527,6 +1537,8 @@
                   (not (equal (mv-nth 0 s) :bad))
                   (equal (mv-nth 1 r) (fn-ssr-rows (mv-nth 0 s)))
                   (equal (mv-nth 2 r) (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x)))
+                  (equal (mv-nth 6 r) (nth 4 x))
+                  (equal (mv-nth 7 r) (nth 5 x))
                   (equal (mv-nth 3 r)
                          (+ 2 (adt-tp-npk (len (fn-scc-program x))) (len (pcko-tws recs))
                             (if (consp (adt-tp-zeros (adt-tp-pad (len (pcko-tws recs))))) 1 0)))
@@ -2020,3 +2032,22 @@
                  pcko-len-w
                  (:instance pcko-open-model (a fn-arena) (octets fn-octets))
                  pcko-root-fits-in-region))))
+
+; G-B: the same decode returns the persisted log position and payload boundary.
+; Slots 0..5, and fn-pck-x-open-is-the-capture's conclusion, stay unchanged.
+(defthm fn-pck-x-open-summary-is-the-root
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                (equal npg (len (fn-pck-pages configs recs)))
+                (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem)
+                       (adt-tp-flat (fn-pck-pages configs recs)))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid))
+           (let ((r (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets))
+                 (root (fn-pck-root-tree-of-capture (fn-sco-capture configs recs)
+                                                   (fn-pck-f configs recs) (fn-pck-plen recs 0))))
+             (and (equal (mv-nth 6 r) (nth 4 root))
+                  (equal (mv-nth 7 r) (nth 5 root)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-pck-root-tree) (theory 'minimal-theory))
+           :use ((:instance pcko-img-intro (k (* 2048 npg)) (w (adt-tp-flat (fn-pck-pages configs recs))))
+                 pcko-len-w
+                 (:instance pcko-open-model (a fn-arena) (octets fn-octets))))))
