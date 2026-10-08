@@ -434,6 +434,13 @@ class PushTests(TrainBase):
         self.assertEqual(rec["owned_reds"], [{"key": "R2|f|O:x", "items": [
             {"item": "LOCK-X", "owner": "deputy-C", "state": "open"}]}])
 
+    def test_lock_key_after_a_newline_in_item_text_is_owned(self):
+        body = {"id": "LOCK-X", "state": "open", "owner": "deputy-C",
+                "detail": "list:\nR7|f|swallow:x (f.lisp:1): why"}
+        g, rec = self.lock_gate(["R7|f|swallow:x"], None, {"LOCK-X": body})
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["unowned"], [])
+
     def test_lock_dev_key_without_item_fails(self):
         g, rec = self.lock_gate(["R2|f|O:x"], None)
         self.assertEqual(rec["rc"], 1)

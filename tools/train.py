@@ -527,15 +527,27 @@ def _lock_keys(t: Train, cwd: Path) -> tuple[set[str] | None, str | None]:
 
 def _lock_owners(root: Path, keys) -> dict[str, list[dict]]:
     """For each key, the repair items naming it verbatim (id, owner, state)."""
+    def strings(v):
+        if isinstance(v, str):
+            yield v
+        elif isinstance(v, dict):
+            for x in v.values():
+                yield from strings(x)
+        elif isinstance(v, list):
+            for x in v:
+                yield from strings(x)
+
     items = []
     for path in sorted((root / "planning" / "repair" / "items").glob("*.json")):
         try:
-            raw = path.read_text()
-            d = json.loads(raw)
+            d = json.loads(path.read_text())
         except (OSError, ValueError):
             continue
         if isinstance(d, dict):
-            items.append((d.get("id", path.stem), d.get("owner"), d.get("state"), raw))
+            # match the item's decoded text, not its JSON spelling (a key
+            # after "\n" is preceded by the escape's letter n in the raw file)
+            text = "\n".join(strings(d))
+            items.append((d.get("id", path.stem), d.get("owner"), d.get("state"), text))
     out = {}
     for k in keys:
         pat = re.compile(r"(?<![\w|*:-])" + re.escape(k) + r"(?![\w|*:-])")
