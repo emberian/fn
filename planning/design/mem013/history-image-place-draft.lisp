@@ -360,6 +360,8 @@
                   (equal (fn-hrc-starts c2) (fn-hp-starts h salt))
                   (equal (fn-hrc-npages c2) (fn-hp-npages h salt))
                   (equal (pgs-w-length (fn-hrc-pgs c2)) (* 2048 (fn-hp-npages h salt)))
+                  (equal (pgs-v-length (fn-hrc-pgs c2)) (fn-hp-npages h salt))
+                  (equal (pgs-d-length (fn-hrc-pgs c2)) (fn-hp-npages h salt))
                   (fn-his-all-dirty 0 (fn-hp-npages h salt) (nth *pgs-di* (fn-hrc-pgs c2))))))
   :rule-classes nil)
 
@@ -368,7 +370,8 @@
 (defthm fn-his-image-build-c-refuses-unholdable
   (implies (and (fn-hrecs$cp fn-hrecs$c) (natp salt) (not (fn-hp-okp h salt)))
            (let ((res (fn-his-image-build-c h salt fn-hrecs$c)))
-             (not (equal (mv-nth 0 res) :ok))))
+             (and (not (equal (mv-nth 0 res) :ok))
+                  (not (equal (fn-hrc-img (mv-nth 1 res)) 1)))))
   :rule-classes nil)
 
 ; ---------------------------------------------------------------------------
@@ -399,7 +402,8 @@
 
 ;
 ; The entries are stobj-let functions, which have no ground logic value (update-fn-hrc-pgs is
-; non-exec), so teeth on them RUN on the live fn-hrecs$c (assert-event, tests/acl2 style).
+; non-exec), so teeth on them RUN on the live fn-hrecs$c (assert-event, tests/acl2 style);
+; S accepted this form for the keystone's positive tooth (audit of fd741adbc).
 ; fn-hrs-rel is a defun-nx and cannot run: the run asserts its conjuncts that can (img 1,
 ; nimg = len h, empty suffix, canonical lens/starts/npages, words = fn-hp-iw, all dirty), and
 ; the rel's own placement and vhold conjuncts are the ground defthm (a') on the pgs-level build.
