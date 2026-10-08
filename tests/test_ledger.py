@@ -759,8 +759,8 @@ class CitedSuspectAdviceTests(unittest.TestCase):
 
     def test_agents_md_says_the_same(self):
         text = " ".join((Path(__file__).resolve().parents[1] / "AGENTS.md").read_text().split())
-        self.assertIn("name those lemmas `-unfolds` or `-by-definition` and do not "
-                      "cite them as events", text)
+        self.assertIn("Lemmas that only unfold are named `-unfolds` or "
+                      "`-by-definition` and not cited as events", text)
 
 
 class RegistryTests(unittest.TestCase):
@@ -1597,8 +1597,9 @@ class DefkeystoneExpansionTests(unittest.TestCase):
                           "fn-dkt-add-adds-again-mutant-weaker",
                           "fn-dkt-two-first-is-x-without-nat",
                           "fn-dkt-two-first-is-x-mutant-second-output"})
-        # Five generated checks plus fifteen refused source forms.
-        self.assertEqual(book.must_fails, 20)
+        # Five generated checks plus eighteen refused source forms (the
+        # malformed-scope and two-stobj-builder fixtures of 83d922dcb).
+        self.assertEqual(book.must_fails, 23)
         # a defteeth's bound is a theorem of its book, from the claim
         self.assertIn("fn-dkt-add-adds-source-visits-steps", names)
         # a restating defkeystone declares the teeth of the REGISTRY keystone
@@ -1607,7 +1608,8 @@ class DefkeystoneExpansionTests(unittest.TestCase):
                          {"fn-dkt-add-adds-source", "fn-dkt-add-adds-again",
                           "fn-dkt-walk-of-true-list", "fn-dkt-two-first-is-x",
                           "fn-dkt-assumed-one", "fn-dkt-scoped",
-                          "fn-dkt-cell-positive", "fn-dkt-two-cells"})
+                          "fn-dkt-cell-positive", "fn-dkt-two-cells",
+                          "fn-dkt-two-cells-built", "fn-dkt-snapshot"})
         # a bound :derived-by a def-cost row is a theorem of its book too
         self.assertIn("fn-dkt-walk-of-true-list-visits-steps", names)
         self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})
