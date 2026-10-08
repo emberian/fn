@@ -140,12 +140,19 @@
 (defconst *bpna-overlong-restart-event*
   (list :restart *bpna-overlong-records* :ready))
 (assert-event (not (fn-bpn-machine-eventp *bpna-overlong-restart-event*)))
-(local
- (must-fail-checked
-  (defthm fn-bpn-tooth-step-without-bounded-event
-    (fn-bpn-lifecycle-invariantp
-     (fn-bpn-answer-state
-      (fn-bpn-step *bpna-s0* *bpna-overlong-restart-event*))))))
+;; The restart now fences an over-long history itself (the seeded start does not
+;; fit the lifecycle namespace), so the overlong event no longer escapes the
+;; invariant: the answer is the :seed-frontier fence, still lifecycle-invariant.
+(assert-event
+ (with-guard-checking :none
+   (equal (fn-bpn-answer-effects
+           (fn-bpn-step *bpna-s0* *bpna-overlong-restart-event*))
+          '((:restart-fault :seed-frontier)))))
+(assert-event
+ (with-guard-checking :none
+   (fn-bpn-lifecycle-invariantp
+    (fn-bpn-answer-state
+     (fn-bpn-step *bpna-s0* *bpna-overlong-restart-event*)))))
 
 ; A merely typed pending value can pair a queued record with a send.  The old
 ; machine invariant accepts it; the new relation rejects it, and a durable
