@@ -958,41 +958,60 @@
   :hints (("Goal" :in-theory (enable fn-bpn-seeded-machine-state
                                      fn-bpn-initial-machine-state))))
 
+; The seed and the records it will be replayed with fit one lifecycle
+; namespace: a machine under the limits, a natural token, and no more than
+; *fn-bpn-machine-max-records* tokens in all.  A restart whose seed does not
+; fit fences without trusting any of it.
+(defun fn-bpn-restart-seed-fitsp (base token records)
+  (declare (xargs :guard t))
+  (and (fn-bpn-machine-statep base)
+       (natp token)
+       (<= (+ token (len records)) *fn-bpn-machine-max-records*)))
+
+(verify-guards fn-bpn-restart-seed-fitsp)
+
+; Replay the records over BASE, then resolve the orphaned attempt, or fence
+; with the prefix that did replay.
+(defun fn-bpn-restart-replay-step (base records)
+  (declare (xargs :guard (and (fn-bpn-machine-statep base)
+                              (null (fn-bpn-machine-state-pending base))
+                              (true-listp records)
+                              (fn-bpn-restart-seed-fitsp
+                               base (fn-bpn-machine-state-next-token base)
+                               records))))
+  (let ((replay (fn-bpn-replay-records base records)))
+    (if (equal (car replay) :ready)
+        (let* ((replayed (nth 1 replay))
+               (resolved (fn-bpn-resolve-orphans-step replayed)))
+          (fn-bpn-answer
+           (fn-bpn-answer-state resolved)
+           (cons (list :restart-ready
+                       (len (fn-bpn-machine-state-jobs replayed)))
+                 (fn-bpn-answer-effects resolved))))
+      (let ((prefix (nth 1 replay)))
+        (fn-bpn-answer
+         (fn-bpn-state-with prefix (fn-bpn-machine-state-jobs prefix)
+                            nil nil t (fn-bpn-machine-state-next-token prefix))
+         (list (list :restart-fault (nth 2 replay))))))))
+
 (defun fn-bpn-restart-step-from (st records sequence-ready jobs token)
-  (declare (xargs :guard
-                  (and (fn-bpn-machine-statep st)
-                       (true-listp records)
-                       (natp token)
-                       (<= (+ token (len records)) *fn-bpn-machine-max-records*)
-                       (fn-bpn-machine-statep
-                        (fn-bpn-seeded-machine-state
-                         (fn-bpn-machine-state-config st)
-                         (fn-bpn-machine-state-max-jobs st)
-                         (fn-bpn-machine-state-max-octets st)
-                         jobs token)))))
+  (declare (xargs :guard (and (fn-bpn-machine-statep st)
+                              (true-listp records))))
   (let ((base (fn-bpn-seeded-machine-state
                (fn-bpn-machine-state-config st)
                (fn-bpn-machine-state-max-jobs st)
                (fn-bpn-machine-state-max-octets st)
                jobs token)))
-    (if (not (equal sequence-ready :ready))
-        (fn-bpn-answer
-         (fn-bpn-state-with base nil nil nil t 0)
-         (list (list :restart-fault :sequence-frontier)))
-      (let ((replay (fn-bpn-replay-records base records)))
-        (if (equal (car replay) :ready)
-            (let* ((replayed (nth 1 replay))
-                   (resolved (fn-bpn-resolve-orphans-step replayed)))
-              (fn-bpn-answer
-               (fn-bpn-answer-state resolved)
-               (cons (list :restart-ready
-                           (len (fn-bpn-machine-state-jobs replayed)))
-                     (fn-bpn-answer-effects resolved))))
-          (let ((prefix (nth 1 replay)))
-            (fn-bpn-answer
-             (fn-bpn-state-with prefix (fn-bpn-machine-state-jobs prefix)
-                                nil nil t (fn-bpn-machine-state-next-token prefix))
-             (list (list :restart-fault (nth 2 replay))))))))))
+    (cond
+     ((not (fn-bpn-restart-seed-fitsp base token records))
+      (fn-bpn-answer
+       (fn-bpn-state-with st nil nil nil t 0)
+       (list (list :restart-fault :seed-frontier))))
+     ((not (equal sequence-ready :ready))
+      (fn-bpn-answer
+       (fn-bpn-state-with base nil nil nil t 0)
+       (list (list :restart-fault :sequence-frontier))))
+     (t (fn-bpn-restart-replay-step base records)))))
 
 ; The restart of the lifecycle log from the beginning: the unseeded instance.
 (defun fn-bpn-restart-step (st records sequence-ready)
