@@ -45,7 +45,7 @@ fi
 # as the BP bridge does, needs FN_ACL2 and the certificate cache).
 export FN_ACL2=${FN_ACL2:-/tank/fn/toolchains/w28/acl2-literal-4g} FN_CERT_CACHE=${FN_CERT_CACHE:-/tank/fn/certcache} FN_CERT_ORIGIN_KIND=run
 export FN_TEST_OPENSSL_BIN=$OPENSSL_TEST
-export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+unset FN_OPENSSL_PREFIX
 box() { echo "$(date -u +%FT%TZ) $1 load: $(cut -d' ' -f1-3 /proc/loadavg); arc=$(awk '/^size/{print $3}' /proc/spl/kstat/zfs/arcstats 2>/dev/null); top: $(ps -eo rss,comm --sort=-rss | sed -n 2,4p | tr '\n' ';')" >> "$O/driver.log"; }
 scope() { mem=$1; cores=$2; shift 2; systemd-run --user --scope -q -p MemoryMax=$mem -p MemorySwapMax=0 taskset -c "$cores" "$@"; }
 done_() { echo "$(date -u +%FT%TZ) $1 rc=$2" >> "$O/driver.log"; }

@@ -702,7 +702,7 @@ class BoxRowTests(unittest.TestCase):
     def test_persvati_row(self):
         row = self.row("persvati")
         self.assertEqual(row, {"BASE": "'~/fn-gates'", "CACHE": "'~/fn-certcache'",
-                               "WRAP": "'/tank/fn/bin/persvati-jobs'", "IMAGES_BASE": "''", "OPENSSL": "'bundled'"})
+                               "WRAP": "''", "IMAGES_BASE": "''", "OPENSSL": "'system'"})
         resolved = self.row("persvati", "/home/u")
         self.assertEqual((resolved["BASE"], resolved["CACHE"]),
                          ("'/home/u/fn-gates'", "'/home/u/fn-certcache'"))
@@ -712,9 +712,8 @@ class BoxRowTests(unittest.TestCase):
         self.assertIn("S=~/fn-gates/t/native-l", script)
         self.assertIn("CACHE=~/fn-certcache", script)
         self.assertNotIn("swarm-build", script)
-        self.assertIn("openssl-3.5.8/bin/openssl", script)
-        self.assertIn("export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8", script)
-        self.assertNotIn("command -v openssl", script)
+        self.assertNotIn("openssl-3.5.8", script)
+        self.assertIn("command -v openssl", script)
         # No published image sets there: refused up front, naming hbox.
         refused = dry("--box", "persvati", "--image-set", "a" * 40, "HEAD",
                       "tests.test_native_owner")

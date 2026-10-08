@@ -106,7 +106,7 @@ class DryRunTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             cls.code = deploy_gate.main([
                 commit, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),
-                "--native-image", image, "--developer-image", image, "--native-openssl-prefix", "/opt/ssl",
+                "--native-image", image, "--developer-image", image,
                 "--nntplib-python", "none", "--evidence", str(cls.evidence), "--keep"])
         cls.text = cls.evidence.read_text()
 

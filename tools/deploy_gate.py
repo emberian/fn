@@ -1386,7 +1386,7 @@ def main(argv=None) -> int:
                         help="the developer image's path on the box, for the uncertain "
                              "outcome's control cut (else that arm is not exercised)")
     parser.add_argument("--native-openssl-prefix", default="",
-                        help="FN_OPENSSL_PREFIX for the image: the shipped OpenSSL 3.5.8 (D64); required with --native-image")
+                        help="FN_OPENSSL_PREFIX for the image, when the box needs one")
     parser.add_argument("--nntplib-python", default="auto",
                         help="auto, none, or an interpreter with a stdlib nntplib")
     parser.add_argument("--overlay", default=None,
@@ -1401,8 +1401,6 @@ def main(argv=None) -> int:
         host: Host = LocalHost(Path(args.home).resolve())
     else:
         host = SshHost(args.host)
-    if args.native_image and not args.native_openssl_prefix:
-        parser.error("--native-image needs --native-openssl-prefix: the shipped OpenSSL 3.5.8 (D64)")
     overlay = Path(args.overlay).resolve() if args.overlay else None
     try:
         gate = DeployGate(

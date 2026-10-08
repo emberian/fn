@@ -9,10 +9,11 @@
 # PRF-1327): OpenSSL 3.5.8's libcrypto.so.3 and libssl.so.3 under
 # openssl/lib/, from FN_FREEZE_OPENSSL (a prefix; the release build names
 # packaging/floor-openssl.sh's output, built against the glibc floor), else
-# FN_OPENSSL_PREFIX; with neither set the freeze refuses (D64: no default
-# prefix).  Each launcher exports FN_OPENSSL_PREFIX as that directory unless
-# the caller named one.  It is never put in lib/ (LD_LIBRARY_PATH).  OpenBSD
-# keeps the base system's LibreSSL (HST-016) until the OpenBSD conversion.
+# FN_OPENSSL_PREFIX, else the build boxes' /tank/fn/toolchains/openssl-3.5.8.
+# Each launcher exports FN_OPENSSL_PREFIX as that directory unless the caller
+# named one.  It is never put in lib/ (LD_LIBRARY_PATH), so the system's
+# pair the host falls back to stays the system's.  OpenBSD keeps the base
+# system's LibreSSL (HST-016).
 #
 # On OpenBSD, FN_FREEZE_SODIUM names the libsodium to bundle (pkg_add
 # libsodium: /usr/local/lib/libsodium.so.11.1 on 7.9, kept under its own
@@ -66,9 +67,7 @@ else
 fi
 openssl_lib=
 if [ "$system" = Linux ]; then
-  openssl_prefix=${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-}}
-  [ -n "$openssl_prefix" ] || {
-    echo "freeze-native-image: FN_FREEZE_OPENSSL or FN_OPENSSL_PREFIX must name the shipped OpenSSL 3.5.8" >&2; exit 2; }
+  openssl_prefix=${FN_FREEZE_OPENSSL:-${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}}
   for d in "$openssl_prefix/lib64" "$openssl_prefix/lib"; do
     if [ -s "$d/libcrypto.so.3" ] && [ -s "$d/libssl.so.3" ]; then openssl_lib=$d; break; fi
   done

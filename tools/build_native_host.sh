@@ -50,34 +50,14 @@ if [ "$WORLD" != "$DEFAULT_WORLD" ] && [ "$BUILD" = host/native/build.lisp ]; th
     esac
 fi
 IMAGE="${FN_NATIVE_IMAGE:-$DEFAULT_IMAGE}"
-# TLS is the shipped OpenSSL 3.5.8 (D64): on Linux FN_OPENSSL_PREFIX must name
-# a prefix whose libcrypto.so.3/libssl.so.3 pair is 3.5.8, and the loader sees
-# that directory only, whatever libssl lies earlier on the path.  Other
-# platforms are not yet converted: FN_OPENSSL_PREFIX stays optional there.
-case $(uname -s) in
-  Linux)
-    if [ -z "${FN_OPENSSL_PREFIX:-}" ]; then
-        echo "build_native_host: FN_OPENSSL_PREFIX must name the shipped OpenSSL 3.5.8" >&2
-        exit 2
-    fi
-    fn_ssl_lib=
-    for d in "$FN_OPENSSL_PREFIX/lib64" "$FN_OPENSSL_PREFIX/lib"; do
-        if [ -s "$d/libcrypto.so.3" ] && [ -s "$d/libssl.so.3" ]; then fn_ssl_lib=$d; break; fi
-    done
-    if [ -z "$fn_ssl_lib" ] || ! grep -aq 'OpenSSL 3\.5\.8 ' "$fn_ssl_lib/libcrypto.so.3"; then
-        echo "build_native_host: $FN_OPENSSL_PREFIX holds no OpenSSL 3.5.8 libcrypto.so.3/libssl.so.3 pair (FN_OPENSSL_PREFIX)" >&2
-        exit 2
-    fi
+# TLS is the system's libssl (OpenSSL 3.0+ or LibreSSL 3+; tls.lisp checks
+# every function it calls at build and at start).  FN_OPENSSL_PREFIX is
+# optional: set, it names another matched libcrypto/libssl pair.
+if [ -n "${FN_OPENSSL_PREFIX:-}" ]; then
     export FN_OPENSSL_PREFIX
-    LD_LIBRARY_PATH="$fn_ssl_lib"
-    export LD_LIBRARY_PATH ;;
-  *)
-    if [ -n "${FN_OPENSSL_PREFIX:-}" ]; then
-        export FN_OPENSSL_PREFIX
-        LD_LIBRARY_PATH="$FN_OPENSSL_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-        export LD_LIBRARY_PATH
-    fi ;;
-esac
+    LD_LIBRARY_PATH="$FN_OPENSSL_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export LD_LIBRARY_PATH
+fi
 # ML-DSA-65 is the vendored PQClean library, built into lib/ beside the
 # image's core, where the restarted image loads it (signatures.lisp).
 LIBDIR=$(dirname "$IMAGE")/lib
@@ -106,7 +86,7 @@ esac
 export FN_BLAKE3_LIBRARY
 openssl_hint() {
     if grep -q -E 'OpenSSL|LibreSSL|TLS library|libcrypto|libssl' "$LOG" 2>/dev/null; then
-        echo "build_native_host: the log names the TLS library; the build needs the shipped OpenSSL 3.5.8 (FN_OPENSSL_PREFIX now: ${FN_OPENSSL_PREFIX:-unset})" >&2
+        echo "build_native_host: the log names the TLS library; the system needs OpenSSL 3.0+ or LibreSSL 3+ (FN_OPENSSL_PREFIX now: ${FN_OPENSSL_PREFIX:-unset})" >&2
     fi
     if grep -q -E 'ML-DSA' "$LOG" 2>/dev/null; then
         echo "build_native_host: the log names ML-DSA-65; the library is $FN_MLDSA_LIBRARY (tools/build_mldsa65.sh)" >&2

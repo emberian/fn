@@ -20,7 +20,7 @@
 #   probe     arch x86_64, the kernel, glibc at least what the seed's SBCL
 #             runtime needs (its highest GLIBC_ symbol version), apt-get,
 #             systemd, free disk; --dry-run stops after this and prints the plan
-#   system    packages (python3 3.12+, git, rsync, libsodium, zlib,
+#   system    packages (python3 3.12+, git, rsync, libssl3, libsodium, zlib,
 #             build tools, zstd, docker.io, pip + dilithium-py 1.4.0), user fn with
 #             this laptop's and the seed's keys, linger (systemd user scopes), hostname NAME,
 #             /tank/fn/{sbcl,acl2-8.7,toolchains,certcache,images,scratch,gates},
@@ -42,9 +42,8 @@
 # nothing in the repository names it.
 set -eu
 # The one package list: the system step installs it and tools/box_qualify.sh
-# checks it.  No libssl: the node's TLS is the OpenSSL 3.5.8 seeded under
-# /tank/fn/toolchains (D64); `openssl' is the CLI for client tooling.
-FN_BOX_PACKAGES="rsync git python3 python3-venv python3-pip libsodium23 zlib1g build-essential pigz zstd openssl docker.io acl"
+# checks it (libssl3 is libssl3t64 on Ubuntu 24.04; both accept either).
+FN_BOX_PACKAGES="rsync git python3 python3-venv python3-pip libssl3 libsodium23 zlib1g build-essential pigz zstd openssl docker.io acl"
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 [ $# -ge 2 ] || usage
@@ -114,7 +113,8 @@ $SSH "$TARGET" 'S=; [ "$(id -u)" = 0 ] || S="sudo -n"; exec $S env NAME='"$NAME"
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q >/dev/null
-apt-get install -y -q $PKGS >/dev/null
+ssl=libssl3; apt-cache show libssl3t64 >/dev/null 2>&1 && ssl=libssl3t64
+apt-get install -y -q $(echo "$PKGS" | sed "s/libssl3/$ssl/") >/dev/null
 # docker: tests.test_native_reader_clients builds the slrn/pan container
 # (tools/reader_clients/Dockerfile) and skips on a box without it (lat1,
 # 2026-10-04); fn must be in the docker group (reset any ssh ControlMaster so

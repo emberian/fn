@@ -54,11 +54,11 @@
 #      default, --mem; a served-read measurement through
 #      tools/fundamentals/sr_measure.py or served_ab.sh needs 40G: at 24G the
 #      owner refuses its connections, connections-exceed-memory), against
-#      the box's shipped OpenSSL 3.5.8 (FN_OPENSSL_PREFIX, D64), with every
-#      --env NAME=VALUE exported.  The same 3.5.8 binary is also the TEST TOOL
-#      (ML-DSA-65 keys and signatures made independently of the node):
-#      $FN_TEST_OPENSSL_BIN, a wrapper that gives that binary its own
-#      libraries and nothing else.  When dtn-developer is built and dtn is
+#      hbox's system libssl (OpenSSL 3.3.1; no
+#      FN_OPENSSL_PREFIX: HST-016), with every --env NAME=VALUE exported.
+#      OpenSSL 3.5.8 stays a TEST TOOL only (ML-DSA-65 keys and signatures
+#      made independently of the node): $FN_TEST_OPENSSL_BIN, a wrapper
+#      that gives that binary its own libraries and nothing else.  When dtn-developer is built and dtn is
 #      not, FN_NATIVE_BP_HOST defaults to the dtn-developer image (the BP
 #      tests default to build/fn-host-dtn, which that run does not build).
 #      Each module's process also gets every variable tools/native_env.py
@@ -409,11 +409,15 @@ case "$BASE $CACHE" in
             eval "$ROW"
         fi ;;
 esac
-# The test OpenSSL (the CLI of the same 3.5.8 the node ships).
+# The test OpenSSL (a TEST TOOL only; the node links the box's libssl).
 openssl_setup() {
     case $OPENSSL in
         bundled) cat <<'OSSL'
 printf '%s\n' '#!/bin/sh' 'LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib exec /tank/fn/toolchains/openssl-3.5.8/bin/openssl "$@"' > $S/bin/openssl-test
+OSSL
+        ;;
+        system) cat <<'OSSL'
+printf '%s\n' '#!/bin/sh' "exec $(command -v openssl) \"\$@\"" > $S/bin/openssl-test
 OSSL
         ;;
     esac
@@ -443,7 +447,7 @@ T=\$S/tree
 L=\$S/logs
 ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k  # the certify launcher (tools/farm.py HOSTS)
 CACHE=$CACHE  # this box's (tools/farm.py HOSTS)
-export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
+unset FN_OPENSSL_PREFIX
 mkdir -p \$S/bin
 $(openssl_setup)
 export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
