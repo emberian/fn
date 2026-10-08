@@ -428,10 +428,8 @@
    "census": true,
    "sweep": [
     "1k",
-    "10k",
     "25k",
-    "50k",
-    "100k"
+    "50k"
    ],
    "store": {
     "preload": 1000,
@@ -448,14 +446,6 @@
     {
      "name": "census",
      "kind": "census"
-    },
-    {
-     "name": "publish",
-     "kind": "publish"
-    },
-    {
-     "name": "reopen-checkpoint",
-     "kind": "reopen"
     }
    ]
   },

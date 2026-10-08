@@ -242,7 +242,7 @@ class Node:
                 self.heap_probe_failed = out[-200:]
                 return self.decided
             raise CellError("heap probe exit %d: %s" % (p.returncode, out[-300:]))
-        self.decided = "--dynamic-space-size %sMB --control-stack-size %sKB" % (heap.group(1), stack.group(1))
+        self.decided = "--dynamic-space-size %sMB --control-stack-size %sKB" % (max(int(heap.group(1)), int(os.environ.get("S_HEAP_ATTR_MB", "0"))), stack.group(1))
         self.env["SBCL_USER_ARGS"] = self.decided
         return self.decided
 

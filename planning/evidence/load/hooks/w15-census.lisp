@@ -1,58 +1,253 @@
-;;; One-off W15 heap census (no image change).  A thread polls FN_LOAD_CENSUS_DIR/go; on seeing it,
-;;; it writes SBCL's own accounting of the dynamic space to FN_LOAD_CENSUS_DIR/census.txt:
-;;;   RAW   the heap as it is (garbage included)
-;;;   LIVE  after a full collection
-;;; each as `room` (by object type) and sb-vm:instance-usage (structure instances, which are the stobjs),
-;;; then creates FN_LOAD_CENSUS_DIR/done.  Loaded through the same path as w13-idle-gc.lisp.
+;;; s-heap-attr referrer census.  A thread polls FN_LOAD_CENSUS_DIR/go; on seeing it: full GC, then
+;;;   room                    SBCL's by-type accounting
+;;;   NONCORE                 live dynamic-space objects outside the core's pseudo-static generation, by key
+;;;   SAMPLE-ROOT             for each key over 1 MB, a stride sample (~*ha-samples* objects) run through
+;;;                           sb-ext:search-roots; bytes extrapolated by the key's total/sampled bytes, grouped by
+;;;                           the path from the first global symbol or code component down 5 steps
+;;;   NOROOT                  sampled bytes search-roots gave no path for (extrapolated)
+;;; Loaded the way w13-idle-gc.lisp is (before sbcl-restart).
 (in-package "ACL2")
 
-(defun fnl-deep-size (v seen depth)
-  "Octets reachable from V through arrays and structure slots (DEPTH levels), shared objects once."
-  (cond ((or (null v) (symbolp v) (typep v 'fixnum) (typep v 'character) (functionp v)) 0)
-        ((gethash v seen) 0)
-        ((typep v '(or array bignum double-float structure-object))
-         (setf (gethash v seen) t)
-         (let ((b (sb-ext:primitive-object-size v)))
-           (when (> depth 0)
-             (cond ((typep v 'simple-vector)
-                    (loop for e across v do (incf b (fnl-deep-size e seen (1- depth)))))
-                   ((typep v 'structure-object)
-                    (let ((dd (sb-kernel:find-defstruct-description (type-of v))))
-                      (when dd
-                        (dolist (dsd (sb-kernel:dd-slots dd))
-                          (when (eq (sb-kernel:dsd-raw-type dsd) t)
-                            (incf b (fnl-deep-size (sb-kernel:%instance-ref v (sb-kernel:dsd-index dsd)) seen (1- depth))))))))))
-           b))
-        (t 0)))
+(defvar *ha-samples* 120)
 
-(defun fnl-large-census (stream)
-  "LARGE lines: dynamic-space arrays of at least 256 KiB, grouped by element type, with count, total octets
-and the largest length; then the 12 biggest singly.  A stobj is a vector of arrays, so its big parts show here."
-  (let ((tab (make-hash-table :test 'equal)) (singles '()))
-    (dolist (o (sb-vm:list-allocated-objects :dynamic :larger 262144))
-      (when (arrayp o)
-        (let* ((key (format nil "~a" (array-element-type o))) (sz (sb-ext:primitive-object-size o))
-               (c (or (gethash key tab) (setf (gethash key tab) (list 0 0 0)))))
-          (incf (first c)) (incf (second c) sz) (setf (third c) (max (third c) (length o)))
-          (push (list sz key (length o)) singles))))
-    (maphash (lambda (k c) (format stream "LARGE ~a count ~d bytes ~d maxlen ~d~%" (substitute #\_ #\Space k) (first c) (second c) (third c))) tab)
-    (loop for x in (subseq (sort singles #'> :key #'first) 0 (min 12 (length singles)))
-          do (format stream "LARGE1 ~a bytes ~d len ~d~%" (substitute #\_ #\Space (second x)) (first x) (third x)))))
+(defun ha-heap-p (o)
+  (and (not (typep o '(or fixnum character single-float)))
+       (sb-vm:is-lisp-pointer (sb-kernel:get-lisp-obj-address o))))
 
-(defun fnl-owner-census (stream)
-  "OWNER lines: each live stobj the owner holds (S3: simple-vectors, one slot per defstobj field), the octets
-reachable from each top-level slot, shared parts counted once.  Handles: host/native/io.lisp:431-462."
-  (let ((seen (make-hash-table :test 'eq)))
-    (dolist (spec '((cat fnn-live-cat) (arena fnn-live-arena) (hist fnn-live-hist) (owner fnn-live-owner-st)))
-      (let* ((fn (second spec))
-             (obj (handler-case (and (fboundp fn) (funcall fn))
-                    (error (e) (format stream "OWNER-ERROR ~a ~a~%" (first spec) (substitute #\Space #\Newline (format nil "~a" e))) nil))))
-        (if (not (simple-vector-p obj))
-            (format stream "OWNER-MISSING ~a ~a~%" (first spec) (type-of obj))
-            (loop for slot across obj for i from 0
-                  do (format stream "OWNER ~a slot ~d type ~a bytes ~d~%" (first spec) i
-                             (substitute #\_ #\Space (format nil "~a" (if (arrayp slot) (array-element-type slot) (type-of slot))))
-                             (fnl-deep-size slot seen 6))))))))
+(defun ha-core-p (o)
+  (>= (sb-kernel:generation-of o) sb-vm:+pseudo-static-generation+))
+
+(defun ha-key (o)
+  (typecase o
+    (cons "CONS")
+    (simple-vector "SIMPLE-VECTOR")
+    (simple-base-string "SIMPLE-BASE-STRING")
+    ((simple-array character (*)) "SIMPLE-CHARACTER-STRING")
+    (array (format nil "ARRAY ~a" (array-element-type o)))
+    (structure-object (format nil "INSTANCE ~a" (type-of o)))
+    (bignum "BIGNUM")
+    (double-float "DOUBLE-FLOAT")
+    (t (format nil "~a" (type-of o)))))
+
+(defun ha-desc (o)
+  (handler-case
+      (typecase o
+        (symbol (format nil "~a::~a" (let ((p (symbol-package o))) (if p (package-name p) "#")) (symbol-name o)))
+        (sb-kernel:code-component (format nil "code:~a" (substitute #\Space #\Newline (let ((*print-length* 2) (*print-level* 1)) (ignore-errors (princ-to-string (sb-kernel:%simple-fun-name (sb-kernel:%code-entry-point o 0))))))))
+        (cons "cons")
+        (simple-vector (format nil "vec~d" (length o)))
+        (hash-table (format nil "HT(~a)" (hash-table-test o)))
+        (structure-object (format nil "~a" (type-of o)))
+        (function "fn")
+        (array (format nil "arr~d" (length o)))
+        (t (format nil "~a" (type-of o))))
+    (error () "?")))
+
+(defun ha-path-key (steps)
+  "STEPS: root-first list of (obj . index).  Key: the first symbol (or code) step, then up to 5 more."
+  (let* ((steps (let ((m (member-if (lambda (s) (packagep (car s))) steps)))
+                  (if m (or (member-if (lambda (s) (and (symbolp (car s)) (not (eq (car s) 'cl:*package*)))) (cdr m)) steps) steps)))
+         (tail (member-if (lambda (s) (or (symbolp (car s)) (typep (car s) 'sb-kernel:code-component))) steps))
+         (tail (or tail steps))
+         (n 0))
+    (with-output-to-string (s)
+      (dolist (st tail)
+        (when (> (incf n) 6) (return))
+        (let ((o (car st)))
+          (when (> n 1) (write-string " > " s))
+          (write-string (ha-desc o) s)
+          (when (and (not (consp o)) (integerp (cdr st))) (format s "[~d]" (cdr st))))))))
+
+(defun ha-large (out)
+  "LARGE lines: every non-core array of at least 512 KiB: type, length, bytes, and the root path (full)."
+  (let ((wps '()))
+    (sb-vm:map-allocated-objects
+     (lambda (o type size)
+       (declare (ignore type size))
+       (when (and (ha-heap-p o) (arrayp o) (not (ha-core-p o)) (>= (sb-ext:primitive-object-size o) 524288))
+         (push (sb-ext:make-weak-pointer o) wps)))
+     :dynamic)
+    (dolist (w wps)
+      (let ((o (sb-ext:weak-pointer-value w)))
+        (when o
+          (let* ((res (ignore-errors (sb-ext:search-roots w :criterion :static :print nil)))
+                 (steps (cddr (first res))))
+            (format out "LARGE ~a len ~d bytes ~d | ~a~%" (substitute #\_ #\Space (format nil "~a" (array-element-type o)))
+                    (length o) (sb-ext:primitive-object-size o)
+                    (if res (ha-path-key steps) "NO-PATH"))))))
+    (finish-output out)))
+
+(defun ha-short (x)
+  (let ((*print-length* 5) (*print-level* 3) (*print-pretty* nil) (*print-circle* nil))
+    (let ((s (handler-case (prin1-to-string x) (error () "<unprintable>"))))
+      (subseq s 0 (min 300 (length s))))))
+
+(defun ha-raw-path (res)
+  (let ((*print-length* 8) (*print-level* 2) (*print-pretty* nil))
+    (let ((s (handler-case (prin1-to-string res) (error () "<unprintable>"))))
+      (subseq s 0 (min 700 (length s))))))
+
+(defun ha-probe (out)
+  "PROBE: raw search-roots results (all criteria) for the large u64 arrays, and content + raw paths for sampled conses."
+  (let ((big '()) (conses '()) (n 0))
+    (sb-vm:map-allocated-objects
+     (lambda (o type size)
+       (declare (ignore size type))
+       (when (and (ha-heap-p o) (not (ha-core-p o)))
+         (cond ((and (typep o '(simple-array (unsigned-byte 64) (*))) (>= (length o) 1000000))
+                (push (sb-ext:make-weak-pointer o) big))
+               ((and (consp o) (zerop (mod (incf n) 400009)) (< (length conses) 30))
+                (push (sb-ext:make-weak-pointer o) conses)))))
+     :dynamic)
+    (dolist (w big)
+      (dolist (crit '(:static :pseudo-static :oldest))
+        (format out "PROBE-BIG ~a len ~d ~a~%" crit (length (sb-ext:weak-pointer-value w))
+                (ha-raw-path (ignore-errors (sb-ext:search-roots w :criterion crit :print nil))))))
+    (dolist (w conses)
+      (let ((o (sb-ext:weak-pointer-value w)))
+        (when o
+          (format out "PROBE-CONS gen ~d car ~a | cdr ~a~%   oldest-path ~a~%" (sb-kernel:generation-of o)
+                  (ha-short (car o)) (ha-short (cdr o))
+                  (ha-raw-path (ignore-errors (sb-ext:search-roots w :criterion :oldest :print nil)))))))
+    (finish-output out)))
+
+
+(defvar *hd-seen* nil)
+(defvar *hd-acc* nil)   ; vector: bytes conses strB u8B u64B otherB
+
+(defun hd-add (idx n) (incf (svref *hd-acc* idx) n))
+
+(defun hd-size (root)
+  "Octets reachable from ROOT through conses, simple-vectors, hash tables and specialised arrays only
+(structure-objects, functions and symbols are not entered).  Shared objects count once per *hd-seen*."
+  (let ((stack (list root)))
+    (loop while stack
+          do (let ((o (pop stack)))
+               (when (and (ha-heap-p o) (not (symbolp o)) (not (gethash o *hd-seen*)))
+                 (typecase o
+                   (cons (setf (gethash o *hd-seen*) t)
+                    (unless (ha-core-p o) (hd-add 0 16) (hd-add 1 16))
+                    (push (cdr o) stack) (push (car o) stack))
+                   (simple-vector (setf (gethash o *hd-seen*) t)
+                    (unless (ha-core-p o) (hd-add 0 (sb-ext:primitive-object-size o)))
+                    (loop for e across o do (when (ha-heap-p e) (push e stack))))
+                   (hash-table (setf (gethash o *hd-seen*) t)
+                    (hd-add 0 (sb-ext:primitive-object-size o))
+                    (maphash (lambda (k v) (when (ha-heap-p k) (push k stack)) (when (ha-heap-p v) (push v stack))) o))
+                   (string (setf (gethash o *hd-seen*) t)
+                    (unless (ha-core-p o) (let ((n (sb-ext:primitive-object-size o))) (hd-add 0 n) (hd-add 2 n))))
+                   ((simple-array (unsigned-byte 8) (*)) (setf (gethash o *hd-seen*) t)
+                    (unless (ha-core-p o) (let ((n (sb-ext:primitive-object-size o))) (hd-add 0 n) (hd-add 3 n))))
+                   ((simple-array (unsigned-byte 64) (*)) (setf (gethash o *hd-seen*) t)
+                    (unless (ha-core-p o) (let ((n (sb-ext:primitive-object-size o))) (hd-add 0 n) (hd-add 4 n))))
+                   (array (setf (gethash o *hd-seen*) t)
+                    (unless (ha-core-p o) (let ((n (sb-ext:primitive-object-size o))) (hd-add 0 n) (hd-add 5 n))))
+                   ((or bignum ratio double-float) (setf (gethash o *hd-seen*) t)
+                    (unless (ha-core-p o) (hd-add 0 (sb-ext:primitive-object-size o)) (hd-add 5 (sb-ext:primitive-object-size o)))))))))
+  nil)
+
+(defun hd-private (obj)
+  "Fresh-table size vector for OBJ."
+  (let ((*hd-seen* (make-hash-table :test 'eq :size 100000)) (*hd-acc* (make-array 6 :initial-element 0)))
+    (hd-size obj) *hd-acc*))
+
+(defun hd-children (o)
+  (typecase o
+    (simple-vector (loop for e across o for i from 0 when (ha-heap-p e) collect (cons (format nil "[~d]" i) e)))
+    (cons (let ((out '()) (i 0))
+            (loop while (and (consp o) (< i 40))
+                  do (when (ha-heap-p (car o)) (push (cons (format nil ".~d" i) (car o)) out))
+                     (incf i) (setf o (cdr o)))
+            (when (and (ha-heap-p o) (not (symbolp o))) (push (cons ".tail" o) out))
+            (nreverse out)))
+    (t nil)))
+
+(defun hd-report (label obj depth out)
+  (let* ((v (hd-private obj)) (b (svref v 0)))
+    (when (> b 1000000)
+      (format out "DEEP ~a bytes ~d conses ~d str ~d u8 ~d u64 ~d other ~d~%" label b (svref v 1) (svref v 2) (svref v 3) (svref v 4) (svref v 5))
+      (when (< depth 3)
+        (dolist (c (hd-children obj))
+          (hd-report (concatenate 'string label (car c)) (cdr c) (1+ depth) out))))))
+
+(defun ha-deep (out)
+  (format out "--- deep~%")
+  (dolist (e (ignore-errors (user-stobj-alist *the-live-state*)))
+    (when (member (car e) '(fn-cat fn-arena fn-hist fn-owner-st))
+      (hd-report (format nil "stobj ~a" (car e)) (cdr e) 0 out)))
+  (let ((syms '()))
+    (do-symbols (s "ACL2")
+      (when (and (eq (symbol-package s) (find-package "ACL2")) (boundp s) (not (constantp s)))
+        (push s syms)))
+    (dolist (p (list-all-packages))
+      (do-symbols (s p)
+        (when (and (eq (symbol-package s) p) (not (eq p (find-package "ACL2"))) (> (length (symbol-name s)) 12)
+                   (string= (symbol-name s) "ACL2_GLOBAL_" :end1 12) (boundp s))
+          (push s syms))))
+    (dolist (s (remove-duplicates syms))
+      (let ((v (symbol-value s)))
+        (when (ha-heap-p v)
+          (hd-report (format nil "sym ~a::~a" (package-name (symbol-package s)) (symbol-name s)) v 0 out)))))
+  (finish-output out))
+
+(defun ha-census (out)
+  (sb-ext:gc :full t)
+  (format out "=== LIVE dynamic-usage ~d~%--- room~%" (sb-kernel:dynamic-usage))
+  (let ((*standard-output* out)) (room t))
+  (format out "--- large~%")
+  (ha-large out)
+  (ha-deep out)
+  (when (sb-ext:posix-getenv "FN_LOAD_CENSUS_PROBE_ONLY") (return-from ha-census nil))
+  (format out "--- noncore~%")
+  (let ((tot (make-hash-table :test 'equal)) (cnt (make-hash-table :test 'equal)))
+    (sb-vm:map-allocated-objects
+     (lambda (o type size)
+       (declare (ignore size))
+       (when (and (ha-heap-p o) (/= type sb-vm:code-header-widetag) (not (ha-core-p o)))
+         (let ((k (ha-key o)))
+           (incf (gethash k tot 0) (sb-ext:primitive-object-size o))
+           (incf (gethash k cnt 0)))))
+     :dynamic)
+    (let ((all 0))
+      (maphash (lambda (k b) (incf all b)
+                 (format out "NONCORE ~a count ~d bytes ~d~%" (substitute #\_ #\Space k) (gethash k cnt) b))
+               tot)
+      (format out "NONCORETOTAL bytes ~d~%" all))
+    (finish-output out)
+    (let ((wps (make-hash-table :test 'equal)) (seen (make-hash-table :test 'equal)) (sampled-bytes (make-hash-table :test 'equal)))
+      (sb-vm:map-allocated-objects
+       (lambda (o type size)
+         (declare (ignore size))
+         (when (and (ha-heap-p o) (/= type sb-vm:code-header-widetag) (not (ha-core-p o)))
+           (let* ((k (ha-key o)) (b (gethash k tot 0)))
+             (when (> b 1000000)
+               (let* ((c (incf (gethash k seen 0)))
+                      (stride (max 1 (floor (gethash k cnt) *ha-samples*))))
+                 (when (zerop (mod c stride))
+                   (incf (gethash k sampled-bytes 0) (sb-ext:primitive-object-size o))
+                   (push (sb-ext:make-weak-pointer o) (gethash k wps))))))))
+       :dynamic)
+      (maphash
+       (lambda (k list)
+         (let ((groups (make-hash-table :test 'equal)) (found 0) (total-sampled (gethash k sampled-bytes 1))
+               (scale (/ (gethash k tot) (max 1 (gethash k sampled-bytes 1)))))
+           (loop for chunk on list by (lambda (l) (nthcdr 1000 l))
+                 do (let* ((batch chunk)
+                           (res (handler-case (sb-ext:search-roots batch :criterion :static :print nil)
+                                  (error (e) (format out "SEARCH-ERROR ~a~%" e) nil))))
+                      (dolist (r res)
+                        (let* ((o (first r)) (steps (cddr r)) (pk (ha-path-key steps)))
+                          (incf found)
+                          (incf (gethash pk groups 0) (sb-ext:primitive-object-size o))))))
+           (let ((rows '()))
+             (maphash (lambda (pk b) (push (cons pk b) rows)) groups)
+             (setf rows (sort rows #'> :key #'cdr))
+             (loop for (pk . b) in rows for i from 0 below 25
+                   do (format out "SAMPLE-ROOT ~a | ~a | est-bytes ~d~%" (substitute #\_ #\Space k) pk (round (* b scale))))
+             (format out "NOROOT ~a sampled ~d found ~d est-bytes ~d~%" (substitute #\_ #\Space k) (length list) found
+                     (round (* scale (max 0 (- total-sampled (reduce #'+ rows :key #'cdr)))))))
+           (finish-output out)))
+       wps))))
 
 (let ((dir (sb-ext:posix-getenv "FN_LOAD_CENSUS_DIR")))
   (when (and dir (plusp (length dir)))
@@ -64,18 +259,7 @@ reachable from each top-level slot, shared parts counted once.  Handles: host/na
            (delete-file (concatenate 'string dir "/go"))
            (handler-case
                (with-open-file (out (concatenate 'string dir "/census.txt") :direction :output :if-exists :supersede)
-                 (let ((*standard-output* out))
-                   (dolist (phase '(:raw :live))
-                     (when (eq phase :live) (sb-ext:gc :full t))
-                     (format t "~&=== ~a dynamic-usage ~d~%" phase (sb-kernel:dynamic-usage))
-                     (format t "~&--- room~%")
-                     (room t)
-                     (format t "~&--- instance-usage~%")
-                     (sb-vm:instance-usage :dynamic :top-n 80)
-                     (format t "~&--- owner~%")
-                     (fnl-owner-census out)
-                     (format t "~&--- large~%")
-                     (fnl-large-census out))))
+                 (ha-census out))
              (error (e) (with-open-file (o (concatenate 'string dir "/census.err") :direction :output :if-exists :supersede)
                           (format o "~a~%" e))))
            (with-open-file (o (concatenate 'string dir "/done") :direction :output :if-exists :supersede)
