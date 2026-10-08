@@ -454,28 +454,60 @@
                  fn-stxe-shapep fn-stxk-shapep)
                 (fn-stxe-p fn-stxk-p fn-hstxa-p)))))
 
+; The wire-recognizer case is read off the enabledness definition; the neutral
+; case is the advance step.  Neither opens the definition whole.
+(local
+ (defthm fn-osr-eis-wire-case
+   (implies (and (fn-sn-completion-enabledp s)
+                 (or (fn-stxe-p (fn-sn-completion-record s))
+                     (fn-stxk-p (fn-sn-completion-record s))
+                     (fn-hstxa-p (fn-sn-completion-record s))))
+            (equal (fn-stxk-context-kind
+                    (fn-replay-identity-step
+                     (fn-sn-identity-context s) (fn-sn-completion-record s))) :ok))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-osr-retention-is-identity-neutral
+                             (event (fn-sn-completion-record s))))
+            :expand ((fn-sn-completion-enabledp s)
+                     (fn-sn-completion-core-enabledp s))
+            :in-theory (theory 'minimal-theory)))))
+
+(local
+ (defthm fn-osr-eis-neutral-case
+   (implies (and (fn-csi-livep s) (fn-sn-completion-enabledp s)
+                 (not (fn-stxe-p (fn-sn-completion-record s)))
+                 (not (fn-stxk-p (fn-sn-completion-record s)))
+                 (not (fn-hstxa-p (fn-sn-completion-record s))))
+            (equal (fn-stxk-context-kind
+                    (fn-replay-identity-step
+                     (fn-sn-identity-context s) (fn-sn-completion-record s))) :ok))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-osr-enabled-completion-is-next-event
+                  (:instance fn-osr-neutral-retained-event-is-not-wire-composite
+                             (event (fn-sn-completion-record s)))
+                  (:instance fn-osr-neutral-step-is-advance
+                             (ctx (fn-sn-identity-context s))
+                             (event (fn-sn-completion-record s))))
+            :in-theory
+            (e/d (fn-sn-identity-context fn-stxk-context fn-replay-identity-advance)
+                 (fn-sn-completion-enabledp fn-sn-statep fn-sf-statep fn-csi-livep
+                  fn-replay-identity-step fn-replay-apply-record
+                  fn-replay-apply-retention-event fn-store-retention-event-p
+                  fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
+                  fn-cpe-eventp fn-th-topic-eventp fn-sn-record-bindsp
+                  fn-cpe-projection-step fn-th-prefix-step
+                  fn-osr-enabled-completion-is-next-event))))))
+
 (defthm fn-osr-enabled-identity-step-ok
   (implies (and (fn-csi-livep s) (fn-sn-completion-enabledp s))
            (equal (fn-stxk-context-kind
                    (fn-replay-identity-step
                     (fn-sn-identity-context s) (fn-sn-completion-record s))) :ok))
   :hints (("Goal"
-           :use (fn-osr-enabled-completion-is-next-event
-                 (:instance fn-osr-neutral-retained-event-is-not-wire-composite
-                            (event (fn-sn-completion-record s)))
-                 (:instance fn-osr-neutral-step-is-advance
-                            (ctx (fn-sn-identity-context s))
-                            (event (fn-sn-completion-record s))))
-           :in-theory
-           (e/d (fn-sn-completion-enabledp fn-sn-completion-core-enabledp
-                 fn-sn-identity-context fn-stxk-context fn-replay-identity-advance)
-                (fn-sn-statep fn-sf-statep fn-csi-livep
-                 fn-replay-identity-step fn-replay-apply-record
-                 fn-replay-apply-retention-event fn-store-retention-event-p
-                 fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
-                 fn-cpe-eventp fn-th-topic-eventp fn-sn-record-bindsp
-                 fn-cpe-projection-step fn-th-prefix-step
-                 fn-osr-enabled-completion-is-next-event)))))
+           :use (fn-osr-eis-wire-case fn-osr-eis-neutral-case)
+           :in-theory (theory 'minimal-theory))))
 
 (defthm fn-osr-consumer-is-not-retained-composite
   (implies (fn-cpe-eventp event) (not (fn-hstxa-p event)))
@@ -1175,6 +1207,44 @@
                  fn-replay-identity fn-cpe-projection-replay fn-stxk-context-kind
                  fn-sti-completed-prefixp fn-csi-completion-lastp)))))
 
+; The completing case is the finished Store's ready case; the livep recognizers
+; are opened once, here, instead of under every phase branch of the keystone.
+(local
+ (defthm fn-osr-livep-parts
+   (implies (fn-osr-livep s)
+            (and (fn-cst-relation s) (fn-sti-livep s) (fn-csi-livep s)
+                 (fn-osr-identity-prefixp s)))
+   :rule-classes nil
+   :hints (("Goal" :expand ((fn-osr-livep s) (fn-sti-livep s))
+            :in-theory (theory 'minimal-theory)))))
+
+(local
+ (defthm fn-osr-completing-enabled
+   (implies (and (fn-cst-relation s)
+                 (equal (fn-sf-phase (fn-sn-files s)) :completing))
+            (fn-sn-completion-enabledp s))
+   :rule-classes nil
+   :hints (("Goal" :expand ((fn-cst-relation s))
+            :in-theory (union-theories (theory 'minimal-theory) '(fn-snt-idle-phasep fn-sf-record-phasep member-equal (:executable-counterpart member-equal)))))))
+
+(local
+ (defthm fn-osr-lcic-completing
+   (implies (and (fn-osr-livep s)
+                 (equal (fn-sf-phase (fn-sn-files s)) :completing))
+            (and (equal (fn-stxk-context-kind
+                         (fn-replay-identity (fn-sf-records (fn-sn-files s)))) :ok)
+                 (equal (car (fn-cpe-projection-replay
+                              nil (fn-sf-records (fn-sn-files s)) 0)) :ok)))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-osr-livep-parts
+                  (:instance fn-osr-livep-parts (s (fn-sn-finish s)))
+                  (:instance fn-osr-completing-enabled)
+                  fn-osr-finish-preserves-live-carry fn-snt-finish-image
+                  (:instance fn-osr-ready-identity-exact-view (s (fn-sn-finish s)))
+                  (:instance fn-csi-live-ready-exact-replay (s (fn-sn-finish s))))
+            :in-theory (union-theories (theory 'minimal-theory) '(car-cons))))))
+
 (defthm fn-osr-live-current-identity-and-consumer-ok
   (implies (fn-osr-livep s)
            (and (equal (fn-stxk-context-kind
@@ -1182,19 +1252,9 @@
                 (equal (car (fn-cpe-projection-replay
                              nil (fn-sf-records (fn-sn-files s)) 0)) :ok)))
   :hints (("Goal"
-           :cases ((equal (fn-sf-phase (fn-sn-files s)) :completing))
-           :use ((:instance fn-osr-ready-identity-exact-view (s (fn-sn-finish s)))
-                 (:instance fn-csi-live-ready-exact-replay (s (fn-sn-finish s)))
-                 fn-osr-finish-preserves-live-carry fn-snt-finish-image
+           :use (fn-osr-lcic-completing
                  fn-osr-live-not-completing-identity-and-consumer-ok)
-           :in-theory
-           (e/d (fn-osr-livep fn-sti-livep)
-                (fn-sn-finish fn-cst-relation fn-sn-statep fn-sf-statep
-                 fn-replay-identity fn-cpe-projection-replay fn-stxk-context-kind
-                 fn-osr-ready-identity-exact-view fn-csi-live-ready-exact-replay
-                 fn-osr-finish-preserves-live-carry fn-csi-livep
-                 fn-osr-live-not-completing-identity-and-consumer-ok
-                 fn-osr-identity-prefixp fn-sti-completed-prefixp)))))
+           :in-theory (theory 'minimal-theory))))
 
 ; Proved a phase at a time: with the phase fixed, the livep recognizers open
 ; to a short conjunction; with the case split left to the one theorem they
@@ -1265,6 +1325,18 @@
                  fn-osr-live-replay-identity-fields-typed-completing)
            :in-theory (theory 'minimal-theory))))
 
+; The phase-independent part of the relation; the keystone below needs no phase case.
+(local
+ (defthm fn-osr-cst-relation-common
+   (implies (fn-cst-relation s)
+            (and (fn-sn-statep s)
+                 (true-listp (fn-sn-config-history s))
+                 (fn-sn-observed-historyp (fn-sf-frontier (fn-sn-files s)) (fn-sf-records (fn-sn-files s)))
+                 (fn-cst-final-configurationp s)
+                 (fn-cst-recoverablep (fn-sn-config-history s) (fn-sf-records (fn-sn-files s)) (fn-sf-frontier (fn-sn-files s)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (theory (quote minimal-theory)) :expand ((fn-cst-relation s))))))
+
 (defthm fn-osr-live-capture-opens
   (implies (fn-osr-livep s)
            (fn-sn-open-okp
@@ -1272,12 +1344,13 @@
                                   (fn-sf-frontier (fn-sn-files (fn-osr-capture s)))
                                   (fn-sf-records (fn-sn-files (fn-osr-capture s))))))
   :hints (("Goal"
-           :use (fn-osr-live-replay-identity-fields-typed
+           :use ((:instance fn-osr-cst-relation-common)
+                 fn-osr-live-replay-identity-fields-typed
                  fn-osr-live-current-identity-and-consumer-ok
                  fn-sti-current-records-topic-ok-including-completed)
            :in-theory
            (e/d (fn-osr-livep fn-sti-livep fn-osr-capture
-                 fn-cst-relation fn-cst-final-configurationp fn-cst-recoverablep
+                 fn-cst-final-configurationp fn-cst-recoverablep
                  fn-cst-replay-node fn-cpo-open-observed fn-cpo-install
                  fn-sn-open-okp fn-sn-open-ok fn-sn-open-shapep fn-sn-open-state
                  fn-sn-open-kind fn-sn-keyring fn-sn-keyring-generation
@@ -1285,7 +1358,7 @@
                  fn-sn-update-replayed fn-sn-observed-seed fn-sn-make
                  fn-sn-make-v2 fn-osr-context-view fn-sn-identity-context
                  fn-stxk-context fn-sn-observed-topic-okp)
-                (fn-csi-enabled-phase-by-definition fn-osr-configured-completing-enables-finish
+                (fn-cst-relation fn-csi-enabled-phase-by-definition fn-osr-configured-completing-enables-finish
                  fn-sti-local-admin-is-topic-event fn-th-local-admin-eventp
                  fn-hls-kind4-disjoint-from-other-store-events fn-stxa-p
                  fn-sn-keyring-snapshot-listp fn-osr-ready-topic-exact fn-scram-printable-facts
