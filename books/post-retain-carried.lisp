@@ -51,9 +51,8 @@
 ; KEYSTONE (the host calls the left-hand side):
 ;   fn-prc-sbud-prepare-is-pidx-sbud-prepare
 ;     (fn-prc-sbud-prepare oc record budget carry)
-;       = (fn-pidx-sbud-prepare oc record budget)     under fn-prc-carryp carry
-; hence, by fn-pidx-sbud-prepare-is-pcar-sbud-prepare and
-; fn-pcar-sbud-prepare-is-sbud-prepare, every theorem about fn-sbud-prepare
+;       = (fn-pcar-sbud-prepare oc record budget)     under fn-prc-carryp carry
+; hence, by fn-pcar-sbud-prepare-is-sbud-prepare, every theorem about fn-sbud-prepare
 ; is about the host's call (fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare
 ; states the composition with the writer).
 
@@ -993,7 +992,7 @@
 (defthm fn-prc-sbud-prepare-is-pidx-sbud-prepare
   (implies (fn-prc-carryp carry)
            (equal (fn-prc-sbud-prepare oc record budget carry)
-                  (fn-pidx-sbud-prepare oc record budget)))
+                  (fn-pcar-sbud-prepare oc record budget)))
   :hints (("Goal" :in-theory (e/d (fn-prc-sbud-prepare fn-sbud-prepare)
                                   (fn-opc-prepare fn-sbud-admitp
                                    fn-sbud-count fn-sbud-oc-store)))))
@@ -1007,7 +1006,6 @@
            (equal (fn-prc-sbud-prepare oc record budget
                                        (fn-prc-refresh carry ledger))
                   (fn-pcar-sbud-prepare oc record budget)))
-  :hints (("Goal" :in-theory (disable fn-prc-sbud-prepare fn-pidx-sbud-prepare
-                                      fn-pcar-sbud-prepare))))
+  :hints (("Goal" :in-theory (disable fn-prc-sbud-prepare fn-pcar-sbud-prepare))))
 
 (in-theory (disable fn-prc-sbud-prepare))

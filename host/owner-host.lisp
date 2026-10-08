@@ -120,8 +120,7 @@
 (include-book "../books/owner-bound-commit")
 (include-book "../books/owner-log-reopen")
 (include-book "../books/owner-prepare-carried")
-; PRF-191: a POST's Message-ID tests through the owner's view trie
-; (fn-pidx-existing-action, fn-pidx-sbud-prepare).
+; PRF-191: the reference prepare chain used by the catalog refinements.
 (include-book "../books/post-identity-index")
 ; join-f2-midx: the duplicate test's lookup through the catalog, not the trie
 ; (fn-pidx-existing-action-cat).
@@ -209,7 +208,7 @@
 ;; This file names what it calls, so every loader gets the same world: the
 ;; native images (host/native/build.lisp, build-dtn.lisp).
 ;; fn-owner-io calls fn-rcon-ocfg-io; fn-owner-prepare-buffer reads the
-;; fn-octets buffer and calls fn-pidx-existing-action, whose comparison is
+;; fn-octets buffer and calls fn-pidx-existing-action-cat, whose comparison is
 ;; books/store-reclaim-buffer's fn-rclb-same-articlep (D13, STO-014).
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
@@ -2372,8 +2371,8 @@
 ; owner state a concrete representation.  Everything after the record is
 ; the same prepare (fn-pcar-sbud-prepare) on the same record.
 ; The records flip: as fn-owner-prepare above, with the duplicate test
-; fn-pidx-existing-action over the arena (KEYSTONE
-; fn-pidx-existing-action-is-store-existing-action) and the payload sealed
+; fn-pidx-existing-action-cat over the arena (KEYSTONE
+; fn-pidx-existing-action-cat-is-store-existing-action) and the payload sealed
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
 
@@ -2457,7 +2456,7 @@
                  ; runs fn-psrv-prepare (lane prepare-served): the served test
                  ; is the prepare's own, then fn-prc-sbud-prepare (KEYSTONE
                  ; fn-psrv-prepare-preserves-invariant), equal to PRF-191's
-                 ; fn-pidx-sbud-prepare under fn-prc-carryp
+                 ; fn-pcar-sbud-prepare under fn-prc-carryp
                  ; (fn-prc-sbud-prepare-is-pidx-sbud-prepare), so to
                  ; fn-pcar-sbud-prepare over the owner's carried view
                  ; (fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare): the
@@ -4440,9 +4439,9 @@
 ; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
 ; the buffer once from the byte vector the owner handed back and asks this
 ; and fn-owner-prepare-buffer over it, so the payload is not consed into a
-; list for either.  The decision is fn-pidx-existing-action
-; (books/post-identity-index.lisp), equal to the Store's entry
-; fn-store-existing-action (fn-pidx-existing-action-is-store-existing-action),
+; list for either.  The decision is fn-pidx-existing-action-cat
+; (books/post-identity-catalog.lisp), equal to the Store's entry
+; fn-store-existing-action (fn-pidx-existing-action-cat-is-store-existing-action),
 ; which is the tombstone-aware fn-rcl-action-over over ALPHA of the Store's
 ; articles (fn-store-existing-action-is-the-verdict-over-alpha), itself
 ; fn-pb-action-over wherever the held payload is not a tombstone

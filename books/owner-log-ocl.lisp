@@ -418,9 +418,8 @@
 
 ; KEYSTONE (owner).  The configured prepare below the budget gate
 ; (books/owner-store-budget.lisp fn-sbud-prepare, which
-; fn-pidx-sbud-prepare-is-pcar-sbud-prepare and
-; fn-pcar-sbud-prepare-is-sbud-prepare equate with the host's
-; fn-pidx-sbud-prepare) keeps the carried invariant when an article's groups
+; fn-pcar-sbud-prepare-is-sbud-prepare equates with the carried reference
+; fn-pcar-sbud-prepare) keeps the carried invariant when an article's groups
 ; are served by the live configuration.  The served test is ACL2's, not the
 ; host's: the prepare the host calls is books/owner-prepare-served.lisp
 ; fn-psrv-prepare, which tests it (fn-psrv-event-servedp) and calls this
@@ -442,8 +441,7 @@
            :in-theory '(fn-lgoc-invariantp fn-sbud-prepare fn-lgoc-opc-prepare-is-owner-with-store
                         fn-lgoc-store-of-owner-with-store fn-lgoc-ocl-relation-cst
                         fn-lgoc-ocl-relation-config-fold))))
-; fn-pidx-sbud-prepare under the two carried index premises its bridge to
-; fn-sbud-prepare takes.  The host does not call it directly: host/owner-host.lisp
+; The carried reference fn-pcar-sbud-prepare equals fn-sbud-prepare.  The host does not call it directly: host/owner-host.lisp
 ; fn-owner-prepare-buffer installs fn-psrv-prepare (books/owner-prepare-served.lisp),
 ; which reaches this prepare through fn-prc-sbud-prepare only when ACL2's own
 ; served test holds.
@@ -452,10 +450,9 @@
                 (implies (fn-held-p record)
                          (fn-cnode-selection-servedp (fn-ocfg-config oc)
                                                      (fn-record-groups record))))
-           (fn-lgoc-invariantp (fn-pidx-sbud-prepare oc record budget)))
+           (fn-lgoc-invariantp (fn-pcar-sbud-prepare oc record budget)))
   :hints (("Goal"
            :use (fn-lgoc-sbud-prepare-preserves-invariant
-                 fn-pidx-sbud-prepare-is-pcar-sbud-prepare
                  fn-pcar-sbud-prepare-is-sbud-prepare
                  (:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc))))
            :in-theory '(fn-lgoc-invariantp fn-ocl-relation))))

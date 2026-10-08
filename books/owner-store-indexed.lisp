@@ -275,7 +275,7 @@
 ;   :step            fn-owner-step, fn-owner-refuse-reservation, -begin, ...  fn-ocfg-step
 ;   :io              fn-owner-io                              fn-rcon-ocfg-io
 ;   :prepare         fn-owner-prepare                         fn-pcar-sbud-prepare
-;   :prepare-buffer  fn-owner-prepare-buffer (PRF-191)        fn-pidx-sbud-prepare
+;   :prepare-buffer  fn-owner-prepare-buffer (PRF-191)        fn-pcar-sbud-prepare
 ;   :prepare-identity fn-owner-prepare-identity               fn-ccar-ocfg-prepare-identity
 ;   :complete        fn-owner-finish                          fn-ccar-ocfg-complete
 ;   :finish          fn-owner-finish-submission               fn-ccar-own-finish
@@ -306,7 +306,7 @@
       (:step (if (fn-osi-host-own-eventp a) (fn-ocfg-step oc a fn-arena) oc))
       (:io (fn-rcon-ocfg-io oc a b))
       (:prepare (fn-pcar-sbud-prepare oc a b))
-      (:prepare-buffer (fn-pidx-sbud-prepare oc a b))
+      (:prepare-buffer (fn-pcar-sbud-prepare oc a b))
       (:prepare-identity (fn-ccar-ocfg-prepare-identity oc a))
       (:complete (fn-ccar-ocfg-complete oc))
       (:finish (if (fn-ocfg-staged oc) oc

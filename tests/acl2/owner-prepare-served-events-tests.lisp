@@ -299,7 +299,7 @@
                 (implies (fn-held-p record)
                          (fn-cnode-selection-servedp (fn-ocfg-config oc)
                                                      (fn-record-groups record))))
-           (fn-lgoc-invariantp (fn-pidx-sbud-prepare oc record budget)))
+           (fn-lgoc-invariantp (fn-pcar-sbud-prepare oc record budget)))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-lgoc-sbud-prepare-preserves-invariant
@@ -307,7 +307,7 @@
                  (:instance fn-pidx-opc-prepare-is-pcar-opc-prepare)
                  fn-pcar-opc-prepare-is-opc-prepare
                  (:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc))))
-           :in-theory '(fn-pidx-sbud-prepare fn-sbud-prepare fn-sbud-admitp fn-sbud-used
+           :in-theory '(fn-pcar-sbud-prepare fn-sbud-prepare fn-sbud-admitp fn-sbud-used
                         fn-pidx-view-okp fn-lgoc-invariantp fn-ocl-relation
                         fn-sbud-oc-store
                         (:type-prescription len) natp (:executable-counterpart natp) (:executable-counterpart binary-+) (:executable-counterpart <)))))

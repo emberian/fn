@@ -2,10 +2,9 @@
 ; from the catalog, not the owner's Message-ID trie (lane join-f2-midx, the
 ; fn-midx retirement; PRF-191's test with the lookup moved).
 ;
-; books/post-identity-index.lisp answers the test the host asks before a
-; prepare (fn-pidx-existing-action) through the view's trie, when the article
-; list asked about is the view's raw list and no withdrawal record targets
-; the Message-ID; otherwise it walks.  This book answers the same branch from
+; The host's pre-prepare duplicate decision uses the catalog when the
+; article list is the view's raw list and no withdrawal targets the Message-ID;
+; otherwise it scans. This book obtains the indexed branch from
 ; the catalog's Message-ID column at its count (fn-scat-msgid-article,
 ; books/served-catalog.lisp), which the join (fn-scj-joinp, carried by the
 ; host's owner as a conjunct of fn-scj-invp inside fn-sjh-okp) makes the walk
@@ -57,7 +56,7 @@
 (in-theory (disable fn-pidx-find-article-cat))
 
 (defun fn-pidx-existing-action-cat (msgid fn-octets groups o fn-arena fn-cat)
-  ; fn-pidx-existing-action with the article found through the catalog.
+  ; The store reference decision with the article found through the catalog.
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)))
   (let ((article (fn-pidx-find-article-cat
@@ -74,9 +73,8 @@
           :conflict)
       nil)))
 
-; KEYSTONE.  The host's call is the Store's duplicate entry (as
-; fn-pidx-existing-action-is-store-existing-action, with the join for the
-; trie's correspondence).
+; KEYSTONE. The host's call is the Store's duplicate entry under the
+; catalog relation and the carried visible-list fact.
 (defthm fn-pidx-existing-action-cat-is-store-existing-action
   (implies (and (fn-ocl-view-visiblep (fn-own-view o))
                 (fn-scj-joinp (fn-own-view o) fn-arena fn-cat)

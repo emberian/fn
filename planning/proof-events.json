@@ -6377,14 +6377,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-pidx-existing-action-is-store-existing-action"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-pidx-find-in-visible-is-find"
         },
         {
@@ -8888,10 +8880,6 @@
         {
           "kind": "theorem",
           "name": "fn-rii-sco-finalize-from-is-sco-finalize-from"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
         }
       ]
     },

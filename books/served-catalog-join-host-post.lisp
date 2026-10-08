@@ -301,9 +301,8 @@
            (equal (mv-nth 1 (fn-pout-prepare-article oc record budget carry))
                   (fn-pcar-sbud-prepare oc record budget)))
   :hints (("Goal" :in-theory (e/d (fn-pout-prepare-article fn-psrv-prepare fn-pout-stagedp
-                                   fn-prc-sbud-prepare-is-pidx-sbud-prepare
-                                   fn-pidx-sbud-prepare-is-pcar-sbud-prepare)
-                                  (fn-pcar-sbud-prepare fn-prc-sbud-prepare fn-pidx-sbud-prepare
+                                   fn-prc-sbud-prepare-is-pidx-sbud-prepare)
+                                  (fn-pcar-sbud-prepare fn-prc-sbud-prepare
                                    fn-psrv-event-servedp fn-psrv-refusal-kind fn-ocl-view-visiblep)))))
 
 (defthm fn-sjh-pout-prepared-is-staged

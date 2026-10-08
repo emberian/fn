@@ -9,7 +9,7 @@
 ; host calls, fn-store-existing-action (host/store-node-host.lisp
 ; fn-store-sn-existing-action and fn-store-sn-prepare; host/owner-host.lisp
 ; fn-owner-existing-action, fn-owner-prepare, and fn-owner-existing-action-
-; buffer through fn-pidx-existing-action).  The store-shaped twins
+; buffer through fn-pidx-existing-action-cat).  The store-shaped twins
 ; fn-sn-existing-action and fn-pb-existing-action, which applied the
 ; decisions to the live store's handles, were retired (PKT-860).
 ;

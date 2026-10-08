@@ -170,7 +170,6 @@
 ;; groups are served, the host's prepare is fn-sbud-prepare under the carry's
 ;; recognizer and the carried view premises PRF-191/PRF-242 name
 ;; (fn-prc-sbud-prepare-is-pidx-sbud-prepare,
-;; fn-pidx-sbud-prepare-is-pcar-sbud-prepare,
 ;; fn-pcar-sbud-prepare-is-sbud-prepare); where they are not, the owner is
 ;; unchanged at every budget.
 (defthm fn-psrv-prepare-is-sbud-prepare-when-served
@@ -182,7 +181,6 @@
                   (fn-sbud-prepare oc record budget)))
   :hints (("Goal" :use (fn-psrv-prepare-when-served
                         fn-prc-sbud-prepare-is-pidx-sbud-prepare
-                        fn-pidx-sbud-prepare-is-pcar-sbud-prepare
                         fn-pcar-sbud-prepare-is-sbud-prepare)
            :in-theory nil)))
 

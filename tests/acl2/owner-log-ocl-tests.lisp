@@ -99,9 +99,9 @@
 
 ; fn-lgoc-pidx-sbud-prepare-preserves-invariant: the host's prepare on the same witness.
 
-(assert-event (equal (fn-pidx-sbud-prepare *lgt-reserved* *acar-t-record* 1000000)
+(assert-event (equal (fn-pcar-sbud-prepare *lgt-reserved* *acar-t-record* 1000000)
                      *lgt-prepared*))
-(assert-event (fn-lgoc-invariantp (fn-pidx-sbud-prepare *lgt-reserved* *acar-t-record* 1000000)))
+(assert-event (fn-lgoc-invariantp (fn-pcar-sbud-prepare *lgt-reserved* *acar-t-record* 1000000)))
 
 ; -----------------------------------------------------------------------------
 ; fn-lgoc-log-order-preserves-invariant.  Reachable witness: the staged article

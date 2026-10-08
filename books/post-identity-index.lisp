@@ -120,63 +120,6 @@
                             (o (fn-ocfg-owner oc)))))))
 
 ; -----------------------------------------------------------------------------
-; (1) The duplicate-versus-conflict decision the host asks before a prepare.
-
-(defun fn-pidx-existing-action (msgid fn-octets groups o fn-arena)
-  ; D25's tombstone-aware verdict (fn-rclb-same-articlep, the buffer twin of
-  ; fn-rcl-same-articlep) with the article found by the scan and,
-  ; after the records flip, its stored bytes read through the arena by the
-  ; article's handle (books/store-intern.lisp fn-handle-bytes).
-  (declare (xargs :stobjs (fn-octets fn-arena) :guard t))
-  (let ((article (fn-pidx-find-article
-                  msgid
-                  (fn-state-articles
-                   (fn-node-acceptance (fn-sn-node (fn-own-store o))))
-                  (fn-own-view o))))
-    (if article
-        (if (and (fn-rclb-same-articlep (fn-record-string-octets msgid) fn-octets
-                                        (fn-handle-bytes (fn-article-payload article)
-                                                         fn-arena))
-                 (equal groups (fn-article-groups article)))
-            :duplicate
-          :conflict)
-      nil)))
-
-; KEYSTONE (1).  The host's call is the Store's duplicate entry over the
-; buffer's logical value, books/store-intern.lisp fn-store-existing-action,
-; whose keystone fn-store-existing-action-is-the-verdict-over-alpha makes it
-; D25's tombstone-aware verdict (fn-rcl-action-over) over ALPHA of the
-; acceptance articles: the stored bytes read by handle.
-(defthm fn-pidx-existing-action-is-store-existing-action
-  (implies (fn-octets-p fn-octets)
-           (equal (fn-pidx-existing-action msgid fn-octets groups o fn-arena)
-                  (fn-store-existing-action msgid fn-octets groups
-                                            (fn-own-store o) fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-pidx-existing-action
-                                   fn-store-existing-action
-                                   fn-rclb-same-articlep fn-rcl-same-articlep)
-                                  (fn-find-article
-                                   fn-rclb-same-as-tombstonep fn-rcl-same-as-tombstonep
-                                   fn-rcl-tombstonep fn-pbb-same-articlep fn-pb-same-articlep
-                                   fn-octets-p fn-handle-bytes))
-           :use ((:instance fn-pbb-same-articlep-is-pb-same-articlep
-                            (msgid (fn-record-string-octets msgid))
-                            (held-payload (fn-handle-bytes
-                                           (fn-article-payload
-                                            (fn-find-article msgid (fn-state-articles
-                                                                    (fn-node-acceptance
-                                                                     (fn-sn-node (fn-own-store o))))))
-                                           fn-arena)))
-                 (:instance fn-rclb-same-as-tombstonep-is-rcl
-                            (msgid (fn-record-string-octets msgid))
-                            (tomb (fn-handle-bytes
-                                   (fn-article-payload
-                                    (fn-find-article msgid (fn-state-articles
-                                                            (fn-node-acceptance
-                                                             (fn-sn-node (fn-own-store o))))))
-                                   fn-arena)))))))
-
-; -----------------------------------------------------------------------------
 ; (2) and (3) The prepare chain.
 
 (local
@@ -389,34 +332,3 @@
                                    fn-pcar-opc-prepare-is-opc-prepare)))))
 
 (in-theory (disable fn-pidx-opc-prepare))
-
-; The function host/owner-host.lisp fn-owner-prepare-buffer installs.  The
-; budget test reads the committed count the Store's event index carries
-; (fn-sbud-count, books/store-budget.lisp), not fn-sbud-used's LEN of the
-; history (PRF-242): equal under fn-ceis-indexedp (fn-sbud-count-is-used-by-definition),
-; which every owner the host reaches carries (PRF-144,
-; fn-osi-live-owner-store-is-indexed).
-(defun fn-pidx-sbud-prepare (oc record budget)
-  (declare (xargs :guard (and (fn-sn-statep (fn-sbud-oc-store oc))
-                              (fn-pidx-view-okp
-                               (fn-own-view (fn-ocfg-owner oc))))))
-  (if (fn-sbud-admitp budget (fn-sbud-count (fn-sbud-oc-store oc)))
-      (fn-pidx-opc-prepare oc record)
-    oc))
-
-; KEYSTONE (2, 3).  The host's prepare is the carried prepare it replaced,
-; for every record and budget, on every configured owner whose view the two
-; carried relations describe and whose Store's event index is the index of
-; its history; so, by fn-pcar-sbud-prepare-is-sbud-prepare, every theorem
-; about fn-sbud-prepare is a theorem about the host's call.
-(defthm fn-pidx-sbud-prepare-is-pcar-sbud-prepare
-  (equal (fn-pidx-sbud-prepare oc record budget)
-         (fn-pcar-sbud-prepare oc record budget))
-  :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pcar-sbud-prepare)
-                                  (fn-pcar-opc-prepare fn-sbud-admitp
-                                   fn-sbud-used fn-sbud-count
-                                   fn-sbud-oc-store
-                                   fn-pcar-sbud-prepare-is-sbud-prepare))
-           :use ((:instance fn-sbud-count-is-used-by-definition (s (fn-sbud-oc-store oc)))))))
-
-(in-theory (disable fn-pidx-sbud-prepare))

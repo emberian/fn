@@ -60,7 +60,7 @@
        (c (fn-prc-sbud-prepare *pit-oc* *pit-record* 100 *prct-carry0*)))
    (and (equal a (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))
         (equal (pit-phase a) :record-staged)
-        (equal a (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
+        (equal a (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))
         (equal b (fn-pcar-sbud-prepare *pit-oc* *pit-dup-record* 100))
         (equal b *pit-oc*)
         (equal c (fn-pcar-sbud-prepare *pit-oc* *pit-record* 100))
@@ -166,12 +166,12 @@
       (not (fn-rii-knownp "own-pin:pit" *prct-r0*))
       (fn-prc-has "own-pin:pit" (cdr *prct-bad-carry*))
       (equal *prct-bad-prepared* *pit-oc*)
-      (equal (pit-phase (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
+      (equal (pit-phase (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))
              :record-staged)))
 (must-fail-checked
  (defthm prct-prepare-without-carryp
    (equal (fn-prc-sbud-prepare *pit-oc* *pit-fresh-record* 100 *prct-bad-carry*)
-          (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
+          (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))
    :hints (("Goal" :in-theory (disable (:e fn-prc-sbud-prepare))))))
 
 ;; The recognizer's other half.  An INCOMPLETE carry (the trie of R0 named

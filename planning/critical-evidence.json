@@ -150,16 +150,6 @@
    "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
    "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-dispatch-core-restricted-is-reference",
    "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::reply-dropped"
-  },
-  "fn-pidx-existing-action-is-store-existing-action": {
-   "subject": "fn-pidx-existing-action",
-   "trace_witness": "tests/acl2/post-identity-index-tests.lisp::fn-pidx-existing-action-is-store-existing-action",
-   "mutation": "tests/acl2/post-identity-index-tests.lisp::bytes-unchecked"
-  },
-  "fn-pidx-sbud-prepare-is-pcar-sbud-prepare": {
-   "subject": "fn-pidx-sbud-prepare",
-   "trace_witness": "tests/acl2/post-identity-index-tests.lisp::fn-pidx-sbud-prepare-is-pcar-sbud-prepare",
-   "mutation": "tests/acl2/post-identity-index-tests.lisp::prepare-skipped"
   }
  }
 }

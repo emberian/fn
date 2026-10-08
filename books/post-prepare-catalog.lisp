@@ -44,8 +44,7 @@
                            fn-pidx-sn-prepare-node-is-sn-prepare-node
                            fn-pidx-spc-prepare-is-pcar-spc-prepare
                            fn-pidx-opc-owner-prepare-is-pcar-opc-owner-prepare
-                           fn-pidx-opc-prepare-is-pcar-opc-prepare
-                           fn-pidx-sbud-prepare-is-pcar-sbud-prepare)))
+                           fn-pidx-opc-prepare-is-pcar-opc-prepare)))
 
 ; -----------------------------------------------------------------------------
 ; The layers.

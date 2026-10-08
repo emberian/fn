@@ -7,14 +7,12 @@
   "Missing adversarial host-path case: retain readable clean pages after a failed log-file barrier, restart the writable owner without a cache loss, copy that visible prefix, accept and acknowledge another record, then lose cache. The recovery scan must retain every acknowledged record. Controls: skip the copy file barrier, reuse the old inode, or acknowledge before the barrier; each must lose a record the response claims accepted or be refused before that response.",
   "Also interrupt after rename but before journal-directory fencing, keep the visible replacement across exit, restart and copy again, then lose cache. Assert the recovered durable binding and bytes include the entire acknowledged prefix, with no success reply sourced from an unfenced replacement. This covers fn-lgrc-open-keeps-the-relation-at-every-cut, fn-lgrc-acknowledge-from-the-copy, and the two fn-lgu acknowledgement claims. Existing kill-only cases do not model the failed-barrier clean-cache state.",
   "Implement through the designated native storage fault harness and ACL2 decisions; Python must observe replies and ACL2 recovery results, not duplicate acceptance or recovery decisions. No new native test is written by this lane, as instructed.",
-  "S11 HOST-ENTRY RED: fn-pidx-existing-action has no host entry in the merged S tree. host/owner-host.lisp calls fn-pidx-existing-action-cat instead. The catalog and reference functions share fn-store-existing-action through named refinements, but a duplicate POST does not execute fn-pidx-existing-action. Its logical package is complete in post-identity-index-tests; no direct native host test is claimed.",
-  "S11 HOST-ENTRY RED: fn-pidx-sbud-prepare has no host entry. The served path reaches fn-ppc-sbud-prepare, with the duplicate decision and retain carry. Named refinements through fn-prc-sbud-prepare connect its result to the older reference. Its logical package is complete; no direct native host test is claimed.",
-  "S11 missing direct host-test specification: after the owner of the POST boundary resolves whether these are reference-only claims or served subjects, exercise a fresh POST, identical duplicate, changed-byte duplicate, and changed-group duplicate, then read the committed article and repeat after reopen. For prepare, exercise available/exhausted retention budgets and assert ACL2 staging, acceptance and refusal decisions. Name the actually invoked catalog subjects and their certified reference bridges; do not add a host call solely to satisfy reach_check. These two keystones changed since critical-base and cannot be exempted as existing owed claims."
+  "S11 round 2: S chose collapse of the two proof-only POST twins. VIEWIDX-PIDX-COLLAPSE records their retirement; their host-entry reds and native-test specifications are superseded, while the store-log fault-test debt above remains open."
  ],
  "owner": "deputy-P",
  "severity": "high",
  "source": "p-teeth-critical",
  "state": "open",
  "title": "Exercise the critical copy and acknowledgement claims after a failed barrier with cache retained",
- "updated": "2026-10-08T21:28:00Z"
+ "updated": "2026-10-08T22:07:00Z"
 }

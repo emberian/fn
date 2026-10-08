@@ -5011,17 +5011,7 @@
    "item": "PRF-1345",
    "book": "books/assumptions-pgs-host-io.lisp"
   },
-  "fn-pidx-existing-action-is-store-existing-action": {
-   "class": "identity-binding",
-   "item": "PRF-1347",
-   "book": "books/post-identity-index.lisp"
-  },
   "fn-pidx-find-in-visible-is-find": {
-   "class": "identity-binding",
-   "item": "PRF-1347",
-   "book": "books/post-identity-index.lisp"
-  },
-  "fn-pidx-sbud-prepare-is-pcar-sbud-prepare": {
    "class": "identity-binding",
    "item": "PRF-1347",
    "book": "books/post-identity-index.lisp"
