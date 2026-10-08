@@ -23,9 +23,9 @@
                            fn-served-concat fn-nntp-session-consistentp
                            fn-nntp-projectionp)))
 
-; The index correspondences inside fn-own-conn-okp and fn-own-view-okp build
-; a message-id trie and a group-bucket index from the archive when opened;
-; only the proofs that establish one for a fresh or rebuilt index open them.
+; The index correspondence inside fn-own-conn-okp and fn-own-view-okp builds
+; a group-bucket index from the archive when opened; only the proofs that
+; establish one for a fresh or rebuilt index open it.
 ; fn-nntp-article-idp-is-consp and the true-list shape rules of the NNTP and
 ; content-identity clusters are tried on every consp and true-listp test and
 ; backchain by opening their recognizers; nothing here needs them.
@@ -82,7 +82,6 @@
    (implies (fn-served-pin-old-or-live-p (fn-own-served-conn o conn session) sconn)
             (or (and (equal (fn-served-conn-archive sconn) (fn-own-conn-archive conn))
                      (equal (fn-served-conn-verdicts sconn) (fn-own-conn-verdicts conn))
-                     (equal (fn-served-conn-index sconn) (fn-own-conn-index conn))
                      (equal (fn-served-conn-group-index sconn) (fn-own-conn-group-index conn))
                      (equal (fn-served-conn-control sconn) (fn-own-conn-control conn))
                      (equal (fn-served-conn-pinned sconn)
@@ -90,7 +89,6 @@
                                                    (fn-own-conn-frontier conn) nil)))
                 (and (equal (fn-served-conn-archive sconn) (fn-own-view-archive (fn-own-view o)))
                      (equal (fn-served-conn-verdicts sconn) (fn-own-view-verdicts (fn-own-view o)))
-                     (equal (fn-served-conn-index sconn) (fn-own-view-index (fn-own-view o)))
                      (equal (fn-served-conn-group-index sconn) (fn-own-view-group-index (fn-own-view o)))
                      (equal (fn-served-conn-control sconn) (fn-own-view-control (fn-own-view o)))
                      (equal (fn-served-conn-pinned sconn)
@@ -194,7 +192,6 @@
           (equal (fn-served-conn-observation c) (fn-own-conn-observation conn))
           (equal (fn-served-conn-injection c) (fn-own-clock o))
           (equal (fn-served-conn-verdicts c) (fn-own-conn-verdicts conn))
-          (equal (fn-served-conn-index c) (fn-own-conn-index conn))
           (equal (fn-served-conn-group-index c) (fn-own-conn-group-index conn))
           (equal (fn-served-conn-control c) (fn-own-conn-control conn))
           (equal (fn-served-conn-pinned c)
@@ -245,7 +242,7 @@
               (fn-served-conn-wire sconn) (fn-served-conn-session sconn)
               (fn-served-conn-archive sconn)
               (fn-own-conn-config conn) (fn-own-conn-observation conn)
-              (fn-served-conn-verdicts sconn) (fn-served-conn-index sconn)
+              (fn-served-conn-verdicts sconn)
               (fn-served-conn-group-index sconn) (fn-served-conn-control sconn)))))
    :hints (("Goal"
             :use ((:instance fn-own-find-conn-id (conns (fn-own-conns o))))
@@ -276,14 +273,12 @@
                    (equal (fn-own-conn-frontier next) (fn-own-view-frontier view))
                    (equal (fn-own-conn-archive next) (fn-own-view-archive view))
                    (equal (fn-own-conn-verdicts next) (fn-own-view-verdicts view))
-                   (equal (fn-own-conn-index next) (fn-own-view-index view))
                    (equal (fn-own-conn-group-index next) (fn-own-view-group-index view))
                    (equal (fn-own-conn-control next) (fn-own-view-control view)))
             (and (equal (fn-own-conn-version next) (fn-own-conn-version old))
                  (equal (fn-own-conn-frontier next) (fn-own-conn-frontier old))
                  (equal (fn-own-conn-archive next) (fn-own-conn-archive old))
                  (equal (fn-own-conn-verdicts next) (fn-own-conn-verdicts old))
-                 (equal (fn-own-conn-index next) (fn-own-conn-index old))
                  (equal (fn-own-conn-group-index next) (fn-own-conn-group-index old))
                  (equal (fn-own-conn-control next) (fn-own-conn-control old)))))))
   :hints (("Goal"
@@ -336,10 +331,10 @@
                             fn-own-conn-id fn-own-conn-version fn-own-conn-frontier
                             fn-own-conn-wire fn-own-conn-session fn-own-conn-archive
                             fn-own-conn-config fn-own-conn-observation
-                            fn-own-conn-verdicts fn-own-conn-index
+                            fn-own-conn-verdicts 
                             fn-own-view-group-index fn-own-view-version
                             fn-own-view-frontier fn-own-view-archive
-                            fn-own-view-verdicts fn-own-view-index
+                            fn-own-view-verdicts 
                             fn-ag-car fn-ag-cdr)))))
 
 ; The survivor's wire framing state is the served step's, and that step
@@ -733,7 +728,6 @@
                                (fn-own-conn-observation
                                 (fn-own-find-conn id (fn-own-conns o)))
                                (fn-own-view-verdicts (fn-own-view o))
-                               (fn-own-view-index (fn-own-view o))
                                (fn-own-view-group-index (fn-own-view o)) (fn-own-view-control (fn-own-view o))))))
             :in-theory (e/d (fn-own-relation fn-own-advance fn-own-set-conns)
                             (fn-own-conn-boundedp fn-own-find-conn-okp
@@ -926,7 +920,7 @@
                        (fn-own-conn-wire conn) (fn-own-conn-session conn)
                        (fn-own-conn-archive conn) (fn-own-conn-config conn)
                        (fn-own-conn-observation conn) (fn-own-clock o)
-                       (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+                       (fn-own-conn-verdicts conn)
                        (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                       (cond ((equal word :durable) :durable)
                             ;; PKT-473 (PRF-184): durable, naming the

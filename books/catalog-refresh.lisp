@@ -8,14 +8,14 @@
 ; the commit did: fn-ctl-refresh-withdrawals and fn-ctl-refresh-visible
 ; compare the acceptance's article list with the one the view carried
 ; (`(equal new old)', `(equal (cdr new) old)'), fn-ctl-verdicts-grow-by-p
-; compares the verdict lists, fn-midx-refresh, fn-gidx-refresh and
+; compares the verdict lists, fn-gidx-refresh and
 ; fn-ctl-refresh-withdrawn compare the visible lists, and each takes its
 ; incremental arm only when the comparison happens to find the one-article
 ; shape.  The commit KNOWS that shape: the finish installed one article A
 ; with one verdict.  This book states the view's incremental application of
 ; that delta, fn-crf-apply-article, and proves it equal to the refresh on
 ; every projection the view exposes (version, frontier, archive, verdicts,
-; the Message-ID trie, the group buckets, the withdrawal records, the raw
+; the group buckets, the withdrawal records, the raw
 ; list, the withdrawn list, the keyring view):
 ;
 ;   fn-view-apply-is-refresh (KEYSTONE, PRF-202): for an owner O and the
@@ -293,11 +293,10 @@
          (withdrawn (if plainp
                         (fn-own-view-withdrawn view)
                       (fn-ctl-subseq-diff raw visible)))
-         (index (fn-midx-refresh (fn-own-view-index view) old-visible visible))
          (buckets (fn-gidx-refresh (fn-own-view-group-index view) old-visible visible)))
     (fn-own-view-make-visible (len (fn-sf-records (fn-sn-files s)))
                               (fn-sf-frontier (fn-sn-files s))
-                              archive verdicts index buckets ws raw withdrawn
+                              archive verdicts buckets ws raw withdrawn
                               (fn-sn-keyring-snapshots s))))
 
 (local (defthm fn-crf-cons-is-not-its-cdr
@@ -320,7 +319,7 @@
                                    fn-ctl-refresh-withdrawals fn-ctl-refresh-visible
                                    fn-ctl-verdicts-grow-by-p fn-ctl-refresh-withdrawn)
                                   (fn-ctl-article-withdrawals fn-ctl-visible-add fn-ctl-prepend
-                                   fn-midx-refresh fn-gidx-refresh fn-ctl-subseq-diff
+                                   fn-gidx-refresh fn-ctl-subseq-diff
                                    fn-ctl-articles-withdrawals fn-ctl-visible-articles
                                    fn-ctl-visible-state-of fn-own-view-make-visible
                                    fn-own-store-idlep fn-state-articles fn-node-acceptance
@@ -366,18 +365,17 @@
            (let* ((view2 (fn-crf-apply-article view a verdict s))
                   (old-visible (fn-state-articles (fn-own-view-archive view))))
              (and (equal (fn-state-articles (fn-own-view-archive view2)) (cons a old-visible))
-                  (equal (fn-own-view-index view2) (fn-midx-extend a (fn-own-view-index view)))
                   (equal (fn-own-view-group-index view2)
                          (fn-gidx-put-all (fn-index-article-entries a) (fn-own-view-group-index view)))
                   (equal (fn-own-view-withdrawn view2) (fn-own-view-withdrawn view))
                   (equal (fn-own-view-raw view2) (cons a (fn-own-view-raw view)))
                   (equal (fn-own-view-version view2) (len (fn-sf-records (fn-sn-files s)))))))
-  :hints (("Goal" :in-theory (e/d (fn-crf-apply-article fn-ctl-visible-add fn-midx-refresh
+  :hints (("Goal" :in-theory (e/d (fn-crf-apply-article fn-ctl-visible-add
                                    fn-gidx-refresh fn-own-view-fields-of-make-visible)
                                   (fn-ctl-article-withdrawals fn-ctl-prepend fn-ctl-causes-p fn-ctl-resolve-tlocks
                                    fn-ctl-resolve-tlocks-is-set-tlocks
                                    fn-ctl-withdrawn-by-p fn-ctl-drop-via fn-ctl-subseq-diff
-                                   fn-midx-build fn-gidx-build fn-midx-extend fn-gidx-put-all
+                                   fn-gidx-build fn-gidx-put-all
                                    fn-index-article-entries fn-ctl-visible-articles
                                    fn-state-articles fn-node-acceptance fn-sn-node
                                    fn-sf-records fn-sn-files fn-sf-frontier fn-sn-config-history

@@ -192,10 +192,10 @@
            :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-post-command-eventp)
                            (fn-auth-step-pinned fn-auth-sessionp fn-auth-postingp
                             fn-served-conn-pinned-index fn-gidx-pin-correspondencep
-                            fn-gidx-pin-trie fn-gidx-pinp
+                            fn-gidx-pinp
                             fn-midx-correspondencep
                             fn-served-connp-is-group-correspondence
-                            fn-served-connp-is-pinned-trie-correspondence
+                            
                             fn-wire-begin-article fn-post-offeredp
                             fn-served-submission fn-served-connp
                             fn-nntp-tokenize fn-nntp-command-inputp
@@ -222,7 +222,6 @@
                             (line (car (cdr event))))
                  (:instance fn-served-connp-is-consistent-session (c conn))
                  (:instance fn-served-connp-is-group-correspondence (c conn))
-                 (:instance fn-served-connp-is-pinned-trie-correspondence (c conn))
                  (:instance fn-auth-step-pinned-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
@@ -497,8 +496,6 @@
                        (fn-served-conn-injection conn))
                 (equal (fn-served-conn-verdicts (fn-served-repin conn))
                        (fn-served-live-verdicts (fn-served-conn-live conn)))
-                (equal (fn-served-conn-index (fn-served-repin conn))
-                       (fn-served-live-index (fn-served-conn-live conn)))
                 (equal (fn-served-conn-group-index (fn-served-repin conn))
                        (fn-served-live-buckets (fn-served-conn-live conn)))
                 (equal (fn-served-conn-control (fn-served-repin conn))

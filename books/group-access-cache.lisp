@@ -3,9 +3,9 @@
 ;
 ; A read-restricted session (PRF-222, books/group-access.lisp) is served the
 ; view fn-gac-view-entry TEXT ARCHIVE CONTROL: the store with every group its
-; rule TEXT does not admit absent, and that store's trie, buckets and
+; rule TEXT does not admit absent, and that store's buckets and
 ; withdrawn list.  Built per command it is a walk of the whole archive (the
-; cut, a trie and a bucket build) for every command of such a session.
+; cut and a bucket build) for every command of such a session.
 ;
 ; The access cache holds, per read text, ONE entry: the text, the archive
 ; and control pin it was built for, and the view.  Its invariant
@@ -15,7 +15,7 @@
 ; prepares the connection's entry before a read (fn-gacc-prepare, from
 ; host/owner-host.lisp): the entry already keyed to the connection's pin is
 ; kept; one keyed to the pin before an acceptance is extended by the one
-; article (fn-gacc-extend: the cut of one article, one trie path copy and its
+; article (fn-gacc-extend: the cut of one article and its
 ; bucket entries); anything else is built once (a restart, a withdrawal, a
 ; new rule).  KEYSTONE fn-gacc-prepare-keeps-okp: preparing keeps the
 ; invariant; with fn-gacc-okp-of-nil the cache the host starts with, every
@@ -121,17 +121,16 @@
 ; -----------------------------------------------------------------------------
 ; Acceptances: the view extended by the articles accepted since its key
 
-; One article A over the restricted articles, trie and buckets: A's cut is
-; consed on, one trie path copy and its bucket entries put, when TEXT reads
+; One article A over the restricted articles and buckets: A's cut is
+; consed on and its bucket entries put, when TEXT reads
 ; a group of A; else nothing changes.
-(defun fn-gacc-step (text a rarts trie buckets)
+(defun fn-gacc-step (text a rarts buckets)
   (declare (xargs :guard t))
   (if (consp (fn-gac-filter-groups text (fn-article-groups a)))
       (let ((ra (fn-gac-restrict-article text a)))
         (mv (cons ra rarts)
-            (fn-midx-extend ra trie)
             (fn-gidx-put-all (fn-index-article-entries ra) buckets)))
-    (mv rarts trie buckets)))
+    (mv rarts buckets)))
 
 ; The articles of NEW before its tail OLD, oldest first (onto ACC); FOUND
 ; when OLD is a tail of NEW.  A loop: its work is the new articles' count
@@ -144,30 +143,30 @@
         (t (fn-gacc-prefix (cdr new) old (cons (car new) acc)))))
 
 ; The steps of AS, oldest first.  A loop.
-(defun fn-gacc-grow (text as rarts trie buckets)
+(defun fn-gacc-grow (text as rarts buckets)
   (declare (xargs :guard t))
   (if (consp as)
-      (mv-let (r tr bu) (fn-gacc-step text (car as) rarts trie buckets)
-        (fn-gacc-grow text (cdr as) r tr bu))
-    (mv rarts trie buckets)))
+      (mv-let (r bu) (fn-gacc-step text (car as) rarts buckets)
+        (fn-gacc-grow text (cdr as) r bu))
+    (mv rarts buckets)))
 
 ; The view of TEXT over ARCHIVE from VIEW, the view of TEXT over an archive
 ; whose articles are the tail OLD-ARTS of ARCHIVE's (same control cut): the
 ; groups and their next numbers are cut again (configuration-sized); the
-; articles, trie and buckets grow by the articles before the tail.
+; articles and buckets grow by the articles before the tail.
 (defun fn-gacc-extend-view (text archive prefix view)
   (declare (xargs :guard t))
   (let* ((rs (fn-ag-car view))
          (rindex (fn-ag-cdr view)))
-    (mv-let (rarts trie buckets)
-      (fn-gacc-grow text prefix (fn-state-articles rs) (fn-gidx-pin-trie rindex)
+    (mv-let (rarts buckets)
+      (fn-gacc-grow text prefix (fn-state-articles rs)
                     (fn-gidx-pin-buckets rindex))
       (cons (fn-make-state (fn-gac-filter-groups text (fn-state-groups archive))
                            (fn-gac-filter-pairs text (fn-state-nexts archive))
                            rarts
                            (fn-state-next-txid archive)
                            nil nil)
-            (fn-gidx-pin-with-control trie buckets (fn-gidx-pin-control rindex))))))
+            (fn-gidx-pin-with-control buckets (fn-gidx-pin-control rindex))))))
 
 ; The two controls cut to the same restricted control.
 (defun fn-gacc-same-cut-p (c1 c2)
@@ -227,21 +226,18 @@
   :hints (("Goal" :in-theory (enable fn-gac-restrict-articles))))
 
 ;; The loops against the builds: one step conses the cut and extends the
-;; trie and buckets exactly as the builds of the longer list do (fn-midx-build
-;; of a cons is the extend; fn-gidx-build-of-cons); the steps over the
-;; articles before a tail build the whole list.
+;; buckets exactly as the build of the longer list does
+;; (fn-gidx-build-of-cons); the steps over the articles before a tail build
+;; the whole list.
 (defthm fn-gacc-step-builds
   (equal (fn-gacc-step text a (fn-gac-restrict-articles text ys)
-                       (fn-midx-build (fn-gac-restrict-articles text ys))
                        (fn-gidx-build (fn-gac-restrict-articles text ys)))
          (let ((r (fn-gac-restrict-articles text (cons a ys))))
-           (mv r (fn-midx-build r) (fn-gidx-build r))))
-  :hints (("Goal" :in-theory (e/d (fn-gacc-step fn-midx-build)
+           (mv r (fn-gidx-build r))))
+  :hints (("Goal" :in-theory (e/d (fn-gacc-step)
                                   (fn-gac-restrict-articles fn-gac-restrict-article
-                                   fn-gac-filter-groups fn-midx-extend fn-gidx-build
-                                   fn-gidx-put-all fn-index-article-entries))
-           :expand ((fn-midx-build (cons (fn-gac-restrict-article text a)
-                                         (fn-gac-restrict-articles text ys)))))))
+                                   fn-gac-filter-groups fn-gidx-build
+                                   fn-gidx-put-all fn-index-article-entries)))))
 
 (local
  (defun fn-gacc-grow-ind (as ys)
@@ -249,13 +245,12 @@
 
 (defthm fn-gacc-grow-builds
   (equal (fn-gacc-grow text as (fn-gac-restrict-articles text ys)
-                       (fn-midx-build (fn-gac-restrict-articles text ys))
                        (fn-gidx-build (fn-gac-restrict-articles text ys)))
          (let ((r (fn-gac-restrict-articles text (revappend as ys))))
-           (mv r (fn-midx-build r) (fn-gidx-build r))))
+           (mv r (fn-gidx-build r))))
   :hints (("Goal" :induct (fn-gacc-grow-ind as ys)
            :in-theory (e/d (fn-gacc-grow)
-                           (fn-gacc-step fn-gac-restrict-articles fn-midx-build fn-gidx-build)))))
+                           (fn-gacc-step fn-gac-restrict-articles fn-gidx-build)))))
 
 (defthm fn-gacc-prefix-revappend
   (implies (mv-nth 0 (fn-gacc-prefix new old acc))
@@ -277,7 +272,7 @@
   :hints (("Goal" :in-theory (e/d (fn-gacc-extend-view fn-gac-view-entry fn-gac-restrict-index
                                    fn-gac-restrict-state fn-gacc-same-cut-p)
                                   (fn-gac-restrict-articles fn-gac-restrict-article
-                                   fn-gac-filter-groups fn-gac-filter-pairs fn-midx-build
+                                   fn-gac-filter-groups fn-gac-filter-pairs
                                    fn-gidx-build fn-gacc-grow fn-gacc-prefix fn-gacc-prefix-revappend))
            :use ((:instance fn-gacc-prefix-revappend (new (fn-state-articles archive))
                             (old (fn-state-articles old)) (acc nil))

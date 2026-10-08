@@ -28,13 +28,13 @@
                            fn-served-concat fn-nntp-session-consistentp
                            fn-nntp-projectionp)))
 
-; The index correspondences inside fn-own-conn-okp and fn-own-view-okp build
-; a message-id trie and a group-bucket index from the archive when opened;
-; only the proofs that establish one for a fresh or rebuilt index open them.
+; The index correspondence inside fn-own-conn-okp and fn-own-view-okp builds
+; a group-bucket index from the archive when opened; only the proofs that
+; establish one for a fresh or rebuilt index open it.
 ; fn-nntp-article-idp-is-consp and the true-list shape rules of the NNTP and
 ; content-identity clusters are tried on every consp and true-listp test and
 ; backchain by opening their recognizers; nothing here needs them.
-(local (in-theory (disable fn-midx-correspondencep fn-gidx-build
+(local (in-theory (disable fn-gidx-build
                            fn-nntp-article-idp-is-consp
                            fn-nntp-response-text-true-listp fn-cp-idp-true-listp
                            fn-cp-id-length-bound)))
@@ -73,14 +73,14 @@
                  (fn-own-conn-make-group-indexed
                   id (fn-own-view-version view) (fn-own-view-frontier view)
                   wire session (fn-own-view-archive view) config obs
-                  (fn-own-view-verdicts view) (fn-own-view-index view)
+                  (fn-own-view-verdicts view)
                   (fn-own-view-group-index view) (fn-own-view-control view))
                  groups))
            (fn-own-conn-okp
             (fn-own-conn-make-group-indexed
              id (fn-own-view-version view) (fn-own-view-frontier view)
              wire session (fn-own-view-archive view) config obs
-             (fn-own-view-verdicts view) (fn-own-view-index view)
+             (fn-own-view-verdicts view)
              (fn-own-view-group-index view) (fn-own-view-control view))
             groups capacity records))
   :hints (("Goal" :in-theory (disable fn-own-conn-make-group-indexed
@@ -101,7 +101,6 @@
    (implies (fn-served-pin-old-or-live-p (fn-own-served-conn o conn session) sconn)
             (or (and (equal (fn-served-conn-archive sconn) (fn-own-conn-archive conn))
                      (equal (fn-served-conn-verdicts sconn) (fn-own-conn-verdicts conn))
-                     (equal (fn-served-conn-index sconn) (fn-own-conn-index conn))
                      (equal (fn-served-conn-group-index sconn) (fn-own-conn-group-index conn))
                      (equal (fn-served-conn-control sconn) (fn-own-conn-control conn))
                      (equal (fn-served-conn-pinned sconn)
@@ -109,7 +108,6 @@
                                                    (fn-own-conn-frontier conn) nil)))
                 (and (equal (fn-served-conn-archive sconn) (fn-own-view-archive (fn-own-view o)))
                      (equal (fn-served-conn-verdicts sconn) (fn-own-view-verdicts (fn-own-view o)))
-                     (equal (fn-served-conn-index sconn) (fn-own-view-index (fn-own-view o)))
                      (equal (fn-served-conn-group-index sconn) (fn-own-view-group-index (fn-own-view o)))
                      (equal (fn-served-conn-control sconn) (fn-own-view-control (fn-own-view o)))
                      (equal (fn-served-conn-pinned sconn)
@@ -138,7 +136,6 @@
    (implies (and (fn-own-conn-okp conn groups capacity records)
                  (equal archive (fn-own-conn-archive conn))
                  (equal verdicts (fn-own-conn-verdicts conn))
-                 (equal index (fn-own-conn-index conn))
                  (equal buckets (fn-own-conn-group-index conn))
                  (equal control (fn-own-conn-control conn))
                  (fn-own-conn-boundedp
@@ -146,18 +143,18 @@
                    (fn-own-conn-id conn) (fn-own-conn-version conn) (fn-own-conn-frontier conn)
                    wire session2 archive
                    (fn-own-conn-config conn) (fn-own-conn-observation conn)
-                   verdicts index buckets control)
+                   verdicts buckets control)
                   groups))
             (fn-own-conn-okp
              (fn-own-conn-make-group-indexed
               (fn-own-conn-id conn) (fn-own-conn-version conn) (fn-own-conn-frontier conn)
               wire session2 archive
               (fn-own-conn-config conn) (fn-own-conn-observation conn)
-              verdicts index buckets control)
+              verdicts buckets control)
              groups capacity records))
    :hints (("Goal" :in-theory (e/d (fn-own-conn-okp)
                                    (fn-own-conn-make-group-indexed fn-own-conn-boundedp
-                                    fn-ctl-projectionp fn-midx-correspondencep fn-gidx-build
+                                    fn-ctl-projectionp fn-gidx-build
                                     fn-own-control-okp fn-own-prefix-archive))))))
 
 (local
@@ -166,7 +163,7 @@
             (natp (fn-own-conn-id conn)))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-own-conn-okp)
-                                   (fn-ctl-projectionp fn-midx-correspondencep fn-gidx-build
+                                   (fn-ctl-projectionp fn-gidx-build
                                     fn-own-control-okp fn-own-prefix-archive
                                     fn-own-conn-boundedp))))))
 
@@ -183,7 +180,7 @@
                    wire session2
                    (fn-served-conn-archive sconn)
                    (fn-own-conn-config conn) (fn-own-conn-observation conn)
-                   (fn-served-conn-verdicts sconn) (fn-served-conn-index sconn)
+                   (fn-served-conn-verdicts sconn)
                    (fn-served-conn-group-index sconn) (fn-served-conn-control sconn))
                   groups))
             (fn-own-conn-okp
@@ -194,7 +191,7 @@
               wire session2
               (fn-served-conn-archive sconn)
               (fn-own-conn-config conn) (fn-own-conn-observation conn)
-              (fn-served-conn-verdicts sconn) (fn-served-conn-index sconn)
+              (fn-served-conn-verdicts sconn)
               (fn-served-conn-group-index sconn) (fn-served-conn-control sconn))
              groups capacity records))
    :hints (("Goal"
@@ -203,7 +200,6 @@
                   (:instance fn-own-finish-read-conn-okp-old-pin
                              (archive (fn-served-conn-archive sconn))
                              (verdicts (fn-served-conn-verdicts sconn))
-                             (index (fn-served-conn-index sconn))
                              (buckets (fn-served-conn-group-index sconn))
                              (control (fn-served-conn-control sconn)))
                   (:instance fn-own-conn-okp-of-view-pin
@@ -535,7 +531,7 @@
                                    fn-own-control-submit
                                    fn-own-enqueue fn-own-relation)
                                   (fn-own-control-decision fn-own-conns-okp
-                                   fn-own-view-okp fn-midx-correspondencep
+                                   fn-own-view-okp 
                                    fn-gidx-build)))))
 
 ; The legacy BP/control verb (:legacy-control-submit) enqueues the same
@@ -547,7 +543,7 @@
                                    fn-own-legacy-control-submit
                                    fn-own-enqueue fn-own-relation)
                                   (fn-own-control-decision fn-own-conns-okp
-                                   fn-own-view-okp fn-midx-correspondencep
+                                   fn-own-view-okp 
                                    fn-gidx-build)))))
 
 (defthm fn-own-operator-submit-preserves-relation

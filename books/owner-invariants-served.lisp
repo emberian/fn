@@ -24,13 +24,13 @@
                            fn-served-concat fn-nntp-session-consistentp
                            fn-nntp-projectionp)))
 
-; The index correspondences inside fn-own-conn-okp and fn-own-view-okp build
-; a message-id trie and a group-bucket index from the archive when opened;
-; only the proofs that establish one for a fresh or rebuilt index open them.
+; The index correspondence inside fn-own-conn-okp and fn-own-view-okp builds
+; a group-bucket index from the archive when opened; only the proofs that
+; establish one for a fresh or rebuilt index open it.
 ; fn-nntp-article-idp-is-consp and the true-list shape rules of the NNTP and
 ; content-identity clusters are tried on every consp and true-listp test and
 ; backchain by opening their recognizers; nothing here needs them.
-(local (in-theory (disable fn-midx-correspondencep fn-gidx-build
+(local (in-theory (disable fn-gidx-build
                            fn-nntp-article-idp-is-consp
                            fn-nntp-response-text-true-listp fn-cp-idp-true-listp
                            fn-cp-id-length-bound)))
@@ -96,8 +96,6 @@
                                                              prefix nil nil)))
                                               (fn-own-view-make-visible
                                                0 0 archive nil
-                                               (fn-midx-build
-                                                (fn-state-articles archive))
                                                (fn-gidx-build
                                                 (fn-state-articles archive))
                                                nil (fn-state-articles prefix)
@@ -107,8 +105,7 @@
                                                nil))
                                             nil 0 max-conns nil nil nil nil
                                             nil nil nil nil nil nil))))
-           :in-theory (e/d (fn-own-relation fn-midx-correspondencep
-                            fn-gidx-build)
+           :in-theory (e/d (fn-own-relation fn-gidx-build)
                            (fn-own-view-make-group-indexed
                             fn-own-refresh-preserves-relation fn-own-refresh
                             fn-own-prefix-archive)))))
@@ -194,7 +191,6 @@
                        (fn-own-conn-observation conn)
                        (fn-own-clock o)
                        (fn-own-conn-verdicts conn)
-                       (fn-own-conn-index conn)
                        (fn-own-conn-group-index conn) (fn-own-conn-control conn)
                        (fn-served-pinned-make (fn-own-conn-version conn)
                                               (fn-own-conn-frontier conn) nil)
@@ -235,7 +231,6 @@
                        (fn-own-conn-observation conn)
                        (fn-own-clock final)
                        (fn-own-conn-verdicts conn)
-                       (fn-own-conn-index conn)
                        (fn-own-conn-group-index conn) (fn-own-conn-control conn)
                        (fn-served-pinned-make (fn-own-conn-version conn)
                                               (fn-own-conn-frontier conn) nil)
@@ -279,7 +274,6 @@
                        (fn-own-conn-observation conn)
                        (fn-own-clock o)
                        (fn-own-conn-verdicts conn)
-                       (fn-own-conn-index conn)
                        (fn-own-conn-group-index conn) (fn-own-conn-control conn)
                        (fn-served-pinned-make (fn-own-conn-version conn)
                                               (fn-own-conn-frontier conn) nil)
@@ -320,7 +314,6 @@
                        (fn-own-conn-observation conn)
                        (fn-own-clock final)
                        (fn-own-conn-verdicts conn)
-                       (fn-own-conn-index conn)
                        (fn-own-conn-group-index conn) (fn-own-conn-control conn)
                        (fn-served-pinned-make (fn-own-conn-version conn)
                                               (fn-own-conn-frontier conn) nil)

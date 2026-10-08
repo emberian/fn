@@ -106,11 +106,10 @@
                   :guard-hints (("Goal" :in-theory (disable fn-scar-peer-sessionp)))))
   (cond
    ((not (fn-scar-peer-sessionp ps live)) (fn-post-make-result ps nil nil))
-   ; A reader session: the Message-ID retrieval walks the trie by index
-   ; (fn-pix-peer-delegate-pinned-is-peer-delegate-pinned, no hypothesis).
+   ; A reader session is the reference's delegate.
    ((null (fn-peer-session-peer ps))
-    (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
-                                 injection wire-event fn-arena))
+    (fn-peer-delegate-pinned ps archive index verdicts config observation
+                             injection wire-event fn-arena))
    (t (fn-pgc-peer-arm ps arts archive index verdicts config
                        observation injection wire-event fn-arena))))
 
@@ -120,11 +119,9 @@
                                             observation injection wire-event fn-arena)
                   (fn-peer-step-pinned ps archive index verdicts config
                                        observation injection wire-event fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-scar-peer-step-pinned fn-peer-step-pinned
-                                   fn-pix-peer-delegate-pinned-is-peer-delegate-pinned)
-                                  (fn-midx-correspondencep fn-scar-peer-sessionp fn-peer-sessionp
+  :hints (("Goal" :in-theory (e/d (fn-scar-peer-step-pinned fn-peer-step-pinned)
+                                  (fn-scar-peer-sessionp fn-peer-sessionp
                                    fn-node-statep fn-peer-delegate-pinned
-                                   fn-pix-peer-delegate-pinned
                                    fn-peer-step fn-peer-command fn-pgc-peer-arm)))))
 
 (defun fn-scar-auth-delegate-pinned
@@ -149,7 +146,7 @@
            (equal (fn-scar-auth-delegate-pinned as live arts archive index verdicts config observation injection wire-event fn-arena)
                   (fn-auth-delegate-pinned as archive index verdicts config observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-auth-delegate-pinned fn-auth-delegate-pinned)
-                                  (fn-midx-correspondencep fn-scar-peer-step-pinned fn-peer-step-pinned fn-node-statep)))))
+                                  (fn-scar-peer-step-pinned fn-peer-step-pinned fn-node-statep)))))
 
 (defun fn-scar-auth-step-pinned
     (as live arts archive index verdicts config observation injection wire-event fn-arena)
@@ -190,7 +187,7 @@
            (equal (fn-scar-auth-step-pinned as live arts archive index verdicts config observation injection wire-event fn-arena)
                   (fn-auth-step-pinned as archive index verdicts config observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-auth-step-pinned fn-auth-step-pinned)
-                                  (fn-midx-correspondencep fn-scar-auth-sessionp fn-auth-sessionp fn-scar-auth-delegate-pinned fn-auth-delegate-pinned fn-auth-command fn-auth-tls-established fn-auth-redeem-outcome fn-auth-install-context fn-auth-sasl-continue fn-node-statep)))))
+                                  (fn-scar-auth-sessionp fn-auth-sessionp fn-scar-auth-delegate-pinned fn-auth-delegate-pinned fn-auth-command fn-auth-tls-established fn-auth-redeem-outcome fn-auth-install-context fn-auth-sasl-continue fn-node-statep)))))
 
 ; The dispatch proper (fn-served-dispatch-core carried); fn-scar-dispatch
 ; below puts NNT-042's advance in front of it exactly as fn-served-dispatch does.
@@ -219,7 +216,6 @@
                           (fn-served-conn-observation conn)
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
-                          (fn-served-conn-index conn)
                           (fn-served-conn-group-index conn) (fn-served-conn-control conn)
                           (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (mbe :logic (append effects
@@ -238,7 +234,7 @@
            (equal (fn-scar-dispatch-core conn event live arts fn-arena)
                   (fn-served-dispatch-core conn event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-dispatch-core fn-served-dispatch-core)
-                                  (fn-midx-correspondencep fn-scar-auth-step-pinned fn-auth-step-pinned fn-node-statep)))))
+                                  (fn-scar-auth-step-pinned fn-auth-step-pinned fn-node-statep)))))
 
 (defun fn-scar-dispatch (conn event live arts fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -256,7 +252,7 @@
            (equal (fn-scar-dispatch conn event live arts fn-arena)
                   (fn-served-dispatch conn event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-dispatch fn-served-dispatch)
-                                  (fn-midx-correspondencep fn-scar-dispatch-core
+                                  (fn-scar-dispatch-core
                                    fn-served-dispatch-core fn-node-statep
                                    fn-served-repin fn-served-advance-eventp
                                    fn-served-selectedp)))))
@@ -281,7 +277,7 @@
                   (fn-served-dispatch-events conn events fn-arena)))
   :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
            :in-theory (e/d (fn-scar-dispatch-events fn-served-dispatch-events)
-                           (fn-midx-correspondencep fn-scar-dispatch fn-served-dispatch fn-node-statep)))))
+                           (fn-scar-dispatch fn-served-dispatch fn-node-statep)))))
 
 ; The wire half of one carried dispatch is the reference's, whatever `live'
 ; is: the guard of the carried fold needs it without the node premise.
@@ -322,7 +318,7 @@
            (equal (fn-scar-feed-byte conn byte live arts fn-arena)
                   (fn-served-feed-byte conn byte fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-feed-byte fn-served-feed-byte)
-                                  (fn-midx-correspondencep fn-scar-dispatch-events fn-served-dispatch-events fn-wire-feed-byte fn-node-statep)))))
+                                  (fn-scar-dispatch-events fn-served-dispatch-events fn-wire-feed-byte fn-node-statep)))))
 
 
 (defthm fn-scar-feed-byte-preserves-fast-statep
@@ -402,7 +398,7 @@
                   (fn-served-feed-counted conn octets fn-arena)))
   :hints (("Goal" :induct (fn-served-feed-counted conn octets fn-arena)
            :in-theory (e/d (fn-scar-feed-counted fn-served-feed-counted)
-                           (fn-midx-correspondencep fn-scar-feed-byte fn-served-feed-byte
+                           (fn-scar-feed-byte fn-served-feed-byte
                             fn-node-statep)))))
 
 (defun fn-scar-step-counted-core (conn octets live arts fn-arena)
@@ -435,7 +431,7 @@
            (equal (fn-scar-step-counted-core conn octets live arts fn-arena)
                   (fn-served-step-counted-core conn octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-counted-core fn-served-step-counted-core)
-                                  (fn-midx-correspondencep fn-scar-feed-counted fn-served-feed-counted fn-node-statep)))))
+                                  (fn-scar-feed-counted fn-served-feed-counted fn-node-statep)))))
 
 (defun fn-scar-step-counted-fast (conn octets live arts fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -449,7 +445,7 @@
            (equal (fn-scar-step-counted-fast conn octets live arts fn-arena)
                   (fn-served-step-counted-fast conn octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-counted-fast fn-served-step-counted-fast)
-                                  (fn-midx-correspondencep fn-scar-step-counted-core fn-served-step-counted-core fn-node-statep)))))
+                                  (fn-scar-step-counted-core fn-served-step-counted-core fn-node-statep)))))
 
 ; Withdraw the carried definitions: a book above reaches them through the
 ; equations, not by opening them.

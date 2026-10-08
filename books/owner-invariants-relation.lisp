@@ -29,13 +29,13 @@
                            fn-served-concat fn-nntp-session-consistentp
                            fn-nntp-projectionp)))
 
-; The index correspondences inside fn-own-conn-okp and fn-own-view-okp build
-; a message-id trie and a group-bucket index from the archive when opened;
-; only the proofs that establish one for a fresh or rebuilt index open them.
+; The index correspondence inside fn-own-conn-okp and fn-own-view-okp builds
+; a group-bucket index from the archive when opened; only the proofs that
+; establish one for a fresh or rebuilt index open it.
 ; fn-nntp-article-idp-is-consp and the true-list shape rules of the NNTP and
 ; content-identity clusters are tried on every consp and true-listp test and
 ; backchain by opening their recognizers; nothing here needs them.
-(local (in-theory (disable fn-midx-correspondencep fn-gidx-build
+(local (in-theory (disable fn-gidx-build
                            fn-nntp-article-idp-is-consp
                            fn-nntp-response-text-true-listp fn-cp-idp-true-listp
                            fn-cp-id-length-bound)))
@@ -138,9 +138,6 @@
                            (fn-own-prefix-archive groups capacity records
                                                   (fn-own-conn-version conn)
                                                   (fn-own-conn-frontier conn)))
-       (fn-midx-correspondencep
-        (fn-own-conn-index conn)
-        (fn-state-articles (fn-own-conn-archive conn)))
        (implies (fn-own-conn-group-index conn)
                 (equal (fn-own-conn-group-index conn)
                        (fn-gidx-build
@@ -179,9 +176,6 @@
                (fn-own-prefix-archive groups capacity records
                                       (fn-own-view-version view)
                                       (fn-own-view-frontier view))))
-       (fn-midx-correspondencep
-        (fn-own-view-index view)
-        (fn-state-articles (fn-own-view-archive view)))
        (implies (fn-own-view-group-index view)
                 (equal (fn-own-view-group-index view)
                        (fn-gidx-build
@@ -708,12 +702,11 @@
                             (verdicts (fn-sn-verdicts (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))
                             (configs (fn-sn-config-history (fn-own-store o)))))
-           ;; The index is carried by fn-midx-refresh-preserves-correspondence
-           ;; and the group index by fn-ctl-visible-state-of-fields; opening
-           ;; either builder rebuilt the whole trie (3.4 s to 0.4 s).
+           ;; The group index is carried by fn-ctl-visible-state-of-fields;
+           ;; opening its builder rebuilt the whole index (3.4 s to 0.4 s).
            :in-theory (e/d (fn-own-relation)
                            (fn-own-conns-okp fn-own-view-make-group-indexed
-                            fn-midx-refresh fn-midx-correspondencep fn-gidx-build
+                            fn-gidx-build
                             fn-snt-ready-or-recovered-node-is-exact-replay
                             fn-own-store-idlep fn-own-idle-node-is-replay
                             fn-own-related-records-true-list
@@ -794,43 +787,31 @@
            :use ((:instance fn-auth-open-session-is-consistent
                             (tlsp nil))))))
 
-(defthm fn-own-conn-boundedp-of-make-indexed
+(defthm fn-own-conn-boundedp-of-make-group-indexed
   (equal (fn-own-conn-boundedp
-          (fn-own-conn-make-indexed id version frontier wire session archive
-                                    config observation verdicts index)
+          (fn-own-conn-make-group-indexed id version frontier wire session
+                                          archive config observation verdicts
+                                          buckets control)
           groups)
          (fn-own-conn-boundedp
           (fn-own-conn-make id version frontier wire session archive config
                             observation)
           groups))
-  :hints (("Goal" :in-theory (enable fn-own-conn-boundedp))))
-
-(defthm fn-own-conn-boundedp-of-make-group-indexed
-  (equal (fn-own-conn-boundedp
-          (fn-own-conn-make-group-indexed id version frontier wire session
-                                          archive config observation verdicts
-                                          index buckets control)
-          groups)
-         (fn-own-conn-boundedp
-          (fn-own-conn-make-indexed id version frontier wire session archive
-                                    config observation verdicts index)
-          groups))
   :hints (("Goal" :in-theory (e/d (fn-own-conn-boundedp)
-                                    (fn-own-conn-make-indexed
+                                    (fn-own-conn-make
                                      fn-own-conn-make-group-indexed)))))
 
-; Owner open now supplies its already-built view trie and verdict projection
-; to served open.  The session's initial selected group and cursor are still
+; Owner open now supplies its verdict projection to served open.  The session's initial selected group and cursor are still
 ; nil, independently of those pins and the archive's historical domain.
 (defthm fn-own-open-indexed-session-boundedp
   (fn-own-conn-boundedp
-   (fn-own-conn-make-indexed
+   (fn-own-conn-make
     id version frontier wire
     (fn-served-conn-session
      (fn-served-result-conn
-      (fn-served-open-indexed archive index verdicts line-limit body-limit
+      (fn-served-open-indexed archive verdicts line-limit body-limit
                               config observation injection acfg)))
-    archive config observation verdicts index)
+    archive config observation)
    groups)
   :hints (("Goal"
            :in-theory (e/d (fn-own-conn-boundedp fn-served-open-indexed
@@ -849,14 +830,14 @@
 
 (defthm fn-own-open-peer-indexed-session-boundedp
   (fn-own-conn-boundedp
-   (fn-own-conn-make-indexed
+   (fn-own-conn-make
     id version frontier wire
     (fn-served-conn-session
      (fn-served-result-conn
       (fn-served-open-peer-indexed
-       archive index verdicts line-limit body-limit config observation
+       archive verdicts line-limit body-limit config observation
        injection peer node cfg acfg)))
-    archive config observation verdicts index)
+    archive config observation)
    groups)
   :hints (("Goal"
            :in-theory (e/d (fn-own-conn-boundedp fn-served-open-peer-indexed

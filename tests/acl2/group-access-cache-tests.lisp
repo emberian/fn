@@ -28,7 +28,7 @@
                  *gacct-articles* 3 nil nil))
 (assert-event (fn-nntp-projectionp *gacct-state*))
 (defconst *gacct-pin*
-  (fn-gidx-pin (fn-midx-build *gacct-articles*) (fn-gidx-build *gacct-articles*)))
+  (fn-gidx-pin (fn-gidx-build *gacct-articles*)))
 (defconst *gacct-text* "fn.*,!fn.private.*")
 (defconst *gacct-ctl* (fn-gidx-pin-control *gacct-pin*))
 

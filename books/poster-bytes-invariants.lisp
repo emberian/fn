@@ -547,7 +547,7 @@
        (fn-own-conn-wire conn) (fn-own-conn-session conn)
        (fn-own-conn-archive conn) (fn-own-conn-config conn)
        (fn-own-conn-observation conn) (fn-own-clock o)
-       (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+       (fn-own-conn-verdicts conn)
        (fn-own-conn-group-index conn) (fn-own-conn-control conn))
       word))))
 

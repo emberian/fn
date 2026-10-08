@@ -8,7 +8,7 @@
 ;; the octets it consumed (all of them unless a submission made it yield) by
 ;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (books/owner-tls-prefix), whose reply
 ;; is (car (fn-own-read ...)).  fn-own-read builds the served connection from
-;; the owner connection -- its pinned archive, verdicts, Message-ID trie,
+;; the owner connection -- its pinned archive, verdicts,
 ;; buckets and control pin -- and runs the byte fold fn-served-step down to
 ;; the pinned dispatcher fn-nntp-archive-command-pinned (books/nntp.lisp),
 ;; whose :FN-ENROLLMENT arm is fn-nntp-enrollment-hdr-response
@@ -29,7 +29,7 @@
 (in-package "ACL2")
 (include-book "owner-control-read")
 
-;; The dispatcher arm: over a Message-ID the pinned trie holds, the pinned
+;; The dispatcher arm: over a Message-ID the pinned archive holds, the pinned
 ;; dispatcher answers the enrollment line.
 (defthm fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment
   (let ((msgid (fn-nntp-token-string (cadr args))))
@@ -38,7 +38,7 @@
                   (fn-nntp-keywordp (car args) ":FN-ENROLLMENT")
                   (fn-nntp-message-id-tokenp (cadr args))
                   (fn-octet-listp (cadr args))
-                  (consp (fn-midx-lookup msgid (fn-gidx-pin-trie index))))
+                  (consp (fn-find-article msgid (fn-state-articles archive))))
              (equal (fn-nntp-archive-command-pinned
                      session archive index verdicts env keyword args fn-arena)
                     (fn-nntp-multi
@@ -49,10 +49,10 @@
                                          (fn-gidx-pin-control index))))))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-keywordp)
                                   (fn-nntp-single fn-nntp-multi fn-nntp-upcase-keyword
-                                   fn-enr-item fn-midx-lookup fn-stx-reader-lookup
+                                   fn-enr-item fn-find-article fn-stx-reader-lookup
                                    fn-nntp-hdr-line fn-nntp-decimal-field
                                    fn-nntp-string-octets fn-gidx-pin-control
-                                   fn-gidx-pin-trie fn-nntp-token-string
+                                   fn-nntp-token-string
                                    fn-nntp-message-id-tokenp fn-octet-listp))
            :use ((:instance fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment)))))
 
@@ -85,7 +85,7 @@
                   (fn-nntp-message-id-tokenp (caddr tokens))
                   (fn-octet-listp (caddr tokens))
                   (fn-own-conn-group-index conn)
-                  (consp (fn-midx-lookup msgid (fn-own-conn-index conn))))
+                  (consp (fn-find-article msgid (fn-state-articles (fn-own-conn-archive conn)))))
              (equal (car (fn-own-read o id (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-multi
@@ -150,11 +150,11 @@
                             fn-own-read fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
                             fn-own-conn-observation fn-own-conn-verdicts
-                            fn-own-conn-index fn-own-conn-group-index
+                            fn-own-conn-group-index
                             fn-own-conn-control fn-own-conn-session fn-own-find-conn
                             fn-wire-feed-byte fn-wire-feed-proper fn-wire-statep
                             fn-nntp-multi fn-enr-item fn-stx-reader-lookup
-                            fn-midx-lookup fn-nntp-hdr-line
+                            fn-find-article fn-nntp-hdr-line
                             fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
                             fn-nntp-sessionp fn-nntp-tokenize fn-auth-gatedp
                             fn-nntp-keywordp fn-nntp-message-id-tokenp
@@ -186,5 +186,5 @@
                             fn-own-view-make-group-indexed fn-own-conn-make-group-indexed
                             fn-own-conn-control fn-own-view-control
                             fn-enr-pin-has-keyring-p fn-enr-pin-keyring
-                            fn-served-open-group-indexed fn-midx-refresh
+                            fn-served-open-group-indexed
                             fn-gidx-build)))))
