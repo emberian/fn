@@ -110,6 +110,9 @@
                 do (eval form) (setq found t) (return))
         (unless found (error "~a: ~s not found" path wanted))))))
 
+;; The shipped held-commit macro the request entry expands.
+(load "tests/native_held_commit_prelude.lisp")
+
 ;; The global the request entry clears and the refusal line reads is the
 ;; owner's own (mission-signed-2), not a stand-in.
 (load-shipped "host/native/owner.lisp" '(defvar) '(*fnn-owner-transit-detail*))
