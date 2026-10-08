@@ -21,7 +21,6 @@
 
 ;; The constrained seam, attached: the frame trailer's words.
 (defun pckst-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
-(defattach (fn-cpl-trailer-words pckst-trailer))
 
 (must-fail-checked
  (defthm pckst-stage-one-word-early

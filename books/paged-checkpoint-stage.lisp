@@ -37,7 +37,7 @@
 ;       payload-file length (`fn-pck-plen'); the rows' offset words are the
 ;       frames' starts plus 37, their length words the payloads' lengths, and
 ;       their last four words the frames' trailer words
-;       (`fn-pck-x-tl', from the constrained seam `fn-cpl-trailer-words': the
+;       (`fn-pck-x-tl', from the constrained seam `fn-cpl-trailer-words-impl': the
 ;       host takes them from s-cpl's frame writer, whose bridge to the seam
 ;       is that lane's theorem).
 ; The root region (pages 0..7) is not staged here: it is the live fold state's.
@@ -66,10 +66,10 @@
 (defun fn-pck-x-tl (row fn-arena base)
   ; The row's trailing words for the frame at BASE: the ref (37 octets into the
   ; frame, the payload length) and the frame trailer's four words.  The trailer
-  ; is the constrained seam fn-cpl-trailer-words; s-cpl's frame writer is what
+  ; is the constrained seam fn-cpl-trailer-words-impl; s-cpl's frame writer is what
   ; the host takes it from.
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (let ((tw (fn-cpl-trailer-words (fn-pck-payload (fn-row-wire-of row fn-arena)))))
+  (let ((tw (fn-cpl-trailer-words-impl (fn-pck-payload (fn-row-wire-of row fn-arena)))))
     (list (+ *fn-cpl-header-octets* base) (fn-pck-x-payload-len row fn-arena)
           (car tw) (cadr tw) (caddr tw) (cadddr tw))))
 
@@ -371,10 +371,10 @@
                             (frame base)
                             (off (+ *fn-cpl-header-octets* base))
                             (plen (len (fn-pck-payload (fn-row-wire-of row fn-arena))))
-                            (d0 (car (fn-cpl-trailer-words (fn-pck-payload (fn-row-wire-of row fn-arena)))))
-                            (d1 (cadr (fn-cpl-trailer-words (fn-pck-payload (fn-row-wire-of row fn-arena)))))
-                            (d2 (caddr (fn-cpl-trailer-words (fn-pck-payload (fn-row-wire-of row fn-arena)))))
-                            (d3 (cadddr (fn-cpl-trailer-words (fn-pck-payload (fn-row-wire-of row fn-arena))))))))))
+                            (d0 (car (fn-cpl-trailer-words-impl (fn-pck-payload (fn-row-wire-of row fn-arena)))))
+                            (d1 (cadr (fn-cpl-trailer-words-impl (fn-pck-payload (fn-row-wire-of row fn-arena)))))
+                            (d2 (caddr (fn-cpl-trailer-words-impl (fn-pck-payload (fn-row-wire-of row fn-arena)))))
+                            (d3 (cadddr (fn-cpl-trailer-words-impl (fn-pck-payload (fn-row-wire-of row fn-arena))))))))))
 
 (defthm pcks-agree-of-encode-row
   (implies (and (fn-sccb-treep (fn-pck-meta (fn-row-wire-of row fn-arena) st)) (natp j))

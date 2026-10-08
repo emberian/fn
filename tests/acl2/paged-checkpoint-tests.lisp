@@ -22,7 +22,6 @@
 ;; position F (none recorded).
 (defun pckt-trailer (p) (declare (xargs :guard t) (ignore p)) (list 0 0 0 0))
 (defun pckt-f (configs recs) (declare (xargs :guard t) (ignore configs recs)) nil)
-(defattach (fn-cpl-trailer-words pckt-trailer))
 (defattach (fn-pck-f pckt-f))
 
 ; A record with a payload of N octets, and a toy event that is no record.

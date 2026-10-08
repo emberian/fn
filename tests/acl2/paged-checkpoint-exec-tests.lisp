@@ -19,7 +19,6 @@
 
 ;; The constrained seam, attached: the frame trailer's words (distinct per word).
 (defun pckxt-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
-(defattach (fn-cpl-trailer-words pckxt-trailer))
 
 (defun pckxt-word-at (j off plen tw pack-at swap fn-octets)
   ; the reader with the pack's first word at row index PACK-AT; SWAP puts the
@@ -38,7 +37,7 @@
  (defthm pckxt-pack-index-is-j
    (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j) (<= 2 j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
-            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 0 nil
+            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words-impl (fn-pck-payload w)) 0 nil
                                   (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
@@ -46,7 +45,7 @@
  (defthm pckxt-length-word-in-the-pack
    (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j) (<= 2 j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
-            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 1 nil
+            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words-impl (fn-pck-payload w)) 1 nil
                                   (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
@@ -54,7 +53,7 @@
  (defthm pckxt-offset-and-length-swapped
    (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
-            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 2 t
+            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words-impl (fn-pck-payload w)) 2 t
                                   (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
@@ -63,7 +62,7 @@
    (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
             (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w))
-                                  (reverse (fn-cpl-trailer-words (fn-pck-payload w))) 2 nil
+                                  (reverse (fn-cpl-trailer-words-impl (fn-pck-payload w))) 2 nil
                                   (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
@@ -74,10 +73,10 @@
    (implies (and (fn-sccb-treep w) (fn-sccb-treep (fn-pck-meta w st)) (natp j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
             (equal (fn-pck-x-row-word j (+ 37 off) (len (fn-pck-payload w))
-                                      (car (fn-cpl-trailer-words (fn-pck-payload w)))
-                                      (cadr (fn-cpl-trailer-words (fn-pck-payload w)))
-                                      (caddr (fn-cpl-trailer-words (fn-pck-payload w)))
-                                      (cadddr (fn-cpl-trailer-words (fn-pck-payload w)))
+                                      (car (fn-cpl-trailer-words-impl (fn-pck-payload w)))
+                                      (cadr (fn-cpl-trailer-words-impl (fn-pck-payload w)))
+                                      (caddr (fn-cpl-trailer-words-impl (fn-pck-payload w)))
+                                      (cadddr (fn-cpl-trailer-words-impl (fn-pck-payload w)))
                                       (fn-pck-x-encode w fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
@@ -102,7 +101,7 @@
       (let* ((fn-octets (fn-pck-x-encode (fn-pck-meta w (fn-pck-seed)) fn-octets))
              (n (fn-pck-x-row-words (fn-octets-len fn-octets))))
         (mv (pckxt-collect 0 n (+ 37 off) (len (fn-pck-payload w))
-                                    (fn-cpl-trailer-words (fn-pck-payload w)) pack-at swap fn-octets) fn-octets))
+                                    (fn-cpl-trailer-words-impl (fn-pck-payload w)) pack-at swap fn-octets) fn-octets))
       ws)))
 
 (assert-event

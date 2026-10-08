@@ -589,8 +589,8 @@
 (defthm pcko-rowwords-is-the-row
   (equal (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st))
          (pcko-rowwords (fn-scc-program (fn-pck-meta w st)) (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
-                        (car (fn-cpl-trailer-words (fn-pck-payload w))) (cadr (fn-cpl-trailer-words (fn-pck-payload w)))
-                        (caddr (fn-cpl-trailer-words (fn-pck-payload w))) (cadddr (fn-cpl-trailer-words (fn-pck-payload w)))))
+                        (car (fn-cpl-trailer-words-impl (fn-pck-payload w))) (cadr (fn-cpl-trailer-words-impl (fn-pck-payload w)))
+                        (caddr (fn-cpl-trailer-words-impl (fn-pck-payload w))) (cadddr (fn-cpl-trailer-words-impl (fn-pck-payload w)))))
   :hints (("Goal" :in-theory (e/d (fn-pck-enc-row adt-tp-rw adt-tp-fw adt-enc pcko-rowwords) (fn-pck-meta fn-pck-payload)))))
 
 (defthm pcko-rw0-is
@@ -705,7 +705,7 @@
 ; read off the records: the ref-step of each record's metadata and ref fields.
 
 (defun pcko-prog (w st) (declare (xargs :guard t :verify-guards nil)) (fn-scc-program (fn-pck-meta w st)))
-(defun pcko-tw (w) (declare (xargs :guard t :verify-guards nil)) (fn-cpl-trailer-words (fn-pck-payload w)))
+(defun pcko-tw (w) (declare (xargs :guard t :verify-guards nil)) (fn-cpl-trailer-words-impl (fn-pck-payload w)))
 (defun pcko-next-base (w base) (declare (xargs :guard t :verify-guards nil))
   (+ base (fn-cpl-frame-octets (len (fn-pck-payload w)))))
 

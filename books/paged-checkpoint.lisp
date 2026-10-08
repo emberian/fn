@@ -278,7 +278,7 @@
   ; The row of event W whose payload frame starts at file offset OFF: the ref
   ; to the payload (37 octets into the frame) and the frame's trailer words.
   (declare (xargs :guard t :verify-guards nil))
-  (let ((tw (fn-cpl-trailer-words (fn-pck-payload w))))
+  (let ((tw (fn-cpl-trailer-words-impl (fn-pck-payload w))))
     (list (fn-scc-program (fn-pck-meta w st)) (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
           (car tw) (cadr tw) (caddr tw) (cadddr tw))))
 
@@ -479,12 +479,29 @@
   :hints (("Goal" :induct (fn-pck-plen recs base)))
   :rule-classes :type-prescription)
 
+(defthm pck-cbor-octets-adt
+  (implies (fn-cbor-octet-listp x) (adt-octetsp x))
+  :hints (("Goal" :induct (len x)
+           :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp adt-octetsp))))
+
+(defthm pck-payload-cpl
+  ; A record's payload, or none, is a payload the frame writer takes (an
+  ; octet list under 2^64 - 1 octets): the shape fn-cpl-trailer-words-impl needs.
+  (implies (< (+ 1 (len (fn-pck-payload w))) 18446744073709551616)
+           (fn-cpl-payloadp (fn-pck-payload w)))
+  :hints (("Goal" :cases ((fn-record-p w))
+           :in-theory (e/d (fn-pck-payload fn-cpl-payloadp) (fn-record-p))
+           :use ((:instance pck-cbor-octets-adt (x (fn-record-payload w)))
+                 (:instance pck-octet-listp-is-octetsp (x (fn-record-payload w)))))
+          ("Subgoal 1" :in-theory (e/d (fn-pck-payload fn-cpl-payloadp fn-record-p fn-record-payloadp) ()))))
+
 (defthm pck-row-ok
   (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp off) (< (+ 37 off) 18446744073709551616)
-                (< (len (fn-pck-payload w)) 18446744073709551616))
+                (< (+ 1 (len (fn-pck-payload w))) 18446744073709551616))
            (adt-rec-p '((:octets) (:u64) (:u64) (:u64) (:u64) (:u64) (:u64)) (fn-pck-enc-row w off st)))
   :hints (("Goal" :in-theory (e/d (adt-rec-p adt-val-okp fn-pck-enc-row) (fn-pck-meta fn-pck-payload fn-sccb-treep))
-           :use (fn-cpl-trailer-words-shape (:instance pck-program-octetsp (x (fn-pck-meta w st)))))))
+           :use ((:instance fn-cpl-trailer-words-impl-shape (p (fn-pck-payload w))) pck-payload-cpl
+                 (:instance pck-program-octetsp (x (fn-pck-meta w st)))))))
 
 (defthm pck-plen-ge-frame
   (implies (consp recs) (<= (+ base 69) (fn-pck-plen recs base)))
