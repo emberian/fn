@@ -1319,10 +1319,16 @@ def cell_hooks(spec, work, arm=None, gc_hook=False):
     return hooks, env_extra
 
 
+def lock_log_text(work):
+    """The lock log of the measured owner: the newest locks.log.<pid> (a store-preload owner writes its own, older file)."""
+    logs = sorted(work.glob("locks.log.*"), key=lambda p: p.stat().st_mtime)
+    return logs[-1].read_text() if logs else ""
+
+
 def collect_measurement_artifacts(work, out, label):
     """Keep per-cell names (including target/arm/rep), inside the fetchable run dir."""
     dest = Path(out) / label
-    files = [p for p in (work / "samples.json", work / "locks.log") if p.exists()]
+    files = [p for p in (work / "samples.json",) if p.exists()] + sorted(work.glob("locks.log.*"))
     files += sorted(work.glob("sprof.*.txt"))
     if files:
         dest.mkdir(parents=True, exist_ok=True)
@@ -1448,7 +1454,7 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
             deadline = time.monotonic() + 2.5
             while end and time.monotonic() < deadline:
                 with contextlib.suppress(OSError, ValueError):
-                    rows = cells_mod.parse_locks((work / "locks.log").read_text())
+                    rows = cells_mod.parse_locks(lock_log_text(work))
                     if rows and rows[-1][0] >= round(end * 1e6):
                         break
                 time.sleep(0.1)
@@ -1464,7 +1470,7 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         cr["box"]["arc_bytes_end"] = arc_size()
         cr["noisy"] = (cr["box"]["loadavg_start"][0] > 2 * cr["box"]["cores"]) if cr["box"]["cores"] else False
         if spec.get("lockwait"):
-            text = (work / "locks.log").read_text() if (work / "locks.log").exists() else ""
+            text = lock_log_text(work)
             cells_mod.attach_lock_metrics(cr["phases"], text)
         cr["metrics"], cr["not_measured"] = cells_mod.derive(cell.workload, cr["phases"])
         if spec.get("sprof") and not list(work.glob("sprof.*.txt")):

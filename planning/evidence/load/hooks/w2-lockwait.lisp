@@ -1,5 +1,5 @@
 ;;; W2 owner-process contention, loaded before acl2::sbcl-restart; no image change.
-;;; FN_LOAD_LOCKS=<path>: cumulative epoch_us name=count:wait_us rows, every 1 s.
+;;; FN_LOAD_LOCKS=<path>: <path>.<pid> gets cumulative epoch_us name=count:wait_us rows, every 1 s.
 ;;; Names are percent-encoded UTF-8; equal names aggregate distinct mutex objects.
 ;;; Without the environment variable no wrapper, counters or thread are installed.
 ;;;
@@ -52,7 +52,8 @@
 
 (let ((path (sb-ext:posix-getenv "FN_LOAD_LOCKS")))
   (when (and path (plusp (length path)))
-    (let ((log (open path :direction :output :if-exists :supersede)))
+    (let ((log (open (format nil "~a.~d" path (sb-unix:unix-getpid))   ; one file per process: a store-preload
+                     :direction :output :if-exists :supersede)))    ; owner and the measured owner never share one
       (sb-int:encapsulate 'sb-thread::mutex-wait 'w2-lock-wait
         (lambda (f &rest args)
           (if *w2-lock-hook-active*

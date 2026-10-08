@@ -389,7 +389,7 @@ class LockWaitTests(unittest.TestCase):
             self.assertEqual(env["FN_LOAD_PROF"], str(work / "sprof"))
             self.assertEqual(env["FN_LOAD_PROF_START"], str(work / "sprof.start"))
             self.assertEqual(driver.cell_hooks(workloads.resolve("readers").spec, work), ([], {}))
-            for name in ("locks.log", "sprof.000.txt", "samples.json"):
+            for name in ("locks.log.4242", "sprof.000.txt", "samples.json"):
                 (work / name).write_text(name)
             files = driver.collect_measurement_artifacts(work, out, "W2P-image-x-r1")
             self.assertEqual(len(files), 3)
