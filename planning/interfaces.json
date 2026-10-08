@@ -36530,6 +36530,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
+        "host/native/bp-node.lisp",
         "host/native/heap.lisp"
       ],
       "applied_directly_in": []
@@ -36554,7 +36555,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/heap.lisp"
+        "host/native/bp-node.lisp"
       ],
       "applied_directly_in": []
     },
@@ -36578,7 +36579,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/heap.lisp"
+        "host/native/bp-node.lisp"
       ],
       "applied_directly_in": []
     },
@@ -36602,7 +36603,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/heap.lisp"
+        "host/native/bp-node.lisp"
       ],
       "applied_directly_in": []
     },
