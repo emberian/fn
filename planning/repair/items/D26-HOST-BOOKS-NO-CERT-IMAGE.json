@@ -1,0 +1,17 @@
+{
+ "category": "certify-time",
+ "detail": "D26 (a book over ten seconds at two jobs is a defect). host/owner-host certified in 16.2 s on hbox in train 27's first certify (certify-20261008T021042Z-3787838): 13.67 s of 16.1 s is include-book (catalog-may-seal 4.04 s, payload-arena-attach 1.98, history-paged-attach 1.31, catalog-paged-attach 0.74, store-node-host 0.65); proving is 0.35 s. World loading, not proof search. tools/cert_images.py had DIRECTORIES = (books, tests/acl2), so a certified host/ book never used a certification image and paid its whole include closure. Of 104 host books, with the committed image set only store-events (1.2 s modeled of 13.1 s for owner-host) was applicable, because the attach-stobj rule excludes every image that defines fn-arena/fn-hist/fn-cat without holding the attach books.",
+ "file": "tools/cert_images.py",
+ "fix": "Not a host/ image: see notes. Next: find why a redundant include-book of an already-loaded book still costs 0.2-1 s (certificate-chain check over ~880 books per include form, or world-size-dependent include cost) and cut that, or cut the number of include forms host books issue (~165 top-level, ~400 events).",
+ "id": "D26-HOST-BOOKS-NO-CERT-IMAGE",
+ "notes": [
+  "2026-10-08 host-cert-images (557594c23 tried, then reverted): host added to DIRECTORIES + multi-root image host-attached (payload-arena-attach, history-paged-attach, catalog-paged-attach, catalog-may-seal; admitted by the attach rule, 32 host books, build 12.0-13.4 s, 398 MB core, store-events 4.1-4.3 s also built). Same tree, same hbox, alternating, certify-book wall of host/owner-host: plain 129.9 / 115.5 / 127.1 s, with image 136.3 / 108.0 s (hbox load 13-16, not the 16.2 s of train 27; certify-20261008T050334Z-2011651 plain 97.5 s, certify-20261008T051318Z-2102258 plain 85.2 s). The image makes the 7 held includes 7-8 s cheaper (payload-arena-attach 1.97 -> 0.37, catalog-may-seal 3.15 -> 1.48) but every later include is slower (rest of 165 include forms 108 s -> 123 s), net ~0. Also: certify_books schedules the longest book first, and the Runner never waits for a build, so owner-host (longest) started plain in a normal run; only later host books would see an image.",
+  "Even a held root's redundant include costs 0.4-1.5 s; the cost scales with something other than the loaded closure. Leave host/ out of DIRECTORIES until include cost per form is understood."
+ ],
+ "owner": "deputy-C",
+ "severity": "medium",
+ "source": "C7 attribution of certify-20261008T021042Z-3787838 (train 27 first certify), host--owner-host.certify.log",
+ "state": "open",
+ "title": "host/ books pay 14 of 16 s in include-book; a certification image does not remove it (measured), so the cost is per include form",
+ "updated": "2026-10-08T05:40:00Z"
+}

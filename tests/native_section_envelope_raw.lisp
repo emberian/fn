@@ -118,6 +118,19 @@ a def-loop form is expanded by the book's own generator (tests/raw_def_loop.lisp
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun fnn-owner-connection-selected-p (service) (declare (ignore service)) nil)
 (defun fnn-owner-action (name &rest args) (declare (ignore name args)) nil)
+;; The post-section cleanup after owner release is the deployed
+;; fnn-owner-post-section over recording stubs of its physical leaves; no case
+;; here makes a leaf fail, so the escalation leaf is never reached.
+(defun fnn-owner-stop-wake (s) (declare (ignore s)) nil)
+(defun fnn-owner-service-store (s) (declare (ignore s)) nil)
+(defun fnn-store-log (store) (declare (ignore store)) nil)
+(defun fnn-log-drain-spare-discards (log) (declare (ignore log)) nil)
+(defun fnn-immutable-drain-cleanups () nil)
+(defun fnn-escape-cleanup-failed (primary failures) (error "unexpected cleanup failure ~s ~s" primary failures))
+(defun fnn-owner-thread-escape (service condition label &optional jobp)
+  (declare (ignore service condition label jobp)) nil)
+(load-deployed-forms "host/native/io.lisp" '((defmacro fnn-unwind-cleanups)))
+(load-deployed-forms "host/native/owner.lisp" '((defun fnn-owner-post-section)))
 
 (load-deployed-forms "host/native/owner.lisp"
                      '((defstruct (fnn-native-observation-row (:constructor %make-fnn-native-observation-row)))

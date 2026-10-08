@@ -920,6 +920,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     runner.extend(books)
     if settings["wrap"]:
         runner = [settings["wrap"]] + runner
+        if settings["wrap"] == "swarm-build":
+            runner = swarm_memory(os.environ.get("FN_FARM_MEM_MAX", "")) + runner
     log = f"build/farm/{identifier}.log"
     status_file = f"build/farm/{identifier}.status"
     inner = (
@@ -951,6 +953,20 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         f"tail -c 400 {log} >&2 2>/dev/null; exit 12; fi; "
         f"echo FN_FARM_STARTED {identifier} $pid"
     )
+
+
+def swarm_memory(value: str) -> list[str]:
+    """The `env SWARM_MEM_MAX=<n>G` prefix for swarm-build, from FN_FARM_MEM_MAX.
+
+    Empty means swarm-build's own default cap.  A heavy closure run at a lower
+    job count asks for a smaller cgroup so it can share hbox with other jobs;
+    the value is checked here because it reaches the box's shell.
+    """
+    if not value:
+        return []
+    if not re.fullmatch(r"[1-9][0-9]{0,3}[GM]", value):
+        raise SystemExit(f"FN_FARM_MEM_MAX={value!r}: expected <n>G or <n>M")
+    return ["env", f"SWARM_MEM_MAX={value}"]
 
 
 def submit(host: str, root: Path, books: list[str], jobs: int | str,

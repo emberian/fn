@@ -12661,7 +12661,7 @@
    "registry": true
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "dc91d17789c520a2091384ee94a7bc1f402a50cd842c6d10e6587610364818b3",
    "class": "generated",
@@ -12679,7 +12679,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "d5e679f5bcefba5fd4147127d653d3933bd6630fba72117d95052cc6fcbccb25",
    "class": "generated",
@@ -12697,7 +12697,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "52235104b21461d6b36cad23367e51e02d825a3c13610ee78aeafb9d35381f45",
    "class": "generated",
@@ -12715,7 +12715,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "2a0aaba72d72b379337769234a0596e16271e1c6eea2b952e4dcfa0ff23f7a16",
    "class": "generated",
@@ -12733,7 +12733,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "d6d6757b616850dba31151e9d052e1007673a0e140ee7fa5a15c7ef3be51c1d0",
    "class": "generated",
@@ -12751,7 +12751,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "79d2eb014025c342e228986c2bb7eb3c4a1b2f66e85e0f789ae1baf0298c23e5",
    "class": "generated",
@@ -12769,7 +12769,25 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "5d2de03f3f50d2c96cbbe799eeb14143677fb29b0c6e3be1586d0e2bcf44f1f4",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-step-holds-the-owner-only-in-quanta",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "d7d6014a4bcc856b013987a2b20a1dbe2d472ca8bcfe952162fee27b5e1830f1",
    "class": "generated",
@@ -15507,7 +15525,43 @@
    "registry": true
   },
   {
-   "book_digest": "d8ff92bc09033d0674dc5bfdee8eb398497d9b2202671b205612e117c6a6daac",
+   "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
+   "bounds": [],
+   "claim_digest": "a7e2b3e5a142d5e350653cbf83a2e770dbc7939306c11315259d4db3a63b62ba",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-convert-growth-when-charged-covers-the-reserve",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-budget-growth-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 4
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
+   "bounds": [],
+   "claim_digest": "0c7bbee56e1638f4749546a7a2a3d864e61ca1ec0f4fc7f7abe41908c154fe2c",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-evict-keeps-other-bindings",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-budget-growth-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-evict",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
    "bounds": [],
    "claim_digest": "dd697f7ceb634a7c2c87db1a58ad5a3127e014b9690cbe7b4f7dd9637974f7e9",
    "class": "generated",
@@ -15525,7 +15579,7 @@
    "witness": "lemma"
   },
   {
-   "book_digest": "d8ff92bc09033d0674dc5bfdee8eb398497d9b2202671b205612e117c6a6daac",
+   "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
    "bounds": [],
    "claim_digest": "3b04de90d189808a341a34e15795d87ce1ae906dd38cf1225cf2366c732d2c78",
    "class": "generated",

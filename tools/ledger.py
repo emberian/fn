@@ -1199,7 +1199,7 @@ def defrecord_export_expansion(form: list) -> list:
 # (`fn-dk-refusal`) expands to nothing here: certification is the authority
 # on the refusal, and a guess at a refused form's events would be a lie.
 
-DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":breaks",
+DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":instances", ":stobjs", ":stobj-checks", ":breaks",
                  ":mutations", ":corrupt", ":visits", ":allocation", ":must-fail",
                  ":hints"}
 DEFKEYSTONE_KEYS = DEFTEETH_KEYS | {":id", ":restates", ":hyps", ":rule-classes",
@@ -1257,6 +1257,10 @@ def _dk_entry_opts(tail: list, keys: set[str]) -> dict | None:
 
 def _dk_claimp(x: object) -> bool:
     """``(((L1 H1) ... (Ln Hn)) C)`` with distinct labels."""
+    if head(x) in {"let", "let*"}:
+        return (len(x) == 3 and isinstance(_dk_nil(x[1]), list)
+                and all(isinstance(b, list) and len(b) == 2 and isinstance(b[0], Sym)
+                        for b in _dk_nil(x[1])) and _dk_claimp(x[2]))
     if not (isinstance(x, list) and len(x) == 2 and isinstance(_dk_nil(x[0]), list)):
         return False
     labels = []
@@ -1266,6 +1270,18 @@ def _dk_claimp(x: object) -> bool:
             return False
         labels.append(str(pair[0]))
     return len(labels) == len(set(labels))
+
+
+def _dk_claim_core(claim):
+    return _dk_claim_core(claim[2]) if head(claim) in {"let", "let*"} else claim
+
+
+def _dk_claim_scope(claim, term):
+    if head(claim) not in {"let", "let*"}:
+        return term
+    return [claim[0], claim[1],
+            [Sym("declare"), [Sym("ignorable")] + [b[0] for b in _dk_nil(claim[1])]],
+            _dk_claim_scope(claim[2], term)]
 
 
 def _dk_bound_entries(x: object) -> list | None:
@@ -1305,6 +1321,17 @@ def _dk_constantp(x: object) -> bool:
         and str(x[1]) in ("nil", "t")
 
 
+def _dk_assumption_breakp(entry: list) -> bool:
+    return (len(entry) == 2 and isinstance(entry[1], list) and len(entry[1]) == 2
+            and str(entry[1][0]) == ":assumption" and isinstance(entry[1][1], Sym)
+            and str(entry[1][1]) != "nil")
+
+
+def _dk_removal_kind(entry: list) -> Sym:
+    return (Sym(":assumption") if _dk_assumption_breakp(entry)
+            else _dk_witness_kind(keyword_plist(entry[2:])))
+
+
 def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
     """The parsed parts of a defteeth SPEC (or the SPEC a defkeystone form
     stands for), or None where `fn-dk-spec-refusal` refuses: the same checks,
@@ -1312,12 +1339,31 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
     claim = options.get(":claim")
     if claim is None or not _dk_claimp(claim):
         return None
-    labels = [pair[0] for pair in _dk_nil(claim[0])]
-    hyps = [pair[1] for pair in _dk_nil(claim[0])]
-    concl = claim[1]
+    core = _dk_claim_core(claim)
+    labels = [pair[0] for pair in _dk_nil(core[0])]
+    hyps = [_dk_claim_scope(claim, pair[1]) for pair in _dk_nil(core[0])]
+    concl = _dk_claim_scope(claim, core[1])
+    if ":stobjs" in options and not (
+            _dk_bindingsp(_dk_nil(options[":stobjs"]))
+            and ":instances" not in options and ":witness-lemma" not in options):
+        return None
+    if ":stobj-checks" in options:
+        checks = _dk_nil(options[":stobj-checks"])
+        if not (options.get(":stobjs") and isinstance(checks, list)
+                and all(isinstance(c, list) and len(c) in (2, 4)
+                        and isinstance(c[0], list) and c[0]
+                        and isinstance(c[1], list) and c[1]
+                        and (len(c) == 2 or str(c[2]) == ":hints") for c in checks)):
+            return None
     witness = options.get(":witness")
     if not (witness and _dk_bindingsp(witness)):
         return None
+    if ":instances" in options:
+        instances = options[":instances"]
+        if not (isinstance(instances, list) and len(instances) == 2
+                and all(isinstance(fn, Sym) for fn in instances)
+                and ":witness-lemma" not in options):
+            return None
     if ":witness-lemma" in options and not (isinstance(options[":witness-lemma"], Sym)
                                            and str(options[":witness-lemma"]) != "nil"):
         return None
@@ -1330,8 +1376,10 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
     by_label: dict[str, list] = {}
     for entry in breaks:
         if not (isinstance(entry, list) and len(entry) >= 2 and isinstance(entry[0], Sym)
-                and str(entry[0]) != "nil" and _dk_bindingsp(entry[1])
-                and _dk_entry_opts(entry[2:], {":logical", ":lemma"}) is not None):
+                and str(entry[0]) != "nil"
+                and (_dk_assumption_breakp(entry)
+                     or (_dk_bindingsp(entry[1])
+                         and _dk_entry_opts(entry[2:], {":logical", ":lemma"}) is not None))):
             return None
         if str(entry[0]) in by_label:
             return None
@@ -1355,13 +1403,13 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
             return None
         edit = m[1]
         if head(edit) == ":conclusion" and len(edit) == 2:
-            if _dk_constantp(edit[1]) or edit[1] == concl:
+            if _dk_constantp(edit[1]) or edit[1] == core[1]:
                 return None
         elif head(edit) == ":hypothesis" and len(edit) == 3 and isinstance(edit[1], Sym):
             if str(edit[1]) not in {str(x) for x in labels}:
                 return None
             if (isinstance(edit[2], Sym) and str(edit[2]) == "t") \
-                    or edit[2] == hyps[[str(x) for x in labels].index(str(edit[1]))]:
+                    or _dk_claim_scope(claim, edit[2]) == hyps[[str(x) for x in labels].index(str(edit[1]))]:
                 return None
         else:
             return None
@@ -1506,7 +1554,8 @@ def defkeystone_names(parts: dict) -> dict[str, list[str]]:
     return {"keystone": [name],
             "bounds": [f"{name}{BOUND_SUFFIX[kind]}{entry[0]}"
                        for kind in (":visits", ":allocation") for entry in parts[kind[1:]]],
-            "without": [f"{name}-without-{label}" for label in parts["labels"]] if musts else [],
+            "without": [f"{name}-without-{label}" for label in parts["labels"]
+                        if not _dk_assumption_breakp(parts["breaks"][str(label)])] if musts else [],
             "mutant": [f"{name}-mutant-{m[0]}" for m in parts["mutations"]] if musts else []}
 
 
@@ -1541,7 +1590,7 @@ def _dk_witness_kind(opts: dict) -> Sym:
 def teeth_row(parts: dict, by: str, formula: object = None) -> list:
     """``(table fn-teeth 'NAME ROW)`` as `fn-dk-row` writes it; FORMULA is
     the world's theorem, nil in this static reading."""
-    removals = [[label, _dk_witness_kind(keyword_plist(parts["breaks"][str(label)][2:]))]
+    removals = [[label, _dk_removal_kind(parts["breaks"][str(label)])]
                 for label in parts["labels"]]
     mutations: object = (Sym(parts["exemption"]) if parts["exemption"]
                          else [[m[0], m[1][0], keyword_plist(m[3:])[":fault"]]
@@ -1549,8 +1598,9 @@ def teeth_row(parts: dict, by: str, formula: object = None) -> list:
     row = [Sym(":by"), Sym(by), Sym(":claim"), parts["claim"],
            Sym(":formula"), Sym("nil") if formula is None else formula,
            Sym(":subject"), parts["subject"] if parts["subject"] is not None else Sym("nil"),
-           Sym(":witness"), Sym(":lemma") if ":witness-lemma" in parts["options"]
-           else Sym(":executable"),
+           Sym(":witness"), (Sym(":instance") if ":instances" in parts["options"]
+                             else Sym(":lemma") if ":witness-lemma" in parts["options"]
+                             else Sym(":executable")),
            Sym(":hyps"), list(parts["labels"]) or Sym("nil"),
            Sym(":removals"), removals or Sym("nil"),
            Sym(":mutations"), mutations,
@@ -1586,6 +1636,8 @@ def teeth_events(parts: dict, by: str, formula: object = None) -> list:
         {":lemma": options[":witness-lemma"]} if ":witness-lemma" in options else {})]
     for index, label in enumerate(labels):
         entry = parts["breaks"][str(label)]
+        if _dk_assumption_breakp(entry):
+            continue
         bindings = _dk_override(witness, entry[1])
         retained = hyps[:index] + hyps[index + 1:]
         events.append(_dk_witness_event(
@@ -1598,7 +1650,8 @@ def teeth_events(parts: dict, by: str, formula: object = None) -> list:
                                            _dk_implies(retained, concl)] + hint_args]])
     for m in parts["mutations"]:
         bindings = _dk_override(witness, m[2])
-        edit = m[1]
+        edit = list(m[1])
+        edit[-1] = _dk_claim_scope(parts["claim"], edit[-1])
         if head(edit) == ":conclusion":
             terms = hyps + [concl, [Sym("not"), edit[1]]]
             mutant = _dk_implies(hyps, edit[1])
@@ -2126,10 +2179,80 @@ def def_cursor_batch_expansion(form: list) -> list:
             [Sym("verify-guards"), batch]]
 
 
+def def_loop_run_expansion(form: list) -> list:
+    """Source view of def-loop/run's three guarded functions and drive theorem.
+
+    The ACL2 macro owns admission, guard proofs and functional instantiation;
+    this mirror exposes the exact executable calls to the ledger, callgraph
+    and interface guard reader. Local proof scaffolding is omitted.
+    """
+    if not (len(form) >= 3 and isinstance(form[1], Sym) and isinstance(form[2], list)):
+        return []
+    name, formals = str(form[1]), form[2]
+    opts = keyword_plist(form[3:])
+    xs = opts.get(":over")
+    if xs is None or str(xs) == "nil":
+        xs = formals[0] if formals else None
+    acc = opts.get(":acc")
+    st = opts.get(":st")
+    if str(st) == "nil":
+        st = None
+    reserved = {"dl-k", "dl-fuel", "dl-v", "dl-rest", "dl-a2", "dl-s"}
+    if not (all(isinstance(x, Sym) for x in formals)
+            and len(set(formals)) == len(formals) and not reserved.intersection(map(str, formals))
+            and xs in formals and acc in formals and xs != acc
+            and (st is None or (st in formals and st not in (xs, acc)))
+            and opts.get(":row") is not None and str(opts[":row"]) != "nil"
+            and opts.get(":quantum") is not None and str(opts[":quantum"]) != "nil"):
+        return []
+    spell = source_text
+    success = opts.get(":success", Sym("nil"))
+    end = opts.get(":end-status", success)
+    guard = opts.get(":guard", Sym("t"))
+    row, quantum = spell(opts[":row"]), spell(opts[":quantum"])
+    args = " ".join(map(spell, formals))
+    outs = " ".join(map(spell, [acc] + ([st] if st is not None else [])))
+    outs2 = " ".join(map(spell, [Sym("dl-a2")] + ([st] if st is not None else [])))
+    next_args = " ".join(spell([Sym("cdr"), xs] if x == xs else Sym("dl-a2") if x == acc else x)
+                         for x in formals)
+    resume_args = " ".join(spell(Sym("dl-rest") if x == xs else Sym("dl-a2") if x == acc else x)
+                           for x in formals)
+    extra = (" :stobjs " + spell(st)) if st is not None else ""
+    if ":guard-hints" in opts:
+        extra += " :guard-hints " + spell(opts[":guard-hints"])
+    return read_forms(f"""
+      (defun {name}-all ({args})
+        (declare (xargs :guard {spell(guard)}{extra}))
+        (if (atom {xs}) (mv {spell(end)} {outs})
+          (mv-let (dl-v {outs2}) {row}
+            (if (equal dl-v {spell(success)}) ({name}-all {next_args}) (mv dl-v {outs})))))
+      (defun {name}-run (dl-k {args})
+        (declare (xargs :guard (and (natp dl-k) {spell(guard)}){extra}))
+        (cond ((atom {xs}) (let ((dl-v {spell(end)}))
+                                (if (equal dl-v {spell(success)}) (mv :done nil {outs})
+                                  (mv dl-v {xs} {outs}))))
+              ((zp dl-k) (mv :more {xs} {outs}))
+              (t (mv-let (dl-v {outs2}) {row}
+                   (if (equal dl-v {spell(success)}) ({name}-run (1- dl-k) {next_args})
+                     (mv dl-v {xs} {outs}))))))
+      (defun {name}-drive (dl-fuel {args})
+        (declare (xargs :guard (and (natp dl-fuel) {spell(guard)}){extra}))
+        (if (zp dl-fuel) (mv '(:refused :fuel) {outs})
+          (mv-let (dl-v dl-rest {outs2}) ({name}-run {quantum} {args})
+            (cond ((equal dl-v :done) (mv {spell(success)} {outs2}))
+                  ((equal dl-v :more) ({name}-drive (1- dl-fuel) {resume_args}))
+                  (t (mv dl-v {outs2}))))))
+      (defthm {name}-drive-is-all
+        (equal ({name}-drive (+ 1 (len {xs})) {args}) ({name}-all {args}))
+        :rule-classes nil)
+    """)
+
+
 GENERATOR_EXPANSIONS = {
     "fn-defrecord": defrecord_expansion,
     "fn-defrecord-export": defrecord_export_expansion,
     "def-loop": def_loop_expansion,
+    "def-loop/run": def_loop_run_expansion,
     "def-cursor/batch": def_cursor_batch_expansion,
     "defprotocol": defprotocol_expansion,
     "defprotocol-served": defprotocol_served_expansion,

@@ -17,16 +17,16 @@
   (error 'harness-stub-reached :name name :source source))
 (defun fnn-extent-pool-funded-p ()
   (harness-stub-reached 'fnn-extent-pool-funded-p "host/native/extent.lisp"))
-(defun fnn-extent-window-observation (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-extent-window-observation "host/native/extent.lisp"))
 (defun fnn-owner-cold-window-result-locked (service read)
   (declare (ignorable service read))
   (harness-stub-reached 'fnn-owner-cold-window-result-locked "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/extent.lisp"
- '((defvar *fnn-cold-free*) (defvar *fnn-cold-stopping*)
-   (defun fnn-extent-executor-enqueue) (defun fnn-extent-issue-window)))
+ '((defmacro fnn-extent-native-observe) (defvar *fnn-cold-free*) (defvar *fnn-cold-stopping*)
+   (defun fnn-extent-executor-enqueue) (defun fnn-extent-issue-window)
+   (defun fnn-extent-window-observation)))
+;; Developer-only observations are off.
+(defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defvar *issue-mode* nil)
 (defun fnn-core (subject &rest args)
   (assert (eq subject 'fn-owner-page-decoded-window-price-status))
