@@ -47,8 +47,14 @@
                  file eoff elen poff compressed trailer decoded dict-id i fn-decoded-job))
 
 (verify-guards fn-owner-page-decoded-job-assign)
+
+(definterface fn-owner-page-decoded-job-assign :class :common-lisp-compliant)
 (verify-guards fn-owner-page-decoded-job-outcome)
+
+(definterface fn-owner-page-decoded-job-outcome :class :common-lisp-compliant)
 (verify-guards fn-owner-page-decoded-job-byte-at)
+
+(definterface fn-owner-page-decoded-job-byte-at :class :common-lisp-compliant)
 
 ; The span borrow of a decoded job's window (books/decoded-window-span.lisp).
 (defun fn-owner-page-decoded-job-span-at
@@ -61,6 +67,11 @@
                   fn-decoded-job fn-ew-span))
 
 (verify-guards fn-owner-page-decoded-job-span-at)
+
+(definterface fn-owner-page-decoded-job-span-at :class :common-lisp-compliant
+  :kinds ((i natp) (j natp))
+  :keystones ((fn-pwz-span-at-is-the-borrowed-bytes :via fn-pwz-span-at)
+              (fn-pwz-span-at-answers-when-its-ends-do :via fn-pwz-span-at)))
 
 ; KEYSTONE (a decoded span is the job's scalar borrows), at the owner row.
 (defthm fn-owner-page-decoded-job-span-at-is-the-scalar-borrows
@@ -92,6 +103,8 @@
   (declare (xargs :guard t))
   (if (fn-pwz-descriptorp descriptor) :unpriced-decoded-window :other-window))
 
+(definterface fn-owner-page-decoded-window-price-status :class :common-lisp-compliant)
+
 (include-book "../books/decoded-worker-backing")
 
 ; Explicit DEFAULT partial storage projection, never a complete profile price.
@@ -117,11 +130,15 @@
             (mv word row token (fn-dwb-coverage) fn-page-read-pool))))))))
 (verify-guards fn-owner-page-decoded-window-acquire-projected)
 
+(definterface fn-owner-page-decoded-window-acquire-projected :class :common-lisp-compliant)
+
 (defun fn-owner-page-window-discovery-kind (descriptor)
   (declare (xargs :guard t))
   (cond ((fn-pwz-descriptorp descriptor) :decoded-window)
         ((fn-crw-supportedp descriptor 0) :raw-window)
         (t :legacy-entry)))
+
+(definterface fn-owner-page-window-discovery-kind :class :common-lisp-compliant)
 
 ; The live SAME pool supplies retirement authority. Native E excludes scalar
 ; borrowers across this call and the subsequent token settlement.
@@ -131,6 +148,8 @@
     (fn-dwj-retire (fn-owner-page-read-ledger fn-page-read-pool)
                    worker token fn-decoded-job)
     (mv word fn-decoded-job fn-page-read-pool)))
+
+(definterface fn-owner-page-decoded-job-retire :class :common-lisp-compliant)
 
 ; The verified-window cache for a decoded window (lane w-window; the raw
 ; window's is fn-owner-page-window-executor-cache).  ONE call on the live SAME
@@ -149,6 +168,13 @@
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word worker1 fn-decoded-job fn-page-read-pool)))))
 
+;; The verified-window cache for a decoded window (books/decoded-window-read.lisp
+;; fn-pwz-cache*, books/decoded-worker-job.lisp fn-dwj-cache).
+(definterface fn-owner-page-decoded-job-cache :class :common-lisp-compliant
+  :keystones ((fn-dwj-cache-only-a-ready-job :via fn-dwj-cache)
+              (fn-dwj-cached-job-refuses-scalar-publication :via fn-dwj-cache)
+              (fn-pwz-cache-lease-keeps-only-the-buffer-and-stays-funded :via fn-pwz-cache-lease)))
+
 (defun fn-owner-page-decoded-window-cache-byte-at
     (token file eoff elen poff compressed trailer decoded dict-id i
            fn-ew-buffer fn-page-read-pool)
@@ -156,6 +182,10 @@
   (fn-pwz-cache-byte-at (fn-owner-page-read-ledger fn-page-read-pool) token
                         file eoff elen poff compressed trailer decoded dict-id i
                         fn-ew-buffer))
+
+(definterface fn-owner-page-decoded-window-cache-byte-at :class :common-lisp-compliant
+  :keystones ((fn-pwz-a-hit-is-the-published-window :via fn-pwz-cache-byte-at)
+              (fn-pwz-hit-requires-a-cached-exact-window :via fn-pwz-cache-byte-at)))
 
 (defthm fn-owner-page-decoded-window-cache-byte-at-refines-pwz-by-definition
   (equal (mv-list 2 (fn-owner-page-decoded-window-cache-byte-at
@@ -173,6 +203,11 @@
   (fn-pwz-cache-span-at (fn-owner-page-read-ledger fn-page-read-pool) token
                         file eoff elen poff compressed trailer decoded dict-id i j
                         fn-ew-buffer fn-ew-span))
+
+(definterface fn-owner-page-decoded-window-cache-span-at :class :common-lisp-compliant
+  :kinds ((i natp) (j natp))
+  :keystones ((fn-pwz-cache-span-at-is-the-cached-bytes :via fn-pwz-cache-span-at)
+              (fn-pwz-cache-span-at-answers-when-its-ends-do :via fn-pwz-cache-span-at)))
 
 ; KEYSTONE (a decoded cache span is the cache's scalar hits), at the owner row.
 (defthm fn-owner-page-decoded-window-cache-span-at-is-the-cached-bytes

@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
-(include-book "feed-link-backoff")
 (include-book "feed-pause")
 (include-book "served-catalog-owner")
 (include-book "served-catalog-owner-keyed")
@@ -102,6 +101,7 @@
 (include-book "native-live-buffer")
 (include-book "native-control-kinds")
 (include-book "native-config")
+(include-book "payload-kinds")
 (include-book "native-auth-profile")
 (include-book "feed-filename")
 (include-book "native-operator-stage")
@@ -146,7 +146,6 @@
 (include-book "bp-node-host-sequence")
 (include-book "bp-node-host-machine")
 (include-book "bp-evidence-host-names")
-(include-book "definterface")
 (include-book "history-paged")
 (include-book "history-records")
 (include-book "resource-vector-exec")

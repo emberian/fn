@@ -12,9 +12,14 @@
   (declare (xargs :mode :program))
   (fn-stid-request))
 
+;; host/store-identity-host.lisp (Mini M4, `fn identity CONTROL')
+(definterface fn-stid-host-request :class ::program)
+
 (defun fn-stid-host-request-p (octets)
   (declare (xargs :mode :program))
   (fn-stid-request-p octets))
+
+(definterface fn-stid-host-request-p :class ::program)
 
 ; The owner's reply: the open's verdict this process installed
 ; (fn-store-genesis), the owner's consumer state, and RUNNING, the image's
@@ -28,22 +33,34 @@
                           (fn-sn-consumer (fn-owner-store state))
                           running))))
 
+(definterface fn-stid-host-reply :class ::program)
+
 (defun fn-stid-host-cli-plan (argv)
   (declare (xargs :mode :program))
   (fn-stid-cli-plan argv))
+
+(definterface fn-stid-host-cli-plan :class ::program)
 
 (defun fn-stid-host-usage ()
   (declare (xargs :mode :program))
   *fn-stid-usage*)
 
+(definterface fn-stid-host-usage :class ::program)
+
 (defun fn-stid-host-reply-read (octets)
   (declare (xargs :mode :program))
   (fn-stid-reply-read octets))
+
+(definterface fn-stid-host-reply-read :class ::program)
 
 (defun fn-stid-host-line (value)
   (declare (xargs :mode :program))
   (fn-stid-line value))
 
+(definterface fn-stid-host-line :class ::program)
+
 (defun fn-stid-host-exit-code (value)
   (declare (xargs :mode :program))
   (fn-stid-exit-code value))
+
+(definterface fn-stid-host-exit-code :class ::program)

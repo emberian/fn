@@ -36,6 +36,12 @@
 (defun fnn-owner-result (recognizer name &rest args)
   (declare (ignorable recognizer name args))
   (harness-stub-reached 'fnn-owner-result "host/native/owner.lisp"))
+(defun fnn-pinv-owner-enrol-accepted (service received observed)
+  (declare (ignorable service received observed))
+  (harness-stub-reached 'fnn-pinv-owner-enrol-accepted "host/native/peer-invite.lisp"))
+(defun fnn-rc-begin (run reserve)
+  (declare (ignorable run reserve))
+  (harness-stub-reached 'fnn-rc-begin "host/native/admin.lisp"))
 ;;; ---- derived stubs: END ----
 (defun source-definition (path kind name)
   (with-open-file (stream path)

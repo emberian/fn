@@ -127,6 +127,7 @@
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "send-progress")
+(include-book "send-window")
 (include-book "idle-collection")
 (include-book "heap-reservation")
 (include-book "bp-heap-command")
@@ -161,4 +162,3 @@
 (include-book "store-mount-identity")
 (include-book "store-host-boundary")
 (include-book "store-profile-namespace")
-(include-book "native-operator")

@@ -9,10 +9,16 @@
   (declare (xargs :mode :program))
   (fn-hc-received-plan received))
 
+(definterface fn-hsig-host-received-carrier-plan
+  :class ::program)
+
 (defun fn-hsig-host-render-carrier (source principal keys signatures)
   (declare (xargs :mode :program))
   (fn-hc-render-at-most *fn-article-max-octets*
                         source principal keys signatures))
+
+(definterface fn-hsig-host-render-carrier
+  :class ::program)
 
 ; The carrier version is ACL2's (`fn-hsig-source-version'): v1 up to the
 ; u16's 65535 source octets, v2 above.  A received carrier was decoded at
@@ -24,12 +30,18 @@
         (fn-hsig-signed-preimage-at version principal keys source)
       nil)))
 
+(definterface fn-hsig-host-preimage
+  :class ::program)
+
 ; The widest authored source a signer or author request may hand ACL2: the
 ; v2 carrier's u32 length (a codec width, D27).  Whether a node accepts the
 ; article is the store profile's article bound, decided at injection.
 (defun fn-hsig-host-max-source-octets ()
   (declare (xargs :mode :program))
   *fn-hsig-v2-max-source*)
+
+(definterface fn-hsig-host-max-source-octets
+  :class ::program)
 
 ;; The widest preimage ACL2 hands the primitives: the v2 layout of
 ;; specs/identity.md "The signed bytes" (CBOR head 2, tag, version, suite,
@@ -43,13 +55,22 @@
      1 *fn-hsig-ml-dsa-65-public-key-octets*
      4 *fn-hsig-v2-max-source*))
 
+(definterface fn-hsig-host-max-preimage-octets
+  :class ::program)
+
 (defun fn-hsig-host-max-received-octets ()
   (declare (xargs :mode :program))
   *fn-article-max-octets*)
 
+(definterface fn-hsig-host-max-received-octets
+  :class ::program)
+
 (defun fn-hsig-host-authored-source-id (source)
   (declare (xargs :mode :program))
   (fn-hsig-authored-source-id source))
+
+(definterface fn-hsig-host-authored-source-id
+  :class ::program)
 
 (defun fn-hsig-host-authorize
     (principal keys source signatures observed-ml-key ed ml)
@@ -57,11 +78,17 @@
   (fn-hsig-authorize-at (fn-hsig-source-version source)
                         principal keys source signatures observed-ml-key ed ml))
 
+(definterface fn-hsig-host-authorize
+  :class ::program)
+
 (defun fn-hl-host-enroll-event
     (sequence txid generation keyring-generation principal keys snapshots)
   (declare (xargs :mode :program))
   (fn-hl-enroll-event sequence txid generation keyring-generation
                       principal keys snapshots))
+
+(definterface fn-hl-host-enroll-event
+  :class ::program)
 
 (defun fn-hl-host-revoke-event
     (sequence txid generation keyring-generation principal snapshots)
@@ -69,16 +96,28 @@
   (fn-hl-revoke-event sequence txid generation keyring-generation
                       principal snapshots))
 
+(definterface fn-hl-host-revoke-event
+  :class ::program)
+
 (defun fn-hl-host-store-history (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((snapshots
          (fn-sn-keyring-snapshots (f-get-global 'fn-store-sn state))))
     (value (fn-hl-history-rows snapshots snapshots))))
 
+(definterface fn-hl-host-store-history
+  :class ::program)
+
 (defun fn-hsig-host-keyring-snapshot-octets (snapshot)
   (declare (xargs :mode :program))
   (if (fn-stxk-p snapshot) (fn-stxk-snapshot snapshot) nil))
 
+(definterface fn-hsig-host-keyring-snapshot-octets
+  :class ::program)
+
 (defun fn-hsig-host-authored-source-fields (source)
   (declare (xargs :mode :program))
   (fn-hsig-authored-source-fields source))
+
+(definterface fn-hsig-host-authored-source-fields
+  :class ::program)

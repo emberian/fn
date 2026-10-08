@@ -4,6 +4,26 @@
 (require :sb-posix)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-owner-result (recognizer name &rest args)
+  (declare (ignorable recognizer name args))
+  (harness-stub-reached 'fnn-owner-result "host/native/owner.lisp"))
+(defun fnn-rc-begin (run reserve)
+  (declare (ignorable run reserve))
+  (harness-stub-reached 'fnn-rc-begin "host/native/admin.lisp"))
+;;; ---- derived stubs: END ----
 (defmacro mv (&rest xs) `(list ,@xs))
 (defmacro mv-let (vars form &body body) `(destructuring-bind ,vars ,form ,@body))
 (defun true-list-fix (x) (if (consp x) (cons (car x) (true-list-fix (cdr x))) nil))

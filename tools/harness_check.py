@@ -1001,6 +1001,19 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
     if name in ("defun", "defmacro", "defun-inline", "defund", "defmethod"):
         walk(form[3:], macro=(name == "defmacro"))
         return
+    if name == "fnn-owner-held-commit" and len(form) > 1 and isinstance(form[1], list):
+        # (SECTION SERVICE CID . CLASS) is the macro's binding syntax, not
+        # an application. owner.lisp emits SECTION with a thunk added for
+        # START and with an explicit :commit class for settlement. Check
+        # both emitted calls, and retain calls in their inputs and BODY.
+        binding = form[1]
+        if binding and isinstance(binding[0], Sym) and str(binding[0]) not in shadowed:
+            section = str(binding[0])
+            found.append((section, None if _template and splice in binding else len(binding)))
+            found.append((section, 4))
+        walk(binding[1:])
+        walk(form[2:])
+        return
     if name.startswith("with-") and len(form) > 1 and isinstance(form[1], list):
         walk(form[1][1:])
         walk(form[2:])

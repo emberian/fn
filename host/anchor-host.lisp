@@ -59,6 +59,9 @@
                            (fn-frame-spec-for :incarnation *fn-anchor-specs*)
                            values)))))
 
+(definterface fn-anchor-host-protected
+  :class ::program)
+
 (defun fn-anchor-host-decode (octets digest)
   (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (let ((result (fn-anchor-decode octets digest)))
@@ -67,10 +70,17 @@
         :bad
       (fn-frame-result-payload result))))
 
+(definterface fn-anchor-host-decode
+  :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
+
 ; The only inbound allocation bound for an FNAN frame.  Native code asks the
 ; certified core rather than duplicating payload/header/trailer constants.
 (defun fn-anchor-host-frame-limit ()
   (+ *fn-anchor-max-payload* *fn-frame-overhead-octets*))
+
+(definterface fn-anchor-host-frame-limit
+  :class ::program)
 
 ; Accepting one observation into the node's durable anchor state.
 (defun fn-anchor-host-accept (pinned latest-fields incarnation fields verdict
@@ -80,6 +90,9 @@
                                   incarnation)
                   (fn-anchor-host-fields fields) verdict one-nonce)))
     (list (fn-anchor-status outcome) (fn-anchor-reason outcome))))
+
+(definterface fn-anchor-host-accept
+  :class ::program)
 
 ; The restore decision over an image the host read off disk.
 (defun fn-anchor-host-restore (pinned image-incarnation image-fields

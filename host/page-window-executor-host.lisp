@@ -8,6 +8,7 @@
 (include-book "../books/page-window-executor")
 (include-book "../books/cold-read-window")
 (include-book "../books/page-read-counter-transaction") ; fn-prb-fixed-widthp
+(include-book "../books/definterface")
 
 (defun fn-owner-page-window-legacy-writablep (fn-page-read-pool)
  (declare (xargs :stobjs fn-page-read-pool :guard t))
@@ -23,6 +24,8 @@
     (fn-pwx-acquire (fn-owner-page-read-ledger fn-page-read-pool) worker token)
     (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
       (mv word worker1 fn-page-read-pool)))))
+
+(definterface fn-owner-page-window-executor-acquire :class :common-lisp-compliant)
 
 (defthm fn-owner-page-window-executor-acquire-refines-pwx-by-definition
   (implies (fn-owner-page-window-legacy-writablep fn-page-read-pool)
@@ -48,6 +51,8 @@
     (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
       (mv word worker1 fn-page-read-pool)))))
 
+(definterface fn-owner-page-window-executor-return :class :common-lisp-compliant)
+
 (defthm fn-owner-page-window-executor-return-refines-pwx-by-definition
   (implies (fn-owner-page-window-legacy-writablep fn-page-read-pool)
    (equal (mv-list 3 (fn-owner-page-window-executor-return worker token fn-page-read-pool))
@@ -71,6 +76,9 @@
     (fn-pwx-release (fn-owner-page-read-ledger fn-page-read-pool) worker token)
     (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
       (mv word worker1 fn-page-read-pool)))))
+
+(definterface fn-owner-page-window-executor-release :class :common-lisp-compliant
+  :keystones ((fn-pwx-release-requires-exact-returned-window-and-slot :via fn-pwx-release)))
 
 (defthm fn-owner-page-window-executor-release-refines-pwx-by-definition
   (implies (fn-owner-page-window-legacy-writablep fn-page-read-pool)
@@ -96,6 +104,9 @@
   (declare (xargs :stobjs (fn-ew-buffer fn-page-read-pool) :guard (true-listp plan)))
   (fn-pwr-byte (fn-owner-page-read-ledger fn-page-read-pool) worker token plan i fn-ew-buffer))
 
+(definterface fn-owner-page-window-byte :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
+
 (defthm fn-owner-page-window-byte-refines-pwr-by-definition
   (equal (mv-list 2 (fn-owner-page-window-byte worker token plan i fn-ew-buffer fn-page-read-pool))
          (mv-list 2 (fn-pwr-byte (fn-owner-page-read-ledger fn-page-read-pool)
@@ -120,6 +131,8 @@
             ; exact physical return plus final relinquishment permits refund.
             (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger2 fn-page-read-pool)))
               (mv word worker1 token fn-page-read-pool)))))))))
+
+(definterface fn-owner-page-window-executor-acquire-funded :class :common-lisp-compliant)
 
 (defthm fn-owner-page-window-executor-acquire-funded-refines-by-definition
   (implies (fn-owner-page-window-legacy-writablep fn-page-read-pool)
@@ -160,6 +173,9 @@
   (declare (xargs :stobjs (fn-ew-buffer fn-page-read-pool) :guard (true-listp plan)))
   (fn-pwr-byte-at (fn-owner-page-read-ledger fn-page-read-pool) worker token plan
                  file eoff elen poff plen trailer i fn-ew-buffer))
+
+(definterface fn-owner-page-window-byte-at :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (defthm fn-owner-page-window-byte-at-refines-by-definition
   (equal
@@ -243,6 +259,12 @@
   (fn-pwr-span-at (fn-owner-page-read-ledger fn-page-read-pool) worker token plan
                   file eoff elen poff plen trailer i j fn-ew-buffer fn-ew-span))
 
+(definterface fn-owner-page-window-span-at :class :common-lisp-compliant
+  :kinds ((plan true-listp) (i natp) (j natp))
+  :keystones ((fn-pwr-span-at-is-the-borrowed-bytes :via fn-pwr-span-at)
+              (fn-pwr-span-at-refuses-where-the-octet-refuses :via fn-pwr-span-at)
+              (fn-pwr-span-at-answers-when-its-ends-do :via fn-pwr-span-at)))
+
 (defthm fn-owner-page-window-span-at-is-the-scalar-borrows
   (implies (and (natp i) (natp j) (< i j) (natp k) (< k (- j i))
                 (equal (mv-nth 0 (fn-owner-page-window-span-at worker token plan file eoff elen
@@ -302,6 +324,11 @@
   (declare (xargs :stobjs fn-page-read-pool :guard (true-listp plan)))
   (fn-pwr-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token plan))
 
+(definterface fn-owner-page-window-outcome :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwr-a-late-fault-is-a-fault-cancelled-or-not :via fn-pwr-outcome)
+              (fn-pwr-a-cancelled-job-never-publishes :via fn-pwr-outcome)))
+
 (defthm fn-owner-page-window-outcome-refines-by-definition
   (equal (fn-owner-page-window-outcome worker token plan fn-page-read-pool)
          (fn-pwr-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token plan)))
@@ -324,6 +351,12 @@
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word worker1 fn-page-read-pool)))))
 
+;; The verified-window cache (books/page-window-read.lisp fn-pwc-*).
+(definterface fn-owner-page-window-executor-cache :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwc-cache-only-a-published-window :via fn-pwc-cache)
+              (fn-prw-cache-keeps-only-the-buffer :via fn-prw-cache)))
+
 (defthm fn-owner-page-window-executor-cache-refines-pwc-by-definition
   (implies (fn-owner-page-window-legacy-writablep fn-page-read-pool)
    (equal (mv-list 3 (fn-owner-page-window-executor-cache worker token plan fn-page-read-pool))
@@ -343,6 +376,11 @@
   (fn-pwc-byte-at (fn-owner-page-read-ledger fn-page-read-pool) token plan
                   file eoff elen poff plen trailer i fn-ew-buffer))
 
+(definterface fn-owner-page-window-cache-byte-at :class :common-lisp-compliant
+  :kinds ((plan true-listp))
+  :keystones ((fn-pwc-a-hit-is-the-published-window :via fn-pwc-byte-at)
+              (fn-pwc-hit-requires-a-cached-published-exact-window :via fn-pwc-byte-at)))
+
 (defthm fn-owner-page-window-cache-byte-at-refines-pwc-by-definition
   (equal (mv-list 2 (fn-owner-page-window-cache-byte-at token plan file eoff elen poff plen trailer i
                                                         fn-ew-buffer fn-page-read-pool))
@@ -356,6 +394,11 @@
                   :guard (and (true-listp plan) (natp i) (natp j) (< i j))))
   (fn-pwc-span-at (fn-owner-page-read-ledger fn-page-read-pool) token plan
                   file eoff elen poff plen trailer i j fn-ew-buffer fn-ew-span))
+
+(definterface fn-owner-page-window-cache-span-at :class :common-lisp-compliant
+  :kinds ((plan true-listp) (i natp) (j natp))
+  :keystones ((fn-pwc-span-at-is-the-cached-bytes :via fn-pwc-span-at)
+              (fn-pwc-span-at-answers-when-its-ends-do :via fn-pwc-span-at)))
 
 ; KEYSTONE (a cache span is the cache's scalar hits), at the owner row.
 (defthm fn-owner-page-window-cache-span-at-is-the-cached-bytes
@@ -389,6 +432,8 @@
     (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
       (mv word worker1 fn-page-read-pool)))))
 
+(definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
+
 (defthm fn-owner-page-window-executor-cancel-refines-by-definition
   (implies (fn-owner-page-window-legacy-writablep fn-page-read-pool)
    (equal (mv-list 3 (fn-owner-page-window-executor-cancel worker token fn-page-read-pool))
@@ -413,6 +458,8 @@
     (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
       (mv word worker1 fn-page-read-pool)))))
 
+(definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
+
 (defthm fn-owner-page-window-executor-settle-cancelled-refines-by-definition
   (implies (fn-owner-page-window-legacy-writablep fn-page-read-pool)
    (equal (mv-list 3 (fn-owner-page-window-executor-settle-cancelled worker token fn-page-read-pool))
@@ -432,6 +479,8 @@
   (declare (xargs :stobjs fn-page-read-pool))
   (fn-pwx-work-permittedp (fn-owner-page-read-ledger fn-page-read-pool) worker token))
 
+(definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
+
 (include-book "../books/payload-arena")
 
 ; Caller authorization comes from the captured provider row and live logical
@@ -442,6 +491,9 @@
                               (natp i) (< i (fn-arena-payload-len h fn-arena)))))
   (fn-arena-get h i fn-arena))
 
+(definterface fn-owner-page-window-current-octet :class :common-lisp-compliant
+  :kinds ((h natp) (i natp)))
+
 (defthm fn-owner-page-window-current-octet-refines-arena-by-definition
   (equal (fn-owner-page-window-current-octet h i fn-arena)
          (fn-arena-get h i fn-arena)))
@@ -449,3 +501,5 @@
 (defun fn-owner-page-window-decoded-refusal ()
   (declare (xargs :guard t))
   :decoded-window-unavailable)
+
+(definterface fn-owner-page-window-decoded-refusal :class :common-lisp-compliant)

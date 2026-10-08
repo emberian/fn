@@ -30,5 +30,4 @@
  :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn-ninep-transport-reply-returned) (fn-9pt-current-reply-returned)))))
 
-(definterface fn-ninep-transport-step :class :common-lisp-compliant)
-(definterface fn-ninep-transport-reply-returned :class :common-lisp-compliant)
+

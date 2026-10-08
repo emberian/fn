@@ -9221,8 +9221,6 @@
         "tests/acl2/served-available-commands-tests.lisp",
         "tests/acl2/served-available-read-tests.lisp",
         "planning/evidence/served-available-owner-20261003/checks.json",
-        "tests/acl2/group-summary-cursor-tests.lisp",
-        "planning/evidence/group-summary-cursor-20261003/checks.json",
         "tests/acl2/served-query-plan-tests.lisp",
         "tests/acl2/list-row-cursor-tests.lisp",
         "tests/acl2/list-status-cursor-tests.lisp",
