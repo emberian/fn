@@ -7,7 +7,7 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
 
     train.py merge LANE@SHA [LANE@SHA ...]
     train.py regen [--label N]
-    train.py certify BOX             # books train: ONE farm run (install, certify), then the emits in its tree
+    train.py certify BOX [--transitive]  # ONE farm run (install, certify), then emits
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
     train.py gate
     train.py push
@@ -19,6 +19,11 @@ and check half of BOX_CMD over ssh in that run's tree, under swarm-build and a
 timeout.  It records the same box-step.json as `boxstep` plus the farm run, the
 certify id and the install/certify/emit wall seconds (also in the train state,
 shown by `status`).
+
+`certify BOX` always adds the critical witness tests of affected theorem
+books. `--transitive` also certifies every transitively affected Makefile root
+(about 2x the lane walls on train 51's changes, cold cache); the default keeps
+farm's lane selection (direct includers and companion tests).
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
@@ -383,6 +388,36 @@ def _changed_roots(t: Train, prefix: str) -> list[str]:
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
 
 
+def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
+    """Critical teeth whose theorem's closure changed, from regen's manifest.
+
+    `book` defines the theorem; `owner_book` supplies its teeth and may be
+    a test outside the Makefile roots. Include that test even when only a
+    transitive dependency of the theorem changed.
+    """
+    if not changed:
+        return []
+    import certs
+
+    manifest = root / "planning/teeth-obligations.json"
+    try:
+        entries = json.loads(manifest.read_text())["entries"]
+        witnesses: dict[str, set[str]] = {}
+        for entry in entries:
+            owner = entry.get("owner_book", "")
+            if entry.get("critical") and owner.startswith("tests/acl2/"):
+                book = entry["book"].removesuffix(".lisp")
+                witnesses.setdefault(book, set()).add(owner.removesuffix(".lisp"))
+        targets = set(changed)
+        selected = set()
+        for book, tests in witnesses.items():
+            if targets.intersection(certs.closure(root, book)):
+                selected.update(tests)
+        return sorted(selected)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise TrainError(f"cannot select critical witnesses from {manifest}: {error}") from error
+
+
 def cache_seed_command(t: Train, box: str, tree: str) -> tuple[str, str | None]:
     """Best-effort reuse of the last box step's content-keyed emit caches.
 
@@ -441,10 +476,15 @@ def cmd_certify(t: Train, args) -> int:
     ran_at = t.head()
     books = _changed_roots(t, "books")
     tests = _changed_roots(t, "tests/acl2")
-    roots = list(dict.fromkeys(["books/wire-export", *books, *tests]))
+    # critical witness tests whose theorem closure changed: always, since a
+    # stale witness fails keystone_emit's critical gate (trains 52 and 55
+    # needed a hand certify of them)
+    witnesses = _critical_witness_roots(t.root, books)
+    roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses]))
     argv = [PY, "tools/farm.py"]
     if books:
-        argv += ["--lane"]
+        if not args.transitive:
+            argv += ["--lane"]
         for b in books:
             argv += ["--affected-by", b]
     argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", args.box, *roots]
@@ -817,6 +857,8 @@ def main(argv=None) -> int:
     b.add_argument("box", choices=("hbox", "persvati"))
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
+    c.add_argument("--transitive", action="store_true",
+                   help="certify all affected Makefile roots and critical witness tests")
     g = sub.add_parser("gate")
     sub.add_parser("push")
     sub.add_parser("status")
