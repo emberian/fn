@@ -28,7 +28,9 @@
 
 (defun fn-pck-x-root-word (j nw fn-octets)
   ; Word J of the root region: the root row's word, then zeros.
-  (declare (xargs :stobjs fn-octets :verify-guards nil))
+  (declare (xargs :stobjs fn-octets :verify-guards nil
+                  :guard (and (natp j) (natp nw)
+                              (<= nw (fn-pck-x-row-words (fn-octets-len fn-octets))))))
   (if (< (nfix j) (nfix nw))
       (fn-pck-x-row-word j 0 0 0 0 0 0 fn-octets)
     0))
@@ -36,6 +38,8 @@
 (defun fn-pck-x-put-root (j nw fn-octets pgs-mem)
   ; Words J..8*2048-1 of the root region, each to its page and offset.
   (declare (xargs :stobjs (fn-octets pgs-mem) :verify-guards nil
+                  :guard (and (natp j) (natp nw)
+                              (<= nw (fn-pck-x-row-words (fn-octets-len fn-octets))))
                   :measure (nfix (- 16384 (nfix j)))))
   (if (and (natp j) (< j 16384))
       (mv-let (v pgs-mem)
@@ -48,7 +52,8 @@
 (defun fn-pck-x-stage-root (tree fn-octets pgs-mem)
   ; (mv VERDICT fn-octets pgs-mem).  A root over K pages is refused before a
   ; word is written.
-  (declare (xargs :stobjs (fn-octets pgs-mem) :verify-guards nil))
+  (declare (xargs :stobjs (fn-octets pgs-mem) :verify-guards nil
+                  :guard (fn-sccb-treep tree)))
   (let* ((fn-octets (fn-pck-x-encode tree fn-octets))
          (nw (fn-pck-x-row-words (fn-octets-len fn-octets))))
     (if (< 16384 nw)
@@ -404,3 +409,7 @@
            :in-theory (disable pcr-stage-root-words pcr-l pcr-w fn-pck-x-stage-root pcr-res pcr-abs-dirty-root)
            :use (pcr-stage-root-words pcr-root-pages-of-w
                  (:instance pcr-abs-dirty-root (pgs-mem (mv-nth 2 (fn-pck-x-stage-root tree fn-octets pgs-mem))))))))
+
+(verify-guards fn-pck-x-root-word)
+(verify-guards fn-pck-x-put-root)
+(verify-guards fn-pck-x-stage-root)

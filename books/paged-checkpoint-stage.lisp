@@ -68,7 +68,7 @@
   ; frame, the payload length) and the frame trailer's four words.  The trailer
   ; is the constrained seam fn-cpl-trailer-words-impl; s-cpl's frame writer is what
   ; the host takes it from.
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard (natp base) :verify-guards nil))
   (let ((tw (fn-cpl-trailer-words-impl (fn-pck-payload (fn-row-wire-of row fn-arena)))))
     (list (+ *fn-cpl-header-octets* base) (fn-pck-x-payload-len row fn-arena)
           (car tw) (cadr tw) (caddr tw) (cadddr tw))))
@@ -76,6 +76,9 @@
 (defun fn-pck-x-put-row (j nw p tl fn-octets pgs-mem)
   ; Words J..NW-1 of the buffered row to tape position P + J.
   (declare (xargs :stobjs (fn-octets pgs-mem) :verify-guards nil
+                  :guard (and (natp j) (natp nw) (natp p)
+                              (<= nw (fn-pck-x-row-words (fn-octets-len fn-octets)))
+                              (true-listp tl) (equal (len tl) 6))
                   :measure (nfix (- (nfix nw) (nfix j)))))
   (if (not (and (natp j) (natp nw) (< j nw)))
       (mv :ok pgs-mem)
@@ -97,7 +100,9 @@
 (defun fn-pck-x-stage-rows (rows p base st fn-arena fn-octets pgs-mem)
   ; (mv VERDICT fn-octets pgs-mem): the rows' words from tape position P on,
   ; the first row's payload frame at BASE in the payload file, frames end to end.
-  (declare (xargs :stobjs (fn-arena fn-octets pgs-mem) :verify-guards nil))
+  (declare (xargs :stobjs (fn-arena fn-octets pgs-mem) :verify-guards nil
+                  :guard (and (natp p) (natp base)
+                              (fn-pck-sccb-listp (fn-rows-wire-of rows fn-arena) st))))
   (if (atom rows)
       (mv :ok fn-octets pgs-mem)
     (let* ((fn-octets (fn-pck-x-encode-row (car rows) fn-arena st fn-octets))
@@ -985,3 +990,17 @@
                            (pcks-stage-dirty-at fn-pck-x-stage-rows pcks-res pcks-put
                             pgs-x-words pcks-wlen pcks-wlist pgs-x-abs-dirty adt-tp-zeros adt-tp-tail-is-page-prefix
                             adt-tp-dirty-at pcks-len-tail adt-tp-u64s-seq-words pck-rows-from-ap)))))
+
+; Encodability is exactly the carried delta premise of fn-pck-x-stage-is-the-dirty.
+(verify-guards fn-pck-x-rw)
+(verify-guards fn-pck-x-payload-len)
+(verify-guards fn-pck-x-tl
+  :hints (("Goal" :use (:instance pck-payload-fits-frame (w (fn-row-wire-of row fn-arena)))
+           :in-theory (disable fn-cpl-trailer-words-impl fn-pck-payload fn-row-wire-of))))
+(verify-guards fn-pck-x-put-row)
+(verify-guards fn-pck-x-st-next)
+(verify-guards fn-pck-x-stage-rows
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-x-st-next fn-pck-x-tl fn-pck-sccb-listp fn-rows-wire-of)
+                           (fn-pck-meta fn-row-wire-of pck-ssr1 fn-pck-x-encode-row
+                            fn-pck-x-row-words fn-cpl-trailer-words-impl)))))

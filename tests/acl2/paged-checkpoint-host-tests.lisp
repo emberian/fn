@@ -12,6 +12,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/paged-checkpoint-host")
+(include-book "../../books/checkpoint-payloads")
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
@@ -220,3 +221,53 @@
              '(:refused :log-past-checkpoint))))
 (must-fail-checked
  (assert-event (equal (fn-pck-x-open-selection :ok 0 2 2 1) '(:checkpoint 0))))
+
+; G-B: both crash outcomes with an interrupted first append beyond PLEN=0.
+; The test evaluates the whole crash antecedent, not an implication alone.
+(defun pckh-tail-crash-witness (newp)
+  (declare (xargs :verify-guards nil))
+  (let ((file nil) (tail '(70 78 83)) (prefix nil) (delta nil) (suffix nil)
+        (configs nil) (disk (pckh-selection-disk)) (r :main) (mode :eager)
+        (alloc '(nil 11)) (keep nil) (log '(0)) (frontier nil) (max-conns 1))
+  (let* ((p (pgs-plan-commit disk r mode (fn-pck-dirty configs prefix delta) alloc))
+         (sv (if newp (fourth p) (pgs-slot (third p) (pgs-root-slots r disk))))
+         (v (pgs-view (pgs-open (pgs-crash disk r (second p) keep (third p) sv) r mode))))
+    (and (and (true-listp file) (true-listp tail) (true-listp prefix) (true-listp delta) (true-listp suffix)
+                  (fn-pck-recordsp configs (append prefix delta))
+                  (fn-pck-recordsp configs prefix)
+                  (fn-pck-root-fitsp configs (append prefix delta))
+                  (fn-pck-root-fitsp configs prefix)
+                  (fn-pck-disk-holds disk r mode configs prefix)
+                  (pgs-alloc-inv alloc disk)
+                  (pgs-writes-faithful (second p) (pgs-pages disk))
+                  (or (equal sv (pgs-slot (third p) (pgs-root-slots r disk)))
+                      (equal sv (fourth p))
+                      (not (pgs-rec-valid sv)))
+                  (fn-pck-resolvesp prefix 0 file)
+                  (implies (equal v (list (pgs-next-txid (pgs-root-slots r disk))
+                                          (fn-pck-pages configs (append prefix delta))))
+                           (fn-pck-resolvesp (append prefix delta) 0 file))
+                  (fn-pck-log-retains log (len prefix))
+                  (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log)))
+             (equal (fn-pck-recover (pgs-crash disk r (second p) keep (third p) sv)
+                                    r mode (append file tail) log configs frontier max-conns)
+                    (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns))))))
+(assert-event (and (pckh-tail-crash-witness nil) (pckh-tail-crash-witness t)))
+
+; An interrupted payload append leaves EOF beyond committed PLEN. The next
+; frame overwrites from PLEN. An EOF-based reference points at the wrong bytes.
+(assert-event
+ (let* ((pre (fn-cpl-frame '(1 2))) (plen (len pre))
+        (torn (append pre '(70 78 83 67))) (p '(4 5 6))
+        (file (append pre (fn-cpl-frame p)))
+        (right (fn-cpl-ref (+ plen 37) (len p)))
+        (wrong (fn-cpl-ref (+ (len torn) 37) (len p))))
+   (and (fn-cpl-payloadp p) (< plen (len torn))
+        (equal (take plen torn) pre)
+        (equal (fn-cpl-resolve right file) p)
+        (not (equal (fn-cpl-resolve wrong file) p)))))
+(must-fail-checked
+ (assert-event
+  (let* ((pre (fn-cpl-frame '(1 2))) (torn (append pre '(70 78 83 67)))
+         (file (append pre (fn-cpl-frame '(4 5 6)))))
+    (equal (fn-cpl-resolve (fn-cpl-ref (+ (len torn) 37) 3) file) '(4 5 6)))))

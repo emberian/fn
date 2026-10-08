@@ -82,7 +82,10 @@
 (defun fn-pck-publish-plan-at (cnt tail tree delta base st)
   ; The plan from the host's summary of the store: the tape's word count and
   ; last partial page, the root tree (the live fold state's), the delta.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (natp cnt) (true-listp tail)
+                              (fn-sccb-treep tree) (natp base)
+                              (fn-pck-sccb-listp delta st))
+                  :verify-guards nil))
   (if (fn-pck-root-fitsp-tree tree)
       (list :commit (fn-pck-dirty-at cnt tail (fn-pck-root-pages-of-tree tree) delta base st))
     (list :refused :checkpoint-root-over-k)))
@@ -355,3 +358,37 @@
            :in-theory (disable fn-pck-catalog-open fn-pck-cat-pages fn-pck-carriedp)
            :use (fn-pck-catalog-publish-plan-writes-only-a-carried-catalog
                  fn-pck-catalog-open-of-a-carried-catalog))))
+
+(defthm fn-pck-crash-recovers-with-uncommitted-tail
+  ; An interrupted append may leave any unreferenced tail beyond the selected
+  ; root's committed PLEN. The crash guarantee still holds with that tail.
+  (let* ((p (pgs-plan-commit disk r mode (fn-pck-dirty configs prefix delta) alloc))
+         (v (pgs-view (pgs-open (pgs-crash disk r (second p) keep (third p) sv) r mode))))
+    (implies (and (true-listp file) (true-listp tail) (true-listp prefix) (true-listp delta) (true-listp suffix)
+                  (fn-pck-recordsp configs (append prefix delta))
+                  (fn-pck-recordsp configs prefix)
+                  (fn-pck-root-fitsp configs (append prefix delta))
+                  (fn-pck-root-fitsp configs prefix)
+                  (fn-pck-disk-holds disk r mode configs prefix)
+                  (pgs-alloc-inv alloc disk)
+                  (pgs-writes-faithful (second p) (pgs-pages disk))
+                  (or (equal sv (pgs-slot (third p) (pgs-root-slots r disk)))
+                      (equal sv (fourth p))
+                      (not (pgs-rec-valid sv)))
+                  (fn-pck-resolvesp prefix 0 file)
+                  (implies (equal v (list (pgs-next-txid (pgs-root-slots r disk))
+                                          (fn-pck-pages configs (append prefix delta))))
+                           (fn-pck-resolvesp (append prefix delta) 0 file))
+                  (fn-pck-log-retains log (len prefix))
+                  (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log)))
+             (equal (fn-pck-recover (pgs-crash disk r (second p) keep (third p) sv)
+                                    r mode (append file tail) log configs frontier max-conns)
+                    (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-pck-crash-recovers-from-old-or-new (file (append file tail)))
+                 (:instance pck-resolvesp-of-tail (recs prefix) (base 0))
+                 (:instance pck-resolvesp-of-tail (recs (append prefix delta)) (base 0))))))
+
+(verify-guards fn-pck-publish-plan-at)

@@ -274,10 +274,18 @@
       (fn-held-wire (cadr meta) payload)
     (if (and (consp meta) (consp (cdr meta))) (cadr meta) nil)))
 
+(defun fn-pck-sccb-listp (recs st)
+  (declare (xargs :guard t :verify-guards nil))
+  ; Every event and its metadata tree (at the fold state ST) are encodable trees.
+  (if (atom recs)
+      (null recs)
+    (and (fn-sccb-treep (car recs)) (fn-sccb-treep (fn-pck-meta (car recs) st))
+         (fn-pck-sccb-listp (cdr recs) (pck-ssr1 st (car recs))))))
+
 (defun fn-pck-enc-row (w off st)
   ; The row of event W whose payload frame starts at file offset OFF: the ref
   ; to the payload (37 octets into the frame) and the frame's trailer words.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (natp off) (fn-sccb-treep (fn-pck-meta w st))) :verify-guards nil))
   (let ((tw (fn-cpl-trailer-words-impl (fn-pck-payload w))))
     (list (fn-scc-program (fn-pck-meta w st)) (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
           (car tw) (cadr tw) (caddr tw) (cadddr tw))))
@@ -290,7 +298,7 @@
     (fn-pck-plen (cdr recs) (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs))))))))
 
 (defun fn-pck-rows-from (recs base st)
-  (declare (xargs :guard (natp base) :verify-guards nil))
+  (declare (xargs :guard (and (natp base) (fn-pck-sccb-listp recs st)) :verify-guards nil))
   (if (atom recs)
       nil
     (cons (fn-pck-enc-row (car recs) base st)
@@ -302,7 +310,7 @@
 
 (defun fn-pck-enc-root (tree)
   ; The root row: the root tree as metadata, no payload.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-sccb-treep tree) :verify-guards nil))
   (list (fn-scc-program tree) 0 0 0 0 0 0))
 
 ; F: the log position at S.  The root row carries, besides the capture's four
@@ -347,13 +355,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (< (fn-pck-plen recs 0) 18446744073709551616))
 
-(defun fn-pck-sccb-listp (recs st)
-  (declare (xargs :guard t :verify-guards nil))
-  ; Every event and its metadata tree (at the fold state ST) are encodable trees.
-  (if (atom recs)
-      (null recs)
-    (and (fn-sccb-treep (car recs)) (fn-sccb-treep (fn-pck-meta (car recs) st))
-         (fn-pck-sccb-listp (cdr recs) (pck-ssr1 st (car recs))))))
+
 
 (defun fn-pck-recordsp (configs recs)
   ; Every record and the four fold roots are encodable trees: the premise of
@@ -372,13 +374,13 @@
 
 (defun fn-pck-fit (ps)
   ; Exactly K pages: PS padded with zero pages (or cut, when it does not fit).
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (true-listp ps) :verify-guards nil))
   (if (<= (len ps) *fn-pck-root-pages*)
       (append ps (fn-pck-zero-pages (- *fn-pck-root-pages* (len ps))))
     (adt-tp-take *fn-pck-root-pages* ps)))
 
 (defun fn-pck-root-pages-of-tree (tree)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-sccb-treep tree) :verify-guards nil))
   (fn-pck-fit (fn-pck-row-pages-of (list (fn-pck-enc-root tree)))))
 
 (defun fn-pck-root-pages-of (configs recs)
@@ -386,7 +388,7 @@
   (fn-pck-root-pages-of-tree (fn-pck-root-tree configs recs)))
 
 (defun fn-pck-root-fitsp-tree (tree)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-sccb-treep tree) :verify-guards nil))
   (<= (len (fn-pck-row-pages-of (list (fn-pck-enc-root tree)))) *fn-pck-root-pages*))
 
 (defun fn-pck-root-fitsp (configs recs)
@@ -408,7 +410,7 @@
 (defun fn-pck-dirty-at (cnt tail root-pages delta base st)
   ; fn-pck-dirty from the tape's summary (CNT words, TAIL its last partial
   ; page) and the root pages; no prefix list.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (natp cnt) (true-listp tail) (true-listp root-pages) (natp base) (fn-pck-sccb-listp delta st)) :verify-guards nil))
   (append (adt-tp-number 0 root-pages)
           (pck-shift *fn-pck-root-pages*
                      (fn-pck-row-extend-dirty-at cnt tail (fn-pck-rows-from delta base st)))))
@@ -1177,3 +1179,52 @@
                                                    r mode)))
                             (t1 (pgs-next-txid (pgs-root-slots r disk)))
                             (t0 (third (pgs-open disk r mode))))))))
+
+; The per-delta metadata path uses these same model steps at runtime.
+(verify-guards pck-ssr1 :hints (("Goal" :in-theory (enable fn-ssr-statep))))
+(verify-guards fn-pck-row0)
+(verify-guards fn-pck-meta)
+(verify-guards fn-pck-payload)
+(verify-guards fn-pck-sccb-listp)
+
+; This is about the model extractor: a non-record has the empty payload.
+; It discharges the metadata stager's digest guard, not the concrete arena
+; length preflight (which must inspect the held extent before any write).
+(defthm pck-payload-fits-frame
+  (fn-cpl-payloadp (fn-pck-payload w))
+  :hints (("Goal" :in-theory (enable fn-cpl-payloadp fn-pck-payload
+                                     fn-record-p fn-record-payloadp
+                                     fn-scc-octet-listp fn-scc-octetp))))
+
+(defthm pck-encoded-row-shapes
+  (adt-tp-field-shapesp *fn-pck-row-schema* (fn-pck-enc-row w off st))
+  :hints (("Goal" :in-theory (e/d (adt-tp-field-shapesp fn-pck-enc-row)
+                                  (fn-scc-program fn-pck-meta fn-pck-payload fn-cpl-trailer-words-impl)))))
+(defthm pck-encoded-rows-shapes
+  (adt-tp-rows-shapesp *fn-pck-row-schema* (fn-pck-rows-from recs base st))
+  :hints (("Goal" :induct (fn-pck-rows-from recs base st)
+           :in-theory (e/d (adt-tp-rows-shapesp fn-pck-rows-from)
+                           (fn-pck-enc-row pck-ssr1 fn-pck-payload fn-cpl-frame-octets)))))
+(defthm pck-encoded-root-shapes
+  (adt-tp-rows-shapesp *fn-pck-row-schema* (list (fn-pck-enc-root tree)))
+  :hints (("Goal" :in-theory (e/d (adt-tp-rows-shapesp adt-tp-field-shapesp fn-pck-enc-root)
+                                  (fn-scc-program)))))
+(verify-guards fn-pck-enc-row
+  :hints (("Goal" :in-theory (disable fn-pck-payload fn-pck-meta fn-cpl-trailer-words-impl))))
+(verify-guards fn-pck-plen)
+(verify-guards fn-pck-rows-from
+  :hints (("Goal" :in-theory (e/d (fn-pck-sccb-listp) (fn-pck-meta pck-ssr1 fn-pck-payload)))))
+(verify-guards fn-pck-enc-root)
+(verify-guards fn-pck-fit)
+(verify-guards fn-pck-root-pages-of-tree)
+(verify-guards fn-pck-root-fitsp-tree)
+(local (defthm pck-number-is-alist
+         (and (alistp (adt-tp-number k ps)) (true-listp (adt-tp-number k ps)))
+         :hints (("Goal" :in-theory (enable adt-tp-number)))))
+(local (defthm pck-dirty-at-is-alist
+         (and (alistp (adt-tp-dirty-at cnt tail n)) (true-listp (adt-tp-dirty-at cnt tail n)))
+         :hints (("Goal" :in-theory (e/d (adt-tp-dirty-at) (adt-tp-number adt-tp-pages))))))
+(verify-guards fn-pck-dirty-at
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-row-extend-dirty-at adt-tp-extend-dirty-at)
+                           (fn-pck-rows-from adt-tp-seq-words adt-tp-dirty-at adt-tp-number)))))

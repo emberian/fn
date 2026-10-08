@@ -220,15 +220,17 @@
 ; From the host's row.  The host holds interned rows and the payload arena; the
 ; record a row denotes is `fn-row-wire-of' (books/store-intern.lisp).  The
 ; encoder takes the row and builds that record's tree for one record only (its
-; own payload), as the schema-3 writer's `fn-scka-append-src' does; nothing
-; the size of the store is a list.  Residual: the payload is read as one list
+; own payload). This is at most one wire event per delta row, O(delta)
+; work and allocation over the publication, never the prefix. The payload is read as one list
 ; (`fn-arena-payload'); a copy from the arena into the buffer without it needs
 ; a primitive `fn-arena' does not export.
 
 (defun fn-pck-x-encode-row (row fn-arena st fn-octets)
   ; The METADATA tree of the record ROW denotes, at the fold state ST, into the buffer; the payload
   ; is not encoded here (it goes to the payload file, books/checkpoint-payloads.lisp).
-  (declare (xargs :stobjs (fn-arena fn-octets) :guard t :verify-guards nil))
+  (declare (xargs :stobjs (fn-arena fn-octets)
+                  :guard (fn-sccb-treep (fn-pck-meta (fn-row-wire-of row fn-arena) st))
+                  :verify-guards nil))
   (fn-pck-x-encode (fn-pck-meta (fn-row-wire-of row fn-arena) st) fn-octets))
 
 (defthm fn-pck-x-encode-row-is-the-meta-program
@@ -258,3 +260,13 @@
                                     (fn-pck-enc-row (fn-row-wire-of row fn-arena) frame st)))))
   :hints (("Goal" :in-theory (disable fn-pck-x-row-word-is-the-row fn-pck-x-encode)
            :use ((:instance fn-pck-x-row-word-is-the-row (w (fn-row-wire-of row fn-arena)) (off frame))))))
+
+; Runtime guards are proved separately from the tape correspondence. The
+; word count is natural at every caller (the byte buffer's length).
+(verify-guards fn-pck-x-row-words)
+(verify-guards fn-pck-x-row-word
+  :hints (("Goal" :in-theory (disable adt-tp-npk)
+           :use ((:instance pckx-npk-bound (m (- j 2)) (n (len fn-octets)))))))
+(verify-guards fn-pck-x-encode)
+
+(verify-guards fn-pck-x-encode-row)
