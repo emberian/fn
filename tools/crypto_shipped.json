@@ -787,7 +787,7 @@
     "                               \"WRAP\": \"''\", \"IMAGES_BASE\": \"''\", \"OPENSSL\": \"'system'\"})"
    ],
    "new": [
-    "                               \"WRAP\": \"''\", \"IMAGES_BASE\": \"''\", \"OPENSSL\": \"'bundled'\"})"
+    "                               \"WRAP\": \"'/tank/fn/bin/persvati-jobs'\", \"IMAGES_BASE\": \"''\", \"OPENSSL\": \"'bundled'\"})"
    ]
   },
   {
