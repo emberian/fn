@@ -317,7 +317,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-image \
 	books/paged-checkpoint-open \
 	books/def-representation \
+	books/def-representation-generic \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-generic-tests \
 	tests/acl2/def-representation-pages-tests \
 	tests/acl2/paged-checkpoint-tests \
 	tests/acl2/paged-checkpoint-host-tests \
