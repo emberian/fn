@@ -1,0 +1,6 @@
+# p-d26-wave3 continuation (WIP, certify 2 pending)
+- Code tip: 423120619 (def-representation generator, wildmat-live, owner-snapshot-recovery, nntp-auth, heap-store-figure). No book edits since.
+- Statement diff DONE: 14 books loaded from source on persvati at origin/dev 7895556b8 and HEAD; 69,941 base theorems, 69,941 identical; no removed/changed; changed bodies only the hint producers adt-pg-col-events, adt-pg-tree-exec-events, rep-pg-seq-events; added: rep-obligation-hints/-thms and new lemmas. Scripts: /tmp/p-d26-wave3/v2/{run1.sh,dump.lisp,cmp.py}.
+- Certify 1 (run-20261008T022256Z-f158, --lane, images auto): 132/133 passed, red books/paged-checkpoint at fn-pck-row$pg-fresh-unfolds (goal: update-nth/resize-list overwrite). The fresh hint is UNCHANGED vs origin/dev. paged-checkpoint alone passes (images off run-20261008T030113Z-c0c4, 22.7 s; images on run-20261008T030318Z-6b7a, 21.3 s); REPL def-representation form passes.
+- Certify 2: run-20261008T030705Z-4804 (--recertify-from /tmp/p-d26-wave3/recert.txt, --images on). If paged-checkpoint red again: trace through the generator hint producers (put/get -UNFOLDS e/d floor mod tau-system; tree-enc guard-hints; rep-obligation-hints), do not call it image-world dependent without the trace.
+- Not started: receiver-turn-controller (12.6 s), catalog-paged link-fields/index-health.
