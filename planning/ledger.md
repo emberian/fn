@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3104 |
 | Certification roots in the Makefile | 2615 |
 | Books inside the root closure | 2947 |
-| `defthm` and `defthmd` events | 42079 |
+| `defthm` and `defthmd` events | 42080 |
 | `defun` events | 26594 |
 | Functions with verified guards | 4184 |
 | Functions declared `:verify-guards nil` and never verified | 3514 |
@@ -1313,7 +1313,7 @@ that `make certify` requests.
 | `books/page-window-worker-storage.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/paged-checkpoint-exec.lisp` | root | 15 | 7 | 0/4/0/3 | 0 | 0 | 0 |
 | `books/paged-checkpoint-host.lisp` | root | 15 | 10 | 0/6/4/0 | 0 | 0 | 0 |
-| `books/paged-checkpoint-image.lisp` | root | 70 | 12 | 0/4/0/8 | 0 | 0 | 1 |
+| `books/paged-checkpoint-image.lisp` | root | 71 | 12 | 0/4/0/8 | 0 | 0 | 1 |
 | `books/paged-checkpoint-open.lisp` | root | 86 | 18 | 4/7/3/4 | 0 | 0 | 2 |
 | `books/paged-checkpoint-stage.lisp` | root | 92 | 18 | 0/11/2/5 | 0 | 0 | 2 |
 | `books/paged-checkpoint.lisp` | root | 59 | 28 | 0/21/4/3 | 0 | 0 | 1 |
@@ -4704,8 +4704,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `otjs-revonto-singleton` | `books/owner-time-journal-stream.lisp` | 207 | instance-corollary: the statement is otjs-revonto-is-append instantiated, discharging nothing |
 | `pck-disk-holds-facts` | `books/paged-checkpoint.lisp` | 559 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-pck-disk-holds |
 | `pcki-grow-same` | `books/paged-checkpoint-image.lisp` | 226 | arm-of-definition: the hypotheses select one IF/COND arm of pgs-x-grow-image and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of pgs-x-grow-image and the conclusion is that branch's value |
-| `pcko-intern-bad-is-absorbing` | `books/paged-checkpoint-open.lisp` | 340 | arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value |
-| `pcko-nth-is-nth` | `books/paged-checkpoint-open.lisp` | 822 | arm-of-definition: the hypotheses select one IF/COND arm of pcko-nth and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of pcko-nth and the conclusion is that branch's value |
+| `pcko-intern-bad-is-absorbing` | `books/paged-checkpoint-open.lisp` | 348 | arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value |
+| `pcko-nth-is-nth` | `books/paged-checkpoint-open.lisp` | 830 | arm-of-definition: the hypotheses select one IF/COND arm of pcko-nth and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of pcko-nth and the conclusion is that branch's value |
 | `pcks-res-step` | `books/paged-checkpoint-stage.lisp` | 238 | arm-of-definition: the hypotheses select one IF/COND arm of pcks-res and the conclusion is that arm's value |
 | `pcks-stage-done` | `books/paged-checkpoint-stage.lisp` | 385 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pck-x-stage-rows and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-pck-x-stage-rows and the conclusion is that branch's value |
 | `pgs-dcs-byte-step-outside-tail-is-page-step` | `books/pagestore-digest-cursor-semantics.lisp` | 212 | arm-of-definition: the hypotheses select one IF/COND arm of pgs-dcb-step and the conclusion is that arm's value |

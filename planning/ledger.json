@@ -2622,7 +2622,7 @@
     "books": 3104,
     "books_in_root_closure": 2947,
     "roots": 2615,
-    "theorems": 42079,
+    "theorems": 42080,
     "functions": 26594,
     "assert_events": 28456,
     "must_fails": 2823,
@@ -38765,7 +38765,7 @@
       "book": "books/paged-checkpoint-image.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 70,
+      "theorems": 71,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -103629,7 +103629,7 @@
     {
       "theorem": "pcko-intern-bad-is-absorbing",
       "book": "books/paged-checkpoint-open.lisp",
-      "line": 340,
+      "line": 348,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value"
       ]
@@ -103637,7 +103637,7 @@
     {
       "theorem": "pcko-nth-is-nth",
       "book": "books/paged-checkpoint-open.lisp",
-      "line": 822,
+      "line": 830,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of pcko-nth and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of pcko-nth and the conclusion is that branch's value"
@@ -105364,13 +105364,13 @@
       {
         "theorem": "pcko-nw-is-npk",
         "book": "books/paged-checkpoint-open.lisp",
-        "line": 280,
+        "line": 288,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "pcko-len-w-gen",
         "book": "books/paged-checkpoint-open.lisp",
-        "line": 606,
+        "line": 614,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
@@ -105388,7 +105388,7 @@
       {
         "theorem": "pcks-len-tail",
         "book": "books/paged-checkpoint-stage.lisp",
-        "line": 833,
+        "line": 838,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
