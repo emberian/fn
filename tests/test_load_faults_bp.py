@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from tools.load import faults, faults_bp as bp
 
@@ -236,6 +236,135 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(notes['failing_step'], {'phase': 'setup'})
         self.assertEqual(notes['exception']['type'], 'RuntimeError')
         self.assertIn('A', notes['nodes'])
+
+    def test_completed_enqueue_refusal_does_not_abort_remaining_recipe_or_inventory(self):
+        calls = []
+        refusal = {'rc': 1, 'reply_line': bp.ENQUEUE_PREFLIGHT_REFUSAL.decode() + '\r\n',
+                   'decision': 'fn-workflow-preflight-record', 'txid': 2,
+                   'generation': bp.ENQUEUE_GENERATION, 'article': 1}
+        class RefusingPair:
+            def __init__(self, campaign, history):
+                pass
+            def execute(self, step, witnessed):
+                calls.append(step['step'])
+                if step['step'] == 0:
+                    return refusal
+                witnessed.update(bp.FAULTS)
+            def converge(self, witnessed):
+                calls.append('converge')
+            def observe(self):
+                calls.append('inventory')
+                return {n: observation({}) for n in ('A', 'B')}
+            def close(self):
+                calls.append('close')
+        campaign = object.__new__(bp.BpCampaign)
+        recipe = [{'step': 0, 'action': 'post', 'i': 1}, {'step': 1, 'action': 'post', 'i': 2}]
+        with patch.object(bp, 'Pair', RefusingPair):
+            h, findings, notes = campaign.trial(recipe)
+        self.assertEqual(calls, [0, 1, 'converge', 'inventory', 'close'])
+        self.assertIsNone(notes['exception'])
+        self.assertIsNone(notes['failing_step'])
+        self.assertEqual(h.ops[0]['outcome'], 'completed')
+        self.assertEqual(h.ops[0]['reply_line'], refusal['reply_line'])
+        self.assertEqual(h.ops[0]['rc'], 1)
+        self.assertEqual([s['outcome'] for s in notes['steps']], ['completed', 'completed'])
+        self.assertEqual(len(notes['refusals']), 1)
+        self.assertTrue(any(p == 'P5-RECOVERY' and 'fn-workflow-preflight-record' in d for p, d in findings))
+
+
+class EnqueueTests(unittest.TestCase):
+    def setUp(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.pair = object.__new__(bp.Pair)
+        self.pair.sequence = 0
+        self.pair.h = faults.History()
+        self.pair.notes = {'commands': []}
+        self.pair.c = SimpleNamespace(image='/not-launched', recovery=1, serial=1,
+                                      run=SimpleNamespace(node=SimpleNamespace(work=root)))
+        self.pair.nodes = {'A': SimpleNamespace(store=root / 'store', work=root, port=1)}
+        self.enterContext(patch('tests.native_harness.environment', return_value={}))
+
+    def test_receipt_then_restart_does_not_reuse_receipt_transaction_key(self):
+        # External fake journal models the documented used-PAIR precondition.
+        # Control: generation 0 reproduces run3's second-enqueue refusal.
+        for generation, refused in ((0, True), (bp.ENQUEUE_GENERATION, False)):
+            with self.subTest(generation=generation):
+                self.pair.sequence = 0
+                durable = set()
+                def command(argv, **kwargs):
+                    self.assertEqual(argv[2:4], ['app-journal', 'workflow-enqueue'])
+                    key = (int(argv[6]), int(argv[7]))
+                    if key in durable:
+                        return SimpleNamespace(returncode=1, stdout=b'', stderr=bp.ENQUEUE_PREFLIGHT_REFUSAL)
+                    durable.add(key)
+                    return SimpleNamespace(returncode=0, stdout=b'workflow durable\n', stderr=b'')
+                with patch.object(bp, 'ENQUEUE_GENERATION', generation), \
+                        patch('tests.native_harness.run', side_effect=command):
+                    self.assertIsNone(self.pair.enqueue(0, '<first>'))
+                    # fn-bprl-receipt-auto-record's first receipt uses (2, 0).
+                    # Reopening preserves this used key; it cannot be reused.
+                    durable.add((2, 0))
+                    result = self.pair.enqueue(1, '<second>')
+                self.assertEqual(result is not None, refused)
+                if not refused:
+                    self.assertIn((2, bp.ENQUEUE_GENERATION), durable)
+
+    def test_preflight_refusal_is_completed_with_reply_and_exit(self):
+        result = SimpleNamespace(returncode=1, stdout=b'', stderr=bp.ENQUEUE_PREFLIGHT_REFUSAL)
+        with patch('tests.native_harness.run', return_value=result):
+            refusal = self.pair.enqueue(0, '<refused>')
+        self.assertEqual(refusal['decision'], 'fn-workflow-preflight-record')
+        op = self.pair.h.ops[-1]
+        self.assertEqual(op['outcome'], 'completed')
+        self.assertEqual(op['rc'], 1)
+        self.assertIn(bp.ENQUEUE_PREFLIGHT_REFUSAL.decode(), op['reply_line'])
+        self.assertIsNotNone(op['send_time'])
+
+    def test_other_errors_and_ambiguous_publication_still_stop(self):
+        from tests.native_harness import EXIT
+        for rc, message in ((EXIT.REFUSED, b'application journal publication refused'),
+                            (EXIT.UNCERTAIN, bp.ENQUEUE_PREFLIGHT_REFUSAL)):
+            with self.subTest(rc=rc), patch('tests.native_harness.run', return_value=SimpleNamespace(
+                    returncode=rc, stdout=b'', stderr=message)):
+                with self.assertRaisesRegex(RuntimeError, 'workflow-enqueue exit'):
+                    self.pair.enqueue(0, '<error>')
+
+    def test_refused_enqueue_restarts_sender_without_authoring_a_request(self):
+        pair = self.pair
+        pair.posted, pair.requests = {}, {}
+        refusal = {'rc': 1, 'reply_line': 'refused\r\n'}
+        pair.stop_bp = Mock()
+        pair.start_reader = Mock()
+        pair.stop_reader = Mock()
+        pair.enqueue = Mock(return_value=refusal)
+        pair.start_bp = Mock(return_value=(None, 1234))
+        pair.relay = Mock()
+        pair.author_request = Mock()
+        pair.invoke = Mock(return_value=SimpleNamespace(stdout=b'stored article'))
+        class Client:
+            def __init__(self, *args):
+                pass
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+            def post(self, i, octets, op):
+                pair.h.sent(op)
+                pair.h.complete(op, b'240 accepted\r\n')
+                return b'240 accepted\r\n'
+        pair.c.deadline = 1
+        with patch.object(bp, 'Client', Client):
+            self.assertEqual(pair.execute({'action': 'post', 'i': 1, 'octets': 512}, set()), refusal)
+        pair.start_bp.assert_called_once_with('A')
+        pair.relay.route.assert_called_once_with(1234)
+        pair.author_request.assert_not_called()
+        self.assertEqual(pair.requests, {})
+        self.assertEqual(pair.invoke.call_args.args[0], 'store')
+        self.assertEqual(pair.invoke.call_count, 1)
+        accepted = pair.h.ops[0]['args']
+        findings = bp.check(pair.h.ops, {'A': observation({accepted['msgid']: accepted['sha256']}),
+                                        'B': observation({})})
+        self.assertTrue(any(p == 'P1-DURABLE' for p, _ in findings))
 
 
 class WireTests(unittest.TestCase):

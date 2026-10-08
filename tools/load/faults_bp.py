@@ -32,6 +32,13 @@ CUTS = {
     'decision': ('FN_BP_APP_TEST_PAUSE_AFTER_DECISION', b'BP APP DECISION DURABLE'),
 }
 ROOT = Path(__file__).resolve().parents[2]
+# Client transaction identity, not a boot/incarnation counter. The automatic
+# receipt constructor fn-bprl-receipt-auto-record always uses generation 0
+# (books/bp-workflow-constructors.lisp). fn-bp-prepare-enqueue forbids reuse of
+# the PAIR (txid, generation), including across restart. Keep this fixture's
+# explicit enqueues in generation 1; never guess ACL2's next receipt txid.
+ENQUEUE_GENERATION = 1
+ENQUEUE_PREFLIGHT_REFUSAL = b'ACL2 rejected application journal enqueue before publication'
 
 
 def generate(seed):
@@ -254,7 +261,7 @@ class BpCampaign(Campaign):
         h.recorder.interleaved = True
         notes = {'steps': [{'recipe': dict(step), 'outcome': 'not-attempted'} for step in recipe],
                  'failing_step': None, 'exception': None, 'cleanup_exceptions': [],
-                 'nodes': {}, 'commands': [], 'recipe': list(recipe)}
+                 'nodes': {}, 'commands': [], 'refusals': [], 'recipe': list(recipe)}
         h.trial_notes = notes
         pair = None
         current = {'phase': 'setup'}
@@ -269,8 +276,18 @@ class BpCampaign(Campaign):
                 op['step'] = h.recorder.control(['F8', json.dumps(step, sort_keys=True)])
                 h.sent(op)
                 step_log.update(op_id=op['op_id'], send_time=op['send_time'], outcome=op['outcome'])
-                pair.execute(step, witnessed)
-                h.complete(op, b'F8 step observed\r\n')
+                refused = pair.execute(step, witnessed)
+                if refused is not None:
+                    # An observed pre-publication refusal is a completed
+                    # operation, not an exception or uncertain acceptance.
+                    notes['refusals'].append(dict(refused, recipe=dict(step)))
+                    findings.append(('P5-RECOVERY', 'workflow-enqueue refused by '
+                                     + refused['decision'] + ': ' + refused['reply_line'].strip()))
+                    h.complete(op, refused['reply_line'].encode('utf-8'))
+                    op['rc'] = refused['rc']
+                    step_log['refusal'] = refused
+                else:
+                    h.complete(op, b'F8 step observed\r\n')
                 step_log.update(outcome=op['outcome'], complete_time=op['complete_time'])
             step_log = None
             current = {'phase': 'converge'}
@@ -474,15 +491,34 @@ class Pair:
             self.stop_reader('A')
         article = self.invoke('store', self.nodes['A'].store, 'inspect', msgid_measure.msgid(i)).stdout
         self.posted[i] = article
-        self.sequence += 1
-        work = 'f8-work-%d' % i
-        self.invoke('app-journal', 'workflow-enqueue', self.nodes['A'].store, self.workflow('A'),
-                    self.sequence, 0, work, msgid_measure.msgid(i), 'f8-forward-%d' % i,
-                    self.eid('B'), 'native-policy', 'terms-native')
-        self.invoke('bp-obligation', 'undertake', self.nodes['A'].store, self.workflow('A'), work, 3)
-        self.requests[i] = self.author_request(i, article)
+        refused = self.enqueue(i, msgid_measure.msgid(i))
+        if refused is None:
+            self.invoke('bp-obligation', 'undertake', self.nodes['A'].store, self.workflow('A'), 'f8-work-%d' % i, 3)
+            self.requests[i] = self.author_request(i, article)
+        # Even a known enqueue refusal leaves the earlier works available to
+        # the remaining recipe. No request/undertaking is invented for it.
         _, port = self.start_bp('A')
         self.relay.route(port)
+        return refused
+
+    def enqueue(self, i, msgid):
+        from tests.native_harness import EXIT
+        self.sequence += 1
+        work = 'f8-work-%d' % i
+        p = self.invoke('app-journal', 'workflow-enqueue', self.nodes['A'].store, self.workflow('A'),
+                        self.sequence, ENQUEUE_GENERATION, work, msgid, 'f8-forward-%d' % i,
+                        self.eid('B'), 'native-policy', 'terms-native', expected=None)
+        if p.returncode == EXIT.OK:
+            return None
+        reply = p.stdout + p.stderr
+        if p.returncode == EXIT.REFUSED and ENQUEUE_PREFLIGHT_REFUSAL in reply:
+            # fnn-app-publish refuses here BEFORE fnn-app-authorized-publish:
+            # no enqueue record was published. Other errors/uncertainty must
+            # still stop the trial; they could leave a pending durable intent.
+            return {'rc': p.returncode, 'reply_line': reply.decode('utf-8', 'replace').rstrip() + '\r\n',
+                    'decision': 'fn-workflow-preflight-record',
+                    'txid': self.sequence, 'generation': ENQUEUE_GENERATION, 'article': i}
+        raise RuntimeError('workflow-enqueue exit %s: %s' % (p.returncode, reply.decode('utf-8', 'replace')))
 
     def author_request(self, i, article):
         from tests.native_harness import Acl2Session
@@ -614,7 +650,7 @@ class Pair:
     def execute(self, step, witnessed):
         action = step['action']
         if action == 'post':
-            self.post(step)
+            return self.post(step)
         elif action in ('transfer', 'duplicate'):
             self.transfer(step['i'], step.get('mode', 'duplicate'), witnessed)
         elif action == 'restart' and 'A' in self.active:
