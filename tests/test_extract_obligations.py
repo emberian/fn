@@ -75,6 +75,16 @@ class CompareTests(unittest.TestCase):
         self.write(["OB VAR ACL2::*X* 1", "OB ENTRY ACL2::F ((1) NIL)", "OB-END 2"], ["OB VAR ACL2::*X* 1"])
         self.assertEqual(ob.compare(self.d), 1)
 
+    def test_book_paths_under_each_sides_checkout_compare_equal(self):
+        img = '"%s"' % ob.encoded("/img/tree/books/a.lisp")
+        core = '"%s"' % ob.encoded("/core/tree10/books/a.lisp")
+        self.write(["OB WORLD ACL2::K (%s)" % img, "OB VAR ACL2::*X* 1", "OB-END 2"],
+                   ["OB WORLD ACL2::K (%s)" % core, "OB VAR ACL2::*X* 1", "OB-END 2"])
+        self.assertEqual(ob.compare(self.d), 1)
+        (self.d / "image.root").write_text("/img/tree\n")
+        (self.d / "core.root").write_text("/core/tree10\n")
+        self.assertEqual(ob.compare(self.d), 0)
+
     def test_an_excluded_item_is_not_compared(self):
         self.write(["OB VAR ACL2::*AOKP* 1", "OB VAR ACL2::*X* 1", "OB-END 2"],
                    ["OB VAR ACL2::*AOKP* 2", "OB VAR ACL2::*X* 1", "OB-END 2"])

@@ -5,7 +5,8 @@ EXTRACTION-PROGRAM-20261007.md section 7 states the four obligations.
 
 O2: every extracted global (a `var:' unit: a defconst, defparameter or defvar the closure reads), every
 ACL2 state global the closure reads (a `global:' unit) and every value core-world.lisp sets holds the
-same value in fn-core as in the image, before fn starts.
+same value in fn-core as in the image, before fn starts; so does every world global the snapshot
+carries (fgetprop NAME 'global-value; closure_why.py --check-props keeps that list complete).
 O3: every root the host calls (edges.tsv `#root' lines naming a function) has the same entry-guard
 specification in both processes: host/native/io.lisp's own fnn-entry-guard-spec (arity, formals'
 recognizers and kinds, read from the world in the image and from the carried snapshot in fn-core) and
@@ -118,6 +119,14 @@ def manifest_items(core_out):
     return dedupe(vars_), dedupe(globals_), dedupe(roots)
 
 
+def world_globals(core_out):
+    """The world globals the snapshot carries (rows with GLOBAL-VALUE)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from closure_why import snapshot_props
+    rows = snapshot_props((Path(core_out) / "core-world.lisp").read_text(encoding="latin-1"))
+    return sorted(s for s, props in rows.items() if "ACL2::GLOBAL-VALUE" in props)
+
+
 def forms(out_dir, core_out):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -128,13 +137,18 @@ def forms(out_dir, core_out):
     for g in globals_:
         lines.append('(xt-ob "GLOBAL" "%s" (if (boundp-global \'%s *the-live-state*) '
                      '(xt-ob-text (f-get-global \'%s *the-live-state*)) "#UNBOUND"))' % (g, g, g))
+    worlds = world_globals(core_out)
+    for g in worlds:
+        lines.append('(xt-ob "WORLD" "%s" (xt-ob-text (fgetprop \'%s \'global-value :none (w *the-live-state*))))' % (g, g))
     for r in roots:
         lines.append('(xt-ob "ENTRY" "%s" (xt-ob-text (list (fnn-entry-guard-spec \'%s) (fnn-trailing-kind \'%s))))'
                      % (r, r, r))
-    lines.append('(format t "~&OB-END ~d~%%" %d)' % (len(vars_) + len(globals_) + len(roots)))
+    total = len(vars_) + len(globals_) + len(worlds) + len(roots)
+    lines.append('(format t "~&OB-END ~d~%%" %d)' % total)
     (out_dir / "obligations.lisp").write_text("\n".join(lines) + "\n", encoding="latin-1")
-    (out_dir / "expected.count").write_text("%d\n" % (len(vars_) + len(globals_) + len(roots)))
-    print("obligations: %d globals, %d state globals, %d entries" % (len(vars_), len(globals_), len(roots)))
+    (out_dir / "expected.count").write_text("%d\n" % total)
+    print("obligations: %d globals, %d state globals, %d world globals, %d entries"
+          % (len(vars_), len(globals_), len(worlds), len(roots)))
     return 0
 
 
@@ -148,6 +162,8 @@ def run_image(image, out_dir):
     r = subprocess.run(argv, env=env, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        timeout=1800, check=False)
     (Path(out_dir) / "image.out").write_bytes(r.stdout)
+    # the image's source tree (IMAGE is TREE/build/fn-host-*): book paths in the world name it
+    (Path(out_dir) / "image.root").write_text(str(Path(image).resolve().parent.parent))
     return r.returncode
 
 
@@ -156,14 +172,27 @@ def run_core(core, out_dir):
     r = subprocess.run([core, "--xl-load", str(f)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        timeout=1800, check=False)
     (Path(out_dir) / "core.out").write_bytes(r.stdout)
+    # fn-core's extraction tree (CORE is TREE/build/<out>/fn-core): the world it was exported from names it
+    (Path(out_dir) / "core.root").write_text(str(Path(core).resolve().parent.parent.parent))
     return r.returncode
 
 
-def parse(path):
+def encoded(text):
+    """TEXT as the canonical printer prints a string's characters."""
+    return ",".join(str(ord(c)) for c in text)
+
+
+def parse(path, root=None):
+    """{(KIND, NAME): TEXT}; a string that begins with ROOT/ (a book path in the world, which names the
+    checkout the world was certified in) has that prefix replaced by ROOT/, so the two sides' different
+    checkouts do not differ."""
     items, end = {}, None
+    prefix = (encoded(root.rstrip("/") + "/"), encoded("ROOT/")) if root else None
     for line in Path(path).read_text(encoding="latin-1").splitlines():
         if line.startswith("OB "):
             _, kind, name, text = line.split(" ", 3)
+            if prefix:
+                text = text.replace('"' + prefix[0], '"' + prefix[1])
             items[(kind, name)] = text
         elif line.startswith("OB-END "):
             end = int(line.split()[1])
@@ -173,8 +202,9 @@ def parse(path):
 def compare(out_dir):
     out_dir = Path(out_dir)
     want = int((out_dir / "expected.count").read_text())
-    a, ea = parse(out_dir / "image.out")
-    b, eb = parse(out_dir / "core.out")
+    root = lambda side: (out_dir / (side + ".root")).read_text().strip() if (out_dir / (side + ".root")).exists() else None  # noqa: E731
+    a, ea = parse(out_dir / "image.out", root("image"))
+    b, eb = parse(out_dir / "core.out", root("core"))
     bad = []
     if ea != want or eb != want or len(a) != want or len(b) != want:
         bad.append("incomplete: expected %d items; image printed %d (end %s), core %d (end %s)"
