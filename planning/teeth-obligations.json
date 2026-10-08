@@ -724,6 +724,44 @@
    "registry": true
   },
   {
+   "book_digest": "78c5cb78bb9db1732e4e9afd8f94f1cb5d9144a209477c2c8f039715e45e7c19",
+   "bounds": [],
+   "claim_digest": "4311cd344d30592260f3c715ed859a16423321eb272826a86c4caa0388b5b8d8",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-art-of-roundtrip",
+   "owed_met": null,
+   "owner_book": "tests/acl2/article-art-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-art-of",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "78c5cb78bb9db1732e4e9afd8f94f1cb5d9144a209477c2c8f039715e45e7c19",
+   "bounds": [],
+   "claim_digest": "7336265b05e302f36957b18503aaf8b35e9aa19d74f89b242620201dd5ea6736",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-art-split-recomposes",
+   "owed_met": null,
+   "owner_book": "tests/acl2/article-art-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-art-split",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-article-census-refusal-is-the-parse",
    "registry": true
@@ -8136,6 +8174,25 @@
    "registry": true
   },
   {
+   "book_digest": "e512fa379b54819e8f597cd7f51101f334019345a4c20fc82fc1f934f2b2caff",
+   "bounds": [],
+   "claim_digest": "ed861892715f3182f6c67a2477f29f45b732857f7f130c2a0ef1b9a2eddf9762",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ipp-injected-art-refines",
+   "owed_met": null,
+   "owner_book": "tests/acl2/injection-info-params-art-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ipp-injected-art",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-ipp-injected-octets-carry-the-parameters",
    "registry": true
@@ -8179,6 +8236,44 @@
    "class": "hand",
    "name": "fn-ipp-split-at-loop-is-rev-onto",
    "registry": true
+  },
+  {
+   "book_digest": "e512fa379b54819e8f597cd7f51101f334019345a4c20fc82fc1f934f2b2caff",
+   "bounds": [],
+   "claim_digest": "82d10520514f79fd78d31b87222baa4f9fd8e8a053bf84698ec4e5ba31eb2639",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ipp-with-params-art-refines",
+   "owed_met": null,
+   "owner_book": "tests/acl2/injection-info-params-art-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ipp-with-params-art",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "fa308970fb2d7d179c3529d3698f60d5a7cad4b3363237dbd6715646e6af243f",
+   "bounds": [],
+   "claim_digest": "276894e6e3ddc2c30f5a9117a07649b320f6a03a6df769d1c9335f32cde800cb",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ipp-with-params-head-local",
+   "owed_met": null,
+   "owner_book": "tests/acl2/injection-header-boundary-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ipp-with-params",
+   "witness": "executable"
   },
   {
    "class": "hand",

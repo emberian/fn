@@ -1464,6 +1464,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-article-block-tests \
 	tests/acl2/posting-account-tests \
 	tests/acl2/injection-info-params-tests \
+	tests/acl2/post-header-line-tests \
+	tests/acl2/injection-header-boundary-tests \
+	tests/acl2/article-art-tests \
+	tests/acl2/injection-info-params-art-tests \
+	tests/acl2/post-art-take-domain-tests \
 	tests/acl2/owner-injection-info-tests \
 	tests/acl2/nntp-post-tests \
 	tests/acl2/served-line-iterative-tests \
