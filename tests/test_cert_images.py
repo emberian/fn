@@ -18,6 +18,10 @@ BOOKS = {
     "books/side": '(in-package "ACL2")\n(local (include-book "mid"))\n(defun fn-s (x) x)\n',
     "tests/acl2/top-tests": '(in-package "ACL2")\n(include-book "../../books/top")\n',
     "host/x-host": '(in-package "ACL2")\n(include-book "../books/mid")\n',
+    "host/y-host": '(in-package "ACL2")\n(local (include-book "../books/mid"))\n',
+    # A host book over an attach book, and one that attaches by itself.
+    "host/attached-host": '(in-package "ACL2")\n(include-book "../books/arena-attach")\n',
+    "host/own-attach-host": '(in-package "ACL2")\n(attach-stobj st st-impl)\n(include-book "../books/arena")\n',
     # An attachable stobj, its attachment, and a book over the attachment.
     "books/arena": '(in-package "ACL2")\n(include-book "mid")\n(defabsstobj st :attachable t)\n',
     "books/arena-attach": '(in-package "ACL2")\n(include-book "mid")\n'
@@ -58,9 +62,38 @@ class ImageForTests(unittest.TestCase):
 
     def test_only_book_directories_use_images(self):
         with tempfile.TemporaryDirectory() as directory:
-            graph = cert_images.Graph(tree(directory))
+            root = tree(directory)
+            (root / "scripts").mkdir()
+            (root / "scripts/loose.lisp").write_text('(in-package "ACL2")\n(include-book "../books/mid")\n')
+            graph = cert_images.Graph(root)
             images = [{"name": "mid", "roots": ["books/mid"]}]
-            self.assertIsNone(cert_images.image_for("host/x-host", images, graph))
+            self.assertIsNone(cert_images.image_for("scripts/loose", images, graph))
+
+    def test_a_host_book_takes_an_image_whose_roots_are_in_its_closure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            graph = cert_images.Graph(tree(directory))
+            images = [{"name": "base", "roots": ["books/base"]},
+                      {"name": "mid", "roots": ["books/mid"]},
+                      {"name": "top", "roots": ["books/top"]}]
+            self.assertEqual(cert_images.image_for("host/x-host", images, graph)["name"], "mid")
+            # top is not in x-host's closure; and a LOCAL include gives no root.
+            self.assertEqual([i["name"] for i in cert_images.applicable("host/x-host", images, graph)],
+                             ["mid", "base"])
+            self.assertIsNone(cert_images.image_for("host/y-host", images, graph))
+
+    def test_a_host_book_gets_no_image_when_the_closure_rule_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            graph = cert_images.Graph(tree(directory))
+            # arena defines the attachable stobj st; own-attach-host attaches it
+            # itself, so an image holding arena would make that attach fail.
+            arena = [{"name": "arena", "roots": ["books/arena"]}]
+            self.assertIsNone(cert_images.image_for("host/own-attach-host", arena, graph))
+            # An image that holds the attaching book is fine for a host book above it.
+            attached = [{"name": "attached", "roots": ["books/arena-attach"]}]
+            self.assertEqual(cert_images.image_for("host/attached-host", attached, graph)["name"],
+                             "attached")
+            # ... but an image holding only the stobj's definer is not.
+            self.assertIsNone(cert_images.image_for("host/attached-host", arena, graph))
 
 
 class AttachStobjTests(unittest.TestCase):
@@ -92,7 +125,7 @@ class AttachStobjTests(unittest.TestCase):
                 ' {"name": "mid", "roots": ["books/mid"]}]}')
             self.assertEqual(cert_images.worlds(root, "books/umbrella"),
                              ["plain", "mid@books:books/mid"])
-            self.assertEqual(cert_images.worlds(root, "host/x-host"), ["plain"])
+            self.assertEqual(cert_images.worlds(root, "host/x-host"), ["plain", "mid@host:books/mid"])
 
 
 class BuildTests(unittest.TestCase):
@@ -105,6 +138,8 @@ class BuildTests(unittest.TestCase):
         self.assertIn('(set-cbd "books/")\n(include-book "mid")\n', books)
         tests = cert_images.build_script(image, "tests/acl2", core)
         self.assertIn('(set-cbd "tests/acl2/")\n(include-book "../../books/mid")\n', tests)
+        host = cert_images.build_script(image, "host", core)
+        self.assertIn('(set-cbd "host/")\n(include-book "../books/mid")\n', host)
         self.assertIn('(save-exec "/run/images/books--mid-saved"', books)
         # Non-local: a local portcullis makes certify-book's Step 3 replay it.
         self.assertNotIn("(local", books)
@@ -145,8 +180,14 @@ class TreeTests(unittest.TestCase):
                          "books/image-world-store-test"):
             self.assertIn("fn-arena", graph.attached(umbrella), umbrella)
             for image in cert_images.applicable(umbrella, images, graph):
-                self.assertNotIn("fn-arena", graph.defines(
-                    cert_images.image_closure(image, graph)), (umbrella, image["name"]))
+                # An image defining fn-arena is fine only when its own books
+                # made the attachment (host-attached: the attach books).
+                held = cert_images.image_closure(image, graph)
+                if "fn-arena" in graph.defines(held):
+                    self.assertIn("fn-arena", graph.attached_by(held), (umbrella, image["name"]))
+                    self.assertNotIn("fn-arena", frozenset().union(
+                        *(graph.attaches[b] for b in graph.closure(umbrella) - held)),
+                        (umbrella, image["name"]))
             chosen = cert_images.image_for(umbrella, images, graph)
             self.assertNotIn(chosen and chosen["name"], ("owner", "served-catalog-owner",
                                                          "nntp-auth", "nntp"))

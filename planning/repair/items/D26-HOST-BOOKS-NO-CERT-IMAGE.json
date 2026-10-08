@@ -1,0 +1,14 @@
+{
+ "category": "certify-time",
+ "detail": "D26 (a book over ten seconds at two jobs is a defect). host/owner-host certified in 16.2 s on hbox in train 27's first certify (certify-20261008T021042Z-3787838): 13.67 s of 16.1 s is include-book (catalog-may-seal 4.04 s, payload-arena-attach 1.98, history-paged-attach 1.31, catalog-paged-attach 0.74, store-node-host 0.65); proving is 0.35 s. World loading, not proof search. tools/cert_images.py had DIRECTORIES = (books, tests/acl2), so a certified host/ book never used a certification image and paid its whole include closure. Of 104 host books, with the committed image set only store-events (1.2 s modeled of 13.1 s for owner-host) was applicable, because the attach-stobj rule excludes every image that defines fn-arena/fn-hist/fn-cat without holding the attach books.",
+ "file": "tools/cert_images.py",
+ "fix": "Add host to DIRECTORIES (the image for host/ issues ../books/X includes from host/, so the portcullis stays relative); applicable() unchanged. Add the multi-root image host-attached (payload-arena-attach, history-paged-attach, catalog-paged-attach, catalog-may-seal, in owner-host's include order) to tools/cert-images.json: it holds the attach books, so the attach rule admits it (32 host books). Teeth in tests/test_cert_images.py. Fan-out: every host/ book recertifies (the portcullis is part of the book-hash); books/ and tests/acl2 books whose closure holds all four roots (books/image-world*) also take the new image.",
+ "id": "D26-HOST-BOOKS-NO-CERT-IMAGE",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "medium",
+ "source": "C7 attribution of certify-20261008T021042Z-3787838 (train 27 first certify), host--owner-host.certify.log",
+ "state": "open",
+ "title": "host/ books certify from no certification image: host/owner-host spends 13.7 of 16.2 s in include-book",
+ "updated": "2026-10-08T00:00:00Z"
+}

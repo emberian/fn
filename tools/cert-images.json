@@ -1,5 +1,5 @@
 {
-  "comment": "tools/cert_images.py plan --write; see that module",
+  "comment": "tools/cert_images.py plan --write; see that module. host-attached is hand-added (a multi-root image `plan` does not propose): the attach books a host book makes its attachments through, in owner-host's include order; `plan --write` would drop it.",
   "images": [
     {
       "name": "nntp-auth",
@@ -47,6 +47,15 @@
       "name": "served-catalog-owner",
       "roots": [
         "books/served-catalog-owner"
+      ]
+    },
+    {
+      "name": "host-attached",
+      "roots": [
+        "books/payload-arena-attach",
+        "books/history-paged-attach",
+        "books/catalog-paged-attach",
+        "books/catalog-may-seal"
       ]
     }
   ]
