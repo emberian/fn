@@ -1051,11 +1051,24 @@ def environment(extra=None, *, stack=True):
     return env
 
 
+_PORTS_GIVEN = set()
+_PORTS_LOCK = threading.Lock()
+
+
 def free_port():
-    """A loopback port nothing held a moment ago."""
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+    """A loopback port nothing held a moment ago, and none this process
+    already handed out: the kernel gives the same ephemeral port to two
+    probes that close before anything binds it, and a node whose [listener]
+    port equals its tls_port is an invalid configuration
+    (fn-ncfg-tls-port-okp)."""
+    while True:
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        with _PORTS_LOCK:
+            if port not in _PORTS_GIVEN:
+                _PORTS_GIVEN.add(port)
+                return port
 
 
 def run(argv, *, env=None, timeout=180, cwd=None, stdin=None, input=None, text=False):

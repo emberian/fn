@@ -3,6 +3,10 @@
 (in-package "ACL2")
 (include-book "bp-node-progress")
 
+(local (defthmd fn-nntp-article-idp-is-consp-local-rewrite
+  (implies (fn-nntp-article-idp article) (consp article))
+  :hints (("Goal" :by fn-nntp-article-idp-is-consp))))
+
 ; Selection scans all held rows; a blocked older row cannot replace an
 ; eligible newer row.  The N03 teeth book supplies the reachable route-wait
 ; and local-ready antecedent through the actual outer transition.
@@ -182,7 +186,7 @@
      fn-bpf-fragment-listp fn-bpf-fragment-listp-is-a-true-list
      fn-cbor-at-mostp fn-bpn-report-bounded-append-suffix
      fn-nntp-response-text-true-listp fn-bpp-dtn-sspp
-     fn-nntp-article-idp-is-consp)))
+     fn-nntp-article-idp-is-consp-local-rewrite)))
 
 ; A progress event may create a per-key volatile route or credit wait, a
 ; volatile delivery marker, or propose one forwarding dispatch.  It never
