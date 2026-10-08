@@ -3,6 +3,10 @@
 (include-book "served-catalog")
 (in-theory (disable fn-scat-membership-number-is-number-in))
 (local (in-theory (disable (tau-system))))
+; Rules of the included catalog books that the proofs below never use but
+; whose hypotheses they backchain on (true-listp, nth of natural lists).
+(local (in-theory (disable fn-mpxl-pagesp-true-listp fn-scram-printable-facts
+                           (:type-prescription adt-nth-of-all-elt-p-natp))))
 
 (defun-nx fn-asx-prefix-equalp (group row-group at)
   (if (zp at)

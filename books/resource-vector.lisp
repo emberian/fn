@@ -356,19 +356,39 @@
 
 (defthm fn-rv-keep-of-plus
   (equal (fn-rv-keep (fn-rv-plus a b) m)
-         (fn-rv-plus (fn-rv-keep a m) (fn-rv-keep b m))))
+         (fn-rv-plus (fn-rv-keep a m) (fn-rv-keep b m)))
+  :hints (("Goal" :induct (fn-rv-ind3 a b m)
+           :expand ((fn-rv-plus a b) (fn-rv-keep a m) (fn-rv-keep b m)
+                    (fn-rv-keep (fn-rv-plus a b) m)
+                    (fn-rv-plus (fn-rv-keep a m) (fn-rv-keep b m)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix fn-rv-nfix-of-sum) (nfix)))))
 
 (defthm fn-rv-drop-of-plus
   (equal (fn-rv-drop (fn-rv-plus a b) m)
-         (fn-rv-plus (fn-rv-drop a m) (fn-rv-drop b m))))
+         (fn-rv-plus (fn-rv-drop a m) (fn-rv-drop b m)))
+  :hints (("Goal" :induct (fn-rv-ind3 a b m)
+           :expand ((fn-rv-plus a b) (fn-rv-drop a m) (fn-rv-drop b m)
+                    (fn-rv-drop (fn-rv-plus a b) m)
+                    (fn-rv-plus (fn-rv-drop a m) (fn-rv-drop b m)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix fn-rv-nfix-of-sum) (nfix)))))
 
 (defthm fn-rv-keep-of-monus
   (equal (fn-rv-keep (fn-rv-monus a b) m)
-         (fn-rv-monus (fn-rv-keep a m) (fn-rv-keep b m))))
+         (fn-rv-monus (fn-rv-keep a m) (fn-rv-keep b m)))
+  :hints (("Goal" :induct (fn-rv-ind3 a b m)
+           :expand ((fn-rv-monus a b) (fn-rv-keep a m) (fn-rv-keep b m)
+                    (fn-rv-keep (fn-rv-monus a b) m)
+                    (fn-rv-monus (fn-rv-keep a m) (fn-rv-keep b m)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix) (nfix)))))
 
 (defthm fn-rv-drop-of-monus
   (equal (fn-rv-drop (fn-rv-monus a b) m)
-         (fn-rv-monus (fn-rv-drop a m) (fn-rv-drop b m))))
+         (fn-rv-monus (fn-rv-drop a m) (fn-rv-drop b m)))
+  :hints (("Goal" :induct (fn-rv-ind3 a b m)
+           :expand ((fn-rv-monus a b) (fn-rv-drop a m) (fn-rv-drop b m)
+                    (fn-rv-drop (fn-rv-monus a b) m)
+                    (fn-rv-monus (fn-rv-drop a m) (fn-rv-drop b m)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix) (nfix)))))
 
 (defthm fn-rv-keep-of-keep
   (equal (fn-rv-keep (fn-rv-keep v m) m) (fn-rv-keep v m)))
@@ -396,7 +416,10 @@
 
 (defthm fn-rv-below-transitive
   (implies (and (fn-rv-below a b) (fn-rv-below b c))
-           (fn-rv-below a c)))
+           (fn-rv-below a c))
+  :hints (("Goal" :induct (fn-rv-ind3 a b c)
+           :expand ((fn-rv-below a b) (fn-rv-below b c) (fn-rv-below a c))
+           :in-theory (disable nfix))))
 
 (defthm fn-rv-below-zeros-is-zeros
   (implies (and (fn-rv-nats-p v) (<= (len v) (nfix n))
@@ -426,15 +449,27 @@
 
 (defthm fn-rv-below-keep-monotone
   (implies (fn-rv-below a b)
-           (fn-rv-below (fn-rv-keep a m) (fn-rv-keep b m))))
+           (fn-rv-below (fn-rv-keep a m) (fn-rv-keep b m)))
+  :hints (("Goal" :induct (fn-rv-ind3 a b m)
+           :expand ((fn-rv-below a b) (fn-rv-keep a m) (fn-rv-keep b m)
+                    (fn-rv-below (fn-rv-keep a m) (fn-rv-keep b m)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix) (nfix)))))
 
 (defthm fn-rv-below-drop-monotone
   (implies (fn-rv-below a b)
-           (fn-rv-below (fn-rv-drop a m) (fn-rv-drop b m))))
+           (fn-rv-below (fn-rv-drop a m) (fn-rv-drop b m)))
+  :hints (("Goal" :induct (fn-rv-ind3 a b m)
+           :expand ((fn-rv-below a b) (fn-rv-drop a m) (fn-rv-drop b m)
+                    (fn-rv-below (fn-rv-drop a m) (fn-rv-drop b m)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix) (nfix)))))
 
 (defthm fn-rv-below-of-plus-left
   (implies (fn-rv-below (fn-rv-plus a b) c)
-           (fn-rv-below a c)))
+           (fn-rv-below a c))
+  :hints (("Goal" :induct (fn-rv-ind3 a b c)
+           :expand ((fn-rv-plus a b) (fn-rv-below a c)
+                    (fn-rv-below (fn-rv-plus a b) c))
+           :in-theory (e/d (fn-rv-nfix-of-nfix fn-rv-nfix-of-sum) (nfix)))))
 
 (defthm fn-rv-below-of-plus-right
   (implies (fn-rv-below (fn-rv-plus a b) c)
