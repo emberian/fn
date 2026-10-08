@@ -68,7 +68,7 @@ Session A messages 1289–1293 record the coordinator acknowledging that repeate
 whole-closure checks had held an independently certified operator change for
 hours. Message 1354 sets the user's preferred five-lane arrangement and
 convergence every two or three batches. Those decisions are now in
-[how we work](../planning/how-we-work.md) and the
+[AGENTS.md](../AGENTS.md) and the
 [trajectory plan](../planning/plan-2026-09-22-trajectory.md).
 
 The lesson is to preserve lane evidence and detect new batch regressions

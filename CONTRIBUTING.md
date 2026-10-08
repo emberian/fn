@@ -26,8 +26,7 @@ Never `git stash`, never `git add -A`: commit the files you changed by name.
 1. `README.md` — what fn is, in ten lines.
 2. `docs/engineering.md` — the reading order and where each kind of truth
    lives.
-3. `AGENTS.md` — the working rules; `planning/how-we-work.md` — the loop
-   and what counts as done.
+3. `AGENTS.md` — the working rules and the lane loop.
 4. The spec for what you are changing, under `specs/`.
 
 `planning/now.md` is the current state, as coordinates.
@@ -40,7 +39,7 @@ SBCL harnesses, native modules, tooling tests). For docs:
 `python3 tools/docs_check.py` and `python3 site/build_site.py --check`.
 
 ACL2 runs only through `tools/acl2` or `tools/proof_repl.py` (a warm
-session; `planning/how-we-work.md` "The loop"). Certification goes to a
+session; `AGENTS.md` "Your lane"). Certification goes to a
 build box: `python3 tools/farm.py submit auto tests/acl2/NAME-tests`. On
 hbox, every build runs under `swarm-build`.
 

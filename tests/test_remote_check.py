@@ -101,7 +101,9 @@ class RemoteCheckTests(unittest.TestCase):
         git(self.lane, "commit", "-q", "-m", "gen")
         # The box's make edits this worktree's out/a.txt mid-run, as a lane's
         # merge or commit would; out/b.txt was absent when shipped.
-        self.env["FN_REMOTE_CHECK_WRAP"] = f"echo newer > {self.lane}/out/a.txt;"
+        wrap = Path(self.scratch.name) / "wrap.sh"
+        wrap.write_text(f'echo newer > {self.lane}/out/a.txt\nexec "$@"\n')
+        self.env["FN_REMOTE_CHECK_WRAP"] = f"sh {wrap}"
         done = self.run_check("--target", "gen", "--fetch", "out")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual((self.lane / "out/a.txt").read_text(), "newer\n")
@@ -234,7 +236,7 @@ class RemoteCheckTests(unittest.TestCase):
             refused = self.run_check("--ship", bad, "--cmd", "true")
             self.assertEqual(refused.returncode, 2, bad)
 
-    def test_certificates_install_by_default_and_regen_fetches_the_generated_files(self):
+    def test_a_cmd_installs_nothing_by_default_and_regen_fetches_the_generated_files(self):
         (self.lane / "tools").mkdir()
         (self.lane / "tools/certs.py").write_text("print('  installed 3')\n")
         (self.lane / "tools/ledger.py").write_text(
@@ -251,7 +253,8 @@ class RemoteCheckTests(unittest.TestCase):
         done = self.run_check("--regen")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         log = (self.lane / "build/remote-check/hbox-regen.log").read_text()
-        self.assertIn("== certs install:   installed 3", log)
+        self.assertNotIn("certs install", log)
+        self.assertIn("== phase command ", log)
         self.assertEqual((self.lane / "planning/proofs.json").read_text(), "regen proofs.json")
         self.assertEqual((self.lane / "planning/hot-path-findings.json").read_text(), "refreshed")
         skipped = self.run_check("--no-install-certs", "--cmd", "true")
@@ -259,6 +262,35 @@ class RemoteCheckTests(unittest.TestCase):
                          .read_text())
         self.assertEqual(skipped.returncode, 0)
         self.assertEqual(self.run_check("--regen", "--cmd", "true").returncode, 2)
+
+    def test_install_roots_scope_the_install_and_phases_and_steps_are_logged(self):
+        (self.lane / "tools").mkdir()
+        (self.lane / "tools/certs.py").write_text(
+            "import sys\nprint('  installed 3' if sys.argv[1] == 'install' else 'umbrellas ok')\n"
+            "open('argv-' + sys.argv[1], 'w').write(' '.join(sys.argv[2:]))\n")
+        git(self.lane, "add", ".")
+        git(self.lane, "commit", "-q", "-m", "tools")
+        log_path = self.lane / "build/remote-check/hbox-cmd.log"
+        done = self.run_check("--install-roots", "books/wire-export", "--cmd", "true && echo second")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        log = log_path.read_text()
+        self.assertIn("(books/wire-export):   installed 3", log)
+        self.assertNotIn("install-umbrellas", log)
+        self.assertRegex(log, r"== phase install \S+Z \S+Z \d+s")
+        self.assertRegex(log, r"== phase command \S+Z \S+Z \d+s")
+        self.assertRegex(log, r"== step 1 \S+Z \S+Z \d+s rc=0: true")
+        self.assertRegex(log, r"== step 2 \S+Z \S+Z \d+s rc=0: echo second")
+        done = self.run_check("--install-roots", "books/a books/image-world", "--cmd", "true")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("== certs install-umbrellas: umbrellas ok", log_path.read_text())
+        # A failing link stops the chain and the run's status is its rc.
+        failed = self.run_check("--cmd", "false && echo never")
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertNotIn("never", log_path.read_text().replace("echo never", ""))
+        # Quoted commands run whole; a bad root name is usage.
+        self.assertEqual(self.run_check("--cmd", "echo 'a && b'").returncode, 0)
+        self.assertNotIn("== step", log_path.read_text())
+        self.assertEqual(self.run_check("--install-roots", "x;rm", "--cmd", "true").returncode, 2)
 
     def test_a_rented_box_gets_its_toolchain_from_the_box_table_here(self):
         # The box tree has no box table (the real boxes' farm.py names only

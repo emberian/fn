@@ -33,7 +33,7 @@ Inputs, each read in the format its producer writes (nothing is guessed):
 Dispositions of an open item (state open | in-progress | ready), first match:
 IN-FLIGHT (a live workq claim, or an in-progress/ready item whose owner is a
 live lane), PARKED (an ACK line, or state ``deferred`` with a written note),
-else UNOWNED.  state landed is LANDED; refuted/duplicate are CLOSED.  Exit 1
+else UNOWNED.  state landed is LANDED; refuted/duplicate/closed are CLOSED.  Exit 1
 under --check when any UNOWNED item or NEVER-RUN scenario/module has no ACK;
 exit 1 always when an input is unreadable or malformed (a finding naming
 file:line) -- nothing is silently skipped.
@@ -45,7 +45,7 @@ import sys
 from pathlib import Path
 
 OPEN = ("open", "in-progress", "ready")
-CLOSED = ("refuted", "duplicate")
+CLOSED = ("refuted", "duplicate", "closed")
 DASH = "—"
 
 

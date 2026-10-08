@@ -124,7 +124,13 @@ def sbcl(out):
 
 def run_sbcl(image, out):
     """Evaluate the probes in the developer image's saved core, in place of its
-    entry (tests/test_native_entry_guard.py's image_command)."""
+    entry (tests/test_native_entry_guard.py's image_command), at *ld-level* 1.
+    That is the level at which the image serves: save-exec's :return-from-lp
+    form runs inside ld-fn (ACL2 8.7 interface-raw.lisp:10900, ld.lisp:1875
+    binds *ld-level* to 1+).  A guard violation there throws to raw-ev-fncall
+    (axioms.lisp:2881), which is the branch fn-core's runtime implements.  A
+    bare --eval runs at level 0, where ACL2 takes its REPL branch instead
+    (interface-er, "ACL2 Halted"), a path the image never serves."""
     import os
     import shlex
     import subprocess
@@ -136,7 +142,7 @@ def run_sbcl(image, out):
     eg.IMAGE = Path(image)
     forms_file = Path(out + ".lisp")
     sbcl(str(forms_file))
-    argv, env = image_command(['(load "%s")' % forms_file.resolve()])
+    argv, env = image_command(['(let ((acl2::*ld-level* 1)) (load "%s"))' % forms_file.resolve()])
     r = subprocess.run(argv, env=env, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        timeout=600, check=False)
     Path(out).write_bytes(r.stdout)

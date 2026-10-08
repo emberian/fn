@@ -86,6 +86,15 @@
       (let ((*package* (find-package "ACL2"))) (load (third args)))
       (finish-output)
       (sb-ext:exit :code 0 :abort t)))
+  ;; A developer core's measurement hook (the load/scale harness's in-process arms, as the image's
+  ;; hooks are loaded with --eval before acl2::sbcl-restart): XL_HOOK=FILE loads FILE (package ACL2)
+  ;; and then starts fn as usual.  A production core refuses it, as above.
+  (let ((hook (sb-ext:posix-getenv "XL_HOOK")))
+    (when (and hook (plusp (length hook)))
+      (unless (acl2::fnn-developer-image-p)
+        (format *error-output* "fn-host: error: XL_HOOK is a developer-core facility~%")
+        (sb-ext:exit :code 5 :abort t))
+      (let ((*package* (find-package "ACL2"))) (load hook))))
   (acl2::fn-native-entry nil)
   (sb-ext:exit :code 0))
 (sb-ext:gc :full t)
