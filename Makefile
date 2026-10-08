@@ -1721,6 +1721,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
 	books/owner-outcome-pinned \
+	tests/acl2/catchup-carried-transit-tests \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
 	books/owner-host-relation-span \

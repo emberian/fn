@@ -1,40 +1,36 @@
-# Catch-up carried transit: statements for Deputy S
+# Catch-up carried transit: implementation and checked statements
 
 Codex, lane `s-catchup-k`, 2026-10-08. Base: `f2629613ed5fed8084ab7e9b2d79c10dfb7c0dd9`.
-Phase 1 only: these are proposed statements, not admitted events or certification.
+Phase 1's proposed statements and cost obstructions are preserved in this file
+at `f4df2bc3389b39750c0923a42485f78b3f8fdbbc`. Deputy S authorized Phase 2,
+accepted K1, allowed premise transfer for K1-carry, and replaced the proposed
+connection-only def-cost bound with K2a executed reachability and K2b's trace.
 
-The two durable transit calls can use `fn-oop-advance` with the same owner and
-effects on the host's carried domain. K1 and K1-carry below state that contract.
-**K2 is blocked as specified:** the existing advance has other size-dependent
-work, and the cost generator cannot certify pointer identity at its node
-comparison. A two-call-site replacement does not establish a total bound in
-connection count alone. No implementation, proof, or new caller premise is
-included in this change. Deputy S must resolve the K2 scope before Phase 2.
+Both durable transit arms now call the existing `fn-oop-advance`. There is no
+new advance implementation. K1 holds under exactly `fn-ocl-relation oc`, which
+the host already carries. These are certified equalities, not a measured W6
+speedup or a connection-only time bound. Configuration-sized group comparisons
+remain; the W6 measurement belongs to Deputy S and L.
 
-## K1: the host's owner and effects
+## K1: owner and effects at both subjects
 
-Subject: `fn-oop-transit-outcome`, the configured projection of the host's
-`fn-owner-transit-outcome`. Replace the existing theorem under the same name:
+The following are the admitted theorem statements, verbatim apart from proof
+hints. The counted return is `((effects . oc) . pending)`; its whole owner,
+including the feed table, equals the reference owner for every `pending`.
+No aggregate or feed-table hypothesis has been added to K1.
+
+Subject: `fn-oop-transit-outcome`.
 
 ```lisp
 (defthm fn-oop-transit-outcome-is-own-transit-outcome
-  (implies
-   (fn-ocl-relation oc)
-   (and
-    (equal (car (fn-oop-transit-outcome oc id kind reason word))
-           (car (fn-own-transit-outcome
-                 (fn-ocfg-owner oc) id kind reason word)))
-    (equal (fn-ocfg-owner
-            (cdr (fn-oop-transit-outcome oc id kind reason word)))
-           (cdr (fn-own-transit-outcome
-                 (fn-ocfg-owner oc) id kind reason word))))))
+  (implies (fn-ocl-relation oc)
+   (and (equal (car (fn-oop-transit-outcome oc id kind reason word))
+              (car (fn-own-transit-outcome (fn-ocfg-owner oc) id kind reason word)))
+       (equal (fn-ocfg-owner (cdr (fn-oop-transit-outcome oc id kind reason word)))
+              (cdr (fn-own-transit-outcome (fn-ocfg-owner oc) id kind reason word))))))
 ```
 
-Subject: `fn-oct-transit`, the function actually called at
-`host/owner-host.lisp:3483`. Its result is `((effects . oc) . pending)`, not
-`(effects . oc)`. The feed table is inside that configured owner; the outer
-cdr is the counted aggregate. This equality includes the whole owner,
-including its feed table, for every `pending`, with no aggregate premise:
+Subject: `fn-oct-transit`.
 
 ```lisp
 (defthm fn-oct-transit-is-own-transit-outcome-under-ocl-relation
@@ -50,209 +46,162 @@ including its feed table, for every `pending`, with no aggregate premise:
                  (fn-ocfg-owner oc) id kind reason word))))))
 ```
 
-The conclusion is unchanged on every host state covered today by the carried
-invariant. The new statement is logically conditional where today's theorem
-is unconditional; it is not a claim of unconditional equality on corrupt
-owners. It does not weaken the served contract because the caller already
-carries the sole premise. The removal witness must demonstrate why equality
-on arbitrary corrupt owners is deliberately not claimed.
+Why this does not weaken the host contract: the logical statements are
+conditional, but their only premise is supplied at the existing call site.
+`fn-lgoc-invariantp` includes `fn-ocl-relation` in
+`books/owner-log-ocl.lisp:233`; `fn-ohr-carried-implies-ocl-relation` at
+`books/owner-host-relation.lisp:474` exposes it. The host's transit preservation
+theorem retains its existing premises. The shape-only keeps-store theorem
+still proves structurally without invoking conditional K1. No caller required
+a new premise. The old pinned theorem name remains; `host/interfaces.lisp`
+cites both subjects, and the two obsolete reference-advance comments are fixed.
 
-Keep `fn-oct-transit-has-the-original-result` unconditional: changing both
-advance calls together leaves its full configured-result equality intact.
-Keep `fn-oct-transit-preserves-aggregate` with its existing premise and
-conclusion; K1 does not replace the aggregate contract. The host's
-`fn-oct-result` projection remains tied to that same result.
+## K1-carry: premise transfer, not full relation preservation
 
-Caller audit at the base revision:
+These unconditional equalities transfer the two actual carried-advance
+premises. Transit-next preserves the view and connection list. Composing these
+with `fn-acar-ocl-relation-carries-conn-sessionp` and
+`fn-acar-ocl-relation-carries-view-statep` at the incoming configured owner
+supplies the advance's premises after transit-next. No new host hypothesis.
 
-- `books/owner-host-relation.lisp:1028` already assumes `fn-ocl-relation`.
-- `books/owner-host-relation.lisp:1087` assumes `fn-lgoc-invariantp`;
-  `books/owner-log-ocl.lisp:233` includes `fn-ocl-relation`, and
-  `fn-ohr-carried-implies-ocl-relation` at `owner-host-relation.lisp:474`
-  states the discharge. No added premise is needed.
-- `books/owner-host-relation.lisp:1070` (keeps-store) only assumes owner
-  shape. Its hint at line 1078 DISABLES the old K1, rather than using it.
-  Preserve this theorem by the structural store-frame argument; do not
-  introduce a relation premise to this theorem.
-- `host/interfaces.lisp:2092` currently has only `:class ::program`, no
-  keystone citation. The brief's assertion that it already cites K1 is
-  stale at this revision. Add the audited citations in Phase 2; do not
-  invent an interface guard evaluating the relation.
-- `host/owner-host.lisp:3473-3480` describes the uncounted projection.
-  Update it to name `fn-oct-transit` and scope equivalence to the carried
-  relation. This is an invariant carried through host transitions, not a
-  runtime whole-state check or a theorem about arbitrary ACL2 global state.
-
-No inspected consumer requires adding a hypothesis. The keeps-store theorem
-must continue to work without using K1.
-
-## K1-carry: the actual intermediate configured owners
-
-Subjects: `fn-oop-transit-next` and `fn-oct-transit-next`, wrapped by the
-actual `fn-ocfg-with-owner` used to construct `oc2`. State the full relation,
-so the existing relation-to-acar lemmas and configured advance equivalence
-apply directly. No well-formedness premise on `feeds`, `conn`, or `sub` is
-needed: these transitions keep the fields read by the relation.
+Subject: `fn-oop-transit-next`.
 
 ```lisp
-(defthm fn-oop-transit-next-preserves-ocl-relation
-  (implies
-   (fn-ocl-relation oc)
-   (fn-ocl-relation
-    (fn-ocfg-with-owner
-     oc (fn-oop-transit-next (fn-ocfg-owner oc)
-                             id conn sub completion kind reason)))))
-
-(defthm fn-oct-transit-next-preserves-ocl-relation
-  (implies
-   (fn-ocl-relation oc)
-   (fn-ocl-relation
-    (fn-ocfg-with-owner
-     oc (fn-oct-transit-next (fn-ocfg-owner oc)
-                             id conn sub completion kind reason feeds)))))
+(defthm fn-oop-transit-next-keeps-acar-premises
+  (let ((next (fn-oop-transit-next o id conn sub completion kind reason)))
+    (and (equal (fn-acar-conn-sessionp next target)
+                (fn-acar-conn-sessionp o target))
+         (equal (fn-acar-view-statep next) (fn-acar-view-statep o)))))
 ```
 
-These preserve a substantive historical relation across real mutations:
-pending/inflight, feeds, and refusal state change. They are not P implies P.
-The store, view, connections, ledger field, clock, facts, configuration,
-pins, and staged configuration remain the relation's same inputs. Existing
-`fn-acar-ocl-relation-carries-conn-sessionp` and
-`fn-acar-ocl-relation-carries-view-statep` then give both premises at `oc2`.
-Use the existing `fn-ocmt-post-commit-preserves-ocl-relation` for the commit
-preceding the host outcome, not an extra premise on the host keystone.
-
-## K2: blocked bound and the required cost form
-
-Intended subject: `fn-oop-advance`; this is the narrower choice allowed by
-the brief. It covers the advance within both transit functions, not feed
-enqueue, reply rendering, or all import work.
-
-Three distinct obstructions prevent an honest concrete K2 statement today:
-
-1. `books/owner-advance-carried.lisp:168-182` still calls
-   `fn-nntp-nexts-boundedp`. Its recursive definition at
-   `books/nntp-session.lisp:374` walks all group watermarks. Group count is
-   independent of connection count; the relation does not bound one by the
-   other. `books/owner-served-carried.lisp:21-34` also searches the store's
-   group list for a selected group. These are real work even if a visit
-   tariff happens not to charge every recursive cell operation.
-2. `books/served-carried.lisp:37-39` uses `(equal node live)` before its
-   fallback `fn-node-statep`. At this advance the rebuilt peer session holds
-   the same node as `fn-acar-session-node conn`, so raw pointer identity
-   avoids the fallback. But `books/def-cost.lisp:130` charges `equal` as
-   `1 + acl2-count` of its first argument. Exposing this call in the derived
-   cost therefore charges the node's archive even on the equal branch.
-   The current generator has no contextual pointer-identity tariff.
-3. `def-cost` uses the subject's guard for its bound, not an arbitrary
-   invariant (`books/def-cost.lisp:660-666`). `fn-oop-advance` has guard t;
-   arbitrary pin tables and identifiers are not bounded by its connection
-   count. The pin-set loop is at `books/owner-config.lisp:138`. A conditional
-   cost theorem needs the `defkeystone :visits` route described below.
-
-Do not hide those costs in an opaque parent such as
-`fn-acar-own-advance-result` or `fn-scar-auth-sessionp`. At
-`books/def-cost.lisp:380-385`, an inlined wrapper with unknown descendants
-collapses to the wrapper as an unaccounted leaf. Merely excluding the six
-forbidden names from that top-level set can therefore conceal them.
-Furthermore, `fn-cost-events-dimension` adds unaccounted terms to the emitted
-bound at lines 642-644: a small declared `:visits` term alone is not a total
-cost bound. Audit the expanded bound and descendant rows, not just the input
-declaration. No derived set has been evaluated in this statements-only phase.
-
-Proposed fallback schema (NOT an admissible event yet; uppercase constants
-are unresolved design parameters, not established tariffs):
+Subject: `fn-oct-transit-next`.
 
 ```lisp
-(def-cost fn-oop-advance :unaccounted ())
-
-;; On a defkeystone whose :subject is fn-oop-advance and whose sole
-;; hypothesis is (fn-ocl-relation oc), attach:
-:visits
-((advance
-  (fn-oop-advance-route-visits oc id)
-  (+ *SCK-FIXED-VISITS*
-     (* *SCK-PER-CONNECTION-VISITS*
-        (len (fn-own-conns (fn-ocfg-owner oc)))))
-  :not-attained "A conservative envelope; supply an attainment if tight."
-  :derived-by fn-oop-advance))
+(defthm fn-oct-transit-next-keeps-acar-premises
+  (let ((next (fn-oct-transit-next o id conn sub completion kind reason feeds)))
+    (and (equal (fn-acar-conn-sessionp next target)
+                (fn-acar-conn-sessionp o target))
+         (equal (fn-acar-view-statep next) (fn-acar-view-statep o)))))
 ```
 
-The enclosing substantive equality would be the existing
-`fn-oop-advance-is-ocfg-advance-under-ocl-relation`, registered with teeth.
-`defkeystone` checks that the cost record is the subject's and that the
-visit term calls its route twin (`books/defkeystone.lisp:118-134`). The
-empty unaccounted set above is a required future closed derivation, not a
-report of the current derived set. Its exact equality must be checked by
-`def-cost`; neither whole-store recognizers nor opaque wrappers concealing
-them may remain. No values for the constants are asserted in Phase 1.
+Subject: `fn-acar-own-advance-result composed with fn-oop-transit-next`.
 
-This form solves only the missing invariant context. It cannot make the
-watermark/group walks disappear or change the structural-equality tariff.
-Recommendation to S: preserve K1's scope and resolve K2 by authorizing the
-necessary carried summaries/representation and cost-generator work, or
-explicitly revise the requested bound to name the independent profile
-dimensions. A profile-dependent bound must not be reported as the requested
-connection-only K2. Do not add undischargeable caller hypotheses, hard-code
-group limits, register zero-cost wrappers, or weaken a cost ratchet.
+```lisp
+(defthm fn-oop-transit-next-advance-is-reference
+  (implies (fn-ocl-relation oc)
+           (equal
+            (fn-acar-own-advance-result
+             (fn-oop-transit-next (fn-ocfg-owner oc)
+                                  id conn sub completion kind reason) id)
+            (fn-own-advance-result
+             (fn-oop-transit-next (fn-ocfg-owner oc)
+                                  id conn sub completion kind reason) id))))
+```
 
-## Teeth plan
+## K2a: checked executed closure, derived from the final ACL2 world
 
-Register K1 with `defkeystone` (or the identical theorem plus `defteeth`),
-`:subject fn-oop-transit-outcome` / `fn-oct-transit`, and one hypothesis
-label `ocl`. Each witness must check the complete antecedent AND both
-equalities; checking an implication alone is insufficient.
+Statement (a gate, not an ACL2 theorem): the conservative, path-sensitive
+executed closures derived from `fn-oop-advance` and the whole `fn-oct-transit`
+contain none of `fn-statep`, `fn-node-statep`, `fn-nntp-projectionp`,
+`fn-peer-sessionp`, `fn-own-conn-boundedp`, `fn-articles-freshp`, or
+`fn-article-listp`. Checking the whole counted function includes its durable
+arm. The same check on `fn-ocfg-advance` fails: it reaches `fn-node-statep`
+and `fn-statep`.
 
-Positive fixture: build a small configured owner by composing the historical
-configured-owner setup in `tests/acl2/owner-host-relation-tests.lisp:118-150`
-with the real peer open / IHAVE / article / take sequence in
-`tests/acl2/transit-same-decision-tests.lisp:91-120`. Use the former's store
-event and commit recipe for the transit submission. Check the relation at
-the input, non-nil named connection, matching inflight id, transit-subp,
-kind `:want`, completion `:durable`, the advanced connection/version and pin,
-and both K1 equalities. Supply a numeric pending aggregate and check the
-counted entry's feed-table guards under ordinary guard checking.
+The existing `tools/extract/frontend.lisp` reads the ACL2 world's executable
+bodies and resolves MBE/attachment routes. The new
+`tools/extract/executed_closure.py` consumes that exported IR, not source text
+or a declared closure list. It symbolically reduces immutable constructors,
+selectors and decidable tests. Unknown IFs inspect both arms. Recursive SCCs
+are inspected with unconstrained arguments and return opaque results; bounded
+unrolling of small, decreasing natural arguments resolves record selectors.
+Anything not resolved that way falls back to the conservative SCC treatment.
+Missing definitions, mutable/stobj routes, non-guard-verified definitions,
+frontend blockers and exhausted analysis budgets fail the gate.
 
-The existing `*ohrt-b9*` transit assertion is explicitly an absent-branch
-witness (`owner-host-relation-tests.lisp:176-183`), not this positive tooth.
-The proposed composed fixture must be executed after GO; it is not yet a
-demonstrated reachable durable transit. Do not simply relabel its POST
-submission and call that a reachable transit.
+This is deliberately path-sensitive: the static graph still has
+`fn-scar-node-statep -> fn-node-statep`. Its first disjunct is true in this
+composition, so the validator arm cannot execute. Reporting a static closure
+without that edge would be false. No new hypothesis is used to prune it.
 
-Removal tooth for the sole K1 premise `ocl`: keep that durable transit's
-trigger and store intact, but insert a non-article into its view archive,
-following `tests/acl2/owner-advance-carried-tests.lisp:100-147`. Explicitly
-assert `(not (fn-ocl-relation oc))` AND failure of the conjunction of K1's
-two equalities. The expected divergence is the rebuilt session's projected
-flag and therefore the owner; effects can still agree. Also exercise the
-independent bad-session construction from that file's lines 169-192:
-reference advance refuses, carried advance accepts. These are labelled
-corrupted-state removals; use `:logical` only if an actual guard prevents
-evaluation, with the specific reason recorded. Run both removals for the
-counted and uncounted subjects, preserving the counted feed-table guards.
+Reproduce with a fresh remote world (cached certification dependencies only):
 
-K1-carry teeth: reuse the positive input and the actual intermediate values.
-For each single `ocl` premise, the corrupted view remains corrupted after
-the corresponding `transit-next`, so both the omitted premise and the
-conclusion are false. Mutate the output pin behavior (old pins retained
-after advance) using the existing generation-2 to generation-3 scenario;
-the output relation must fail. Do not count proof-search failure as a tooth.
+```sh
+timeout 300 python3 tests/acl2/catchup-carried-transit-closure.py --host persvati --lane s-catchup-k
+```
 
-Cost tooth: derive a reference row for `fn-own-advance-result`, expanding
-descendant rows far enough to expose `fn-own-conn-boundedp` /
-`fn-auth-sessionp` / `fn-peer-sessionp` / `fn-node-statep` and
-`fn-nntp-open-session` / `fn-nntp-projectionp` / `fn-statep`. Assert from the
-world's actual cost rows that the reference's derived unaccounted/visit
-dependencies contain `fn-node-statep` or `fn-statep`. Pair it with the
-carried subject's exact derived set excluding all of `fn-statep`,
-`fn-node-statep`, `fn-nntp-projectionp`, `fn-peer-sessionp`,
-`fn-own-conn-boundedp`, and `fn-articles-freshp`, checking opaque descendants
-as well. A source grep or a hand-written dependency list is not this tooth.
+The runner creates and stops its own proof-REPL session and exports fresh IR;
+it does not accept an old world file. The complete derived sets, reference
+paths, world digest and source commit are saved in `build/catchup-closure-*/`.
+The checked world at `3c443d564017f62916041a44f1020cc8337d0c3d` had SHA-256
+`4013fb038a9872bad281ab917d71a2bf35bb58cf2757c46344a0855e68d63ec2`:
 
-## Phase boundary and gates
+```text
+K2a ACL2::FN-OOP-ADVANCE: 238 reachable functions; 0 forbidden
+K2a ACL2::FN-OCT-TRANSIT: 637 reachable functions; 0 forbidden
+K2a reference tooth: ACL2::FN-NODE-STATEP, ACL2::FN-STATEP
+```
 
-Stop for Deputy S's audit after committing this named note. Phase 2 remains
-unauthorized until GO. K2 and the executable durable fixture are outstanding;
-no caller-premise blocker was found. No ACL2 session, certification, host
-load, interface generation, or keystone generation was run for this note.
-The only applicable Phase 1 gates are the named-file secrets check and
-`git diff --check`; their exact outputs are reported with the commit.
+The six narrow Python controls include a changed-node mutation exposing the
+forbidden fallback, unknown branches, direct and mutual recursion, concrete
+initial arguments that cannot hide later recursive cases, and fail-closed
+checks. The reference tooth is independently derived from the same real world.
+This gate makes no claim about total runtime, allocation, or article-independent
+work in predicates outside the specified forbidden set.
+
+## K2b: held-node comparison on the executed path
+
+Statement (source trace, not a theorem or a timing result): the arguments to
+`(equal node live)` at `books/served-carried.lisp:39` are EQ on the carried
+advance's host path; this comparison does not traverse the held node.
+
+`fn-acar-own-advance-result` at `books/owner-advance-carried.lisp:266` obtains
+`old` from the selected connection and `pold` from its auth-session base.
+`fn-peer-with-base` at `books/peer-inbound.lisp:949` puts
+`(fn-peer-session-node pold)` straight into `fn-peer-make-session`; the list
+constructor borrows the node object. `fn-auth-with-base` at
+`books/nntp-auth.lisp:572` and the connection constructor preserve that rebuilt
+peer session. `fn-scar-conn-boundedp` consequently reads the identical old node
+object from `next`. Its `live` argument is `(fn-acar-session-node conn)`
+(`books/owner-advance-carried.lisp:49`), which selects the same node from the
+old connection. No node copy or re-decoding lies between these selectors.
+The source trace establishes raw pointer identity here; ACL2 logical EQUAL
+alone would not establish it. The def-cost tariff based on `acl2-count` cannot
+express this raw EQ fact, so it is not presented as a cost theorem.
+
+## Teeth and validation
+
+`tests/acl2/catchup-carried-transit-tests.lisp` composes the existing configured
+recovery fixture with a real peer open, IHAVE, article read, take, journal
+completion and durable outcome. The input satisfies `fn-ocl-relation`, has
+view version 3 and connection version 2, and actually triggers durable
+transit. The result replies `235`, advances that connection to version 3 and
+preserves the relation. Both K1 `defteeth` entries check the full antecedent
+and conclusion. Each removes the sole `ocl` premise with a corrupt view;
+each also exercises a corrupt held node. Both corruptions make the equality
+false. They are corrupted-state removals, not reachable host states. A
+no-advance conclusion mutation fails on the positive fixture. The
+unconditional K1-carry equalities have no premise to remove.
+
+Proofs were admitted incrementally on persvati before certification. One
+affected certification batch then covered both outcome books, host relation,
+`host/owner-host`, and the new fixture, at the unchanged Lisp closure from
+`3c443d564`. No second certification was used for proof iteration.
+
+```sh
+timeout 900 python3 tools/boxq.py submit --kind certify-lane --box persvati --lane s-catchup-k --slots 2 --wait -- --lane --affected-by books/owner-outcome-pinned.lisp --affected-by books/owner-outcome-counted.lisp
+```
+
+Run `run-20261008T103534Z-8ec4` passed: 8 certified, 0 failed, 918 installed
+from cache. D26 remains red for `host/owner-host` (99.5 s) and
+`books/owner-host-relation` (46.3 s), measured at two jobs. These times are
+reported, not waived or re-baselined.
+
+`interface_emit --check`, `keystone_emit --check`, and `host_check --load`
+reported 0 findings. The host load was the bare-ACL2 fallback: 58/58 raw files,
+73 undefined certified-world names, 27 certified-world load-time calls,
+46 other compiler warnings. The affected `host/owner-host` certified book was
+also covered by the batch above. Interface checking retained one unresolved
+pre-existing output-tariff citation and 13 source-undecidable kind rows;
+these are not a claim of complete resolution. The existing toothless ceiling
+was unchanged. Exact gate tails accompany the phase's final message.
