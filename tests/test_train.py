@@ -55,7 +55,7 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
          "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
-         "tests/test_keystone_critical.py"]
+         "tests/test_keystone_critical.py", "tools/harness_check.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in planning/interfaces.json specs/wire-grammar.json; do
@@ -370,7 +370,8 @@ class RegenTests(TrainBase):
         p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["world ", "ledger --write", "keystone_emit --write-manifest"])
+        self.assertEqual(log, ["world ", "ledger --write", "harness_check --write-stubs",
+                               "keystone_emit --write-manifest"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
 
