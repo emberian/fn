@@ -1160,7 +1160,8 @@ def named_refusal(line):
 def verify_slot_reuse(history, evidence):
     """F1 external oracle, with coverage independent of any discovered violation."""
     findings = []
-    reads = [o for o in history if o.get('probe') == 'F1']
+    reads = [o for o in history if o.get('probe') == 'F1'
+             and o.get('route') == evidence.get('route')]
     accepted = {}
     for op in history:
         if (op['kind'] == 'POST' and op['outcome'] == 'completed'
@@ -1180,7 +1181,10 @@ def verify_slot_reuse(history, evidence):
     measured = bool(reads and any(o.get('held') for o in reads)
                     and evidence.get('held') and evidence.get('released')
                     and evidence.get('publication') and evidence.get('drop_calls', 0) > 0
-                    and evidence.get('evictions', 0) > 0 and evidence.get('complete'))
+                    and evidence.get('installs', 0) > 0
+                    and evidence.get('evictions', 0) > 0 and evidence.get('reuses', 0) > 0
+                    and (evidence.get('route') != 'W' or evidence.get('funded_pool'))
+                    and evidence.get('complete'))
     return findings, ['P4-RECLAIM', 'P2-IDENTITY'] if measured else []
 
 
@@ -1228,10 +1232,10 @@ def verify_index_saturation(history, health, existing, absent):
     return findings, ['P2-IDENTITY'] if complete and saturated else []
 
 
-def fault_probe(c, mid, cell, epoch=None, held=False):
+def fault_probe(c, mid, cell, epoch=None, held=False, route=None):
     text = 'ARTICLE ' + mid
     op = c.begin('ARTICLE', {'command': text, 'msgid': mid}, text.encode() + b'\r\n')
-    op.update(probe=cell, epoch=epoch, held=held)
+    op.update(probe=cell, epoch=epoch, held=held, route=route)
     line, body = c.finish(op)
     if line.startswith(b'220 '):
         op['body_sha256'] = digest(body)
@@ -1248,16 +1252,38 @@ def wait_file(path, seconds, predicate=lambda text: bool(text)):
     raise TimeoutError('hook witness missing: ' + str(path))
 
 
-def f1_evidence(text):
-    """Only the release row closes the interval; torn/timeout rows cannot pass."""
-    out = {}
-    for row in text.splitlines():
+F1_FUNCTIONS = {'E': 'fnn-extent-cache-store', 'W': 'fnn-extent-window-release'}
+F1_POOL = ('Default startup: fnn-owner-page-read-startup -> '
+           'fn-owner-page-read-install-default -> fn-owner-page-read-install-baseline. '
+           'No external enable switch: [resources] cold_heap_octets/cold_workers/'
+           'cold_descriptors/cold_read_ids/cold_file_ids are parsed but '
+           'fn-prstartup-default-plan refuses explicit cold policy as '
+           ':unpriced-complete-cold-profile; leave them absent.')
+
+
+def f1_evidence(text, route='E'):
+    """Match the route/function; partial, malformed and timeout rows cannot pass."""
+    function = F1_FUNCTIONS[route]
+    out = dict(route=route, held=False, held_function=function, witness=text,
+               installs=0, drop_calls=0, evictions=0, reuses=0)
+    for row in text.splitlines(keepends=True):
+        if not row.endswith('\n'):
+            continue
         fields = row.split()
-        if fields and fields[0] == 'held':
-            out['held'] = True
-        if len(fields) == 5 and fields[0] == 'released':
-            out.update(released=True, installs=int(fields[1]), drop_calls=int(fields[2]),
-                       evictions=int(fields[3]), xc_installs=int(fields[4]))
+        if fields == ['pool', route, 'funded']:
+            out['funded_pool'] = True
+        if fields == ['pool', route, 'unfunded']:
+            out['funded_pool'] = False
+        if fields[1:3] != [route, function]:
+            continue
+        if len(fields) == 4 and fields[0] == 'held' and fields[3].isdigit() and int(fields[3]) > 0:
+            out.update(held=True, held_call=int(fields[3]))
+        if (len(fields) == 7 and fields[0] in ('released', 'timeout')
+                and out.get('held') and all(v.isdigit() for v in fields[3:])):
+            out.update(zip(('installs', 'drop_calls', 'evictions', 'reuses'), map(int, fields[3:])))
+            out[fields[0]] = True
+    if out.get('timeout'):
+        out.pop('released', None)
     return out
 
 
@@ -1277,17 +1303,29 @@ def fault_result(campaign, h, findings, checked, notes, required):
     return result
 
 
-def slot_reuse(run, ph):
+def f1_route(campaign, h, ph, route):
     from tools import msgid_measure
-    campaign = Campaign(run, ph)
-    node, h = campaign.node(hook='f1-delay.lisp'), campaign.history()
-    go, release, witness = (node.work / n for n in ('f1-arm', 'f1-release', 'f1-witness'))
-    notes, worker, errors = {}, None, []
+    node = release = witness = None
+    notes, workers, errors = dict(route=route, pool_configuration=F1_POOL), [], []
+    released = threading.Event()
+    def launch(action):
+        def guarded():
+            try:
+                action()
+            except Exception as exc:
+                errors.append(type(exc).__name__ + ': ' + str(exc))
+        worker = threading.Thread(target=guarded, daemon=True)
+        workers.append(worker)
+        worker.start()
+        return worker
     try:
+        node = campaign.node(hook='f1-delay.lisp')
+        notes['work'] = str(node.work)
+        go, release, witness = (node.work / n for n in ('f1-arm', 'f1-release', 'f1-witness'))
         campaign.start(node, h)
         with Client(node.port, h, campaign.deadline) as c:
             for i in range(ph.get('cold_reads', 24) + 1):
-                if not c.post(i, 32768).startswith(b'240 '):
+                if not c.post(i, 524288).startswith(b'240 '):
                     raise RuntimeError('F1 seed refused')
         # Persist extents before making the owner's read cache cold.
         offset = (node.work / ('owner.%d.err' % node.err_n)).stat().st_size
@@ -1298,46 +1336,80 @@ def slot_reuse(run, ph):
         node.stop()
         node.env.update(FN_LOAD_F1_ARM=str(go), FN_LOAD_F1_RELEASE=str(release),
                         FN_LOAD_F1_WITNESS=str(witness), FN_LOAD_F1_N=str(ph.get('hold_n', 1)),
+                        FN_LOAD_F1_ROUTE=route,
                         FN_LOAD_F1_SECONDS=str(campaign.recovery * 3),
                         FN_LOAD_F1_CACHE=str(ph.get('cache_entries', 1)))
         campaign.start(node, h)
         go.touch()
         def cold():
-            try:
-                with Client(node.port, h, campaign.recovery * 3) as c:
-                    fault_probe(c, msgid_measure.msgid(0), 'F1', held=True)
-            except (OSError, EOFError, TimeoutError) as exc:
-                errors.append(str(exc))
-        worker = threading.Thread(target=cold, daemon=True)
-        worker.start()
-        wait_file(witness, campaign.recovery, lambda s: 'held\n' in s)
+            with Client(node.port, h, campaign.recovery * 3) as c:
+                fault_probe(c, msgid_measure.msgid(0), 'F1', held=True, route=route)
+        launch(cold)
+        wait_file(witness, campaign.recovery, lambda s: f1_evidence(s, route).get('held'))
         offset = (node.work / ('owner.%d.err' % node.err_n)).stat().st_size
-        rc, reply = campaign.control(node, h, 'store', 'checkpoint')
-        if rc:
-            raise RuntimeError('F1 checkpoint during hold: ' + reply)
-        notes['publication'] = wait_log(node, 'CHECKPOINT auto sequence=', campaign.recovery, offset)
-        with Client(node.port, h, campaign.deadline) as c:
-            for i in range(1, ph.get('cold_reads', 24) + 1):
-                fault_probe(c, msgid_measure.msgid(i), 'F1')
+        def publish():
+            rc, reply = campaign.control(node, h, 'store', 'checkpoint')
+            if rc:
+                raise RuntimeError('F1 checkpoint during hold: ' + reply)
+            line = wait_log(node, 'CHECKPOINT auto sequence=', campaign.recovery, offset)
+            if not released.is_set():
+                notes['publication'] = line
+        def churn():
+            with Client(node.port, h, campaign.recovery * 3) as c:
+                for i in range(1, ph.get('cold_reads', 24) + 1):
+                    fault_probe(c, msgid_measure.msgid(i), 'F1', route=route)
+        # A blocked publication must not prevent dispatch of the competing reads.
+        competing = [launch(publish), launch(churn)]
+        end = time.monotonic() + campaign.recovery
+        for worker in competing:
+            worker.join(max(0, end - time.monotonic()))
+        released.set()
         release.touch()
-        wait_file(witness, campaign.recovery, lambda s: 'released ' in s)
-        worker.join(campaign.recovery)
-        notes['complete'] = not worker.is_alive() and not errors
+        wait_file(witness, campaign.recovery, lambda s: f1_evidence(s, route).get('released'))
     except Exception as exc:
         notes['reason'] = type(exc).__name__ + ': ' + str(exc)
     finally:
-        release.touch()  # Unblock our hook before asking our owner to stop.
-        if worker is not None:
+        released.set()
+        if release is not None:
+            release.touch()  # Unblock our hook before asking our owner to stop.
+        for worker in workers:
             worker.join(campaign.recovery)
-        node.stop()
-        if worker is not None:
+        if node is not None:
+            node.stop()
+        for worker in workers:
             worker.join(5)
-    notes.update(f1_evidence(witness.read_text() if witness.exists() else ''))
+    notes.update(f1_evidence(witness.read_text() if witness and witness.exists() else '', route))
+    reads = [o for o in h.ops if o.get('probe') == 'F1' and o.get('route') == route]
+    notes['complete'] = (len(reads) == ph.get('cold_reads', 24) + 1
+                         and not any(w.is_alive() for w in workers) and not errors)
     notes['client_errors'] = errors
     findings, checked = verify_slot_reuse(h.ops, notes)
+    notes['checked'] = checked
+    notes['status'] = 'measured' if checked else 'not-measured'
     if not checked:
-        notes.setdefault('reason', 'publication and actual cache eviction during the release hold not witnessed')
-    return fault_result(campaign, h, findings, checked, notes, ['P4-RECLAIM', 'P2-IDENTITY'])
+        if route == 'W' and not notes.get('funded_pool'):
+            notes['reason'] = 'Funded pool not observed in the running image. ' + F1_POOL + ' ' + notes.get('reason', '')
+        else:
+            notes.setdefault('reason', 'hold, publication and actual cache eviction/reuse not witnessed; '
+                             'the hook preserves owner and extent mutexes')
+    return notes, [(p, route + ': ' + detail) for p, detail in findings], checked
+
+
+def slot_reuse(run, ph):
+    campaign = Campaign(run, ph)
+    h, routes, findings = campaign.history(), {}, []
+    required = ['P4-RECLAIM', 'P2-IDENTITY']
+    checked = set(required)
+    for route in F1_FUNCTIONS:
+        notes, fs, measured = f1_route(campaign, h, ph, route)
+        routes[route] = notes
+        findings.extend(fs)
+        checked.intersection_update(measured)
+    notes = {'routes': routes}
+    if not checked:
+        notes['reason'] = '; '.join(r + ': ' + n['reason'] for r, n in routes.items()
+                                   if n['status'] == 'not-measured')
+    return fault_result(campaign, h, findings, sorted(checked), notes, required)
 
 
 def f4_mid(i):

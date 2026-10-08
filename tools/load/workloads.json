@@ -720,7 +720,7 @@
    ]
   },
   "fault-slot-reuse": {
-   "about": "P4-RECLAIM; P2-IDENTITY: A cold-read completion arriving after cache reuse across publication is refused by name or returns its accepted octets, never another article's bytes. Requires observed reuse during the hold. Owner L.",
+   "about": "P4-RECLAIM; P2-IDENTITY: Entry (E) and funded-window (W) cold completions across publication return accepted octets or named refusals. Each route requires witnessed cache eviction and reuse during its hold. Owner L.",
    "preset": "big-articles",
    "groups": [
     "fn.test"
