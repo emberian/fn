@@ -44,6 +44,12 @@
 (include-book "def-representation")
 (include-book "def-representation-tree")
 (include-book "statement-recover-stream")
+(include-book "paged-checkpoint-intern-context")
+; Keep the existing metadata proofs on their SSR abstraction.  The bridge
+; below instantiates the shared-fold correspondence explicitly; eager global
+; rewriting here expands the whole interning fold during preprocessing.
+(local (in-theory (disable fn-scka-fold-at-is-the-ssr-step
+                           fn-ssr-step-rows-are-fn-scka-intern-at)))
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "std/lists/append" :dir :system))
 
@@ -1228,3 +1234,74 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-pck-row-extend-dirty-at adt-tp-extend-dirty-at)
                            (fn-pck-rows-from adt-tp-seq-words adt-tp-dirty-at adt-tp-number)))))
+
+; Shared-fold bridge: the existing admission premise establishes canonical
+; held rows, including snapshots. No additional history hypothesis.
+(local
+ (defthm pckh-meta-step-is-shared
+ (implies (or (equal st :bad) (fn-ssr-statep st))
+  (equal (pck-ssr1 st w) (fn-scka-fold-at st (list w) 0)))
+ :hints (("Goal" :cases ((equal st :bad))
+ :in-theory (disable pck-ssr1 fn-scka-fold-at fn-ssr-intern-step fn-ssr-statep)
+ :use (pck-ssr1-is-the-step
+ (:instance fn-scka-fold-at-is-the-ssr-step (acc st) (ws (list w)) (dicts nil) (fn-arena nil)))))))
+
+(local
+ (defthm pckh-metadata-step
+ (implies (and (fn-pck-context-agreep st acc) (natp h))
+  (fn-pck-context-agreep (pck-ssr1 st w) (fn-scka-fold-at acc (list w) h)))
+ :hints (("Goal" :do-not-induct t
+ :in-theory (disable fn-pck-context-agreep pck-ssr1 fn-scka-fold-at fn-ssr-statep)
+ :use ((:instance pckh-context-step (a st) (b acc) (ha 0) (hb h))
+       (:instance pckh-meta-step-is-shared)
+       (:instance pckh-context-state-parts (a st) (b acc)))))))
+
+(local
+ (defun pckh-metadata-ind (st acc recs h)
+ (declare (xargs :measure (len recs) :verify-guards nil))
+ (if (atom recs) (list st acc h)
+  (pckh-metadata-ind (pck-ssr1 st (car recs))
+                      (fn-scka-fold-at acc (list (car recs)) h) (cdr recs)
+                      (if (fn-scka-sealsp (car recs)) (+ 1 h) h)))))
+
+(defthm fn-pck-metadata-context-is-the-held-context
+ (implies (and (true-listp recs) (fn-pck-context-agreep st acc) (natp h))
+  (fn-pck-context-agreep (fn-pck-st-of st recs) (fn-scka-fold-at acc recs h)))
+ :hints (("Goal" :induct (pckh-metadata-ind st acc recs h)
+ :in-theory (disable fn-pck-st-of pck-ssr1 fn-scka-fold-at fn-pck-context-agreep
+                     fn-scka-sealsp (tau-system)))
+ ("Subgoal *1/2" :expand ((fn-pck-st-of st recs))
+ :use ((:instance pckh-fold-cons (w (car recs)) (ws (cdr recs)))))
+ ("Subgoal *1/1" :in-theory (e/d (fn-pck-st-of true-listp)
+ (fn-scka-fold-at fn-pck-context-agreep (tau-system))))))
+
+(local
+ (defthm pckh-sccb-listp-true-listp
+ (implies (fn-pck-sccb-listp recs st) (true-listp recs))
+ :hints (("Goal" :induct (fn-pck-sccb-listp recs st)
+ :in-theory (e/d (fn-pck-sccb-listp) (fn-pck-meta pck-ssr1 fn-pck-payload))))))
+(local
+ (defthm pckh-context-faults-agree
+ (implies (fn-pck-context-agreep a b)
+  (equal (equal a :bad) (equal b :bad)))
+ :hints (("Goal" :in-theory (enable fn-pck-context-agreep fn-ssr-statep)))))
+(local
+ (defthm pckh-seed-context-agrees
+ (fn-pck-context-agreep (fn-pck-seed) (fn-pck-seed))
+ :hints (("Goal" :in-theory (enable fn-pck-context-agreep fn-pck-seed)))))
+(defthm fn-pck-recordsp-establishes-held
+ (implies (fn-pck-recordsp configs recs)
+  (not (equal (fn-pck-held recs) :bad)))
+ :hints (("Goal" :do-not-induct t
+ :in-theory (e/d (fn-pck-held fn-pck-seed)
+  (fn-pck-recordsp fn-pck-st-of fn-scka-fold-at fn-scka-intern-at
+   fn-ssr-seed fn-pck-context-agreep fn-scka-intern-at-bad-iff))
+ :use (pck-recordsp-parts
+  (:instance pckh-sccb-listp-true-listp (st (fn-pck-seed)))
+  (:instance fn-pck-metadata-context-is-the-held-context
+   (st (fn-pck-seed)) (acc (fn-pck-seed)) (h 0))
+  (:instance pckh-context-faults-agree
+   (a (fn-pck-st-of (fn-pck-seed) recs))
+   (b (fn-scka-fold-at (fn-pck-seed) recs 0)))
+  (:instance fn-scka-intern-at-bad-iff (ws recs) (id (fn-stxk-initial-context 0)) (h 0))
+  pckh-seed-context-agrees))))

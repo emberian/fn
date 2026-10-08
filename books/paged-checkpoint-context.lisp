@@ -2,10 +2,7 @@
 (in-package "ACL2")
 (include-book "paged-checkpoint")
 
-(defun fn-pck-context (st)
-  (declare (xargs :guard t))
-  (if (equal st :bad) :bad
-    (list (fn-ssr-at 1 st) (fn-ssr-at 2 st) (fn-ssr-at 3 st))))
+; fn-pck-context is shared from paged-checkpoint-intern-context.
 
 (defun fn-pck-context-state (context)
   (declare (xargs :guard t))
@@ -44,11 +41,7 @@
               (:executable-counterpart binary-+))
             (theory 'minimal-theory)))))
 
-(defun fn-pck-context-agreep (a b)
-  (declare (xargs :guard t))
-  (or (and (equal a :bad) (equal b :bad))
-      (and (fn-ssr-statep a) (fn-ssr-statep b)
-           (equal (fn-pck-context a) (fn-pck-context b)))))
+; fn-pck-context-agreep is shared from paged-checkpoint-intern-context.
 
 (defthm fn-pck-context-agree-step
   (implies (fn-pck-context-agreep a b)

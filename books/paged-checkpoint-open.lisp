@@ -1160,20 +1160,7 @@
 ; -----------------------------------------------------------------------------
 ; The fold states stay in agreement.
 
-(defthm pcko-identity-of-hstxa
-  (implies (and (fn-stxa-p w) (fn-held-p h1) (fn-held-p h2))
-           (equal (fn-replay-identity-step ctx (fn-hstxa-make w h1))
-                  (fn-replay-identity-step ctx (fn-hstxa-make w h2))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-replay-identity-step fn-store-event-sequence fn-replay-identity-wire)
-                           (fn-held-p fn-stxa-p fn-hsig-article-event-carried-bindsp fn-hsig-article-event-revoked-bindsp
-                            fn-stxk-fault fn-replay-identity-advance fn-stxk-p fn-stxe-p))
-           :use ((:instance fn-hstxa-is-no-wire-event (x (fn-hstxa-make w h1)))
-                 (:instance fn-hstxa-is-no-wire-event (x (fn-hstxa-make w h2)))
-                 (:instance fn-hstxa-is-not-held (x (fn-hstxa-make w h1)))
-                 (:instance fn-hstxa-is-not-held (x (fn-hstxa-make w h2)))
-                 (:instance fn-hstxa-p-of-make (stxa w) (held h1))
-                 (:instance fn-hstxa-p-of-make (stxa w) (held h2))))))
+; pcko-identity-of-hstxa lives in paged-checkpoint-intern-context.
 
 (defthm pcko-publish-agree
   ; The rows do not enter the keyring, generation or identity slots.
@@ -1185,11 +1172,7 @@
                 (equal (fn-ssr-at 3 (fn-ssr-publish acc r1 w id)) (fn-ssr-at 3 (fn-ssr-publish st r2 w id)))))
   :hints (("Goal" :in-theory (enable fn-ssr-publish fn-ssr-state fn-ssr-at))))
 
-(defthm pcko-held-p-of-row-at
-  (implies (and (fn-record-p w) (natp g) (natp h))
-           (fn-held-p (fn-intern-row-at w k g h)))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-held-p fn-record-internals fn-held-internals fn-hf-p fn-hc-p
-                                     fn-hf-startp fn-hc-verdictp fn-intern-row-at))))
+; pcko-held-p-of-row-at lives in paged-checkpoint-intern-context.
 
 (defthm pcko-ie-identity-eq-record
   (implies (and (fn-record-p w) (natp generation))
