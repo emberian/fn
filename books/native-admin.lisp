@@ -567,34 +567,33 @@
   (implies (fn-native-admin-naturalp text) (stringp text))
   :rule-classes :forward-chaining))
 
+; The guard uses list shape, independently of the earlier dispatch tests.
+; Keep that fact available without reopening the recursive argv recognizer.
+(local (defthm fn-native-admin-argvp-true-listp
+  (implies (fn-native-admin-argvp argv) (true-listp argv))
+  :rule-classes :forward-chaining))
+(local (defthm true-list-end-by-consp
+  (implies (true-listp xs) (equal (equal xs nil) (not (consp xs))))))
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
                   :guard-hints
-                  ;; The arms' tests stay closed: the guard needs their
-                  ;; types, not their bodies (5.0 -> 2.6 s, 1.34M -> 460k
-                  ;; steps, persvati REPL 2026-09-28).
-                  (("Goal" :in-theory (disable fn-native-admin-decimalp
-                                               fn-native-admin-naturalp
-                                               fn-native-admin-decimal-value
-                                               fn-native-admin-words
-                                               fn-record-octets-string
-                                               fn-cbor-octet-listp
-                                               fn-exp-limit-slotp fn-rck-limit-slotp
-                                               fn-exp-trusted-wordp
-                                               fn-hsb-overrides-of-word
-                                               fn-exp-anonymous-wordp
-                                               fn-xpy-targetp fn-xpy-words-policy
-                                               default-car default-cdr
-                                               default-+-1 default-+-2
-                                               default-<-1 default-<-2 len
-                                               fn-cfg-account-loginp
-                                               fn-native-admin-counted-policy-keyp
-                                               fn-native-admin-known-policy-keyp
-                                               fn-rck-limit-valuep
-                                               fn-record-string-octets
-                                               member-equal natp
-                                               (tau-system))))))
+                  ;; Preprocessing distributes the previous arms' tests
+                  ;; through the guard obligations.  Use only shape and
+                  ;; numeric types (703,408 -> 197,018 REPL steps).
+                  (("Goal" :do-not '(preprocess) :in-theory
+                    '(fn-native-admin-argvp-true-listp
+                      true-list-end-by-consp
+                      fn-native-admin-decimalp-is-a-string
+                      fn-native-admin-naturalp-is-a-string
+                      (:type-prescription fn-native-admin-words)
+                      (:type-prescription fn-native-admin-decimal-value)
+                      (:type-prescription len)
+                      (:type-prescription fn-cfg-limit-ceiling)
+                      true-listp-of-list-fix
+                      (:type-prescription true-list-fix)
+                      character-listp-coerce posp
+                      (:executable-counterpart equal))))))
   (if (not (fn-native-admin-argvp argv))
       (fn-native-admin-result :refused :argv nil nil nil nil nil)
     (let ((words (fn-native-admin-words argv)))
@@ -1391,6 +1390,25 @@
   (equal (consp (fn-native-admin-words argv)) (consp argv))))
 (local (defthm len-of-words
   (equal (len (fn-native-admin-words argv)) (len argv))))
+; Relate the returned argv element to its parsed word once.  Negative
+; kind rules close the other arms without splitting their outcomes across
+; the whole dispatch, and the hint keeps LEN and the word map closed.
+(local (defthm group-name-of-third-word
+  (implies (fn-record-group-namep (caddr (fn-native-admin-words argv)))
+           (fn-record-group-namep (fn-record-octets-string (caddr argv))))
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-words)
+                                  (fn-record-group-namep))))))
+(local (defthm peer-plan-not-a-group
+  (and (not (equal (fn-native-admin-result-kind (fn-native-admin-peer-plan words)) :create-group))
+       (not (equal (fn-native-admin-result-kind (fn-native-admin-peer-plan words)) :remove-group)))
+  :hints (("Goal" :use fn-native-admin-peer-plan-kind
+           :in-theory '(member-equal (:executable-counterpart equal))))))
+(local (defthm boundary-plan-not-a-group
+  (implies (equal (fn-native-admin-result-status (fn-native-admin-bp-boundary-plan words)) :accepted)
+    (and (not (equal (fn-native-admin-result-kind (fn-native-admin-bp-boundary-plan words)) :create-group))
+         (not (equal (fn-native-admin-result-kind (fn-native-admin-bp-boundary-plan words)) :remove-group))))
+  :hints (("Goal" :use accepted-bp-boundary-plan-is-a-boundary
+           :in-theory '((:executable-counterpart equal))))))
 (defthm fn-native-admin-plan-group-name-is-a-group-name
   (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv)) :accepted)
                 (member-equal (fn-native-admin-result-kind (fn-native-admin-plan argv))
@@ -1398,7 +1416,8 @@
            (fn-record-group-namep
             (fn-record-octets-string (fn-native-admin-result-name (fn-native-admin-plan argv)))))
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  ((tau-system) fn-native-admin-words
+                                  ((tau-system) len len-of-words car-of-words cdr-of-words consp-of-words
+                                   fn-native-admin-words
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-native-admin-carries-rows
                                    fn-native-admin-carries-hexp subsetp-equal
@@ -1423,11 +1442,7 @@
                                    fn-native-admin-naturalp fn-rck-limit-slotp
                                    fn-rck-limit-valuep fn-rcl-rule-of-words
                                    fn-xpy-targetp fn-xpy-words-policy
-                                   fn-native-admin-peer-extend-plan))
-           :use ((:instance fn-native-admin-peer-plan-kind
-                            (words (fn-native-admin-words argv)))
-                 (:instance accepted-bp-boundary-plan-is-a-boundary
-                            (words (fn-native-admin-words argv)))))))
+                                   fn-native-admin-peer-extend-plan)))))
 )
 
 ; KEYSTONE.  Every delta the live arm stages for an accepted `group create'
@@ -1527,6 +1542,20 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
 
 (encapsulate ()
 (local (in-theory (disable fn-bp-eid-shapep)))
+; Select a sub-plan using kind and projection rules, without opening its parsers.
+(local (defthm peer-plan-not-a-boundary
+  (not (equal (fn-native-admin-result-kind (fn-native-admin-peer-plan words)) :set-bp-boundary))
+  :hints (("Goal" :use fn-native-admin-peer-plan-kind
+           :in-theory '(member-equal (:executable-counterpart equal))))))
+(local (defthm consumer-plan-not-a-boundary
+  (not (equal (fn-native-admin-result-kind (fn-native-admin-consumer-plan words argv)) :set-bp-boundary))
+  :hints (("Goal" :in-theory '(fn-native-admin-consumer-plan
+                              fn-native-admin-result fn-native-admin-result-kind
+                              car-cons cdr-cons (:executable-counterpart equal))))))
+(local (defthm kind-of-result
+  (equal (fn-native-admin-result-kind (fn-native-admin-result s r k n c p v)) k)))
+(local (defthm status-of-result
+  (equal (fn-native-admin-result-status (fn-native-admin-result s r k n c p v)) s)))
 (local (defthm plan-of-set-bp-boundary
   (implies (and (equal (fn-native-admin-result-status (fn-native-admin-plan argv))
                        :accepted)
@@ -1536,19 +1565,34 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                   (fn-native-admin-bp-boundary-plan (fn-native-admin-words argv))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  ((tau-system) fn-native-admin-peer-plan fn-native-admin-bp-boundary-plan
-                                   fn-record-octets-string fn-cbor-octet-listp
-                                   fn-record-group-namep fn-native-admin-decimalp
-                                   fn-native-admin-decimal-value fn-native-admin-argvp
+                                  ((tau-system) len fn-native-admin-result fn-native-admin-result-kind
+                                   fn-native-admin-result-status
                                    fn-native-admin-words
+                                   fn-record-octets-string fn-cbor-octet-listp
+                                   fn-native-admin-carries-rows
+                                   fn-native-admin-carries-hexp subsetp-equal
+                                   fn-native-admin-retention-days
+                                   fn-native-admin-peer-plan fn-record-group-namep
+                                   fn-path-identityp fn-native-admin-decimalp
+                                   fn-native-admin-decimal-value fn-native-admin-argvp
+                                   fn-native-admin-bp-boundary-split
+                                   fn-native-admin-bp-boundary-rows
+                                   fn-native-admin-bp-boundary-plan
                                    fn-native-admin-control-plan
                                    fn-native-admin-moderate-plan
                                    fn-native-admin-describe-plan
+                                   fn-native-admin-consumer-plan
                                    fn-native-admin-motd-plan
                                    fn-native-admin-access-plan
-                                   fn-native-admin-peer-extend-plan))
-           :use ((:instance fn-native-admin-peer-plan-kind
-                            (words (fn-native-admin-words argv))))))))
+                                   fn-cfg-account-loginp fn-exp-anonymous-wordp
+                                   fn-exp-limit-slotp fn-exp-trusted-of-word
+                                   fn-exp-trusted-wordp fn-hsb-overrides-of-word
+                                   fn-native-admin-counted-policy-keyp
+                                   fn-native-admin-known-policy-keyp
+                                   fn-native-admin-naturalp fn-rck-limit-slotp
+                                   fn-rck-limit-valuep fn-rcl-rule-of-words
+                                   fn-xpy-targetp fn-xpy-words-policy
+                                   fn-native-admin-peer-extend-plan))))))
 (local (defthm delta-rows-of-set-bp-boundary
   (implies (and (equal (fn-native-admin-result-status plan) :accepted)
                 (equal (fn-native-admin-result-kind plan) :set-bp-boundary))
