@@ -381,3 +381,28 @@ class HeldCommitCrashPoints(unittest.TestCase):
         owner = (ROOT / "host/native/owner.lisp").read_text()
         mutant = owner.replace("(fnn-owner-feed-phase journal :written)", "nil")
         self.assertTrue(npc.verify_held_commit_crash_points(owner_text=mutant))
+
+
+class HeldStatementCrashPoints(unittest.TestCase):
+    def test_statement_admission_must_enter_the_crash_model(self):
+        book = (ROOT / "books/owner-time-held.lisp").read_text()
+        mutant = book.replace("(if (eq event :started-statement) :started-held event)", "event")
+        self.assertIn("statement scheduling boundaries do not enter the held crash model",
+                      npc.verify_held_commit_crash_points(plan_text=mutant))
+
+    def test_statement_resume_cannot_lose_the_fenced_receipt_check(self):
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        mutant = owner.replace("(unless (eq step :complete)", "(unless t", 1)
+        self.assertTrue(npc.verify_held_commit_crash_points(owner_text=mutant))
+
+    def test_unclassified_statement_unwind_is_a_crash(self):
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        mutant = owner.replace("(or ,result (list :crash nil))", ",result")
+        self.assertIn("statement unwind has no crash observation",
+                      npc.verify_held_commit_crash_points(owner_text=mutant))
+
+    def test_statement_binder_cannot_publish_its_lines_before_the_barrier(self):
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        mutant = owner.replace("(*fnn-owner-deferred* ,deferred)", "")
+        with self.assertRaisesRegex(AssertionError, "fnn-owner-held-statement"):
+            native_cuts.verify_statement_cut_map(owner_text=mutant)

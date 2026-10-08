@@ -442,7 +442,7 @@ function, whose counterparts fn-owner-index-rx-close / -connection-settle /
 ;;; (fnn-log-seal-capture); RESOLUTIONS the members' resolution frames, after
 ;;; the barrier.
 (defstruct (fnn-owner-job (:constructor %make-fnn-owner-job))
-  (kind :batch) (intents nil) (plan nil) (resolutions nil))
+  (kind :batch) (intents nil) (plan nil) (resolutions nil) (effects nil))
 
 ;;; The last drained member's (OWNER ID TRANSITP KIND REASON): what renders
 ;;; its uncertain reply if the batch's barrier fails (fn-owner-uncertain-reply-of).
@@ -4717,8 +4717,14 @@ written inside START did."
 (defun fnn-owner-batch-job (service job)
   "The whole batch JOB on the syncer, off O, including a held caller's batch.
 Returns (values FINAL CONDITION)."
-  (fnn-owner-run-job (fnn-owner-job-kind job)
-                     (lambda (phase) (fnn-owner-batch-effect service job phase))))
+  (let* ((effects (fnn-owner-job-effects job)) (labelled effects))
+    (fnn-owner-run-job
+     (fnn-owner-job-kind job)
+     (lambda (phase)
+       (when labelled
+         (unless (equal (pop effects) (cons :off phase))
+           (fnn-fault "batch job disagrees with its off-owner plan")))
+       (fnn-owner-batch-effect service job phase)))))
 
 (defun fnn-owner-commit-start-event (members uncertain)
   "The START's observation for fn-ocs-commit-step, ACL2's
@@ -4945,7 +4951,7 @@ receipt, so an off-owner fault cannot strand the held slot."
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
       (destructuring-bind (action sched effects)
           (fnn-call 'fn-otm-held-plan (fnn-owner-gate-sched gate) event)
-        (unless (member action '(:sync :frames :submit :stop :none :complete :fault))
+        (unless (member action '(:sync :frames :statement :submit :stop :none :complete :fault))
           (fnn-fault "owner returned a malformed held commit step ~a" action))
         (setf (fnn-owner-gate-sched gate) sched)
         (values action effects)))))
@@ -5146,6 +5152,99 @@ still settles the held job."
          (unless ,entered
            (fnn-owner-gated (,service :commit)
              (fnn-owner-held-finish ,service (first ,pending) ,batch nil)))))))
+
+;;; Statement-cut primitive; production caller migration is still pending.
+;;; The source harness exercises the complete driver. PREPARE runs
+;;; against the writer under O after capturing the committed reader view;
+;;; its log record is staged, not synchronously appended. The caller must
+;;; return to this driver at the cut; nesting it inside an O section is not
+;;; an off-owner continuation.
+(defun fnn-owner-held-statement-start (service deferred)
+  "Seal the staged statement under O, retaining the caller until its receipt."
+  ;; This cut precedes the executor and outcome. Feed resolutions belong
+  ;; to their later cut; reject one rather than publish it ahead of that work.
+  (dolist (item (cdr deferred))
+    (unless (eq (car item) :log)
+      (fnn-fault "statement preparation crossed its outcome cut")))
+  (let* ((store (fnn-owner-service-store service))
+         (limits (fnn-owner-core 'fn-owner-barrier-limits))
+         (need (fnn-owner-core 'fn-owner-space-need))
+         (plan (fnn-log-seal-capture store)))
+    (setf (fnn-owner-service-space-need service) need)
+    (multiple-value-bind (action effects)
+        (fnn-owner-held-event service :started-statement)
+      (unless (eq action :statement)
+        (fnn-fault "owner refused a statement continuation: ~a" action))
+      (list nil nil (%make-fnn-owner-job :kind :batch :plan plan :effects effects)
+            limits need))))
+
+(defun fnn-owner-held-statement-wait (service pending)
+  "Off O: the existing held syncer/receipt path, with the plan's labels.
+Its deadlines, actor custody and actual-return join remain the batch's."
+  ;; The existing wait also owns exceptional syncer abandonment. A caller
+  ;; unwind is not a physical return and must not retire that job's custody.
+  (let ((result (fnn-owner-held-wait service pending)))
+    (list (third result) (fourth result))))
+
+(defun fnn-owner-held-statement-complete (service result deferred thunk)
+  "Under O: acknowledge only the fenced log; release this continuation once.
+No queued-member completion or credit settlement belongs to this cut."
+  (let ((action nil) (done nil) (step nil)
+        (store (fnn-owner-service-store service)))
+    (unwind-protect
+         (progn
+           (setq step (fnn-owner-held-event service (first result)))
+           (when (second result) (error (second result)))
+           (unless (eq step :complete)
+             (fnn-indeterminate "statement continuation has no fenced receipt"))
+           (fnn-log-sync-collected (fnn-store-log store))
+           (fnn-log-batch-finish store)
+           (dolist (item (reverse (cdr deferred)))
+             (fnn-log-line (cdr item)))
+           (fnn-owner-reader-capture :complete)
+           (setq done t))
+      (unless done (fnn-owner-reader-capture :drop))
+      (setq action (fnn-owner-held-event
+                    service (if (and (eq step :complete)
+                                    (or (not done) (fnn-owner-service-stopping service)))
+                                :completed-stopping :completed)))
+      (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+        (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))
+    (when thunk
+      (case (fnn-core 'fn-och-caller-answer action)
+        (:submitted (funcall thunk))
+        (:stopping (fnn-refuse "owner service is stopping"))
+        (otherwise (fnn-fault "owner refused the statement continuation"))))))
+
+(defmacro fnn-owner-held-statement ((section service cid captured) prepare &body body)
+  "One explicit continuation cut: PREPARE under O, its job off O, BODY under O.
+CAPTURED receives PREPARE's values as a list for BODY. Call only outside O."
+  (let ((pending (gensym "PENDING")) (result (gensym "RESULT"))
+        (entered (gensym "ENTERED")) (condition (gensym "CONDITION"))
+        (deferred (gensym "DEFERRED")))
+    `(let ((,captured nil) (,pending nil) (,result nil) (,entered nil)
+           (,deferred (list :deferred)))
+       (unwind-protect
+            (progn
+              (setq ,pending
+                    (,section ,service ,cid
+                     (lambda ()
+                       (fnn-owner-reader-capture :start)
+                       (let ((*fnn-log-batch* t) (*fnn-owner-deferred* ,deferred))
+                         (setq ,captured (multiple-value-list ,prepare)))
+                       (fnn-owner-held-statement-start ,service ,deferred))))
+              (setq ,result
+                    (handler-case (fnn-owner-held-statement-wait ,service ,pending)
+                      (serious-condition (,condition) (list :failed ,condition))))
+              (,section ,service ,cid
+               (lambda ()
+                 (setq ,entered t)
+                 (fnn-owner-held-statement-complete ,service ,result ,deferred
+                                                   (lambda () ,@body))) :commit))
+         (when (and ,pending (not ,entered))
+           (fnn-owner-gated (,service :commit)
+             (fnn-owner-held-statement-complete
+              ,service (or ,result (list :crash nil)) ,deferred nil)))))))
 
 (defun fnn-owner-committer-may-start (service)
   "ACL2's answer (fn-otm-committer-may-start) to whether the committer may

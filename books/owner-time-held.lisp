@@ -182,8 +182,12 @@
 ; the no-member START's FNFD append/barrier before any caller submission.
 (defun fn-otm-held-plan (s event)
   (declare (xargs :guard t))
-  (mv-let (action s2) (fn-otm-held-event s event)
-    (mv action s2 (fn-och-action-effects action))))
+  (mv-let (action s2)
+    (fn-otm-held-event s (if (eq event :started-statement) :started-held event))
+    (mv (if (and (eq event :started-statement) (eq action :sync))
+            :statement
+          action)
+        s2 (fn-och-action-effects action))))
 
 ; Every effect is labelled, and :off exactly for an I/O phase. This covers
 ; the actual entry the host calls, including a START that kept no member.
@@ -273,3 +277,120 @@
                   (declare (ignore action))
                   (equal (mv-nth 0 (fn-och-step phase2 next2 held2 :completed)) :submit)))
                ((held t) (phase :staged) (next nil)) :fault "Complete a crashed job as accepted")))
+
+; unreachable-in-composition: the new driver is exercised by its source
+; harness; migration of the BP and queued-drain callers is still pending.
+; A statement barrier is another captured held batch, without the queued
+; members' COMPLETE. Its continuation belongs to the caller, not the
+; committer. The complete scheduler value and every effect are identical
+; to the existing held admission; only its host dispatch action differs.
+(defthm fn-otm-statement-plan-is-the-held-admission-by-definition
+  (let ((old (fn-otm-held-plan s :started-held))
+        (new (fn-otm-held-plan s :started-statement)))
+    (and (equal (mv-nth 0 new)
+                (if (equal (mv-nth 0 old) :sync) :statement (mv-nth 0 old)))
+         (equal (mv-nth 1 new) (mv-nth 1 old))
+         (equal (mv-nth 2 new) (mv-nth 2 old))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-held-plan)
+                                  (fn-otm-held-event fn-och-action-effects)))))
+
+(defthm fn-otm-statement-plan-holds-through-the-barrier
+  (implies (and (not (fn-otm-held s))
+                (not (fn-ocs-in-flight-p (fn-otm-phase-of s))))
+           (let* ((start (fn-otm-held-plan s :started-statement))
+                  (waiting (mv-nth 1 start)))
+             (and (equal (mv-nth 0 start) :statement)
+                  (equal (mv-nth 2 start)
+                          '((:off . :intents) (:off . :extend)
+                            (:off . :append) (:off . :fence) (:off . :resolutions)))
+                  (fn-otm-held waiting)
+                  (equal (fn-otm-phase-of waiting) :staged)
+                  (not (fn-otm-committer-may-start waiting))
+                  (equal (fn-otm-held-committer-wake waiting returned queued w) :wait)
+                  (equal (mv-nth 0 (fn-otm-held-plan waiting :fenced)) :complete)
+                  (equal (mv-nth 0 (fn-otm-held-plan waiting :failed)) :stop)
+                  (equal (mv-nth 0 (fn-otm-held-plan waiting :crash)) :stop))))
+  :hints (("Goal" :in-theory (enable fn-otm-held-plan fn-otm-held-event
+                                    fn-och-action-effects fn-och-step))))
+
+(defteeth fn-otm-statement-plan-holds-through-the-barrier
+  :subject fn-otm-held-plan
+  :claim (((unheld (not (fn-otm-held s)))
+           (idle (not (fn-ocs-in-flight-p (fn-otm-phase-of s)))))
+          (let* ((start (fn-otm-held-plan s :started-statement))
+                 (waiting (mv-nth 1 start)))
+            (and (equal (mv-nth 0 start) :statement)
+                 (equal (mv-nth 2 start)
+                         '((:off . :intents) (:off . :extend)
+                           (:off . :append) (:off . :fence) (:off . :resolutions)))
+                 (fn-otm-held waiting)
+                 (equal (fn-otm-phase-of waiting) :staged)
+                 (not (fn-otm-committer-may-start waiting))
+                 (equal (fn-otm-held-committer-wake waiting returned queued w) :wait)
+                 (equal (mv-nth 0 (fn-otm-held-plan waiting :fenced)) :complete)
+                 (equal (mv-nth 0 (fn-otm-held-plan waiting :failed)) :stop)
+                 (equal (mv-nth 0 (fn-otm-held-plan waiting :crash)) :stop))))
+  :witness ((s (fn-otm-init)) (returned t) (queued t) (w nil))
+  :breaks ((unheld ((s (fn-otm-with-step (fn-otm-init) :idle nil t))
+                    (returned t) (queued t) (w nil)))
+           (idle ((s (fn-otm-with-step (fn-otm-init) :staged nil nil))
+                  (returned t) (queued t) (w nil))))
+  :mutations ((append-under-owner
+               (:conclusion
+                (fn-och-labelsp
+                 (cons '(:owner . :append)
+                       (mv-nth 2 (fn-otm-held-plan s :started-statement)))))
+               ((s (fn-otm-init)) (returned t) (queued t) (w nil))
+               :fault "Execute a statement append under O")
+              (continue-after-crash
+               (:conclusion
+                (equal (mv-nth 0
+                        (fn-otm-held-plan
+                         (mv-nth 1 (fn-otm-held-plan s :started-statement)) :crash))
+                       :complete))
+               ((s (fn-otm-init)) (returned t) (queued t) (w nil))
+               :fault "Resume the key executor after a crashed barrier")))
+
+(defthm fn-otm-statement-plan-resumes-only-after-fenced-return
+  (implies (and (not (fn-otm-held s))
+                (not (fn-ocs-in-flight-p (fn-otm-phase-of s)))
+                (member-equal word '(:fenced :failed :crash)))
+           (let* ((waiting (mv-nth 1 (fn-otm-held-plan s :started-statement)))
+                  (returned (fn-otm-held-plan waiting word))
+                  (settled (fn-otm-held-plan
+                            (mv-nth 1 returned)
+                            (if (and (equal (mv-nth 0 returned) :complete) stopping)
+                                :completed-stopping :completed))))
+             (and (fn-otm-held (mv-nth 1 returned))
+                  (equal (mv-nth 0 settled)
+                          (if (and (equal word :fenced) (not stopping)) :submit :none))
+                  (not (fn-otm-held (mv-nth 1 settled))))))
+  :hints (("Goal" :in-theory (enable fn-otm-held-plan fn-otm-held-event fn-och-step))))
+
+(defteeth fn-otm-statement-plan-resumes-only-after-fenced-return
+  :subject fn-otm-held-plan
+  :claim (((unheld (not (fn-otm-held s)))
+           (idle (not (fn-ocs-in-flight-p (fn-otm-phase-of s))))
+           (observation (member-equal word '(:fenced :failed :crash))))
+          (let* ((waiting (mv-nth 1 (fn-otm-held-plan s :started-statement)))
+                 (returned (fn-otm-held-plan waiting word))
+                 (settled (fn-otm-held-plan
+                           (mv-nth 1 returned)
+                           (if (and (equal (mv-nth 0 returned) :complete) stopping)
+                               :completed-stopping :completed))))
+            (and (fn-otm-held (mv-nth 1 returned))
+                 (equal (mv-nth 0 settled)
+                         (if (and (equal word :fenced) (not stopping)) :submit :none))
+                 (not (fn-otm-held (mv-nth 1 settled))))))
+  :witness ((s (fn-otm-make nil nil nil)) (word :fenced) (stopping nil))
+  :breaks ((unheld ((s (list nil nil nil t)) (word :fenced) (stopping nil)))
+           (idle ((s (fn-otm-with-step (fn-otm-make nil nil nil) :staged nil nil))
+                  (word :fenced) (stopping nil)))
+           (observation ((s (fn-otm-make nil nil nil)) (word :unknown) (stopping nil))))
+  :mutations ((failed-resume
+               (:conclusion
+                (let* ((waiting (mv-nth 1 (fn-otm-held-plan s :started-statement)))
+                       (returned (mv-nth 1 (fn-otm-held-plan waiting word))))
+                  (equal (mv-nth 0 (fn-otm-held-plan returned :completed)) :submit)))
+               ((s (fn-otm-make nil nil nil)) (word :failed) (stopping nil))
+               :fault "Release a continuation after ambiguous persistence")))

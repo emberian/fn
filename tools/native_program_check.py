@@ -949,7 +949,7 @@ def render(report: Report) -> str:
     return "\n".join(lines)
 
 
-def verify_held_commit_crash_points(owner_text=None, held_text=None, feed_text=None):
+def verify_held_commit_crash_points(owner_text=None, held_text=None, feed_text=None, plan_text=None):
     """The split adds volatile scheduling boundaries, not new disk operations.
 
     Both boundaries are :crash in fn-och-step (a held job becomes failed,
@@ -972,13 +972,45 @@ def verify_held_commit_crash_points(owner_text=None, held_text=None, feed_text=N
         problems.append("held boundaries are not START, off-owner job, quantum-2 receipt")
     if macro.count(",@body") != 1:
         problems.append("held caller body does not have one expansion")
+    # A statement continuation uses the same failed :crash transition. Its
+    # own log capture/physical job/receipt boundaries must stay explicit.
+    statement = next(f for f in lisp_source.forms(owner)
+                     if f.startswith("(defmacro fnn-owner-held-statement "))
+    statement_order = [statement.find(x) for x in
+                       ("(fnn-owner-reader-capture :start)",
+                        "(multiple-value-list ,prepare)",
+                        "(fnn-owner-held-statement-start ,service ,deferred)",
+                        "(fnn-owner-held-statement-wait ,service ,pending)",
+                        "(fnn-owner-held-statement-complete ,service ,result")]
+    if not (all(x >= 0 for x in statement_order)
+            and statement_order == sorted(statement_order)):
+        problems.append("statement boundaries are not snapshot, prepare, capture, job, receipt")
+    if "(or ,result (list :crash nil))" not in statement:
+        problems.append("statement unwind has no crash observation")
+    plan = plan_text if plan_text is not None else (ROOT / "books/owner-time-held.lisp").read_text()
+    if "(if (eq event :started-statement) :started-held event)" not in host_function(plan, "fn-otm-held-plan"):
+        problems.append("statement scheduling boundaries do not enter the held crash model")
+    complete = host_function(owner, "fnn-owner-held-statement-complete")
+    settlement_order = [complete.find(x) for x in
+                        ("(fnn-owner-held-event service (first result))",
+                         "(unless (eq step :complete)", "(fnn-log-batch-finish store)",
+                         "(fnn-owner-reader-capture :complete)", "(funcall thunk)")]
+    if not (all(x >= 0 for x in settlement_order)
+            and settlement_order == sorted(settlement_order)):
+        problems.append("statement continuation is not behind the fenced receipt and acknowledgement")
+    for name in ("fnn-owner-held-statement-start", "fnn-owner-held-statement-complete"):
+        if "(fnn-owner-batch-effect " in host_function(owner, name):
+            problems.append("statement physical phase runs in an owner quantum")
+    wait = host_function(owner, "fnn-owner-held-statement-wait")
+    if "(fnn-owner-held-wait service pending)" not in wait:
+        problems.append("statement job bypasses the held syncer custody and return join")
     step = host_function(held, "fn-och-step")
     if "((and (eq event :crash) (fn-ocs-in-flight-p phase)) (mv :stop :failed nil t))" not in step:
         problems.append("held scheduling boundaries have no failed :crash transition")
     # An added injection coordinate needs its own model mapping; it must
     # not silently slip through the existing batch/log cut inventory.
     held_forms = [f for f in lisp_source.forms(owner)
-                  if f.startswith("(defun fnn-owner-held-") or f == macro]
+                  if f.startswith("(defun fnn-owner-held-") or f in (macro, statement)]
     if any("(fnn-at " in lisp_source.code_only(f) for f in held_forms):
         problems.append("held helper adds an unmapped injection cut")
     append = host_function(owner, "fnn-owner-feed-append-locked")

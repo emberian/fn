@@ -1054,14 +1054,15 @@ STATEMENT_BARRIER_BOOK = "owner-ack-after-barrier.lisp"
 STATEMENT_CUTS = (NativeCut("statement-committed", "fn-ks-cut", "present",
                             book=STATEMENT_BOOK),)
 # The only host functions that commit inside a batch (*fnn-log-batch* bound):
-# the owner's START and the import's history write.  Every other commit is a
-# batch of one, fenced before fnn-log-publish returns.
-LOG_BATCH_BINDERS = ("fnn-owner-commit-start-locked", "fnn-log-write-history")
+# the owner's START, the import's history write and the statement-cut
+# primitive verified below. Other commits fence before publish returns.
+LOG_BATCH_BINDERS = ("fnn-owner-commit-start-locked", "fnn-log-write-history",
+                     "fnn-owner-held-statement")
 
 
 def _enclosing_defun(source: str, at: int) -> str:
-    start = source.rfind("\n(defun ", 0, at)
-    match = re.match(r"\n\(defun (\S+)", source[start:])
+    start = max(source.rfind("\n(defun ", 0, at), source.rfind("\n(defmacro ", 0, at))
+    match = re.match(r"\n\(def(?:un|macro) (\S+)", source[start:])
     return match.group(1) if match else ""
 
 
@@ -1117,7 +1118,7 @@ def verify_statement_commit_routes(owner: str) -> None:
             ", ".join(sorted(seen)), commits, wrapped))
 
 
-def verify_statement_cut_map() -> None:
+def verify_statement_cut_map(owner_text: str | None = None) -> None:
     """The statement route's cut follows the statement's barrier, and every
     line or reply that names a record follows the barrier that persists it:
     the cut's name is the host's only FN_NATIVE_KEY_STATEMENT_FAULT value;
@@ -1141,7 +1142,7 @@ def verify_statement_cut_map() -> None:
                  "(defthm fn-oab-pipeline-reports-after-its-barriers"):
         if name not in oab:
             raise AssertionError("{} lacks {}".format(STATEMENT_BARRIER_BOOK, name))
-    owner = (ROOT / "host/native/owner.lisp").read_text()
+    owner = owner_text if owner_text is not None else (ROOT / "host/native/owner.lisp").read_text()
     cut = host_function(owner, "fnn-owner-key-statement-cut")
     names = set(re.findall(r'"([a-z-]+):kill"', cut))
     if names != {c.name for c in STATEMENT_CUTS}:
@@ -1167,6 +1168,22 @@ def verify_statement_cut_map() -> None:
     _in_order(complete, ("(:complete", "(fnn-log-batch-finish store)",
                          "(fnn-log-line (cdr item))", "(fnn-owner-commit-release-member "),
               "fnn-owner-commit-complete-locked")
+    # The new binder must preserve the same durability rule: snapshot
+    # first, defer lines with preparation, then settle before printing.
+    from tools import lisp_source
+    statement = next(f for f in lisp_source.forms(owner)
+                     if f.startswith("(defmacro fnn-owner-held-statement "))
+    _in_order(statement, ("(fnn-owner-reader-capture :start)",
+                          "(*fnn-log-batch* t) (*fnn-owner-deferred* ,deferred)",
+                          "(multiple-value-list ,prepare)",
+                          "(fnn-owner-held-statement-start ,service ,deferred)",
+                          "(fnn-owner-held-statement-wait ,service ,pending)",
+                          "(fnn-owner-held-statement-complete ,service ,result ,deferred"),
+              "fnn-owner-held-statement")
+    _in_order(host_function(owner, "fnn-owner-held-statement-complete"),
+              ("(unless (eq step :complete)", "(fnn-log-batch-finish store)",
+               "(fnn-log-line (cdr item))", "(funcall thunk)"),
+              "fnn-owner-held-statement-complete")
     binders = set()
     for path in sorted((ROOT / "host/native").glob("*.lisp")):
         text = path.read_text()

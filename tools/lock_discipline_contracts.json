@@ -400,6 +400,7 @@
   "fnn-log-sealed-effect",
   "fnn-section-envelope",
   "fnn-owner-held-commit",
+  "fnn-owner-held-statement",
   "fnn-with-observed-owner",
   "fnn-native-with-observation",
   "fnn-with-observed-mutex",

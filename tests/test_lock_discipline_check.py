@@ -3410,3 +3410,29 @@ class R2SpecialSeam(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HeldStatementEffects(unittest.TestCase):
+    def test_actual_macro_keeps_prepare_and_resume_under_o_and_job_off(self):
+        import lisp_source
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        macro = next(f for f in lisp_source.forms(owner)
+                     if f.startswith("(defmacro fnn-owner-held-statement "))
+        fixture = """
+(defun section (s cid thunk &optional class)
+  (sb-thread:with-mutex ((fnn-owner-service-lock s)) (funcall thunk)))
+(defun fnn-owner-reader-capture (x) nil)
+(defun fnn-owner-held-statement-start (s deferred) (list nil nil))
+(defun fnn-owner-held-statement-wait (s pending) (sleep 1))
+(defun fnn-owner-held-statement-complete (s result deferred thunk) (when thunk (funcall thunk)))
+"""
+        caller = """
+(defun caller (s)
+  (fnn-owner-held-statement (section s nil captured) (sleep 2) (sleep 3)))
+"""
+        found = [f for f in run(fixture + macro + caller, ["R2"]) if f.rule == "R2"]
+        self.assertEqual([(f.function, f.key, f.weight) for f in found],
+                         [("caller", "O:sleep", 2)])
+        mutant = fixture.replace("(list nil nil)", "(fnn-owner-held-statement-wait s nil)")
+        self.assertIn(("fnn-owner-held-statement-wait", "O:sleep"),
+                      keys(run(mutant + macro + caller, ["R2"]), "R2"))
