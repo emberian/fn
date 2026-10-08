@@ -171,6 +171,7 @@ lock -- the declaration names the lock; the review reads the accesses.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -1972,7 +1973,8 @@ def attach_unpaired(root: Path) -> list[str]:
 
 def attach_scope(root: Path, world: AttachWorld) -> list[str]:
     """Every host book the image reaches through the umbrellas, AND every certified
-    host book (host/*.lisp; host/native/ is raw, ld'd, not certified): a host book
+    host book (host/*.lisp, except the parked families in planning/host-parked.json,
+    which are not loaded or certified; host/native/ is raw, ld'd): a host book
     certified alone carries its own include order, so a generic met before its
     attach refuses at certify (attach-stobj: "the name is in use") even when no
     umbrella reaches the book."""
@@ -1980,7 +1982,11 @@ def attach_scope(root: Path, world: AttachWorld) -> list[str]:
     for umbrella in UMBRELLAS:
         if (root / (umbrella + ".lisp")).exists():
             hosts.update(b for b in world.closure(umbrella) if b.startswith("host/"))
-    hosts.update("host/" + f.stem for f in (root / "host").glob("*.lisp"))
+    parked_path = root / "planning" / "host-parked.json"
+    parked = (set(json.loads(parked_path.read_text(encoding="utf-8")).get("parked", {}))
+              if parked_path.exists() else set())
+    hosts.update("host/" + f.stem for f in (root / "host").glob("*.lisp")
+                 if "host/" + f.name not in parked)
     return sorted(hosts)
 
 

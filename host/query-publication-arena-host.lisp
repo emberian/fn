@@ -1,10 +1,6 @@
 ; Registered generation capture derives its arena coordinate from actual
 ; STATE and the bound arena. Caller serialization is owner -> lifecycle.
 (in-package "ACL2")
-; D61: the image attaches these (attach-stobj) before the generic they implement;
-; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
-(include-book "../books/payload-arena-attach")
-(include-book "../books/history-paged-attach")
 (include-book "../books/index-backing-generations")
 (include-book "../books/query-payload-state")
 (include-book "../books/payload-arena")

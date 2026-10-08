@@ -1,9 +1,6 @@
 ; Actual source selection is ACL2-owned. The registered holder, not the
 ; current working publication, supplies an existing connection's source.
 (in-package "ACL2")
-; D61: the image attaches these (attach-stobj) before the generic they implement;
-; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
-(include-book "../books/history-paged-attach")
 (include-book "../books/index-connection-issuer")
 
 ; Pool/STATE participate in the composed owner admission ABI, but this readonly

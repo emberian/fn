@@ -1,9 +1,6 @@
 ; Readonly custody handoff for an already-issued INITIAL operation.
 ; No token issuance/refresh, canonical seal or role return occurs here.
 (in-package "ACL2")
-; D61: the image attaches these (attach-stobj) before the generic they implement;
-; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
-(include-book "../books/history-paged-attach")
 (include-book "recovery-initial-source-host")
 (include-book "../books/owner-canonical-read-state")
 (include-book "../books/recovery-initial-operation-lineage")

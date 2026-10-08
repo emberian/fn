@@ -1,9 +1,6 @@
 ; Exact readonly functions extracted from completed-open source39c904.
 ; These are the same actual public functions, not substitute source models.
 (in-package "ACL2")
-; D61: the image attaches these (attach-stobj) before the generic they implement;
-; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
-(include-book "../books/history-paged-attach")
 (include-book "../books/recovery-source-authority")
 (include-book "../books/recovery-open-origin")
 (include-book "../books/store-node")
