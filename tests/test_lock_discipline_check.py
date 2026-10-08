@@ -58,6 +58,170 @@ def keys(findings, rule):
     return [(f.function, f.key) for f in findings if f.rule == rule]
 
 
+class LifecycleAccesses(unittest.TestCase):
+    FENCED = """
+(defun fnn-owner-shared-action-locked (service cid thunk)
+  (declare (ignore cid))
+  (handler-case (funcall thunk)
+    (serious-condition (c)
+      (progn (fnn-owner-stop-service-locked service :fault) (error c)))))
+(defun wrapper (service thunk)
+  (fnn-owner-shared-action-locked service nil thunk))
+(defun consume (service)
+  (handler-case
+      (wrapper service (lambda () (fnn-fault "broken")))
+    (serious-condition () nil)))
+(defun start-consumer (service)
+  (sb-thread:make-thread (lambda () (consume service))))
+"""
+
+    def test_fenced_condition_provenance_crosses_callback_wrappers(self):
+        self.assertFalse(any(n == "consume" for n, _ in keys(run(self.FENCED, ["R7"]), "R7")))
+        bad = self.FENCED.replace("(fnn-owner-stop-service-locked service :fault)", "nil")
+        self.assertTrue(any(n == "consume" for n, _ in keys(run(bad, ["R7"]), "R7")))
+
+    def test_a_fault_before_fencing_and_an_inner_swallow_stay_red(self):
+        for src in (
+                self.FENCED.replace('(wrapper service (lambda () (fnn-fault "broken")))',
+                                    '(progn (fnn-fault "before") (wrapper service (lambda () nil)))'),
+                self.FENCED.replace('(lambda () (fnn-fault "broken"))',
+                                    '(lambda () (handler-case (fnn-fault "broken") (serious-condition () nil)))'),
+                self.FENCED.replace('(progn (fnn-owner-stop-service-locked service :fault)',
+                                    '(progn (when fail (fnn-fault "before fence")) (fnn-owner-stop-service-locked service :fault)')):
+            self.assertTrue(keys(run(src, ["R7"]), "R7"))
+
+    def test_fenced_callback_cannot_also_escape_the_wrapper(self):
+        src = "(defvar *saved* nil)\n" + self.FENCED.replace(
+            "(defun wrapper (service thunk)", "(defun wrapper (service thunk) (setq *saved* thunk)")
+        self.assertTrue(any(n == "consume" for n, _ in keys(run(src, ["R7"]), "R7")))
+
+    CONSTRUCTION = """
+(defstruct fnn-mux-loop wake-read)
+(defvar *roster* nil)
+(defun reader (x) (when *roster* nil) (fnn-mux-loop-wake-read x))
+(defun start ()
+  (let* ((x (make-fnn-mux-loop)) (alias x))
+    BEFORE
+    (setf (fnn-mux-loop-wake-read x) 3)
+    (push x *roster*)
+    (sb-thread:make-thread (lambda () (reader x)))))
+"""
+
+    def test_construction_ends_at_first_publication(self):
+        self.assertFalse(any("wake-read" in k for _, k in
+                             keys(run(self.CONSTRUCTION.replace("BEFORE", ""), ["R1b"]), "R1b")))
+        for before in ("(push alias *roster*)", "(unknown alias)",
+                       "(sb-thread:make-thread (lambda () (reader alias)))",
+                       "(when condition (push alias *roster*))"):
+            with self.subTest(before=before):
+                self.assertTrue(any("wake-read" in k for _, k in
+                                    keys(run(self.CONSTRUCTION.replace("BEFORE", before), ["R1b"]), "R1b")))
+
+    def test_initializer_helper_requires_every_caller_to_own_construction(self):
+        src = self.CONSTRUCTION.replace("BEFORE", "").replace(
+            "(setf (fnn-mux-loop-wake-read x) 3)", "(initialize x)")
+        src += "(defun initialize (x) (setf (fnn-mux-loop-wake-read x) 3))"
+        self.assertFalse(any("wake-read" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+        src += "(defun late (x) (sb-thread:make-thread (lambda () (initialize x))))"
+        self.assertTrue(any("wake-read" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_constructor_roster_must_be_confined_and_not_reentered(self):
+        src = self.CONSTRUCTION.replace("(when *roster* nil) ", "").replace("BEFORE", "(push x *roster*)")
+        self.assertFalse(any("wake-read" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+        bad = src.replace("(push x *roster*)\n    (setf", "(push x *roster*) (publish-roster)\n    (setf")
+        bad += "(defun publish-roster () (let ((x (car *roster*))) (sb-thread:make-thread (lambda () (reader x)))))"
+        self.assertTrue(any("wake-read" in k for _, k in keys(run(bad, ["R1b"]), "R1b")))
+
+    def test_unknown_constructor_and_branch_alias_are_not_private(self):
+        for src in (
+                self.CONSTRUCTION.replace("BEFORE", "").replace("(make-fnn-mux-loop)", "(get-object)"),
+                self.CONSTRUCTION.replace("BEFORE", "(when condition (setq alias x)) (push alias *roster*)"),
+                self.CONSTRUCTION.replace("BEFORE", "(when condition (setq x *roster*))")):
+            self.assertTrue(any("wake-read" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    QUIESCENT = """
+(defstruct fnn-mux-loop thread other-thread (closed nil) inbox arrived conns cleanup-debts
+  (lock (sb-thread:make-mutex)))
+(defun run-loop (x)
+  (setf (fnn-mux-loop-conns x) nil)
+  (sb-thread:with-mutex ((fnn-mux-loop-lock x))
+    (setf (fnn-mux-loop-closed x) t)))
+(defun start-loop ()
+  (let ((x (make-fnn-mux-loop)))
+    (setf (fnn-mux-loop-thread x)
+          (sb-thread:make-thread (lambda () (run-loop x))))
+    x))
+(defun producer (x)
+  (sb-thread:with-mutex ((fnn-mux-loop-lock x))
+    (unless (fnn-mux-loop-closed x)
+      (push :item (fnn-mux-loop-inbox x)))))
+(defun start-producer (x)
+  (sb-thread:make-thread (lambda () (producer x))))
+(defun inspect-loop (x)
+  (let ((thread (fnn-mux-loop-thread x)))
+    (and (or (null thread) (not (sb-thread:thread-alive-p thread)))
+         (sb-thread:with-mutex ((fnn-mux-loop-lock x)) (fnn-mux-loop-closed x))
+         (null (fnn-mux-loop-inbox x))
+         (null (fnn-mux-loop-conns x)))))
+"""
+
+    def test_death_and_closed_exclude_owner_and_producer(self):
+        self.assertEqual(keys(run(self.QUIESCENT, ["R1b"]), "R1b"), [])
+
+    def test_death_alone_does_not_exclude_producer(self):
+        src = self.QUIESCENT.replace("         (sb-thread:with-mutex ((fnn-mux-loop-lock x)) (fnn-mux-loop-closed x))\n", "")
+        self.assertTrue(any("inbox" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_closed_alone_does_not_exclude_owner(self):
+        src = self.QUIESCENT.replace("(or (null thread) (not (sb-thread:thread-alive-p thread)))", "t")
+        self.assertTrue(any("conns" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_different_thread_and_different_object_stay_red(self):
+        for replacement in ("(fnn-mux-loop-other-thread x)", "(fnn-mux-loop-thread other)"):
+            with self.subTest(replacement=replacement):
+                src = self.QUIESCENT.replace("((thread (fnn-mux-loop-thread x)))", "((thread " + replacement + "))")
+                self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_producer_guard_and_same_lock_are_required(self):
+        for src in (
+                self.QUIESCENT.replace("(unless (fnn-mux-loop-closed x)", "(unless nil"),
+                self.QUIESCENT.replace("(sb-thread:with-mutex ((fnn-mux-loop-lock x))\n    (unless",
+                                       "(sb-thread:with-mutex ((fnn-mux-loop-lock other))\n    (unless"),
+                self.QUIESCENT.replace("(sb-thread:with-mutex ((fnn-mux-loop-lock x))\n    (unless", "(progn\n    (unless")):
+            self.assertTrue(any("inbox" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_reopened_flag_and_replaced_thread_stay_red(self):
+        for extra in ("(defun reopen (x) (setf (fnn-mux-loop-closed x) nil))",
+                      "(defun replace-thread (x other) (setf (fnn-mux-loop-thread x) other))"):
+            self.assertTrue(keys(run(self.QUIESCENT + extra, ["R1b"]), "R1b"))
+
+    def test_thread_must_be_single_start_per_fresh_object(self):
+        src = self.QUIESCENT.replace("(defun start-loop ()\n  (let ((x (make-fnn-mux-loop)))",
+                                     "(defun start-loop (x)\n  (progn")
+        self.assertTrue(any("conns" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_boolean_admission_selector_is_read_from_its_body(self):
+        src = self.QUIESCENT.replace("(unless (fnn-mux-loop-closed x)",
+                                    "(when (eq (admit (fnn-mux-loop-closed x)) :yes)")
+        good = "(defun admit (closed) (if closed :no :yes))\n" + src
+        bad = good.replace("(if closed :no :yes)", "(if closed :yes :yes)")
+        self.assertEqual(keys(run(good, ["R1b"]), "R1b"), [])
+        self.assertTrue(any("inbox" in k for _, k in keys(run(bad, ["R1b"]), "R1b")))
+
+    def test_synchronized_table_snapshot_needs_compound_lock(self):
+        src = """
+(defvar *table* (make-hash-table :synchronized t))
+(defun writer () (setf (gethash :x *table*) '(1 2)))
+(defun start () (sb-thread:make-thread #'writer))
+(defun snapshot ()
+  (sb-ext:with-locked-hash-table (*table*)
+    (maphash (lambda (k v) (declare (ignore k v))) *table*)))
+"""
+        self.assertEqual(keys(run(src, ["R1b"]), "R1b"), [])
+        bad = src.replace("(sb-ext:with-locked-hash-table (*table*)", "(progn")
+        self.assertTrue(keys(run(bad, ["R1b"]), "R1b"))
+
+
 class R3Reads(unittest.TestCase):
     NAKED = """
 (defun fnn-extent-prefetch-direct (file eoff)

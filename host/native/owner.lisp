@@ -557,15 +557,16 @@ stop, caught before the first POST instead of at the second."
 
 (defun fnn-owner-measure-note (label start bytes)
   (let* ((held (- (fnn-owner-measure-now) start))
-         (consed (- (sb-ext:get-bytes-consed) bytes))
-         (row (or (gethash label *fnn-owner-measure-table*)
-                  (setf (gethash label *fnn-owner-measure-table*)
-                        (list 0 0 0 0 0)))))
-    (incf (first row))
-    (incf (second row) held)
-    (setf (third row) (max (third row) held))
-    (incf (fourth row) consed)
-    (setf (fifth row) (max (fifth row) consed))))
+         (consed (- (sb-ext:get-bytes-consed) bytes)))
+    (sb-ext:with-locked-hash-table (*fnn-owner-measure-table*)
+      (let ((row (or (gethash label *fnn-owner-measure-table*)
+                     (setf (gethash label *fnn-owner-measure-table*)
+                           (list 0 0 0 0 0)))))
+        (incf (first row))
+        (incf (second row) held)
+        (setf (third row) (max (third row) held))
+        (incf (fourth row) consed)
+        (setf (fifth row) (max (fifth row) consed))))))
 
 (defmacro fnn-owner-measured ((label &optional cid (operation '*fnn-trace-operation*)
                                     (connection-generation '*fnn-trace-connection-generation*)) &body body)
@@ -584,15 +585,19 @@ stop, caught before the first POST instead of at the second."
 
 (defun fnn-owner-measure-report ()
   (when *fnn-owner-measure*
-    (maphash
-     (lambda (label row)
-       (destructuring-bind (count held most consed most-consed) row
-         (format *error-output*
+    ;; Module actors can still finish a measured activation during teardown.
+    ;; Copy the rows under their update lock; output holds no table lock.
+    (let ((rows nil))
+      (sb-ext:with-locked-hash-table (*fnn-owner-measure-table*)
+        (maphash (lambda (label row) (push (cons label (copy-list row)) rows))
+                 *fnn-owner-measure-table*))
+      (dolist (entry rows)
+        (destructuring-bind (label count held most consed most-consed) entry
+          (format *error-output*
                  "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d max-bytes=~d~%"
                  label count
                  held most
-                 consed most-consed)))
-     *fnn-owner-measure-table*)
+                 consed most-consed))))
     (finish-output *error-output*)))
 
 (defun fnn-owner-core (name &rest args)
