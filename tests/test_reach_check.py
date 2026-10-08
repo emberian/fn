@@ -22,6 +22,18 @@ sys.path.insert(0, str(ROOT / "tools"))
 import reach_check                                            # noqa: E402
 
 
+
+def _needs_paged_arena_cert(test):
+    """The arena tests read def-representation's expansion out of the CURRENT
+    certificate of books/payload-arena-paged (tools/cert_expansions.py); a
+    train or checkout tree with no certificate cache cannot have it."""
+    import cert_expansions
+    if cert_expansions.current_cert(ROOT, "books/payload-arena-paged") is None:
+        # waiver-ok: capability -- needs a current certificate of
+        # books/payload-arena-paged in the certificate cache (cert-less trees skip).
+        test.skipTest("no current certificate of books/payload-arena-paged here")
+
+
 class GraphTests(unittest.TestCase):
     """The call graph, against functions whose status is not in doubt."""
 
@@ -64,6 +76,7 @@ class GraphTests(unittest.TestCase):
         theorem concluding of `(create-fn-arena$p)' is concluded of a
         reached function (the premise audit's establishment by the
         creator)."""
+        _needs_paged_arena_cert(self)
         creator = "create-fn-arena-paged$c"
         self.assertIn(creator, self.graph.book_defs)
         self.assertNotIn(creator, self.graph.stobj_names)
@@ -242,6 +255,7 @@ class SubjectRuleTests(unittest.TestCase):
         generated fn-arena-paged$c-inner-get): the host's fn-arena-get runs it,
         so the paged correspondence is hosted and the retired byte-array one
         is not."""
+        _needs_paged_arena_cert(self)
         self.assertIn("fn-arena-get", self.graph.reachable)
         self.assertIn("fn-arena-paged-get", self.graph.reachable)
         self.assertIn("fn-arena-paged$c-inner-get", self.graph.reachable)
