@@ -32030,7 +32030,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-ews-effect",
+      "name": "fn-ews-span-effect",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
@@ -32054,7 +32054,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-ews-tick",
+      "name": "fn-ews-tick-to-io",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
@@ -32078,7 +32078,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-ews-read",
+      "name": "fn-ews-read-span",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
@@ -32091,8 +32091,8 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-ews-read-publication-requires-core-integrity",
-          "via": "fn-ews-read"
+          "theorem": "fn-ews-read-span-publication-requires-core-integrity",
+          "via": "fn-ews-read-span"
         }
       ],
       "extraction": null,
