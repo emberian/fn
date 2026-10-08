@@ -900,37 +900,6 @@ def _pair_prover(connection, path: str) -> int:
     return connection.execute("SELECT id FROM provers WHERE path = ?", (path,)).fetchone()[0]
 
 
-def _pair_lookup(connection, prover: int, keys: Iterable[tuple[bytes, bytes]]
-                 ) -> dict[tuple[bytes, bytes], tuple[bool, bool]]:
-    """Read exactly the requested facts in primary-key order, in one snapshot.
-
-    Per-pair autocommit SELECTs took 61.6 s for 251,337 cached pairs on hbox.
-    A temporary request table deduplicates keys without changing candidate
-    indices; its ordered scan visits the facts B-tree in storage order. It
-    never changes the persistent index. Release the snapshot before probing
-    misses or writing fresh facts, so another installer can publish meanwhile.
-    """
-    connection.execute("BEGIN")
-    try:
-        connection.execute("CREATE TEMP TABLE requested_pairs (parent BLOB, child BLOB,"
-                           " PRIMARY KEY (parent, child)) WITHOUT ROWID")
-        connection.executemany("INSERT OR IGNORE INTO requested_pairs VALUES (?, ?)", keys)
-        found = {(parent, child): (bool(required), bool(equal))
-                 for parent, child, required, equal in connection.execute(
-                     "SELECT wanted.parent, wanted.child, facts.required, facts.equal"
-                     " FROM requested_pairs AS wanted CROSS JOIN facts"
-                     " ON facts.prover = ? AND facts.parent = wanted.parent"
-                     " AND facts.child = wanted.child"
-                     " ORDER BY wanted.parent, wanted.child", (prover,))}
-        connection.execute("DROP TABLE requested_pairs")
-        connection.execute("COMMIT")
-        return found
-    except BaseException:
-        with contextlib.suppress(Exception):
-            connection.execute("ROLLBACK")
-        raise
-
-
 def _pair_rows(connection, lines: bytes, provers: dict[str, int]) -> list[tuple]:
     rows = []
     for line in lines.split(b"\n"):
@@ -1111,13 +1080,13 @@ def memoized_pair_checker(cache: Path, checker=None):
             try:
                 _pair_import(connection, store)
                 prover_id = _pair_prover(connection, prover)
-                binary = [bytes.fromhex(digest) if digest is not None else None
-                          for digest in digests]
-                known = _pair_lookup(connection, prover_id,
-                                     ((binary[p], binary[c]) for p, c in pairs
-                                      if binary[p] is not None and binary[c] is not None))
                 for p, c in pairs:
-                    row = known.get((binary[p], binary[c]))
+                    row = None
+                    if digests[p] is not None and digests[c] is not None:
+                        row = connection.execute(
+                            "SELECT required, equal FROM facts WHERE prover = ? AND parent = ?"
+                            " AND child = ?", (prover_id, bytes.fromhex(digests[p]),
+                                               bytes.fromhex(digests[c]))).fetchone()
                     if row is None:
                         ask.append((p, c))
                     else:
