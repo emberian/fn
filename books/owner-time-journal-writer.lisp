@@ -464,6 +464,7 @@
    (implies (and (true-listp f) (equal n (len f)))
             (equal (take n f) f))))
 
+; Keep fate accessors opaque: the induction already supplies their outcomes.
 (defthm fn-otm-jw-sim-file
   (implies (and (true-listp file)
                 (or (fn-otm-jw-closed w) (equal (fn-otm-jw-offset w) (len file))))
@@ -472,7 +473,8 @@
                           (fn-otm-jw-frag w es fates))))
   :hints (("Goal" :induct (fn-otm-jw-sim w file es fates)
            :in-theory (disable fn-otm-jw-plan fn-otm-jlines fn-otm-jw-take-of-append
-                               fn-otm-jw-ents min))))
+                               fn-otm-jw-ents min
+                               fn-otm-jw-fate-ok fn-otm-jw-fate-tok fn-otm-jw-fate-k))))
 
 ; -----------------------------------------------------------------------------
 ; The reader over what the writer leaves: whole lines, then a fragment.
@@ -590,15 +592,19 @@
   :hints (("Goal" :induct (fn-otm-jw-whole w es fates)
            :in-theory (disable fn-otm-jlines min fn-otm-jw-cnt fn-otm-jw-ents))))
 
+; Unfold only the induction step, including the cons exposed by append.
+; Reopening the recursive replay results multiplies the case splits.
 (defthm fn-otm-jw-replay-append
   (equal (fn-otm-replay r (append a b))
          (if (equal (mv-nth 0 (fn-otm-replay r a)) :agrees)
              (fn-otm-replay (mv-nth 1 (fn-otm-replay r a)) b)
            (fn-otm-replay r a)))
   :hints (("Goal" :induct (fn-otm-replay r a)
-           :expand ((fn-otm-replay r (append a b)) (fn-otm-replay r a) (fn-otm-replay r nil))
-           :in-theory (e/d (fn-otm-replay)
-                           (fn-otm-disk-event fn-otm-disk-event-unfolds fn-otm-note fn-otm-init
+           :expand ((:free (head tail) (fn-otm-replay r (cons head tail)))
+                    (fn-otm-replay r (append a b)) (fn-otm-replay r a) (fn-otm-replay r nil))
+           :in-theory (e/d ((:induction fn-otm-replay))
+                           ((:definition fn-otm-replay)
+                           fn-otm-disk-event fn-otm-disk-event-unfolds fn-otm-note fn-otm-init
                             fn-otm-jseq fn-otm-kind-of-op fn-otm-word-code nth nat-listp len)))))
 
 (local
@@ -923,6 +929,8 @@
          (fn-otm-jline (fn-otm-jw-start-entry wall usable)))
   :hints (("Goal" :in-theory (enable fn-otm-start-line))))
 
+; Expand just the start entry, after its constructor has simplified.  The
+; supplied replay theorem handles the tail; disk/clock projections stay opaque.
 (defthm fn-otm-jw-segment-agrees
   (implies (fn-otm-run-okp steps)
            (let ((es (cons (fn-otm-jw-start-entry wall usable)
@@ -933,10 +941,10 @@
                         (:instance fn-otm-journal-read-of-jlines
                                    (es (mv-nth 0 (fn-otm-run (fn-otm-init) steps))))
                         (:instance fn-otm-run-entries-shape (s (fn-otm-init))))
-           :expand ((fn-otm-replay s (cons (fn-otm-jw-start-entry wall usable)
-                                           (mv-nth 0 (fn-otm-run (fn-otm-init) steps)))))
-           :in-theory (e/d (fn-otm-replay fn-otm-start-entry)
-                           (fn-otm-journal-determines-the-decisions fn-otm-journal-read-of-jlines
+           :expand ((:free (head tail) (fn-otm-replay s (cons head tail))))
+           :in-theory (e/d (fn-otm-start-entry)
+                           (fn-otm-replay fn-otm-disk fn-otm-clock fn-otm-disk-event-unfolds
+                            fn-otm-journal-determines-the-decisions fn-otm-journal-read-of-jlines
                             fn-otm-run-entries-shape
                             fn-otm-run fn-otm-init (:e fn-otm-init) (:e fn-otm-run) fn-otm-jlines
                             fn-otm-journal-read fn-otm-jparse fn-otm-run-okp

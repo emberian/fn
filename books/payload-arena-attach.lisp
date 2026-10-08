@@ -4,14 +4,14 @@
 ; abstraction).  Lane arena-offheap (2026-09-27) replaced the byte-array
 ; attachment `fn-arena-bytes' (one array doubled when full: at the last
 ; doubling the old and the new array were live together) by `fn-arena-paged'
-; (books/payload-arena-paged.lisp: fixed 64 KiB pages, a sealed octet never
-; moves, growth allocates one page).  The logical side is the same, so no
+; (books/payload-arena-paged.lisp: fixed 16 KiB pool pages behind a
+; directory, generated; a sealed octet never moves, growth allocates one page).  The logical side is the same, so no
 ; book above the generic recertifies.
 ;
 ; Three events, in this order, are the whole mechanism:
 ;   1. the implementation is introduced (`fn-arena-paged',
-;      books/payload-arena-paged.lisp: the page table with an offset and a
-;      size per handle);
+;      books/payload-arena-paged.lisp: a directory of pool pages and an
+;      offset and a length per handle);
 ;   2. `(attach-stobj fn-arena fn-arena-paged)' names it as the attachment of
 ;      a stobj not yet introduced;
 ;   3. the generic is introduced (`fn-arena', books/payload-arena.lisp,

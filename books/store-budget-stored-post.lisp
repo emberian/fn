@@ -20,8 +20,8 @@
 ;               (`fn-sbud-prepare-keeps-the-stored-octets'); this book does not
 ;               include the carried book, which the flip's host wiring is
 ;               still restating.  The standalone store's entry is
-;               `fn-store-prepare-interned'
-;               (`fn-store-prepare-interned-keeps-the-stored-octets').
+;               `fn-psrv-store-prepare-next'
+;               (`fn-psrv-store-prepare-next-keeps-the-stored-octets').
 ;   the publish `fn-sn-io' (host `fn-owner-io' / `fn-store-sn-io'): the
 ;               directory barrier appends the candidate to the history
 ;               (`fn-sn-io-keeps-the-stored-octets').
@@ -35,6 +35,7 @@
 (include-book "store-budget-stored")
 (include-book "store-node-traces")
 (include-book "owner-store-budget")
+(include-book "store-prepare-served")
 
 ; The arena is read through its interface (a seal keeps every sealed handle),
 ; the list view opened only in the one-row lemma below.
@@ -169,24 +170,6 @@
                                    fn-hf-body-lines-of fn-arena-payload-is-nth
                                    fn-arena-get-is-nth fn-arena-p-is-payload-listp))))))
 
-(defthm fn-store-prepare-interned-keeps-the-stored-octets
-  (implies (and (fn-arena-p fn-arena) (fn-sbud-store-extents-okp s fn-arena))
-           (fn-sbud-store-extents-okp (mv-nth 0 (fn-store-prepare-interned s w fn-arena))
-                                      (mv-nth 1 (fn-store-prepare-interned s w fn-arena))))
-  :hints (("Goal" :use ((:instance fn-sn-prepare-installs-bound-candidate
-                         (record (fn-intern-row-at w (fn-sn-keyring s)
-                                                   (fn-sn-keyring-generation s)
-                                                   (fn-arena-count fn-arena))))
-                        (:instance fn-snt-prepare-keeps-records
-                         (record (fn-intern-row-at w (fn-sn-keyring s)
-                                                   (fn-sn-keyring-generation s)
-                                                   (fn-arena-count fn-arena)))))
-           :in-theory (e/d (fn-store-prepare-interned fn-sbud-store-extents-okp
-                            fn-sbud-files-extents-okp)
-                           (fn-sn-prepare fn-intern-row-at fn-record-p fn-arena-seal-list
-                            fn-sn-prepare-installs-bound-candidate
-                            fn-snt-prepare-keeps-records)))))
-
 ; The owner's prepare stages the same way.
 (local (defthm fn-sbsp-spc-prepare-stages
   (implies (not (equal (fn-spc-prepare s row) s))
@@ -197,6 +180,30 @@
   :hints (("Goal" :in-theory (e/d (fn-spc-prepare fn-spc-stage-record)
                                   (fn-sn-statep fn-sn-record-bindsp fn-sn-prepare-node
                                    fn-sf-candidatep fn-cpe-projection-step))))))
+
+;; KEYSTONE (the standalone store's POST stage keeps the stored-bytes
+;; condition).  The subject is what host/store-node-host.lisp
+;; fn-store-sn-prepare calls: fn-psrv-store-prepare-next, over the arena's
+;; count; the host then seals the record's payload in a separate call
+;; exactly when the store changed.  The store after holds the relation over
+;; the arena after.  (The standalone entry fn-store-prepare-interned, which
+;; the host does not call, carried this fact before; the carried prepare is
+;; fn-spc-prepare for every value, fn-pcar-spc-prepare-is-spc-prepare.)
+(defthm fn-psrv-store-prepare-next-keeps-the-stored-octets
+  (implies (and (fn-arena-p fn-arena) (fn-sbud-store-extents-okp s fn-arena))
+           (let* ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena)))
+                  (after (if (equal next s)
+                             fn-arena
+                           (fn-arena-seal-list (fn-record-payload w) fn-arena))))
+             (fn-sbud-store-extents-okp next after)))
+  :hints (("Goal" :use ((:instance fn-sbsp-spc-prepare-stages
+                         (row (fn-intern-row-at w (fn-sn-keyring s) (fn-sn-keyring-generation s)
+                                                (fn-arena-count fn-arena)))))
+           :in-theory (e/d (fn-psrv-store-prepare-next fn-store-prepare-carried-next
+                            fn-pcar-spc-prepare-is-spc-prepare
+                            fn-sbud-store-extents-okp fn-sbud-files-extents-okp)
+                           (fn-spc-prepare fn-pcar-spc-prepare fn-intern-row-at fn-record-p
+                            fn-arena-seal-list fn-sbsp-spc-prepare-stages)))))
 
 (local (defthm fn-sbsp-own-store-of-refresh
   (equal (fn-own-store (fn-own-refresh o)) (fn-own-store o))

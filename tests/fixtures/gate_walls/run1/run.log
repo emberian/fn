@@ -1,0 +1,27 @@
+== source commit abc
+== load at start:  17:48:17 up 1 day, load average: 1, 1, 1
+== sbcl-check 23:50:00Z
+   sbcl-check exit 0 (x)
+== world-check 23:50:00Z
+   world-check exit 0 (x)
+== install 23:51:00Z
+   install exit 0 (x)
+== certify 23:52:00Z
+   certify exit 0 (x)
+== acquire 00:02:00Z
+   acquire exit 0 (x)
+== image-libs 00:04:00Z
+   image-libs exit 0 (x)
+== image-developer 00:04:10Z (parallel, at most 9)
+== image-production 00:04:10Z (parallel, at most 9)
+   image-developer exit 0 00:04:50Z (x)
+   image-production exit 0 00:05:10Z (x)
+== stamp-images 00:05:10Z
+   stamp-images exit 0 (x)
+== modules: 2, 4 at a time
+== test-tests.a 00:05:20Z load 1 1 1
+== test-tests.b 00:05:20Z load 1 1 1
+   test-tests.a exit 0 00:05:50Z: ok (x)
+   test-tests.b exit 0 00:06:20Z: ok (x)
+== load at end:  18:00 up
+== done status 0; x

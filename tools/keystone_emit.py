@@ -34,11 +34,13 @@ with it:
   immutable revision whose manifest `git show` yields; a missing base or
   revision FAILS CLOSED (no HEAD fallback).  Findings: a base `generated`
   entry no longer generated (a downgrade); a name absent from the base that
-  is not generated (a new keystone declares its teeth) unless it is OWED (an
-  open repair item planning/repair/items/TEETH-OWED-<NAME>.json, category
-  `teeth-owed`, names it: counted and printed, not a finding; the item is a
-  finding itself once the keystone has teeth, leaves the registry, or was
-  already in the base; tools/teeth_owed_file.py files them); a base `generated`
+  is not generated is TOOTHLESS: no per-name finding, but a member of the
+  ledger "keystones without teeth: N (ceiling C)", printed by name (and in
+  --json); the gate fails on a toothless name outside the shrink-only name set in
+  planning/teeth-ceiling.json, and on a name in the set that is no longer
+  toothless (lower the set in the same commit).  --write-ceiling drops names
+  freely and adds one only with its ACKS.md line
+  `ratchet:keystone_emit:<name>` (tools/ratchet.py).  A base `generated`
   entry that vanishes with no generated successor of the same owner book and
   claim (a rename shows as old gone plus new generated, printed as `renamed`;
   an entry whose book is deleted is exempt); a new `deferred`
@@ -61,6 +63,8 @@ with it:
     python3 tools/keystone_emit.py --check    # the same (make check)
     python3 tools/keystone_emit.py --write    # citations, keystone_subjects
     python3 tools/keystone_emit.py --write-manifest   # the gate's manifest
+    python3 tools/keystone_emit.py --write-ceiling    # drop names from the toothless set
+    python3 tools/keystone_emit.py --json     # the toothless ledger as JSON
     python3 tools/keystone_emit.py --write --claim --milestone M4 --title T --lane L
 
 Counts stay generated elsewhere (tools/ledger.py, tools/current_view.py);
@@ -78,6 +82,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ledger  # noqa: E402
+import ratchet  # noqa: E402
 from ledger import Sym, head  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,9 +90,9 @@ PROOFS = ROOT / "planning/proofs.json"
 PROOF_EVENTS = ROOT / "planning/proof-events.json"
 MANIFEST = ROOT / "planning/teeth-obligations.json"
 BASE = ROOT / "planning/teeth-base.json"
-OWED_ITEMS = ROOT / "planning/repair/items"
-OWED_CATEGORY = "teeth-owed"
-OWED_CLOSED = {"landed", "refuted", "duplicate", "closed"}
+CEILING = ROOT / "planning/teeth-ceiling.json"
+CEILING_ROW = "toothless"
+LEDGER: list[str] = []  # the toothless names of the last gate() run
 CONTAINERS = {"local", "progn", "encapsulate", "with-output", "defsection"}
 
 
@@ -379,24 +384,8 @@ def stored(entries: dict[str, dict]) -> list[dict]:
                    for entry in entries.values()), key=lambda e: e["name"])
 
 
-def owed_items(directory: Path | None = None) -> dict[str, dict]:
-    """The open teeth-owed repair items by the keystone each names: category
-    `teeth-owed` and a state that is not closed (landed, refuted, duplicate, closed)."""
-    found: dict[str, dict] = {}
-    for path in sorted((directory or OWED_ITEMS).glob("*.json")):
-        try:
-            item = json.loads(path.read_text(encoding="utf-8"))
-        except ValueError:
-            continue
-        if item.get("category") != OWED_CATEGORY or item.get("state") in OWED_CLOSED:
-            continue
-        found.setdefault(str(item.get("keystone")), item)
-    return found
-
-
 def untoothed_new(current: dict[str, dict], base: dict | None) -> list[str]:
-    """The names the gate's `new and has no generated teeth` finding is
-    about: absent from the base, not generated."""
+    """The TOOTHLESS keystones: absent from the base, not generated."""
     if base is None:
         return []
     known = {entry["name"] for entry in base.get("entries", [])}
@@ -430,41 +419,22 @@ def vanished_generated(current: dict[str, dict], base: dict | None,
 
 def manifest_findings(current: dict[str, dict], base: dict | None, why: str,
                       committed: dict | None,
-                      owed: dict[str, dict] | None = None,
                       book_exists=None) -> list[str]:
     problems: list[str] = []
     if base is None:
         return [f"teeth gate: {why}"]
-    owed = owed or {}
     base_entries = {entry["name"]: entry for entry in base.get("entries", [])}
     for old in vanished_generated(current, base, book_exists)[1]:
         problems.append(f"teeth gate: {old['name']} had generated teeth in the base "
                         f"({old.get('owner_book')}) and is gone from the manifest with no "
                         f"generated successor (same book and claim): a deletion or rename "
                         f"must leave an owed or generated entry, never nothing")
-    for name, item in sorted(owed.items()):
-        entry = current.get(name)
-        if entry is None:
-            problems.append(f"teeth gate: owed item {item.get('id')} names {name}, which is "
-                            f"in no registry, defteeth or owed row (close it: state=refuted)")
-        elif entry["class"] == "generated":
-            problems.append(f"teeth gate: owed item {item.get('id')}: {name} now has "
-                            f"generated teeth (close it: state=landed)")
-        elif name in base_entries:
-            problems.append(f"teeth gate: owed item {item.get('id')}: {name} is in the base "
-                            f"revision; an owed item covers only a new keystone")
-    # with a base, WHY is its revision (base_manifest); the manifest itself
-    # names none of its own
-    base_rev = why
     for name, entry in sorted(current.items()):
         old = base_entries.get(name)
         if old is None:
-            if entry["class"] != "generated" and name in owed:
-                continue
             if entry["class"] != "generated":
-                problems.append(f"teeth gate: {name} is new (not in the base {base_rev[:12]}) "
-                                f"and has no generated teeth: declare them (defteeth {name} ...)")
-            elif entry.get("mutations") == "deferred":
+                continue  # toothless: counted against the ceiling (toothless_findings)
+            if entry.get("mutations") == "deferred":
                 problems.append(f"teeth gate: {name} is new and defers its mutation: a new "
                                 f":deferred exemption is rejected (give a checked edit, or "
                                 f":not-applicable with its reason)")
@@ -493,7 +463,7 @@ def manifest_findings(current: dict[str, dict], base: dict | None, why: str,
     return problems
 
 
-def manifest_counts(current: dict[str, dict], owed_new: int = 0) -> str:
+def manifest_counts(current: dict[str, dict]) -> str:
     registry = [e for e in current.values() if e["registry"]]
     generated = [e for e in registry if e["class"] == "generated"]
     certified = [e for e in generated if e.get("certified")]
@@ -508,8 +478,48 @@ def manifest_counts(current: dict[str, dict], owed_new: int = 0) -> str:
             f"{sum(1 for e in generated for b in e.get('bounds', []) if not b['derived'])} underived "
             f"bounds, {sum(1 for e in generated for b in e.get('bounds', []) if not b['attained'])} "
             f"unattained bounds, {sum(1 for e in current.values() if e.get('owed_by'))} owed "
-            f"({sum(1 for e in current.values() if e.get('owed_met') is False)} unmet); "
-            f"{owed_new} new keystone(s) owed by a teeth-owed repair item")
+            f"({sum(1 for e in current.values() if e.get('owed_met') is False)} unmet)")
+
+
+def load_ceiling() -> dict:
+    try:
+        return json.loads(CEILING.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def ceiling_names(ceiling: dict) -> set[str] | None:
+    names = ceiling.get(CEILING_ROW)
+    return set(names) if isinstance(names, list) else None
+
+
+def toothless_findings(toothless: list[str], ceiling: dict) -> list[str]:
+    """The ceiling check: the toothless NAMES against the committed name set."""
+    allowed = ceiling_names(ceiling)
+    if allowed is None:
+        return ["teeth gate: planning/teeth-ceiling.json is missing; run --write-ceiling"]
+    found = [f"teeth gate: new toothless keystone {name}: give it teeth, or add an ACKS.md "
+             f"line {ratchet.token('keystone_emit', name)} and --write-ceiling"
+             for name in sorted(set(toothless) - allowed)]
+    found += [f"teeth gate: {name} is in planning/teeth-ceiling.json and is no longer "
+              f"toothless (it gained teeth, was renamed or was deleted): lower the set: "
+              f"--write-ceiling in this commit" for name in sorted(allowed - set(toothless))]
+    return found
+
+
+def write_ceiling(names: list[str]) -> int:
+    new = {name: 1 for name in names}
+    old = ratchet.old_rows("keystone_emit", CEILING,
+                           lambda: {n: 1 for n in ceiling_names(load_ceiling()) or ()})
+    if ratchet.report("keystone_emit", ratchet.refused("keystone_emit", old, new)):
+        return 1
+    CEILING.write_text(json.dumps({
+        "about": "The shrink-only set of keystones without teeth (tools/keystone_emit.py "
+                 "--write-ceiling drops names freely; adding one needs its ACKS.md line, "
+                 "tools/ratchet.py).",
+        CEILING_ROW: sorted(names)}, indent=1) + "\n", encoding="utf-8")
+    print(f"keystone_emit: wrote planning/teeth-ceiling.json ({len(names)} names)")
+    return 0
 
 
 def gate(write: bool, bootstrap: bool = False) -> list[str]:
@@ -528,8 +538,11 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
             committed = json.loads(MANIFEST.read_text(encoding="utf-8"))
         except ValueError:
             committed = None
-    owed = owed_items()
-    problems = manifest_findings(current, base, why, committed, owed)
+    toothless = untoothed_new(current, base)
+    ceiling = load_ceiling()
+    problems = manifest_findings(current, base, why, committed)
+    if base is not None:
+        problems += toothless_findings(toothless, ceiling)
     stale = [p for p in problems if "stale" in p or "is missing; run --write" in p]
     if bootstrap and base is None and committed is None:
         print(f"keystone_emit: BOOTSTRAP: no base and no manifest; writing the first "
@@ -539,11 +552,12 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
     for old_name, new_names in sorted(vanished_generated(current, base)[0].items()):
         print(f"keystone_emit: renamed: {old_name} -> {', '.join(new_names)} (generated "
               f"teeth, same book and claim)")
-    owed_new = [n for n in untoothed_new(current, base) if n in owed]
-    print(manifest_counts(current, len(owed_new)))
-    for name in owed_new:
-        item = owed[name]
-        print(f"keystone_emit: owed: {name} ({item.get('id')}, owner {item.get('owner', '?')})")
+    print(manifest_counts(current))
+    print(f"keystone_emit: keystones without teeth: {len(toothless)} "
+          f"(ceiling {len(ceiling_names(ceiling) or ())})")
+    for name in toothless:
+        print(f"keystone_emit: toothless: {name}")
+    LEDGER[:] = toothless
     if write and problems == stale:
         dropped = sorted({e["name"] for e in (committed or {}).get("entries", [])}
                          - set(current))
@@ -597,10 +611,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write-manifest", action="store_true",
                         help="write planning/teeth-obligations.json when the gate's only "
                              "finding is its staleness")
+    parser.add_argument("--write-ceiling", action="store_true",
+                        help="rewrite the toothless name set in planning/teeth-ceiling.json; "
+                             "raising it needs the ratchet ACKS.md line")
+    parser.add_argument("--json", action="store_true",
+                        help="print the toothless ledger as JSON (names, count, ceiling names)")
     parser.add_argument("--bootstrap", action="store_true",
                         help="with --write-manifest: write the FIRST manifest when no base "
                              "and no manifest exist (never again)")
     arguments = parser.parse_args(argv)
+    json_out = sys.stdout
+    if arguments.json:
+        sys.stdout = sys.stderr  # stdout carries only the JSON object
 
     keystones = [Keystone(book, line, form) for book, line, form in forms_in()]
     # `:id :test` marks a test of the macro itself (tests/acl2/defkeystone-
@@ -654,6 +676,16 @@ def main(argv: list[str] | None = None) -> int:
     else:
         problems += sorted(gate_writable)
 
+    if arguments.write_ceiling:
+        if write_ceiling(LEDGER):
+            return 1
+        problems = [p for p in problems if "teeth-ceiling.json" not in p
+                    and "toothless keystone" not in p]
+    if arguments.json:
+        print(json.dumps({"toothless": sorted(LEDGER), "count": len(LEDGER),
+                          "ceiling": sorted(ceiling_names(load_ceiling()) or ()),
+                          "findings": problems}, indent=1), file=json_out)
+        return 1 if problems else 0
     if not (arguments.check and not problems):
         for keystone in wellformed:
             names = ledger.defkeystone_names(keystone.parts)

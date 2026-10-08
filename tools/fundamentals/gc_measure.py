@@ -110,6 +110,7 @@ def window(port, connections, seconds, counter, octets, max_posts=None):
 
 def start_traced(image, config, env, stderr_path, trace_path):
     stderr = open(stderr_path, "ab")
+    env = r.decided_heap_env(image, config, env)
     proc = subprocess.Popen(["strace", "-f", "-c", "-e", "trace=fsync,fdatasync", "-o", str(trace_path),
                              str(image), "--fn", "operator", str(config), "run"],
                             env=env, stdout=subprocess.PIPE, stderr=stderr)

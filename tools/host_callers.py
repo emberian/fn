@@ -21,9 +21,9 @@ A MENTION of a subject is any of:
   script  the name, case-insensitive, at symbol boundaries, in any tracked
           Python, shell, Scheme, C, Makefile, `packaging/' or `bin/' file
           (tools/run_store.py's calls, the launchers, the systemd units);
-  registry  the same in `planning/*.json' (not the generated ledger);
-  doc     the same in Markdown/text, in planning/evidence/ and in the
-          generated ledger files: reported, never a caller.
+  registry  the same in `planning/*.json';
+  doc     the same in Markdown/text, and in planning/evidence/:
+          reported, never a caller.
 A mention from inside the subject's own definition is not counted.
 
 STATUS is reachability, not a direct count: the ROOTS are every mention
@@ -67,8 +67,7 @@ BASELINE = ROOT / "tools" / "host_callers_baseline.json"
 HOST_PREFIXES = ("host/",)
 LISP_SUFFIXES = (".lisp", ".lsp")
 SCRIPT_SUFFIXES = (".py", ".sh", ".scm", ".c", ".h", ".mjs", ".in", ".service", ".toml")
-GENERATED = {"planning/ledger.json", "planning/ledger.md", "planning/current.md",
-             "planning/current-view.json"}
+GENERATED = {"planning/current-view.json"}
 TOKEN = re.compile(r"[A-Za-z0-9*+<>=/!?%&$^~_.-]+")
 
 

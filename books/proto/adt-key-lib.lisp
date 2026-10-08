@@ -57,9 +57,9 @@
   (declare (xargs :verify-guards nil))
   (adt-rows s 0 (nfix (adt-count-c s c)) c))
 
-(defthm adt-len-when-rec-p
+(local (defthm adt-len-when-rec-p
   (implies (adt-rec-p s r) (equal (len r) (len s)))
-  :hints (("Goal" :in-theory (enable adt-rec-p))))
+  :hints (("Goal" :in-theory (enable adt-rec-p)))))
 
 (defthm adt-car-nthcdr
   (equal (car (nthcdr j r)) (nth j r))
@@ -1235,11 +1235,6 @@
     adt-kfind-c adt-kget-c adt-kinsert-c adt-kremove-c adt-kreplace-c adt-kupdate-c adt-klookup-c adt-kmem-c
     adt-kidx adt-kput adt-bucket adt-kempty-c
     (:executable-counterpart adt-pschema) (:executable-counterpart adt-ncols)))
-
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable adt-len-when-rec-p))
 
 ; The rules this library introduces and leaves enabled: consumers can restore
 ; exactly this state when a later snapshot export has disabled those rules.

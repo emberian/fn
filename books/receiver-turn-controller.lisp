@@ -256,9 +256,14 @@
           (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))))
 ; INTERNAL: PREOC and WIRE are derived by the actual STATE wrapper, never a
 ; native tuple argument. The once-only filled->parser transition precedes parse.
+; Guard verification needs the pending range shape, not the nested
+; token, ledger and parser-current checks (D26).
 (defun fn-owner-rx-turn-parser-acquire
  (ticket preOC wire fn-rx-provider fn-receiver-turn fn-page-read-pool)
- (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                 :guard-hints (("Goal" :in-theory (disable fn-rxt-parser-currentp
+                                                           fn-rxt-owned-claim-p
+                                                           fn-rxp-currentp)))))
  (cond
   ((and (eq (fn-rxt-phase fn-receiver-turn) :parser-owned)
         (fn-rxt-parser-currentp ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))
@@ -631,7 +636,7 @@
    (mv-let (word start end left provider)
     (fn-rxp-fill-range (fn-rxp-token fn-rx-provider) n limits fuel fn-rx-provider)
     (mv word start end left provider fn-receiver-turn fn-page-read-pool))))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-fill-range)))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-fill-range) (fn-rxt-live-claim-p fn-rxp-fill-range))))
  :rule-classes nil)
 (defthm fn-owner-rx-turn-fill-range-refuses-without-current-claim-by-definition
  (implies
@@ -639,7 +644,7 @@
   (equal
    (fn-owner-rx-turn-fill-range ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
    (mv :receiver-unavailable 0 0 fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-fill-range)))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-fill-range) (fn-rxt-live-claim-p fn-rxp-fill-range))))
  :rule-classes nil)
 (defthm fn-owner-rx-turn-copy-next-revokes-reader-readiness
  (implies
@@ -654,9 +659,11 @@
                        fn-rx-provider fn-receiver-turn fn-page-read-pool))) :copy-issued)
    (equal (mv-nth 6 (fn-owner-rx-turn-copy-next ticket n limits fuel
                        fn-rx-provider fn-receiver-turn fn-page-read-pool)) fn-page-read-pool)))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-copy-next
-   fn-owner-rx-turn-fill-range fn-rxt-live-claim-p fn-rxp-fill-range
-   fn-rxc-fill-range fn-rxp-fence fn-rxc-fence fn-rxp-capacity)))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-copy-next
+   fn-owner-rx-turn-fill-range fn-rxt-live-claim-p
+   fn-rxp-fence fn-rxc-fence fn-rxp-capacity)
+   (fn-rxp-fill-range fn-rxt-owned-claim-p fn-rxc-currentp fn-bca-tokenp
+    fn-rxt-pending-rangep nth update-nth fn-rxc-second-field-by-definition))))
  :rule-classes nil)
 (defthm fn-owner-rx-turn-copy-ack-completion-keeps-custody
  (implies
@@ -675,8 +682,10 @@
         (equal (fn-rxt-receipt turn) (fn-rxt-receipt fn-receiver-turn))
         (equal (mv-nth 3 (fn-owner-rx-turn-copy-ack ticket start end outcome
                       fn-rx-provider fn-receiver-turn fn-page-read-pool)) fn-page-read-pool))))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-copy-ack
-                                  fn-rxt-copy-publish fn-rxp-capacity)))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-copy-ack
+                                  fn-rxt-copy-publish fn-rxp-capacity)
+  (fn-rxt-owned-claim-p fn-rxt-pending-rangep nth update-nth
+   fn-rxc-second-field-by-definition))))
  :rule-classes nil)
 
 (defthm fn-owner-rx-turn-response-recording-retains-input
@@ -694,7 +703,8 @@
         (equal (fn-prl-nth 9 (fn-rxt-job (mv-nth 2 a))) step)
         (equal (mv-nth 3 a) fn-page-read-pool))))
  :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-parser-commit fn-prl-nth)
-  (fn-rxt-parser-currentp fn-rrd-step-disposition))))
+  (fn-rxt-parser-currentp fn-rrd-step-disposition nth update-nth
+   fn-rxc-second-field-by-definition))))
  :rule-classes nil)
 ; Progress is recorded in either parser phase (e3f6720ef: the staged path
 ; records progress from the retained result while :parser-installing) and
@@ -717,16 +727,30 @@
   (fn-rxt-parser-currentp fn-rrd-step-disposition))))
  :rule-classes nil)
 
+; Extract the scalar bound once; the response proof need not split on the
+; parser's list shape, custody checks, or provider representation.
+(local (defthm fn-rxt-current-parser-episode-bound-local
+ (implies
+  (and (member-eq (fn-rxt-phase fn-receiver-turn) '(:parser-owned :parser-installing))
+       (fn-rxt-parser-currentp ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))
+  (and (natp (fn-prl-nth 10 (fn-rxt-job fn-receiver-turn)))
+       (<= (fn-prl-nth 10 (fn-rxt-job fn-receiver-turn)) 4096)))
+ :hints (("Goal" :in-theory
+  (e/d (fn-rxt-parser-currentp fn-rxt-parser-jobp fn-rxt-pending-rangep fn-prl-nth)
+       (fn-rxt-owned-claim-p fn-rxp-currentp fn-rxt-fixed-widthp
+        fn-rxp-capacity nth update-nth fn-rxc-second-field-by-definition))))
+ :rule-classes nil))
 (defthm fn-owner-rx-turn-issued-response-episode-fits-filled-span
  (let ((a (fn-owner-rx-turn-parser-commit ticket RC wire step
             fn-rx-provider fn-receiver-turn fn-page-read-pool)))
   (implies (equal (mv-nth 0 a) :response-recorded)
    (and (posp (fn-prl-nth 2 (mv-nth 1 a)))
         (<= (fn-prl-nth 2 (mv-nth 1 a)) 4097))))
- :hints (("Goal" :in-theory
-  (e/d (fn-owner-rx-turn-parser-commit fn-rxt-parser-currentp
-        fn-rxt-parser-jobp fn-rxt-pending-rangep fn-rxt-fixed-widthp fn-prl-nth)
-       (fn-rxt-owned-claim-p fn-rxp-currentp fn-rrd-step-disposition))))
+ :hints (("Goal"
+  :use fn-rxt-current-parser-episode-bound-local
+  :in-theory (e/d (fn-owner-rx-turn-parser-commit fn-prl-nth)
+   (fn-rxt-parser-currentp fn-rrd-step-disposition nth update-nth
+    fn-rxc-second-field-by-definition))))
  :rule-classes nil)
 
 ; INTERNAL decision from the exact recorded response. No returned/joined

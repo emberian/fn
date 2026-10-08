@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/served-catalog.lisp",
+ "id": "CPG-HOST-SEAM",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pool",
+ "state": "open",
+ "title": "The host serves fn-scat-msgid-article / fn-scat-number-article from the heap catalog. Owed: the host seam that answers the (:need-page I PHYS) verdict by fn-pgs-fill-frame and reads through fn-cpg-msgid-seqs / fn-cpg-group-number (books/catalog-pool.lisp), with fn-cat$p-count as the count argument, the pool frame count from the profile, and a measured RSS before/after on a quiet hbox.",
+ "updated": "2026-10-07T23:29:35Z"
+}

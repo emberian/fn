@@ -41,6 +41,7 @@ import threading
 import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
 from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
+from tools.rep_measure import decided_heap_env  # noqa: E402
 
 GROUP = "fn.test"
 LINE = b"x" * 76 + b"\r\n"
@@ -196,7 +197,8 @@ def main():
     doc = {"image": str(image), "tls": a.tls, "idle": a.idle, "active": a.active, "overs": a.overs,
            "posts": a.posts, "capacity": capacity}
     stderr = open(work / "owner.stderr", "wb")
-    proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"], env=env,
+    proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
+                            env=decided_heap_env(image, config, env),
                             stdout=subprocess.PIPE, stderr=stderr, preexec_fn=raise_nofile)
     try:
         deadline = time.monotonic() + 600

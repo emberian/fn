@@ -417,9 +417,9 @@
 ; stated as a constrained function so that the recovery theorems are proved
 ; once, over the obligation, and each caller discharges it by functional
 ; instantiation with its own state's predicate:
-;   fn-lgk-recover-establishes-relation   books/store-log-recover.lisp (user)
-;   fn-owb-recover-establishes-relation   books/owner-batch.lisp (discharge:
-;     fn-owb-related-state-is-the-sole-pending-writer, a related state)
+;   fn-lgk-recover-establishes-relation   books/store-log-recover.lisp (user;
+;     the overwriting recovery, which the host open does not run, so no
+;     discharge theorem is kept)
 ; specs/failures.md, "fn obligations stated as constrained functions".
 (encapsulate
   (((fn-assume-log-sole-pending-writer * *) => *))

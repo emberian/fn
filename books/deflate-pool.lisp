@@ -447,3 +447,23 @@
 ; The host's starting pool satisfies the invariant.
 (defthm fn-zpl-pool-okp-of-nil
   (fn-zpl-pool-okp nil fn-zin-win))
+
+; KEYSTONE (the host's first call).  fn-zpl-decode-bufs is what
+; host/native/deflate.lisp fnn-pzd-decode calls on a fresh buffer set, whose
+; POOL is NIL (the starting pool satisfies the invariant whatever the window
+; holds: fn-zpl-pool-okp of an atom is true).  The answer is
+; fn-pzd-decode's status, an :ok answer's output buffer holds the decoder's
+; octets, and the pool it returns satisfies the invariant the next call
+; assumes.
+(defthm fn-zpl-decode-bufs-from-the-empty-pool
+  (implies (and (fn-cbor-octet-listp c) (natp n) (fn-cbor-octet-listp dict))
+           (let ((r (fn-zpl-decode-bufs nil dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
+                 (d (fn-pzd-decode dict c n)))
+             (and (equal (car (car r)) (car d))
+                  (implies (equal (car d) :ok)
+                           (equal (mv-nth 4 r) (cadr d)))
+                  (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r)))))
+  :hints (("Goal" :use ((:instance fn-zpl-decode-bufs-is-decode (pool nil))
+                        fn-zpl-pool-okp-of-nil)
+           :in-theory (disable fn-zpl-decode-bufs-is-decode fn-zpl-pool-okp-of-nil
+                               fn-zpl-decode-bufs fn-pzd-decode fn-zpl-pool-okp))))
