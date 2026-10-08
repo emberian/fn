@@ -25,6 +25,12 @@
            (fn-pb-line-textp (cdr x)))
     (null x)))
 
+(defthm fn-pb-line-textp-is-true-list
+  (implies (fn-pb-line-textp x) (true-listp x)))
+
+(defthm fn-pb-line-text-fix
+  (implies (fn-pb-line-textp x) (equal (true-list-fix x) x)))
+
 (defthm fn-pb-fixed-linep-of-text
   (implies (fn-pb-line-textp text)
            (fn-pb-fixed-linep (+ 2 (len text))

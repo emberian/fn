@@ -10,6 +10,7 @@
 (in-package "ACL2")
 (include-book "poster-bytes")
 (include-book "injection-invariants")
+(include-book "injection-header-lines")
 (include-book "owner")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -167,13 +168,16 @@
  (defthm fn-pb-block-agent-of-a-block
    (implies (and (true-listp agent) (consp agent)
                  (not (member-equal 10 agent)) (not (member-equal 59 agent))
-                 (true-listp date) (equal (len date) 31))
+                 (true-listp date) (equal (len date) 31)
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid)))
             (equal (fn-pb-block-agent
                     (append (fn-inj-block date msgid agent gid gdate) rest)
                     msgid)
                    agent))
    :hints (("Goal" :in-theory (e/d (fn-pb-block-agent fn-inj-block)
-                                   (fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                   (fn-pb-opensp fn-pb-fixed-linep fn-pb-strip-header-line
+                                    fn-inj-strip-optional fn-inj-strip
                                     fn-inj-drop fn-pb-info-line-agent
                                     fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line))
             :do-not-induct t
@@ -199,7 +203,9 @@
  (defthm fn-pb-path-agent-of-a-block
    (implies (and (true-listp agent) (consp agent)
                  (not (member-equal 10 agent)) (not (member-equal 59 agent))
-                 (true-listp date) (equal (len date) 31))
+                 (true-listp date) (equal (len date) 31)
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid)))
             (equal (fn-pb-path-agent
                     (fn-inj-append (fn-inj-block date msgid agent gid gdate) rest)
                     msgid)
@@ -272,6 +278,10 @@
                         (:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source)
                         fn-pb-an-injection-configures
                         fn-pb-a-configured-agent-is-a-line-free-list
+                        (:instance fn-pb-injected-generated-id-line-textp
+                                   (observation obs))
+                        (:instance fn-pb-date-octets-line-textp
+                                   (inst (fn-inj-instant-of (fn-clock-wall obs))))
                         (:instance fn-pb-date-octets-shape
                                    (inst (fn-inj-instant-of (fn-clock-wall obs))))
                         (:instance fn-pb-path-agent-of-a-prefix

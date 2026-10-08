@@ -23,6 +23,7 @@
 
 (in-package "ACL2")
 (include-book "injection-info-params")
+(include-book "injection-header-lines")
 (include-book "poster-bytes-invariants")
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -162,7 +163,10 @@
 (local
  (defthm fn-ipp-at-stamp-of-a-block
    (implies (and (true-listp date) (equal (len date) 31)
-                 (not (equal source :no)))
+                 (not (equal source :no))
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid))
+                 (fn-pb-line-textp agent))
             (equal (fn-ipp-at-stamp (append (fn-inj-block date msgid agent gid gdate)
                                             source)
                                     agent msgid params)
@@ -197,7 +201,10 @@
                  (equal (fn-pb-path-agent
                          (append (fn-inj-prefix date msgid agent gid gdate) source)
                          msgid)
-                        agent))
+                        agent)
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid))
+                 (fn-pb-line-textp agent))
             (equal (fn-ipp-with-params
                     (append (fn-inj-prefix date msgid agent gid gdate) source)
                     msgid params)
@@ -214,7 +221,10 @@
                  (equal (fn-pb-path-agent
                          (append (fn-inj-block date msgid agent gid gdate) rest)
                          msgid)
-                        agent))
+                        agent)
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid))
+                 (fn-pb-line-textp agent))
             (equal (fn-ipp-with-params
                     (append (fn-inj-block date msgid agent gid gdate) rest)
                     msgid params)
@@ -229,7 +239,10 @@
    (implies (and (equal x (append (fn-inj-prefix date msgid agent gid gdate) source))
                  (true-listp date) (equal (len date) 31) (consp params) agent
                  (not (equal source :no))
-                 (equal (fn-pb-path-agent x msgid) agent))
+                 (equal (fn-pb-path-agent x msgid) agent)
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid))
+                 (fn-pb-line-textp agent))
             (equal (fn-ipp-with-params x msgid params)
                    (append (fn-ipp-prefix-with date msgid agent gid gdate params)
                            source)))
@@ -243,7 +256,10 @@
    (implies (and (equal x (append (fn-inj-block date msgid agent gid gdate) rest))
                  (true-listp date) (equal (len date) 31) (consp params) agent
                  (not (equal rest :no))
-                 (equal (fn-pb-path-agent x msgid) agent))
+                 (equal (fn-pb-path-agent x msgid) agent)
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid))
+                 (fn-pb-line-textp agent))
             (equal (fn-ipp-with-params x msgid params)
                    (append (fn-ipp-block-with date msgid agent gid gdate params)
                            rest)))
@@ -328,6 +344,10 @@
                             (inst (fn-inj-instant-of (fn-clock-wall obs))))
                  (:instance fn-ipp-an-injection-configures-first)
                  (:instance fn-ipp-a-configured-agent-is-a-cons)
+                 (:instance fn-pb-injected-generated-id-line-textp (observation obs))
+                 (:instance fn-pb-config-agent-line-textp (cfg config))
+                 (:instance fn-pb-date-octets-line-textp
+                            (inst (fn-inj-instant-of (fn-clock-wall obs))))
                  (:instance fn-ipp-with-params-of-a-prefix-x
                             (x (fn-inj-decision-octets (fn-inj-decide source config obs)))
                             (date (fn-ipp-date obs))
@@ -1003,7 +1023,10 @@
                  (not (member-equal 10 agent)) (not (member-equal 59 agent))
                  (fn-ipp-params-okp params)
                  (true-listp date) (equal (len date) 31)
-                 (not (equal rest :no)))
+                 (not (equal rest :no))
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid))
+                 (fn-pb-line-textp agent))
             (equal (fn-pb-block-agent
                     (append (fn-ipp-block-with date msgid agent gid gdate params) rest)
                     msgid)
@@ -1030,7 +1053,10 @@
                  (not (member-equal 10 agent)) (not (member-equal 59 agent))
                  (fn-ipp-params-okp params)
                  (true-listp date) (equal (len date) 31)
-                 (not (equal rest :no)))
+                 (not (equal rest :no))
+                 (fn-pb-line-textp date)
+                 (implies gid (fn-pb-line-textp msgid))
+                 (fn-pb-line-textp agent))
             (equal (fn-pb-path-agent
                     (append (fn-ipp-block-with date msgid agent gid gdate params) rest)
                     msgid)
@@ -1086,6 +1112,10 @@
                  (:instance fn-ipp-a-configured-agent-is-a-cons)
                  (:instance fn-ipp-a-configured-agent-has-no-lf)
                  (:instance fn-ipp-a-configured-agent-has-no-semicolon)
+                 (:instance fn-pb-injected-generated-id-line-textp (observation obs))
+                 (:instance fn-pb-config-agent-line-textp (cfg config))
+                 (:instance fn-pb-date-octets-line-textp
+                            (inst (fn-inj-instant-of (fn-clock-wall obs))))
                  (:instance fn-ipp-date-octets-shape
                             (inst (fn-inj-instant-of (fn-clock-wall obs))))
                  (:instance fn-inj-an-injected-supplied-path-has-an-offset)
