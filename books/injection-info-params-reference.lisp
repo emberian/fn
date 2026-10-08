@@ -1,0 +1,62 @@
+; Book-level pre-hardening specifications, never host entry points.
+; Source: 6b6d56f10; selected DEFUNs renamed structurally with tools/lisp_rewrite.py.
+(in-package "ACL2")
+(include-book "injection-info-params")
+
+(defun fn-pb-block-agent-old (x msgid)
+  (declare (xargs :guard t))
+  (let* ((x1 (if (fn-pb-opensp *fn-inj-injection-date-field* x)
+                 (fn-inj-drop *fn-pb-stamp-line-length* x)
+               x))
+         (x2 (fn-inj-strip-optional (fn-inj-message-id-line msgid) x1))
+         (x3 (if (fn-pb-opensp *fn-inj-date-field* x2)
+                 (fn-inj-drop *fn-pb-date-line-length* x2)
+               x2)))
+    (fn-pb-info-line-agent x3)))
+
+(defun fn-pb-path-agent-old (x msgid)
+  (declare (xargs :guard t))
+  (let ((x (fn-cll-skip x)))
+    (or (fn-pb-path-line-agent x) (fn-pb-block-agent-old x msgid))))
+
+(defun fn-ipp-at-info-old (x agent params)
+  (declare (xargs :guard t))
+  (let ((r (fn-inj-strip (fn-inj-injection-info-line agent) x)))
+    (if (equal r :no)
+        x
+      (fn-inj-append (fn-inj-injection-info-line-with agent params) r))))
+
+(defun fn-ipp-at-date-old (x agent params)
+  (declare (xargs :guard t))
+  (if (fn-pb-opensp *fn-inj-date-field* x)
+      (fn-inj-append (fn-inj-take *fn-pb-date-line-length* x)
+                     (fn-ipp-at-info-old (fn-inj-drop *fn-pb-date-line-length* x)
+                                     agent params))
+    (fn-ipp-at-info-old x agent params)))
+
+(defun fn-ipp-at-msgid-old (x agent msgid params)
+  (declare (xargs :guard t))
+  (let ((r (fn-inj-strip (fn-inj-message-id-line msgid) x)))
+    (if (equal r :no)
+        (fn-ipp-at-date-old x agent params)
+      (fn-inj-append (fn-inj-message-id-line msgid)
+                     (fn-ipp-at-date-old r agent params)))))
+
+(defun fn-ipp-at-stamp-old (x agent msgid params)
+  (declare (xargs :guard t))
+  (if (fn-pb-opensp *fn-inj-injection-date-field* x)
+      (fn-inj-append (fn-inj-take *fn-pb-stamp-line-length* x)
+                     (fn-ipp-at-msgid-old (fn-inj-drop *fn-pb-stamp-line-length* x)
+                                      agent msgid params))
+    (fn-ipp-at-msgid-old x agent msgid params)))
+
+(defun fn-ipp-with-params-old (x msgid params)
+  (declare (xargs :guard t))
+  (let ((agent (fn-pb-path-agent-old x msgid)))
+    (if (or (not (consp params)) (not agent))
+        x
+      (let ((r (fn-inj-strip (fn-inj-path-line agent) x)))
+        (if (equal r :no)
+            (fn-ipp-at-stamp-old x agent msgid params)
+          (fn-inj-append (fn-inj-path-line agent)
+                         (fn-ipp-at-stamp-old r agent msgid params)))))))

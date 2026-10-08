@@ -6,6 +6,7 @@
 ; Reached through books/hybrid-store.lisp until that book included only
 ; books/injection-shape.lisp (audit 2026-09-25, packet 1).
 (include-book "injection")
+(include-book "post-header-line")
 ; The node's generated RFC 8315 lines in front of the block (SEC-006):
 ; fn-cll-skip sets them aside.
 (include-book "cancel-lock-lines")
@@ -45,6 +46,17 @@
 (defun fn-pb-opensp (field x)
   (declare (xargs :guard t))
   (not (equal (fn-inj-strip field x) :no)))
+
+; A recipe prefix may consume one complete nonempty header line, never a
+; separator or a prefix containing one.  In particular MSGID is not trusted
+; merely because it was used to construct a Message-ID line.
+(defun fn-pb-strip-header-line (line x)
+  (declare (xargs :guard t))
+  (if (and (< 2 (len line))
+           (true-listp line)
+           (fn-pb-fixed-linep (len line) line))
+      (fn-inj-strip line x)
+    :no))
 
 ; The octets of r before its first ";", or :no when it has none.
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
@@ -90,14 +102,17 @@
 
 (defun fn-pb-block-agent (x msgid)
   (declare (xargs :guard t))
-  (let* ((x1 (if (fn-pb-opensp *fn-inj-injection-date-field* x)
-                 (fn-inj-drop *fn-pb-stamp-line-length* x)
-               x))
-         (x2 (fn-inj-strip-optional (fn-inj-message-id-line msgid) x1))
-         (x3 (if (fn-pb-opensp *fn-inj-date-field* x2)
-                 (fn-inj-drop *fn-pb-date-line-length* x2)
-               x2)))
-    (fn-pb-info-line-agent x3)))
+  (let ((stampp (fn-pb-opensp *fn-inj-injection-date-field* x)))
+    (if (and stampp (not (fn-pb-fixed-linep *fn-pb-stamp-line-length* x)))
+        nil
+      (let* ((x1 (if stampp (fn-inj-drop *fn-pb-stamp-line-length* x) x))
+             (r (fn-pb-strip-header-line (fn-inj-message-id-line msgid) x1))
+             (x2 (if (equal r :no) x1 r))
+             (datep (fn-pb-opensp *fn-inj-date-field* x2)))
+        (if (and datep (not (fn-pb-fixed-linep *fn-pb-date-line-length* x2)))
+            nil
+          (fn-pb-info-line-agent
+           (if datep (fn-inj-drop *fn-pb-date-line-length* x2) x2)))))))
 
 ; The injecting agent a submission names: its leading Path line's (recipe v1
 ; and v2), else its v3 block's Injection-Info line's.  Whichever it names,

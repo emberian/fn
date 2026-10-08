@@ -928,6 +928,35 @@
    :hints (("Goal" :use fn-pbb-strip-optional-at-bounds
             :in-theory (disable fn-pbb-strip-optional-at-bounds)))))
 
+(defun fn-pbb-fixed-linep (n i fn-octets)
+  ; Reuse the shared predicate on at most N bytes, not the article suffix.
+  ; The two callers supply 39/49. No second line-recognition algorithm.
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp n) (natp i)
+                              (<= i (fn-octets-len fn-octets)))))
+  (fn-pb-fixed-linep
+   n (fn-oct-slice-list i (min (+ i n) (fn-octets-len fn-octets)) fn-octets)))
+
+(defthm fn-pbb-fixed-linep-is-pb-fixed-linep
+  (implies (and (natp n) (natp i) (<= i (len fn-octets))
+                (true-listp fn-octets))
+           (equal (fn-pbb-fixed-linep n i fn-octets)
+                  (fn-pb-fixed-linep n (nthcdr i fn-octets))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pbb-fixed-linep)
+                           (fn-pb-fixed-linep fn-pb-fixed-linep-of-bounded-take))
+           :use ((:instance fn-pb-fixed-linep-of-bounded-take
+                            (x (nthcdr i fn-octets)))))))
+
+(in-theory (disable fn-pbb-fixed-linep))
+
+(local
+ (defthm fn-pbb-rationalp-plus-strip-optional
+   (implies (and (natp i) (<= i (len fn-octets)) (natp c))
+            (rationalp (+ c (fn-pbb-strip-optional-at line i fn-octets))))
+   :hints (("Goal" :use fn-pbb-natp-plus-strip-optional
+            :in-theory (enable natp)))))
+
 (defun fn-pbb-block-agent (s msgid fn-octets)
   ; `fn-pb-block-agent' over the buffer: past an Injection-Date line (49
   ; octets), a Message-ID line of MSGID and a Date line (39 octets), each
@@ -935,7 +964,7 @@
   (declare (xargs :stobjs fn-octets
                   :guard (and (natp s) (<= s (fn-octets-len fn-octets)))
                   :guard-hints
-                  (("Goal" :in-theory (disable len)
+                  (("Goal" :in-theory (e/d ((tau-system)) (len))
                     :use ((:instance fn-pbb-strip-optional-at-bounds
                                      (line (fn-inj-message-id-line msgid))
                                      (i (if (equal (fn-pbb-strip-at
@@ -949,11 +978,21 @@
          (i1 (if (equal (fn-pbb-strip-at *fn-inj-injection-date-field* s fn-octets) :no)
                  s
                (min (+ s *fn-pb-stamp-line-length*) n)))
-         (i2 (fn-pbb-strip-optional-at (fn-inj-message-id-line msgid) i1 fn-octets))
+         (line (fn-inj-message-id-line msgid))
+         (i2 (if (and (< 2 (len line)) (true-listp line)
+                      (fn-pb-fixed-linep (len line) line))
+                 (fn-pbb-strip-optional-at line i1 fn-octets)
+               i1))
          (i3 (if (equal (fn-pbb-strip-at *fn-inj-date-field* i2 fn-octets) :no)
                  i2
                (min (+ i2 *fn-pb-date-line-length*) n))))
-    (fn-pbb-info-line-agent i3 fn-octets)))
+    (if (or (and (not (equal (fn-pbb-strip-at *fn-inj-injection-date-field*
+                                             s fn-octets) :no))
+                 (not (fn-pbb-fixed-linep *fn-pb-stamp-line-length* s fn-octets)))
+            (and (not (equal (fn-pbb-strip-at *fn-inj-date-field* i2 fn-octets) :no))
+                 (not (fn-pbb-fixed-linep *fn-pb-date-line-length* i2 fn-octets))))
+        nil
+      (fn-pbb-info-line-agent i3 fn-octets))))
 
 ; The three indices of the block walk, named for the hint below.
 (local
@@ -963,7 +1002,11 @@
       (min (+ s *fn-pb-stamp-line-length*) (len fn-octets)))))
 (local
  (defmacro fn-pbb-i2 ()
-   '(fn-pbb-strip-optional-at (fn-inj-message-id-line msgid) (fn-pbb-i1) fn-octets)))
+   '(let ((line (fn-inj-message-id-line msgid)))
+      (if (and (< 2 (len line)) (true-listp line)
+               (fn-pb-fixed-linep (len line) line))
+          (fn-pbb-strip-optional-at line (fn-pbb-i1) fn-octets)
+        (fn-pbb-i1)))))
 (local
  (defmacro fn-pbb-i3 ()
    '(if (equal (fn-pbb-strip-at *fn-inj-date-field* (fn-pbb-i2) fn-octets) :no)
@@ -975,7 +1018,9 @@
            (equal (fn-pb-block-agent (nthcdr s fn-octets) msgid)
                   (fn-pbb-block-agent s msgid fn-octets)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-pb-block-agent fn-pb-opensp) (len))
+           :in-theory (e/d (fn-pb-block-agent fn-pb-opensp fn-pb-strip-header-line
+                            fn-inj-strip-optional fn-pbb-strip-optional-at)
+                           (len fn-pb-fixed-linep fn-pb-info-line-agent))
            :use ((:instance fn-pbb-strip-at-is-inj-strip
                             (prefix *fn-inj-injection-date-field*) (i s))
                  (:instance fn-pbb-strip-optional-at-is-inj-strip-optional
@@ -1005,6 +1050,9 @@
   :hints (("Goal" :in-theory (enable fn-pb-path-agent fn-pbb-skip-at-is-cll-skip))))
 
 (in-theory (disable fn-pbb-path-agent))
+
+(local (in-theory (disable fn-pb-path-agent fn-pb-block-agent
+                           fn-pb-fixed-linep fn-pb-strip-header-line)))
 
 (defun fn-pbb-same-articlep (msgid fn-octets held-payload)
   ; `fn-pb-same-articlep' with the submitted payload in the buffer: the
