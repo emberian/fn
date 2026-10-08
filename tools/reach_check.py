@@ -28,6 +28,7 @@ Each was true, proved, certified, and irrelevant to the running server.
     python3 tools/reach_check.py --summary    # the line `make check` prints
     python3 tools/reach_check.py --strict     # non-zero on an UNBASELINED orphan
     python3 tools/reach_check.py --baseline   # rewrite the baseline (deliberate)
+    python3 tools/reach_check.py --lower-stale  # shrink-only: drop rows whose event is now hosted or gone
 
 WHAT IT MEASURES.  The call graph over `books/*.lisp' and `host/*.lisp',
 seeded from every function a LOADED host file defines (one the image
@@ -1742,6 +1743,26 @@ def write_baseline(findings, kept=()) -> None:
          "unresolved": current.get("unresolved", {})}, indent=2, sort_keys=True) + "\n")
 
 
+def lower_stale(path, accepted_now: set, kept: set) -> "tuple[list[str], list[str]]":
+    """--lower-stale: shrink-only.  Drop each baseline row whose event is no
+    longer an orphan (hosted, or gone from the registry); never add a row,
+    never touch a kept row, the `unresolved' table or the note.  ACCEPTED_NOW
+    is the keys still orphaned; KEPT the keys that are not judged orphan but
+    not hosted either (campaign-tied, needs --world).  Returns (dropped,
+    refused); writes only when something is dropped, and writes nothing if the
+    result would hold a key the file did not (refused)."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    accepted = data.get("accepted", {})
+    dropped = sorted(key for key in accepted if key not in accepted_now and key not in kept)
+    rows = {key: reason for key, reason in accepted.items() if key not in dropped}
+    refused = sorted(set(rows) - set(accepted))
+    if refused or not dropped:
+        return [], refused
+    path.write_text(json.dumps({**data, "accepted": rows}, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8")
+    return dropped, []
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--summary", action="store_true",
@@ -1751,6 +1772,9 @@ def main(argv=None) -> int:
                              "that needs --world (clears only in a --world run)")
     parser.add_argument("--baseline", action="store_true",
                         help="rewrite planning/reach-baseline.json from this run")
+    parser.add_argument("--lower-stale", action="store_true",
+                        help="shrink-only: drop the baseline rows whose event is now hosted "
+                             "or gone; adds nothing, whole tree only (no --book/--world)")
     parser.add_argument("--book", action="append", default=[], metavar="PATH",
                         help="with --summary or the listing: only the registry events "
                              "these books define (the graph is still the whole tree's)")
@@ -1761,6 +1785,11 @@ def main(argv=None) -> int:
                              "default: the text reader alone; the dump is written by coverage.py dump)")
     arguments = parser.parse_args(argv)
 
+    if arguments.lower_stale and (arguments.book or arguments.world or arguments.baseline
+                                  or arguments.explain):
+        print("reach_check: --lower-stale needs the whole tree in source mode "
+              "(no --book, --world, --baseline or --explain)", file=sys.stderr)
+        return 2
     graph = Graph(world=arguments.world)
     for relative, error in sorted(graph.unreadable.items()):
         print(f"reach_check: {relative} unreadable, its definitions are missing: {error}")
@@ -1837,6 +1866,26 @@ def main(argv=None) -> int:
         write_baseline(findings, blind)
         print(f"reach_check: baseline rewritten with {len(findings)} accepted "
               f"orphan(s) in {BASELINE.relative_to(ROOT)}")
+        return 0
+
+    if arguments.lower_stale:
+        if graph.unreadable:
+            print("reach_check: --lower-stale refused: an unreadable book leaves its events "
+                  "unjudged: " + ", ".join(sorted(graph.unreadable)), file=sys.stderr)
+            return 1
+        not_hosted = ({f.key() for f in findings} | {f.key() for f in blind}
+                      | {f.key() for f in tied}
+                      | {f"{proof_id}:{event}" for proof_id, event, _ in unresolved})
+        dropped, refused = lower_stale(BASELINE, {f.key() for f in findings},
+                                       not_hosted - {f.key() for f in findings})
+        if refused:
+            print("reach_check: --lower-stale refused: it would add " + ", ".join(refused),
+                  file=sys.stderr)
+            return 1
+        for key in dropped:
+            print("  dropped " + key)
+        print(f"reach_check: --lower-stale: {len(dropped)} row(s) dropped" if dropped
+              else "reach_check: --lower-stale: nothing to drop")
         return 0
 
     baseline = load_baseline()
