@@ -58,3 +58,14 @@
 (assert-event (equal (fn-och-committer-wake :staged nil t t t nil) :wait))
 (assert-event (equal (fn-och-caller-wake :staged t t) :collect))
 (assert-event (equal (fn-och-caller-wake :staged t nil) :wait))
+
+; S6/S7 witnesses and teeth.
+(assert-event (not (fn-och-committer-may-start :staged t)))
+(assert-event (fn-och-committer-may-start :idle nil))
+(assert-event (equal (fn-och-held-outcome :done nil) :submitted))
+(assert-event (equal (fn-och-held-outcome :done t) :stopping))
+(assert-event (equal (fn-och-held-outcome :uncertain nil) :stopping))
+(assert-event (equal (fn-och-held-outcome :fault nil) :fault))
+(assert-event (mv-let (a p n h) (fn-och-step :fenced nil t :completed-stopping)
+                (declare (ignore p n))
+                (and (equal a :none) (not h))))
