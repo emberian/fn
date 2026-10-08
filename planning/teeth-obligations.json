@@ -24426,6 +24426,25 @@
    "registry": true
   },
   {
+   "book_digest": "176d73cec72863c94453bafc980370f3f2eced07c40591a0b86600267e579171",
+   "bounds": [],
+   "claim_digest": "8b14826593c7ffc98bd033ae2481bab5b3d2d47c6241af2e81690315ce42cd15",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-send-window-render-p-bounds-the-quantum",
+   "owed_met": null,
+   "owner_book": "books/send-window.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-send-window-render-p",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-served-dispatch-effects-are-the-repinned-dispatch-effects",
    "registry": true
@@ -26627,6 +26646,44 @@
    "class": "hand",
    "name": "fn-stxe-token-code-of-code-token",
    "registry": true
+  },
+  {
+   "book_digest": "176d73cec72863c94453bafc980370f3f2eced07c40591a0b86600267e579171",
+   "bounds": [],
+   "claim_digest": "5669d5bf83941cd715df40c3babded18b7a321d144ea097f8c1a5784afdb5c13",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-sw-observed-render-admission-bounds",
+   "owed_met": null,
+   "owner_book": "books/send-window.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-send-window-render-p",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "176d73cec72863c94453bafc980370f3f2eced07c40591a0b86600267e579171",
+   "bounds": [],
+   "claim_digest": "41cbda77e52897d877015d913772d474fd5037aab49416b7d7f3a166cab1eebe",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-sw-observed-stalled-reader-bounded",
+   "owed_met": null,
+   "owner_book": "books/send-window.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-send-window-render-p",
+   "witness": "executable"
   },
   {
    "class": "hand",
