@@ -4892,10 +4892,21 @@
 ;; and fnn-owner-cold-wait-poll dispatch them (item COLD-READ-WORKERS-REFUSE-AT-16).
 (definterface fn-cwq-arrive
   :class :common-lisp-compliant
-  :keystones ((fn-cwq-arrival-under-the-bound-is-never-refused :via fn-cwq-arrive)))
+  :kinds ((free true-listp))
+  :keystones ((fn-cwq-arrival-under-the-bound-is-never-refused :via fn-cwq-arrive)
+              (fn-cwq-arrive-preserves-the-queue :via fn-cwq-arrive)))
 (definterface fn-cwq-step
   :class :common-lisp-compliant
-  :keystones ((fn-cwq-refused-only-at-the-deadline :via fn-cwq-step)))
+  :kinds ((free true-listp))
+  :keystones ((fn-cwq-refused-only-at-the-deadline :via fn-cwq-step)
+              (fn-cwq-a-worker-for-it-admits :via fn-cwq-step)))
+;; The queue is ACL2's value; the host holds it opaquely and creates, counts and
+;; drops through these (host/native/owner.lisp *fnn-cold-queue*).
+(definterface fn-cwq-new :class :common-lisp-compliant)
+(definterface fn-cwq-waiting :class :common-lisp-compliant)
+(definterface fn-cwq-drop
+  :class :common-lisp-compliant
+  :keystones ((fn-cwq-drop-preserves-the-queue :via fn-cwq-drop)))
 
 ;; books/payload-arena-extent-logic.lisp
 

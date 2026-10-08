@@ -206,6 +206,21 @@
  (equal (fn-prstartup-launch-extra *fn-bs-profile-development* 4 8 "/tmp/store")
         (+ (fn-prstartup-required-heap 9 4 "/tmp/store")
            (fn-prstartup-read-reserve (fn-prstartup-read-extent *fn-bs-profile-development*) 4))))
+;; The cold-wait queue is part of the reserve (books/cold-read-wait.lisp
+;; fn-cwq-queue-octets): a heap that held the reads in flight without it is
+;; refused by name once it is charged, and the launcher's extra carries it.
+(assert-event
+ (let* ((old (* 4 (fn-prstartup-read-demand 196677)))
+        (new (fn-prstartup-read-reserve 196677 4))
+        (dyn (+ (fn-prstartup-required-heap 9 4 "/tmp/store") old)))
+   (and (equal new (+ old (fn-cwq-queue-octets)))
+        (< 0 (fn-cwq-queue-octets))
+        (fn-prstartup-planp
+         (fn-prstartup-plan dyn 0 0 "/tmp/store" 4 1048576 4194304 8 256 old))
+        (equal (fn-prstartup-plan dyn 0 0 "/tmp/store" 4 1048576 4194304 8 256 new)
+               '(:refused :default-pool-read-headroom-unavailable))
+        (<= (fn-cwq-queue-octets)
+            (fn-prstartup-launch-extra *fn-bs-profile-development* 4 8 "/tmp/store")))))
 ; TEETH-62 BEGIN
 ; The two page-read-startup keystones with their teeth (TEETH CONTRACT v1).  The admitted-capacity keystone states its antecedent inside a `let'; its removal is a mutation.
 (defteeth fn-prstartup-accepted-default-launch-fits-machine
