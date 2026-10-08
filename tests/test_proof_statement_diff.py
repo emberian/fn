@@ -38,3 +38,8 @@ class Statements(unittest.TestCase):
 
     def test_moving_event_inside_encapsulate(self):
         self.assertFalse(compare(self.BASE, '(encapsulate () ' + self.BASE + ')')[2])
+
+    def test_hint_keywords_in_executable_data_remain_semantic(self):
+        for body in ['(list :hints 1)', "'(:guard-hints 1)"]:
+            original = f'(defun f (x) {body})'
+            self.assertTrue(compare(original, original.replace('1', '2'))[2])

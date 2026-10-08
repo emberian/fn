@@ -19,22 +19,25 @@ def statements(text):
     def raw(node):
         edits = []
 
-        def strip(n):
-            if not isinstance(n, Lst):
-                return
-            items = n.items
-            i = 0
-            while i < len(items):
-                x = items[i]
-                if isinstance(x, Atom) and x.low in (':hints', ':guard-hints'):
-                    if i + 1 == len(items):
-                        raise ValueError('hint without value')
-                    edits.append((x.start - node.start, items[i + 1].end - node.start, ''))
-                    i += 2
-                else:
-                    strip(x)
-                    i += 1
-        strip(node)
+        # Hints are proof metadata only in a declaration's XARGS.  A keyword
+        # appearing in executable/quoted data must remain part of the body.
+        if node.items[0].low in ('defun', 'defmacro'):
+            for declaration in node.items[3:]:
+                if not (isinstance(declaration, Lst) and declaration.items and
+                        getattr(declaration.items[0], 'low', '') == 'declare'):
+                    continue
+                for spec in declaration.items[1:]:
+                    if not (isinstance(spec, Lst) and spec.items and
+                            getattr(spec.items[0], 'low', '') == 'xargs'):
+                        continue
+                    items = spec.items
+                    for i in range(1, len(items), 2):
+                        x = items[i]
+                        if i + 1 == len(items):
+                            raise ValueError('xargs option without value')
+                        if isinstance(x, Atom) and x.low in (':hints', ':guard-hints'):
+                            edits.append((x.start - node.start,
+                                          items[i + 1].end - node.start, ''))
         return write(text[node.start:node.end], edits)
 
     def walk(node, local=False):
