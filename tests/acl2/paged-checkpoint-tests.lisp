@@ -18,11 +18,11 @@
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
-;; The two constrained seams, attached: the payload file's frame size (a frame
-;; is its payload and 32 octets) and the log position F (none recorded).
-(defun pckt-frame (n) (declare (xargs :guard t)) (+ 32 (nfix n)))
+;; The two constrained seams, attached: the frame's trailer words and the log
+;; position F (none recorded).
+(defun pckt-trailer (p) (declare (xargs :guard t) (ignore p)) (list 0 0 0 0))
 (defun pckt-f (configs recs) (declare (xargs :guard t) (ignore configs recs)) nil)
-(defattach (fn-cpl-frame-octets pckt-frame))
+(defattach (fn-cpl-trailer-words pckt-trailer))
 (defattach (fn-pck-f pckt-f))
 
 ; A record with a payload of N octets, and a toy event that is no record.
@@ -39,7 +39,8 @@
   (declare (xargs :mode :program))
   (if (atom recs)
       nil
-    (append (fn-pck-payload (car recs))
+    (append (make-list 37 :initial-element 0)
+            (fn-pck-payload (car recs))
             (make-list 32 :initial-element 0)
             (pckt-file (cdr recs)))))
 

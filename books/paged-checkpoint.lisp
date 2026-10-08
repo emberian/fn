@@ -134,7 +134,8 @@
 ;; D41-STAGE5-ONE-ROW-IMAGE: a tape row is the record's METADATA tree and a ref
 ;; (offset, length) to its payload in the append-only payload file
 ;; (books/checkpoint-payload-ref.lisp), not the payload octets.
-(def-representation fn-pck-row (meta :tree) (off :u64) (len :u64) :pages t)
+(def-representation fn-pck-row (meta :tree) (off :u64) (len :u64)
+  (d0 :u64) (d1 :u64) (d2 :u64) (d3 :u64) :pages t)
 
 (defconst *fn-pck-root-pages* 8)
 
@@ -167,9 +168,12 @@
     (if (and (consp meta) (consp (cdr meta))) (cadr meta) nil)))
 
 (defun fn-pck-enc-row (w off)
-  ; The row of event W whose payload frame starts at file offset OFF.
+  ; The row of event W whose payload frame starts at file offset OFF: the ref
+  ; to the payload (37 octets into the frame) and the frame's trailer words.
   (declare (xargs :guard t :verify-guards nil))
-  (list (fn-scc-program (fn-pck-meta w)) off (len (fn-pck-payload w))))
+  (let ((tw (fn-cpl-trailer-words (fn-pck-payload w))))
+    (list (fn-scc-program (fn-pck-meta w)) (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
+          (car tw) (cadr tw) (caddr tw) (cadddr tw))))
 
 (defun fn-pck-plen (recs base)
   ; The payload-file length after the frames of RECS laid end to end from BASE.
@@ -191,7 +195,7 @@
 (defun fn-pck-enc-root (tree)
   ; The root row: the root tree as metadata, no payload.
   (declare (xargs :guard t :verify-guards nil))
-  (list (fn-scc-program tree) 0 0))
+  (list (fn-scc-program tree) 0 0 0 0 0 0))
 
 ; F: the log position at S.  The root row carries, besides the capture's four
 ; fold roots, the position of the record log at the checkpoint's S (the first
@@ -352,12 +356,31 @@
   :hints (("Goal" :induct (fn-pck-plen recs base)))
   :rule-classes :type-prescription)
 
+(defthm pck-row-ok
+  (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp off) (< (+ 37 off) 18446744073709551616)
+                (< (len (fn-pck-payload w)) 18446744073709551616))
+           (adt-rec-p '((:octets) (:u64) (:u64) (:u64) (:u64) (:u64) (:u64)) (fn-pck-enc-row w off)))
+  :hints (("Goal" :in-theory (e/d (adt-rec-p adt-val-okp fn-pck-enc-row) (fn-pck-meta fn-pck-payload fn-sccb-treep))
+           :use (fn-cpl-trailer-words-shape (:instance pck-program-octetsp (x (fn-pck-meta w)))))))
+
+(defthm pck-plen-ge-frame
+  (implies (consp recs) (<= (+ base 69) (fn-pck-plen recs base)))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-pck-plen recs base))))
+
 (defthm pck-rows-from-ap
   (implies (and (fn-pck-sccb-listp recs) (natp base)
                 (< (fn-pck-plen recs base) 18446744073709551616))
            (fn-pck-row$ap (fn-pck-rows-from recs base)))
   :hints (("Goal" :induct (fn-pck-plen recs base)
-           :in-theory (enable fn-pck-row$ap adt-seq-p adt-rec-p adt-val-okp fn-pck-enc-row))))
+           :in-theory (e/d (fn-pck-row$ap adt-seq-p)
+                           (fn-pck-meta fn-pck-payload fn-sccb-treep fn-pck-enc-row pck-row-ok))
+           :expand ((fn-pck-rows-from recs base) (fn-pck-plen recs base) (fn-pck-sccb-listp recs)))
+          ("Subgoal *1/2" :use ((:instance pck-row-ok (w (car recs)) (off base))
+                                (:instance pck-plen-ge-frame (recs (cdr recs))
+                                           (base (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))))
+                                (:instance pck-plen-monotone (recs (cdr recs))
+                                           (base (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))))))))
 
 (defthm pck-rows-ap
   (implies (and (fn-pck-sccb-listp recs) (fn-pck-plen-okp recs))
@@ -488,7 +511,7 @@
 
 (defthm pck-dec-tree-of-program
   (implies (fn-sccb-treep x)
-           (equal (fn-pck-dec-tree (list (fn-scc-program x) off len)) x))
+           (equal (fn-pck-dec-tree (list (fn-scc-program x) off len d0 d1 d2 d3)) x))
   :hints (("Goal" :in-theory (enable fn-pck-dec-tree)
            :use ((:instance fn-scc-decode-tree-of-encode)
                  (:instance fn-sccb-treep-is-treep)))))
@@ -499,7 +522,7 @@
   (declare (xargs :guard (natp base) :verify-guards nil))
   (if (atom recs)
       t
-    (and (equal (fn-cpl-resolve (fn-cpl-ref base (len (fn-pck-payload (car recs)))) file)
+    (and (equal (fn-cpl-resolve (fn-cpl-ref (+ *fn-cpl-header-octets* base) (len (fn-pck-payload (car recs)))) file)
                 (fn-pck-payload (car recs)))
          (fn-pck-resolvesp (cdr recs)
                            (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))
@@ -520,15 +543,15 @@
 
 (defthm pck-resolve-of-tail
   (implies (and (true-listp file) (true-listp tail)
-                (equal (fn-cpl-resolve (fn-cpl-ref b (len (fn-pck-payload w))) file)
+                (equal (fn-cpl-resolve (fn-cpl-ref (+ *fn-cpl-header-octets* b) (len (fn-pck-payload w))) file)
                        (fn-pck-payload w)))
-           (equal (fn-cpl-resolve (fn-cpl-ref b (len (fn-pck-payload w))) (append file tail))
+           (equal (fn-cpl-resolve (fn-cpl-ref (+ *fn-cpl-header-octets* b) (len (fn-pck-payload w))) (append file tail))
                   (fn-pck-payload w)))
   :hints (("Goal" :in-theory (disable fn-cpl-resolve-ignores-a-tail)
            :use ((:instance pck-resolve-answer-bound (ans (fn-pck-payload w))
-                            (ref (fn-cpl-ref b (len (fn-pck-payload w)))))
+                            (ref (fn-cpl-ref (+ *fn-cpl-header-octets* b) (len (fn-pck-payload w)))))
                  (:instance fn-cpl-resolve-ignores-a-tail
-                            (ref (fn-cpl-ref b (len (fn-pck-payload w)))))))))
+                            (ref (fn-cpl-ref (+ *fn-cpl-header-octets* b) (len (fn-pck-payload w)))))))))
 
 (defthm pck-resolvesp-of-tail
   ; The uncommitted tail of the payload file (a delta partly appended) changes
@@ -540,7 +563,7 @@
 
 (defthm pck-dec-row-of-enc-row
   (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp off)
-                (equal (fn-cpl-resolve (fn-cpl-ref off (len (fn-pck-payload w))) file)
+                (equal (fn-cpl-resolve (fn-cpl-ref (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))) file)
                        (fn-pck-payload w)))
            (equal (fn-pck-dec-row (fn-pck-enc-row w off) file) w))
   :hints (("Goal" :in-theory (e/d (fn-pck-dec-row fn-pck-enc-row) (fn-pck-join fn-pck-meta fn-pck-payload pck-join-of-meta))
@@ -668,7 +691,7 @@
                                   (len (fn-pck-row-pages-of
                                         (list (fn-pck-enc-root (fn-pck-root-tree configs recs))))))))
                  (:instance pck-ap-enc-root (x (fn-pck-root-tree configs recs)))
-                 (:instance pck-dec-tree-of-program (x (fn-pck-root-tree configs recs)) (off 0) (len 0))))))
+                 (:instance pck-dec-tree-of-program (x (fn-pck-root-tree configs recs)) (off 0) (len 0) (d0 0) (d1 0) (d2 0) (d3 0))))))
 
 (defthm pck-recordsp-parts
   (implies (fn-pck-recordsp configs recs)
