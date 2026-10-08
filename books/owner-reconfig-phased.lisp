@@ -46,9 +46,11 @@
 ;      under every W.
 ;   R2 fn-orp-phased-answers-as-inline: the run ends in the inline run's
 ;      answer (:accept, :refuse, :fence or :fault), under every W, given that
-;      the convert succeeded when RESERVE (PRL-ROW-SUM-INVARIANT).
+;      the convert succeeded on every run that reaches it
+;      (fn-orp-reaches-convert).  That hypothesis is OWED, not discharged:
+;      see the note above R2.
 ;   R3 fn-orp-accepted-keeps-the-owner-effects: an accepted run has the
-;      inline run's owner effects in their order (same hypothesis).
+;      inline run's owner effects in their order (same owed hypothesis).
 ;   R4 fn-orp-phased-holds-the-owner-only-in-quanta: every effect the run
 ;      labels :off is I/O and every I/O effect is :off.
 ;   R5 fn-orp-refusal-unstages-and-fence-keeps-the-stage: a refused run
@@ -58,9 +60,10 @@
 ;      caller) takes a growth reservation under E in quantum 1, before any
 ;      effect off O; acceptance converts it into the budget reduction, a later
 ;      refusal releases it; an accepted run never releases.  With RESERVE
-;      quantum 3's :convert is a real call (CONVERT is its word,
-;      fn-prl-convert-growth) that refuses only if PRL-ROW-SUM-INVARIANT is
-;      broken.
+;      quantum 3's :convert is a real call (CONVERT is its word) and can
+;      refuse, so :convert in the effects is an ATTEMPT, not a success; a
+;      run with both :convert and :release is exactly R7's refused convert,
+;      and it faults.
 ;   R7 fn-orp-refused-convert-faults-after-release: a refused convert releases
 ;      the reservation, then faults; it never accepts or continues.
 ; :continue is the caller's own work after the answer (the redeem reply, the
@@ -199,6 +202,17 @@
                     ((eq publish :uncertain) '((:owner . :fence)))
                     (t '((:owner . :fault))))))))))
 
+; The runs that read CONVERT: RESERVE, a staged and authorized record, an ok
+; observation, a durable publication and completion, every journal ok.  Every
+; other run ends before quantum 3's :convert and never reads the word
+; (fn-orp-convert-attempted-iff-reached below).
+(defun fn-orp-reaches-convert (reserve stage auth observe publish verdict feeds)
+  (declare (xargs :guard t))
+  (and reserve (eq stage :staged) auth (eq observe :ok)
+       (eq publish :durable) (eq verdict :durable)
+       (eq (fn-orp-feeds-final feeds) :ok)
+       t))
+
 ; -----------------------------------------------------------------------------
 ; The projections.
 (defun fn-orp-io-p (e)
@@ -280,7 +294,8 @@
   (equal (fn-orp-durable (fn-orp-q3 reserve feeds convert)) nil)))
 (local (defthm fn-orp-consp-q3 (consp (fn-orp-q3 reserve feeds convert))))
 (local (defthm fn-orp-answer-of-inline-feeds
-  (implies (or (not reserve) (equal convert :converted))
+  (implies (implies (and reserve (equal (fn-orp-feeds-final feeds) :ok))
+                    (equal convert :converted))
            (equal (fn-orp-answer (fn-orp-inline-feeds feeds)) (fn-orp-answer (fn-orp-q3 reserve feeds convert))))))
 (local (defthm fn-orp-owner-of-feeds-io
   (equal (fn-orp-owner (fn-orp-feeds-io feeds)) nil)))
@@ -327,21 +342,33 @@
   (equal (fn-orp-durable (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
          (fn-orp-durable (fn-orp-inline stage auth observe publish verdict feeds))))
 
-; KEYSTONE R2.  The one hypothesis is that the convert succeeded, as G2
-; promises: fn-prl-convert-growth refuses only when PRL-ROW-SUM-INVARIANT is
-; broken, which the durable configuration rules out.  A refused convert is
-; R7's fault.
+; THE OWED HYPOTHESIS OF R2 AND R3.  On a run that reaches quantum 3's
+; :convert (fn-orp-reaches-convert), the convert word is :converted.  Nothing
+; in this book discharges it: CONVERT is the host's observation of the
+; converter, a free input here.  The discharge it waits on is a chain, open
+; at two links: (i) the host's word is :converted exactly when
+; fn-prl-convert-growth answers :protected-growth-admitted (the host call,
+; C's reconfig-host lane; no correspondence theorem yet); (ii) that answer is
+; G2 (books/page-read-budget-growth.lisp
+; fn-prl-convert-growth-when-charged-covers-the-reserve), whose
+; charged-covers-the-reserve hypothesis holds across draws only by repair
+; item PRL-ROW-SUM-INVARIANT (open, not a theorem).  Runs that do not reach
+; the convert are unconstrained by it, and R7 states what a refused convert
+; does instead.
+; KEYSTONE R2.
 (defthm fn-orp-phased-answers-as-inline
   (implies
-   (or (not reserve) (equal convert :converted))
+   (implies (fn-orp-reaches-convert reserve stage auth observe publish verdict feeds)
+            (equal convert :converted))
    (let ((answer (fn-orp-answer (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))))
     (and (equal answer
                 (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds)))
          (member-equal answer '(:accept :refuse :fence :fault))))))
 
-; KEYSTONE R3.  Same hypothesis as R2 (PRL-ROW-SUM-INVARIANT discharges it).
+; KEYSTONE R3.  The same owed hypothesis as R2.
 (defthm fn-orp-accepted-keeps-the-owner-effects
-  (implies (and (or (not reserve) (equal convert :converted))
+  (implies (and (implies (fn-orp-reaches-convert reserve stage auth observe publish verdict feeds)
+                         (equal convert :converted))
                 (equal (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds))
                        :accept))
            (equal (fn-orp-owner (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
@@ -364,7 +391,10 @@
 ; is held as a reservation across the windows).  It is taken in quantum 1
 ; before any effect off O, exactly for a staged, authorized record; an
 ; accepted run converts it into the budget reduction; a refusal after it
-; releases it before the unstage; never both.
+; releases it before the unstage.  :convert is the convert ATTEMPT: a run
+; may hold both :convert and :release, and then (R7) the convert refused,
+; the release follows it and the run faults (the last conjunct); an
+; accepted run holds :convert and never :release.
 (defthm fn-orp-reservation-is-converted-or-released
   (let* ((effects (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
          (answer (fn-orp-answer effects)))
@@ -401,6 +431,13 @@
                   (member-equal :release (fn-orp-before :fault effects))
                   (not (member-equal :accept effects))
                   (not (member-equal :continue effects))))))
+
+; The convert word is read exactly on the runs fn-orp-reaches-convert names:
+; :convert is among the effects iff the run reaches it, so R2/R3's owed
+; hypothesis constrains no run that ends earlier.
+(defthm fn-orp-convert-attempted-iff-reached
+  (iff (member-equal :convert (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
+       (fn-orp-reaches-convert reserve stage auth observe publish verdict feeds)))
 
 (defun fn-orp-replay-peers (peers)
   (declare (xargs :guard t))

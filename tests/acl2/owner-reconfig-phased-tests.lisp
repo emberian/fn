@@ -115,9 +115,11 @@
    (and (equal effects '((:owner . :fault))) (equal next :done))))
 
 ; RULING19-MODEL-AWAITS-HOST: these teeth cover the model, not host locking.
-; R0/R1/R4/R5/R6 have no top-level hypotheses; R2/R3 carry the convert-succeeded
-; hypothesis (PRL-ROW-SUM-INVARIANT discharges it) with a hypothesis-removal
-; witness (converted); R7 names each of its hypotheses and breaks each.  The
+; R0/R1/R4/R5/R6 have no top-level hypotheses; R2/R3 carry the OWED
+; convert-succeeded hypothesis, scoped to the runs that reach the convert
+; (fn-orp-reaches-convert; not discharged, see the book's note above R2), with
+; a hypothesis-removal witness (converted); R7 names each of its hypotheses
+; and breaks each.  The
 ; implications inside R5/R6 are part of their conclusions, not removable
 ; assumptions.
 (defteeth fn-orp-step-runs-the-phased-run
@@ -151,12 +153,12 @@
                :fault "durable effects are replayed in reverse order")))
 
 (defteeth fn-orp-phased-answers-as-inline
-  :claim (((converted (or (not reserve) (equal convert :converted))))
+  :claim (((converted (implies (fn-orp-reaches-convert reserve stage auth observe publish verdict feeds) (equal convert :converted))))
           (let ((answer (fn-orp-answer (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))))
             (and (equal answer (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds)))
                  (member-equal answer '(:accept :refuse :fence :fault)))))
   :witness ((reserve t) (stage :staged) (auth t) (observe :ok)
-            (publish :uncertain) (verdict nil) (feeds nil) (convert :converted))
+            (publish :durable) (verdict :durable) (feeds '(("a" . :ok))) (convert :converted))
   :breaks ((converted ((publish :durable) (verdict :durable) (feeds '(("a" . :ok))) (convert :eio))))
   :mutations ((uncertain-is-refusal
                (:conclusion
@@ -167,7 +169,7 @@
                :fault "an uncertain publication is reported as a definite refusal")))
 
 (defteeth fn-orp-accepted-keeps-the-owner-effects
-  :claim (((converted (or (not reserve) (equal convert :converted)))
+  :claim (((converted (implies (fn-orp-reaches-convert reserve stage auth observe publish verdict feeds) (equal convert :converted)))
            (accepted (equal (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds)) :accept)))
           (equal (fn-orp-owner (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
                  (fn-orp-owner (fn-orp-inline stage auth observe publish verdict feeds))))
@@ -182,6 +184,26 @@
                ((reserve t) (stage :staged) (auth t) (observe :ok)
                 (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))) (convert :converted))
                :fault "the owner omits staging from an accepted run")))
+
+;; R2's scope: a run that ends before the convert keeps the inline answer
+;; whatever the convert word says (the hypothesis does not exclude it).  Each
+;; of these reads no CONVERT; :eio would be a refused convert had it been read.
+(assert-event
+ (and (not (fn-orp-reaches-convert t :staged t :ok :durable :durable '(("a" . :uncertain))))
+      (equal (fn-orp-answer (strip-cdrs (fn-orp-run t :staged t :ok :durable :durable '(("a" . :uncertain)) :eio)))
+             (fn-orp-answer (fn-orp-inline :staged t :ok :durable :durable '(("a" . :uncertain)))))
+      (equal (fn-orp-answer (strip-cdrs (fn-orp-run t :staged t :ok :durable :durable '(("a" . :eio)) :eio)))
+             (fn-orp-answer (fn-orp-inline :staged t :ok :durable :durable '(("a" . :eio)))))
+      (equal (fn-orp-answer (strip-cdrs (fn-orp-run t :staged t :ok :uncertain nil nil :eio)))
+             (fn-orp-answer (fn-orp-inline :staged t :ok :uncertain nil nil)))
+      (equal (fn-orp-answer (strip-cdrs (fn-orp-run t :staged t :ok :refused nil nil :eio)))
+             :refuse)
+      (not (member-equal :convert (strip-cdrs (fn-orp-run t :staged t :ok :durable :durable '(("a" . :uncertain)) :eio))))))
+;; ... and the one run that reads it is exactly the reached one.
+(assert-event
+ (and (fn-orp-reaches-convert t :staged t :ok :durable :durable '(("a" . :ok)))
+      (member-equal :convert (strip-cdrs (fn-orp-run t :staged t :ok :durable :durable '(("a" . :ok)) :eio)))
+      (not (fn-orp-reaches-convert nil :staged t :ok :durable :durable '(("a" . :ok))))))
 
 (defteeth fn-orp-phased-holds-the-owner-only-in-quanta
   :claim (() (fn-orp-labelsp (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
@@ -331,6 +353,39 @@
                ((reserve t) (stage :staged) (auth t) (observe :ok)
                 (publish :durable) (verdict :durable) (feeds '(("a" . :ok))) (convert :eio))
                :fault "a refused convert accepts")))
+
+;; R7's mutations, as defects of the MODEL: each mutated trace of the refused
+;; convert (a fence for the fault; no release; an acceptance) falsifies R7's
+;; conclusion.  orpt-r7-conclusion is R7's conclusion over EFFECTS, and
+;; orpt-r7-implies-conclusion proves R7 entails it, so a model whose
+;; refused-convert run were one of these traces would refute R7 itself.
+(defun orpt-r7-conclusion (effects)
+  (and (equal (fn-orp-answer effects) :fault)
+       (member-equal :convert (fn-orp-before :release effects))
+       (member-equal :release (fn-orp-before :fault effects))
+       (not (member-equal :accept effects))
+       (not (member-equal :continue effects))))
+(defthm orpt-r7-implies-conclusion
+  (implies (and reserve (equal stage :staged) auth (equal observe :ok)
+                (equal publish :durable) (equal verdict :durable)
+                (equal (fn-orp-feeds-final feeds) :ok)
+                (not (equal convert :converted)))
+           (orpt-r7-conclusion (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-orp-refused-convert-faults-after-release
+                  :in-theory (disable fn-orp-run))))
+(defconst *orpt-refused-run*
+  (strip-cdrs (fn-orp-run t :staged t :ok :durable :durable '(("a" . :ok)) :eio)))
+(assert-event (orpt-r7-conclusion *orpt-refused-run*))
+;; fence-not-fault: the run fences where it should fault.
+(assert-event
+ (not (orpt-r7-conclusion (append (butlast *orpt-refused-run* 1) '(:fence)))))
+;; no-release: the reservation is never released.
+(assert-event
+ (not (orpt-r7-conclusion (remove-equal :release *orpt-refused-run*))))
+;; accepts-anyway: the refused convert continues and accepts.
+(assert-event
+ (not (orpt-r7-conclusion (append (butlast *orpt-refused-run* 2) '(:continue :accept)))))
 
 ; Exercise the alternate R5/R6 branches with their premises true, alongside
 ; the complete conclusions checked above by defteeth.
