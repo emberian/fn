@@ -433,3 +433,185 @@
 (verify-guards pcko-tape
   :hints (("Goal" :in-theory (disable pcko-ref-step pcko-w pcko-copy pcko-tree))))
 (verify-guards fn-pck-x-open)
+
+; =============================================================================
+; THE PROOFS.  The tape's rows are the model's rows (fn-pck-rows-from); each
+; interned by `pcko-ref-step' leaves the state full recovery's intern leaves.
+
+; -----------------------------------------------------------------------------
+; The held row the tape carries, reseated at the arena's count, is the row full
+; recovery interns there.
+
+(defthm pcko-reseat-held-p
+  (implies (and (fn-held-p row) (natp h)) (fn-held-p (pcko-reseat row h)))
+  :hints (("Goal" :in-theory (enable pcko-reseat fn-held-p fn-held-internals fn-record-internals fn-record-uint64p)
+           :use ((:instance fn-held-p-fields (h row))))))
+
+(defthm pcko-intern-row-at-reseat
+  (implies (and (fn-record-p w) (natp h))
+           (equal (fn-intern-row-at w k g h)
+                  (pcko-reseat (fn-intern-row-at w k g 0) h)))
+  :hints (("Goal" :in-theory (e/d (pcko-reseat fn-intern-row-at) ()))))
+
+(defthm pcko-held-not-hstxa
+  (implies (fn-held-p e) (not (fn-hstxa-p e)))
+  :hints (("Goal" :use (fn-hstxa-p-forward-shape fn-held-p-forward-natural-head)
+           :in-theory (disable fn-hstxa-p-forward-shape fn-held-p-forward-natural-head))))
+
+(defthm pcko-identity-wire-of-held
+  (implies (fn-held-p e) (equal (fn-replay-identity-wire e) e))
+  :hints (("Goal" :in-theory (enable fn-replay-identity-wire))))
+
+(defthm pcko-identity-step-of-held
+  (implies (fn-held-p e)
+           (equal (fn-replay-identity-step ctx e)
+                  (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
+                    (if (not (equal (fn-record-sequence e) (fn-stxk-context-next ctx)))
+                        (fn-stxk-fault ctx :sequence)
+                      (fn-replay-identity-advance ctx)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-replay-identity-step fn-store-event-sequence)
+                           (fn-held-p fn-hsig-article-event-carried-bindsp
+                            fn-hsig-article-event-revoked-bindsp fn-stxk-fault fn-replay-identity-advance))
+           :use ((:instance fn-held-is-no-wire-event (x e))))))
+
+(defthm pcko-reseat-sequence
+  (equal (fn-record-sequence (pcko-reseat row h)) (fn-record-sequence row))
+  :hints (("Goal" :in-theory (enable pcko-reseat))))
+
+(defthm pcko-identity-of-reseat
+  (implies (and (fn-held-p row) (natp h))
+           (equal (fn-replay-identity-step ctx (pcko-reseat row h))
+                  (fn-replay-identity-step ctx row)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable pcko-reseat pcko-identity-step-of-held fn-held-p)
+           :use (pcko-reseat-held-p
+                 (:instance pcko-identity-step-of-held (e row))
+                 (:instance pcko-identity-step-of-held (e (pcko-reseat row h)))
+                 pcko-reseat-sequence))))
+
+; -----------------------------------------------------------------------------
+; One row of the tape.  The words from POS on are the row's words, then REST.
+
+(defun pcko-rowwords (prog off len d0 d1 d2 d3)
+  (cons 1 (cons (len prog) (append (adt-tp-pack prog) (list off len d0 d1 d2 d3)))))
+
+(defthm pcko-nth-nthcdr
+  (implies (and (natp i) (natp j)) (equal (nth i (nthcdr j w)) (nth (+ i j) w)))
+  :rule-classes nil
+  :hints (("Goal" :induct (nthcdr j w))))
+
+(defthm pcko-len-rowwords
+  (implies (adt-octetsp prog)
+           (equal (len (pcko-rowwords prog off len d0 d1 d2 d3)) (+ 8 (adt-tp-npk (len prog)))))
+  :hints (("Goal" :use (:instance adt-tp-len-pack (o prog)) :in-theory (enable pcko-rowwords))))
+
+(defthm pcko-rowwords-is-the-row
+  (equal (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st))
+         (pcko-rowwords (fn-scc-program (fn-pck-meta w st)) (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
+                        (car (fn-cpl-trailer-words (fn-pck-payload w))) (cadr (fn-cpl-trailer-words (fn-pck-payload w)))
+                        (caddr (fn-cpl-trailer-words (fn-pck-payload w))) (cadddr (fn-cpl-trailer-words (fn-pck-payload w)))))
+  :hints (("Goal" :in-theory (e/d (fn-pck-enc-row adt-tp-rw adt-tp-fw adt-enc pcko-rowwords) (fn-pck-meta fn-pck-payload)))))
+
+(defthm pcko-nthcdr-rowwords-nth
+  ; Field I of the words from POS on, when they are a row's words then REST.
+  (implies (and (natp pos) (natp i)
+                (equal (nthcdr pos w) (append (pcko-rowwords prog off len d0 d1 d2 d3) rest)))
+           (equal (nth (+ pos i) w) (nth i (append (pcko-rowwords prog off len d0 d1 d2 d3) rest))))
+  :rule-classes nil
+  :hints (("Goal" :use (:instance pcko-nth-nthcdr (j pos)))))
+
+(defthm pcko-len-append (equal (len (append x y)) (+ (len x) (len y))))
+
+(defthm pcko-len-nthcdr-in
+  (implies (and (natp pos) (<= pos (len w)))
+           (equal (len (nthcdr pos w)) (- (len w) pos)))
+  :hints (("Goal" :use (:instance adt-tp-len-nthcdr (n pos) (x w))
+           :in-theory (e/d (nfix) (adt-tp-len-nthcdr)))))
+
+(defthm pcko-nthcdr-room
+  (implies (and (natp pos) (<= pos (len w)) (equal (nthcdr pos w) (append x rest)))
+           (<= (+ pos (len x)) (len w)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance pcko-len-nthcdr-in) (:instance pcko-len-append (y rest)))
+           :in-theory (disable pcko-len-nthcdr-in pcko-len-append)
+           :do-not '(preprocess))))
+
+(defthm pcko-nth-rowwords-head
+  (and (equal (nth 0 (append (pcko-rowwords prog off len d0 d1 d2 d3) rest)) 1)
+       (equal (nth 1 (append (pcko-rowwords prog off len d0 d1 d2 d3) rest)) (len prog)))
+  :hints (("Goal" :in-theory (enable pcko-rowwords))))
+
+(defthm pcko-nth-after
+  (implies (and (true-listp a) (natp k))
+           (equal (nth (+ (len a) k) (append a b)) (nth k b)))
+  :hints (("Goal" :induct (len a))))
+
+(defthm pcko-nth-two
+  (implies (natp m) (equal (nth (+ 2 m) (cons x (cons y z))) (nth m z)))
+  :hints (("Goal" :expand ((nth (+ 2 m) (cons x (cons y z))) (nth (+ 1 m) (cons y z))))))
+
+(defthm pcko-true-listp-pack (true-listp (adt-tp-pack o))
+  :hints (("Goal" :in-theory (enable adt-tp-pack))))
+
+(defthm pcko-nth-rowwords-tail
+  (implies (and (adt-octetsp prog) (natp k) (< k 6))
+           (equal (nth (+ 2 (adt-tp-npk (len prog)) k) (append (pcko-rowwords prog off len d0 d1 d2 d3) rest))
+                  (nth k (list off len d0 d1 d2 d3))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal k 0) (equal k 1) (equal k 2) (equal k 3) (equal k 4) (equal k 5))
+           :in-theory (e/d (pcko-rowwords) (pcko-nth-after pcko-nth-two))
+           :use ((:instance adt-tp-len-pack (o prog))
+                 (:instance pcko-nth-after (a (adt-tp-pack prog)) (b (list* off len d0 d1 d2 d3 rest)))
+                 (:instance pcko-nth-two (m (+ (adt-tp-npk (len prog)) k)) (x 1) (y (len prog))
+                            (z (append (adt-tp-pack prog) (list* off len d0 d1 d2 d3 rest))))))))
+
+(defthm pcko-nthcdr-plus2
+  (implies (natp pos) (equal (nthcdr (+ 2 pos) w) (cdr (cdr (nthcdr pos w)))))
+  :rule-classes nil
+  :hints (("Goal" :use (:instance pck-nthcdr-nthcdr (a 2) (b pos) (x w))
+           :in-theory (disable pck-nthcdr-nthcdr))))
+
+(defthm pcko-unpack-of-row
+  (implies (and (adt-octetsp prog) (natp pos)
+                (equal (nthcdr pos w) (append (pcko-rowwords prog off len d0 d1 d2 d3) rest)))
+           (equal (adt-tp-unpack (len prog) (nthcdr (+ 2 pos) w)) prog))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance adt-tp-unpack-of-pack (o prog) (r (append (list off len d0 d1 d2 d3) rest)))
+                 pcko-nthcdr-plus2)
+           :in-theory (e/d (pcko-rowwords) (adt-tp-unpack-of-pack pgs-nthcdr-nthcdr pgs-cdr-nthcdr))))
+  :rule-classes nil)
+
+(defthm pcko-tape-row
+  ; The tape reads a row whose words are at POS as the ref-step of its decoded
+  ; metadata and its four ref/trailer fields, and goes on after it.
+  (implies (and (pcko-img w pgs-mem) (natp pos) (<= pos (len w)) (natp reads)
+                (adt-octetsp prog) (true-listp prog)
+                (equal (nthcdr pos w) (append (pcko-rowwords prog off len d0 d1 d2 d3) rest))
+                (pcko-ok-treep (fn-scc-decode-tree prog)))
+           (equal (pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets)
+                  (mv-let (acc2 fn-arena)
+                    (pcko-ref-step acc (cadr (fn-scc-decode-tree prog)) off len d0 d1 d2 d3 fid fn-arena)
+                    (if (eq acc2 :bad)
+                        (mv :intern acc2 (+ reads 8 (adt-tp-npk (len prog))) fn-arena prog)
+                      (pcko-tape (+ pos 8 (adt-tp-npk (len prog))) (len w) acc2
+                                 (+ reads 8 (adt-tp-npk (len prog))) fid pgs-mem fn-arena prog)))))
+  :hints (("Goal" :do-not-induct t
+           :expand ((pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets))
+           :in-theory (e/d () (pcko-tape pcko-ref-step nth nthcdr adt-tp-npk adt-tp-unpack fn-scc-decode-tree
+                               pcko-rowwords pcko-copy pcko-tree pcko-w nfix pcko-nw))
+           :use ((:instance pcko-len-rowwords)
+                 (:instance pcko-nthcdr-room (x (pcko-rowwords prog off len d0 d1 d2 d3)))
+                 (:instance pcko-nthcdr-rowwords-nth (i 0)) (:instance pcko-nthcdr-rowwords-nth (i 1))
+                 (:instance pcko-nthcdr-rowwords-nth (i (+ 2 (adt-tp-npk (len prog)))))
+                 (:instance pcko-nthcdr-rowwords-nth (i (+ 3 (adt-tp-npk (len prog)))))
+                 (:instance pcko-nthcdr-rowwords-nth (i (+ 4 (adt-tp-npk (len prog)))))
+                 (:instance pcko-nthcdr-rowwords-nth (i (+ 5 (adt-tp-npk (len prog)))))
+                 (:instance pcko-nthcdr-rowwords-nth (i (+ 6 (adt-tp-npk (len prog)))))
+                 (:instance pcko-nthcdr-rowwords-nth (i (+ 7 (adt-tp-npk (len prog)))))
+                 (:instance pcko-nth-rowwords-tail (k 0)) (:instance pcko-nth-rowwords-tail (k 1))
+                 (:instance pcko-nth-rowwords-tail (k 2)) (:instance pcko-nth-rowwords-tail (k 3))
+                 (:instance pcko-nth-rowwords-tail (k 4)) (:instance pcko-nth-rowwords-tail (k 5))
+                 pcko-nth-rowwords-head pcko-unpack-of-row)))
+  :rule-classes nil)
