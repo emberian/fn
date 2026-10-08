@@ -1,0 +1,23 @@
+{
+ "id": "DEFTEETH-STOBJ-AND-ASSUMPTION",
+ "title": "Extend defteeth for live stobjs, named assumptions and generated instances",
+ "category": "proof-owed",
+ "disposition": "LOCAL",
+ "owner": "p-defteeth-stobj",
+ "state": "in-progress",
+ "severity": "medium",
+ "exposure": "none",
+ "file": "books/defkeystone.lisp",
+ "source": "Deputy P lane assignment",
+ "acceptance": "Live-stobj full witnesses; checked constrained-assumption removal class; generator-bound instance witnesses; full teeth for the four assigned keystones and fold twin; no existing theorem changes; affected-by farm gate.",
+ "notes": [
+  "2026-10-08 Codex: supplied item path was absent at base aeb1f4435; created the assigned item to record the actual remaining work.",
+  "ada7f5f72: (:assumption FN) checks the labelled hypothesis transitively calls a constrained function with no body. It emits no false counterexample and records removal class assumption. :instances (NAME LOOP) checks the generator-recorded theorem and pair, applies the exact proof substitution to the whole claim and mutation, requires closed terms and evaluates them. Thread and fold generic equations have nonempty witnesses and reversed-accumulator mutations.",
+  "Remaining: :stobjs support and teeth for fn-zpl-decode-bufs-from-the-empty-pool, fn-psrv-store-prepare-next-keeps-the-stored-octets, fn-lgc-failed-barrier-recovers-a-prefix. No stobj implementation is claimed by this lane yet.",
+  "Contract obstruction: every live fn-arena satisfies fn-arena-p, so its labelled premise cannot have a with-local-stobj counterexample. store-budget-stored-post-tests.lisp explicitly records this at its recognizer comment. owner-batch-tests.lisp also records that the failed-fence conclusion holds without a batch in flight (scope, not load); that is an existing test observation, not a proof of universal redundancy. Proposed resolution: distinct proof-checked redundancy / live-invariant removal classes; never call them reachable counterexamples. Asked through the conversation; no answer yet.",
+  "Additional mechanism needed for barrier teeth: the theorem has let* outside implies. Splitting that let* into separate labelled hypotheses and conclusion fails the literal translated-form comparison. REPL dks confirmed the lambda-shape difference. The positive witness must not hide the implication inside a zero-hypothesis claim, since that would not assert its antecedent.",
+  "Base mismatch: all four requested names were absent from teeth-ceiling.json and all four ratchet ACK lines were absent. Initial keystone_emit found six new toothless names (the assigned four, fn-bpfj-next-candidate-is-a-ready-family-representative, fn-lgc-take-never-joins-the-batch-in-flight) plus stale manifest. The command --write-ceiling refused unacknowledged additions. Used its canonical write_ceiling function on the intersection of the existing ceiling with the emitted toothless list, dropping only the now-covered fold twin; no new allowances or ACKs.",
+  "Validation pending final update: persvati REPL dkt passed macro tests; dkf loaded all 258 def-loop test forms. Scoped Python checks 35+15 passed. Literal comparison: all 34 original defthm statements in books/def-loop.lisp unchanged; defkeystone.lisp has no original defthm. Required farm run run-20261008T042528Z-d432 (882 books, 743 uncached) in progress."
+ ],
+ "updated": "2026-10-08T04:29:35.120583+00:00"
+}

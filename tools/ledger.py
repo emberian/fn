@@ -1525,7 +1525,8 @@ def defkeystone_names(parts: dict) -> dict[str, list[str]]:
     return {"keystone": [name],
             "bounds": [f"{name}{BOUND_SUFFIX[kind]}{entry[0]}"
                        for kind in (":visits", ":allocation") for entry in parts[kind[1:]]],
-            "without": [f"{name}-without-{label}" for label in parts["labels"]] if musts else [],
+            "without": [f"{name}-without-{label}" for label in parts["labels"]
+                        if not _dk_assumption_breakp(parts["breaks"][str(label)])] if musts else [],
             "mutant": [f"{name}-mutant-{m[0]}" for m in parts["mutations"]] if musts else []}
 
 

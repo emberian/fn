@@ -20,7 +20,6 @@
 ; the D27 form of a render that conses nothing.
 
 (in-package "ACL2")
-(include-book "../../books/defkeystone")
 (include-book "../../books/def-loop")
 (include-book "../../books/octets-stobj")
 (include-book "../../books/rev-onto")
@@ -916,4 +915,27 @@
                            (append dl-acc (fn-dl-th-rows-of (fn-dl-thread dl-xs dl-st))))))
     () :fault "Splice the accumulated rows without reversing their order.")))
 
+; A pure-state fold exercises the same generator substitution as a stobj
+; fold, while the witness remains executable without a live buffer.
+(defun dlt-fold-value-row (x st)
+  (declare (xargs :guard (acl2-numberp st)))
+  (mv x (+ 1 st)))
+(def-loop dlt-fold-value (xs st)
+  :shape :fold :over xs :st st :done (atom xs) :elt x
+  :row (dlt-fold-value-row x st) :next (cdr xs)
+  :guard (acl2-numberp st))
+(defteeth fn-dl-fold-loop-is-revappend
+  :claim (()
+    (equal (fn-dl-fold-loop dl-s dl-acc dl-st)
+           (mv-let (r a) (fn-dl-fold dl-s dl-st)
+             (mv (if (equal r (fn-dl-fo-fail)) (fn-dl-fo-fail) (revappend dl-acc r)) a))))
+  :instances (dlt-fold-value dlt-fold-value-loop)
+  :witness ((dl-s '(1 2 3)) (dl-st 7) (dl-acc '(8 9)))
+  :breaks ()
+  :mutations ((forward-accumulator
+    (:conclusion
+      (equal (fn-dl-fold-loop dl-s dl-acc dl-st)
+             (mv-let (r a) (fn-dl-fold dl-s dl-st)
+               (mv (if (equal r (fn-dl-fo-fail)) (fn-dl-fo-fail) (append dl-acc r)) a))))
+    () :fault "Splice accumulated rows in forward order.")))
 (defteeth-check)

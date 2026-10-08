@@ -255,6 +255,13 @@ class NewWitnessClasses(unittest.TestCase):
         self.assertEqual(len(assertions), 2)  # whole witness + mutation
         self.assertNotIn("without TRUST", ke.ledger.source_text(events))
 
+    def test_assumptions_do_not_invent_must_fail_events(self):
+        parts = self.parts(extra=":must-fail t")
+        self.assertEqual(ke.ledger.defteeth_names(parts)["without"], [])
+        events = ke.ledger.teeth_events(parts, "defteeth")
+        local = [e for e in events if ke.ledger.head(e) == "local"]
+        self.assertEqual(len(local), 1)  # the mutation only
+
     def test_bad_assumption_syntax_is_not_a_declaration(self):
         for removal in ("(:assumption)", "(:assumption nil)",
                         "(:assumption (f x))", "(:assumption f extra)"):

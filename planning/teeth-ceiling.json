@@ -5,7 +5,6 @@
   "fn-av-scr-auth-delegate-restricted-is-reference",
   "fn-av-scr-dispatch-core-restricted-is-reference",
   "fn-dl-concat-loop-is-revappend",
-  "fn-dl-fold-loop-is-revappend",
   "fn-dl-foldr-loop-is-foldr",
   "fn-dl-map-loop-is-revappend",
   "fn-dl-map-skip-loop-is-revappend",
