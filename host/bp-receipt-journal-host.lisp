@@ -4,6 +4,8 @@
 (include-book "../books/payload-arena-attach")
 (include-book "../books/history-paged-attach")
 (include-book "../books/bp-native-app-fast")
+(include-book "../books/definterface")
+(include-book "store-node-host")
 
 (defun fn-bprj-store (state)
  (declare (xargs :stobjs state :mode :program))

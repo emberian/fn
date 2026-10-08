@@ -542,6 +542,8 @@ def normalize_book(value: str) -> str:
         path = resolved.relative_to(ROOT)
     text = path.as_posix()
     name = text[:-len(".lisp")] if text.endswith(".lisp") else text
+    if not BOOK_NAME.fullmatch(name):
+        raise ValueError(f"not a certifiable book (host/native/ is raw): {value}")
     book_source(name)  # a typo must not silently select nothing
     return name
 
@@ -612,11 +614,14 @@ def lane_selection(named: list[str], targets: list[str],
     roots: an includer or companion among them is left out and printed as
     `unhooked (Dnn): BOOK', never certified as if it were expected to admit.
     """
+    invalid = [book for book in [*named, *targets] if not BOOK_NAME.fullmatch(book)]
+    if invalid:
+        raise ValueError("not a certifiable book (host/native/ is raw): " + ", ".join(invalid))
     wanted = set(targets)
     rank = {book: index for index, book in enumerate(order)}
     includers = sorted(
         (book for book, included in edges.items()
-         if wanted & set(included) and book not in wanted
+         if BOOK_NAME.fullmatch(book) and wanted & set(included) and book not in wanted
          and book not in umbrellas),
         key=lambda book: (rank.get(book, len(rank)), book))
     companions = [f"tests/acl2/{Path(target).name}-tests" for target in targets]

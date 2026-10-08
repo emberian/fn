@@ -842,6 +842,16 @@ class LaneSelectionTests(unittest.TestCase):
             ["books/top", "books/base", "books/other", "books/mid",
              "tests/acl2/base-tests"])
 
+    def test_raw_native_file_cannot_enter_as_an_affected_target_or_includer(self):
+        with self.assertRaisesRegex(ValueError, "host/native/ is raw"):
+            self.select([], ["host/native/heap"])
+        edges = dict(self.GRAPH, **{"host/native/heap": ["books/base"]})
+        selected = runner.lane_selection([], ["books/base"], edges,
+                                         self.UMBRELLAS, lambda book: False)
+        self.assertNotIn("host/native/heap", selected)
+        with self.assertRaisesRegex(ValueError, "not a certifiable book"):
+            runner.normalize_book("host/native/heap.lisp")
+
     def test_the_cli_selects_the_lane_and_refuses_lane_alone(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "tests" / "acl2").mkdir(parents=True)

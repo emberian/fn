@@ -3,6 +3,8 @@
 (in-package "ACL2")
 (include-book "../books/peer-invite")
 (include-book "../books/peer-invite-retry")
+(include-book "../books/definterface")
+(include-book "owner-host")
 
 (defun fn-pinv-host-observation-subject (received)
   (declare (xargs :mode :program))

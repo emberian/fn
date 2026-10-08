@@ -8,6 +8,7 @@
 (include-book "../books/history-paged-attach")
 (include-book "../books/tls-reload")
 (include-book "../books/tls-key-exchange")
+(include-book "../books/definterface")
 
 (defun fn-tlsr-host-facts (chain key match not-before not-after san now)
   (declare (xargs :mode :program))

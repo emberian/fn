@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
-(include-book "native-operator")
 (include-book "store-log-route")
 (include-book "store-log-kernel-concrete")
 (include-book "store-log-stream")
@@ -165,3 +164,6 @@
 (include-book "owner-feed-reconfigure-counted")
 (include-book "owner-outcome-counted")
 (include-book "feed-link-backoff")
+(include-book "feed-pause")
+(include-book "served-catalog-owner")
+(include-book "served-catalog-owner-keyed")

@@ -38,6 +38,8 @@ Only book-defined is expected; the rest is the residual to work.
     python3 tools/interfaces_relocate.py            # report, change nothing
     python3 tools/interfaces_relocate.py --write    # rewrite the files in place
     python3 tools/interfaces_relocate.py --root DIR # another tree (the tests')
+    python3 tools/interfaces_relocate.py --includes-only --write # no relocation
+    python3 tools/interfaces_relocate.py --dependency host/a.lisp=books/b.lisp --write
 """
 from __future__ import annotations
 
@@ -309,17 +311,70 @@ def apply(root: Path, moves, removals, index, source):
 KINDS_BOOK = "books/payload-kinds.lisp"
 
 
+def dependency_edits(root: Path, requested: dict[str, list[str]]) -> dict[str, str]:
+    """Add explicit dependencies as one transformation, refusing include cycles.
+
+    Paths are repository-relative .lisp files. Validate the entire proposed
+    graph before returning edits; callers write only after this succeeds.
+    """
+    graph = {rel: set(include_closure(root, [rel])) - {rel}
+             for rel in requested}
+    for rel, dependencies in requested.items():
+        for dependency in dependencies:
+            if not (root / dependency).is_file():
+                raise ValueError(f"{rel}: missing dependency {dependency}")
+            graph[rel].update(include_closure(root, [dependency]))
+    def visit(rel, active, done):
+        if rel in active:
+            raise ValueError("include cycle: " + " -> ".join([*active, rel]))
+        if rel in done:
+            return
+        for child in sorted(graph.get(rel, ())):
+            visit(child, [*active, rel], done)
+        done.add(rel)
+    done = set()
+    for rel in graph:
+        visit(rel, [], done)
+    out = {}
+    for rel, dependencies in requested.items():
+        parsed = lr.parse(root / rel)
+        held = include_closure(root, [rel])
+        add = []
+        for dependency in dependencies:
+            if dependency not in held:
+                add.append(dependency)
+                held.update(include_closure(root, [dependency]))
+        if not add:
+            continue
+        prefix = []
+        for form in parsed.forms:
+            if isinstance(form, lr.Lst) and isinstance(form.items[0], lr.Atom) \
+                    and form.items[0].low in ("in-package", "include-book"):
+                prefix.append(form)
+            else:
+                break
+        if not prefix:
+            raise ValueError(f"{rel}: no in-package/include prefix")
+        eol = parsed.text.find("\n", prefix[-1].end)
+        at = len(parsed.text) if eol < 0 else eol
+        inserted = "".join('\n(include-book "{}")'.format(
+            os.path.relpath(dep[:-5], os.path.dirname(rel))) for dep in add)
+        out[rel] = lr.write(parsed.text, [(at, at, inserted)])
+    return out
+
+
 def include_edits(root: Path) -> dict[str, str]:
     """For each file holding definterface forms and certified standalone (host/interfaces.lisp
-    and every include-book'd host file), the include-books its world lacks for the forms it
+    and every host/*.lisp book), the include-books its world lacks for the forms it
     holds: books/definterface, books/payload-kinds when a form has :kinds (the host entry
     guard's kind table, *fn-entry-guard-kinds*), a book defining each entry and each
     symbol a declaration names, and a book verifying an entry's guards apart from its
     definition (the :class check reads the guard status).  Books already in the include closure are not added."""
     index = Index(root)
-    certified = included_files(root)
+    # D61: a host book is a standalone root even if no sibling includes it.
+    # Inbound include edges described image membership, not certification scope.
     out = {}
-    for rel in [SOURCE] + sorted(f for f in certified if f != SOURCE):
+    for rel in sorted(p.relative_to(root).as_posix() for p in (root / "host").glob("*.lisp")):
         parsed = index.parsed.get(rel)
         if parsed is None:
             continue
@@ -339,7 +394,9 @@ def include_edits(root: Path) -> dict[str, str]:
             # The entry's :class is checked against its guard status, so a book
             # that verifies its guards apart from its definition is needed too.
             guards = sorted({g[0] for g in index.guards.get(f.items[1].low, ()) if g[0].startswith("books/")})
-            if guards and not set(guards) & held and not (set(guards) & set(want)):
+            # Stobj creators are generated guard-verified by defstobj itself;
+            # later verify-guards events are not prerequisites of their class.
+            if index.defs.get(f.items[1].low) and guards and not set(guards) & held and not (set(guards) & set(want)):
                 want.append(guards[0])
         add = []
         for book in want:
@@ -365,8 +422,32 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--write", action="store_true", help="rewrite the files in place")
     parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--includes-only", action="store_true",
+                        help="repair standalone includes without relocating declarations")
+    parser.add_argument("--dependency", action="append", default=[], metavar="HOST=BOOK",
+                        help="add an explicit dependency, with cycle checking; may repeat")
     arguments = parser.parse_args(argv)
     root = arguments.root
+    if arguments.dependency:
+        requested = collections.defaultdict(list)
+        for dependency in arguments.dependency:
+            if "=" not in dependency:
+                parser.error("--dependency takes HOST=BOOK (repository-relative .lisp paths)")
+            target, book = dependency.split("=", 1)
+            requested[target].append(book)
+        added = dependency_edits(root, requested)
+        if arguments.write:
+            for relative, text in added.items():
+                (root / relative).write_text(text, encoding="utf-8")
+        print(f"interfaces_relocate: explicit dependencies added to {len(added)} file(s)")
+        return 0
+    if arguments.includes_only:
+        added = include_edits(root)
+        if arguments.write:
+            for relative, text in added.items():
+                (root / relative).write_text(text, encoding="utf-8")
+        print(f"interfaces_relocate: include-books added to {len(added)} file(s)")
+        return 0
     moves, left, removals, index, source = plan(root)
     refused = [x for x in left if x[1] != "book-defined"]
     if arguments.write:

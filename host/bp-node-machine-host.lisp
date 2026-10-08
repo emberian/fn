@@ -4,6 +4,7 @@
 
 (in-package "ACL2")
 (include-book "../books/bp-node-host-machine")
+(include-book "../books/definterface")
 
 (defun fn-bpn-host-ready-peers (st)
   ; fnn-bps-open checks the initial invariant once.  Its only later state

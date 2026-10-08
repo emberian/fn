@@ -187,6 +187,7 @@
 (include-book "../books/peer-flight-startup")
 (include-book "../books/live-profile-control")
 (include-book "../books/control-receipt-wire")
+(include-book "../books/send-window")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource

@@ -7,6 +7,7 @@
 
 (in-package "ACL2")
 (include-book "../books/anchor-wire")
+(include-book "../books/definterface")
 
 (set-state-ok t)
 (program)

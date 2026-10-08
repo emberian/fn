@@ -162,3 +162,4 @@
 (include-book "store-mount-identity")
 (include-book "store-host-boundary")
 (include-book "store-profile-namespace")
+(include-book "native-operator")

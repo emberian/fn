@@ -8,6 +8,11 @@
 (include-book "../books/payload-arena-attach")
 (include-book "../books/def-cost")
 (include-book "../books/string-line-cursor-cost")
+(include-book "reader-host")
+(include-book "interfaces")
+(include-book "page-window-executor-host")
+(include-book "../books/output-tariff-families")
+(include-book "page-decoded-window-host")
 
 (def-cost fn-reader-chunk
   :visits (+ 1 request-octets)

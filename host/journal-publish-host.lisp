@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../books/journal-publish")
 (include-book "../books/app-journal")
+(include-book "../books/definterface")
 
 (defun fn-jpub-host-step (publication event)
   (fn-jpub-step publication event))

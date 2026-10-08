@@ -26,6 +26,8 @@
 (include-book "../books/bp-session-received-source")
 (include-book "../books/octets-stobj")
 (include-book "../books/tcpcl-spool")
+(include-book "../books/definterface")
+(include-book "../books/payload-kinds")
 
 ; Directory names and lstat kinds in; a complete recovery plan out.  The raw
 ; host validates the whole plan before unlinking anything, then performs only

@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../books/bp-receive-evidence")
 (include-book "../books/bp-evidence-host-names")
+(include-book "../books/definterface")
 
 (defun fn-bpn-host-evidence-max-entries () (fn-bpn-evidence-max-entries))
 

@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../books/native-hybrid-control")
+(include-book "../books/definterface")
 ; The owner's read bound when hybrid control is loaded: an ordinary request
 ; under the profile's A and G, or a hybrid request (`fn-nhctrl-read-bound-for').
 (defun fn-native-hybrid-control-host-read-bound (a g)
