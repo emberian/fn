@@ -1,0 +1,15 @@
+{
+ "category": "tooling",
+ "file": "tools/ledger.py",
+ "id": "LEDGER-GENERATED-OBLIGATION-NAMES",
+ "notes": [
+  "lanes s-hcf (def-representation-index) and s-twins (def-generic): tools/ledger.py derives the generated abstract-stobj obligation names from the generator form's export list (absstobj_obligation_events / the ixg-exports list), claiming only the obligation kinds the generator header states. The names exist only after ACL2 expands defabsstobj-missing-events, so a source reader cannot see them; the certificate reader f8289b4d3 that could was reverted. Ruled by Deputy S5 2026-10-08: derive from the generator's own export list, never a guessed set."
+ ],
+ "owner": "deputy-S",
+ "severity": "low",
+ "slice": "storage",
+ "source": "s-remerge",
+ "state": "open",
+ "title": "The ledger derives generated obligation names from generator forms instead of reading them from certificates. Intended: once a certificate reader is on dev, the ledger reads generated obligation names (def-representation-index, def-generic, def-representation) from the certified world.",
+ "updated": "2026-10-08T18:00:00Z"
+}
