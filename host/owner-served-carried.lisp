@@ -181,6 +181,7 @@
                 fn-owner-hroot-abandon fn-owner-hroot-abandon-word
                 fn-owner-hroot-activate fn-owner-hroot-begin
                 fn-owner-hroot-detach fn-owner-hroot-frontier-value
+                fn-owner-hroot-note
                 fn-owner-hroot-pin-funded fn-owner-hroot-read-fund
                 fn-owner-hroot-read-owned fn-owner-hroot-read-plan
                 fn-owner-hroot-resize fn-owner-hroot-retire
