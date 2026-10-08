@@ -1321,11 +1321,19 @@ class SocketPathTests(unittest.TestCase):
             tree = base / ("a-very-long-worktree-name-" * 4) / "lane"
             shutil.copytree(ROOT / "tools", tree / "tools", ignore=shutil.ignore_patterns(
                 "__pycache__", "*.so", "*.o"))
+            # The launcher needs the same root mapping as a checkout or remote sync.
+            shutil.copy2(ROOT / "acl2-projects", tree / "acl2-projects")
             (tree / "tiny.lisp").write_text('(in-package "ACL2")\n')
             fake = base / "fake-acl2"
-            fake.write_text(FAKE_ACL2)
+            fake.write_text(
+                '#!/usr/bin/env python3\nimport os\nfrom pathlib import Path\n'
+                'projects = Path(os.environ["ACL2_PROJECTS"])\n'
+                'assert projects == Path.cwd() / "acl2-projects", projects\n'
+                'assert projects.read_text() == \':FN "."\\n\'\n'
+                + FAKE_ACL2)
             fake.chmod(0o755)
             env = {**os.environ, "FN_ACL2": str(fake),
+                   "ACL2_PROJECTS": str(base / "wrong-tree" / "acl2-projects"),
                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}
             name = "longpath-test"
 
