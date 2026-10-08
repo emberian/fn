@@ -12,6 +12,9 @@
 # holds the images.  A failed save leaves no image and exits 1.
 set -eu
 TREE=$(cd "$1" && pwd)
+# Every ACL2 this script starts maps :FN to TREE (acl2-projects; certs name books as (:FN . "books/...")).
+ACL2_PROJECTS=$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import acl2_projects; import pathlib; print(acl2_projects.projects_file(pathlib.Path(sys.argv[2])))' "$TREE/tools" "$TREE")
+export ACL2_PROJECTS
 ACL2=${FN_EXTRACT_ACL2:-/tank/fn/toolchains/w28/acl2-literal-4g-tls64k}
 CACHE=${FN_EXTRACT_WORLD_CACHE:-/tank/fn/scratch/extract-cache}
 VARIANT=${FN_EXTRACT_VARIANT:-default}
