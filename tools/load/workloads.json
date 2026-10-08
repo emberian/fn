@@ -856,6 +856,28 @@
     "window_s": 60,
     "mode": "alloc"
    }
+  },
+  "catchup-quiet": {
+   "about": "W6a without the GROUP poll (S, 2026-10-08): B gets no client command while it imports; progress and per-1000 splits come from B's own auto-checkpoint sequence lines, the pace from the round=done line. Run as W6q@1k/5k/10k.",
+   "preset": "peers",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "peers": {
+    "mode": "catchup"
+   },
+   "phases": [
+    {
+     "name": "pull",
+     "kind": "peers",
+     "mode": "catchup",
+     "deadline_s": 2400,
+     "measure": true,
+     "count": "log"
+    }
+   ]
   }
  },
  "cells": {
@@ -880,7 +902,8 @@
   "GREET-PROF": "greeting-prof",
   "GREET-PROF-ALLOC": "greeting-prof-alloc",
   "LIST-PROF": "list-prof",
-  "LIST-PROF-ALLOC": "list-prof-alloc"
+  "LIST-PROF-ALLOC": "list-prof-alloc",
+  "W6q": "catchup-quiet"
  },
  "stores": {
   "1k": 1000,
@@ -889,6 +912,7 @@
   "40k": 40000,
   "100k": 100000,
   "25k": 25000,
-  "50k": 50000
+  "50k": 50000,
+  "5k": 5000
  }
 }
