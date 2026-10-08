@@ -4411,6 +4411,9 @@
 (definterface fn-native-control-host-reply-encode
   :class ::program)
 
+(definterface fn-native-control-host-socket-removal
+  :class ::program)
+
 (definterface fn-native-control-host-status-class
   :class ::program)
 

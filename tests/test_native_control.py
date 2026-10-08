@@ -128,9 +128,15 @@ class NativeControlCutGateTests(unittest.TestCase):
         # Every structured reply the ACL2 control books construct carries the
         # owner's status second; the after-submit hook must see that status
         # for each of them, so the host's list is exactly the ACL2 set.
-        member = re.search(r"\(member \(first status\)\s+'\(([^()]*)\)\)", body)
-        self.assertIsNotNone(member, "after-submit reply-kind test not found")
-        self.assertEqual(set(member.group(1).split()), STRUCTURED_REPLY_KINDS)
+        # The handler has two reply-kind lists: the first excludes the live and
+        # sealed replies from the stop cut (their status is not the owner's);
+        # the one that precedes `(second status) status))' selects the
+        # structured replies whose second element is the owner's status.
+        selector = body[:body.index("(second status) status))")]
+        members = re.findall(r"\(member \(first status\)\s+'\(([^()]*)\)\)", selector)
+        self.assertGreaterEqual(len(members), 2, "after-submit reply-kind tests not found")
+        self.assertEqual(set(members[-1].split()), STRUCTURED_REPLY_KINDS)
+        self.assertEqual(set(members[-2].split()), {":live-status-reply", ":sealed-reply"})
         boundary = (ROOT / "host/native-control-host.lisp").read_text(encoding="ascii")
         for kind in STRUCTURED_REPLY_KINDS:
             self.assertIn(f"(defun fn-native-control-host-{kind[1:]}-encode", boundary)

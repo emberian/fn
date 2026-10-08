@@ -107,6 +107,13 @@
   (declare (xargs :mode :program))
   (fn-native-control-liveness-note decision))
 
+;; The socket node a closing run may unlink (fn-native-control-socket-removal-decides).
+(defun fn-native-control-host-socket-removal (installed-dev installed-ino
+                                                            observed-dev observed-ino)
+  (declare (xargs :mode :program))
+  (fn-native-control-socket-removal installed-dev installed-ino
+                                    observed-dev observed-ino))
+
 (defun fn-native-control-host-lease-path (control-path)
   (declare (xargs :mode :program))
   (fn-native-control-lease-path control-path))

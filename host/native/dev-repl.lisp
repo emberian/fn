@@ -211,11 +211,7 @@ normal fencing. Earlier evaluated/admitted forms are never rolled back."
   socket))
 
 (defun fnn-dev-unlink-owned (control)
- (let ((info (fnn-lstat (fnn-control-state-path control))))
-  (when (and (fnn-control-socket-path-p info)
-             (eql (sb-posix:stat-dev info) (fnn-control-state-device control))
-             (eql (sb-posix:stat-ino info) (fnn-control-state-inode control)))
-   (fnn-unlink (fnn-control-state-path control)))))
+ (fnn-control-unlink-installed control (fnn-control-state-path control)))
 
 (defun fnn-dev-repl-start (service)
  (let ((path (fnn-developer-selector "FN_NATIVE_DEV_REPL")))
