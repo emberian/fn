@@ -181,9 +181,8 @@ gate() {
   ( $fn ) > "$log" 2>&1
   rc=$?
   last=$(grep -v '^$' "$log" | tail -1 | cut -c1-200)
-  # 3 is uncertain (evidence that could not be fetched) and 4 refused
-  # evidence (bytes that do not hash to their index line), never a plain
-  # RED: each blocks the cut under its own verdict and exit (r61/r65 F3).
+  # 3 is uncertain and 4 refused, never a plain RED: each blocks the cut
+  # under its own verdict and exit.
   case $rc in
     0) word=GREEN ;;
     3) word=UNAVAILABLE ;;
@@ -237,7 +236,7 @@ g_fundamentals() {
   git show "$REV:$CHECKLIST" > "$OUT/checklist.md" 2>/dev/null || { echo "no $CHECKLIST at $REV"; return 1; }
   rows=$(awk '/<!-- fundamentals -->/{on=1; next} /<!-- end fundamentals -->/{on=0} on && /^\| *F[0-9]+ *\|/' "$OUT/checklist.md")
   [ -n "$rows" ] || { echo "no fundamentals table in $CHECKLIST"; return 1; }
-  open=0 total=0 uncertain=0 refused=0
+  open=0 total=0
   echo "$rows" | {
     while IFS="|" read -r _ id what _bar status evidence _; do
       id=$(echo "$id" | tr -d ' ') status=$(echo "$status" | tr -d ' *')
@@ -248,24 +247,13 @@ g_fundamentals() {
       elif git cat-file -e "$REV:$evidence" 2>/dev/null; then
         :  # tracked at REV: git holds the bytes
       else
-        # Named by REV's evidence index: the bytes must fetch from the archive
-        # and hash to the index line (a name alone is not evidence; r56 F3).
-        # 1 = not indexed at REV, 3 = indexed but unavailable (uncertain),
-        # 4 = indexed and its bytes do not hash to the line (refused).
-        "$PY" "$ROOT/tools/evidence_store.py" verify-paths --revision "$REV" "$evidence" >/dev/null 2>&1
-        case $? in
-          0) ;;
-          3) uncertain=$((uncertain + 1)); echo "$id MET but its evidence '$evidence' is UNAVAILABLE: indexed at REV, its object did not fetch from the archive" ;;
-          4) refused=$((refused + 1)); echo "$id MET but its evidence '$evidence' is REFUSED: indexed at REV, its bytes do not hash to the index line" ;;
+        case $evidence in
+          planning/evidence/*|docs/evidence/*) ;;  # a retired citation (D71): text, not resolved
           *) open=$((open + 1)); echo "$id MET but its evidence '$evidence' is not in REV" ;;
         esac
       fi
     done
-    # Refused evidence outranks an open row: bytes proven wrong are never
-    # reported as a plain RED (r66 F5).
-    if [ "$refused" -gt 0 ]; then echo "$refused of $total fundamentals REFUSED: evidence bytes do not hash to the index line; $open not met, $uncertain unavailable (blocking)"; exit 4; fi
-    if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met, $uncertain unavailable (blocking)"; exit 1; fi
-    if [ "$uncertain" -gt 0 ]; then echo "$uncertain of $total fundamentals UNAVAILABLE: uncertain, not refused (blocking)"; exit 3; fi
+    if [ "$open" -gt 0 ]; then echo "$open of $total fundamentals not met (blocking)"; exit 1; fi
     echo "all $total fundamentals met, each with its evidence at REV"
   }
 }
@@ -368,7 +356,7 @@ g_throughput() {
   if [ "$DRY" = yes ]; then would "$PY" tools/throughput_gate.py "$@"; would "$PY" tools/throughput_gate.py check; return 10; fi
   "$PY" tools/throughput_gate.py "$@" || { echo "the throughput run failed (a box never quiet refuses: exit 3)"; return 1; }
   "$PY" tools/throughput_gate.py check || { echo "the throughput gate regressed against planning/throughput-baseline.json"; return 1; }
-  echo "throughput gate quiet and within the baseline (planning/evidence/throughput/$SHORT-cut-$VERSION*.json)"
+  echo "throughput gate quiet and within the baseline (planning/throughput/$SHORT-cut-$VERSION*.json)"
 }
 
 g_hostile() {

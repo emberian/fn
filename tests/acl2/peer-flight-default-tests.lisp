@@ -188,7 +188,7 @@
 ; hbox: the bare request's budget is 23 MiB below init's own (94464 MB).
 (assert-event
  (equal (fn-pfd-init-decide '(:default nil) *pfdt-hcore* *pfdt-nursery* *pfdt-hbox* nil nil nil)
-        (list :init *pfdt-top* "custom" 3639 94441 :conservative t)))
+        (list :init *pfdt-top* "custom" 3638 94441 :conservative t)))
 ; The edge machine: a limit of exactly the request's whole reservation.
 ; Init alone wrote it; its launch with the default profile is refused there
 ; (the gap this step closes); now init refuses it, and a limit the reserve

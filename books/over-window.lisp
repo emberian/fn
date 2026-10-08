@@ -144,14 +144,51 @@
                     nil))
           (if donep nil (fn-ovw-cursor group (+ 1 hi) top v legacyp owed2 server))))))
 
+; The next cursor of a window step, apart from the lines (which the progress claim never reads).
+(local
+ (defthm fn-ovw-step-next-cursor
+   (equal (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat))
+          (if (nth 7 cur)
+              (mv-nth 1 (fn-ovw-hdr-step cur w fn-arena fn-cat))
+            (let ((hi (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur)) w)))
+              (if (<= (nfix (nth 2 cur)) hi)
+                  nil
+                (fn-ovw-cursor (nth 0 cur) (+ 1 hi) (nfix (nth 2 cur)) (nth 3 cur) (nth 4 cur)
+                               (and (nth 5 cur)
+                                    (not (consp (fn-ovw-lines (nth 0 cur) (nfix (nth 1 cur)) hi (nth 6 cur)
+                                                               (nth 3 cur) fn-arena fn-cat))))
+                               (nth 6 cur))))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-ovw-step) (fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status fn-ovw-hdr-step binary-append))))))
+(local
+ (defthm fn-ovw-window-live-consp
+   (implies (not (<= (nfix (nth 2 cur)) (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur)) w)))
+            (consp cur))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-ovw-hi nth) ())))))
+(local
+ (defthm fn-ovw-window-cursor-shrinks
+   (implies (and (consp cur) (not (<= (nfix (nth 2 cur)) (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur)) w))))
+            (and (consp (fn-ovw-cursor g (+ 1 (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur)) w)) (nfix (nth 2 cur)) v l o s))
+                 (< (fn-ovw-remaining (fn-ovw-cursor g (+ 1 (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur)) w)) (nfix (nth 2 cur)) v l o s))
+                    (fn-ovw-remaining cur))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-ovw-hi fn-ovw-remaining fn-ovw-cursor) (nth))))))
+
 (defthm fn-ovw-step-progresses
   (let ((next (mv-nth 1 (fn-ovw-step cur w fn-arena fn-cat))))
     (implies next
              (and (consp next)
                   (< (fn-ovw-remaining next) (fn-ovw-remaining cur)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status fn-ovw-hdr-step)
-           :use fn-ovw-hdr-step-progresses)))
+  :hints (("Goal" :in-theory (disable fn-ovw-lines fn-nntp-stuff-lines fn-ovw-status fn-ovw-hdr-step fn-ovw-step binary-append
+                                      fn-ovw-hi fn-ovw-remaining fn-ovw-cursor nth)
+           :use (fn-ovw-step-next-cursor fn-ovw-hdr-step-progresses fn-ovw-window-live-consp
+                 (:instance fn-ovw-window-cursor-shrinks (g (nth 0 cur)) (v (nth 3 cur)) (l (nth 4 cur)) (s (nth 6 cur))
+                            (o (and (nth 5 cur)
+                                    (not (consp (fn-ovw-lines (nth 0 cur) (nfix (nth 1 cur))
+                                                              (fn-ovw-hi (nfix (nth 1 cur)) (nfix (nth 2 cur)) w)
+                                                              (nth 6 cur) (nth 3 cur) fn-arena fn-cat))))))))))
 
 (defthm fn-ovw-step-keeps-cursorp
   (implies (and (fn-ovw-cursorp cur)

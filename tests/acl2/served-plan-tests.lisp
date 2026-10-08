@@ -6,7 +6,7 @@
 ; at most W, and under :ok a window of an unfinished plan writes something.
 ; Keystone 2 (`fn-splan-windows-are-the-reply'): the windows of a plan that
 ; was drained to done concatenate to the served reply.  Here: the reachable
-; witness (the ARTICLE-shaped reply of served-reply-buffer's tests, split
+; witness (an ARTICLE-shaped reply, split
 ; over two effects with a :close between, drained in windows of 5 over a
 ; buffer holding a longer stale value); the must-fail for each hypothesis
 ; of the progress conjunct (:ok, a positive W, an unfinished plan); the

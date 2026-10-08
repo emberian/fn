@@ -1,0 +1,211 @@
+{
+  "schema": 1,
+  "revision": "4c77e804da873ca7381fff169429175027b1cb6c",
+  "label": "batch-ar",
+  "image": "/tank/fn/scratch/ar/native-i2/tree/build/fn-host-developer",
+  "core_sha256": "35018e84be29c594fb85f37de0ccffa515a280ae63610464c210ee69c5cb7fdc",
+  "launcher_sha256": "a638e7fd99ea5c9e6589cc8adf73a2befb1b3de82a8ade49c07e1a9c1a3541a7",
+  "client_sha256": {
+    "tools/throughput_gate.py": "3cb3bb8d944147cf9ab229180adf90944d45c82cff2a3cad0cc9054dc64e8e31",
+    "tools/msgid_measure.py": "97a1a72895819546455f64b0d8752e961e983a1757fb58615ce4c5dd408e6fa4",
+    "tools/rep_measure.py": "51f6dc95b094f85310a998e0f095c7aea44effba153f54d71b7932b5949bb3d0",
+    "tools/signed_carriers.py": "353fdeae5290b2fb4fe11b6783397c506a29a6b9ab5831e069972db3cbb9e290",
+    "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/native_process.py": "141d8edd49ed06e5711aebb3ddd3354c09ace10051a13e7f53992345fa6c8b4c"
+  },
+  "filesystem": "tmpfs",
+  "host": "hbox",
+  "started_utc": "2026-09-27T07:00:21Z",
+  "quiet_before": {
+    "own_unit": "throughput-gate-4c77e804da87-20260927T070018Z.service",
+    "window_s": 10.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "run-r5443affccae9499d95ee545074b6bf0f.scope",
+        "cpu_cores": 0.378,
+        "description": "/usr/local/bin/swarm-build sh tools/build_native_host.sh"
+      },
+      {
+        "unit": "run-rec7536cf9ec7431292326785915ea882.scope",
+        "cpu_cores": 1.027,
+        "description": "/usr/local/bin/swarm-build sh tools/build_native_host.sh"
+      },
+      {
+        "unit": "throughput-gate-ae6802f68203-20260927T070005Z.service",
+        "cpu_cores": 0.864,
+        "description": "/usr/bin/sh -c \"python3 /tank/fn/scratch/throughput-gate/run-ae6802f68203-20260927T070005Z/client/tools/throughput_gate.py box --image /tank/fn/scratch/throughp"
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.008,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 prec1_replay.py /tank/fn/scratch/control-across-peers/native-prec1/tree /tank/fn/scratch/control-across-peers/native-m2/tree /tank/fn/scratch/c"
+      },
+      {
+        "unit": "run-re49e467b2f9f462099b371a22b6247a3.scope",
+        "cpu_cores": 0.001,
+        "description": "/tank/fn/scratch/fixtures-refresh/native-img1/tree/build/fn-host-developer --fn operator /dev/shm/fxr-UGZa/c.toml run"
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      },
+      {
+        "unit": "spike-reader-node.service",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/spike_reader_node.py --image /tank/fn/scratch/spike-reader/tree/build/fn-host-developer --tree /tank/fn/scratch/spike-"
+      },
+      {
+        "unit": "spike-reader-web.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/fn_web.py --node 127.0.0.1:11919 --tls-cert node1/cert.pem --user ember --port 8919 --outbox web/outbox --marks web/ma"
+      }
+    ]
+  },
+  "quiet": false,
+  "probe_rc": 0,
+  "probe_n": 1000,
+  "probe_wall_s": 1.516,
+  "probe_cpu_s": 1.514,
+  "probe_reported": {
+    "host": "native",
+    "transactions": 1000,
+    "payload_bytes": 2048,
+    "commit_seconds": 0.577,
+    "reopen_seconds": 0.848,
+    "status": "passed"
+  },
+  "probe_commit_ms": 0.577,
+  "probe_reopen_s": 0.848,
+  "phase_seconds": {
+    "probe": 1.595,
+    "alloc": 1.858,
+    "served": 2.455,
+    "signed": 31.734,
+    "checkpoint": 3.572
+  },
+  "alloc_condition": "TYPE-ERROR",
+  "probe_bytes_consed_per_commit": 1408505,
+  "post_load_s": 0.265,
+  "post_owner_cpu_ms": 2.5,
+  "post_n": 100,
+  "post_octets": 2048,
+  "post_median_ms": 2.114,
+  "post_p95_ms": 3.939,
+  "article_n": 100,
+  "article_median_ms": 3.221,
+  "article_p95_ms": 5.235,
+  "reopen_s": 0.186,
+  "reopen_last_stat": "223 0 <t17-000099@example.invalid> retrieved",
+  "signed_history_load_s": 6.877,
+  "post_signed_owner_cpu_ms": 133.0,
+  "post_signed_n": 100,
+  "post_signed_history": 1000,
+  "post_signed_history_signed": 32,
+  "post_signed_octets": 9522,
+  "post_signed_median_ms": 125.727,
+  "post_signed_p95_ms": 144.389,
+  "post_signed_group": "211 1100 1 1100 fn.test",
+  "carrier_sign_median_s": 0.083,
+  "checkpoint_article_octets": 31744,
+  "checkpoint_posts": 64,
+  "checkpoint_published": true,
+  "checkpoint_sequence": 64,
+  "checkpoint_suffix": 64,
+  "checkpoint_octets": 2094986,
+  "checkpoint_publish_ms": 684,
+  "checkpoint_steps": 4,
+  "checkpoint_seen_after_load_s": 0.752,
+  "box_load": {
+    "samples": 8,
+    "interval_s": 5.0,
+    "cpus": 24,
+    "box_cpu_busy_median": 0.285,
+    "box_cpu_busy_max": 0.299,
+    "loadavg1_median": 9.94,
+    "loadavg1_max": 9.97
+  },
+  "quiet_after": {
+    "own_unit": "throughput-gate-4c77e804da87-20260927T070018Z.service",
+    "window_s": 5.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "run-r412be9f3b72b4815b38d9c94845718ab.scope",
+        "cpu_cores": 1.027,
+        "description": "/usr/local/bin/swarm-build python3 tools/certify_books.py --incremental --jobs 8 --timeout-seconds 900 books/acceptance-payload-ref books/accounts books/anchor-"
+      },
+      {
+        "unit": "run-ra1c6c4869c954b9288047b9753ef9eb8.scope",
+        "cpu_cores": 1.036,
+        "description": "/usr/local/bin/swarm-build sh tools/build_native_host.sh"
+      },
+      {
+        "unit": "run-rec7536cf9ec7431292326785915ea882.scope",
+        "cpu_cores": 1.042,
+        "description": "/usr/local/bin/swarm-build sh tools/build_native_host.sh"
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.016,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-rb144a27be1e74948a2835a3e94309d0a.scope",
+        "cpu_cores": 0.001,
+        "description": "/tank/fn/scratch/fixtures-refresh/native-img1/tree/build/fn-host-developer --fn operator /dev/shm/fxr-6gwD/c.toml run"
+      },
+      {
+        "unit": "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 prec1_replay.py /tank/fn/scratch/control-across-peers/native-prec1/tree /tank/fn/scratch/control-across-peers/native-m2/tree /tank/fn/scratch/c"
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      },
+      {
+        "unit": "spike-reader-node.service",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/spike_reader_node.py --image /tank/fn/scratch/spike-reader/tree/build/fn-host-developer --tree /tank/fn/scratch/spike-"
+      },
+      {
+        "unit": "spike-reader-web.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/fn_web.py --node 127.0.0.1:11919 --tls-cert node1/cert.pem --user ember --port 8919 --outbox web/outbox --marks web/ma"
+      }
+    ]
+  },
+  "finished_utc": "2026-09-27T07:03:38Z"
+}

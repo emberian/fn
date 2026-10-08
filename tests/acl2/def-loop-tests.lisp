@@ -22,6 +22,7 @@
 (in-package "ACL2")
 (include-book "../../books/def-loop")
 (include-book "../../books/octets-stobj")
+(include-book "../../books/rev-onto")
 (include-book "must-fail-checked")
 (include-book "../../books/defkeystone")
 
@@ -856,3 +857,43 @@
 (must-fail-checked
  (def-loop dlt-map-with-combine (xs) :shape :map :body (car xs) :combine (car xs))
  :unchecked "refused at expansion: :combine is a :foldr option")
+
+; :thread: a state threaded through the elements, each step contributing a
+; list of rows that are spliced in order; the result is (MAKE ST ROWS).
+(defun dlt-th-step (st x)
+  (declare (xargs :guard (and (acl2-numberp st) (acl2-numberp x))))
+  (list (+ st x) (list x (+ st x))))
+(defun dlt-th-numsp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (and (acl2-numberp (car xs)) (dlt-th-numsp (cdr xs))) t))
+(def-loop dlt-th-run (st xs)
+  :shape :thread :over xs :st st :elt x
+  :let ((here (dlt-th-step st x)))
+  :row (cadr here) :next (car here)
+  :make (list st dl-rows) :st-of (car dl-r) :rows-of (cadr dl-r)
+  :rev fn-ag-rev-onto :guard (and (acl2-numberp st) (true-listp xs) (dlt-th-numsp xs)))
+(assert-event (equal (dlt-th-run 10 '(1 2 3)) '(16 (1 11 2 13 3 16))))
+(assert-event (equal (dlt-th-run-loop 10 '(1 2 3) nil) '(16 (1 11 2 13 3 16))))
+(assert-event (equal (dlt-th-run 5 nil) '(5 nil)))
+(assert-event (equal (dlt-th-run 5 '(1 2)) (dlt-th-run-loop 5 '(1 2) nil)))
+(must-fail-checked
+ (def-loop dlt-th-no-make (st xs)
+   :shape :thread :over xs :st st :elt x :row (list x) :next st
+   :st-of (car dl-r) :rows-of (cadr dl-r))
+ :unchecked "refused at expansion: :thread needs :make")
+(must-fail-checked
+ (def-loop dlt-th-with-body (st xs)
+   :shape :thread :over xs :st st :elt x :row (list x) :next st :body x
+   :make (list st dl-rows) :st-of (car dl-r) :rows-of (cadr dl-r))
+ :unchecked "refused at expansion: :thread takes no :body")
+
+; :concat :rev, for a body that is not known to be a true list (the loop
+; reverses it with a guard-total function); :loop-guard-hints nil, the loop's
+; guards in the default theory.
+(def-loop dlt-concat-total (xs)
+  :shape :concat :over xs :elt x :body (list x x) :rev fn-ag-rev-onto)
+(assert-event (equal (dlt-concat-total '(a b)) '(a a b b)))
+(assert-event (equal (dlt-concat-total-loop '(a b) nil) '(a a b b)))
+(def-loop dlt-concat-hintless (xs)
+  :shape :concat :over xs :elt x :body (list x) :loop-guard-hints nil)
+(assert-event (equal (dlt-concat-hintless '(a b)) '(a b)))

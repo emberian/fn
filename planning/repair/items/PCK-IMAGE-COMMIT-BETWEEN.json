@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint-image.lisp",
+ "id": "PCK-IMAGE-COMMIT-BETWEEN",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pck-host",
+ "state": "open",
+ "title": "fn-pck-x-image-after-commit goes grow, stage, pgs-x-commit-durable and keeps pcki-img (tape words, w/d/v lengths, residency). The host driver runs pgs-x-commit (prepare, plan, table and directory pages) between the stage and the durable marking; the proof does not cover it. State and prove that pgs-x-commit leaves the w, d and v arrays and the tape window unchanged (pgs-x-words-0-of-commit exists for the words), so pcki-img survives the whole publication.",
+ "updated": "2026-10-07T23:00:00Z"
+}

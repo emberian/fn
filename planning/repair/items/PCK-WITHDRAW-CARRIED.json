@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/catalog-pages.lisp",
+ "id": "PCK-WITHDRAW-CARRIED",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "low",
+ "slice": "storage",
+ "source": "s-pck-esc",
+ "state": "open",
+ "title": "fn-pck-adopt-withdraw-escaped takes (fn-pck-carriedp (fn-cat$a-withdraw target by h)) as a premise (needed: tests/acl2/paged-checkpoint-tests.lisp pckt-withdraw-escaped-uncarried). Owed: when it HOLDS, i.e. fn-pck-carriedp h, fn-cat-rowsp h, and BY and (len h) below the codec's naturals (fn-scc-nat-encodablep) imply fn-pck-carriedp of the withdrawn catalog (the withdrawn row is a catalog row and its remainder tree is still fn-sccb-treep), so that the escaped-withdraw clause has an input-only premise.",
+ "updated": "2026-10-07T23:00:00Z"
+}

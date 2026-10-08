@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint-open.lisp",
+ "id": "PCK-OPEN-DECODE-LIST",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "low",
+ "slice": "storage",
+ "source": "s-pck-host",
+ "state": "open",
+ "title": "pcko-tree decodes each record through (fn-octets-list fn-octets): one transient octet list per record (the record's own program), then fn-scc-decode-tree. No whole-tape list, but not the concrete decoder either. Close it with a buffer-fed tree decoder over fn-octets (the history-decode stream, books/history-decode-stream.lisp, is the precedent) and a refinement theorem to fn-scc-decode-tree, replacing pcko-tree; the keystones need only pcko-tree-of-list restated.",
+ "updated": "2026-10-07T23:30:00Z"
+}

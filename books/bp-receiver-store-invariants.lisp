@@ -294,6 +294,7 @@
 (defthm fn-bprv-acceptable-implies-consp-record
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (consp record))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-bpr-request-acceptablep fn-record-p))))
 (defthm fn-bprv-derived-context-record-binds
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
@@ -302,8 +303,7 @@
   :hints (("Goal" :use (fn-bprv-acceptable-implies-consp-record
                         (:instance fn-bpr-context-resolve-of-derived-context))
    :in-theory (e/d (fn-bprv-record-binds fn-bpr-request-acceptablep)
-                   (fn-bprv-acceptable-implies-consp-record
-                    fn-bpr-context-resolve-of-derived-context
+                   (fn-bpr-context-resolve-of-derived-context
                     fn-bpr-context-resolve)))))
 (defthm fn-bprv-record-binds-consp
  (implies (fn-bprv-record-binds store config context record fn-arena) (consp record))
@@ -389,7 +389,3 @@
   :hints (("Goal" :induct (fn-bpr-find-context work-id contexts)
      :in-theory (enable fn-bpr-find-context))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bprv-acceptable-implies-consp-record))

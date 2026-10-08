@@ -1,0 +1,15 @@
+{
+ "category": "performance",
+ "detail": "Ruling 16 (2026-10-07): the 128 MB bar is whole-process PEAK (VmHWM) over the workload. MEM-003's idle collection waits for 3 quiet ticks, so a burst releases nothing. E4 (EXTRACTION-PROGRAM-20261007.md ~153-163; hbox:/tank/fn/scratch/extract-core/m3/attr5.txt): fn-core peak 128.6 / 102.1 MiB, image ~200 MiB; the idle collection takes it to 9.4 MiB. Fix: a load collection decided in ACL2 (books/idle-collection.lisp fn-load-gc-verdict/-decide: collect when dynamic usage >= usage after the last collection + :load-gc-growth-mib), profile rows :load-gc-growth-mib and :load-gc-generation, called from fnn-owner-maybe-collect-idle when the idle verdict is :wait. Growth (8/16/32) and generation (2/3/6) and publication exemption to be chosen by measurement. Starting figures :load-gc-growth-mib 16 and :load-gc-generation 3 are TO BE MEASURED (N's m3 A/B), not claims.",
+ "file": "host/native/owner.lisp",
+ "id": "MEM-012",
+ "lane": "n-load-gc",
+ "line": "8619",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem",
+ "state": "open",
+ "title": "during a POST burst nothing releases pages: fn-core peak 128.6 MiB, image ~200 MiB, about 38 MiB of it garbage promoted into generations 0-3",
+ "updated": "2026-10-07T12:00:00Z"
+}

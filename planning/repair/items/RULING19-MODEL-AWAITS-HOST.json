@@ -1,0 +1,20 @@
+{
+ "blocked_on": "C's host lanes commit-held-host and reconfig-host merging with host calls to the subjects",
+ "category": "claim-scope",
+ "detail": "The ruling-19 phase models are proved, but their subjects have no host caller on dev (train 28 statement audit, build/coordinator/audits/train28-statement-audit.txt, finding 1). host/native/admin.lisp fnn-owner-live-reconfigure-locked is still inline, and host/native/owner.lisp calls fn-otm-next, not fn-otm-hold-next. Until the host lanes land, these are MODEL claims, and nothing cites them as host claims: books/owner-reconfig-phased.lisp R0-R6 (subject fn-orp-step), books/owner-time-reconfig.lisp H1, H3, H4 (fn-otm-hold-begin, fn-otm-hold-next, fn-otm-hold-end), and books/owner-time-held.lisp fn-otm-held-quantum-2-answers-the-held-outcome (fn-otm-held-event, fn-och-caller-answer, which C's lane/commit-held-host calls and dev does not yet). books/owner-reconfig-lock.lisp L1-L3 are host-reached already (fn-ocfg-step), per the audit.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/owner-reconfig-phased.lisp",
+ "fix": "Land C's lane/commit-held-host and lane/reconfig-host, whose host code calls fn-otm-held-event/fn-och-caller-answer and fn-orp-step/fn-otm-hold-* respectively. Then reach_check names the subjects as reached, the keystones become host claims, and their PRF rows may be written. Teeth (defteeth) for the same statements land in lane p-ruling19-teeth.",
+ "id": "RULING19-MODEL-AWAITS-HOST",
+ "notes": [
+  "2026-10-08 P5: PARKED (deferred). Un-parks when C's commit-held-host and reconfig-host merge to dev; P then checks reach_check on the subjects and writes the PRF rows."
+ ],
+ "owner": "deputy-P",
+ "scenario": "A reader of the ledger takes the phased reconfiguration or the held commit as running on the host while the host still runs the inline path that holds O across durable I/O.",
+ "severity": "medium",
+ "source": "train 28 Codex statement audit (I), 2026-10-08",
+ "state": "deferred",
+ "title": "Ruling 19's phase-model keystones are model claims until C's host lanes call their subjects",
+ "updated": "2026-10-08T08:20:00Z"
+}

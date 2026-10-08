@@ -1,0 +1,14 @@
+{
+ "category": "bug",
+ "detail": "books/profile-limits.lisp:65-66 describes the :max-connections default 32 as \"fn.toml's [server] max_connections when it names none\". books/native-config.lisp fn-ncfg-tablep/key-allowedp has no [server] table and no max_connections key (tables: store listener auth posting anchor acl2 log control alerts ops web resources tls); a config with `[server]\\nmax_connections = 128` makes `operator init` exit 5 with 'usage operator request (CONFIGURATION SYNTAX)' (persvati, C3 developer image dev 0b4d3b183, 2026-10-07). The cap is changed by `fn operator CONFIG policy set exposure-connections N` (docs/operator.md:580), which the load harness uses (accepted on a loopback owner; R64 readers then held 65 connections). Fix: correct the comment, or add the key to the grammar if a config-time cap is wanted. Owner C (config).",
+ "file": "books/profile-limits.lisp",
+ "id": "LOAD-CONFIG-MAX-CONNECTIONS-0b4d3b18385a",
+ "line": "",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "low",
+ "source": "tools/load W15",
+ "state": "open",
+ "title": "fn.toml has no max_connections key: books/profile-limits.lisp:65 says it does (stale comment) and [server] makes `operator init` exit 5",
+ "updated": "2026-10-07T23:38:59Z"
+}

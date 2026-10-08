@@ -1,0 +1,14 @@
+image-reuse.log
+sbcl-check.log
+stderr
+test-tests.test_native_peer_catchup.NativePeerCatchupTests.test_catch_up_imports_every_article.log
+p peer=A round=done position=10000 '; lines: ['catch-up peer=A round=failed position=9952 end=10000 imported=9954 duplicate=0 refused=0 digest=c62e027ad0b680f34263b3090c8ea54f9923fa1db7381956980c7f9170451455 reason=round-deadline transport=clear']; log tail: subject=666e2f7375626a6563742f7631000102b
+catch-up peer=A round=failed position=9952 end=10000 imported=9954 duplicate=0 refused=0 digest=c62e027ad0b680f34263b3090c8ea54f9923fa1db7381956980c7f9170451455 reason=round-deadline transport=clear
+
+
+----------------------------------------------------------------------
+Ran 1 test in 669.992s
+
+FAILED (failures=1)
+FN_TEST_BUDGET_RESULT {"module": "tests.test_native_peer_catchup.NativePeerCatchupTests.test_catch_up_imports_every_article", "tests": 1, "failures": 1, "errors": 0, "skipped": 0, "executed": 1, "skips": [], "timings": [["tests.test_native_peer_catchup.NativePeerCatchupTests.test_catch_up_imports_ev
+FN_TEST_BUDGET_RESULT: verdict stored e1de97b64b37 -> /tank/fn/scratch/.verdicts/native-module/e1de97b64b3790f7aa4964fbc4e0794f77399c5fd72ffe2280208e01f4c91d47.json

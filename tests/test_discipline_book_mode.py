@@ -1,7 +1,7 @@
 """--book on the four discipline tools, and the ledger's one pickle key.
 
 defkeystone (2026-09-27): a before/after diff of ONE book re-read ~1,300
-books in each of ledger, teeth_check, must_fail_check and reach_check, and
+books in each of ledger, teeth_check (--must-fail) and reach_check, and
 `python3 tools/ledger.py` and `import ledger` pickled the tree under
 different keys (`__main__` vs `ledger`), so no tool reused another's work.
 """
@@ -61,10 +61,10 @@ class BookModeTests(unittest.TestCase):
         result = tool("tools/ledger.py", "--book", "tools/ledger.py")
         self.assertEqual(result.returncode, 2)
 
-    def test_must_fail_check_book_reads_one_book(self):
-        result = tool("tools/must_fail_check.py", "--book", BOOK)
+    def test_teeth_check_must_fail_book_reads_one_book(self):
+        result = tool("tools/teeth_check.py", "--must-fail", "--book", BOOK)
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn("must_fail_check: 1 test books", result.stdout)
+        self.assertIn("teeth_check --must-fail: 1 test books", result.stdout)
 
     def test_teeth_summary_book_is_scoped(self):
         result = tool("tools/teeth_check.py", "--summary", "--book", BOOK)

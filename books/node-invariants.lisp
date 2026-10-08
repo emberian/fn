@@ -29,7 +29,14 @@
 (defthm fn-member-of-subset
   (implies (and (fn-subsetp xs ys)
                 (member-equal x xs))
-           (member-equal x ys)))
+           (member-equal x ys))
+ :rule-classes nil)
+
+(local (defthm fn-member-of-subset-local-rewrite
+  (implies (and (fn-subsetp xs ys)
+                (member-equal x xs))
+           (member-equal x ys))
+  :hints (("Goal" :by fn-member-of-subset))))
 
 (defthm fn-retain-find-id-absent
   (implies (not (member-equal id (fn-retain-obligation-ids pins)))
@@ -51,7 +58,14 @@
   (implies (and (fn-subsetp xs ys)
                 (not (member-equal x ys)))
            (not (member-equal x xs)))
+ :rule-classes nil
   :hints (("Goal" :use fn-member-of-subset)))
+
+(local (defthm fn-not-member-of-subset-local-rewrite
+  (implies (and (fn-subsetp xs ys)
+                (not (member-equal x ys)))
+           (not (member-equal x xs)))
+  :hints (("Goal" :by fn-not-member-of-subset))))
 
 (defthm fn-node-new-msgid-not-bound
   (implies (and (fn-subsetp (fn-node-binding-msgids bindings)
@@ -215,10 +229,8 @@
 ; and the two existing-binding theorems.  The subset and stage lemmas are proof
 ; vocabulary and are withdrawn.
 (deftheory fn-node-invariants-vocabulary
-  '(fn-member-of-subset
-    fn-retain-find-id-absent
+  '(fn-retain-find-id-absent
     fn-node-old-archive-bindings-preserved
-    fn-not-member-of-subset
     fn-node-new-msgid-not-bound
     fn-node-stage-retention-is-state
     fn-node-stage-retention-pins
@@ -226,8 +238,3 @@
     fn-node-find-binding-absent))
 (in-theory (disable fn-node-invariants-vocabulary))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-member-of-subset
-                    fn-not-member-of-subset))

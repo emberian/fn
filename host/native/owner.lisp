@@ -2345,7 +2345,15 @@ recognise is a host fault."
                 (coerce (fnn-owner-gate-waiting gate) 'list))
     (setf (fnn-owner-gate-sched gate) sched
           (fnn-owner-gate-turn gate) (and class (fnn-owner-class-index class)))
-    (sb-thread:condition-broadcast (fnn-owner-gate-ready gate))))
+    ;; Wake the waiters only when ACL2 named a class: a nil answer while
+    ;; waiters sit (a commit in flight shuts out transit) changes nothing
+    ;; they could act on, and a broadcast made each of them re-pick and
+    ;; re-broadcast for as long as the disk was busy.  What changes ACL2's
+    ;; answer is always a :commit quantum (every fnn-owner-commit-event runs
+    ;; inside one), whose gate-leave picks again here; an entering thread
+    ;; picks for itself while no turn is set; an abort broadcasts on its own.
+    (when class
+      (sb-thread:condition-broadcast (fnn-owner-gate-ready gate)))))
 
 (defun fnn-owner-gate-enter (gate class)
   "Wait at the gate as CLASS until admitted; return the wait in milliseconds.
@@ -8616,8 +8624,18 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
 ;;; makes the count and the verdict one step whichever thread ticks.  The
 ;;; collection itself runs outside it (a collection stops the world; nothing
 ;;; else waits on this lock).
+;;; MEM-012: the collection under load.  Beside the idle verdict, ACL2 answers
+;;; from the dynamic space in use now and the figure recorded right after the
+;;; last collection of either kind (books/idle-collection.lisp
+;;; fn-load-gc-decide): a burst releases nothing otherwise, and the garbage it
+;;; promotes into generations 0-3 is in the whole-process peak.  Asked only
+;;; when the idle verdict is :wait; the first tick records the figure.
+(defvar *fnn-load-gc-base* nil)
+(fnn-guarded-by *fnn-load-gc-base* *fnn-idle-gc-lock*)
+
 (defun fnn-owner-maybe-collect-idle (service)
   (let* ((consed (sb-ext:get-bytes-consed))
+         (usage (sb-kernel:dynamic-usage))
          (publishing (fnn-with-roster (service)
                        (and (or (fnn-owner-service-publisher service)
                                 (fnn-owner-service-exporter service))
@@ -8627,16 +8645,23 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
              (unless *fnn-idle-gc-tick-mark*
                (setq *fnn-idle-gc-tick-mark* consed
                      *fnn-idle-gc-collect-mark* consed))
+             (unless *fnn-load-gc-base*
+               (setq *fnn-load-gc-base* usage))
              (setq *fnn-idle-gc-quiet*
                    (fnn-core 'fn-idle-gc-quiet *fnn-idle-gc-quiet* publishing
                              (- consed *fnn-idle-gc-tick-mark*))
                    *fnn-idle-gc-tick-mark* consed)
-             (fnn-core 'fn-idle-gc-decide *fnn-idle-gc-quiet* publishing
-                       (- consed *fnn-idle-gc-collect-mark*)))))
+             (let ((idle (fnn-core 'fn-idle-gc-decide *fnn-idle-gc-quiet* publishing
+                                   (- consed *fnn-idle-gc-collect-mark*))))
+               (if (consp idle)
+                   idle
+                   (fnn-core 'fn-load-gc-decide usage *fnn-load-gc-base*))))))
     (when (consp verdict)
       (sb-ext:gc :gen (second verdict))
-      (let ((after (sb-ext:get-bytes-consed)))
+      (let ((after (sb-ext:get-bytes-consed))
+            (in-use (sb-kernel:dynamic-usage)))
         (sb-thread:with-mutex (*fnn-idle-gc-lock*)
+          (setq *fnn-load-gc-base* in-use)
           (setq *fnn-idle-gc-tick-mark* after
                 *fnn-idle-gc-collect-mark* after))))))
 

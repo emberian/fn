@@ -1,0 +1,6 @@
+N=4096  18:15:24 up 83 days, 23:59, 65 users,  load average: 12.65, 12.91, 9.72
+N=16384  18:16:30 up 84 days, 0 min, 68 users,  load average: 13.92, 13.27, 10.07
+N=65536  18:17:23 up 84 days, 1 min, 66 users,  load average: 13.73, 13.30, 10.27
+N=131072  18:18:25 up 84 days, 2 min, 64 users,  load average: 12.19, 12.98, 10.35
+N=122880 (run b)  18:19:49 up 84 days, 3 min, 66 users,  load average: 10.29, 12.23, 10.32
+N=65536 (run b)  18:20:49 up 84 days, 4 min, 64 users,  load average: 10.41, 11.97, 10.35

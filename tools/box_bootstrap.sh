@@ -28,11 +28,8 @@
 #             /usr/local/bin/swarm-build (hbox's wrapper: a systemd user scope
 #             under swarm.slice, MemoryMax per build and for the slice, 85% of RAM)
 #   seed      rsync from the seed box: sbcl, acl2-8.7, toolchains (not src),
-#             every published image set, the certificate cache, the evidence
-#             archive (a mirror: FN_EVIDENCE_ARCHIVE=/tank/fn/evidence in
-#             /etc/environment, since a certify run reads every archived
-#             manifest and the box cannot reach hbox by name; keep it fresh
-#             with tools/box_mirror.sh)
+#             every published image set, the certificate cache (keep image
+#             sets fresh with tools/box_mirror.sh)
 #   verify    tools/acl2_toolchain.py identity of the certify and load
 #             launchers equal to the seed's; every image set's SHA256SUMS;
 #             ldd of each image binary resolves; ACL2 starts under swarm-build
@@ -108,7 +105,7 @@ if [ $DRY = 1 ]; then echo "box_bootstrap: --dry-run: probe passed; nothing chan
 
 step system
 SEED_PUB=$($SSH "$SEED" 'test -f ~/.ssh/id_ed25519 || ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519 -C "fn@$(hostname)"; cat ~/.ssh/id_ed25519.pub')
-# hbox pushes evidence and image sets (tools/box_mirror.sh) and pulls the
+# hbox pushes image sets (tools/box_mirror.sh) and pulls the
 # box's new certificates back at teardown, so its key is authorized too.
 HBOX_PUB=$(ssh -o BatchMode=yes -o ConnectTimeout=15 hbox 'cat ~/.ssh/id_ed25519.pub' 2>/dev/null) || HBOX_PUB=
 [ -n "$HBOX_PUB" ] || echo "   (hbox did not answer: its key is not authorized; add it before the mirror or teardown runs)"
@@ -150,10 +147,7 @@ chown fn:fn /home/fn/.ssh/authorized_keys; chmod 600 /home/fn/.ssh/authorized_ke
 loginctl enable-linger fn
 hostnamectl set-hostname "$NAME" 2>/dev/null || hostname "$NAME"
 grep -qw "$NAME" /etc/hosts || echo "127.0.1.1 $NAME" >> /etc/hosts
-install -d -o fn -g fn /tank /tank/fn /tank/fn/scratch /tank/fn/certcache /tank/fn/images /tank/fn/toolchains /tank/fn/gates /tank/fn/evidence
-# The evidence archive is a local mirror here (hbox's is canonical; certify
-# reads every archived manifest), so tools/evidence_store.py reads it as local.
-grep -q '^FN_EVIDENCE_ARCHIVE=' /etc/environment || echo 'FN_EVIDENCE_ARCHIVE=/tank/fn/evidence' >> /etc/environment
+install -d -o fn -g fn /tank /tank/fn /tank/fn/scratch /tank/fn/certcache /tank/fn/images /tank/fn/toolchains /tank/fn/gates
 d=; for part in $(echo "$FARM_MIRROR" | tr / ' '); do d=$d/$part; install -d -o fn -g fn "$d"; done
 N=$(nproc); MEMG=$(awk '/MemTotal/{print int($2/1048576)}' /proc/meminfo); CAP=$(( MEMG * 85 / 100 ))
 cat > /usr/local/bin/swarm-build <<SB
@@ -185,7 +179,6 @@ step seed
 $SSH "$SEED" "set -e; for d in sbcl acl2-8.7; do rsync -a -e 'ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new' /tank/fn/\$d fn@$ADDR:/tank/fn/; done
 rsync -a --exclude=src -e 'ssh -o BatchMode=yes' /tank/fn/toolchains/ fn@$ADDR:/tank/fn/toolchains/
 rsync -a -e 'ssh -o BatchMode=yes' /tank/fn/images/ fn@$ADDR:/tank/fn/images/
-rsync -a --exclude=incoming -e 'ssh -o BatchMode=yes' /tank/fn/evidence/ fn@$ADDR:/tank/fn/evidence/
 rsync -a --exclude=.entry.lock --exclude='.*' -e 'ssh -o BatchMode=yes' /tank/fn/certcache/ fn@$ADDR:/tank/fn/certcache/
 echo \"   seeded: \$(ls /tank/fn/certcache | wc -l) cache keys, image sets \$(ls /tank/fn/images | cut -c1-9 | tr '\n' ' ')\""
 

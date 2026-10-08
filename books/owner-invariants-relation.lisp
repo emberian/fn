@@ -42,11 +42,7 @@
 ; Rules whose conclusion is a consp or car test on a variable, with a
 ; free-variable hypothesis, from the resolution, wire, control and feed
 ; clusters: each is tried on every such test here and none applies.
-(local (in-theory (disable fn-snrt-new-success-is-actual-matching-durable-completion
-                           fn-wire-next-loop-event-needs-input
-                           fn-wire-next-event-needs-input
-                           fn-ctl-authorize-execute-is-nonempty
-                           fn-own-feed-never-offers-a-loop)))
+(local (in-theory (disable)))
 ; Vocabulary of the article parser, the control projection, the replay
 ; identity and the group indexes that the owner theorems reach only through
 ; the served step and the store: opened here, none of it ever applied
@@ -60,7 +56,6 @@
                            fn-feed-state-inflightp
                            fn-ctl-refresh-visible-is-visible
                            fn-prov-structured-is-not-a-string
-                           fn-digest-octetsp-implies-octet-listp
                            fn-inj-generated-identity-is-the-clock-identity
                            fn-inj-supplied-message-id-is-retained-exactly)))
 
