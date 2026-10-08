@@ -20,7 +20,7 @@
 (assert-event (fn-bs-crash-choicesp nil (fn-bs-pending (car *lgct-final*)) 4))
 
 ; Bound claims use ground lemmas only for the nonexecutable crash-image predicate.
-(local (set-ignore-ok t))
+(set-ignore-ok t)
 (defthm lgct-related
  (fn-lgk-relp *lgct-bs*
    (fn-lgt-recover (fn-lgd-octets *lgct-str*) *lgct-genesis* 4 4096 0)

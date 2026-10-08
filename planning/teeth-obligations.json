@@ -6306,9 +6306,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "f5032ca5a1eb98b726d4ad5b84d8c377f8113bd2d0bf5f9834eec8c93294fa52",
+   "bounds": [],
+   "claim_digest": "2015100b858c26c871aaaaedfe8f71b322ee5ddb2fd2a9a37c6d9abdb93191cf",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-dwj-retired-job-refuses-scalar-publication",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/decoded-worker-job-teeth-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-dwj-retire",
+   "witness": "executable"
   },
   {
    "book_digest": "c53514cdc13a5956c3e1eb40c0c749fdcf888e40fef8a8e23cefed70c50332a7",
@@ -8471,9 +8485,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "3eb39eaca6cf906bc5ec27a5f971b757f1471ae91f787bcd8248c92dc751b95f",
+   "bounds": [],
+   "claim_digest": "89fe2d95671afabf63db86c2711609d8b652dd112c3346f4c7b3bd4991ad3688",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-lg-open-program-keeps-the-relation",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-route-programs-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lg-open-program",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -8757,9 +8785,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "ade0c56e9b261a730651fb3a926603e19d5adb76c4f556a138855defe52e076d",
+   "bounds": [],
+   "claim_digest": "97fb772ae0bfb4d1340a5bbeb1aebe02560fb32b7effc7147d67f27b2d2d92bf",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-lgob-three-barrier-open-after-the-copy-is-the-five",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-open-barriers-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 1
+   },
+   "subject": "fn-lg-open-program",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -8882,9 +8924,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "f916cc6436c4c0f15976df7d0c90f131a31117248a4311eb7fd344696c46f3ff",
+   "bounds": [],
+   "claim_digest": "8003a5581af7c1d856802a9bebe53f7d03e2612da1a987e6ad06970633890a84",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-lgu-acknowledge-acknowledges-only-recoverable-records",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-critical-teeth-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-lgu-acknowledge",
+   "witness": "lemma"
   },
   {
    "book_digest": "207f485c9e0154ea21d46813f1a8dd86aad5eb4f639a49fb90f45b91b2021c3d",
@@ -8944,9 +9000,23 @@
    "witness": "lemma"
   },
   {
-   "class": "hand",
+   "book_digest": "f916cc6436c4c0f15976df7d0c90f131a31117248a4311eb7fd344696c46f3ff",
+   "bounds": [],
+   "claim_digest": "d54bb7b26554cf301fb458974a5b95e89b865679d9d3fb515500d66d3d27954c",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-lgu-host-kernel-acknowledges-only-recoverable-records",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-critical-teeth-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-lgc-host-run",
+   "witness": "lemma"
   },
   {
    "book_digest": "207f485c9e0154ea21d46813f1a8dd86aad5eb4f639a49fb90f45b91b2021c3d",
@@ -17050,7 +17120,7 @@
    "registry": true
   },
   {
-   "book_digest": "4c9dcba22167bd68cb74aa4037bc7419b5f605d4d97c7fd53729dfbb7aa6272e",
+   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
    "bounds": [],
    "claim_digest": "a066e067985a0bbefb8ee8dd421ffaca14cd7f874ac90d74582b7705e8fa7a96",
    "class": "generated",
@@ -17069,12 +17139,26 @@
    "witness": "executable"
   },
   {
-   "class": "hand",
+   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
+   "bounds": [],
+   "claim_digest": "e3082d21a3ac9f28101232795c25c5562efe6eb9b8be9283817eb558bfc69419",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-walk-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-rcw-canon-acc-steps",
+   "witness": "executable"
   },
   {
-   "book_digest": "4c9dcba22167bd68cb74aa4037bc7419b5f605d4d97c7fd53729dfbb7aa6272e",
+   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
    "bounds": [],
    "claim_digest": "876db97c76bfaae308af44b755ae850e2ae8037bf673e98ed3d49810937bda63",
    "class": "generated",
@@ -17093,17 +17177,45 @@
    "witness": "executable"
   },
   {
-   "class": "hand",
+   "book_digest": "9c9fd9e4154a757ac561080e266834444e67d6c0f23d6791ad0b8b361e6dddea",
+   "bounds": [],
+   "claim_digest": "8da71b6ec724032a6fa65e4c21c83b6dc2afbb4ef6ebfb4182256b58e7eef5a4",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-rcw-load-chunks-is-load",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-rcw-load-chunks",
+   "witness": "executable"
   },
   {
-   "class": "hand",
+   "book_digest": "9c9fd9e4154a757ac561080e266834444e67d6c0f23d6791ad0b8b361e6dddea",
+   "bounds": [],
+   "claim_digest": "f4a3dc2bd49c5ffd4208a7e062ec902788281ccd0b3ca2f480873812ec0b5909",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-rcw-load-chunks-keyed-is-keyed-load",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-rcw-load-chunks",
+   "witness": "executable"
   },
   {
-   "book_digest": "bf0ae658e869fd33cd251bded31dccebfa9cf89d030d7a62de8013f1d77106ae",
+   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
    "bounds": [],
    "claim_digest": "fb12477963d5806f0f995a2b79bba939ae53d4a9b12ed52721241e8966ce3b61",
    "class": "generated",
@@ -17122,14 +17234,42 @@
    "witness": "executable"
   },
   {
-   "class": "hand",
+   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
+   "bounds": [],
+   "claim_digest": "69f0a020273e92573a36c15e382ca28be8522e8eb21374b8b1859ff07f95a45a",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-seal-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 0
+   },
+   "subject": "fn-owner-orcp-rebuild",
+   "witness": "executable"
   },
   {
-   "class": "hand",
+   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
+   "bounds": [],
+   "claim_digest": "3776c121cbf66b36d9e05ddcfb1315054b122f8fce538ffaa75e116398fb1c24",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-rcw-srcs-steps-is-the-walk",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-seal-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-scka-srcs-n",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -18729,9 +18869,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "9e3e93044a48bdedc31ec1c2fd136c0e314f6344c2d3d3371f516dcc3c4047ff",
+   "bounds": [],
+   "claim_digest": "c12040875002e269c55246f91539b2f0db060819289e6cf8526c878d557d29dd",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-sca-load-held-rows-establishes-byte-facts",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/catalog-availability-owner-load-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 1
+   },
+   "subject": "fn-sca-load-held-rows",
+   "witness": "executable"
   },
   {
    "class": "hand",
