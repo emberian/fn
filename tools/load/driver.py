@@ -1207,6 +1207,12 @@ class Run:
                     self.ctr.refusals["conn-capacity-%s-%s" % (preset, refusal_name(t["refusal"].encode()))] += 1
         return {"capacity": out}
 
+    def phase_fault_slot_reuse(self, ph):
+        return faults.slot_reuse(self, ph)
+
+    def phase_fault_index_saturation(self, ph):
+        return faults.index_saturation(self, ph)
+
     def phase_fault_held_reader(self, ph):
         return faults.held_reader(self, ph)
 

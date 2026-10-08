@@ -720,8 +720,8 @@
    ]
   },
   "fault-slot-reuse": {
-   "about": "P1-DURABLE; P2-IDENTITY: late completion after slot reuse across publication must preserve operation identity and accepted octets. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
-   "preset": "small",
+   "about": "P4-RECLAIM; P2-IDENTITY: A cold-read completion arriving after cache reuse across publication is refused by name or returns its accepted octets, never another article's bytes. Requires observed reuse during the hold. Owner L.",
+   "preset": "big-articles",
    "groups": [
     "fn.test"
    ],
@@ -729,13 +729,21 @@
    "phases": [
     {
      "name": "fault",
-     "kind": "unimplemented",
-     "reason": "F1 owner S: P1-DURABLE; P2-IDENTITY: late completion after slot reuse across publication must preserve operation identity and accepted octets."
+     "kind": "fault_slot_reuse",
+     "cold_reads": 24,
+     "hold_n": 1,
+     "cache_entries": 1,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
     }
+   ],
+   "hooks": [
+    "planning/evidence/load/hooks/f1-delay.lisp"
    ]
   },
   "fault-index-saturation": {
-   "about": "P2-IDENTITY: forced index collisions and splits, existing and absent IDs under saturation and restart must preserve exact identity/absence. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
+   "about": "P2-IDENTITY: Under observed index saturation and across restart, every existing Message-ID resolves to its original octets, every absent ID is absent, and no same-byte or changed-byte duplicate is accepted. Owner L.",
    "preset": "small",
    "groups": [
     "fn.test"
@@ -744,13 +752,24 @@
    "phases": [
     {
      "name": "fault",
-     "kind": "unimplemented",
-     "reason": "F4 owner S: P2-IDENTITY: forced index collisions and splits, existing and absent IDs under saturation and restart must preserve exact identity/absence."
+     "kind": "fault_index_saturation",
+     "colliding_ids": 2304,
+     "absent_ids": 32,
+     "collision_bits": 8,
+     "candidate_budget": 1048576,
+     "tag_batch": 4096,
+     "prefix_octets": 128,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
     }
+   ],
+   "hooks": [
+    "planning/evidence/load/hooks/f4-index.lisp"
    ]
   },
   "fault-index-omission": {
-   "about": "P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
+   "about": "P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content. Owner S. Process death only; assumes fdatasync durability of the store filesystem. Not implemented because the g41/dev store has no persisted Message-ID index: open rebuilds fn-cei and the catalog msgid table from checkpoint records (books/store-checkpoint-open.lisp:206); waits for paged checkpoint/catalog adoption (s-pck-2c-host, PCK-ADOPT).",
    "preset": "small",
    "groups": [
     "fn.test"
@@ -760,7 +779,7 @@
     {
      "name": "fault",
      "kind": "unimplemented",
-     "reason": "F7 owner S: P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content."
+     "reason": "F7 not implemented: the g41/dev store has no persisted Message-ID index: open rebuilds fn-cei and the catalog msgid table from checkpoint records (books/store-checkpoint-open.lisp:206); waits for paged checkpoint/catalog adoption (s-pck-2c-host, PCK-ADOPT)"
     }
    ]
   },

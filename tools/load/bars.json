@@ -774,6 +774,57 @@
    "file": "tools/load/faults.py",
    "owner": "deputy-L",
    "severity": "high"
+  },
+  {
+   "id": "P4-RECLAIM-F1",
+   "quantity": "P4-RECLAIM externally visible property violations",
+   "cell": "F1",
+   "workload": "fault-slot-reuse",
+   "checks": [
+    {
+     "metric": "faults.P4-RECLAIM.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "tools/load/FAULTS.md",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P2-IDENTITY-F1",
+   "quantity": "P2-IDENTITY externally visible property violations",
+   "cell": "F1",
+   "workload": "fault-slot-reuse",
+   "checks": [
+    {
+     "metric": "faults.P2-IDENTITY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "tools/load/FAULTS.md",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P2-IDENTITY-F4",
+   "quantity": "P2-IDENTITY externally visible property violations",
+   "cell": "F4",
+   "workload": "fault-index-saturation",
+   "checks": [
+    {
+     "metric": "faults.P2-IDENTITY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "tools/load/FAULTS.md",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
   }
  ]
 }
