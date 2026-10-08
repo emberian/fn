@@ -2,6 +2,7 @@
 ; LIVE-RECONFIGURE).
 (in-package "ACL2")
 (include-book "../../books/owner-reconfig-phased")
+(include-book "../../books/defkeystone")
 
 ; An accepted reconfiguration naming two new peers: START and the
 ; authorization under the owner, the observation and the publication off it,
@@ -112,3 +113,147 @@
 (assert-event
  (mv-let (effects next) (fn-orp-step :observing nil :durable)
    (and (equal effects '((:owner . :fault))) (equal next :done))))
+
+; RULING19-MODEL-AWAITS-HOST: these teeth cover the model, not host locking.
+; R0/R1/R2/R4/R5/R6 have no top-level hypotheses.  The implications inside
+; R5/R6 are part of their conclusions, not removable assumptions.
+(defteeth fn-orp-step-runs-the-phased-run
+  :claim (()
+          (equal (fn-orp-trace :start reserve (fn-orp-events stage auth observe publish verdict feeds))
+                 (fn-orp-run reserve stage auth observe publish verdict feeds)))
+  :witness ((reserve t) (stage :staged) (auth t) (observe :ok)
+            (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))))
+  :breaks ()
+  :mutations ((skip-start
+               (:conclusion
+                (equal (fn-orp-trace :start reserve (cdr (fn-orp-events stage auth observe publish verdict feeds)))
+                       (fn-orp-run reserve stage auth observe publish verdict feeds)))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))))
+               :fault "the event driver drops the initial :go")))
+
+(defteeth fn-orp-phased-keeps-the-durable-effects
+  :claim (()
+          (equal (fn-orp-durable (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))
+                 (fn-orp-durable (fn-orp-inline stage auth observe publish verdict feeds))))
+  :witness ((reserve t) (stage :staged) (auth t) (observe :ok)
+            (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))))
+  :breaks ()
+  :mutations ((reverse-durable-order
+               (:conclusion
+                (equal (fn-orp-durable (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))
+                       (reverse (fn-orp-durable (fn-orp-inline stage auth observe publish verdict feeds)))))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))))
+               :fault "durable effects are replayed in reverse order")))
+
+(defteeth fn-orp-phased-answers-as-inline
+  :claim (()
+          (let ((answer (fn-orp-answer (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))))
+            (and (equal answer (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds)))
+                 (member-equal answer '(:accept :refuse :fence :fault)))))
+  :witness ((reserve t) (stage :staged) (auth t) (observe :ok)
+            (publish :uncertain) (verdict nil) (feeds nil))
+  :breaks ()
+  :mutations ((uncertain-is-refusal
+               (:conclusion
+                (equal (fn-orp-answer (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))
+                       :refuse))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :uncertain) (verdict nil) (feeds nil))
+               :fault "an uncertain publication is reported as a definite refusal")))
+
+(defteeth fn-orp-accepted-keeps-the-owner-effects
+  :claim (((accepted (equal (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds)) :accept)))
+          (equal (fn-orp-owner (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))
+                 (fn-orp-owner (fn-orp-inline stage auth observe publish verdict feeds))))
+  :witness ((reserve t) (stage :staged) (auth t) (observe :ok)
+            (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))))
+  :breaks ((accepted ((feeds *orp-feed-fault*))))
+  :mutations ((skip-first-owner-effect
+               (:conclusion
+                (equal (cdr (fn-orp-owner (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds))))
+                       (fn-orp-owner (fn-orp-inline stage auth observe publish verdict feeds))))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))))
+               :fault "the owner omits staging from an accepted run")))
+
+(defteeth fn-orp-phased-holds-the-owner-only-in-quanta
+  :claim (() (fn-orp-labelsp (fn-orp-run reserve stage auth observe publish verdict feeds)))
+  :witness ((reserve t) (stage :staged) (auth t) (observe :ok)
+            (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))))
+  :breaks ()
+  :mutations ((io-under-owner
+               (:conclusion
+                (fn-orp-labelsp
+                 (subst :owner :off
+                        (fn-orp-run reserve stage auth observe publish verdict feeds))))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :durable) (verdict :durable) (feeds '(("a" . :ok) ("b" . :ok))))
+               :fault "off-owner I/O, including publication, is labelled as holding the owner")))
+
+(defteeth fn-orp-refusal-unstages-and-fence-keeps-the-stage
+  :claim (()
+          (let ((effects (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds))))
+            (and (implies (and (equal (fn-orp-answer effects) :refuse) (equal stage :staged))
+                          (member-equal :unstage (fn-orp-before :refuse effects)))
+                 (implies (member-equal (fn-orp-answer effects) '(:fence :fault))
+                          (not (member-equal :unstage effects))))))
+  :witness ((reserve t) (stage :staged) (auth t) (observe :ok)
+            (publish :refused) (verdict nil) (feeds nil))
+  :breaks ()
+  :mutations ((refusal-keeps-stage
+               (:conclusion
+                (not (member-equal :unstage (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :refused) (verdict nil) (feeds nil))
+               :fault "a definite publication refusal leaks the staged record")
+              (fence-unstages
+               (:conclusion
+                (member-equal :unstage (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds))))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :uncertain) (verdict nil) (feeds nil))
+               :fault "an uncertain publication discards its recovery stage")))
+
+(defteeth fn-orp-reservation-is-converted-or-released
+  :claim (()
+          (let* ((effects (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))
+                 (answer (fn-orp-answer effects)))
+            (and (iff (member-equal :reserve effects) (and reserve (equal stage :staged) auth))
+                 (implies (member-equal :reserve effects)
+                          (member-equal :reserve (fn-orp-before :observe effects)))
+                 (implies (equal answer :accept) (iff (member-equal :convert effects) reserve))
+                 (implies (member-equal :convert effects) (equal answer :accept))
+                 (implies (and (equal answer :refuse) (member-equal :reserve effects))
+                          (member-equal :release (fn-orp-before :unstage effects)))
+                 (not (and (member-equal :convert effects) (member-equal :release effects))))))
+  :witness ((reserve t) (stage :staged) (auth t) (observe :ok)
+            (publish :durable) (verdict :durable) (feeds '(("a" . :ok))))
+  :breaks ()
+  :mutations ((accepted-releases
+               (:conclusion
+                (member-equal :release (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds))))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :durable) (verdict :durable) (feeds '(("a" . :ok))))
+               :fault "acceptance releases credit instead of converting it")
+              (refused-converts
+               (:conclusion
+                (member-equal :convert (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds))))
+               ((reserve t) (stage :staged) (auth t) (observe :ok)
+                (publish :refused) (verdict nil) (feeds nil))
+               :fault "refusal converts a reservation for data never accepted")))
+
+; Exercise the alternate R5/R6 branches with their premises true, alongside
+; the complete conclusions checked above by defteeth.
+(assert-event
+ (let ((effects (strip-cdrs (fn-orp-run t :staged t :ok :uncertain nil nil))))
+   (and (member-equal (fn-orp-answer effects) '(:fence :fault))
+        (not (member-equal :unstage effects)))))
+(assert-event
+ (let ((effects (strip-cdrs (fn-orp-run t :staged t :ok :refused nil nil))))
+   (and (equal (fn-orp-answer effects) :refuse)
+        (member-equal :reserve effects)
+        (member-equal :release (fn-orp-before :unstage effects))
+        (not (member-equal :convert effects)))))
+
+(defteeth-check)
