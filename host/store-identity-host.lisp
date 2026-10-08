@@ -6,6 +6,7 @@
 ; image (host/native/store-identity.lisp).  Loaded after host/owner-host.lisp.
 (in-package "ACL2")
 (include-book "../books/store-identity")
+(include-book "../books/live-profile-control")
 
 (defun fn-stid-host-request ()
   (declare (xargs :mode :program))

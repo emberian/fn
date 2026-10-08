@@ -166,3 +166,6 @@
 (include-book "owner-advance-carried")
 (include-book "owner-intent-carried")
 (include-book "owner-parse-carried")
+(include-book "owner-identity-intern")
+(include-book "owner-identity-served")
+(include-book "owner-prepare-outcome")
