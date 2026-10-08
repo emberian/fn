@@ -2001,3 +2001,26 @@
                  pcko-capture-fields pck-recordsp-parts pcko-sccb-listp-true-listp pcko-seed-agree pcko-seed-rows
                  (:instance pcko-wire-of-ssr-rows (acc (mv-nth 0 (pcko-sim recs 0 (fn-pck-seed) (fn-pck-seed) fid fn-arena)))
                             (fn-arena (mv-nth 1 (pcko-sim recs 0 (fn-pck-seed) (fn-pck-seed) fid fn-arena))))))))
+
+(defthm fn-pck-x-open-reads-bound
+  ; KEYSTONE.  The words the open reads: the root row (under 8 pages) and the
+  ; tape's own words once each, and the one word that is not a tag.  No term in
+  ; the store, the arena, the prefix, the page count or the payloads: a row's
+  ; payload is not read.
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                (equal npg (len (fn-pck-pages configs recs)))
+                (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem) (adt-tp-flat (fn-pck-pages configs recs)))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid))
+           (<= (mv-nth 3 (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets))
+               (+ (* 8 2048) (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs))) 1)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable pcko-open-model fn-pck-pages fn-pck-x-open pcko-tws pcko-img adt-tp-zeros pcko-img-intro
+                               pcko-len-w pcko-root-fits-in-region)
+           :use ((:instance pcko-img-intro (k (* 2048 npg)) (w (adt-tp-flat (fn-pck-pages configs recs))))
+                 pcko-len-w
+                 (:instance pcko-open-model (a fn-arena) (octets fn-octets))
+                 pcko-root-fits-in-region
+                 (:instance adt-tp-car-zeros (n (adt-tp-pad (len (pcko-tws recs)))))
+                 (:instance pcko-tws-is-rows-from)
+                 (:instance pcko-tws (recs recs))))))
