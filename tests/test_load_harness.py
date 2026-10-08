@@ -7,8 +7,10 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from tools.load import cells, peers, result, workloads
+from tools.load import cells, driver, peers, result, workloads
 
 
 def cell_result(**over):
@@ -298,6 +300,130 @@ class DeriveTests(unittest.TestCase):
         self.assertIn("article.p99_ms.R16", nm)
 
 
+class LockWaitTests(unittest.TestCase):
+    LOG = ("100000000 fn%20owner%2Fstore=10:10000 %3Cunnamed%3E=1:1000\n"
+           "101000000 fn%20owner%2Fstore=13:16000 %3Cunnamed%3E=1:1000\n"
+           "102000000 fn%20owner%2Fstore=18:26000 %3Cunnamed%3E=2:2000 fn%20extent%20realizer=2:6000\n"
+           "103000000 fn%20owner%2Fstore=20:30000 %3Cunnamed%3E=2:2000 fn%20extent%20realizer=4:8000\n")
+
+    def phase(self, **extra):
+        return dict({"name": "R4", "kind": "read", "epoch_start": 100.5, "epoch_end": 102.5,
+                     "cmd": {"ARTICLE": {"n": 4}, "POST": {"n": 20}}}, **extra)
+
+    def test_parser_names_and_torn_tail(self):
+        rows = cells.parse_locks(self.LOG + "104000000 fn%20owner%2Fstore=99:")
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(rows[0][1]["fn owner/store"], (10, 10000))
+        self.assertEqual(rows[0][1]["<unnamed>"], (1, 1000))
+
+    def test_split_boundaries_use_previous_dumps_and_article_denominator(self):
+        metrics, window = cells.phase_lock_metrics(cells.parse_locks(self.LOG), self.phase())
+        self.assertEqual((window["epoch_start"], window["epoch_end"]), (100, 102))
+        self.assertEqual(metrics["locks.fn owner/store.waits"], 8)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms"], 16)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms_per_article"], 4)
+        self.assertEqual(metrics["locks.fn extent realizer.waits"], 2)
+        self.assertEqual(metrics["locks.<unnamed>.wait_ms"], 1)
+        exact, _ = cells.phase_lock_metrics(cells.parse_locks(self.LOG), self.phase(epoch_start=101, epoch_end=103))
+        self.assertEqual(exact["locks.fn owner/store.waits"], 7)
+
+    def test_phase_derivation_and_zero_articles(self):
+        phases = [self.phase(), self.phase(name="R16", epoch_start=102, epoch_end=103, cmd={"ARTICLE": {"n": 0}})]
+        cells.attach_lock_metrics(phases, self.LOG)
+        metrics, nm = cells.derive("readers-locks", phases)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms.R4"], 16)
+        self.assertEqual(metrics["locks.fn owner/store.waits.R16"], 2)
+        self.assertIn("locks.fn owner/store.wait_ms_per_article.R16", nm)
+
+    def test_missing_coverage_and_corruption_are_not_zero_contention(self):
+        for ph in (self.phase(epoch_start=99), self.phase(epoch_end=104), self.phase(epoch_end=100.8)):
+            cells.attach_lock_metrics([ph], self.LOG)
+            self.assertIn("locks_error", ph)
+            self.assertNotIn("lock_metrics", ph)
+        for log in (self.LOG + "104000000 fn%20owner%2Fstore=1:1\n",
+                    self.LOG + "103000000\n", "100000000 broken\n"):
+            with self.assertRaises(ValueError):
+                cells.parse_locks(log)
+
+    def test_report_top_eight_and_sample_window(self):
+        ph = self.phase()
+        cells.attach_lock_metrics([ph], self.LOG)
+        for n in range(10):
+            ph["lock_metrics"].update({"locks.extra%d.waits" % n: 1, "locks.extra%d.wait_ms" % n: 100 + n,
+                                       "locks.extra%d.wait_ms_per_article" % n: (100 + n) / 4})
+        text = result.report({"cells": [cell_result(phases=[ph])]}, [])
+        self.assertIn("Snapshot window 100.000000–102.000000", text)
+        self.assertIn("| extra9 |", text)
+        self.assertIn("| extra2 |", text)
+        self.assertNotIn("| extra1 |", text)
+        self.assertLess(text.index("| extra9 |"), text.index("| extra2 |"))
+
+    def test_workloads_inherit_reader_conditions(self):
+        base = workloads.resolve("readers@10k").spec
+        lock = workloads.resolve("W2L@10k").spec
+        prof = workloads.resolve("readers-prof@10k").spec
+        self.assertEqual(workloads.resolve("W2P@10k").workload, "readers-prof")
+        for spec in (lock, prof):
+            for key in ("preset", "store", "groups", "policy"):
+                self.assertEqual(spec[key], base[key])
+            for ph in spec["phases"]:
+                self.assertEqual(ph["poster"], {"rate_per_s": 5, "octets": 2048})
+        self.assertTrue(lock["lockwait"])
+        self.assertEqual([(p["name"], p["duration_s"]) for p in lock["phases"]], [("R1", 20), ("R4", 20), ("R16", 20)])
+        self.assertEqual([(p["readers"], p["duration_s"], p["measure"]) for p in prof["phases"]], [(16, 10, False), (16, 65, True)])
+        self.assertEqual(prof["sprof"], {"window_s": 60})
+
+    def test_hooks_and_fetchable_artifacts_without_image(self):
+        with tempfile.TemporaryDirectory() as d:
+            work, out = Path(d) / "work", Path(d) / "raw"
+            work.mkdir()
+            hooks, env = driver.cell_hooks(workloads.resolve("W2L").spec, work)
+            self.assertIn(driver.LOCKS_HOOK, hooks)
+            self.assertTrue(driver.LOCKS_HOOK.is_file())
+            self.assertEqual(env["FN_LOAD_LOCKS"], str(work / "locks.log"))
+            hooks, env = driver.cell_hooks(workloads.resolve("W2P").spec, work, gc_hook=True)
+            self.assertIn(driver.SPROF_HOOK, hooks)
+            self.assertNotIn(driver.HOOK, hooks)  # sprof already loads it
+            self.assertTrue(driver.SPROF_HOOK.is_file())
+            self.assertEqual(env["FN_LOAD_PROF_WINDOW"], "60")
+            self.assertEqual(env["FN_LOAD_PROF"], str(work / "sprof"))
+            self.assertEqual(env["FN_LOAD_PROF_START"], str(work / "sprof.start"))
+            self.assertEqual(driver.cell_hooks(workloads.resolve("readers").spec, work), ([], {}))
+            for name in ("locks.log.4242", "sprof.000.txt", "samples.json"):
+                (work / name).write_text(name)
+            files = driver.collect_measurement_artifacts(work, out, "W2P-image-x-r1")
+            self.assertEqual(len(files), 3)
+            for name in files:
+                self.assertEqual((out / name).read_text(), Path(name).name)
+
+    def test_invalid_measurement_settings_are_refused(self):
+        for bad in (0, -1, True, 60.5, "60"):
+            data = workloads.load()
+            data["workloads"]["readers-prof"]["sprof"]["window_s"] = bad
+            with self.assertRaises(workloads.WorkloadError):
+                workloads.validate(data)
+        data = workloads.load()
+        data["workloads"]["readers-prof"]["phases"][-1]["measure"] = False
+        with self.assertRaises(workloads.WorkloadError):
+            workloads.validate(data)
+
+    def test_read_epochs_and_profile_trigger_exclude_warmup(self):
+        with tempfile.TemporaryDirectory() as d:
+            trigger = Path(d) / "sprof.start"
+            node = SimpleNamespace(env={"FN_LOAD_PROF_START": str(trigger)})
+            ctr = driver.Counters()
+            ctr.known.append(0)
+            run = driver.Run(node, {"sprof": {"window_s": 60}}, ctr, None)
+            # No connection or image: a refused connection ends this worker.
+            with patch.object(run, "conn", return_value=None), patch.object(driver.time, "time", side_effect=[100, 110, 111, 176]):
+                warm = run.phase_read({"readers": 1, "count": 1, "measure": False})
+                self.assertFalse(trigger.exists())
+                measured = run.phase_read({"readers": 1, "count": 1, "measure": True})
+                self.assertTrue(trigger.exists())
+            self.assertEqual((warm["epoch_start"], warm["epoch_end"]), (100, 110))
+            self.assertEqual((measured["epoch_start"], measured["epoch_end"]), (111, 176))
+
+
 class ReportAndItemTests(unittest.TestCase):
     def res(self, **over):
         return {"schema": 1, "label": "ctl", "rev": "0b4d3b1", "cells": [cell_result(**over)]}
@@ -475,6 +601,233 @@ class PeersTests(unittest.TestCase):
         self.assertIn("32768", flags)                                  # tests/test_native_peer_catchup PROFILE
         self.assertEqual(flags[flags.index("--max-history-octets") + 1], str(64 << 20))
 
+
+
+
+class FaultFrameworkTests(unittest.TestCase):
+    def test_outcomes_and_partial_reply(self):
+        from tools.load.faults import History
+        h = History()
+        a, b, c = [h.plan('STAT', {'n': i}) for i in range(3)]
+        h.sent(b)
+        h.sent(c)
+        with self.assertRaises(EOFError):
+            h.complete(b, b'223 partial')
+        h.complete(c, b'223 complete\r\n')
+        self.assertEqual(h.counts(), {'not-attempted': 1, 'attempted-uncertain': 1, 'completed': 1})
+        self.assertIsNone(a['send_time'])
+        self.assertNotEqual(a['args_digest'], b['args_digest'])
+
+    def test_durability_identity_and_uncertainty(self):
+        from tools.load.faults import History, verify
+        h = History()
+        for mid, outcome in [('accepted', 'completed'), ('uncertain', 'attempted-uncertain'), ('unsent', 'not-attempted')]:
+            op = h.plan('POST', {'msgid': mid, 'sha256': mid})
+            if outcome != 'not-attempted':
+                h.sent(op)
+            if outcome == 'completed':
+                h.complete(op, b'240 accepted\r\n')
+        self.assertEqual(verify(h.ops, {'accepted': 'accepted'}), [])
+        self.assertEqual(verify(h.ops, {'accepted': 'accepted', 'uncertain': 'uncertain'}), [])
+        self.assertEqual({p for p, _ in verify(h.ops, {'accepted': 'wrong', 'unsent': 'unsent'})},
+                         {'P1-DURABLE', 'P2-IDENTITY'})
+        self.assertIn('P2-IDENTITY', [p for p, _ in verify(h.ops, {'uncertain': 'partial'})])
+        self.assertIn('P2-IDENTITY', [p for p, _ in verify(h.ops, {'unknown': 'new'})])
+
+    def test_later_conflicting_attempt_cannot_replace_accepted_identity(self):
+        from tools.load.faults import History, verify
+        h = History()
+        a = h.plan('POST', {'msgid': 'a', 'sha256': 'original'})
+        h.sent(a)
+        h.complete(a, b'240 accepted\r\n')
+        h.sent(h.plan('POST', {'msgid': 'a', 'sha256': 'replacement'}))
+        self.assertEqual({p for p, _ in verify(h.ops, {'a': 'replacement'})}, {'P1-DURABLE', 'P2-IDENTITY'})
+
+    def test_shrinker_reruns_and_honors_budget(self):
+        from tools.load.faults import shrink
+        attempts = []
+        def fails(h):
+            attempts.append(h)
+            return 3 in h and 7 in h
+        short, info = shrink(list(range(12)), fails, 100)
+        self.assertEqual(short, [3, 7])
+        self.assertEqual(info['minimal'], 'one-deletion')
+        self.assertEqual(info['runs'], len(attempts))
+        _, info = shrink(list(range(20)), lambda h: False, 2)
+        self.assertEqual(info['runs'], 2)
+        self.assertEqual(info['minimal'], 'budget-exhausted')
+
+    def test_fault_hooks_and_boundary_inventory(self):
+        from tools.load import faults
+        root = Path(__file__).resolve().parents[1]
+        data = workloads.load()
+        for spec in data['workloads'].values():
+            for hook in spec.get('hooks', []):
+                self.assertTrue((root / hook).is_file(), hook)
+        hook = (root / 'planning/evidence/load/hooks/f2-crash.lisp').read_text()
+        host = (root / 'host/native/io.lisp').read_text() + (root / 'host/native/owner.lisp').read_text()
+        for boundary in faults.BOUNDARIES:
+            self.assertIn(boundary, hook)
+            self.assertIn('(defun ' + boundary + ' ', host)
+        self.assertEqual(faults.sample_points(100, 3), [1, 51, 100])
+        self.assertEqual(faults.sample_points(2, 3), [1, 2])
+
+
+class FakeSocket:
+    """A scripted socket: greeting preloaded, replies chosen from each sendall."""
+    def __init__(self, responder):
+        self.responder, self.buf, self.sent = responder, bytearray(b"200 hi\r\n"), []
+
+    def settimeout(self, t): pass
+    def setsockopt(self, *a): pass
+    def connect(self, addr): pass
+    def close(self): pass
+    def shutdown(self, how): pass
+
+    def sendall(self, data):
+        self.sent.append(bytes(data))
+        self.buf.extend(self.responder(bytes(data)))
+
+    def recv(self, n):
+        out, self.buf = bytes(self.buf[:n]), self.buf[n:]
+        return out
+
+
+def respond(data):
+    if data.startswith(b"POST"):
+        return b"340 go\r\n"
+    if data.endswith(b".\r\n") and not data.startswith((b"STAT", b"ARTICLE", b"LIST")):
+        return b"240 ok\r\n"
+    if data.startswith(b"LIST ACTIVE"):
+        return b"215 list\r\n.\r\n"
+    if data.startswith(b"ARTICLE"):
+        return b"220 1 <a@b>\r\nSubject: x\r\n\r\nbody\r\n.\r\n"
+    return b"223 1 <a@b>\r\n"
+
+
+class TraceRecorderTests(unittest.TestCase):
+    def setUp(self):
+        from tools.load import faults
+        self.faults = faults
+        self.real, self.socks = faults.socket.socket, []
+        def make():
+            self.socks.append(FakeSocket(respond))
+            return self.socks[-1]
+        faults.socket.socket = make
+        self.addCleanup(setattr, faults.socket, "socket", self.real)
+
+    def test_sequential_two_connections(self):
+        h = self.faults.History()
+        with self.faults.Client(1, h) as a:
+            self.assertTrue(a.post(1).startswith(b"240"))
+        with self.faults.Client(1, h) as b:
+            b.command("ARTICLE <a@b>")
+        snap = h.recorder.snapshot(h.ops)
+        self.assertTrue(snap["sequential"])
+        kinds = [(x["t"], x.get("c"), x.get("until")) for x in snap["steps"]]
+        self.assertEqual(kinds[:7], [("conn", 0, None), ("read", 0, "line"), ("send", 0, None), ("read", 0, "line"),
+                                     ("send", 0, None), ("read", 0, "line"), ("close", 0, None)])
+        self.assertEqual(snap["steps"][-2]["until"], "dot")
+        self.assertEqual(snap["steps"][2]["hex"], b"POST\r\n".hex())
+        self.assertEqual(bytes.fromhex(snap["steps"][4]["hex"])[-3:], b".\r\n")
+
+    def test_interleaved_connections_are_not_sequential(self):
+        h = self.faults.History()
+        held = self.faults.Client(1, h)
+        op = held.begin("ARTICLE", {"command": "ARTICLE <a@b>"}, b"ARTICLE <a@b>\r\n")
+        held.mark_read("line"); held.line()          # status only; the body stays owed
+        with self.faults.Client(1, h) as other:
+            other.command("STAT <a@b>")
+        held.close()
+        snap = h.recorder.snapshot(h.ops)
+        self.assertFalse(snap["sequential"])
+        # two sends on different connections with no read between them
+        h2 = self.faults.History()
+        a, b = self.faults.Client(1, h2), self.faults.Client(1, h2)
+        a.begin("STAT", {"command": "STAT"}, b"STAT\r\n")
+        b.begin("STAT", {"command": "STAT"}, b"STAT\r\n")
+        self.assertFalse(h2.recorder.snapshot(h2.ops)["sequential"])
+
+    def test_fragments_are_separate_sends(self):
+        h = self.faults.History()
+        with self.faults.Client(1, h) as c:
+            wire, ranges = self.faults.wire_operations([("STAT", {"command": "STAT <a@b>"})], h)
+            for piece in (wire[:3], wire[3:]):
+                idx = c.send_raw(piece)
+            snap = h.recorder.snapshot(h.ops)
+        sends = [x for x in snap["steps"] if x["t"] == "send"]
+        self.assertEqual([bytes.fromhex(x["hex"]) for x in sends], [b"STA", b"T <a@b>\r\n"])
+        self.assertTrue(snap["sequential"])
+
+    def test_f2_like_campaign_trace(self):
+        import json, os, tempfile
+        from types import SimpleNamespace
+        faults = self.faults
+        run = SimpleNamespace(cell_id="F2", label="F2-x-A-r1", node=None)
+        campaign = faults.Campaign.__new__(faults.Campaign)
+        campaign.run, campaign.ph, campaign.serial = run, {}, 0
+        campaign.traces, campaign.trace_serial, campaign.last_history = [], 0, None
+        campaign.meta = {"schema": 1, "cell": "F2", "store": {"init_flags": ["--x"], "groups": ["fn.test"], "fixture": None},
+                         "sbcl_user_args": "--dynamic-space-size 1GB"}
+        node = SimpleNamespace(port=1, pid=7, work=Path(tempfile.mkdtemp()), env={}, start=lambda timeout=0: 0.1)
+        campaign.recovery = 60
+        h = campaign.history()
+        campaign.start(node, h, ("fnn-durable-barrier", 3))
+        with faults.Client(1, h) as c:
+            c.post(0)
+        campaign.start(node, h, ("*", 1))
+        campaign.start(node, h)
+        with faults.Client(1, h) as c:
+            c.post(1000000)
+        h.plan("POST", {"i": 5, "msgid": "<m>", "sha256": "0"})          # never attempted
+        faults.inventory(1, h)
+        trace = campaign.snapshot(h)
+        types = [x["t"] for x in trace["steps"]]
+        self.assertEqual(types[:2], ["start", "crash"])
+        self.assertEqual(trace["steps"][1], {"t": "crash", "boundary": "fnn-durable-barrier", "hit": 3})
+        i = types.index("restart")
+        self.assertEqual(trace["steps"][i + 1], {"t": "crash", "boundary": "*", "hit": 1})
+        self.assertEqual(types[i + 2], "restart")
+        self.assertEqual(types[-1], "inventory")
+        self.assertNotIn("crash", types[i + 2:])
+        self.assertEqual(types.count("inventory"), 1)           # inventory's own connections are folded in
+        self.assertTrue(trace["sequential"])
+        for op in trace["ops"]:
+            if op["outcome"] == "not-attempted":
+                self.assertIsNone(op["step"])
+            else:
+                self.assertTrue(0 <= op["step"] < len(trace["steps"]))
+                self.assertIn(trace["steps"][op["step"]]["t"], ("send", "inventory"))
+        os.environ["FN_LOAD_TRACE_DIR"] = tempfile.mkdtemp()
+        self.addCleanup(os.environ.pop, "FN_LOAD_TRACE_DIR")
+        path = campaign.emit(trace, "reference")
+        self.assertTrue(path.endswith("F2-x-A-r1-F2-reference-001.json"))
+        loaded = json.loads(Path(path).read_text())
+        self.assertEqual((loaded["schema"], loaded["cell"], loaded["id"]), (1, "F2", "F2-reference-001"))
+        self.assertEqual(loaded["steps"], trace["steps"])
+        self.assertEqual(campaign.traces, [path])
+        TraceRecorderTests.example = loaded
+
+    def test_control_step_and_violation_trace(self):
+        import tempfile, os
+        from types import SimpleNamespace
+        faults = self.faults
+        os.environ["FN_LOAD_TRACE_DIR"] = tempfile.mkdtemp()
+        self.addCleanup(os.environ.pop, "FN_LOAD_TRACE_DIR")
+        campaign = faults.Campaign.__new__(faults.Campaign)
+        campaign.run, campaign.traces, campaign.trace_serial, campaign.meta = SimpleNamespace(cell_id="F3"), [], 0, {}
+        h = campaign.history()
+        op = h.plan("CONTROL", {"words": ["pins"]})
+        h.sent(op)
+        op["step"] = h.recorder.control(["pins"])
+        def replay(ops, prop, detail):
+            campaign.history().recorder.start()
+            return True
+        out = faults.report(h, [("P4-RECLAIM", "d")], ["P4-RECLAIM"], replay, 4, campaign)
+        v = out["violations"][0]
+        self.assertTrue(Path(v["trace"]).is_file())
+        self.assertEqual(json.loads(Path(v["trace"]).read_text())["steps"], [{"t": "start"}])
+        self.assertEqual(h.recorder.snapshot(h.ops)["steps"], [{"t": "control", "words": ["pins"]}])
 
 
 if __name__ == "__main__":
