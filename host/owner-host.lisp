@@ -5592,8 +5592,8 @@ itself."
 (defun fn-owner-feed-journal-replay (peer-octets entries offset state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp peer-octets)))
-  (let ((peer (fn-store-octets->string peer-octets))
-        (state (f-put-global 'fn-owner-feed-safe-offset 0 state)))
+  (let* ((peer (fn-store-octets->string peer-octets))
+         (state (f-put-global 'fn-owner-feed-safe-offset 0 state)))
     (if (equal peer :bad)
         (value :invalid)
       (let* ((state (fn-owner-feed-journal-replay-entries peer entries state))
