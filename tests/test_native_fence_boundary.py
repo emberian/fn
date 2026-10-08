@@ -13,9 +13,8 @@ ACL2 classifies (3 uncertain, 4 fault), the line names it, the control reply's
   interval) fences the owner (exit 3) -- never `CHECKPOINT auto failed' and
   serving on;
 * the reclaim pass (r71 F1, S017): the same cut inside the install/swap
-  quantum fences the owner BEFORE the mutex is released; `store reclaim
-  --recorded' exits 3 and the owner's `owner fenced' line precedes the
-  control reply's;
+  quantum fences the owner BEFORE the mutex is released; the receipt work
+  observes that fence and `store reclaim --recorded' exits 3;
 * the node secret (r72 F6): an EIO at the directory barrier after the
   secret's publication is uncertain (exit 3), not a raw OS fault (exit 4).
 """
@@ -90,7 +89,12 @@ class PublicationBoundaryTests(auto.AutoCheckpointFixture):
         with self.node.session() as client:
             expected = [client.article(mid) for mid in self.ids]
         asked = self.op("store", "compact")
-        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        # control-observation S2/S3b: acknowledgement is not completion.
+        # fn-nco-lost-owner-after-receipt-is-uncertain: this injected fence
+        # loses the owner after its receipt, so the CLI must exit uncertain.
+        self.assertEqual(asked.returncode, EXIT_UNCERTAIN, asked.stderr.decode())
+        self.assertIn(b"compaction requested receipt=", asked.stdout)
+        self.assertNotIn(b"compaction compacted", asked.stdout)
         self.node.exited(EXIT_UNCERTAIN, timeout=180, process=owner)
         log = owner.stderr.since(0)
         self.assertIn(b"CHECKPOINT auto uncertain; recovery required:", log,
@@ -100,6 +104,8 @@ class PublicationBoundaryTests(auto.AutoCheckpointFixture):
         # A fresh process recovers (the old or the new checkpoint, never a
         # torn one) and serves every acknowledged article.
         self.node.start()
+        status = self.op("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         with self.node.session() as client:
             self.assertEqual([client.article(mid) for mid in self.ids], expected)
         later = "<after-publication-fence@example.invalid>"
@@ -112,7 +118,7 @@ class PublicationBoundaryTests(auto.AutoCheckpointFixture):
 class ReclaimInstallFenceTests(expiry.ExpiryMixin, unittest.TestCase):
     """r71 F1 / sweep S017: the reclaim pass's install/swap quantum runs inside
     the fence boundary; an uncertain install fences the owner before the
-    mutex is released, and the control reply's `owner fenced' is true."""
+    mutex is released, before its receipt work records an uncertain outcome."""
     image = DEVELOPER
 
     def recorded_base(self, name="rbase"):
@@ -132,22 +138,25 @@ class ReclaimInstallFenceTests(expiry.ExpiryMixin, unittest.TestCase):
         shutil.copytree(base.store_path, copy.store_path)
         return copy
 
-    def test_an_uncertain_reclaim_install_fences_the_owner_before_the_reply(self):
+    def test_an_uncertain_reclaim_install_fences_the_owner_before_completion(self):
         node = self.copy_of(self.recorded_base(), "live")
         owner = node.start(timeout=600, env={"FN_NATIVE_STATE_CHECKPOINT_FAULT":
                                              "state-checkpoint-replaced:eio"})
         try:
             done = self.reclaim(node, "--recorded", expect=None)
             self.assertEqual(done.returncode, EXIT.UNCERTAIN, done.stdout + done.stderr[-800:])
+            # S2/S3b and fn-nco-lost-owner-after-receipt-is-uncertain:
+            # the receipt precedes work; its terminal observation is uncertain.
+            self.assertIn(b"reclaim requested receipt=", done.stdout)
             self.assertNotIn(b"installed", done.stdout, done.stdout)
             node.exited(EXIT.UNCERTAIN, timeout=300, process=owner)
             log = owner.stderr.since(0)
             text = log.decode("utf-8", "replace")
             fenced = log.find(b"owner quantum uncertain; owner fenced:")
-            replied = log.find(b"control request uncertain; owner fenced:")
+            replied = log.find(b"receipt work uncertain:")
             self.assertGreaterEqual(fenced, 0, text)
             self.assertGreaterEqual(replied, 0, text)
-            # The quantum fenced under its mutex; only then was the reply made.
+            # The quantum fenced under its mutex before completion was observed.
             self.assertLess(fenced, replied, text)
             self.assertNotIn(b"RECLAIM installed", log)
         finally:
