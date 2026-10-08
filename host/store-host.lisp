@@ -60,6 +60,7 @@
 (include-book "../books/store-log-kernel-concrete")
 (include-book "../books/store-log-pipeline-profile")
 (include-book "../books/owner-commit-durability-open")
+(include-book "../books/resource-syncer-pipeline")
 (include-book "../books/store-log-stream")
 ;; The open tells a torn tail from damage (lane log-corruption).
 (include-book "../books/store-log-damage")

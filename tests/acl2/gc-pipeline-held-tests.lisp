@@ -44,7 +44,7 @@
         (equal (nth 9 failed) '(:uncertain-reply))
         (not (equal (nth 14 (fn-ocp-gc-entry-reader-advance failed)) :submit)))))
 (assert-event
- (let ((empty (fn-ocp-gc-entry-seal-held (fn-ocp-gc-entry-start *gc-held-init*))))
+ (let ((empty (fn-ocp-gc-entry-seal-held (fn-ocp-gc-entry-start *gc-held-init*) nil)))
    (and (fn-ocp-gc-linkedp empty) (fn-ocp-gc-held-coherentp empty)
         (not (fn-otm-held (nth 1 empty)))
         (equal (cadr (nth 14 empty)) :submit))))
@@ -63,3 +63,39 @@
    (equal (nth 14 (fn-ocp-gc-entry-reader-advance
                    (fn-ocp-gc-entry-complete *gc-held-sealed*))) :submit)))
 (value-triple :held-positive-and-removal-witnesses-passed)
+
+; A zero-record drain can still owe FNFD frames. The held callback cannot
+; pass those effects: the same job remains staged until all receipts arrive.
+(defconst *gc-held-frames*
+  (fn-ocp-gc-entry-seal-held (fn-ocp-gc-entry-start *gc-held-init*) t))
+(assert-event
+ (and (fn-ocp-gc-linkedp *gc-held-frames*)
+      (fn-ocp-gc-held-coherentp *gc-held-frames*)
+      (fn-otm-held (nth 1 *gc-held-frames*))
+      (equal (nth 4 *gc-held-frames*) :intents)
+      (equal (cadr (nth 14 *gc-held-frames*)) :sync)
+      (not (fn-lgk-inflight (fn-lgk-pipe-ks (nth 0 *gc-held-frames*))))
+      (not (equal (nth 14 (fn-ocp-gc-entry-reader-advance *gc-held-frames*)) :submit))))
+(assert-event
+ (let ((done (fn-ocp-gc-run *gc-held-frames*
+                '((:io :current :ok) (:io :current :ok) (:io :current :ok)
+                  (:io :current :ok) (:io :current :ok) (:collect) (:advance)))))
+   (and (fn-ocp-gc-linkedp done) (fn-ocp-gc-held-coherentp done)
+        (equal (nth 14 done) :submit))))
+(assert-event
+ (let* ((stopped (fn-ocp-gc-entry-abort *gc-held-sealed* :current))
+        (closed (fn-ocp-gc-entry-close stopped t)))
+   (and (fn-ocp-gc-linkedp stopped) (fn-ocp-gc-linkedp closed)
+        (equal (nth 0 closed) (nth 0 stopped))
+        (equal (nth 4 closed) :stopped)
+        (equal (car (nth 14 closed)) :closed)
+        (not (equal (caddr (nth 14 closed)) :submit)))))
+(assert-event
+ (let ((closed (fn-ocp-gc-entry-close *gc-held-done* t)))
+   (and (fn-ocp-gc-linkedp closed) (fn-ocp-gc-held-coherentp closed)
+        (equal (car (nth 14 closed)) :closed)
+        (equal (caddr (nth 14 closed)) :none)
+        (equal (nth 0 closed) (nth 0 *gc-held-done*)))))
+(must-fail-checked
+ (assert-event (equal (nth 14 (fn-ocp-gc-entry-reader-advance *gc-held-frames*)) :submit)))
+(value-triple :held-frames-and-close-passed)

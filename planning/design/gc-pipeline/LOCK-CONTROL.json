@@ -1,0 +1,8 @@
+{
+  "control": "4976a4b53",
+  "control_method": "read-only git show overlay; no checkout, bisect or baseline change",
+  "current_new_rows": 69,
+  "current_stale_rows": 4,
+  "additional_finding_keys": [],
+  "scoped_retirement": "fnn-owner-commit-queued-locked and fnn-log-take :full fallback deleted; shared R2 keys persist on independent direct bound commits"
+}

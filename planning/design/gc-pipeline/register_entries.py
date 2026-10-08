@@ -40,7 +40,7 @@ if __name__ == '__main__':
     original = target.read_text()
     present = {h.node.items[1].text for h in rw.match('_', rw.parse(original).forms, head='definterface', deep=False)}
     additions = []
-    for filename in ['owner-commit-durability.lisp', 'owner-commit-durability-open.lisp']:
+    for filename in ['owner-commit-durability-steps.lisp', 'owner-commit-durability-open.lisp']:
         text = (ROOT / 'books' / filename).read_text()
         for h in rw.match('_', rw.parse(text).forms, head='defun', deep=False):
             name = h.node.items[1].text

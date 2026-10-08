@@ -53,6 +53,7 @@
 (include-book "heap-figure")
 (include-book "native-control")
 (include-book "profile-limits") ; its figures are rows there
+(include-book "owner-commit-worker-profile")
 
 ; The tau system is off in this book: it is time no prover step counts, and
 ; here it was half the proof time (ACL2 time over the book's own forms 6.0 ->
@@ -104,7 +105,16 @@
 (defun fn-heap-thread-count (connections)
   (declare (xargs :guard t) (ignore connections))
   (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
-     *fn-heap-fixed-threads* *fn-heap-cold-workers*))
+     *fn-heap-fixed-threads* *fn-heap-cold-workers*
+     (fn-ocp-extra-io-workers)))
+
+; The old fixed allowance already contains the barrier syncer. The append
+; role is additional and charged by both startup and served reservations.
+(defthm fn-heap-thread-count-includes-pipeline-roles
+  (equal (fn-heap-thread-count connections)
+         (+ *fn-heap-mux-loops* (fn-native-control-max-active-clients)
+            (- *fn-heap-fixed-threads* 1) *fn-heap-cold-workers*
+            (len (fn-ocp-io-worker-roles)))))
 
 (defun fn-heap-reservation-octets (mb core stack-kib threads)
   (declare (xargs :guard t))
@@ -1907,4 +1917,3 @@
   :hints (("Goal" :in-theory (theory 'minimal-theory)
            :use ((:instance fn-heap-capture-budget-grows-with-history-and-record)
                  (:instance fn-heap-figure-octets-grows-given-the-capture-budget)))))
-

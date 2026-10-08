@@ -41,18 +41,10 @@
 ; admission accounting; unresolved costs are explicit in the operation row.
 (definterface create-fn-resource-ledger :class :common-lisp-compliant
   :raw-guarded (0 nil (fn-resource-ledger)))
-(definterface fn-ros-install-syncer :class :common-lisp-compliant)
-(definterface fn-ros-issue
-  :class :common-lisp-compliant
-  :operation (:stage :projection :funding fn-ros-install-syncer
-              :tariff fn-ros-worker-vector :draw fn-rl-draw
-              :principal :owner :slot 2
-              :physical fn-ros-physical :outcome fn-ros-outcome
-              :retention :physical-and-operation
-              :coverage (:resident :workers)
-              :unaccounted (fn-rl-wfp fn-rl-draw mv-nth)))
-(definterface fn-ros-physical :class :common-lisp-compliant)
-(definterface fn-ros-outcome :class :common-lisp-compliant)
+
+
+
+
 (definterface fn-ros-drainedp :class :common-lisp-compliant)
 
 (definterface fn-rid-connection :class :common-lisp-compliant)
@@ -846,12 +838,9 @@
               fn-otm-full-sheds
               fn-otm-decisions-read-only-the-journal-state))
 
-(definterface fn-otm-commit-event
-  :class :common-lisp-compliant
-  :keystones (fn-otm-commit-event-is-ocp-commit-event))
 
-(definterface fn-otm-committer-wake
-  :class :common-lisp-compliant)
+
+
 
 (definterface fn-otm-disk
   :class :common-lisp-compliant
@@ -1447,8 +1436,7 @@
 (definterface fn-ocs-classp
   :class :common-lisp-compliant)
 
-(definterface fn-ocs-commit-step
-  :class :common-lisp-compliant)
+
 
 (definterface fn-ocs-member-releases
   :class :common-lisp-compliant)
@@ -1456,10 +1444,7 @@
 (definterface fn-ocs-publication-class
   :class :common-lisp-compliant)
 
-(definterface fn-ocs-start-event
-  :class :common-lisp-compliant
-  :keystones (fn-ocs-unstaged-start-tells-its-refusals
-              fn-ocp-unstaged-start-issues-no-sync))
+
 
 (definterface fn-ocs-told-at-drain-p
   :class :common-lisp-compliant
@@ -6048,10 +6033,7 @@
   :kinds ()
   :keystones (fn-ocp-gc-entry-append-issue-by-definition))
 
-(definterface fn-ocp-gc-entry-begin
-  :class :common-lisp-compliant
-  :kinds ()
-  :keystones (fn-ocp-gc-entry-begin-by-definition))
+
 
 (definterface fn-ocp-gc-entry-reserve
   :class :common-lisp-compliant
@@ -6113,3 +6095,41 @@
   :class :common-lisp-compliant
   :kinds ()
   :keystones (fn-ocp-gc-entry-close-by-definition))
+
+(definterface fn-ocp-io-worker-roles
+  :class :common-lisp-compliant
+  :keystones (fn-ocp-two-distinct-io-roles))
+
+(definterface fn-ros-install-pipeline-role
+  :class :common-lisp-compliant
+  :keystones (fn-ros-install-pipeline-role-keeps-representation))
+(definterface fn-ros-pipeline-issue
+  :class :common-lisp-compliant
+  :keystones (fn-ros-pipeline-issue-keeps-representation)
+  :operation (:stage :projection :funding fn-ros-install-pipeline-role
+              :tariff fn-ros-worker-vector :draw fn-rl-draw
+              :principal :owner :slot 2
+              :physical fn-ros-pipeline-physical :outcome fn-ros-pipeline-outcome
+              :retention :physical-and-operation
+              :coverage (:resident :workers)
+              :unaccounted (fn-rl-wfp fn-rl-draw mv-nth)))
+(definterface fn-ros-pipeline-physical
+  :class :common-lisp-compliant
+  :keystones (fn-ros-pipeline-physical-keeps-representation
+              fn-ros-pipeline-wrong-role-keeps-custody))
+(definterface fn-ros-pipeline-outcome
+  :class :common-lisp-compliant
+  :keystones (fn-ros-pipeline-outcome-keeps-representation
+              fn-ros-pipeline-wrong-role-keeps-custody))
+
+(definterface fn-ocp-gc-committer-wake
+  :class :common-lisp-compliant
+  :keystones (fn-ocp-gc-next-needs-idle-append-role
+              fn-ocp-gc-collect-waits-for-append-return))
+
+(definterface fn-otm-committer-may-start
+  :class :common-lisp-compliant :kinds ()
+  :keystones (fn-otm-committer-may-start-is-the-held-rule))
+(definterface fn-otm-held-caller-wake
+  :class :common-lisp-compliant :kinds ()
+  :keystones (fn-otm-held-wakes))

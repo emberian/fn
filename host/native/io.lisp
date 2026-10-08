@@ -7331,11 +7331,16 @@ with its depth, and the rows under it name the path that called it."
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
   `(sb-thread:with-recursive-lock ((fnn-log-lock ,log)) ,@body))
 
+(defun fnn-log-pipeline-gate-read (log)
+  "Snapshot attachment under K; release K before any subsequent Gate entry.
+The owner detaches only after both physical workers have joined."
+  (fnn-log-with-kernel (log) (fnn-log-pipeline-gate log)))
+
 (defmacro fnn-log-pipeline-step ((log x) &body body)
   "Run one derived ACL2 entry and install its projections, Gate then K.
 BODY has no I/O. The caller must not hold K when entering this boundary."
   (let ((g (gensym "GATE")))
-    `(let ((,g (fnn-log-pipeline-gate ,log)))
+    `(let ((,g (fnn-log-pipeline-gate-read ,log)))
        (unless ,g (fnn-fault "pipeline entry without an attached gate"))
        (sb-thread:with-mutex ((fnn-owner-gate-mutex ,g))
          (let ((,x (fnn-owner-gate-pipeline ,g)))
@@ -7344,7 +7349,7 @@ BODY has no I/O. The caller must not hold K when entering this boundary."
 (defun fnn-log-unowned-failed-kernel (log)
   "A composed job records failure at its receipt quantum. Standalone
 operations still fence their kernel here, at their existing error boundary."
-  (if (fnn-log-pipeline-gate log) (fnn-log-kernel log)
+  (if (fnn-log-pipeline-gate-read log) (fnn-log-kernel log)
     (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
 
 (defun fnn-log-at (point)
@@ -8092,7 +8097,7 @@ serialized run fn-lgc-run-refines-the-kernel speaks of."
               (fnn-log-inflight log) nil))
       (fnn-indeterminate "log barrier failed: ~a" e)))
   (fnn-log-with-kernel (log)
-    (unless (fnn-log-pipeline-gate log)
+    (unless (fnn-log-pipeline-gate-read log)
       (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence (fnn-log-kernel log) (fnn-log-unit log))))
     (setf (fnn-log-fenced log) (append (fnn-log-inflight log) (fnn-log-fenced log))
           (fnn-log-inflight log) nil))
@@ -9201,13 +9206,14 @@ the observe callback): the frontier is the log's derived one."
       (fnn-refuse "Store transaction identity reservation refused (~a)" next))
     (unless (and (integerp next) (>= next 0))
       (fnn-fault "ACL2 returned malformed transaction identity reservation"))
-    (if (fnn-log-pipeline-gate log)
+    (if (fnn-log-pipeline-gate-read log)
         (fnn-log-pipeline-step (log x)
           (fnn-core 'fn-ocp-gc-entry-reserve x *fnn-log-pipeline-which* current-txid))
       (fnn-log-with-kernel (log)
         (setf (fnn-log-kernel log)
               (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) current-txid))))
-    (setf (fnn-log-reserved log) current-txid)
+    (fnn-log-with-kernel (log)
+      (setf (fnn-log-reserved log) current-txid))
     (unless (eq (fnn-observe store :log-reserve) :reserved)
       (setf (fnn-store-fenced store) t)
       (fnn-fault "ACL2 rejected the log route's reservation"))
@@ -9254,7 +9260,7 @@ An empty batch can prepare one candidate; its exact fit precedes publication."
     (when (eq (fnn-log-with-kernel (log) (fnn-core 'fn-lgc-phase (fnn-log-kernel log))) :fault)
       (fnn-indeterminate "the log's barrier failed; the store needs recovery"))
     (destructuring-bind (verdict ks entry)
-        (if (fnn-log-pipeline-gate log)
+        (if (fnn-log-pipeline-gate-read log)
             (let* ((x (fnn-log-pipeline-step (log before)
                         (fnn-core 'fn-ocp-gc-entry-take before *fnn-log-pipeline-which*
                                   octets (fnn-log-reserved log))))
@@ -9456,7 +9462,7 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
 and the fenced staged payloads reseated as their log extents."
   (let ((log (fnn-store-log store)))
     (fnn-log-with-kernel (log)
-      (if (fnn-log-pipeline-gate log)
+      (if (fnn-log-pipeline-gate-read log)
           ;; COMPLETE already installed the dispatcher's ACK projection.
           (setf (fnn-log-pending log) 0)
         (fnn-log-ack log (fnn-log-pending log))))
@@ -9469,7 +9475,8 @@ and the fenced staged payloads reseated as their log extents."
 ;;; kernel's fence (fnn-log-fence: cut log-fenced), and nothing else -- no
 ;;; owner global, no store field but the log struct under its lock.
 ;;; COMPLETE under the owner: the acknowledgements (fnn-log-batch-finish).
-;;; A batch of one and the inline quantum keep fnn-log-commit-open-batch.
+;;; Standalone direct commits keep fnn-log-commit-open-batch; queued and
+;;; held drains share the owner pipeline, with no inline queued job.
 
 (defun fnn-log-await-sync (log)
   "The syncer's word for the batch in flight: :fenced or :failed, waiting

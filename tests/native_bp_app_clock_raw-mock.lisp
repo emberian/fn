@@ -37,6 +37,9 @@
 (defun fnn-owner-complete-bp-transit-submission (service submit-callback msgid raw stored groups evidence generation txid planned-id planned-subject)
   (declare (ignorable service submit-callback msgid raw stored groups evidence generation txid planned-id planned-subject))
   (harness-stub-reached 'fnn-owner-complete-bp-transit-submission "host/native/owner.lisp"))
+(defun fnn-owner-held-submission (service cid callback &optional class)
+  (declare (ignorable service cid callback class))
+  (harness-stub-reached 'fnn-owner-held-submission "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 
 (defvar *actions* nil)

@@ -8633,6 +8633,24 @@
    "registry": true
   },
   {
+   "book_digest": "08eda861f6991ea9504b8088975e647ae3f2e43b71812660dd8f49913a819c69",
+   "bounds": [],
+   "claim_digest": "e519b76140c181c0d6614452923abbfa8fa7cdd630de63545f6c4dc45e5d70d0",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-lgk-append-behind-safe",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lgk-append-behind",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-lgk-append-preserves-relation",
    "registry": true
@@ -8661,6 +8679,132 @@
    "class": "hand",
    "name": "fn-lgk-known-abort-preserves-relation",
    "registry": true
+  },
+  {
+   "book_digest": "bfba35829bfecd14bcbba7ee61ee462f3f1fad0d61597db0074963c772bc12eb",
+   "bounds": [],
+   "claim_digest": "cc887183aa787112ab0a513cf7cb93daee20e4ab5e36bb19cf7167996797120f",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-lgk-pipe-ack-keeps-store-safe",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-refinement-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lgk-pipe-ack",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "08eda861f6991ea9504b8088975e647ae3f2e43b71812660dd8f49913a819c69",
+   "bounds": [],
+   "claim_digest": "e0038eb8381c134bc7b3042dfc9f07676ba8605e5142f00d4ce46fd3bbbc6935",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-lgk-pipe-fence-safe",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lgk-pipe-fence",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "bfba35829bfecd14bcbba7ee61ee462f3f1fad0d61597db0074963c772bc12eb",
+   "bounds": [],
+   "claim_digest": "e8b306fc4229e8578213a7e534ce9c021e938de9e6719edfd51175d4232d7ebc",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-lgk-pipe-physical-append-establishes-link",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-refinement-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lgk-pipe-physical-append",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "bfba35829bfecd14bcbba7ee61ee462f3f1fad0d61597db0074963c772bc12eb",
+   "bounds": [],
+   "claim_digest": "cf600f2f472f69681e106b94d19046f5b3255b0b2b2884548c008358b9ef13f9",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-lgk-pipe-prefix-failure-keeps-durable-prefix",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-refinement-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-bs-pipe-fsync-prefix",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "bfba35829bfecd14bcbba7ee61ee462f3f1fad0d61597db0074963c772bc12eb",
+   "bounds": [],
+   "claim_digest": "8237a0449dd54e0dd4244e6276ef1cc5e5d5cbd40c80d618da4491e8f42761a5",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-lgk-pipe-prefix-fence-crash-recovers-acknowledged",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-refinement-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-bs-pipe-fsync-prefix",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "bfba35829bfecd14bcbba7ee61ee462f3f1fad0d61597db0074963c772bc12eb",
+   "bounds": [],
+   "claim_digest": "7f1843e3135c005fb3b79254083f3b5fb0632a0bc1a495f66947892206d1a6d5",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-lgk-pipe-prefix-fence-safe",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-refinement-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-bs-pipe-fsync-prefix",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "bfba35829bfecd14bcbba7ee61ee462f3f1fad0d61597db0074963c772bc12eb",
+   "bounds": [],
+   "claim_digest": "9da1771263b61945f1be330c38fcdd472056751aecc2b7b29e6e313ffce66849",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-lgk-pipe-promotion-restores-relation",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-refinement-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lgk-pipe-physical-append",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -11677,6 +11821,96 @@
    "registry": true
   },
   {
+   "book_digest": "08eda861f6991ea9504b8088975e647ae3f2e43b71812660dd8f49913a819c69",
+   "bounds": [],
+   "claim_digest": "2f4276e6be4f36bb108f777d1fe4fed76507fa3a18f58358c04dc48e6d0fa4f1",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocp-gc-failure-fences-both-batches",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocp-gc-host-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "bfba35829bfecd14bcbba7ee61ee462f3f1fad0d61597db0074963c772bc12eb",
+   "bounds": [],
+   "claim_digest": "a8835febcbc234cc154f84d71917e3e8f3d6b487ef1dc0f54308f0cdfa67261e",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocp-gc-host-step-commutes-with-projection",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-refinement-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-ocp-gc-host-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "08eda861f6991ea9504b8088975e647ae3f2e43b71812660dd8f49913a819c69",
+   "bounds": [],
+   "claim_digest": "7bca1c20e678b35cf40e2ddee0bad3e5d6a9d210a5ae5bdd309cdec00c43595e",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-ocp-gc-linkedp-initially",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocp-gc-init",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "08eda861f6991ea9504b8088975e647ae3f2e43b71812660dd8f49913a819c69",
+   "bounds": [],
+   "claim_digest": "60f739fe816af1512a5f8bd0f3c4ba4a640a1eee54286c317e6aad470e3a2a8b",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocp-gc-linkedp-preserved",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocp-gc-host-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "08eda861f6991ea9504b8088975e647ae3f2e43b71812660dd8f49913a819c69",
+   "bounds": [],
+   "claim_digest": "ee2ba5c1c0db37d14eb9cba851f6723a505b109068cfa37702be7c00e404ac85",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocp-gc-reveals-are-durable",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocp-gc-host-step",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-ocp-in-flight-admits-only-inspect-commit-and-reader",
    "registry": true
@@ -12210,6 +12444,24 @@
    "class": "hand",
    "name": "fn-olr-extension-target-is-an-extent",
    "registry": true
+  },
+  {
+   "book_digest": "08eda861f6991ea9504b8088975e647ae3f2e43b71812660dd8f49913a819c69",
+   "bounds": [],
+   "claim_digest": "c529e488b8bf9889d989e7a2ae90d4ad430ecff8fb62f1935d66474c76555652",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-olr-gc-membership-and-profile-bounds",
+   "owed_met": null,
+   "owner_book": "tests/acl2/gc-pipeline-teeth.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lgk-pipe-take",
+   "witness": "executable"
   },
   {
    "class": "hand",

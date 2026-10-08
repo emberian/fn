@@ -13,7 +13,10 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 (load "host/native/trace.lisp")
-(load "tests/raw_def_loop.lisp")
+;; Plain SBCL needs the generator plumbing; a scoped ACL2 run already
+;; owns W/GETPROPC and must keep its real world and guard metadata.
+(unless (and (fboundp 'w) (boundp '*the-live-state*))
+  (load "tests/raw_def_loop.lisp"))
 
 (declaim (declaration xargs))
 (defun member-equal (x l) (member x l :test #'equal))
@@ -99,7 +102,17 @@ a def-loop form is expanded by the book's own generator (tests/raw_def_loop.lisp
 (defun fnn-owner-service-stopping (s) (svc-stopping s))
 (defun note (s x) (push x (svc-log s)))
 (defun fnn-owner-gate-check (g) (note g :check))
+(defun fnn-owner-stop-wake (s)
+  (when (sb-thread:holding-mutex-p (fnn-owner-service-lock s))
+    (error "stop wake still owns the owner mutex"))
+  nil)
 (defun fnn-owner-space-preobserve (s) (declare (ignore s)) nil)
+;; This fixture observes the envelope, not physical cleanup. The cleanup
+;; callback must run only after O is released; its I/O is tested separately.
+(defun fnn-owner-post-section (s)
+  (when (sb-thread:holding-mutex-p (fnn-owner-service-lock s))
+    (error "post-section cleanup still owns the owner mutex"))
+  nil)
 (defun fnn-owner-gate-enter (g c) (note g (list :enter c)) 0)
 (defun fnn-owner-gate-leave (g c held waited)
   (declare (ignore held waited)) (note g (list :leave c)))

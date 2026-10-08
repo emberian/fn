@@ -1,0 +1,72 @@
+; Two disjoint child projections of the qualified startup thread allowance.
+; Reuse the existing one-worker ledger and its physical+operation receipts.
+(in-package "ACL2")
+(include-book "resource-syncer")
+(include-book "owner-commit-worker-profile")
+(local (in-theory (disable (tau-system))))
+(defun fn-ros-pipeline-partition (threads)
+  (declare (xargs :guard t))
+  (if (and (natp threads) (<= (len (fn-ocp-io-worker-roles)) threads))
+      (list (fn-ocp-io-worker-roles) (- threads (len (fn-ocp-io-worker-roles)))) nil))
+(defthm fn-ros-pipeline-partition-conserves-workers
+  (implies (fn-ros-pipeline-partition threads)
+    (and (no-duplicatesp-eq (car (fn-ros-pipeline-partition threads)))
+         (natp (cadr (fn-ros-pipeline-partition threads)))
+         (equal (+ (len (car (fn-ros-pipeline-partition threads)))
+                   (cadr (fn-ros-pipeline-partition threads))) threads))))
+(defun fn-ros-install-pipeline-role (role threads stack fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :guard t))
+  (if (not (and (fn-ros-pipeline-partition threads)
+                (member-eq role (fn-ocp-io-worker-roles))))
+      (mv :invalid-worker-partition fn-resource-ledger)
+    (fn-ros-install-syncer 1 stack fn-resource-ledger)))
+(defun fn-ros-pipeline-issue (role generation fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :guard t))
+  (if (not (member-eq role (fn-ocp-io-worker-roles)))
+      (mv :invalid-worker-role nil fn-resource-ledger)
+    (mv-let (word token fn-resource-ledger) (fn-ros-issue generation fn-resource-ledger)
+      (mv word (and (equal word :drawn) (list role token)) fn-resource-ledger))))
+(defun fn-ros-pipeline-role-tokenp (role token)
+  (declare (xargs :guard t))
+  (and (member-eq role (fn-ocp-io-worker-roles)) (true-listp token)
+       (equal (len token) 2) (equal (car token) role)))
+(defun fn-ros-pipeline-physical (role token receipt fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :guard t))
+  (if (not (fn-ros-pipeline-role-tokenp role token))
+      (mv :stale fn-resource-ledger)
+    (fn-ros-physical (cadr token) receipt fn-resource-ledger)))
+(defun fn-ros-pipeline-outcome (role token generation fn-resource-ledger)
+  (declare (xargs :stobjs fn-resource-ledger :guard t))
+  (if (not (fn-ros-pipeline-role-tokenp role token))
+      (mv :stale fn-resource-ledger)
+    (fn-ros-outcome (cadr token) generation fn-resource-ledger)))
+(defthm fn-ros-pipeline-wrong-role-keeps-custody
+  (implies (not (equal (car token) role))
+    (and (equal (fn-ros-pipeline-physical role token receipt ledger) (list :stale ledger))
+         (equal (fn-ros-pipeline-outcome role token generation ledger) (list :stale ledger))))
+  :hints (("Goal" :in-theory (disable fn-ros-physical fn-ros-outcome))))
+
+(defthm fn-ros-install-pipeline-role-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let ((after (mv-nth 1 (fn-ros-install-pipeline-role role threads stack ledger))))
+   (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+ :hints (("Goal" :in-theory
+          (e/d (fn-ros-install-pipeline-role) (fn-ros-install-syncer fn-resource-ledgerp fn-rl-wfp)))))
+(defthm fn-ros-pipeline-issue-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let ((after (mv-nth 2 (fn-ros-pipeline-issue role generation ledger))))
+   (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+ :hints (("Goal" :in-theory
+          (e/d (fn-ros-pipeline-issue) (fn-ros-issue fn-resource-ledgerp fn-rl-wfp)))))
+(defthm fn-ros-pipeline-physical-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let ((after (mv-nth 1 (fn-ros-pipeline-physical role token receipt ledger))))
+   (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+ :hints (("Goal" :in-theory
+          (e/d (fn-ros-pipeline-physical) (fn-ros-physical fn-resource-ledgerp fn-rl-wfp)))))
+(defthm fn-ros-pipeline-outcome-keeps-representation
+ (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger))
+  (let ((after (mv-nth 1 (fn-ros-pipeline-outcome role token generation ledger))))
+   (and (fn-resource-ledgerp after) (fn-rl-wfp after))))
+ :hints (("Goal" :in-theory
+          (e/d (fn-ros-pipeline-outcome) (fn-ros-outcome fn-resource-ledgerp fn-rl-wfp)))))

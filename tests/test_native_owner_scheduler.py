@@ -64,45 +64,39 @@ class SchedulerSourceTests(unittest.TestCase):
         # fn-osch-next's for the four classes: PRF-267, PRF-248).
         self.assertIn("'fn-otm-next", owner)
         self.assertIn("'fn-otm-observe", owner)
-        # The committer's pipeline: START (it seals) as a :commit quantum, the
-        # SYNC in the syncer thread with the owner released, at most one
-        # START-NEXT (not sealed) behind it, then COMPLETE as a :commit
-        # quantum, which seals the next batch only after the replies.
-        batch = owner[owner.index("(defun fnn-owner-commit-pipeline "):owner.index("(defun fnn-owner-committer-loop")]
-        self.assertIn("'fn-otm-commit-event", owner)
-        self.assertIn("'fn-otm-committer-wake", owner)
-        self.assertLess(batch.index("(fnn-owner-commit-start-locked service)"),
-                        batch.index("(fnn-owner-start-syncer service gen job syncer-grant)"))
-        self.assertLess(batch.index("(fnn-owner-start-syncer service gen job syncer-grant)"),
-                        batch.index("(fnn-owner-commit-start-locked service :seal nil)"))
-        self.assertLess(batch.index("(fnn-owner-actor-join service syncer)"),
-                        batch.index("service :complete members deferred)"))
-        self.assertLess(batch.index("service :complete members deferred)"),
-                        batch.index("(fnn-log-seal-capture store)"))
+        # Both callers share the derived START/SYNC/COMPLETE route. B can
+        # append while A's barrier runs; both physical receipts precede COMPLETE.
+        batch = owner[owner.index("(defun fnn-owner-commit-pipeline\n"):owner.index("(defun fnn-owner-committer-loop")]
+        self.assertTrue("'fn-ocp-gc-entry-complete" in owner)
+        self.assertIn("'fn-ocp-gc-committer-wake", owner)
+        needles = ["(fnn-owner-commit-start-locked service :held",
+                   "(fnn-owner-start-syncer service gen job syncer-grant)",
+                   "(fnn-owner-commit-start-locked service :seal nil)",
+                   "(fnn-owner-start-append-prefix service",
+                   "(fnn-owner-actor-join service syncer)",
+                   "(fnn-owner-actor-join service prefix-thread)",
+                   "service :complete members deferred)"]
+        offsets = [batch.index(needle) for needle in needles]
+        self.assertEqual(offsets, sorted(offsets))
+        self.assertLess(offsets[-1], batch.index(":completed-stopping :completed"))
         self.assertEqual(batch.count("(fnn-owner-start-syncer service gen job syncer-grant)"), 1)
-        # Lane owner-offlock: the syncer runs the batch JOB (its phases are
-        # ACL2's, books/owner-queued-work.lisp); the barrier is its :fence.
+        self.assertNotIn("(fnn-log-seal-capture", batch)
+        self.assertNotIn("(fnn-owner-batch-job", batch)
         syncer = owner[owner.index("(defun fnn-owner-batch-fence "):owner.index("(defun fnn-owner-batch-effect ")]
         self.assertIn("(fnn-log-sync-sealed-batch ", syncer)
         control = (ROOT / "host" / "native" / "control.lisp").read_text()
         live = control[control.index("(defun fnn-control-live-status-answer "):control.index("(defun fnn-control-handle-client")]
         self.assertIn(":inspect))", live)
-        # Each member's reply is the release ACL2 names (fn-ocs-member-releases,
-        # keystone fn-ocs-members-told-only-after-the-barrier): the COMPLETE
-        # takes ACL2's action, never a host-computed flag, and the inline
-        # commit asks fn-ocs-commit-step for its steps.
-        complete = owner[owner.index("(defun fnn-owner-commit-complete-locked "):owner.index("(defun fnn-owner-commit-step-action")]
+        complete = owner[owner.index("(defun fnn-owner-commit-complete-locked "):owner.index("(defun fnn-owner-pipeline-advance")]
         self.assertIn("'fn-ocs-member-releases action", complete)
         self.assertNotIn("(cons :close (second m))", complete)
-        inline = owner[owner.index("(defun fnn-owner-commit-queued-locked "):owner.index("(defun fnn-owner-commit-event ")]
-        self.assertIn("fnn-owner-commit-step-action", inline)
-        self.assertIn("'fn-ocs-commit-step", owner)
-        # fnn-core answers an mv function's FIRST value (the action): taking
-        # (first ...) of that keyword is a memory fault at nil in the saved
-        # image's compiled code (the operator post's inline commit, AW r4).
-        step = owner[owner.index("(defun fnn-owner-commit-step-action "):owner.index("(defun fnn-owner-commit-queued-locked ")]
-        self.assertIn("(fnn-core 'fn-ocs-commit-step phase event)", step)
-        self.assertNotIn("(first (fnn-core", step)
+        for deleted in ("fnn-owner-commit-queued-locked", "fnn-owner-commit-step-action"):
+            self.assertNotIn("(defun " + deleted, owner)
+        event = owner[owner.index("(defun fnn-owner-commit-event "):owner.index("(defun fnn-owner-commit-wake\n")]
+        self.assertIn("'fn-ocp-gc-entry-complete before", event)
+        advance = owner[owner.index("(defun fnn-owner-pipeline-advance "):owner.index("(defun fnn-owner-commit-event ")]
+        self.assertLess(advance.index("'fn-ocp-gc-entry-reader-advance before"),
+                        advance.index("(fnn-log-pipeline-promote log)"))
         commit_class = (ROOT / "books" / "owner-commit-class.lisp").read_text()
         self.assertIn("(fn-osch-next (fn-ocm-sched s) w)", commit_class)
         self.assertIn("(fn-osch-observe (fn-ocm-sched s) class hold-ms wait-ms)", commit_class)

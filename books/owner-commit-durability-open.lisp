@@ -58,3 +58,23 @@
                  fn-lgk-phase fn-lgk-inflight fn-ocvm-inv fn-ocvm-w
                  fn-ocvm-c fn-ocvm-a fn-ocvm-b fn-ocvm-views
                  fn-otm-phase-of fn-otm-next-of nth len true-listp)))))
+
+; A queued drain cannot consume the sole append role while an independent
+; prefix/frames operation still owns it. All original fairness rules remain.
+(defun fn-ocp-gc-committer-wake (s returned queued waiting append-idle append-returned)
+  (declare (xargs :guard t))
+  (if (and (not append-idle) (not append-returned)) :wait
+    (let ((wake (fn-otm-held-committer-wake s returned queued waiting)))
+      (if (and (equal wake :start-next) (not append-idle)) :wait wake))))
+(defthm fn-ocp-gc-next-needs-idle-append-role
+  (implies (equal (fn-ocp-gc-committer-wake s returned queued waiting append-idle append-returned) :start-next)
+    (and append-idle
+         (equal (fn-otm-held-committer-wake s returned queued waiting) :start-next)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-otm-held-committer-wake))))
+
+(defthm fn-ocp-gc-collect-waits-for-append-return
+  (implies (equal (fn-ocp-gc-committer-wake s returned queued waiting append-idle append-returned) :collect)
+    (or append-idle append-returned))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-otm-held-committer-wake))))

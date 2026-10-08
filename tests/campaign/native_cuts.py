@@ -194,7 +194,7 @@ LOG_PROGRAM_STEP_HOSTS = {"fn-lgrc-program": LOG_RECOVER_STEP_HOST}
 
 # The served commit on a store (lane commit-onto-log): P-BATCH as the
 # owner's commit quantum runs it (host/native/owner.lisp
-# fnn-owner-commit-queued-locked).  Each member's finish (fnn-finish: cuts
+# fnn-owner-commit-pipeline).  Each member's finish (fnn-finish: cuts
 # finish-consumed, finish-durable) is its in-memory completion, in order,
 # BEFORE the batch's append and barrier (fnn-log-commit-open-batch, `fnn-at'
 # after each program's host call); no member's reply leaves the owner before
@@ -982,13 +982,12 @@ def verify_post_log_cut_map() -> None:
         if not (0 <= body.find(call) < body.find(cut)):
             raise AssertionError("{}: {} then {} missing or out of order".format(name, call, cut))
     owner = (ROOT / "host/native/owner.lisp").read_text()
-    # START drains its members, then seals; COMPLETE acknowledges, then
-    # delivers; the inline quantum runs START, SYNC, COMPLETE; the committer
-    # collects the syncer's word before COMPLETE, and seals the next batch
-    # only after the replies of the batch in flight.
+    # START drains before its derived seal; capture only marshals the plan.
     start = host_function(owner, "fnn-owner-commit-start-locked")
-    if not (0 <= start.find("(fnn-owner-drain-one ") < start.find("(fnn-log-seal-capture ")):
-        raise AssertionError("START does not drain its members before the seal")
+    seal = start.find("'fn-ocp-gc-entry-seal before")
+    if not (0 <= start.find("(fnn-owner-drain-one ") < seal
+            < start.find("(fnn-log-pipeline-capture ")):
+        raise AssertionError("START does not drain, seal in ACL2, then capture its write plan")
     # The batch job (books/owner-queued-work.lisp fn-oqw-phases :batch): its
     # phases in the book's order, each executed by the effect that names it.
     book = (ROOT / "books/owner-queued-work.lisp").read_text()
@@ -1013,25 +1012,29 @@ def verify_post_log_cut_map() -> None:
     if not (0 <= complete.find("(fnn-log-batch-finish ")
             < complete.rfind("(fnn-owner-commit-release-member ")):
         raise AssertionError("COMPLETE does not acknowledge before it delivers")
-    quantum = host_function(owner, "fnn-owner-commit-queued-locked")
-    order = [quantum.find(x) for x in ("(fnn-owner-commit-start-locked ",
-                                       "(fnn-owner-batch-job ",
-                                       "(fnn-owner-commit-complete-locked ")]
-    if not (0 <= order[0] < order[1] < order[2]):
-        raise AssertionError("the inline commit quantum's order is not START, SYNC, COMPLETE")
+    for retired in ("fnn-owner-commit-queued-locked", "fnn-owner-commit-step-action"):
+        if re.search(r"\(defun\s+" + retired + r"\b", owner):
+            raise AssertionError("retired inline commit route returned: " + retired)
     pipeline = host_function(owner, "fnn-owner-commit-pipeline")
-    # The :complete call's member list is the batch's members less those a
-    # stall already released (lane time-model-2: fnn-owner-unreleased), so
-    # it is found by its phase word, not its argument text.
     complete_at = re.search(r"\(fnn-owner-commit-complete-locked\s+service\s+:complete\s", pipeline)
     order = [pipeline.find("(fnn-owner-start-syncer "),
-             # The syncer is an actor: its physical join is the custody
-             # receipt (3bda776c6), not a bare join-thread.
+             pipeline.find("(fnn-owner-start-append-prefix "),
              pipeline.find("(fnn-owner-actor-join service syncer)"),
+             pipeline.find("(fnn-owner-actor-join service prefix-thread)"),
              complete_at.start() if complete_at else -1,
-             pipeline.find("(fnn-log-seal-capture store)")]
-    if not (0 <= order[0] < order[1] < order[2] < order[3]):
-        raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
+             pipeline.find(":completed-stopping :completed")]
+    if min(order) < 0 or order != sorted(order):
+        raise AssertionError("pipeline order must be SYNC, append behind, both joins, COMPLETE, advance")
+    prefix = host_function(owner, "fnn-owner-run-append-prefix")
+    if not (0 <= prefix.find("'fn-ocp-gc-entry-append-issue before")
+            < prefix.find("(fnn-log-pipeline-capture log nil write t)")
+            < prefix.find("(fnn-owner-batch-effect service job phase)")
+            < prefix.find("(fnn-owner-pipeline-receipt service job word)")):
+        raise AssertionError("append-behind lacks its derived issue/effect/receipt split")
+    advance = host_function(owner, "fnn-owner-pipeline-advance")
+    if not (0 <= advance.find("'fn-ocp-gc-entry-reader-advance before")
+            < advance.find("(fnn-log-pipeline-promote log)")):
+        raise AssertionError("next physical custody promoted before its derived view advance")
     for cut in POST_LOG_CUTS[3:]:
         cut_step_index(cut)
 

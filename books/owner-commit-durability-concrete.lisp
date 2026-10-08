@@ -1,7 +1,7 @@
 ; One pipeline dispatcher, two kernel representations. Only the projection
 ; (existing fn-lgc count, not committed history) belongs in the native host.
 (in-package "ACL2")
-(include-book "owner-commit-durability")
+(include-book "owner-commit-durability-steps")
 (local (in-theory (disable (tau-system))))
 
 (defun fn-lgk-pipe-project (p)
@@ -176,9 +176,11 @@
            (cadr (fn-lgk-pipe-kernel-take ks record txid count octets bmax omax unit)))
           (fn-lgk-pipe-countedp ks))
    :hints (("Goal" :in-theory
-            (enable fn-lgk-pipe-kernel-take fn-lgk-pipe-countedp fn-lgc-take fn-olr-take
+            (e/d (fn-lgk-pipe-kernel-take fn-lgk-pipe-countedp fn-lgc-take fn-olr-take
                     fn-lgc-prepare fn-lgk-prepare fn-lgc-make fn-lgk-make
-                    fn-lgc-count fn-lgk-committed nth)))))
+                    fn-lgc-count fn-lgk-committed nth)
+             (fn-olr-entry-octets fn-lgk-next-txid fn-lgk-phase
+              fn-lgc-next-txid fn-lgc-phase fn-lg-pack-len))))))
 (defthm fn-lgk-pipe-kernel-take-view
   (let ((a (fn-lgk-pipe-kernel-take (fn-lgk-pipe-kernel-view ks)
                                    record txid count octets bmax omax unit))
@@ -301,23 +303,23 @@
   (equal (fn-ocp-gc-seal-extent (fn-ocp-gc-project x)) (fn-ocp-gc-seal-extent x))
   :hints (("Goal" :in-theory (e/d (fn-ocp-gc-seal-extent) (fn-lgc-append-len)))))
 (defthm fn-ocp-gc-seal-project
-  (equal (fn-ocp-gc-project (fn-ocp-gc-seal x nextp))
-         (fn-ocp-gc-seal (fn-ocp-gc-project x) nextp))
+  (equal (fn-ocp-gc-project (fn-ocp-gc-seal x nextp frames))
+         (fn-ocp-gc-seal (fn-ocp-gc-project x) nextp frames))
   :hints (("Goal" :cases ((not nextp))
            :in-theory (e/d (fn-ocp-gc-seal) (fn-ocp-gc-seal-extent)))))
 
 (local
  (defthm fn-ocp-gc-seal-projected-fields
   (implies (member-equal i '(1 2 4 5 6 7 8 9 10 11 12 13 14))
-    (equal (nth i (fn-ocp-gc-seal (fn-ocp-gc-project x) nil))
-           (nth i (fn-ocp-gc-seal x nil))))
+    (equal (nth i (fn-ocp-gc-seal (fn-ocp-gc-project x) nil frames))
+           (nth i (fn-ocp-gc-seal x nil frames))))
   :hints (("Goal" :use ((:instance fn-ocp-gc-seal-project (nextp nil)))
            :in-theory (e/d (fn-ocp-gc-project nth)
                             (fn-ocp-gc-seal fn-ocp-gc-seal-project))))))
 
 (defthm fn-ocp-gc-seal-held-project
-  (equal (fn-ocp-gc-project (fn-ocp-gc-seal-held x))
-         (fn-ocp-gc-seal-held (fn-ocp-gc-project x)))
+  (equal (fn-ocp-gc-project (fn-ocp-gc-seal-held x frames))
+         (fn-ocp-gc-seal-held (fn-ocp-gc-project x) frames))
   :hints (("Goal" :in-theory (e/d (fn-ocp-gc-seal-held) (fn-ocp-gc-seal)))))
 
 (defthm fn-ocp-gc-append-issue-project

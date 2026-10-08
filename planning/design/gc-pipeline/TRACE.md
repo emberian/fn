@@ -97,24 +97,23 @@ I = `host/native/io.lisp`; book names refer to `books/`.
    counts packed 4+record bytes (same book:81), not whole padded log bytes.
    Draft requires a profile-consistent single-record fit and encoded-length
    preflight. Validate profile consistency; do not truncate an oversized record.
-5. Proposed derived entries: owner-commit-durability.lisp names one unconditional
-   -by-definition equation per entry: fn-ocp-gc-entry-start (:start),
-   entry-start-next (:next), entry-complete (:collect), entry-syncer (:io),
-   entry-reader-advance (:advance). All return the entire dispatcher result;
-   the projection is identity. Native quanta must install that result, not
-   keep a shadow model beside independent decisions. Entry-syncer receives
-   exactly one OQW phase receipt after I/O. COMPLETE now ACKs/releases in
-   :collect; a separate :advance follows log/reply effects and advances the
-   reader view with logical next-batch promotion. No I/O between those two
-   decisions: an extent that is not ready leaves advance waiting.
-6. DELETE LIST (same host change): fnn-owner-commit-queued-locked
-   (merged O:4807), its fnn-owner-commit-step-action helper, and fnn-log-take's
-   :full wait/commit fallback (merged I:9239-9246). Replace callers with
-   ACL2 continuations and capacity preflight, then remove all associated
-   LOCK-R2-COMMIT-INLINE-LOG-IO keys. No lock-rule weakening.
-7. Guarded micro-step checkpoint: run-20261008T083407Z-1652, exit 0,
-   six books passed, zero ACL2 Error; owner book 11.5 s (D26 red, proof tuned).
-   Later OTM gate arms and unconditional concrete projection are REPL-proved.
-   Physical append establishes the two-write relation; prefix fence preserves
-   durable/crash safety and promotion restores old fn-lgk-relp (persvati REPL).
-   Physical teeth: three positives, two intended failures PASS. Host wiring/deletions/gates owed.
+5. Derived entries live in owner-commit-durability-steps.lisp; invariant proofs
+   use local effect/drain lemma books and owner-commit-durability.lisp. START/START-NEXT,
+   COMPLETE (:collect), syncer receipt (:io), reader advance (:advance) CALL
+   fn-ocp-gc-host-step, each with an unconditional -by-definition equation.
+   OPEN uses the actual counted kernel/scheduler. G -> K atomically installs
+   returned projections; begin/reserve/take/member/seal follow the real drain.
+6. DELETE LIST IMPLEMENTED: fnn-owner-commit-queued-locked, its action helper
+   and START classifier, fnn-log-take's :full wait/commit fallback, and the
+   optional legacy batch-job branch. Control/hybrid/BP use the same driver:
+   original class in START, joined COMPLETE under :commit, callback at :submit.
+   Pending frames keep zero-record held jobs staged. STOPPING never submits;
+   the committer rechecks fn-otm-committer-may-start under O.
+7. B's separately funded append actor lets the committer monitor A's stalls.
+   Two role-tagged ledgers reuse resource-syncer; heap charges the extra worker
+   (1 MiB stack + 4 MiB runtime). Lock check adds zero keys versus train31.
+   Global fdatasync/O keys still cover OTHER direct commits; not all disappear.
+8. Keystones, guards, projection and fourteen registered teeth REPL-proved.
+   Farm24passed/0ACL2Errors; narrow run-20261008T122416Z-09fc exit0,551cached.
+   Full-world load blocked: umbrella certification exhausts certifier TLS64k.
+   Interface/teeth/source-cut gates pass; D26 and global lock debts stay visible.

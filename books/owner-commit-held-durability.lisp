@@ -59,7 +59,7 @@
          (fn-ocp-gc-held-coherentp (fn-ocp-gc-reserve x nextp txid))
          (fn-ocp-gc-held-coherentp (fn-ocp-gc-take x nextp record txid))
          (fn-ocp-gc-held-coherentp (fn-ocp-gc-member x nextp outcome))
-         (fn-ocp-gc-held-coherentp (fn-ocp-gc-seal x nextp))
+         (fn-ocp-gc-held-coherentp (fn-ocp-gc-seal x nextp frames))
          (fn-ocp-gc-held-coherentp (fn-ocp-gc-append-issue x))))
   :hints (("Goal" :do-not-induct t
            :in-theory (enable fn-ocp-gc-held-coherentp fn-ocp-gc-begin
@@ -113,7 +113,7 @@
   :hints (("Goal" :in-theory (enable fn-ocp-gc-linkedp)))))
 (local
  (defthm fn-ocp-gc-seal-current-keeps-next-phase
-  (equal (nth 5 (fn-ocp-gc-seal x nil)) (nth 5 x))
+  (equal (nth 5 (fn-ocp-gc-seal x nil frames)) (nth 5 x))
   :hints (("Goal" :in-theory (union-theories '(fn-ocp-gc-seal nth-update-nth (:e nfix) (:e equal))
                                                   (theory 'minimal-theory))))))
 (local
@@ -128,7 +128,7 @@
 (local
  (defthm fn-ocp-gc-seal-held-keeps-held-coherent
   (implies (and (fn-ocp-gc-linkedp x) (fn-ocp-gc-held-coherentp x))
-    (fn-ocp-gc-held-coherentp (fn-ocp-gc-seal-held x)))
+    (fn-ocp-gc-held-coherentp (fn-ocp-gc-seal-held x frames)))
   :hints (("Goal"
            :use ((:instance fn-ocp-gc-drain-keeps-held-coherent (nextp nil)))
            :in-theory

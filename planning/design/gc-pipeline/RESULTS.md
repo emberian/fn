@@ -1,97 +1,96 @@
-# Phase 1c — persvati ground results, 2026-10-08
+# Pipeline code-phase evidence — 2026-10-08
 
-All draft definitions admitted. All witnesses evaluated in the same ACL2 world,
-without loading `statements.lisp`. The final run sent witness forms #4–#65:
-62 forms, 0 refused; ACL2 time 0.25 s, 1,264 prover steps (the three recursive
-witness checkers' termination proofs, not keystone proofs). Output:
-`(:POSITIVES T T T T T T T T T)` and `(:MATRIX-CASES 325)`.
-The eight `must-fail-checked` forms all translated and caught failed ground
-assertions. Each also has an explicit passing negation; no proof timeout is
-counted as a counterexample.
+Status: code and narrow certificate closure complete; not READY for integration.
+N owns the native POST p50/p99 gate. No image was built, no commit or push made.
 
-| Witness | Actual result |
-| --- | --- |
-| W1 initial profile hypothesis and linkedp | PASS |
-| W2 second append admitted; both batches nonempty; partition, D, ACK bound | PASS; write offset 1024, length 512; D remains 1 |
-| W3 whole successful step trace, including ACK and reader advance | PASS; final D=ACK=completed=3 |
-| W4 reader while both batches appended | PASS; reader cut=1, D=1 |
-| W5 first fence and feed resolution | PASS; D=2, next record 67 still pending, feed cut=2 |
-| W6 first COMPLETE and promotion; ACK refinement/write-plan equation | PASS; ACK=2, reply rendered, B resumes at :fence without rewrite |
-| W7 failed current fence and arbitrary sample late events | PASS; both members uncertain (:uncertain-reply :close), D=ACK=1 |
-| W8 new-kernel TAKE membership/profile; frozen B refuses further take | PASS; :full after B appended |
-| W9 25 reached prefix states × 13 event variants | PASS, 325 cases; success/uncertain/fault and invalid orders |
-| T1 reply released at append | Negation PASS; positive assertion fails as intended |
-| T2 reader advanced at append | Negation PASS; positive assertion fails; reader cut 2 > D=1 |
-| T3 remove failure's phase premise ONLY | Negation PASS; positive assertion fails in reached :done state |
-| T4 remove encoded-octet preflight, use raw fn-olr-take | Negation PASS; positive assertion fails: 512 > OMAX=5 |
-| T5 remove exact count correspondence | Negation PASS; positive assertion fails: two records > BMAX=1 |
-| T6 release next member's acceptance after failure | Negation PASS; positive assertion fails |
-| T7 ACK-at-append corrupts incoming ACK prefix | Negation PASS; positive assertion fails: ACK=3 > D=1 |
-| T8 old singleton exemption at OMAX=1 | Negation PASS; positive assertion fails: packed bytes=5 > 1 |
+## Proofs and connection to execution
 
-## Satisfiability and vacuity audit
+The host calls derived entries in `books/owner-commit-durability-steps.lisp`.
+Each calls its `fn-ocp-gc-host-step` arm; its unconditional `-by-definition`
+equation includes the returned state and effect packet. START's real drain is
+split into begin/reserve/take/member/seal; each I/O effect has a separate receipt.
+The existing kernel, OCP admission and OCVM reader vocabulary remain the model.
+The counted dispatcher projection commutes unconditionally, including effects.
+Guards are verified without testing the full semantic invariant on the served path.
 
-- Kernel append/fence hypotheses: W2/W5 assert pipe-okp on reached states.
-  W2 additionally asserts admission, nonempty A and B, :appended, the new bit
-  and a nonempty actual codec-generated write plan. Safety is not satisfied
-  merely because append refused. Partition preservation at append is simple
-  because the kernel fields are shared, deliberately; the write plan and
-  frozen-next admission are the new behavior. The multi-write disk relation
-  remains a distinct proof obligation.
-- Initial/preservation keystone: W1 asserts the full profile hypothesis and
-  initial linkedp. W3/W9 assert linkedp before AND after every tested step.
-  Neither transition calls linkedp, pipe-okp, reveals-okp or a successor
-  invariant as an admission check. The step code must preserve coupling;
-  that coupling is no longer an externally supplied successful-receipt premise.
-  The initial case excludes a false/unreachable invariant as a universal claim.
-- Reveal corollary: W4/W5/W6 exercise nonzero reader/feed/reply dependency cuts.
-  linkedp contains neither emitted cuts nor reveals-okp. Output safety is a
-  claim about outputs freshly emitted by host-step; it is not a claim about
-  arbitrary injected output fields. T1/T2 reject precisely the early-output
-  mutations. Actual protocol byte provenance still needs renderer refinement.
-- Failure keystone: W7 asserts its ENTIRE hypothesis and conclusion with both
-  record batches and member lists nonempty. T3 retains linkedp and both lists
-  while dropping only current phase=:fence; the failed conclusion shows why
-  the phase matters. The theorem quantifies arbitrary post-failure event lists;
-  the ground witness uses a finite suffix, not a universal proof.
-- Membership keystone: W8 asserts its ENTIRE hypothesis/conclusion over the new
-  kernel. Hypothesis contains no okp conclusion. Bounds follow the EXECUTABLE
-  preflight and exact count; exact suffix membership additionally requires
-  fn-olr-take's effect, not preflight alone. T4 removes preflight at the decision
-  (raw TAKE), showing why the new check is needed; T5 drops count correspondence.
+Proved signed keystones: `fn-lgk-append-behind-safe`, `fn-lgk-pipe-fence-safe`,
+`fn-ocp-gc-linkedp-initially`, `fn-ocp-gc-linkedp-preserved`,
+`fn-ocp-gc-reveals-are-durable`, `fn-ocp-gc-failure-fences-both-batches`, and
+`fn-olr-gc-membership-and-profile-bounds`. The reveals claim is a corollary.
+Effect/drain preservation lemmas are separate local proof-book dependencies;
+there is still only one dispatcher. Held coherence is additional, not a narrower
+LINKEDP hypothesis. Physical prefix-fsync and promotion proofs retain the original
+byte-store semantics and restore the existing single-inflight relation.
 
-## Draft changes and limits
+REPL on persvati: seven signed defteeth declarations bind to the actual formulas;
+all positive/removal witnesses pass, and five early-release mutants are rejected.
+Seven additional physical/refinement declarations pass. The crash-image witness
+uses ACK=1 and proves its positive/removal ground lemmas because crash-imagep is
+quantified; it is not presented as ordinary executable predicate evaluation.
+Other teeth: original nine positives/eight must-fails and event matrix; 1,728 drain
+cases; physical prefix/failure/promotion; exact encoded profile fit and removal;
+held zero-record frames, stop/no-submit; wake/append-return races; role-bank receipts.
+All 348 heap witnesses pass with the explicit extra worker (+5 MiB reservation).
+No signed theorem, lock rule or ratchet ceiling was weakened.
 
-The old readout-only contract became an initial/preserved state invariant;
-append-behind emits a positioned write plan and freezes the existing BATCH;
-first fence commits only INFLIGHT, then COMPLETE advances views and promotes B.
-The job-phase guard allows B's append only while A's fence is pending. Failure
-is sticky across late receipts. Member outcomes are separate from record counts.
-Kernel and composition functions are executable logic-mode DRAFT definitions.
-ACL2 rejected MV-NTH projections inside DEFUN/DEFCONST: replaced them with
-MV-LET projections. A witness checker's termination proof originally expanded
-the whole machine and hit 10 s; local hints closing the called functions reduced
-it to 608 steps. Neither failure was presented as a witness result.
+## Certificate gates
 
-No disagreement with S's premise-shift diagnosis. This is a proposed dispatcher,
-not a false claim that today's host already calls append-behind. Named equations
-in statements.lisp link scheduler projections and ACKs to the existing called
-cores; native generation/custody dispatch, effect/renderer and multi-write crash
-refinements remain owed. D is the GUARANTEED durable record prefix: a racing
-append may physically persist farther without being acknowledged. No new
-assumptions, skipped proofs, production definitions, certification or commits.
+`farm.py submit persvati --lane --affected-by` every book in `changed-books.txt`,
+plus the two registered teeth books, `--images off --jobs 2`:
 
-## Reproduce (persvati only; normal slot/resource controls)
+- `run-20261008T121143Z-7b0a` included the umbrella needed for host load:
+  24 books passed, zero ACL2 Error lines across all 25 logs; umbrella failed.
+  Triage: OTHER, SBCL thread-local storage exhausted at `bp-listener-set` under
+  the configured certifying `acl2-literal-4g-tls64k` launcher.
+- `run-20261008T122416Z-09fc` is the narrow lane verdict: exit 0, manifest
+  `certify-20261008T122443Z-3190801` passed, all 551 exact-form books cached,
+  33 roots. This run certified nothing afresh; it does not erase timing debt.
+- D26 remains red in the fresh run: drain/concrete 10.1 s each, host/store-host
+  18.9 s; broader required umbrella dependencies also exceed ten seconds.
+  The held-seal proof fell from 793,274 to 72,856 steps; take representation
+  fell from 545,689 to 194,319. Formula strength is unchanged.
 
-Both gc-pipeline-1b and gc-pipeline-1c are stopped. Before stopping, diff confirmed
-all 36 named contract events matched the source. The final session ran at `fn-gates/n-gc-pipeline-repl-gc-pipeline-1c`. Its server log and per-form
-outputs stay there; final client summary: `/tmp/n-gc-pipeline-1c-witnesses-final.log`.
-A fresh session can reproduce the final definitions/witnesses with:
+The farm's TLS256k launcher is explicitly load-only (tools/farm.py:108–114),
+with a different toolchain identity; it was not used to certify or publish.
+The remaining full-world certificate blocker needs the coordinator/toolchain lane.
 
-```sh
-timeout 300 python3 tools/proof_repl.py start gc-pipeline-check planning/design/gc-pipeline/contracts --upto fn-lgk-pipe-make --cached-only --host persvati --lane n-gc-pipeline --lease-wait 0 --limit 10
-timeout 90 python3 tools/proof_repl.py send-range gc-pipeline-check planning/design/gc-pipeline/contracts --from fn-lgk-pipe-make --host persvati --limit 10
-timeout 30 python3 tools/proof_repl.py send gc-pipeline-check '(include-book "../../../tests/acl2/must-fail-checked")' --host persvati --limit 10
-timeout 90 python3 tools/proof_repl.py send-range gc-pipeline-check planning/design/gc-pipeline/witnesses --from '*gc-init*' --host persvati --limit 10
-timeout 30 python3 tools/proof_repl.py stop gc-pipeline-check --host persvati
-```
+## Host and static gates
+
+- Requested `host_check.py --load` on persvati exits 0: 58/58 raw files,
+  zero findings, 3.7 s, but explicitly BARE fallback. `--require-world` exits 2
+  NOT RUN because the current umbrella certificate is missing. Interface/world
+  validation is therefore not claimed complete.
+- `interface_emit.py --check`: 1,850 declared, 1,801/1,801 dispatched, zero findings
+  and zero class/kinds disagreements. The existing output-tariff unresolved name
+  is reported by the tool and is not counted as a failure.
+- `keystone_emit.py --check`: 14 defkeystone forms in four books, zero findings.
+  Fourteen new bound defteeth rows are in the generated obligations manifest;
+  PRF-272/245/1245 describe their subjects. No ceiling or baseline was changed.
+- `lock_discipline_check.py --check`: global RED, 69 new finding rows, four stale,
+  plus four pre-existing BP callback audit moves. ZERO additional finding keys
+  against read-only train31 control; see `LOCK-CONTROL.json`. The requested
+  `tools/lock_discipline.py` filename does not exist in this tree.
+- `native_program_check.py`: zero mismatches over two programs; three log arms,
+  cut map, statement route, holder cuts and 15-log/7-segment cut inventory pass.
+  Its 29 focused Python tests and the scheduler source test pass.
+
+## Native change and retirement
+
+Both queued and held callers use the same off-owner pipeline. A separate funded
+append actor writes B while A's barrier runs; both physical and operation receipts
+retain custody through escape. Each bank is retained before mutating installation.
+Reader captures remain at durable boundaries. Profile preflight precedes dequeue.
+The inline queued helper/action/classifier, hidden :full wait/flush fallback and
+optional old batch-job branch are deleted. LOCK-R2-COMMIT-INLINE-LOG-IO is marked
+ready with this scoped retirement. Shared fdatasync/pwrite-under-O keys remain
+on other direct bound commits; deleting this route cannot erase those global keys.
+
+Raw persvati fixtures: BP identity and bound settlement pass; actual pipeline
+post-launch escape passes 12 schedules, plus torn-consumption custody/no retry.
+The recording custody fixture includes second-bank install escape retention.
+Typed custody passes actual producer/receipt checks and six actual typed
+abandonment schedules, using the real ACL2 world and judged dispatch verdicts.
+The final harness raw-arity check has zero findings; its three unrelated stale
+hand stubs (cold poll, output window, extent window) remain reported.
+The generator refreshed affected shared raw harness blocks, rather than hand-
+editing their signatures. Existing unrelated harness stub findings stay visible.

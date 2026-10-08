@@ -7,11 +7,13 @@ log=build/runtime-tests/native-syncer-typed.log
 # Includes are deliberately scoped, with no image build or closure request.
 # The resulting raw run is a native correspondence witness, not a proof.
 tools/acl2 --timeout 90 --wait-seconds 30 --label runtime-typed-syncer >"$log" 2>&1 <<'ACL2'
-(include-book "books/resource-syncer")
+(include-book "books/resource-syncer-pipeline")
 (include-book "books/owner-queued-work")
 (include-book "books/definterface")
+(include-book "books/raw-dispatch-verdict")
 (definterface create-fn-resource-ledger :class :common-lisp-compliant
   :raw-guarded (0 nil (fn-resource-ledger)))
+(ld "host/raw-dispatch-verdicts.lisp" :ld-error-action :error)
 (defttag :fn-runtime-typed-fixture)
 (progn! (set-raw-mode t) (load "tests/native_syncer_typed_raw.lisp"))
 (good-bye)

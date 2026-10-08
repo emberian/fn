@@ -73,7 +73,7 @@
   (destructuring-bind
       (tag keyring-generation source ed-signature ml-signature ml-path) request
     (declare (ignore tag))
-    (fnn-owner-serialized
+    (fnn-owner-held-submission
      service nil
      (lambda ()
       ;; The quantum's value is the answer; every refusing arm leaves through

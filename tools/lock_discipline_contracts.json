@@ -258,7 +258,7 @@
   }
  },
  "lock_order": {
-  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); O -> SL and S -> SL (SL, fnn-log-spare-slot-lock, guards only the log's spare slot and its close debt, held for no I/O: the rotation under O and the preparers under S meet there); O -> XCLOSEDEBT and E -> XCLOSEDEBT (XCLOSEDEBT, *fnn-close-debts-lock*, guards the two close-debt lists *fnn-immutable-close-debts* and *fnn-publication-close-debts*, a leaf held for no I/O: any writer that stages a file pushes or observes there, so the edge is declared from the two holders the check reaches); R -> XMUXSLOT (fnn-mux-adopt reads and increments the round-robin cursor under the slot lock inside the roster section, for the once client) and XMUXSLOT -> M (fnn-mux-slot-observation reads each loop under the loop lock, called under the service's slot lock, a defstruct-slot mutex the check verifies: locks XMUXSLOT struct_slot); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue).",
+  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); O -> SL and S -> SL (SL, fnn-log-spare-slot-lock, guards only the log's spare slot and its close debt, held for no I/O: the rotation under O and the preparers under S meet there); O -> XCLOSEDEBT and E -> XCLOSEDEBT (XCLOSEDEBT, *fnn-close-debts-lock*, guards the two close-debt lists *fnn-immutable-close-debts* and *fnn-publication-close-debts*, a leaf held for no I/O: any writer that stages a file pushes or observes there, so the edge is declared from the two holders the check reaches); R -> XMUXSLOT (fnn-mux-adopt reads and increments the round-robin cursor under the slot lock inside the roster section, for the once client) and XMUXSLOT -> M (fnn-mux-slot-observation reads each loop under the loop lock, called under the service's slot lock, a defstruct-slot mutex the check verifies: locks XMUXSLOT struct_slot); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue). Pipeline: G -> K installs the canonical dispatcher result and its log projection atomically. Kernel holders never enter G; all I/O runs after both locks are released. C -> K follows existing C -> G transitively.",
   "O": [
    "G",
    "R",
@@ -301,7 +301,8 @@
   "G": [
    "Q",
    "J",
-   "XOBS"
+   "XOBS",
+   "K"
   ],
   "R": [
    "A",
@@ -403,7 +404,8 @@
   "fnn-native-with-observation",
   "fnn-with-observed-mutex",
   "fnn-extent-native-observe",
-  "fnn-trace-span"
+  "fnn-trace-span",
+  "fnn-log-pipeline-step"
  ],
  "thread_thunk_wrappers": [
   "fnn-native-observed-thread-thunk"
@@ -585,7 +587,7 @@
  ],
  "debt_rethrows": {
   "fnn-pull-worker": {
-   "file": "host/native/pull-service.lisp",
+  "file": "host/native/pull-service.lisp",
    "clause": "serious-condition",
    "var": "failure",
    "slot": "fnn-pull-runtime-cleanup-debt",
@@ -797,7 +799,7 @@
   },
   "lambda@host/native/bp-app.lisp:fnn-command-bp-app-receive#lambda4": {
    "runs_in": "fnn-command-bp-app-receive",
-   "why": "bp-app receive's *fnn-tcl-deliver* binding (bp-app.lisp:379, audit-verified 2026-10-06), called by fnn-tcl-session for one accepted connection; fnn-accept-loop runs each handler to completion on the command's thread (io.lisp), no lock held"
+   "why": "bp-app receive's *fnn-tcl-deliver* binding (bp-app.lisp:380, audit-verified 2026-10-08), called by fnn-tcl-session for one accepted connection; fnn-accept-loop runs each handler to completion on the command's thread (io.lisp), no lock held"
   }
  },
  "threads": {

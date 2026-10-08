@@ -94,16 +94,8 @@
                              fn-lgk-fence fn-bs-fsync-file fn-bs-pipe-with-pending)))))
 
 (defthm fn-lgk-pipe-prefix-fence-crash-recovers-acknowledged
-  (let* ((after (mv-nth 1 (fn-bs-pipe-fsync-prefix bs ino (len (fn-bs-pending base)) :ok)))
-         (kernel (fn-lgk-fence ks (fn-bs-unit base)))
-         (a (fn-lgk-acked kernel))
-         (recovered (fn-lgk-committed
-                      (fn-lgk-recover (fn-bs-durable-content image ino)
-                                       genesis (fn-bs-unit after) max next-txid))))
-    (implies (and (fn-lgk-pipe-store-linkp bs base ks tail ino genesis max)
-                  (fn-bs-crash-imagep after image))
-      (and (<= a (len recovered))
-           (equal (take a recovered) (take a (fn-lgk-committed kernel))))))
+  (implies (and (fn-lgk-pipe-store-linkp bs base ks tail ino genesis max) (fn-bs-crash-imagep (mv-nth 1 (fn-bs-pipe-fsync-prefix bs ino (len (fn-bs-pending base)) :ok)) image))
+    (and (<= (fn-lgk-acked (fn-lgk-fence ks (fn-bs-unit base))) (len (fn-lgk-committed (fn-lgk-recover (fn-bs-durable-content image ino) genesis (fn-bs-unit (mv-nth 1 (fn-bs-pipe-fsync-prefix bs ino (len (fn-bs-pending base)) :ok))) max next-txid)))) (equal (take (fn-lgk-acked (fn-lgk-fence ks (fn-bs-unit base))) (fn-lgk-committed (fn-lgk-recover (fn-bs-durable-content image ino) genesis (fn-bs-unit (mv-nth 1 (fn-bs-pipe-fsync-prefix bs ino (len (fn-bs-pending base)) :ok))) max next-txid))) (take (fn-lgk-acked (fn-lgk-fence ks (fn-bs-unit base))) (fn-lgk-committed (fn-lgk-fence ks (fn-bs-unit base)))))))
   :rule-classes nil
   :hints (("Goal" :use (fn-lgk-pipe-prefix-fence-safe
                         (:instance fn-lgu-safe-image-recovers-the-acknowledged-records
@@ -189,15 +181,8 @@
   :hints (("Goal" :induct (len a)))))
 
 (defthm fn-lgk-pipe-physical-append-establishes-link
-  (let ((after (mv-nth 1 (fn-lgk-pipe-physical-append bs p ino extent outcome))))
-    (implies (and (fn-bs-shapep bs) (true-listp (fn-bs-pending bs))
-                  (fn-lgk-pipe-okp p h)
-                  (fn-lgk-relp bs (fn-lgk-pipe-ks p) ino genesis max)
-                  (equal (fn-lgk-phase (fn-lgk-pipe-ks p)) :appended)
-                  (fn-lgk-behind-admitsp p (fn-bs-unit bs) extent))
-      (fn-lgk-pipe-store-linkp after bs (fn-lgk-pipe-ks p)
-         (nthcdr (len (fn-bs-pending bs)) (fn-bs-pending after))
-         ino genesis max)))
+  (implies (and (fn-bs-shapep bs) (true-listp (fn-bs-pending bs)) (fn-lgk-pipe-okp p h) (fn-lgk-relp bs (fn-lgk-pipe-ks p) ino genesis max) (equal (fn-lgk-phase (fn-lgk-pipe-ks p)) :appended) (fn-lgk-behind-admitsp p (fn-bs-unit bs) extent))
+    (fn-lgk-pipe-store-linkp (mv-nth 1 (fn-lgk-pipe-physical-append bs p ino extent outcome)) bs (fn-lgk-pipe-ks p) (nthcdr (len (fn-bs-pending bs)) (fn-bs-pending (mv-nth 1 (fn-lgk-pipe-physical-append bs p ino extent outcome)))) ino genesis max))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-lgk-behind-write-starts-after-captured-prefix
                              (unit (fn-bs-unit bs)))
@@ -279,18 +264,8 @@
                  fn-lgk-append-octets fn-lgk-behind-effect fn-lgk-behind-admitsp))))))
 
 (defthm fn-lgk-pipe-promotion-restores-relation
-  (let* ((ks (fn-lgk-pipe-ks p)) (unit (fn-bs-unit bs))
-         (fenced (mv-nth 1 (fn-bs-fsync-file bs ino :ok)))
-         (ka (fn-lgk-fence ks unit))
-         (capacity (len (fn-bs-durable-content fenced ino)))
-         (written (mv-nth 1 (fn-lgk-pipe-physical-append bs p ino extent :ok)))
-         (after (mv-nth 1 (fn-bs-pipe-fsync-prefix written ino (len (fn-bs-pending bs)) :ok))))
-    (implies (and (fn-bs-shapep bs) (true-listp (fn-bs-pending bs))
-                  (fn-lgk-pipe-okp p h) (fn-lgk-relp bs ks ino genesis max)
-                  (equal (fn-lgk-phase ks) :appended)
-                  (fn-lgk-behind-admitsp p unit extent)
-                  (fn-lgk-fitsp ka unit capacity))
-      (fn-lgk-relp after (fn-lgk-append ka unit capacity) ino genesis max)))
+  (implies (and (fn-bs-shapep bs) (true-listp (fn-bs-pending bs)) (fn-lgk-pipe-okp p h) (fn-lgk-relp bs (fn-lgk-pipe-ks p) ino genesis max) (equal (fn-lgk-phase (fn-lgk-pipe-ks p)) :appended) (fn-lgk-behind-admitsp p (fn-bs-unit bs) extent) (fn-lgk-fitsp (fn-lgk-fence (fn-lgk-pipe-ks p) (fn-bs-unit bs)) (fn-bs-unit bs) (len (fn-bs-durable-content (mv-nth 1 (fn-bs-fsync-file bs ino :ok)) ino))))
+    (fn-lgk-relp (mv-nth 1 (fn-bs-pipe-fsync-prefix (mv-nth 1 (fn-lgk-pipe-physical-append bs p ino extent :ok)) ino (len (fn-bs-pending bs)) :ok)) (fn-lgk-append (fn-lgk-fence (fn-lgk-pipe-ks p) (fn-bs-unit bs)) (fn-bs-unit bs) (len (fn-bs-durable-content (mv-nth 1 (fn-bs-fsync-file bs ino :ok)) ino))) ino genesis max))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-pipe-prefix-write-commutes
                    (off (fn-lgk-frontier (fn-lgk-fence (fn-lgk-pipe-ks p) (fn-bs-unit bs))))
