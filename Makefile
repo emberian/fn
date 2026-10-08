@@ -827,6 +827,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-txid \
 	tests/acl2/store-log-txid-tests \
 	books/owner-batch \
+	books/store-log-failed-barrier \
 	tests/acl2/owner-batch-tests \
 	books/store-log-decode \
 	tests/acl2/store-log-decode-tests \
@@ -2040,8 +2041,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-tests \
 	books/public-exposure-reply \
 	tests/acl2/public-exposure-reply-tests \
-	books/served-reply-buffer \
-	tests/acl2/served-reply-buffer-tests \
 	books/served-plan \
 	tests/acl2/served-plan-tests \
 	books/def-cursor \

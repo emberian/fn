@@ -227,7 +227,6 @@
 (include-book "public-exposure-reply")
 (include-book "connection-budget")
 (include-book "tls-proxy")
-(include-book "served-reply-buffer")
 (include-book "owner-open-carried")
 (include-book "owner-reader-view")
 (include-book "owner-time-journal")

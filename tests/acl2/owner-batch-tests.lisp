@@ -12,6 +12,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-batch")
+(include-book "../../books/store-log-failed-barrier")
 (include-book "../../books/frame-trailer")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -306,6 +307,29 @@
         (equal (fn-lgk-committed (owb-eio-ks (owb-choice 0))) (list (owb-r 1) (owb-r 2)))
         ; a take after the fault is refused: nothing enters a faulted kernel
         (equal (fn-owb-take st1 13 '(6 . 5) (owb-r 6) (owb-unit) (owb-bmax) (owb-omax)) st1))))
+
+; KEYSTONE fn-lgc-failed-barrier-recovers-a-prefix (books/store-log-failed-barrier),
+; reachable.  The host's concrete kernel at the failed barrier is the
+; abstraction of the logical one; fn-lgc-fence-failed faults it and keeps the
+; batch in flight and the acknowledged count; the kernel recovered from the
+; store the failed fsync left holds the committed records then a prefix of
+; that batch, under each of the three selections (partial, all, none).
+(assert-event
+ (let* ((ks (fn-owb-ks (owb-st4))) (bs (owb-bs4))
+        (c (fn-lgc-fence-failed (fn-lgc-of ks))))
+   (and (fn-lgk-relp bs ks 0 (owb-genesis) (owb-max))
+        (consp (fn-lgc-inflight (fn-lgc-of ks)))
+        (equal (fn-lgc-phase c) :fault)
+        (equal (fn-lgc-acked c) (fn-lgk-acked ks))
+        (equal (fn-lgc-inflight c) (fn-lgk-inflight ks))
+        (equal (fn-lgc-count c) 2)
+        (fn-bs-crash-choicesp (owb-choice (owb-e1)) (fn-bs-pending bs) (owb-unit))
+        (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed (owb-eio-ks (owb-choice (owb-e1)))))
+                       (fn-lgc-inflight c))
+        (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed (owb-eio-ks (owb-choice (owb-units)))))
+                       (fn-lgc-inflight c))
+        (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed (owb-eio-ks (owb-choice 0))))
+                       (fn-lgc-inflight c)))))
 
 ; T7, hypothesis removal: R (the kernel of an unrelated store).  The failed
 ; fence of a store holding nothing leaves nothing; the recovered kernel's

@@ -355,7 +355,6 @@
 (include-book "../../books/public-exposure-reply")
 (include-book "../../books/connection-budget")
 (include-book "../../books/tls-proxy")
-(include-book "../../books/served-reply-buffer")
 (include-book "../../books/owner-open-carried")
 (include-book "../../books/owner-reader-view")
 (include-book "../../books/owner-time-journal")

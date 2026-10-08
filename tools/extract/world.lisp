@@ -30,7 +30,6 @@
 (include-book "../../books/login-binding")
 (include-book "../../books/public-exposure")
 (include-book "../../books/public-exposure-reply")
-(include-book "../../books/served-reply-buffer")
 (include-book "../../books/served-plan")
 (include-book "../../books/served-plan-cursor")
 (include-book "../../books/served-plan-line-buffer")
