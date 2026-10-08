@@ -36,6 +36,7 @@
 
 (in-package "ACL2")
 (include-book "def-representation-pages")
+(include-book "checkpoint-payload-ref")
 (include-book "pagestore-keystones")
 (include-book "owner-checkpoint-open")
 (include-book "store-checkpoint-buffer")
@@ -130,31 +131,100 @@
 ; closure disable executable counterparts, so enable the two for the instance.
 (local (in-theory (enable (:executable-counterpart adt-schemap)
                           (:executable-counterpart adt-ncols))))
-(def-representation fn-pck-row (prog :tree) :pages t)
+;; D41-STAGE5-ONE-ROW-IMAGE: a tape row is the record's METADATA tree and a ref
+;; (offset, length) to its payload in the append-only payload file
+;; (books/checkpoint-payload-ref.lisp), not the payload octets.
+(def-representation fn-pck-row (meta :tree) (off :u64) (len :u64) :pages t)
 
 (defconst *fn-pck-root-pages* 8)
 
-(defun fn-pck-enc-row (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (list (fn-scc-program x)))
+; Split a wire event into its metadata tree and its payload octets.  A record
+; (fn-record-p) carries a payload; any other event has none.  The metadata of a
+; record is the record with an empty payload, tagged :r; any other event is
+; tagged :o.
+(defun fn-pck-record-with-payload (w payload)
+  (declare (xargs :guard (fn-record-p w) :verify-guards nil))
+  (fn-record-make (fn-record-sequence w) (fn-record-txid w) (fn-record-generation w)
+                  (fn-record-msgid w) payload (fn-record-groups w)
+                  (fn-record-obligation-id w) (fn-record-content-subject w)
+                  (fn-record-release-evidence w) (fn-record-charge w) (fn-record-stamp w)))
 
-(defun fn-pck-rows (recs)
+(defun fn-pck-meta (w)
   (declare (xargs :guard t :verify-guards nil))
-  (if (atom recs) nil (cons (fn-pck-enc-row (car recs)) (fn-pck-rows (cdr recs)))))
+  (if (fn-record-p w)
+      (list :r (fn-pck-record-with-payload w nil))
+    (list :o w)))
 
-(defun fn-pck-root-tree-of-capture (c)
+(defun fn-pck-payload (w)
   (declare (xargs :guard t :verify-guards nil))
-  (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c)))
+  (if (fn-record-p w) (fn-record-payload w) nil))
+
+(defun fn-pck-join (meta payload)
+  ; The event METADATA and PAYLOAD denote.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp meta) (eq (car meta) :r) (consp (cdr meta)) (fn-record-p (cadr meta)))
+      (fn-pck-record-with-payload (cadr meta) payload)
+    (if (and (consp meta) (consp (cdr meta))) (cadr meta) nil)))
+
+(defun fn-pck-enc-row (w off)
+  ; The row of event W whose payload frame starts at file offset OFF.
+  (declare (xargs :guard t :verify-guards nil))
+  (list (fn-scc-program (fn-pck-meta w)) off (len (fn-pck-payload w))))
+
+(defun fn-pck-plen (recs base)
+  ; The payload-file length after the frames of RECS laid end to end from BASE.
+  (declare (xargs :guard (natp base) :verify-guards nil))
+  (if (atom recs)
+      base
+    (fn-pck-plen (cdr recs) (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs))))))))
+
+(defun fn-pck-rows-from (recs base)
+  (declare (xargs :guard (natp base) :verify-guards nil))
+  (if (atom recs)
+      nil
+    (cons (fn-pck-enc-row (car recs) base)
+          (fn-pck-rows-from (cdr recs)
+                            (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))))))
+
+(defun fn-pck-rows (recs) (declare (xargs :guard t :verify-guards nil)) (fn-pck-rows-from recs 0))
+
+(defun fn-pck-enc-root (tree)
+  ; The root row: the root tree as metadata, no payload.
+  (declare (xargs :guard t :verify-guards nil))
+  (list (fn-scc-program tree) 0 0))
+
+; F: the log position at S.  The root row carries, besides the capture's four
+; fold roots, the position of the record log at the checkpoint's S (the first
+; suffix segment, its lineage genesis, the frontier at S and the txid bound:
+; the schema-3 F row's open data), so the open locates the log suffix from the
+; same atomic commit that names S.  The model keeps it opaque: FN-PCK-F is
+; the value the host recorded at the capture of the first S records of CONFIGS
+; and RECS (constrained, any tree the codec encodes: fn-pck-recordsp requires
+; the whole root encodable).  That the recorded value is the log's position at
+; S is the host's obligation PCK-ROOT-F-LOGPOS, discharged where the host takes
+; the capture (the log is rotated at the capture point, so the first suffix
+; segment starts at record S).
+(encapsulate (((fn-pck-f * *) => *))
+  (local (defun fn-pck-f (configs recs) (declare (ignore configs recs)) nil)))
+
+(defun fn-pck-root-tree-of-capture (c f plen)
+  ; The four fold roots, F, and PLEN, the committed length of the payload file.
+  (declare (xargs :guard t :verify-guards nil))
+  (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c) f plen))
 
 (defun fn-pck-root-tree (configs recs)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-pck-root-tree-of-capture (fn-sco-capture configs recs)))
+  (fn-pck-root-tree-of-capture (fn-sco-capture configs recs) (fn-pck-f configs recs)
+                               (fn-pck-plen recs 0)))
 
 (defthm fn-pck-root-tree-of-extend
   ; The host's root, taken from the live fold state (the capture extended by
-  ; the delta), is the model's root over the whole history.
+  ; the delta) and the log position recorded at the new S, is the model's root
+  ; over the whole history.
   (implies (and (true-listp delta) (equal c (fn-sco-capture configs prefix)))
-           (equal (fn-pck-root-tree-of-capture (fn-sco-extend c configs delta))
+           (equal (fn-pck-root-tree-of-capture (fn-sco-extend c configs delta)
+                                               (fn-pck-f configs (append prefix delta))
+                                               (fn-pck-plen (append prefix delta) 0))
                   (fn-pck-root-tree configs (append prefix delta))))
   :hints (("Goal" :in-theory (disable fn-sco-extend fn-sco-capture)
            :use fn-sco-extend-of-capture)))
@@ -183,7 +253,7 @@
 
 (defun fn-pck-root-pages-of-tree (tree)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-pck-fit (fn-pck-row-pages-of (list (fn-pck-enc-row tree)))))
+  (fn-pck-fit (fn-pck-row-pages-of (list (fn-pck-enc-root tree)))))
 
 (defun fn-pck-root-pages-of (configs recs)
   (declare (xargs :guard t :verify-guards nil))
@@ -191,7 +261,7 @@
 
 (defun fn-pck-root-fitsp-tree (tree)
   (declare (xargs :guard t :verify-guards nil))
-  (<= (len (fn-pck-row-pages-of (list (fn-pck-enc-row tree)))) *fn-pck-root-pages*))
+  (<= (len (fn-pck-row-pages-of (list (fn-pck-enc-root tree)))) *fn-pck-root-pages*))
 
 (defun fn-pck-root-fitsp (configs recs)
   ; The host's refusal: a root of more than K pages is not checkpointed.
@@ -207,33 +277,34 @@
   (declare (xargs :guard t :verify-guards nil))
   (append (adt-tp-number 0 (fn-pck-root-pages-of configs (append prefix delta)))
           (pck-shift *fn-pck-root-pages*
-                     (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows delta)))))
+                     (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))
 
-(defun fn-pck-dirty-at (cnt tail root-pages delta)
+(defun fn-pck-dirty-at (cnt tail root-pages delta base)
   ; fn-pck-dirty from the tape's summary (CNT words, TAIL its last partial
   ; page) and the root pages; no prefix list.
   (declare (xargs :guard t :verify-guards nil))
   (append (adt-tp-number 0 root-pages)
           (pck-shift *fn-pck-root-pages*
-                     (fn-pck-row-extend-dirty-at cnt tail (fn-pck-rows delta)))))
+                     (fn-pck-row-extend-dirty-at cnt tail (fn-pck-rows-from delta base)))))
 
 (defthm fn-pck-dirty-at-is-fn-pck-dirty
   (let ((w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix))))
     (implies (and (equal cnt (len w))
                   (equal tail (nthcdr (* *pgs-page-words* (floor (len w) *pgs-page-words*)) w))
+                  (equal base (fn-pck-plen prefix 0))
                   (equal root-pages (fn-pck-root-pages-of configs (append prefix delta))))
-             (equal (fn-pck-dirty-at cnt tail root-pages delta)
+             (equal (fn-pck-dirty-at cnt tail root-pages delta base)
                     (fn-pck-dirty configs prefix delta))))
   :hints (("Goal" :in-theory (e/d (fn-pck-dirty-at fn-pck-dirty)
                                   (fn-pck-row-extend-dirty-at fn-pck-row-extend-dirty
                                    fn-pck-root-pages-of))
            :use ((:instance fn-pck-row-extend-dirty-at-is-extend-dirty
-                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows delta)))))))
+                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))))
 
-(defun fn-pck-delta-page-bound (delta)
+(defun fn-pck-delta-page-bound (delta base)
   ; The pages the delta's own words take, and the one page it shares with the tape before it.
   (declare (xargs :guard t :verify-guards nil))
-  (+ 1 (fn-pck-row-pool-pages-of-rows (fn-pck-rows delta))))
+  (+ 1 (fn-pck-row-pool-pages-of-rows (fn-pck-rows-from delta base))))
 
 ; --- the rows are a well-formed sequence
 
@@ -314,9 +385,9 @@
                             (r0 (fn-pck-root-pages-of configs prefix))
                             (r1 (fn-pck-root-pages-of configs (append prefix delta)))
                             (t0 (fn-pck-row-pages-of (fn-pck-rows prefix)))
-                            (e (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows delta))))
+                            (e (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0)))))
                  (:instance fn-pck-row-pages-of-extend-is-apply-dirty
-                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows delta)))
+                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0))))
                  (:instance pck-rows-ap (recs prefix))
                  (:instance pck-rows-ap (recs delta))))))
 
@@ -326,26 +397,34 @@
 (defthm fn-pck-dirty-bound
   ; No term in (len prefix): the K root pages and the delta's own.
   (<= (len (fn-pck-dirty configs prefix delta))
-      (+ *fn-pck-root-pages* (fn-pck-delta-page-bound delta)))
+      (+ *fn-pck-root-pages* (fn-pck-delta-page-bound delta (fn-pck-plen prefix 0))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-pck-dirty fn-pck-delta-page-bound)
                            (fn-pck-row-extend-dirty-bound))
            :use ((:instance fn-pck-row-extend-dirty-bound
-                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows delta)))))))
+                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))))
 
 ; -----------------------------------------------------------------------------
 ; 5. Reading the image back.
 
-(defun fn-pck-dec-row (row)
+(defun fn-pck-dec-tree (row)
+  ; The tree the row's :tree column holds (the root tree, or an event's metadata).
   (declare (xargs :guard t :verify-guards nil))
   (let ((d (fn-scc-decode-tree (car row))))
     (if (and (consp d) (eq (car d) :ok) (consp (cdr d))) (cadr d) nil)))
 
-(defun fn-pck-dec-rows (rows)
+(defun fn-pck-dec-row (row file)
+  ; The event a tape row denotes: its metadata joined with the payload its ref
+  ; resolves to in the payload file FILE.
   (declare (xargs :guard t :verify-guards nil))
-  (if (atom rows) nil (cons (fn-pck-dec-row (car rows)) (fn-pck-dec-rows (cdr rows)))))
+  (fn-pck-join (fn-pck-dec-tree row)
+               (fn-cpl-resolve (fn-cpl-ref (nfix (cadr row)) (nfix (caddr row))) file)))
 
-(in-theory (disable fn-pck-dec-row fn-pck-enc-row))
+(defun fn-pck-dec-rows (rows file)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom rows) nil (cons (fn-pck-dec-row (car rows) file) (fn-pck-dec-rows (cdr rows) file))))
+
+(in-theory (disable fn-pck-dec-row fn-pck-dec-tree fn-pck-enc-row))
 
 (defthm pck-dec-row-of-enc-row
   (implies (fn-sccb-treep x) (equal (fn-pck-dec-row (fn-pck-enc-row x)) x))
@@ -358,21 +437,21 @@
   :hints (("Goal" :in-theory (e/d (fn-pck-rows fn-pck-dec-rows fn-pck-sccb-listp)
                                   (fn-pck-dec-row fn-pck-enc-row)))))
 
-(defun fn-pck-capture-of-pages (pages)
+(defun fn-pck-capture-of-pages (pages file)
   ; The capture the pages hold: the records from the events tape, the four
   ; fold roots from the root region, the event index rebuilt from the records.
   (declare (xargs :guard t :verify-guards nil))
-  (let* ((root (fn-pck-dec-row (car (fn-pck-row-of-pages (adt-tp-take *fn-pck-root-pages* pages)))))
-         (recs (fn-pck-dec-rows (fn-pck-row-of-pages (nthcdr *fn-pck-root-pages* pages)))))
+  (let* ((root (fn-pck-dec-tree (car (fn-pck-row-of-pages (adt-tp-take *fn-pck-root-pages* pages)))))
+         (recs (fn-pck-dec-rows (fn-pck-row-of-pages (nthcdr *fn-pck-root-pages* pages)) file)))
     (fn-sco-make recs (nth 0 root) (nth 1 root) (nth 2 root) (nth 3 root)
                  (fn-cei-build-aux recs 0 nil))))
 
-(defun fn-pck-open (disk r mode configs frontier suffix max-conns)
+(defun fn-pck-open (disk r mode file configs frontier suffix max-conns)
   (declare (xargs :guard t :verify-guards nil))
   (let ((v (pgs-view (pgs-open disk r mode))))
     (if v
         (fn-ock-recover-extended
-         (fn-sco-extend (fn-pck-capture-of-pages (second v)) configs suffix)
+         (fn-sco-extend (fn-pck-capture-of-pages (second v) file) configs suffix)
          configs frontier max-conns)
       :fault)))
 
@@ -462,10 +541,10 @@
                             fn-pck-row-pages-of))
            :use ((:instance pck-take-root (r (fn-pck-root-pages-of configs recs)) (c t0))
                  (:instance pck-of-pages-zero-padded-inst
-                            (a (list (fn-pck-enc-row (fn-pck-root-tree configs recs))))
+                            (a (list (fn-pck-enc-root (fn-pck-root-tree configs recs))))
                             (m (- *fn-pck-root-pages*
                                   (len (fn-pck-row-pages-of
-                                        (list (fn-pck-enc-row (fn-pck-root-tree configs recs))))))))
+                                        (list (fn-pck-enc-root (fn-pck-root-tree configs recs))))))))
                  (:instance pck-ap-enc-row (x (fn-pck-root-tree configs recs)))
                  (:instance pck-dec-row-of-enc-row (x (fn-pck-root-tree configs recs)))))))
 
@@ -485,6 +564,24 @@
                  (:instance pck-rows-ap (recs recs))
                  (:instance pck-dec-rows-of-rows)
                  (:instance pck-len-root-pages-of (recs recs))))))
+
+(defun fn-pck-f-of-pages (pages)
+  ; The log position the root region holds (the root row's fifth field).
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((root (fn-pck-dec-tree (car (fn-pck-row-of-pages (adt-tp-take *fn-pck-root-pages* pages))))))
+    (if (true-listp root) (nth 4 root) nil)))
+
+(defthm pck-f-of-pages
+  ; The pages of RECS hold the log position recorded at S = (len RECS).
+  (implies (and (true-listp recs) (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs))
+           (equal (fn-pck-f-of-pages (fn-pck-pages configs recs))
+                  (fn-pck-f configs recs)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-f-of-pages fn-pck-pages fn-pck-root-tree fn-sco-capture)
+                           (pck-root-decodes pck-of-pages-of-inst pck-nthcdr-root
+                            fn-pck-root-pages-of fn-pck-row-of-pages fn-pck-row-pages-of
+                            fn-pck-rows fn-pck-dec-rows))
+           :use ((:instance pck-root-decodes (t0 (fn-pck-row-pages-of (fn-pck-rows recs))))))))
 
 ; -----------------------------------------------------------------------------
 ; 6. PCK-OPEN
@@ -541,14 +638,14 @@
                             fn-pck-root-pages-of fn-pck-rows adt-tp-dirty pck-shift))
            :use ((:instance pck-lpages-ok-shifted-dirty (k *fn-pck-root-pages*)
                             (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix)))
-                            (n (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows delta))))
+                            (n (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0)))))
                  (:instance pck-lpages-ok-number-then (lo 0)
                             (n (len (fn-pck-pages configs prefix)))
                             (ps (fn-pck-root-pages-of configs (append prefix delta)))
                             (l2 (pgs-dirty-lpages
                                  (pck-shift *fn-pck-root-pages*
                                             (adt-tp-dirty (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix))
-                                                          (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows delta)))))))
+                                                          (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))))
                  (:instance pck-len-root-pages-of (recs (append prefix delta)))))))
 
 (defthm pck-disk-holds-facts
@@ -614,11 +711,11 @@
   (declare (xargs :guard (natp n)))
   (and (consp log) (natp (car log)) (<= (car log) n)))
 
-(defun fn-pck-recover-view (v log configs frontier max-conns)
+(defun fn-pck-recover-view (v file log configs frontier max-conns)
   ; V is the view of the opened image: (TXID CONTENTS), or nil when the open refused.
   (declare (xargs :guard t :verify-guards nil))
   (if (and v (consp log))
-      (let ((c (fn-pck-capture-of-pages (cadr v))))
+      (let ((c (fn-pck-capture-of-pages (cadr v) file)))
         ; A log that starts past the checkpoint's S has lost records the replay
         ; needs: refuse, never replay a wrong suffix.
         (if (fn-pck-log-retains log (len (fn-sco-records c)))
@@ -628,9 +725,9 @@
           :fault))
     :fault))
 
-(defun fn-pck-recover (image r mode log configs frontier max-conns)
+(defun fn-pck-recover (image r mode file log configs frontier max-conns)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-pck-recover-view (pgs-view (pgs-open image r mode)) log configs frontier max-conns))
+  (fn-pck-recover-view (pgs-view (pgs-open image r mode)) file log configs frontier max-conns))
 
 (defthm pck-nthcdr-nthcdr
   (implies (and (natp a) (natp b))

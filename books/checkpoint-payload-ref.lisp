@@ -75,3 +75,14 @@
            :use ((:instance cpl-nthcdr-append (n (car ref)) (a file) (b tail))
                  (:instance cpl-take-append (n (cadr ref)) (a (nthcdr (car ref) file)) (b tail))
                  (:instance cpl-len-nthcdr (n (car ref)) (x file))))))
+
+; The frame a payload takes in the file.  The payload lane (books/checkpoint-
+; payloads.lisp) fixes the framing; the tape's refs need only that a frame holds
+; its payload, so the frames of consecutive payloads are laid end to end.
+(encapsulate (((fn-cpl-frame-octets *) => *))
+  (local (defun fn-cpl-frame-octets (n) (+ 32 (nfix n))))
+  (defthm fn-cpl-frame-octets-bound
+    (and (natp (fn-cpl-frame-octets n))
+         (<= (nfix n) (fn-cpl-frame-octets n)))
+    :rule-classes ((:type-prescription :corollary (natp (fn-cpl-frame-octets n)))
+                   (:linear :corollary (<= (nfix n) (fn-cpl-frame-octets n))))))
