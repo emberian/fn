@@ -7,6 +7,7 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
+(include-book "post-identity-index")
 (include-book "post-identity-catalog")
 (include-book "post-prepare-catalog")
 (include-book "post-retain-carried")

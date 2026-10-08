@@ -7,6 +7,7 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
+(include-book "owner-parse-carried")
 (include-book "owner-identity-intern")
 (include-book "owner-identity-served")
 (include-book "owner-prepare-outcome")

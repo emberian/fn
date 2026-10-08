@@ -6192,3 +6192,8 @@
   :keystones (fn-nco-unknown-receipt-status))
 (definterface fn-nco-work-class :class :common-lisp-compliant)
 (definterface fn-owner-sco-count :class :common-lisp-compliant)
+
+; The paged checkpoint owns its initializer; no history-image setup path.
+(definterface fn-pck-x-bootstrap :class :common-lisp-compliant
+  :kinds ((lpages nat-listp))
+  :keystones (fn-pck-x-bootstrap-is-the-plan))

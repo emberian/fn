@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
+(include-book "cold-read-reservation")
+(include-book "reclaim-reservation")
 (include-book "resource-output")
 (include-book "served-plan-line-buffer")
 (include-book "mux-accept-slot")
@@ -180,4 +182,3 @@
 (include-book "owner-log-route")
 (include-book "owner-advance-carried")
 (include-book "owner-intent-carried")
-(include-book "owner-parse-carried")

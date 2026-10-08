@@ -23,6 +23,7 @@
 (include-book "paged-checkpoint-context-plan")
 (include-book "paged-checkpoint-summary")
 (include-book "pagestore-commit-slot")
+(include-book "paged-checkpoint-bootstrap")
 (include-book "checkpoint-payloads-exec")
 (include-book "pagestore-refine")
 (include-book "peer-flight-profile")
@@ -139,5 +140,3 @@
 (include-book "idle-collection")
 (include-book "heap-reservation")
 (include-book "bp-heap-command")
-(include-book "cold-read-reservation")
-(include-book "reclaim-reservation")

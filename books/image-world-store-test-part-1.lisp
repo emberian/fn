@@ -20,6 +20,7 @@
 (include-book "paged-checkpoint-context-plan")
 (include-book "paged-checkpoint-summary")
 (include-book "pagestore-commit-slot")
+(include-book "paged-checkpoint-bootstrap")
 (include-book "checkpoint-payloads-exec")
 (include-book "pagestore-refine")
 (include-book "peer-flight-default")
@@ -163,4 +164,3 @@
 (include-book "owner-bound-commit")
 (include-book "owner-log-reopen")
 (include-book "owner-prepare-carried")
-(include-book "post-identity-index")

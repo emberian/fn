@@ -22,6 +22,7 @@
 (include-book "../../books/paged-checkpoint-context-plan")
 (include-book "../../books/paged-checkpoint-summary")
 (include-book "../../books/pagestore-commit-slot")
+(include-book "../../books/paged-checkpoint-bootstrap")
 (include-book "../../books/checkpoint-payloads-exec")
 (include-book "../../books/pagestore-refine")
 (include-book "../../books/peer-flight-profile")

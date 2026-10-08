@@ -7,6 +7,11 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
+(include-book "bp-fragment-send")
+(include-book "bp-node-receive-boundary")
+(include-book "bp-fnbs-replay")
+(include-book "bp-fnbs-inspect")
+(include-book "bp-fnbs-namespace")
 (include-book "bp-fnbs-publication")
 (include-book "bp-clock-domain")
 (include-book "bp-fnbs-delivery-replay")
@@ -194,4 +199,3 @@
 (include-book "article-subject")
 (include-book "store-reclaim-owner-holders")
 (include-book "owner-reclaim-conns")
-(include-book "owner-reclaim-ready")
