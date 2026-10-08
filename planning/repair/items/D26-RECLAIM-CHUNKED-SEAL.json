@@ -1,0 +1,15 @@
+{
+ "category": "certify-time",
+ "file": "books/reclaim-chunked-seal.lisp",
+ "id": "D26-RECLAIM-CHUNKED-SEAL",
+ "notes": [
+  "p-teeth-critical round 2: persvati run-20261008T200806Z-abfb at two jobs certified this unchanged book in 12.412 s at the post-f06785b7b include closure. D26 is 10 s. The costliest theorem was FN-RCW-PREDICT-STEPS-FROM at 0.18 s / 28,696 steps; inspect include/event time before changing proof hints.",
+  "The scoped closure passed (3 authored books, 467 cached); tests/acl2/reclaim-chunked-load-teeth-tests took 8.350 s and tests/acl2/reclaim-chunked-seal-tests took 9.004 s. This records the shared book timing defect separately from the four critical evidence packages, whose missing current-closure certification this run supplies."
+ ],
+ "owner": "deputy-P",
+ "severity": "medium",
+ "source": "p-teeth-critical",
+ "state": "open",
+ "title": "Reclaim chunked seal exceeds D26 at the updated include closure",
+ "updated": "2026-10-08T20:12:00Z"
+}

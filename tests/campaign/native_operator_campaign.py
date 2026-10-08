@@ -397,6 +397,7 @@ def orphan(node: Node, candidate: Path, out: dict):
 
 
 def run_cut(image: Path, base: Path, cut, prior: Path, candidate: Path) -> dict:
+    # fn-lg-open-program: its recovery cuts execute in the native owner below.
     recovery = cut in native_cuts.RECOVERY_CUTS
     variable = "FN_NATIVE_RECOVERY_FAULT" if recovery else "FN_NATIVE_POST_FAULT"
     selector = {variable: cut.name + ":kill"}
