@@ -615,3 +615,221 @@
                  (:instance pcko-nth-rowwords-tail (k 4)) (:instance pcko-nth-rowwords-tail (k 5))
                  pcko-nth-rowwords-head pcko-unpack-of-row)))
   :rule-classes nil)
+
+;; -----------------------------------------------------------------------------
+; The tape over the model's rows.  PCKO-SIM is what the tape does, row by row,
+; read off the records: the ref-step of each record's metadata and ref fields.
+
+(defun pcko-prog (w st) (declare (xargs :guard t :verify-guards nil)) (fn-scc-program (fn-pck-meta w st)))
+(defun pcko-tw (w) (declare (xargs :guard t :verify-guards nil)) (fn-cpl-trailer-words (fn-pck-payload w)))
+(defun pcko-next-base (w base) (declare (xargs :guard t :verify-guards nil))
+  (+ base (fn-cpl-frame-octets (len (fn-pck-payload w)))))
+
+(defun pcko-ref (acc w base st fid fn-arena)
+  ; The ref-step of the event W's row: its metadata, the ref (offset, length)
+  ; of its payload frame at BASE, and the frame's four trailer words.
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (pcko-ref-step acc (fn-pck-meta w st) (+ *fn-cpl-header-octets* base) (len (fn-pck-payload w))
+                 (car (pcko-tw w)) (cadr (pcko-tw w)) (caddr (pcko-tw w)) (cadddr (pcko-tw w))
+                 fid fn-arena))
+
+(defun pcko-sim (recs base st acc fid fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (atom recs)
+      (mv acc fn-arena)
+    (mv-let (acc2 fn-arena)
+      (pcko-ref acc (car recs) base st fid fn-arena)
+      (if (eq acc2 :bad)
+          (mv :bad fn-arena)
+        (pcko-sim (cdr recs) (pcko-next-base (car recs) base) (pck-ssr1 st (car recs)) acc2 fid fn-arena)))))
+
+(in-theory (disable pcko-prog pcko-tw pcko-next-base pcko-ref))
+
+(defthm pcko-decode-of-program
+  (implies (fn-sccb-treep x)
+           (equal (fn-scc-decode-tree (fn-scc-program x)) (list :ok x)))
+  :hints (("Goal" :use ((:instance fn-scc-decode-tree-of-encode)
+                        (:instance fn-sccb-treep-is-treep))
+           :in-theory (disable fn-scc-decode-tree-of-encode fn-sccb-treep-is-treep))))
+
+(defthm pcko-decode-of-prog
+  (implies (fn-sccb-treep (fn-pck-meta w st))
+           (equal (fn-scc-decode-tree (pcko-prog w st)) (list :ok (fn-pck-meta w st))))
+  :hints (("Goal" :in-theory (enable pcko-prog) :use (:instance pcko-decode-of-program (x (fn-pck-meta w st))))))
+
+(defthm pcko-seq-words-cons
+  (equal (adt-tp-seq-words s (cons r rows)) (append (adt-tp-rw s r) (adt-tp-seq-words s rows)))
+  :hints (("Goal" :in-theory (enable adt-tp-seq-words))))
+
+(defthm pcko-seq-words-nil (equal (adt-tp-seq-words s nil) nil)
+  :hints (("Goal" :in-theory (enable adt-tp-seq-words))))
+
+(defthm pcko-row-is-rowwords
+  (equal (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w base st))
+         (pcko-rowwords (pcko-prog w st) (+ *fn-cpl-header-octets* base) (len (fn-pck-payload w))
+                        (car (pcko-tw w)) (cadr (pcko-tw w)) (caddr (pcko-tw w)) (cadddr (pcko-tw w))))
+  :hints (("Goal" :in-theory (e/d (pcko-prog pcko-tw) (fn-pck-meta fn-pck-payload fn-pck-enc-row pcko-rowwords-is-the-row))
+           :use (:instance pcko-rowwords-is-the-row (off base)))))
+
+(defthm pcko-program-octetsp
+  (implies (fn-sccb-treep (fn-pck-meta w st)) (adt-octetsp (pcko-prog w st)))
+  :hints (("Goal" :in-theory (enable pcko-prog) :use (:instance pck-program-octetsp (x (fn-pck-meta w st))))))
+
+(defthm pcko-nthcdr-len-append
+  (implies (true-listp x) (equal (nthcdr (len x) (append x rest)) rest)))
+
+(defthm pcko-nthcdr-after-row
+  (implies (and (natp pos) (true-listp x) (equal (nthcdr pos w) (append x rest)))
+           (equal (nthcdr (+ pos (len x)) w) rest))
+  :hints (("Goal" :use ((:instance pck-nthcdr-nthcdr (a (len x)) (b pos) (x w))
+                        (:instance pcko-nthcdr-len-append))
+           :in-theory (disable pck-nthcdr-nthcdr pcko-nthcdr-len-append pgs-nthcdr-nthcdr pgs-cdr-nthcdr))))
+
+(defun pcko-t-ind (recs base st pos acc reads fid fn-arena fn-octets)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (atom recs)
+      (mv (list pos acc reads fn-octets) fn-arena)
+    (mv-let (acc2 fn-arena)
+      (pcko-ref acc (car recs) base st fid fn-arena)
+      (if (eq acc2 :bad)
+          (mv (list pos acc reads fn-octets) fn-arena)
+        (pcko-t-ind (cdr recs) (pcko-next-base (car recs) base) (pck-ssr1 st (car recs))
+                    (+ pos 8 (adt-tp-npk (len (pcko-prog (car recs) st)))) acc2
+                    (+ reads 8 (adt-tp-npk (len (pcko-prog (car recs) st)))) fid fn-arena
+                    (pcko-prog (car recs) st))))))
+
+(defthm pcko-next-base-natp
+  (implies (natp base) (natp (pcko-next-base w base)))
+  :hints (("Goal" :in-theory (enable pcko-next-base fn-cpl-frame-octets))))
+
+(defthm pcko-words-of-rows-from-cons
+  (implies (consp recs)
+           (equal (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st))
+                  (append (pcko-rowwords (pcko-prog (car recs) st) (+ *fn-cpl-header-octets* base)
+                                         (len (fn-pck-payload (car recs)))
+                                         (car (pcko-tw (car recs))) (cadr (pcko-tw (car recs)))
+                                         (caddr (pcko-tw (car recs))) (cadddr (pcko-tw (car recs))))
+                          (adt-tp-seq-words *fn-pck-row-schema*
+                                            (fn-pck-rows-from (cdr recs) (pcko-next-base (car recs) base)
+                                                              (pck-ssr1 st (car recs)))))))
+  :hints (("Goal" :expand ((fn-pck-rows-from recs base st))
+           :in-theory (e/d (pcko-next-base) (fn-pck-enc-row fn-pck-meta fn-pck-payload pck-ssr1)))))
+
+(defthm pcko-consp-nthcdr (implies (natp i) (equal (consp (nthcdr i l)) (< i (len l)))))
+
+(defthm pcko-tape-nil
+  (implies (and (pcko-img w pgs-mem) (natp pos) (<= pos (len w))
+                (equal (nthcdr pos w) post) (or (atom post) (not (equal (car post) 1))))
+           (equal (pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets)
+                  (mv :ok acc (if (consp post) (+ reads 1) reads) fn-arena fn-octets)))
+  :hints (("Goal" :do-not-induct t
+           :expand ((pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets))
+           :use ((:instance pcko-consp-nthcdr (i pos) (l w))
+                 (:instance pcko-car-nthcdr (i pos) (w w))
+                 (:instance pcko-w-is-nth (i pos)))
+           :in-theory (disable pcko-tape pcko-consp-nthcdr pcko-car-nthcdr pcko-w-is-nth nth nthcdr))))
+
+(defthm pcko-tape-cons-step
+  (let* ((w1 (car recs))
+         (prog (pcko-prog w1 st))
+         (n (+ 8 (adt-tp-npk (len prog))))
+         (base1 (pcko-next-base w1 base))
+         (st1 (pck-ssr1 st w1))
+         (ref (pcko-ref acc w1 base st fid fn-arena))
+         (acc2 (mv-nth 0 ref))
+         (ar2 (mv-nth 1 ref)))
+    (implies (and (consp recs)
+                  (pcko-img w pgs-mem) (true-listp w) (natp pos) (<= pos (len w)) (natp reads)
+                  (fn-pck-sccb-listp recs st) (natp base)
+                  (equal (nthcdr pos w)
+                         (append (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)) post))
+                  (or (atom post) (not (equal (car post) 1)))
+                  (not (eq (car (pcko-sim recs base st acc fid fn-arena)) :bad))
+                  ; the induction hypothesis, at the tail
+                  (implies (and (natp (+ pos n)) (<= (+ pos n) (len w)) (natp (+ reads n))
+                                (fn-pck-sccb-listp (cdr recs) st1) (natp base1)
+                                (equal (nthcdr (+ pos n) w)
+                                       (append (adt-tp-seq-words *fn-pck-row-schema*
+                                                                 (fn-pck-rows-from (cdr recs) base1 st1))
+                                               post))
+                                (not (eq (car (pcko-sim (cdr recs) base1 st1 acc2 fid ar2)) :bad)))
+                           (let ((r (pcko-tape (+ pos n) (len w) acc2 (+ reads n) fid pgs-mem ar2 prog))
+                                 (s (pcko-sim (cdr recs) base1 st1 acc2 fid ar2)))
+                             (and (equal (mv-nth 0 r) :ok)
+                                  (equal (mv-nth 1 r) (car s))
+                                  (equal (mv-nth 2 r)
+                                         (+ reads n (len (adt-tp-seq-words *fn-pck-row-schema*
+                                                                           (fn-pck-rows-from (cdr recs) base1 st1)))
+                                            (if (consp post) 1 0)))
+                                  (equal (mv-nth 3 r) (cadr s))))))
+             (let ((r (pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets))
+                   (s (pcko-sim recs base st acc fid fn-arena)))
+               (and (equal (mv-nth 0 r) :ok)
+                    (equal (mv-nth 1 r) (car s))
+                    (equal (mv-nth 2 r)
+                           (+ reads (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)))
+                              (if (consp post) 1 0)))
+                    (equal (mv-nth 3 r) (cadr s))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable pcko-tape pcko-sim pcko-ref-step nth nthcdr pcko-w fn-pck-meta fn-pck-payload
+                               fn-pck-enc-row fn-scc-program pck-ssr1
+                               pcko-row-is-rowwords fn-pck-rows-from)
+           :expand ((pcko-sim recs base st acc fid fn-arena) (pcko-ref acc (car recs) base st fid fn-arena)
+                    (fn-pck-sccb-listp recs st))
+           :use ((:instance pcko-tape-row (prog (pcko-prog (car recs) st))
+                            (pos pos) (off (+ *fn-cpl-header-octets* base)) (len (len (fn-pck-payload (car recs))))
+                            (d0 (car (pcko-tw (car recs)))) (d1 (cadr (pcko-tw (car recs))))
+                            (d2 (caddr (pcko-tw (car recs)))) (d3 (cadddr (pcko-tw (car recs))))
+                            (rest (append (adt-tp-seq-words *fn-pck-row-schema*
+                                                            (fn-pck-rows-from (cdr recs) (pcko-next-base (car recs) base)
+                                                                              (pck-ssr1 st (car recs))))
+                                          post)))
+                 (:instance pcko-decode-of-prog (w (car recs)))
+                 (:instance pcko-nthcdr-after-row
+                            (x (pcko-rowwords (pcko-prog (car recs) st) (+ *fn-cpl-header-octets* base)
+                                              (len (fn-pck-payload (car recs)))
+                                              (car (pcko-tw (car recs))) (cadr (pcko-tw (car recs)))
+                                              (caddr (pcko-tw (car recs))) (cadddr (pcko-tw (car recs)))))
+                            (rest (append (adt-tp-seq-words *fn-pck-row-schema*
+                                                            (fn-pck-rows-from (cdr recs) (pcko-next-base (car recs) base)
+                                                                              (pck-ssr1 st (car recs))))
+                                          post)))
+                 (:instance pcko-len-rowwords (prog (pcko-prog (car recs) st)) (off (+ *fn-cpl-header-octets* base))
+                            (len (len (fn-pck-payload (car recs))))
+                            (d0 (car (pcko-tw (car recs)))) (d1 (cadr (pcko-tw (car recs))))
+                            (d2 (caddr (pcko-tw (car recs)))) (d3 (cadddr (pcko-tw (car recs)))))
+                 (:instance pcko-nthcdr-room
+                            (x (pcko-rowwords (pcko-prog (car recs) st) (+ *fn-cpl-header-octets* base)
+                                              (len (fn-pck-payload (car recs)))
+                                              (car (pcko-tw (car recs))) (cadr (pcko-tw (car recs)))
+                                              (caddr (pcko-tw (car recs))) (cadddr (pcko-tw (car recs)))))
+                            (rest (append (adt-tp-seq-words *fn-pck-row-schema*
+                                                            (fn-pck-rows-from (cdr recs) (pcko-next-base (car recs) base)
+                                                                              (pck-ssr1 st (car recs))))
+                                          post)))
+                 (:instance pcko-program-octetsp (w (car recs)))))))
+
+(defthm pcko-tape-of-recs
+  (implies (and (pcko-img w pgs-mem) (true-listp w) (natp pos) (<= pos (len w)) (natp reads)
+                (fn-pck-sccb-listp recs st) (natp base)
+                (equal (nthcdr pos w)
+                       (append (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)) post))
+                (or (atom post) (not (equal (car post) 1)))
+                (not (eq (car (pcko-sim recs base st acc fid fn-arena)) :bad)))
+           (let ((r (pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets))
+                 (s (pcko-sim recs base st acc fid fn-arena)))
+             (and (equal (mv-nth 0 r) :ok)
+                  (equal (mv-nth 1 r) (car s))
+                  (equal (mv-nth 2 r)
+                         (+ reads (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)))
+                            (if (consp post) 1 0)))
+                  (equal (mv-nth 3 r) (cadr s)))))
+  :hints (("Goal" :induct (pcko-t-ind recs base st pos acc reads fid fn-arena fn-octets)
+           :do-not-induct t
+           :in-theory (disable pcko-tape pcko-sim pcko-ref pcko-ref-step
+                               fn-pck-rows-from adt-tp-seq-words pcko-prog pcko-next-base))
+          ("Subgoal *1/3" :use pcko-tape-cons-step)
+          ("Subgoal *1/2" :expand ((pcko-sim recs base st acc fid fn-arena)))
+          ("Subgoal *1/1" :use pcko-tape-nil
+           :in-theory (e/d (fn-pck-rows-from adt-tp-seq-words pcko-sim) (pcko-tape pcko-tape-nil)))))
