@@ -86,6 +86,10 @@
 ; -----------------------------------------------------------------------------
 ; 1. The row store: typed columns and the pool, from one declaration.
 
+; Keep the generic tree-writer functional instance from opening arithmetic
+; and codec dispatch while matching its already proved constraint.
+(encapsulate ()
+ (local (in-theory (disable floor mod fn-scc-octets-valuep fn-scc-package-index)))
 (def-representation fn-crow
   (seq :u64) (txid :u64) (gen :u64) (payload :u64) (charge :u64) (stamp :u64)
   (msgid :octets)
@@ -94,7 +98,7 @@
   (aux :tree)
   (nums :tree)
   :write-once t
-  :pages t)
+  :pages t))
 
 ; -----------------------------------------------------------------------------
 ; 2. The foundation: the row store beside the old foundation (its tables,
@@ -566,7 +570,8 @@
   (implies (and (fn-crowp a) (natp i) (< i (len a)) (natp j) (< j 13)
                 (adt-val-okp (nth j *fn-crow-schema*) v))
            (fn-crowp (update-nth i (update-nth j v (nth i a)) a)))
-  :hints (("Goal" :in-theory (enable fn-crowp-is-seq-p))))
+  :hints (("Goal" :in-theory (e/d (fn-crowp-is-seq-p)
+                                  (adt-val-okp fn-cp-nth-of-cons fn-cp-crow-row-rec-p)))))
 
 (defthm fn-cp-crowp-of-append-row
   (implies (fn-crowp a)
@@ -587,7 +592,7 @@
   (implies (and (fn-crowp a) (natp i) (< i (len a)) (natp j) (< j 13)
                 (adt-val-okp (nth j *fn-crow-schema*) v))
            (fn-crowp (adt-set-a j i v a)))
-  :hints (("Goal" :in-theory (e/d (adt-set-a) (fn-cp-crowp-of-set-column))
+  :hints (("Goal" :in-theory (union-theories '(adt-set-a) (theory 'minimal-theory))
            :use fn-cp-crowp-of-set-column)))
 
 (local (in-theory (disable fn-cat$pp fn-crowp fn-cat$cp fn-cp-row-of fn-cp-held fn-cp-tree-of
@@ -609,8 +614,10 @@
         (booleanp (nth 10 (fn-cp-row-of h)))
         (adt-octetsp (nth 11 (fn-cp-row-of h)))
         (adt-octetsp (nth 12 (fn-cp-row-of h))))
-   :hints (("Goal" :in-theory (e/d (fn-cp-row-of) (fn-cp-u64 fn-cp-smallp fn-cp-msgid-octets
-                                                    fn-cp-escapedp fn-sccb-treep))))))
+   :hints (("Goal" :use fn-cp-row-of-rec-p
+            :in-theory (e/d (adt-rec-p adt-val-okp)
+                            (fn-cp-row-of fn-cp-row-of-rec-p fn-cp-rec-p-of-list))
+            :expand ((:free (n x) (nth n x)))))))
 
 (defun fn-cat$p-count (fn-cat$p)
   (declare (xargs :stobjs fn-cat$p))
@@ -2402,29 +2409,6 @@
             (update-fn-cat$c-hz hz c)))
    :hints (("Goal" :in-theory (enable fn-cat$p-tab-commit)))))
 
-; The link tables and the withdrawals' pushes: the view reads positions 0,
-; 1 and 4 only; the links write 2 and 3; a push is the old sorted insert at
-; the view (the trie's ascending list after the add).
-(local
- (defthm fn-cp-link-fields
-   (and (equal (nth 0 (fn-cat$p-link plan fn-cat$p)) (nth 0 fn-cat$p))
-        (equal (nth 1 (fn-cat$p-link plan fn-cat$p)) (nth 1 fn-cat$p))
-        (equal (nth 3 (fn-cat$p-link plan fn-cat$p)) (nth 3 fn-cat$p))
-        (equal (nth 0 (nth 2 (fn-cat$p-link plan fn-cat$p))) (nth 0 (nth 2 fn-cat$p)))
-        (equal (nth 1 (nth 2 (fn-cat$p-link plan fn-cat$p))) (fn-cpl-link t plan (nth 1 (nth 2 fn-cat$p))))
-        (equal (nth 2 (nth 2 (fn-cat$p-link plan fn-cat$p))) (fn-cpl-link nil plan (nth 2 (nth 2 fn-cat$p)))))
-   :hints (("Goal" :in-theory (enable fn-cat$p-link fn-cpl-link)
-            :induct (fn-cat$p-link plan fn-cat$p)))))
-
-; The overflow cells and the array length are not the links' fields.
-(local
- (defthm fn-cp-link-cells-fields
-   (and (equal (nth 4 (fn-cat$p-link plan fn-cat$p)) (nth 4 fn-cat$p))
-        (equal (nth 5 (fn-cat$p-link plan fn-cat$p)) (nth 5 fn-cat$p)))
-   :hints (("Goal" :in-theory (enable fn-cat$p-link fn-cat$p-lnext-put fn-cat$p-lnext-rem
-                                      fn-cat$p-lprev-put fn-cat$p-lprev-rem)
-            :induct (fn-cat$p-link plan fn-cat$p)))))
-
 ; One link-table write at a time: the fields it leaves alone and the one it changes.
 (local
  (defthm fn-cp-next-rem-fields
@@ -2471,6 +2455,32 @@
         (equal (nth 2 (nth 2 (fn-cat$p-lprev-put k v s))) (cons (cons k v) (nth 2 (nth 2 s)))))
    :hints (("Goal" :in-theory (enable fn-cat$p-lprev-put)))))
 
+; The link tables and the withdrawals' pushes: the view reads positions 0,
+; 1 and 4 only; the links write 2 and 3; a push is the old sorted insert at
+; the view (the trie's ascending list after the add).
+(local
+ (defthm fn-cp-link-fields
+   (and (equal (nth 0 (fn-cat$p-link plan fn-cat$p)) (nth 0 fn-cat$p))
+        (equal (nth 1 (fn-cat$p-link plan fn-cat$p)) (nth 1 fn-cat$p))
+        (equal (nth 3 (fn-cat$p-link plan fn-cat$p)) (nth 3 fn-cat$p))
+        (equal (nth 0 (nth 2 (fn-cat$p-link plan fn-cat$p))) (nth 0 (nth 2 fn-cat$p)))
+        (equal (nth 1 (nth 2 (fn-cat$p-link plan fn-cat$p))) (fn-cpl-link t plan (nth 1 (nth 2 fn-cat$p))))
+        (equal (nth 2 (nth 2 (fn-cat$p-link plan fn-cat$p))) (fn-cpl-link nil plan (nth 2 (nth 2 fn-cat$p)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-link fn-cpl-link)
+                                   (fn-cat$p-lnext-put fn-cat$p-lprev-put
+                                    fn-cpl-link-is-lsteps posp))
+            :induct (fn-cat$p-link plan fn-cat$p)))))
+
+; The overflow cells and the array length are not the links' fields.
+(local
+ (defthm fn-cp-link-cells-fields
+   (and (equal (nth 4 (fn-cat$p-link plan fn-cat$p)) (nth 4 fn-cat$p))
+        (equal (nth 5 (fn-cat$p-link plan fn-cat$p)) (nth 5 fn-cat$p)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-link)
+                                   (fn-cat$p-lnext-put fn-cat$p-lnext-rem
+                                    fn-cat$p-lprev-put fn-cat$p-lprev-rem posp))
+            :induct (fn-cat$p-link plan fn-cat$p)))))
+
 (local
  (defthm fn-cp-unlink-fields
    (and (equal (nth 0 (fn-cat$p-unlink plan fn-cat$p)) (nth 0 fn-cat$p))
@@ -2480,7 +2490,7 @@
         (equal (nth 1 (nth 2 (fn-cat$p-unlink plan fn-cat$p))) (fn-cpl-unlink t plan (nth 1 (nth 2 fn-cat$p))))
         (equal (nth 2 (nth 2 (fn-cat$p-unlink plan fn-cat$p))) (fn-cpl-unlink nil plan (nth 2 (nth 2 fn-cat$p)))))
    :hints (("Goal" :in-theory (e/d (fn-cat$p-unlink fn-cpl-unlink)
-                                   (fn-cat$p-lnext-rem fn-cat$p-lnext-put fn-cat$p-lprev-rem fn-cat$p-lprev-put))
+                                   (fn-cat$p-lnext-rem fn-cat$p-lnext-put fn-cat$p-lprev-rem fn-cat$p-lprev-put posp))
             :induct (fn-cat$p-unlink plan fn-cat$p)))))
 
 ; The overflow cells and the array length are not the links' fields.
@@ -2488,8 +2498,9 @@
  (defthm fn-cp-unlink-cells-fields
    (and (equal (nth 4 (fn-cat$p-unlink plan fn-cat$p)) (nth 4 fn-cat$p))
         (equal (nth 5 (fn-cat$p-unlink plan fn-cat$p)) (nth 5 fn-cat$p)))
-   :hints (("Goal" :in-theory (enable fn-cat$p-unlink fn-cat$p-lnext-put fn-cat$p-lnext-rem
-                                      fn-cat$p-lprev-put fn-cat$p-lprev-rem)
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-unlink)
+                                   (fn-cat$p-lnext-put fn-cat$p-lnext-rem
+                                    fn-cat$p-lprev-put fn-cat$p-lprev-rem posp))
             :induct (fn-cat$p-unlink plan fn-cat$p)))))
 
 (local
@@ -2914,7 +2925,7 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-cat-msgid-seqs{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
-           :in-theory (disable fn-cp-corr-facts))))
+           :in-theory (disable fn-cp-corr-facts fn-cat$c-msgid-seqs fn-cat$a-msgid-seqs))))
 
 (defthm fn-cat-paged-msgid-seqs{guard-thm}
   (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
@@ -3072,7 +3083,7 @@
                  (:instance fn-cp-cover-of-a-commit (dir t) (tab (nth 1 (nth 2 fn-cat$p))) (c fn-cat-paged))
                  (:instance fn-cp-cover-of-a-commit (dir nil) (tab (nth 2 (nth 2 fn-cat$p))) (c fn-cat-paged)))
            :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts fn-cat$c-commit-w fn-cat$a-commit fn-held-p
-                                                fn-cat$ap fn-cat$corr-w)))))
+                                                fn-cat$ap fn-cat$corr-w fn-cat$p-view fn-cat-live-candidatep)))))
 
 (defthm fn-cat-paged-commit{guard-thm}
   (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
@@ -3340,7 +3351,7 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-cat-index-health{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
-           :in-theory (disable fn-cp-corr-facts))))
+           :in-theory (disable fn-cp-corr-facts fn-cat$c-index-health fn-cat$a-index-health))))
 
 (defthm fn-cat-paged-index-health{guard-thm}
   (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
