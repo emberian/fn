@@ -62,7 +62,61 @@
              (and (getpropc 'adt-nth-1+ 'theorem nil (w state)) '(adt-nth-1+))))))))
 
 
+; The instance: what the index is told about the history's events.  The exact
+; test at lookup is `fn-hist-article-matches'; an event whose exact article is
+; a held record is keyed by that record.
+
+(defun fn-hist-article-matches (msgid ev)
+  (declare (xargs :guard t))
+  (let ((rec (fn-cei-event-article ev)))
+    (and (fn-held-p rec)
+         (equal msgid (fn-record-msgid rec)))))
+
+(defthm fn-hist-article-matches-by-definition
+  (equal (fn-hist-article-matches msgid ev)
+         (and (fn-held-p (fn-cei-event-article ev))
+              (equal msgid (fn-record-msgid (fn-cei-event-article ev)))))
+  :rule-classes nil)
+
+(defthm fn-hist-held-p-is-not-hstxa-headed
+  (implies (fn-held-p x) (not (equal (car x) :hstxa)))
+  :hints (("Goal" :in-theory (enable fn-held-internals fn-record-internals
+                                     fn-held-p))))
+
+(defthm fn-hist-key-article-of-held
+  (implies (fn-held-p (fn-cei-event-article x))
+           (equal (fn-hist-key-article x) (fn-cei-event-article x)))
+  :hints (("Goal" :in-theory (e/d (fn-cei-event-article fn-replay-composite-held)
+                                  (fn-held-p)))))
+
+(defthm fn-hist-held-msgid-stringp
+  (implies (fn-held-p x) (stringp (fn-record-msgid x)))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-held-internals fn-record-internals
+                                     fn-record-msgidp))))
+
+(defthm fn-hist-query-of-atom
+  (implies (not (consp events))
+           (equal (fn-hist$a-msgid-records m events) nil))
+  :rule-classes nil)
+
+(defthm fn-hist-query-of-cons
+  (equal (fn-hist$a-msgid-records m (cons x rest))
+         (if (fn-hist-article-matches m x)
+             (cons (fn-cei-event-article x) (fn-hist$a-msgid-records m rest))
+           (fn-hist$a-msgid-records m rest)))
+  :rule-classes nil)
+
+(defthm fn-hist-article-matches-implies-key
+  (implies (fn-hist-article-matches m x)
+           (and (stringp m) (equal (fn-hist-key-msgid x) m)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-hist-key-msgid) (fn-hist-key-article fn-held-p fn-cei-event-article))
+           :use ((:instance fn-hist-key-article-of-held)
+                 (:instance fn-hist-held-msgid-stringp (x (fn-cei-event-article x)))))))
+
 ; The foundation: the columns.
+
+(local (in-theory (disable fn-hist$a-msgid-records)))
 
 (defstobj fn-hist$c
   (fn-hist$c-rows :type (array t (0)) :resizable t)
@@ -144,11 +198,10 @@
   (if (consp seqs)
       (let ((i (car seqs)))
         (if (and (natp i) (< i (fn-hist$c-rows-length fn-hist$c)))
-            (let ((rec (fn-cei-event-article (fn-hist$c-rowsi i fn-hist$c))))
+            (let ((ev (fn-hist$c-rowsi i fn-hist$c)))
               (fn-hist$c-collect msgid (cdr seqs)
-                                 (if (and (fn-held-p rec)
-                                          (equal msgid (fn-record-msgid rec)))
-                                     (cons rec acc)
+                                 (if (fn-hist-article-matches msgid ev)
+                                     (cons (fn-cei-event-article ev) acc)
                                    acc)
                                  fn-hist$c))
           (fn-hist$c-collect msgid (cdr seqs) acc fn-hist$c)))
@@ -360,18 +413,6 @@
 ; -----------------------------------------------------------------------------
 ; The Message-ID column over the fold.
 
-; Every event whose exact article is a held record is keyed by that record.
-(defthm fn-hist-held-p-is-not-hstxa-headed
-  (implies (fn-held-p x) (not (equal (car x) :hstxa)))
-  :hints (("Goal" :in-theory (enable fn-held-internals fn-record-internals
-                                     fn-held-p))))
-
-(defthm fn-hist-key-article-of-held
-  (implies (fn-held-p (fn-cei-event-article x))
-           (equal (fn-hist-key-article x) (fn-cei-event-article x)))
-  :hints (("Goal" :in-theory (e/d (fn-cei-event-article fn-replay-composite-held)
-                                  (fn-held-p)))))
-
 (defun fn-hist-below-p (s n)
   (declare (xargs :guard t))
   (if (consp s)
@@ -387,7 +428,7 @@
  (defthm fn-hist-collect-append-acc
    (equal (fn-hist$c-collect m s (append a b) c)
           (append (fn-hist$c-collect m s a c) b))
-   :hints (("Goal" :in-theory (disable fn-held-p fn-cei-event-article)))))
+   :hints (("Goal" :in-theory (disable fn-hist-article-matches fn-cei-event-article)))))
 
 (local
  (defthm fn-hist-collect-acc
@@ -402,7 +443,7 @@
    (implies (true-listp acc) (true-listp (fn-hist$c-collect m s acc c)))
    :rule-classes (:rewrite :type-prescription)
    :hints (("Goal" :in-theory (disable fn-hist-collect-acc fn-hist-collect-append-acc
-                                       fn-held-p fn-cei-event-article)))))
+                                       fn-hist-article-matches fn-cei-event-article)))))
 
 (local
  (defthm fn-hist-collect-of-append-below
@@ -413,7 +454,7 @@
                    (fn-hist$c-collect m s acc c)))
    :hints (("Goal" :in-theory (e/d (fn-hist-open)
                                    (nth update-nth fn-hist-collect-acc
-                                    fn-hist-collect-append-acc fn-held-p
+                                    fn-hist-collect-append-acc fn-hist-article-matches
                                     fn-cei-event-article fn-hist$c-grow (:definition fn-hist$c-collect)))
             :induct (fn-hist$c-collect m s acc c)
             :expand ((fn-hist$c-collect m s acc c)
@@ -452,15 +493,6 @@
 (local (in-theory (disable fn-hist$c-bucket fn-hist$c-msgid-records)))
 
 (local
- (defthm fn-hist-records-for-of-one
-   (equal (fn-cei-article-records-for m (cons x rest))
-          (if (and (fn-held-p (fn-cei-event-article x))
-                   (equal m (fn-record-msgid (fn-cei-event-article x))))
-              (cons (fn-cei-event-article x)
-                    (fn-cei-article-records-for m rest))
-            (fn-cei-article-records-for m rest)))))
-
-(local
  (defthm fn-hist-msgid-records-of-append
    (implies (and (stringp m)
                  (natp (nth 1 c))
@@ -469,21 +501,26 @@
                                   (nth 1 c)))
             (equal (fn-hist$c-msgid-records m (fn-hist$c-append x c))
                    (append (fn-hist$c-msgid-records m c)
-                           (fn-cei-article-records-for m (list x)))))
+                           (fn-hist$a-msgid-records m (list x)))))
    :hints (("Goal" :in-theory (e/d (fn-hist-open fn-hist-key-msgid)
-                                   (nth update-nth fn-held-p fn-cei-event-article
+                                   (nth update-nth fn-hist-article-matches fn-cei-event-article
                                     fn-hist-key-article fn-hist-hash))
             :expand ((:free (acc c) (fn-hist$c-collect m (cons (nth 1 c) s) acc c)))
-            :use ((:instance fn-hist-key-article-of-held))))))
+            :use ((:instance fn-hist-article-matches-implies-key)
+                  (:instance fn-hist-query-of-cons (rest nil))
+                  (:instance fn-hist-query-of-atom (events nil)))))))
 
 (local
  (defthm fn-hist-records-for-split
    (implies (consp events)
-            (equal (fn-cei-article-records-for m events)
-                   (append (fn-cei-article-records-for m (list (car events)))
-                           (fn-cei-article-records-for m (cdr events)))))
+            (equal (fn-hist$a-msgid-records m events)
+                   (append (fn-hist$a-msgid-records m (list (car events)))
+                           (fn-hist$a-msgid-records m (cdr events)))))
    :rule-classes nil
-   :hints (("Goal" :in-theory (disable fn-held-p fn-cei-event-article)))))
+   :hints (("Goal" :in-theory (disable fn-hist-article-matches fn-cei-event-article)
+            :use ((:instance fn-hist-query-of-cons (x (car events)) (rest (cdr events)))
+                  (:instance fn-hist-query-of-cons (x (car events)) (rest nil))
+                  (:instance fn-hist-query-of-atom (events nil)))))))
 
 (local
  (defthm fn-hist-msgid-records-true-listp
@@ -491,13 +528,13 @@
    :rule-classes (:rewrite :type-prescription)))
 
 (local
- (defthm fn-hist-records-for-of-atom
+ (defthm fn-hist-query-of-atom-rewrite
    (implies (not (consp events))
-            (equal (fn-cei-article-records-for m events) nil))))
+            (equal (fn-hist$a-msgid-records m events) nil))
+   :hints (("Goal" :use ((:instance fn-hist-query-of-atom))))))
 
 (local (in-theory (disable fn-hist-msgid-records-is-collect-bucket
-                           fn-hist-bucket-of-append fn-hist-collect-of-append-below
-                           fn-hist-records-for-of-one)))
+                           fn-hist-bucket-of-append fn-hist-collect-of-append-below)))
 
 (local
  (defthm fn-hist-build-msgid-records
@@ -508,9 +545,9 @@
                                   (nth 1 c)))
             (equal (fn-hist$c-msgid-records m (fn-hist-build events c))
                    (append (fn-hist$c-msgid-records m c)
-                           (fn-cei-article-records-for m events))))
+                           (fn-hist$a-msgid-records m events))))
    :hints (("Goal" :in-theory (e/d (fn-hist-build)
-                                   (fn-cei-article-records-for fn-held-p
+                                   (fn-hist$a-msgid-records fn-hist-article-matches
                                     fn-cei-event-article fn-hist-hash
                                     fn-hist-fnv nth update-nth))
             :induct (fn-hist-build events c))
@@ -572,8 +609,8 @@
    (implies (and (equal c (fn-hist-build a (fn-hist$c-empty s)))
                  (stringp m))
             (equal (fn-hist$c-msgid-records m c)
-                   (fn-cei-article-records-for m a)))
-   :hints (("Goal" :in-theory (disable fn-cei-article-records-for fn-held-p
+                   (fn-hist$a-msgid-records m a)))
+   :hints (("Goal" :in-theory (disable fn-hist$a-msgid-records fn-hist-article-matches
                                        fn-cei-event-article)))))
 
 (local (in-theory (disable fn-hist$corr)))
@@ -589,11 +626,11 @@
                           (equal (nth seq (nth 0 c)) (nth seq a)))
                  (implies (stringp m)
                           (equal (fn-hist$c-msgid-records m c)
-                                 (fn-cei-article-records-for m a)))))
+                                 (fn-hist$a-msgid-records m a)))))
    :hints (("Goal" :in-theory (e/d (fn-hist$corr)
                                    (fn-hist-count-of-build fn-hist-room-of-build
                                     fn-hist-at-of-build fn-hist-msgid-records-of-build
-                                    fn-cei-article-records-for fn-held-p
+                                    fn-hist$a-msgid-records fn-hist-article-matches
                                     fn-cei-event-article nth))
             :use ((:instance fn-hist-count-of-build (s (nth 3 c)))
                   (:instance fn-hist-room-of-build (s (nth 3 c)))
