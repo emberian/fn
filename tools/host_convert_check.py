@@ -3,7 +3,7 @@
 
     make host-convert-check [FILE=host/native/x.lisp]
     python3 tools/host_convert_check.py [FILE ...]          # on a box
-    tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
+    tools/remote_check.sh auto --install-roots books/image-world --cmd 'make host-convert-check FILE=host/native/x.lisp'
 
 A lane that moves host code into a book, or adds a host include-book or a
 host-called entry, met three gates one image build at a time (obstructions-5

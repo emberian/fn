@@ -32,11 +32,13 @@ import sys
 from collections import deque
 from pathlib import Path
 
-# X2's ban (EXTRACTION-PROGRAM-20261007.md section 6): ACL2's evaluator, LD and translator are never
-# reachable from a root of the served program.  FMT1 (ACL2's printer, reached through WARNING1 and
-# WORMHOLE-ER) is reported with them but not yet banned: its callers are being classified.
+# X2's ban (EXTRACTION-PROGRAM-20261007.md section 6): ACL2's evaluator, LD, translator and printer
+# are never reachable from a root of the served program.  The printer (FMT0, FMT1, FMT1!, ERROR-FMS)
+# was reached only through the *1* scaffolding's WARNING1 and WORMHOLE-ER, which clruntime.lisp now
+# defines as runtime entries.
 BANNED = ("EV", "EV-W", "EV-REC", "EV-FNCALL", "EV-FNCALL-W", "LD-FN", "TRANS-EVAL",
-          "TRANSLATE11", "TRANSLATE11-LOCAL-DEF", "TRANSLATE1", "TRANSLATE")
+          "TRANSLATE11", "TRANSLATE11-LOCAL-DEF", "TRANSLATE1", "TRANSLATE",
+          "FMT0", "FMT1", "FMT1!", "ERROR-FMS")
 BANNED_IDS = tuple("%s:ACL2::%s" % (k, n) for n in BANNED for k in ("raw", "star1"))
 
 EVALUATOR = ("raw:ACL2::EV", "raw:ACL2::EV-W", "raw:ACL2::EV-REC", "raw:ACL2::LD-FN",

@@ -94,6 +94,7 @@
 (include-book "incoming-copy-stobj")
 (include-book "page-read-startup")
 (include-book "accounts")
+(include-book "history-root-status")
 (include-book "owner-report-capture")
 (include-book "index-writer-ticket")
 (include-book "catalog-may-seal")
