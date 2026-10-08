@@ -54,18 +54,21 @@ class GraphTests(unittest.TestCase):
         self.assertIn("fn-bs-txn-name-impl", self.graph.reachable)
 
     def test_a_defstobj_creator_is_reached_through_the_abstract_creator(self):
-        """books/payload-arena-paged.lisp `(defstobj fn-arena$p ...)' is the
-        foundation of `fn-arena-paged', whose :creator runs `:exec
-        create-fn-arena$p'; the paged arena is reached through the live
+        """books/payload-arena-paged.lisp's `(def-representation fn-arena-paged
+        ...)' (c6bf5db63: the hand stobjs fn-arena$p are gone) expands, in the
+        book's certificate, to `(defstobj fn-arena-paged$c ...)' under the
+        `defabsstobj fn-arena-paged', whose :creator runs `:exec
+        create-fn-arena-paged$c'; the paged arena is reached through the live
         extent arena's seal (host/bp-ingress-host.lisp -> fn-arena-seal-list
         -> ... -> fn-arena-paged-seal-list), so its creator ran too: a
         theorem concluding of `(create-fn-arena$p)' is concluded of a
         reached function (the premise audit's establishment by the
         creator)."""
-        self.assertIn("create-fn-arena$p", self.graph.book_defs)
-        self.assertNotIn("create-fn-arena$p", self.graph.stobj_names)
-        self.assertIn("create-fn-arena$p", self.graph.reachable)
-        self.assertIn("create-fn-arena-paged", self.graph.host_chain("create-fn-arena$p"))
+        creator = "create-fn-arena-paged$c"
+        self.assertIn(creator, self.graph.book_defs)
+        self.assertNotIn(creator, self.graph.stobj_names)
+        self.assertIn(creator, self.graph.reachable)
+        self.assertIn("create-fn-arena-paged", self.graph.host_chain(creator))
 
     def test_only_loaded_hosts_seed_book_symbols(self):
         self.assertGreater(self.graph.seeds["host"], 0)
@@ -234,12 +237,14 @@ class SubjectRuleTests(unittest.TestCase):
         self.assertTrue(self.subject("fn-own-read-preserves-relation").hosted(self.graph))
 
     def test_an_absstobj_export_reaches_the_attached_implementation(self):
-        """(attach-stobj fn-arena fn-arena-paged): the host's fn-arena-get
-        runs fn-arena$p-get, so the paged correspondence is hosted and the
-        retired byte-array one is not."""
+        """(attach-stobj fn-arena fn-arena-extent) over the extent arena, whose
+        inner stobj is fn-arena-paged (c6bf5db63 renamed fn-arena$p-get to the
+        generated fn-arena-paged$c-inner-get): the host's fn-arena-get runs it,
+        so the paged correspondence is hosted and the retired byte-array one
+        is not."""
         self.assertIn("fn-arena-get", self.graph.reachable)
         self.assertIn("fn-arena-paged-get", self.graph.reachable)
-        self.assertIn("fn-arena$p-get", self.graph.reachable)
+        self.assertIn("fn-arena-paged$c-inner-get", self.graph.reachable)
         paged = reach_check.Subject(self.graph, "fn-arena-paged-get{correspondence}", None)
         self.assertEqual(paged.functions, ["fn-arena-paged-get"])
         self.assertTrue(paged.hosted(self.graph))
@@ -948,6 +953,132 @@ class GeneratedDispatcherTests(unittest.TestCase):
             self.assertIn("fn-t-subject", graph.reachable)
             self.assertEqual(graph.shadow, {})
             self.assertEqual([f.key() for f in findings], ["PRF-T2:fn-t-lone-prop"])
+
+
+class GeneratedExpansionTests(unittest.TestCase):
+    """REACH-CHECK-GENERATED-DISPATCHER-BLIND, second half: a generated
+    definition is judged from the expansion ACL2 recorded in a CURRENT
+    certificate.  With the expansion, source mode says reached; with no
+    current certificate it says needs --world; with the call gone from the
+    expansion it says unreachable."""
+
+    DISPATCH = "(defun fn-t-dispatch (x) (cond ((consp x) (fn-t-subject x)) (t nil)))"
+    EMPTY = "(defun fn-t-dispatch (x) (cond ((consp x) (cons x x)) (t nil)))"
+
+    def run_with(self, expansion):
+        base = GeneratedDispatcherTests()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base.tree(root)
+            seen = []
+
+            def provider(book):
+                seen.append(book)
+                return expansion
+
+            loaded = reach_check.loaded_host_files(root=root)
+            with patch.object(reach_check, "ROOT", root), \
+                    patch.object(reach_check, "loaded_host_files", return_value=loaded), \
+                    patch.object(reach_check, "load_rows", return_value=base.ROWS):
+                graph = reach_check.Graph(expansions=provider)
+                findings = reach_check.audit(graph)[0]
+            return graph, {f.key(): reach_check.generated_through(graph, f) for f in findings}, seen
+
+    def test_a_current_expansion_makes_the_subject_reached(self):
+        graph, blind, seen = self.run_with([("defun", "fn-t-dispatch", self.DISPATCH)])
+        self.assertEqual(seen, ["books/t"])
+        self.assertIn("fn-t-subject", graph.reachable)
+        self.assertIn("fn-t-dispatch", graph.reachable)
+        self.assertNotIn("fn-t-dispatch", graph.generated)
+        self.assertNotIn("PRF-T1:fn-t-subject-prop", blind)
+        self.assertIn("PRF-T2:fn-t-lone-prop", blind)
+
+    def test_no_current_certificate_keeps_needs_world(self):
+        graph, blind, _ = self.run_with(None)
+        self.assertNotIn("fn-t-subject", graph.reachable)
+        self.assertIn("fn-t-dispatch", graph.generated)
+        self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
+
+    def test_a_certificate_that_does_not_define_the_name_keeps_needs_world(self):
+        graph, blind, _ = self.run_with([("defun", "fn-t-other", self.DISPATCH)])
+        self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
+
+    def test_the_call_removed_from_the_expansion_is_unreachable_not_blind(self):
+        graph, blind, _ = self.run_with([("defun", "fn-t-dispatch", self.EMPTY)])
+        self.assertNotIn("fn-t-subject", graph.reachable)
+        self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], [])
+
+
+class CertificateExpansionTests(unittest.TestCase):
+    """The reader and the currency rule, against a real ACL2 certificate."""
+
+    BOOK = (
+        "(in-package \"ACL2\")\n"
+        "(defun fn-t-subject (x) (cons x x))\n"
+        "(make-event\n"
+        " `(defun fn-t-dispatch (x)\n"
+        "    (cond ,@(list '((consp x) (fn-t-subject x))) (t nil))))\n")
+
+    @classmethod
+    def setUpClass(cls):
+        import acl2_slots
+        import cert_expansions
+        cls.cert_expansions = cert_expansions
+        cls.acl2 = acl2_slots.configured_acl2()
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.root = Path(cls.tmp.name)
+        (cls.root / "books").mkdir()
+        (cls.root / "tools").mkdir()
+        (cls.root / "books/t.lisp").write_text(cls.BOOK)
+        done = acl2_slots.run([cls.acl2], "reach_check test", cwd=cls.root / "books",
+                              input=b'(certify-book "t")\n(quit)\n',
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              check=False, timeout=300)
+        if not (cls.root / "books/t.cert").is_file():
+            cls.tmp.cleanup()
+            raise unittest.SkipTest("no ACL2 here: " + done.stdout.decode()[-300:])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def entry(self, cache):
+        """File the certificate under the key of the book's CURRENT bytes."""
+        import certs
+        import hashlib
+        key = certs.closure_key(self.root, "books/t")[0]
+        directory = cache / key / "origin0"
+        directory.mkdir(parents=True)
+        cert = self.root / "books/t.cert"
+        (directory / "book.cert").write_bytes(cert.read_bytes())
+        (directory / "meta.json").write_text(json.dumps(
+            {"book": "books/t", "cert_sha256": hashlib.sha256(cert.read_bytes()).hexdigest()}))
+
+    def test_acl2_reads_the_generated_definition_from_a_current_certificate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            self.entry(cache)
+            cert = self.cert_expansions.current_cert(self.root, "books/t", cache)
+            self.assertIsNotNone(cert)
+            read = self.cert_expansions.read_expansions([cert], self.acl2, self.root)[0]
+            self.assertEqual([(kind, name) for kind, name, _ in read], [("defun", "fn-t-dispatch")])
+            self.assertIn("FN-T-SUBJECT", read[0][2])
+
+    def test_a_changed_source_has_no_current_certificate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            self.entry(cache)
+            source = self.root / "books/t.lisp"
+            try:
+                source.write_text(self.BOOK + "(defun fn-t-new (x) x)\n")
+                self.assertIsNone(self.cert_expansions.current_cert(self.root, "books/t", cache))
+            finally:
+                source.write_text(self.BOOK)
+            self.assertIsNotNone(self.cert_expansions.current_cert(self.root, "books/t", cache))
+
+    def test_no_cache_entry_has_no_current_certificate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(self.cert_expansions.current_cert(self.root, "books/t", Path(tmp)))
 
 
 class ProseIsNotReachTests(unittest.TestCase):
