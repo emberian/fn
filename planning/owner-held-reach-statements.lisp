@@ -2,7 +2,7 @@
 ; B for both OCS properties; A for the wake. No original theorem is changed.
 ; The plan adds :completed-stopping and :frames-fenced to completion words.
 ; The old protocol embeds with no held or next batch and maps its unknown
-; events to :ocs-unknown. This preserves every old action and next phase,
+; events (including a second barrier result in :failed) to :ocs-unknown. This preserves every old action and next phase,
 ; decoding :sync as the old :barrier. The bridge below is over ALL old inputs.
 ; Only after the successor and bridge prove do the registry citations move.
 
@@ -21,16 +21,18 @@
 
 ; Interpretation of an old protocol event; new protocol words were invalid
 ; in OCS and remain invalid in the embedding, rather than acquiring meaning.
-(defun fn-otm-ocs-event (event)
+(defun fn-otm-ocs-event (phase event)
   (declare (xargs :guard t))
-  (if (member-equal event '(:started :started-none :started-uncertain
-                           :fenced :failed :completed))
+  (if (and (member-equal event '(:started :started-none :started-uncertain
+                                :fenced :failed :completed))
+           (not (and (equal phase :failed)
+                     (member-equal event '(:fenced :failed)))))
       event :ocs-unknown))
 
 (defthm fn-otm-held-plan-carries-the-whole-ocs-step
   (equal (fn-ocs-commit-step phase event)
          (let* ((s (fn-otm-with-step (fn-otm-init) phase nil nil))
-                (plan (fn-otm-held-plan s (fn-otm-ocs-event event))))
+                (plan (fn-otm-held-plan s (fn-otm-ocs-event phase event))))
            (list (if (equal (mv-nth 0 plan) :sync) :barrier (mv-nth 0 plan))
                  (fn-otm-phase-of (mv-nth 1 plan)))))
   :rule-classes nil)
