@@ -144,8 +144,8 @@
           (fn-nntp-message-id-tokenp (caddr tokens))
           (fn-octet-listp (caddr tokens))
           (and (fn-own-conn-group-index conn) t)
-          (consp (fn-midx-lookup (fn-nntp-token-string (caddr tokens))
-                                 (fn-own-conn-index conn))))))
+          (consp (fn-find-article (fn-nntp-token-string (caddr tokens))
+                                  (fn-state-articles (fn-own-conn-archive conn)))))))
 
 (defun fn-oert-rhs (o id prefix byte)
   (let* ((conn (fn-own-find-conn id (fn-own-conns o)))

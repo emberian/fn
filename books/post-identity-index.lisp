@@ -21,9 +21,10 @@
 ; (1) and (2) once read a Message-ID trie the owner carried over its view.
 ; The view carries no trie any more (R4: the catalog's Message-ID column
 ; answers the host's lookups, books/post-identity-catalog.lisp), so the
-; lookup here is the scan, fn-find-article, and the chain's `view' argument
-; is the visible-list premise (fn-pidx-view-okp, fn-ocl-view-visiblep) the
-; catalog twins share.
+; lookup here is the scan, fn-find-article, and no equation below has a
+; premise on the view.  The chain keeps its `view' argument and the guard
+; fn-pidx-view-okp (fn-ocl-view-visiblep) so that the catalog twins and the
+; callers above share one argument list; neither is read by a result.
 ;
 ; (3) The second admissibility scan is removed: fn-pidx-node-prepare builds
 ; the admitted ledger directly in the branch where admissibility was just
@@ -31,13 +32,13 @@
 ; the ledger is keyed by obligation id, which no carried index answers
 ; (PKT-549).
 ;
-; Every function is its reference with the test replaced, is guard-verified,
-; and is proved EQUAL to the reference.  The prepare chain's guard carries
-; the view fact (fn-pidx-view-okp) beside the reference's fn-sn-statep:
-; the served host runs a :program wrapper's callees raw
-; (specs/host.md "The served reader path"), so no guard is evaluated per
-; POST, and the host's obligation for it is the carried relation
-; (fn-pidx-view-okp-of-live-owner).
+; Every function is guard-verified and proved EQUAL to its reference; the
+; one that is not its reference by definition is fn-pidx-node-prepare (3).
+; The prepare chain's guard carries the view fact (fn-pidx-view-okp) beside
+; the reference's fn-sn-statep: the served host runs a :program wrapper's
+; callees raw (specs/host.md "The served reader path"), so no guard is
+; evaluated per POST, and the host's obligation for it is the carried
+; relation (fn-pidx-view-okp-of-live-owner).
 
 (in-package "ACL2")
 (include-book "owner-prepare-carried")
@@ -147,16 +148,14 @@
 ; D25's tombstone-aware verdict (fn-rcl-action-over) over ALPHA of the
 ; acceptance articles: the stored bytes read by handle.
 (defthm fn-pidx-existing-action-is-store-existing-action
-  (implies (and (fn-ocl-view-visiblep (fn-own-view o))
-                (fn-octets-p fn-octets))
+  (implies (fn-octets-p fn-octets)
            (equal (fn-pidx-existing-action msgid fn-octets groups o fn-arena)
                   (fn-store-existing-action msgid fn-octets groups
                                             (fn-own-store o) fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-pidx-existing-action
                                    fn-store-existing-action
                                    fn-rclb-same-articlep fn-rcl-same-articlep)
-                                  (fn-ocl-view-visiblep
-                                   fn-find-article
+                                  (fn-find-article
                                    fn-rclb-same-as-tombstonep fn-rcl-same-as-tombstonep
                                    fn-rcl-tombstonep fn-pbb-same-articlep fn-pb-same-articlep
                                    fn-octets-p fn-handle-bytes))
@@ -223,10 +222,9 @@
   :hints (("Goal" :in-theory (enable fn-statep))))
 
 (defthm fn-pidx-accept-prepare-is-accept-prepare
-  (implies (fn-pidx-view-okp view)
-           (equal (fn-pidx-accept-prepare s generation msgid payload groups
-                                          stamp view)
-                  (fn-accept-prepare s generation msgid payload groups stamp)))
+  (equal (fn-pidx-accept-prepare s generation msgid payload groups
+                                 stamp view)
+         (fn-accept-prepare s generation msgid payload groups stamp))
   :hints (("Goal" :in-theory (e/d (fn-pidx-accept-prepare fn-accept-prepare)
                                   (fn-statep fn-make-state fn-make-pending
                                    fn-selection-validp fn-find-article
@@ -267,13 +265,12 @@
              (fn-node-bindings s))))))))
 
 (defthm fn-pidx-node-prepare-is-node-prepare
-  (implies (fn-pidx-view-okp view)
-           (equal (fn-pidx-node-prepare s generation msgid payload groups
-                                        obligation-id subject evidence charge
-                                        stamp view)
-                  (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge
-                                   stamp)))
+  (equal (fn-pidx-node-prepare s generation msgid payload groups
+                               obligation-id subject evidence charge
+                               stamp view)
+         (fn-node-prepare s generation msgid payload groups
+                          obligation-id subject evidence charge
+                          stamp))
   :hints (("Goal" :in-theory (e/d (fn-pidx-node-prepare fn-node-prepare
                                    fn-retain-admit)
                                   (fn-node-statep fn-retain-admissiblep
@@ -303,9 +300,8 @@
 (verify-guards fn-pidx-sn-prepare-node)
 
 (defthm fn-pidx-sn-prepare-node-is-sn-prepare-node
-  (implies (fn-pidx-view-okp view)
-           (equal (fn-pidx-sn-prepare-node node record view)
-                  (fn-sn-prepare-node node record)))
+  (equal (fn-pidx-sn-prepare-node node record view)
+         (fn-sn-prepare-node node record))
   :hints (("Goal" :in-theory (e/d (fn-pidx-sn-prepare-node fn-sn-prepare-node)
                                   (fn-node-prepare fn-replay-advance-txid)))))
 
@@ -332,9 +328,8 @@
     s))
 
 (defthm fn-pidx-spc-prepare-is-pcar-spc-prepare
-  (implies (fn-pidx-view-okp view)
-           (equal (fn-pidx-spc-prepare s record view)
-                  (fn-pcar-spc-prepare s record)))
+  (equal (fn-pidx-spc-prepare s record view)
+         (fn-pcar-spc-prepare s record))
   :hints (("Goal" :in-theory (e/d (fn-pidx-spc-prepare fn-pcar-spc-prepare)
                                   (fn-sn-statep fn-pcar-stage-record
                                    fn-sn-prepare-node fn-rcon-sn-record-bindsp
@@ -369,9 +364,8 @@
                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 (defthm fn-pidx-opc-owner-prepare-is-pcar-opc-owner-prepare
-  (implies (fn-pidx-view-okp (fn-own-view o))
-           (equal (fn-pidx-opc-owner-prepare o record)
-                  (fn-pcar-opc-owner-prepare o record)))
+  (equal (fn-pidx-opc-owner-prepare o record)
+         (fn-pcar-opc-owner-prepare o record))
   :hints (("Goal" :in-theory (e/d (fn-pidx-opc-owner-prepare
                                    fn-pcar-opc-owner-prepare)
                                   (fn-own-refresh fn-pcar-spc-prepare
@@ -388,9 +382,8 @@
    oc (fn-pidx-opc-owner-prepare (fn-ocfg-owner oc) record)))
 
 (defthm fn-pidx-opc-prepare-is-pcar-opc-prepare
-  (implies (fn-pidx-view-okp (fn-own-view (fn-ocfg-owner oc)))
-           (equal (fn-pidx-opc-prepare oc record)
-                  (fn-pcar-opc-prepare oc record)))
+  (equal (fn-pidx-opc-prepare oc record)
+         (fn-pcar-opc-prepare oc record))
   :hints (("Goal" :in-theory (e/d (fn-pidx-opc-prepare fn-pcar-opc-prepare)
                                   (fn-pcar-opc-owner-prepare
                                    fn-pcar-opc-prepare-is-opc-prepare)))))
@@ -417,13 +410,11 @@
 ; its history; so, by fn-pcar-sbud-prepare-is-sbud-prepare, every theorem
 ; about fn-sbud-prepare is a theorem about the host's call.
 (defthm fn-pidx-sbud-prepare-is-pcar-sbud-prepare
-  (implies (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-           (equal (fn-pidx-sbud-prepare oc record budget)
-                  (fn-pcar-sbud-prepare oc record budget)))
-  :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pcar-sbud-prepare
-                                   fn-pidx-view-okp)
+  (equal (fn-pidx-sbud-prepare oc record budget)
+         (fn-pcar-sbud-prepare oc record budget))
+  :hints (("Goal" :in-theory (e/d (fn-pidx-sbud-prepare fn-pcar-sbud-prepare)
                                   (fn-pcar-opc-prepare fn-sbud-admitp
-                                   fn-sbud-used fn-sbud-count fn-ocl-view-visiblep
+                                   fn-sbud-used fn-sbud-count
                                    fn-sbud-oc-store
                                    fn-pcar-sbud-prepare-is-sbud-prepare))
            :use ((:instance fn-sbud-count-is-used-by-definition (s (fn-sbud-oc-store oc)))))))

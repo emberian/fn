@@ -18,7 +18,7 @@
 (defconst *hdt-open*
  (fn-served-result-conn
   (fn-served-open-group-indexed *hdt-archive*
-   (fn-midx-build (list *hdt-article*)) (fn-gidx-build (list *hdt-article*))
+   (fn-gidx-build (list *hdt-article*))
    nil 510 65536 *hdt-config* nil nil (fn-auth-open-config))))
 (defconst *sr-arena* (list *hdt-payload*))
 (bpr-lift fn-served-step 2)
@@ -49,7 +49,6 @@
          (fn-served-conn-observation *hdt-selected*)
          (fn-served-conn-injection *hdt-selected*)
          (fn-served-conn-verdicts *hdt-selected*)
-         (fn-served-conn-index *hdt-selected*)
          (fn-served-conn-group-index *hdt-selected*)
          (fn-served-conn-control *hdt-selected*)
          (fn-served-conn-pinned *hdt-selected*)
@@ -71,7 +70,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -99,7 +98,7 @@
         (not
           (and
             (fn-nntp-message-id-tokenp *hdt-token*)
-            (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*))))
+            (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*))))
       (and
         (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
         (equal
@@ -108,8 +107,7 @@
               (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p)))))
           (fn-nntp-result-session r))
         (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
-        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))
-        (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes
   nil)
 
@@ -127,7 +125,6 @@
          (fn-served-conn-observation *hdt-selected*)
          (fn-served-conn-injection *hdt-selected*)
          (fn-served-conn-verdicts *hdt-selected*)
-         (fn-served-conn-index *hdt-selected*)
          (fn-served-conn-group-index *hdt-selected*)
          (fn-served-conn-control *hdt-selected*)
          (fn-served-conn-pinned *hdt-selected*)
@@ -149,7 +146,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -175,7 +172,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (fn-wire-statep (fn-served-conn-wire conn)))
       (not
         (and
@@ -188,8 +185,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -207,7 +203,6 @@
          (fn-served-conn-observation *hdt-selected*)
          (fn-served-conn-injection *hdt-selected*)
          (fn-served-conn-verdicts *hdt-selected*)
-         (fn-served-conn-index *hdt-selected*)
          (fn-served-conn-group-index *hdt-selected*)
          (fn-served-conn-control *hdt-selected*)
          (fn-served-conn-pinned *hdt-selected*)
@@ -229,7 +224,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -255,7 +250,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (<= (len *hdt-line*) 1))
       (not
         (and
@@ -268,8 +263,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -287,7 +281,6 @@
          (fn-served-conn-observation (update-nth 1 (append *hdt-as* (list nil)) *hdt-selected*))
          (fn-served-conn-injection (update-nth 1 (append *hdt-as* (list nil)) *hdt-selected*))
          (fn-served-conn-verdicts (update-nth 1 (append *hdt-as* (list nil)) *hdt-selected*))
-         (fn-served-conn-index (update-nth 1 (append *hdt-as* (list nil)) *hdt-selected*))
          (fn-served-conn-group-index (update-nth 1 (append *hdt-as* (list nil)) *hdt-selected*))
          (fn-served-conn-control (update-nth 1 (append *hdt-as* (list nil)) *hdt-selected*))
          (fn-served-conn-pinned (update-nth 1 (append *hdt-as* (list nil)) *hdt-selected*))
@@ -309,7 +302,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -335,7 +328,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (fn-auth-sessionp as))
       (not
         (and
@@ -348,8 +341,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -367,7 +359,6 @@
          (fn-served-conn-observation (update-nth 1 (update-nth 5 t *hdt-as*) *hdt-selected*))
          (fn-served-conn-injection (update-nth 1 (update-nth 5 t *hdt-as*) *hdt-selected*))
          (fn-served-conn-verdicts (update-nth 1 (update-nth 5 t *hdt-as*) *hdt-selected*))
-         (fn-served-conn-index (update-nth 1 (update-nth 5 t *hdt-as*) *hdt-selected*))
          (fn-served-conn-group-index (update-nth 1 (update-nth 5 t *hdt-as*) *hdt-selected*))
          (fn-served-conn-control (update-nth 1 (update-nth 5 t *hdt-as*) *hdt-selected*))
          (fn-served-conn-pinned (update-nth 1 (update-nth 5 t *hdt-as*) *hdt-selected*))
@@ -389,7 +380,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -415,7 +406,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (not (fn-auth-session-handshakingp as)))
       (not
         (and
@@ -428,8 +419,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -452,8 +442,6 @@
          (fn-served-conn-injection
            (update-nth 1 (update-nth 2 (quote (:sasl-plain)) *hdt-as*) *hdt-selected*))
          (fn-served-conn-verdicts
-           (update-nth 1 (update-nth 2 (quote (:sasl-plain)) *hdt-as*) *hdt-selected*))
-         (fn-served-conn-index
            (update-nth 1 (update-nth 2 (quote (:sasl-plain)) *hdt-as*) *hdt-selected*))
          (fn-served-conn-group-index
            (update-nth 1 (update-nth 2 (quote (:sasl-plain)) *hdt-as*) *hdt-selected*))
@@ -480,7 +468,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -506,7 +494,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (not (fn-auth-sasl-waitingp as)))
       (not
         (and
@@ -519,8 +507,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -562,11 +549,6 @@
              1
              (update-nth 1 (fn-auth-make-config t nil nil nil) *hdt-as*)
              *hdt-selected*))
-         (fn-served-conn-index
-           (update-nth
-             1
-             (update-nth 1 (fn-auth-make-config t nil nil nil) *hdt-as*)
-             *hdt-selected*))
          (fn-served-conn-group-index
            (update-nth
              1
@@ -604,7 +586,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -628,7 +610,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not
         (or
           (not (fn-auth-config-requiredp (fn-auth-session-config as)))
@@ -644,8 +626,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -741,20 +722,6 @@
                  (fn-cfg-initial)
                  nil))
              *hdt-selected*))
-         (fn-served-conn-index
-           (update-nth
-             1
-             (fn-auth-with-base
-               *hdt-as*
-               (fn-peer-make-session
-                 *hdt-post*
-                 "test-peer"
-                 (list :ihave (fn-nntp-string-octets "<held@fn.test>"))
-                 0
-                 (fn-node-initial-state (quote ("fn.test")) 100000)
-                 (fn-cfg-initial)
-                 nil))
-             *hdt-selected*))
          (fn-served-conn-group-index
            (update-nth
              1
@@ -828,7 +795,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -854,7 +821,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (null (fn-peer-session-peer peer)))
       (not
         (and
@@ -867,8 +834,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -922,13 +888,6 @@
                *hdt-as*
                (fn-peer-with-base *hdt-peer* (fn-post-make-session *hdt-reader* t)))
              *hdt-selected*))
-         (fn-served-conn-index
-           (update-nth
-             1
-             (fn-auth-with-base
-               *hdt-as*
-               (fn-peer-with-base *hdt-peer* (fn-post-make-session *hdt-reader* t)))
-             *hdt-selected*))
          (fn-served-conn-group-index
            (update-nth
              1
@@ -974,7 +933,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -1000,7 +959,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (not (fn-post-session-awaiting ps)))
       (not
         (and
@@ -1013,8 +972,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -1080,15 +1038,6 @@
                  *hdt-peer*
                  (fn-post-make-session (update-nth 0 nil *hdt-reader*) nil)))
              *hdt-selected*))
-         (fn-served-conn-index
-           (update-nth
-             1
-             (fn-auth-with-base
-               *hdt-as*
-               (fn-peer-with-base
-                 *hdt-peer*
-                 (fn-post-make-session (update-nth 0 nil *hdt-reader*) nil)))
-             *hdt-selected*))
          (fn-served-conn-group-index
            (update-nth
              1
@@ -1142,7 +1091,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -1168,7 +1117,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (equal (fn-nntp-session-openp session) t))
       (not
         (and
@@ -1181,8 +1130,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -1248,15 +1196,6 @@
                  *hdt-peer*
                  (fn-post-make-session (update-nth 3 nil *hdt-reader*) nil)))
              *hdt-selected*))
-         (fn-served-conn-index
-           (update-nth
-             1
-             (fn-auth-with-base
-               *hdt-as*
-               (fn-peer-with-base
-                 *hdt-peer*
-                 (fn-post-make-session (update-nth 3 nil *hdt-reader*) nil)))
-             *hdt-selected*))
          (fn-served-conn-group-index
            (update-nth
              1
@@ -1310,7 +1249,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -1336,7 +1275,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (fn-nntp-session-projected session))
       (not
         (and
@@ -1349,8 +1288,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -1368,7 +1306,6 @@
          (fn-served-conn-observation *hdt-selected*)
          (fn-served-conn-injection *hdt-selected*)
          (fn-served-conn-verdicts *hdt-selected*)
-         (fn-served-conn-index *hdt-selected*)
          (fn-served-conn-group-index *hdt-selected*)
          (fn-served-conn-control *hdt-selected*)
          (fn-served-conn-pinned *hdt-selected*)
@@ -1390,7 +1327,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -1427,7 +1364,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not
         (fn-nntp-command-inputp
           (append *fn-shd-head-keyword* (make-list 520 :initial-element 32) *hdt-token*)))
@@ -1442,8 +1379,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -1461,7 +1397,6 @@
          (fn-served-conn-observation *hdt-selected*)
          (fn-served-conn-injection *hdt-selected*)
          (fn-served-conn-verdicts *hdt-selected*)
-         (fn-served-conn-index *hdt-selected*)
          (fn-served-conn-group-index *hdt-selected*)
          (fn-served-conn-control *hdt-selected*)
          (fn-served-conn-pinned *hdt-selected*)
@@ -1483,7 +1418,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list (fn-nntp-string-octets "<other@fn.test>"))
          server
@@ -1514,7 +1449,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<other@fn.test>"))
-          (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<other@fn.test>"))))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<other@fn.test>"))))
       (not
         (equal
           (fn-nntp-tokenize *hdt-line*)
@@ -1530,8 +1465,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -1550,7 +1484,6 @@
            (update-nth 3 (update-nth 4 nil *hdt-config*) *hdt-selected*))
          (fn-served-conn-injection (update-nth 3 (update-nth 4 nil *hdt-config*) *hdt-selected*))
          (fn-served-conn-verdicts (update-nth 3 (update-nth 4 nil *hdt-config*) *hdt-selected*))
-         (fn-served-conn-index (update-nth 3 (update-nth 4 nil *hdt-config*) *hdt-selected*))
          (fn-served-conn-group-index
            (update-nth 3 (update-nth 4 nil *hdt-config*) *hdt-selected*))
          (fn-served-conn-control (update-nth 3 (update-nth 4 nil *hdt-config*) *hdt-selected*))
@@ -1573,7 +1506,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -1599,7 +1532,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not server)
       (not
         (and
@@ -1612,8 +1545,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -1625,17 +1557,16 @@
     ((conn
        (fn-served-make-conn-live
          (fn-wire-make-state :command nil 0 nil nil 0 510 65536)
-         (fn-served-conn-session (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-archive (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-config (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-observation (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-injection (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-verdicts (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-index (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-group-index (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-control (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-pinned (update-nth 8 nil *hdt-selected*))
-         (fn-served-conn-live (update-nth 8 nil *hdt-selected*))))
+         (fn-served-conn-session (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-archive (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-config (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-observation (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-injection (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-verdicts (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-group-index (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-control (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-pinned (update-nth 7 nil *hdt-selected*))
+         (fn-served-conn-live (update-nth 7 nil *hdt-selected*))))
      (as (fn-served-conn-session conn))
      (config (fn-served-conn-config conn))
      (archive (fn-served-conn-archive conn))
@@ -1653,7 +1584,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -1679,7 +1610,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp *hdt-token*)
-          (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*)))
       (not (fn-gidx-pinp viewindex))
       (not
         (and
@@ -1692,8 +1623,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -1706,93 +1636,25 @@
        (fn-served-make-conn-live
          (fn-wire-make-state :command nil 0 nil nil 0 510 65536)
          (fn-served-conn-session
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-archive
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-config
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-observation
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-injection
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-verdicts
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
-         (fn-served-conn-index
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-group-index
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-control
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-pinned
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-live
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))))
      (as (fn-served-conn-session conn))
      (config (fn-served-conn-config conn))
      (archive (fn-served-conn-archive conn))
@@ -1810,7 +1672,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list (quote (49)))
          server
@@ -1842,7 +1704,7 @@
       (not
         (and
           (fn-nntp-message-id-tokenp (quote (49)))
-          (fn-nntp-msgid-withdrawn-p viewindex (quote (49)))))
+          (fn-nntp-msgid-withdrawn-p viewarchive viewindex (quote (49)))))
       (not (not (fn-nntp-number-withdrawn-p session viewarchive viewindex (quote (49)))))
       (not
         (and
@@ -1855,8 +1717,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -1869,93 +1730,25 @@
        (fn-served-make-conn-live
          (fn-wire-make-state :command nil 0 nil nil 0 510 65536)
          (fn-served-conn-session
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-archive
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-config
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-observation
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-injection
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-verdicts
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
-         (fn-served-conn-index
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-group-index
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-control
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-pinned
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))
          (fn-served-conn-live
-           (update-nth
-             9
-             (fn-ctl-pin (list *hdt-article*) nil)
-             (update-nth
-               8
-               nil
-               (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*)))))))
+           (update-nth 8 (fn-ctl-pin (list *hdt-article*) nil) (update-nth 7 nil (update-nth 2 (update-nth 2 nil *hdt-archive*) *hdt-selected*))))))
      (as (fn-served-conn-session conn))
      (config (fn-served-conn-config conn))
      (archive (fn-served-conn-archive conn))
@@ -1973,7 +1766,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list *hdt-token*)
          server
@@ -2001,7 +1794,7 @@
         (not
           (and
             (fn-nntp-message-id-tokenp *hdt-token*)
-            (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*))))
+            (fn-nntp-msgid-withdrawn-p viewarchive viewindex *hdt-token*))))
       (not
         (and
           (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
@@ -2013,8 +1806,7 @@
           (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
           (equal
             (fn-served-conn-archive (fn-served-result-conn p))
-            (fn-served-conn-archive conn))
-          (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))))
+            (fn-served-conn-archive conn))))))
   :rule-classes
   nil)
 
@@ -2031,7 +1823,6 @@
          (fn-served-conn-observation *hdt-selected*)
          (fn-served-conn-injection *hdt-selected*)
          (fn-served-conn-verdicts *hdt-selected*)
-         (fn-served-conn-index *hdt-selected*)
          (fn-served-conn-group-index *hdt-selected*)
          (fn-served-conn-control *hdt-selected*)
          (fn-served-conn-pinned *hdt-selected*)
@@ -2053,7 +1844,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list (quote (49)))
          server
@@ -2087,7 +1878,7 @@
         (not
           (and
             (fn-nntp-message-id-tokenp (quote (49)))
-            (fn-nntp-msgid-withdrawn-p viewindex (quote (49))))))
+            (fn-nntp-msgid-withdrawn-p viewarchive viewindex (quote (49))))))
       (and
         (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
         (equal
@@ -2096,7 +1887,6 @@
               (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p)))))
           (fn-nntp-result-session r))
         (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
-        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))
-        (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes
   nil)
