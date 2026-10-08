@@ -147,7 +147,10 @@
                  '(:request-refused (0)))
     (error "revoked request was not refused"))
   (unless (equal (reverse *calls*)
-                 '(:lock :lock :trust :open-request-journal :lock :trust
+                 ;; The held commit's START is its own quantum under O (the
+                 ;; second :lock after the journal opens); the :commit quantum
+                 ;; follows it, re-reads trust there, and finds it revoked.
+                 '(:lock :lock :trust :open-request-journal :lock :lock :trust
                    :close-request-journal :lock))
     (error "request authorization/publication order ~s" (reverse *calls*)))
   ;; The refusal line was asked of ACL2 for this view, as refused, with the

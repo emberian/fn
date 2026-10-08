@@ -90,12 +90,12 @@ class SchedulerSourceTests(unittest.TestCase):
         # Each member's reply is the release ACL2 names (fn-ocs-member-releases,
         # keystone fn-ocs-members-told-only-after-the-barrier): the COMPLETE
         # takes ACL2's action, never a host-computed flag, and the held
-        # commit asks fn-otm-held-event for its steps.
+        # commit asks fn-otm-held-plan for its steps and their labels.
         complete = owner[owner.index("(defun fnn-owner-commit-complete-locked "):owner.index("(defun fnn-owner-reader-capture ")]
         self.assertIn("'fn-ocs-member-releases action", complete)
         self.assertNotIn("(cons :close (second m))", complete)
         held = owner[owner.index("(defun fnn-owner-held-event "):owner.index("(defun fnn-owner-commit-pipeline ")]
-        self.assertIn("(fnn-call 'fn-otm-held-event (fnn-owner-gate-sched gate) event)", held)
+        self.assertIn("(fnn-call 'fn-otm-held-plan (fnn-owner-gate-sched gate) event)", held)
         self.assertIn("(fnn-core 'fn-och-held-event", held)
         self.assertIn("'fn-otm-held-caller-wake", held)
         self.assertNotIn("fnn-owner-commit-queued-locked", owner)
