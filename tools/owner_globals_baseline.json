@@ -61,7 +61,8 @@
     "2026-10-08: OWNER-CARRIER-GLOBALS: count live include-book wrappers; measurement only (host/payload-view-host.lisp 0->3, admitting fn-owner-osn-lease, fn-owner-payload-view, fn-owner-recovery-payload-view)",
     "2026-10-08: OWNER-CARRIER-GLOBALS: count live include-book wrappers; measurement only (host/receiver-repin-source-host.lisp 0->1, admitting fn-owner-rx-connection-issued)",
     "2026-10-08: OWNER-CARRIER-GLOBALS: count live include-book wrappers; measurement only (host/receiver-source-gate-host.lisp 0->1, admitting fn-owner-rx-connection-issued)",
-    "2026-10-08: OWNER-CARRIER-GLOBALS: count live include-book wrappers; measurement only (host/recovery-payload-view-state.lisp 0->1, admitting fn-owner-recovery-payload-view)"
+    "2026-10-08: OWNER-CARRIER-GLOBALS: count live include-book wrappers; measurement only (host/recovery-payload-view-state.lisp 0->1, admitting fn-owner-recovery-payload-view)",
+    "2026-10-08: OWNER-CARRIER-GLOBALS: reclaim-live carried admission funnel remains measured until S6 (books/owner-admission-state.lisp 0->1, admitting fn-owner-admission)"
   ],
   "books/account-adoption-input-source.lisp": 1,
   "books/account-adoption-turn-state.lisp": 1,
@@ -89,6 +90,7 @@
   "books/history-semantic-writer.lisp": 1,
   "books/history-source-capture.lisp": 2,
   "books/index-writer-ticket.lisp": 1,
+  "books/owner-admission-state.lisp": 1,
   "books/owner-authority-proposal-state.lisp": 1,
   "books/owner-canonical-epoch.lisp": 1,
   "books/owner-canonical-read-state.lisp": 1,

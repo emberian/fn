@@ -43,6 +43,7 @@
    (defun fn-mcr-ops-credit) (defun fn-mcr-make) (defun fn-mcr-budget)
    (defun fn-mcr-base) (defun fn-mcr-cache) (defun fn-mcr-completion)
    (defun fn-mcr-runtime) (defun fn-mcr-drawn) (defun fn-mcr-ops)
+   (defun fn-mcr-hroot) (defun fn-mcr-hroots)
    (defun fn-mcr-total) (defun fn-mcr-with) (defun fn-mcr-drop-loop)
    (defun fn-mcr-drop) (defun fn-mcr-put) (defun fn-mcr-credit-of)
    (defun fn-mcr-set) (defun fn-mcr-resize) (defun fn-mcr-borrow)))
@@ -54,7 +55,12 @@
 (load-deployed-forms "books/history-columns-store.lisp"
  '((defun fn-hist-octets-advance) (defun fn-hist-bytes-carried)))
 (load-deployed-forms "books/owner-reclaim.lisp" '((defun fn-orc-capture-word)))
-(load-deployed-forms "books/owner-state-accessors.lisp" '((defun fn-owner-sco-global)))
+(load-deployed-forms "books/owner-admission-state.lisp"
+ '((defun fn-oadm-initial) (defun fn-oadm-configure-reclaim) (defun fn-oadm-reclaim-live)
+   (defun fn-ost-admission) (defun fn-ost-install-admission)))
+(load-deployed-forms "books/owner-publication-state.lisp"
+ '((defun fn-opub-initial) (defun fn-opub-index) (defun fn-opub-get)
+   (defun fn-ost-publication) (defun fn-ost-install-publication)))
 (load-deployed-forms "host/owner-host.lisp"
  '((defun fn-owner-record-octets) (defun fn-owner-sco-count) (defun fn-owner-orc-pass)
    (defun fn-owner-reclaim-live-p) (defun fn-owner-orcp-capture)))
@@ -110,11 +116,11 @@
 (dolist (case '((10000 :stale) (60000 :stale) (60000 :missing) (60000 :ahead)))
  (let* ((reserve (first case)) (cache-mode (second case)) (*the-live-state* (make-hash-table)) (*hist* (vector '(100)))
         (*capture-count* 0) (*rows-read* nil)
-        (credits (fn-mcr-make (+ reserve 20) 0 0 reserve 0 0 '((:other . (0 . 10))))))
+        (credits (fn-mcr-make (+ reserve 20) 0 0 reserve 0 0 '((:other . (0 . 10))) 0 nil)))
   (setf (gethash :records *the-live-state*) '(100 200)
         (gethash :credits *the-live-state*) credits
         ;; the operator's opt-in (D53), installed by the connection budget
-        (gethash 'fn-owner-reclaim-live *the-live-state*) t)
+        (gethash 'fn-owner-admission *the-live-state*) (fn-oadm-configure-reclaim t))
   (unless (eq cache-mode :missing)
    (setf (gethash 'fn-owner-record-octets *the-live-state*)
          (if (eq cache-mode :ahead) '(9 . 900) '(1 . 100))))
@@ -146,11 +152,11 @@
  (destructuring-bind (pass inflight word) case
   (let* ((*the-live-state* (make-hash-table)) (*hist* (vector '(100)))
          (*capture-count* 0) (*rows-read* nil)
-         (credits (fn-mcr-make 99999 0 0 0 0 0 '((:other . (0 . 10))))))
+         (credits (fn-mcr-make 99999 0 0 0 0 0 '((:other . (0 . 10))) 0 nil)))
    (setf (gethash :records *the-live-state*) '(100 200)
          (gethash :credits *the-live-state*) credits
-         (gethash 'fn-owner-orc-pass *the-live-state*) pass
-         (gethash 'fn-owner-sco-inflight *the-live-state*) inflight)
+         (gethash 'fn-owner-publication *the-live-state*)
+         (list nil nil nil nil nil inflight nil nil nil pass))
    (let ((answer (fnn-owner-core 'fn-owner-orcp-capture :recorded :clock nil 99999 :revision)))
     (census-check (equal answer (list :deferred word nil))
                   "a held slot is refused by name, third element nil")
@@ -165,10 +171,10 @@
 (dolist (installed '(:nil :unbound))
  (let* ((*the-live-state* (make-hash-table)) (*hist* (vector '(100)))
         (*capture-count* 0) (*rows-read* nil)
-        (credits (fn-mcr-make 99999 0 0 60000 0 0 '((:other . (0 . 10))))))
+        (credits (fn-mcr-make 99999 0 0 60000 0 0 '((:other . (0 . 10))) 0 nil)))
   (setf (gethash :records *the-live-state*) '(100 200)
         (gethash :credits *the-live-state*) credits)
-  (when (eq installed :nil) (setf (gethash 'fn-owner-reclaim-live *the-live-state*) nil))
+  (when (eq installed :nil) (fn-ost-install-admission (fn-oadm-configure-reclaim nil) *the-live-state*))
   (let ((answer (fnn-owner-core 'fn-owner-orcp-capture :recorded :clock nil 99999 :revision)))
    (census-check (equal answer '(:deferred :offline-only nil))
                  "without the opt-in the capture is refused by name")

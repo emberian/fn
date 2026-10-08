@@ -82,3 +82,5 @@ ratchet:owner_globals_check:host/payload-view-host.lisp — OWNER-CARRIER-GLOBAL
 ratchet:owner_globals_check:host/receiver-repin-source-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
 ratchet:owner_globals_check:host/receiver-source-gate-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
 ratchet:owner_globals_check:host/recovery-payload-view-state.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+
+ratchet:owner_globals_check:books/owner-admission-state.lisp — OWNER-CARRIER-GLOBALS: count carried admission funnel until S6; reclaim-live moved from host, no additional state — carrier3 C8 admission migration

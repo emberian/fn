@@ -162,3 +162,5 @@
 (include-book "store-host-boundary")
 (include-book "store-profile-namespace")
 (include-book "native-operator")
+(include-book "store-log-route")
+(include-book "store-log-kernel-concrete")

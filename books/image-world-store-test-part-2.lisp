@@ -7,6 +7,9 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
+(include-book "store-carried-folds")
+(include-book "owner-log-route")
+(include-book "owner-advance-carried")
 (include-book "owner-intent-carried")
 (include-book "owner-parse-carried")
 (include-book "owner-identity-intern")

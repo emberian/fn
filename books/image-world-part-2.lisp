@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
-(include-book "bp-recovery-guards")
-(include-book "bp-recovery-profile")
 (include-book "bp-node-retire")
 (include-book "bp-node-rotation-due")
 (include-book "bp-report-observe")
@@ -137,6 +135,7 @@
 (include-book "index-writer-ticket")
 (include-book "catalog-may-seal")
 (include-book "owner-catalog-root-state")
+(include-book "owner-admission-state")
 (include-book "owner-publication-state")
 (include-book "payload-view-lease")
 (include-book "snapshot-capture-lease")
@@ -175,5 +174,4 @@
 (include-book "owner-reclaim-carry")
 (include-book "owner-reclaim-seal")
 (include-book "owner-recovery-retain")
-(include-book "owner-cursor-domain")
-(include-book "owner-retire")
+(include-book "owner-admission-recovery")

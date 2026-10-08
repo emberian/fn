@@ -53,3 +53,29 @@ class FamilyTransformationTests(unittest.TestCase):
             self.assertIn("(" + pure + " ", text[match.start:match.end].replace("\n", " "))
         from tools.owner_globals_check import globals_of
         self.assertEqual(set(GLOBALS).intersection(globals_of(text)), set())
+
+
+class ReclaimLiveCarrierTests(unittest.TestCase):
+    def test_budget_installs_and_both_requests_read_the_same_carried_flag(self):
+        from tools import lisp_rewrite as lr
+        from tools.owner_globals_check import globals_of
+        root = Path(__file__).resolve().parents[1]
+        text = (root / 'host/owner-host.lisp').read_text()
+        forms = lr.parse(text).forms
+        def body(name):
+            m = lr.match(None, forms, head='defun', name=name, deep=False)[0]
+            return text[m.start:m.end]
+        self.assertIn('(fn-ost-install-admission (fn-oadm-configure-reclaim live) state)',
+                      body('fn-owner-connection-budget'))
+        self.assertIn('(fn-oadm-reclaim-live (fn-ost-admission state))',
+                      body('fn-owner-reclaim-live-p'))
+        readers = [n for n in forms if isinstance(n, lr.Lst)
+                   and n.items and isinstance(n.items[0], lr.Atom)
+                   and n.items[0].low == 'defun'
+                   and '(fn-owner-reclaim-live-p state)' in text[n.start:n.end]]
+        self.assertEqual(len(readers), 2)
+        for directory in ('host', 'books'):
+            for path in (root / directory).rglob('*.lisp'):
+                source = path.read_text()
+                if 'fn-owner-reclaim-live' in source:
+                    self.assertNotIn('fn-owner-reclaim-live', globals_of(source), str(path))

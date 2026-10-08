@@ -35,6 +35,7 @@
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
 (include-book "../books/owner-catalog-root-state")
+(include-book "../books/owner-admission-state")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -98,6 +99,7 @@
 (include-book "../books/owner-reclaim-carry")
 (include-book "../books/owner-reclaim-seal")
 (include-book "../books/owner-recovery-retain")
+(include-book "../books/owner-admission-recovery")
 (include-book "../books/owner-cursor-domain")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
@@ -1010,9 +1012,7 @@
 ; ld build order refuses a forward call.
 (defun fn-owner-reclaim-live-p (state)
   (declare (xargs :stobjs state :guard t))
-  (and (f-boundp-global 'fn-owner-reclaim-live state)
-       (f-get-global 'fn-owner-reclaim-live state)
-       t))
+  (fn-oadm-reclaim-live (fn-ost-admission state)))
 
 ; The answer to the request (fn-orc-request-word) over the owner's own
 ; observations: the pass in flight, the publication in flight, a deferral
@@ -1525,7 +1525,7 @@
          (state (f-put-global 'fn-owner-credit-reserve
                               (fn-heap-article-reserve-octets profile)
                               state))
-         (state (f-put-global 'fn-owner-reclaim-live (and live t) state))
+         (state (fn-ost-install-admission (fn-oadm-configure-reclaim live) state))
          (state (fn-owner-put-credits (fn-mca-initial profile core nursery live) state))
          (state (f-put-global 'fn-owner-connection-budget-line
                               (fn-record-string-octets
