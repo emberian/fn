@@ -4,7 +4,7 @@
 (include-book "cold-read-layout")
 
 (defconst *fn-cgb-roster*
-  '(fn-crw-supportedp fn-ews-begin fn-ews-effect fn-ews-tick fn-ews-read
+  '(fn-crw-supportedp fn-ews-begin fn-ews-span-effect fn-ews-tick-to-io fn-ews-read-span
     fn-owner-page-read-ledger fn-pwx-tokenp fn-pwx-boundp
     fn-owner-page-window-executor-acquire
     fn-owner-page-window-executor-acquire-funded
@@ -52,7 +52,7 @@
   (declare (xargs :guard t))
   (case name
     (fn-crw-supportedp 2) (fn-ews-begin 11)
-    ((fn-ews-effect fn-ews-tick) 2) (fn-ews-read 6)
+    ((fn-ews-span-effect fn-ews-tick-to-io) 2) (fn-ews-read-span 6)
     ((fn-owner-page-read-ledger fn-pwx-tokenp) 1) (fn-pwx-boundp 4)
     ((fn-owner-page-window-executor-acquire
       fn-owner-page-window-executor-acquire-funded
@@ -68,7 +68,7 @@
   (declare (xargs :guard t))
   (case name
     (fn-ews-begin 7) (fn-owner-page-window-current-octet 2)
-    ((fn-ews-effect fn-ews-tick fn-ews-read fn-owner-page-window-byte
+    ((fn-ews-span-effect fn-ews-tick-to-io fn-ews-read-span fn-owner-page-window-byte
       fn-owner-page-window-byte-at fn-owner-page-window-outcome) 1)
     (otherwise 0)))
 
@@ -91,7 +91,7 @@
        (equal (car spec) (fn-cgb-arity name))
        (fn-cgb-checksp
         (fn-cgb-check-count name)
-        (if (member-eq name '(fn-ews-read fn-owner-page-window-byte
+        (if (member-eq name '(fn-ews-read-span fn-owner-page-window-byte
                              fn-owner-page-window-byte-at fn-owner-page-window-outcome)) 2 0)
         (equal name 'fn-ews-begin)
         (if (or (eq name 'fn-ews-begin) (eq name 'fn-owner-page-window-current-octet))

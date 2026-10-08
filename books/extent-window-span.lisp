@@ -397,6 +397,65 @@
   :rule-classes nil)
 
 ; ---------------------------------------------------------------------------
+; The publication keystone for the entry the host calls.
+(defthm fn-ews-tick-no-new-publication
+  (implies (not (fn-ewp-publication s))
+           (not (fn-ewp-publication (mv-nth 1 (fn-ews-tick s pgs-digest-state)))))
+  :hints (("Goal" :in-theory (enable fn-ews-tick fn-ewp-publication fn-ewp-with-phase-pos fn-ewp-state))))
+(defthm fn-ews-tick-n-no-new-publication
+  (implies (not (fn-ewp-publication s))
+           (not (fn-ewp-publication (mv-nth 1 (fn-ews-tick-n n s pgs-digest-state)))))
+  :hints (("Goal" :in-theory (e/d (fn-ews-tick-n) (fn-ews-tick)) :induct (fn-ews-tick-n n s pgs-digest-state))))
+(defthm fn-ews-read-scan-no-publication
+  (implies (and (not (fn-ewp-publication s)) (equal (nth 0 s) :scan))
+           (not (fn-ewp-publication (mv-nth 1 (fn-ews-read effect io-status s fn-octets pgs-digest-state fn-ew-buffer)))))
+  :hints (("Goal" :use fn-ews-read-publication-requires-core-integrity :in-theory (disable fn-ews-read fn-ewp-publication))))
+(defthm fn-ews-span-spec-no-publication
+  (implies (not (fn-ewp-publication s))
+           (not (fn-ewp-publication (mv-nth 1 (fn-ews-span-spec k off s fn-octets pgs-digest-state fn-ew-buffer)))))
+  :hints (("Goal" :in-theory (e/d (fn-ews-span-spec) (fn-ews-tick-n fn-ews-read fn-ewp-publication))
+           :induct (fn-ews-span-spec k off s fn-octets pgs-digest-state fn-ew-buffer))))
+(defthm fn-ews-span-effect-phase
+  (implies (fn-ews-span-effect s pgs-digest-state)
+           (or (equal (nth 0 s) :scan) (equal (nth 0 s) :trailer)))
+  :hints (("Goal" :in-theory (e/d (fn-ews-span-effect fn-ews-effect fn-ewp-effect fn-ewp-demand) (fn-ews-span-demand))))
+  :rule-classes nil)
+(defthm fn-ews-read-span-scan-no-publication
+  (implies (and (fn-ews-span-effect s pgs-digest-state)
+                (equal effect (fn-ews-span-effect s pgs-digest-state))
+                (equal (nth 0 s) :scan)
+                (not (fn-ewp-publication s)))
+           (not (fn-ewp-publication (mv-nth 1 (fn-ews-read-span effect io-status s fn-octets pgs-digest-state fn-ew-buffer)))))
+  :hints (("Goal" :do-not-induct t :cases ((and (equal io-status :ok) (equal (len fn-octets) (fn-ews-span-demand s))))
+           :in-theory (e/d (fn-ewp-publication) (fn-ews-read-span fn-ews-span-spec fn-ews-span-effect fn-ews-span-demand fn-ews-span-spec-no-publication))
+           :use (fn-ews-read-span-failed-read-is-a-read-failure fn-ews-read-span-scan-is-iterated-block-step
+                 (:instance fn-ews-span-spec-no-publication (k (ceiling (fn-ews-span-demand s) 64)) (off 0))))))
+
+; A window is published only by the trailer read, only with the digest of the
+; consumed prefix equal to the committed one: fn-ews-read's keystone for the
+; entry the host actually calls.
+(defthm fn-ews-read-span-publication-requires-core-integrity
+  (implies
+    (and (not (fn-ewp-publication s))
+         (fn-ewp-publication
+           (mv-nth 1 (fn-ews-read-span effect io-status s fn-octets pgs-digest-state fn-ew-buffer))))
+    (and (equal (nth 0 s) :trailer)
+         (equal (pgs-dc-mode pgs-digest-state) :done)
+         (equal (nth 7 s) (nth 3 s))
+         (equal io-status :ok)
+         (equal (fn-octets-len fn-octets) 32)
+         (equal (fn-bch-pack (fn-ews-read-trailer 32 0 fn-octets)) (nth 6 s))
+         (equal (pgs-dcb-result-octets pgs-digest-state) (fn-ews-read-trailer 32 0 fn-octets))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-ews-read-span fn-ewp-publication fn-ews-span-effect fn-ews-read fn-ews-effect)
+           :cases ((and (fn-ews-span-effect s pgs-digest-state) (equal effect (fn-ews-span-effect s pgs-digest-state))))
+           :use (fn-ews-read-span-stale-preserves-all-effects fn-ews-span-effect-phase
+                 fn-ews-read-span-scan-no-publication
+                 fn-ews-read-span-trailer-is-the-stream-read
+                 (:instance fn-ews-read-publication-requires-core-integrity (effect (fn-ews-effect s pgs-digest-state))))))
+  :rule-classes nil)
+
+; ---------------------------------------------------------------------------
 ; Guards: the host calls fn-ews-tick-run and fn-ews-read-span.
 (defthm fn-ews-tick-true-listp-s
   (implies (true-listp s) (true-listp (mv-nth 1 (fn-ews-tick s pgs-digest-state))))
