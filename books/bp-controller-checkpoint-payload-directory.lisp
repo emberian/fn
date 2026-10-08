@@ -60,7 +60,9 @@
   (implies (natp address) (and (natp (mod address 64)) (< (mod address 64) 64) (natp (floor address 64))))
   :hints (("Goal" :in-theory (disable mod floor)))))
 (defun fn-bpcc-directory-payload (controller token operation expected-revision expected-phase next-phase next-payload fuel fn-bp-controller-registry)
-  (declare (xargs :stobjs fn-bp-controller-registry :guard (natp fuel)))
+  (declare (xargs :stobjs fn-bp-controller-registry :guard (natp fuel)
+                  :guard-hints (("Goal" :in-theory (disable mod floor)
+                                 :use ((:instance fn-bpcc-payload-address-ranges (address (caddr controller))))))))
   (if (not (and (fn-bpc-tokenp controller)
                 (< (caddr controller) (fn-bpcr-highwater fn-bp-controller-registry))
                 (or (eq operation :fence-current)
@@ -75,6 +77,3 @@
       (mv word current claim payload phase revision left fn-bp-controller-registry)))))
 (verify-guards fn-bpcc-segment-payload-action)
 (verify-guards fn-bpcc-node-payload)
-(verify-guards fn-bpcc-directory-payload
- :hints (("Goal" :in-theory (disable mod floor)
-                 :use ((:instance fn-bpcc-payload-address-ranges (address (caddr controller)))))))
