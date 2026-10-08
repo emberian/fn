@@ -587,19 +587,6 @@ start by name; a plan that starts on starts the ring before anything listens."
                (values-list (fnn-core 'fn-dtrace-verb-status decision))
              (reply status reason (fnn-core 'fn-dtrace-status-line :refused))))))))
 
-(defvar *fnn-trace-control-next-handler* nil)
-
-(defun fnn-trace-control-handle (service frame)
-  "The handler chain's arm for kind 26 (host/native/control.lisp installs it);
-any other frame goes on to the next handler."
-  (let ((request (and (typep frame 'fnn-octets)
-                      (fnn-core 'fn-dtrace-request-decode
-                                (fnn-control-frame-octet-list frame)))))
-    (if (consp request)
-        (list :sealed-reply (fnn-trace-control-answer (first request) (second request)))
-      (and *fnn-trace-control-next-handler*
-           (funcall *fnn-trace-control-next-handler* service frame)))))
-
 (defun fnn-trace-execute (result)
   "Execute an accepted `trace' plan over the control socket and print the
 owner's lines."
