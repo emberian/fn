@@ -84,6 +84,12 @@
 (defun fnn-owner-commit-wake (service returned queued)
   (declare (ignorable service returned queued))
   (harness-stub-reached 'fnn-owner-commit-wake "host/native/owner.lisp"))
+(defun fnn-owner-committer-await-start (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-committer-await-start "host/native/owner.lisp"))
+(defun fnn-owner-committer-may-start (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-committer-may-start "host/native/owner.lisp"))
 (defun fnn-owner-complete-generation (ledger gen final members)
   (declare (ignorable ledger gen final members))
   (harness-stub-reached 'fnn-owner-complete-generation "host/native/owner.lisp"))
@@ -111,6 +117,9 @@
 (defun fnn-owner-frames-job (service job)
   (declare (ignorable service job))
   (harness-stub-reached 'fnn-owner-frames-job "host/native/owner.lisp"))
+(defun fnn-owner-history-root-maintain (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-history-root-maintain "host/native/history-root.lisp"))
 (defun fnn-owner-install (root max-connections &optional fault)
   (declare (ignorable root max-connections fault))
   (harness-stub-reached 'fnn-owner-install "host/native/owner.lisp"))
@@ -178,9 +187,6 @@
 (defun fnn-owner-start-tls-accept (service listener &optional implicit-tls)
   (declare (ignorable service listener implicit-tls))
   (harness-stub-reached 'fnn-owner-start-tls-accept "host/native/owner.lisp"))
-(defun fnn-owner-stop-service (service exit-code)
-  (declare (ignorable service exit-code))
-  (harness-stub-reached 'fnn-owner-stop-service "host/native/owner.lisp"))
 (defun fnn-owner-store-settlement (service settlement)
   (declare (ignorable service settlement))
   (harness-stub-reached 'fnn-owner-store-settlement "host/native/owner.lisp"))
@@ -225,6 +231,8 @@
    (defvar *fnn-actor-thread-joiner*) (defvar *fnn-actor-start-signal*)
    (defvar *fnn-actor-thread-terminator*) (defun fnn-owner-actor-run)
    (defun fnn-owner-actor-fault-service)
+   (defun fnn-owner-fence-service)
+   (defun fnn-owner-thread-escape)
    (defun fnn-owner-actor-start) (defvar *fnn-actors*) (defun fnn-actor-declare)
    (defmacro def-actor)
    (def-actor fnn-owner-spawn-syncer) (def-actor fnn-owner-spawn-committer)
@@ -248,6 +256,10 @@
        "def-actor without a join site refused")
 (check (not (assoc 'fnn-bad-actor *fnn-actors*)) "a refused declaration is not recorded")
 (defvar *join-faults* nil)
+;; Record the terminal boundary; the deployed fence chooses its exit code.
+(defun fnn-owner-stop-service (service exit-code)
+  (setf (fnn-owner-service-stopping service) t
+        (fnn-owner-service-exit-code service) exit-code))
 (defun fnn-owner-fault-service (service cid condition)
   (declare (ignore cid))
   (setf (fnn-owner-service-stopping service) t)
@@ -322,7 +334,8 @@
            "held cleanup during stop retains resources")
     (sb-thread:signal-semaphore release)
     (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
-      (check (and ended (eq (third receipt) :indeterminate))
+      (check (and ended (eq (third receipt) :indeterminate)
+                  (eq (fnn-owner-service-exit-code s) +fnn-exit-uncertain+))
              "physical return preserves uncertainty during stop"))))
 
 ;; A raw ACL2 hard-error throw is caught once and never re-steps its body.
@@ -330,8 +343,9 @@
   (let ((worker (fnn-owner-spawn-syncer s nil
                  (lambda () (incf steps) (throw 'raw-ev-fncall :torn)))))
     (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
-      (check (and ended (eq (third receipt) :fault) (= steps 1))
-             "raw ACL2 throw faults actor once"))))
+      (check (and ended (eq (third receipt) :fault) (= steps 1)
+                  (fnn-owner-service-stopping s))
+             "raw ACL2 throw faults actor once and stops the service without an escape callback"))))
 
 ;; The actual syncer operation emits result before physical lifecycle join;
 ;; the lifecycle holds its captured job and never self-removes its roster.

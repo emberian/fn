@@ -61,6 +61,8 @@ this image loaded (fnn-operator-register-action).")
   live-status
   ;; (path-octets kind) -> after a live report is written, its trailing lines.
   status-tail
+  ;; (path-octets) -> the running owner's decided profile, bounded FNCT read.
+  profile
   ;; (root control-path-list queryp) -> the admin liveness decision
   ;; (:live :stale :offline :held), a :stale node removed and ACL2's note
   ;; printed, as fn-native-control-liveness-decides decides.

@@ -130,7 +130,7 @@ def _probe(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path, root: Pa
     packages: list[str] = list(_KNOWN_PACKAGES)
     for _ in range(25):
         # The machine's ACL2 pool and heap cap (PKT-162).
-        result = acl2_slots.run([str(acl2)], "cert_alists pairs", cwd=root,
+        result = acl2_slots.run([str(acl2)], "cert_alists pairs", cwd=root, root=root,
                                 input=_driver(paths, pairs, packages).encode(),
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 check=False, timeout=timeout_seconds)

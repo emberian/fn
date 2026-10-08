@@ -113,3 +113,74 @@
          (fn-sca-load-held-rows *cav-loader-stale-rows* nil *cav-loader-tomb-arena* nil))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-scol-okp fn-scol-history-okp fn-scol-row-okp))))
+
+(include-book "../../books/defkeystone")
+; The snapshot checker is proved equal to the invariant on logical catalogs.
+(defun p7-cat-rows (i fn-cat)
+  (declare (xargs :stobjs fn-cat :verify-guards nil
+                  :measure (nfix (- (fn-cat-count fn-cat) (nfix i)))))
+  (if (and (natp i) (< i (fn-cat-count fn-cat)))
+      (cons (fn-cat-at i fn-cat) (p7-cat-rows (+ 1 i) fn-cat))
+    nil))
+(defthm p7-nthcdr-at-end
+  (implies (and (natp i) (<= (len xs) i))
+    (equal (true-list-fix (nthcdr i xs)) nil))
+  :hints (("Goal" :induct (nthcdr i xs) :in-theory (enable true-list-fix))))
+(defthm p7-nthcdr-within
+  (implies (and (natp i) (< i (len xs)))
+    (equal (true-list-fix (nthcdr i xs))
+           (cons (nth i xs) (true-list-fix (nthcdr (+ 1 i) xs)))))
+  :hints (("Goal" :induct (nthcdr i xs) :in-theory (enable true-list-fix))))
+(defthm p7-cat-rows-is-nthcdr
+  (implies (natp i)
+    (equal (p7-cat-rows i fn-cat) (true-list-fix (nthcdr i fn-cat))))
+  :hints (("Goal" :induct (p7-cat-rows i fn-cat)
+           :in-theory (e/d (fn-cat-count-is-len fn-cat-at-is-nth) (nthcdr true-list-fix)))))
+(defthm p7-facts-of-list-fix
+  (equal (fn-scol-rows-okp (true-list-fix rows) fn-arena)
+         (fn-scol-rows-okp rows fn-arena))
+  :hints (("Goal" :induct (true-list-fix rows) :in-theory (enable true-list-fix))))
+(defun p7-loaded-facts-check (rows view-index fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let* ((fn-cat (fn-sca-load-held-rows rows view-index fn-arena fn-cat))
+         (ok (and (fn-arena-p fn-arena)
+                  (fn-scol-rows-okp (p7-cat-rows 0 fn-cat) fn-arena))))
+    (mv ok fn-arena fn-cat)))
+(defthm p7-loaded-facts-check-refines
+  (equal (mv-nth 0 (p7-loaded-facts-check rows view-index fn-arena fn-cat))
+         (fn-scol-okp fn-arena (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (e/d (fn-scol-okp) (fn-sca-load-held-rows)))))
+
+; Host recovery and fnn-owner-reclaim-pass: tests/test_native_reclaim_walk.py::
+; test_a_pass_longer_than_two_chunks_installs_and_counts_the_available.
+; Every witness starts with an empty local arena and seals its payloads.
+(defteeth fn-sca-load-held-rows-establishes-byte-facts
+  :claim (((arena (fn-arena-p fn-arena))
+           (history (fn-scol-history-okp rows fn-arena)))
+          (fn-scol-okp fn-arena (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))
+  :subject fn-sca-load-held-rows
+  :witness ((rows *cav-loader-legacy-rows*) (view-index nil)
+            (payloads *cav-loader-tomb-arena*))
+  :stobjs ((fn-arena (fn-arn-seal-many payloads fn-arena))
+           (fn-cat (fn-cat-clear fn-cat)))
+  :stobj-checks
+  (((fn-scol-okp fn-arena (fn-sca-load-held-rows rows view-index fn-arena fn-cat))
+    (p7-loaded-facts-check rows view-index fn-arena fn-cat)
+    :hints (("Goal" :use p7-loaded-facts-check-refines)))
+   ((fn-scol-okp fn-arena
+      (fn-sca-load-held-rows *cav-loader-stale-rows* view-index fn-arena fn-cat))
+    (p7-loaded-facts-check *cav-loader-stale-rows* view-index fn-arena fn-cat)
+    :hints (("Goal" :use ((:instance p7-loaded-facts-check-refines
+                                    (rows *cav-loader-stale-rows*)))))))
+  :breaks ((arena ((rows nil) (view-index nil) (payloads '((999))))
+                  :logical "corrupted arena contains a value outside the octet domain")
+           (history ((rows *cav-loader-stale-rows*) (view-index nil)
+                     (payloads *cav-loader-tomb-arena*))))
+  :mutations ((stale-byte-facts
+               (:conclusion
+                (fn-scol-okp fn-arena
+                  (fn-sca-load-held-rows *cav-loader-stale-rows* view-index fn-arena fn-cat)))
+               ((rows *cav-loader-legacy-rows*) (view-index nil)
+                (payloads *cav-loader-tomb-arena*))
+               :fault "the loader publishes old live-byte facts over a tombstone payload"))
+  :hints (("Goal" :in-theory (enable fn-scol-okp fn-scol-history-okp))))

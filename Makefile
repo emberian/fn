@@ -177,6 +177,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-yield-trajectory-tests \
 	tests/acl2/decoded-worker-controller-trajectory-tests \
 	tests/acl2/decoded-worker-reuse-execution-tests \
+	tests/acl2/decoded-worker-job-teeth-tests \
 	tests/acl2/decoded-window-cache-tests \
 	tests/acl2/decoded-worker-reuse-tests \
 	tests/acl2/extent-window-buffer-tests \
@@ -325,7 +326,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-image \
 	books/paged-checkpoint-open \
 	books/def-representation \
+	books/def-representation-index-lib \
+	books/def-representation-index \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-representation-index-tests \
+	tests/acl2/def-representation-history-tests \
 	tests/acl2/def-representation-pages-tests \
 	tests/acl2/paged-checkpoint-tests \
 	tests/acl2/paged-checkpoint-host-tests \
@@ -379,6 +384,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wildmat-work \
 	books/wildmat-cursor \
 	tests/acl2/wildmat-cursor-tests \
+	tests/acl2/wildmat-cursor-bound-tests \
 	books/wildmat-live \
 	tests/acl2/wildmat-live-tests \
 	tests/acl2/wildmat-parser-invariants-tests \
@@ -505,6 +511,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-admin-peer \
 	books/native-admin \
 	tests/acl2/native-admin-tests \
+	tests/acl2/native-admin-split-tests \
 	books/native-config-observation \
 	tests/acl2/native-config-observation-tests \
 	books/native-operator \
@@ -668,6 +675,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cold-read-reservation \
 	tests/acl2/cold-read-reservation-tests \
 	books/page-read-budget-growth \
+	books/page-read-ledger-rowsum \
+	tests/acl2/page-read-ledger-rowsum-tests \
 	tests/acl2/page-read-budget-growth-tests \
 	books/page-read-startup \
 	books/peer-flight-reservation \
@@ -903,6 +912,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-extend-tests \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
+	tests/acl2/store-log-critical-teeth-tests \
+	tests/acl2/store-log-copy-teeth-tests \
+	tests/acl2/store-log-copy-ack-teeth-tests \
 	books/recovery-refinement \
 	books/recovery-refinement-store \
 	tests/acl2/recovery-refinement-tests \
@@ -928,6 +940,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
+	tests/acl2/payload-lz-replay-tests \
+	tests/acl2/payload-lz-replay-compressed-tests \
 	tests/acl2/payload-lz-scalar-realizer-tests \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
@@ -1008,6 +1022,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-records \
 	tests/acl2/bp-node-records-tests \
 	books/outcome-class \
+	books/control-observation \
+	books/control-receipt-wire \
+	tests/acl2/control-observation-tests \
 	books/bp-run-class \
 	books/bp-node-profile \
 	tests/acl2/bp-node-host-tests \
@@ -1474,6 +1491,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/path-update \
 	books/path-update-tail \
 	books/peer-config \
+	books/config-walk-loops \
+	tests/acl2/config-walk-loops-tests \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
 	tests/acl2/peer-inbound-tests \
@@ -1542,6 +1561,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-wbv-trie \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
+	tests/acl2/catalog-raw-low-tests \
 	books/catalog-paged-attach \
 	books/served-catalog-view \
 	books/served-columns \
@@ -1729,6 +1749,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
 	books/owner-outcome-pinned \
+	tests/acl2/catchup-carried-transit-tests \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
 	books/owner-host-relation-span \
@@ -2070,13 +2091,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/newnews-matching-selector-tests \
 	tests/acl2/newnews-candidate-selector-tests \
 	books/catalog-available-readers \
-	books/group-summary-cursor \
 	books/list-row-cursor \
 	tests/acl2/list-row-cursor-tests \
 	books/list-status-cursor \
 	tests/acl2/list-status-cursor-tests \
 	books/list-metadata-cursor \
-	tests/acl2/group-summary-cursor-tests \
 	books/served-availability \
 	books/served-available-commands \
 	books/served-available-read \
@@ -2231,6 +2250,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-pass-tests \
 	tests/acl2/reclaim-chunked-walk-tests \
 	tests/acl2/reclaim-chunked-seal-tests \
+	tests/acl2/reclaim-chunked-load-teeth-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
 	tests/acl2/owner-reclaim-ready-tests \
@@ -2652,7 +2672,15 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/newnews-cursor-tests \
     tests/acl2/owner-prepare-deferred-carried-tests \
     tests/acl2/owner-prepare-deferred-carried-owner-tests \
-    tests/acl2/withdrawal-index-carried-tests
+    tests/acl2/withdrawal-index-carried-tests \
+    tests/acl2/catalog-pool-tests \
+    tests/acl2/def-loop-run-tests \
+    tests/acl2/defteeth-removal-obstructions-tests \
+    tests/acl2/extent-window-span-tests \
+    tests/acl2/history-image-place-tests \
+    tests/acl2/history-image-canonical-tests \
+    tests/acl2/book-name-relative-tests \
+    tests/acl2/book-name-provenance-tests
 
 .PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none

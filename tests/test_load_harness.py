@@ -3,12 +3,17 @@
 Fixed JSON in, no image, no box, seconds.  Run only this module:
     python3 -m unittest tests.test_load_harness
 """
+import io
+import os
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from tools.load import cells, peers, result, workloads
+from tools.load import cells, driver, peers, result, workloads, sweep
 
 
 def cell_result(**over):
@@ -298,6 +303,130 @@ class DeriveTests(unittest.TestCase):
         self.assertIn("article.p99_ms.R16", nm)
 
 
+class LockWaitTests(unittest.TestCase):
+    LOG = ("100000000 fn%20owner%2Fstore=10:10000 %3Cunnamed%3E=1:1000\n"
+           "101000000 fn%20owner%2Fstore=13:16000 %3Cunnamed%3E=1:1000\n"
+           "102000000 fn%20owner%2Fstore=18:26000 %3Cunnamed%3E=2:2000 fn%20extent%20realizer=2:6000\n"
+           "103000000 fn%20owner%2Fstore=20:30000 %3Cunnamed%3E=2:2000 fn%20extent%20realizer=4:8000\n")
+
+    def phase(self, **extra):
+        return dict({"name": "R4", "kind": "read", "epoch_start": 100.5, "epoch_end": 102.5,
+                     "cmd": {"ARTICLE": {"n": 4}, "POST": {"n": 20}}}, **extra)
+
+    def test_parser_names_and_torn_tail(self):
+        rows = cells.parse_locks(self.LOG + "104000000 fn%20owner%2Fstore=99:")
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(rows[0][1]["fn owner/store"], (10, 10000))
+        self.assertEqual(rows[0][1]["<unnamed>"], (1, 1000))
+
+    def test_split_boundaries_use_previous_dumps_and_article_denominator(self):
+        metrics, window = cells.phase_lock_metrics(cells.parse_locks(self.LOG), self.phase())
+        self.assertEqual((window["epoch_start"], window["epoch_end"]), (100, 102))
+        self.assertEqual(metrics["locks.fn owner/store.waits"], 8)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms"], 16)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms_per_article"], 4)
+        self.assertEqual(metrics["locks.fn extent realizer.waits"], 2)
+        self.assertEqual(metrics["locks.<unnamed>.wait_ms"], 1)
+        exact, _ = cells.phase_lock_metrics(cells.parse_locks(self.LOG), self.phase(epoch_start=101, epoch_end=103))
+        self.assertEqual(exact["locks.fn owner/store.waits"], 7)
+
+    def test_phase_derivation_and_zero_articles(self):
+        phases = [self.phase(), self.phase(name="R16", epoch_start=102, epoch_end=103, cmd={"ARTICLE": {"n": 0}})]
+        cells.attach_lock_metrics(phases, self.LOG)
+        metrics, nm = cells.derive("readers-locks", phases)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms.R4"], 16)
+        self.assertEqual(metrics["locks.fn owner/store.waits.R16"], 2)
+        self.assertIn("locks.fn owner/store.wait_ms_per_article.R16", nm)
+
+    def test_missing_coverage_and_corruption_are_not_zero_contention(self):
+        for ph in (self.phase(epoch_start=99), self.phase(epoch_end=104), self.phase(epoch_end=100.8)):
+            cells.attach_lock_metrics([ph], self.LOG)
+            self.assertIn("locks_error", ph)
+            self.assertNotIn("lock_metrics", ph)
+        for log in (self.LOG + "104000000 fn%20owner%2Fstore=1:1\n",
+                    self.LOG + "103000000\n", "100000000 broken\n"):
+            with self.assertRaises(ValueError):
+                cells.parse_locks(log)
+
+    def test_report_top_eight_and_sample_window(self):
+        ph = self.phase()
+        cells.attach_lock_metrics([ph], self.LOG)
+        for n in range(10):
+            ph["lock_metrics"].update({"locks.extra%d.waits" % n: 1, "locks.extra%d.wait_ms" % n: 100 + n,
+                                       "locks.extra%d.wait_ms_per_article" % n: (100 + n) / 4})
+        text = result.report({"cells": [cell_result(phases=[ph])]}, [])
+        self.assertIn("Snapshot window 100.000000–102.000000", text)
+        self.assertIn("| extra9 |", text)
+        self.assertIn("| extra2 |", text)
+        self.assertNotIn("| extra1 |", text)
+        self.assertLess(text.index("| extra9 |"), text.index("| extra2 |"))
+
+    def test_workloads_inherit_reader_conditions(self):
+        base = workloads.resolve("readers@10k").spec
+        lock = workloads.resolve("W2L@10k").spec
+        prof = workloads.resolve("readers-prof@10k").spec
+        self.assertEqual(workloads.resolve("W2P@10k").workload, "readers-prof")
+        for spec in (lock, prof):
+            for key in ("preset", "store", "groups", "policy"):
+                self.assertEqual(spec[key], base[key])
+            for ph in spec["phases"]:
+                self.assertEqual(ph["poster"], {"rate_per_s": 5, "octets": 2048})
+        self.assertTrue(lock["lockwait"])
+        self.assertEqual([(p["name"], p["duration_s"]) for p in lock["phases"]], [("R1", 20), ("R4", 20), ("R16", 20)])
+        self.assertEqual([(p["readers"], p["duration_s"], p["measure"]) for p in prof["phases"]], [(16, 10, False), (16, 65, True)])
+        self.assertEqual(prof["sprof"], {"window_s": 60})
+
+    def test_hooks_and_fetchable_artifacts_without_image(self):
+        with tempfile.TemporaryDirectory() as d:
+            work, out = Path(d) / "work", Path(d) / "raw"
+            work.mkdir()
+            hooks, env = driver.cell_hooks(workloads.resolve("W2L").spec, work)
+            self.assertIn(driver.LOCKS_HOOK, hooks)
+            self.assertTrue(driver.LOCKS_HOOK.is_file())
+            self.assertEqual(env["FN_LOAD_LOCKS"], str(work / "locks.log"))
+            hooks, env = driver.cell_hooks(workloads.resolve("W2P").spec, work, gc_hook=True)
+            self.assertIn(driver.SPROF_HOOK, hooks)
+            self.assertNotIn(driver.HOOK, hooks)  # sprof already loads it
+            self.assertTrue(driver.SPROF_HOOK.is_file())
+            self.assertEqual(env["FN_LOAD_PROF_WINDOW"], "60")
+            self.assertEqual(env["FN_LOAD_PROF"], str(work / "sprof"))
+            self.assertEqual(env["FN_LOAD_PROF_START"], str(work / "sprof.start"))
+            self.assertEqual(driver.cell_hooks(workloads.resolve("readers").spec, work), ([], {}))
+            for name in ("locks.log.4242", "sprof.000.txt", "samples.json"):
+                (work / name).write_text(name)
+            files = driver.collect_measurement_artifacts(work, out, "W2P-image-x-r1")
+            self.assertEqual(len(files), 3)
+            for name in files:
+                self.assertEqual((out / name).read_text(), Path(name).name)
+
+    def test_invalid_measurement_settings_are_refused(self):
+        for bad in (0, -1, True, 60.5, "60"):
+            data = workloads.load()
+            data["workloads"]["readers-prof"]["sprof"]["window_s"] = bad
+            with self.assertRaises(workloads.WorkloadError):
+                workloads.validate(data)
+        data = workloads.load()
+        data["workloads"]["readers-prof"]["phases"][-1]["measure"] = False
+        with self.assertRaises(workloads.WorkloadError):
+            workloads.validate(data)
+
+    def test_read_epochs_and_profile_trigger_exclude_warmup(self):
+        with tempfile.TemporaryDirectory() as d:
+            trigger = Path(d) / "sprof.start"
+            node = SimpleNamespace(env={"FN_LOAD_PROF_START": str(trigger)})
+            ctr = driver.Counters()
+            ctr.known.append(0)
+            run = driver.Run(node, {"sprof": {"window_s": 60}}, ctr, None)
+            # No connection or image: a refused connection ends this worker.
+            with patch.object(run, "conn", return_value=None), patch.object(driver.time, "time", side_effect=[100, 110, 111, 176]):
+                warm = run.phase_read({"readers": 1, "count": 1, "measure": False})
+                self.assertFalse(trigger.exists())
+                measured = run.phase_read({"readers": 1, "count": 1, "measure": True})
+                self.assertTrue(trigger.exists())
+            self.assertEqual((warm["epoch_start"], warm["epoch_end"]), (100, 110))
+            self.assertEqual((measured["epoch_start"], measured["epoch_end"]), (111, 176))
+
+
 class ReportAndItemTests(unittest.TestCase):
     def res(self, **over):
         return {"schema": 1, "label": "ctl", "rev": "0b4d3b1", "cells": [cell_result(**over)]}
@@ -475,6 +604,715 @@ class PeersTests(unittest.TestCase):
         self.assertIn("32768", flags)                                  # tests/test_native_peer_catchup PROFILE
         self.assertEqual(flags[flags.index("--max-history-octets") + 1], str(64 << 20))
 
+
+
+
+class FaultFrameworkTests(unittest.TestCase):
+    def test_outcomes_and_partial_reply(self):
+        from tools.load.faults import History
+        h = History()
+        a, b, c = [h.plan('STAT', {'n': i}) for i in range(3)]
+        h.sent(b)
+        h.sent(c)
+        with self.assertRaises(EOFError):
+            h.complete(b, b'223 partial')
+        h.complete(c, b'223 complete\r\n')
+        self.assertEqual(h.counts(), {'not-attempted': 1, 'attempted-uncertain': 1, 'completed': 1})
+        self.assertIsNone(a['send_time'])
+        self.assertNotEqual(a['args_digest'], b['args_digest'])
+
+    def test_durability_identity_and_uncertainty(self):
+        from tools.load.faults import History, verify
+        h = History()
+        for mid, outcome in [('accepted', 'completed'), ('uncertain', 'attempted-uncertain'), ('unsent', 'not-attempted')]:
+            op = h.plan('POST', {'msgid': mid, 'sha256': mid})
+            if outcome != 'not-attempted':
+                h.sent(op)
+            if outcome == 'completed':
+                h.complete(op, b'240 accepted\r\n')
+        self.assertEqual(verify(h.ops, {'accepted': 'accepted'}), [])
+        self.assertEqual(verify(h.ops, {'accepted': 'accepted', 'uncertain': 'uncertain'}), [])
+        self.assertEqual({p for p, _ in verify(h.ops, {'accepted': 'wrong', 'unsent': 'unsent'})},
+                         {'P1-DURABLE', 'P2-IDENTITY'})
+        self.assertIn('P2-IDENTITY', [p for p, _ in verify(h.ops, {'uncertain': 'partial'})])
+        self.assertIn('P2-IDENTITY', [p for p, _ in verify(h.ops, {'unknown': 'new'})])
+
+    def test_later_conflicting_attempt_cannot_replace_accepted_identity(self):
+        from tools.load.faults import History, verify
+        h = History()
+        a = h.plan('POST', {'msgid': 'a', 'sha256': 'original'})
+        h.sent(a)
+        h.complete(a, b'240 accepted\r\n')
+        h.sent(h.plan('POST', {'msgid': 'a', 'sha256': 'replacement'}))
+        self.assertEqual({p for p, _ in verify(h.ops, {'a': 'replacement'})}, {'P1-DURABLE', 'P2-IDENTITY'})
+
+    def test_shrinker_reruns_and_honors_budget(self):
+        from tools.load.faults import shrink
+        attempts = []
+        def fails(h):
+            attempts.append(h)
+            return 3 in h and 7 in h
+        short, info = shrink(list(range(12)), fails, 100)
+        self.assertEqual(short, [3, 7])
+        self.assertEqual(info['minimal'], 'one-deletion')
+        self.assertEqual(info['runs'], len(attempts))
+        _, info = shrink(list(range(20)), lambda h: False, 2)
+        self.assertEqual(info['runs'], 2)
+        self.assertEqual(info['minimal'], 'budget-exhausted')
+
+    def test_fault_hooks_and_boundary_inventory(self):
+        from tools.load import faults
+        root = Path(__file__).resolve().parents[1]
+        data = workloads.load()
+        for spec in data['workloads'].values():
+            for hook in spec.get('hooks', []):
+                self.assertTrue((root / hook).is_file(), hook)
+        hook = (root / 'planning/evidence/load/hooks/f2-crash.lisp').read_text()
+        host = (root / 'host/native/io.lisp').read_text() + (root / 'host/native/owner.lisp').read_text()
+        for boundary in faults.BOUNDARIES:
+            self.assertIn(boundary, hook)
+            self.assertIn('(defun ' + boundary + ' ', host)
+        self.assertEqual(faults.sample_points(100, 3), [1, 51, 100])
+        self.assertEqual(faults.sample_points(2, 3), [1, 2])
+
+
+class FakeSocket:
+    """A scripted socket: greeting preloaded, replies chosen from each sendall."""
+    def __init__(self, responder):
+        self.responder, self.buf, self.sent = responder, bytearray(b"200 hi\r\n"), []
+
+    def settimeout(self, t): pass
+    def setsockopt(self, *a): pass
+    def connect(self, addr): pass
+    def close(self): pass
+    def shutdown(self, how): pass
+
+    def sendall(self, data):
+        self.sent.append(bytes(data))
+        self.buf.extend(self.responder(bytes(data)))
+
+    def recv(self, n):
+        out, self.buf = bytes(self.buf[:n]), self.buf[n:]
+        return out
+
+
+def respond(data):
+    if data.startswith(b"POST"):
+        return b"340 go\r\n"
+    if data.endswith(b".\r\n") and not data.startswith((b"STAT", b"ARTICLE", b"LIST")):
+        return b"240 ok\r\n"
+    if data.startswith(b"LIST ACTIVE"):
+        return b"215 list\r\n.\r\n"
+    if data.startswith(b"ARTICLE"):
+        return b"220 1 <a@b>\r\nSubject: x\r\n\r\nbody\r\n.\r\n"
+    return b"223 1 <a@b>\r\n"
+
+
+class TraceRecorderTests(unittest.TestCase):
+    def setUp(self):
+        from tools.load import faults
+        self.faults = faults
+        self.real, self.socks = faults.socket.socket, []
+        def make():
+            self.socks.append(FakeSocket(respond))
+            return self.socks[-1]
+        faults.socket.socket = make
+        self.addCleanup(setattr, faults.socket, "socket", self.real)
+
+    def test_sequential_two_connections(self):
+        h = self.faults.History()
+        with self.faults.Client(1, h) as a:
+            self.assertTrue(a.post(1).startswith(b"240"))
+        with self.faults.Client(1, h) as b:
+            b.command("ARTICLE <a@b>")
+        snap = h.recorder.snapshot(h.ops)
+        self.assertTrue(snap["sequential"])
+        kinds = [(x["t"], x.get("c"), x.get("until")) for x in snap["steps"]]
+        self.assertEqual(kinds[:7], [("conn", 0, None), ("read", 0, "line"), ("send", 0, None), ("read", 0, "line"),
+                                     ("send", 0, None), ("read", 0, "line"), ("close", 0, None)])
+        self.assertEqual(snap["steps"][-2]["until"], "dot")
+        self.assertEqual(snap["steps"][2]["hex"], b"POST\r\n".hex())
+        self.assertEqual(bytes.fromhex(snap["steps"][4]["hex"])[-3:], b".\r\n")
+
+    def test_interleaved_connections_are_not_sequential(self):
+        h = self.faults.History()
+        held = self.faults.Client(1, h)
+        op = held.begin("ARTICLE", {"command": "ARTICLE <a@b>"}, b"ARTICLE <a@b>\r\n")
+        held.mark_read("line"); held.line()          # status only; the body stays owed
+        with self.faults.Client(1, h) as other:
+            other.command("STAT <a@b>")
+        held.close()
+        snap = h.recorder.snapshot(h.ops)
+        self.assertFalse(snap["sequential"])
+        # two sends on different connections with no read between them
+        h2 = self.faults.History()
+        a, b = self.faults.Client(1, h2), self.faults.Client(1, h2)
+        a.begin("STAT", {"command": "STAT"}, b"STAT\r\n")
+        b.begin("STAT", {"command": "STAT"}, b"STAT\r\n")
+        self.assertFalse(h2.recorder.snapshot(h2.ops)["sequential"])
+
+    def test_fragments_are_separate_sends(self):
+        h = self.faults.History()
+        with self.faults.Client(1, h) as c:
+            wire, ranges = self.faults.wire_operations([("STAT", {"command": "STAT <a@b>"})], h)
+            for piece in (wire[:3], wire[3:]):
+                idx = c.send_raw(piece)
+            snap = h.recorder.snapshot(h.ops)
+        sends = [x for x in snap["steps"] if x["t"] == "send"]
+        self.assertEqual([bytes.fromhex(x["hex"]) for x in sends], [b"STA", b"T <a@b>\r\n"])
+        self.assertTrue(snap["sequential"])
+
+    def test_f2_like_campaign_trace(self):
+        import json, os, tempfile
+        from types import SimpleNamespace
+        faults = self.faults
+        run = SimpleNamespace(cell_id="F2", label="F2-x-A-r1", node=None)
+        campaign = faults.Campaign.__new__(faults.Campaign)
+        campaign.run, campaign.ph, campaign.serial = run, {}, 0
+        campaign.traces, campaign.trace_serial, campaign.last_history = [], 0, None
+        campaign.meta = {"schema": 1, "cell": "F2", "store": {"init_flags": ["--x"], "groups": ["fn.test"], "fixture": None},
+                         "sbcl_user_args": "--dynamic-space-size 1GB"}
+        node = SimpleNamespace(port=1, pid=7, work=Path(tempfile.mkdtemp()), env={}, start=lambda timeout=0: 0.1)
+        campaign.recovery = 60
+        h = campaign.history()
+        campaign.start(node, h, ("fnn-durable-barrier", 3))
+        with faults.Client(1, h) as c:
+            c.post(0)
+        campaign.start(node, h, ("*", 1))
+        campaign.start(node, h)
+        with faults.Client(1, h) as c:
+            c.post(1000000)
+        h.plan("POST", {"i": 5, "msgid": "<m>", "sha256": "0"})          # never attempted
+        faults.inventory(1, h)
+        trace = campaign.snapshot(h)
+        types = [x["t"] for x in trace["steps"]]
+        self.assertEqual(types[:2], ["start", "crash"])
+        self.assertEqual(trace["steps"][1], {"t": "crash", "boundary": "fnn-durable-barrier", "hit": 3})
+        i = types.index("restart")
+        self.assertEqual(trace["steps"][i + 1], {"t": "crash", "boundary": "*", "hit": 1})
+        self.assertEqual(types[i + 2], "restart")
+        self.assertEqual(types[-1], "inventory")
+        self.assertNotIn("crash", types[i + 2:])
+        self.assertEqual(types.count("inventory"), 1)           # inventory's own connections are folded in
+        self.assertTrue(trace["sequential"])
+        for op in trace["ops"]:
+            if op["outcome"] == "not-attempted":
+                self.assertIsNone(op["step"])
+            else:
+                self.assertTrue(0 <= op["step"] < len(trace["steps"]))
+                self.assertIn(trace["steps"][op["step"]]["t"], ("send", "inventory"))
+        os.environ["FN_LOAD_TRACE_DIR"] = tempfile.mkdtemp()
+        self.addCleanup(os.environ.pop, "FN_LOAD_TRACE_DIR")
+        path = campaign.emit(trace, "reference")
+        self.assertTrue(path.endswith("F2-x-A-r1-F2-reference-001.json"))
+        loaded = json.loads(Path(path).read_text())
+        self.assertEqual((loaded["schema"], loaded["cell"], loaded["id"]), (1, "F2", "F2-reference-001"))
+        self.assertEqual(loaded["steps"], trace["steps"])
+        self.assertEqual(campaign.traces, [path])
+        TraceRecorderTests.example = loaded
+
+    def test_control_step_and_violation_trace(self):
+        import tempfile, os
+        from types import SimpleNamespace
+        faults = self.faults
+        os.environ["FN_LOAD_TRACE_DIR"] = tempfile.mkdtemp()
+        self.addCleanup(os.environ.pop, "FN_LOAD_TRACE_DIR")
+        campaign = faults.Campaign.__new__(faults.Campaign)
+        campaign.run, campaign.traces, campaign.trace_serial, campaign.meta = SimpleNamespace(cell_id="F3"), [], 0, {}
+        h = campaign.history()
+        op = h.plan("CONTROL", {"words": ["pins"]})
+        h.sent(op)
+        op["step"] = h.recorder.control(["pins"])
+        def replay(ops, prop, detail):
+            campaign.history().recorder.start()
+            return True
+        out = faults.report(h, [("P4-RECLAIM", "d")], ["P4-RECLAIM"], replay, 4, campaign)
+        v = out["violations"][0]
+        self.assertTrue(Path(v["trace"]).is_file())
+        self.assertEqual(json.loads(Path(v["trace"]).read_text())["steps"], [{"t": "start"}])
+        self.assertEqual(h.recorder.snapshot(h.ops)["steps"], [{"t": "control", "words": ["pins"]}])
+
+
+class ImageSweepTests(unittest.TestCase):
+    def args(self, **over):
+        values = dict(cmd='plan', label='new', baseline='old', box='both',
+                      image_dir='/images/main', persvati_image_dir='/images/persvati')
+        values.update(over)
+        return SimpleNamespace(**values)
+
+    def test_matrix_resolves_and_hbox_capacity_is_structural(self):
+        data = sweep.load()
+        hbox = [ln for ln in data['lanes'] if ln['box'] == 'hbox']
+        self.assertEqual(sorted(ln['memory'] for ln in hbox), ['16G', '16G', '32G'])
+        cells = [c for ln in data['lanes'] for c in ln['cells']]
+        for c in cells:
+            workloads.resolve(c['cell'])
+        self.assertEqual(len(cells), 26)
+        for ln in hbox:
+            self.assertTrue(all(c.get('memory', ln['memory']) == ln['memory'] for c in ln['cells']))
+            self.assertNotIn(' &', sweep.queue_script(self.args(), ln, data))
+        w15 = next(c for c in cells if c['cell'] == 'W15')
+        self.assertEqual(w15['sweep'], ['1k', '10k', '25k', '50k', '100k'])
+        self.assertEqual(w15['image'], 'fn-host-developer')
+
+    def test_plan_is_offline_contains_controls_and_valid_shell(self):
+        data = sweep.load()
+        with patch('sys.stdout', new_callable=io.StringIO) as out, patch.object(driver, 'ssh') as ssh:
+            self.assertEqual(sweep.main(['plan', '--image-dir', '/image with spaces', '--label', 'test']), 0)
+        ssh.assert_not_called()
+        text = out.getvalue()
+        for token in ('flock /tank/fn/scratch/timing-12-23.lock', 'taskset -c 12-23',
+                      'busy_cores', 'probe --out', 'MemoryMax=', 'exit', '75', 'sleep 240',
+                      'SWARM_MEM_MAX=', 'swarm-build timeout', 'chmod +x',
+                      'setsid nohup timeout', '2>&1 < /dev/null &', '.pid', '.done', '.skips',
+                      'work-nvme-test', '--readers 1,16 --runs 3 --mode full'):
+            self.assertIn(token, text)
+        self.assertEqual(text.count('setsid nohup timeout'), 4)
+        subprocess.run(['bash', '-n'], input=text, text=True, check=True, timeout=5)
+        for ln in data['lanes']:
+            subprocess.run(['bash', '-n'], input=sweep.queue_script(self.args(), ln, data),
+                           text=True, check=True, timeout=5)
+        self.assertLess(text.index('chmod +x'), text.index('setsid nohup timeout'))
+
+    def test_install_uses_shared_shipper_short_ssh_and_reports_pids(self):
+        args = self.args(cmd='install')
+        with patch.object(driver, 'ssh', return_value=SimpleNamespace(check_returncode=lambda: None, stdout='pid: 123\n')) as ssh, \
+                patch.object(driver, 'ship_tree') as ship, patch('sys.stdout', new_callable=io.StringIO) as out:
+            self.assertEqual(sweep.cmd_plan_install(args), 0)
+        self.assertEqual(ship.call_count, 2)
+        self.assertEqual(ssh.call_count, 4)
+        self.assertTrue(all(call.kwargs['timeout'] == 30 for call in ssh.call_args_list))
+        self.assertIn('pid: 123', out.getvalue())
+        self.assertIn('/images/persvati/fn-host', ssh.call_args_list[0].args[1])
+        self.assertIn('/images/main/fn-host', ssh.call_args_list[2].args[1])
+        with patch.object(driver, 'ssh', side_effect=subprocess.CalledProcessError(1, 'ssh')), \
+                patch.object(driver, 'ship_tree') as ship:
+            with self.assertRaises(subprocess.CalledProcessError):
+                sweep.cmd_plan_install(args)
+        ship.assert_not_called()
+
+    def test_probe_samples_five_seconds_and_skips_above_four(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = SimpleNamespace(image=tmp + '/fn-host', out=tmp + '/admission.json')
+            for busy, expected in ((4.0, 0), (4.01, 75), (None, 75)):
+                with patch.object(driver, 'busy_cores', return_value=busy) as probe, \
+                        patch.object(driver, 'loadavg', return_value=[1, 1, 1]):
+                    self.assertEqual(sweep.cmd_probe(args), expected)
+                probe.assert_called_once_with(list(range(12, 24)), 5.0)
+                self.assertEqual(json.loads(Path(args.out).read_text())['box']['busy_cores_start'], busy)
+
+    def test_table_reds_first_baseline_pairing_and_quiet_rule(self):
+        quiet = dict(name='persvati', busy_cores_set='12-23', pinned=list(range(12, 24)),
+                     busy_cores_start=4.0, busy_cores_end=1.0, loadavg_start=[1], loadavg_end=[1])
+        bars = [{'id': 'TIME', 'cell': 'W2', 'quantity': 'p99', 'time': True, 'source': 'test',
+                 'checks': [{'metric': 'lat', 'cmp': 'le', 'threshold': 50}]},
+                {'id': 'MEM', 'cell': 'W13', 'quantity': 'memory', 'source': 'test',
+                 'checks': [{'metric': 'mem', 'cmp': 'le', 'threshold': 100}]}]
+        cr = cell_result(cell='W2@10k/R16', box=quiet, metrics={'lat': 20})
+        bad = cell_result(metrics={'mem': 200})
+        old = cell_result(cell='W2@10k/R16', box=quiet, metrics={'lat': 10})
+        table = sweep.render_table([('quiet', cr), ('bad', bad)], [('quiet', old)], bars)
+        self.assertIn('| MEM |', table.splitlines()[2])
+        self.assertIn('| 20 | PASS | 10 | 2 |', table)
+        self.assertIn('core sha=' + 'ab' * 32, table)
+        self.assertEqual(table.count('| bar id |'), 1)
+        for change in ({'busy_cores_start': 4.01}, {'busy_cores_start': None}, {'name': 'hbox'},
+                       {'busy_cores_set': '0-11'}, {'pinned': None}, {'busy_cores_end': 5}):
+            cr['box'] = dict(quiet, **change)
+            row = sweep.table_rows([('quiet', cr)], bars)[0]
+            self.assertEqual(row['verdict'], 'not judged', change)
+        # End load does not waive the start rule, and memory remains judged.
+        self.assertEqual(sweep.table_rows([('bad', bad)], bars)[0]['verdict'], 'FAIL')
+
+    def test_missing_cell_is_visible_and_fetch_does_not_write_evidence(self):
+        data = sweep.load()
+        data['lanes'] = [dict(data['lanes'][0], cells=[data['lanes'][0]['cells'][0]])]
+        with patch.object(driver, 'fetch_run', side_effect=RuntimeError('missing result')) as fetch:
+            records = sweep.fetch_records('new', 'persvati', data)
+        self.assertEqual(len(records), 1)
+        self.assertIn('missing result', sweep.render_table(records))
+        self.assertNotIn(str(driver.ROOT), fetch.call_args.args[2].as_posix())
+
+    def test_w7_complete_matrix_and_missing_hit_counters(self):
+        data = sweep.load()
+        spec = next(c for ln in data['lanes'] for c in ln['cells'] if c['cell'] == 'W7')
+        raw = []
+        for r in (1, 16):
+            for i in range(3):
+                raw.append(dict(cell='W7@scale/R%d' % r, arm='new', mode='full', run_index=i,
+                                cmd={'ARTICLE': {'n': 200, 'p50_ms': 1, 'p99_ms': r,}},
+                                rate={'article_per_s': 200}, extent={'hit_ratio': 0.9},
+                                quiet_check={'mean': 0.1}, core_busy_measured={str(c): 0.1 for c in range(12, 24)},
+                                loadavg_start=2, loadavg_end=2, errors=0))
+        admission = {'box': {'name': 'persvati', 'busy_cores_set': '12-23', 'pinned': list(range(12, 24))}}
+        cr = sweep.extent_result(raw, admission, spec)
+        self.assertEqual(cr['metrics']['extent.p99_ratio'], 16)
+        self.assertEqual(cr['metrics']['extent.hit_non_decreasing'], 1)
+        self.assertEqual(sweep.table_rows([('w7', cr)], data['w7_bars'])[0]['verdict'], 'FAIL')
+        self.assertEqual(sweep.extent_result(raw[:-1], admission, spec)['metrics'], {})
+        raw[-1]['extent']['hit_ratio'] = None
+        self.assertIsNone(sweep.extent_result(raw, admission, spec)['metrics']['extent.hit_non_decreasing'])
+        raw[-1]['errors'] = 1
+        self.assertEqual(sweep.extent_result(raw, admission, spec)['metrics'], {})
+
+    def test_w6q_uses_catchup_metric_derivation(self):
+        with patch.object(peers, 'derive_catchup') as derive:
+            cells.derive('catchup-quiet', [])
+        derive.assert_called_once()
+
+    def test_queue_releases_lock_before_retry_and_records_failures(self):
+        # Execute generated bash against fake wrappers, never a box or image.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bindir = root / 'bin'
+            bindir.mkdir()
+            (root / 'ship/sweep-new').mkdir(parents=True)
+            wrappers = {
+                'systemd-run': 'shift 5; exec "$@"',
+                'flock': 'shift; echo hold >> "$EVENTS"; "$@"; rc=$?; echo release >> "$EVENTS"; exit "$rc"',
+                'taskset': 'shift 2; exec "$@"',
+                'timeout': 'shift; exec "$@"',
+                'sleep': 'echo sleep >> "$EVENTS"',
+                'python3': '''if [ "$3" = probe ]; then
+  if [ ! -f "$EVENTS.once" ]; then
+    touch "$EVENTS.once"; echo '{"busy":5}' > "$5"; exit 75
+  fi
+  echo '{"busy":1}' > "$5"; exit 0
+fi
+echo cell >> "$EVENTS"; exit 23''',
+            }
+            for name, body in wrappers.items():
+                exe = bindir / name
+                exe.write_text('#!/bin/bash\n' + body + '\n')
+                exe.chmod(0o755)
+            data = sweep.load()
+            lane = dict(data['lanes'][0], cells=data['lanes'][0]['cells'][:2])
+            with patch.object(driver, 'BOX_BASE', tmp):
+                script = sweep.queue_script(self.args(), lane, data)
+            env = dict(os.environ, PATH=str(bindir) + ':' + os.environ['PATH'], EVENTS=str(root / 'events'))
+            subprocess.run(['bash'], input=script, text=True, env=env, check=True, timeout=5)
+            events = (root / 'events').read_text().splitlines()
+            self.assertEqual(events, ['hold', 'release', 'sleep', 'hold', 'cell', 'release', 'hold', 'cell', 'release'])
+            done = (root / 'runs/new-persvati.done').read_text()
+            self.assertEqual(done.count('rc=75'), 1)
+            self.assertEqual(done.count('rc=23'), 2)
+            self.assertIn('busy=', (root / 'runs/new-persvati.skips').read_text())
+            self.assertEqual((root / 'runs/new-w2-r1/status').read_text().strip(), 'done rc=23')
+
+    def test_table_uses_manifest_and_fetches_baseline_without_stdout_noise(self):
+        data = sweep.load()
+        lane = dict(data['lanes'][1], cells=[data['lanes'][1]['cells'][0]])
+        data = dict(data, lanes=[lane], boxes=['hbox'], baseline='old')
+        def fetch_manifest(box, remote, dest):
+            if box == 'persvati':
+                raise RuntimeError('not installed here')
+            (Path(dest) / 'manifest.json').write_text(json.dumps(data))
+        def fetch_run(box, label, dest):
+            cr = cell_result(metrics={'rss_kib.hwm': 200000 if label.startswith('new') else 100000})
+            (Path(dest) / 'result.json').write_text(json.dumps({'cells': [cr]}))
+        with patch.object(driver, 'fetch_files', side_effect=fetch_manifest), \
+                patch.object(driver, 'fetch_run', side_effect=fetch_run) as fetch, \
+                patch('sys.stdout', new_callable=io.StringIO) as out:
+            self.assertEqual(sweep.main(['table', '--label', 'new']), 0)
+        self.assertEqual([c.args[:2] for c in fetch.call_args_list], [('hbox', 'new-w13'), ('hbox', 'old-w13')])
+        self.assertTrue(out.getvalue().startswith('| bar id |'))
+        self.assertIn('| 200000 | FAIL | 100000 | 2 |', out.getvalue())
+
+    def test_ship_payload_is_shared_and_includes_w7_hook(self):
+        self.assertTrue(any('w7hook.lisp' in src for src, _ in driver.SHIP_FILES))
+        with patch.object(driver, 'ssh', return_value=SimpleNamespace(check_returncode=lambda: None)) as ssh, \
+                patch.object(driver.subprocess, 'run', return_value=SimpleNamespace(returncode=0)) as run:
+            driver.ship_tree('hbox', '/ship')
+        self.assertEqual(run.call_count, len(driver.SHIP_FILES))
+        self.assertEqual(ssh.call_args.kwargs['timeout'], 30)
+
+    def test_rejects_label_path_traversal(self):
+        for label in ('../x', 'a/b', 'x\ny', '-x', 'x;touch y'):
+            with self.assertRaises(ValueError):
+                sweep.safe_name(label)
+
+
+class FaultSlotAndIndexTests(unittest.TestCase):
+    def post(self, h, mid, value='original', duplicate=None, reply=b'240 accepted\r\n'):
+        args = dict(msgid=mid, sha256=value)
+        if duplicate:
+            args['duplicate'] = duplicate
+        op = h.plan('POST', args)
+        h.sent(op)
+        h.complete(op, reply)
+        return op
+
+    def probe(self, h, cell, mid, kind='ARTICLE', epoch=None, value='original', reply=None):
+        op = h.plan(kind, dict(msgid=mid, command=kind + ' ' + mid))
+        op.update(probe=cell, epoch=epoch, body_sha256=value, held=cell == 'F1')
+        h.sent(op)
+        if reply is None:
+            reply = ('%s 1 %s retrieved\r\n' % ('220' if kind == 'ARTICLE' else '223', mid)).encode()
+        h.complete(op, reply)
+        return op
+
+    def index_history(self):
+        from tools.load.faults import History
+        h = History()
+        self.post(h, '<present>')
+        self.post(h, '<present>', duplicate='same', reply=b'441 duplicate\r\n')
+        self.post(h, '<present>', 'changed', duplicate='different', reply=b'441 conflict\r\n')
+        for epoch in ('before', 'after'):
+            for kind in ('STAT', 'ARTICLE'):
+                self.probe(h, 'F4', '<present>', kind, epoch)
+                self.probe(h, 'F4', '<absent>', kind, epoch, reply=b'430 no such article\r\n')
+        return h
+
+    def test_collision_search_uses_oracle_low_bits_and_finite_budget(self):
+        from tools.load.faults import collision_search
+        seen = []
+        def tag(mid):
+            seen.append(mid)
+            return int(mid) * 17 + 3
+        result = collision_search(map(str, range(100)), tag, 4, bits=3, bucket=3)
+        self.assertEqual(result, ['0', '8', '16', '24'])
+        self.assertEqual(len(seen), 25)
+        self.assertEqual(collision_search(['0', '0', '8'], tag, 4, bits=3, bucket=3), ['0', '8'])
+        self.assertEqual(collision_search(['1', '2'], tag, 1, bits=3, bucket=3), [])
+        for bits in (0, 61):
+            with self.assertRaises(ValueError):
+                collision_search(['0'], tag, 1, bits=bits)
+
+    def test_f1_requires_real_reuse_and_publication_during_hold(self):
+        from tools.load.faults import History, verify_slot_reuse, report, metrics, f1_evidence
+        h = History()
+        self.post(h, '<a>')
+        op = self.probe(h, 'F1', '<a>')
+        for route, function in (('E', 'fnn-extent-cache-store'), ('W', 'fnn-extent-window-release')):
+            op['route'] = route
+            held = 'pool %s funded\nheld %s %s 2\n' % (route, route, function)
+            row = 'released %s %s 12 1 11 10\n' % (route, function)
+            ev = dict(f1_evidence(held + row, route), publication='installed', complete=True)
+            self.assertEqual(ev['held_function'], function)
+            self.assertEqual(ev['held_call'], 2)
+            fs, checked = verify_slot_reuse(h.ops, ev)
+            self.assertEqual(fs, [])
+            self.assertEqual(set(checked), {'P4-RECLAIM', 'P2-IDENTITY'})
+            keys = ['held', 'released', 'publication', 'installs', 'drop_calls', 'evictions', 'reuses', 'complete']
+            if route == 'W':
+                keys.append('funded_pool')
+            for key in keys:
+                missing = dict(ev, **{key: 0})
+                fs, checked = verify_slot_reuse(h.ops, missing)
+                self.assertEqual(checked, [], (route, key))
+                self.assertEqual(metrics(report(h, fs, checked)), {}, (route, key))
+            for bad in (row.replace('released', 'timeout'), row[:-1], row[:-4], row.replace('12', '-1'),
+                        row.replace('12', 'bad'), row.replace(function, 'wrong-function')):
+                self.assertNotIn('released', f1_evidence(held + bad, route))
+            self.assertNotIn('released', f1_evidence(row, route))
+            other = 'W' if route == 'E' else 'E'
+            self.assertNotIn('released', f1_evidence(held + row, other))
+            self.assertEqual(verify_slot_reuse(h.ops, dict(ev, route=other))[1], [])
+
+    def test_f1_both_routes_required_and_findings_survive_missing_coverage(self):
+        from tools.load import faults
+        props = ['P4-RECLAIM', 'P2-IDENTITY']
+        for missing in (None, 'E', 'W'):
+            seen = []
+            def route(campaign, h, ph, name):
+                seen.append(name)
+                measured = name != missing
+                notes = dict(status='measured' if measured else 'not-measured', reason='no reuse')
+                return notes, [('P2-IDENTITY', name + ': changed bytes')], props if measured else []
+            with patch.object(faults, 'f1_route', side_effect=route), \
+                    patch.object(faults.Campaign, 'emit'):
+                out = faults.slot_reuse(SimpleNamespace(), {})
+            self.assertEqual(seen, ['E', 'W'])
+            self.assertEqual(set(out['routes']), {'E', 'W'})
+            self.assertEqual(set(out['faults']['checked']), set(props) if missing is None else set())
+            self.assertEqual(len(out['faults']['violations'][0]['details']), 2)
+            if missing:
+                self.assertEqual(out['status'], 'not-measured')
+                self.assertIn(missing + ': no reuse', out['reason'])
+
+    def test_f1_route_orchestration_release_cleanup_and_late_publication(self):
+        import threading
+        import time
+        from tools.load import faults
+        from tools import msgid_measure
+        for route in ('E', 'W'):
+            for mode in ('reuse', 'no-reuse', 'blocked-publication', 'unreached', 'seed-refused'):
+                with self.subTest(route=route, mode=mode), tempfile.TemporaryDirectory() as tmp:
+                    work = Path(tmp)
+                    node = SimpleNamespace(work=work, env={}, port=1, err_n=0, stop=lambda: None)
+                    h, churn_started = faults.History(), threading.Event()
+                    release, witness = work / 'f1-release', work / 'f1-witness'
+                    function = faults.F1_FUNCTIONS[route]
+                    campaign = SimpleNamespace(deadline=1, recovery=.15, node=lambda **kw: node)
+                    starts, controls = [], []
+                    def start(node, history):
+                        starts.append(dict(node.env))
+                        node.err_n += 1
+                        (work / ('owner.%d.err' % node.err_n)).touch()
+                    def wait_release():
+                        end = time.monotonic() + 2
+                        while not release.exists() and time.monotonic() < end:
+                            time.sleep(.002)
+                        if not release.exists():
+                            raise TimeoutError('test hook was not released')
+                    def control(node, history, *words):
+                        controls.append(words)
+                        if len(controls) == 2:
+                            if not churn_started.wait(2):
+                                raise TimeoutError('publication prevented competing read dispatch')
+                            if mode == 'blocked-publication':
+                                wait_release()
+                        return 0, 'queued'
+                    campaign.start, campaign.control = start, control
+                    case = self
+                    class SeedClient:
+                        def __init__(self, *args):
+                            pass
+                        def __enter__(self):
+                            return self
+                        def __exit__(self, *args):
+                            pass
+                        def post(self, i, size):
+                            case.assertEqual(size, 524288)
+                            if mode == 'seed-refused':
+                                return b'441 refused\r\n'
+                            case.post(h, msgid_measure.msgid(i))
+                            return b'240 accepted\r\n'
+                    def probe(client, mid, cell, held=False, route=None):
+                        if held:
+                            if mode != 'unreached':
+                                witness.write_text('pool %s funded\nheld %s %s 1\n' % (route, route, function))
+                                wait_release()
+                                n = 0 if mode == 'no-reuse' else 1
+                                with witness.open('a') as f:
+                                    f.write('released %s %s 2 1 %d %d\n' % (route, function, n, n))
+                        else:
+                            churn_started.set()
+                        op = self.probe(h, cell, mid)
+                        op.update(route=route, held=held)
+                    with patch.object(faults, 'Client', SeedClient), \
+                            patch.object(faults, 'fault_probe', side_effect=probe), \
+                            patch.object(faults, 'wait_log', return_value='CHECKPOINT auto sequence=2'):
+                        notes, findings, checked = faults.f1_route(campaign, h, {'cold_reads': 2}, route)
+                    self.assertTrue(release.exists())
+                    self.assertEqual(findings, [])
+                    self.assertEqual(notes['held_function'], function)
+                    self.assertEqual(bool(checked), mode == 'reuse')
+                    if mode != 'seed-refused':
+                        self.assertEqual(starts[1]['FN_LOAD_F1_ROUTE'], route)
+                    if mode in ('reuse', 'no-reuse', 'blocked-publication'):
+                        self.assertTrue(churn_started.is_set())
+                        self.assertEqual(controls, [('store', 'checkpoint')] * 2)
+                    if mode == 'blocked-publication':
+                        self.assertNotIn('publication', notes)
+                    if route == 'W' and mode == 'unreached':
+                        self.assertIn('Funded pool not observed', notes['reason'])
+                        self.assertIn(':unpriced-complete-cold-profile', notes['reason'])
+
+    def test_f1_other_article_bytes_and_unnamed_or_partial_refusals_fail(self):
+        from tools.load.faults import History, verify_slot_reuse
+        h = History()
+        self.post(h, '<a>')
+        op = self.probe(h, 'F1', '<a>', value='another article')
+        fs, _ = verify_slot_reuse(h.ops, {})
+        self.assertEqual({p for p, _ in fs}, {'P4-RECLAIM', 'P2-IDENTITY'})
+        op['reply_line'] = '430 no such article\r\n'
+        self.assertEqual(verify_slot_reuse(h.ops, {})[0], [])
+        op['reply_line'] = '430\r\n'
+        self.assertTrue(verify_slot_reuse(h.ops, {})[0])
+        op['outcome'] = 'attempted-uncertain'
+        self.assertTrue(verify_slot_reuse(h.ops, {})[0])
+
+    def test_f4_saturated_identity_and_restart_success(self):
+        from tools.load.faults import verify_index_saturation
+        h = self.index_history()
+        fs, checked = verify_index_saturation(h.ops, dict(before=[3, 2048, 1, 1], after=[3, 2048, 1, 1]),
+                                             {'<present>': 'original'}, ['<absent>'])
+        self.assertEqual(fs, [])
+        self.assertEqual(checked, ['P2-IDENTITY'])
+
+    def test_f4_identity_is_judged_without_saturation_which_is_reported_apart(self):
+        from tools.load.faults import verify_index_saturation, metrics, report, index_saturated
+        h = self.index_history()
+        for health in ({}, dict(before=[3, 2048, 0, 1], after=[3, 2048, 0, 1]),
+                       dict(before=[3, 2048, 1, 1]), dict(before=[3, 2048, 1, 1], after=[3, 2048, 0, 1])):
+            fs, checked = verify_index_saturation(h.ops, health, {'<present>': 'original'}, ['<absent>'])
+            self.assertEqual(metrics(report(h, fs, checked)), {'faults.P2-IDENTITY.violations': 0})
+            self.assertFalse(index_saturated(health))
+        self.assertTrue(index_saturated(dict(before=[3, 2048, 1, 1], after=[3, 2048, 1, 1])))
+
+    def test_f4_detects_duplicate_acceptance_even_with_same_bytes(self):
+        from tools.load.faults import verify_index_saturation
+        for duplicate in ('same', 'different'):
+            h = self.index_history()
+            op = next(o for o in h.ops if o['args'].get('duplicate') == duplicate)
+            op['reply_line'] = '240 accepted\r\n'
+            fs, _ = verify_index_saturation(h.ops, {}, {'<present>': 'original'}, ['<absent>'])
+            self.assertIn(('P2-IDENTITY', 'duplicate accepted: <present>'), fs)
+
+    def test_f4_detects_wrong_bytes_false_absence_and_false_presence(self):
+        from tools.load.faults import verify_index_saturation
+        for mid, kind, field, wrong in [('<present>', 'ARTICLE', 'body_sha256', 'wrong'),
+                                       ('<present>', 'STAT', 'reply_line', '430 missing\r\n'),
+                                       ('<present>', 'STAT', 'reply_line', '223 1 <other>\r\n'),
+                                       ('<absent>', 'ARTICLE', 'reply_line', '220 1 <absent>\r\n'),
+                                       ('<absent>', 'STAT', 'reply_line', '400 busy\r\n')]:
+            h = self.index_history()
+            op = next(o for o in h.ops if o.get('epoch') == 'after'
+                      and o['args']['msgid'] == mid and o['kind'] == kind)
+            op[field] = wrong
+            fs, _ = verify_index_saturation(h.ops, {}, {'<present>': 'original'}, ['<absent>'])
+            self.assertTrue(fs, (mid, kind, field))
+
+    def test_f4_missing_probe_or_repost_cannot_pass(self):
+        from tools.load.faults import verify_index_saturation
+        h = self.index_history()
+        health = dict(before=[3, 2048, 1, 1], after=[3, 2048, 1, 1])
+        for dropped in h.ops:
+            fs, checked = verify_index_saturation([o for o in h.ops if o is not dropped], health,
+                                                 {'<present>': 'original'}, ['<absent>'])
+            self.assertEqual(checked, [], dropped)
+        h.ops[-1]['outcome'] = 'attempted-uncertain'
+        self.assertEqual(verify_index_saturation(h.ops, health, {'<present>': 'original'}, ['<absent>'])[1], [])
+
+    def test_new_fault_cells_dispatch_and_keep_f7_unimplemented(self):
+        from tools.load import driver, faults
+        data = workloads.load()
+        for cell in ('F1', 'F4'):
+            spec = data['workloads'][data['cells'][cell]]
+            self.assertTrue(hasattr(driver.Run, 'phase_' + spec['phases'][0]['kind']))
+            self.assertTrue(spec['hooks'])
+        spec = data['workloads'][data['cells']['F7']]
+        self.assertEqual(spec['phases'][0]['kind'], 'unimplemented')
+        self.assertIn('PCK-ADOPT', spec['about'])
+        self.assertEqual(faults.fault_environment({'FN_LOAD_F1_ARM': 'x', 'FN_LOAD_F4_REQUEST': 'x',
+                                                 'FN_LOAD_CRASH_AT': 'x', 'PATH': '/bin'}), {'PATH': '/bin'})
+
+    def test_not_measured_hook_reason_reaches_fault_bars(self):
+        from tools.load import faults
+        for cell, workload in [('F1', 'fault-slot-reuse'), ('F4', 'fault-index-saturation')]:
+            reason = 'no actual reuse' if cell == 'F1' else 'no unplaced rows'
+            props = ['P4-RECLAIM', 'P2-IDENTITY'] if cell == 'F1' else ['P2-IDENTITY']
+            out = faults.report(faults.History(), [], [])
+            out['not_measured'] = {'faults.%s.violations' % p: reason for p in props}
+            m, nm = cells.derive(workload, [dict(name='fault', status='not-measured', faults=out)])
+            m.update(faults.metrics(out))
+            rows = result.judge_cell(cell_result(cell=cell, workload=workload, metrics=m, not_measured=nm), result.load_bars())
+            self.assertEqual(len(rows), len(props))
+            for row in rows:
+                self.assertEqual(row['verdict'], 'NOT-MEASURED')
+                self.assertIn(reason, str(row))
+
+    def test_custom_post_records_its_original_identity_and_wire(self):
+        from tools.load import faults
+        h, sock = faults.History(), FakeSocket(respond)
+        body = b'Message-ID: <collision@fn.test>\r\nSubject: original\r\n\r\noriginal\r\n'
+        args = dict(msgid='<collision@fn.test>', sha256=faults.digest(body))
+        with patch.object(faults.socket, 'socket', return_value=sock), faults.Client(1, h) as client:
+            self.assertEqual(client.post_article(body, args), b'240 ok\r\n')
+        self.assertEqual(h.ops[0]['args'], args)
+        self.assertEqual(h.ops[0]['outcome'], 'completed')
+        self.assertEqual(sock.sent, [b'POST\r\n', body + b'.\r\n'])
 
 
 if __name__ == "__main__":

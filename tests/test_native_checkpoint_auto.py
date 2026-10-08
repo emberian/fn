@@ -135,7 +135,10 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # RL-02: the blocked rule is books/owner-publication-lifecycle.lisp's
         # fn-opl-blockedp (the budget/space rule for a budget or space deferral,
         # the abandonment's eligibility by the clock otherwise).
-        self.assertIn("(fn-opl-blockedp", due)
+        self.assertIn("(fn-opub-due", due)
+        transitions = (ROOT / "books/owner-publication-transitions.lisp").read_text()
+        pure_due = native_cuts.host_function(transitions, "fn-opub-due")
+        self.assertIn("(fn-opl-blockedp", pure_due)
         self.assertIn("(fn-owner-sco-budget override profile)", due)
         self.assertIn("(fn-ockp-space free)", due)
         capture = native_cuts.host_function(owner_host, "fn-owner-sco-capture")
@@ -626,7 +629,13 @@ class ExtentCloseFenceTests(AutoCheckpointFixture):
         owner = self.node.start(env={"FN_NATIVE_EXTENT_CLOSE_FAULT": fault})
         # Force retirement of replay's extents, without racing a POST reply.
         asked = self.op("store", "compact")
-        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        # S2/S3b: the CLI follows its receipt, not just the acknowledgement.
+        # The durable frontier may be observed before the later close fault;
+        # otherwise loss of the fenced owner is uncertain, never a refusal.
+        self.assertIn(b"requested receipt=", asked.stdout)
+        self.assertIn(asked.returncode, (EXIT_OK, EXIT_UNCERTAIN), asked.stdout + asked.stderr)
+        if asked.returncode == EXIT_OK:
+            self.assertIn(b"compaction compacted", asked.stdout)
         self.node.exited(EXIT_UNCERTAIN, timeout=180, process=owner)
         log = owner.stderr.since(0)
         self.assertIn(b"CHECKPOINT release uncertain; recovery required:", log)

@@ -44,7 +44,7 @@ class ACL2AlistProbeTests(unittest.TestCase):
                 return mock.Mock(returncode=0, stdout=b'The name "INSTANCE" does not designate any package')
             return mock.Mock(returncode=0, stdout=b'ACL2 !>@@PAIR 0 1 T T\n@@DONE 1\n')
 
-        with mock.patch.object(certs.cert_alists.subprocess, "run", run):
+        with mock.patch.object(certs.cert_alists.acl2_slots, "run", run):
             result = certs.cert_alists.acl2_certificate_pairs(
                 [Path("a.cert"), Path("b.cert")], [(0, 1)], Path("acl2"), Path("."))
         self.assertEqual(result, {(0, 1): (True, True)})
@@ -60,7 +60,7 @@ class ACL2AlistProbeTests(unittest.TestCase):
             return mock.Mock(returncode=0, stdout=b'ACL2 !>@@PAIR 0 1 T NIL\n@@DONE 1\n')
 
         paths = [Path(f"c{i}.cert") for i in range(5)]
-        with mock.patch.object(certs.cert_alists.subprocess, "run", run):
+        with mock.patch.object(certs.cert_alists.acl2_slots, "run", run):
             result = certs.cert_alists.acl2_certificate_pairs(paths, [(1, 3)], Path("acl2"),
                                                               Path("."))
         self.assertEqual(result, {(1, 3): (True, False)})
@@ -74,7 +74,7 @@ class ACL2AlistProbeTests(unittest.TestCase):
         for output in (b'@@UNREADABLE 1\n@@PAIR 0 1 NIL NIL\n@@DONE 1\n',
                        b'@@PAIR 0 1 T T\n'):
             with self.subTest(output=output):
-                with mock.patch.object(certs.cert_alists.subprocess, "run",
+                with mock.patch.object(certs.cert_alists.acl2_slots, "run",
                                        return_value=mock.Mock(returncode=0,
                                                               stdout=output)):
                     with self.assertRaises(ValueError):
@@ -88,6 +88,7 @@ TEXT_CERT = ('(IN-PACKAGE "ACL2")\n"ACL2 Version 8.7"\n'
 # ACL2 8.7's compact serializer: binary, opening with the `#Z` magic.
 SERIALIZED = b"\n#Z(|ACL2|\x00\x01\x02 fake serialized certificate\n"
 TEST_COMPATIBILITY = {
+    "project_directories": {":FN": "."},
     "schema": "fn-acl2-toolchain-v1",
     "launcher_chain_sha256": ["1" * 64],
     "core_sha256": "2" * 64,
@@ -114,6 +115,7 @@ def worktree(directory: str, books: dict[str, str] | None = None,
     """A throwaway worktree: books, and a certificate pair for some of them."""
     root = Path(directory).resolve()
     (root / "books").mkdir(parents=True, exist_ok=True)
+    (root / certs.acl2_projects.FILENAME).write_text(certs.acl2_projects.CONTENTS)
     (root / "tests" / "acl2").mkdir(parents=True, exist_ok=True)
     for name, text in (books or BOOKS).items():
         (root / f"{name}.lisp").write_text(text)
@@ -2354,6 +2356,65 @@ class PersistedContentHashTests(unittest.TestCase):
                 certs.flush_persisted_hashes()
             self.assertEqual(certs._PERSISTED["new"], {})
             self.assertEqual(sorted(p.name for p in Path(directory).iterdir()), ["f"])
+
+    def test_warm_install_rechecks_corruption_even_with_same_size_and_mtime(self):
+        for suffix in ("cert", "port", "fasl"):
+            for replace in (False, True):
+                with self.subTest(suffix=suffix, replace=replace), \
+                        tempfile.TemporaryDirectory() as directory:
+                    self.setUp()
+                    base = Path(directory)
+                    source = worktree(str(base / "source"),
+                                      certified=["books/base", "books/mid"])
+                    manifest_for(source, ["books/base", "books/mid"])
+                    cache = base / "cache"
+                    certs.publish(source, cache, origin="/farm/hash-memo-fixture")
+                    target = worktree(str(base / "target"))
+                    stored = certs.entry_directory(
+                        cache, certs.closure_key(source, "books/base")[0],
+                        "/farm/hash-memo-fixture")
+                    with mock.patch.dict(os.environ, {
+                            "FN_CONTENT_HASH_FILE": str(target / "build/hashes.json")}):
+                        self.setUp()
+                        first = install(target, cache, ["books/mid"])
+                        self.assertEqual(first.installed, 2)
+                        certs.flush_persisted_hashes()
+                        self.setUp()  # next farm process loads the persisted memo
+                        real_open = Path.open
+
+                        def no_payload_read(path, *args, **kwargs):
+                            if cache in path.parents and path.name in (
+                                    "book.cert", "book.port", "book.fasl"):
+                                raise AssertionError(f"unchanged payload read: {path}")
+                            return real_open(path, *args, **kwargs)
+
+                        # Metadata and locks are still read, but unchanged
+                        # cached payloads need no read during the entire install.
+                        with mock.patch.object(Path, "open", no_payload_read):
+                            warm = install(target, cache, ["books/mid"])
+                        self.assertEqual(warm.installed_from, first.installed_from)
+                        self.assertEqual(warm.uncached, first.uncached)
+                        path = stored / f"book.{suffix}"
+                        before = path.stat()
+                        data = path.read_bytes()
+                        changed = bytes([data[0] ^ 1]) + data[1:]
+                        time.sleep(0.001)
+                        if replace:
+                            replacement = stored / "replacement"
+                            replacement.write_bytes(changed)
+                            os.replace(replacement, path)
+                        else:
+                            path.write_bytes(changed)
+                        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+                        self.assertEqual(path.stat().st_size, before.st_size)
+                        self.assertEqual(path.stat().st_mtime_ns, before.st_mtime_ns)
+                        self.assertNotEqual(path.stat().st_ctime_ns, before.st_ctime_ns)
+                        self.setUp()
+                        refused = install(target, cache, ["books/mid"])
+                        self.assertCountEqual(refused.uncached, ["books/base", "books/mid"])
+                        for name in refused.uncached:
+                            self.assertFalse((target / f"{name}.cert").exists())
+                            self.assertFalse((target / f"{name}.fasl").exists())
 
 if __name__ == "__main__":
     unittest.main()

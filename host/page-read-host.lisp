@@ -17,6 +17,7 @@
 (include-book "../books/page-read-binding-revision")
 (include-book "../books/page-read-budget-growth")
 (include-book "../books/extent-cache") ; the payload extent cache's decisions (host/native/extent.lisp)
+(include-book "../books/definterface")
 
  ; A served recovery is selected explicitly before Store open. Opening an
 ; offline Store supplies a separate context; absence alone grants no I/O.
@@ -40,6 +41,8 @@
       (fn-owner-page-read-enter-mode :offline fn-page-read-pool)
     (mv (fn-prp-mode fn-page-read-pool) fn-page-read-pool)))
 
+(definterface fn-owner-page-read-open-context :class :common-lisp-compliant)
+
 (defun fn-owner-page-read-direct-mode (fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (cond ((and (equal (fn-prp-mode fn-page-read-pool) :offline)
@@ -47,6 +50,9 @@
         ((and (equal (fn-prp-mode fn-page-read-pool) :served)
               (fn-prp-data fn-page-read-pool)) :funded-pool)
         (t :read-resources-unavailable)))
+
+;; Typed, unverified checkpoint discovery buffer; never a verified read token.
+(definterface fn-owner-page-read-direct-mode :class :common-lisp-compliant)
 
 ; DATA = (ledger bookkeeping native-octets fd-bookkeeping file-limit).
 (defun fn-owner-page-read-install (budget bookkeeping native-octets fd-bookkeeping file-limit fn-page-read-pool)
@@ -94,6 +100,8 @@
   (if (not (fn-prp-data fn-page-read-pool)) (fn-owner-page-read-registration-mode fn-page-read-pool)
     (fn-prl-close-preview (fn-owner-page-read-ledger fn-page-read-pool) file)))
 
+(definterface fn-owner-page-read-close-preview :class :common-lisp-compliant)
+
 (defun fn-owner-page-file-issue (next fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (if (fn-prp-data fn-page-read-pool)
@@ -103,6 +111,9 @@
           (if (equal word :issued) (mv :unfunded-offline next1 id)
             (mv word next1 id)))
       (mv :read-resources-unavailable next nil))))
+
+(definterface fn-owner-page-file-issue :class :common-lisp-compliant
+  :keystones ((fn-pio-bounded-file-issue-spends-a-fresh-representable-name :via fn-pio-file-issue-with-limit)))
 
 (defun fn-owner-page-read-register (file fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
@@ -127,6 +138,8 @@
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word fn-page-read-pool)))))
 
+(definterface fn-owner-page-read-register-path :class :common-lisp-compliant)
+
 (defun fn-owner-page-read-admit (cid file eoff elen trailer fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (if (not (fn-prp-data fn-page-read-pool))
@@ -144,6 +157,9 @@
         (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
           (mv word token fn-page-read-pool))))))
 
+;; host/page-read-host.lisp: the dedicated carried resource stobj.
+(definterface fn-owner-page-read-admit :class :common-lisp-compliant)
+
 ; After private activation return/unwind or observed death + actual join.
 (defun fn-owner-page-read-settle (token cachedp fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
@@ -153,6 +169,9 @@
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word fn-page-read-pool)))))
 
+(definterface fn-owner-page-read-settle :class :common-lisp-compliant
+  :keystones ((fn-prl-completion-refunds-at-most-once :via fn-prl-settle)))
+
 (defun fn-owner-page-cache-evict (token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (mv-let (word ledger)
@@ -161,6 +180,8 @@
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word fn-page-read-pool)))))
 
+(definterface fn-owner-page-cache-evict :class :common-lisp-compliant)
+
 (defun fn-owner-page-read-close (file fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (mv-let (word ledger)
@@ -168,6 +189,8 @@
     (if (equal word :stale) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word fn-page-read-pool)))))
+
+(definterface fn-owner-page-read-close :class :common-lisp-compliant)
 
 ; Unverified synchronous reads are charged before allocating any output.
 ; They borrow one execution slot conservatively. Native must release only
@@ -186,12 +209,17 @@
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word token fn-page-read-pool)))))
 
+(definterface fn-owner-page-read-discovery-admit :class :common-lisp-compliant
+  :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))
+
 (defun fn-owner-page-read-discovery-release (token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (mv-let (word ledger) (fn-prd-release (fn-owner-page-read-ledger fn-page-read-pool) token)
     (if (equal word :stale) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word fn-page-read-pool)))))
+
+(definterface fn-owner-page-read-discovery-release :class :common-lisp-compliant)
 
 
 ; Actual carrier ABI: operational descriptor persists after row settlement.
@@ -497,6 +525,8 @@
               0 (list :default-reusable-decoded 0) (fn-prstartup-nth 6 plan)) fn-page-read-pool)))
       (mv :installed fn-page-read-pool))))))
 
+(definterface fn-owner-page-read-install-default :class :common-lisp-compliant)
+
 (defun fn-owner-page-read-default-worker-reservedp (slot fn-page-read-pool)
  (declare (xargs :stobjs fn-page-read-pool :guard t))
  (let* ((data (fn-prp-data fn-page-read-pool))
@@ -522,6 +552,8 @@
            fn-page-read-pool)))
        (mv :ready fn-page-read-pool))))))
 
+(definterface fn-owner-page-read-default-worker-ready :class :common-lisp-compliant)
+
 (defun fn-owner-page-read-default-worker-readyp (worker fn-page-read-pool)
  (declare (xargs :stobjs fn-page-read-pool :guard t))
  (let* ((data (fn-prp-data fn-page-read-pool))
@@ -542,6 +574,8 @@
       (not (logbitp slot
              (fn-prl-nth 1 (fn-prl-nth 6 (fn-prp-data fn-page-read-pool)))))))
 
+(definterface fn-owner-page-read-default-worker-constructionp :class :common-lisp-compliant)
+
 ; Actual live limit publication holds owner->extent through preview and apply.
 ; Permanent backing, outstanding rows and readiness metadata are untouched.
 (defun fn-owner-page-read-protected-growth-preview (amount fn-page-read-pool)
@@ -551,12 +585,45 @@
     (fn-prl-resident-shrink amount (fn-owner-page-read-ledger fn-page-read-pool))
     (declare (ignore ledger))
     (if (eq word :protected-growth-admitted) :affordable :at-restart))))
-(defun fn-owner-page-read-protected-growth (amount fn-page-read-pool)
+
+(definterface fn-owner-page-read-protected-growth-preview :class :common-lisp-compliant)
+; A live limit change holds its growth across the reconfiguration's windows
+; (ruling 19, books/owner-reconfig-phased.lisp :reserve, :convert, :release;
+; books/page-read-budget-growth.lisp fn-prl-reserve-growth,
+; fn-prl-convert-growth; books/page-read-ledger.lisp fn-prl-evict): reserved
+; under the extent mutex in quantum 1, converted into the budget reduction in
+; quantum 3, evicted when the change is refused, fenced or faulted.  The
+; extent mutex is held only inside each, never across a window.
+(defun fn-owner-page-read-growth-reserve (amount fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (if (not (fn-owner-page-read-default-installedp fn-page-read-pool))
+     (mv :at-restart nil fn-page-read-pool)
+   (mv-let (word token ledger)
+    (fn-prl-reserve-growth (fn-owner-page-read-ledger fn-page-read-pool) amount)
+    (if (not (equal word :admitted)) (mv word nil fn-page-read-pool)
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+       (mv word token fn-page-read-pool))))))
+
+(definterface fn-owner-page-read-growth-reserve :class :common-lisp-compliant)
+(defun fn-owner-page-read-growth-convert (token amount fn-page-read-pool)
  (declare (xargs :stobjs fn-page-read-pool :guard t))
  (if (not (fn-owner-page-read-default-installedp fn-page-read-pool))
      (mv :at-restart fn-page-read-pool)
    (mv-let (word ledger)
-    (fn-prl-resident-shrink amount (fn-owner-page-read-ledger fn-page-read-pool))
-    (if (not (eq word :protected-growth-admitted)) (mv :at-restart fn-page-read-pool)
+    (fn-prl-convert-growth (fn-owner-page-read-ledger fn-page-read-pool) token amount)
+    (if (not (equal word :protected-growth-admitted)) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
        (mv word fn-page-read-pool))))))
+
+(definterface fn-owner-page-read-growth-convert :class :common-lisp-compliant)
+(defun fn-owner-page-read-growth-release (token fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (if (not (fn-owner-page-read-default-installedp fn-page-read-pool))
+     (mv :at-restart fn-page-read-pool)
+   (mv-let (word ledger)
+    (fn-prl-evict (fn-owner-page-read-ledger fn-page-read-pool) token)
+    (if (not (equal word :evicted)) (mv word fn-page-read-pool)
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+       (mv word fn-page-read-pool))))))
+
+(definterface fn-owner-page-read-growth-release :class :common-lisp-compliant)

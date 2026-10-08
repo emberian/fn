@@ -685,7 +685,7 @@
                             (srcs (nth 1 pst)) (k (nfix (car (nth 2 pst)))) (fn-octets nil)))
            :in-theory (e/d (fn-oct-append-list-is-append)
                            (fn-scka-append-batch-is-body fn-scka-append-batch fn-scka-body
-                            fn-scka-head fn-scc-le-digits fn-sccr-nth-is-cell
+                            fn-scka-head fn-scc-le-digits
                             fn-ockp-admit-frames fn-scc-header fn-scc-seal fn-scc-frames
                             fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp)))))
 
@@ -756,7 +756,7 @@
                                fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp fn-scka-chunks
                                ; rules the octet buffer and the NNTP books export that
                                ; fire on every list here and never help
-                               fn-nntp-article-idp-is-consp fn-oct-bufp-true-listp
+                                fn-oct-bufp-true-listp
                                fn-octets$c-bufp)))
           ("Subgoal *1/4" :use ((:instance fn-scka-write-step-batch
                                            (count (+ (car pst) (len (nth 2 pst)))))))))

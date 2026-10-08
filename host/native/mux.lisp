@@ -532,11 +532,14 @@ failed effects remain discoverable while independent physical cleanup runs."
 
 (defun fnn-mux-drained-p (service)
   "Root teardown requires physical loop return and no retained cleanup debt.
-A literal socket-shut return is not a descriptor-close/accounting proof."
+A literal socket-shut return is not a descriptor-close/accounting proof.
+Observe monotonic CLOSED under the producers' lock before inspecting the
+queues without it; producers cannot append after that observation."
   (every (lambda (loop)
            (let ((thread (fnn-mux-loop-thread loop)))
              (and (or (null thread) (not (sb-thread:thread-alive-p thread)))
-                  (fnn-mux-loop-closed loop)
+                  (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+                    (fnn-mux-loop-closed loop))
                   (null (fnn-mux-loop-inbox loop))
                   (null (fnn-mux-loop-arrived loop))
                   (null (fnn-mux-loop-conns loop))
@@ -666,19 +669,18 @@ DONEP YIELDP COLD-READ END)."
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
 positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
-  (let ((ms (fnn-core 'fn-splan-cursor-resume-ms)))
-    (unless (and (integerp ms) (> ms 0))
+  (let ((ms (fnn-core 'fn-asto-resume-ms plan)))
+    (unless (and (integerp ms) (>= ms 0))
       (fnn-fault "owner returned a malformed cursor resume delay"))
     (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
       ;; PASSES: the loop's completed passes (lane host-lifecycle: an
       ;; ineligible idle deadline made a yield's wait a busy poll, r71 F11).
       (fnn-err "OVER ~a cid=~d passes=~d" (if empty-progressp "empty-yield" "cursor-yield")
                (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop)))
-    ;; An ARTICLE quantum always consumes its fuel, so its yield is never
-    ;; empty progress: ACL2's positive delay exists for a sparse OVER range
-    ;; that would otherwise rescan in one event.  The article resumes on the
-    ;; next pass of the loop (due now: the poll timeout is zero, every other
-    ;; ready connection is served first), not after a fixed millisecond.
+    ;; ACL2 decides the delay (fn-asto-resume-ms): an ARTICLE or LIST quantum
+    ;; spends its whole grant, so it is due now and resumes on the next pass of
+    ;; the loop (the poll timeout is zero, every other ready connection is
+    ;; served first); a sparse OVER range waits ACL2's positive delay.
     (setf (fnn-mux-conn-plan conn) plan
           (fnn-mux-conn-drained-late conn) t
           (fnn-mux-conn-after conn) after
@@ -689,11 +691,7 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
           (fnn-mux-conn-send-state conn) nil
           (fnn-mux-conn-want conn) nil
           (fnn-mux-conn-resume-at conn)
-          (+ (fnn-now)
-             (if (or (fnn-core 'fn-asto-plan-articlep plan)
-                     (fnn-core 'fn-asto-preflight-planp plan))
-                 0
-                 (round (* ms internal-time-units-per-second) 1000))))))
+          (+ (fnn-now) (round (* ms internal-time-units-per-second) 1000)))))
 
 (defun fnn-mux-plan-cold (loop conn plan after read)
   "Suspend this response on its exact issued READ; no socket body or input
@@ -1079,7 +1077,7 @@ of its reply has no reply to replace and is terminated."
 
 (defun fnn-mux-await (loop conn step redeem after)
   "CONN waits for its submission's completion from the next commit quantum
-(host/native/owner.lisp fnn-owner-commit-queued-locked)."
+(host/native/owner.lisp fnn-owner-commit-pipeline)."
   (let ((service (fnn-mux-service loop)))
     (setf (fnn-mux-conn-await conn) (list step redeem after)
           (fnn-mux-conn-replying conn) nil)
@@ -1343,10 +1341,39 @@ answers :wait (the node's slots or this second's starts are spent)."
                  (fnn-mux-queue loop conn greeting :send-greeting nil))
                 (t (fnn-mux-after loop conn nil))))))))
 
+;;; The send window (books/send-window.lisp; item LOAD-F5-SLOW-READER-ISOLATION).
+;;; The kernel accepts a write on this socket only while it holds fewer than
+;;; ACL2's (fn-send-window-octets) octets unsent (TCP_NOTSENT_LOWAT), so a reader
+;;; that stops reading leaves the owner at most one window past the row rendered
+;;; instead of the whole kernel send queue.  It bounds octets not yet sent, not
+;;; the data in flight, and POLLOUT follows the same gate, so a stalled reply
+;;; waits in the poll like any other.
+
+(defconstant +fnn-ipproto-tcp+ 6)
+(defconstant +fnn-tcp-notsent-lowat+ 25) ; Linux linux/tcp.h
+
+(defun fnn-mux-send-window (fd)
+  "Set the served socket's unsent-octets gate to ACL2's window.  A kernel that
+refuses it is an OS error of this connection (it ends, named), never a
+connection served without its bound.  Off Linux the platform has no such
+option here and the kernel's own queue is the window."
+  #+linux
+  (sb-alien:with-alien ((value sb-alien:int (fnn-core 'fn-send-window-octets)))
+    (when (minusp (sb-alien:alien-funcall
+                   (sb-alien:extern-alien "setsockopt"
+                                          (function sb-alien:int sb-alien:int sb-alien:int
+                                                    sb-alien:int (* sb-alien:int) sb-alien:unsigned-int))
+                   fd +fnn-ipproto-tcp+ +fnn-tcp-notsent-lowat+ (sb-alien:addr value)
+                   (sb-alien:alien-size sb-alien:int :bytes)))
+      (fnn-os-fail (sb-alien:get-errno))))
+  #-linux
+  (progn fd nil))
+
 (defun fnn-mux-begin (loop conn)
   "A socket a loop adopted: the handshake pool's gate, then the admission."
   (let ((socket (fnn-mux-conn-socket conn)))
     (setf (fnn-mux-conn-fd conn) (fnn-socket-fd socket))
+    (fnn-mux-send-window (fnn-mux-conn-fd conn))
     ;; PKT-639 / PRF-986: an implicit-TLS socket's handshake is ACL2's
     ;; decision BEFORE the exposure admits anything and before SSL_accept
     ;; (books/tls-handshake-budget.lisp): admitted (then the exposure open,

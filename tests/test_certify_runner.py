@@ -233,6 +233,8 @@ class FakeRepository:
 
     def __init__(self, directory: str, books: dict[str, list[str]]) -> None:
         self.root = Path(directory).resolve()
+        (self.root / runner.certs.acl2_projects.FILENAME).write_text(
+            runner.certs.acl2_projects.CONTENTS)
         (self.root / "books").mkdir()
         for book, includes in books.items():
             body = "".join(f'(include-book "{name}")\n' for name in includes)

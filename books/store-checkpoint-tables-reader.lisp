@@ -21,10 +21,15 @@
 (in-package "ACL2")
 (include-book "store-checkpoint-tables")
 (include-book "store-checkpoint-reader")
-; store-checkpoint-reader exports fn-sccr-nth-is-cell disabled (a hazard
-; rule: nth of bare variables); this book's step proofs read cells by it.
-(local (in-theory (enable fn-sccr-nth-is-cell)))
 (local (include-book "arithmetic/top" :dir :system))
+
+; store-checkpoint-reader exports fn-sccr-nth-is-cell as a theorem with no
+; rule class (an `nth' left-hand side fires on every call); this book's step
+; proofs read cells by it, so the rewrite is a local twin.
+(local (defthm fn-sccr-nth-is-cell-local-rewrite
+  (implies (and (fn-octets-p fn-octets) (natp i) (< i (len fn-octets)))
+           (equal (nth i fn-octets) (fn-sccr-cell i fn-octets)))
+  :hints (("Goal" :by fn-sccr-nth-is-cell))))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md

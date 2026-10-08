@@ -32,6 +32,8 @@ EXIT_UNCERTAIN, EXIT_USAGE, KILLED = 3, 5, -9
 def executable(path: Path) -> bool:
     return path.is_file() and os.access(path, os.X_OK)
 
+# native_operator_campaign.run_cut drives every fn-lg-open-program recovery
+# cut. This module runs a smoke subset and checks the static cut table.
 
 class NativeCutTableTests(unittest.TestCase):
     def test_the_table_agrees_with_the_host(self):

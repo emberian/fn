@@ -7131,7 +7131,7 @@ with its depth, and the rows under it name the path that called it."
     fn-cat$c-group-number fn-cat$c-msgid-seqs fn-cat$c-at fn-cat$c-visible-at
     fn-cat$c-group-next fn-cat$c-group-count
     ;; the maintained group summary and withdrawal horizon (one cell each)
-    fn-cat$c-group-live-count fn-cat$c-group-live-low fn-cat$c-group-live-high
+    fn-cat$c-group-live-count fn-cat$c-group-live-low fn-cat$c-group-live-high fn-cat$c-group-raw-low
     fn-cat$c-horizon
     ;; the catalog finders over them
     fn-cnx-view-seq fn-cnx-view-range fn-scat-range-numbers

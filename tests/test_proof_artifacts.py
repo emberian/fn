@@ -225,7 +225,7 @@ class AcquisitionTests(unittest.TestCase):
 
     def test_an_uncertified_warning_is_a_load_failure(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = worktree(directory)
             acl2 = root / "acl2"
             acl2.write_bytes(self.TOOLCHAIN)
 
@@ -262,7 +262,8 @@ class FirstFailedBookTests(unittest.TestCase):
             return subprocess.CompletedProcess(
                 [], 0, b'ACL2 Error in ( INCLUDE-BOOK "books/owner" ...)\n')
         with tempfile.TemporaryDirectory() as directory:
-            loaded = proof_artifacts.validate(Path(directory), Path("/bin/true"),
+            root = worktree(directory)
+            loaded = proof_artifacts.validate(root, Path("/bin/true"),
                                               ["books/x"], run=run)
         self.assertFalse(loaded.ok)
         self.assertIn("first failed book books/owner", loaded.reason)

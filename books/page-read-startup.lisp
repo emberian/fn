@@ -5,6 +5,8 @@
 (include-book "cold-guard-bootstrap")
 (include-book "decoded-worker-backing")
 (include-book "output-reservation")
+(include-book "cold-read-wait")
+(local (in-theory (disable (tau-system))))
 
 (defun fn-prstartup-nth (n x)
  (declare (xargs :guard (natp n)))
@@ -90,9 +92,14 @@
  (declare (xargs :guard t))
  (nfix (car (fn-prs-worker-demand extent (fn-prstartup-read-token-octets) 0 0))))
 
+; The reads in flight, plus the bounded wait's queue (books/cold-read-wait.lisp
+; fn-cwq-queue-octets: WAIT-QUEUE waiting reads of one struct and one list cell
+; each, resident on the heap whether or not anyone waits). The admission below
+; refuses :default-pool-read-headroom-unavailable unless the heap holds both.
 (defun fn-prstartup-read-reserve (extent workers)
  (declare (xargs :guard t))
- (* (nfix workers) (fn-prstartup-read-demand extent)))
+ (+ (* (nfix workers) (fn-prstartup-read-demand extent))
+    (fn-cwq-queue-octets)))
 
 (defun fn-prstartup-plan (dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve)
  (declare (xargs :guard t))
@@ -124,6 +131,27 @@
         0 (fn-prstartup-fd-bookkeeping) 18446744073709551615
         workers (fn-cgb-capacity)))))))
 
+; The reserve is funded at admission: an admitted default plan leaves the heap
+; room for the minimum pool AND the reserve (:default-pool-read-headroom-
+; unavailable otherwise).
+(defthm fn-prstartup-admitted-plan-funds-its-reserve
+  (implies (eq (car (fn-prstartup-plan dynamic occupied protected root workers stack runtime
+                                       cache-limit fd-limit reserve))
+               :admitted)
+           (<= (+ (fn-prstartup-required-heap (max 8 (+ 1 (nfix cache-limit))) workers root)
+                  reserve)
+               (fn-prstartup-available dynamic occupied protected)))
+  :hints (("Goal" :in-theory (e/d (fn-prstartup-plan)
+                                  (fn-prstartup-required-heap fn-prstartup-available
+                                   fn-prstartup-affordable-capacity fn-prstartup-baseline-heap
+                                   fn-crl-table-supportedp fn-cgb-capacity fn-prstartup-fd-bookkeeping))))
+  :rule-classes nil)
+
+(defthm fn-prstartup-read-reserve-charges-the-cold-wait-queue
+  (<= (fn-cwq-queue-octets) (fn-prstartup-read-reserve extent workers))
+  :hints (("Goal" :in-theory (enable fn-prstartup-read-reserve)))
+  :rule-classes nil)
+
 (defun fn-prstartup-file-capacity (plan)
  (declare (xargs :guard t)) (nfix (fn-prstartup-nth 2 (fn-prstartup-nth 1 plan))))
 
@@ -135,11 +163,20 @@
 (defun fn-prstartup-scope ()
  (declare (xargs :guard t)) :partial-fixed-storage)
 
-; OBSERVED: the store on disk, as the launcher's figure observed it.
-(defun fn-prstartup-protected (profile core nursery output max-connections observed)
- (declare (xargs :guard t) (ignore max-connections))
- (+ (fn-heap-runtime-protected-octets profile core nursery observed)
+; OBS: a store on disk, as a figure may observe it.
+(defun fn-prstartup-protected-at (profile core nursery output obs)
+ (declare (xargs :guard t))
+ (+ (fn-heap-runtime-protected-octets profile core nursery obs)
     (nfix (fn-crv-nth 0 output))))
+
+; A run's protected runtime is the FULL store's, whatever the store on disk
+; holds (OBSERVED is not read): the launcher decides the run's heap the same
+; way (books/heap-figure.lisp fn-heap-operation-figure-octets-of-a-run), so a
+; heap below the decided figure is refused here by name and a decided heap
+; reopens every store the run grows (ADMISSION-RESERVES-NOT-REOPEN).
+(defun fn-prstartup-protected (profile core nursery output max-connections observed)
+ (declare (xargs :guard t) (ignore max-connections observed))
+ (fn-prstartup-protected-at profile core nursery output nil))
 
 (defun fn-prstartup-default-plan
   (dynamic occupied profile core nursery cold output max-connections root workers cache-limit fd-limit
@@ -465,11 +502,16 @@
  (declare (xargs :guard t))
  (cons (fn-heap-core-file core) (fn-heap-core-file core)))
 
-(defun fn-prstartup-launch-floor (profile core observed)
+(defun fn-prstartup-launch-floor-at (profile core obs)
  (declare (xargs :guard t))
  (fn-heap-with-nursery
-  (fn-heap-store-base-octets profile (fn-prstartup-image-bound core) observed)
+  (fn-heap-store-base-octets profile (fn-prstartup-image-bound core) obs)
   (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
+
+; The decided run's floor: the full store's (OBSERVED is not read).
+(defun fn-prstartup-launch-floor (profile core observed)
+ (declare (xargs :guard t) (ignore observed))
+ (fn-prstartup-launch-floor-at profile core nil))
 
 ; What the served run adds to its figure for the pool: the smallest table
 ; the plan admits and its workers' reads in flight (the plan's two checks,
@@ -507,19 +549,19 @@
  :rule-classes :linear
  :hints (("Goal" :in-theory (enable fn-heap-nursery-trigger))))
 
-(defthm fn-prstartup-launch-floor-holds-owner
+(defthm fn-prstartup-launch-floor-at-holds-owner
  (implies (and (natp dyn)
-               (<= (fn-prstartup-launch-floor profile core observed) dyn)
+               (<= (fn-prstartup-launch-floor-at profile core observed) dyn)
                (equal (fn-heap-core-file owner-core) (fn-heap-core-file core)))
-          (<= (fn-prstartup-protected
+          (<= (fn-prstartup-protected-at
                profile owner-core
                (fn-heap-nursery-trigger dyn (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))
-               nil max-connections observed)
+               nil observed)
               dyn))
  :rule-classes nil
  :hints (("Goal"
-          :in-theory (e/d (fn-prstartup-protected fn-heap-runtime-protected-octets
-                           fn-prstartup-launch-floor fn-prstartup-image-bound
+          :in-theory (e/d (fn-prstartup-protected-at fn-heap-runtime-protected-octets
+                           fn-prstartup-launch-floor-at fn-prstartup-image-bound
                            fn-heap-store-base-octets fn-heap-core-dynamic fn-heap-core-file)
                           (fn-heap-with-nursery fn-heap-nursery-trigger
                            fn-heap-store-state-bound fn-heap-store-open-octets
@@ -533,6 +575,80 @@
                  (d dyn)
                  (base (fn-heap-store-base-octets profile owner-core observed))
                  (nursery (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))))))
+
+(defthm fn-prstartup-launch-floor-holds-owner
+ (implies (and (natp dyn)
+               (<= (fn-prstartup-launch-floor profile core observed) dyn)
+               (equal (fn-heap-core-file owner-core) (fn-heap-core-file core)))
+          (<= (fn-prstartup-protected
+               profile owner-core
+               (fn-heap-nursery-trigger dyn (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))
+               nil max-connections observed)
+              dyn))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-prstartup-protected fn-prstartup-launch-floor)
+                                 (fn-prstartup-launch-floor-at fn-prstartup-protected-at))
+          :use ((:instance fn-prstartup-launch-floor-at-holds-owner (observed nil))))))
+
+;; THE CHECK AND THE DECISION AGREE.  fn-heap-with-nursery is the figure for
+;; BASE within 16 octets (the trigger is a sixteenth of the space, rounded
+;; down): a space 16 octets under it does not hold BASE and its trigger.
+(encapsulate ()
+ (local (include-book "arithmetic-5/top" :dir :system))
+ (local (defthm fn-prstartup-floor-16-bounds
+   (implies (natp d) (and (<= (* 16 (floor d 16)) d) (< d (+ 16 (* 16 (floor d 16))))))
+   :rule-classes :linear))
+ (local (defthm fn-prstartup-ceiling-7-bounds
+   (implies (natp b) (and (<= (* 8 b) (* 7 (ceiling (* 8 b) 7)))
+                          (< (* 7 (ceiling (* 8 b) 7)) (+ 7 (* 8 b)))))
+   :rule-classes :linear))
+ (defthm fn-heap-with-nursery-is-nearly-the-least
+  (implies (and (natp d) (natp b) (natp n)
+                (< (+ d 16) (fn-heap-with-nursery b n)))
+           (< d (+ b (* 2 (fn-heap-nursery-trigger d n)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-with-nursery fn-heap-nursery-trigger max min)
+                                  (floor ceiling))
+           :cases ((<= (floor d 16) n))))))
+
+;; The cold-startup check is the decision's own figure (a run's protected
+;; runtime is over no observation, as is the run's figure): a heap at the
+;; decided figure starts, and one more than 16 octets under it is refused by
+;; name (:default-pool-heap-not-held), for every preset (PROFILE).
+(defthm fn-prstartup-run-starts-at-the-decided-figure
+ (implies (and (natp dyn)
+               (<= (fn-heap-operation-figure-octets :run profile core cap observed) dyn))
+          (<= (fn-prstartup-protected profile core (fn-heap-nursery-trigger dyn cap)
+                                      nil max-connections later)
+              dyn))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-prstartup-protected fn-prstartup-protected-at
+                                  fn-heap-runtime-protected-octets
+                                  fn-heap-operation-figure-octets-of-a-run
+                                  fn-heap-store-figure-octets)
+                                 (fn-heap-with-nursery fn-heap-nursery-trigger
+                                  fn-heap-store-base-octets))
+          :use ((:instance fn-heap-with-nursery-holds-the-trigger (d dyn)
+                           (base (fn-heap-store-base-octets profile core nil))
+                           (nursery cap))
+                (:instance fn-heap-nursery-trigger-natp (d dyn) (nursery cap))
+                (:instance fn-prstartup-nursery-trigger-at-least-the-least (d dyn) (nursery cap))))))
+
+(defthm fn-prstartup-run-refuses-below-the-decided-figure
+ (implies (and (natp dyn) (natp cap)
+               (< (+ dyn 16) (fn-heap-operation-figure-octets :run profile core cap observed)))
+          (< dyn (fn-prstartup-protected profile core (fn-heap-nursery-trigger dyn cap)
+                                         nil max-connections later)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-prstartup-protected fn-prstartup-protected-at
+                                  fn-heap-runtime-protected-octets
+                                  fn-heap-operation-figure-octets-of-a-run
+                                  fn-heap-store-figure-octets)
+                                 (fn-heap-with-nursery fn-heap-nursery-trigger
+                                  fn-heap-store-base-octets))
+          :use ((:instance fn-heap-with-nursery-is-nearly-the-least
+                           (b (fn-heap-store-base-octets profile core nil)) (n cap) (d dyn))
+                (:instance fn-prstartup-nursery-trigger-at-least-the-least (d dyn) (nursery cap))))))
 
 (local (defthm fn-prstartup-max-bounds
  (implies (and (rationalp a) (rationalp b)) (and (<= a (max a b)) (<= b (max a b))))

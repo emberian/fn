@@ -2,34 +2,60 @@
 ; Proof vocabulary only: no served history scan and no numeric ceiling.
 (in-package "ACL2")
 (include-book "owner-recovery-retain")
-(include-book "consumer-store-invariants")
 (include-book "record-width-producers")
 (include-book "owner-snapshot-recovery")
 (include-book "owner-prepare-deferred-carried")
 
 (local (in-theory (disable (tau-system))))
+; The "Theory" warning check costs about 20 ms on every :in-theory hint in this world.
+(local (set-inhibit-warnings "Theory"))
 
 ; Both carried prepares stage a candidate without appending the journal or
 ; changing its cursor. Their admission gates need not be expanded here.
 (defthm fn-owner-carried-identity-prepare-preserves-cursor
   (implies (fn-sn-identity-sequencep s)
            (fn-sn-identity-sequencep (fn-ccar-sn-prepare-identity s event)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-sn-identity-sequencep fn-ccar-sn-prepare-identity
-                 fn-pcar-stage-record fn-sn-update fn-sf-completion-phasep)
-                (fn-pcar-stage-record-is-stage-record fn-stxe-p fn-stxk-p fn-hstxa-p
-                 fn-sn-statep fn-ccar-cpe-projection-step fn-replay-apply-record
-                 fn-replay-identity-step fn-sn-make-v6)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-ccar-sn-prepare-identity)
+                              (:definition fn-pcar-stage-record) (:definition fn-sf-candidatep)
+                              (:definition fn-sf-completion-phasep)
+                              (:definition fn-sn-event-index)
+                              (:definition fn-sn-identity-sequencep) (:definition fn-sn-update)
+                              (:definition fn-stxk-context-kind) (:definition member-equal)
+                              (:executable-counterpart car) (:executable-counterpart cdr)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-sf-completion-phasep)
+                              (:rewrite fn-ccar-cpe-projection-step-is-cpe-projection-step)
+                              (:rewrite fn-pcar-candidatep-is-candidatep)
+                              (:rewrite fn-pcar-files-candidatep-is-candidatep)
+                              (:rewrite fn-sf-records-of-fn-sf-make-fields-kept)
+                              (:rewrite fn-sf-scalars-of-fn-sf-make-fields)
+                              (:rewrite fn-sn-fields-of-fn-sn-make-v6)
+                              (:type-prescription fn-sn-identity-sequencep))))))
 
 (defthm fn-owner-carried-article-prepare-preserves-cursor
   (implies (fn-sn-identity-sequencep s)
            (fn-sn-identity-sequencep (fn-prc-spc-prepare s record view carry)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-sn-identity-sequencep fn-prc-spc-prepare
-                 fn-pcar-stage-record fn-sn-update fn-sf-completion-phasep)
-                (fn-pcar-stage-record-is-stage-record fn-held-p
-                 fn-sn-statep fn-prc-sn-prepare-node fn-rcon-sn-record-bindsp
-                 fn-rcon-cpe-projection-step fn-sn-make-v6)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-pcar-stage-record)
+                              (:definition fn-prc-spc-prepare) (:definition fn-sf-candidatep)
+                              (:definition fn-sf-completion-phasep)
+                              (:definition fn-sn-event-index)
+                              (:definition fn-sn-identity-sequencep) (:definition fn-sn-update)
+                              (:definition member-equal) (:definition not)
+                              (:executable-counterpart car) (:executable-counterpart cdr)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-sf-completion-phasep)
+                              (:rewrite fn-cstp-held-kind-facts)
+                              (:rewrite fn-pcar-candidatep-is-candidatep)
+                              (:rewrite fn-pcar-files-candidatep-is-candidatep)
+                              (:rewrite fn-rcon-cpe-projection-step-is-cpe-projection-step)
+                              (:rewrite fn-rcon-sn-record-bindsp-is-sn-record-bindsp)
+                              (:rewrite fn-sf-records-of-fn-sf-make-fields-kept)
+                              (:rewrite fn-sf-scalars-of-fn-sf-make-fields)
+                              (:rewrite fn-sn-fields-of-fn-sn-make-v6)
+                              (:type-prescription fn-held-p)
+                              (:type-prescription fn-sn-identity-sequencep))))))
 
 (defthm fn-owner-served-identity-prepare-preserves-cursor
   (implies (fn-sn-identity-sequencep (fn-sbud-oc-store oc))
@@ -59,14 +85,27 @@
            (and (fn-sn-identity-sequencep (fn-pdc-sn-prepare-retention s event))
                 (fn-sn-identity-sequencep (fn-pdc-sn-prepare-consumer s event))
                 (fn-sn-identity-sequencep (fn-pdc-sn-prepare-topic s event))))
-  :hints (("Goal" :in-theory
-           (e/d (fn-sn-identity-sequencep fn-pdc-sn-prepare-retention
-                 fn-pdc-sn-prepare-consumer fn-pdc-sn-prepare-topic
-                 fn-pcar-stage-record fn-sn-update fn-sf-completion-phasep)
-                (fn-pcar-stage-record-is-stage-record fn-store-retention-event-p
-                 fn-cpe-eventp fn-th-topic-eventp fn-th-prefix-step
-                 fn-sn-statep fn-ccar-cpe-projection-step fn-replay-apply-record
-                 fn-replay-apply-retention-event fn-sn-make-v6)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-pcar-stage-record)
+                              (:definition fn-pdc-sn-prepare-consumer)
+                              (:definition fn-pdc-sn-prepare-retention)
+                              (:definition fn-pdc-sn-prepare-topic)
+                              (:definition fn-sf-candidatep)
+                              (:definition fn-sf-completion-phasep)
+                              (:definition fn-sn-event-index)
+                              (:definition fn-sn-identity-sequencep) (:definition fn-sn-update)
+                              (:definition fn-th-at) (:definition member-equal)
+                              (:executable-counterpart car) (:executable-counterpart cdr)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-sf-completion-phasep)
+                              (:executable-counterpart zp)
+                              (:rewrite fn-ccar-cpe-projection-step-is-cpe-projection-step)
+                              (:rewrite fn-pcar-candidatep-is-candidatep)
+                              (:rewrite fn-pcar-files-candidatep-is-candidatep)
+                              (:rewrite fn-sf-records-of-fn-sf-make-fields-kept)
+                              (:rewrite fn-sf-scalars-of-fn-sf-make-fields)
+                              (:rewrite fn-sn-fields-of-fn-sn-make-v6)
+                              (:type-prescription fn-sn-identity-sequencep))))))
 
 (defthm fn-owner-served-deferred-prepares-preserve-cursor
   (implies (fn-sn-identity-sequencep (fn-sbud-oc-store oc))
@@ -88,12 +127,23 @@
  (defthm fn-owner-irc-identity-prepare-preserves-cursor
    (implies (fn-sn-identity-sequencep s)
             (fn-sn-identity-sequencep (fn-irc-sn-prepare-identity s event carry)))
-   :hints (("Goal" :in-theory
-            (e/d (fn-sn-identity-sequencep fn-irc-sn-prepare-identity
-                  fn-pcar-stage-record fn-sn-update fn-sf-completion-phasep)
-                 (fn-pcar-stage-record-is-stage-record fn-stxe-p fn-stxk-p fn-hstxa-p
-                  fn-sn-statep fn-ccar-cpe-projection-step fn-irc-apply-record
-                  fn-replay-identity-step fn-sn-make-v6))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-irc-sn-prepare-identity)
+                              (:definition fn-pcar-stage-record) (:definition fn-sf-candidatep)
+                              (:definition fn-sf-completion-phasep)
+                              (:definition fn-sn-event-index)
+                              (:definition fn-sn-identity-sequencep) (:definition fn-sn-update)
+                              (:definition fn-stxk-context-kind) (:definition member-equal)
+                              (:executable-counterpart car) (:executable-counterpart cdr)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-sf-completion-phasep)
+                              (:rewrite fn-ccar-cpe-projection-step-is-cpe-projection-step)
+                              (:rewrite fn-pcar-candidatep-is-candidatep)
+                              (:rewrite fn-pcar-files-candidatep-is-candidatep)
+                              (:rewrite fn-sf-records-of-fn-sf-make-fields-kept)
+                              (:rewrite fn-sf-scalars-of-fn-sf-make-fields)
+                              (:rewrite fn-sn-fields-of-fn-sn-make-v6)
+                              (:type-prescription fn-sn-identity-sequencep)))))))
 
 (local
  (defthm fn-owner-irc-outcome-preserves-cursor
@@ -136,10 +186,18 @@
                             (records (fn-sf-records (fn-sn-files s)))
                             (sequence 0) (lower 0)
                             (frontier (fn-sf-frontier (fn-sn-files s)))))
-           :in-theory
-           (e/d (fn-sn-statep fn-sf-statep fn-sn-identity-sequencep
-                 fn-record-uint32p)
-                (fn-sf-record-listp fn-sn-make-v6)))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                             '((:compound-recognizer natp-compound-recognizer) (:definition fix)
+                              (:definition fn-record-uint32p) (:definition fn-sf-phasep)
+                              (:definition fn-sf-statep) (:definition fn-sn-identity-sequencep)
+                              (:definition fn-sn-statep) (:definition member-equal)
+                              (:definition natp) (:definition nfix) (:definition not)
+                              (:executable-counterpart car) (:executable-counterpart cdr)
+                              (:executable-counterpart consp)
+                              (:executable-counterpart fn-sf-completion-phasep)
+                              (:executable-counterpart natp) (:rewrite commutativity-of-+)
+                              (:rewrite unicity-of-0) (:type-prescription fn-sf-record-listp)
+                              (:type-prescription len))))))
 
 ; Exact host-called entries, including their previously verified guards.
 (defun fn-owner-prepare-consumer (event fn-arena state)
@@ -279,25 +337,38 @@
 ; report writer's bracket (fn-orc-writer-enter/-leave) and every other put
 ; leave it; the install sets it.
 (local
+ (defthm fn-ocd-get-owner-of-other-put
+   (implies (not (equal key 'fn-owner))
+            (equal (get-global 'fn-owner (put-global key value state))
+                   (get-global 'fn-owner state)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition get-global) (:definition global-table)
+                              (:definition not) (:definition put-global)
+                              (:definition update-global-table) (:executable-counterpart equal)
+                              (:executable-counterpart nfix) (:rewrite assoc-add-pair)
+                              (:rewrite nth-update-nth)))))))
+
+(local
  (defthm fn-ocd-writer-owner-frame
    (and (equal (get-global 'fn-owner (fn-orc-writer-enter state))
                (get-global 'fn-owner state))
         (equal (get-global 'fn-owner (fn-orc-writer-leave state))
                (get-global 'fn-owner state)))
-   :hints (("Goal" :in-theory (enable fn-orc-writer-enter fn-orc-writer-leave)))))
-
-(local
- (defthm fn-ocd-get-owner-of-other-put
-   (implies (not (equal key 'fn-owner))
-            (equal (get-global 'fn-owner (put-global key value state))
-                   (get-global 'fn-owner state)))
-   :hints (("Goal" :in-theory (enable get-global put-global)))))
+   :hints (("Goal" :in-theory
+            (union-theories (theory 'minimal-theory)
+                            '(fn-orc-writer-enter fn-orc-writer-leave
+                              fn-ocd-get-owner-of-other-put))))))
 
 (local
  (defthm fn-ocd-get-owner-of-retain-carry-put
    (equal (get-global 'fn-owner (fn-owner-retain-carry-put carry state))
           (get-global 'fn-owner state))
-   :hints (("Goal" :in-theory (enable fn-owner-retain-carry-put)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-owner-retain-carry-put) (:definition get-global)
+                              (:definition global-table) (:definition put-global)
+                              (:definition update-global-table) (:executable-counterpart equal)
+                              (:executable-counterpart nfix) (:rewrite assoc-add-pair)
+                              (:rewrite nth-update-nth)))))))
 
 (local
  (defthm fn-ocd-get-owner-of-open-install
@@ -314,6 +385,7 @@
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-owner-install-extended fn-owner-cursor-store-by-definition
+              fn-ost-install-publication-frames-get-global
               fn-owner-ocfg fn-ocd-writer-owner-frame fn-ocd-get-owner-of-other-put
               fn-ocd-get-owner-of-retain-carry-put fn-ocd-get-owner-of-open-install
               mv-nth nth zp car-cons cdr-cons)))))
@@ -351,6 +423,7 @@
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-owner-orcp-swap fn-owner-cursor-store-by-definition
+              fn-ost-install-publication-frames-get-global
               fn-owner-put-credits fn-owner-ocfg fn-ocd-get-owner-of-other-put
               fn-ocd-get-owner-of-retain-carry-put fn-ocd-get-owner-of-install
               fn-owner-cursor-swapped-store

@@ -254,3 +254,76 @@
                 (fn-hroot-begin-ask))
          (equal (fn-hroot-refresh-status (fn-hroot-begin-word l 2)) '(:history-root :building))))
   :rule-classes nil)
+
+; The last refresh's status travels in the history-root table the host keeps
+; (host/history-root-host.lisp fn-owner-history-roots), under the reserved key
+; :last-refresh beside the natural-numbered generation rows.  A refused begin
+; changes no ledger, counter or row, so nothing else carried can say that the
+; last refresh was refused.  The host's put and note are these functions.
+(local
+ (defthm fn-hroot-assoc-of-remove1-assoc-other
+   (implies (not (equal k g))
+            (equal (assoc-equal k (remove1-assoc-equal g tbl))
+                   (assoc-equal k tbl)))))
+
+(defun fn-hroot-table-put (table generation row)
+  (declare (xargs :guard (alistp table)))
+  (let ((rest (remove1-assoc-equal generation table)))
+    (if row (acons generation row rest) rest)))
+
+(defun fn-hroot-table-note (table w)
+  (declare (xargs :guard (alistp table)))
+  (acons :last-refresh (fn-hroot-refresh-status w)
+         (remove1-assoc-equal :last-refresh table)))
+
+(defun fn-hroot-table-status (table)
+  (declare (xargs :guard (alistp table)))
+  (cdr (assoc-equal :last-refresh table)))
+
+; KEYSTONE (K-a): the status read back is the classified word of the refresh
+; just noted, for every word (installed, building, :funded, each refusal, any
+; unrecognised word).
+(defthm fn-hroot-table-status-of-note
+  (equal (fn-hroot-table-status (fn-hroot-table-note table w))
+         (fn-hroot-refresh-status w)))
+
+; KEYSTONE (K-b): noting leaves every generation row as it was, and a
+; generation row put leaves the noted status as it was.
+(defthm fn-hroot-table-note-keeps-generation-rows
+  (implies (natp g)
+           (equal (assoc-equal g (fn-hroot-table-note table w))
+                  (assoc-equal g table))))
+
+(defthm fn-hroot-table-put-keeps-status
+  (implies (natp g)
+           (equal (fn-hroot-table-status (fn-hroot-table-put table g row))
+                  (fn-hroot-table-status table))))
+
+; KEYSTONE (K-c): the last word wins.
+(defthm fn-hroot-table-status-last-note-wins
+  (equal (fn-hroot-table-status
+          (fn-hroot-table-note (fn-hroot-table-note table w1) w2))
+         (fn-hroot-refresh-status w2)))
+
+; Teeth.  The refused word notes as refused over a table with a live row; a
+; later installed word clears it; the generation row is untouched throughout.
+(defthm fn-hroot-table-teeth-refusal-then-installed
+  (let* ((w1 (list :refused :history-root-reserve-exhausted (fn-hroot-begin-ask) 0))
+         (t0 '((7 :live nil nil)))
+         (t1 (fn-hroot-table-note t0 w1))
+         (t2 (fn-hroot-table-note t1 '(:installed 8 7))))
+    (and (equal (fn-hroot-table-status t1)
+                (list :history-root :refused :history-root-reserve-exhausted
+                      (fn-hroot-begin-ask) 0))
+         (equal (fn-hroot-table-status t2) '(:history-root :building))
+         (equal (assoc-equal 7 t2) '(7 :live nil nil))))
+  :rule-classes nil)
+
+; Hypothesis removal: K-b needs the natural key; the reserved key itself is
+; replaced by a note, so the unconditional form is false.
+(defthm fn-hroot-table-teeth-note-replaces-the-reserved-row
+  (not (equal (assoc-equal :last-refresh
+                           (fn-hroot-table-note '((:last-refresh :history-root :building))
+                                                '(:refused :x 1 2)))
+              (assoc-equal :last-refresh '((:last-refresh :history-root :building)))))
+  :rule-classes nil)

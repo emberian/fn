@@ -92,16 +92,14 @@ else
   done
   [ -n "$blake3" ] || {
     echo "install-native: no lib/libfn-blake3 beside the core (tools/build_blake3.sh)" >&2; exit 4; }
-  # On Linux, the OpenSSL 3.5.8 pair the image was built against: the
-  # caller's FN_OPENSSL_PREFIX, else the build boxes' toolchain
-  # (host/native/tls.lisp *fnn-tls-default-openssl-prefix*).
-  if [ "$(uname -s)" = Linux ]; then
-    openssl_prefix=${FN_OPENSSL_PREFIX:-/tank/fn/toolchains/openssl-3.5.8}
-    openssl_lib=$openssl_prefix/lib
-    if [ -s "$openssl_prefix/lib64/libcrypto.so.3" ] && [ -s "$openssl_prefix/lib64/libssl.so.3" ]; then
-      openssl_lib=$openssl_prefix/lib64
+  # A built (unfrozen) image loads the shipped OpenSSL from FN_OPENSSL_PREFIX,
+  # the prefix its launcher exports (D64), lib64 or lib as the freeze reads it.
+  openssl_lib=
+  for d in "${FN_OPENSSL_PREFIX:-}/lib64" "${FN_OPENSSL_PREFIX:-}/lib"; do
+    if [ -n "${FN_OPENSSL_PREFIX:-}" ] && [ -s "$d/libcrypto.so.3" ] && [ -s "$d/libssl.so.3" ]; then
+      openssl_lib=$d; break
     fi
-  fi
+  done
   frozen=no
 fi
 [ -s "$launcher_core" ] || { echo "install-native: generated launcher core is unavailable" >&2; exit 4; }
@@ -113,18 +111,18 @@ cmp -s "$core" "$launcher_core" || {
 openssl_lib=${openssl_lib:-}
 if [ "$(uname -s)" = Linux ]; then
   [ -s "$openssl_lib/libcrypto.so.3" ] && [ -s "$openssl_lib/libssl.so.3" ] || {
-    echo "install-native: no OpenSSL 3.5.8 libcrypto.so.3/libssl.so.3 pair to ship (looked in ${openssl_lib:-the frozen image}; FN_OPENSSL_PREFIX names its prefix)" >&2; exit 4; }
+    echo "install-native: the image carries no openssl/lib libcrypto.so.3/libssl.so.3 pair (packaging/freeze-native-image.sh); the shipped OpenSSL 3.5.8 is required" >&2; exit 4; }
   grep -aq 'OpenSSL 3\.5\.8 ' "$openssl_lib/libcrypto.so.3" || {
     echo "install-native: $openssl_lib/libcrypto.so.3 is not OpenSSL 3.5.8" >&2; exit 4; }
 fi
 hash_command=sha256sum
 command -v "$hash_command" >/dev/null 2>&1 || hash_command='shasum -a 256'
 command -v sha256sum >/dev/null 2>&1 || ! command -v sha256 >/dev/null 2>&1 || hash_command='sha256 -r'
-# The TLS library: on Linux the release's own OpenSSL 3.5.8 (above; a node
-# that serves no TLS may fall back to the system's pair, D59), elsewhere the
-# system's (OpenSSL 3.0+ or LibreSSL 3+; the image checks the version and
-# every function at start).  libsodium comes from the frozen lib/ or the
-# system; ML-DSA-65 from lib/ (HST-016).
+# The TLS library: on Linux the release's own OpenSSL 3.5.8 (above, D64),
+# the image's frozen openssl/lib and nothing else.  Elsewhere not yet
+# converted (OpenBSD: LibreSSL; the image checks the version and every
+# function at start).  libsodium comes from the frozen lib/ or the system;
+# ML-DSA-65 from lib/ (HST-016).
 crypto_inventory=
 if [ "$(uname -s)" = OpenBSD ]; then
   ls /usr/lib/libssl.so.* /usr/lib/libcrypto.so.* >/dev/null 2>&1 || {
@@ -140,20 +138,10 @@ elif [ "$frozen" = yes ] && [ -z "$openssl_lib" ]; then
   echo "install-native: cannot check the system's TLS library (no ldconfig)" >&2; exit 4
 else
   sodium_path=
-  crypto_path=
-  ssl_path=
   for dependency in /opt/homebrew/opt/libsodium/lib/libsodium.dylib /usr/local/opt/libsodium/lib/libsodium.dylib; do
     [ ! -f "$dependency" ] || sodium_path=$dependency
   done
-  for dependency in /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib /usr/local/opt/openssl@3/lib/libcrypto.3.dylib; do
-    [ ! -f "$dependency" ] || crypto_path=$dependency
-  done
-  for dependency in /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib /usr/local/opt/openssl@3/lib/libssl.3.dylib; do
-    [ ! -f "$dependency" ] || ssl_path=$dependency
-  done
   [ -n "$sodium_path" ] || { echo "install-native: libsodium shared library is unavailable" >&2; exit 4; }
-  [ -n "$crypto_path" ] && [ -n "$ssl_path" ] || {
-    echo "install-native: OpenSSL 3 shared libraries are unavailable" >&2; exit 4; }
 fi
 
 profile_out=$(mktemp "${TMPDIR:-/tmp}/fn-native-profile.XXXXXX") || exit 4
@@ -247,11 +235,11 @@ install -m 0755 packaging/install.sh "$destdir$prefix/install.sh"
   elif command -v ldd >/dev/null 2>&1; then ldd "$runtime"
   fi
   if [ -n "$openssl_lib" ]; then
-    echo "dlopen-requirements: openssl/lib/libcrypto.so.3+libssl.so.3 (OpenSSL 3.5.8, bundled; the system's pair only for a node serving no TLS, D59), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)"
+    echo "dlopen-requirements: openssl/lib/libcrypto.so.3+libssl.so.3 (OpenSSL 3.5.8, bundled), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)"
     $hash_command "$openssl_lib/libcrypto.so.3" "$openssl_lib/libssl.so.3" \
                   "$libdir/openssl/lib/libcrypto.so.3" "$libdir/openssl/lib/libssl.so.3"
   else
-    echo "dlopen-requirements: system libcrypto+libssl (OpenSSL 3.0+ or LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)"
+    echo "dlopen-requirements: base-system libcrypto+libssl (OpenBSD LibreSSL 3+), libsodium, lib/libfn-mldsa65, lib/libfn-deflate and lib/libfn-blake3 (bundled)"
   fi
   if [ "$frozen" = yes ]; then
     $hash_command "$image_dir"/lib/*
@@ -264,7 +252,7 @@ install -m 0755 packaging/install.sh "$destdir$prefix/install.sh"
   if [ -n "$crypto_inventory" ]; then
     printf '%s\n' "$crypto_inventory" | grep -E 'libsodium\.so|libcrypto\.so|libssl\.so'
   elif [ "$frozen" = no ]; then
-    $hash_command "$sodium_path" "$crypto_path" "$ssl_path"
+    $hash_command "$sodium_path"
   fi
 } > "$sharedir/native-artifacts.txt"
 

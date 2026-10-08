@@ -1,0 +1,13 @@
+{
+ "category": "perf",
+ "file": "books/page-read-direct.lisp",
+ "id": "COLD-READ-WORKERS-REFUSE-AT-16",
+ "notes": ["Measured by Deputy L, W7@scale dev arm (CONVERGE-3 image), hbox at load ~20: at 16 concurrent ARTICLE readers the node answered 403 'article temporarily unavailable; cold read resources unavailable' to 1,679 of ~2,700 requests in an 8 s window and dropped 5 connections. Suspected mechanism: the 4 cold-read workers are all busy and a further miss is refused by name (page-read-direct). Steady-state vs warm-up split owed from L."],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "load-w7",
+ "state": "open",
+ "title": "A served ARTICLE miss past the cold-read workers is refused (403) instead of waiting under a bound: at 16 readers 62% of requests were refused. Intended: the miss waits for a worker within the request's deadline (a bounded queue sized by the profile), refusing only past the deadline; statement: a request admitted within the queue bound is answered or refused only at its deadline.",
+ "updated": "2026-10-08T00:00:00Z"
+}

@@ -7,6 +7,8 @@ a metric is absent (`not_measured`).  Pure functions over JSON: laptop-testable.
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
+from urllib.parse import unquote
 
 from . import peers
 from .result import fit_exponent
@@ -24,6 +26,86 @@ def _cmd(ph, op):
     return ((ph or {}).get("cmd") or {}).get(op) or {}
 
 
+def parse_locks(text):
+    """Cumulative mutex counters, keyed by decoded UTF-8 names; ignore a torn last row.
+
+    Reject malformed or nonmonotonic complete rows rather than inventing zero waits.
+    Each row is (epoch_us, {name: (waits, wait_us)}).
+    """
+    rows = []
+    previous = {}
+    for line in text.splitlines(keepends=True):
+        if not line.endswith("\n"):
+            break
+        fields = line.split()
+        if not fields:
+            continue
+        epoch = int(fields[0])
+        if rows and epoch <= rows[-1][0]:
+            raise ValueError("lock log epochs are not increasing")
+        counts = {}
+        for field in fields[1:]:
+            name, pair = field.split("=", 1)
+            name = unquote(name, errors="strict")
+            waits, us = map(int, pair.split(":"))
+            if name in counts or min(waits, us) < 0:
+                raise ValueError("invalid lock counters")
+            old = previous.get(name, (0, 0))
+            if waits < old[0] or us < old[1]:
+                raise ValueError("lock counters decreased")
+            counts[name] = (waits, us)
+        if previous.keys() - counts.keys():
+            raise ValueError("lock names disappeared")
+        rows.append((epoch, counts))
+        previous = counts
+    return rows
+
+
+def phase_lock_metrics(rows, phase):
+    """Use the last dump at/before each phase boundary, without interpolation.
+
+    Integer counts are exact for the returned snapshot window; its boundaries lag
+    the phase by up to one dump interval (normally 1 s). Require a dump beyond the
+    end as evidence of coverage, and return actual sample bounds for the report.
+    Totals include all owner threads, including the poster. New names start at 0.
+    """
+    times = [r[0] for r in rows]
+    start, end = (round(phase[k] * 1e6) for k in ("epoch_start", "epoch_end"))
+    if not times or start < times[0] or end > times[-1] or end < start:
+        raise ValueError("lock log does not cover the phase")
+    a, b = bisect_right(times, start) - 1, bisect_right(times, end) - 1
+    if a == b:
+        raise ValueError("phase has no complete lock sampling interval")
+    articles = _cmd(phase, "ARTICLE").get("n", 0)
+    metrics = {}
+    for name, (waits, us) in rows[b][1].items():
+        old = rows[a][1].get(name, (0, 0))
+        prefix = "locks." + name
+        metrics[prefix + ".waits"] = waits - old[0]
+        ms = (us - old[1]) / 1000
+        metrics[prefix + ".wait_ms"] = ms
+        metrics[prefix + ".wait_ms_per_article"] = ms / articles if articles else None
+    return metrics, {"epoch_start": times[a] / 1e6, "epoch_end": times[b] / 1e6,
+                     "boundary_rule": "last dump at or before each phase boundary"}
+
+
+def attach_lock_metrics(phases, text):
+    try:
+        rows = parse_locks(text)
+        error = None
+    except ValueError as exc:
+        rows, error = [], str(exc)
+    for ph in phases:
+        if ph.get("kind") != "read":
+            continue
+        try:
+            if error:
+                raise ValueError(error)
+            ph["lock_metrics"], ph["lock_window"] = phase_lock_metrics(rows, ph)
+        except (ValueError, KeyError) as exc:
+            ph["locks_error"] = str(exc)
+
+
 def derive(workload, phases):
     m, nm = {}, {}
     measure = next((p for p in phases if p.get("measure")), None)
@@ -38,11 +120,21 @@ def derive(workload, phases):
     m["posts.admitted"] = sum((p.get("counts") or {}).get("admitted", 0) for p in phases)
     m["posts.refused"] = sum((p.get("counts") or {}).get("refused", 0) for p in phases)
     for p in phases:
+        nm.update(p.get("faults", {}).get("not_measured", {}))
+        for name, value in p.get("lock_metrics", {}).items():
+            key = name + "." + p["name"]
+            if value is None:
+                nm[key] = "no completed ARTICLEs in phase"
+            else:
+                m[key] = value
+        if p.get("locks_error"):
+            nm["locks." + p["name"]] = p["locks_error"]
         if p.get("status") == "not-implemented":
             nm.setdefault("*", p.get("reason"))
-    fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers, "article-sizes": _sizes, "growth": _growth,
-          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "prof-ops": _prof,
-          "catchup": peers.derive_catchup, "catchup-prof": peers.derive_catchup, "peers-feed": peers.derive_catchup,
+    fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers,
+          "readers-locks": _readers, "readers-prof": _readers, "article-sizes": _sizes, "growth": _growth,
+          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "publish-stall": _stall, "prof-ops": _prof,
+          "catchup": peers.derive_catchup, "catchup-prof": peers.derive_catchup, "catchup-quiet": peers.derive_catchup, "peers-feed": peers.derive_catchup,
           "peers-catchup-load": peers.derive_catchup}.get(workload)
     if fn:
         fn(phases, m, nm)
@@ -331,11 +423,34 @@ def _commands(phases, m, nm):
         if st.get("p99_ms") is not None:
             worst = max(worst or 0, st["p99_ms"])
         elif st.get("n"):
-            nm["cmd.p99_ms." + name] = "fewer than 200 samples"
+            nm["cmd.p99_ms." + name] = "fewer than 200 samples (n=%d, time budget); max %s ms" % (st["n"], st.get("max_ms"))
+            if st.get("max_ms") is not None:
+                worst = max(worst or 0, st["max_ms"])      # a command under 200 samples is judged on its worst sample
     for name, v in (ph.get("cpu_ms_per_op_by_cmd") or {}).items():
         m["cmd.cpu_ms_per_op." + name] = v
     if worst is not None:
         m["cmd.p99_ms.max"] = worst
+
+
+def _stall(phases, m, nm):
+    ph = _phase(phases, "publish-live")
+    if not ph or ph.get("status") not in (None, "ok"):
+        nm["publish.stall_max_s"] = (ph or {}).get("reason") or "publish-live phase did not complete"
+        return
+    m["publish.stall_max_s"] = ph.get("stall_max_s")
+    m["publish.window_s"] = ph.get("window_s")
+    m["publish.window_posts"] = ph.get("window_posts")
+    m["publish.done_gap_max_s"] = ph.get("done_gap_max_s")
+    m["publish.window_late_max_s"] = ph.get("window_late_max_s")
+    m["publish.achieved_per_s"] = ph.get("achieved_per_s_in_window")
+    st = (ph.get("cmd") or {}).get("POST") or {}
+    if st.get("p99_ms") is not None:
+        m["publish.post_p99_ms"] = st["p99_ms"]
+    elif st.get("n"):
+        nm["publish.post_p99_ms"] = "fewer than 200 POSTs inside the window (n=%d); max reported as publish.stall_max_s" % st["n"]
+    if st.get("p50_ms") is not None:
+        m["publish.post_p50_ms"] = st["p50_ms"]
+    m["publish.hwm_before_kib"], m["publish.hwm_after_kib"] = ph.get("hwm_before_kib"), ph.get("hwm_after_kib")
 
 
 def merge_sweep(cell_id, workload, subs):
@@ -371,7 +486,7 @@ def merge_sweep(cell_id, workload, subs):
     cmd_exp = [v for k, v in metrics.items() if k.startswith("cmd.p99_ms.") and k.endswith(".exponent") and not k.startswith("cmd.p99_ms.max")]
     if cmd_exp:
         metrics["cmd.p99_exponent.max"] = max(cmd_exp)
-    for name in ("cmd.p99_ms.max",):
+    for name in ("cmd.p99_ms.max", "publish.stall_max_s"):
         vals = [v for k, v in metrics.items() if k.startswith(name + "@")]
         if vals:
             metrics[name] = max(vals)

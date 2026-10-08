@@ -188,11 +188,24 @@
 ; finishes is the owner the full open of the predicted rewritten history
 ; installs: the statement fn-orcp-rebuild-is-the-full-open makes of the
 ; whole-list rebuild, over the chunked form the host calls.
+(local
+ (defthm fn-rcw-rebuild-of-bad-is-fault
+ (equal (cadr (fn-owner-orcp-rebuild (fn-rcw-acc-finish nil) configs frontier max-conns)) :fault)
+ :hints (("Goal" :in-theory
+          (e/d (fn-owner-orcp-rebuild fn-ock-recover-extended fn-ock-install fn-rcw-acc-finish
+                fn-sco-cpr-finish fn-sco-cpr fn-sco-pausedp fn-sco-at fn-sco-make
+                fn-replay-result-kind fn-rcw-acc-rev)
+               (fn-sco-finalize fn-prc-refresh fn-sbud-bytes-used fn-pcb-tally-records fn-cvec-record-debt))))))
+(local
+ (defthm fn-rcw-full-of-bad-is-fault
+ (equal (fn-ock-recover-full configs frontier :bad max-conns) :fault)
+ :hints (("Goal" :in-theory
+          (e/d (fn-ock-recover-full fn-ock-install fn-cpo-open-observed fn-sn-observed-historyp)
+               (fn-cpr-replay))))))
+
+; A :bad prediction faults both rebuilds, so the non-bad premise is redundant.
 (defthm fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
-  (implies (and (natp h0)
-                (not (equal (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
-                                                      keyring generation h0 nil)
-                            :bad)))
+(implies (natp h0)
            (equal (cadr (fn-owner-orcp-rebuild
                          (fn-rcw-acc-finish
                           (car (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
@@ -202,16 +215,10 @@
                                        (car (fn-orcs-predict (fn-rcw-concat chunks) keyring
                                                              generation h0))
                                        max-conns)))
-  :hints (("Goal" :use (fn-rcw-predict-acc-steps-is-predict
-                        (:instance fn-owner-orcp-rebuild-of-capture-is-the-full-open
-                                   (rows (car (fn-orcs-predict (fn-rcw-concat chunks) keyring
-                                                               generation h0)))))
-                  :in-theory (e/d (fn-orcs-predict)
-                                  (fn-rcw-acc-init fn-rcw-acc-finish fn-rcw-predict-acc-steps
-                                   fn-sco-capture fn-owner-orcp-rebuild fn-orcs-predict-rows
-                                   fn-orcs-payloads fn-orcs-has-bad
-                                   fn-rcw-predict-acc-steps-is-predict
-                                   fn-owner-orcp-rebuild-of-capture-is-the-full-open)))))
+ :hints (("Goal" :do-not-induct t
+ :cases ((equal (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks keyring generation h0 nil) :bad))
+ :use (fn-rcw-predict-acc-steps-is-predict (:instance fn-owner-orcp-rebuild-of-capture-is-the-full-open (rows (car (fn-orcs-predict (fn-rcw-concat chunks) keyring generation h0)))))
+ :in-theory (union-theories '(fn-orcs-predict car-cons fn-rcw-rebuild-of-bad-is-fault fn-rcw-full-of-bad-is-fault (:type-prescription fn-orcs-predict-rows)) (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; 4. Pass 2's writer walk, chunk by chunk.
@@ -253,13 +260,38 @@
             (and (equal (fn-scka-canon-lens rows fn-arena) nil)
                  (equal (fn-scka-canon-srcs rows fn-arena) nil)))))
 
+; Chunk tails are discarded by the loop; proper-list premises were redundant.
+(local
+ (defthm fn-rcw-writer-tail-complete
+  (implies (<= (len rows) (nfix n))
+    (equal (cdr (fn-scka-srcs-n rows n lacc sacc fn-arena))
+           (list (revappend (fn-scka-canon-lens rows fn-arena) lacc)
+                 (revappend (fn-scka-canon-srcs rows fn-arena) sacc))))
+  :hints (("Goal" :induct (fn-scka-srcs-n rows n lacc sacc fn-arena)
+           :in-theory (disable fn-scka-src-of fn-row-wire-of fn-scka-sealsp fn-scka-payload-of)))))
+(local
+ (defthm fn-rcw-writer-list-fix
+  (and (equal (fn-scka-canon-lens (true-list-fix rows) fn-arena)
+              (fn-scka-canon-lens rows fn-arena))
+       (equal (fn-scka-canon-srcs (true-list-fix rows) fn-arena)
+              (fn-scka-canon-srcs rows fn-arena)))
+  :hints (("Goal" :induct (true-list-fix rows)
+           :in-theory (e/d (true-list-fix) (fn-scka-canon-lens-is-lens fn-scka-src-of fn-row-wire-of fn-scka-sealsp fn-scka-payload-of))))))
+(local
+ (defthm fn-rcw-writer-observers-complete
+  (implies (<= (len rows) (nfix n))
+    (and (equal (nth 1 (fn-scka-srcs-n rows n lacc sacc fn-arena))
+                (revappend (fn-scka-canon-lens rows fn-arena) lacc))
+         (equal (nth 2 (fn-scka-srcs-n rows n lacc sacc fn-arena))
+                (revappend (fn-scka-canon-srcs rows fn-arena) sacc))))
+  :hints (("Goal" :use fn-rcw-writer-tail-complete :in-theory (disable fn-scka-srcs-n fn-scka-canon-lens fn-scka-canon-srcs)))))
+
 (local
  (defthm fn-rcw-srcs-steps-is-revappend
-   (implies (true-list-listp chunks)
-            (equal (fn-rcw-srcs-steps chunks lacc sacc fn-arena)
+   (equal (fn-rcw-srcs-steps chunks lacc sacc fn-arena)
                    (list nil
                          (revappend (fn-scka-canon-lens (fn-rcw-concat chunks) fn-arena) lacc)
-                         (revappend (fn-scka-canon-srcs (fn-rcw-concat chunks) fn-arena) sacc))))
+                         (revappend (fn-scka-canon-srcs (fn-rcw-concat chunks) fn-arena) sacc)))
    :hints (("Goal" :in-theory (e/d (fn-rcw-concat)
                                    (fn-scka-src-of fn-row-wire-of fn-scka-sealsp
                                     fn-scka-payload-of fn-scka-canon-lens-is-lens
@@ -269,10 +301,9 @@
 ; rewritten history (fnn-checkpoint-walk's bounded calls compose to it,
 ; fn-scka-srcs-n-compose).
 (defthm fn-rcw-srcs-steps-is-the-walk
-  (implies (true-list-listp chunks)
-           (equal (fn-rcw-srcs-steps chunks lacc sacc fn-arena)
+  (equal (fn-rcw-srcs-steps chunks lacc sacc fn-arena)
                   (fn-scka-srcs-n (fn-rcw-concat chunks) (len (fn-rcw-concat chunks))
-                                  lacc sacc fn-arena)))
+                                  lacc sacc fn-arena))
   :hints (("Goal" :in-theory (disable fn-rcw-srcs-steps fn-scka-srcs-n fn-scka-canon-lens
                                       fn-scka-canon-srcs fn-scka-canon-lens-is-lens)
                   :use (fn-rcw-srcs-steps-is-revappend

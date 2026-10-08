@@ -1,0 +1,227 @@
+{
+  "about": "Critical evidence for the thirteen p-teeth-critical claims. Trace references name the defteeth whose fixtures run the real steps. Native log crash campaigns check the model program against the host's cuts; they do not execute that program. Failed-barrier clean-cache coverage is separately owed in TEETH-CRITICAL-HOST-TESTS.",
+  "entries": {
+    "fn-dwj-retired-job-refuses-scalar-publication": {
+      "subject": "fn-dwj-retire",
+      "host_test": "tests/test_native_decoded_custody.py::test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+      "trace_witness": "tests/acl2/decoded-worker-job-teeth-tests.lisp::fn-dwj-retired-job-refuses-scalar-publication",
+      "mutation": "tests/acl2/decoded-worker-job-teeth-tests.lisp::retirement-skipped"
+    },
+    "fn-lg-open-program-keeps-the-relation": {
+      "subject": "fn-lg-open-program",
+      "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
+      "trace_witness": "tests/acl2/store-log-route-programs-tests.lisp::fn-lg-open-program-keeps-the-relation",
+      "mutation": "tests/acl2/store-log-route-programs-tests.lisp::stale-kernel"
+    },
+    "fn-lgob-three-barrier-open-after-the-copy-is-the-five": {
+      "subject": "fn-lg-open-program",
+      "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
+      "trace_witness": "tests/acl2/store-log-open-barriers-tests.lisp::fn-lgob-three-barrier-open-after-the-copy-is-the-five",
+      "mutation": "tests/acl2/store-log-open-barriers-tests.lisp::skipped-replay-cut"
+    },
+    "fn-lgrc-acknowledge-from-the-copy": {
+      "subject": "fn-lgu-acknowledge",
+      "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
+      "trace_witness": "tests/acl2/store-log-copy-ack-teeth-tests.lisp::fn-lgrc-acknowledge-from-the-copy",
+      "mutation": "tests/acl2/store-log-copy-ack-teeth-tests.lisp::skipped-file-fence"
+    },
+    "fn-lgrc-open-keeps-the-relation-at-every-cut": {
+      "subject": "fn-lgrc-program",
+      "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
+      "trace_witness": "tests/acl2/store-log-copy-teeth-tests.lisp::fn-lgrc-open-keeps-the-relation-at-every-cut",
+      "mutation": "tests/acl2/store-log-copy-teeth-tests.lisp::skip-file-barrier"
+    },
+    "fn-lgu-acknowledge-acknowledges-only-recoverable-records": {
+      "subject": "fn-lgu-acknowledge",
+      "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
+      "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-acknowledge-acknowledges-only-recoverable-records",
+      "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode"
+    },
+    "fn-lgu-host-kernel-acknowledges-only-recoverable-records": {
+      "subject": "fn-lgc-host-run",
+      "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
+      "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-host-kernel-acknowledges-only-recoverable-records",
+      "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode"
+    },
+    "fn-otm-held-plan-complete-only-after-the-barrier": {
+      "subject": "fn-otm-held-plan",
+      "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+      "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
+      "mutation": "tests/acl2/owner-time-held-tests.lisp::forged-barrier"
+    },
+    "fn-otm-held-plan-in-flight-until-completed": {
+      "subject": "fn-otm-held-plan",
+      "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+      "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
+      "mutation": "tests/acl2/owner-time-held-tests.lisp::clear-before-completed"
+    },
+    "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits": {
+      "subject": "fn-otm-held-committer-wake",
+      "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+      "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-budget-trace",
+      "mutation": "tests/acl2/owner-time-held-tests.lisp::ignore-waiter-budget"
+    },
+    "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
+      "subject": "fn-scka-canon-rows",
+      "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+      "trace_witness": "tests/acl2/reclaim-chunked-walk-tests.lisp::fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
+      "mutation": "tests/acl2/reclaim-chunked-walk-tests.lisp::reset-handle"
+    },
+    "fn-rcw-load-chunks-is-load": {
+      "subject": "fn-rcw-load-chunks",
+      "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+      "trace_witness": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::fn-rcw-load-chunks-is-load",
+      "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-clear"
+    },
+    "fn-rcw-load-chunks-keyed-is-keyed-load": {
+      "subject": "fn-rcw-load-chunks",
+      "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+      "trace_witness": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::fn-rcw-load-chunks-keyed-is-keyed-load",
+      "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-keyed-clear"
+    },
+    "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open": {
+      "subject": "fn-owner-orcp-rebuild",
+      "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+      "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open",
+      "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skipped-chunk"
+    },
+    "fn-rcw-srcs-steps-is-the-walk": {
+      "subject": "fn-scka-srcs-n",
+      "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+      "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::fn-rcw-srcs-steps-is-the-walk",
+      "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skip-first-chunk"
+    },
+    "fn-sca-load-held-rows-establishes-byte-facts": {
+      "subject": "fn-sca-load-held-rows-keyed",
+      "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+      "trace_witness": "tests/acl2/catalog-availability-owner-load-tests.lisp::fn-sca-load-held-rows-establishes-byte-facts",
+      "mutation": "tests/acl2/catalog-availability-owner-load-tests.lisp::stale-byte-facts"
+    },
+    "fn-xc-entry-span-at-answers-from-a-matching-slot": {
+      "subject": "fn-xc-entry-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-entry-tests.lisp::fn-xc-entry-span-at-answers-from-a-matching-slot-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-entry-tests.lisp::stale-row"
+    },
+    "fn-xc-entry-span-at-miss-changes-nothing": {
+      "subject": "fn-xc-entry-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-entry-tests.lisp::fn-xc-entry-span-at-miss-changes-nothing-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-entry-tests.lisp::touch-on-miss"
+    },
+    "fn-xc-entry-span-at-is-the-entry-bytes": {
+      "subject": "fn-xc-entry-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-entry-tests.lisp::fn-xc-entry-span-at-is-the-entry-bytes-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-entry-tests.lisp::source-off-by-one"
+    },
+    "fn-xc-install-entry-bytes-installs-the-table-decision": {
+      "subject": "fn-xc-install-entry-bytes",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-install-tests.lisp::fn-xc-install-entry-bytes-installs-the-table-decision-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-install-tests.lisp::omit-table-write"
+    },
+    "fn-xc-install-entry-bytes-stores-the-pair": {
+      "subject": "fn-xc-install-entry-bytes",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-install-tests.lisp::fn-xc-install-entry-bytes-stores-the-pair-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-install-tests.lisp::omit-backing-write"
+    },
+    "fn-xc-install-decoded-bytes-installs-the-table-decision": {
+      "subject": "fn-xc-install-decoded-bytes",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-install-tests.lisp::fn-xc-install-decoded-bytes-installs-the-table-decision-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-install-tests.lisp::omit-table-write"
+    },
+    "fn-xc-install-decoded-bytes-stores-the-pair": {
+      "subject": "fn-xc-install-decoded-bytes",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-install-tests.lisp::fn-xc-install-decoded-bytes-stores-the-pair-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-install-tests.lisp::omit-backing-write"
+    },
+    "fn-xc-init-all-readies-all-rows": {
+      "subject": "fn-xc-init-all",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-install-tests.lisp::fn-xc-init-all-readies-all-rows-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-install-tests.lisp::omit-init"
+    },
+    "fn-xc-init-all-refuses-more-entries-than-rows": {
+      "subject": "fn-xc-init-all",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-install-tests.lisp::fn-xc-init-all-refuses-more-entries-than-rows-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-install-tests.lisp::truncate-profile-rows"
+    },
+    "fn-xc-init-all-refuses-more-windows-than-rows": {
+      "subject": "fn-xc-init-all",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-install-tests.lisp::fn-xc-init-all-refuses-more-windows-than-rows-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-install-tests.lisp::truncate-profile-rows"
+    },
+    "fn-xc-decoded-span-at-answers-from-a-matching-slot": {
+      "subject": "fn-xc-decoded-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-decoded-tests.lisp::fn-xc-decoded-span-at-answers-from-a-matching-slot-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-decoded-tests.lisp::stale-row"
+    },
+    "fn-xc-decoded-span-at-miss-changes-nothing": {
+      "subject": "fn-xc-decoded-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-decoded-tests.lisp::fn-xc-decoded-span-at-miss-changes-nothing-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-decoded-tests.lisp::touch-on-miss"
+    },
+    "fn-xc-decoded-span-at-is-the-cached-bytes": {
+      "subject": "fn-xc-decoded-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-decoded-tests.lisp::fn-xc-decoded-span-at-is-the-cached-bytes-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-decoded-tests.lisp::source-off-by-one"
+    },
+    "fn-xc-decoded-span-at-is-the-per-slot-span": {
+      "subject": "fn-xc-decoded-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-decoded-tests.lisp::fn-xc-decoded-span-at-is-the-per-slot-span-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-decoded-tests.lisp::copy-omitted"
+    },
+    "fn-xc-decoded-span-at-is-the-returned-bytes": {
+      "subject": "fn-xc-decoded-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-decoded-tests.lisp::fn-xc-decoded-span-at-is-the-returned-bytes-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-decoded-tests.lisp::copy-omitted"
+    },
+    "fn-xc-entry-span-at-answers-a-covered-slot": {
+      "subject": "fn-xc-entry-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-complete-tests.lisp::fn-xc-entry-span-at-answers-a-covered-slot-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-complete-tests.lisp::first-candidate-only"
+    },
+    "fn-xc-decoded-span-at-answers-a-covered-slot": {
+      "subject": "fn-xc-decoded-span-at",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-complete-tests.lisp::fn-xc-decoded-span-at-answers-a-covered-slot-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-complete-tests.lisp::first-candidate-only"
+    },
+    "fn-xce-every-resident-row-is-charged": {
+      "subject": "fn-xc-install-entry-funded",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-memory-tests.lisp::fn-xce-every-resident-row-is-charged-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-memory-tests.lisp::resident-without-credit"
+    },
+    "fn-xc-free-bytes-releases-freed-row": {
+      "subject": "fn-xc-free-bytes",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-memory-tests.lisp::fn-xc-free-bytes-releases-freed-row-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-memory-tests.lisp::freed-buffer-kept"
+    },
+    "fn-xc-yield-bytes-releases-yielded-row": {
+      "subject": "fn-xc-yield-bytes",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-memory-tests.lisp::fn-xc-yield-bytes-releases-yielded-row-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-memory-tests.lisp::freed-buffer-kept"
+    },
+    "fn-xc-install-entry-funded-releases-the-victim-buffer": {
+      "subject": "fn-xc-install-entry-funded",
+      "host_test": null,
+      "trace_witness": "tests/acl2/extent-cache-storage-memory-tests.lisp::fn-xc-install-entry-funded-releases-the-victim-buffer-positive-witness",
+      "mutation": "tests/acl2/extent-cache-storage-memory-tests.lisp::evicted-buffer-kept"
+    }
+  }
+}

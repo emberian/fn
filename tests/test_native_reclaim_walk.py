@@ -84,6 +84,10 @@ def rss_kib(pid: int):
     return None
 
 
+# Critical host path: the bounded fn-scka-srcs-n walk, fn-scka-canon-rows
+# capture, and fn-owner-orcp-rebuild precede installing the reclaimed view.
+# The catalog loaders refine fn-rcw-load-chunks and call
+# fn-sca-load-held-rows-keyed, whose held-row byte facts justify availability.
 @requires(IMAGE)
 class NativeReclaimWalkTests(unittest.TestCase):
     image = IMAGE
@@ -271,6 +275,10 @@ class NativeReclaimWalkTests(unittest.TestCase):
                 started = time.monotonic()
                 done = self.reclaim_live(node, owner)
                 elapsed = time.monotonic() - started
+                # Receipt acknowledgement is bounded; the status observation
+                # waits for this pass, including at 10k (CONTROL-REPLY-DEADLINE).
+                self.assertEqual(done.returncode, EXIT.OK, (done.stdout, done.stderr))
+                self.assertIn(b"requested receipt=", done.stdout, done.stdout)
                 after = rss_kib(pid)
                 self.assertIn(b"installed", done.stdout, done.stdout)
                 print("RECLAIM-RSS n=%d rss_before_kib=%s rss_after_kib=%s seconds=%.2f"

@@ -8,13 +8,14 @@
 (include-book "store-checkpoint-arena-writer")
 (include-book "store-genesis")
 (include-book "feed-connection-invariants")
-(include-book "owner-reclaim-pass")
 (include-book "owner-number-bound")
 (include-book "served-catalog-owner-keyed")
-(include-book "heap-store-figure")
 (include-book "owner-canonical-state")
 (include-book "owner-authority-proposal-state")
 (include-book "owner-connection-state")
+(include-book "owner-publication-transitions")
+; The "Theory" warning check costs about 20 ms on every :in-theory hint in this world.
+(local (set-inhibit-warnings "Theory"))
 
 ; Their declared guards are t; proof is against the exact imported bodies.
 (verify-guards fn-orcp-swapped-owner)
@@ -31,7 +32,8 @@
 ; permission to dispatch an arbitrary host-constructed REBUILT value raw.
 (defthm fn-owner-orcp-rebuild-returns-true-list-by-definition
   (true-listp (fn-owner-orcp-rebuild rows configs frontier max-conns))
-  :hints (("Goal" :in-theory (enable fn-owner-orcp-rebuild))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:type-prescription fn-owner-orcp-rebuild))))))
 
 (defthm fn-owner-retain-statep-implies-reclaim-entry-guard-by-definition
   (implies (fn-owner-retain-statep state)
@@ -42,7 +44,39 @@
 
 (defun fn-owner-orcp-swap (rebuilt state)
   (declare (xargs :stobjs state :guard (and (true-listp rebuilt) (boundp-global 'fn-owner state))
-                  :guard-hints (("Goal" :in-theory (disable boundp-global)))))
+                  :guard-hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-orcp-swap-base) (:definition fn-orcp-swapped-ocfg)
+                              (:definition fn-orcp-swapped-owner)
+                              (:definition fn-owner-authority-proposal-clear)
+                              (:definition fn-scka-strip-base) (:definition fn-sco-at)
+                              (:definition fn-sco-consumer) (:definition fn-sco-cpr)
+                              (:definition fn-sco-identity) (:definition fn-sco-make)
+                              (:definition fn-sco-records) (:definition fn-sco-topic)
+                              (:definition global-table) (:definition not) (:definition nth)
+                              (:definition put-global) (:definition state-p)
+                              (:definition true-listp) (:definition update-global-table)
+                              (:executable-counterpart cons) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ocfg-config)
+                              (:executable-counterpart fn-ocfg-owner)
+                              (:executable-counterpart fn-own-store)
+                              (:executable-counterpart fn-own-view)
+                              (:executable-counterpart fn-sbud-used)
+                              (:executable-counterpart fn-scka-strip-base)
+                              (:executable-counterpart nfix) (:executable-counterpart nth)
+                              (:executable-counterpart zp)
+                              (:forward-chaining state-p-implies-and-forward-to-state-p1)
+                              (:rewrite fn-ocfg-owner-of-fn-ocfg-make)
+                              (:rewrite fn-ocl-set-conns-keeps-owner-control)
+                              (:rewrite fn-own-store-of-fn-own-make)
+                              (:rewrite fn-owner-canonical-reset-preserves-state-p1-by-definition)
+                              (:rewrite fn-owner-installed-state-p1)
+                              (:rewrite fn-owner-retain-carry-put-preserves-state-p1)
+                              (:rewrite fn-pcar-records-count-is-sbud-used)
+                              (:rewrite fn-sg-state-p1-of-put-global) (:rewrite nth-update-nth)
+                              (:rewrite state-p-implies-and-forward-to-state-p1)
+                              (:type-prescription boundp-global) (:type-prescription state-p)
+                              (:type-prescription state-p1)))))))
   (let* ((e (nth 0 rebuilt))
          (oc (nth 1 rebuilt))
          (next (fn-orcp-swapped-ocfg (fn-owner-ocfg state) oc))
@@ -56,22 +90,11 @@
          (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))
          (state (f-put-global 'fn-owner-record-debt (nth 4 rebuilt) state))
          (state (f-put-global 'fn-owner-carried-usage (nth 5 rebuilt) state))
-         (state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base e) state))
-         ; No H0: the next publication is the whole capture of the canonical
-         ; rows (fn-owner-sco-prepare's nil branch), the checkpoint an open
-         ; of this history publishes.  The open notes the arena's count
-         ; because its rows ARE canonical (interned from the emptied or the
-         ; checkpoint's canonical arena); the rebuilt E's rows keep their
-         ; live handles, so E is not the canonical capture the incremental
-         ; path's base must be (fn-scka-next-checkpoint-is-capture) and no
-         ; count makes it one.  The whole walk is the publication's own cost
-         ; (fnn-checkpoint-walk walks every record either way).
-         (state (f-put-global 'fn-owner-sco-base-payloads nil state))
-         (state (f-put-global 'fn-owner-sco-durable count state))
-         (state (f-put-global 'fn-owner-sco-attempted count state))
-         (state (f-put-global 'fn-owner-sco-deferred nil state))
-         (state (f-put-global 'fn-owner-sco-inflight nil state))
-         (state (f-put-global 'fn-owner-orc-pass nil state))
+         ; The rebuilt base has no canonical H0. Reset durable/attempted to
+         ; COUNT and release the slot; pending/requested/serial survive.
+         (state (fn-ost-install-publication
+                 (fn-opub-reclaim-install (fn-ost-publication state)
+                                         (fn-scka-strip-base e) count) state))
          (state (fn-owner-put-credits (fn-orcp-release (fn-owner-credits state)) state)))
     (value count)))
 
@@ -80,7 +103,7 @@
          (nth 2 rebuilt))
   :hints (("Goal" :in-theory
            (union-theories
-            '(fn-owner-orcp-swap fn-owner-put-credits mv-nth nth zp car-cons cdr-cons
+            '(fn-owner-orcp-swap fn-owner-put-credits fn-ost-install-publication mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
               fn-owner-retain-carry-of-put
@@ -98,7 +121,11 @@
    (equal (assoc-equal key (nth 2 (put-global name value state)))
           (if (equal key name) (cons name value)
             (assoc-equal key (nth 2 state))))
-   :hints (("Goal" :in-theory (enable put-global)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition global-table) (:definition put-global)
+                              (:definition update-global-table) (:executable-counterpart equal)
+                              (:executable-counterpart nfix) (:rewrite assoc-add-pair)
+                              (:rewrite nth-update-nth)))))))
 
 (local
  (defthm fn-orr-put-state-p1
@@ -107,27 +134,48 @@
                  (not (equal name 'timer-alist))
                  (not (equal name 'print-base)))
             (state-p1 (put-global name value state)))
-   :hints (("Goal" :in-theory (enable put-global)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition global-table) (:definition not)
+                              (:definition put-global) (:definition update-global-table)
+                              (:rewrite fn-sg-state-p1-of-put-global)
+                              (:type-prescription state-p1)))))))
 
 (local
  (defthm fn-orr-installed-open-ocfg
    (equal (fn-owner-ocfg (fn-owner-install-open-ocfg oc state)) oc)
-   :hints (("Goal" :in-theory (enable fn-owner-ocfg fn-owner-install-open-ocfg fn-owner-install-ocfg)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-owner-install-ocfg)
+                              (:definition fn-owner-install-open-ocfg)
+                              (:definition fn-owner-ocfg) (:definition get-global)
+                              (:definition global-table) (:definition put-global)
+                              (:definition update-global-table) (:executable-counterpart equal)
+                              (:executable-counterpart nfix) (:rewrite assoc-add-pair)
+                              (:rewrite cdr-cons) (:rewrite nth-update-nth)))))))
 
 (local
  (defthm fn-orr-open-owner-association
    (equal (assoc-equal 'fn-owner (nth 2 (fn-owner-install-open-ocfg oc state)))
           (cons 'fn-owner oc))
-   :hints (("Goal" :in-theory
-            (enable fn-owner-install-open-ocfg fn-owner-install-ocfg put-global)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-owner-install-ocfg)
+                              (:definition fn-owner-install-open-ocfg)
+                              (:definition global-table) (:definition put-global)
+                              (:definition update-global-table) (:executable-counterpart equal)
+                              (:executable-counterpart nfix) (:rewrite assoc-add-pair)
+                              (:rewrite nth-update-nth)))))))
 
 (local
  (defthm fn-orr-open-other-association
    (implies (not (equal key 'fn-owner))
             (equal (assoc-equal key (nth 2 (fn-owner-install-open-ocfg oc state)))
                    (assoc-equal key (nth 2 state))))
-   :hints (("Goal" :in-theory
-            (enable fn-owner-install-open-ocfg fn-owner-install-ocfg put-global)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-owner-install-ocfg)
+                              (:definition fn-owner-install-open-ocfg)
+                              (:definition global-table) (:definition not)
+                              (:definition put-global) (:definition update-global-table)
+                              (:executable-counterpart equal) (:executable-counterpart nfix)
+                              (:rewrite assoc-add-pair) (:rewrite nth-update-nth)))))))
 
 ; The recovered Store carries typed event rows; the cold loader consumes
 ; those rows directly without reconstructing their representation.
@@ -135,7 +183,15 @@
  (defthm fn-orr-record-listp-implies-values
    (implies (fn-sf-record-listp rows sequence lower frontier)
             (fn-sf-record-valuesp rows))
-   :hints (("Goal" :in-theory (enable fn-sf-record-listp fn-sf-record-valuesp)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-sf-record-listp)
+                              (:definition fn-sf-record-valuesp) (:executable-counterpart consp)
+                              (:executable-counterpart fn-sf-record-valuesp)
+                              (:forward-chaining fn-cfgc-record-list-is-true-list)
+                              (:induction fn-sf-record-listp) (:induction fn-sf-record-valuesp)
+                              (:type-prescription fn-sf-record-listp)
+                              (:type-prescription fn-sf-record-valuesp)
+                              (:type-prescription fn-store-event-p)))))))
 
 (defun fn-owner-install-extended (oc extended key fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state)
@@ -145,11 +201,45 @@
                                   (fn-mpxt-keyp key)
                                   (equal (len key) *fn-mpxt-key-octets*)))
                   :guard-hints
-                  (("Goal" :in-theory
-                    (e/d (fn-sn-statep fn-sf-statep)
-                         (put-global fn-sf-phasep fn-owner-install-open-ocfg
-                          fn-owner-retain-carry-put fn-prc-refresh
-                          fn-gen-verdict-salt))))))
+                  (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition boundp-global) (:definition boundp-global1)
+                              (:definition fn-onb-open-okp) (:definition fn-orc-job)
+                              (:definition fn-orc-writer-enter)
+                              (:definition fn-owner-authority-proposal-clear)
+                              (:definition fn-scka-strip-base) (:definition fn-sco-at)
+                              (:definition fn-sco-consumer) (:definition fn-sco-cpr)
+                              (:definition fn-sco-identity) (:definition fn-sco-make)
+                              (:definition fn-sco-records) (:definition fn-sco-topic)
+                              (:definition fn-sf-record-phasep) (:definition fn-sf-statep)
+                              (:definition fn-sn-statep) (:definition get-global)
+                              (:definition global-table) (:definition member-equal)
+                              (:definition natp) (:definition not) (:definition state-p)
+                              (:executable-counterpart car) (:executable-counterpart cdr)
+                              (:executable-counterpart cons) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-fc-table-initial-state)
+                              (:executable-counterpart if) (:executable-counterpart len)
+                              (:executable-counterpart tau-system)
+                              (:executable-counterpart true-listp)
+                              (:forward-chaining fn-cfgc-record-list-is-true-list)
+                              (:forward-chaining state-p-implies-and-forward-to-state-p1)
+                              (:rewrite fn-gen-verdict-salt-is-32-bits)
+                              (:rewrite fn-hist-p-is-true-listp)
+                              (:rewrite fn-orr-installed-open-ocfg)
+                              (:rewrite fn-orr-open-other-association)
+                              (:rewrite fn-orr-open-owner-association)
+                              (:rewrite fn-orr-put-association) (:rewrite fn-orr-put-state-p1)
+                              (:rewrite fn-orr-record-listp-implies-values)
+                              (:rewrite fn-owner-core-is-configured-owner-by-definition)
+                              (:rewrite fn-owner-open-state-p1)
+                              (:rewrite fn-owner-retain-carry-put-frames-global-association)
+                              (:rewrite fn-owner-retain-carry-put-preserves-state-p1)
+                              (:rewrite fn-sca-held-rowsp-of-record-values)
+                              (:rewrite state-p-implies-and-forward-to-state-p1)
+                              (:type-prescription fn-fc-table-initial-state)
+                              (:type-prescription fn-mpxt-keyp)
+                              (:type-prescription fn-sf-record-listp)
+                              (:type-prescription state-p) (:type-prescription state-p1)))))))
   (cond
    ((equal oc :fault)
     (mv nil :fault fn-arena fn-cat fn-hist state))
@@ -193,28 +283,11 @@
              ; the FNFD replay above, not this retained input.
              (state (f-put-global 'fn-owner-feed-inputs
                                   (fn-fc-table-initial-state) state))
-             ; The owner's checkpoint state: the capture it extends at its
-             ; next publication, the newest durable checkpoint's S (set by
-             ; fn-owner-sco-note-durable), and the count of the last attempt.
-             ; (kept stripped of its event index, rebuilt at the next
-             ; publication: fn-scka-restore-base-of-strip-of-capture)
-             (state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base extended) state))
-             ; The base's canonical payload count (the arena's count at the
-             ; open: fn-owner-sco-note-base-payloads), nil until noted.
-             (state (f-put-global 'fn-owner-sco-base-payloads nil state))
-             (state (f-put-global 'fn-owner-sco-durable nil state))
-             (state (f-put-global 'fn-owner-sco-attempted nil state))
-             ; PKT-492: the publication the owner deferred by name, or nil.
-             (state (f-put-global 'fn-owner-sco-deferred nil state))
-             ; PKT-583 (b): the count the publication in flight captured, or
-             ; nil; and the one coalesced request observed while it ran.
-             (state (f-put-global 'fn-owner-sco-inflight nil state))
-             (state (f-put-global 'fn-owner-sco-pending nil state))
-             ; PKT-868: an operator's standing compaction request
-             ; (fn-owner-sco-request), cleared by the capture it causes.
-             (state (f-put-global 'fn-owner-sco-requested nil state))
-             ; Q16: no reclaim pass in flight (fn-owner-orc-pass).
-             (state (f-put-global 'fn-owner-orc-pass nil state))
+             ; Preserve the capture serial exactly as the old installer did.
+             ; Install the stripped base; all other eight fields become nil.
+             (state (fn-ost-install-publication
+                     (fn-opub-install (fn-ost-publication state)
+                                      (fn-scka-strip-base extended)) state))
              ; The pending PreparedCommit of the catalog (fn-owner-prepare-buffer).
              (state (f-put-global 'fn-owner-cat-pending nil state))
              ; E (step 8): the catalog of the installed store's history, from
@@ -257,8 +330,11 @@
         (equal (fn-owner-ocfg (fn-orc-writer-enter state)) (fn-owner-ocfg state))
         (equal (boundp-global 'fn-owner (fn-orc-writer-enter state))
                (boundp-global 'fn-owner state)))
-   :hints (("Goal" :in-theory (enable fn-orc-writer-enter fn-owner-ocfg
-                                      fn-owner-retain-carry)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-orc-writer-enter) (:definition not)
+                              (:rewrite fn-owner-bound-of-other-global-put)
+                              (:rewrite fn-owner-ocfg-of-other-global-put)
+                              (:rewrite fn-owner-retain-carry-of-other-global-put)))))))
 
 (local
  (defthm fn-orr-writer-leave-frame
@@ -267,8 +343,11 @@
         (equal (fn-owner-ocfg (fn-orc-writer-leave state)) (fn-owner-ocfg state))
         (equal (boundp-global 'fn-owner (fn-orc-writer-leave state))
                (boundp-global 'fn-owner state)))
-   :hints (("Goal" :in-theory (enable fn-orc-writer-leave fn-owner-ocfg
-                                      fn-owner-retain-carry)))))
+   :hints (("Goal" :in-theory
+            (union-theories
+             (theory 'minimal-theory)
+             '(fn-orc-writer-leave fn-owner-retain-carry-of-other-global-put
+               fn-owner-ocfg-of-other-global-put fn-owner-bound-of-other-global-put))))))
 
 (defthm fn-owner-install-extended-establishes-retain-carry
   (implies (and (not (equal oc :fault))
@@ -279,7 +358,7 @@
                         oc extended key fn-arena fn-cat fn-hist state)))))
   :hints (("Goal" :in-theory
            (union-theories
-            '(fn-owner-install-extended mv-nth nth zp car-cons cdr-cons
+            '(fn-owner-install-extended fn-ost-install-publication mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
               fn-owner-retain-carry-of-put
@@ -297,7 +376,7 @@
   :hints (("Goal" :cases ((equal oc :fault)) :in-theory
            (union-theories
             '((:executable-counterpart fn-lgoc-invariantp)
-              fn-owner-install-extended fn-owner-retain-statep
+              fn-owner-install-extended fn-ost-install-publication fn-owner-retain-statep
               mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)

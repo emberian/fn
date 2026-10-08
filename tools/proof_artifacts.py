@@ -139,7 +139,7 @@ def validate(root: Path, acl2: Path, roots: list[str], timeout: int = 1800,
         # The machine's ACL2 pool (and, on the laptop, its heap cap) (PKT-162).
         with acl2_slots.tree_slot("proof_artifacts validate"):
             completed = run([str(acl2)], cwd=root, input=load_driver(roots).encode(),
-                            env=acl2_slots.acl2_environment(), stdout=subprocess.PIPE,
+                            env=acl2_slots.acl2_environment(root=root), stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, timeout=timeout)
     except subprocess.TimeoutExpired as error:
         output = (error.stdout or b"").decode("utf-8", "replace")

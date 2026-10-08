@@ -29,7 +29,34 @@ the owner's; a render never observes a half-applied transition)."
 
 (defvar *fnn-store-identity-next-handler* *fnn-hybrid-control-handler*)
 
+(defun fnn-live-profile-owner-reply (service)
+  "Capture the decided served profile under O; encode it after releasing O."
+  (let* ((profile (fnn-owner-serialized
+                   service nil
+                   (lambda () (fnn-store-config (fnn-owner-service-store service)))
+                   :inspect))
+         (reply (fnn-core 'fn-lpf-reply profile)))
+    (unless (and (consp reply) (fnn-octet-list-p reply))
+      (fnn-fault "ACL2 refused the owner's profile reply"))
+    reply))
+
+(defun fnn-live-profile-read (path-octets)
+  "A live owner's missing/malformed answer never falls back to disk history."
+  (multiple-value-bind (frame stage)
+      (fnn-control-exchange (fnn-octets-string (fnn-octets path-octets))
+                            (fnn-core 'fn-lpf-request)
+                            (fnn-core 'fn-lpf-reply-bound))
+    (declare (ignore stage))
+    (let ((profile (and frame (fnn-core 'fn-lpf-reply-read (fnn-octet-list frame)))))
+      (unless profile (fnn-fault "no decided profile from the live owner"))
+      profile)))
+
 (defun fnn-store-identity-control-handle (service frame)
+  (when (and (typep frame 'fnn-octets)
+             (fnn-core 'fn-lpf-request-size-p (length frame))
+             (fnn-core 'fn-lpf-request-p (fnn-control-frame-octet-list frame)))
+    (return-from fnn-store-identity-control-handle
+      (list :sealed-reply (fnn-live-profile-owner-reply service))))
   (if (and (typep frame 'fnn-octets)
            (fnn-core 'fn-stid-host-request-p (fnn-control-frame-octet-list frame)))
       (list :sealed-reply (fnn-store-identity-owner-reply service))

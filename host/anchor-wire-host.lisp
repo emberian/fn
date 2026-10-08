@@ -39,11 +39,17 @@
               (fn-anchor-signed-octets a)
               (if (fn-anchor-wire-single-leafp parsed) 1 0))))))
 
+(definterface fn-anchor-wire-host-parse
+  :class ::program)
+
 (defun fn-anchor-wire-host-request (nonce)
   (let ((result (fn-anchor-wire-request nonce)))
     (if (not (fn-anchor-wire-result-okp result))
         (list :refused (fn-anchor-wire-result-reason result))
       (list :request (fn-anchor-wire-result-value result)))))
+
+(definterface fn-anchor-wire-host-request
+  :class ::program)
 
 ; Restore the prompt expected by persistent native bridge sessions.
 (logic)
