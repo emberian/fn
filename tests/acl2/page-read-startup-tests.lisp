@@ -149,7 +149,7 @@
 (defconst *prst-e* (fn-scc-segment-max-octets 196608))
 (defconst *prst-d* (fn-prstartup-read-demand *prst-e*))
 (defconst *prst-r* (fn-prstartup-read-reserve *prst-e* 4))
-(assert-event (and (equal *prst-e* 196677) (equal *prst-d* 393834) (equal *prst-r* (* 4 393834))
+(assert-event (and (equal *prst-e* 196677) (equal *prst-d* 393834) (equal *prst-r* (+ (* 4 393834) (fn-cwq-queue-octets)))
                    (equal (fn-prstartup-read-extent *fn-bs-profile-development*)
                           (fn-scc-segment-max-octets (fn-bs-profile-max-record-octets
                                                       *fn-bs-profile-development*)))))
