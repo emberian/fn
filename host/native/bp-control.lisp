@@ -140,11 +140,21 @@ released, as it did when the drive ran in the reconfiguration's own section."
                                    (fnn-with-control-buffer ()
                                      (fnn-core 'fn-native-control-host-decode-frame
                                                (fnn-octets-ctl-fill frame)))))
-                            (grant (fnn-owner-core 'fn-owner-bplc-turn-plan ownerp (third decoded)
-                                                   (and (fnn-bpnc-listeners node)
-                                                        (fnn-bplc-model (fnn-bpnc-listeners node))))))
+                            (handler (and decoded (ninth decoded))))
                        (setq reasoned (first decoded))
-                       (fnn-bpnc-execute node grant))
+                       ;; The same FNCT kind table and read handlers as the
+                       ;; NNTP owner, including the bounded decided-profile
+                       ;; read (26). BP mutations keep their own turn plan.
+                       (or (and ownerp (eq handler :read)
+                                *fnn-hybrid-control-handler*
+                                (let ((*fnn-control-frame-list* nil))
+                                  (funcall *fnn-hybrid-control-handler*
+                                           (fnn-bpnc-owner node) frame)))
+                           (fnn-bpnc-execute
+                            node (fnn-owner-core 'fn-owner-bplc-turn-plan
+                                  ownerp (third decoded)
+                                  (and (fnn-bpnc-listeners node)
+                                       (fnn-bplc-model (fnn-bpnc-listeners node)))))))
                    (fnn-store-indeterminate (condition)
                      (setq fatal condition) :uncertain)
                    (fnn-store-fault (condition)
@@ -161,13 +171,14 @@ released, as it did when the drive ran in the reconfiguration's own section."
                      :fault))))
            (let* ((word (if (consp status) (second status) status))
                   (reason (and (consp status) (third status)))
-                  (reply (if reasoned
-                             (fnn-core 'fn-native-control-host-lined-reply-encode
-                                       word reason nil)
-                           (fnn-core 'fn-native-control-host-reply-encode word))))
+                  (reply (fnn-control-reply-octets
+                          (cond ((and (consp status) (not (eq (first status) :reason)))
+                                 status)
+                                (reasoned (list :reasoned-reply word reason nil))
+                                (t word)))))
              ;; A lost answer does not change a durable admin completion.
              (ignore-errors
-               (fnn-send-all (fnn-socket-fd socket) (fnn-octets reply)
+               (fnn-send-all (fnn-socket-fd socket) reply
                              +fnn-control-io-seconds+)))
            (when fatal (error fatal)))
       (sb-bsd-sockets:socket-close socket))))

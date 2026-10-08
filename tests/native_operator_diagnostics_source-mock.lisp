@@ -2,6 +2,7 @@
 ; Deliberate core/I/O seams distinguish faults from known refusals; this is
 ; source execution, not saved-image qualification or real profile I/O.
 (require :sb-posix)
+(require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
 
@@ -71,8 +72,9 @@
 (defparameter *fnn-operator-live-owner* nil)
 (source-forms (or (third sb-ext:*posix-argv*) "host/native/heap.lisp")
               '(fnn-heap-store-profile fnn-heap-operator-store-profile fnn-heap-operator-profile
-                fnn-heap-command-profile fnn-heap-bp-terms fnn-command-heap)
+                fnn-heap-command-profile fnn-command-heap)
               '(fnn-heap-profile-refusal fnn-heap-command-profile-base))
+(source-forms "host/native/bp-node.lisp" '(fnn-heap-bp-terms))
 
 (define-condition unlisted-profile-condition (fnn-store-error) ())
 (defstruct fixture-store (config '(:recorded-profile)))
