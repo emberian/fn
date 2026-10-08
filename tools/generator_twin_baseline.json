@@ -22,13 +22,6 @@
    "count": 1,
    "reason": "not generator-shaped (Deputy S 2026-10-07): fn-cat$p composes the generated fn-crow with the fn-mlh and fn-dmap foundations; its row column is already generated"
   },
-  "books/history-columns-foundation.lisp": {
-   "kinds": [
-    "record-stobj"
-   ],
-   "count": 1,
-   "reason": "vocabulary-blocked until lane s-vocab: untyped scalar plus salted hash (S-DRAIN-MAP FITS AFTER)"
-  },
   "books/history-paged.lisp": {
    "kinds": [
     "record-stobj"

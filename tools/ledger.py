@@ -2248,7 +2248,55 @@ def def_loop_run_expansion(form: list) -> list:
     """)
 
 
+def absstobj_obligation_events(name: Sym, exports: list, kinds: tuple) -> list:
+    """The defthm events ``defabsstobj-missing-events`` names for a generated
+    abstract stobj: each of KINDS (``correspondence``, ...) for the creator
+    CREATE-NAME and for every export.  Names only; the formulas are ACL2's, so
+    each statement is an opaque marker.  Presence, never admission evidence.
+    One reader for every generator that ends in a defabsstobj."""
+    creator = _gen_sym("create-", name)
+    return [[Sym("defthm"), _gen_sym(export, "{" + kind + "}"),
+             [Sym("fn-generated-obligation"), export, Sym(":" + kind)],
+             Sym(":rule-classes"), Sym("nil")]
+            for export in [creator] + list(exports) for kind in kinds]
+
+
+def def_representation_index_expansion(form: list) -> list:
+    """def-representation-index: the creator and the five exports of
+    ``ixg-exports`` (books/def-representation-index.lisp: NAME-COUNT, NAME-AT,
+    the :query-export, NAME-APPEND, NAME-CLEAR), each with its
+    ``{correspondence}``.  Other obligation kinds ACL2 emits are not claimed."""
+    if not (len(form) >= 3 and isinstance(form[1], Sym)):
+        return []
+    opts = keyword_plist(list(form[3:]))
+    index = keyword_plist(opts[":index"]) if isinstance(opts.get(":index"), list) else {}
+    qexport = index.get(":query-export")
+    if not isinstance(qexport, Sym):
+        return []
+    name = form[1]
+    exports = [_gen_sym(name, "-count"), _gen_sym(name, "-at"), qexport,
+               _gen_sym(name, "-append"), _gen_sym(name, "-clear")]
+    return absstobj_obligation_events(name, exports, ("correspondence",))
+
+
+def def_generic_expansion(form: list) -> list:
+    """def-generic (books/def-representation-generic.lisp): the three
+    obligations the generator states for the creator and for every
+    ``(:read|:update EXPORT :logic FN)`` row of ``:exports``."""
+    if not (len(form) >= 3 and isinstance(form[1], Sym)):
+        return []
+    rows = keyword_plist(list(form[2:])).get(":exports")
+    if not isinstance(rows, list):
+        return []
+    exports = [row[1] for row in rows
+               if isinstance(row, list) and len(row) >= 2 and isinstance(row[1], Sym)]
+    return absstobj_obligation_events(form[1], exports,
+                                      ("correspondence", "guard-thm", "preserved"))
+
+
 GENERATOR_EXPANSIONS = {
+    "def-representation-index": def_representation_index_expansion,
+    "def-generic": def_generic_expansion,
     "fn-defrecord": defrecord_expansion,
     "fn-defrecord-export": defrecord_export_expansion,
     "def-loop": def_loop_expansion,
