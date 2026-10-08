@@ -22712,6 +22712,215 @@
    "registry": true
   },
   {
+   "book_digest": "10f067f40d0b869a8d0b91c7265471369eb7b17346498d80c9cb65dcf07f5ffe",
+   "bounds": [],
+   "claim_digest": "4e33dc5d02d4eea32a7833648a182828111bb073f9f4e578960b722f2313a440",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-decoded-span-at-answers-a-covered-slot",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-complete-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 8,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-decoded-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "de8f9cfe488ac2339340718626e3405e44dcd6b2b0de979b155f374abfb6819e",
+   "bounds": [],
+   "claim_digest": "0655426ff4c9d9fee378a9e9ab6be1a8a9f1302d0d5c8b84f219dd80e90b180c",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-decoded-span-at-answers-from-a-matching-slot",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-decoded-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-decoded-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "de8f9cfe488ac2339340718626e3405e44dcd6b2b0de979b155f374abfb6819e",
+   "bounds": [],
+   "claim_digest": "fe4880c936f1d38d4e6090d41a2895f4d5daea6115397ef9caea77ab95f55a60",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-decoded-span-at-is-the-cached-bytes",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-decoded-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 2,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-decoded-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "de8f9cfe488ac2339340718626e3405e44dcd6b2b0de979b155f374abfb6819e",
+   "bounds": [],
+   "claim_digest": "34d71119eceb0371146463cb1f8932855251c20d6cf5194428b362e55fded959",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-decoded-span-at-is-the-per-slot-span",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-decoded-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-decoded-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "de8f9cfe488ac2339340718626e3405e44dcd6b2b0de979b155f374abfb6819e",
+   "bounds": [],
+   "claim_digest": "ce702d4b58e7479e8fab65425121c990f7b430259fa8308daaa14f5ea4fe5482",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-decoded-span-at-is-the-returned-bytes",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-decoded-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 3,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-decoded-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "de8f9cfe488ac2339340718626e3405e44dcd6b2b0de979b155f374abfb6819e",
+   "bounds": [],
+   "claim_digest": "31b9a3d8cfd72c2bc348d1c6b85c75199e181a58b872eceb0b0c818e0d66ed0e",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-decoded-span-at-miss-changes-nothing",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-decoded-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-decoded-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "10f067f40d0b869a8d0b91c7265471369eb7b17346498d80c9cb65dcf07f5ffe",
+   "bounds": [],
+   "claim_digest": "e0f5ddeb27cadd94442aa7f19a7bc91ce41778194c0d87443a4a7d77b2084366",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-entry-span-at-answers-a-covered-slot",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-complete-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 12,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-entry-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "09f1eb957e5980d62952610b56fb79d45b6d5b296dd8ed2131e521d72147da12",
+   "bounds": [],
+   "claim_digest": "03bf22bca55fd8523c37fe8474be2bca3a15437d71d2f0d8fadbf4b8ad88f83f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-entry-span-at-answers-from-a-matching-slot",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-entry-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-entry-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "09f1eb957e5980d62952610b56fb79d45b6d5b296dd8ed2131e521d72147da12",
+   "bounds": [],
+   "claim_digest": "7e81b900c7615e5fae857a0b8ba7f11547c3ba2570fd39ff7512296dcabc8fdb",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-entry-span-at-is-the-entry-bytes",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-entry-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 2,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-entry-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "09f1eb957e5980d62952610b56fb79d45b6d5b296dd8ed2131e521d72147da12",
+   "bounds": [],
+   "claim_digest": "4b2d9d78c65aaff8503051ccd307d8508187d496cfd84cb6713507dd51d4ffb8",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-entry-span-at-miss-changes-nothing",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-entry-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-entry-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "0cd260bb403e9e8f2cb4a447460759c562e6edf5e05faed2dd5e0310f241dbfb",
+   "bounds": [],
+   "claim_digest": "6a379f352cfc03d3f70ef7484ac2a46efd69a7c01643f16191df089b596c39e7",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-free-bytes-releases-freed-row",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-memory-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-free-bytes",
+   "witness": "lemma"
+  },
+  {
    "book_digest": "ab6d80c0399b9f70d606c32c436e766f3703a4d7b7c0c35f5d427bc4eb0ec1d8",
    "bounds": [],
    "claim_digest": "2c50a387c842f809dbc898c31dbe36a2f90ee35ad86718743b7d781000ce031f",
@@ -22731,6 +22940,101 @@
    "witness": "lemma"
   },
   {
+   "book_digest": "59401e7a2bd1f96a1396ac995945430e7265b8b0c3b30f565878c9b68a4c059e",
+   "bounds": [],
+   "claim_digest": "3087c949bdedfb6a2ff67bb78d470542316a6ef7c731766698b693514a4dd8fc",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-init-all-readies-all-rows",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-install-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 5,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-init-all",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "59401e7a2bd1f96a1396ac995945430e7265b8b0c3b30f565878c9b68a4c059e",
+   "bounds": [],
+   "claim_digest": "d24bd8e0dd4dbb3d16d41d0999e7d384906bf6c67cefb5c56a6c43c657d3b405",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-init-all-refuses-more-entries-than-rows",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-install-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 2,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-init-all",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "59401e7a2bd1f96a1396ac995945430e7265b8b0c3b30f565878c9b68a4c059e",
+   "bounds": [],
+   "claim_digest": "a4e839f1e14fb27a5a608926cb3a1949d970423b36383dd385e894ab4ebcdfb2",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-init-all-refuses-more-windows-than-rows",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-install-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 3,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-init-all",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "59401e7a2bd1f96a1396ac995945430e7265b8b0c3b30f565878c9b68a4c059e",
+   "bounds": [],
+   "claim_digest": "8514af387a9a196308a61a9a575a09e1924a1a9c513da18391f9bb991bbd6964",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-install-decoded-bytes-installs-the-table-decision",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-install-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 3,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-install-decoded-bytes",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "59401e7a2bd1f96a1396ac995945430e7265b8b0c3b30f565878c9b68a4c059e",
+   "bounds": [],
+   "claim_digest": "ad8346bba80dd31fa446c1afd8fa9d549ab77e7fa4f79932f5ff99a151a07ab5",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-install-decoded-bytes-stores-the-pair",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-install-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-install-decoded-bytes",
+   "witness": "lemma"
+  },
+  {
    "book_digest": "ab6d80c0399b9f70d606c32c436e766f3703a4d7b7c0c35f5d427bc4eb0ec1d8",
    "bounds": [],
    "claim_digest": "752cfe2e1340b814884b71cc4555d97deb377314ffc01f99372862f98e56d902",
@@ -22747,6 +23051,63 @@
     "reachable": 0
    },
    "subject": "fn-xc-install",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "59401e7a2bd1f96a1396ac995945430e7265b8b0c3b30f565878c9b68a4c059e",
+   "bounds": [],
+   "claim_digest": "d8a8abce2ee0cc6ac1dd56bef919bc12efcda07eb76963916bc3601a38343d42",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-install-entry-bytes-installs-the-table-decision",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-install-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 4,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-install-entry-bytes",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "59401e7a2bd1f96a1396ac995945430e7265b8b0c3b30f565878c9b68a4c059e",
+   "bounds": [],
+   "claim_digest": "81d54e5c84a669d55e671a944f192e6890c6c111298ca82a7ba92249c29e1cb5",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-install-entry-bytes-stores-the-pair",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-install-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-install-entry-bytes",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "0cd260bb403e9e8f2cb4a447460759c562e6edf5e05faed2dd5e0310f241dbfb",
+   "bounds": [],
+   "claim_digest": "9c5e20f7892a7250a0dec5a6cdda14ce0e200cbb26f8bc8e53c435751803fd8c",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-install-entry-funded-releases-the-victim-buffer",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-memory-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-install-entry-funded",
    "witness": "lemma"
   },
   {
@@ -22842,6 +23203,44 @@
     "reachable": 0
    },
    "subject": "fn-xc-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "0cd260bb403e9e8f2cb4a447460759c562e6edf5e05faed2dd5e0310f241dbfb",
+   "bounds": [],
+   "claim_digest": "bf2f7622223ade206cc58c5852dd4c962438ac97a5607283de0bb2388ed0829f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-yield-bytes-releases-yielded-row",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-memory-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-yield-bytes",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "0cd260bb403e9e8f2cb4a447460759c562e6edf5e05faed2dd5e0310f241dbfb",
+   "bounds": [],
+   "claim_digest": "899224191b058d99006adf635e76793310733227a9ce1b0821981ab70937c8a1",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xce-every-resident-row-is-charged",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-storage-memory-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 2,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-install-entry-funded",
    "witness": "lemma"
   },
   {

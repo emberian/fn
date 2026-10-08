@@ -22898,6 +22898,48 @@
         "fn-tlsk-library-without-tls-never-refuses",
         "fn-tlsk-library-served-tls-never-falls-back"
       ]
+    },
+    {
+      "id": "PRF-1364",
+      "title": "Whole-entry and decoded-window spans retain matching, charged stobj backing",
+      "statement": "Round-5 span walks answer a covered slot, preserve misses and agree byte-for-byte with the old per-kind reads. Installs preserve the slot-table decision and store the matching plan/key plus bytes. Initialization refuses profile row overflow by name. Every resident whole-entry row is bounded by its slot token cached charge; funded replacement, free and yield release its exact-capacity backing. The named events and their full hypothesis-removal teeth are in the extent-cache-storage and extent-cache-memory books and tests.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/design/xc-span-walk-statements-2026-10-08.md",
+        "tests/acl2/extent-cache-storage-complete-tests.lisp",
+        "tests/acl2/extent-cache-storage-decoded-tests.lisp",
+        "tests/acl2/extent-cache-storage-entry-tests.lisp",
+        "tests/acl2/extent-cache-storage-install-tests.lisp",
+        "tests/acl2/extent-cache-storage-live-tests.lisp",
+        "tests/acl2/extent-cache-storage-memory-tests.lisp"
+      ],
+      "note": "Host connection and host-path tests belong to s-xc2 and are pending. S must settle incoming entry credit before funded install, refund only after physical retirement, preserve token disjointness, and prove no served ARTICLE/HEAD/BODY/OVER/HDR caller uses scalar entry END=P+1.",
+      "events": [
+        "fn-xc-entry-span-at-answers-a-covered-slot",
+        "fn-xc-decoded-span-at-answers-a-covered-slot",
+        "fn-xc-decoded-span-at-answers-from-a-matching-slot",
+        "fn-xc-decoded-span-at-miss-changes-nothing",
+        "fn-xc-decoded-span-at-is-the-cached-bytes",
+        "fn-xc-decoded-span-at-is-the-per-slot-span",
+        "fn-xc-decoded-span-at-is-the-returned-bytes",
+        "fn-xc-entry-span-at-answers-from-a-matching-slot",
+        "fn-xc-entry-span-at-miss-changes-nothing",
+        "fn-xc-entry-span-at-is-the-entry-bytes",
+        "fn-xc-install-entry-bytes-installs-the-table-decision",
+        "fn-xc-install-entry-bytes-stores-the-pair",
+        "fn-xc-install-decoded-bytes-installs-the-table-decision",
+        "fn-xc-install-decoded-bytes-stores-the-pair",
+        "fn-xc-init-all-readies-all-rows",
+        "fn-xc-init-all-refuses-more-entries-than-rows",
+        "fn-xc-init-all-refuses-more-windows-than-rows",
+        "fn-xce-every-resident-row-is-charged",
+        "fn-xc-free-bytes-releases-freed-row",
+        "fn-xc-yield-bytes-releases-yielded-row",
+        "fn-xc-install-entry-funded-releases-the-victim-buffer"
+      ]
     }
   ]
 }

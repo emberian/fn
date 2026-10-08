@@ -19239,6 +19239,116 @@
           "name": "fn-tlsk-library-served-tls-never-falls-back"
         }
       ]
+    },
+    {
+      "id": "PRF-1364",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-xc-entry-span-at-answers-a-covered-slot",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-decoded-span-at-answers-a-covered-slot",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-decoded-span-at-answers-from-a-matching-slot",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-decoded-span-at-miss-changes-nothing",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-decoded-span-at-is-the-cached-bytes",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-decoded-span-at-is-the-per-slot-span",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-decoded-span-at-is-the-returned-bytes",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-entry-span-at-answers-from-a-matching-slot",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-entry-span-at-miss-changes-nothing",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-entry-span-at-is-the-entry-bytes",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-install-entry-bytes-installs-the-table-decision",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-install-entry-bytes-stores-the-pair",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-install-decoded-bytes-installs-the-table-decision",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-install-decoded-bytes-stores-the-pair",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-init-all-readies-all-rows",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-init-all-refuses-more-entries-than-rows",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-init-all-refuses-more-windows-than-rows",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xce-every-resident-row-is-charged",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-free-bytes-releases-freed-row",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-yield-bytes-releases-yielded-row",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xc-install-entry-funded-releases-the-victim-buffer",
+          "pending_subject": "The stobj export is proved and has native ACL2 traces; s-xc2 owns the definterface/caller swap and host-path test."
+        }
+      ]
     }
   ]
 }

@@ -554,3 +554,39 @@ The critical gate introduced on origin/dev forbids owed entries for new or
 changed critical keystones (`keystone_critical.py`, `findings` and `claim_owed`).
 The host test and served-caller inventory belong to s-xc2; they are not supplied
 by these ACL2 traces. No critical owed exemption is claimed for this round.
+
+### Round 5b certification
+
+Persvati `run-20261008T213235Z-1d48` certified all twelve touched proof/definition
+books and the fixture/live books. Its five leaf teeth failures were an ACL2
+book-local unused-variable setting, corrected in `a8312f7c3` without changing
+claims. `run-20261008T213517Z-f056` certified those five leaves, zero failures.
+Both used two jobs on cores 0-11. The record-toolchain current-closure audit
+against `88d3753b4` reports all 19 touched books green, zero dependents not green.
+These are per-book wall seconds, including loading, from the two manifests:
+
+| Book (without `.lisp`) | Seconds |
+| --- | ---: |
+| `books/def-buffer-exact` | 0.365 |
+| `books/extent-cache-memory` | 1.467 |
+| `books/extent-cache-memory-install` | 2.371 |
+| `books/extent-cache-memory-proof` | 1.668 |
+| `books/extent-cache-memory-refund` | 1.417 |
+| `books/extent-cache-storage` | 2.322 |
+| `books/extent-cache-storage-complete` | 2.819 |
+| `books/extent-cache-storage-install` | 4.175 |
+| `books/extent-cache-storage-rows` | 1.918 |
+| `books/extent-cache-storage-sound` | 3.171 |
+| `books/extent-cache-storage-walk` | 2.322 |
+| `books/octet-buffer-exact` | 0.466 |
+| `tests/acl2/extent-cache-storage-complete-tests` | 1.770 |
+| `tests/acl2/extent-cache-storage-decoded-tests` | 1.718 |
+| `tests/acl2/extent-cache-storage-entry-tests` | 1.568 |
+| `tests/acl2/extent-cache-storage-fixtures` | 1.568 |
+| `tests/acl2/extent-cache-storage-install-tests` | 1.974 |
+| `tests/acl2/extent-cache-storage-live-tests` | 1.719 |
+| `tests/acl2/extent-cache-storage-memory-tests` | 1.669 |
+
+The first premerge ledger/keystone/interface checks reported Ledger OK, zero
+keystone findings, and zero interface findings. Final critical classification
+and host-test findings are recorded after merging origin/dev below.
