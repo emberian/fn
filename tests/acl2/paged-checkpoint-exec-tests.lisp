@@ -6,17 +6,22 @@
 ;   3. a reader that swaps the offset and length words fails;
 ;   4. a reader that encodes the whole event (payload included) instead of its
 ;      metadata is not the row;
-;   5. the ground check: the executable reader over the real stobj gives the
+;   5. a reader that reverses the trailer words fails;
+;   6. the ground check: the executable reader over the real stobj gives the
 ;      words of the model's row for a record with a 17-octet payload (the
 ;      metadata program is a few words, the payload is not in the row), at a
-;      nonzero payload offset.
+;      nonzero payload offset, with the frame trailer's four words in the row.
 
 (in-package "ACL2")
 (include-book "../../books/paged-checkpoint-exec")
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
-(defun pckxt-word-at (j off plen pack-at swap fn-octets)
+;; The constrained seam, attached: the frame trailer's words (distinct per word).
+(defun pckxt-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
+(defattach (fn-cpl-trailer-words pckxt-trailer))
+
+(defun pckxt-word-at (j off plen tw pack-at swap fn-octets)
   ; the reader with the pack's first word at row index PACK-AT; SWAP puts the
   ; length where the offset goes
   (declare (xargs :stobjs fn-octets :verify-guards nil))
@@ -27,14 +32,13 @@
           ((< j (+ 2 k))
            (let ((o (* 8 (- j pack-at))))
              (if (< o n) (fn-octets-get-word o (min 8 (- n o)) fn-octets) 0)))
-          ((eql j (+ 2 k)) (if swap plen off))
-          (t (if swap off plen)))))
+          (t (nth (- j (+ 2 k)) (if swap (list* plen off tw) (list* off plen tw)))))))
 
 (must-fail-checked
  (defthm pckxt-pack-index-is-j
    (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j) (<= 2 j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
-            (equal (pckxt-word-at j off (len (fn-pck-payload w)) 0 nil
+            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 0 nil
                                   (fn-pck-x-encode (fn-pck-meta w) fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
 
@@ -42,7 +46,7 @@
  (defthm pckxt-length-word-in-the-pack
    (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j) (<= 2 j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
-            (equal (pckxt-word-at j off (len (fn-pck-payload w)) 1 nil
+            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 1 nil
                                   (fn-pck-x-encode (fn-pck-meta w) fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
 
@@ -50,7 +54,16 @@
  (defthm pckxt-offset-and-length-swapped
    (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
-            (equal (pckxt-word-at j off (len (fn-pck-payload w)) 2 t
+            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 2 t
+                                  (fn-pck-x-encode (fn-pck-meta w) fn-octets))
+                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
+
+(must-fail-checked
+ (defthm pckxt-trailer-reversed
+   (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j)
+                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
+            (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w))
+                                  (reverse (fn-cpl-trailer-words (fn-pck-payload w))) 2 nil
                                   (fn-pck-x-encode (fn-pck-meta w) fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
 
@@ -60,7 +73,11 @@
    ; are not the row's
    (implies (and (fn-sccb-treep w) (fn-sccb-treep (fn-pck-meta w)) (natp j)
                  (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
-            (equal (fn-pck-x-row-word j off (len (fn-pck-payload w))
+            (equal (fn-pck-x-row-word j (+ 37 off) (len (fn-pck-payload w))
+                                      (car (fn-cpl-trailer-words (fn-pck-payload w)))
+                                      (cadr (fn-cpl-trailer-words (fn-pck-payload w)))
+                                      (caddr (fn-cpl-trailer-words (fn-pck-payload w)))
+                                      (cadddr (fn-cpl-trailer-words (fn-pck-payload w)))
                                       (fn-pck-x-encode w fn-octets))
                    (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
 
@@ -70,11 +87,11 @@
 
 (defconst *pckxt-off* 4096)
 
-(defun pckxt-collect (j n off plen pack-at swap fn-octets)
+(defun pckxt-collect (j n off plen tw pack-at swap fn-octets)
   (declare (xargs :stobjs fn-octets :verify-guards nil :measure (nfix (- n j))))
   (if (and (natp j) (natp n) (< j n))
-      (cons (pckxt-word-at j off plen pack-at swap fn-octets)
-            (pckxt-collect (1+ j) n off plen pack-at swap fn-octets))
+      (cons (pckxt-word-at j off plen tw pack-at swap fn-octets)
+            (pckxt-collect (1+ j) n off plen tw pack-at swap fn-octets))
     nil))
 
 (defun pckxt-words (w off pack-at swap)
@@ -84,7 +101,8 @@
     (mv-let (ws fn-octets)
       (let* ((fn-octets (fn-pck-x-encode (fn-pck-meta w) fn-octets))
              (n (fn-pck-x-row-words (fn-octets-len fn-octets))))
-        (mv (pckxt-collect 0 n off (len (fn-pck-payload w)) pack-at swap fn-octets) fn-octets))
+        (mv (pckxt-collect 0 n (+ 37 off) (len (fn-pck-payload w))
+                                    (fn-cpl-trailer-words (fn-pck-payload w)) pack-at swap fn-octets) fn-octets))
       ws)))
 
 (assert-event
@@ -92,8 +110,9 @@
       (equal (len (fn-pck-payload *pckxt-record*)) 17)
       (equal (pckxt-words *pckxt-record* *pckxt-off* 2 nil)
              (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off*)))
-      ; the last two words are the offset and the length, no payload octets
-      (let ((ws (pckxt-words *pckxt-record* *pckxt-off* 2 nil))) (equal (nthcdr (- (len ws) 2) ws) (list 4096 17)))
+      ; the last six words are the ref (offset 37 into the frame, length) and the trailer, no payload octets
+      (let ((ws (pckxt-words *pckxt-record* *pckxt-off* 2 nil)))
+        (equal (nthcdr (- (len ws) 6) ws) (list 4133 17 11 22 33 44)))
       (not (equal (pckxt-words *pckxt-record* *pckxt-off* 0 nil)
                   (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off*))))
       (not (equal (pckxt-words *pckxt-record* *pckxt-off* 1 nil)
