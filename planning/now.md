@@ -5,7 +5,7 @@ a generated number is quoted from its generator's output at that sha or not
 at all. The integrator rewrites this table when a batch lands on `dev`.
 The operating contract for this wave is the 2026-10-04 swarm plan's §3
 (the loading gate, replacement not reverts, generated truth, the cadence);
-"What a step is" in [how we work](how-we-work.md) stands.
+a step is DONE or NOT (the 2026-10-07 rules collapse, decisions.md).
 
 | coordinate | value |
 |---|---|
@@ -15,7 +15,7 @@ The operating contract for this wave is the 2026-10-04 swarm plan's §3
 | deployment | two nodes on 6.6.0 from 2026-09-28 source (`fn.fg-goose.online`; hbox `/tank/fn/node`) |
 | `make check` (Python 3.12, hbox, real checkout, certs installed) | 47/91 red at `4fd4cfc51` (= `d4e53323c` + the 3.11 f-string fix) |
 | composition | current source does not `ld` to native entry; deferral list 85 (`planning/evidence/current-union-recipe-20261003/`); zero-deferral world is wave 1's exit |
-| proof base | `tools/green_check.py`, `planning/current.md`: regenerated in the wave-0 batch commit, quoted at that sha |
+| proof base | `tools/green_check.py`, `python3 tools/current_view.py`: computed in the wave-0 batch commit, quoted at that sha |
 | boxes | hbox for image sets, farm certify (≤6 jobs, `swarm-build`) and ≤3 REPLs; persvati for the certify mirror and REPLs |
 
 ## Historical
@@ -30,7 +30,7 @@ Source merge and generated metadata are converged. All deputies remain stopped.
 Root resumed one managed logical REPL on hbox for the active goal; no native
 owner is running. The complete
 remaining work stays in [NSLICESQUEUE](../NSLICESQUEUE.md),
-[the repair ledger](repair/STATUS.md), and the requirements/proof registries.
+the repair ledger (`python3 planning/repair/repair.py report`), and the requirements/proof registries.
 Contributor setup is [CONTRIBUTING](../CONTRIBUTING.md). Source, ordinary
 admission, certificates, qualified packaging and deployment remain separate.
 
@@ -160,7 +160,7 @@ history; the log before that is [archive/now-2026-09-26.md](archive/now-2026-09-
 
 AGENTS.md keeps four coordinates apart; none implies another.
 
-- **Source.** dev as above. [The current view](current.md) (generated) gives
+- **Source.** dev as above. The current view (`python3 tools/current_view.py`) gives
   each capability's host line, keystone and certificate at this revision.
 - **Proof.** Each capability's certificate is named in the current view;
   merged lanes' manifests are under
@@ -262,11 +262,11 @@ Lanes run on Claude Opus 5.5 in `build/lanes/<name>` on `lane/<name>`,
 under `build/coordinator/queue/LANE-PREAMBLE.txt` and closeout-common.txt;
 the batch runner merges to dev. The coordinator's log is
 `build/coordinator/WAVE-STATE.md` (newest on top, not tracked). How lanes
-work: [how we work](how-we-work.md).
+work: [AGENTS.md](../AGENTS.md).
 
 ## Where to read next
 
-[The current view](current.md), [decisions](decisions.md),
+The current view (`python3 tools/current_view.py`), [decisions](decisions.md),
 [requirements](requirements.json), [proofs](proofs.json),
 [the release checklist](release-v6.6.0.md), and the docs index
 [docs/README.md](../docs/README.md).

@@ -203,7 +203,7 @@
 ; associativity take minutes.  All are closed from here; the facts they carry
 ; are re-stated below on the specific terms that need them.
 (local (in-theory (disable fn-frame-len-2-conses fn-frame-len-4-conses
-                           fn-frame-len-8-conses fn-frame-not-consp-when-len-zero
+                           
                            fn-cbor-u16-bytes fn-cbor-u32-bytes fn-frame-u64-bytes
                            fn-frame-textp fn-frame-blobp
                            fn-frame-blob-withinp)))

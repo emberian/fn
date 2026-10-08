@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "tests/acl2/catalog-pool-tests.lisp",
+ "id": "CPG-PCORR-WITNESS",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "low",
+ "slice": "storage",
+ "source": "s-pool",
+ "state": "open",
+ "title": "tests/acl2/catalog-pool-tests.lisp evaluates the group-number core (the dense-map answer is the premise) but has no ground (fn-cat$pcorr fn-cat$p h) witness for the stobj composition fn-cpg-group-number-of-pages. Owed: a paged-catalog stobj built by commit from the 150-row catalog and the composition evaluated on it.",
+ "updated": "2026-10-07T23:29:28Z"
+}

@@ -1510,43 +1510,17 @@
    (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
           (fn-ag-rev-onto acc (append a b)))))
 
-(defun fn-served-dispatch-events-loop (conn events fn-arena acc)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (if (consp events)
-      (let ((here (fn-served-dispatch conn (car events) fn-arena)))
-        (fn-served-dispatch-events-loop
-         (fn-served-result-conn here) (cdr events) fn-arena
-         (fn-ag-rev-onto (fn-served-result-effects here) acc)))
-    (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
-
-(defun fn-served-dispatch-events (conn events fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (mbe :logic
-  (if (consp events)
-      (let* ((here (fn-served-dispatch conn (car events) fn-arena))
-             (tail (fn-served-dispatch-events (fn-served-result-conn here)
-                                              (cdr events) fn-arena)))
-        (fn-served-make-result
-         (fn-served-result-conn tail)
-         (mbe :logic (append (fn-served-result-effects here)
-                             (fn-served-result-effects tail))
-              :exec (fn-ag-append (fn-served-result-effects here)
-                                  (fn-served-result-effects tail)))))
-    (fn-served-make-result conn nil))
-  :exec (fn-served-dispatch-events-loop conn events fn-arena nil)))
-
-(defthm fn-served-dispatch-events-loop-is-rev-onto
-  (equal (fn-served-dispatch-events-loop conn events fn-arena acc)
-         (fn-served-make-result
-          (fn-served-result-conn (fn-served-dispatch-events conn events fn-arena))
-          (fn-ag-rev-onto acc (fn-served-result-effects
-                               (fn-served-dispatch-events conn events fn-arena)))))
-  :hints (("Goal" :induct (fn-served-dispatch-events-loop conn events fn-arena acc)
-                  :in-theory (disable fn-served-dispatch))))
-
-(verify-guards fn-served-dispatch-events
-  :hints (("Goal" :expand ((fn-served-dispatch-events conn events fn-arena))
-                  :in-theory (disable fn-served-dispatch))))
+(def-loop fn-served-dispatch-events (conn events fn-arena)
+  :shape :thread :over events :st conn :elt e
+  :let ((here (fn-served-dispatch conn e fn-arena))) :row (fn-served-result-effects here)
+  :next (fn-served-result-conn here)
+  :make (fn-served-make-result conn dl-rows) :st-of (fn-served-result-conn dl-r)
+  :rows-of (fn-served-result-effects dl-r) :rev fn-ag-rev-onto :stobjs fn-arena
+  :guard-hints (("Goal"
+                 :expand
+                 ((fn-served-dispatch-events conn events fn-arena))
+                 :in-theory
+                 (disable fn-served-dispatch))))
 
 (defthm fn-served-dispatch-events-preserves-wire-statep
   (implies (fn-wire-statep (fn-served-conn-wire conn))
@@ -1690,46 +1664,19 @@
                               (fn-wire-feed-byte
                                (fn-served-conn-wire conn) byte))))))))
 
-(defun fn-served-feed-loop (conn octets fn-arena acc)
-  (declare (xargs :stobjs fn-arena :guard (fn-wire-statep (fn-served-conn-wire conn))
-                  :verify-guards nil
-                  :measure (len octets)))
-  (if (or (not (consp octets))
-          (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-haltedp conn))
-      (fn-served-make-result conn (fn-ag-rev-onto acc nil))
-    (let ((here (fn-served-feed-byte conn (car octets) fn-arena)))
-      (fn-served-feed-loop (fn-served-result-conn here) (cdr octets) fn-arena
-                           (fn-ag-rev-onto (fn-served-result-effects here) acc)))))
-
-(defun fn-served-feed (conn octets fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-wire-statep (fn-served-conn-wire conn))
-                  :verify-guards nil
-                  :measure (len octets)))
-  (mbe :logic
-  (if (or (not (consp octets))
-          (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-haltedp conn))
-      (fn-served-make-result conn nil)
-    (let* ((here (fn-served-feed-byte conn (car octets) fn-arena))
-           (tail (fn-served-feed (fn-served-result-conn here) (cdr octets) fn-arena)))
-      (fn-served-make-result
-       (fn-served-result-conn tail)
-       (mbe :logic (append (fn-served-result-effects here)
-                           (fn-served-result-effects tail))
-            :exec (fn-ag-append (fn-served-result-effects here)
-                                (fn-served-result-effects tail))))))
-  :exec (fn-served-feed-loop conn octets fn-arena nil)))
-
-(defthm fn-served-feed-loop-is-rev-onto
-  (equal (fn-served-feed-loop conn octets fn-arena acc)
-         (fn-served-make-result
-          (fn-served-result-conn (fn-served-feed conn octets fn-arena))
-          (fn-ag-rev-onto acc (fn-served-result-effects
-                               (fn-served-feed conn octets fn-arena)))))
-  :hints (("Goal" :induct (fn-served-feed-loop conn octets fn-arena acc)
-                  :in-theory (disable fn-served-feed-byte fn-served-closed-wirep
-                                      fn-served-haltedp))))
+(def-loop fn-served-feed (conn octets fn-arena)
+  :shape :thread :over octets :st conn :elt o
+  :done (or (not (consp octets))
+            (fn-served-closed-wirep (fn-served-conn-wire conn))
+            (fn-served-haltedp conn))
+  :let ((here (fn-served-feed-byte conn o fn-arena))) :row (fn-served-result-effects here)
+  :next (fn-served-result-conn here)
+  :make (fn-served-make-result conn dl-rows) :st-of (fn-served-result-conn dl-r)
+  :rows-of (fn-served-result-effects dl-r) :rev fn-ag-rev-onto :measure (len octets)
+  :guard (fn-wire-statep (fn-served-conn-wire conn)) :stobjs fn-arena
+  :guard-hints (("Goal"
+                 :in-theory
+                 (disable fn-served-dispatch-events fn-wire-feed-byte fn-wire-statep))))
 
 (defthm fn-served-feed-preserves-wire-statep
   (implies (fn-wire-statep (fn-served-conn-wire conn))
@@ -1739,15 +1686,6 @@
   :hints (("Goal" :induct (fn-served-feed conn octets fn-arena)
            :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
                                fn-wire-statep))))
-
-(verify-guards fn-served-feed-loop
-  :hints (("Goal" :in-theory (disable fn-served-dispatch-events
-                                      fn-wire-feed-byte fn-wire-statep))))
-
-(verify-guards fn-served-feed
-  :hints (("Goal" :expand ((fn-served-feed conn octets fn-arena))
-                  :in-theory (disable fn-served-dispatch-events
-                                      fn-wire-feed-byte fn-wire-statep))))
 
 (local
  (defthm fn-served-fed-conn-is-a-connection
@@ -1943,7 +1881,7 @@
    conn (fn-served-result-conn (fn-served-dispatch-events conn events fn-arena)))
   :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
            :in-theory (disable fn-served-dispatch fn-served-pin-old-or-live-p))
-          ("Subgoal *1/1" :use ((:instance fn-served-pin-old-or-live-p-transitive
+          ("Subgoal *1/2" :use ((:instance fn-served-pin-old-or-live-p-transitive
                                            (a conn)
                                            (b (fn-served-result-conn (fn-served-dispatch conn (car events) fn-arena)))
                                            (c (fn-served-result-conn

@@ -1,0 +1,16 @@
+;;; The raw loader expands books/scheduler-peers.lisp's (def-loop fn-sched-pull-put)
+;;; with the book's own generator; the loaded pair must exist and compute the
+;;; :map-with-:stop result (replace in place, else append at the tail).
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(declaim (declaration xargs))
+(load "tests/raw_def_loop.lisp")
+(unless (raw-def-loop-load "books/scheduler-peers.lisp" 'fn-sched-pull-put)
+  (error "def-loop form not found"))
+(unless (and (fboundp 'fn-sched-pull-put) (fboundp 'fn-sched-pull-put-loop))
+  (error "generator did not define the logic function and its loop"))
+(flet ((check (got want) (unless (equal got want) (error "got ~s want ~s" got want))))
+  (check (fn-sched-pull-put 'b 9 '((a . 1) (b . 2) (c . 3))) '((a . 1) (b . 9 ) (c . 3)))
+  (check (fn-sched-pull-put 'z 9 '((a . 1) (b . 2))) '((a . 1) (b . 2) (z . 9)))
+  (check (fn-sched-pull-put 'z 9 nil) '((z . 9))))
+(format t "RAW_DEF_LOOP_PASS~%")

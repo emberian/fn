@@ -759,7 +759,8 @@
                                    fn-cat-number-seq fn-ctg-kstar fn-cat-mark-withdrawn
                                    fn-cpl-mark-withdrawn-is-update fn-cpl-last-from-gap fn-cpl-first-from-gap
                                    fn-cpl-wplan fn-cpl-bad-of-member fn-cpl-live-first-withdrawn
-                                   fn-cpl-live-last-withdrawn fn-cpl-live-withdrawn))
+                                   fn-cpl-live-last-withdrawn fn-cpl-live-withdrawn
+                                   fn-cpl-first-skips fn-cpl-last-skips))
            :use ((:instance fn-cpl-live-withdrawn (j (cdr x)) (g (car x)) (v w))
                  (:instance fn-cpl-high-withdrawn (g (car x)) (v w))
                  (:instance fn-cpl-live-first-withdrawn (g (car x)) (v w) (j (+ 1 (cdr x)))

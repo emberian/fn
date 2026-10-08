@@ -32,6 +32,7 @@ PHASE_KINDS = {
     "reopen": set(),
     "checkpoint": set(),
     "verify": {"count"},
+    "peers": {"mode", "rate_per_s", "baseline_s", "posts", "deadline_s", "drain_s", "octets"},
     "unimplemented": {"reason"},
 }
 COMMON = {"name", "kind", "measure"}

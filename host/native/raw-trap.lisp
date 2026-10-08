@@ -96,12 +96,12 @@ for any caller to set: the counterpart evaluates the entry's whole guard.")
 (let* ((slot (make-symbol "FNN-RAW-EXTENT"))   ; the per-thread slot
        (slots (list slot))
        (on (list t))
-       (dispatch (make-hash-table :test 'eq))   ; entry name -> raw symbol
-       (creators (make-hash-table :test 'eq))   ; entry name -> t (startup creators)
-       (callbacks (make-hash-table :test 'eq))  ; entry name -> extent-entering closure
-       (captured (make-hash-table :test 'eq))   ; raw symbol -> function object
-       (traps (make-hash-table :test 'eq))      ; raw symbol -> its trap
-       (arities (make-hash-table :test 'eq))    ; raw symbol -> formals count, -1 unknown
+       (dispatch (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; entry name -> raw symbol
+       (creators (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; entry name -> t (startup creators)
+       (callbacks (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; entry name -> extent-entering closure
+       (captured (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> function object
+       (traps (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> its trap
+       (arities (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> formals count, -1 unknown
        (sealed nil)
        (session-p nil))
   (proclaim `(special ,slot))
@@ -307,31 +307,40 @@ then removed (unwind-protect).  Six words."
   "An ACL2 msg (STRING . ALIST), the refusal a verdict carries, as one line of
 text without ACL2's printer (an extracted core has none): ~x, ~& and ~@
 directives print their argument (a nested msg as text), a tilde-newline
-skips the line break and the indentation after it."
-  (cond ((stringp msg) msg)
-        ((and (consp msg) (stringp (car msg)))
-         (with-output-to-string (out)
-           (let* ((text (car msg)) (n (length text)) (i 0)
-                  (*package* (find-package "ACL2")))
-             (loop while (< i n)
-                   do (let ((c (char text i)))
-                        (cond ((and (char= c #\~) (< (+ i 1) n)
-                                    (char= (char text (+ i 1)) #\Newline))
-                               (setq i (+ i 2))
-                               (loop while (and (< i n)
-                                                (member (char text i) '(#\Space #\Tab)))
-                                     do (incf i)))
-                              ((and (char= c #\~) (< (+ i 2) n)
-                                    (find (char text (+ i 1)) "x@&")
-                                    (digit-char-p (char text (+ i 2))))
-                               (let ((arg (cdr (assoc (char text (+ i 2)) (cdr msg)))))
-                                 (if (char= (char text (+ i 1)) #\@)
-                                     (write-string (fnn-raw-dispatch-msg-text arg) out)
-                                   (prin1 arg out)))
-                               (incf i 3))
-                              (t (write-char (if (char= c #\Newline) #\Space c) out)
-                                 (incf i))))))))
-        (t (let ((*package* (find-package "ACL2"))) (prin1-to-string msg)))))
+skips the line break and the indentation after it.  A nested msg is a frame on
+an explicit stack, (msg index-into-its-text . its-own-stream), so the depth of
+the nesting costs list cells, not control-stack frames."
+  (let ((*package* (find-package "ACL2")) (stack (list (list* msg 0 (make-string-output-stream)))))
+    (loop
+      (let* ((frame (car stack)) (m (first frame)) (i (second frame)) (out (cddr frame)))
+        (flet ((finish ()
+                 (let ((text (get-output-stream-string out)))
+                   (pop stack)
+                   (when (null stack) (return text))
+                   (write-string text (cddr (car stack))))))
+          (cond ((stringp m) (write-string m out) (finish))
+                ((not (and (consp m) (stringp (car m)))) (prin1 m out) (finish))
+                (t (let* ((text (car m)) (n (length text)))
+                     (if (>= i n)
+                         (finish)
+                       (let ((c (char text i)))
+                         (cond ((and (char= c #\~) (< (+ i 1) n)
+                                     (char= (char text (+ i 1)) #\Newline))
+                                (setq i (+ i 2))
+                                (loop while (and (< i n)
+                                                 (member (char text i) '(#\Space #\Tab)))
+                                      do (incf i))
+                                (setf (second frame) i))
+                               ((and (char= c #\~) (< (+ i 2) n)
+                                     (find (char text (+ i 1)) "x@&")
+                                     (digit-char-p (char text (+ i 2))))
+                                (let ((arg (cdr (assoc (char text (+ i 2)) (cdr m)))))
+                                  (setf (second frame) (+ i 3))
+                                  (if (char= (char text (+ i 1)) #\@)
+                                      (push (list* arg 0 (make-string-output-stream)) stack)
+                                    (prin1 arg out))))
+                               (t (write-char (if (char= c #\Newline) #\Space c) out)
+                                  (setf (second frame) (+ i 1))))))))))))))
 
 (defun fnn-check-carried-tables (wrld)
   "X3: every table the export carried with a digest per row, as the world

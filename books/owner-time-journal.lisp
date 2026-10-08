@@ -294,7 +294,7 @@
 ; uncertain, B queued POSTs refused try-later).
 (defun fn-otm-note (s a b)
   (declare (xargs :guard t))
-  (let ((s2 (fn-otm-make (fn-otm-ocp s) (fn-otm-disk s)
+  (let ((s2 (fn-otm-keep s (fn-otm-ocp s) (fn-otm-disk s)
                          (list (fn-otm-now s) (fn-otm-regressions s) (+ 1 (fn-otm-jseq s))
                                (fn-otm-space s)))))
     (mv s2 (list (fn-otm-jseq s2) 5 (fn-otm-now s) (nfix a) (nfix b) 0 0))))

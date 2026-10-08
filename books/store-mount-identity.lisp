@@ -928,7 +928,8 @@
                                                         (nth 2 record)))
                 (fn-smid-same-filesystemp
                  (fn-smid-record-decode (nth 1 record) (nth 2 record))
-                 (fn-smid-observed-identity obs)))))
+                 (fn-smid-observed-identity obs))))
+ :rule-classes nil)
 
 ; KEYSTONE (PKT-648, the start).  On the filesystem it was recorded on, a
 ; store's owner start is refused by name exactly when its policy requires
@@ -1231,7 +1232,3 @@
                             fn-smid-observed-identity fn-smid-comma-split-aux
                             fn-smid-observationp nth member-equal)))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-smid-open-verdict-opens-only-on-a-match))

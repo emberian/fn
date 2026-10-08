@@ -3,6 +3,7 @@
 ;;; frontier agreement; the host carries the corresponding physical handle.
 (in-package "ACL2")
 (defvar *fnn-history-roots* (make-hash-table :test 'eql))
+(fnn-guarded-by *fnn-history-roots* (fnn-owner-service-lock))
 
 (defun fnn-history-root-abandon-held (generation candidate)
   "Owner gate held. Dispose only a definitely private, unleased candidate.
@@ -48,14 +49,25 @@ its physical backing and credit then remain in custody for fenced recovery."
     (unless (eq word :funded)
       (fnn-refuse-io "live history root allocation refused: ~a" word))))
 
+(defun fnn-owner-history-root-transient (service generation amount)
+  "The decode transient is its own ops credit (the article pool), not the root's reserve."
+  (let ((word (fnn-owner-gated (service :control)
+                (first (fnn-call 'fn-owner-hroot-transient generation amount *the-live-state*)))))
+    (unless (eq word :funded)
+      (fnn-refuse-io "live history decode allocation refused: ~a" word))))
+
 (defun fnn-owner-history-root-row (service generation ev ordinal stage)
   (fnn-owner-history-root-fund service generation
                               (fnn-core 'fn-hroot-event-demand ev ordinal stage))
+  (fnn-owner-history-root-transient service generation
+                                    (fnn-core 'fn-hroot-event-transient ev))
   (let ((answer (fnn-call 'fn-his-row-begin ev stage)))
     (loop
       (destructuring-bind (verdict cursor &rest ignored) answer
         (declare (ignore ignored))
-        (when (eq verdict :done) (return t))
+        (when (eq verdict :done)
+          (fnn-owner-history-root-transient service generation 0)
+          (return t))
         (let ((grow (and (consp verdict) (eq (car verdict) :grow-image))))
           (unless (or (eq verdict :yield) grow)
             (fnn-refuse-io "live history root row refused: ~a" verdict))
@@ -63,7 +75,9 @@ its physical backing and credit then remain in custody for fenced recovery."
           (sb-thread:thread-yield)
           (when grow
             (fnn-owner-history-root-fund service generation
-              (fnn-core 'fn-hroot-grow-demand (second cursor) ordinal stage)))
+              (fnn-core 'fn-hroot-grow-demand (second cursor) ordinal stage))
+            (fnn-owner-history-root-transient service generation
+              (fnn-core 'fn-hroot-grow-transient stage)))
           (setq answer (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step) cursor stage)))))))
 
 (defun fnn-owner-history-root-adopt (service generation stage candidate)
@@ -140,7 +154,10 @@ ACL2's source incarnation and refuses the candidate before installation."
               (unless (eq (first row) :event) (fnn-refuse-io "live history catchup refused: ~a" row))
               (fnn-owner-history-root-fund service generation
                 (fnn-core 'fn-hroot-tail-demand (second row) ordinal candidate))
+              (fnn-owner-history-root-transient service generation
+                (fnn-core 'fn-hroot-event-transient (second row)))
               (fnn-call 'fn-hist$p-append (second row) candidate)
+              (fnn-owner-history-root-transient service generation 0)
               (incf ordinal)
               (fnn-checkpoint-yield "live-history-tail" ordinal))))
       (when stage (fnn-call 'fn-hrecs$s-dispose stage))
@@ -202,10 +219,19 @@ ACL2's source incarnation and refuses the candidate before installation."
 (defun fnn-owner-history-root-maintain (service)
   (let ((*fnn-checkpoint-stop-test*
           (lambda () (fnn-owner-service-stopping service))))
-    (handler-case (fnn-owner-history-root-refresh service)
-      (fnn-store-io-refusal (e)
-        (fnn-err "HISTORY root retained current representation: ~a" e)
-        :refused))))
+    ;; Every word is noted: ACL2 classifies it (fn-hroot-refresh-status) and
+    ;; `status' / `health' render the class (books/history-root-status.lisp).
+    ;; A refusal no longer vanishes: the refresh returns begin's refusal by
+    ;; value, and an I/O refusal below is a refusal too.
+    (let* ((word (handler-case (fnn-owner-history-root-refresh service)
+                   (fnn-store-io-refusal (e)
+                     (fnn-err "HISTORY root retained current representation: ~a" e)
+                     (list :refused :history-root-io-refusal))))
+           (status (fnn-owner-gated (service :control)
+                     (fnn-owner-core 'fn-owner-hroot-note word))))
+      (unless (equal status '(:history-root :building))
+        (fnn-err "HISTORY root refresh not built: ~(~s~)" status))
+      word)))
 
 (defun fnn-owner-history-sync-first (service)
   "Install's explicit first history synchronization.  fn-owner-hroot-row is

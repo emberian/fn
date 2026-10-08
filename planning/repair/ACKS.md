@@ -18,3 +18,6 @@
 # deferred items (DC04, X13, PROOF-SWEEP-20261003 -- ember paused Luna proof
 # waves 2026-10-03 -- FILL-STORE-LINEAGE-DIVERGED-CHECKPOINT) are already PARKED
 # by their own state and written note, so they need no ACK.
+MEM-014 — needs a reader-lifetime statement (no reader, feed resolution or publication reads the retained history root after its release) before the retained generation can be released ahead of the candidate's allocation; not for the train-27 push (S, 2026-10-08) — N opens the lane once MEM-013 B' lands
+MEM-013-LIVE-ROOT — the live history root moves onto MEM-013's canonical placement only after B' lands for the checkpoint image; urgency waits on N's 25k probe on the train-27 developer image (held ruling 20) — S, once B' is READY and the 25k probe reports
+ATTACH-ORDER-IMPLICIT — the attach order is guarded today by host_check --attach-order and by the umbrella's generated line order, which lane n-tls-chain keeps byte-identical; making it an explicit dependency world.py reads is C's lane once n-tls-chain lands — C, after n-tls-chain merges

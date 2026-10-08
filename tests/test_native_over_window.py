@@ -29,7 +29,7 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.native_harness import Client, Node, executable, native_image
+from tests.native_harness import Client, Node, executable, native_image, table_reply
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
@@ -89,7 +89,7 @@ class NativeOverWindowTests(unittest.TestCase):
                                  (int(low), int(high)), status)
                 asked = time.monotonic()
                 status = client.command("OVER {}-{}".format(int(low), int(high)))
-                self.assertEqual(status, b"224 Overview information follows\r\n")
+                self.assertEqual(status, table_reply(224, "overview"))
                 reply = [status]
                 while True:
                     row = client.line(limit=65536)

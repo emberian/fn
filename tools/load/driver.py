@@ -49,7 +49,7 @@ from tools.load import result as res_mod            # noqa: E402
 from tools.load import workloads as wl              # noqa: E402
 
 NOFILE = [None]            # soft RLIMIT_NOFILE the run raised itself to (recorded in each cell box dict)
-BOX_BASE = "/tank/fn/scratch/load-harness"
+BOX_BASE = os.environ.get("FN_LOAD_BOX_BASE", "/tank/fn/scratch/load-harness")
 # One-off hook files live in the evidence dir (not tools/load): O2's FN_TRACE spans replace them.
 HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
 HOOK = HOOKS / "w13-idle-gc.lisp"
@@ -230,6 +230,7 @@ class Node:
         self.launcher, self.env = target.launcher(self.work, hooks, self.env)
         self.gc_log = Path(gc_log)
         self.proc, self.pid, self.port = None, None, None
+        self.post_init, self.log_path = [], None      # peers.py: operator words run after init; an [log] path
         self.config = self.work / "fn.toml"
         self.store = self.work / "store"
         self.err_n = 0
@@ -238,12 +239,14 @@ class Node:
 
     def write_config(self):
         import socket
-        with socket.socket() as s:
-            s.bind(("127.0.0.1", 0))
-            self.port = s.getsockname()[1]
+        if self.port is None:
+            with socket.socket() as s:
+                s.bind(("127.0.0.1", 0))
+                self.port = s.getsockname()[1]
         server = ""        # fn.toml has no [server] table (books/native-config.lisp: key-allowedp); the cap is policy, see apply_policy
-        self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n%s'
-                               % (self.store, self.port, self.work / "c.sock", server))
+        self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n%s%s'
+                               % (self.store, self.port, self.work / "c.sock", server,
+                                  '[log]\npath = "%s"\n' % self.log_path if self.log_path else ""))
 
     def argv(self, *words):
         return [str(self.launcher), "--fn", "operator", str(self.config), *words]
@@ -254,6 +257,15 @@ class Node:
                            stderr=subprocess.STDOUT, timeout=900)
         if p.returncode != 0:
             raise CellError("operator init exit %d: %s" % (p.returncode, p.stdout[-400:].decode("utf-8", "replace")))
+        for words in self.post_init:
+            self.operator(*words)
+
+    def operator(self, *words):
+        """An offline `operator CONFIG words...` verb (owner stopped or not yet started); stdout+stderr."""
+        p = subprocess.run(self.argv(*words), env=self.env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=900)
+        if p.returncode != 0:
+            raise CellError("operator %s exit %d: %s" % (" ".join(words[:3]), p.returncode, p.stdout[-400:].decode("utf-8", "replace")))
+        return p.stdout.decode("utf-8", "replace")
 
     def decide_heap(self):
         """The heap and control stack the image's own probe decides for this store (MEM-002):
@@ -892,6 +904,11 @@ class Run:
         c.close()
         return {"verified": len(ids), "mismatches": mism, "first_mismatch": first_bad}
 
+    def phase_peers(self, ph):
+        """W6: a second node B beside the harness node A (tools/load/peers.py)."""
+        from . import peers
+        return peers.run_phase(self, ph, sys.modules[__name__])
+
     def phase_census(self, ph):
         """SBCL's accounting of the dynamic space (the one-off w15-census.lisp hook), raw and after a full GC."""
         d = Path(self.node.work) / "census"
@@ -1204,6 +1221,7 @@ def prepare_store(node, run, spec, cache_dir, key):
     with contextlib.suppress(OSError):
         cached.mkdir(parents=True, exist_ok=True)
         shutil.copytree(node.store, cached / "store", symlinks=True)
+    node.decided = None     # the probe decides again for the filled store: the empty store's heap refuses its cold start
     node.start()
     run.ctr.refusals.clear()
     run.ctr.admitted = run.ctr.refused = 0
@@ -1233,6 +1251,10 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
                 spec.get("heap", "decided"), None)
     ctr = Counters()
     run = Run(node, spec, ctr, args)
+    run.peers = None
+    if spec.get("peers"):
+        from . import peers
+        run.peers = peers.setup(node, spec, sys.modules[__name__])
     run.cell_id = cell.id
     cr = {"trace": None, "cell": cell.id, "workload": cell.workload, "target": target.kind, "arm": arm, "rep": rep,
           "preset": spec["preset"], "flags": node.flags, "git": args.rev, "status": "running",
@@ -1324,6 +1346,9 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         cr["traceback"] = traceback.format_exc()[-900:]
     finally:
         node.sampler.stop_ev.set()
+        if run.peers:
+            with contextlib.suppress(Exception):
+                run.peers.close(keep=args.keep)
         with contextlib.suppress(Exception):
             cr["exit_code"] = node.stop()
         cr["refusals"] = dict(ctr.refusals)
@@ -1455,7 +1480,7 @@ def cmd_box(args):
         if p.returncode:
             raise SystemExit("rsync %s failed: %s" % (src, p.stderr))
     inner = ["python3", "-m", "tools.load.driver", "run", "--cell", args.cell, "--label", args.label, "--out", runs,
-             "--box", args.box, "--repeat", str(args.repeat)]
+             "--box", args.box, "--repeat", str(args.repeat), "--cache", "%s/stores" % base]
     for img in args.image:
         inner += ["--image", img]
     for core in args.fn_core:

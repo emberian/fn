@@ -345,8 +345,7 @@
                                    (h2 (fn-bprv-history (fn-snrt-run store events)))
                                    (x record)))
            :in-theory (e/d (fn-bprv-extendsp)
-                           (fn-bprv-snrt-run-extends-history
-                            fn-bprv-prefix-preserves-member)))))
+                           (fn-bprv-snrt-run-extends-history)))))
 
 ; -----------------------------------------------------------------------------
 ; Interleaving (L13, L14).  A system state is (store st); an event is a Store

@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/catalog-pages.lisp",
+ "id": "CPG-DIR-PERSIST",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pool",
+ "state": "open",
+ "title": "The directory tape (NAME-dir-pages-of: one (offset, width) record per row) must persist in the catalog root r-cat beside the rows: the commit appends one record (an append-dirty at the directory's end, at most 2 pages), and a withdrawal that ESCAPES a row (PCK-ADOPT-ESCAPED) changes that row's width and so shifts every later offset in the directory. Owed: fn-pck-adopt-is-the-catalog gains the directory image and its commit delta; PCK-ADOPT-ESCAPED's widening statement covers the directory suffix.",
+ "updated": "2026-10-07T23:29:28Z"
+}

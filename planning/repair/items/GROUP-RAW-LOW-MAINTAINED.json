@@ -1,0 +1,13 @@
+{
+ "category": "perf",
+ "file": "books/served-catalog.lisp",
+ "id": "GROUP-RAW-LOW-MAINTAINED",
+ "notes": ["lane s-group 373d7b971: GROUP's low runs fn-scat-raw-first-p (keystone fn-scat-group-low-pass-is-raw-first-p). ACL2-level per call, persvati: 1000 articles fresh 0.84 ms / 1.04 MB before, ~0 ms / 0.9 KB after; 1000 articles with the first 900 withdrawn 0.22 ms / 119 KB before, 0.10 ms / 15.4 KB after (901 number-table probes, no row decodes beyond the probed numbers). The cost is O(leading non-kept numbers), which grows with a long-lived group's withdrawn/reclaimed prefix."],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-group",
+ "state": "open",
+ "title": "GROUP's raw low costs O(withdrawn/reclaimed prefix). Intended: a maintained per-group first-visible (raw-kept) number, updated on commit, withdraw and reclaim like the live links, with the statement that at the live view it equals (fn-scat-raw-first-p group 1 (fn-cat-group-high group fn-cat) v fn-cat); GROUP then reads it in O(1).",
+ "updated": "2026-10-08T00:30:00Z"
+}

@@ -15,9 +15,9 @@ CONTEXT word, in every tracked file under planning/, docs/ and tests/
   secret    a standalone 32-hex-digit token (an invitation code's shape: no
             hex digit or word character on either side, so a 64-hex digest
             or a hex run inside a longer word is not one);
-            `password=VALUE` / `password: VALUE` / `passwd` / `secret=VALUE`;
+            `password=<VALUE>` / `password: <VALUE>` / `passwd` / `secret=<VALUE>`;
             `Bearer TOKEN` (16+ token characters);
-            `Authorization: VALUE`.
+            `Authorization: <VALUE>`.
 
 WINDOW is 5 lines.  An invitation is quoted on its own command line
 (`XREDEEM <code>`), or in a transcript or a record one to three lines from the
@@ -41,6 +41,9 @@ here and applied mechanically:
              starts with `<`, `$`, `{`, `%`, `*`, `...`/`…`, or is one of
              `x`-runs, `REDACTED`, `redacted`, `changeme`, `example`,
              `secret`, `password` (the word itself), or empty.
+  tuple      `a, password = X, Y' pairs each target with the value at its
+             position: the password is Y, judged as a value (a literal string)
+             or an expression (no secret);
   evidence   a 32-hex token inside a path under `planning/evidence/`
              (`planning/evidence/repair/S107-<uuid4 hex>.json`: the repair
              tool's archive names, which sit beside a ledger item's title
@@ -74,7 +77,7 @@ WINDOW = 5
 CONTEXT = re.compile(r"(?i)(?<![A-Za-z0-9_/.-])(?:x?redeem|invit(?:e|es|ed|ing|ation)"
                      r"|credentials?)(?![A-Za-z0-9_]|[-_/.][A-Za-z0-9])")
 HEX32 = re.compile(r"(?<![0-9A-Za-z_])([0-9a-fA-F]{32})(?![0-9A-Za-z_])")
-# `password=VALUE' and a quoted `"password": "VALUE"'; an unquoted
+# `password=<VALUE>' and a quoted `"password": "<VALUE>"'; an unquoted
 # `Password: ...' is a prompt in a transcript (`Password: Confirm password:'),
 # never a value.
 PASSWORD = re.compile(r"(?i)\b(?:password|passwd|secret)\s*=\s*\\?[\"']?([^\s\"',;)\\]*)"
@@ -115,6 +118,60 @@ def placeholder(value: str) -> bool:
     return len(words) == 2 and placeholder(words[1])
 
 
+# `login, password = "fit-" + ..., token_hex(12)': a tuple assignment pairs each
+# target with the value at its position.  Read as one `password = VALUE' the
+# regex takes the first right-hand value, which belongs to another target.
+TUPLE = re.compile(r"^\s*([A-Za-z_][\w.]*(?:\s*,\s*[A-Za-z_][\w.]*)+)\s*=(?!=)\s*(.+?)\s*$")
+SECRET_NAME = re.compile(r"(?i)^(?:\w+\.)*(?:password|passwd|secret)$")
+
+
+def top_level_split(text: str) -> list[str]:
+    """TEXT split at the commas outside brackets and quotes, up to a trailing `#' comment."""
+    parts, depth, quote, start, i = [], 0, None, 0, 0
+    while i < len(text):
+        c = text[i]
+        if quote:
+            if c == "\\":
+                i += 1
+            elif c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif c == "#" and depth == 0:
+            break  # a trailing comment
+        elif c == "," and depth == 0:
+            parts.append(text[start:i].strip())
+            start = i + 1
+        i += 1
+    parts.append(text[start:i].strip())
+    return parts
+
+
+def tuple_values(line: str):
+    """[(target, value)] of a tuple assignment LINE with as many values as
+    targets; None when LINE is no such assignment."""
+    match = TUPLE.match(line)
+    if not match:
+        return None
+    targets = [t.strip() for t in match.group(1).split(",")]
+    values = top_level_split(match.group(2))
+    if len(values) != len(targets):
+        return None
+    return list(zip(targets, values))
+
+
+def literal_value(value: str) -> str:
+    """A quoted string literal's contents; anything else is an expression,
+    returned as is (placeholder() reads an expression as no secret)."""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
+
+
 def redact(value: str) -> str:
     return f"{value[:4]}... ({len(value)} chars)"
 
@@ -137,7 +194,13 @@ def findings_in(text: str, window: int = WINDOW) -> list[tuple[int, str]]:
                 continue
             if not synthetic_hex(match.group(1)):
                 found.append((number + 1, "a 32-hex token " + redact(match.group(1))))
-        for pattern, kind in ((PASSWORD, "a password/secret value"),
+        pairs = tuple_values(line)
+        if pairs is not None:
+            for target, value in pairs:
+                value = literal_value(value)
+                if SECRET_NAME.match(target) and not placeholder(value):
+                    found.append((number + 1, "a password/secret value " + redact(value)))
+        for pattern, kind in (((PASSWORD, "a password/secret value"),) if pairs is None else ()) + (
                               (BEARER, "a bearer token"),
                               (AUTHORIZATION, "an Authorization header value")):
             for match in pattern.finditer(line):

@@ -123,9 +123,9 @@
   (implies (and (fn-bs-dir-tablep x) (fn-bs-dir-idp k) (fn-bs-entriesp v))
            (fn-bs-dir-tablep (fn-bs-put-assoc k v x))))
 
-(defthm fn-bs-keys-belowp-bounds-known-key
+(local (defthm fn-bs-keys-belowp-bounds-known-key
   (implies (and (fn-bs-keys-belowp x n) (assoc-equal k x))
-           (< k n)))
+           (< k n))))
 (defthm fn-bs-keys-belowp-excludes-bound
   (implies (fn-bs-keys-belowp x n)
            (not (assoc-equal n x))))
@@ -815,7 +815,7 @@
     fn-bs-put-assoc-preserves-inode-tablep fn-bs-dir-tablep-entries-are-entries
     fn-bs-put-assoc-preserves-entriesp fn-bs-del-assoc-preserves-entriesp
     fn-bs-put-assoc-preserves-dir-tablep
-    fn-bs-keys-belowp-bounds-known-key fn-bs-keys-belowp-excludes-bound
+    fn-bs-keys-belowp-excludes-bound
     fn-bs-keys-belowp-monotone fn-bs-put-assoc-preserves-keys-belowp
     fn-bs-zeros-are-octets fn-bs-take-is-true-list
     fn-bs-take-of-octets-are-octets fn-bs-nthcdr-of-octets-are-octets
@@ -862,5 +862,5 @@
 ; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
 ; a structural primitive of bare variables, kept for this book's proofs
 ; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bs-keys-belowp-bounds-known-key
+(in-theory (disable
                     fn-bs-keys-belowp-excludes-bound))

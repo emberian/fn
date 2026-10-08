@@ -29,6 +29,7 @@
 ;   fn-arena-count             (len a)
 ;   fn-arena-payload-len h     (len (nth h a))
 ;   fn-arena-get h i           (nth i (nth h a))
+;   fn-arena-get-span h at n   the list of (nth at+k (nth h a)), k < n   (one read's worth)
 ;   fn-arena-payload h         (nth h a)
 ;   fn-arena-seal-list xs      (append a (list xs))      a new handle (the old count)
 ;   fn-arena-seal-buffer st    (append a (list st))      the octet buffer's value sealed
@@ -110,6 +111,18 @@
                               (natp h) (< h (fn-arena$l-count fn-arena$l))
                               (natp i) (< i (fn-arena$l-payload-len h fn-arena$l)))))
   (fn-oct-nth i (fn-oct-nth h (fn-arena$l-items fn-arena$l))))
+
+(defun fn-arena$l-get-span (h at n fn-arena$l)
+  (declare (xargs :stobjs fn-arena$l
+                  :guard (and (fn-arena$l-wfp fn-arena$l)
+                              (natp h) (< h (fn-arena$l-count fn-arena$l))
+                              (natp at) (natp n)
+                              (<= (+ at n) (fn-arena$l-payload-len h fn-arena$l)))
+                  :measure (nfix n)))
+  (if (zp n)
+      nil
+    (cons (fn-arena$l-get h at fn-arena$l)
+          (fn-arena$l-get-span h (+ 1 at) (1- n) fn-arena$l))))
 
 (defun fn-arena$l-payload (h fn-arena$l)
   (declare (xargs :stobjs fn-arena$l
@@ -258,6 +271,27 @@
            (and (fn-arena$l-wfp fn-arena$l)
                 (natp h) (< h (fn-arena$l-count fn-arena$l))
                 (natp i) (< i (fn-arena$l-payload-len h fn-arena$l))))
+  :rule-classes nil)
+
+(defthm fn-arena-get-span{correspondence}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (natp h) (< h (fn-arena$a-count fn-arena))
+                (natp at) (natp n)
+                (<= (+ at n) (fn-arena$a-payload-len h fn-arena)))
+           (equal (fn-arena$l-get-span h at n fn-arena$l)
+                  (fn-arena$a-get-span h at n fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-arena$a-get-span h at n fn-arena))))
+
+(defthm fn-arena-get-span{guard-thm}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (natp h) (< h (fn-arena$a-count fn-arena))
+                (natp at) (natp n)
+                (<= (+ at n) (fn-arena$a-payload-len h fn-arena)))
+           (and (fn-arena$l-wfp fn-arena$l)
+                (natp h) (< h (fn-arena$l-count fn-arena$l))
+                (natp at) (natp n)
+                (<= (+ at n) (fn-arena$l-payload-len h fn-arena$l))))
   :rule-classes nil)
 
 (defthm fn-arena-payload{correspondence}
@@ -507,6 +541,7 @@
   :exports ((fn-arena-count :logic fn-arena$a-count :exec fn-arena$l-count)
             (fn-arena-payload-len :logic fn-arena$a-payload-len :exec fn-arena$l-payload-len)
             (fn-arena-get :logic fn-arena$a-get :exec fn-arena$l-get)
+            (fn-arena-get-span :logic fn-arena$a-get-span :exec fn-arena$l-get-span)
             (fn-arena-payload :logic fn-arena$a-payload :exec fn-arena$l-payload)
             (fn-arena-seal-list :logic fn-arena$a-seal-list :exec fn-arena$l-seal-list
                                 :protect t)
@@ -542,6 +577,16 @@
 
 (defthm fn-arena-get-is-nth
   (equal (fn-arena-get h i fn-arena) (nth i (nth h fn-arena))))
+
+; The span is the list of the gets (the renderer's equivalence rests on this).
+(defthm fn-arena-get-span-is-the-gets
+  (equal (fn-arena-get-span h at n fn-arena)
+         (if (zp n)
+             nil
+           (cons (fn-arena-get h at fn-arena)
+                 (fn-arena-get-span h (+ 1 at) (1- n) fn-arena))))
+  :rule-classes ((:definition :controller-alist ((fn-arena-get-span nil nil t nil))))
+  :hints (("Goal" :in-theory (enable fn-arena-get-span fn-arena-get))))
 
 (defthm fn-arena-payload-is-nth
   (equal (fn-arena-payload h fn-arena) (nth h fn-arena)))
@@ -582,7 +627,7 @@
            (and (fn-arn-payload-listp x) (true-listp x)))
   :rule-classes :forward-chaining)
 
-(in-theory (disable fn-arena-p fn-arena-count fn-arena-payload-len fn-arena-get
+(in-theory (disable fn-arena-p fn-arena-count fn-arena-payload-len fn-arena-get fn-arena-get-span
                     fn-arena-payload fn-arena-seal-list fn-arena-seal-buffer fn-arena-clear
                     fn-arena-seal-range fn-arena-reseat-extent fn-arena-release
                     fn-arena-p-is-payload-listp))

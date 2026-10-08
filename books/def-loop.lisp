@@ -100,6 +100,28 @@
 ; `:stop' without `:stop-value'; `:stop', `:keep', `:let' or `:tail' on a
 ; shape that has none; a `:into' without `:map'.
 ;
+; :loop-guard-hints H replaces :guard-hints as the hints of the loop's
+; verify-guards (H may be nil: the default theory); :concat takes :rev as
+; :foldr does, for a body that is not known to be a true list.
+;
+; :thread (a value threaded through the elements, each step contributing a
+; list of rows that are spliced in order, the result built by a constructor):
+;   :st ST        the threaded formal (not :over)
+;   :let / :row   the step's bindings, and the list of rows it contributes
+;   :next         the new ST for the recursion on (cdr XS)
+;   :done         the stop test over XS and ST (default (atom XS))
+;   :make / :st-of / :rows-of   the result as a term over ST and DL-ROWS,
+;                 and its two selectors over DL-R; at the stop the result is
+;                 (:make ST nil).  The instance owes
+;                 (:st-of (:make ST DL-ROWS)) = ST and the rows-of equation.
+;   :rev          the loop reverses each step's rows onto the accumulator with
+;                 this function (default revappend; fn-ag-rev-onto when the
+;                 rows are not known to be a true list)
+; The generated bridge states, for any ACC,
+;   (LOOP .. ACC) = (let ((dl-r (NAME ..))) (:make (:st-of dl-r)
+;                                              (revappend ACC (:rows-of dl-r))))
+; and the loop at nil equals NAME (the :exec of the wrapper's mbe).
+;
 ; Not generated: a loop that steps by other than `(cdr XS)' (nov-scrub skips
 ; two), a loop that threads a stobj AND accumulates (a fold; see
 ; `fn-hif-def-fold'), `defexec'.  Those stay by hand with a `; GEN: def-loop'
@@ -447,6 +469,70 @@
          (mv-let (r a) (fn-dl-fold dl-s dl-st)
            (mv (if (equal r (fn-dl-fo-fail)) (fn-dl-fo-fail) (revappend dl-acc r)) a)))
   :hints (("Goal" :induct (fn-dl-fold-loop dl-s dl-acc dl-st))))
+
+; --- :thread: a value (a connection, a table) threaded through every element,
+; each step yielding a list of rows that are spliced (appended) in element
+; order.  The result is built from the final state and the rows by MAKE and
+; taken apart by ST-OF / ROWS-OF, which must be inverses of it (the instance
+; owes those two equations).  At the end, the result is (MAKE ST NIL).
+(encapsulate
+  (((fn-dl-th-done * *) => *) ((fn-dl-th-rows * *) => *) ((fn-dl-th-next * *) => *)
+   ((fn-dl-th-make * *) => *) ((fn-dl-th-st-of *) => *) ((fn-dl-th-rows-of *) => *)
+   ((fn-dl-th-m *) => *))
+  (local (defun fn-dl-th-done (xs st) (declare (ignore st)) (atom xs)))
+  (local (defun fn-dl-th-rows (xs st) (declare (ignore st)) (list (car xs))))
+  (local (defun fn-dl-th-next (xs st) (declare (ignore xs)) st))
+  (local (defun fn-dl-th-make (st rows) (cons st rows)))
+  (local (defun fn-dl-th-st-of (r) (car r)))
+  (local (defun fn-dl-th-rows-of (r) (cdr r)))
+  (local (defun fn-dl-th-m (xs) (acl2-count xs)))
+  (defthm fn-dl-th-st-of-make
+    (equal (fn-dl-th-st-of (fn-dl-th-make dl-st dl-rows)) dl-st))
+  (defthm fn-dl-th-rows-of-make
+    (equal (fn-dl-th-rows-of (fn-dl-th-make dl-st dl-rows)) dl-rows))
+  (defthm fn-dl-th-m-natp (natp (fn-dl-th-m dl-xs)))
+  (defthm fn-dl-th-progress
+    (implies (not (fn-dl-th-done dl-xs dl-st))
+             (and (consp dl-xs)
+                  (< (fn-dl-th-m (cdr dl-xs)) (fn-dl-th-m dl-xs))))))
+
+(defun fn-dl-thread (dl-xs dl-st)
+  (declare (xargs :measure (nfix (fn-dl-th-m dl-xs))))
+  (if (fn-dl-th-done dl-xs dl-st)
+      (fn-dl-th-make dl-st nil)
+    (let ((dl-r (fn-dl-thread (cdr dl-xs) (fn-dl-th-next dl-xs dl-st))))
+      (fn-dl-th-make (fn-dl-th-st-of dl-r)
+                     (append (fn-dl-th-rows dl-xs dl-st) (fn-dl-th-rows-of dl-r))))))
+
+(defun fn-dl-thread-loop (dl-xs dl-st dl-acc)
+  (declare (xargs :measure (nfix (fn-dl-th-m dl-xs))))
+  (if (fn-dl-th-done dl-xs dl-st)
+      (fn-dl-th-make dl-st (revappend dl-acc nil))
+    (fn-dl-thread-loop (cdr dl-xs) (fn-dl-th-next dl-xs dl-st)
+                       (revappend (fn-dl-th-rows dl-xs dl-st) dl-acc))))
+
+(local
+ (defthm fn-dl-th-revappend-revappend
+   (equal (revappend (revappend a b) c) (revappend b (append a c)))))
+
+(defthm fn-dl-thread-loop-is-revappend
+  (equal (fn-dl-thread-loop dl-xs dl-st dl-acc)
+         (fn-dl-th-make (fn-dl-th-st-of (fn-dl-thread dl-xs dl-st))
+                        (revappend dl-acc (fn-dl-th-rows-of (fn-dl-thread dl-xs dl-st)))))
+  :hints (("Goal" :induct (fn-dl-thread-loop dl-xs dl-st dl-acc))))
+
+(defthm fn-dl-thread-is-make
+  (equal (fn-dl-thread dl-xs dl-st)
+         (fn-dl-th-make (fn-dl-th-st-of (fn-dl-thread dl-xs dl-st))
+                        (fn-dl-th-rows-of (fn-dl-thread dl-xs dl-st))))
+  :hints (("Goal" :expand ((fn-dl-thread dl-xs dl-st)))))
+
+(defthm fn-dl-thread-loop-at-nil
+  (equal (fn-dl-thread-loop dl-xs dl-st nil) (fn-dl-thread dl-xs dl-st))
+  :hints (("Goal" :use ((:instance fn-dl-thread-loop-is-revappend (dl-acc nil))
+                        fn-dl-thread-is-make)
+                  :in-theory (disable fn-dl-thread-loop-is-revappend fn-dl-thread-is-make))))
+
 
 ; --- :foldr: a right fold with a non-list accumulator, executed as a left
 ; fold over the reversed list.  F combines an element with the fold of the
@@ -798,6 +884,16 @@
        ((lambda ,svars (declare (ignorable ,@svars)) ,term)
         ,@(strip-cdrs (fn-dl-sp-parts svars 0))))))
 
+(defun fn-dl-fold-substitution (name formals svars st loop done row next fail let m)
+  (declare (xargs :mode :program))
+  `((fn-dl-fo-done ,(fn-dl-sp-lam svars done))
+                          (fn-dl-fo-step ,(fn-dl-fo-lam svars st (fn-dl-proof-let let row)))
+                          (fn-dl-fo-next ,(fn-dl-sp-lam svars (fn-dl-proof-let let (fn-dl-sp-tuple svars next))))
+                          (fn-dl-fo-m ,(fn-dl-sp-lam svars m))
+                          (fn-dl-fo-fail (lambda () ,fail))
+                          (fn-dl-fold ,(fn-dl-fo-lam svars st `(,name ,@formals)))
+                          (fn-dl-fold-loop ,(fn-dl-fo-loop-lam svars st loop formals))))
+
 (defun fn-dl-fold-events (name formals svars st stobjp done row elt next fail let
                                guard guard-hints guard-theory acc loop measure progress-hints)
   (declare (xargs :mode :program))
@@ -856,13 +952,7 @@
                   :use ((:instance
                          (:functional-instance
                           fn-dl-fold-loop-is-revappend
-                          (fn-dl-fo-done ,(fn-dl-sp-lam svars done))
-                          (fn-dl-fo-step ,(fn-dl-fo-lam svars st (fn-dl-proof-let let row)))
-                          (fn-dl-fo-next ,(fn-dl-sp-lam svars (fn-dl-proof-let let (fn-dl-sp-tuple svars next))))
-                          (fn-dl-fo-m ,(fn-dl-sp-lam svars m))
-                          (fn-dl-fo-fail (lambda () ,fail))
-                          (fn-dl-fold ,(fn-dl-fo-lam svars st `(,name ,@formals)))
-                          (fn-dl-fold-loop ,(fn-dl-fo-loop-lam svars st loop formals)))
+                          ,@(fn-dl-fold-substitution name formals svars st loop done row next fail let m))
                          (dl-s ,(fn-dl-sp-tuple svars svars)) (dl-acc ,acc) (dl-st ,st)))
                   :expand ,calls
                   :in-theory (union-theories '(,name ,loop car-cons cdr-cons)
@@ -880,8 +970,142 @@
                                             (union-theories (theory 'minimal-theory)
                                                             (executable-counterpart-theory :here))))))
       (in-theory (disable ,loop))
+      (table fn-teeth-instances ',name
+             '(:lemma fn-dl-fold-loop-is-revappend :functions (,name ,loop)
+               :substitution
+               ,(fn-dl-fold-substitution name formals svars st loop done row next fail let m)))
       (table fn-generated ',name '(:def-loop :shape :fold :loop ,loop :bridge ,bridge)))))
 
+
+; -----------------------------------------------------------------------------
+; The :thread events.  The recursion's state is the list XS (advancing by
+; CDR) and the threaded formal ST.  LET binds the step's value (over the
+; element and ST); ROW is the list it contributes, NEXT the new ST.  MAKE,
+; ST-OF and ROWS-OF are terms over ST and DL-ROWS / over DL-R.
+
+(defun fn-dl-th-make-at (make st st-term rows-term)
+  (declare (xargs :mode :program))
+  (fn-dl-psubst (list (cons st st-term) (cons 'dl-rows rows-term)) make))
+
+; The functional instance of the library lemma LEMMA at this instance.
+(defun fn-dl-th-inst (lemma name formals xs st acc loop done rows-let next-let make st-of rows-of m)
+  (declare (xargs :mode :program))
+  `(:instance
+    (:functional-instance
+     ,lemma
+     (fn-dl-th-done (lambda (,xs ,st) ,done))
+     (fn-dl-th-rows (lambda (,xs ,st) ,rows-let))
+     (fn-dl-th-next (lambda (,xs ,st) ,next-let))
+     (fn-dl-th-make (lambda (,st dl-rows) ,make))
+     (fn-dl-th-st-of (lambda (dl-r) ,st-of))
+     (fn-dl-th-rows-of (lambda (dl-r) ,rows-of))
+     (fn-dl-th-m (lambda (,xs) ,m))
+     (fn-dl-thread (lambda (,xs ,st) (,name ,@formals)))
+     (fn-dl-thread-loop (lambda (,xs ,st dl-acc) (,loop ,@formals dl-acc))))
+    (dl-xs ,xs) (dl-st ,st) ,@(and acc `((dl-acc ,acc)))))
+
+(defun fn-dl-th-hints (lemma name formals xs st acc loop done rows-let next-let make st-of rows-of m
+                             rev-ok rev-lemma mop pe sm rm call)
+  (declare (xargs :mode :program))
+  `(("Goal"
+     :use (,(fn-dl-th-inst lemma name formals xs st acc loop done rows-let next-let make st-of rows-of m))
+     :expand ((,name ,@formals) ,call)
+     :in-theory (union-theories '(,name ,loop car-cons cdr-cons
+                                        ,@(and (not rev-ok) (list rev-lemma)))
+                                (theory 'minimal-theory)))
+    (if stable-under-simplificationp
+        '(:computed-hint-replacement nil
+          :use ((:instance ,mop :extra-bindings-ok (,xs dl-xs) (,st dl-st))
+                (:instance ,pe :extra-bindings-ok (,xs dl-xs) (,st dl-st))
+                (:instance ,sm :extra-bindings-ok (,st dl-st))
+                (:instance ,rm :extra-bindings-ok (,st dl-st) (dl-rows dl-rows))))
+      nil)))
+
+(defun fn-dl-thread-events (name formals xs elt st done row next make st-of rows-of let rev
+                                 guard guard-hints guard-theory acc loop measure progress-hints
+                                 stobjs)
+  (declare (xargs :mode :program))
+  (let* ((done (or (fn-dl-elt elt xs done) `(atom ,xs)))
+         (row (fn-dl-elt elt xs row))
+         (next (fn-dl-elt elt xs next))
+         (let (fn-dl-elt elt xs let))
+         (m (or measure `(acl2-count ,xs)))
+         (call-args (fn-dl-psubst (list (cons xs `(cdr ,xs)) (cons st next)) formals))
+         (rec `(,name ,@call-args))
+         (empty (fn-dl-psubst (list (cons 'dl-rows nil)) make))
+         (rev-ok (eq rev 'revappend))
+         (rev-lemma (fn-dl-name (list name "-REV-IS-REVAPPEND") name))
+         (bridge (fn-dl-name (list loop "-IS-REVAPPEND") name))
+         (bridge0 (fn-dl-name (list loop "-IS-" name) name))
+         (mop (fn-dl-name (list name "-MEASURE-NATP") name))
+         (pe (fn-dl-name (list name "-PROGRESS") name))
+         (sm (fn-dl-name (list name "-ST-OF-MAKE") name))
+         (rm (fn-dl-name (list name "-ROWS-OF-MAKE") name))
+         (st-of-make (fn-dl-psubst (list (cons 'dl-r make)) st-of))
+         (rows-of-make (fn-dl-psubst (list (cons 'dl-r make)) rows-of))
+         (rows-let (fn-dl-proof-let let row))
+         (next-let (fn-dl-proof-let let next)))
+    `(,@(and (not rev-ok)
+             `((local (defthm ,rev-lemma (equal (,rev dl-a dl-b) (revappend dl-a dl-b))
+                        :hints (("Goal" :induct (,rev dl-a dl-b)
+                                 :in-theory (union-theories '(,rev revappend)
+                                                            (theory 'minimal-theory))))))))
+      (defun ,loop (,@formals ,acc)
+        (declare (xargs :guard ,(fn-dl-and guard `(true-listp ,acc)) :verify-guards nil
+                        :measure ,m
+                        ,@(and stobjs `(:stobjs ,stobjs))))
+        (if ,done
+            ,(fn-dl-th-make-at make st st `(,rev ,acc nil))
+          ,(fn-dl-let let `(,loop ,@call-args (,rev ,row ,acc)))))
+      (defun ,name ,formals
+        (declare (xargs :guard ,guard :verify-guards nil :measure ,m
+                        ,@(and stobjs `(:stobjs ,stobjs))))
+        (mbe :logic (if ,done
+                        ,empty
+                      ,(fn-dl-let let
+                         `(let ((dl-r ,rec))
+                            ,(fn-dl-th-make-at make st st-of `(append ,row ,rows-of)))))
+             :exec (,loop ,@formals nil)))
+      (local (defthm ,mop (natp ,m) :rule-classes nil
+               ,@(and progress-hints `(:hints ,progress-hints))))
+      (local
+       (defthm ,pe
+         (implies (not ,done)
+                  (and (consp ,xs) (< ,(fn-dl-psubst (list (cons xs `(cdr ,xs))) m) ,m)))
+         :rule-classes nil
+         ,@(and progress-hints `(:hints ,progress-hints))))
+      (local (defthm ,sm (equal ,st-of-make ,st) :rule-classes nil
+               ,@(and progress-hints `(:hints ,progress-hints))))
+      (local (defthm ,rm (equal ,rows-of-make dl-rows) :rule-classes nil
+               ,@(and progress-hints `(:hints ,progress-hints))))
+      (local
+       (defthm ,bridge
+         (equal (,loop ,@formals ,acc)
+                (let ((dl-r (,name ,@formals)))
+                  ,(fn-dl-th-make-at make st st-of `(revappend ,acc ,rows-of))))
+         :hints ,(fn-dl-th-hints 'fn-dl-thread-loop-is-revappend name formals xs st acc loop done
+                                 rows-let next-let make st-of rows-of m rev-ok rev-lemma
+                                 mop pe sm rm `(,loop ,@formals ,acc))))
+      (local
+       (defthm ,bridge0
+         (equal (,loop ,@formals nil) (,name ,@formals))
+         :hints ,(fn-dl-th-hints 'fn-dl-thread-loop-at-nil name formals xs st nil loop done
+                                 rows-let next-let make st-of rows-of m rev-ok rev-lemma
+                                 mop pe sm rm `(,loop ,@formals nil))))
+      (verify-guards ,loop ,@(and guard-hints `(:hints ,guard-hints)))
+      (verify-guards ,name
+        :hints (("Goal"
+                 :use (,bridge0)
+                 :in-theory (union-theories '(,name ,@guard-theory)
+                                            (union-theories (theory 'minimal-theory)
+                                                            (executable-counterpart-theory :here))))))
+      (in-theory (disable ,loop))
+      (table fn-teeth-instances ',name
+             '(:lemma fn-dl-thread-loop-is-revappend :functions (,name ,loop)
+               :substitution
+               ,(cddr (cadr (fn-dl-th-inst 'fn-dl-thread-loop-is-revappend name formals xs st acc
+                                           loop done rows-let next-let make st-of rows-of m)))))
+      (table fn-generated ',name '(:def-loop :shape :thread :loop ,loop :bridge ,bridge)))))
 
 ; -----------------------------------------------------------------------------
 ; The :foldr events.  COMBINE is a term over ELT (the element) and ACC (the
@@ -1176,17 +1400,24 @@
       (in-theory (disable ,loop))
       (table fn-generated ',name '(:def-loop :shape :sum :loop ,loop :bridge ,bridge)))))
 
-(defun fn-dl-concat-events (name formals xs elt body guard guard-hints guard-theory acc loop measure)
+(defun fn-dl-concat-events (name formals xs elt body guard guard-hints guard-theory acc loop measure rev)
   (declare (xargs :mode :program))
   (let* ((body (if elt (fn-dl-subst elt `(car ,xs) body) body))
          (next (fn-dl-replace formals xs `(cdr ,xs)))
-         (bridge (fn-dl-name (list loop "-IS-REVAPPEND") name)))
-    `((defun ,loop (,@formals ,acc)
+         (bridge (fn-dl-name (list loop "-IS-REVAPPEND") name))
+         (rev-ok (eq rev 'revappend))
+         (rev-lemma (fn-dl-name (list name "-REV-IS-REVAPPEND") name)))
+    `(,@(and (not rev-ok)
+             `((local (defthm ,rev-lemma (equal (,rev dl-a dl-b) (revappend dl-a dl-b))
+                        :hints (("Goal" :induct (,rev dl-a dl-b)
+                                 :in-theory (union-theories '(,rev revappend)
+                                                            (theory 'minimal-theory))))))))
+      (defun ,loop (,@formals ,acc)
         (declare (xargs :guard ,(fn-dl-and guard `(true-listp ,acc))
                         :verify-guards nil
                         ,@(and measure `(:measure ,measure))))
         (if (consp ,xs)
-            (,loop ,@next (revappend ,body ,acc))
+            (,loop ,@next (,rev ,body ,acc))
           (revappend ,acc nil)))
       (defun ,name ,formals
         (declare (xargs :guard ,guard :verify-guards nil
@@ -1204,7 +1435,8 @@
                           (fn-dl-concat (lambda (,xs) (,name ,@formals)))
                           (fn-dl-concat-loop (lambda (,xs ,acc) (,loop ,@formals ,acc))))
                          (dl-xs ,xs) (dl-acc ,acc)))
-                  :in-theory (union-theories '(,name ,loop) (theory 'minimal-theory))))))
+                  :in-theory (union-theories '(,name ,loop ,@(and (not rev-ok) (list rev-lemma)))
+                                             (theory 'minimal-theory))))))
       (verify-guards ,loop ,@(and guard-hints `(:hints ,guard-hints)))
       (verify-guards ,name
         :hints (("Goal"
@@ -1277,9 +1509,10 @@
                       guard guard-hints guard-theory measure into write write-theory map
                       acc loop keep-order base loop-guard acc-fix stobjs
                       done emit skip next skip-next progress-hints st row fail
-                      combine init rev state)
+                      combine init rev make st-of rows-of loop-guard-hints state)
   (declare (xargs :mode :program :stobjs state))
-  (let* ((loop (or loop (fn-dl-name (list name "-LOOP") name)))
+  (let* ((guard-hints (if (eq loop-guard-hints :default) guard-hints loop-guard-hints))
+         (loop (or loop (fn-dl-name (list name "-LOOP") name)))
          (svars (and (member-eq shape '(:step :fold))
                      (cond ((null over) (list (car formals)))
                            ((symbolp over) (list over))
@@ -1290,19 +1523,29 @@
          (ctx 'def-loop)
          (stobjs (if (and stobjs (symbolp stobjs)) (list stobjs) stobjs)))
     (cond
-     ((not (member-eq shape '(:map :take :sum :into :concat :step :fold :foldr)))
+     ((not (member-eq shape '(:map :take :sum :into :concat :step :fold :foldr :thread)))
       (er soft ctx "~x0: :shape ~x1 is not one of :map, :take, :sum, :into, :concat, :step, :fold, :foldr." name shape))
-     ((and (not (member-eq shape '(:step :fold)))
+     ((and (not (member-eq shape '(:step :fold :thread)))
            (or done skip next skip-next progress-hints (not (eq emit t))))
-      (er soft ctx "~x0: :done, :emit, :skip, :next, :skip-next and :progress-hints are :step or :fold options." name))
-     ((and (not (eq shape :foldr)) (or combine init (not (eq rev 'revappend))))
-      (er soft ctx "~x0: :combine, :init and :rev are :foldr options." name))
+      (er soft ctx "~x0: :done, :emit, :skip, :next, :skip-next and :progress-hints are :step, :fold or :thread options." name))
+     ((and (not (member-eq shape '(:foldr :thread))) (or combine init (and (not (eq rev 'revappend)) (not (eq shape :concat)))))
+      (er soft ctx "~x0: :combine, :init and :rev are :foldr options (:rev also :thread)." name))
+     ((and (eq shape :thread) (or combine init skip skip-next (not (eq emit t)) body (not (eq fail :bad))))
+      (er soft ctx "~x0: :thread takes :st, :row, :next, :make, :st-of, :rows-of (and :done, :let, :rev), nothing else of the fold family." name))
+     ((and (not (eq shape :thread)) (or make st-of rows-of))
+      (er soft ctx "~x0: :make, :st-of and :rows-of are :thread options." name))
+     ((and (eq shape :thread)
+           (not (and st (member-eq st formals) (not (eq st xs)) row next make st-of rows-of)))
+      (er soft ctx "~x0: :thread needs :st (a formal other than :over), :row (the list a step contributes), :next (the new :st), :make (a term over :st and DL-ROWS), :st-of and :rows-of (terms over DL-R)." name))
+     ((and (eq shape :thread)
+           (or (member-eq 'dl-rows formals) (member-eq 'dl-r formals)))
+      (er soft ctx "~x0: the formals DL-R and DL-ROWS are reserved for :thread." name))
      ((and (eq shape :foldr) (not (and combine elt)))
       (er soft ctx "~x0: :foldr needs :elt (the element variable) and :combine (a term over it and ~x1, the fold of the rest)." name acc))
      ((and (eq shape :foldr) (or body (not (eq while t)) stop (not (eq keep t)) let (not (eq tail nil))))
       (er soft ctx "~x0: :foldr takes :combine and :init, not :body, :while, :stop, :keep, :let or :tail." name))
-     ((and (not (eq shape :fold)) (or st row (not (eq fail :bad))))
-      (er soft ctx "~x0: :st, :row and :fail are :fold options." name))
+     ((and (not (member-eq shape '(:fold :thread))) (or st row (not (eq fail :bad))))
+      (er soft ctx "~x0: :st, :row and :fail are :fold options (:st and :row also :thread)." name))
      ((and (eq shape :fold)
            (not (and st (member-eq st formals) (not (member-eq st svars)) row done next)))
       (er soft ctx "~x0: :fold needs :st (a formal not in :over), :row (a term returning (mv value st)), :done and :next." name))
@@ -1345,14 +1588,14 @@
       (er soft ctx "~x0: :acc-fix must be t or nil." name))
      ((and acc-fix (not (eq shape :map)))
       (er soft ctx "~x0: :acc-fix is a :map option." name))
-     ((and stobjs (not (member-eq shape '(:map :step))))
-      (er soft ctx "~x0: :stobjs is a read-only :map or :step option." name))
+     ((and stobjs (not (member-eq shape '(:map :step :thread))))
+      (er soft ctx "~x0: :stobjs is a read-only :map, :step or :thread option." name))
      ((not (and (symbol-listp stobjs) (no-duplicatesp-eq stobjs)
                 (fn-dl-stobjs-knownp stobjs formals (w state))
                 (not (member-eq xs stobjs))
                 (not (intersectp-eq stobjs svars))))
       (er soft ctx "~x0: :stobjs must name distinct stobj formals other than :over." name))
-     ((and (null body) (not (member-eq shape '(:fold :foldr))))
+     ((and (null body) (not (member-eq shape '(:fold :foldr :thread))))
       (er soft ctx "~x0: :body is required." name))
      ((and stop (not (eq shape :map)))
       (er soft ctx "~x0: :stop is a :map option; shape ~x1 has none." name shape))
@@ -1360,8 +1603,8 @@
       (er soft ctx "~x0: :stop needs :stop-value (the value returned when it holds)." name))
      ((and (not (eq keep t)) (not (eq shape :map)))
       (er soft ctx "~x0: :keep is a :map option; shape ~x1 has none." name shape))
-     ((and let (not (member-eq shape '(:map :step :fold))))
-      (er soft ctx "~x0: :let is a :map, :step or :fold option; shape ~x1 has none." name shape))
+     ((and let (not (member-eq shape '(:map :step :fold :thread))))
+      (er soft ctx "~x0: :let is a :map, :step, :fold or :thread option; shape ~x1 has none." name shape))
      ((and (not (eq tail nil)) (not (member-eq shape '(:map :take :step))))
       (er soft ctx "~x0: :tail is a :map, :take or :step option; shape ~x1 has none." name shape))
      ((and (not (eq while t)) (not (member-eq shape '(:map :take))))
@@ -1374,6 +1617,7 @@
         name stobjs
         (fn-dl-elt elt xs
           (fn-dl-let let `(list ,body ,while ,stop ,stop-value ,keep ,tail ,base
+                                ,@(and (eq shape :thread) (list done row next make st-of rows-of))
                                 ,@(and (eq shape :step) (list done emit skip)) ,@(and (eq shape :step) (if (cdr svars) next (list next))) ,@(and (eq shape :step) skip-next (if (cdr svars) skip-next (list skip-next)))))) state)
        (value
        `(encapsulate
@@ -1396,10 +1640,13 @@
                                         (and (getpropc st 'stobj nil (w state)) t)
                                         done row elt next fail let guard guard-hints guard-theory
                                         acc loop measure progress-hints))
+              (:thread (fn-dl-thread-events name formals xs elt st done row next make st-of rows-of
+                                            let rev guard guard-hints guard-theory acc loop measure
+                                            progress-hints stobjs))
               (:sum (fn-dl-sum-events name formals xs elt body guard guard-hints guard-theory
                                       acc loop measure))
               (:concat (fn-dl-concat-events name formals xs elt body guard guard-hints
-                                           guard-theory acc loop measure))
+                                           guard-theory acc loop measure rev))
               (otherwise (fn-dl-into-events name formals xs elt body into write write-theory map
                                             guard guard-hints measure))))))))))
 
@@ -1411,7 +1658,7 @@
                          into write write-theory map
                          (acc 'acc) loop (keep-order ':cons-first) (base 'nil base-p) (loop-guard ':default) acc-fix stobjs
                          done (emit 't) skip next skip-next progress-hints st row (fail ':bad)
-                         combine init (rev 'revappend))
+                         combine init (rev 'revappend) make st-of rows-of (loop-guard-hints ':default))
   `(make-event
     (fn-dl-fn ',name ',formals ',shape ',over ',count ',elt ',body
               ',(if (and (eq shape :map) base-p while-p) :explicit-while while) ',stop ',stop-value
@@ -1420,7 +1667,7 @@
               ',(if (and (not (eq shape :take)) base-p (null base)) '(quote nil) base)
               ',loop-guard ',acc-fix ',stobjs
               ',done ',emit ',skip ',next ',skip-next ',progress-hints ',st ',row ',fail
-              ',combine ',init ',rev state)))
+              ',combine ',init ',rev ',make ',st-of ',rows-of ',loop-guard-hints state)))
 
 ; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
 ; a structural primitive of bare variables, kept for this book's proofs

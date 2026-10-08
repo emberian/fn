@@ -535,9 +535,11 @@ class Owner:
     def __init__(self, pt):
         self.pt = pt
         self.err = open(pt.work / "owner.{}.err".format(pt.stage), "wb")
+        from rep_measure import decided_heap_env  # run_point put the tree's tools/ on sys.path
+        env = decided_heap_env(pt.image, pt.config, pt.env)
         started = time.monotonic()
         self.proc = subprocess.Popen([str(pt.image), "--fn", "operator", str(pt.config), "run"],
-                                     env=pt.env, stdout=subprocess.PIPE, stderr=self.err)
+                                     env=env, stdout=subprocess.PIPE, stderr=self.err)
         self.pid, self.port = self.proc.pid, pt.port
         self.sampler = Sampler(self.pid)
         seconds = None

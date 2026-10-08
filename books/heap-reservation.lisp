@@ -321,6 +321,7 @@
                             (+ (* 1024 (fn-heap-reserve-stack-kib r))
                                *fn-heap-thread-runtime-octets*)))
                       (fn-heap-machine-octets observations)))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (union-theories
                               '(fn-heap-reserve-of fn-heap-reserve-storeless
                                 fn-heap-reservation-octets fn-heap-reserve-threads
@@ -368,7 +369,7 @@
                             fn-heap-stack-kib fn-heap-thread-count)
                            (fn-heap-reserve-decide fn-heap-decide fn-heap-reserve-storeless
                             fn-bs-profile-admittedp fn-heap-machine-octets
-                            fn-heap-reservation-octets fn-heap-reserve-of-holds-the-decision
+                            fn-heap-reservation-octets
                             fn-heap-decide-refuses-exactly-past-the-machine
                             fn-native-control-max-active-clients fn-heap-kib-of-covers
                             fn-heap-mb-of)))))
@@ -1845,7 +1846,8 @@
               (nfix (fn-bs-profile-max-history-octets profile))
               (nfix (fn-bs-profile-max-transactions profile)))
              (fn-heap-store-inflight-octets profile)
-             (fn-heap-articles-octets profile))
+             (fn-heap-articles-octets profile)
+             (fn-heap-hroot-reserve-octets profile))
           nursery))
   :hints (("Goal" :in-theory (union-theories '(fn-heap-figure-octets fn-heap-store-figure-octets
                                                fn-heap-store-base-octets
@@ -1906,7 +1908,3 @@
            :use ((:instance fn-heap-capture-budget-grows-with-history-and-record)
                  (:instance fn-heap-figure-octets-grows-given-the-capture-budget)))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-heap-reserve-of-holds-the-decision))

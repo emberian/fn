@@ -17,6 +17,12 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-bp-session-profile (root)
+  (declare (ignorable root))
+  (harness-stub-reached 'fnn-bp-session-profile "host/native/bp-session.lisp"))
+(defun fnn-bps-read-profile (root)
+  (declare (ignorable root))
+  (harness-stub-reached 'fnn-bps-read-profile "host/native/bp-service.lisp"))
 (defun fnn-heap-history-observation (root profile)
   (declare (ignorable root profile))
   (harness-stub-reached 'fnn-heap-history-observation "host/native/heap.lisp"))
@@ -59,9 +65,12 @@
                 fnn-octet-list-p fnn-make-octets fnn-string-octets
                 fnn-bridge-config-initial fnn-constants)
               '(fnn-octets))
+; The BP node's contact MRUs (host/native/tcpcl.lisp), read by the heap probe's BP terms.
+(defparameter +fnn-tcl-transfer-mru+ 1048576)
+(defparameter +fnn-tcl-segment-mru+ 1024)
 (source-forms (or (third sb-ext:*posix-argv*) "host/native/heap.lisp")
               '(fnn-heap-store-profile fnn-heap-operator-profile
-                fnn-heap-command-profile fnn-command-heap)
+                fnn-heap-command-profile fnn-heap-bp-terms fnn-command-heap)
               '(fnn-heap-profile-refusal fnn-heap-command-profile-base))
 
 (define-condition unlisted-profile-condition (fnn-store-error) ())

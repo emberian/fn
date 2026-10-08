@@ -24,39 +24,48 @@
     (fnn-owner-action 'fn-owner-workflow-sync-store-node)))
 
 (defun fnn-bpo-complete-waivers (service)
-  (let ((pending (fnn-owner-core 'fn-owner-workflow-pending-waivers)))
+  "Complete each private owner's pending waiver in a quantum; report off O."
+  (let ((pending (fnn-quantum-command
+                  service nil
+                  (lambda () (fnn-owner-core 'fn-owner-workflow-pending-waivers)))))
     (unless (listp pending)
       (fnn-fault "ACL2 returned a malformed pending-waiver list"))
     (dolist (work-id pending)
-      (fnn-bpo-waiver-release service work-id)
+      (fnn-quantum-command service nil
+        (lambda () (fnn-bpo-waiver-release service work-id)))
       (fnn-out "BP carry recovered waiver release work=~a" work-id))))
 
 (defun fnn-bpo-call-with-owner-journal
     (store-root journal-root writable thunk)
+  "Retain the private owner and journals while THUNK alternates quanta and I/O.
+Only the quanta touch the owner image. A report/pause failure is classified
+in a cleanup boundary; journal custody remains exclusive until all steps end."
   (let ((service nil) (journal nil) (carry nil))
     (fnn-unwind-cleanups
-         ((progn
-           ;; A writable owner open honours the developer image's post-cut
-           ;; selector (fnn-post-entry-fault; NIL on a production image), so
-           ;; its Store publications' model cuts are exercised as a POST's.
-           (setq service (fnn-owner-install store-root 1
-                                            (and writable (fnn-post-entry-fault nil))))
-           (fnn-quantum-command
-            service nil
-            (lambda ()
-              (setq journal
-                    (fnn-app-open (fnn-owner-service-store service)
-                                  journal-root :workflow :owner-mode t))
-              (setq carry
-                    (fnn-app-open (fnn-owner-service-store service)
-                                  (fnn-join (fnn-absolute journal-root) "carry") :carry
-                                  :owner-mode t))
-              (when (and writable
-                         (fnn-store-fenced (fnn-owner-service-store service)))
-                (fnn-indeterminate "BP obligation owner Store is fenced"))
-              (when writable (fnn-bpo-complete-waivers service))
-              (let ((*fnn-bpo-carry-journal* carry))
-                (funcall thunk journal service))))))
+         ((setq service (fnn-owner-install store-root 1
+                                           (and writable (fnn-post-entry-fault nil))))
+          (handler-case
+              (progn
+                (fnn-quantum-command
+                 service nil
+                 (lambda ()
+                   (setq journal
+                         (fnn-app-open (fnn-owner-service-store service)
+                                       journal-root :workflow :owner-mode t))
+                   (setq carry
+                         (fnn-app-open (fnn-owner-service-store service)
+                                       (fnn-join (fnn-absolute journal-root) "carry") :carry
+                                       :owner-mode t))
+                   (when (and writable
+                              (fnn-store-fenced (fnn-owner-service-store service)))
+                     (fnn-indeterminate "BP obligation owner Store is fenced"))))
+                (when writable (fnn-bpo-complete-waivers service))
+                (let ((*fnn-bpo-carry-journal* carry))
+                  (funcall thunk journal service)))
+            (serious-condition (condition)
+              (if (fnn-with-roster (service) (fnn-owner-service-stopping service))
+                  (error condition)
+                (fnn-owner-gated (service :transit) (error condition))))))
       (when carry (fnn-app-journal-close carry))
       (when journal (fnn-app-journal-close journal))
       (when service (fnn-owner-feed-close-all service))
@@ -66,25 +75,28 @@
   (fnn-bpo-call-with-owner-journal
    store journal nil
    (lambda (opened service)
-     (declare (ignore service))
      (declare (ignore opened))
-     (fnn-out "BP obligation owner work=~a status=~(~a~) pinned=~a"
-              work-id (fnn-core-state 'fn-workflow-work-status work-id)
-              (if (eq (fnn-owner-core
-                       'fn-owner-workflow-forward-pinnedp work-id) t)
-                  "yes" "no"))
+     (multiple-value-bind (status pinned)
+         (fnn-quantum-command service nil
+           (lambda ()
+             (values (fnn-core-state 'fn-workflow-work-status work-id)
+                     (fnn-owner-core 'fn-owner-workflow-forward-pinnedp work-id))))
+       (fnn-out "BP obligation owner work=~a status=~(~a~) pinned=~a"
+                work-id status (if (eq pinned t) "yes" "no")))
      +fnn-exit-ok+)))
 
 (defun fnn-command-bpo-owner-undertake (store journal work-id charge)
   (fnn-bpo-call-with-owner-journal
    store journal t
    (lambda (opened service)
-     (let ((event (fnn-owner-core 'fn-owner-workflow-store-undertake work-id charge)))
-       (unless event (fnn-refuse "workflow forwarding obligation is not admissible"))
-       (fnn-owner-retention-commit service event))
-     (fnn-owner-action 'fn-owner-workflow-sync-store-node)
-     (fnn-out "BP obligation owner durable undertaking work=~a charge=~d"
-              work-id charge)
+     (declare (ignore opened))
+     (fnn-quantum-command service nil
+       (lambda ()
+         (let ((event (fnn-owner-core 'fn-owner-workflow-store-undertake work-id charge)))
+           (unless event (fnn-refuse "workflow forwarding obligation is not admissible"))
+           (fnn-owner-retention-commit service event))
+         (fnn-owner-action 'fn-owner-workflow-sync-store-node)))
+     (fnn-out "BP obligation owner durable undertaking work=~a charge=~d" work-id charge)
      +fnn-exit-ok+)))
 
 (defun fnn-bpo-canonical-release (service release)
@@ -117,12 +129,12 @@
    store journal t
    (lambda (opened service)
      (let ((receipt-id
-            (fnn-workflow-accept-receipt
-             opened receipt txid generation profile
-             (lambda (release)
-               (fnn-bpo-canonical-release service release)))))
-       (fnn-out "BP obligation owner durable release receipt=~a profile=~a"
-                receipt-id profile)
+             (fnn-quantum-command service nil
+               (lambda ()
+                 (fnn-workflow-accept-receipt
+                  opened receipt txid generation profile
+                  (lambda (release) (fnn-bpo-canonical-release service release)))))))
+       (fnn-out "BP obligation owner durable release receipt=~a profile=~a" receipt-id profile)
        +fnn-exit-ok+))))
 
 ;;; `bp-obligation request': the generic native request for one work.  ACL2
@@ -147,11 +159,14 @@
   (fnn-bpo-call-with-owner-journal
    store journal t
    (lambda (opened service)
-     (declare (ignore service))
-     (let ((plan (fnn-core-state 'fn-owner-workflow-request-plan work-id attempt-id)))
+     (multiple-value-bind (plan fenced)
+         (fnn-quantum-command service nil
+           (lambda ()
+             (values (fnn-core-state 'fn-owner-workflow-request-plan work-id attempt-id)
+                     (fnn-core-state 'fn-workflow-fencedp))))
        (unless (and (consp plan) (eq (first plan) :request)
                     (= (length plan) 7))
-         (if (eq (fnn-core-state 'fn-workflow-fencedp) t)
+         (if (eq fenced t)
              (fnn-refuse "ACL2 refused a request for work ~a attempt ~a: the workflow image is fenced on an uncertain publication (bp-obligation recover)"
                          work-id attempt-id)
            ;; PKT-869: a held work's refusal names its hold (carry-paused,
@@ -171,17 +186,19 @@
          ;; A restart-observed attempt is retried by the journaled policy
          ;; decision first, so the next open replays the new attempt.
          (when retry
-           (fnn-app-publish opened retry)
+           (fnn-quantum-command service nil (lambda () (fnn-app-publish opened retry)))
            (fnn-out "BP obligation request durable retry work=~a attempt=~a generation=~d"
                     (second retry) (third retry) (fourth retry)))
-         (fnn-app-publish opened attempt :reserve-resolution t)
+         (fnn-quantum-command service nil
+           (lambda () (fnn-app-publish opened attempt :reserve-resolution t)))
          (fnn-bpo-request-pause "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT"
                                 "BP OBLIGATION ATTEMPT DURABLE")
-         (fnn-app-publish opened outcome)
-         (unless (eq (fnn-core-state 'fn-workflow-take-submit
-                                     (first key) (second key) (third key))
-                     t)
-           (fnn-fault "durable attempt did not grant one submit effect"))
+         (fnn-quantum-command service nil
+           (lambda ()
+             (fnn-app-publish opened outcome)
+             (unless (eq (fnn-core-state 'fn-workflow-take-submit
+                                         (first key) (second key) (third key)) t)
+               (fnn-fault "durable attempt did not grant one submit effect"))))
          (fnn-out "BP obligation request durable attempt work=~a attempt=~a generation=~d destination=~a adu=~d"
                   (first key) (second key) (third key) destination
                   (length adu))
@@ -258,26 +275,26 @@
   (fnn-bpo-call-with-owner-journal
    store journal t
    (lambda (opened service)
-     (declare (ignore service))
-     (let ((plan (fnn-core-state 'fn-workflow-recovery-plan work-id attempt-id
-                                 (fnn-bpo-recovery-outcome outcome))))
-       (case (and (consp plan) (first plan))
-         (:refused
-          (fnn-refuse "ACL2 refused recovery work=~a attempt=~a outcome=~a reason=~(~a~)"
-                      work-id attempt-id outcome (second plan)))
-         (:recover
-          (let ((record (second plan)))
-            (fnn-app-publish opened record)
-            (fnn-out "BP obligation recovery durable work=~a attempt=~a outcome=~(~a~) txid=~d generation=~d"
-                     work-id attempt-id (fifth record) (second record)
-                     (third record))
-            (fnn-out "BP obligation owner work=~a status=~(~a~) pinned=~a"
-                     work-id (fnn-core-state 'fn-workflow-work-status work-id)
-                     (if (eq (fnn-owner-core
-                              'fn-owner-workflow-forward-pinnedp work-id) t)
-                         "yes" "no"))
-            +fnn-exit-ok+))
-         (t (fnn-fault "ACL2 returned an invalid recovery plan")))))))
+     (multiple-value-bind (record status pinned)
+         (fnn-quantum-command service nil
+           (lambda ()
+             (let ((plan (fnn-core-state 'fn-workflow-recovery-plan work-id attempt-id
+                                         (fnn-bpo-recovery-outcome outcome))))
+               (case (and (consp plan) (first plan))
+                 (:refused
+                  (fnn-refuse "ACL2 refused recovery work=~a attempt=~a outcome=~a reason=~(~a~)"
+                              work-id attempt-id outcome (second plan)))
+                 (:recover
+                  (let ((record (second plan)))
+                    (fnn-app-publish opened record)
+                    (values record (fnn-core-state 'fn-workflow-work-status work-id)
+                            (fnn-owner-core 'fn-owner-workflow-forward-pinnedp work-id))))
+                 (t (fnn-fault "ACL2 returned an invalid recovery plan"))))))
+       (fnn-out "BP obligation recovery durable work=~a attempt=~a outcome=~(~a~) txid=~d generation=~d"
+                work-id attempt-id (fifth record) (second record) (third record))
+       (fnn-out "BP obligation owner work=~a status=~(~a~) pinned=~a"
+                work-id status (if (eq pinned t) "yes" "no"))
+       +fnn-exit-ok+))))
 
 (defun fnn-dispatch-bp-obligation (command args)
   (flet ((need (n)
@@ -340,9 +357,11 @@
                       (fnn-bpo-call-with-owner-journal
                        root journal nil
                        (lambda (opened service)
-                         (declare (ignore opened service))
-                         (let ((report (fnn-core-state 'fn-workflow-carry-report
-                                                       (and (eq verb :inspect) work))))
+                         (declare (ignore opened))
+                         (let ((report (fnn-quantum-command service nil
+                                         (lambda ()
+                                           (fnn-core-state 'fn-workflow-carry-report
+                                                           (and (eq verb :inspect) work))))))
                            (unless (fnn-octet-list-p report)
                              (fnn-fault "ACL2 returned a malformed carry report"))
                            (when (and (eq verb :inspect) (null report))
@@ -354,6 +373,8 @@
                      root journal t
                      (lambda (opened service)
                        (declare (ignore opened))
+                       (fnn-quantum-command service nil
+                        (lambda ()
                        (let ((answer (fnn-core-state 'fn-workflow-carry-record verb work reason
                                                      (sb-posix:geteuid)))
                              (carry *fnn-bpo-carry-journal*))
@@ -368,9 +389,9 @@
                          (fnn-app-publish carry (second answer))
                          ;; The waiver is durable; now its Store release.
                          (when (eq verb :abandon)
-                           (fnn-bpo-waiver-release service work))
+                           (fnn-bpo-waiver-release service work)))))
                          (fnn-out "BP carry durable ~(~a~) work=~a" verb work)
-                         +fnn-exit-ok+))))))
+                         +fnn-exit-ok+)))))
             (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "carry")
             code))
       (error (condition)

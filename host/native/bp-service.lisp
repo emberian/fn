@@ -1548,7 +1548,7 @@ first first."
       (loop repeat (fnn-bps-max-rows service)
             for result = (fnn-core 'fn-bpnjc-contact-next (fnn-bps-state service)
                                    peer (fnn-bps-routing service) offered cursor)
-            for answer = (car result)
+            for answer = (fnn-core 'fn-bpnjc-answer result)
             do (setq cursor (cdr result))
                (push answer answers)
                (case (first answer)

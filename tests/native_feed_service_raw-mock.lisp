@@ -178,6 +178,7 @@
           do (eval (cons 'defparameter (cdr form)))
         when (and (consp form) (eq (car form) 'defun) (eq (cadr form) 'fn-fs-actor-declp))
           do (eval form)))
+(load-deployed-forms "host/native/io.lisp" '((defmacro fnn-guarded-by)))
 (load-deployed-forms "host/native/owner.lisp"
                      '((defvar *fnn-actors*) (defun fnn-actor-declare) (defmacro def-actor)))
 
