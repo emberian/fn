@@ -4872,6 +4872,15 @@
 (definterface fn-otb-line-dependency-step
   :class :common-lisp-compliant)
 
+;; books/cold-read-wait.lisp: host/native/owner.lisp fnn-owner-cold-wait-arrive
+;; and fnn-owner-cold-wait-poll dispatch them (item COLD-READ-WORKERS-REFUSE-AT-16).
+(definterface fn-cwq-arrive
+  :class :common-lisp-compliant
+  :keystones ((fn-cwq-arrival-under-the-bound-is-never-refused :via fn-cwq-arrive)))
+(definterface fn-cwq-step
+  :class :common-lisp-compliant
+  :keystones ((fn-cwq-refused-only-at-the-deadline :via fn-cwq-step)))
+
 ;; books/payload-arena-extent-logic.lisp
 
 ; host/native/extent.lisp dispatches it (lane compress-5 (NNT-055)).

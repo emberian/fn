@@ -89,6 +89,7 @@
 
 (include-book "../books/page-window-read")
 (include-book "../books/extent-window-span")
+(include-book "../books/cold-read-wait")
 (include-book "../books/page-window-span")
 
 (defun fn-owner-page-window-byte (worker token plan i fn-ew-buffer fn-page-read-pool)

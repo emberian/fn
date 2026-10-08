@@ -22,6 +22,16 @@
 (defun fn-cwq-bound ()
   (declare (xargs :guard t)) *fn-cwq-bound*)
 
+;; The queue's storage is part of the node's fixed reservation: WAIT-QUEUE
+;; waiting reads of one struct (12 slots and its header, 112 octets) and one
+;; list cell (16), 128 octets each. books/cold-read-reservation.lisp charges it
+;; with the persistent workers' native storage (fn-crv-native-baseline).
+(defconst *fn-cwq-entry-octets* 128)
+
+(defun fn-cwq-queue-octets ()
+  (declare (xargs :guard t))
+  (* *fn-cwq-entry-octets* (fn-cwq-bound)))
+
 ; The arrival decision. WAITING: requests already queued; IDLE: idle workers.
 ; An idle worker is the arriving request's only if no queued request is ahead
 ; of it for that worker.
