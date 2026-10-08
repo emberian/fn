@@ -1109,13 +1109,22 @@ class Run:
                 time.sleep(1)
                 base = (proc_snapshot(node.pid) or {}).get("vmrss")
                 want = (mc or 32) + 1
-                held, greetings = [], collections.Counter()
-                for _ in range(want):
-                    c = m.Conn(node.port)
+                held, greetings, last = [], collections.Counter(), None
+                for i in range(want):
+                    # One loopback source address per 16,384 connections: a single
+                    # source runs out of ephemeral ports near 28k (conncap-hbox4).
+                    try:
+                        c = m.Conn(node.port, source="127.0.0.%d" % (1 + i // 16384))
+                    except ConnectionRefusedError as e:
+                        greetings["refused"] += 1
+                        last = str(e)[-200:]
+                        break
+                    except OSError as e:
+                        t["client_error"] = "%s after %d connections" % (e, i)
+                        break
                     held.append(c)
                     greetings[c.greeting[:3].decode("latin-1")] += 1
                 admitted = greetings.get("200", 0)
-                last = held[-1].greeting.decode("latin-1").strip()
                 after = (proc_snapshot(node.pid) or {}).get("vmrss")
                 t.update(started=True, admitted=admitted, past_cap_greeting=last if admitted < want else None,
                          vmrss_base_kib=base, vmrss_held_kib=after,
@@ -1133,6 +1142,8 @@ class Run:
             while mc <= ph.get("max_try", 4096):
                 t = trial(preset, mc)
                 trials.append(t)
+                if t.get("client_error"):
+                    break                       # the client ran out, not the node: no first_refused
                 if t.get("started") and t.get("admitted") == mc:
                     good = mc
                     mc *= 2
