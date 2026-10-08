@@ -790,3 +790,176 @@
                                (append f (car (fn-cpl-append-plan (len f) ps)))))
   :hints (("Goal" :use ((:instance cpl-trailers-gen (pre f) (post nil)))
            :in-theory (disable cpl-trailers-gen))))
+
+; -----------------------------------------------------------------------------
+; 8. The trailer as four u64 words, big-endian (the tape row's form).
+; Word i is octets [8i, 8i+8) of the trailer, most significant octet first.
+
+(defun fn-cpl-trailer-word-count () (declare (xargs :guard t)) 4)
+
+(defun fn-cpl-be-fold (xs acc)
+  (declare (xargs :guard (and (true-listp xs) (natp acc))))
+  (if (consp xs)
+      (fn-cpl-be-fold (cdr xs) (+ (* 256 (nfix acc)) (nfix (car xs))))
+    (nfix acc)))
+
+(defun fn-cpl-be-octets (w n)
+  (declare (xargs :guard (and (natp w) (natp n))))
+  (if (zp n)
+      nil
+    (append (fn-cpl-be-octets (floor (nfix w) 256) (1- n)) (list (mod (nfix w) 256)))))
+
+(defun fn-cpl-pack-words (tr n)
+  (declare (xargs :guard (and (true-listp tr) (natp n))))
+  (if (zp n)
+      nil
+    (cons (fn-cpl-be-fold (take 8 tr) 0) (fn-cpl-pack-words (nthcdr 8 tr) (1- n)))))
+
+(defun fn-cpl-unpack-words (ws)
+  (declare (xargs :guard (true-listp ws)))
+  (if (consp ws)
+      (append (fn-cpl-be-octets (nfix (car ws)) 8) (fn-cpl-unpack-words (cdr ws)))
+    nil))
+
+(defun fn-cpl-trailer-words-impl (p)
+  (declare (xargs :guard (true-listp p) :verify-guards nil))
+  (fn-cpl-pack-words (fn-cpl-trailer p) (fn-cpl-trailer-word-count)))
+
+(defun fn-cpl-ub64-listp (ws)
+  (declare (xargs :guard t))
+  (if (consp ws)
+      (and (unsigned-byte-p 64 (car ws)) (fn-cpl-ub64-listp (cdr ws)))
+    (null ws)))
+
+(local
+ (defthm cpl-be-octets-snoc
+   (implies (and (natp v) (natp x) (< x 256) (natp n))
+            (equal (fn-cpl-be-octets (+ (* 256 v) x) (+ 1 n))
+                   (append (fn-cpl-be-octets v n) (list x))))
+   :hints (("Goal" :expand ((fn-cpl-be-octets (+ (* 256 v) x) (+ 1 n)))))))
+
+(local (defun cpl-ind3 (xs acc k)
+         (declare (xargs :verify-guards nil))
+         (if (consp xs)
+             (cpl-ind3 (cdr xs) (+ (* 256 (nfix acc)) (nfix (car xs))) (+ 1 (nfix k)))
+           (list acc k))))
+
+(local
+ (defthm cpl-be-fold-roundtrip
+   (implies (and (fn-scc-octet-listp xs) (natp acc) (natp k))
+            (equal (fn-cpl-be-octets (fn-cpl-be-fold xs acc) (+ k (len xs)))
+                   (append (fn-cpl-be-octets acc k) xs)))
+   :hints (("Goal" :induct (cpl-ind3 xs acc k)
+            :in-theory (e/d (fn-scc-octet-listp fn-scc-octetp)
+                            (fn-cpl-be-octets fn-scc-octet-listp-facts)))
+           (and stable-under-simplificationp
+                '(:use ((:instance cpl-be-octets-snoc (v acc) (x (car xs)) (n k))))))))
+
+(local (defun cpl-ind5 (xs acc b)
+         (declare (xargs :verify-guards nil))
+         (if (consp xs)
+             (cpl-ind5 (cdr xs) (+ (* 256 (nfix acc)) (nfix (car xs))) (* 256 (nfix b)))
+           (list acc b))))
+
+(local
+ (defthm cpl-be-fold-bound
+   (implies (and (fn-scc-octet-listp xs) (natp acc) (posp b) (< acc b))
+            (< (fn-cpl-be-fold xs acc) (* b (expt 256 (len xs)))))
+   :hints (("Goal" :induct (cpl-ind5 xs acc b)
+            :in-theory (e/d (fn-scc-octet-listp fn-scc-octetp) (fn-scc-octet-listp-facts))))))
+
+(local
+ (defthm cpl-slice
+   (implies (and (fn-scc-octet-listp xs) (equal (len xs) 8))
+            (equal (fn-cpl-be-octets (fn-cpl-be-fold xs 0) 8) xs))
+   :hints (("Goal" :use ((:instance cpl-be-fold-roundtrip (acc 0) (k 0)))
+            :in-theory (disable cpl-be-fold-roundtrip)))))
+
+(local (defthm cpl-append-take-nthcdr
+         (implies (and (natp n) (<= n (len x))) (equal (append (take n x) (nthcdr n x)) x))))
+(local (defthm cpl-nthcdr-octets
+         (implies (fn-scc-octet-listp x) (fn-scc-octet-listp (nthcdr n x)))))
+(local (defthm cpl-len-nthcdr2
+         (implies (natp k) (equal (len (nthcdr k x)) (nfix (- (len x) k))))
+         :hints (("Goal" :induct (nthcdr k x)))))
+(local (defthm cpl-len-take (implies (and (natp n) (<= n (len x))) (equal (len (take n x)) n))))
+
+(local
+ (defthm cpl-slice-at
+   (implies (and (fn-scc-octet-listp tr) (natp k) (<= (+ k 8) (len tr)))
+            (equal (fn-cpl-be-octets (fn-cpl-be-fold (take 8 (nthcdr k tr)) 0) 8)
+                   (take 8 (nthcdr k tr))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance cpl-slice (xs (take 8 (nthcdr k tr))))
+                  (:instance cpl-take-octets (x (nthcdr k tr)) (n 8))
+                  (:instance cpl-nthcdr-octets (x tr) (n k))
+                  (:instance cpl-len-nthcdr2 (x tr))
+                  (:instance cpl-len-take (n 8) (x (nthcdr k tr))))
+            :in-theory (disable cpl-slice cpl-take-octets cpl-len-nthcdr2 cpl-nthcdr-octets
+                                cpl-len-take)))))
+
+(local
+ (defthm cpl-len0
+   (implies (and (fn-scc-octet-listp tr) (equal (len tr) 0)) (equal tr nil))
+   :hints (("Goal" :in-theory (enable fn-scc-octet-listp)))
+   :rule-classes nil))
+
+(local
+ (defthm cpl-pack-unpack
+   (implies (and (fn-scc-octet-listp tr) (natp n) (equal (len tr) (* 8 n)))
+            (equal (fn-cpl-unpack-words (fn-cpl-pack-words tr n)) tr))
+   :hints (("Goal" :induct (fn-cpl-pack-words tr n) :in-theory (disable cpl-slice-at))
+           (and stable-under-simplificationp
+                '(:use ((:instance cpl-slice-at (k 0))
+                        (:instance cpl-append-take-nthcdr (n 8) (x tr))
+                        (:instance cpl-nthcdr-octets (x tr) (n 8))
+                        (:instance cpl-len-nthcdr2 (x tr) (k 8))
+                        (:instance cpl-len0))
+                  :in-theory (disable cpl-slice-at cpl-append-take-nthcdr cpl-nthcdr-octets
+                                      cpl-len-nthcdr2))))))
+
+(local
+ (defthm cpl-pack-ub64
+   (implies (and (fn-scc-octet-listp tr) (natp n) (equal (len tr) (* 8 n)))
+            (and (fn-cpl-ub64-listp (fn-cpl-pack-words tr n))
+                 (equal (len (fn-cpl-pack-words tr n)) n)))
+   :hints (("Goal" :induct (fn-cpl-pack-words tr n) :in-theory (disable cpl-be-fold-bound))
+           (and stable-under-simplificationp
+                '(:use ((:instance cpl-be-fold-bound (xs (take 8 tr)) (acc 0) (b 1))
+                        (:instance cpl-take-octets (x tr) (n 8))
+                        (:instance cpl-nthcdr-octets (x tr) (n 8))
+                        (:instance cpl-len-nthcdr2 (x tr) (k 8))
+                        (:instance cpl-len-take (x tr) (n 8)))
+                  :in-theory (e/d (unsigned-byte-p integer-range-p)
+                                  (cpl-be-fold-bound cpl-take-octets cpl-nthcdr-octets
+                                                     cpl-len-nthcdr2 cpl-len-take)))))))
+
+; Unpacking the words gives the trailer.
+(defthm fn-cpl-trailer-words-pack
+  (implies (fn-cpl-payloadp p)
+           (equal (fn-cpl-unpack-words (fn-cpl-trailer-words-impl p)) (fn-cpl-trailer p)))
+  :hints (("Goal" :use (fn-cpl-trailer-shape
+                        (:instance cpl-pack-unpack (tr (fn-cpl-trailer p))
+                                   (n (fn-cpl-trailer-word-count))))
+           :in-theory (e/d (fn-cpl-trailer-word-count fn-cpl-trailer-words-impl)
+                           (cpl-pack-unpack fn-cpl-trailer-shape fn-cpl-trailer
+                                            fn-cpl-pack-words fn-cpl-unpack-words)))))
+
+; The constraints of books/checkpoint-payload-ref.lisp's encapsulated
+; fn-cpl-trailer-words (fn-cpl-trailer-words-shape), instanced at the
+; implementation.
+(defthm fn-cpl-trailer-words-impl-shape
+  (implies (fn-cpl-payloadp p)
+           (and (true-listp (fn-cpl-trailer-words-impl p))
+                (consp (fn-cpl-trailer-words-impl p))
+                (equal (len (fn-cpl-trailer-words-impl p)) 4)
+                (unsigned-byte-p 64 (car (fn-cpl-trailer-words-impl p)))
+                (unsigned-byte-p 64 (cadr (fn-cpl-trailer-words-impl p)))
+                (unsigned-byte-p 64 (caddr (fn-cpl-trailer-words-impl p)))
+                (unsigned-byte-p 64 (cadddr (fn-cpl-trailer-words-impl p)))))
+  :hints (("Goal" :use (fn-cpl-trailer-shape
+                        (:instance cpl-pack-ub64 (tr (fn-cpl-trailer p))
+                                   (n (fn-cpl-trailer-word-count))))
+           :in-theory (e/d (fn-cpl-trailer-word-count fn-cpl-trailer-words-impl fn-cpl-ub64-listp)
+                           (cpl-pack-ub64 fn-cpl-trailer-shape fn-cpl-trailer
+                                          fn-cpl-pack-words)))))
