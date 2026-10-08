@@ -4,11 +4,7 @@
 ;;; No mocked realizer, decoder, hit decision, buffer or ledger operation.
 (in-package "ACL2")
 
-(defun xc2-load-native (path names)
-  (with-open-file (in path)
-    (loop for form = (read in nil :eof) until (eq form :eof)
-          when (and (consp form) (member (car form) '(defun defvar defparameter))
-                    (member (cadr form) names)) do (eval form))))
+(load "tests/native_extent_span_loader.lisp")
 
 (xc2-load-native "books/article-stream.lisp" '(fn-ast-span-want))
 ; The warm core owns its startup constant/layout. These cases are smaller
@@ -23,33 +19,7 @@
 (defparameter *roots*
   '(fn-durable-realize-lz-span fn-durable-realize-lz-octet
     fnn-extent-window-cache-insert))
-(let ((definitions (make-hash-table :test 'eq)) (seen (make-hash-table :test 'eq)))
-  (dolist (path '("host/native/extent.lisp" "host/native/extent-decoded.lisp"))
-    (with-open-file (in path)
-      (loop for form = (read in nil :eof) until (eq form :eof)
-            when (and (consp form) (eq (car form) 'defun))
-              do (setf (gethash (second form) definitions) form))))
-  (labels ((visit (name)
-             (unless (gethash name seen)
-               (setf (gethash name seen) t)
-               (let ((form (gethash name definitions)))
-                 (if form
-                     (progn (walk (cdddr form)) (eval form))
-                   (unless (or (fboundp name) (find-class name nil))
-                     (error "native image lacks closure dependency ~s" name))))))
-           (walk (tree)
-             (when (consp tree)
-               (let ((head (car tree)))
-                 (cond ((member head '(quote function))
-                        (when (gethash (second tree) definitions) (visit (second tree))))
-                       (t
-                        (when (and (symbolp head)
-                                   (let ((name (symbol-name head)))
-                                     (and (<= 4 (length name))
-                                          (string= name "FNN-" :end1 4))))
-                          (visit head))
-                        (dolist (part tree) (walk part))))))))
-    (dolist (name *roots*) (visit name))))
+(xc2-load-native-closure *roots*)
 
 (defun xc2-read-octets (path)
   (with-open-file (in path :element-type '(unsigned-byte 8))
