@@ -1021,6 +1021,11 @@
                        (<= (len records) *fn-bpn-machine-max-records*))))
   (fn-bpn-restart-step-from st records sequence-ready nil 0))
 
+(defthm fn-bpn-restart-step-from-of-no-jobs
+  (implies (and (null jobs) (equal token 0))
+           (equal (fn-bpn-restart-step-from st records sequence-ready jobs token)
+                  (fn-bpn-restart-step st records sequence-ready))))
+
 (defun fn-bpn-eventp (event)
   (declare (xargs :guard t))
   (and (true-listp event)
