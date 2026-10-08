@@ -40,6 +40,15 @@
       (fn-bch-octetp (fn-inj-month-c3 n)))
  :hints (("Goal" :in-theory (enable fn-bch-octetp fn-inj-dow-c1 fn-inj-dow-c2 fn-inj-dow-c3 fn-inj-month-c1 fn-inj-month-c2 fn-inj-month-c3)))))
 (local
+ (defthm fn-io-r1-bound
+ (and (natp (fn-inj-r1 n)) (< (fn-inj-r1 n) 1000))
+ :hints (("Goal" :in-theory (enable fn-inj-r1)))))
+(local
+ (defthm fn-io-r2-bound
+ (and (natp (fn-inj-r2 n)) (< (fn-inj-r2 n) 100))
+ :hints (("Goal" :use ((:instance fn-io-r1-bound))
+          :in-theory (e/d (fn-inj-r2) (fn-inj-r1 fn-io-r1-bound))))))
+(local
  (defthm fn-io-date-digits
  (and (implies (< (nfix n) 2080) (fn-bch-octetp (fn-inj-hi2 n)))
       (fn-bch-octetp (fn-inj-lo2 n))
@@ -47,7 +56,9 @@
       (fn-bch-octetp (fn-inj-y-hu n))
       (fn-bch-octetp (fn-inj-y-te n))
       (fn-bch-octetp (fn-inj-y-un n)))
- :hints (("Goal" :in-theory (enable fn-bch-octetp fn-inj-hi2 fn-inj-lo2 fn-inj-y-th fn-inj-y-hu fn-inj-y-te fn-inj-y-un fn-inj-r1 fn-inj-r2)))))
+ :hints (("Goal" :use ((:instance fn-io-r1-bound) (:instance fn-io-r2-bound))
+          :in-theory (e/d (fn-bch-octetp fn-inj-hi2 fn-inj-lo2 fn-inj-y-th fn-inj-y-hu fn-inj-y-te fn-inj-y-un)
+                          (fn-inj-r1 fn-inj-r2 fn-io-r1-bound fn-io-r2-bound))))))
 (local
  (defthm fn-io-date-render-octets
  (implies (and (< (nfix (fn-inj-instant-year inst)) 208000)

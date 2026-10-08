@@ -13214,6 +13214,25 @@
    "registry": true
   },
   {
+   "book_digest": "f0035fe7e3a767dbfebb5ba0e8886bf907bc9994f92b3cbabde91540200d1fa1",
+   "bounds": [],
+   "claim_digest": "270fa9c034def0a821ca70de942caca3d862896756978ae4c47d43d7e89a4865",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oso-enqueue-preserves",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-submission-octets-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-own-enqueue",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-osp-authorized-event-binds-the-post",
    "registry": true
