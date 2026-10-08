@@ -235,7 +235,9 @@
                   (equal (fn-ast-at 2 r) (fn-ast-at 2 it))
                   (equal (fn-ast-at 3 r) (fn-ast-at 3 it)))))
   :hints (("Goal" :use ((:instance fn-asx-step-reaches-spec-extra
-                                   (extra (- fuel (fn-asx-need it))))))))
+                                   (extra (- fuel (fn-asx-need it)))))
+                  :in-theory (disable fn-asx-need fn-asx-goodp fn-ast-select-step
+                                      fn-ast-select-donep fn-asx-spec fn-ast-at))))
 
 ; -----------------------------------------------------------------------------
 ; The specification is the archive-list reads the old selection computed.
