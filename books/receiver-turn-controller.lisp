@@ -256,6 +256,11 @@
           (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))))
 ; INTERNAL: PREOC and WIRE are derived by the actual STATE wrapper, never a
 ; native tuple argument. The once-only filled->parser transition precedes parse.
+; Guard verification needs the pending range shape, not the nested
+; token, ledger and parser-current checks. Keep this theory change local.
+(encapsulate ()
+ (local (in-theory (disable fn-rxt-parser-currentp fn-rxt-owned-claim-p
+                            fn-rxp-currentp)))
 (defun fn-owner-rx-turn-parser-acquire
  (ticket preOC wire fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
@@ -272,6 +277,7 @@
           (fn-receiver-turn (update-fn-rxt-job root fn-receiver-turn))
           (fn-receiver-turn (update-fn-rxt-phase :parser-owned fn-receiver-turn)))
     (mv :parser-acquired fn-receiver-turn fn-page-read-pool)))))
+)
 ; ACTUALSTEP comes from the serialized core RC/STATE completion producer.
 ; This cheap shape/scalar fence does not assert its full decoration-domain.
 (defun fn-owner-rx-turn-parser-commit
