@@ -928,6 +928,9 @@
                             (ws (fn-rows-wire-of (take plen records) fn-arena))
                             (id (fn-stxk-initial-context 0)) (h 0))
                  (:instance fn-scka-rows-wire-of-true-listp (rows (take plen records)))
+                 (:instance fn-scka-identity-of-capture
+                            (records (fn-scka-intern-at (fn-rows-wire-of (take plen records) fn-arena)
+                                                        (fn-stxk-initial-context 0) 0)))
                  (:instance fn-sco-extend-of-capture
                             (prefix (fn-scka-intern-at (fn-rows-wire-of (take plen records) fn-arena)
                                                        (fn-stxk-initial-context 0) 0))
@@ -941,7 +944,7 @@
                                                                               fn-arena)))))))
            :in-theory (e/d (fn-scka-canon-rows-is-intern-at-of-alpha
                             fn-scka-canon-payloads-is-payloads-of-alpha
-                            fn-scka-next-checkpoint fn-scka-identity-of-capture
+                            fn-scka-next-checkpoint
                             fn-scka-sco-records-of-capture)
                            (fn-scka-append-take-nthcdr-all fn-scka-intern-at-of-append
                             fn-scka-intern-at-of-append-bad fn-scka-intern-at-true-listp

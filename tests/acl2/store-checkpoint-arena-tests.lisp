@@ -53,13 +53,16 @@
   (fn-record-make 0 0 0 "<one@example>" '(1 2 3) *sckat-groups*
                   "p1" "c1" "r1" 2 841000000))
 (defconst *sckat-w2*
-  (fn-record-make 1 1 0 "<two@example>" '(65 66) *sckat-groups*
+  (fn-record-make 2 2 0 "<two@example>" '(65 66) *sckat-groups*
                   "p2" "c2" "r2" 2 841000001))
 (defconst *sckat-w3*
-  (fn-record-make 2 2 0 "<three@example>" '(7 8 9 10) *sckat-groups*
+  (fn-record-make 3 3 0 "<three@example>" '(7 8 9 10) *sckat-groups*
                   "p3" "c3" "r3" 2 841000002))
 (defconst *sckat-e*
-  (fn-store-retention-event-make :undertake 3 3 0 "forward-cpo" "subject" "evidence" 10))
+  (fn-store-retention-event-make :undertake 1 1 0 "forward-cpo" "subject" "evidence" 10))
+; A history that seals nothing and is a valid first event (sequence 0).
+(defconst *sckat-e0*
+  (fn-store-retention-event-make :undertake 0 0 0 "forward-cpo" "subject" "evidence" 10))
 (defconst *sckat-configs*
   (list *fn-cfg-default-record*
         (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 1)) *fn-cfg-default-stamp*)))
@@ -86,51 +89,56 @@
       (sckat-seal-all (cdr ps) fn-arena))))
 
 ; -----------------------------------------------------------------------------
-; 1. The canonical intern (fn-intern-events-is-intern-at,
-; fn-intern-events-arena-is-payloads): over an arena already holding A0.
+; 1. The canonical intern (fn-ssr-step-rows-are-fn-scka-intern-at,
+; fn-scka-fold-at-arena-is-payloads): the host's worker over an arena
+; already holding A0.
 
 (defun sckat-intern (a0 ws)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
     (mv-let (out fn-arena)
       (let ((fn-arena (sckat-seal-all a0 fn-arena)))
-        (mv-let (rows fn-arena)
-          (fn-intern-events ws nil 0 fn-arena)
-          (mv (list rows (sckat-arena-list 0 fn-arena)) fn-arena)))
+        (mv-let (acc fn-arena)
+          (fn-ssr-intern-step (fn-ssr-seed (fn-stxk-initial-context 0)) ws nil nil :resident nil
+                              fn-arena)
+          (mv (list (fn-ssr-rows acc) (sckat-arena-list 0 fn-arena)) fn-arena)))
       out)))
 
 ; Reachable positive witness: both conclusions, the antecedents.
 (assert-event
  (let ((r (sckat-intern (list *sckat-orphan*) *sckat-prefix*)))
    (and (true-listp (list *sckat-orphan*))
-        (not (equal (fn-scka-intern-at *sckat-prefix* 1) :bad))
-        (equal (car r) (fn-scka-intern-at *sckat-prefix* 1))
+        (not (equal (fn-scka-intern-at *sckat-prefix* (fn-stxk-initial-context 0) 1) :bad))
+        (equal (car r) (fn-scka-intern-at *sckat-prefix* (fn-stxk-initial-context 0) 1))
         (equal (cadr r) (append (list *sckat-orphan*) (fn-scka-payloads *sckat-prefix*)))
         (equal (fn-scka-payloads *sckat-prefix*) (list '(1 2 3) '(65 66)))
         ; the handles are the canonical counter from the arena's count
         (equal (fn-record-payload (car (car r))) 1)
         (equal (fn-record-payload (caddr (car r))) 2))))
 
-; fn-intern-events-arena-is-payloads without "the intern is not refused": a
+; fn-scka-fold-at-arena-is-payloads without "the intern is not refused": a
 ; history with a value the intern refuses between two articles; the arena
 ; holds the first article's payload only, not the canonical payloads.
 (defconst *sckat-bad-history* (list *sckat-w1* 'not-an-event *sckat-w2*))
 (assert-event
  (let ((r (sckat-intern nil *sckat-bad-history*)))
    (and (true-listp nil)
-        (equal (fn-scka-intern-at *sckat-bad-history* 0) :bad)
+        (equal (fn-scka-intern-at *sckat-bad-history* (fn-stxk-initial-context 0) 0) :bad)
         (not (equal (cadr r) (append nil (fn-scka-payloads *sckat-bad-history*)))))))
 
 ; ... without "the arena is a true list" (a logical value no stobj holds:
 ; the recognizer carries the hypothesis): a history that seals nothing
 ; leaves any arena unchanged, and an improper list is not its append.
 (defthm sckat-intern-sealing-nothing-keeps-the-arena
-  (equal (mv-nth 1 (fn-intern-events (list *sckat-e*) nil 0 a)) a)
-  :hints (("Goal" :in-theory (enable fn-intern-events fn-intern-event))))
+  (equal (mv-nth 1 (fn-ssr-intern-step (fn-ssr-seed (fn-stxk-initial-context 0)) (list *sckat-e0*)
+                                       nil nil :resident nil a))
+         a)
+  :hints (("Goal" :in-theory (enable fn-ssr-intern-step fn-intern-event fn-ssr-seed fn-ssr-state
+                                     fn-ssr-at fn-stxk-initial-context))))
 (defthm sckat-improper-arena-is-not-its-append
   (and (not (true-listp '((1) . 5)))
-       (not (equal (fn-scka-intern-at (list *sckat-e*) 0) :bad))
-       (not (equal '((1) . 5) (append '((1) . 5) (fn-scka-payloads (list *sckat-e*))))))
+       (not (equal (fn-scka-intern-at (list *sckat-e0*) (fn-stxk-initial-context 0) 0) :bad))
+       (not (equal '((1) . 5) (append '((1) . 5) (fn-scka-payloads (list *sckat-e0*))))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
@@ -154,7 +162,7 @@
       (mv-let (rows fn-arena)
         (sckat-live-in fn-arena)
         (mv (list rows (sckat-arena-list 0 fn-arena)
-                  (fn-scka-canon-rows rows fn-arena 0)
+                  (fn-scka-canon-rows rows fn-arena 0 (fn-stxk-initial-context 0))
                   (fn-scka-canon-payloads rows fn-arena)
                   (fn-rows-wire-of rows fn-arena))
             fn-arena))
@@ -170,7 +178,7 @@
  (let ((r (sckat-live)))
    (and (equal (fn-record-payload (nth 3 (car r))) 3)
         (equal (nth 4 r) *sckat-history*)
-        (equal (nth 2 r) (fn-scka-intern-at *sckat-history* 0))
+        (equal (nth 2 r) (fn-scka-intern-at *sckat-history* (fn-stxk-initial-context 0) 0))
         (equal (fn-record-payload (nth 3 (nth 2 r))) 2)
         (equal (nth 3 r) (fn-scka-payloads *sckat-history*))
         (equal (nth 3 r) (list '(1 2 3) '(65 66) '(7 8 9 10)))
@@ -220,7 +228,7 @@
 ; The arena run's setup and sources come from the walk, two rows per call.
 (defun sckat-write-in (rows ks-override b fn-arena fn-octets)
   (declare (xargs :stobjs (fn-arena fn-octets) :verify-guards nil))
-  (let* ((canon (fn-scka-canon-rows rows fn-arena 0))
+  (let* ((canon (fn-scka-canon-rows rows fn-arena 0 (fn-stxk-initial-context 0)))
          (next (fn-sco-capture *sckat-configs* canon))
          (walk (sckat-walk (list rows nil nil) 2 100 fn-arena))
          (ws (fn-scka-lens-setup (reverse (nth 1 walk)) *sckat-seg*))
@@ -321,7 +329,7 @@
         (equal (car lo) (list :ok (nth 7 written)))
         (equal (nth 1 lo) *sckat-canon-payloads*)
         (equal (fn-sct-capture-of-tables (nth 7 written)) (nth 6 written))
-        (not (equal (fn-scka-intern-at (append *sckat-history* (list *sckat-w4*)) 0) :bad))
+        (not (equal (fn-scka-intern-at (append *sckat-history* (list *sckat-w4*)) (fn-stxk-initial-context 0) 0) :bad))
         (not (eq (nth 2 lo) :bad))
         (equal (nth 2 lo) (car full))
         (equal (nth 3 lo) (cadr full)))))
@@ -481,13 +489,13 @@
     (mv-let (out fn-arena)
       (mv-let (rows fn-arena)
         (sckat-live-in fn-arena)
-        (let* ((prefix (fn-scka-canon-rows (take plen rows) fn-arena 0))
+        (let* ((prefix (fn-scka-canon-rows (take plen rows) fn-arena 0 (fn-stxk-initial-context 0)))
                (base (if stale
                          (update-nth 1 prefix (fn-sco-capture *sckat-configs* nil))
                        (fn-sco-capture *sckat-configs* prefix)))
                (h (len (fn-scka-canon-payloads (take plen rows) fn-arena))))
           (mv (list (fn-scka-next-checkpoint base (if h0 h0 h) *sckat-configs* rows fn-arena)
-                    (fn-sco-capture *sckat-configs* (fn-scka-canon-rows rows fn-arena 0))
+                    (fn-sco-capture *sckat-configs* (fn-scka-canon-rows rows fn-arena 0 (fn-stxk-initial-context 0)))
                     h
                     (equal base (fn-sco-capture *sckat-configs* prefix))
                     (equal (len (fn-sco-records base)) plen))
@@ -500,7 +508,7 @@
  (let ((r (sckat-owner 3 nil nil)))
    (and (equal (nth 2 r) 2)
         (nth 3 r) (nth 4 r)
-        (not (equal (fn-scka-intern-at *sckat-history* 0) :bad))
+        (not (equal (fn-scka-intern-at *sckat-history* (fn-stxk-initial-context 0) 0) :bad))
         (equal (car r) (cadr r)))))
 
 ; Without "H0 is the base's canonical payload count": H0 = 3, the live
@@ -529,7 +537,7 @@
     (mv-let (out fn-arena)
       (mv-let (rows fn-arena)
         (sckat-live-in fn-arena)
-        (mv (fn-sco-capture *sckat-configs* (fn-scka-canon-rows (take 3 rows) fn-arena 0))
+        (mv (fn-sco-capture *sckat-configs* (fn-scka-canon-rows (take 3 rows) fn-arena 0 (fn-stxk-initial-context 0)))
             fn-arena))
       out)))
 
@@ -553,7 +561,7 @@
     (mv-let (out fn-arena)
       (let ((fn-arena (sckat-seal-all (fn-scka-payloads ws) fn-arena)))
         (mv-let (lhs fn-arena)
-          (fn-scka-recover-rows (fn-sco-capture *sckat-configs* (fn-scka-intern-at ws 0))
+          (fn-scka-recover-rows (fn-sco-capture *sckat-configs* (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
                                 *sckat-configs* vs fn-arena)
           (let ((a1 (sckat-arena-list 0 fn-arena)))
             (mv-let (full fn-arena)
@@ -563,7 +571,7 @@
 
 (assert-event
  (let ((r (sckat-recover-pair (list 'not-an-event) (list *sckat-w1*))))
-   (and (equal (fn-scka-intern-at (list 'not-an-event *sckat-w1*) 0) :bad)
+   (and (equal (fn-scka-intern-at (list 'not-an-event *sckat-w1*) (fn-stxk-initial-context 0) 0) :bad)
         (not (equal (list (car r) (cadr r)) (list (caddr r) (cadddr r))))
         (eq (caddr r) :bad)
         (not (eq (car r) :bad)))))
@@ -572,7 +580,7 @@
 ; canonical arena sealed directly): the same extension and arena.
 (assert-event
  (let ((r (sckat-recover-pair *sckat-prefix* (list *sckat-w3* *sckat-w4*))))
-   (and (not (equal (fn-scka-intern-at (append *sckat-prefix* (list *sckat-w3* *sckat-w4*)) 0)
+   (and (not (equal (fn-scka-intern-at (append *sckat-prefix* (list *sckat-w3* *sckat-w4*)) (fn-stxk-initial-context 0) 0)
                     :bad))
         (equal (car r) (caddr r))
         (equal (cadr r) (cadddr r))

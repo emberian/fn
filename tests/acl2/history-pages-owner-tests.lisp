@@ -216,11 +216,11 @@
           (mv-let (rows2 fn-arena)
             (fn-intern-events (list *hpo-w3*) nil 0 fn-arena)
             (let* ((rows (append rows1 rows2))
-                   (base (fn-sco-capture *hpo-configs* (fn-scka-canon-rows (take 3 rows) fn-arena 0)))
+                   (base (fn-sco-capture *hpo-configs* (fn-scka-canon-rows (take 3 rows) fn-arena 0 (fn-stxk-initial-context 0))))
                    (h0 (len (fn-scka-canon-payloads (take 3 rows) fn-arena)))
                    (h (fn-sco-records base)))
               (mv (list h
-                        (fn-scka-canon-rows (nthcdr (len h) rows) fn-arena h0)
+                        (fn-scka-canon-rows (nthcdr (len h) rows) fn-arena h0 (fn-sco-identity base))
                         (fn-sco-records (fn-scka-next-checkpoint base h0 *hpo-configs* rows fn-arena)))
                   fn-arena)))))
       out)))
@@ -270,7 +270,7 @@
 (must-fail-checked
  (defthm hpo-snapshot-without-vhold
    (let* ((h (fn-sco-records base))
-          (canon (fn-scka-canon-rows (nthcdr (len h) records) fn-arena h0))
+          (canon (fn-scka-canon-rows (nthcdr (len h) records) fn-arena h0 (fn-sco-identity base)))
           (res (fn-hp-x-append-all canon 0 salt (len h) lens starts np pgs-mem)))
      (implies (and (not (equal canon :bad)) (fn-hp-okp h salt) (equal lens (fn-hp-lens h salt))
                    (fn-hp-starts-okp starts) (equal (mv-nth 0 res) :ok))
