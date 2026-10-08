@@ -1,0 +1,52 @@
+{
+ "entries": {
+  "fn-bpnr-checkpoint-recovery-equals-full-machine": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-equivalence-tests.lisp::fn-bpnr-checkpoint-recovery-equals-full-machine",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnj-rotation-restart-succeeds-with-owed-work": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-recovery-tests.lisp::fn-bpnj-rotation-restart-succeeds-with-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotation-restart-keeps-owed-work": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-restart-keeps-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotation-recovery-seeds-owed-jobs": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-recovery-seeds-owed-jobs",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-recover-from-checkpoint-equals-full-recover": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-recover-from-checkpoint-equals-full-recover",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-rotation-crash-recovers-old-or-new": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_killed_at_each_cut_keeps_held_rows",
+   "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-rotation-crash-recovers-old-or-new",
+   "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename"
+  },
+  "fn-bpn-step-preserves-lifecycle-invariant": {
+   "subject": "fn-bpn-step",
+   "host_test": "tests/test_bp_node_native.py::test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
+   "trace_witness": "tests/acl2/bp-node-machine-authorization-tests.lisp::fn-bpn-step-preserves-lifecycle-invariant",
+   "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send"
+  }
+ }
+}

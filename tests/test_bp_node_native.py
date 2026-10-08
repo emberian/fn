@@ -43,6 +43,16 @@ PRODUCER = native_image("FN_NATIVE_HOST")
 
 @requires(IMAGE, PRODUCER)
 class NativeBpNodeTests(unittest.TestCase):
+    # Critical BP path: fnn-bps-foundation-step calls fn-bpnj-step; its base
+    # persistence/result arms reach fn-bpn-step.  Rotation publication drives
+    # fn-bpnp-rotate-step, and open feeds fn-bpnr-seed-state's checkpoint jobs
+    # into fn-bpnr-recover-auto-event and the composed recovery step.
+    # Seed-omission implementation mutation: /tmp/p7/bprot-mutant.patch.
+    # Deputy N: owed-job restart GREEN, real 15145158d (native-bpr-real2-
+    # 15145158d); FAILS mutant 5e4632275 (native-bpr-mut2-rot), under
+    # hbox:/tank/fn/scratch/bp-rot.  These are image observations, not a claim
+    # that the recovery-event-only theorems themselves observe base jobs.
+
     def setUp(self):
         if self._testMethodName in (
                 "test_disconnected_delivery_restarts_and_releases_only_matching_obligation",

@@ -3,6 +3,7 @@
 (include-book "../../books/bp-node-machine-authorization")
 (include-book "must-fail-checked")
 (include-book "../../books/defkeystone")
+(include-book "bp-node-rotation-due-tests")
 
 (defconst *bpna-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpna-peer* (cons :dtn '(47 47 102 110 45 98 47)))
@@ -126,7 +127,9 @@
   :claim (((invariant (fn-bpn-lifecycle-invariantp st)))
           (fn-bpn-lifecycle-invariantp
            (fn-bpn-answer-state (fn-bpn-step st event))))
-  :witness ((st *bpna-s-queued*) (event (list :contact *bpna-peer* t)))
+  :subject fn-bpn-step
+  :witness ((st (fn-bpnf-base (bprd-traced-q)))
+            (event (list :contact *bpcx-dest* t)))
   :breaks ((invariant ((st *bpna-over-token*)
                        (event (list :contact *bpna-peer* nil)))))
   :mutations ((forgets-pending-authorization
@@ -252,3 +255,39 @@
     (equal (fn-cbor-ag-car
             (fn-bpn-pending-record *bpna-fake-accept-pending*))
            :queued))))
+
+;; Implementation mutant: the contact dispatch still stages the real send,
+;; but binds it to a :queued record instead of the required :attempting
+;; record.  This is the authorization relation's concrete failure, separate
+;; from the rotation mutant (empty jobs can still be lifecycle-invariant).
+(defun bpna-mutant-step-with-unbound-send (st event)
+  (let* ((answer (fn-bpn-step st event))
+         (next (fn-bpn-answer-state answer))
+         (pending (fn-bpn-machine-state-pending next))
+         (wrong (fn-bpn-make-pending
+                 (fn-bpn-pending-token pending)
+                 (list :queued (fn-bpn-pending-token pending)
+                       (car (fn-bpn-machine-state-jobs next)))
+                 (fn-bpn-pending-success-effects pending)
+                 (fn-bpn-pending-refusal-effect pending)
+                 (fn-bpn-pending-uncertainty-effect pending))))
+    (fn-bpn-answer
+     (fn-bpn-state-with next (fn-bpn-machine-state-jobs next)
+                        (fn-bpn-machine-state-contacts next) wrong
+                        (fn-bpn-machine-state-fenced next)
+                        (fn-bpn-machine-state-next-token next))
+     (fn-bpn-answer-effects answer))))
+(assert-event
+ (let* ((st (fn-bpnf-base (bprd-traced-q)))
+        (event (list :contact *bpcx-dest* t)))
+   (and (consp (fn-bpn-machine-state-jobs st))
+        (fn-bpn-lifecycle-invariantp st)
+        (fn-bpn-lifecycle-invariantp (fn-bpn-answer-state (fn-bpn-step st event)))
+        (not (fn-bpn-lifecycle-invariantp
+              (fn-bpn-answer-state (bpna-mutant-step-with-unbound-send st event)))))))
+(must-fail-checked
+ (assert-event
+  (fn-bpn-lifecycle-invariantp
+   (fn-bpn-answer-state
+    (bpna-mutant-step-with-unbound-send (fn-bpnf-base (bprd-traced-q))
+                                      (list :contact *bpcx-dest* t))))))
