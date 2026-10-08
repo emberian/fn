@@ -18,26 +18,6 @@
       "why": "includes the D46-unhooked admission-semantic-node"
     },
     {
-      "book": "books/admission-semantic-census-initial-order-refinement",
-      "decision": "D46",
-      "why": "includes the D46-unhooked admission-semantic-node"
-    },
-    {
-      "book": "books/admission-semantic-census-initial-refinement",
-      "decision": "D46",
-      "why": "includes the D46-unhooked admission-semantic-node"
-    },
-    {
-      "book": "books/admission-semantic-census-owner-refinement",
-      "decision": "D46",
-      "why": "includes the D46-unhooked admission-semantic-node"
-    },
-    {
-      "book": "books/admission-semantic-census-step-refinement",
-      "decision": "D46",
-      "why": "includes the D46-unhooked admission-semantic-node"
-    },
-    {
       "book": "books/admission-semantic-node",
       "decision": "D46",
       "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
