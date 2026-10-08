@@ -16,6 +16,7 @@
 (include-book "../books/topic-history-local-control")
 (include-book "../books/native-live-buffer")
 (include-book "../books/native-control-kinds")
+(include-book "../books/owner-state-accessors")
 
 (defun fn-native-control-host-reply-seconds (request-octets)
   (declare (xargs :mode :program :guard (natp request-octets)))
