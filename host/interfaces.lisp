@@ -1675,6 +1675,10 @@
 
 (definterface fn-splan-cursor-resume-ms
   :class :common-lisp-compliant)
+(definterface fn-asto-resume-ms
+  :class :common-lisp-compliant
+  :keystones (fn-asto-resume-ms-lst-is-immediate
+              fn-asto-resume-ms-over-waits))
 
 
 ; Consumed by native owner/mux. LIST is a distinct query residual subject;

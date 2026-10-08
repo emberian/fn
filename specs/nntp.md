@@ -2727,12 +2727,17 @@ with recorded publication/submission adapters and checks success, refusal,
 uncertain, fault, malformed results and refusal before publication. Full native
 disk/transport composition remains a separate scenario.
 
-The pending bounded LIST producer uses `fn-gsc-one` over a fixed captured
-group high/next/version and scalar count/low/last. One accepted step probes
-one numbered availability entry; exhaustion yields while retaining these
-scalars. The disabled remaining-range model has unconditional one-step
-residual preservation and equals the summary at settlement. This component
-does not establish the full LIST producer, snapshot frames or heap tariff.
+The LIST producer reads each selected group's summary in one call,
+`fn-scat-available-summary` at the captured view: the catalog's carried live
+count, low and high, corrected over the rows appended or withdrawn since the
+view. A LIST of g groups therefore costs its groups and its emitted rows, not
+the articles stored. `fn-scat-available-summary-is-the-walk` equates the
+carried summary with the numbered walk over 1 .. next-1 whenever the group's
+high is below the allocation watermark, and `fn-lst-groups-reference-is-active-lines`
+equates the cursor's reference body with the available-command model with no
+premise on the catalog. Each host activation spends its whole visit grant
+(`fn-lst-batch`); its yield delay is `fn-asto-resume-ms`, zero for LIST. This
+component does not establish snapshot frames or a heap tariff.
 
 
 Retained article selection now yields while walking captured numeric/current

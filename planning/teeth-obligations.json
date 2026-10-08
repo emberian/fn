@@ -1169,7 +1169,45 @@
    "statement_digest": "1b2fe202ce5e73755aa954ec54ea1d4ed66ff552d8e8f85d1811686c7e5c154f"
   },
   {
-   "book_digest": "45d86504975e8f6749d4b24196dd1cd3296eb59f867cbc5a2394264d1e423624",
+   "book_digest": "b5d61bb7375f76a18a561aee968e55f6fa5f1bd02ea89b6b230fd10f029ce3c1",
+   "bounds": [],
+   "claim_digest": "290e081e19e9a90d5384f2f3055ea3e3e4db0e083cf4dc2ad0342ef41fd054f4",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-asto-resume-ms-lst-is-immediate",
+   "owed_met": null,
+   "owner_book": "tests/acl2/article-stream-owner-teeth-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-asto-resume-ms",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b5d61bb7375f76a18a561aee968e55f6fa5f1bd02ea89b6b230fd10f029ce3c1",
+   "bounds": [],
+   "claim_digest": "312632a40982204a1b51783a0fbe8f0bcff2a8e307a0dde751c3f8ecd4a16112",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-asto-resume-ms-over-waits",
+   "owed_met": null,
+   "owner_book": "tests/acl2/article-stream-owner-teeth-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-asto-resume-ms",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b5d61bb7375f76a18a561aee968e55f6fa5f1bd02ea89b6b230fd10f029ce3c1",
    "bounds": [],
    "claim_digest": "6659ec184506c2b5cd3a909ff5a4032001e4b359a35ede454b830cdf445d9158",
    "class": "generated",
@@ -1188,7 +1226,7 @@
    "witness": "lemma"
   },
   {
-   "book_digest": "45d86504975e8f6749d4b24196dd1cd3296eb59f867cbc5a2394264d1e423624",
+   "book_digest": "b5d61bb7375f76a18a561aee968e55f6fa5f1bd02ea89b6b230fd10f029ce3c1",
    "bounds": [],
    "claim_digest": "6362a7ac0a7289b2a50637303d13a260a09b6a8d7d23e4b16adabb7efcdb1c14",
    "class": "generated",
