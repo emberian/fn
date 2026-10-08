@@ -82,8 +82,8 @@
  
  :breaks ((cache ((conn *s11av-conn*) (event (avac-event "STAT <a@x>")) (live nil) (lver 3) (arts nil) (cache *s11av-forged*)  ) )
  (restricted ((conn (s11av-unrestricted)) (event (avac-event "OVER 1-3")) (live nil) (lver 3) (arts nil) (cache nil)  ) ))
- :mutations ((access-route-skipped (:conclusion (equal (s11av-dispatch-drop-effects conn event live lver arts cache fn-arena fn-cat) (fn-scar-dispatch-core conn event live arts fn-arena))) ()
- :fault "available dispatch bypasses the restricted reference route" ))
+ :mutations ((reply-dropped (:conclusion (equal (s11av-dispatch-drop-effects conn event live lver arts cache fn-arena fn-cat) (fn-scar-dispatch-core conn event live arts fn-arena))) ()
+ :fault "dispatch computes the restricted result but drops its reply effects" ))
  :stobjs ((fn-arena (fn-arn-seal-many *avac-a* fn-arena))
           (fn-cat (s11av-load-cat *avac-c* fn-cat))))
 (defteeth-check (fn-av-scr-auth-delegate-restricted-is-reference fn-av-scr-dispatch-core-restricted-is-reference))

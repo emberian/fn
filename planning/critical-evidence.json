@@ -111,7 +111,7 @@
   },
   "fn-own-consumed-completion-is-240-or-uncertain": {
    "subject": "fn-own-outcome",
-   "host_test": "tests/test_native_conformance.py::test_the_three_outcomes_stay_distinct_and_recover_resolves_the_third",
+   "host_test": "tests/test_native_commit_log.py::test_concurrent_posts_are_committed_through_the_log_and_served_again",
    "trace_witness": "tests/acl2/owner-completion-teeth-tests.lisp::fn-own-consumed-completion-is-240-or-uncertain",
    "mutation": "tests/acl2/owner-completion-teeth-tests.lisp::all-durable"
   },
@@ -123,7 +123,7 @@
   },
   "fn-arena-seal-list{correspondence}": {
    "subject": "fn-arena-seal-list",
-   "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
+   "host_test": "tests/test_native_served_differential.py::test_whole_transcript_agrees",
    "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-list{correspondence}",
    "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
   },
@@ -135,7 +135,7 @@
   },
   "fn-arena-seal-range{correspondence}": {
    "subject": "fn-arena-seal-range",
-   "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
+   "host_test": "tests/test_native_state_checkpoint.py::test_checkpoint_open_equals_full_replay",
    "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-range{correspondence}",
    "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
   },
@@ -149,7 +149,7 @@
    "subject": "fn-av-scr-dispatch-core",
    "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
    "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-dispatch-core-restricted-is-reference",
-   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::access-route-skipped"
+   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::reply-dropped"
   },
   "fn-pidx-existing-action-is-store-existing-action": {
    "subject": "fn-pidx-existing-action",

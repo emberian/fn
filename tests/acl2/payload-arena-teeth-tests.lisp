@@ -22,7 +22,8 @@
 (defthm art-corr-is-lcorr
  (equal (mv-nth 0 (art-corr fn-arena$l fn-arena))
         (fn-arena$lcorr fn-arena$l fn-arena))
- :hints (("Goal" :in-theory (enable art-corr fn-arena$lcorr fn-arena-p fn-arena$ap))))
+ :hints (("Goal" :use ((:instance fn-arn-payload-listp-true-listp (xs fn-arena)))
+          :in-theory (enable art-corr fn-arena$lcorr fn-arena-p fn-arena$ap))))
 (defun art-list (xs fn-arena$l fn-arena)
  (declare (xargs :stobjs (fn-arena$l fn-arena) :verify-guards nil))
  (let* ((fn-arena$l (fn-arena$l-seal-list xs fn-arena$l))

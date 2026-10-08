@@ -805,3 +805,7 @@ class StateCheckpointCutTests(StateCheckpointFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Critical range seal: checkpoint restore calls fnn-state-checkpoint-load-arena
+# -> fn-scka-seal-n -> fn-arena-seal-range on the verified arena run. The
+# checkpoint/full-replay comparison above rereads all five articles.

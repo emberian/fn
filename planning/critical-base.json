@@ -525,10 +525,6 @@
    "class": "authorization",
    "statement_digest": "a187ea3a8cfc0bd5d464c4db0424516fe658f2d3f5b4d3fa76277d94c2b2ace7"
   },
-  "fn-auth-view-trie-corresponds": {
-   "class": "authorization",
-   "statement_digest": "f8ef2cdd96b1833e63be141efce47866f6b288436b5bf7068c5717ff41e50fdf"
-  },
   "fn-auth-view-when-unrestricted": {
    "class": "authorization",
    "statement_digest": "384afd018dc354828e9ea3a655325c045fdfb321baf16d0648cd6373a6e1c61e"
@@ -4072,10 +4068,6 @@
   "fn-pidx-existing-action-is-store-existing-action": {
    "class": "identity-binding",
    "statement_digest": "ad61b21e379fb120ab8e2eee0469e450822ad343d5c7ded4674e209ca54b2f58"
-  },
-  "fn-pidx-find-article-is-find-article": {
-   "class": "identity-binding",
-   "statement_digest": "3ea97bb50bc95f71340b1500a5f4d5ae9536540c1301e37f52435f1dc85b8167"
   },
   "fn-pidx-find-in-visible-is-find": {
    "class": "identity-binding",

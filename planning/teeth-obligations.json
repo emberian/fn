@@ -708,11 +708,25 @@
   },
   {
    "book": "books/payload-arena.lisp",
-   "class": "hand",
+   "book_digest": "46c7ed4aed9d8bc53ec08a1ce48f1ca425b29db4de5cbb7cc309fedf90592038",
+   "bounds": [],
+   "claim_digest": "d76956b133374b7b5df2fa2b085f79216720dd1a0b7d8e8b66a9f7cc6629b33a",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-arena-seal-buffer{correspondence}",
+   "owed_met": null,
+   "owner_book": "tests/acl2/payload-arena-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "e79532bd8b2f69d3f0af5d6bef578c93736db2387e3ffb3950a9158f3279e2ae"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 1
+   },
+   "statement_digest": "e79532bd8b2f69d3f0af5d6bef578c93736db2387e3ffb3950a9158f3279e2ae",
+   "subject": "fn-arena-seal-buffer",
+   "witness": "executable"
   },
   {
    "book": "books/payload-arena.lisp",
@@ -732,11 +746,25 @@
   },
   {
    "book": "books/payload-arena.lisp",
-   "class": "hand",
+   "book_digest": "46c7ed4aed9d8bc53ec08a1ce48f1ca425b29db4de5cbb7cc309fedf90592038",
+   "bounds": [],
+   "claim_digest": "914010f9598079827b0b7eca56aaff89f114f5e1fa27d1d42478a7d5e5b495a7",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-arena-seal-list{correspondence}",
+   "owed_met": null,
+   "owner_book": "tests/acl2/payload-arena-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "154d4597c6409c1a8bdc85675fabc7c6d1e0af9a6cd67ca731637c4218040666"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 1
+   },
+   "statement_digest": "154d4597c6409c1a8bdc85675fabc7c6d1e0af9a6cd67ca731637c4218040666",
+   "subject": "fn-arena-seal-list",
+   "witness": "executable"
   },
   {
    "book": "books/payload-arena.lisp",
@@ -764,11 +792,25 @@
   },
   {
    "book": "books/payload-arena.lisp",
-   "class": "hand",
+   "book_digest": "46c7ed4aed9d8bc53ec08a1ce48f1ca425b29db4de5cbb7cc309fedf90592038",
+   "bounds": [],
+   "claim_digest": "cd05b7bd8df3200210b7edec6c38eaae9f6d80131b1cd93dcd3c48e269611be4",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-arena-seal-range{correspondence}",
+   "owed_met": null,
+   "owner_book": "tests/acl2/payload-arena-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "ef49bb437c417749446726b547381420ef4e4baee63504651b4717dbbd925231"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 2,
+    "reachable": 1
+   },
+   "statement_digest": "ef49bb437c417749446726b547381420ef4e4baee63504651b4717dbbd925231",
+   "subject": "fn-arena-seal-range",
+   "witness": "executable"
   },
   {
    "book": "books/payload-arena.lisp",
@@ -1714,19 +1756,47 @@
   },
   {
    "book": "books/served-available-access.lisp",
-   "class": "hand",
+   "book_digest": "02bdf31fdf79d50960b3baba1502922420f1b9c478ed5c34fd3e3b1c14691ec1",
+   "bounds": [],
+   "claim_digest": "5b545eadc3174994010c3dbf8608bed3aa969da19ae59f9e92e8368d39079490",
+   "class": "generated",
    "critical": "authorization",
+   "mutations": "edits:1",
    "name": "fn-av-scr-auth-delegate-restricted-is-reference",
+   "owed_met": null,
+   "owner_book": "tests/acl2/served-available-critical-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "c82fa174dddbcd27ffbc8aeb5a37698e808817d159ddd4408f006e9cbae292ad"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "statement_digest": "c82fa174dddbcd27ffbc8aeb5a37698e808817d159ddd4408f006e9cbae292ad",
+   "subject": "fn-av-scr-auth-delegate",
+   "witness": "executable"
   },
   {
    "book": "books/served-available-access.lisp",
-   "class": "hand",
+   "book_digest": "02bdf31fdf79d50960b3baba1502922420f1b9c478ed5c34fd3e3b1c14691ec1",
+   "bounds": [],
+   "claim_digest": "223a7c989fd73786778b79a0682bb68f3d225971b803d59831ce9f5fc8f630e1",
+   "class": "generated",
    "critical": "authorization",
+   "mutations": "edits:1",
    "name": "fn-av-scr-dispatch-core-restricted-is-reference",
+   "owed_met": null,
+   "owner_book": "tests/acl2/served-available-critical-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "06d4279d6a9d7ccc4352b4b6869a58c56f1fe27a191de200b3ff6083b28d17dc"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "statement_digest": "06d4279d6a9d7ccc4352b4b6869a58c56f1fe27a191de200b3ff6083b28d17dc",
+   "subject": "fn-av-scr-dispatch-core",
+   "witness": "executable"
   },
   {
    "book": "books/article-work.lisp",
@@ -8436,11 +8506,25 @@
   },
   {
    "book": "books/group-access-cache.lisp",
-   "class": "hand",
+   "book_digest": "40fb58e5cc6c572d6e97d13ed53e98407a4767b9960aa3e75531ff7941c89eef",
+   "bounds": [],
+   "claim_digest": "95b1b90a5e9c497e252ab6ac0a5b09deb5fe38f3f1e3a0c1d4094f3d01d18ae0",
+   "class": "generated",
    "critical": "authorization",
+   "mutations": "edits:1",
    "name": "fn-gacc-grow-builds",
+   "owed_met": null,
+   "owner_book": "tests/acl2/group-access-cache-tests.lisp",
    "registry": true,
-   "statement_digest": "bdd856de97d43b34b07d7a41543df8454e0d49211604594484b46e17ebea92c5"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "bdd856de97d43b34b07d7a41543df8454e0d49211604594484b46e17ebea92c5",
+   "subject": "fn-gacc-grow",
+   "witness": "executable"
   },
   {
    "book": "books/group-access-cache.lisp",
@@ -17188,11 +17272,25 @@
   },
   {
    "book": "books/owner-invariants-outcome.lisp",
-   "class": "hand",
+   "book_digest": "7e89115cde774fcbb9cbe8d926897c10f0f147fd93143649a87f9bd92ac285dc",
+   "bounds": [],
+   "claim_digest": "290b3d0043cacc1fa29d4e090189df9d6130bbe887261d97ee333c801a8631a0",
+   "class": "generated",
    "critical": "extraction",
+   "mutations": "edits:1",
    "name": "fn-own-consumed-completion-is-240-or-uncertain",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-completion-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "81a21f88f15601e8563e20742a3306c4957bb1cac5ee9fe3b0d1557ba3850550"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 2,
+    "reachable": 2
+   },
+   "statement_digest": "81a21f88f15601e8563e20742a3306c4957bb1cac5ee9fe3b0d1557ba3850550",
+   "subject": "fn-own-outcome",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -18569,11 +18667,25 @@
   },
   {
    "book": "books/post-identity-index.lisp",
-   "class": "hand",
+   "book_digest": "f558e1822b0601723886200a2249e3307d259f74c756002336102bf2ec06ee7a",
+   "bounds": [],
+   "claim_digest": "099f89e05ae18911656656dc74286b25e3dbbe8dd2e0bba5114adf6df22ac260",
+   "class": "generated",
    "critical": "identity-binding",
+   "mutations": "edits:1",
    "name": "fn-pidx-existing-action-is-store-existing-action",
+   "owed_met": null,
+   "owner_book": "tests/acl2/post-identity-index-tests.lisp",
    "registry": true,
-   "statement_digest": "791154f7ca7728c81a49d1e2cba9d669b55a8c67dcb7f08c5d444e22e6ee01f3"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 0
+   },
+   "statement_digest": "791154f7ca7728c81a49d1e2cba9d669b55a8c67dcb7f08c5d444e22e6ee01f3",
+   "subject": "fn-pidx-existing-action",
+   "witness": "executable"
   },
   {
    "book": "books/post-identity-index.lisp",
@@ -18585,19 +18697,47 @@
   },
   {
    "book": "books/post-identity-index.lisp",
-   "class": "hand",
+   "book_digest": "f558e1822b0601723886200a2249e3307d259f74c756002336102bf2ec06ee7a",
+   "bounds": [],
+   "claim_digest": "a8d4bc00ca713d6c50f2a7474888bd1cd6598817c1b4f92c43fc1b1b3a820668",
+   "class": "generated",
    "critical": "identity-binding",
+   "mutations": "edits:1",
    "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare",
+   "owed_met": null,
+   "owner_book": "tests/acl2/post-identity-index-tests.lisp",
    "registry": true,
-   "statement_digest": "341f992e158b12655e21decb9d907b21381ce80cda1bba2dbe5353e4210bd6cb"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "341f992e158b12655e21decb9d907b21381ce80cda1bba2dbe5353e4210bd6cb",
+   "subject": "fn-pidx-sbud-prepare",
+   "witness": "executable"
   },
   {
    "book": "books/post-identity-index.lisp",
-   "class": "hand",
+   "book_digest": "fee0eb69c0fd5c7dfc5411e15f226467a851641d6e9c5c04a8a5dde7d2adaf9f",
+   "bounds": [],
+   "claim_digest": "e6b25e04a19397eae3f160897bd320df581b45c9988bfe1fe6b14965303510e3",
+   "class": "generated",
    "critical": "identity-binding",
+   "mutations": "edits:1",
    "name": "fn-pidx-view-okp-of-live-owner",
+   "owed_met": null,
+   "owner_book": "tests/acl2/post-identity-view-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "3177fc0f2beb3422d880670dfaa106463553e90dc75d40116e05fd0ad2d0c5f6"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 0
+   },
+   "statement_digest": "3177fc0f2beb3422d880670dfaa106463553e90dc75d40116e05fd0ad2d0c5f6",
+   "subject": "fn-pidx-view-okp",
+   "witness": "executable"
   },
   {
    "book": "books/peer-invite.lisp",
@@ -21118,11 +21258,25 @@
   },
   {
    "book": "books/reader-open-carried.lisp",
-   "class": "hand",
+   "book_digest": "2921cbbfe54e6c4d56d29ccb12e11a3be2d327a29f979186a3f58c1c8ab61d2f",
+   "bounds": [],
+   "claim_digest": "f8789be3d7d0e52b3ebf0fd214cfc55010890c455575a7d4d141ceb4bdfbae98",
+   "class": "generated",
    "critical": "extraction",
+   "mutations": "edits:1",
    "name": "fn-rdc-selection-establishes",
+   "owed_met": null,
+   "owner_book": "tests/acl2/reader-open-carried-tests.lisp",
    "registry": true,
-   "statement_digest": "0b1c9145bce47402aab42da9cfc2f28c817c1ef78755fe6ceb7353c282dbfc55"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "0b1c9145bce47402aab42da9cfc2f28c817c1ef78755fe6ceb7353c282dbfc55",
+   "subject": "fn-rdc-selection",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -23207,7 +23361,7 @@
    "registry": true
   },
   {
-   "book_digest": "54c9f1d68342349be0d02fcbd8bd0959899144e7ad9c5e0713400a331dbe3bc7",
+   "book_digest": "30564227c209e9c182cd1efaedc11fc56a9a7ed6c0ced32ed5e3925aa67fc3cb",
    "bounds": [],
    "claim_digest": "3edb3aff63b5d807cfd6f0bf02d3c7cfae6059b3faee991ac7cf6411b28b3822",
    "class": "generated",
@@ -23226,7 +23380,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "54c9f1d68342349be0d02fcbd8bd0959899144e7ad9c5e0713400a331dbe3bc7",
+   "book_digest": "30564227c209e9c182cd1efaedc11fc56a9a7ed6c0ced32ed5e3925aa67fc3cb",
    "bounds": [],
    "claim_digest": "62980ab9684fb366d8c29ab43f379497361af1a14afc20e0f8d89a7f68d26553",
    "class": "generated",
@@ -23250,7 +23404,7 @@
    "registry": true
   },
   {
-   "book_digest": "54c9f1d68342349be0d02fcbd8bd0959899144e7ad9c5e0713400a331dbe3bc7",
+   "book_digest": "30564227c209e9c182cd1efaedc11fc56a9a7ed6c0ced32ed5e3925aa67fc3cb",
    "bounds": [],
    "claim_digest": "e7e85641e8d29f15a7edcdd71994dc2409a093781a5ed1f57593f8fda81cf56e",
    "class": "generated",

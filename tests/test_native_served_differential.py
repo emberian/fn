@@ -146,3 +146,5 @@ if __name__ == "__main__":
 
 # Critical reader selection: fnn-reader-prepare -> fnn-reader-select ->
 # fn-reader-use-store/seed -> fn-rdc-selection, before fn-reader-reset.
+# fn-reader-use-seed also calls fn-arena-seal-list before installing that
+# selection; the native transcript retrieves the seeded article by handle.
