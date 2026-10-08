@@ -19,7 +19,6 @@
 ; about the transitions, so it re-enables exactly them, locally.
 ; fn-nntp-article-idp-is-consp (books/nntp-invariants) is tried on every
 ; consp test and backchains by opening the message-id recognizer.
-(local (in-theory (disable fn-nntp-article-idp-is-consp)))
 (local (in-theory (enable fn-nntp-syntax-vocabulary
                           fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary
