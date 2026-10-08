@@ -73,6 +73,11 @@
 (defconst *pckst-delta* (pckst-rec 1 3))
 (defun pckst-base () (declare (xargs :verify-guards nil)) (fn-pck-plen (list *pckst-prefix*) 0))
 
+(defun pckst-st1 ()
+  ; the fold state after the prefix record, the delta's start state
+  (declare (xargs :verify-guards nil))
+  (fn-pck-st-of (fn-pck-seed) (list *pckst-prefix*)))
+
 ; The dirty page (page 8) after staging the prefix row from 0 and the delta
 ; row at P2 with its payload frame at BASE2, in an image of ten zero pages.
 (defun pckst-run (p2 base2)
@@ -92,11 +97,6 @@
               (mv out pgs-mem fn-octets)))
           (mv out pgs-mem)))
       out)))
-
-(defun pckst-st1 ()
-  ; the fold state after the prefix record, the delta's start state
-  (declare (xargs :verify-guards nil))
-  (fn-pck-st-of (fn-pck-seed) (list *pckst-prefix*)))
 
 (defun pckst-cnt ()
   (declare (xargs :verify-guards nil))

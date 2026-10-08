@@ -84,7 +84,7 @@
               (let* ((pgs-mem (pgs-x-grow-image 10 pgs-mem))
                      (c0 (pcki-img nil pgs-mem)))
                 (mv-let (v0 fn-octets pgs-mem)
-                  (fn-pck-x-stage-rows (list *pckit-prefix*) 0 0 fn-arena fn-octets pgs-mem)
+                  (fn-pck-x-stage-rows (list *pckit-prefix*) 0 0 (fn-pck-seed) fn-arena fn-octets pgs-mem)
                   (declare (ignore v0))
                   (let* ((pgs-mem (pgs-x-commit-durable '(8) pgs-mem))
                          (c1 (pcki-img (pckit-w1) pgs-mem))
@@ -95,7 +95,7 @@
                                                           (adt-tp-zeros wl))))
                          (c2 (equal (pgs-x-abs-dirty (pgs-dirty-lpages d) pgs-mem) d)))
                     (mv-let (v1 fn-octets pgs-mem)
-                      (fn-pck-x-stage-rows (list *pckit-delta*) cnt (pckit-base) fn-arena fn-octets pgs-mem)
+                      (fn-pck-x-stage-rows (list *pckit-delta*) cnt (pckit-base) (fn-pck-st-of (fn-pck-seed) (list *pckit-prefix*)) fn-arena fn-octets pgs-mem)
                       (declare (ignore v1))
                       (let* ((pgs-mem (pgs-x-commit-durable '(8) pgs-mem))
                              (c3 (pcki-img (pckit-w2) pgs-mem)))
@@ -106,7 +106,8 @@
 
 (assert-event
  (and (fn-sccb-treep *pckit-prefix*) (fn-sccb-treep *pckit-delta*)
-      (fn-pck-sccb-listp (list *pckit-prefix* *pckit-delta*))
+      (fn-pck-sccb-listp (list *pckit-prefix* *pckit-delta*) (fn-pck-seed))
+      (not (equal (fn-pck-st-of (fn-pck-seed) (list *pckit-prefix* *pckit-delta*)) :bad))
       (> (pckit-base) 0)
       (< (len (pckit-w2)) 2048)
       (equal (pckit-run) (list t t t t))))
