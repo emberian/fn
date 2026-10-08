@@ -17,8 +17,12 @@ HERE = Path(__file__).resolve().parent
 PATH = HERE / "workloads.json"
 
 PHASE_KINDS = {
+    "fault_held_reader": {"readers", "shrink_runs", "command_deadline_s", "recovery_s"},
+    "fault_slow_reader": {"duration_s", "solo_s", "recv_sleep_s", "pipeline", "shrink_runs", "command_deadline_s"},
+    "fault_framing": {"split_budget", "shrink_runs", "command_deadline_s", "fragment_pause_s", "rss_slack_kib"},
+    "fault_crash_boundary": {"posts", "samples_per_boundary", "shrink_runs", "command_deadline_s", "recovery_s"},
     "post": {"count", "duration_s", "octets", "connections", "rate_per_s", "background_readers"},
-    "commands": {"reps"},
+    "commands": {"reps", "budget_s", "only", "greeting_reps"},
     "fresh_start": {"limits_mb"},
     "conn_capacity": {"presets", "max_try"},
     "census": set(),
@@ -32,7 +36,7 @@ PHASE_KINDS = {
     "reopen": set(),
     "checkpoint": set(),
     "verify": {"count"},
-    "peers": {"mode", "rate_per_s", "baseline_s", "posts", "deadline_s", "drain_s", "octets"},
+    "peers": {"mode", "rate_per_s", "baseline_s", "posts", "deadline_s", "drain_s", "octets", "count"},
     "unimplemented": {"reason"},
 }
 COMMON = {"name", "kind", "measure"}
@@ -58,6 +62,20 @@ def validate(data):
             raise WorkloadError("%s: unknown preset %r" % (name, w.get("preset")))
         if not w.get("phases"):
             raise WorkloadError("%s: no phases" % name)
+        if "lockwait" in w and not isinstance(w["lockwait"], bool):
+            raise WorkloadError("%s: lockwait must be boolean" % name)
+        if "sprof" in w:
+            prof = w["sprof"]
+            window = prof.get("window_s") if isinstance(prof, dict) else None
+            if type(window) is not int or window <= 0:
+                raise WorkloadError("%s: sprof window_s must be a positive integer" % name)
+            if prof.get("mode", "cpu") not in ("cpu", "alloc"):
+                raise WorkloadError("%s: sprof mode must be cpu or alloc" % name)
+            measured = [p for p in w["phases"] if p.get("measure") and p.get("kind") in ("read", "commands")]
+            if len(measured) != 1:
+                raise WorkloadError("%s: sprof needs exactly one measured read or commands phase" % name)
+            if measured[0]["kind"] == "read" and measured[0].get("duration_s", 0) <= window:
+                raise WorkloadError("%s: sprof needs its measured read phase longer than its window" % name)
         seen = set()
         for ph in w["phases"]:
             kind = ph.get("kind")

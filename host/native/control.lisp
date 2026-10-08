@@ -274,6 +274,45 @@ ACL2 returns."
        (first answer)))
    :inspect))
 
+(defun fnn-control-receipt-step (control argv)
+  "One bounded acceptance/status quantum over the control owner's slot."
+  (fnn-with-control (control)
+    (let ((r (fnn-core 'fn-nco-wire-step (fnn-control-state-receipt control) argv)))
+      (setf (fnn-control-state-receipt control) (first r))
+      (values (second r) (third r)))))
+
+(defun fnn-control-receipt-work (control)
+  "The registered control worker remains alive after sending its receipt.
+It runs the existing producer and records exactly one terminal observation."
+  (let* ((job (fnn-with-control (control)
+                (fnn-core 'fn-nco-pending-job (fnn-control-state-receipt control))))
+         (token (fnn-core 'fn-nco-at 0 job))
+         (argv (fnn-core 'fn-nco-at 1 job))
+         (service (fnn-control-state-service control))
+         (answer
+           (handler-case (fnn-owner-live-admin-serialized service argv)
+             (fnn-store-indeterminate (condition)
+               (fnn-owner-fence-service service)
+               (fnn-err "receipt work uncertain: ~a" condition)
+               (list :reason :uncertain :recovery-required))
+             (fnn-store-fault (condition)
+               (fnn-owner-fault-service service nil condition)
+               (fnn-err "receipt work fault: ~a" condition)
+               (list :reason :fault :owner-fault))
+             (fnn-store-error (condition)
+               (fnn-err "receipt work refused: ~a" condition)
+               (list :reason :refused :store-error))
+             (error (condition)
+               (fnn-owner-fault-service service nil condition)
+               (list :reason :fault :owner-fault)))))
+    (fnn-with-control (control)
+      (let ((r (fnn-core 'fn-nco-owner-step
+                         (fnn-control-state-receipt control)
+                         (list :complete token (second answer) (third answer)))))
+        (unless (eq (first r) :completed)
+          (fnn-fault "control receipt completion refused"))
+        (setf (fnn-control-state-receipt control) (second r))))))
+
 (defun fnn-control-handle-client (control socket)
   (let* ((*fnn-owner-measure-label* :control)
          (service (fnn-control-state-service control))
@@ -282,6 +321,7 @@ ACL2 returns."
          ;; with the reasoned reply however its handling ends; ACL2 says
          ;; which (fn-native-control-reasoned-framep).
          (reasoned nil)
+         (receipt-work nil)
          (status
            (handler-case
                (let* ((frame (prog1 (fnn-control-read-frame socket maximum)
@@ -355,6 +395,11 @@ ACL2 returns."
                          (:status (list :consumer-status-reply :refused nil nil nil))
                          (otherwise (list :consumer-reply :refused nil)))
                        :not-owner)))
+                   ;; Status/release remain readable while work runs or a
+                   ;; disk admission gate sheds new mutations.
+                   ((and admin (fnn-core 'fn-nco-receipt-command (second admin)))
+                    (setq reasoned t)
+                    (fnn-control-receipt-step control (second admin)))
                    ;; Lane time-model-2 (PRF-311): a mutating request --
                    ;; an operator post, a live configuration change, a
                    ;; moderation decision -- while the disk is slow or
@@ -392,7 +437,14 @@ ACL2 returns."
                       service (fnn-octets msgid)
                       (mapcar #'fnn-octets groups) (fnn-octets article))))
                    ((and (consp admin) (eq (car admin) :admin))
-                    (fnn-owner-live-admin-serialized service (second admin)))
+                    (if (eq (fnn-core 'fn-nco-work-class 17 (second admin)) :store-sized)
+                        (multiple-value-bind (reply action)
+                            (fnn-control-receipt-step control (second admin))
+                          (setq reasoned t)
+                          (when (eq action :run)
+                            (setf receipt-work t))
+                          reply)
+                      (fnn-owner-live-admin-serialized service (second admin))))
                    ((and (consp moderation) (eq (car moderation) :moderation))
                     (fnn-owner-moderation-serialized
                      service (second moderation) (third moderation)
@@ -465,7 +517,11 @@ ACL2 returns."
                                           :consumer-status-reply))
                  (not (eq (second status) :accepted)))
         (setq status (list :reasoned-reply (second status) reason)))
-      (fnn-control-send-reply socket status))))
+      (fnn-control-send-reply socket status))
+    ;; The wire acknowledgement is closed before entering any store-sized
+    ;; producer. A lost acknowledgement does not cancel accepted work.
+    (when receipt-work
+      (fnn-control-receipt-work control))))
 
 (defun fnn-control-client-done (control socket)
   (fnn-with-control (control)
@@ -558,7 +614,9 @@ ACL2 returns."
     (unless (fnn-control-socket-path-p info)
       (fnn-socket-shut listener)
       (fnn-fault "control socket did not appear at configured path"))
-    (setf (fnn-control-state-service control) service
+    (setf (fnn-control-state-receipt control)
+          (fnn-core 'fn-nco-initial (fnn-random-hex (fnn-core 'fn-nco-epoch-octets)))
+          (fnn-control-state-service control) service
           (fnn-control-state-listener control) listener
           (fnn-control-state-device control) (sb-posix:stat-dev info)
           (fnn-control-state-inode control) (sb-posix:stat-ino info)

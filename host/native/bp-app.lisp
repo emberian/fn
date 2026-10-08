@@ -239,9 +239,7 @@ finds the transit principal in that ingress."
               (receipt nil)
               (class nil))
          (multiple-value-setq (app-result receipt class)
-           (fnn-quantum-bp
-            service nil
-            (lambda ()
+           (fnn-owner-held-commit (fnn-quantum-bp service nil)
               ;; Per transfer: a Store-side reason names only its own line.
               (setq *fnn-owner-transit-detail* nil)
               (multiple-value-bind (result adu)
@@ -256,7 +254,7 @@ finds the transit principal in that ingress."
                                                  result xfer-id
                                                  *fnn-owner-transit-detail*)))
                     (fnn-owner-log)
-                    (values result nil class)))))))
+                    (values result nil class))))))
          (case class
            ((nil))
            (:refused

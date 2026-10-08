@@ -81,6 +81,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import keystone_critical  # noqa: E402
 import ledger  # noqa: E402
 import ratchet  # noqa: E402
 from ledger import Sym, head  # noqa: E402
@@ -93,6 +94,7 @@ BASE = ROOT / "planning/teeth-base.json"
 CEILING = ROOT / "planning/teeth-ceiling.json"
 CEILING_ROW = "toothless"
 LEDGER: list[str] = []  # the toothless names of the last gate() run
+CRITICAL: list[str] = []  # the critical-gate findings of the last gate() run
 CONTAINERS = {"local", "progn", "encapsulate", "with-output", "defsection"}
 
 
@@ -335,7 +337,25 @@ def obligations(tree: ledger.Tree, certified: dict[str, bool] | None = None) -> 
         else:
             entry["complete"] = False
         entries[name] = entry
+    mark_critical(tree, entries)
     return entries
+
+
+def mark_critical(tree: ledger.Tree, entries: dict[str, dict], mapping: dict | None = None,
+                  interfaces: dict | None = None) -> None:
+    """Ruling 22: the class of each registry keystone, from the declared map
+    (tools/keystone_critical_map.json) over its book and the definterface
+    entries citing it; critical entries also carry their book and statement
+    digest, which the gate compares with the base for CHANGED."""
+    mapping = mapping or keystone_critical.load_map()
+    interfaces = interfaces if interfaces is not None else keystone_critical.interface_index()
+    theorems = getattr(tree, "theorems", {})
+    books = {name: (theorems[name].book if name in theorems else None)
+             for name, entry in entries.items() if entry["registry"]}
+    for name, cls in keystone_critical.classify_all(books, interfaces, mapping).items():
+        entries[name]["critical"] = cls
+        entries[name]["book"] = books[name]
+        entries[name]["statement_digest"] = _digest(ledger.source_text(theorems[name].statement))
 
 
 def certified_books(books: list[str]) -> dict[str, bool]:
@@ -374,7 +394,7 @@ def base_manifest() -> tuple[dict | None, str]:
         return None, f"the base manifest at {revision[:12]} is unreadable: {error}"
 
 
-LIVE = ("certified", "complete")
+LIVE = ("certified", "complete")  # recomputed; the critical class is stored
 
 
 def stored(entries: dict[str, dict]) -> list[dict]:
@@ -546,6 +566,10 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
     problems = manifest_findings(current, base, why, committed)
     if base is not None:
         problems += toothless_findings(toothless, ceiling)
+    critical, summary = keystone_critical.findings(
+        current, keystone_critical.load_critical_base(), keystone_critical.load_declared(), keystone_critical.load_owed(),
+        keystone_critical.lazy_reachable())
+    CRITICAL[:] = critical  # reported by main(); never holds a manifest write hostage
     stale = [p for p in problems if "stale" in p or "is missing; run --write" in p]
     if bootstrap and base is None and committed is None:
         print(f"keystone_emit: BOOTSTRAP: no base and no manifest; writing the first "
@@ -556,6 +580,10 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
         print(f"keystone_emit: renamed: {old_name} -> {', '.join(new_names)} (generated "
               f"teeth, same book and claim)")
     print(manifest_counts(current))
+    print(f"keystone_emit: critical keystones: {summary['critical']} "
+          f"({', '.join(f'{k} {v}' for k, v in sorted(summary['by_class'].items()))}); "
+          f"{summary['complete']} with the whole evidence package, {summary['owed']} owed, "
+          f"{summary['new_or_changed']} new or changed without it (hard fail)")
     print(f"keystone_emit: keystones without teeth: {len(toothless)} "
           f"(ceiling {len(ceiling_names(ceiling) or ())})")
     for name in toothless:
@@ -679,6 +707,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         problems += sorted(gate_writable)
 
+    problems += CRITICAL
     if arguments.write_ceiling:
         if write_ceiling(LEDGER):
             return 1

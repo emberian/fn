@@ -13,8 +13,19 @@
  (equal (fn-och-inline :started '(:ok :ok :ok :ok :ok))
         '(:start :intents :extend :append :fence :resolutions :complete :submit)))
 
-; Nothing queued: the caller submits in its one quantum, no I/O off the owner.
-(assert-event (equal (fn-och-run :started-none nil) '((:owner . :start) (:owner . :submit))))
+; No member kept: START can still owe feed frames. Its :frames job must
+; return before quantum 2 submits, including an empty frame plan's :ok.
+(assert-event
+ (equal (fn-och-run :started-none '(:ok))
+        '((:owner . :start) (:off . :intents) (:owner . :submit))))
+(assert-event
+ (equal (fn-och-run :started-none '(:uncertain))
+        '((:owner . :start) (:off . :intents) (:owner . :stop))))
+(assert-event
+ (equal (fn-och-run :started-none '(:fault))
+        '((:owner . :start) (:off . :intents) (:owner . :fault))))
+(assert-event
+ (not (member-equal :submit (strip-cdrs (fn-och-run :started-none nil)))))
 
 ; S4 witnesses: an uncertain fence stops with no take; a faulted append faults.
 (assert-event

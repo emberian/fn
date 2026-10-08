@@ -13,6 +13,7 @@
 (in-package "ACL2")
 (include-book "history-root-credit")
 (include-book "native-live-status")
+(include-book "history-capture-state")
 
 (defun fn-hrs-line (status)
   (declare (xargs :guard t))
@@ -80,4 +81,48 @@
   (let ((l (fn-mcr-make (+ 5624942530 (fn-hroot-begin-ask)) 2815331266 0 2789392384 16777216 0 nil
                         (fn-hroot-begin-ask) nil)))
     (equal (fn-hrs-line (fn-hroot-refresh-status (fn-hroot-begin-word l 2))) nil))
+  :rule-classes nil)
+
+; KEYSTONE (K-d): noting the last refresh does not change whether the
+; history-root roster holds anything, so a refusal never blocks (nor a
+; building word unblocks) a history reset.
+(defthm fn-history-root-roster-heldp-of-remove-last-refresh
+  (implies (alistp roots)
+           (equal (fn-history-root-roster-heldp (remove1-assoc-equal :last-refresh roots))
+                  (fn-history-root-roster-heldp roots)))
+  :hints (("Goal" :in-theory (enable fn-history-root-roster-heldp remove1-assoc-equal))))
+
+(defthm fn-history-root-roster-heldp-of-note
+  (implies (alistp roots)
+           (equal (fn-history-root-roster-heldp (fn-hroot-table-note roots w))
+                  (fn-history-root-roster-heldp roots)))
+  :hints (("Goal" :in-theory (enable fn-history-root-roster-heldp fn-hroot-table-note))))
+
+; The line rendered from the carried table is the line of the noted word.
+(defthm fn-hrs-line-of-table-note
+  (equal (fn-hrs-line (fn-hroot-table-status (fn-hroot-table-note roots w)))
+         (fn-hrs-line (fn-hroot-refresh-status w))))
+
+; Teeth for K-d: the heldp before the reserved-key skip (witness only, the
+; definition as it stood) reads a noted table as held, so a reset would have
+; been blocked forever by the first noted refresh.
+(defun fn-history-root-roster-heldp-before-skip (roots)
+  (declare (xargs :guard t))
+  (if (consp roots)
+      (let* ((entry (car roots)) (row (if (consp entry) (cdr entry) nil)))
+        (or (not (consp entry))
+            (and row (or (not (true-listp row))
+                         (not (equal (len row) 3))
+                         (not (member-eq (car row) '(:building :live :retired)))
+                         (not (null (caddr row)))))
+            (fn-history-root-roster-heldp-before-skip (cdr roots))))
+    (not (null roots))))
+
+(defthm fn-history-root-roster-heldp-teeth-skip-is-needed
+  (and (equal (fn-history-root-roster-heldp-before-skip
+               (fn-hroot-table-note nil '(:installed 1 nil))) t)
+       (equal (fn-history-root-roster-heldp
+               (fn-hroot-table-note nil '(:installed 1 nil))) nil)
+       (equal (fn-history-root-roster-heldp
+               (fn-hroot-table-note '((7 :building nil ((8 . lease)))) '(:funded))) t))
   :rule-classes nil)

@@ -33,6 +33,7 @@ other case refuses: the train runs `boxstep` first.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import shutil
@@ -54,7 +55,16 @@ GENERATED = (
     # keystone_emit --write-manifest rewrites it from the tree at regen;
     # its owners say never hand-merge it (trains 41, 45, 46 conflicted on it)
     "planning/teeth-obligations.json",
+    # tools/extract/world.py writes the image-world umbrellas, their -part-N
+    # links and the extraction world files from the native build scripts
+    # (deputy C, 2026-10-08: commit-held-host bounced on the six parts)
+    "books/image-world*.lisp",
+    "tools/extract/world*.lisp",
 )
+
+
+def _generated(path: str) -> bool:
+    return any(fnmatch.fnmatchcase(path, g) for g in GENERATED)
 # planning/proofs.json is NOT here: ledger.py --write regenerates only its
 # event arrays, and lanes curate its rows (re-pointing a PRF row at a renamed
 # keystone), so a conflict there goes back to the lane like source does.
@@ -63,6 +73,8 @@ UNION = ("planning/decisions.md",)
 
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
+    "books/image-world*.lisp",
+    "tools/extract/world*.lisp",
     "planning/proofs.json",
     "planning/teeth-obligations.json",
 )
@@ -113,6 +125,7 @@ LOCAL_BOX_CHECKS = (
 # tests/test_*.py except tests/test_native_* (they need a native image).  Each runs as `python -m unittest <file>` from the root
 # (test_train imports `tools.train`, so not as a bare script).
 UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
+              "tests/test_keystone_critical.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
@@ -234,7 +247,7 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         say(f"  lane {name}: merge failed without conflicts: {entry['files'][0]}")
         t.save(st)
         return False
-    bad = [f for f in conflicted if f not in GENERATED and f not in UNION]
+    bad = [f for f in conflicted if not _generated(f) and f not in UNION]
     if bad:
         git(t.root, "merge", "--abort", check=False)
         entry.update(status="conflict", files=bad)
@@ -242,7 +255,7 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         t.save(st)
         return False
     for f in conflicted:
-        if f in GENERATED:
+        if _generated(f):
             say(f"  conflict {f}: take train side (ours)")
             if git(t.root, "checkout", "--ours", "--", f, check=False).returncode == 0:
                 git(t.root, "add", "--", f)
@@ -277,12 +290,13 @@ def cmd_merge(t: Train, args) -> int:
 # --------------------------------------------------------------------------- regen
 
 def _commit_named(t: Train, paths, msg: str) -> bool:
-    present = [p for p in paths if (t.root / p).exists()]
-    changed = [p for p in present if git(t.root, "status", "--porcelain", "--", p).stdout.strip()]
+    # a path may be a glob pathspec (the world files: a regen can add or drop
+    # a -part-N link), so additions and deletions under it are committed too
+    changed = [p for p in paths if git(t.root, "status", "--porcelain", "--", p).stdout.strip()]
     if not changed:
         say("  nothing to commit")
         return False
-    git(t.root, "add", "--", *changed)
+    git(t.root, "add", "-A", "--", *changed)
     mf = t.dir / "commit-msg.txt"
     t.dir.mkdir(parents=True, exist_ok=True)
     mf.write_text(msg + "\n")
@@ -306,6 +320,8 @@ def cmd_regen(t: Train, args) -> int:
 
     # ledger.py --write: proofs.json's event arrays (the views are not committed)
     for step, argv in (
+        # first: the books it writes are what the ledger and teeth read
+        ("world", [PY3, "tools/extract/world.py"]),
         ("ledger", [PY, "tools/ledger.py", "--write"]),
         # the teeth obligation manifest of the merged tree (the keystone gate
         # checks it; a conflict on it took the train side at merge)
@@ -318,7 +334,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: proofs.json events, teeth obligation manifest"
+    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, teeth obligation manifest"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1

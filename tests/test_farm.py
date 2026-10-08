@@ -1932,5 +1932,21 @@ class RunsOwnManifestTests(unittest.TestCase):
             self.assertTrue(all(host == "persvati" for host, _ in calls))
 
 
+class ContentHashMemoTests(unittest.TestCase):
+    def test_all_remote_cache_consumers_share_the_tree_local_digest_memo(self):
+        root = Path("/tank/fn/tree with spaces")
+        memo = "FN_CONTENT_HASH_FILE=build/.content-hashes.json"
+        for closure in (False, True):
+            preflight = farm.cache_preflight_script(
+                "hbox", root, ["books/base"], [], closure, roots=["books/base"])
+            self.assertIn(f"{memo} python3 tools/certs.py", preflight)
+            self.assertTrue(preflight.startswith("cd '/tank/fn/tree with spaces' || exit 9;"))
+        publish = farm.certs_script("hbox", root, "publish", origin_kind="run")
+        self.assertIn(f"{memo} python3 tools/certs.py", publish)
+        runner = farm.remote_script("hbox", root, "run-fixture", [], 2, 60, [])
+        self.assertIn(memo, runner)
+        self.assertIn("build/", farm.EXCLUDES)
+
+
 if __name__ == "__main__":
     unittest.main()

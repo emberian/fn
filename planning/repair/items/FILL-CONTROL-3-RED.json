@@ -3,7 +3,12 @@
  "detail": "Red on set bdd4f40c4 (hbox:/tank/fn/scratch/fill-wt/native-fill-e2e) and set 55ff708a6 (lat1:/tank/fn/scratch/fill-wt/native-fill-e2e-lat1-55; scenario_suite run e2e); logs/test-tests.test_native_control.log. Exit 3 in two of the three suggests the operator verbs now fault (owner-quantum fault / process stopped) where they used to refuse; compare with SCEN-PINV-CONFIRM-ARITY (same exit 4 'fault operator peer' class on 3403e5ac2).",
  "file": "host/native/control.lisp",
  "id": "FILL-CONTROL-3-RED",
- "notes": [],
+ "notes": [
+  "C8 control-receipt round 3 trace (2026-10-08): all three failures reproduced in supplied native logs for 6e0535f7a. The affected functions fnn-control-close, fnn-operator-execute-admin and fnn-operator-status-once, and tests/test_native_control.py, are byte-identical to pre-receipt dev 800263ec0; they are class (c), not receipt regressions.",
+  "Shared control path: fnn-control-start never acquires its own listener identity when the lease is refused; fnn-control-close at host/native/control.lisp:667-670 nevertheless compares the existing socket stat device/inode with the uninitialized NIL fields. The type error is caught by owner.lisp:9112 as a failed close hook; modules-joined is cleared and the held-close path returns exit 3, masking the original refusal. The port-taken health case has the stale socket from the preceding SIGKILL and the same uninitialized identity comparison during cleanup. A raw SBCL probe of the actual close function, with an existing-path stat observation, reproduces NIL-is-not-NUMBER and lease cleanup; the supplied process logs say a close hook failed. The early held-close return carries no original failure reason, leaving last-stop exit=03.",
+  "Stale control list: host/native/operator.lisp:423 routes accepted admin queries directly to fnn-operator-status-once. Its offline branch at :781-804 calls the read-only report without fnn-operator-live-admin-observe (operator-control-client.lisp:16-36), the helper that removes the stale socket and emits its note. The report succeeds but the socket/note contract is skipped. Left for the existing repair item, not changed by the receipt lane.",
+  "The fourth control-module failure is a pre-existing structural test: tests/test_native_control.py:131 uses re.search for the first member(first status) list in the handler. host/native/control.lisp:503 first excludes live-status-reply/sealed-reply from the stop cut; :506 then selects the consumer/topic tagged replies. The test accidentally compares the first list against the second list's expected set. The entire after-submit selector block is unchanged from dev 800263ec0."
+ ],
  "owner": "unowned",
  "severity": "medium",
  "source": "fill-20261004",

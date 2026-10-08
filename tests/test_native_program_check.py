@@ -359,3 +359,25 @@ runpy.run_path(sys.argv[0], run_name='__main__')
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HeldCommitCrashPoints(unittest.TestCase):
+    def test_current_held_and_feed_crash_points_are_modelled(self):
+        self.assertEqual(npc.verify_held_commit_crash_points(), [])
+
+    def test_removing_the_held_crash_transition_fails(self):
+        book = (ROOT / "books/owner-commit-held.lisp").read_text()
+        mutant = book.replace("((and (eq event :crash) (fn-ocs-in-flight-p phase)) (mv :stop :failed nil t))", "")
+        self.assertTrue(npc.verify_held_commit_crash_points(held_text=mutant))
+
+    def test_an_unmapped_injection_cut_fails(self):
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        mutant = owner.replace("(fnn-owner-held-start ,service)",
+                               "(progn (fnn-at store :new-cut) (fnn-owner-held-start ,service))")
+        self.assertIn("held helper adds an unmapped injection cut",
+                      npc.verify_held_commit_crash_points(owner_text=mutant))
+
+    def test_removing_the_feed_written_observation_fails(self):
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        mutant = owner.replace("(fnn-owner-feed-phase journal :written)", "nil")
+        self.assertTrue(npc.verify_held_commit_crash_points(owner_text=mutant))
