@@ -1038,6 +1038,11 @@
   (declare (xargs :stobjs fn-cat$c))
   (nfix (fn-cat$c-raws-get group fn-cat$c)))
 
+(defun fn-cat$c-group-top (group fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c))
+  (let ((ge (fn-cat$c-groups-get group fn-cat$c)))
+    (nfix (- (if (consp ge) (nfix (cdr ge)) 1) 1))))
+
 (defun fn-cat$c-raw-at-p (group k fn-cat$c)
   (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
   (let ((s (fn-cat$c-numbers-get (cons group k) fn-cat$c)))
@@ -1118,11 +1123,10 @@
         (if (and (consp p)
                  (equal (fn-cat$c-numbers-get (cons g k) fn-cat$c) target)
                  (equal (fn-cat$c-group-raw-low g fn-cat$c) k))
-            (let* ((ge (fn-cat$c-groups-get g fn-cat$c))
-                   (top (nfix (- (if (consp ge) (nfix (cdr ge)) 1) 1))))
-              (fn-cat$c-raws-drop-plan-loop
-               (cdr pairs) target fn-cat$c
-               (cons (cons g (fn-cat$c-raw-scan-up g (+ 1 k) top fn-cat$c)) acc)))
+            (fn-cat$c-raws-drop-plan-loop
+             (cdr pairs) target fn-cat$c
+             (cons (cons g (fn-cat$c-raw-scan-up g (+ 1 k) (fn-cat$c-group-top g fn-cat$c) fn-cat$c))
+                   acc))
           (fn-cat$c-raws-drop-plan-loop (cdr pairs) target fn-cat$c acc)))
     (revappend acc nil)))
 
@@ -1136,10 +1140,8 @@
              (if (and (consp p)
                       (equal (fn-cat$c-numbers-get (cons g k) fn-cat$c) target)
                       (equal (fn-cat$c-group-raw-low g fn-cat$c) k))
-                 (let* ((ge (fn-cat$c-groups-get g fn-cat$c))
-                        (top (nfix (- (if (consp ge) (nfix (cdr ge)) 1) 1))))
-                   (cons (cons g (fn-cat$c-raw-scan-up g (+ 1 k) top fn-cat$c))
-                         (fn-cat$c-raws-drop-plan (cdr pairs) target fn-cat$c)))
+                 (cons (cons g (fn-cat$c-raw-scan-up g (+ 1 k) (fn-cat$c-group-top g fn-cat$c) fn-cat$c))
+                       (fn-cat$c-raws-drop-plan (cdr pairs) target fn-cat$c))
                (fn-cat$c-raws-drop-plan (cdr pairs) target fn-cat$c)))
          nil)
        :exec (fn-cat$c-raws-drop-plan-loop pairs target fn-cat$c nil)))
@@ -4127,10 +4129,8 @@
                   (equal (fn-cat$c-numbers-get (cons g k) fn-cat$c) target)
                   (fn-cat-raw-rowp g k row)
                   (equal (fn-cat$c-group-raw-low g fn-cat$c) k))
-             (let* ((ge (fn-cat$c-groups-get g fn-cat$c))
-                    (top (nfix (- (if (consp ge) (nfix (cdr ge)) 1) 1))))
-               (cons (cons g (fn-cat$c-raw-scan-up g (+ 1 k) top fn-cat$c))
-                     (fn-ctr-rplan (cdr pairs) target row fn-cat$c)))
+             (cons (cons g (fn-cat$c-raw-scan-up g (+ 1 k) (fn-cat$c-group-top g fn-cat$c) fn-cat$c))
+                   (fn-ctr-rplan (cdr pairs) target row fn-cat$c))
            (fn-ctr-rplan (cdr pairs) target row fn-cat$c)))
      nil)))
 
@@ -4719,13 +4719,10 @@
                  (equal (fn-cat$c-group-raw-low g x) k))
             (and (equal (fn-ctg-kstar g c r) k)
                  (not (equal k 0))
-                 (equal (fn-cat$c-raw-scan-up
-                         g (+ 1 k)
-                         (nfix (- (let ((e (fn-cat$c-groups-get g x))) (if (consp e) (nfix (cdr e)) 1)) 1))
-                         x)
+                 (equal (fn-cat$c-raw-scan-up g (+ 1 k) (fn-cat$c-group-top g x) x)
                         (fn-cat-raw-first g (+ 1 k) (fn-cat-group-high g c) c))))
    :hints (("Goal" :do-not-induct t
-            :in-theory (e/d (fn-cat$c-group-raw-low fn-ctg-kstar)
+            :in-theory (e/d (fn-cat$c-group-raw-low fn-ctg-kstar fn-cat$c-group-top)
                             (fn-cat-raws-okp fn-cat-raw-first fn-cat-group-high fn-cat-raw-rowp
                              fn-cat$c-raw-scan-up fn-cat-number-seq fn-held-number-in))
             :use ((:instance fn-ctg-numbers-lookup (tab (nth 3 x)) (n k))
