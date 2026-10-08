@@ -15,7 +15,7 @@ news service. The broader contracts in `specs/` remain the target.
 
 The latest [composed-store checkpoint](../tests/evidence/2026-09-18-composed-store.md)
 passed its full frozen ACL2/simulator/Python batch with unchanged inputs (see
-planning/ledger.md for current counts), plus an independent client over the
+`python3 tools/ledger.py --stdout` for current counts), plus an independent client over the
 reopened store. The physical adapter
 now uses the composed storage machine and its observed-image recovery gate.
 Earlier evidence retains the independent CBOR and other interoperability cases.
@@ -35,9 +35,9 @@ its scoped composition proofs now have the evidence described below.
 | [Acceptance](../books/acceptance.lisp) | Atomic local allocation, immutable Message-ID binding, staged publication, stale completion rejection, uncertainty fencing | Durable completion and recovery observations are abstract inputs; no physical disk is involved |
 | [Acceptance invariants](../books/acceptance-invariants.lisp) | Mechanically checked preservation lemmas over the acceptance definitions | See the proof registry and certification evidence for the exact current theorem scope |
 | [Wire framing](../books/wire.lisp) | Incremental CRLF lines, dot stuffing, article terminators, bounded retained input | Session dispatch and command conformance are separate; the bulk feed helper alone cannot decide when to enter article mode |
-| [Wildmat](../books/wildmat.lisp) | Bounded strict UTF-8 grammar and dynamic-programming matching, reused for filtered LIST variants | UTF-8 progress/scalars, successful parsing and DP/reference correspondence proved; the whole-matcher work bound and this book's guards have targeted proofs (planning/ledger.md has current guard counts); parser work remains open |
+| [Wildmat](../books/wildmat.lisp) | Bounded strict UTF-8 grammar and dynamic-programming matching, reused for filtered LIST variants | UTF-8 progress/scalars, successful parsing and DP/reference correspondence proved; the whole-matcher work bound and this book's guards have targeted proofs (`python3 tools/ledger.py --stdout` has current guard counts); parser work remains open |
 | [CBOR primitives](../books/cbor.lisp) | Deterministic uint32 and definite byte strings, canonicality checks, bounded decoding | All primitive guards verified; native object/signature/batch formats remain open |
-| [Article syntax](../books/article.lisp) and [invariants](../books/article-invariants.lisp) | Bounded header/body views preserve folding, unknown fields, and opaque body bytes; every successful parse provably reconstructs its exact source | Successful parse establishes syntax recognition and component bounds; this book's parser guards have targeted proofs (planning/ledger.md has current counts); the public parser work *value* is proved exact, its *cost* bound is a separate instrumented shadow roughly 16,000x above measured cost (see tests/evidence/2026-09-18-article-work.md); full RFC injection and physical resource bounds remain open |
+| [Article syntax](../books/article.lisp) and [invariants](../books/article-invariants.lisp) | Bounded header/body views preserve folding, unknown fields, and opaque body bytes; every successful parse provably reconstructs its exact source | Successful parse establishes syntax recognition and component bounds; this book's parser guards have targeted proofs (`python3 tools/ledger.py --stdout` has current counts); the public parser work *value* is proved exact, its *cost* bound is a separate instrumented shadow roughly 16,000x above measured cost (see tests/evidence/2026-09-18-article-work.md); full RFC injection and physical resource bounds remain open |
 | [Article fields](../books/article-fields.lisp) | Bounded RFC Message-ID and Newsgroups semantics, duplicate/missing/invalid classification, narrow proto-article routing checks over preserved views | Full required-field validation, injection, gateway provenance, authorization, and native signing remain open |
 | [Transaction records](../books/records.lisp) and [invariants](../books/records-invariants.lisp) | Bounded record grammar (schemas 1 and 2), exact octet/string fields, variable group lists, complete record round-trip proof | Accepted-input canonicality and all record guards proved; provisional local format, native signature preimages remain open |
 | [Retention](../books/retention.lisp) and [invariants](../books/retention-invariants.lisp) | Finite abstract accounting, distinct archive/forward pins, release gated on an exact stored evidence string match, permanent duplicate history; general release preservation and independent-pin/identity preservation | Evidence is a single admit-string equality, not an issuer/nonce/incarnation/authorization check; charging units are abstract, not measured physical bytes |
@@ -173,7 +173,7 @@ contract has been established. Read theorem hypotheses as part of each claim.
   are certified. The composed transaction record also round-trips; portable
   native-message schemas and signature preimages remain open.
 - Wire event-yield accounting and state preservation are certified; the base
-  graphs and the derived index have guard evidence (planning/ledger.md has
+  graphs and the derived index have guard evidence (`python3 tools/ledger.py --stdout` has
   current counts). Implemented NNTP session/cursor preservation is certified;
   its effect typing is loose (a 2-list `(:reply octets)` shape, not a bounded
   reply-line grammar) and full RFC session refinement and other parser/physical
@@ -201,7 +201,7 @@ process restart, explicit retry, lost application receipt, duplicate recognition
 identical receipt regeneration and durable sender acceptance of the BP return.
 Both nodes retain one article/archive pin. That checkpoint's Python suite and a
 scoped set of ACL2 roots cover receiver correction, outbound projection and
-finite sender state/node/transport-receipt proofs (planning/ledger.md has
+finite sender state/node/transport-receipt proofs (`python3 tools/ledger.py --stdout` has
 current counts). This is separate from the historical all-roots runs above.
 
 A recorded BPA restart window leaves inventory without forwarding progress;
@@ -210,7 +210,7 @@ fn's durable retry handles this uncertainty. The subsequent
 adds joint pending/durable sender binding, fixed-Store receiver state/context/
 receipt and journal-replay invariants, stable receipt bytes, and five actual
 receiver process-death cuts; a scoped set of ACL2 roots and the Python suite
-passed (planning/ledger.md has current counts). The BP ADU codec book has
+passed (`python3 tools/ledger.py --stdout` has current counts). The BP ADU codec book has
 verified guards; the other inventoried BP base books still need them.
 
 General journal-byte/host refinement, composition with an evolving Store,

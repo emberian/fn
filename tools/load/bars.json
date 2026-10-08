@@ -529,6 +529,85 @@
    "file": "tools/load/bars.json",
    "owner": "deputy-S",
    "severity": "medium"
+  },
+  {
+   "id": "L-DIVERGE-CATCHUP",
+   "quantity": "after a catch-up round B holds exactly A's articles: Message-IDs only in A, only in B, or with different octets (Path and Xref dropped), summed",
+   "cell": "W6a",
+   "workload": "catchup",
+   "checks": [
+    {
+     "metric": "peers.divergence",
+     "cmp": "eq",
+     "threshold": 0
+    },
+    {
+     "metric": "peers.digest_chain_equal",
+     "cmp": "eq",
+     "threshold": 1
+    }
+   ],
+   "source": "LOAD-PROGRAM W6 (divergence = 0); tests/test_native_peer_catchup (round digest = expected chain)",
+   "file": "tests/test_native_peer_catchup.py",
+   "owner": "card-I",
+   "severity": "high"
+  },
+  {
+   "id": "L-DIVERGE-FEED",
+   "quantity": "after the feed drains B holds exactly A's articles (same sum as L-DIVERGE-CATCHUP)",
+   "cell": "W6b",
+   "workload": "peers-feed",
+   "checks": [
+    {
+     "metric": "peers.divergence",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "LOAD-PROGRAM W6 (divergence = 0)",
+   "file": "tools/load/peers.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "L-DIVERGE-CATCHUP-LOAD",
+   "quantity": "after catch-up under POSTs and the drain B holds exactly A's articles",
+   "cell": "W6c",
+   "workload": "peers-catchup-load",
+   "checks": [
+    {
+     "metric": "peers.divergence",
+     "cmp": "eq",
+     "threshold": 0
+    },
+    {
+     "metric": "peers.digest_chain_equal",
+     "cmp": "eq",
+     "threshold": 1
+    }
+   ],
+   "source": "LOAD-PROGRAM W6 (divergence = 0)",
+   "file": "tools/load/peers.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "L-CATCHUP-POST-P99",
+   "quantity": "PROPOSAL (not a mandate figure): A's POST p99 while B catches up within 3x A's idle POST p99 at the same rate",
+   "cell": "W6c",
+   "workload": "peers-catchup-load",
+   "latency": true,
+   "checks": [
+    {
+     "metric": "post.p99_ratio",
+     "cmp": "le",
+     "threshold": 3
+    }
+   ],
+   "source": "LOAD-PROGRAM W6 proposal",
+   "file": "tools/load/peers.py",
+   "owner": "deputy-L",
+   "severity": "low"
   }
  ]
 }

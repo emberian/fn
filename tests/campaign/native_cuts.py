@@ -1317,10 +1317,10 @@ HOLDER_CUTS_HOST = "host/native/extent.lisp"
 
 def holder_cuts() -> tuple[tuple[str, str, str, str], ...]:
     """(declaration, cut, effect kind, host list) for every def-holder declaration's two cuts."""
-    from tools import holder_check
+    from tools import lock_discipline_check
     out = []
-    for decl in holder_check.declarations(ROOT):
-        eff = holder_check.effect(decl)
+    for decl in lock_discipline_check.holder_declarations(ROOT):
+        eff = lock_discipline_check.holder_effect(decl)
         host_list = "+fnn-reclaim-cuts+" if eff["kind"] == ":physical" else "+fnn-holder-cuts+"
         for cut in eff["cuts"]:
             out.append((decl["name"], cut.lstrip(":"), eff["kind"], host_list))

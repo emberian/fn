@@ -36,8 +36,8 @@ shorter spikes and separate control-client processes are outside that measure.
 Null metrics are unavailable, never zero. Percentiles are descriptive for the
 sample count, not distribution or latency guarantees.
 
-Archive completed run bytes under a named `planning/evidence/` coordinate with
-`tools/evidence_store.py put`; commit the resulting index lines, not logs. Keep
+Commit a short report of a completed run; keep the logs on the box and name
+them `box:path`. Keep
 this matrix and SCN-1083 scope aligned when execution exposes missing consumers.
 
 Current-source continuation, 2026-10-03: SCN-1129 adds a decoder-specific

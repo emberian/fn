@@ -7,7 +7,9 @@
  "fix": "Observe the machine and core figures before entering the section and pass them in (as fnn-owner-limit-serialized does for its observations, admin.lisp:~543), or declare as a startup-phase exception.",
  "id": "LOCK-R2-BUDGET-INSTALL-STAT",
  "notes": [
-  "10-06 20:26 Fixed: machine+core observed before fnn-owner-serialized in fnn-mux-budget-install; R2 core stat key (and fnn-fstat O key) gone, none added; host_check read/load rc0; raw test red/green. Pending convergence natives: startup/budget image natives (tests/test_native_mux*, connection-budget)."
+  "10-06 20:26 Fixed: machine+core observed before fnn-owner-serialized in fnn-mux-budget-install; R2 core stat key (and fnn-fstat O key) gone, none added; host_check read/load rc0; raw test red/green. Pending convergence natives: startup/budget image natives (tests/test_native_mux*, connection-budget).",
+  "lock-io-out statement: O excludes budget installation; machine/core filesystem observations already occur before fnn-owner-serialized, with their values staged as arguments. The deciding section reads the current store configuration and ACL2 decides capacity; no shared budget is partly installed between observation and decision. Verified current tree; no code change needed.",
+  "lock-io-out natives owed for the existing fix: tests/test_native_mux_budget_observe.py and tests/test_native_mux.py."
  ],
  "owner": "unassigned",
  "scenario": "Start path only; a slow stat of the core delays startup under O, nothing else waits.",

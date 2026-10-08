@@ -79,10 +79,11 @@
           (fn-lst-step (fn-cur-at 1 (car rest)) w w fn-cat)
           (declare (ignore calls state))
           (mv :ok (revappend acc
-                             (cons (fn-nntp-reply-effect octets)
-                                   (if (fn-lst-livep next)
-                                       (cons (fn-lst-effect next) (cdr rest))
-                                     (cdr rest)))))))
+                             (fn-splan-reply-then
+                              octets
+                              (if (fn-lst-livep next)
+                                  (cons (fn-lst-effect next) (cdr rest))
+                                (cdr rest)))))))
        ((fn-splan-cursor-effectp (car rest))
         (mv-let (status next)
           (fn-splan-rest-cursor-step rest w fn-arena fn-cat)
@@ -102,10 +103,11 @@
          (mv-let (octets next calls state)
            (fn-lst-step (fn-cur-at 1 (car rest)) w w fn-cat)
            (declare (ignore calls state))
-           (mv :ok (cons (fn-nntp-reply-effect octets)
-                         (if (fn-lst-livep next)
-                             (cons (fn-lst-effect next) (cdr rest))
-                           (cdr rest))))))
+           (mv :ok (fn-splan-reply-then
+                    octets
+                    (if (fn-lst-livep next)
+                        (cons (fn-lst-effect next) (cdr rest))
+                      (cdr rest))))))
         ((fn-splan-cursor-effectp (car rest))
          (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
         (t (mv-let (status next)
@@ -133,6 +135,76 @@
                     fn-qplan-rest-at-cursorp fn-qplan-at-cursorp fn-qplan-rest-head-len
                     fn-qplan-window-size fn-qplan-window
                     fn-qplan-rest-cursor-step fn-qplan-cursor-step))
+
+; The effects in front of a cursor do not accumulate on the facade either
+; (the LIST arm included): an empty quantum answers just the next cursor.
+; Octet-less effects that are no cursor of any kind: what fn-qplan-rest-at-
+; cursorp skips and a window renders as nothing.
+(defun fn-qplan-rest-empties (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (+ (if (and (not (fn-qplan-cursor-effectp (car rest)))
+                  (atom (fn-srb-effect-octets (car rest))))
+             1 0)
+         (fn-qplan-rest-empties (cdr rest)))
+    0))
+
+(defun fn-qplan-empties (p)
+  (declare (xargs :guard t))
+  (fn-qplan-rest-empties (fn-splan-rest p)))
+
+(local
+ (defthm fn-qplan-rest-empties-of-reply-then
+   (<= (fn-qplan-rest-empties (fn-splan-reply-then octets tail))
+       (fn-qplan-rest-empties tail))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-splan-reply-then fn-nntp-reply-effect
+                                      fn-qplan-rest-empties fn-qplan-cursor-effectp
+                                      fn-lst-effectp)))))
+
+; A new cursor effect in front of a tail is no empty effect.
+(local
+ (defthm fn-qplan-rest-empties-of-cursor-effects
+   (and (equal (fn-qplan-rest-empties (cons (fn-ovw-cursor-effect cur) tail))
+               (fn-qplan-rest-empties tail))
+        (equal (fn-qplan-rest-empties (cons (fn-nnw-meta-effect cur) tail))
+               (fn-qplan-rest-empties tail))
+        (equal (fn-qplan-rest-empties (cons (fn-lst-effect cur) tail))
+               (fn-qplan-rest-empties tail)))
+   :hints (("Goal" :in-theory (enable fn-qplan-rest-empties fn-qplan-cursor-effectp
+                                      fn-splan-cursor-effectp fn-ovw-cursor-effectp
+                                      fn-nnw-meta-effectp fn-ovw-cursor-effect
+                                      fn-nnw-meta-effect fn-lst-effect fn-lst-effectp)))))
+
+; The OVER/NEWNEWS arm: one step at a cursor effect of REST.
+(local
+ (defthm fn-qplan-splan-arm-adds-no-empty-effect
+   (implies (fn-splan-cursor-effectp (car rest))
+            (<= (fn-qplan-rest-empties
+                 (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))
+                (fn-qplan-rest-empties rest)))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t
+            :expand ((fn-splan-rest-cursor-step rest wl fn-arena fn-cat))
+            :in-theory (e/d (fn-qplan-rest-empties fn-qplan-cursor-effectp)
+                            (fn-ovw-step fn-ovw-cursorp fn-nnw-meta-livep
+                             fn-nnw-stream-batch fn-splan-rest-cursor-step))))))
+
+(defthm fn-qplan-rest-cursor-step-adds-no-empty-effect
+  (<= (fn-qplan-rest-empties
+       (mv-nth 1 (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)))
+      (fn-qplan-rest-empties rest))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)
+           :in-theory (e/d (fn-qplan-rest-cursor-step fn-qplan-rest-empties)
+                           (fn-lst-step fn-lst-livep fn-lst-effect fn-splan-rest-cursor-step)))))
+
+(defthm fn-qplan-cursor-step-adds-no-empty-effect
+  (<= (fn-qplan-empties (mv-nth 1 (fn-qplan-cursor-step p wl fn-arena fn-cat)))
+      (fn-qplan-empties p))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-qplan-cursor-step fn-qplan-empties)
+                                  (fn-qplan-rest-cursor-step)))))
 
 ; -----------------------------------------------------------------------------
 ; The host runs this facade, not the fn-splan entries it extends.  On a plan
@@ -254,6 +326,13 @@
    (and (fn-lst-effectp (fn-lst-effect cur))
         (equal (fn-cur-at 1 (fn-lst-effect cur)) cur))
    :hints (("Goal" :in-theory (enable fn-lst-effect fn-lst-effectp fn-cur-at)))))
+
+(local
+ (defthm fn-qplan-cw-octets-of-reply-then
+   (equal (fn-qplan-cw-octets (fn-splan-reply-then octets tail) wl fn-arena fn-cat)
+          (append octets (fn-qplan-cw-octets tail wl fn-arena fn-cat)))
+   :hints (("Goal" :in-theory (enable fn-splan-reply-then fn-qplan-cw-octets)
+            :do-not-induct t))))
 
 (local
  (defthm fn-qplan-ovw-effect-not-list

@@ -7,7 +7,9 @@
  "fix": "Decide that XTLSINIT and XTLSRELOAD are io_ok (they serialize one-time I/O-bearing init and reload), with that justification in contracts; or hoist the candidate probe out of the locks.",
  "id": "LOCK-R2-TLS-PROBE-UNDER-INIT-LOCKS",
  "notes": [
-  "10-06 20:23 Fixed: probe hoisted (fnn-tls-library-selection) before the init lock; reload initializes before its mutex; both R2 select-pair keys gone, none added; host_check read/load rc0; raw test red-before/green-after. Pending convergence natives: tests/native_tls_transport.lisp, test_native_starttls, test_native_implicit_tls, test_native_tls_handshake_budget (image/openssl)."
+  "10-06 20:23 Fixed: probe hoisted (fnn-tls-library-selection) before the init lock; reload initializes before its mutex; both R2 select-pair keys gone, none added; host_check read/load rc0; raw test red-before/green-after. Pending convergence natives: tests/native_tls_transport.lisp, test_native_starttls, test_native_implicit_tls, test_native_tls_handshake_budget (image/openssl).",
+  "lock-io-out statement: XTLSINIT/XTLSRELOAD no longer enclose library selection probes: fnn-tls-initialize stages the selection off-lock and rechecks :ready/:unavailable under XTLSINIT; reload initializes before XTLSRELOAD. Concurrent initializers use the first installed terminal result, never a partly published pair. Verified current tree; no code change needed.",
+  "lock-io-out natives owed for the existing fix: tests/test_native_tls_probe_off_lock.py, tests/test_native_tls_reload.py, tests/test_native_starttls.py and tests/test_native_implicit_tls.py."
  ],
  "owner": "unassigned",
  "scenario": "First TLS use, or a TLS reload.",

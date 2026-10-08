@@ -218,19 +218,7 @@
                                fn-bpn-machine-recordp
                                fn-bpnf-family-apply
                                fn-bpnf-family-plan))))
-(verify-guards fn-bpnf-family-next-aux
-  :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-bpn-machine-statep
-                               fn-bpn-machine-recordp
-                               fn-bpnf-family-plan))))
-(verify-guards fn-bpnf-family-tried-p)
-(verify-guards fn-bpnf-family-next-memo
-  :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-bpn-machine-statep
-                               fn-bpn-machine-recordp
-                               fn-bpnf-family-plan))))
-; PRF-136: the served selector reads the rows' primary blocks; it plans a
-; row only when its family holds an offset-zero fragment.
+; PRF-136: the served selector reads the rows' primary blocks.
 (local
  (defthm fn-bpnfg-blockp-true-listp
    (implies (fn-bpp-blockp b) (true-listp b))
@@ -258,21 +246,6 @@
                                 fn-bpnf-zero-family-keys-loop-is-rev-onto)
                               (union-theories (theory 'minimal-theory)
                                               (executable-counterpart-theory :here))))))
-(verify-guards fn-bpnf-family-select
-  :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories
-                       '(fn-bpnfg-candidate-primary true-listp)
-                       (theory 'minimal-theory)))))
-(verify-guards fn-bpnf-family-next
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpnf-family-select-is-aux
-                            (held (fn-bpnf-held-list st)) (tried nil)
-                            (zero (fn-bpnf-zero-family-keys
-                                   (fn-bpnf-held-list st)))))
-           :in-theory (union-theories
-                       '(fn-bpnf-subsetp-equal-reflexive
-                         fn-bpnf-family-keys-not-readyp-of-nil)
-                       (theory 'minimal-theory)))))
 ;; The candidate selector the host calls (bp-service fnn-bps-fragment-effects;
 ;; the *1* class, Q4a item 2): it reassembles nothing, so no plan obligations.
 (local

@@ -88,7 +88,9 @@ not in it is new; a baseline row no longer found must be removed
     python3 tools/lock_discipline_check.py --rule R3 -v    # one rule, with paths
     python3 tools/lock_discipline_check.py --root DIR      # another checkout (a pre-fix commit)
     python3 tools/lock_discipline_check.py --write-baseline [--initial]
-    python3 tools/lock_discipline_check.py --emit-realization  # planning/host-realization.json
+    python3 tools/lock_discipline_check.py --emit-realization  # print the literal model table (JSON)
+    python3 tools/lock_discipline_check.py --holders [--strict]  # standalone: def-holder
+                           # declarations closed over the raw host (books/def-holder.lisp)
     python3 tools/lock_discipline_check.py --audit-callbacks  # standalone: print only the
                            # callback-ordinal audit (a callback_contexts why text that names
                            # its own file must name the line its ordinal resolves to); the
@@ -115,7 +117,6 @@ from ledger import Sym  # noqa: E402
 TOOL_ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = TOOL_ROOT / "tools" / "lock_discipline_contracts.json"
 BASELINE = TOOL_ROOT / "tools" / "lock_discipline_baseline.json"
-REALIZATION = "planning/host-realization.json"
 
 RULES = ("R1", "R1b", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10")
 
@@ -2182,6 +2183,28 @@ class Analyzer:
                     self.ev("callback", pname, line, ctx)
                 elif self.recording:
                     self.ev("callback-param", pname, line, ctx)
+            elif isinstance(target, Sym) and str(target) in self.tree.globals and str(target) not in env:
+                # a funcall through a special variable (a test seam such as
+                # *fnn-write-syscall*): the call runs the variable's init
+                # form.  A lambda is walked at this site, a #'NAME is that
+                # function (classified by name exactly like a direct call); a
+                # non-literal init cannot be classified, and reaching
+                # it under a lock that may not do I/O is reported.
+                gname = str(target)
+                init = self.tree.global_inits.get(gname)
+                if isinstance(init, list) and head(init) == "lambda":
+                    parts.append(self.walk_lambda_inline(init, ctx, {}, line))
+                    parts.extend(self.walk(a, ctx, env, line) for a in args[1:])
+                    return sig_union(parts)
+                fsym = str(init[1]) if isinstance(init, list) and head(init) == "function" \
+                    and len(init) > 1 and isinstance(init[1], Sym) else None
+                if fsym and fsym in self.tree.defs:
+                    self.ev("call", fsym, line, ctx, "funcall")
+                    parts.append(("u", frozenset(), (fsym,), ()))
+                elif fsym and self.leaf_kind(fsym):
+                    self.ev("leaf", fsym, line, ctx, (self.leaf_kind(fsym), args[1] if len(args) > 1 else None))
+                elif not fsym:
+                    self.ev("leaf", "funcall:" + gname, line, ctx, ("unresolved", None))
             elif quoted_symbol(target) and quoted_symbol(target) in self.tree.defs:
                 self.ev("call", quoted_symbol(target), line, ctx, "funcall")
                 parts.append(("u", frozenset(), (quoted_symbol(target),), ()))
@@ -3503,7 +3526,7 @@ class Model:
             if name in overrides:
                 continue
             for e in info.events:
-                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
+                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket", "unresolved") \
                         and e.name not in nonblocking \
                         and not (name in pipe_closes and e.name == pipe_closes[name]["close_call"]):
                     for flag in (False, True):
@@ -4048,7 +4071,7 @@ class Checker:
                     continue
                 noio = e.ctx.noio if e.ctx.noio is not None else False
                 cands = []
-                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
+                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket", "unresolved") \
                         and e.name not in nonblocking \
                         and not (name in pipe_closes and e.name == pipe_closes[name]["close_call"]):
                     h2 = held - {e.extra[1]} if e.extra[0] == "await" and e.name == "sb-thread:condition-wait" else held
@@ -4108,6 +4131,13 @@ class Checker:
                 callee, noio = how
                 trail = [f"{info.name} ({info.path}:{e.line})"] + self.m.block_path(callee, noio, leaf)
             leaf_info = self.infos.get(lfn, info)
+            if kind == "unresolved":
+                self.add("R2", leaf_info, int(lline),
+                         f"unresolved callee {lname}: its function is not a literal the checker can classify, "
+                         f"and it runs while holding {lock}; reached from {n} site(s) under {lock}, "
+                         f"e.g. {info.name} ({info.path}:{e.line})",
+                         f"{lock}:{lname}", trail, "unresolved", weight=n)
+                continue
             self.add("R2", leaf_info, int(lline),
                      f"{kind} leaf {lname} runs while holding {lock}; reached from {n} site(s) under {lock}, "
                      f"e.g. {info.name} ({info.path}:{e.line})",
@@ -5731,12 +5761,249 @@ def build(root: Path, contracts_path: Path) -> tuple[Analyzer, Model, Checker]:
     return analyze_tree(root, load_contracts(contracts_path))
 
 
+# --------------------------------------------------------------------------
+# --holders: the holder world, closed over the raw host (books/def-holder.lisp)
+# --------------------------------------------------------------------------
+#
+# Protects the resource holders (generation pins, file holds, leases) that the
+# logic cannot see.  A `def-holder' declaration names, for one resource, every
+# holder and the host functions that acquire and release it.  ACL2's world can
+# check the logic holders (def-holder-check walks every function of the world);
+# the raw host (host/native/*.lisp, host/*.lisp loaded raw) is outside it, so
+# `--holders` reads the declarations (holder_declarations: books/*.lisp through
+# the ledger's non-evaluating reader) and the host source (holder_host_functions:
+# native_program_check's tokenizer, so strings and comments are not calls) and
+# checks, both ways, in holder_check:
+#
+# * every HOST holder's :acquire and :release are called inside at least one of
+#   its :in functions, and every :in function exists;
+# * every call of a declared :acquire or :release anywhere in the raw host is
+#   inside an :in function of a row that declares it (fail closed: an
+#   undeclared acquirer is a refusal, not a holder);
+# * every ROOT holder's :in functions exist (a book function will do);
+# * a (:physical CUTS :cut K :after K2) effect has both cuts marked inside the
+#   row's :in functions, K2 before K in source order; a :process-local or
+#   :durable effect has its :NAME-decided and :NAME-released markers there.  A
+#   declared cut is a name; the marker is what makes it a checked host release.
+#   Missing markers are reported and fail only under --strict (the host side of
+#   a new row lands after the row).
+#
+# Not decided: dynamic calls (funcall, apply$), calls through macros the
+# tokenizer does not expand, and whether a call inside an :in function runs
+# under the lock the row assumes.  Exit 1 on any refusal (or a missing marker
+# under --strict), else 0.  The lock-discipline rules are not consulted.
+
+HOLDER_HOST_GLOBS = ("host/native/*.lisp", "host/*.lisp")
+
+
+def _holder_sym(x) -> str:
+    return str(x).lower()
+
+
+def holder_declarations(root: Path = TOOL_ROOT) -> list[dict]:
+    """Every (def-holder NAME . KVS) in books/*.lisp, as {name, book, line, kvs}."""
+    out = []
+    for path in sorted((root / "books").glob("*.lisp")):
+        text = path.read_text(encoding="utf-8")
+        if "def-holder" not in text:
+            continue
+        for form, line in ledger.Reader(text).top_level():
+            if ledger.head(form) != "def-holder" or len(form) < 2:
+                continue
+            out.append({"name": _holder_sym(form[1]), "book": path.relative_to(root).as_posix(),
+                        "line": line, "kvs": ledger.keyword_plist(form[2:])})
+    return out
+
+
+def holder_rows(decl: dict) -> list[dict]:
+    """The declaration's holders: {kind, host|root|logic, acquire, release, in}."""
+    out = []
+    for h in decl["kvs"].get(":holders", []) or []:
+        if not isinstance(h, list) or not h:
+            continue
+        kv = ledger.keyword_plist(h[1:])
+        row = {"kind": _holder_sym(h[0]), "in": [_holder_sym(x) for x in (kv.get(":in") or [])], "form": h}
+        if kv.get(":host") is not None and _holder_sym(kv[":host"]) != "nil":
+            row.update(sort="host", acquire=_holder_sym(kv.get(":acquire", "")),
+                       release=_holder_sym(kv.get(":release", "")))
+        elif kv.get(":root") is not None and _holder_sym(kv[":root"]) != "nil":
+            status = kv.get(":status") or []
+            row.update(sort="root", status=_holder_sym(status[0]) if status else "")
+        else:
+            row.update(sort="logic")
+        out.append(row)
+    return out
+
+
+def holder_effect(decl: dict) -> dict:
+    """{kind, cuts: [marker keywords in order]} of the declaration's :effect."""
+    e = decl["kvs"].get(":effect") or []
+    kind = _holder_sym(e[0]) if e else ""
+    if kind == ":physical":
+        kv = ledger.keyword_plist(e[2:])
+        return {"kind": kind, "cuts": [_holder_sym(kv.get(":after", "")), _holder_sym(kv.get(":cut", ""))]}
+    name = decl["name"]
+    return {"kind": kind, "cuts": [f":{name}-decided", f":{name}-released"]}
+
+
+# ---------------------------------------------------------------------------
+# The raw host: each top-level defun's span, and the symbols called in it.
+
+class HolderHostFunction:
+    def __init__(self, name: str, path: str, line: int):
+        self.name = name
+        self.path = path
+        self.line = line
+        self.calls: list[tuple[str, int]] = []     # (callee, offset): `(callee', `'callee', `#'callee'
+        self.keywords: list[tuple[str, int]] = []  # (:keyword, offset)
+
+
+def holder_host_functions(root: Path = TOOL_ROOT) -> dict[str, list[HolderHostFunction]]:
+    """Every (defun NAME ...) of the raw host, by name (a name may be defined twice)."""
+    from native_program_check import Str, positioned_tokens
+    out: dict[str, list[HolderHostFunction]] = {}
+    for pattern in HOLDER_HOST_GLOBS:
+        for path in sorted(root.glob(pattern)):
+            text = path.read_text(encoding="utf-8")
+            rel = path.relative_to(root).as_posix()
+            depth = 0
+            current: HolderHostFunction | None = None
+            tokens = list(positioned_tokens(text))
+            for i, (offset, token) in enumerate(tokens):
+                if isinstance(token, Str):
+                    continue
+                if token == "(":
+                    if depth == 0 and i + 2 < len(tokens):
+                        head_token = tokens[i + 1][1]
+                        name_token = tokens[i + 2][1]
+                        if (not isinstance(head_token, Str) and head_token in ("defun", "defmacro")
+                                and not isinstance(name_token, Str)):
+                            current = HolderHostFunction(name_token, rel, text.count("\n", 0, offset) + 1)
+                            out.setdefault(name_token, []).append(current)
+                    elif current is not None and i + 1 < len(tokens):
+                        callee = tokens[i + 1][1]
+                        if not isinstance(callee, Str) and callee not in ("(", ")"):
+                            current.calls.append((callee, offset))
+                    depth += 1
+                elif token == ")":
+                    depth -= 1
+                    if depth == 0:
+                        current = None
+                elif token in ("'", "#'"):
+                    if current is not None and i + 1 < len(tokens):
+                        quoted = tokens[i + 1][1]
+                        if not isinstance(quoted, Str) and quoted not in ("(", ")"):
+                            current.calls.append((quoted, offset))
+                elif current is not None and token.startswith(":"):
+                    current.keywords.append((token, offset))
+    return out
+
+
+def holder_book_functions(root: Path = TOOL_ROOT) -> set[str]:
+    """Every (defun NAME ...) of books/*.lisp (a root's keeper may be a book function)."""
+    import re
+    names: set[str] = set()
+    pattern = re.compile(r"^\((?:defun|defun-nx|defund)\s+([^\s()]+)", re.M)
+    for path in (root / "books").glob("*.lisp"):
+        for m in pattern.finditer(path.read_text(encoding="utf-8")):
+            names.add(m.group(1).lower())
+    return names
+
+
+def holder_check(root: Path = TOOL_ROOT, strict: bool = False) -> tuple[list[str], list[str]]:
+    """(refusals, notes) over every declaration."""
+    decls = holder_declarations(root)
+    fns = holder_host_functions(root)
+    books = holder_book_functions(root)
+    refusals: list[str] = []
+    notes: list[str] = []
+    declared_sites: dict[str, set[str]] = {}   # acquire/release name -> :in functions that may call it
+    for decl in decls:
+        where = f"{decl['book']}:{decl['line']} {decl['name']}"
+        for h in holder_rows(decl):
+            # a host holder's keepers are raw host functions; a root's may be
+            # a book function (an unwired component's entry)
+            known = (fns.keys() | books) if h["sort"] == "root" else fns.keys()
+            missing = [f for f in h["in"] if f not in known]
+            for f in missing:
+                refusals.append(f"{where}: holder {h['kind']}: :in {f} is no function of the raw host"
+                                + (" or of books/" if h["sort"] == "root" else ""))
+            if h["sort"] == "host":
+                for verb in ("acquire", "release"):
+                    name = h[verb]
+                    declared_sites.setdefault(name, set()).update(h["in"])
+                    if name not in fns:
+                        refusals.append(f"{where}: holder {h['kind']}: :{verb} {name} is no function of the raw host")
+                        continue
+                    if not any(any(c == name for c, _ in fn.calls)
+                               for f in h["in"] if f in fns for fn in fns[f]):
+                        refusals.append(f"{where}: holder {h['kind']}: :{verb} {name} is called in none of its :in {h['in']}")
+            elif h["sort"] == "root":
+                notes.append(f"{where}: root {h['kind']} {h.get('status', '')} in {h['in']}")
+        # the effect's markers inside the row's :in functions, in order; a
+        # logic holder's host sites are the raw functions that dispatch its
+        # entries (a quoted call of the entry's name)
+        eff = holder_effect(decl)
+        ins = [f for h in holder_rows(decl) for f in h["in"]]
+        for h in holder_rows(decl):
+            if h["sort"] != "logic":
+                continue
+            entries = [_holder_sym(x[0]) for x in (ledger.keyword_plist(h["form"][1:]).get(":acquire"),
+                                            ledger.keyword_plist(h["form"][1:]).get(":release"))
+                       if isinstance(x, list) and x]
+            for fname, fn_list in fns.items():
+                for fn in fn_list:
+                    if any(c in entries for c, _ in fn.calls) and fname not in ins:
+                        ins.append(fname)
+        positions: dict[str, tuple[str, int]] = {}
+        for f in ins:
+            for fn in fns.get(f, []):
+                for kw, offset in fn.keywords:
+                    if kw in eff["cuts"] and kw not in positions:
+                        positions[kw] = (fn.path, offset)
+        absent = [c for c in eff["cuts"] if c not in positions]
+        if absent:
+            line = f"{where}: effect {eff['kind']}: cut marker(s) {absent} not in any :in function {sorted(set(ins))} (declared, not a checked host release)"
+            (refusals if strict else notes).append(line)
+        elif eff["kind"] == ":physical":
+            after, cut = eff["cuts"]
+            if positions[after] >= positions[cut]:
+                refusals.append(f"{where}: effect :physical: {cut} is marked before {after} in the host; the release must follow the durable replacement")
+    # every host call of a declared acquire/release is inside a declared :in function
+    for name, allowed in sorted(declared_sites.items()):
+        for fname, fn_list in fns.items():
+            if fname == name:
+                continue  # the wrapper's own definition
+            for fn in fn_list:
+                if any(c == name for c, _ in fn.calls) and fname not in allowed:
+                    refusals.append(f"{fn.path}:{fn.line} {fname} calls {name}, which is declared only in {sorted(allowed)}: an undeclared acquirer is a refusal, not a holder")
+    if not decls:
+        notes.append("no def-holder declarations in books/")
+    return refusals, notes
+
+
+def holder_main(strict: bool) -> int:
+    refusals, notes = holder_check(strict=strict)
+    for n in notes:
+        print("note: " + n)
+    for r in refusals:
+        print("REFUSED: " + r)
+    print(f"holder check: {len(holder_declarations())} declaration(s), {len(refusals)} refusal(s), "
+          f"{len(notes)} note(s){' (strict)' if strict else ''}")
+    return 1 if refusals else 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--root", default=str(TOOL_ROOT))
     ap.add_argument("--contracts", default=str(CONTRACTS))
     ap.add_argument("--baseline", default=str(BASELINE))
     ap.add_argument("--check", action="store_true", help="fail on new findings and any enclave finding")
+    ap.add_argument("--holders", action="store_true",
+                    help="standalone: the def-holder declarations closed over the raw host "
+                         "(no lock-discipline rule runs)")
+    ap.add_argument("--strict", action="store_true",
+                    help="with --holders: a declared cut with no host marker is a refusal too")
     ap.add_argument("--rule", action="append")
     ap.add_argument("--function")
     ap.add_argument("--json", action="store_true")
@@ -5758,6 +6025,8 @@ def main(argv=None) -> int:
                          "marker is not audited")
     ap.add_argument("--summary", action="store_true")
     args = ap.parse_args(argv)
+    if args.holders:
+        return holder_main(args.strict)
     started = time.time()
     root = Path(args.root).resolve()
     an, model, checker = build(root, Path(args.contracts))
@@ -5777,14 +6046,12 @@ def main(argv=None) -> int:
     if args.function:
         findings = [f for f in findings if f.function == args.function]
     if args.emit_realization:
-        out = root / REALIZATION
         table = getattr(checker, "realization", None)
         if table is None:
-            print("lock_discipline_check: refused realization source; no snapshot written")
+            print("lock_discipline_check: refused realization source; no table", file=sys.stderr)
             return 1
-        out.write_text(json.dumps({"comment": "generated literal model table; host sites are checked "
-                                   "syntactically, not a refinement proof", **table}, indent=1) + "\n")
-        print(f"lock_discipline_check: wrote {REALIZATION}")
+        print(json.dumps({"comment": "generated literal model table; host sites are checked "
+                          "syntactically, not a refinement proof", **table}, indent=1))
         return 0
     enclave = set(checker.c.raw.get("enclave", {}).get("functions", []))
     enclave_files = set(checker.c.raw.get("enclave", {}).get("files", []))
@@ -5830,16 +6097,6 @@ def main(argv=None) -> int:
     verdict = judge(findings, baseline, enclave, enclave_files, excepted)
     if args.rule or args.function:
         verdict["stale"] = []  # a filtered run cannot judge the whole baseline
-    realization_drift = None
-    out = root / REALIZATION
-    if out.exists() and not args.rule:
-        try:
-            snapshot = json.loads(out.read_text())
-            table = getattr(checker, "realization", None)
-            if table is None or any(snapshot.get(key) != table[key] for key in ("source", "rows")):
-                realization_drift = f"{REALIZATION} is stale: regenerate with --emit-realization"
-        except ValueError:
-            realization_drift = f"{REALIZATION} does not parse"
     elapsed = time.time() - started
     cats = collections.Counter((f.rule, f.category) for f in findings)
     total_sites = sum(len(i.events) for i in an.infos.values())
@@ -5867,8 +6124,6 @@ def main(argv=None) -> int:
             if v or u or x:
                 print(f"  {rule:4} violation {v:4}  unresolved {u:4}  exception {x:4}")
         nb = len([1 for k, f in verdict["new"]])
-        if realization_drift:
-            print("  " + realization_drift)
         for lock, n in sorted(checker.private_io.items()):
             print(f"  private-owner I/O under {lock}: {n} R2 (site, leaf) pair(s) exempt in "
                   f"{len(model.private_owner[lock]['functions'])} proved one-shot function(s)")
@@ -5880,7 +6135,7 @@ def main(argv=None) -> int:
             print(audit_summary(model, checker.c.raw, audit_failures))
     if args.check:
         bad = (verdict["new"] or verdict["stale"] or verdict["enclave_baselined"]
-               or realization_drift or audit_failures or guard_problems)
+               or audit_failures or guard_problems)
         if bad:
             counted = weights(findings)
             cap = args.cap or None

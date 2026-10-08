@@ -1,4 +1,4 @@
-"""host_check --forward: a call in an ld host file of a name only a later form defines.
+"""host_check --forward and --macro-order: a call of a name only a later form defines.
 
 limits-live-4 (2026-09-29): host/owner-host.lisp called fn-owner-record-octets
 350 lines before its definition; `--load` (raw files only) passed and the
@@ -152,6 +152,38 @@ class BookHoleTests(unittest.TestCase):
             (root / "host/account-adoption-interfaces.lisp").write_text(
                 '(definterface fn-export-request :class :common-lisp-compliant)\n')
             self.assertEqual(host_check.book_holes(("host/native/build.lisp",), root), [])
+
+
+class HostMacroOrderTests(unittest.TestCase):
+    def files(self, *texts):
+        work = Path(tempfile.mkdtemp(prefix="fn-macro-order-"))
+        paths = []
+        for i, text in enumerate(texts):
+            path = work / ("f%d.lisp" % i)
+            path.write_text(text, encoding="utf-8")
+            paths.append(path)
+        return paths
+
+    def test_the_tree_passes(self):
+        self.assertEqual(host_check.macro_order_findings(host_check.macro_load_order()), [])
+        self.assertIn(ROOT / "host" / "native" / "io.lisp", host_check.macro_load_order())
+
+    def test_batch_aw_shape_is_refused(self):
+        # The use above the definition, in one file (io.lisp at batch AW).
+        early = host_check.macro_order_findings(self.files(
+            "(defun f (log)\n  (fnn-log-with-kernel (log) (g log)))\n"
+            "(defmacro fnn-log-with-kernel ((log) &body body)\n  `(progn ,log ,@body))\n"))
+        self.assertEqual(len(early), 1, early)
+        self.assertIn(":2 uses fnn-log-with-kernel before its definition", early[0])
+
+    def test_a_use_in_an_earlier_loaded_file_is_refused(self):
+        early = host_check.macro_order_findings(self.files("(defun f () (m 1))\n", "(defmacro m (x) x)\n"))
+        self.assertEqual(len(early), 1, early)
+
+    def test_uses_after_the_definition_and_in_comments_or_strings_pass(self):
+        self.assertEqual(host_check.macro_order_findings(self.files(
+            "; (m 1) in a comment\n(defun doc () \"(m 2) in a string\")\n"
+            "(defmacro m (x) x)\n(defun f () (m 3))\n", "(defun g () (m 4))\n")), [])
 
 
 if __name__ == "__main__":

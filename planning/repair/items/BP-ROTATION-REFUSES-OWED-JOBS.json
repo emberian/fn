@@ -8,8 +8,10 @@
  "id": "BP-ROTATION-REFUSES-OWED-JOBS",
  "line": "1507",
  "locus": "bp-rotation",
- "notes": [],
- "owner": "bp-transport",
+ "notes": [
+  "2026-10-08 (coordinator, via N): fix (A) chosen -- the checkpoint carries the base jobs (codec field, fn-bpnr-checkpoint-of-statep over them, replay equal to full recovery, teeth refuting a rotation that drops an owed job; quiescence drops the jobs/next-token clauses). Owner P, coordinating with C's bp-rotation-c5 state. Re-exposed on the train-27/29 images behind the startup refusal: test_disconnected_delivery_restarts_and_releases_only_matching_obligation, quiescence at books/bp-node-progress.lisp:1512-1523."
+ ],
+ "owner": "deputy-P",
  "reviewer": "mechanism established by tracing fn-bpnp-rotate-step and by truncating a dumped journal (hbox:/tank/fn/scratch/bp-residual/jdump, jx*): every variant with a job is refused.",
  "scenario": "A node that ever queued a receipt or report job and still owes it cannot rotate: natural rotation (fn-bpnrd-due-rotation-event) answers NIL on quiescence, so the generation fills toward its 8192-record bound while jobs are owed. The documented stage-cut recovery claim (owed receipt jobs survive a death before selection) cannot be exercised.",
  "severity": "medium",
@@ -17,5 +19,5 @@
  "source": "bp-residual-2026-10-07",
  "state": "open",
  "title": "bp-node checkpoint and natural rotation refuse whenever the base machine has any job, so owed receipt jobs make the journal unrotatable and the stage-cut recovery case unreachable",
- "updated": "2026-10-07T18:16:52Z"
+ "updated": "2026-10-08T07:00:00Z"
 }

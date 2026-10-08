@@ -157,6 +157,7 @@ history it read, as before."
             (format nil ".stage-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
 
 (defun fnn-admin-publish (store record authorization)
+  "Publish ACL2's authorized record; stage cleanup for the caller's off-lock unwind."
   (let* ((generation (fnn-core 'fn-native-admin-host-publication-generation authorization))
          (name (fnn-core 'fn-native-admin-host-publication-name authorization))
          (directory (fnn-config-dir store))
@@ -164,7 +165,7 @@ history it read, as before."
     (unless (and (integerp generation) (>= generation 0)
                  (stringp name) (= (length name) 12) (null (position #\/ name)))
       (fnn-fault "ACL2 returned an invalid administrative publication plan"))
-    (case (fnn-immutable-publish-effect
+    (case (fnn-immutable-publish-deferred
            (fnn-core 'fn-native-admin-host-publication-jpub authorization)
            (fnn-admin-stage-path store) final directory (fnn-octets record)
            :cleanup-directory (fnn-staging store))
@@ -721,9 +722,11 @@ already durable publication appear to fail merely by advancing the history."
            (or (fnn-admin-authorize-carried store config-records record names)
                (fnn-admin-authorize store (fnn-history-records store)
                                     config-records record names))))
-    (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
-      (values generation name
-              (fnn-admin-verify-under-lock store record authorization)))))
+    (fnn-unwind-cleanups
+        ((multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
+           (values generation name
+                   (fnn-admin-verify-under-lock store record authorization))))
+      (fnn-immutable-drain-cleanups))))
 
 (defun fnn-admin-query (root plan)
   "Execute one read-only ACL2 configuration query against ROOT.

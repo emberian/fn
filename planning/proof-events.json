@@ -4425,10 +4425,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnf-family-next-memo-is-aux"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnf-family-plan-at-of-member"
         },
         {
@@ -4998,10 +4994,6 @@
         },
         {
           "kind": "theorem",
-          "name": "adt-corr-scalar-octets-row"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-arn-store-corr-of-commit"
         },
         {
@@ -5189,10 +5181,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnf-family-next-memo-is-aux"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnpf-node-profile-read-of-octets"
         },
         {
@@ -5269,18 +5257,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bpnf-family-select-is-aux"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnf-family-select-plans-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnf-family-select-steps-bound"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnf-family-without-zero-key-is-not-ready"
         },
         {
@@ -5320,18 +5296,6 @@
           "kind": "theorem",
           "name": "fn-bpnj-contact-next-is-the-two-scan-selection",
           "note": "KEYSTONE (one traversal, the same answer). fn-bpnj-contact-next, asked by host/native/bp-service.lisp fnn-bpc-drive-contact and host/native/bp-node.lisp fnn-bpnode-send-receipts before every offer, equals the former two-scan answer on every state; the PRF-120 theorems' hints cite it."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnj-scan-finds-the-selected-job"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnj-scan-finds-the-held-job"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnj-unique-keys-make-every-job-its-own-entry"
         }
       ]
     },
@@ -6321,13 +6285,12 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-store-prepare-interned-keeps-the-stored-octets",
-          "note": "The standalone store's POST entry keeps the relation over the arena it leaves."
+          "name": "fn-sbud-prepare-keeps-the-stored-octets",
+          "note": "The served POST (host/owner-host.lisp fn-owner-prepare -> fn-pcar-sbud-prepare, which is fn-sbud-prepare by fn-pcar-sbud-prepare-is-sbud-prepare, over the row fn-intern-row-at makes at the arena's count, then the seal when the store changed) keeps fn-sbud-store-extents-okp: the budget's octets stay the stored octets."
         },
         {
           "kind": "theorem",
-          "name": "fn-sbud-prepare-keeps-the-stored-octets",
-          "note": "The served POST (host/owner-host.lisp fn-owner-prepare -> fn-pcar-sbud-prepare, which is fn-sbud-prepare by fn-pcar-sbud-prepare-is-sbud-prepare, over the row fn-intern-row-at makes at the arena's count, then the seal when the store changed) keeps fn-sbud-store-extents-okp: the budget's octets stay the stored octets."
+          "name": "fn-psrv-store-prepare-next-keeps-the-stored-octets"
         }
       ]
     },
@@ -6597,11 +6560,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-served-reply-to-buffer-is-the-reply"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-served-reply-to-buffer-refusal-keeps-the-buffer"
+          "name": "fn-splan-windows-are-the-reply"
         }
       ]
     },
@@ -8642,10 +8601,6 @@
         },
         {
           "kind": "theorem",
-          "name": "adt-corr-scalar-octets-row"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-arena-seal-range-is-seal-list"
         }
       ]
@@ -9220,19 +9175,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-owb-scan-of-related-content"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owb-image-scan-of-related-state"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owb-committed-record-survives-crash"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owb-acknowledged-record-survives-crash"
+          "name": "fn-lgu-acknowledge-acknowledges-only-recoverable-records"
         }
       ]
     },
@@ -9293,14 +9236,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-owb-related-state-is-the-sole-pending-writer"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owb-recover-establishes-relation"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-owb-prepare-ahead-is-the-sequential-prepare"
         },
         {
@@ -9314,23 +9249,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-owb-failed-fence-is-the-crash-image"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owb-failed-fence-image-is-admissible"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-owb-fence-failed-answers-uncertain"
         },
         {
           "kind": "theorem",
-          "name": "fn-owb-recovered-kernel-after-a-failed-fence"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owb-uncertain-batch-recovers-to-a-prefix"
+          "name": "fn-lgc-failed-barrier-recovers-a-prefix"
         }
       ]
     },
@@ -9873,10 +9796,6 @@
         {
           "kind": "theorem",
           "name": "fn-oclc-complete-is-complete"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-oclc-ready-cst-relation-is-history-relation"
         }
       ]
     },
@@ -10035,28 +9954,7 @@
     },
     {
       "id": "PRF-281",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "adt-pg-corr-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "adt-pg-append-step-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "adt-pg-corr-scalar-octets-row"
-        },
-        {
-          "kind": "theorem",
-          "name": "adt-pg-corr-scalar-octets-row-in-pages"
-        },
-        {
-          "kind": "theorem",
-          "name": "adt-pg-corr-clear"
-        }
-      ]
+      "events": []
     },
     {
       "id": "PRF-285",
@@ -10181,10 +10079,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-olr-take-never-joins-the-batch-in-flight"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ocl-view-historyp-of-a-view-captured-before-appends"
         },
         {
@@ -10194,6 +10088,10 @@
         {
           "kind": "theorem",
           "name": "fn-ocfg-at-reader-view-reads-the-reader-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-take-never-joins-the-batch-in-flight"
         }
       ]
     },
@@ -15000,15 +14898,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-zpl-pool-okp-of-nil"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-zpl-pool-check-is-pool-okp"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-zpl-ready-window-is-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-zpl-decode-bufs-from-the-empty-pool"
         }
       ]
     },
@@ -16791,11 +16685,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bpnf-family-next-selects-exactly-the-first-ready-family"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
+          "name": "fn-bpfj-next-candidate-is-a-ready-family-representative"
         }
       ]
     },
@@ -19347,6 +19237,55 @@
         {
           "kind": "theorem",
           "name": "fn-tlsk-library-served-tls-never-falls-back"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1343",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prl-make-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-register-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-admit-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-settle-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-evict-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-close-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-reserve-growth-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-convert-growth-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-row-sum-bound-reserve-natural"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-row-sum-covers-bound-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-convert-growth-under-row-sum-invp"
         }
       ]
     }

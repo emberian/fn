@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate planning/current.md, the current view of each capability.
+"""Render the current view of each capability (prints it; --write saves build/current.md).
 
 The review of 2026-09-24 (planning/review-2026-09-24-gpt6-direction.md, "A
 small evidence-maintenance repair") asks for a short current view beside the
@@ -9,25 +9,25 @@ apart:
 
 - implemented: the host-called subject is called on this revision
   (file:line found in host/) and the keystone exists (ledger parser);
-- proved: an archived certify manifest under planning/evidence/manifests/
-  recorded the keystone's book `passed` at its current source digest with an
-  undrifted include closure (certified_claims' pass rule);
-- qualified: the tested image's closure manifest recorded the keystone's
-  book (and the bridge's book and the host file, when it lists them) at the
-  same source digest as this revision, i.e. the qualified image carries the
-  source this view describes;
+- proved: the record box's cert cache holds an entry for the keystone's book
+  at its current closure key, made on the record toolchain
+  (green_check.green_at_these_bytes);
+- qualified: the tested image's pinned digests (`--pin-image`, read from its
+  source revision) hold the keystone's book (and the bridge's book and the
+  host file) at the same source digest as this revision, i.e. the qualified
+  image carries the source this view describes;
 - deployed: the same comparison against the deployed node's image, and the
   capability's profile is one the node runs. A node image that is a release
-  build rather than a qualified image has no closure manifest; its book and
-  host digests are pinned from its source revision (`--pin-image`), and the
-  view says it is unqualified: deployed never implies qualified.
+  build rather than a qualified image is pinned the same way, and the view
+  says it is unqualified: deployed never implies qualified.
 
 The sidecar holds only what a person decides: the capability's contract, its
 keystone, bridge and host function names, which image or lab record tested
 it, and three prose lines (latest positive result, remaining obstruction,
-next positive gate). Everything else is computed. `--check` (run by
-`make check`) fails when planning/current.md differs from the output, when a
-named function, theorem, record or manifest is absent, or when a record does
+next positive gate). Everything else is computed. The view is not
+committed: with no flag the tool prints it, `--write` saves it as
+build/current.md. `--check` (run by `make check`) fails when the view cannot be
+built: when a named function, theorem, record or manifest is absent, or when a record does
 not mention the image source or manifest it is cited for. It reads files
 only; it runs no ACL2 and no image.
 """
@@ -41,16 +41,15 @@ import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import certified_claims  # noqa: E402
+import certs  # noqa: E402
 import commit_map
-import evidence_store  # noqa: E402
 import green_check  # noqa: E402
 import ledger  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SIDECAR = "planning/current-view.json"
-OUTPUT = "planning/current.md"
+OUTPUT = "build/current.md"
 FIELDS = ("id", "name", "contract", "host", "keystone", "tested",
           "profile", "latest", "obstruction", "next")
 
@@ -89,87 +88,45 @@ def theorem(tree: ledger.Tree, name: str) -> ledger.Theorem:
 
 
 class Evidence:
-    """The archived manifests, read once, and each book's current state."""
+    """Each book's current digest and closure listing, and the cache's verdict."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, report: dict) -> None:
         self.root = root
-        self.runs = [(run, manifest) for run, manifest in green_check.manifests(root)
-                     if run.archived]
-        self.by_id = {run.run_id: manifest for run, manifest in self.runs}
         self.states: dict[str, tuple[str, list[str]]] = {}
+        self.records: dict = report.get("books_by_verdict", {})
 
     def state(self, book: str) -> tuple[str, list[str]]:
         if book not in self.states:
-            self.states[book] = certified_claims.current_state(self.root, book)
+            closure = certs.closure(self.root, book)
+            self.states[book] = (closure[book], certs.closure_listing(closure))
         return self.states[book]
 
-    def first_certifier(self, book: str) -> str | None:
-        """The earliest archived run that certified the current source and closure.
-
-        The earliest, not the newest, so that archiving a later run does not
-        change the view; the answer moves only when the book or its closure does.
-        """
-        digest, listing = self.state(book)
-        for run, manifest in self.runs:
-            if certified_claims.certifies(manifest, book, digest, listing)[0]:
-                return run.run_id
-        return None
-
-    def first_installer(self, book: str) -> str | None:
-        """The earliest archived run that installed a pair for the current source and closure.
-
-        A cache install validates a certificate made by an earlier run, which
-        may not be archived; it is weaker than a `passed` verdict and is
-        reported as such.
-        """
-        digest, listing = self.state(book)
-        for run, manifest in self.runs:
-            sources = manifest.get("source_digests_sha256") or {}
-            if (book in (manifest.get("installed_books") or {})
-                    and sources.get(book + ".lisp") == digest
-                    and not certified_claims.certs.closure_drift(listing, sources)):
-                return run.run_id
-        return None
-
-    def first_at_digest(self, book: str) -> tuple[str, list[str]] | None:
-        """The earliest archived run that passed the book's current source, and the closure drift since."""
-        digest, listing = self.state(book)
-        for run, manifest in self.runs:
-            sources = manifest.get("source_digests_sha256") or {}
-            if ((manifest.get("book_results") or {}).get(book) == "passed"
-                    and sources.get(book + ".lisp") == digest):
-                return run.run_id, certified_claims.certs.closure_drift(listing, sources)
-        return None
-
-    def manifest(self, run_id: str) -> dict:
-        found = self.by_id.get(run_id)
-        if found is None:
-            raise ViewError(f"manifest {run_id} is not archived under "
-                            "planning/evidence/manifests/")
-        return found
+    def certified(self, book: str) -> dict | None:
+        """The book's cache record when it is green at its current closure key."""
+        record = self.records.get(book)
+        return record if green_check.green_at_these_bytes(record) else None
 
 
 def record_link(root: Path, rel: str, *mentions: str) -> str:
     path = root / rel
-    # A record under planning/evidence/ is read by its indexed hash when the
-    # working tree no longer carries it (tools/evidence_store.py).
-    if not evidence_store.exists(root, rel):
+    if not path.exists():
+        if rel.startswith("planning/evidence/"):
+            return f"`{path.stem}` (retired record)"  # left the tree with D71; not resolved
         raise ViewError(f"record {rel} is absent")
-    text = evidence_store.read_text(root, rel)
+    text = path.read_text(encoding="utf-8")
     for mention in mentions:
         if mention and mention not in text:
             raise ViewError(f"record {rel} does not mention {mention}")
-    return f"[{path.stem}]({Path(rel).relative_to('planning').as_posix()})"
+    return f"[{path.stem}](../{Path(rel).as_posix()})"
 
 
 def carried(evidence: Evidence, image: dict, files: list[str]) -> tuple[bool, str]:
     """Whether an image holds each file at this revision's digest.
 
-    Books come from the image's closure manifest; host files from the
-    digests `--pin-image` read out of the image's source revision.
+    Books and host files are compared with the digests `--pin-image` read out
+    of the image's source revision.
     """
-    sources = (dict(evidence.manifest(image["closure_manifest"]).get("source_digests_sha256")
-                    or {}) if image.get("closure_manifest") else {})
+    sources: dict[str, str] = {}
     sources.update(image.get("book_sha256") or {})
     sources.update(image.get("host_sha256") or {})
     changed, absent = [], []
@@ -185,7 +142,7 @@ def carried(evidence: Evidence, image: dict, files: list[str]) -> tuple[bool, st
             absent.append(rel)
             continue
         current = (evidence.state(rel.removesuffix(".lisp"))[0] if rel.startswith("books/")
-                   else certified_claims.certs.content_hash(evidence.root / rel))
+                   else certs.content_hash(evidence.root / rel))
         if recorded != current:
             changed.append(rel)
     if absent:
@@ -222,8 +179,8 @@ def tested_coordinate(root: Path, cap: dict, images: dict, evidence: Evidence,
         ok, how = carried(evidence, image, files)
         qual_link = record_link(root, image["qualification"])
         qualified = f"yes: {tested['image']}" if ok else f"no: source changed since {tested['image']}"
-        tested_line = (f"image `{tested['image']}` ({qual_link}, closure "
-                       f"`{image['closure_manifest']}`), profile {tested['profile']}; {how}")
+        tested_line = (f"image `{tested['image']}` ({qual_link}), profile "
+                       f"{tested['profile']}; {how}")
     else:
         lab_link = record_link(root, tested["record"], tested["source"])
         qualified = f"lab only: `{tested['source']}`"
@@ -236,7 +193,22 @@ def build(root: Path = ROOT) -> str:
     view = json.loads((root / SIDECAR).read_text(encoding="utf-8"))
     tree = ledger.load_tree()
     proofs = json.loads((root / "planning/proofs.json").read_text(encoding="utf-8"))["proofs"]
-    evidence = Evidence(root)
+    keystone_books = {theorem(tree, cap["keystone"]).book.removesuffix(".lisp")
+                      for cap in view["capabilities"]}
+    event_books = ledger.event_books(tree, ledger.load_proof_events())
+    cited = [p for p in proofs
+             if any(cap["keystone"] in (p.get("events") or []) for cap in view["capabilities"])]
+    # ONE cache question for every book this view judges.
+    wanted = keystone_books.union(*(event_books.get(p["id"], set()) for p in cited))
+    green_state: dict = {"__green__": green_check.audit(root, roots=sorted(wanted))}
+    evidence = Evidence(root, green_state["__green__"])
+
+    def status_of(proof: dict) -> str:
+        """The row's status, computed from the cache (it is not stored)."""
+        return ledger.derived_status(proof, proof.get("events") or [],
+                                     event_books.get(proof["id"], set()),
+                                     green_state, root)
+
     images = view["images"]
     node = view["deployment"]
     node_image = images[node["image"]]
@@ -245,15 +217,12 @@ def build(root: Path = ROOT) -> str:
             if name != node["image"]:
                 raise ViewError(f"image {name} has no qualification record; only the "
                                 "node's release image may be unqualified")
-            if not image.get("book_sha256"):
-                raise ViewError(f"image {name} has neither a closure manifest nor pinned "
-                                f"book digests; run `python3 tools/current_view.py "
-                                f"--pin-image {name}`")
-            continue
-        record_link(root, image["qualification"], image["source"])
-        evidence.manifest(image["closure_manifest"])
-    node_link = record_link(root, node["record"], node["image"],
-                            node_image.get("closure_manifest") or "")
+        else:
+            record_link(root, image["qualification"], image["source"])
+        if not image.get("book_sha256"):
+            raise ViewError(f"image {name} has no pinned book digests; run "
+                            f"`python3 tools/current_view.py --pin-image {name}`")
+    node_link = record_link(root, node["record"], node["image"])
     node_qualified = ("" if node_image.get("qualification") else
                       "; its image is a release build of that source, not a qualified image")
     earlier_nodes = [f"{n['where']} on `{n['image']}` ({record_link(root, n['record'], n['image'])}), "
@@ -274,11 +243,9 @@ def build(root: Path = ROOT) -> str:
         key = theorem(tree, cap["keystone"])
         key_book = key.book.removesuffix(".lisp")
         bridge = theorem(tree, cap["bridge"]) if cap.get("bridge") else None
-        rows = [f"{p['id']} ({p.get('status')})" for p in proofs
+        rows = [f"{p['id']} ({status_of(p)})" for p in proofs
                 if cap["keystone"] in (p.get("events") or [])]
-        certifier = evidence.first_certifier(key_book)
-        installer = None if certifier else evidence.first_installer(key_book)
-        earlier = None if certifier or installer else evidence.first_at_digest(key_book)
+        certifier = evidence.certified(key_book)
         books = sorted({key.book} | ({bridge.book} if bridge else set()))
         files = books + [host["file"]]
 
@@ -290,9 +257,7 @@ def build(root: Path = ROOT) -> str:
             ok, how = carried(evidence, node_image, files)
             deployed = f"yes: {node['image']}" if ok else "no: dev source not on the node"
             deployed_line = f"{'yes' if ok else 'no'}: node image `{node['image']}`; {how}"
-        proved = (f"yes: `{certifier}`" if certifier else
-                  f"cache only: `{installer}`" if installer else
-                  "no: closure moved" if earlier else "no: source uncertified")
+        proved = "yes: cert cache" if certifier else "no: not certified"
 
         if cap.get("pending_bridge") is not None:
             proved, qualified, deployed = pending_bridge_verdicts(
@@ -307,18 +272,10 @@ def build(root: Path = ROOT) -> str:
         if bridge:
             subject += (f", equated by `{cap['bridge']}` "
                         f"({bridge.book}:{bridge.line})")
-        cert = (f"certified at the current source and closure by `{certifier}` (earliest archived)"
+        cert = (f"certified at the current source and closure (record-toolchain cert-cache "
+                f"entry at closure key `{certifier['closure_key'][:12]}`)"
                 if certifier else
-                f"no archived manifest records it passed at the current source and closure; "
-                f"`{installer}` installed a cached pair for them, made by a run not archived"
-                if installer else
-                f"no archived manifest certifies the current closure; `{earlier[0]}` "
-                f"passed this source of `{key.book}`, and since then "
-                + ", ".join(f"`{x}`" for x in earlier[1][:3])
-                + (f" and {len(earlier[1]) - 3} more" if len(earlier[1]) > 3 else "")
-                + " changed"
-                if earlier else
-                f"no archived manifest records `{key.book}` passed at its current source")
+                f"no record-toolchain cert-cache entry at the current closure key of `{key.book}`")
         records.append("\n".join([
             f"### {ident}",
             "",
@@ -340,15 +297,15 @@ def build(root: Path = ROOT) -> str:
         "# Current view",
         "",
         "Generated by `python3 tools/current_view.py --write` from",
-        f"[`current-view.json`](current-view.json) and the tree; `make check` fails when",
-        "it is stale. Edit the sidecar, never this file. The four coordinates are",
+        f"[`current-view.json`](../planning/current-view.json) and the tree; not",
+        "committed. Edit the sidecar, never this file. The four coordinates are",
         "computed: **implemented** (the host line below calls the subject on this",
-        "revision), **proved** (an archived manifest certified the keystone's book at",
-        "its current source digest and closure), **qualified** (the tested image's",
-        "closure manifest holds the keystone, bridge and host sources as they are",
-        "here), **deployed** (the same against the live node's image and profile).",
+        "revision), **proved** (the record box's cert cache holds an entry for the",
+        "keystone's book at its current closure key), **qualified** (the tested",
+        "image's pinned digests hold the keystone, bridge and host sources as they",
+        "are here), **deployed** (the same against the live node's image and profile).",
         "The prose lines are hand-maintained and name their record. The history",
-        "stays in [`evidence/`](evidence/), immutable.",
+        "stays in [`evidence/`](../planning/evidence/), immutable.",
         "Every image above is the SBCL image. An EXTRACTED image (`tools/extract`:",
         "the same world's functions compiled by bare SBCL into fn-core) is a different qualified",
         "image: its qualification rests on A-EXTRACT ([failures](../specs/failures.md))",
@@ -378,14 +335,11 @@ def pin_image(name: str, root: Path = ROOT) -> int:
     view = json.loads(path.read_text(encoding="utf-8"))
     image = view["images"][name]
     files = sorted({cap["host"]["file"] for cap in view["capabilities"]})
-    books: list[str] = []
-    if not image.get("closure_manifest"):
-        # A release image with no archived closure manifest: pin the
-        # keystone and bridge books from its source revision too.
-        tree = ledger.load_tree()
-        books = sorted({theorem(tree, name_).book
-                        for cap in view["capabilities"]
-                        for name_ in (cap["keystone"], cap.get("bridge")) if name_})
+    # Pin the keystone and bridge books from the image's source revision too.
+    cited = [name_ for cap in view["capabilities"]
+             for name_ in (cap.get("keystone"), cap.get("bridge")) if name_]
+    tree = ledger.load_tree() if cited else None
+    books = sorted({theorem(tree, name_).book for name_ in cited})
     revision = commit_map.resolve(image["source"], root)
     digests, missing = {}, []
     for rel in files:
@@ -423,37 +377,38 @@ def pin_image(name: str, root: Path = ROOT) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--write", action="store_true", help=f"regenerate {OUTPUT}")
-    group.add_argument("--check", action="store_true", help=f"fail when {OUTPUT} is stale")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--write", action="store_true", help=f"write {OUTPUT}")
+    group.add_argument("--check", action="store_true", help="fail when the view cannot be built")
+    green_check.add_arguments(parser)
     group.add_argument("--pin-image", metavar="NAME",
                        help="record in the sidecar the SHA-256 of each named host file "
                             "at image NAME's source revision (reads git objects)")
     args = parser.parse_args(argv)
     if args.pin_image:
         return pin_image(args.pin_image)
+    green_check.configure_from(args)
     try:
         text = build()
-    except evidence_store.EvidenceError as error:
-        print(f"current view: {evidence_store.outcome(error)}: committed evidence cannot "
-              f"be accepted: {error}", file=sys.stderr)
-        return evidence_store.exit_code(error)
+    except green_check.CacheUnavailable as error:
+        if args.check:
+            print(f"current view: UNKNOWN: no record cache reachable ({error}); "
+                  f"pass --cache DIR for a local mirror", file=sys.stderr)
+            return 3
+        print(f"current view: no answer from the cert cache: {error}", file=sys.stderr)
+        return 2
     except (ViewError, KeyError) as error:
         print(f"current view: {error}", file=sys.stderr)
         return 1
-    target = ROOT / OUTPUT
     if args.write:
+        target = ROOT / OUTPUT
+        target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
         print(f"wrote {OUTPUT}")
-        return 0
-    if ledger.lane_generated(OUTPUT, text):
-        print(f"Current view generated (lane check): {SIDECAR} and the tree build.")
-        return 0
-    if not target.is_file() or target.read_text(encoding="utf-8") != text:
-        print(f"current view: {OUTPUT} is stale; run `python3 tools/current_view.py --write`",
-              file=sys.stderr)
-        return 1
-    print(f"Current view OK: {OUTPUT} matches {SIDECAR} and the tree.")
+    elif args.check:
+        print(f"Current view OK: {SIDECAR} and the tree build.")
+    else:
+        sys.stdout.write(text)
     return 0
 
 

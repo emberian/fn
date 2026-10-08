@@ -181,11 +181,13 @@
                 fn-owner-hroot-abandon fn-owner-hroot-abandon-word
                 fn-owner-hroot-activate fn-owner-hroot-begin
                 fn-owner-hroot-detach fn-owner-hroot-frontier-value
+                fn-owner-hroot-note
                 fn-owner-hroot-pin-funded fn-owner-hroot-read-fund
                 fn-owner-hroot-read-owned fn-owner-hroot-read-plan
                 fn-owner-hroot-resize fn-owner-hroot-retire
                 fn-owner-hroot-retire-word fn-owner-hroot-return
-                fn-owner-hroot-row fn-owner-hybrid-current-enrollment
+                fn-owner-hroot-row fn-owner-hroot-transient
+                fn-owner-hybrid-current-enrollment
                 fn-owner-hybrid-snapshots
                 fn-owner-identity-publication-verdict
                 fn-owner-identity-reservation fn-owner-install-profile
