@@ -983,7 +983,7 @@
     {
       "id": "PRF-016",
       "title": "Bounded parsing and staging",
-      "statement": "For the resource profile, parsing and modeled staging terminate within declared length, nesting, allocation, and work bounds. Model theorem retained in its book, excluded from the hosted-event claim list: fn-wm-match-codepoints-work-cost-bound (books/wildmat-work.lisp): unreachable-in-composition: it bounds the cost of the work-counting reference model fn-wm-match-codepoints-work, which the host does not run (the host steps the cursor machine fn-wmc-step/fn-wmc-one from fn-wmc-start-codepoints; fn-wmc-task-result, which relates the two, is a proof residual that fn-wmc-one never calls). The host-side bound on that machine, fn-wmc-core-codepoint-start-work-bound (books/wildmat-cursor.lisp), is not yet a registered event (teeth owed).",
+      "statement": "For the resource profile, parsing and modeled staging terminate within declared length, nesting, allocation, and work bounds. Model theorem retained in its book, excluded from the hosted-event claim list: fn-wm-match-codepoints-work-cost-bound (books/wildmat-work.lisp): unreachable-in-composition: it bounds the cost of the work-counting reference model fn-wm-match-codepoints-work, which the host does not run (the host steps the cursor machine fn-wmc-step/fn-wmc-one from fn-wmc-start-codepoints; fn-wmc-task-result, which relates the two, is a proof residual that fn-wmc-one never calls). The host-side claim is KEYSTONE fn-wmc-core-codepoint-start-work-bound (books/wildmat-cursor.lisp): the machine the host steps, started by fn-wmc-start-codepoints, has at most 3 + 12*|patterns| + 4*|patterns|*|target| + items*(6 + 2*|target|) microsteps remaining; teeth in tests/acl2/wildmat-cursor-bound-tests.lisp (an actual run of the machine takes exactly the remaining count; mutations of the bound are refuted). Scope: control-flow steps of the cursor machine, not time or allocation.",
       "milestone": "M2",
       "requirements": [
         "ENC-002",
@@ -1017,7 +1017,8 @@
         "fn-article-parse-under-work-input-bound",
         "fn-article-parse-work-profile-bound",
         "fn-served-feed-steps-bounded-by-chunk-length",
-        "fn-served-step-nntp-steps-is-bounded"
+        "fn-served-step-nntp-steps-is-bounded",
+        "fn-wmc-core-codepoint-start-work-bound"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -9546,9 +9547,6 @@
         "tests/acl2/owner-log-route-tests.lisp",
         "tests/test_native_commit_log.py",
         "planning/evidence/commit-onto-log-2026-09-27.md"
-      ],
-      "events": [
-        "fn-olr-crash-reads-a-prefix-of-the-history"
       ]
     },
     {
@@ -12980,10 +12978,7 @@
         "tests/acl2/store-import-stream-tests.lisp",
         "host/native/io.lisp"
       ],
-      "progress_note": "Lane obligations-paged-archive 2026-09-28: store import read every record of the archive into one list (and the MANIFEST whole) before one fn-sxp-import-plan call; now two streamed passes.",
-      "events": [
-        "fn-sxi-stream-plan-is-the-import-plan"
-      ]
+      "progress_note": "Lane obligations-paged-archive 2026-09-28: store import read every record of the archive into one list (and the MANIFEST whole) before one fn-sxp-import-plan call; now two streamed passes."
     },
     {
       "id": "PRF-370",
@@ -13005,11 +13000,7 @@
         "tests/campaign/native_cuts.py",
         "tests/test_native_store_export.py"
       ],
-      "progress_note": "Lane obligations-paged-archive 2026-09-28 (coordinator decision): the export fsynced every entry (about 40 files/s on hbox ZFS); now one sync, MANIFEST last.",
-      "events": [
-        "fn-sxd-crash-is-incomplete-or-complete",
-        "fn-sxd-import-verdict-is-incomplete-or-complete"
-      ]
+      "progress_note": "Lane obligations-paged-archive 2026-09-28 (coordinator decision): the export fsynced every entry (about 40 files/s on hbox ZFS); now one sync, MANIFEST last."
     },
     {
       "id": "PRF-372",
@@ -13235,7 +13226,7 @@
     {
       "id": "PRF-383",
       "title": "`peer list', `control list' and the open's configuration-history observation execute in constant stack over grown operator data: each walk is (mbe :logic <its recursion, unchanged> :exec <a loop>) equal by its guard proof",
-      "statement": "Loop twins in the PRF-362 pattern (local lemmas <f>-loop-is-rev-onto / <f>-loop-of-rev-onto; books/rev-onto.lisp fn-ag-rev-onto): books/native-admin-peer-budget.lisp fn-napb-before-last (the rendered line's octets, ~82 per carried principal), fn-native-admin-peer-budget-report-rows (its loop finds each peer's rows once through books/config.lisp fn-cfg-rows-with-key, which executes by fn-cfg-rows-with-key-loop, equal to it by fn-cfg-rows-with-key-loop-is-rev-onto), fn-native-admin-peer-budget-report (names through books/peer-config.lisp fn-cfg-peer-names, which executes by fn-cfg-peer-names-loop, equal to it by fn-cfg-peer-names-loop-is-rev-onto); books/native-admin-peer.lisp fn-native-admin-peer-slot-values, fn-native-admin-peer-list-octets; books/native-admin.lisp fn-native-admin-control-report; books/native-config-observation.lisp fn-nco-decode-entries, fn-nco-insert-by-generation, fn-nco-sort-by-generation, fn-nco-output-entries. Host callers: host/native-admin-host.lisp fn-native-admin-host-query-report (host/native/admin.lisp fnn-admin-query), books/native-live-status.lisp fn-nls-report (:peers), host/store-node-host.lisp fn-store-config-observation. Before: tests/test_native_peer_rows_growth.py's `peer list' over 1,100 carried principals exited 4, 'Control stack guard page unprotected', at the deployed 1,024 KiB (batch AZ). tools/depth_check.py now refuses operator data (config tables, profile fields) as a 'bounded' reason (D27): a bounded entry cites a defined *constant*, a number or a structural bound. Scope: control-stack depth only; time is unchanged (the report still scans the peer table once per peer). Lane config-and-legacy (2026-09-28): fn-cfg-rows-with-key and fn-cfg-peer-names execute by their loops at the source (mbe), so every caller runs in constant stack; the report's twins fn-napb-rows-with-key-loop / fn-napb-peer-names-loop are gone and their depth_baseline debt entries with them. The shape lemma fn-dl-map-loop-is-revappend (books/def-loop.lisp) was this row's only registered event; it is a library witness lemma the host does not call (see PRF-919), retained unchanged as unreachable-in-composition and removed from the hosted-event claim list. The walks named above (fn-cfg-rows-with-key, fn-cfg-peer-names and the others) are hosted and execute by their loops through the mbe; registering them as guarded-function events with teeth is owed.",
+      "statement": "Loop twins in the PRF-362 pattern (local lemmas <f>-loop-is-rev-onto / <f>-loop-of-rev-onto; books/rev-onto.lisp fn-ag-rev-onto): books/native-admin-peer-budget.lisp fn-napb-before-last (the rendered line's octets, ~82 per carried principal), fn-native-admin-peer-budget-report-rows (its loop finds each peer's rows once through books/config.lisp fn-cfg-rows-with-key, which executes by fn-cfg-rows-with-key-loop, equal to it by fn-cfg-rows-with-key-loop-is-rev-onto), fn-native-admin-peer-budget-report (names through books/peer-config.lisp fn-cfg-peer-names, which executes by fn-cfg-peer-names-loop, equal to it by fn-cfg-peer-names-loop-is-rev-onto); books/native-admin-peer.lisp fn-native-admin-peer-slot-values, fn-native-admin-peer-list-octets; books/native-admin.lisp fn-native-admin-control-report; books/native-config-observation.lisp fn-nco-decode-entries, fn-nco-insert-by-generation, fn-nco-sort-by-generation, fn-nco-output-entries. Host callers: host/native-admin-host.lisp fn-native-admin-host-query-report (host/native/admin.lisp fnn-admin-query), books/native-live-status.lisp fn-nls-report (:peers), host/store-node-host.lisp fn-store-config-observation. Before: tests/test_native_peer_rows_growth.py's `peer list' over 1,100 carried principals exited 4, 'Control stack guard page unprotected', at the deployed 1,024 KiB (batch AZ). tools/depth_check.py now refuses operator data (config tables, profile fields) as a 'bounded' reason (D27): a bounded entry cites a defined *constant*, a number or a structural bound. Scope: control-stack depth only; time is unchanged (the report still scans the peer table once per peer). Lane config-and-legacy (2026-09-28): fn-cfg-rows-with-key and fn-cfg-peer-names execute by their loops at the source (mbe), so every caller runs in constant stack; the report's twins fn-napb-rows-with-key-loop / fn-napb-peer-names-loop are gone and their depth_baseline debt entries with them. The shape lemma fn-dl-map-loop-is-revappend (books/def-loop.lisp) was this row's only registered event; it is a library witness lemma the host does not call (see PRF-919), retained unchanged as unreachable-in-composition and removed from the hosted-event claim list. The hosted claims are KEYSTONES fn-cfg-rows-with-key-loop-is-revappend-of-the-walk (books/config.lisp's fn-cfg-rows-with-key) and fn-cfg-peer-names-loop-is-revappend-of-the-walk (books/peer-config.lisp's fn-cfg-peer-names), exported from books/config-walk-loops.lisp: for every accumulator the executed loop is the accumulator reversed onto the logical walk, so the loop at the empty accumulator is the walk; teeth in tests/acl2/config-walk-loops-tests.lisp. A guarded-function event cannot carry teeth, so these theorem events stand for the two walks.",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -13258,6 +13249,10 @@
         "tests/test_depth_check.py",
         "planning/evidence/manifests/certify-20260928T175634Z-806289.json",
         "planning/evidence/peer-list-depth-2026-09-28.md"
+      ],
+      "events": [
+        "fn-cfg-rows-with-key-loop-is-revappend-of-the-walk",
+        "fn-cfg-peer-names-loop-is-revappend-of-the-walk"
       ]
     },
     {
@@ -20249,9 +20244,6 @@
       "evidence": [
         "books/recovery-refinement.lisp",
         "tests/acl2/recovery-refinement-tests.lisp"
-      ],
-      "events": [
-        "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new"
       ],
       "progress_note": "The five cuts are the program's outer operations; the host's write loops have process-death points inside the single :write-all (fnn-checkpoint-write-steps' per-step fault kill, fnn-history-image-write's page writes; the Codex review of 2d1b10ed7, F6): their mapping to model crash points is PRF-1223. The concurrent half (a batch in flight during the publication) is PRF-1214's fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight."
     },
