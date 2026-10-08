@@ -394,4 +394,43 @@
                                                                        fn-arena))))))
     () :fault "The chunked capture interns every row at keyring NIL and generation 0, as before this change.")))
 
-(defteeth-check (fn-scka-next-checkpoint-is-capture fn-rcw-canon-acc-steps-is-the-checkpoint-capture))
+; The pure fold IS the host's worker (books/store-checkpoint-fold.lisp): rows
+; and refusal, on an arena already holding one payload.
+(defun scft-worker-rows (acc ws dicts fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((n (fn-arena-count fn-arena)))
+    (mv-let (r fn-arena)
+      (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)
+      (mv (equal r (fn-scka-fold-at acc ws n)) fn-arena))))
+(defun scft-worker-rows-mutant (acc ws dicts fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (r fn-arena)
+    (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)
+    (mv (equal r (fn-scka-fold-at acc ws 0)) fn-arena)))
+
+(defteeth fn-scka-fold-at-is-the-ssr-step
+  :subject fn-ssr-intern-step
+  :claim
+  (()
+   (equal (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
+          (fn-scka-fold-at acc ws (len fn-arena))))
+  :witness ((acc (fn-ssr-seed (fn-stxk-initial-context 0))) (ws *scft-log*) (dicts nil)
+            (prior (list '(9 9))))
+  :stobjs ((fn-arena (sckat-seal-all prior fn-arena)))
+  :stobj-checks
+  (((equal (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
+           (fn-scka-fold-at acc ws (len fn-arena)))
+    (scft-worker-rows acc ws dicts fn-arena)
+    :hints (("Goal" :in-theory '(scft-worker-rows fn-arena-count-is-len))))
+   ((equal (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
+           (fn-scka-fold-at acc ws 0))
+    (scft-worker-rows-mutant acc ws dicts fn-arena)
+    :hints (("Goal" :in-theory '(scft-worker-rows-mutant)))))
+  :mutations
+  ((handles-restart-at-zero
+    (:conclusion (equal (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))
+                        (fn-scka-fold-at acc ws 0)))
+    () :fault "The pure fold numbers its handles from zero instead of the arena's count.")))
+
+(defteeth-check (fn-scka-next-checkpoint-is-capture fn-rcw-canon-acc-steps-is-the-checkpoint-capture
+                 fn-scka-fold-at-is-the-ssr-step))

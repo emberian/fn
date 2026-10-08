@@ -1,0 +1,29 @@
+{
+ "about": "Ruling 22: the declared parts of the evidence package for critical keystones (host_test, trace_witness, mutation); premises and wrong_answer come from the keystone's defteeth. Each value is tests/PATH::MARKER, the marker occurring in that file.",
+ "entries": {
+  "fn-scka-recover-from-checkpoint-is-full-recover": {
+   "subject": "fn-ssr-intern-step",
+   "host_test": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair"
+  },
+  "fn-scka-next-checkpoint-is-capture": {
+   "subject": "fn-scka-next-checkpoint",
+   "host_test": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+  },
+  "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
+   "subject": "fn-rcw-canon-acc-step",
+   "host_test": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-live-arena",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-live-arena",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+  },
+  "fn-scka-fold-at-is-the-ssr-step": {
+   "subject": "fn-ssr-intern-step",
+   "host_test": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+  }
+ }
+}

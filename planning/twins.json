@@ -2861,15 +2861,6 @@
    "executable_book": "books/store-checkpoint-arena.lisp"
   },
   {
-   "reference": "fn-scka-canon-rows",
-   "executable": "fn-scka-canon-rows-rev",
-   "via": [
-    "mbe in fn-scka-canon-rows"
-   ],
-   "reference_book": "books/store-checkpoint-arena.lisp",
-   "executable_book": "books/store-checkpoint-arena.lisp"
-  },
-  {
    "reference": "fn-scka-enc-lens-sum",
    "executable": "fn-scka-enc-lens-sum-acc",
    "via": [

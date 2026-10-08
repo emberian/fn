@@ -3167,11 +3167,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-intern-events-is-intern-at"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-intern-events-arena-is-payloads"
+          "name": "fn-scka-fold-at-is-the-ssr-step"
         },
         {
           "kind": "theorem",
