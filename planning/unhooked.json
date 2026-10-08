@@ -13,11 +13,6 @@
       "why": "it is the account-adoption continuation, the producer D46 waits for (completion item 1); its fn-act-suspend guard is part of that completion"
     },
     {
-      "book": "books/admission-semantic-node",
-      "decision": "D46",
-      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
-    },
-    {
       "book": "books/consumer-authority-carried-fold",
       "decision": "D46",
       "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
@@ -136,11 +131,6 @@
       "book": "books/post-identity-captured-source-trace",
       "decision": "D43",
       "why": "depends on the acceptance-binding record field reverted in stage 0"
-    },
-    {
-      "book": "tests/acl2/admission-semantic-node-tests",
-      "decision": "D46",
-      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
     },
     {
       "book": "tests/acl2/consumer-configured-authority-event-tests",
