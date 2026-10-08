@@ -550,12 +550,37 @@
     (fn-prl-resident-shrink amount (fn-owner-page-read-ledger fn-page-read-pool))
     (declare (ignore ledger))
     (if (eq word :protected-growth-admitted) :affordable :at-restart))))
-(defun fn-owner-page-read-protected-growth (amount fn-page-read-pool)
+; A live limit change holds its growth across the reconfiguration's windows
+; (ruling 19, books/owner-reconfig-phased.lisp :reserve, :convert, :release;
+; books/page-read-budget-growth.lisp fn-prl-reserve-growth,
+; fn-prl-convert-growth; books/page-read-ledger.lisp fn-prl-evict): reserved
+; under the extent mutex in quantum 1, converted into the budget reduction in
+; quantum 3, evicted when the change is refused, fenced or faulted.  The
+; extent mutex is held only inside each, never across a window.
+(defun fn-owner-page-read-growth-reserve (amount fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (if (not (fn-owner-page-read-default-installedp fn-page-read-pool))
+     (mv :at-restart nil fn-page-read-pool)
+   (mv-let (word token ledger)
+    (fn-prl-reserve-growth (fn-owner-page-read-ledger fn-page-read-pool) amount)
+    (if (not (equal word :admitted)) (mv word nil fn-page-read-pool)
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+       (mv word token fn-page-read-pool))))))
+(defun fn-owner-page-read-growth-convert (token amount fn-page-read-pool)
  (declare (xargs :stobjs fn-page-read-pool :guard t))
  (if (not (fn-owner-page-read-default-installedp fn-page-read-pool))
      (mv :at-restart fn-page-read-pool)
    (mv-let (word ledger)
-    (fn-prl-resident-shrink amount (fn-owner-page-read-ledger fn-page-read-pool))
-    (if (not (eq word :protected-growth-admitted)) (mv :at-restart fn-page-read-pool)
+    (fn-prl-convert-growth (fn-owner-page-read-ledger fn-page-read-pool) token amount)
+    (if (not (equal word :protected-growth-admitted)) (mv word fn-page-read-pool)
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+       (mv word fn-page-read-pool))))))
+(defun fn-owner-page-read-growth-release (token fn-page-read-pool)
+ (declare (xargs :stobjs fn-page-read-pool :guard t))
+ (if (not (fn-owner-page-read-default-installedp fn-page-read-pool))
+     (mv :at-restart fn-page-read-pool)
+   (mv-let (word ledger)
+    (fn-prl-evict (fn-owner-page-read-ledger fn-page-read-pool) token)
+    (if (not (equal word :evicted)) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
        (mv word fn-page-read-pool))))))

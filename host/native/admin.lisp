@@ -620,7 +620,8 @@ until the step is done, admits no quantum that could use the difference."
                        (let ((,stop (fnn-rc-owner-quantum ,run)))
                          (case ,stop
                            (:stage (setf (fnn-rc-event ,run) (fnn-rc-do-stage ,run ,stage)))
-                           (:reserve ,reserve)
+                           (:reserve (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+                                       ,reserve))
                            (:convert (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
                                        ,convert))
                            (:release (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
@@ -943,7 +944,7 @@ ordinary live reconfiguration, and on :applied served at once."
               history (and seen (fnn-heap-history-observation
                                  (fnn-store-root store) seen)))))
      (let ((answer
-            (let ((growth nil) (d nil) (line nil) (funded nil))
+            (let ((growth nil) (d nil) (line nil) (funded nil) (token nil))
               ;; The decision, with the pool preview, is quantum 1's, under O
               ;; and then E; its reservation (:reserve) is the preview it
               ;; stands on.  The budget reduction is :convert's, under E, in
@@ -965,10 +966,14 @@ ordinary live reconfiguration, and on :applied served at once."
                     ;; the extent mutex (fn-pgs-fill-frame takes it
                     ;; non-recursively): read it here, under the owner mutex and
                     ;; before the extent mutex.
-                    (let ((use (fnn-owner-core 'fn-owner-limit-use)))
-                      ;; The extent mutex owns pool draws independently of the
-                      ;; owner mutex.  Keep it through preview and reservation.
-                      (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+                    (let* ((use (fnn-owner-core 'fn-owner-limit-use))
+                           ;; The extent mutex owns pool draws independently of
+                           ;; the owner mutex: held for the preview and the
+                           ;; decision, released before the staging, and taken
+                           ;; again by the reservation, ACL2's own admission
+                           ;; (:reserve) of the same growth.
+                           (decided
+                       (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
                         (let* ((carry (fnn-owner-core 'fn-owner-limit-carried))
                                ;; The history's requested profile and what this
                                ;; process serves and admits under before D, both
@@ -1001,38 +1006,63 @@ ordinary live reconfiguration, and on :applied served at once."
                           (fnn-err "LIMIT ~a" line)
                           (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
                               (list :reason :refused (fnn-lim-reason d) line)
-                            (progn
-                              (fnn-rc-begin run t)
-                              (drive))))))))
-                ;; Taken inside quantum 1's E: the preview above is the
-                ;; reservation.  ACL2 has no pool entry that holds the growth
-                ;; across the windows (owed to lane P); a draw that the pool no
-                ;; longer admits at :convert is the existing lost-protected-
-                ;; space indeterminacy below.
-                :reserve nil
-                :release nil
+                            :go)))))
+                      (if (eq decided :go)
+                          (progn
+                            (fnn-rc-begin run t)
+                            (drive))
+                        decided))))
+                ;; The growth is reserved in quantum 1 under E, taken by the
+                ;; reservation itself (fn-prl-reserve-growth,
+                ;; host/page-read-host.lisp), converted
+                ;; into the budget reduction in quantum 3 and evicted when the
+                ;; change is refused; nobody holds E across a window.  A
+                ;; reservation ACL2 refuses after the record was staged drops
+                ;; the stage and refuses by ACL2's word (the decision above
+                ;; admitted the same amount a moment before).
+                :reserve
+                (let* ((reserved (fnn-core-page-read-pool
+                                  'fn-owner-page-read-growth-reserve growth))
+                       (word (first reserved)))
+                  (cond ((eq word :admitted) (setq token (second reserved)))
+                        (t (fnn-owner-reconfigure-unstage)
+                           (fnn-refuse "owner refused the limit's growth reservation: ~(~a~)"
+                                       word))))
+                :release
+                (unless (eq (first (fnn-core-page-read-pool
+                                    'fn-owner-page-read-growth-release token))
+                            :evicted)
+                  (fnn-fault "owner lost the growth reservation of a refused limit"))
                 :convert
                 ;; ACL2's served profile after D (fn-lim-funded-after,
                 ;; fn-lim-funded-after-decide): the requested candidate on
                 ;; :applied -- the profile every later open computes from the
                 ;; history this record ended (fn-lim-effective-of-append-
                 ;; record) -- else the one already served: a recorded change
-                ;; does not fund.  The carry moves to fn-lim-carry-after (the
-                ;; record is published); its funded half is the answer.
+                ;; does not fund, and releases its reservation.  The carry
+                ;; moves to fn-lim-carry-after (the record is published); its
+                ;; funded half is the answer.  A conversion ACL2 refuses is a
+                ;; broken invariant (PRL-ROW-SUM-INVARIANT), a fault after the
+                ;; release.
                 (let ((served (fnn-owner-core 'fn-owner-limit-decided
                                               (fnn-lim-plan-field plan)
                                               (fnn-lim-plan-n plan) d)))
-                  (unless (equal served funded)
-                    (unless (eq (first (fnn-core-page-read-pool
-                                        'fn-owner-page-read-protected-growth growth))
-                                :protected-growth-admitted)
-                      (fnn-indeterminate
-                       "owner lost the protected space of a durably recorded limit"))
-                    (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
-                                :installed)
-                      (fnn-indeterminate
-                       "owner refused a durably recorded limit's profile"))
-                    (setf (fnn-store-config store) served)))
+                  (if (equal served funded)
+                      (unless (eq (first (fnn-core-page-read-pool
+                                          'fn-owner-page-read-growth-release token))
+                                  :evicted)
+                        (fnn-fault "owner lost the growth reservation of a recorded limit"))
+                    (progn
+                      (unless (eq (first (fnn-core-page-read-pool
+                                          'fn-owner-page-read-growth-convert token growth))
+                                  :protected-growth-admitted)
+                        (fnn-core-page-read-pool 'fn-owner-page-read-growth-release token)
+                        (fnn-fault "owner lost the protected space of a durably recorded limit"))
+                      (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
+                                  :installed)
+                        (fnn-indeterminate
+                         "owner refused a durably recorded limit's profile"))
+                      (setf (fnn-store-config store) served))))
                 :continue
                 (if (eq word :refused)
                     (list :reason :refused reason)

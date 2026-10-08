@@ -3452,18 +3452,9 @@
   (declare (xargs :stobjs state :guard t))
   (value (if (fn-feed-namep peer-octets) t nil)))
 
-(defun fn-owner-feed-journal-begin (state)
-  (declare (xargs :stobjs state :guard t))
-  (let ((state (f-put-global 'fn-owner-feed-safe-offset 0 state)))
-    (value :ok)))
-
 (defun fn-owner-feed-journal-prefix-size (state)
   (declare (xargs :stobjs state :guard t))
   (value *fn-feed-journal-prefix-size*))
-
-(defun fn-owner-feed-journal-offset (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-feed-safe-offset state)))
-  (value (f-get-global 'fn-owner-feed-safe-offset state)))
 
 ; A transit transfer that became durable owes the feed journal the same
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
@@ -5555,30 +5546,6 @@ itself."
 
 ; One bounded read from the physical journal. The scanner owns acceptance,
 ; the exact safe offset and the entry fed to the existing replay transition.
-(defun fn-owner-feed-journal-scan (peer-octets prefix frame fn-arena state)
-  (declare (ignore fn-arena) (xargs :stobjs (state fn-arena) :mode :program
-                  :guard (and (fn-cbor-octet-listp frame)
-                              (fn-cbor-octet-listp peer-octets))))
-  (let* ((peer (fn-store-octets->string peer-octets))
-         (result (fn-feed-journal-scan peer-octets prefix frame
-                   (f-get-global 'fn-owner-feed-safe-offset state))))
-    (if (equal peer :bad)
-        (value :invalid)
-      (if (equal (car result) :next)
-          (let* ((entry (nth 2 result))
-                 (state (fn-owner-feed-replay-counted peer (list entry) state))
-                 (state (f-put-global
-                         'fn-owner-feed-intents
-                         (fn-own-feed-intent-apply
-                          (f-get-global 'fn-owner-feed-intents state)
-                          (fn-feed-journal-kind entry)
-                          (fn-feed-journal-values entry))
-                         state))
-                 (state (f-put-global 'fn-owner-feed-safe-offset
-                                      (nth 1 result) state)))
-            (value :next))
-        (value (car result))))))
-
 ; The owner's side of a journal the host scanned OFF the owner (ruling 19,
 ; books/owner-reconfig-phased.lisp (:feed-replay . PEER)): the host read the
 ; journal's frames and ran the pure scanner fn-feed-journal-scan over them

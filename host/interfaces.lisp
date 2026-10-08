@@ -5985,8 +5985,10 @@
 (definterface fn-native-operation-host-offline :class :program) ; host/native-live-status-host.lisp:23
 (definterface fn-ort-log-caller-action :class :common-lisp-compliant) ; books/owner-retire-settlement.lisp:47
 (definterface fn-owner-hroot-abandon-word :class :program) ; host/history-root-host.lisp:45
-(definterface fn-owner-page-read-protected-growth :class :common-lisp-compliant) ; host/page-read-host.lisp:549
 (definterface fn-owner-page-read-protected-growth-preview :class :common-lisp-compliant) ; host/page-read-host.lisp:542
+(definterface fn-owner-page-read-growth-reserve :class :common-lisp-compliant)
+(definterface fn-owner-page-read-growth-convert :class :common-lisp-compliant)
+(definterface fn-owner-page-read-growth-release :class :common-lisp-compliant)
 (definterface fn-owner-peer-carried-event :class :program) ; host/owner-host.lisp:3715
 (definterface fn-owner-peer-revoked-event :class :program) ; host/owner-host.lisp:3742
 (definterface fn-owner-workflow-apply-record :class :program) ; host/bp-release-owner-host.lisp:100
