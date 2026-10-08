@@ -10043,7 +10043,6 @@
         "PRF-221"
       ],
       "assumptions": [],
-      "events": [],
       "evidence": [
         "books/payload-arena-paged.lisp",
         "tests/acl2/payload-arena-paged-tests.lisp",
