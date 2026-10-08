@@ -653,6 +653,11 @@ class RemoteTests(unittest.TestCase):
                                             ["probe", "s", "e"])
         self.assertIn(f"FN_ACL2={farm.HOSTS['persvati']['acl2']}", persvati)
         self.assertNotIn("swarm-build", persvati)
+        # persvati's REPL servers run on its job cores (0-11): 12-23 are timing.
+        start = proof_repl.remote_script("persvati", "fn-gates/l-repl", "l",
+                                         ["start", "s", "books/x"])
+        self.assertIn("/tank/fn/bin/persvati-jobs python3 tools/proof_repl.py start s books/x",
+                      start)
         self.assertEqual(proof_repl.remote_tree("persvati", "lane"), "fn-gates/lane-repl")
         self.assertEqual(proof_repl.remote_tree("hbox", "lane"), "/tank/fn/gates/lane-repl")
         self.assertEqual(proof_repl.remote_tree("hbox", None, "/x"), "/x")
