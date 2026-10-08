@@ -357,9 +357,6 @@ runpy.run_path(sys.argv[0], run_name='__main__')
         self.assertIn("log cut inventory: PASS (15 cuts; 7 segment cuts)", result.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class HeldCommitCrashPoints(unittest.TestCase):
     def test_current_held_and_feed_crash_points_are_modelled(self):
@@ -381,3 +378,7 @@ class HeldCommitCrashPoints(unittest.TestCase):
         owner = (ROOT / "host/native/owner.lisp").read_text()
         mutant = owner.replace("(fnn-owner-feed-phase journal :written)", "nil")
         self.assertTrue(npc.verify_held_commit_crash_points(owner_text=mutant))
+
+
+if __name__ == "__main__":
+    unittest.main()

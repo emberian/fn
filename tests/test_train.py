@@ -54,7 +54,8 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
-         "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py"]
+         "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
+         "tests/test_keystone_critical.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in planning/interfaces.json specs/wire-grammar.json; do
@@ -567,7 +568,7 @@ class PushTests(TrainBase):
         self.ready()
         self.train("gate")
         log = self.stub_log()
-        for name in ("test_ledger", "test_keystone_emit", "test_train", "test_farm"):
+        for name in ("test_ledger", "test_keystone_emit", "test_keystone_critical", "test_train", "test_farm"):
             self.assertIn(name + " ", log)
         self.assertNotIn("test_current_view ", log)
         (self.work / "tools/current_view.py").write_text(STUB + "# changed\n")
