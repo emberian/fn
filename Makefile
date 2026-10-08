@@ -3081,6 +3081,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_carried_entries
 	@$(CHECK_STEP) $(PYTHON) tools/cost_obligations.py --check
 # What the certified world says about each host-called entry (lane
 # coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump
