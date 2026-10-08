@@ -3703,6 +3703,7 @@ def sync_files(books: list[str], extra: list[str] = ()) -> list[str]:
     its own from its own cache.
     """
     wanted: set[str] = set(extra)
+    wanted.add(certs.acl2_projects.FILENAME)
     for directory, _, names in os.walk(ROOT / "tools"):
         if any(part in directory for part in SYNC_EXCLUDES):
             continue

@@ -646,7 +646,10 @@
                        (true-listp base-records)
                        (<= (len base-records) *fn-bpn-machine-max-records*))))
   (let ((base-answer
-         (fn-bpn-restart-step (fn-bpnf-base st) base-records sequence-ready))
+         (fn-bpn-restart-step-from
+          (fn-bpnf-base st) base-records sequence-ready
+          (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+          (fn-bpn-machine-state-next-token (fn-bpnf-base st))))
         (prior (if (>= (len replay-result) 4)
                    (fn-bpn-nth 3 replay-result)
                  (fn-bpn-nth 2 replay-result)))

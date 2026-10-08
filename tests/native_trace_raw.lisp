@@ -55,6 +55,10 @@
 (let ((*fnn-owner-measure* t))
   (assert (equal (multiple-value-list (fnn-owner-measured (:actual-owner 9) (values :owner :ok)))
                  '(:owner :ok))))
+(defun fnn-mux-send-notsent (conn) (declare (ignore conn)) 0)
+(defun fnn-core (name &rest args)
+  (assert (eq name 'fn-send-window-render-p))
+  (< (first args) 65536))
 ;; Real mux render caller over a recorded owner leaf: all six results and
 ;; exact ACL2 response generations remain available through the trace hook.
 (load-deployed-forms "host/native/owner.lisp" '((defvar *fnn-output-grant*)))

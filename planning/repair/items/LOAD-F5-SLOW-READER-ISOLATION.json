@@ -1,14 +1,25 @@
 {
  "category": "bug",
- "detail": "F5 (g41, hbox, rev f2629613e): four readers with SO_RCVBUF=4096 and a one-octet read pull cold 512 KiB articles (eight pipelined ARTICLEs each). The fast clients' p99 rose to ARTICLE 31.8 ms against 5.1 ms solo (6.2x; bar 2x), GROUP 20.1 vs 3.6, STAT 21.4 vs 4.0, and the owner grew 87.6 MB against a 2 MB bound. Reproduced on persvati (developer image of f2629613e, cores 0-7 unpinned, noisy): loaded p99 ARTICLE 44-50 ms vs 12 solo, RSS +134..171 MB; without the poster the same (+160 MB, p99 65 ms); without the slow readers +26 MB, p99 22 ms. Mechanism (measured): the dynamic space alone holds the growth (smaps 134 MB in the dynamic-space mapping; heap census RAW 614 MB vs 563 MB), and sb-sprof :alloc over the 40 s loaded window counts 16.4 GB consed, 90% list allocation, 72% under fn-ast-scan-step/scan-one (the ARTICLE preflight scan) and window renders. The cause is the kernel's send queue as an unbounded render-ahead: fnn-mux-flush renders the next window whenever the socket took the last (host/native/mux.lisp fnn-mux-flush), the socket took 3.4 MB per reader (books/send-progress.lisp header), so each stopped reader had the owner scan and render about seven 512 KiB articles ahead of it (4 readers: ~28 articles, ~16 GB of garbage, seconds of owner-mutex quanta) before the first write blocked; the fast clients queued behind those 16 ms quanta (p99) and the collector's retained older generations are the RSS. Fix: ACL2 row :send-window-octets (65536) and books/send-window.lisp (model: fn-sw-buffered-bounded, fn-sw-stalled-reader-bounded, teeth fn-sw-window-exceeds-w-within-the-bound, fn-sw-gate-refuses-a-write-past-w, fn-sw-gate-removed-the-bound-fails; entry fn-send-window-octets with definterface keystone fn-send-window-octets-bounds-the-connection); host/native/mux.lisp fnn-mux-send-window sets TCP_NOTSENT_LOWAT on every served socket in fnn-mux-begin. Scope: the bound is on octets not yet sent, rendered ahead of the reader; the kernel's gate (write accepted only while unsent < lowat) is the named assumption, read off the running owner by tests/test_native_over_pins.py test_a_stopped_reader_leaves_the_kernel_at_most_the_send_window_unsent. Not covered: the 403 'cold read resources unavailable' (lane s-coldwait); the ARTICLE preflight scan's own allocation (~800 octets consed per payload octet, the per-octet call item); a window on the compressed or TLS path other than the socket gate.",
+ "detail": "The train-51 TCP_NOTSENT_LOWAT-only repair was refuted on hbox: the stopped-reader test observed 581632 queued octets against a 147456 limit. TCP_NOTSENT_LOWAT supplies writable notifications; eager nonblocking writes can still fill available send-buffer space. The old send-window theorem modeled a false write-refusal premise and has been replaced. host/native/mux.lisp now observes Linux SIOCOUTQNSD before each plan render, calls ACL2 fn-send-window-render-p, and parks the exact unrendered continuation when refused. POLLOUT retries admission; the send-progress timer remains live while no output buffer exists. books/send-window.lisp states NOTSENT + PENDING < W + Q for legal traces with one writer, exact observations and a maximum wire quantum Q; a no-transmit trace renders less than W + Q in total. defteeth covers the host quantum bound, the composed trace bound, and the stalled-reader bound, including removal of admission. fn-send-window-render-p-by-definition connects the deployed decision to fn-sw-render-p. TLS/compression expansion must be included in Q; the arithmetic does not certify those facilities, ioctl correctness, preflight scans or in-flight unacknowledged bytes.",
  "file": "host/native/mux.lisp",
  "id": "LOAD-F5-SLOW-READER-ISOLATION",
  "line": "",
- "notes": [],
+ "notes": [
+  {
+   "author": "Codex / lane send-window-2",
+   "date": "2026-10-08",
+   "note": "Statement-first replacement of the false kernel premise. The host observation fails closed on ioctl failure or unsupported platforms. The /proc/net/tcp native test includes in-flight data and retains its existing receive-window slack. Gates and native results are recorded in the lane bundle handoff."
+  },
+  {
+   "author": "Codex / lane send-window-2",
+   "date": "2026-10-08",
+   "note": "hbox send-window-2/native-sw2-fixed completed status 0: default image closure 1231 books (175 certified here, 1056 installed), composed artifact 32a026e09ed399e514562426e40d8d7535c7599dcd04fe351f0b6dd77971044a; host-ld and developer/production images pass. Native over_pins 10/10 (494.698s), web 15/15 (80.266s), owner 30/30, zero skips. This includes the formerly failing stopped-reader queue bound and compressed web reads through restart. Fresh proof_repl admitted all 27 send-window forms with guards and defteeth. Nine scoped raw tests plus the output-lease harness pass; restoring either web deadline defect fails its controlled regression. Read, raw load 58/58, interface_emit 0, world check, native_program_check, harness reach/stubs and secrets pass. Lock keys equal the unmodified 805c28f30 tree; the requested whitelist still omits its pre-existing R1b|fnn-extent-executor-actual-return|fnn-cold-worker-phase:unlocked-read key. No baseline or lock rule changed."
+  }
+ ],
  "owner": "deputy-C",
  "severity": "high",
  "source": "tools/load F5",
  "state": "open",
  "title": "F5: four stopped one-octet readers of 512 KiB articles degrade the fast clients' p99 6.2x and grow the owner 87.6 MB: the kernel send queue is an unbounded render-ahead",
- "updated": "2026-10-08T17:30:00Z"
+ "updated": "2026-10-08T22:13:18Z"
 }

@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../host/bp-controller-checkpoint-directory-host")
 (include-book "../../host/bp-controller-checkpoint-payload-host")
+(include-book "../../books/bp-node-receive-boundary")
 ; Seeded unfunded registered storage. Marker payloads are not a real writer.
 (defun fn-bpcc-payload-directory-test-install (fn-bp-controller-registry fn-page-read-pool)
   (declare (xargs :stobjs (fn-bp-controller-registry fn-page-read-pool) :guard t))

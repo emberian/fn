@@ -741,6 +741,7 @@
      '(fn-bpn-step fn-bpn-dispatch fn-bpn-enqueue-step fn-bpn-contact-step
        fn-bpn-start-one fn-bpn-persist-result-step
        fn-bpn-forward-result-step fn-bpn-clock-step fn-bpn-restart-step
+       fn-bpn-restart-step-from fn-bpn-restart-replay-step fn-bpn-restart-seed-fitsp
        fn-bpn-propose fn-bpn-apply-record
        fn-bpnj-forwarded-transport-p
        fn-bpnj-resolve-orphans-step-reports-no-forwarded-transport

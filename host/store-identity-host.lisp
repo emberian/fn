@@ -5,6 +5,9 @@
 ; the line it prints and its exit code.  These wrappers only name them for the
 ; image (host/native/store-identity.lisp).  Loaded after host/owner-host.lisp.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/history-paged-attach")
 (include-book "../books/store-identity")
 (include-book "../books/live-profile-control")
 

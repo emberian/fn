@@ -4,6 +4,10 @@
 ; (host/native/web-host.lisp) and keep the session table, node-local, in the
 ; state global `fn-web-sessions' (never in the log, never on disk).
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/web-session-keystones")
 (include-book "../books/web-config")
 (include-book "../books/web-page-cursor")

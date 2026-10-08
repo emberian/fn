@@ -1,5 +1,5 @@
 {
- "about": "Existing critical keystones that lack the evidence package, each owned by a claimed item (tools/keystone_critical.py --claim-owed). Shrink-only: delete a name when it gains the package; a new or changed critical keystone cannot be listed here.",
+ "about": "Existing critical keystones that lack the evidence package, each owned by a claimed item (tools/keystone_critical.py --claim-owed). Shrink-only: --lower-stale removes obsolete rows; --lower-complete removes only rows whose full package passes with current-closure certification. New or changed critical keystones cannot be owed.",
  "items": {
   "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths": {
    "class": "authorization",
@@ -891,11 +891,6 @@
    "item": "PRF-1344",
    "book": "books/bp-node-machine-authorization.lisp"
   },
-  "fn-bpn-step-preserves-lifecycle-invariant": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/bp-node-machine-authorization.lisp"
-  },
   "fn-bpnb-input-past-read-bound-is-refused": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -1036,11 +1031,6 @@
    "item": "PRF-1349",
    "book": "books/bp-node-rotation-codec.lisp"
   },
-  "fn-bpnr-recover-from-checkpoint-equals-full-recover": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/bp-node-rotation.lisp"
-  },
   "fn-bpnr-retired-names-never-the-selected-directory": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -1050,11 +1040,6 @@
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/bp-node-retire.lisp"
-  },
-  "fn-bpnr-rotation-crash-recovers-old-or-new": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/bp-node-rotation.lisp"
   },
   "fn-bpnrb-checkpoint-decode-is-decode": {
    "class": "parser-boundary",
@@ -2286,11 +2271,6 @@
    "item": "PRF-1348",
    "book": "books/decoded-worker-assignment.lisp"
   },
-  "fn-dwj-retired-job-refuses-scalar-publication": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/decoded-worker-job.lisp"
-  },
   "fn-dwj-retirement-preserves-private-backing": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -3191,11 +3171,6 @@
    "item": "PRF-1345",
    "book": "books/store-log-crash.lisp"
   },
-  "fn-lg-open-program-keeps-the-relation": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-route-programs.lisp"
-  },
   "fn-lg-order-program-keeps-the-relation": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3421,11 +3396,6 @@
    "item": "PRF-1345",
    "book": "books/store-log-open-barriers.lisp"
   },
-  "fn-lgob-three-barrier-open-after-the-copy-is-the-five": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
   "fn-lgob-three-barrier-open-is-the-five-at-every-cut": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3435,16 +3405,6 @@
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/store-log-reclaim.lisp"
-  },
-  "fn-lgrc-acknowledge-from-the-copy": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover-copy.lisp"
-  },
-  "fn-lgrc-open-keeps-the-relation-at-every-cut": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover-copy.lisp"
   },
   "fn-lgrs-spare-name-is-swept-and-never-a-segment": {
    "class": "durability",
@@ -3501,22 +3461,12 @@
    "item": "PRF-1345",
    "book": "books/store-log-txid.lisp"
   },
-  "fn-lgu-acknowledge-acknowledges-only-recoverable-records": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-durable.lisp"
-  },
   "fn-lgu-complete-acknowledges-the-fenced-batch": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-durable.lisp"
   },
   "fn-lgu-crash-keeps-the-prefix": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-durable.lisp"
-  },
-  "fn-lgu-host-kernel-acknowledges-only-recoverable-records": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-durable.lisp"
@@ -5766,37 +5716,12 @@
    "item": "PRF-1348",
    "book": "books/reclaim-chunked-walk.lisp"
   },
-  "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-walk.lisp"
-  },
   "fn-rcw-finish-of-step": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/reclaim-chunked-walk.lisp"
   },
-  "fn-rcw-load-chunks-is-load": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-walk.lisp"
-  },
-  "fn-rcw-load-chunks-keyed-is-keyed-load": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-seal.lisp"
-  },
   "fn-rcw-predict-acc-steps-is-predict": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-seal.lisp"
-  },
-  "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-seal.lisp"
-  },
-  "fn-rcw-srcs-steps-is-the-walk": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/reclaim-chunked-seal.lisp"
@@ -6490,11 +6415,6 @@
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/store-budget.lisp"
-  },
-  "fn-sca-load-held-rows-establishes-byte-facts": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/catalog-availability-refinement.lisp"
   },
   "fn-scc-decode-segments-of-segments": {
    "class": "parser-boundary",

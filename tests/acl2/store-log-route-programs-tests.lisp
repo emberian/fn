@@ -84,3 +84,24 @@
         (equal (car r) :taken)
         (equal (fn-lgk-batch (cadr r)) (list big))
         (not (slrp-related-run-p (slk-bs-extended) (cadr r) (fn-lg-order-program))))))
+
+; Critical durability evidence. Host path: fnn-recover-log, exercised by
+; tests/campaign/test_native_operator_campaign.py::test_served_owner_cuts_stop_and_production_refusals.
+; slk-appended-* run the append from the recovered initial segment.
+(defteeth fn-lg-open-program-keeps-the-relation
+  :claim (((related (fn-lgk-relp bs ks ino genesis max)))
+          (fn-lg-all-relp (fn-lg-run bs ks (fn-lg-open-program) nil ino)
+                         ino genesis max))
+  :subject fn-lg-open-program
+  :witness ((bs (slk-appended-bs)) (ks (slk-appended-ks))
+            (ino 0) (genesis (slk-genesis)) (max (slk-max)))
+  :breaks ((related ((bs (slk-appended-bs)) (ks (slk-ks0))
+                     (ino 0) (genesis (slk-genesis)) (max (slk-max)))))
+  :mutations ((stale-kernel
+               (:conclusion
+                (fn-lg-all-relp
+                 (fn-lg-run bs (slk-ks0) (fn-lg-open-program) nil ino)
+                 ino genesis max))
+               ((bs (slk-appended-bs)) (ks (slk-appended-ks))
+                (ino 0) (genesis (slk-genesis)) (max (slk-max)))
+               :fault "the open runs its cuts with the kernel from before the append")))

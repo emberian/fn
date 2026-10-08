@@ -60,7 +60,7 @@
    (declare (ignore updated))
    (let* ((base (fn-bpn-initial-machine-state *fn-bphsp-config* 4 1048576))
           (st (fn-bpnf-state base nil nil nil nil nil nil 0 0))
-          (ck (fn-bpnr-checkpoint 1 nil (list handoff) nil 0 0))
+          (ck (fn-bpnr-checkpoint 1 nil (list handoff) nil 0 0 nil 0))
           (event (append
                    (fn-bpnr-recover-auto-event st nil :ready nil (list :selected ck))
                    '((:initialize))))

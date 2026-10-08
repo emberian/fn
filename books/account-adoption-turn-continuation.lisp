@@ -1,9 +1,27 @@
-; UNHOOKED cert-roots (2026-10-02): out of the Makefile certify roots -- a Codex-era book that never certified and no image world includes: fn-act-suspend guard fails at dev adbf57435. The code stays; its completion is queued (build/coordinator/lanedumps/cert-roots.md).
+; Guard-complete (2026-10-08): the fn-act-suspend guard needed list-shape facts for UPDATE-NTH (fn-cado-widthp-len, fn-act-livep-shape); it was never a changed-upstream failure. Still outside the Makefile certify roots.
 ; INTERNAL retained-claim transforms. The owner entry proves actual C source,
 ; current BODY and same-slot history before calling; these list arguments
 ; cannot issue, refund, promote or establish a receipt.
 (in-package "ACL2")
 (include-book "account-adoption-turn")
+
+; Guard shape facts: CURRENT and the width-checked packets are proper lists of
+; known length, so UPDATE-NTH at an index inside them is guard-safe.
+(defthm fn-cado-widthp-len
+  (implies (fn-cado-widthp n x)
+           (and (true-listp x) (equal (len x) (nfix n))))
+  :hints (("Goal" :induct (fn-cado-widthp n x)
+                  :in-theory (enable fn-cado-widthp))))
+
+(defthm fn-act-livep-shape
+  (implies (fn-act-livep token current)
+           (and (true-listp current) (equal (len current) 10)))
+  :hints (("Goal" :in-theory (enable fn-act-livep)
+                  :use (:instance fn-cado-widthp-len (n 10) (x current)))))
+
+(defthm fn-act-update-nth-true-listp
+  (implies (and (true-listp l) (natp n) (<= n (len l)))
+           (true-listp (update-nth n v l))))
 
 (defun fn-act-suspend (token output current)
  (declare (xargs :guard t))

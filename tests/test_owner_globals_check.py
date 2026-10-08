@@ -24,6 +24,19 @@ class OwnerGlobalsCheckTests(unittest.TestCase):
                 "(f-get-global 'fn-store-sco-open state)\n")
         self.assertEqual(ogc.globals_of(text), [])
 
+    def test_books_funnels_remain_counted_until_state_moves(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "books").mkdir()
+            (root / "books" / "owner-retain-state.lisp").write_text(
+                "(f-get-global 'fn-owner-retain-carry state)\n"
+                "(f-put-global 'fn-owner-retain-carry carry state)\n")
+            self.assertEqual(ogc.scan(root), {
+                "books/owner-retain-state.lisp": ["fn-owner-retain-carry"]})
+            self.assertTrue(ogc.judge(ogc.scan(root), {}))
+
     def test_the_baseline_only_shrinks(self):
         found = {"host/a.lisp": ["fn-owner-a", "fn-owner-b"]}
         self.assertTrue(ogc.judge(found, {"host/a.lisp": 1}))
@@ -49,6 +62,17 @@ class RaiseNeedsAReasonTests(unittest.TestCase):
             code = ogc.main(["--root", str(root), "--baseline", str(path), "--write-baseline"] + argv)
             return code, json.loads(path.read_text())
 
+    def test_targeted_shrink_keeps_existing_red(self):
+        code, written = self.run_write(["--lower-to", "host/a-host.lisp=0"],
+                                       {"host/a-host.lisp": 1, "host/other.lisp": 3})
+        self.assertEqual(code, 0)
+        self.assertEqual(written["host/a-host.lisp"], 0)
+        self.assertEqual(written["host/other.lisp"], 3)
+        code, written = self.run_write(["--lower-to", "host/a-host.lisp=2"],
+                                       {"host/a-host.lisp": 1})
+        self.assertEqual(code, 1)
+        self.assertEqual(written["host/a-host.lisp"], 1)
+
     def test_a_raise_without_a_reason_is_refused(self):
         code, written = self.run_write([], {"host/a-host.lisp": 1})
         self.assertEqual(code, 1)
@@ -70,6 +94,59 @@ class RaiseNeedsAReasonTests(unittest.TestCase):
         self.assertEqual(len(written["_reasons"]), 1)
         self.assertIn("two arrived", written["_reasons"][0])
         self.assertIn("host/a-host.lisp 1->2", written["_reasons"][0])
+
+
+class NamedRaiseTests(unittest.TestCase):
+    """--raise-to FILE=N --admit NAME raises one row by exactly the named globals."""
+
+    LISP = ("(defun f (state) (f-put-global 'fn-owner-x 1 (f-put-global 'fn-owner-y 2 "
+            "(f-put-global 'fn-owner-z 3 state))))\n")
+
+    def run_raise(self, argv, baseline=None, acked=True):
+        import json, tempfile
+        from pathlib import Path
+        from unittest import mock
+        from tools import ratchet
+        baseline = {"host/a-host.lisp": 1, "host/b-host.lisp": 4} if baseline is None else baseline
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "host").mkdir()
+            (root / "host" / "a-host.lisp").write_text(self.LISP)
+            path = root / "base.json"
+            path.write_text(json.dumps(baseline))
+            acks = root / "ACKS.md"
+            acks.write_text("ratchet:owner_globals_check:host/a-host.lisp \u2014 named \u2014 the test\n"
+                            if acked else "")
+            with mock.patch.object(ratchet, "ACKS", acks):
+                code = ogc.main(["--root", str(root), "--baseline", str(path), "--write-baseline"] + argv)
+            return code, json.loads(path.read_text())
+
+    ARGS = ["--reason", "y joins", "--raise-to", "host/a-host.lisp=2", "--admit", "fn-owner-y"]
+
+    def test_one_named_global_raises_one_row_and_touches_nothing_else(self):
+        code, written = self.run_raise(self.ARGS)
+        self.assertEqual(code, 0)
+        self.assertEqual(written["host/a-host.lisp"], 2)
+        self.assertEqual(written["host/b-host.lisp"], 4)
+        self.assertIn("admitting fn-owner-y", written["_reasons"][0])
+        self.assertIn("host/a-host.lisp 1->2", written["_reasons"][0])
+
+    def test_the_check_is_still_red_after_a_partial_raise(self):
+        found = {"host/a-host.lisp": ["fn-owner-x", "fn-owner-y", "fn-owner-z"]}
+        self.assertTrue(ogc.judge(found, {"host/a-host.lisp": 2}))
+
+    def test_refusals(self):
+        for argv, acked in (
+                (["--reason", "r", "--raise-to", "host/a-host.lisp=3", "--admit", "fn-owner-y"], True),  # count != names
+                (["--reason", "r", "--raise-to", "host/a-host.lisp=4", "--admit", "a", "--admit", "b", "--admit", "c"], True),  # beyond present
+                (["--reason", "r", "--raise-to", "host/a-host.lisp=2", "--admit", "fn-owner-q"], True),  # not a global
+                (["--raise-to", "host/a-host.lisp=2", "--admit", "fn-owner-y"], True),  # no reason
+                (["--reason", "r", "--raise-to", "host/a-host.lisp=1", "--admit", "fn-owner-y"], True),  # not a raise
+                (self.ARGS, False)):  # no ACKS line
+            code, written = self.run_raise(argv, acked=acked)
+            self.assertEqual(code, 1, argv)
+            self.assertEqual(written["host/a-host.lisp"], 1, argv)
+            self.assertNotIn("_reasons", written, argv)
 
 
 class ParkedFilesTests(unittest.TestCase):

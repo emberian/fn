@@ -41,6 +41,7 @@
 ; theory in force is not recorded per event), only whether the proof's hints
 ; name it; tools/coverage.py says "by name only" for the rest.
 (in-package "ACL2")
+(ld "../books/book-name-relative.lisp")
 (program)
 (set-state-ok t)
 (ld "extract/frontend.lisp")
@@ -101,16 +102,11 @@
 ; ---------------------------------------------------------------------------
 ; Emission.
 
-(defun cov-book-string (book)
-  ; An include-book-path entry is a full book name: a string, or for a
-  ; community book a sysfile pair (:system . "std/portcullis.lisp").
-  (cond ((stringp book) book)
-        ((and (consp book) (keywordp (car book)) (stringp (cdr book)))
-         (concatenate 'string ":" (string-downcase (symbol-name (car book))) "/" (cdr book)))
-        (t nil)))
+(defun cov-book-string (book projects)
+  (book-name-relative book projects))
 
 (defun cov-json-book (book channel state)
-  (let ((s (cov-book-string book)))
+  (let ((s (cov-book-string book (project-dir-alist (w state)))))
     (if s (xt-json-string s channel state) (princ$ "null" channel state))))
 
 (defun cov-json-bool (x channel state)

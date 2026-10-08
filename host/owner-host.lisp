@@ -34,7 +34,7 @@
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
-(include-book "../books/catalog-root-incarnation")
+(include-book "../books/owner-catalog-root-state")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -59,6 +59,7 @@
 (include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-progress-carried")
 (include-book "../books/owner-state-accessors")
+(include-book "../books/owner-publication-transitions")
 (include-book "../books/state-globals")
 (include-book "../books/history-capture-state")
 (include-book "../books/owner-retain-state")
@@ -358,14 +359,10 @@
 ; globals together. STATE lifetime bounds the identity namespace.
 (defun fn-owner-catalog-root-reserve (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((next (if (boundp-global 'fn-owner-catalog-root-counter state)
-                  (f-get-global 'fn-owner-catalog-root-counter state) 0)))
-    (mv-let (token next1) (fn-cri-reserve next)
-      (if (not token)
-          (mv :corrupt-catalog-root-counter nil state)
-        (let* ((state (f-put-global 'fn-owner-catalog-root-counter next1 state))
-               (state (f-put-global 'fn-owner-catalog-root-incarnation token state)))
-          (mv nil token state))))))
+  (mv-let (erp token next) (fn-ocr-reserve (fn-ost-catalog-root state))
+    (if erp (mv erp token state)
+      (let ((state (fn-ost-install-catalog-root next state)))
+        (mv nil token state)))))
 
 ; PRF-1272: allocation-generation producer, distinct from history version.
 ; Program global/native installation refinement remains pending.
@@ -373,13 +370,10 @@
 
 (defun fn-owner-catalog-root-current (state)
   (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-owner-catalog-root-incarnation state)
-      (let ((token (f-get-global 'fn-owner-catalog-root-incarnation state)))
-        (if (fn-cri-tokenp token)
-            (mv nil token state)
-          (mv :corrupt-catalog-root-incarnation nil state)))
-    ; The initially installed catalog has no exposed capture key yet.
-    (fn-owner-catalog-root-reserve state)))
+  (mv-let (erp token next) (fn-ocr-current (fn-ost-catalog-root state))
+    (if erp (mv erp token state)
+      (let ((state (fn-ost-install-catalog-root next state)))
+        (mv nil token state)))))
 
 ; Capture at the actual reader/plan-construction section, never lazily when
 ; rendering resumes. Every payload below is a shared semantic value, not a
@@ -806,8 +800,8 @@
 ; The newest durable checkpoint the Store open verified: its S, or NIL.
 (defun fn-owner-sco-note-durable (sequence state)
   (declare (xargs :stobjs state :guard t))
-  (let ((state (f-put-global 'fn-owner-sco-durable (and (natp sequence) sequence)
-                             state)))
+  (let ((state (fn-ost-install-publication
+ (fn-opub-put :durable (and (natp sequence) sequence) (fn-ost-publication state)) state)))
     (value :noted)))
 
 (definterface fn-owner-sco-note-durable
@@ -821,7 +815,8 @@
 ; the base's (fn-scka-next-checkpoint-is-capture's H0).
 (defun fn-owner-sco-note-base-payloads (count state)
   (declare (xargs :stobjs state :guard t))
-  (let ((state (f-put-global 'fn-owner-sco-base-payloads (and (natp count) count) state)))
+  (let ((state (fn-ost-install-publication
+ (fn-opub-put :base-payloads (and (natp count) count) (fn-ost-publication state)) state)))
     (value :noted)))
 
 (definterface fn-owner-sco-note-base-payloads
@@ -861,34 +856,13 @@
 (defun fn-owner-sco-due (override free now state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
-    (if (not profile)
-        (value :idle)
-      (let ((next (fn-ock-requested-next
-                   (fn-owner-sco-global 'fn-owner-sco-durable state)
-                   (fn-owner-sco-count state)
-                   (fn-bs-profile-max-open-suffix profile)
-                   (fn-opl-attempted (fn-owner-sco-deferred state)
-                                     (fn-owner-sco-global 'fn-owner-sco-attempted state)
-                                     (fn-owner-sco-count state)
-                                     now)
-                   (fn-owner-sco-global 'fn-owner-sco-inflight state)
-                   (fn-opl-blockedp
-                    (fn-owner-sco-deferred state)
-                    (fn-owner-sco-budget override profile)
-                    (fn-ockp-space free)
-                    (fn-owner-sco-count state)
-                    now)
-                   (fn-owner-sco-global 'fn-owner-sco-requested state))))
-        (cond ((eq next :coalesce)
-               (let ((state (f-put-global 'fn-owner-sco-pending t state)))
-                 (value :inflight)))
-              ((eq next :inflight) (value :inflight))
-              ((eq next :due)
-               (let ((state (f-put-global 'fn-owner-sco-pending nil state)))
-                 (value next)))
-              (t (let* ((state (f-put-global 'fn-owner-sco-pending nil state))
-                        (state (f-put-global 'fn-owner-sco-requested nil state)))
-                   (value next))))))))
+    (if (not profile) (value :idle)
+      (mv-let (word publication)
+          (fn-opub-due (fn-ost-publication state) profile (fn-owner-sco-count state)
+                     (fn-bs-profile-max-open-suffix profile)
+                     (fn-owner-sco-budget override profile) (fn-ockp-space free) now)
+        (let ((state (fn-ost-install-publication publication state)))
+          (value word))))))
 
 (definterface fn-owner-sco-due
   :class ::program)
@@ -903,25 +877,11 @@
 (defun fn-owner-sco-request (override free now state)
   (declare (xargs :stobjs state :mode :program))
   (let ((profile (fn-owner-store-profile state)))
-    (if (not profile)
-        (value :nothing-to-compact)
-      (let ((word (fn-ock-request-word
-                   (fn-owner-sco-global 'fn-owner-sco-durable state)
-                   (fn-owner-sco-count state)
-                   (fn-opl-attempted (fn-owner-sco-deferred state)
-                                     (fn-owner-sco-global 'fn-owner-sco-attempted state)
-                                     (fn-owner-sco-count state)
-                                     now)
-                   (fn-owner-sco-global 'fn-owner-sco-inflight state)
-                   (fn-opl-blockedp
-                    (fn-owner-sco-deferred state)
-                    (fn-owner-sco-budget override profile)
-                    (fn-ockp-space free)
-                    (fn-owner-sco-count state)
-                    now))))
-        (let ((state (f-put-global 'fn-owner-sco-requested
-                                   (and (member-eq word '(:requested :coalesced)) t)
-                                   state)))
+    (if (not profile) (value :nothing-to-compact)
+      (mv-let (word publication)
+          (fn-opub-request (fn-ost-publication state) profile (fn-owner-sco-count state)
+                     (fn-owner-sco-budget override profile) (fn-ockp-space free) now)
+        (let ((state (fn-ost-install-publication publication state)))
           (value word))))))
 
 (definterface fn-owner-sco-request
@@ -931,7 +891,7 @@
 ; observation waits for the publication in flight to finish.
 (defun fn-owner-sco-pending (state)
   (declare (xargs :stobjs state :mode :program))
-  (fn-owner-sco-global 'fn-owner-sco-pending state))
+  (fn-opub-get :pending (fn-ost-publication state)))
 
 ; The publication in three steps (checkpoint-cost): the capture under the
 ; owner mutex, the encoding outside it, the result back under it.
@@ -950,44 +910,20 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
          (records (fn-sf-records (fn-sn-files st)))
-         ; (len records), the snoc-list's carried count:
-         ; fn-sf-records-count-is-used-by-definition.
          (count (fn-sf-records-count (fn-sn-files st)))
-         (durable (fn-owner-sco-global 'fn-owner-sco-durable state))
          (profile (fn-owner-store-profile state))
-         (state (f-put-global 'fn-owner-sco-attempted count state))
-         ; the publication in flight, bound to the count it captures
-         (state (f-put-global 'fn-owner-sco-inflight count state))
-         ; RL-02: the capture's identity, its serial
-         ; (books/owner-publication-lifecycle.lisp fn-opl-next-serial): the
-         ; count alone is not one (a :backoff retry recaptures it)
-         (serial (fn-opl-next-serial (fn-owner-sco-global 'fn-owner-sco-serial state)))
-         (state (f-put-global 'fn-owner-sco-serial serial state))
-         ; PKT-868: the capture answers a standing request.
-         (state (f-put-global 'fn-owner-sco-requested nil state)))
-    (value (list (fn-owner-sco-global 'fn-owner-sco-base state)
-                 (fn-sn-config-history st)
-                 records
-                 (fn-bs-profile-max-record-octets profile)
-                 count
-                 (- count (if (natp durable) durable 0))
-                 (fn-owner-sco-budget override profile)
-                 (fn-sf-frontier (fn-sn-files st))
-                 free
-                 revision
-                 (fn-owner-sco-global 'fn-owner-sco-base-payloads state)
-                 ; the store's identity for the history image's binding
-                 ; (books/history-image-binding.lisp): the genesis record's
-                 ; node identity and the history salt
-                 (let ((v (and (boundp-global 'fn-store-genesis state)
-                               (f-get-global 'fn-store-genesis state))))
-                   (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v)))
-                             (fn-gen-node (cadr v))
-                           nil)
-                         (fn-gen-verdict-salt v)))
-                 ; RL-02: the serial the settlement of an abandonment names
-                 ; (fn-owner-sco-publication-abandoned)
-                 serial))))
+         (v (and (boundp-global 'fn-store-genesis state)
+                 (f-get-global 'fn-store-genesis state)))
+         (identity (list (if (and (consp v) (equal (car v) :genesis) (consp (cdr v)))
+                             (fn-gen-node (cadr v)) nil)
+                         (fn-gen-verdict-salt v))))
+    (mv-let (capture publication)
+        (fn-opub-capture-context
+         (fn-ost-publication state) count (fn-sn-config-history st) records
+         (fn-bs-profile-max-record-octets profile) (fn-owner-sco-budget override profile)
+         (fn-sf-frontier (fn-sn-files st)) free revision identity)
+      (let ((state (fn-ost-install-publication publication state)))
+        (value capture)))))
 
 (definterface fn-owner-sco-capture
   :class ::program)
@@ -1107,39 +1043,9 @@
 ; :none.
 (defun fn-owner-sco-publication-done (next payloads durablep verdict state)
   (declare (xargs :stobjs state :guard t))
-  (let* ((state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base next) state))
-         ; NEXT's canonical payload count, the next publication's H0
-         (state (f-put-global 'fn-owner-sco-base-payloads (and (natp payloads) payloads)
-                              state))
-         ; nothing of this publication's in flight; the durable S below is
-         ; NEXT's sequence, the count the capture was handed (fn-ock-finish-
-         ; binds-the-captured-prefix), never the count now.  S038: the release
-         ; is the publication's own (books/owner-reclaim.lisp fn-orc-release-
-         ; slot): it clears INFLIGHT only while it still holds it at that
-         ; count and no writing reclaim pass does.
-         (released (fn-orc-release-slot
-                    (list :publication (fn-sco-sequence next))
-                    (fn-owner-sco-global 'fn-owner-orc-pass state)
-                    (fn-owner-sco-global 'fn-owner-sco-inflight state)))
-         (state (f-put-global 'fn-owner-sco-inflight
-                              (if (and (consp released) (consp (cdr released)))
-                                  (cadr released)
-                                nil)
-                              state))
-         (state (if durablep
-                    (f-put-global 'fn-owner-sco-durable (fn-sco-sequence next) state)
-                  state))
-         ; RL-02: a durable checkpoint ends every deferral; a verdict that is
-         ; one replaces it; any other non-durable ending leaves a standing
-         ; deferral (the abandonment's, recorded by
-         ; fn-owner-sco-publication-abandoned) as it is.
-         (state (f-put-global 'fn-owner-sco-deferred
-                              (cond ((and (consp verdict) (eq (car verdict) :deferred))
-                                     verdict)
-                                    (durablep nil)
-                                    (t (fn-owner-sco-global 'fn-owner-sco-deferred state)))
-                              state)))
-    (value (if durablep (fn-sco-sequence next) :none))))
+  (mv-let (word publication) (fn-opub-done (fn-ost-publication state) next payloads durablep verdict)
+    (let ((state (fn-ost-install-publication publication state)))
+      (value word))))
 
 (definterface fn-owner-sco-publication-done
   :class :common-lisp-compliant)
@@ -1158,25 +1064,10 @@
 ; deferral (its reason, class and attempts are what the host logs), or :stale
 ; for a capture that did not hold the slot.
 (defun fn-owner-sco-publication-abandoned (count serial outcome now state)
-  ; Guard in the minimal theory: under the attach-first include order the
-  ; global car/consp rewrites of books/owner-queued-work and
-  ; books/failure-scope are tried first and the rewriter runs past 900 s.
-  (declare (xargs :stobjs state :guard t
-                  :guard-hints (("Goal" :in-theory (union-theories
-                    '(fn-opl-settle fn-orc-release-slot
-                      state-p not mv-nth put-global update-global-table global-table
-                      (:executable-counterpart symbolp) (:executable-counterpart equal)
-                      fn-sg-state-p1-of-put-global
-                      state-p-implies-and-forward-to-state-p1)
-                    (theory 'minimal-theory))))))
-  (let* ((pass (fn-owner-sco-global 'fn-owner-orc-pass state))
-         (inflight (fn-owner-sco-global 'fn-owner-sco-inflight state))
-         (current (fn-owner-sco-global 'fn-owner-sco-serial state))
-         (deferred (fn-owner-sco-global 'fn-owner-sco-deferred state))
-         (r (fn-opl-settle count serial outcome now pass inflight current deferred))
-         (state (f-put-global 'fn-owner-sco-inflight (cadr r) state))
-         (state (f-put-global 'fn-owner-sco-deferred (caddr r) state)))
-    (value (if (fn-opl-holdsp count serial pass inflight current) (caddr r) :stale))))
+  (declare (xargs :stobjs state :guard t))
+  (mv-let (word publication) (fn-opub-abandoned (fn-ost-publication state) count serial outcome now)
+    (let ((state (fn-ost-install-publication publication state)))
+      (value word))))
 
 ; RL-02: the settlement of an abandoned capture (host/native/owner.lisp
 ; fnn-owner-publish-captured's done quantum).
@@ -1192,7 +1083,7 @@
 
 (defun fn-owner-orc-pass (state)
   (declare (xargs :stobjs state :mode :program))
-  (fn-owner-sco-global 'fn-owner-orc-pass state))
+  (fn-opub-get :pass (fn-ost-publication state)))
 
 ; The operator's opt-in (`[resources] reclaim_live', books/reclaim-
 ; reservation.lisp): installed once per run by fn-owner-connection-budget
@@ -1227,7 +1118,7 @@
               mode (fn-owner-reclaim-live-p state)
               (fn-orc-request-word
             (fn-owner-orc-pass state)
-            (and (not dry) (fn-owner-sco-global 'fn-owner-sco-inflight state))
+            (and (not dry) (fn-opub-get :inflight (fn-ost-publication state)))
             (and (not dry) profile
                  (fn-opl-blockedp (fn-owner-sco-deferred state)
                                   (fn-owner-sco-budget override profile)
@@ -1283,12 +1174,14 @@
          ; The request's answer, taken in an earlier quantum, decides nothing.
          (slot (fn-orc-capture-slot mode count
                                     (fn-owner-orc-pass state)
-                                    (fn-owner-sco-global 'fn-owner-sco-inflight state))))
+                                    (fn-opub-get :inflight (fn-ost-publication state)))))
     (if (not (eq (car slot) :capture))
         ; refused by name (:in-flight, :queued): the slot is untouched
         (value (list :refused (car slot)))
-      (let* ((state (f-put-global 'fn-owner-orc-pass (cadr slot) state))
-             (state (f-put-global 'fn-owner-sco-inflight (caddr slot) state))
+      (let* ((state (fn-ost-install-publication
+ (fn-opub-put :pass (cadr slot) (fn-ost-publication state)) state))
+             (state (fn-ost-install-publication
+ (fn-opub-put :inflight (caddr slot) (fn-ost-publication state)) state))
              (stamp (fn-record-stamp-of-observation clock)))
         (value (list records count v st profile
                      (fn-sn-config-history st)
@@ -1398,9 +1291,11 @@
   ; wrote; with no pass in flight it changes nothing.
   (let* ((mode (fn-owner-orc-pass state))
          (r (fn-orc-release-slot (list :reclaim mode) mode
-                                 (fn-owner-sco-global 'fn-owner-sco-inflight state)))
-         (state (f-put-global 'fn-owner-orc-pass (car r) state))
-         (state (f-put-global 'fn-owner-sco-inflight (cadr r) state)))
+                                 (fn-opub-get :inflight (fn-ost-publication state))))
+         (state (fn-ost-install-publication
+ (fn-opub-put :pass (car r) (fn-ost-publication state)) state))
+         (state (fn-ost-install-publication
+ (fn-opub-put :inflight (cadr r) (fn-ost-publication state)) state)))
     (value :finished)))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
@@ -6211,7 +6106,7 @@ itself."
 (defun fn-owner-orcp-capture (mode clock override free revision fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let ((word (fn-orc-capture-word (fn-owner-orc-pass state)
-                                   (fn-owner-sco-global 'fn-owner-sco-inflight state)
+                                   (fn-opub-get :inflight (fn-ost-publication state))
                                    (eq mode :dry-run))))
     (if (not (eq word :capture))
         (mv nil (list :deferred word nil) fn-hist state)
