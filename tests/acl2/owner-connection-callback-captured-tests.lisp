@@ -8,7 +8,8 @@
   (let* ((state (ocbt-initialize state))
          (working (fn-own-view (fn-owner-core state)))
          (views (fn-ocv-capture nil :start working))
-         (state (f-put-global 'fn-owner-reader-views views state))
+         (state (fn-ost-install-readers
+ (fn-ordr-put :views views (fn-ost-readers state)) state))
          (selected (fn-ocfg-at-reader-view (fn-owner-ocfg state) views))
          (antecedent (fn-ocl-relation selected))
          (opened (fn-ocfg-open selected (fn-owner-auth state)))

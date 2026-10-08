@@ -25,6 +25,8 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+(include-book "../books/owner-readers-state")
+(include-book "../books/owner-authority-state")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
 (include-book "../books/payload-arena-attach")
@@ -35,6 +37,7 @@
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
 (include-book "../books/owner-catalog-root-state")
+(include-book "../books/owner-admission-state")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -55,6 +58,7 @@
 ; parked with D43's revert, and no served entry dispatches it since the POST
 ; precheck returned to the 7aad444ce check (host/native/owner.lisp).
 (include-book "../books/owner-config")
+(include-book "../books/owner-authority-transitions")
 (include-book "../books/owner-authority-proposal-state")
 (include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-progress-carried")
@@ -98,6 +102,9 @@
 (include-book "../books/owner-reclaim-carry")
 (include-book "../books/owner-reclaim-seal")
 (include-book "../books/owner-recovery-retain")
+(include-book "../books/owner-admission-recovery")
+(include-book "../books/owner-authority-recovery")
+(include-book "../books/owner-readers-recovery")
 (include-book "../books/owner-cursor-domain")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
@@ -265,6 +272,7 @@
 ; fn-orr-read-span-at-a-captured-view-restores-the-owner restates the relation
 ; after it (books/owner-reader-read.lisp).
 (include-book "../books/owner-reader-view")
+(include-book "../books/owner-readers-transitions")
 ; Lane time-model (PRF-311): the barrier's deadline and the shed POST;
 ; lane time-model-2: the decision journal (books/owner-time-journal.lisp,
 ; PRF-322) and the 440 at the POST command (books/owner-time-admission.lisp,
@@ -1092,9 +1100,7 @@
 ; ld build order refuses a forward call.
 (defun fn-owner-reclaim-live-p (state)
   (declare (xargs :stobjs state :guard t))
-  (and (f-boundp-global 'fn-owner-reclaim-live state)
-       (f-get-global 'fn-owner-reclaim-live state)
-       t))
+  (fn-oadm-reclaim-live (fn-ost-admission state)))
 
 ; The answer to the request (fn-orc-request-word) over the owner's own
 ; observations: the pass in flight, the publication in flight, a deferral
@@ -1583,8 +1589,7 @@
 ; (books/group-access-cache.lisp), nil before the first read.
 (defun fn-owner-access-cache (state)
   (declare (xargs :stobjs state :guard t))
-  (and (boundp-global 'fn-owner-access-cache state)
-       (f-get-global 'fn-owner-access-cache state)))
+  (fn-ordr-get :cache (fn-ost-readers state)))
 
 (defun fn-owner-article-slots (state)
   ; The slots the run installed (fn-owner-connection-budget), or one before
@@ -1681,7 +1686,7 @@
          (state (f-put-global 'fn-owner-credit-reserve
                               (fn-heap-article-reserve-octets profile)
                               state))
-         (state (f-put-global 'fn-owner-reclaim-live (and live t) state))
+         (state (fn-ost-install-admission (fn-oadm-configure-reclaim live) state))
          (state (fn-owner-put-credits (fn-mca-initial profile core nursery live) state))
          (state (f-put-global 'fn-owner-connection-budget-line
                               (fn-record-string-octets
@@ -1717,37 +1722,12 @@
 ; from NIL metadata or the existence of the logical CP7 value.
 (defun fn-owner-authority-publication-install (full4 state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((word (fn-cp-nth 0 full4))
-         (next (fn-cp-nth 1 full4))
-         (metadata (fn-cp-nth 2 full4))
-         (published-root (fn-cp-nth 3 full4))
-         (old-sidecar (and (boundp-global 'fn-owner-account-root-state state)
-                           (f-get-global 'fn-owner-account-root-state state)))
-         (epoch (fn-owner-canonical-epoch state))
-         (old-canonical (fn-owner-canonical-state state)))
-    (if published-root
-        ; Wrong collector after durability requires recovery, never rollback.
-        (value :recovery-required)
-      (let* ((cp (fn-sn-consumer (fn-own-store (fn-ocfg-owner next))))
-             (authority (fn-cp-nth 6 cp))
-             (sidecar
-               (and old-sidecar
-                    (if (and (equal word :durable) metadata
-                             (equal (fn-cp-nth 0 old-sidecar) :ready)
-                             (equal epoch (fn-cp-nth 1 old-sidecar))
-                             (equal (fn-cp-nth 3 authority) (fn-cp-nth 2 old-sidecar)))
-                        (list :ready epoch (fn-cp-nth 3 authority)
-                              (fn-cp-nth 1 authority) (fn-cp-nth 4 old-sidecar)
-                              (fn-cp-nth 5 old-sidecar))
-                      ; Unavailable keeps the adopted root/footprint aliases;
-                      ; NIL published root never means empty authorization.
-                      (cons :unavailable (cdr old-sidecar)))))
-             (state (fn-owner-install-ocfg next state))
-             (state (f-put-global 'fn-owner-account-carries metadata state))
-             (state (f-put-global 'fn-owner-account-root-state sidecar state))
-             (state (f-put-global 'fn-owner-canonical-state
-                       (and old-canonical
-                            (cons :unavailable (cdr old-canonical))) state)))
+  (mv-let (installp word next authority)
+    (fn-oauth-publication (fn-ost-authority state) full4
+                          (fn-owner-canonical-epoch state))
+    (if (not installp) (value word)
+      (let* ((state (fn-owner-install-ocfg next state))
+             (state (fn-ost-install-authority authority state)))
         (value word)))))
 
 (defun fn-owner-reconfigure-complete (generation state)
@@ -4548,10 +4528,10 @@
 ; capture is held after it.
 (defun fn-owner-reader-views-capture (event state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((views (fn-ocv-capture (fn-owner-reader-views state) event
-                                (fn-own-view (fn-owner-core state))))
-         (state (f-put-global 'fn-owner-reader-views views state)))
-    (value (if (consp views) t nil))))
+  (let* ((readers (fn-ordr-capture (fn-ost-readers state) event
+                                   (fn-own-view (fn-owner-core state))))
+         (state (fn-ost-install-readers readers state)))
+    (value (if (consp (fn-ordr-views readers)) t nil))))
 
 (definterface fn-owner-reader-views-capture
   :class ::program)
@@ -5068,7 +5048,8 @@
  (let* ((result (car RC))
         (effects (fn-own-tls-result-effects result))
         (consumed (fn-own-tls-result-consumed result))
-        (state (f-put-global 'fn-owner-access-cache cache state))
+        (state (fn-ost-install-readers
+ (fn-ordr-cache-install (fn-ost-readers state) cache) state))
         (state (fn-owner-put-credits (cdr RC) state))
         (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
         (state (fn-owner-exposure-observe id effects consumed state)))
