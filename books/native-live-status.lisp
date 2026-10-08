@@ -353,11 +353,18 @@ keeps."
            (if (zp hleft) 0 (min tleft (floor (* hleft u) b))))
           (t tleft))))
 
+; Keep the capacity and page proofs from splitting every NFIX argument.
+(local (defthm fn-nls-nfix-of-nonpositive
+  (implies (<= n 0) (equal (nfix n) 0))))
+(local (defthm fn-nls-nfix-of-natural
+  (implies (natp n) (equal (nfix n) n))))
+
 (defthm fn-nls-articles-left-is-at-most-the-transactions-left
   (<= (fn-nls-articles-left headroom)
       (nfix (- (nfix (fn-ag-car (fn-ag-cdr headroom)))
                (nfix (fn-ag-car headroom)))))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable floor fn-ag-car fn-ag-cdr nfix))))
 
 ;; KEYSTONE (the capacity line never promises room that is not there).  At
 ;; the transaction budget, or with the history bound spent, the line says 0.
@@ -368,7 +375,8 @@ keeps."
                     (posp (fn-ag-car (fn-ag-cdr (fn-ag-cdr headroom))))
                     (<= (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr headroom)))))
                         (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr headroom)))))))
-           (equal (fn-nls-articles-left headroom) 0)))
+           (equal (fn-nls-articles-left headroom) 0))
+  :hints (("Goal" :in-theory (disable floor fn-ag-car fn-ag-cdr nfix))))
 
 (defun fn-nls-capacity-words (headroom)
   "`capacity articles-left=N (...)': the line `status' prints under headroom."
@@ -1118,6 +1126,7 @@ malformed page."
                             fn-cbor-encode (:e fn-cbor-encode)))))))
 (local (in-theory (disable (tau-system))))
 
+
 (encapsulate ()
 (local
  (defthm fn-nls-take-append-nthcdr
@@ -1209,7 +1218,7 @@ malformed page."
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nls-client-step fn-nls-page-width fn-record-uint32p)
                            (fn-nls-reply fn-nls-reply-encode fn-nls-reply-decode fn-frame-trailer
-                            take nthcdr fn-cbor-encode fn-record-item-encode))))))
+                            take nthcdr fn-cbor-encode fn-record-item-encode nfix))))))
 
 ; -----------------------------------------------------------------------------
 ; The buffered page (D27 twin, PKT-145), proved

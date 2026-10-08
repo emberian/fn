@@ -122,42 +122,21 @@
                ((observation :present))
                :fault "Treating a present next-generation name as free")))
 
-(local
- (defthm olact-reader-arms-keep-the-configuration
-   (implies (member-equal (car event) '(:open :close :read :octets :fault))
-            (equal (fn-ocfg-config (fn-ocfg-step oc event fn-arena))
-                   (fn-ocfg-config oc)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory
-            (union-theories (theory 'minimal-theory)
-             '(car-cons cdr-cons member-equal fn-ocfg-config-of-fn-ocfg-make
-               fn-ocfg-step fn-ocfg-open fn-ocfg-close fn-ocfg-read
-               fn-ocfg-read-step fn-ocfg-fault fn-ocfg-with-read-owner))))))
-
-; A2 preserves the decision, not the stage or pending slot.  The three
-; lifecycle conditions are redundant for this projection: reader arms
-; always retain the store and configuration, even :close NIL.  Label the
-; complete supplied window premise together; do not fabricate separate
-; counterexamples for redundant conjuncts.  The :store mutation breaks the
-; event restriction while retaining all three lifecycle conditions.
+; A2 needs only the reader-event restriction: the decision reads the store
+; and configuration, not the stage or pending slot.  Closing NIL is now a
+; positive witness.  A store event can change the captured authorization.
 (defteeth fn-olau-authorize-carried-across-reader-events
   :claim (((reader-window
-            (and (fn-ocfg-staged oc)
-                 (not (fn-own-pending (fn-ocfg-owner oc)))
-                 (member-equal (car event) '(:open :close :read :octets :fault))
-                 (implies (equal (car event) :close) (natp (cadr event))))))
+            (member-equal (car event) '(:open :close :read :octets :fault))))
           (equal (fn-olau-authorize-carried (fn-ocfg-step oc event fn-arena)
                                             record lock-owned occupied profile)
                  (fn-olau-authorize-carried oc record lock-owned occupied profile)))
   :subject fn-olau-authorize-carried
-  :witness ((oc *ocp-closed*) (event '(:close 0)) (record *olaut-record*)
+  :witness ((oc *ocp-closed*) (event '(:close nil)) (record *olaut-record*)
             (lock-owned t) (occupied nil) (profile *olaut-profile*))
   :breaks ((reader-window ((event '(:store (:io :start-frontier nil))))))
   :mutations ((store-in-reader-window
                (:hypothesis reader-window
-                (and (fn-ocfg-staged oc)
-                     (not (fn-own-pending (fn-ocfg-owner oc)))
-                     (member-equal (car event) '(:open :close :read :octets :fault :store))
-                     (implies (equal (car event) :close) (natp (cadr event)))))
+                (member-equal (car event) '(:open :close :read :octets :fault :store)))
                ((event '(:store (:io :start-frontier nil))))
                :fault "Admitting a frontier reservation while authorizing a captured owner")))

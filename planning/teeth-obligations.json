@@ -12406,9 +12406,9 @@
    "registry": true
   },
   {
-   "book_digest": "9585c47a1c608c1fd7aaaf477ea54ed2b00e0e2c3e18d149525df5bef3d5e420",
+   "book_digest": "87ad6cf8c17c8019fc07f281000da1088ba8ae767457dfb0b14a69d90eb36bc4",
    "bounds": [],
-   "claim_digest": "bd729e7df30b2ef08cc4ea11ab194d4cbeaf5f28ba03946feb454b38ff3651ae",
+   "claim_digest": "520cc298ee8ccf3be4c93429a6244aa7b790d1e679f65f2a71766f7644dce28e",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-olau-authorize-carried-across-reader-events",
@@ -12430,7 +12430,7 @@
    "registry": true
   },
   {
-   "book_digest": "9585c47a1c608c1fd7aaaf477ea54ed2b00e0e2c3e18d149525df5bef3d5e420",
+   "book_digest": "87ad6cf8c17c8019fc07f281000da1088ba8ae767457dfb0b14a69d90eb36bc4",
    "bounds": [],
    "claim_digest": "66e95631c5d2d9d9a680e29cd6d0fc7bdb27aea28ae787eba88013e962a04f80",
    "class": "generated",
@@ -12971,12 +12971,31 @@
    "registry": true
   },
   {
-   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
    "bounds": [],
-   "claim_digest": "dc91d17789c520a2091384ee94a7bc1f402a50cd842c6d10e6587610364818b3",
+   "claim_digest": "cdccb0bc2c90d27e808357ca4c99a2a2b8c275e9194b9e12795011eac3b99588",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-orp-accepted-keeps-the-owner-effects",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "3c0d380d7f0870c5ed7b0a67262ae30568676b5d6f2abbf69d6e6a9cbdd3cfa2",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-phased-answers-as-inline",
    "owed_met": null,
    "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
    "registry": false,
@@ -12990,28 +13009,9 @@
    "witness": "executable"
   },
   {
-   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
    "bounds": [],
-   "claim_digest": "d5e679f5bcefba5fd4147127d653d3933bd6630fba72117d95052cc6fcbccb25",
-   "class": "generated",
-   "mutations": "edits:1",
-   "name": "fn-orp-phased-answers-as-inline",
-   "owed_met": null,
-   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
-   "registry": false,
-   "removals": {
-    "assumption": 0,
-    "lemma": 0,
-    "logical": 0,
-    "reachable": 0
-   },
-   "subject": null,
-   "witness": "executable"
-  },
-  {
-   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
-   "bounds": [],
-   "claim_digest": "52235104b21461d6b36cad23367e51e02d825a3c13610ee78aeafb9d35381f45",
+   "claim_digest": "f7a11fcd67fbc3b93872ec37b734a9f0591731433e8d8106143c2b903e0cdcfe",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-orp-phased-holds-the-owner-only-in-quanta",
@@ -13028,9 +13028,9 @@
    "witness": "executable"
   },
   {
-   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
    "bounds": [],
-   "claim_digest": "2a0aaba72d72b379337769234a0596e16271e1c6eea2b952e4dcfa0ff23f7a16",
+   "claim_digest": "feef59c3ab4f1bbc23e16811df872caf551b1dacde4d0c799b14fc719b50fdba",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-orp-phased-keeps-the-durable-effects",
@@ -13047,9 +13047,9 @@
    "witness": "executable"
   },
   {
-   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
    "bounds": [],
-   "claim_digest": "d6d6757b616850dba31151e9d052e1007673a0e140ee7fa5a15c7ef3be51c1d0",
+   "claim_digest": "5c590704b646c70753e591d908b6bc30ae0b5a1bb254e0bfd7d736a665710751",
    "class": "generated",
    "mutations": "edits:2",
    "name": "fn-orp-refusal-unstages-and-fence-keeps-the-stage",
@@ -13066,11 +13066,30 @@
    "witness": "executable"
   },
   {
-   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
    "bounds": [],
-   "claim_digest": "79d2eb014025c342e228986c2bb7eb3c4a1b2f66e85e0f789ae1baf0298c23e5",
+   "claim_digest": "da0a204d68e2d823214e40106176a8ad47e9803b0e06cfef10f953ed8cb12c0e",
    "class": "generated",
-   "mutations": "edits:2",
+   "mutations": "edits:3",
+   "name": "fn-orp-refused-convert-faults-after-release",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 8
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "4ac715adf920cc90555706168b460b7f881c679ebe3c1eb0868d65f5371a1b8a",
+   "class": "generated",
+   "mutations": "edits:3",
    "name": "fn-orp-reservation-is-converted-or-released",
    "owed_met": null,
    "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
@@ -13085,7 +13104,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
    "bounds": [],
    "claim_digest": "5d2de03f3f50d2c96cbbe799eeb14143677fb29b0c6e3be1586d0e2bcf44f1f4",
    "class": "generated",
@@ -13104,9 +13123,9 @@
    "witness": "executable"
   },
   {
-   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
    "bounds": [],
-   "claim_digest": "d7d6014a4bcc856b013987a2b20a1dbe2d472ca8bcfe952162fee27b5e1830f1",
+   "claim_digest": "26dfec0a13b6ef618e857cf75c438f4973cffd32a73e0e4e40cb04b7f92598e0",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-orp-step-runs-the-phased-run",
