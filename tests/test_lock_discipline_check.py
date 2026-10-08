@@ -1748,6 +1748,38 @@ class RealThreadRows(unittest.TestCase):
         self.assertTrue(any(k[1].startswith("no-handler:") for k in keys(found, "R4")))
 
 
+class DecisionRingLeaf(unittest.TestCase):
+    """XDTRACE (fnn-dtrace-ring-lock, host/native/trace.lisp) is a leaf: its
+    critical sections reach no I/O leaf and take no other lock.  The checker
+    sees both (R2 blocking under a lock, R5 order), so this asserts it of the
+    real host rather than resting on the row's why-string."""
+
+    @classmethod
+    def setUpClass(cls):
+        an, model, checker = ldc.analyze_tree(ROOT, ldc.load_contracts(
+            Path(os.environ.get("LMG_CONTRACTS", str(ROOT / "tools" / "lock_discipline_contracts.json")))))
+        cls.found = [f for f in checker.run({"R2", "R5"}) if f.rule in ("R2", "R5")]
+
+    def test_the_row_is_a_declared_leaf_with_no_io(self):
+        row = CONTRACTS.raw["locks"]["XDTRACE"]
+        self.assertEqual(row["match"], ["(fnn-dtrace-ring-lock)"])
+        self.assertFalse(row.get("io_ok"))
+        self.assertEqual(CONTRACTS.raw["lock_order"].get("XDTRACE", []), [])
+
+    def test_no_critical_section_of_the_ring_lock_blocks_nests_or_fails_to_resolve(self):
+        mine = [(f.function, f.key) for f in self.found
+                if "XDTRACE" in f.key or f.function.startswith("fnn-dtrace-")]
+        self.assertEqual(mine, [])
+
+    def test_every_ring_critical_section_is_found_by_the_checker(self):
+        # a with-mutex on the ring lock that the checker could not see would
+        # make the test above vacuous: the source's sections are counted here
+        text = (ROOT / "host" / "native" / "trace.lisp").read_text()
+        self.assertGreaterEqual(text.count("(sb-thread:with-mutex ((fnn-dtrace-ring-lock ring))"), 4)
+        self.assertEqual(text.count("fnn-dtrace-ring-lock"),
+                         text.count("(sb-thread:with-mutex ((fnn-dtrace-ring-lock ring))"))
+
+
 class LeafLockRows(unittest.TestCase):
     """XPWAKE (fnn-pull-runtime-wake-lock) and XTLSKX (*fnn-tls-kx-lock*) are
     leaves: no order edge out of them, no blocking work under them."""
@@ -1776,7 +1808,7 @@ class LeafLockRows(unittest.TestCase):
             self.assertIn(row, CONTRACTS.raw["locks"])
             # the decision ring's mutex (XDTRACE) is the one lock every lock may
             # enclose: a traced fnn-call returning under any lock offers its row
-            self.assertEqual(order.get(row, []), order.get(row, []) and ["XDTRACE"])
+            self.assertIn(order.get(row, []), ([], ["XDTRACE"]))
             self.assertFalse(CONTRACTS.raw["locks"][row].get("io_ok"))
             self.assertFalse(any(row in later for later in order.values()))
         self.assertEqual(CONTRACTS.raw["locks"]["XPWAKE"]["match"], ["(fnn-pull-runtime-wake-lock)"])
