@@ -180,3 +180,4 @@
 (include-book "bp-forward-cursor")
 (include-book "bp-node-rotation")
 (include-book "bp-node-rotation-buffer")
+(include-book "bp-held-projection")

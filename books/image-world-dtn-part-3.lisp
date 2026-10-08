@@ -7,6 +7,7 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
+(include-book "feed-link-backoff")
 (include-book "feed-pause")
 (include-book "served-catalog-owner")
 (include-book "served-catalog-owner-keyed")

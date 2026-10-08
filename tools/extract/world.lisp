@@ -311,6 +311,7 @@
 (include-book "../../books/index-writer-ticket")
 (include-book "../../books/catalog-may-seal")
 (include-book "../../books/owner-catalog-root-state")
+(include-book "../../books/owner-publication-state")
 (include-book "../../books/payload-view-lease")
 (include-book "../../books/snapshot-capture-lease")
 (include-book "../../books/payload-view-arena")

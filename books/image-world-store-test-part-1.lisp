@@ -97,6 +97,7 @@
 (include-book "index-writer-ticket")
 (include-book "catalog-may-seal")
 (include-book "owner-catalog-root-state")
+(include-book "owner-publication-state")
 (include-book "payload-view-lease")
 (include-book "snapshot-capture-lease")
 (include-book "payload-view-arena")
@@ -165,5 +166,3 @@
 (include-book "store-carried-folds")
 (include-book "owner-log-route")
 (include-book "owner-advance-carried")
-(include-book "owner-intent-carried")
-(include-book "owner-parse-carried")
