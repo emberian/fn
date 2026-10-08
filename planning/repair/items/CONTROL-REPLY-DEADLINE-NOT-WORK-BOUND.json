@@ -1,0 +1,14 @@
+{
+ "category": "liveness",
+ "detail": "An operator reclaim over a 10k-post store is answered 'uncertain operator reclaim' (CLI exit 3) while the owner's pass is still running and later completes. Mechanism (lane n-g27-reds-2, 2026-10-08, train-27 developer image, run hbox:/tank/fn/scratch/n-row36/native-g27reds2-d, test_native_reclaim_walk test_resident_set_of_a_pass_at_1k_and_10k with FN_RUN_RECLAIM_RSS=1): fnn-control-exchange (host/native/control-transport.lisp:225) waits fn-nco-reply-seconds for the reply = *fn-nco-reply-grace-seconds* 10 s (books/control-observation.lisp:3-9) plus 1 s per 64 KiB of REQUEST octets. The owner logged 'RECLAIM request ... answer=requested' and 'CHECKPOINT release ... held=pending' (the auto checkpoint alone took ms=11918) and no pass end before the client gave up. At 1k the pass takes 1.55 s and fits. The deadline scales with the request's size, not with the work the request asks for, so any control verb whose work grows with the store (reclaim, a publication, a checkpoint) turns 'uncertain' past ~10 s: a fixed ceiling on store-sized work (D27). The client's 'uncertain' is honest; the defect is that the deadline is not the request's own bound. Fix shapes (decision owed): (a) ACL2 computes the reply deadline from the verb's declared work bound for this store (the quanta the pass may take x the quantum bound), so the client waits for what the owner promised; or (b) store-sized verbs answer at :requested with a receipt and the client observes completion through status (no deadline on the work, only on the acknowledgement). Then the 10k reclaim RSS test's exit-3 expectation is restored to exit 0.",
+ "file": "host/native/control-transport.lisp",
+ "id": "CONTROL-REPLY-DEADLINE-NOT-WORK-BOUND",
+ "line": "225",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "medium",
+ "source": "n-g27-reds-2",
+ "state": "open",
+ "title": "a store-sized control verb (reclaim at 10k) is answered uncertain after a fixed 10 s reply grace that scales with request octets, not with the verb's work",
+ "updated": "2026-10-08T07:30:00Z"
+}
