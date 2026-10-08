@@ -28,8 +28,21 @@ PROPERTIES = {
 OUTCOMES = ("not-attempted", "attempted-uncertain", "completed")
 
 
+INJECTED = (b"path:", b"xref:", b"injection-info:", b"injection-date:")
+
+
+def accepted_form(octets):
+    """The octets a client POSTed, as the server stores them minus the headers the injecting
+    agent adds (RFC 5537 3.5: Path, Injection-Info, Injection-Date; and Xref for the serving
+    agent).  The served article of a POST carries `Injection-Info: <host>` and the first F2
+    survey flagged every article as changed until this was dropped too."""
+    head, _, body = octets.partition(b"\r\n\r\n")
+    kept = [l for l in head.split(b"\r\n") if not l.lower().startswith(INJECTED)]
+    return b"\r\n".join(kept) + b"\r\n\r\n" + body
+
+
 def digest(octets):
-    return hashlib.sha256(without_path_and_xref(octets)).hexdigest()
+    return hashlib.sha256(accepted_form(octets)).hexdigest()
 
 
 TRACE_SCHEMA = 1
