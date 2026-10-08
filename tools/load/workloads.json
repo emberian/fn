@@ -76,6 +76,20 @@
    "16",
    "--max-open-suffix",
    "128"
+  ],
+  "index-fault": [
+   "--profile",
+   "development",
+   "--max-transactions",
+   "16384",
+   "--max-history-octets",
+   "67108864",
+   "--max-record-octets",
+   "196608",
+   "--max-groups-per-article",
+   "16",
+   "--max-open-suffix",
+   "128"
   ]
  },
  "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up).",
@@ -744,7 +758,7 @@
   },
   "fault-index-saturation": {
    "about": "P2-IDENTITY: Under observed index saturation and across restart, every existing Message-ID resolves to its original octets, every absent ID is absent, and no same-byte or changed-byte duplicate is accepted. Owner L.",
-   "preset": "filled",
+   "preset": "index-fault",
    "groups": [
     "fn.test"
    ],
@@ -766,8 +780,7 @@
    ],
    "hooks": [
     "planning/evidence/load/hooks/f4-index.lisp"
-   ],
-   "sbcl_user_args": ""
+   ]
   },
   "fault-index-omission": {
    "about": "P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content. Owner S. Process death only; assumes fdatasync durability of the store filesystem. Not implemented because the g41/dev store has no persisted Message-ID index: open rebuilds fn-cei and the catalog msgid table from checkpoint records (books/store-checkpoint-open.lisp:206); waits for paged checkpoint/catalog adoption (s-pck-2c-host, PCK-ADOPT).",
