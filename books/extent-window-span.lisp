@@ -144,6 +144,88 @@
             (mv status s pgs-digest-state fn-ew-buffer)))))))
 
 ; ---------------------------------------------------------------------------
+; Lemmas: the buffer offset BASE is a slice of the buffer.
+(defun fn-ews-nth-take-ind (i d x)
+  (if (zp i) (list d x) (fn-ews-nth-take-ind (1- i) (1- d) (cdr x))))
+(defthm fn-ews-nth-take
+  (implies (and (natp i) (natp d) (< i d))
+           (equal (nth i (take d x)) (nth i x)))
+  :hints (("Goal" :induct (fn-ews-nth-take-ind i d x) :in-theory (enable take)
+           :expand ((take d x)))))
+(defthm fn-ews-nth-nthcdr
+  (implies (and (natp i) (natp base))
+           (equal (nth i (nthcdr base x)) (nth (+ base i) x)))
+  :hints (("Goal" :induct (nthcdr base x))))
+(defthm fn-ews-nthcdr-nil (equal (nthcdr n nil) nil))
+(defthm fn-ews-len-take
+  (implies (and (natp d) (<= d (len x))) (equal (len (take d x)) d))
+  :hints (("Goal" :in-theory (enable take) :induct (take d x))))
+(defthm fn-ews-len-nthcdr
+  (implies (natp base) (equal (len (nthcdr base x)) (nfix (- (len x) base))))
+  :hints (("Goal" :induct (nthcdr base x))))
+(defthm fn-ews-len-slice
+  (implies (and (natp base) (natp d) (<= (+ base d) (len st)))
+           (equal (len (take d (nthcdr base st))) d))
+  :hints (("Goal" :in-theory (disable take))))
+(defthm fn-ews-b3x-byte-shift
+  (implies (and (natp base) (natp i) (natp d) (<= (+ base d) (len st)))
+           (equal (fn-b3x-byte i d nil 0 base st)
+                  (fn-b3x-byte i d nil 0 0 (take d (nthcdr base st)))))
+  :hints (("Goal" :in-theory (enable fn-b3x-byte fn-octets-get)))
+  :rule-classes nil)
+(defun fn-ews-kp-ind (k p) (if (zp k) p (fn-ews-kp-ind (1- k) (+ p 4))))
+(defthm fn-ews-b3x-words-shift
+  (implies (and (natp base) (natp p) (natp d) (<= (+ base d) (len st)))
+           (equal (fn-b3x-words k p d nil 0 base st)
+                  (fn-b3x-words k p d nil 0 0 (take d (nthcdr base st)))))
+  :hints (("Goal" :induct (fn-ews-kp-ind k p)
+           :in-theory (enable fn-b3x-words fn-b3x-word))
+          ("Subgoal *1/2"
+           :use ((:instance fn-ews-b3x-byte-shift (i p)) (:instance fn-ews-b3x-byte-shift (i (+ p 1)))
+                 (:instance fn-ews-b3x-byte-shift (i (+ p 2))) (:instance fn-ews-b3x-byte-shift (i (+ p 3))))))
+  :rule-classes nil)
+(defun fn-ews-copy-ind (src2 src count dst st buf)
+  (declare (xargs :measure (nfix count)))
+  (if (zp count) (list buf src)
+    (fn-ews-copy-ind (1+ src2) (1+ src) (1- count) (1+ dst) st
+       (cons (update-nth dst (nth src2 st) (car buf)) (cdr buf)))))
+(defthm fn-ews-copy-shift-gen
+  (implies (and (natp base) (natp src) (natp count) (natp dst) (natp d)
+                (equal src2 (+ base src))
+                (<= (+ src count) d) (<= (+ base d) (len st)))
+           (equal (fn-ewb-copy src2 count dst st buf)
+                  (fn-ewb-copy src count dst (take d (nthcdr base st)) buf)))
+  :hints (("Goal" :induct (fn-ews-copy-ind src2 src count dst st buf)
+           :in-theory (enable fn-octets-get fn-ewb-copy)))
+  :rule-classes nil)
+(defthm fn-ews-capture-at-shift
+  (implies (and (natp base) (<= (+ base (fn-ewp-demand s)) (len st)))
+           (equal (fn-ewb-capture-at base s st buf)
+                  (fn-ewb-capture s (take (fn-ewp-demand s) (nthcdr base st)) buf)))
+  :hints (("Goal" :in-theory (e/d (fn-ewb-capture-at fn-ewb-capture) (fn-ewp-window-span fn-ewb-copy))
+           :use (fn-ewp-window-span-bounds
+                 (:instance fn-ews-copy-shift-gen (src2 (+ base (car (fn-ewp-window-span s)))) (src (car (fn-ewp-window-span s)))
+                    (count (cadr (fn-ewp-window-span s))) (dst (caddr (fn-ewp-window-span s)))
+                    (d (fn-ewp-demand s))))))
+  :rule-classes nil)
+(defthm fn-ews-tick-len3
+  (and (true-listp (fn-ews-tick s pgs-digest-state)) (equal (len (fn-ews-tick s pgs-digest-state)) 3))
+  :hints (("Goal" :in-theory (enable fn-ews-tick))))
+(defthm fn-ews-len3-triple
+  (implies (and (true-listp x) (equal (len x) 3))
+           (equal (list (mv-nth 0 x) (mv-nth 1 x) (mv-nth 2 x)) x))
+  :hints (("Goal" :in-theory (enable mv-nth) :expand ((len x) (len (cdr x)) (len (cddr x))))))
+(defthm fn-ews-tick-is-triple
+  (equal (list (mv-nth 0 (fn-ews-tick s h)) (mv-nth 1 (fn-ews-tick s h)) (mv-nth 2 (fn-ews-tick s h)))
+         (fn-ews-tick s h))
+  :hints (("Goal" :use ((:instance fn-ews-len3-triple (x (fn-ews-tick s h))) (:instance fn-ews-tick-len3 (pgs-digest-state h)))
+           :in-theory (disable fn-ews-len3-triple fn-ews-tick-len3 fn-ews-tick))))
+(defthm fn-ews-tick-is-triple-car
+  (equal (list (car (fn-ews-tick s h)) (mv-nth 1 (fn-ews-tick s h)) (mv-nth 2 (fn-ews-tick s h)))
+         (fn-ews-tick s h))
+  :hints (("Goal" :use fn-ews-tick-is-triple :in-theory (disable fn-ews-tick-is-triple fn-ews-tick))))
+
+; ---------------------------------------------------------------------------
 ; STATEMENTS (each :rule-classes nil)
 
 ; A tick that answers anything but :continue is a fixed point of tick.
@@ -152,13 +234,30 @@
            (equal (fn-ews-tick (mv-nth 1 (fn-ews-tick s pgs-digest-state))
                                (mv-nth 2 (fn-ews-tick s pgs-digest-state)))
                   (fn-ews-tick s pgs-digest-state)))
+  :hints (("Goal" :in-theory (enable fn-ews-tick fn-ewp-with-phase-pos fn-ewp-state)))
   :rule-classes nil)
+
+(defthm fn-ews-tick-past-stop-rw
+  (implies (not (equal (mv-nth 0 (fn-ews-tick s pgs-digest-state)) :continue))
+           (equal (fn-ews-tick (mv-nth 1 (fn-ews-tick s pgs-digest-state))
+                               (mv-nth 2 (fn-ews-tick s pgs-digest-state)))
+                  (fn-ews-tick s pgs-digest-state)))
+  :hints (("Goal" :use fn-ews-tick-past-stop-is-fixed)))
+
+(defthm fn-ews-tick-n-past-stop
+  (implies (and (posp m) (not (equal (mv-nth 0 (fn-ews-tick s pgs-digest-state)) :continue)))
+           (equal (fn-ews-tick-n m (mv-nth 1 (fn-ews-tick s pgs-digest-state)) (mv-nth 2 (fn-ews-tick s pgs-digest-state)))
+                  (fn-ews-tick s pgs-digest-state)))
+  :hints (("Goal" :induct (fn-ews-tick-n m s pgs-digest-state)
+           :in-theory (disable fn-ews-tick))))
 
 ; TICK-RUN is N ticks: same verdict, same stream state, same digest state.
 (defthm fn-ews-tick-run-is-iterated-tick
   (implies (posp n)
            (equal (fn-ews-tick-run n s pgs-digest-state)
                   (fn-ews-tick-n n s pgs-digest-state)))
+  :hints (("Goal" :induct (fn-ews-tick-run n s pgs-digest-state)
+           :in-theory (disable fn-ews-tick)))
   :rule-classes nil)
 
 ; The span's effect is the stream's effect for its first block, widened.
@@ -168,6 +267,7 @@
                        (fn-ews-effect s pgs-digest-state))
                 (<= (fn-ewp-demand s) (fn-ews-span-demand s))
                 (<= (fn-ews-span-demand s) (fn-profile-limit :read-span-octets))))
+  :hints (("Goal" :in-theory (e/d (fn-ews-span-effect fn-ews-span-demand fn-ewp-demand fn-ewp-effect fn-ews-effect) (nfix))))
   :rule-classes nil)
 
 ; The block step at BASE is the stream's block step on the 64 octets there.
@@ -177,7 +277,30 @@
            (equal (fn-ews-read-block base effect s fn-octets pgs-digest-state fn-ew-buffer)
                   (fn-ews-read effect :ok s (take (fn-ewp-demand s) (nthcdr base fn-octets))
                                pgs-digest-state fn-ew-buffer)))
+  :hints (("Goal" :in-theory (e/d (fn-ews-read-block fn-ews-read)
+                                  (fn-ewp-demand fn-ewb-capture-at fn-ewb-capture fn-ewp-complete-read take fn-b3x-words))
+           :use ((:instance fn-ews-capture-at-shift (st fn-octets) (buf fn-ew-buffer))
+                 (:instance fn-ews-b3x-words-shift (k 16) (p 0) (d (fn-ewp-demand s)) (st fn-octets))
+                 (:instance fn-ews-len-slice (d (fn-ewp-demand s)) (st fn-octets))
+                 fn-ewp-demand-bounded)))
   :rule-classes nil)
+
+(defthm fn-ews-read-block-rw
+  (implies (and (natp base) (equal (nth 0 s) :scan)
+                (<= (+ base (fn-ewp-demand s)) (len fn-octets)))
+           (equal (fn-ews-read-block base effect s fn-octets pgs-digest-state fn-ew-buffer)
+                  (fn-ews-read effect :ok s (take (fn-ewp-demand s) (nthcdr base fn-octets))
+                               pgs-digest-state fn-ew-buffer)))
+  :hints (("Goal" :use fn-ews-read-block-is-fn-ews-read-on-slice)))
+(defthm fn-ews-read-block-not-scan
+  (implies (not (equal (nth 0 s) :scan))
+           (equal (fn-ews-read-block base effect s fn-octets pgs-digest-state fn-ew-buffer)
+                  (list :stale s pgs-digest-state fn-ew-buffer)))
+  :hints (("Goal" :in-theory (enable fn-ews-read-block))))
+(defthm fn-ews-tick-run-rw
+  (implies (posp n)
+           (equal (fn-ews-tick-run n s pgs-digest-state) (fn-ews-tick-n n s pgs-digest-state)))
+  :hints (("Goal" :use fn-ews-tick-run-is-iterated-tick)))
 
 ; THE EQUATION: the span loop is K iterations of the stream's block step
 ; and ticks; same final digest state, same captured buffer, same verdict
@@ -186,6 +309,11 @@
   (implies (and (natp base) (<= (+ base (fn-ewp-demand s)) (len fn-octets)))
            (equal (fn-ews-span-loop k base s fn-octets pgs-digest-state fn-ew-buffer)
                   (fn-ews-span-spec k base s fn-octets pgs-digest-state fn-ew-buffer)))
+  :hints (("Goal" :induct (fn-ews-span-loop k base s fn-octets pgs-digest-state fn-ew-buffer)
+           :in-theory (disable fn-ewp-demand take nthcdr len fn-ews-read-block fn-ews-read
+                               fn-ews-tick-n fn-ews-tick-run fn-ews-effect)
+           :expand ((fn-ews-span-loop k base s fn-octets pgs-digest-state fn-ew-buffer)
+                    (fn-ews-span-spec k base s fn-octets pgs-digest-state fn-ew-buffer))))
   :rule-classes nil)
 
 ; The entry: stale and failed completions change nothing the stream's do not.
@@ -194,6 +322,7 @@
                (not (equal effect (fn-ews-span-effect s pgs-digest-state))))
            (equal (fn-ews-read-span effect io-status s fn-octets pgs-digest-state fn-ew-buffer)
                   (list :stale s pgs-digest-state fn-ew-buffer)))
+  :hints (("Goal" :in-theory (enable fn-ews-read-span)))
   :rule-classes nil)
 
 (defthm fn-ews-read-span-failed-read-is-a-read-failure
@@ -204,7 +333,13 @@
            (equal (fn-ews-read-span effect io-status s fn-octets pgs-digest-state fn-ew-buffer)
                   (list :read (fn-ewp-with-phase-pos :read (nth 7 s) s)
                         pgs-digest-state fn-ew-buffer)))
+  :hints (("Goal" :in-theory (enable fn-ews-read-span)))
   :rule-classes nil)
+
+(defthm fn-ews-span-demand-covers-block
+  (implies (fn-ews-span-effect s pgs-digest-state)
+           (<= (fn-ewp-demand s) (fn-ews-span-demand s)))
+  :hints (("Goal" :use fn-ews-span-effect-extends-block-effect)))
 
 (defthm fn-ews-read-span-scan-is-iterated-block-step
   (implies (and (fn-ews-span-effect s pgs-digest-state)
@@ -215,13 +350,18 @@
            (equal (fn-ews-read-span effect io-status s fn-octets pgs-digest-state fn-ew-buffer)
                   (fn-ews-span-spec (ceiling (fn-ews-span-demand s) 64) 0 s fn-octets
                                     pgs-digest-state fn-ew-buffer)))
+  :hints (("Goal" :in-theory (e/d (fn-ews-read-span) (fn-ews-span-loop fn-ews-span-spec fn-ews-span-demand fn-ews-span-effect))
+           :use ((:instance fn-ews-span-loop-is-iterated-block-step (k (ceiling (fn-ews-span-demand s) 64)) (base 0))
+                 fn-ews-span-demand-covers-block)))
   :rule-classes nil)
 
 (defthm fn-ews-read-span-trailer-is-the-stream-read
   (implies (and (fn-ews-span-effect s pgs-digest-state)
                 (equal effect (fn-ews-span-effect s pgs-digest-state))
-                (not (equal (nth 0 s) :scan)))
+                (equal (nth 0 s) :trailer))
            (equal (fn-ews-read-span effect io-status s fn-octets pgs-digest-state fn-ew-buffer)
                   (fn-ews-read (fn-ews-effect s pgs-digest-state) io-status s fn-octets
                                pgs-digest-state fn-ew-buffer)))
+  :hints (("Goal" :in-theory (e/d (fn-ews-read-span fn-ews-span-effect fn-ews-read fn-ews-span-demand fn-ewp-demand) (fn-ews-effect))
+           :do-not-induct t))
   :rule-classes nil)
