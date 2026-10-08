@@ -130,23 +130,45 @@
  (and (eq (symbol-class 'fn-scar-ocfg-read-step (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-scar-own-read-step-full (w state)) :common-lisp-compliant)))
 
-; Hypothesis removal: on the bad-node owner the carried step trusts the
-; pointer and keeps the connection with its context, the reference refuses the
-; session and drops the connection.
+; Hypothesis removal.  An event step reads the connection's stored session,
+; which pins the node the connection opened over; the byte read re-pins the
+; store's node first.  So the witness is the bad-node owner whose connection 1
+; pins that same bad node: the relation fails, the carried step trusts the
+; pointer, keeps the connection and installs the context, and the reference
+; refuses the session, installs nothing and drops the connection.
+(defconst *scar-t-bad-conn1*
+  (let ((c *scar-t-conn*))
+    (fn-own-conn-make-group-indexed
+     (fn-own-conn-id c) (fn-own-conn-version c) (fn-own-conn-frontier c)
+     (fn-own-conn-wire c)
+     (fn-auth-with-base (fn-own-conn-session c)
+                        (fn-peer-with-node
+                         (fn-auth-session-base (fn-own-conn-session c))
+                         *scar-t-bad-node*))
+     (fn-own-conn-archive c) (fn-own-conn-config c) (fn-own-conn-observation c)
+     (fn-own-conn-verdicts c) (fn-own-conn-index c) (fn-own-conn-group-index c)
+     (fn-own-conn-control c))))
+(defconst *scar-t-bad-ev-oc*
+  (let ((o *scar-t-bad-o*))
+    (fn-ocfg-make
+     (fn-own-set-conns o (fn-own-replace-conn *scar-t-bad-conn1* (fn-own-conns o)))
+     (fn-ocfg-config *scar-t-bad-oc*) (fn-ocfg-pins *scar-t-bad-oc*)
+     (fn-ocfg-staged *scar-t-bad-oc*))))
+(assert-event (not (fn-ocl-relation *scar-t-bad-ev-oc*)))
 (assert-event
- (not (equal (in-arena-fn-scar-ocfg-read-step *sr-arena* *scar-t-bad-oc* 1 *scar-t-event*)
-             (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-bad-oc* 1 *scar-t-event*))))
+ (not (equal (in-arena-fn-scar-ocfg-read-step *sr-arena* *scar-t-bad-ev-oc* 1 *scar-t-event*)
+             (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-bad-ev-oc* 1 *scar-t-event*))))
 (assert-event
  (fn-own-find-conn
   1 (fn-own-conns
      (fn-ocfg-owner
-      (cdr (in-arena-fn-scar-ocfg-read-step *sr-arena* *scar-t-bad-oc* 1 *scar-t-event*))))))
+      (cdr (in-arena-fn-scar-ocfg-read-step *sr-arena* *scar-t-bad-ev-oc* 1 *scar-t-event*))))))
 (assert-event
  (not (fn-own-find-conn
        1 (fn-own-conns
           (fn-ocfg-owner
-           (cdr (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-bad-oc* 1 *scar-t-event*)))))))
+           (cdr (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-bad-ev-oc* 1 *scar-t-event*)))))))
 (must-fail-checked
  (defthm fn-scar-t-event-step-is-reference-without-relation
-   (equal (fn-scar-ocfg-read-step *scar-t-bad-oc* 1 *scar-t-event* fn-arena)
-          (fn-ocfg-read-step *scar-t-bad-oc* 1 *scar-t-event* fn-arena))))
+   (equal (fn-scar-ocfg-read-step *scar-t-bad-ev-oc* 1 *scar-t-event* fn-arena)
+          (fn-ocfg-read-step *scar-t-bad-ev-oc* 1 *scar-t-event* fn-arena))))
