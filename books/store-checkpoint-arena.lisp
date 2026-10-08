@@ -367,11 +367,10 @@
 ; The identity of a capture is the replay of its records from the initial
 ; context: the seed of a checkpoint's suffix, and for the empty capture the
 ; seed of the full replay.
-(local
- (defthm fn-scka-identity-of-capture
+(defthm fn-scka-identity-of-capture
    (equal (fn-sco-identity (fn-sco-capture configs records))
           (fn-replay-identity-loop (true-list-fix records) (fn-stxk-initial-context 0)))
-   :hints (("Goal" :in-theory (enable fn-sco-identity fn-sco-capture fn-sco-make fn-sco-at)))))
+   :hints (("Goal" :in-theory (enable fn-sco-identity fn-sco-capture fn-sco-make fn-sco-at))))
 
 (local
  (defthm fn-scka-recover-rows-pair

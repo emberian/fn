@@ -679,3 +679,28 @@
 (defthm fn-scka-payloads-of-append
   (equal (fn-scka-payloads (append ws vs))
          (append (fn-scka-payloads ws) (fn-scka-payloads vs))))
+
+; One row per event.
+(local (defthm fn-scka-len-rows-of-publish
+  (equal (len (fn-ssr-rows (fn-ssr-publish acc row wire id)))
+         (+ 1 (len (fn-ssr-rows acc))))
+  :hints (("Goal" :in-theory (disable fn-ssr-publish fn-ssr-rows)
+           :use ((:instance fn-scka-rows-of-publish))))))
+
+(defthm fn-scka-fold-at-len-rows
+  (implies (not (equal (fn-scka-fold-at acc ws h) :bad))
+           (equal (len (fn-ssr-rows (fn-scka-fold-at acc ws h)))
+                  (+ (len ws) (len (fn-ssr-rows acc)))))
+  :hints (("Goal" :induct (fn-scka-fold-at acc ws h)
+           :in-theory (e/d (fn-scka-fold-at)
+                           (fn-ssr-rows fn-ssr-publish fn-replay-identity-step fn-scka-intern-one
+                            fn-scka-sealsp fn-stxk-context-kind fn-ssr-at)))))
+
+(defthm fn-scka-len-intern-at
+  (implies (not (equal (fn-scka-intern-at ws id h) :bad))
+           (equal (len (fn-scka-intern-at ws id h)) (len ws)))
+  :hints (("Goal" :in-theory (e/d (fn-scka-intern-at) (fn-scka-fold-at fn-ssr-seed fn-ssr-rows
+                                                       fn-scka-intern-at-bad-iff))
+           :use ((:instance fn-scka-fold-at-len-rows (acc (fn-ssr-seed id)))
+                 (:instance fn-scka-rows-of-seed)
+                 (:instance fn-scka-intern-at-bad-iff)))))
