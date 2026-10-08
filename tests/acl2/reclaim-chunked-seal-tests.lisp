@@ -59,7 +59,7 @@
                       *rcs-walk*)))
 
 ; TEETH-62 BEGIN
-; fn-rcw-predict-acc-steps-is-predict with its teeth (TEETH CONTRACT v1).  Not here: fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open, whose two antecedents have no counterexample on a reached ledger (a negative h0 and a :bad chunk both leave the rebuild equal to the full open).
+; fn-rcw-predict-acc-steps-is-predict with its teeth (TEETH CONTRACT v1).
 (defteeth fn-rcw-predict-acc-steps-is-predict
   :claim (((start-handle (natp h0)))
           (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
@@ -81,3 +81,55 @@
                (:conclusion (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks keyring generation h0 nil))) (equal (cadr r) h0)))
                ((configs *rcw-configs*) (chunks *rcw-c2*) (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 *rcs-h0*))
                :fault "the final handle left at the start handle")))
+
+; Host fnn-owner-reclaim-pass / fnn-checkpoint-walk, exercised by
+; tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available.
+; true-list-listp was redundant: each chunk's residual tail is discarded.
+(defteeth fn-rcw-srcs-steps-is-the-walk
+  :claim (()
+          (equal (fn-rcw-srcs-steps chunks lacc sacc fn-arena)
+                 (fn-scka-srcs-n (fn-rcw-concat chunks) (len (fn-rcw-concat chunks))
+                                 lacc sacc fn-arena)))
+  :subject fn-scka-srcs-n
+  :witness ((chunks *rcw-c2*) (lacc nil) (sacc nil))
+  :stobjs ((fn-arena (fn-arn-seal-many *rpt-payloads* fn-arena)))
+  :mutations ((skip-first-chunk
+               (:conclusion
+                (equal (fn-rcw-srcs-steps (cdr chunks) lacc sacc fn-arena)
+                       (fn-scka-srcs-n (fn-rcw-concat chunks) (len (fn-rcw-concat chunks))
+                                       lacc sacc fn-arena)))
+               ((chunks *rcw-c2*) (lacc nil) (sacc nil))
+               :fault "the writer advances its chunk cursor before consuming the first chunk")))
+(assert-event
+ (let ((chunks (list (append (take 2 *rcw-new*) 'tail) (nthcdr 2 *rcw-new*))))
+   (and (not (true-list-listp chunks))
+        (equal (in-arena-fn-rcw-srcs-steps *rpt-payloads* chunks nil nil) *rcs-walk*))))
+
+; A full open that actually installs an owner (default config already creates fn.letters).
+(assert-event
+ (not (equal (fn-ock-recover-full (list *fn-cfg-default-record*) 8
+              (car (fn-orcs-predict *rcw-new* *rcs-keyring* *rcs-gen* 0)) 4) :fault)))
+(defteeth fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
+ :claim (((handle (natp h0))) (equal (cadr (fn-owner-orcp-rebuild
+                         (fn-rcw-acc-finish
+                          (car (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
+                                                         keyring generation h0 nil)))
+                         configs frontier max-conns))
+                  (fn-ock-recover-full configs frontier
+                                       (car (fn-orcs-predict (fn-rcw-concat chunks) keyring
+                                                             generation h0))
+                                       max-conns)))
+ :subject fn-owner-orcp-rebuild
+ :witness ((configs (list *fn-cfg-default-record*)) (chunks *rcw-c2*)
+           (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 0) (frontier 8) (max-conns 4))
+ :breaks ((handle ((h0 -1)) :logical "a negative predicted handle is outside the natural-handle guard"))
+ :mutations ((skipped-chunk (:conclusion (equal (cadr (fn-owner-orcp-rebuild
+                         (fn-rcw-acc-finish
+                          (car (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs (cdr chunks)
+                                                         keyring generation h0 nil)))
+                         configs frontier max-conns))
+                  (fn-ock-recover-full configs frontier
+                                       (car (fn-orcs-predict (fn-rcw-concat chunks) keyring
+                                                             generation h0))
+                                       max-conns))) ()
+              :fault "pass 3 advances past the first chunk before extending the capture")))

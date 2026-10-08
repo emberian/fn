@@ -169,6 +169,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-yield-trajectory-tests \
 	tests/acl2/decoded-worker-controller-trajectory-tests \
 	tests/acl2/decoded-worker-reuse-execution-tests \
+	tests/acl2/decoded-worker-job-teeth-tests \
 	tests/acl2/decoded-window-cache-tests \
 	tests/acl2/decoded-worker-reuse-tests \
 	tests/acl2/extent-window-buffer-tests \
@@ -902,6 +903,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-extend-tests \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
+	tests/acl2/store-log-critical-teeth-tests \
+	tests/acl2/store-log-copy-teeth-tests \
+	tests/acl2/store-log-copy-ack-teeth-tests \
 	books/recovery-refinement \
 	books/recovery-refinement-store \
 	tests/acl2/recovery-refinement-tests \
@@ -2240,6 +2244,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-pass-tests \
 	tests/acl2/reclaim-chunked-walk-tests \
 	tests/acl2/reclaim-chunked-seal-tests \
+	tests/acl2/reclaim-chunked-load-teeth-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
 	tests/acl2/owner-reclaim-ready-tests \

@@ -84,6 +84,10 @@ def rss_kib(pid: int):
     return None
 
 
+# Critical host path: the bounded fn-scka-srcs-n walk, fn-scka-canon-rows
+# capture, and fn-owner-orcp-rebuild precede installing the reclaimed view.
+# The catalog loaders refine fn-rcw-load-chunks and call
+# fn-sca-load-held-rows-keyed, whose held-row byte facts justify availability.
 @requires(IMAGE)
 class NativeReclaimWalkTests(unittest.TestCase):
     image = IMAGE

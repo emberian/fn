@@ -1,0 +1,16 @@
+{
+ "category": "certify-time",
+ "file": "books/store-log-recover-copy.lisp",
+ "id": "D26-STORE-LOG-COPY",
+ "notes": [
+  "The critical-teeth lane final affected closure run-20261008T171643Z-93b0 (persvati, two jobs, certify-20261008T171720Z-1817347) passed but this book took 16.448 s. Its costliest event is the existing FN-LGRC-EPOCH-OPEN theorem, 3.28 s / 1,460,706 steps. The earlier teeth run measured 19.580 s (same event 4.08 s / 1,460,706 steps).",
+  "The new prefix durability proof book took 7.380 s and every changed teeth test book is below 10 s; this is the existing copy-model proof/load cost, separate from the completed critical evidence. Assign to the proof-cost lane: inspect the event profile and scope the epoch-open theory before splitting the book. Do not rebaseline or weaken the theorem.",
+  "The same final run measured host/owner-host at 84.0 s; its existing include-cost debt is tracked by D26-HOST-BOOKS-NO-CERT-IMAGE and GATE-OWNER-HOST-IMAGE-WORLD-CERTIFY-TIME."
+ ],
+ "owner": "deputy-P",
+ "severity": "medium",
+ "source": "p-teeth-critical",
+ "state": "open",
+ "title": "Bring the existing store log copy proof book below the two-job D26 bar",
+ "updated": "2026-10-08T17:25:00Z"
+}
