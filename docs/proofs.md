@@ -176,6 +176,15 @@ needs `--allow-regression`, which is a decision to record in the commit that
 uses it and which adds only books conclusively over the line. The baseline
 only shrinks.
 
+Shrink it by proof work: read the certify log's per-event
+times and `Rules:`, use one instrumented session at most, never raise a
+timeout or weaken a statement. The band and threshold are operating rules, not
+proof that an excursion is noise: keep matched host, toolchain and job
+conditions when adjudicating one. Splitting a book must reduce total or
+critical-path work, never only the per-book figure. Aim for under three
+minutes from edit to certified verdict; record queue, install, proof and total
+time when you claim a speedup.
+
 The per-book rows cannot see a tree whose every book stays under the near
 line while the whole grows, so the baseline also carries an `aggregate`: the
 sum of prover steps over every current root-closure book and the heaviest

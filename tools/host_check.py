@@ -2512,7 +2512,7 @@ def build_lists_main() -> int:
 # Exit 0 when every gate is green; 1 when any is red or did not run.  It reads
 # the whole tree and starts ACL2, so it refuses the laptop (FN_LAPTOP_OK=1
 # overrides): `make host-convert-check [FILE=host/native/x.lisp]`, or
-# tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'.
+# tools/remote_check.sh auto --install-roots books/image-world --cmd 'make host-convert-check FILE=host/native/x.lisp'.
 
 CONVERT_FIXES = {
     "world": "python3 tools/extract/world.py (writes the umbrellas), then certify "
