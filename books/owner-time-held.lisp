@@ -110,3 +110,16 @@
   (equal (fn-otm-held (mv-nth 1 (fn-otm-commit-event s event))) (fn-otm-held s))
   :hints (("Goal" :in-theory (union-theories '(fn-otm-commit-event fn-otm-of-keep)
                                              (theory 'minimal-theory)))))
+
+; The committer's START over the value (C6's gap 1): refused while a batch is
+; held or in flight; the committer's path when nothing is held is unchanged.
+(defun fn-otm-committer-may-start (s)
+  (declare (xargs :guard t))
+  (fn-och-committer-may-start (fn-otm-phase-of s) (fn-otm-held s)))
+
+(defthm fn-otm-committer-may-start-is-the-held-rule
+  (and (implies (fn-otm-held s) (not (fn-otm-committer-may-start s)))
+       (implies (not (fn-otm-held s))
+                (iff (fn-otm-committer-may-start s)
+                     (not (fn-ocs-in-flight-p (fn-otm-phase-of s)))))))
+

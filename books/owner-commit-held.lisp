@@ -75,7 +75,10 @@
           ((eq event :failed) (mv :stop :failed nil t))
           (t (mv :fault :staged nil t))))
    ((eq phase :fenced)
-    (if (eq event :completed) (mv :submit :idle nil nil) (mv :fault :fenced nil t)))
+    (cond ((eq event :completed) (mv :submit :idle nil nil))
+          ;; COMPLETE found the owner stopping: no submission is taken.
+          ((eq event :completed-stopping) (mv :none :idle nil nil))
+          (t (mv :fault :fenced nil t))))
    ((eq phase :failed)
     (if (eq event :completed) (mv :none :idle nil nil) (mv :fault :failed nil t)))
    ;; A held flag outside an in-flight phase is no state the steps make: a fault.
@@ -312,3 +315,76 @@
                 (and (equal (fn-och-committer-wake phase next held returned queued blocked)
                             (fn-ocp-wake phase next returned queued blocked))
                      (equal (fn-och-caller-wake phase held returned) :wait)))))
+
+; -----------------------------------------------------------------------------
+; Gap answers for the host split (C6, 2026-10-08).
+;
+; (1) The committer's START.  A committer that passed its snapshot before a
+; caller's quantum 1 captured the batch must not run its own START (its drain
+; would take members) while that batch is held: it asks first, and a refused
+; pass returns as a pipeline that took nobody (:none).
+(defun fn-och-committer-may-start (phase held)
+  (declare (xargs :guard t))
+  (and (not held) (not (fn-ocs-in-flight-p phase))))
+
+; (2) The stop.  A held batch's stop is the step's own: :failed -> :stop (every
+; member uncertain, fn-ocs-member-release with action :stop), then :completed
+; -> :none; a COMPLETE that found the owner stopping sends :completed-stopping
+; -> :none.  Neither takes the held submission.
+;
+; (3) The caller's answer, from the last action quantum 2's events named:
+; :submit -> its submission is taken (the take, intent and resolution);
+; :none or :stop -> it is refused with the stopping answer (the owner is
+; stopping and the submission was never taken; the client may retry against
+; the recovered node); anything else -> :fault.
+(defun fn-och-caller-answer (action)
+  (declare (xargs :guard t))
+  (cond ((eq action :submit) :submitted)
+        ((member-eq action '(:none :stop)) :stopping)
+        (t :fault)))
+
+; The answer of a held caller whose job ended FINAL, when COMPLETE found the
+; owner STOPPING or not.
+(defun fn-och-held-outcome (final stopping)
+  (declare (xargs :guard t))
+  (let ((outcome (fn-oqw-outcome-of-final final)))
+    (if (eq outcome :fault)
+        :fault
+      (mv-let (a2 p2 n2 h2)
+        (fn-och-step :staged nil t (if (eq outcome :fenced) :fenced :failed))
+        (if (eq a2 :stop)
+            (mv-let (a3 p3 n3 h3) (fn-och-step p2 n2 h2 :completed)
+              (declare (ignore a3 p3 n3 h3))
+              (fn-och-caller-answer :stop))
+          (mv-let (a3 p3 n3 h3)
+            (fn-och-step p2 n2 h2 (if stopping :completed-stopping :completed))
+            (declare (ignore p3 n3 h3))
+            (fn-och-caller-answer a3)))))))
+
+; KEYSTONE S6.  The committer never STARTs while a batch is held or in
+; flight, and may START at an idle owner with nothing held (its path today).
+(defthm fn-och-committer-never-starts-under-a-held-batch
+  (and (implies held (not (fn-och-committer-may-start phase held)))
+       (iff (fn-och-committer-may-start phase nil)
+            (not (fn-ocs-in-flight-p phase)))))
+
+; KEYSTONE S7.  The held caller's answer: taken exactly when the job ran every
+; phase and COMPLETE did not find the owner stopping; the stopping answer when
+; the job ended uncertain or the owner is stopping; a fault for a faulted job.
+; A stop never takes the submission and never answers it as taken.
+(defthm fn-och-held-caller-answer
+  (let ((a (fn-och-held-outcome final stopping)))
+    (and (member-equal a '(:submitted :stopping :fault))
+         (iff (equal a :submitted) (and (equal final :done) (not stopping)))
+         (iff (equal a :stopping)
+              (or (equal final :uncertain) (and (equal final :done) stopping)))
+         (iff (equal a :fault)
+              (and (not (equal final :done)) (not (equal final :uncertain))))))
+  :hints (("Goal" :in-theory (enable fn-oqw-outcome-of-final))))
+
+; S7 agrees with the inline commit for a non-stopping owner: the inline
+; effects end in :submit exactly when the held caller's answer is :submitted.
+(defthm fn-och-held-caller-answer-is-the-inline-commits
+  (iff (equal (fn-och-held-outcome (fn-och-job-final words) nil) :submitted)
+       (member-equal :submit (fn-och-inline :started words))))
+
