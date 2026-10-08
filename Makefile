@@ -308,6 +308,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/def-representation-pages \
 	books/checkpoint-payload-ref \
 	books/checkpoint-payloads \
+	books/checkpoint-payloads-extent \
 	books/paged-checkpoint \
 	books/catalog-pages \
 	books/paged-checkpoint-host \

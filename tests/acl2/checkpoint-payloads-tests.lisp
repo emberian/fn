@@ -10,6 +10,7 @@
 (in-package "ACL2")
 (include-book "must-fail-checked")
 (include-book "../../books/checkpoint-payloads")
+(include-book "../../books/checkpoint-payloads-extent")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *cpl-f* '(9 9 9 9 9 9 9 9 9 9))
@@ -119,3 +120,78 @@
         (not (fn-cpl-all-openp refs *cpl-full*))
         (not (equal (fn-cpl-open-all (cadr cp) (car cp))
                     (fn-cpl-open-all refs *cpl-full*))))))
+
+; -----------------------------------------------------------------------------
+; The trailer, its words, the writer and the extent bridge.
+
+; CPL-4 positive: each returned trailer is the last 32 octets of its frame in
+; the file after the append (third plan component), and is a function of the
+; payload alone (the same payload at another offset has the same trailer).
+(assert-event
+ (let ((trs (caddr *cpl-plan*)))
+   (and (fn-cpl-payload-listp *cpl-ps*)
+        (equal trs (fn-cpl-trailers *cpl-ps*))
+        (fn-cpl-trailers-at *cpl-refs* trs *cpl-full*)
+        (equal (len (car trs)) 32)
+        (equal (fn-cpl-trailer '(1 2 3))
+               (fn-cpl-trailer (car (fn-cpl-payloads-of (list (car *cpl-refs*)) *cpl-full*)))))))
+
+; CPL-4 tooth: a trailer taken one octet off the frame's end is not the
+; frame's last 32 octets.
+(assert-event
+ (let ((trs (caddr *cpl-plan*)))
+   (and (fn-cpl-trailers-at *cpl-refs* trs *cpl-full*)
+        (not (fn-cpl-trailers-at (list (cons (+ 1 (car (car *cpl-refs*))) (cdr (car *cpl-refs*))))
+                                 (list (car trs)) *cpl-full*)))))
+
+; Words: the pack theorem on the ground payloads, and the shape constraint.
+(assert-event
+ (and (fn-cpl-payloadp '(1 2 3))
+      (equal (fn-cpl-unpack-words (fn-cpl-trailer-words-impl '(1 2 3)))
+             (fn-cpl-trailer '(1 2 3)))
+      (equal (len (fn-cpl-trailer-words-impl '(1 2 3))) 4)
+      (unsigned-byte-p 64 (car (fn-cpl-trailer-words-impl '(1 2 3))))
+      (unsigned-byte-p 64 (cadddr (fn-cpl-trailer-words-impl '(1 2 3))))
+      ;; big-endian, 8 octets to a word: word 0 is octets 0..7
+      (equal (fn-cpl-be-octets (car (fn-cpl-trailer-words-impl '(1 2 3))) 8)
+             (take 8 (fn-cpl-trailer '(1 2 3))))))
+
+; Words tooth: little-endian packing of the same octets is a different word
+; (the pack theorem is about the big-endian one).
+(assert-event
+ (let ((tr (fn-cpl-trailer '(1 2 3))))
+   (not (equal (fn-cpl-be-fold (reverse (take 8 tr)) 0)
+               (car (fn-cpl-trailer-words-impl '(1 2 3)))))))
+
+; The writer: the octets it appends are the plan's bytes.
+(defun cpl-test-write (f ps)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (let* ((fn-octets (fn-octets-from-list f fn-octets))
+             (fn-octets (fn-cpl-write-frames ps fn-octets)))
+        (mv (fn-octets-list fn-octets) fn-octets))
+      r)))
+(assert-event (equal (cpl-test-write *cpl-f* *cpl-ps*) *cpl-full*))
+
+; The extent bridge: the realizer's verdict on a frame in the file is :ok; a
+; trailer of another payload is refused (:trailer: not the commitment), and a
+; damaged prefix is refused (:digest).
+(defun cpl-test-verdict (commit read prefix)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (r fn-octets)
+      (let* ((fn-octets (fn-octets-from-list prefix fn-octets)))
+        (mv (fn-arx-entry-verdict-buffer commit read fn-octets) fn-octets))
+      r)))
+(assert-event
+ (let* ((p '(4 5)) (pre *cpl-f*)
+        (file (append pre (fn-cpl-frame p) '(7 7)))
+        (prefix (take (+ 37 (len p)) (nthcdr (len pre) file)))
+        (read (take 32 (nthcdr (+ (len pre) 37 (len p)) file)))
+        (commit (fn-arx-trailer-nat (fn-cpl-trailer p))))
+   (and (equal read (fn-cpl-trailer p))
+        (equal (cpl-test-verdict commit read prefix) :ok)
+        (equal (cpl-test-verdict (fn-arx-trailer-nat (fn-cpl-trailer '(1 2 3))) read prefix)
+               :trailer)
+        (equal (cpl-test-verdict commit read (update-nth 38 77 prefix)) :digest))))

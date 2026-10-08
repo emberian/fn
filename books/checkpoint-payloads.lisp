@@ -8,7 +8,9 @@
 ;
 ; The file is a concatenation of FRAMES.  A frame is the schema-3 segment
 ; codec's one frame (books/store-checkpoint-codec.lisp fn-scc-frames) of one
-; payload, index 0 of count 1, sequence 0, chained from the genesis trailer: it
+; payload, index 0 of count 1, sequence 0, with an EMPTY chain (prev = nil): its trailer is the frame digest of
+; header ++ payload, the log entry's own frame check (fn-frame-digest of the
+; protected prefix), so the extent path verifies it unchanged; it
 ; is self-contained, so a frame is read and verified at its own offset.
 ; A ref is (offset len) as in books/checkpoint-payload-ref.lisp, offset the
 ; payload's first octet (the frame's start + 37), len its octet count; the frame
@@ -20,6 +22,11 @@
 ;     the frame, the extent digest check.)
 ;   `fn-cpl-plan L payloads': the append plan for a delta: the frames' octets
 ;     and the refs, at offset L.
+; FACT, not defect: the reclaim plan copies a payload once per live REF; records
+; do not share payloads today, and sharing (dedup) is CPL-DEDUP if ever wanted.
+; The frame costs 69 octets (37 header + 32 trailer), so the compacted file is
+; the live payload octets plus 69 per live ref.
+;
 ;   `fn-cpl-compact file refs': the reclaim plan: the live payloads' frames in
 ;     a fresh file, and the ref map.
 
@@ -34,7 +41,7 @@
 
 (defun fn-cpl-frame (payload)
   (declare (xargs :guard (true-listp payload) :verify-guards nil))
-  (car (fn-scc-frames (list payload) 0 1 0 *fn-scc-genesis*)))
+  (car (fn-scc-frames (list payload) 0 1 0 nil)))
 
 ; (fn-cpl-frame-octets n) is books/checkpoint-payload-ref.lisp's: 37 + n + 32.
 
@@ -52,11 +59,11 @@
   (+ (fn-cpl-ref-offset ref) (fn-cpl-ref-len ref) *fn-frame-trailer-octets*))
 
 ; The payload a frame SEG answers for REF: SEG is well-formed at index 0 of 1,
-; sequence 0, chained from the genesis trailer (its trailer verifies), and
+; sequence 0, empty chain (its trailer verifies), and
 ; carries LEN octets.
 (defun fn-cpl-open-seg (ref seg)
   (declare (xargs :guard (and (true-listp ref) (true-listp seg)) :verify-guards nil))
-  (let ((o (fn-scc-open-segment seg 0 1 0 *fn-scc-genesis*)))
+  (let ((o (fn-scc-open-segment seg 0 1 0 nil)))
     (and o (equal (len (car o)) (fn-cpl-ref-len ref))
          (list (car o)))))
 
@@ -105,11 +112,11 @@
       (+ (fn-cpl-frame-octets (len (car ps))) (fn-cpl-delta-octets (cdr ps)))
     0))
 
-; The frame's 32-octet trailer: the digest over the genesis chain, the header
+; The frame's 32-octet trailer: the digest over the header
 ; and the payload.  A function of the payload alone (index 0 of 1, sequence 0).
 (defun fn-cpl-trailer (p)
   (declare (xargs :guard (true-listp p) :verify-guards nil))
-  (fn-scc-seal *fn-scc-genesis* (fn-scc-header 0 1 (len p) 0) p))
+  (fn-scc-seal nil (fn-scc-header 0 1 (len p) 0) p))
 
 (defun fn-cpl-trailers (ps)
   (declare (xargs :guard (true-list-listp ps) :verify-guards nil))
@@ -190,7 +197,7 @@
  (defthm cpl-frame-shape
    (equal (fn-cpl-frame p)
           (let ((h (fn-scc-header 0 1 (len p) 0)))
-            (append h p (fn-scc-seal *fn-scc-genesis* h p))))
+            (append h p (fn-scc-seal nil h p))))
    :hints (("Goal" :in-theory (enable fn-cpl-frame fn-scc-frames)))))
 
 (local
@@ -252,9 +259,9 @@
 (local
  (defthm cpl-seal-facts
    (implies (and (fn-scc-octet-listp h) (fn-scc-octet-listp p))
-            (and (fn-scc-octet-listp (fn-scc-seal *fn-scc-genesis* h p))
-                 (equal (len (fn-scc-seal *fn-scc-genesis* h p)) 32)))
-   :hints (("Goal" :use ((:instance cpl-seal-facts-gen (q *fn-scc-genesis*)))))))
+            (and (fn-scc-octet-listp (fn-scc-seal nil h p))
+                 (equal (len (fn-scc-seal nil h p)) 32)))
+   :hints (("Goal" :use ((:instance cpl-seal-facts-gen (q nil)))))))
 
 (local (defthm cpl-u64-len (equal (len (fn-scc-u64 n k)) (nfix k))
          :hints (("Goal" :in-theory (enable fn-scc-u64)))))
@@ -296,27 +303,27 @@
             :use ((:instance cpl-seal-facts (h (fn-scc-header 0 1 (len p) 0)) (p p))
                   (:instance cpl-octets-append
                              (a p)
-                             (b (fn-scc-seal *fn-scc-genesis* (fn-scc-header 0 1 (len p) 0) p)))
+                             (b (fn-scc-seal nil (fn-scc-header 0 1 (len p) 0) p)))
                   (:instance cpl-octets-append
                              (a (fn-scc-header 0 1 (len p) 0))
-                             (b (append p (fn-scc-seal *fn-scc-genesis*
+                             (b (append p (fn-scc-seal nil
                                                        (fn-scc-header 0 1 (len p) 0) p)))))))))
 
 (local (defthm cpl-chunks-0 (equal (fn-scc-chunks p 0) (list p))
          :hints (("Goal" :in-theory (enable fn-scc-chunks)))))
 (local (defthm cpl-frames-1
-         (equal (fn-scc-frames (list p) 0 1 0 *fn-scc-genesis*) (list (fn-cpl-frame p)))
+         (equal (fn-scc-frames (list p) 0 1 0 nil) (list (fn-cpl-frame p)))
          :hints (("Goal" :in-theory (enable fn-cpl-frame fn-scc-frames)))))
 
 (local
  (defthm cpl-frame-opens
    (implies (fn-cpl-payloadp p)
-            (and (fn-scc-open-segment (fn-cpl-frame p) 0 1 0 *fn-scc-genesis*)
-                 (equal (car (fn-scc-open-segment (fn-cpl-frame p) 0 1 0 *fn-scc-genesis*)) p)))
+            (and (fn-scc-open-segment (fn-cpl-frame p) 0 1 0 nil)
+                 (equal (car (fn-scc-open-segment (fn-cpl-frame p) 0 1 0 nil)) p)))
    :hints (("Goal" :do-not-induct t
-            :use ((:instance fn-scc-join-of-chunks (seg 0) (q 0) (prev *fn-scc-genesis*))
+            :use ((:instance fn-scc-join-of-chunks (seg 0) (q 0) (prev nil))
                   (:instance cpl-join-single (seg (fn-cpl-frame p)) (q 0)
-                             (prev *fn-scc-genesis*) (x p))
+                             (prev nil) (x p))
                   (:instance cpl-frame-octets-p))
             :in-theory (e/d (fn-cpl-payloadp cpl-chunks-0 cpl-frames-1)
                             (fn-cpl-frame fn-scc-frames fn-scc-open-segment
@@ -573,7 +580,7 @@
                  (equal (len (car (fn-cpl-open-seg ref seg))) (fn-cpl-ref-len ref))))
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-scc-open-segment-chunk-octets (index 0) (count 1)
-                             (sequence 0) (prev *fn-scc-genesis*)))
+                             (sequence 0) (prev nil)))
             :in-theory (e/d (fn-cpl-open-seg)
                             (fn-scc-open-segment fn-scc-open-segment-chunk-octets))))))
 
@@ -732,8 +739,7 @@
          :hints (("Goal" :induct (nthcdr k a)))))
 
 ; The frame's last 32 octets, wherever the frame sits in a file.
-(local
- (defthm fn-cpl-trailer-in-file
+(defthm fn-cpl-trailer-in-file
    (implies (and (true-listp pre) (true-listp post) (fn-cpl-payloadp p))
             (equal (take 32 (nthcdr (+ (len pre) 37 (len p))
                                     (append pre (fn-cpl-frame p) post)))
@@ -747,7 +753,7 @@
             :in-theory (e/d (fn-cpl-frame-octets)
                             (cpl-nthcdr-sum cpl-nthcdr-app cpl-frame-trailer-at
                                             fn-cpl-trailer-shape fn-cpl-frame-len
-                                            cpl-take-len-append cpl-take-append))))))
+                                            cpl-take-len-append cpl-take-append)))))
 
 (local
  (defthm cpl-trailers-step
@@ -1036,3 +1042,46 @@
 (verify-guards fn-cpl-trailer-words-impl
   :hints (("Goal" :use (fn-cpl-trailer-shape)
            :in-theory (e/d (fn-cpl-trailer-word-count) (fn-cpl-trailer-shape fn-cpl-trailer)))))
+
+; -----------------------------------------------------------------------------
+; 10. The read bridge: a frame in the payload file is a log-entry frame the
+; extent path verifies unchanged.
+;
+; The extent realizer (host/native/extent.lisp fnn-extent-entry) reads the
+; entry's protected prefix [EOFF, EOFF+ELEN) into a buffer and the 32 octets
+; after it, and decides fn-arx-entry-verdict-buffer: :ok exactly when the
+; frame digest of the prefix is the trailer read and the trailer is the
+; descriptor's commitment.  A payload frame is that entry: the prefix is
+; header ++ payload (EOFF = ref offset - 37, ELEN = 37 + len, POFF = 37,
+; PLEN = len) and the trailer is the frame digest of the prefix, because the
+; chain is empty.
+
+(defun fn-cpl-prefix (p)
+  (declare (xargs :guard (true-listp p) :verify-guards nil))
+  (append (fn-scc-header 0 1 (len p) 0) p))
+
+(defthm fn-cpl-trailer-is-the-frame-digest
+  (implies (fn-cpl-payloadp p)
+           (equal (fn-cpl-trailer p) (fn-frame-digest (fn-cpl-prefix p))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance cpl-octets-append (a (fn-scc-header 0 1 (len p) 0)) (b p))
+                 (:instance cpl-cbor-octets (x (append (fn-scc-header 0 1 (len p) 0) p)))
+                 (:instance fn-frame-trailer-of-octets
+                            (octets (append (fn-scc-header 0 1 (len p) 0) p))))
+           :in-theory (e/d (fn-cpl-trailer fn-cpl-prefix fn-cpl-payloadp fn-scc-seal)
+                           (cpl-octets-append cpl-cbor-octets fn-frame-trailer-of-octets
+                                              fn-scc-header)))))
+
+(defthm fn-cpl-prefix-in-file
+  (implies (and (true-listp pre) (true-listp post) (fn-cpl-payloadp p))
+           (equal (take (+ 37 (len p))
+                        (nthcdr (len pre) (append pre (fn-cpl-frame p) post)))
+                  (fn-cpl-prefix p)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance cpl-take-append (a (fn-cpl-prefix p))
+                            (b (append (fn-scc-seal nil (fn-scc-header 0 1 (len p) 0) p) post))
+                            (k (+ 37 (len p)))))
+           :in-theory (e/d (fn-cpl-prefix cpl-frame-shape)
+                           (cpl-take-append fn-scc-header fn-scc-seal
+                                            fn-cpl-trailer-is-the-frame-digest)))))
+
