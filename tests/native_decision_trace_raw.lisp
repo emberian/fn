@@ -69,6 +69,42 @@
 (check "off: nothing to note" (null (fnn-dtrace-drain 0 10)))
 (check "enabled-p is nil off" (not (fnn-dtrace-enabled-p)))
 
+;;; ---- OFF: a fixed callback site (fnn-core-mv) allocates nothing and pays no
+;;; closure or funcall.  Measured with tracing off over 10,000 calls of a site in
+;;; a compiled loop; the bound is ZERO octets (the loop returns fixnums, and the
+;;; harness itself is outside the measured form).  FN_DT_RAW_MUTATION=flet
+;;; redefines the macro as O1's first expansion (an flet closed over the call,
+;;; handed to a funcall), which allocates a closure per call: this must go red.
+(when (equal *mutation* "flet")
+  (defmacro fnn-core-mv (name call)
+    (let ((outcome (gensym "OUTCOME")) (condition (gensym "CONDITION")) (run (gensym "RUN")))
+      `(flet ((,run ()
+                (let ((,outcome :thrown))
+                  (multiple-value-prog1
+                      (catch 'raw-ev-fncall
+                        (handler-case (multiple-value-prog1 ,call (setq ,outcome :ok))
+                          (serious-condition (,condition) (setq ,outcome ,condition) nil)))
+                    (case ,outcome
+                      (:ok nil)
+                      (:thrown (fnn-fixed-callback-fail ,name :raw-callback-escaped nil))
+                      (otherwise (fnn-fixed-callback-fail ,name :raw-callback-failed ,outcome)))))))
+         (if *fnn-dtrace* (fnn-dtrace-around-mv-traced ,name #',run) (funcall #',run))))))
+(defun mv-site-loop (n)
+  (declare (fixnum n))
+  (let ((sum 0))
+    (declare (fixnum sum))
+    (dotimes (i n sum)
+      (multiple-value-bind (a b) (fnn-core-mv 'mock-untraced (values i 1))
+        (declare (fixnum a b))
+        (setq sum (logand (+ sum a b) #xffff))))))
+(mv-site-loop 100)
+(sb-ext:gc :full t)
+(let* ((b0 (sb-ext:get-bytes-consed)) (ignore (mv-site-loop 10000))
+       (delta (- (sb-ext:get-bytes-consed) b0)))
+  (declare (ignore ignore))
+  (format t "DT_CORE_MV_OFF_ALLOC delta=~d~%" delta)
+  (check "off: a fnn-core-mv site allocates no closure (0 octets over 10,000 calls)" (zerop delta)))
+
 ;;; ---- ON, an untraced name allocates what off allocates (no clock, no row).
 (defun calls (name n) (dotimes (i n) (fnn-call name i)))
 (calls 'mock-untraced 100)

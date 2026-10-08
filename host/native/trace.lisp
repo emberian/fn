@@ -402,11 +402,6 @@ returned unchanged."
           (values-list vals))
       (funcall thunk))))
 
-(defmacro fnn-dtrace-around-mv (name thunk)
-  `(if *fnn-dtrace*
-       (fnn-dtrace-around-mv-traced ,name ,thunk)
-     (funcall ,thunk)))
-
 (defun fnn-dtrace-snapshot (ring since limit)
   "Under the ring lock: free the rows at most SINCE, copy the next LIMIT live
 rows and the counters.  Everything that formats runs after this returns."

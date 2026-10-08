@@ -78,6 +78,11 @@ class RawRing(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("NATIVE_DECISION_TRACE_PASS", result.stdout)
 
+    def test_mutation_closure_expansion_of_core_mv_turns_the_off_cost_tooth_red(self):
+        result = self.run_raw("flet")
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("FAIL: off: a fnn-core-mv site allocates no closure", result.stdout + result.stderr)
+
     def test_the_drained_lines_are_the_one_parsers(self):
         result = self.run_raw()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
