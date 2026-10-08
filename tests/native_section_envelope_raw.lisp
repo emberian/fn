@@ -48,6 +48,7 @@ defconst becomes a defparameter and its defun loses its xargs declaration."
                        (define-condition fnn-os-error)
                        (defvar *fnn-native-observer*) (defvar *fnn-native-actor-identity*)
                        (defmacro fnn-with-observed-mutex)
+                       (defmacro fnn-guarded-by)
                        (defvar *fnn-section-step*)
                        (defun fnn-condition-class)
                        (defun fnn-refuse)

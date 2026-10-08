@@ -2345,7 +2345,15 @@ recognise is a host fault."
                 (coerce (fnn-owner-gate-waiting gate) 'list))
     (setf (fnn-owner-gate-sched gate) sched
           (fnn-owner-gate-turn gate) (and class (fnn-owner-class-index class)))
-    (sb-thread:condition-broadcast (fnn-owner-gate-ready gate))))
+    ;; Wake the waiters only when ACL2 named a class: a nil answer while
+    ;; waiters sit (a commit in flight shuts out transit) changes nothing
+    ;; they could act on, and a broadcast made each of them re-pick and
+    ;; re-broadcast for as long as the disk was busy.  What changes ACL2's
+    ;; answer is always a :commit quantum (every fnn-owner-commit-event runs
+    ;; inside one), whose gate-leave picks again here; an entering thread
+    ;; picks for itself while no turn is set; an abort broadcasts on its own.
+    (when class
+      (sb-thread:condition-broadcast (fnn-owner-gate-ready gate)))))
 
 (defun fnn-owner-gate-enter (gate class)
   "Wait at the gate as CLASS until admitted; return the wait in milliseconds.
