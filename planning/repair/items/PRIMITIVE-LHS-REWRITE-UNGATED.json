@@ -1,0 +1,13 @@
+{
+ "category": "checker",
+ "file": "tools/theory_check.py",
+ "id": "PRIMITIVE-LHS-REWRITE-UNGATED",
+ "note": "Gap made by deleting tools/hazard_rules_check.py (it read only a world dump nothing produced, so it never ran). Measured cost of the class: 13M rule attempts for 402 prover steps took one host guard proof past the 900 s certify limit (books/owner-queued-work, books/failure-scope; CONVERGE-1 red 1). The 63 books already carrying the --disable event are fixed; a NEW such rule is not caught. Route if un-deferred: a tools/theory_check.py mode over source forms (tools/lisp_rewrite.py reader): a defthm/defthmd with no :rule-classes or with :rewrite, whose conclusion's left-hand side is one of the heads above applied to distinct variables, and that is not disabled by the book's exported in-theory event, is a finding; shrink-only through tools/ratchet.py; wired into make check. Un-defer when a certify stall or proof-cost regression is traced to such a rule.",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "medium",
+ "source": "parsimony cut (c), lane/checker-fold-dead aeb4905df",
+ "state": "deferred",
+ "title": "No check catches a new :rewrite rule whose left-hand side is a primitive applied to variables (car, cdr, consp, nth, len, member-equal, assoc-equal, equal, <, binary-+), the class behind the 2026-10-07 attach-order stall",
+ "updated": "2026-10-07T22:12:58Z"
+}

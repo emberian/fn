@@ -36324,8 +36324,7 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-bph-extended-reservation-holds-bp-sessions",
-          "via": "fn-bpsp-node-capacity"
+          "theorem": "fn-bph-extended-reservation-holds-bp-sessions"
         }
       ],
       "extraction": null,
