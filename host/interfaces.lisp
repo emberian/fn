@@ -845,10 +845,16 @@
 (definterface fn-och-held-event
   :class :common-lisp-compliant)
 
-(definterface fn-otm-held-event
+(definterface fn-otm-held-plan
   :class :common-lisp-compliant
-  :keystones (fn-otm-held-event-is-the-held-step
-              fn-otm-held-event-without-a-held-batch-is-the-commit-event))
+  :kinds ()
+  :keystones (fn-otm-held-plan-labels-every-effect
+              fn-otm-held-plan-no-member-drain-is-off-owner))
+
+(definterface fn-och-frames-event
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-och-frames-held-until-the-job-returns))
 
 (definterface fn-otm-held-committer-wake
   :class :common-lisp-compliant

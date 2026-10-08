@@ -1,14 +1,21 @@
 {
- "id": "LOCK-HELD-COMMIT-TEST-HOLD-ROWS",
- "category": "lock-discipline",
- "file": "host/native/owner.lisp",
- "owner": "deputy-C",
- "severity": "low",
- "state": "open",
- "source": "lane commit-held-host natives (Sonnet chh-natives, 2026-10-08)",
- "title": "The held commit moves the developer-image test-hold hooks' R2 rows (fnn-owner-feed-append-locked O:sleep, O:probe-file) to new reaching paths: count 10 -> 18, and the fnn-owner-batch-fence pair goes stale",
- "detail": "R2|fnn-owner-feed-append-locked|O:sleep and |O:probe-file are the developer image's test-hold hooks (a production image never selects them). With ruling 19's held commit (fnn-owner-held-start -> fnn-owner-frames-job -> fnn-owner-feed-write-batch) the same leaves are reached from 18 sites instead of 10, and the two rows reached through fnn-owner-batch-fence go stale. Same leaves, same hooks, no new production I/O under O: a relocation, like LOCK-PGS-FILL-FRAME-ROWS.",
- "fix": "Integrator decision: accept the relocation (lower the stale pair with --lower-stale; the count rise on the two hook rows needs an explicit decision because the baseline is never raised by a lane), or move the developer test-hold off O (the hook pauses a quantum on purpose; moving it changes what the crash tests exercise).",
- "notes": [],
- "updated": "2026-10-08T05:55:25Z"
+  "id": "LOCK-HELD-COMMIT-TEST-HOLD-ROWS",
+  "category": "lock-discipline",
+  "file": "host/native/owner.lisp",
+  "owner": "commit-held-host",
+  "severity": "high",
+  "state": "ready",
+  "source": "lane commit-held-host natives (Sonnet chh-natives, 2026-10-08)",
+  "title": "Label and execute the no-member held drain off the owner before submission",
+  "detail": "Gap: fn-och-run omitted the :frames job owed by a START that kept no log member. fnn-owner-held-start consequently ran fnn-owner-frames-job under O before :submit. This is feed-journal I/O, including its barrier, not merely relocated test hooks.",
+  "fix": "Prop: the host-called held plan labels every effect :owner or :off, and :off exactly for the queued-work I/O phases. The no-member START holds the caller in :staged, emits (:off . :intents), and submits only after that frames job returns :done. The existing held model is extended, with defteeth positive and owner-labelled-append mutation witnesses; the host executes the plan across two quanta. BODY expands once. No baseline or contract raise.",
+  "notes": [
+    "Codex commit-held-host, lock round: fn-och-step holds :started-none-held as :frames/:staged; fn-otm-held-plan emits (:off . :intents). fn-och-run and fn-och-inline now include the omitted frames-only job. fn-och-frames-event maps done/uncertain/fault to distinct receipts; only done submits.",
+    "Host: fnn-owner-held-start captures the frames job, fnn-owner-held-frames-wait executes its labelled effect off O, fnn-owner-held-frames-complete classifies its receipt under O. Both START outcomes use quantum 2, so fnn-owner-held-commit expands BODY once. fnn-owner-drain-one takes explicit effect callbacks; START supplies capture-only callbacks, replacing the hidden *fnn-owner-job* routing. No checker/contract exemption and no baseline edits.",
+    "Proof REPL: chh-lock admitted all owner-commit-held events; chh-compose loaded owner-time-reconfig with changed owner-commit-held and owner-time-held from source. New label, no-member hold, receipt and crash statements have defteeth positive/removal/mutation witnesses. Updated owner-commit-held-tests (25 forms) and owner-time-held-tests (30 forms, including defteeth-check) pass in chh-compose. Admission only; no record-toolchain certification claimed.",
+    "Lock gate: 66 NEW keys, 4 stale; NEW difference from /Users/ember/dev/fn/build/coordinator/lanedumps/lock-dev-keys.txt is []. Feed append O:probe-file=9 (baseline 10), O:sleep=18 (baseline 20). Stale rows were not lowered. Lock unit tests: 295 OK, including real-macro fixture and move-frames-under-O ablation.",
+    "Host read/load 0 findings; interface check 0 findings (existing unresolved tariff keystone remains); extract/world --check rc 0. native_program_check PASS includes held boundaries and FNFD crash transitions; 33 native-program unit tests pass. Raw SBCL host test: 6 success/failure/refused-entry scenarios pass.",
+    "C convergence natives: slow_disk, bp_app_clock, bp_transit_identity, hybrid_author, operator_campaign, post_seal_gate, owner_scheduler, owner_offlock (feed barriers and refused drains). No image build or native execution in this lane. Edits deliberately uncommitted per current user instruction."
+  ],
+  "updated": "2026-10-08T11:01:24.568474+00:00"
 }
