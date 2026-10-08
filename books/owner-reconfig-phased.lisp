@@ -39,6 +39,8 @@
 ; stage's word), AUTH (fn-oclc-live-authorizep's), OBSERVE, PUBLISH (the
 ; publication's outcome), VERDICT (fn-oclc-publish's), FEEDS (one
 ; (PEER . WORD) per newly configured peer).
+;   R0 fn-orp-step-runs-the-phased-run: the host's loop over fn-orp-step (the
+;      function it calls), fed the effects' observations, runs fn-orp-run.
 ;   R1 fn-orp-phased-keeps-the-durable-effects: the phased run's durable
 ;      effects (:publish and each :feed-io), in order, are the inline run's,
 ;      under every W.
@@ -343,3 +345,127 @@
          (implies (and (equal answer :refuse) (member-equal :reserve effects))
                   (member-equal :release (fn-orp-before :unstage effects)))
          (not (and (member-equal :convert effects) (member-equal :release effects))))))
+
+(defun fn-orp-replay-peers (peers)
+  (declare (xargs :guard t))
+  (if (consp peers)
+      (cons (cons :feed-replay (car peers)) (fn-orp-replay-peers (cdr peers)))
+    nil))
+
+(defun fn-orp-peers (feeds)
+  (declare (xargs :guard t))
+  (if (consp feeds)
+      (cons (fn-orp-car (car feeds)) (fn-orp-peers (cdr feeds)))
+    nil))
+
+; -----------------------------------------------------------------------------
+; The step the host calls.  The host holds PHASE; it calls
+; (fn-orp-step PHASE RESERVE EVENT) with what the effects it last ran
+; observed, and runs the effects answered, in order, each where its label
+; says, until PHASE is :done.  The events: :go to begin; the stage's word;
+; :authorized or :unauthorized (fn-oclc-live-authorizep); the observation's,
+; the publication's and the completion's words; in window B (:feed PEER)
+; before each newly configured peer's journal, then its word; :feeds-done
+; after the last.
+(defun fn-orp-step (phase reserve event)
+  (declare (xargs :guard t))
+  (cond
+   ((eq phase :start)
+    (if (eq event :go) (mv '((:owner . :stage)) :staging) (mv '((:owner . :fault)) :done)))
+   ((eq phase :staging)
+    (if (eq event :staged)
+        (mv '((:owner . :authorize)) :authorizing)
+      (mv '((:owner . :continue) (:owner . :refuse)) :done)))
+   ((eq phase :authorizing)
+    (if (eq event :authorized)
+        (mv (if reserve '((:owner . :reserve) (:off . :observe)) '((:off . :observe)))
+            :observing)
+      (mv '((:owner . :unstage) (:owner . :continue) (:owner . :refuse)) :done)))
+   ((eq phase :observing)
+    (cond ((eq event :ok) (mv '((:off . :publish)) :publishing))
+          ((eq event :refused) (mv (fn-orp-refused-in-q2 reserve) :done))
+          (t (mv '((:owner . :fault)) :done))))
+   ((eq phase :publishing)
+    (cond ((eq event :durable) (mv '((:owner . :complete)) :completing))
+          ((eq event :refused) (mv (fn-orp-refused-in-q2 reserve) :done))
+          ((eq event :uncertain) (mv '((:owner . :fence)) :done))
+          (t (mv '((:owner . :fault)) :done))))
+   ((eq phase :completing)
+    (if (eq event :durable)
+        (mv '((:owner . :refresh)) (list :feeding))
+      (mv '((:owner . :fence)) :done)))
+   ;; (:feeding . DONE): the peers whose journals returned, in order.
+   ((and (consp phase) (eq (car phase) :feeding))
+    (cond ((and (consp event) (eq (car event) :feed))
+           (mv (list (list* :off :feed-io (fn-orp-car (cdr event))))
+               (list* :feed-io (fn-orp-car (cdr event)) (cdr phase))))
+          ((eq event :feeds-done)
+           (mv (fn-orp-label :owner
+                             (append (fn-orp-replay-peers (cdr phase))
+                                     (if reserve '(:install :convert :continue :accept)
+                                       '(:install :continue :accept))))
+               :done))
+          (t (mv '((:owner . :fault)) :done))))
+   ;; (:feed-io PEER . DONE): PEER's journal I/O ran; EVENT is its word.
+   ((and (consp phase) (eq (car phase) :feed-io))
+    (cond ((eq event :ok)
+           (mv nil (cons :feeding (append (true-list-fix (fn-orp-cdr (cdr phase)))
+                                          (list (fn-orp-car (cdr phase)))))))
+          ((eq event :uncertain) (mv '((:owner . :fence)) :done))
+          (t (mv '((:owner . :fault)) :done))))
+   (t (mv '((:owner . :fault)) :done))))
+
+(defun fn-orp-trace (phase reserve events)
+  (declare (xargs :guard t :measure (acl2-count events)))
+  (if (or (atom events) (eq phase :done))
+      nil
+    (mv-let (effects next) (fn-orp-step phase reserve (car events))
+      (append effects (fn-orp-trace next reserve (cdr events))))))
+
+; The host's observations for the six answers.
+(defun fn-orp-feed-events (feeds)
+  (declare (xargs :guard t))
+  (if (consp feeds)
+      (list* (list :feed (fn-orp-car (car feeds)))
+             (fn-orp-cdr (car feeds))
+             (fn-orp-feed-events (cdr feeds)))
+    '(:feeds-done)))
+
+(defun fn-orp-events (stage auth observe publish verdict feeds)
+  (declare (xargs :guard t))
+  (list* :go stage (if auth :authorized :unauthorized) observe publish verdict
+         (fn-orp-feed-events feeds)))
+
+; Window B's loop, from any peers already done.
+(local (defthm fn-orp-replay-peers-of-append
+  (equal (fn-orp-replay-peers (append a b))
+         (append (fn-orp-replay-peers a) (fn-orp-replay-peers b)))))
+(local (defthm fn-orp-feeds-replay-is-replay-peers
+  (equal (fn-orp-feeds-replay feeds) (fn-orp-replay-peers (fn-orp-peers feeds)))))
+(local (defthm fn-orp-append-assoc
+  (equal (append (append a b) c) (append a (append b c)))))
+(local (defthm fn-orp-true-list-fix-of-true-list (implies (true-listp x) (equal (true-list-fix x) x))))
+(local (defun fn-orp-feed-ind (done feeds)
+  (if (consp feeds)
+      (fn-orp-feed-ind (append done (list (fn-orp-car (car feeds)))) (cdr feeds))
+    done)))
+(local (defthm fn-orp-trace-of-feeding
+  (implies (true-listp done) (equal (fn-orp-trace (cons :feeding done) reserve (fn-orp-feed-events feeds))
+         (append (fn-orp-label :off (fn-orp-feeds-io feeds))
+                 (fn-orp-label :owner
+                               (let ((final (fn-orp-feeds-final feeds)))
+                                 (cond ((eq final :ok)
+                                        (append (fn-orp-replay-peers (append done (fn-orp-peers feeds)))
+                                                (if reserve '(:install :convert :continue :accept)
+                                                  '(:install :continue :accept))))
+                                       ((eq final :uncertain) '(:fence))
+                                       (t '(:fault))))))))
+  :hints (("Goal" :induct (fn-orp-feed-ind done feeds)))))
+
+; KEYSTONE R0.  The host's loop over fn-orp-step, fed what the effects
+; observed, runs exactly the phased run.  The subject is fn-orp-step, the
+; function the host's wrapper calls (host side: lane commit-held-host's
+; successor, C).
+(defthm fn-orp-step-runs-the-phased-run
+  (equal (fn-orp-trace :start reserve (fn-orp-events stage auth observe publish verdict feeds))
+         (fn-orp-run reserve stage auth observe publish verdict feeds)))

@@ -91,3 +91,24 @@
    (and (member-equal :reserve e) (not (member-equal :convert e)) (not (member-equal :release e)))))
 (assert-event
  (not (member-equal :reserve (strip-cdrs (fn-orp-run nil :staged t :ok :durable :durable nil)))))
+
+; R0 witnesses: the host's loop over fn-orp-step on a ground stream of
+; observations.
+(assert-event
+ (equal (fn-orp-trace :start t (fn-orp-events :staged t :ok :durable :durable '(("a" . :ok))))
+        (fn-orp-run t :staged t :ok :durable :durable '(("a" . :ok)))))
+(assert-event
+ (equal (fn-orp-trace :start nil '(:go :staged :authorized :ok :durable :durable
+                                   (:feed "a") :ok (:feed "b") :ok :feeds-done))
+        (fn-orp-run nil :staged t :ok :durable :durable '(("a" . :ok) ("b" . :ok)))))
+; R0 teeth: the step answers only the stream it expects.  A :feeds-done
+; while a journal's word is still owed faults rather than installing, and a
+; completion word sent while the publication is still running faults too.
+(assert-event
+ (equal (fn-orp-trace :start nil '(:go :staged :authorized :ok :durable :durable
+                                   (:feed "a") :feeds-done))
+        '((:owner . :stage) (:owner . :authorize) (:off . :observe) (:off . :publish)
+          (:owner . :complete) (:owner . :refresh) (:off :feed-io . "a") (:owner . :fault))))
+(assert-event
+ (mv-let (effects next) (fn-orp-step :observing nil :durable)
+   (and (equal effects '((:owner . :fault))) (equal next :done))))
