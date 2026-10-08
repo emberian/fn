@@ -462,11 +462,13 @@
                  (:instance fn-scka-intern-at-bad-iff (ws (append ws vs)) (h 0)
                             (id (fn-stxk-initial-context 0)))))))
 
-; KEYSTONE (the open).  The two together: from the checkpoint of a prefix WS
-; and its canonical arena, the recover over the suffix VS is the full recover
-; of WS ++ VS from the emptied arena -- the same extended capture and the same
-; arena -- when the whole history folds.
-(defthm fn-scka-recover-from-checkpoint-is-full-recover
+; The two together, on two arenas: from the checkpoint of a prefix WS and its
+; canonical arena, the recover over the suffix VS is the full recover of
+; WS ++ VS from the emptied arena -- the same extended capture and the same
+; arena -- when the whole history folds.  The keystone below states it against
+; the pure full recover on one live arena; this is the bridge that keeps the
+; two-arena claim a theorem.
+(defthm fn-scka-recover-from-checkpoint-is-full-recover-two-arenas
   (implies (and (true-listp ws)
                 (not (equal (fn-scka-intern-at (append ws vs) (fn-stxk-initial-context 0) 0) :bad)))
            (equal (fn-scka-recover-rows
@@ -485,6 +487,122 @@
                             (records vs) (fn-arena (fn-scka-payloads ws)))
                  (:instance fn-scka-recover-rows-pair
                             (c (fn-sco-capture configs nil)) (records (append ws vs)) (fn-arena nil))))))
+
+; The full recover as a pure function: the worker's fold from the initial
+; context over RECORDS, the capture of no records extended over its rows, and
+; the arena the worker leaves (the canonical payloads).  Proved equal to
+; fn-scka-recover-rows from the emptied arena (fn-scka-full-recover-is-the-
+; emptied-arena-recover), so the reference is the host's own path.
+(defun fn-scka-full-recover (configs records)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((acc (fn-scka-fold-at (fn-ssr-seed (fn-stxk-initial-context 0)) records 0)))
+    (if (eq acc :bad)
+        (list :bad nil)
+      (list (fn-sco-extend (fn-sco-capture configs nil) configs (fn-ssr-rows acc))
+            (fn-scka-payloads records)))))
+
+(defthm fn-scka-full-recover-is-the-emptied-arena-recover
+  (implies (not (equal (fn-scka-intern-at records (fn-stxk-initial-context 0) 0) :bad))
+           (equal (fn-scka-recover-rows (fn-sco-capture configs nil) configs records nil)
+                  (fn-scka-full-recover configs records)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-scka-recover-rows fn-scka-full-recover fn-scka-intern-at-bad-iff)
+                           (fn-ssr-intern-step fn-ssr-seed fn-ssr-rows fn-sco-extend fn-sco-capture
+                            fn-scka-intern-at fn-scka-fold-at fn-sco-identity
+                            fn-replay-identity-loop))
+           :use ((:instance fn-scka-fold-at-is-the-ssr-step
+                            (acc (fn-ssr-seed (fn-stxk-initial-context 0))) (dicts nil)
+                            (fn-arena nil))
+                 (:instance fn-scka-fold-at-arena-is-payloads
+                            (acc (fn-ssr-seed (fn-stxk-initial-context 0))) (ws records)
+                            (dicts nil) (fn-arena nil))
+                 (:instance fn-scka-identity-of-capture (records nil))
+                 (:instance fn-scka-intern-at-bad-iff (ws records) (h 0)
+                            (id (fn-stxk-initial-context 0)))))))
+
+;; The first component of the recover depends on the arena only through its
+; count (the handles continue from it): fn-scka-fold-at-is-the-ssr-step.
+(local
+ (defthm fn-scka-recover-rows-first-depends-on-the-count
+   (implies (equal (len a1) (len a2))
+            (equal (mv-nth 0 (fn-scka-recover-rows c configs records a1))
+                   (mv-nth 0 (fn-scka-recover-rows c configs records a2))))
+   :hints (("Goal" :in-theory (e/d (fn-scka-recover-rows)
+                                   (fn-ssr-intern-step fn-ssr-seed fn-ssr-rows fn-sco-extend
+                                    fn-scka-fold-at fn-sco-identity))
+            :use ((:instance fn-scka-fold-at-is-the-ssr-step
+                             (acc (fn-ssr-seed (fn-sco-identity c))) (ws records) (dicts nil)
+                             (fn-arena a1))
+                  (:instance fn-scka-fold-at-is-the-ssr-step
+                             (acc (fn-ssr-seed (fn-sco-identity c))) (ws records) (dicts nil)
+                             (fn-arena a2)))))))
+
+; The rows of the full recover, from the emptied arena, are the pure
+; reference's (a refusal is :bad on both sides).
+(defthm fn-scka-full-recover-rows-are-the-emptied-arena-recover
+  (equal (mv-nth 0 (fn-scka-recover-rows (fn-sco-capture configs nil) configs records nil))
+         (car (fn-scka-full-recover configs records)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-scka-recover-rows fn-scka-full-recover)
+                           (fn-ssr-intern-step fn-ssr-seed fn-ssr-rows fn-sco-extend fn-sco-capture
+                            fn-scka-fold-at fn-sco-identity fn-replay-identity-loop))
+           :use ((:instance fn-scka-fold-at-is-the-ssr-step
+                            (acc (fn-ssr-seed (fn-stxk-initial-context 0))) (ws records)
+                            (dicts nil) (fn-arena nil))
+                 (:instance fn-scka-identity-of-capture (records nil))))))
+
+; KEYSTONE (the open), one live arena: from the checkpoint of a prefix WS --
+; the capture of its fold-context rows, which exists exactly when that fold is
+; not refused: the writer builds a checkpoint only from canonical rows that
+; are not :bad (fn-scka-next-checkpoint answers :bad otherwise, and
+; fn-scka-next-checkpoint-is-capture is stated under that hypothesis) -- and
+; the loaded arena (its count is the prefix's canonical payload count), the
+; recover over the suffix VS, seeded from the checkpoint's identity, answers
+; what the pure full recover of WS ++ VS answers: the same extended capture
+; (so fn-store-sn-open-extended opens the same store, with the same verdict
+; generations) or :bad on both.  No hypothesis on the suffix and none on a
+; keyring snapshot in the history.  The arena it leaves is the full recover's
+; under "the whole history folds": fn-scka-recover-arena-from-checkpoint-is-
+; full-recover; the two together on two arenas, the host's own two calls:
+; fn-scka-recover-from-checkpoint-is-full-recover-two-arenas.
+(defthm fn-scka-recover-from-checkpoint-is-full-recover
+  (implies (and (true-listp ws)
+                (not (equal (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0) :bad))
+                (equal (fn-arena-count fn-arena) (len (fn-scka-payloads ws))))
+           (equal (mv-nth 0 (fn-scka-recover-rows
+                             (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                             configs vs fn-arena))
+                  (car (fn-scka-full-recover configs (append ws vs)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-scka-recover-rows fn-scka-intern-at fn-sco-capture
+                               fn-scka-full-recover
+                               fn-scka-recover-rows-first-depends-on-the-count
+                               fn-scka-full-recover-rows-are-the-emptied-arena-recover
+                               fn-scka-recover-rows-from-checkpoint-is-full-recover)
+           :use ((:instance fn-scka-recover-rows-from-checkpoint-is-full-recover)
+                 (:instance fn-scka-recover-rows-first-depends-on-the-count
+                            (c (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0)))
+                            (records vs) (a1 fn-arena) (a2 (fn-scka-payloads ws)))
+                 (:instance fn-scka-full-recover-rows-are-the-emptied-arena-recover
+                            (records (append ws vs)))))))
+
+;; The same on one live arena holding exactly the prefix's canonical payloads,
+; both components: the extension and the arena, when the whole history folds.
+(defthm fn-scka-recover-from-checkpoint-is-full-recover-with-arena
+  (implies (and (true-listp ws)
+                (not (equal (fn-scka-intern-at (append ws vs) (fn-stxk-initial-context 0) 0) :bad))
+                (equal fn-arena (fn-scka-payloads ws)))
+           (equal (fn-scka-recover-rows
+                   (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                   configs vs fn-arena)
+                  (fn-scka-full-recover configs (append ws vs))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-scka-recover-rows fn-scka-intern-at fn-sco-capture
+                               fn-scka-full-recover)
+           :use ((:instance fn-scka-recover-from-checkpoint-is-full-recover-two-arenas)
+                 (:instance fn-scka-full-recover-is-the-emptied-arena-recover
+                            (records (append ws vs)))
+                 (:instance fn-scka-intern-at-of-append-bad (id (fn-stxk-initial-context 0)) (h 0))))))
 
 ; The composition the host runs (host/native/io.lisp fnn-recover-suffix-rows
 ; and fnn-bridge-recover: the guard-verified fn-ssr-intern-step, then
