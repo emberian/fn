@@ -840,8 +840,37 @@
   :class :common-lisp-compliant
   :keystones (fn-otm-commit-event-is-ocp-commit-event))
 
-(definterface fn-otm-committer-wake
+; The held commit (ruling 19, books/owner-time-held.lisp; the host split
+; host/native/owner.lisp fnn-owner-held-commit).
+(definterface fn-och-held-event
   :class :common-lisp-compliant)
+
+(definterface fn-otm-held-plan
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-otm-held-plan-labels-every-effect
+              fn-otm-held-plan-no-member-drain-is-off-owner))
+
+(definterface fn-och-frames-event
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-och-frames-held-until-the-job-returns))
+
+(definterface fn-otm-held-committer-wake
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-wakes))
+
+(definterface fn-otm-committer-may-start
+  :class :common-lisp-compliant
+  :keystones (fn-otm-committer-may-start-is-the-held-rule))
+
+(definterface fn-och-caller-answer
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-quantum-2-answers-the-held-outcome))
+
+(definterface fn-otm-held-caller-wake
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-wakes))
 
 (definterface fn-otm-disk
   :class :common-lisp-compliant
@@ -1435,9 +1464,6 @@
   :class :common-lisp-compliant)
 
 (definterface fn-ocs-classp
-  :class :common-lisp-compliant)
-
-(definterface fn-ocs-commit-step
   :class :common-lisp-compliant)
 
 (definterface fn-ocs-member-releases

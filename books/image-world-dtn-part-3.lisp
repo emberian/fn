@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
-(include-book "owner-prepare-outcome")
-(include-book "owner-commit-ocl")
 (include-book "owner-served-invariants")
 (include-book "owner-feed-port")
 (include-book "owner-feed-live-carried")
@@ -62,6 +60,7 @@
 (include-book "owner-time-journal")
 (include-book "owner-stop-drain")
 (include-book "owner-time-admission")
+(include-book "owner-time-held")
 (include-book "owner-article-slots")
 (include-book "owner-credits")
 (include-book "served-available-read")
