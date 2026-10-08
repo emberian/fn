@@ -11,38 +11,43 @@
 (defvar *fixture-yields* nil)
 (defvar *fixture-binding-count* nil)
 (defvar *fixture-release* nil)
-(defvar *fixture-page-phase* 0)
-(defvar *fixture-grows* 0)
+(defvar *fixture-opens* 0)
+(defvar *fixture-closes* 0)
 (defun fnn-core (name &rest args)
   (case name
     (create-fn-hrecs$c
      (let ((instance (vector nil nil))) (push instance *fixture-sources*) instance))
-    (fn-his-build-source-count (length (first args)))
-    (fn-his-build-yieldp (push (first args) *fixture-yields*) (zerop (mod (first args) 256)))
+    (fn-his-build-quantum 256)
+    (fn-his-plan-begin '(0 (0 0 0 0 0)))
+    (fn-his-place-begin '(0 (0 0 0 0 0) nil))
     (fn-his-binding (setf *fixture-binding-count* (third args)) (list :binding (third args)))
     (fn-his-np 7)
     (otherwise (error "unexpected core dispatch ~s" name))))
 (defun fnn-call (name &rest args)
   (case name
     (fn-his-build-begin (setf (aref (second args) 0) nil) (list (second args)))
-    (fn-his-row-begin
-      (if (equal (first args) *fixture-fail-row*)
-          (list '(:refused :codec) nil (second args))
-        (progn (setf (aref (second args) 1) (first args))
-               (list :yield '(:append) (second args)))))
-    (fn-his-row-step
-      (let* ((snapshot (second args)) (ev (aref snapshot 1)))
-        (cond ((and (eq ev :pages) (= *fixture-page-phase* 0))
-               (setf *fixture-page-phase* 1)
-               (list :yield '(:relocate :cursor) snapshot))
-              ((and (eq ev :pages) (= *fixture-page-phase* 1))
-               (list '(:grow-image 9) '(:relocate :cursor) snapshot))
-              (t (push ev *fixture-rows*)
-                 (push ev (aref snapshot 0))
-                 (list :done nil snapshot)))))
-    (fn-his-row-grow
-      (incf *fixture-grows*) (setf *fixture-page-phase* 2)
-      (list :yield '(:relocate :cursor) (second args)))
+    (fn-his-plan-run
+      (destructuring-bind (quantum remaining plan) args
+        (let* ((n (min quantum (length remaining))) (rest (nthcdr n remaining)))
+          (push (list :plan (car plan)) *fixture-yields*)
+          (list (if rest :more :done) rest (list (+ n (car plan)) '(0 0 0 0 0))))))
+    (fn-his-build-open
+      (incf *fixture-opens*) (list nil '(1 2 3 4 5) 7 (second args)))
+    (fn-his-build-place-run
+      (destructuring-bind (quantum remaining pw starts np snapshot) args
+        (declare (ignore starts np))
+        (push (list :place (car pw)) *fixture-yields*)
+        (let ((n 0))
+          (loop while (and remaining (< n quantum)) do
+            (when (equal (car remaining) *fixture-fail-row*)
+              (return-from fnn-call (list '(:refused :placement) remaining pw snapshot)))
+            (push (car remaining) *fixture-rows*)
+            (push (pop remaining) (aref snapshot 0))
+            (incf n))
+          (list (if remaining :more :done) remaining
+                (list (+ n (car pw)) '(0 0 0 0 0) nil) snapshot))))
+    (fn-his-build-close
+      (incf *fixture-closes*) (list :ok (fifth args)))
     (fn-his-build-finish
       (let* ((snapshot (second args)) (count (length (aref snapshot 0))))
         (unless (= count (first args)) (error "source count mismatch"))
@@ -64,7 +69,7 @@
 (defun fnn-checkpoint-image-refusal-test (answer) answer)
 (fixture-load "host/native/io.lisp"
  '(fnn-history-image-refusal
-   fnn-checkpoint-yield fnn-history-image-row-run fnn-history-image-build
+   fnn-checkpoint-yield fnn-history-image-plan fnn-history-image-place-run fnn-history-image-build
    fnn-history-image-release fnn-with-history-image))
 (let ((events (loop for i below 513 collect (list :all-event i))))
   (fnn-with-history-image
@@ -76,7 +81,9 @@
       (assert (equal image '(7 ((1 0 0)))))
       (assert (= *fixture-binding-count* 513))
       (assert (equal (reverse *fixture-rows*) events))
-      (assert (= (length *fixture-yields*) 513))))
+      (assert (equal (reverse *fixture-yields*)
+                     '((:plan 0) (:plan 256) (:plan 512)
+                       (:place 0) (:place 256) (:place 512))))))
   (assert (null *fnn-checkpoint-image-custody*))
   (assert (= (length *fixture-release*) 1))
   ;; A new publisher receives another private instance; its empty begin can
@@ -86,12 +93,13 @@
     (assert (not (eq first (first *fixture-sources*))))
     (assert (= (length (aref first 0)) 513))))
 ;; Failure is terminal for this build and its owned scratch is returned.
-(let ((*fixture-fail-row* :bad) (*fixture-rows* nil) (failed nil))
+(let ((*fixture-fail-row* :bad) (*fixture-rows* nil) (*fixture-closes* 0) (failed nil))
   (handler-case
       (fnn-with-history-image (fnn-history-image-build '(:first :bad :unreached) :node 0 '(6 :trail3)))
     (error () (setf failed t)))
   (assert failed)
   (assert (equal *fixture-rows* '(:first)))
+  (assert (zerop *fixture-closes*))
   (assert (null *fnn-checkpoint-image-custody*)))
 ;; The owner's existing stop fence is observed before the first row and at
 ;; the next ACL2 scheduling cadence. Neither cut reaches finish/binding;
@@ -109,20 +117,9 @@
     (assert (null *fixture-binding-count*))
     (assert (= (length *fixture-release*) (1+ released-before)))
     (assert (null *fnn-checkpoint-image-custody*))))
-(let ((*fixture-rows* nil) (*fixture-page-phase* 0) (*fixture-grows* 0))
+(let ((*fixture-rows* nil) (*fixture-opens* 0) (*fixture-closes* 0))
   (fnn-with-history-image (fnn-history-image-build '(:pages) :node 0 '(8 :trail5)))
   (assert (equal *fixture-rows* '(:pages)))
-  (assert (= *fixture-grows* 1)))
-(let* ((*fixture-rows* nil) (*fixture-page-phase* 0) (*fixture-grows* 0)
-       (*fixture-binding-count* nil)
-       (*fnn-checkpoint-stop-test* (lambda () (= *fixture-page-phase* 1)))
-       (failed nil))
-  (handler-case
-      (fnn-with-history-image (fnn-history-image-build '(:pages :unreached) :node 0 '(9 :trail6)))
-    (error () (setf failed t)))
-  (assert failed)
-  (assert (null *fixture-rows*))
-  (assert (null *fixture-binding-count*))
-  (assert (= *fixture-grows* 0))
-  (assert (null *fnn-checkpoint-image-custody*)))
-(format t "native_history_builder_raw: private snapshots, complete frontier, failure and stop return PASS~%")
+  (assert (= *fixture-opens* 1))
+  (assert (= *fixture-closes* 1)))
+(format t "native_history_builder_raw: private snapshots, two bounded passes, refusal and stop return PASS~%")

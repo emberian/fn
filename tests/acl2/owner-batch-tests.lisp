@@ -13,6 +13,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-batch")
 (include-book "../../books/store-log-failed-barrier")
+(include-book "../../books/defkeystone")
 (include-book "../../books/frame-trailer")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -454,3 +455,33 @@
         (equal (second wrong) '(:expected-mismatch))
         (equal (third wrong) 1)
         (equal (fourth wrong) 0))))
+
+; The strengthened host claim keeps the relation and named tear premise.
+; Empty in-flight batches and arbitrary selectors are covered by its proof.
+(defteeth fn-lgc-failed-barrier-recovers-a-prefix
+  :subject fn-lgc-fence-failed
+  :claim
+  (let* ((c (fn-lgc-fence-failed (fn-lgc-of ks)))
+         (bs1 (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices))))
+         (ks2 (fn-lgk-recover (fn-bs-durable-content bs1 ino) genesis (fn-bs-unit bs) max next-txid)))
+    (((related (fn-lgk-relp bs ks ino genesis max))
+      (tear (fn-lg-platform-tears-p (nthcdr (fn-lgc-frontier c) (fn-bs-durable-content bs1 ino))
+                                    (fn-lgc-inflight c) (fn-lgc-last c) (fn-bs-unit bs))))
+     (and (equal (fn-lgc-phase c) :fault)
+          (equal (fn-lgc-acked c) (fn-lgk-acked ks))
+          (equal (fn-lgk-committed ks2)
+                 (append (fn-lgk-committed ks)
+                         (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2))))
+          (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2))
+                         (fn-lgc-inflight c)))))
+  :witness ((ks (fn-owb-ks (owb-st4))) (bs (owb-bs4))
+            (ino 0) (genesis (owb-genesis)) (max (owb-max)) (next-txid 9)
+            (choices (owb-choice (owb-units))))
+  :breaks
+  ((related ((bs (owb-store (fn-bs-zeros 64) (fn-bs-pending (owb-bs4))))))
+   (tear (:assumption fn-assume-crash-tearp)))
+  :mutations
+  ((resume-after-error (:conclusion (equal (fn-lgc-phase c) :ready)) ()
+    :fault "A failed barrier leaves the kernel ready instead of faulted.")))
+
+(defteeth-check (fn-lgc-failed-barrier-recovers-a-prefix))

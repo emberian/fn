@@ -436,6 +436,7 @@
 (include-book "../../books/native-live-pages")
 (include-book "../../books/owner-operation-report")
 (include-book "../../books/control-observation")
+(include-book "../../books/control-receipt-wire")
 (include-book "../../books/moderation-outcome")
 (include-book "../../books/native-control-launch")
 (include-book "../../books/native-control-line")

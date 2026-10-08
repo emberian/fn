@@ -3792,22 +3792,39 @@ the publication buffer ST."
             (or (cdr (assoc 'fn-hrecs$c (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the history image stobj is not in this image")))))
 
-(defun fnn-history-image-row-run (ev ordinal)
-  "Append EV to this publisher's private scratch; yield between page ticks.
-Growth is explicit and remains within the publication's prepaid image budget."
-  (let ((answer (fnn-call 'fn-his-row-begin ev *fnn-checkpoint-image-custody*)))
+(defun fnn-history-image-plan (records quantum)
+  "Drive ACL2's length-only pass, yielding between bounded row quanta."
+  (let ((remaining records) (plan (fnn-core 'fn-his-plan-begin)))
     (loop
-      (destructuring-bind (verdict cursor &rest ignored) answer
+      (fnn-checkpoint-yield "history-plan" (car plan))
+      (sb-thread:thread-yield)
+      (destructuring-bind (verdict rest next)
+          (fnn-call 'fn-his-plan-run quantum remaining plan)
+        (setq remaining rest plan next)
+        (case verdict
+          (:done (return plan))
+          (:more nil)
+          (otherwise
+           (error 'fnn-history-image-refusal :verdict verdict
+                  :message (format nil "history image planning refused by name: ~a" verdict))))))))
+
+(defun fnn-history-image-place-run (records quantum starts np)
+  "Drive ACL2's final-placement pass, yielding between bounded row quanta."
+  (let ((remaining records) (pw (fnn-core 'fn-his-place-begin)))
+    (loop
+      (fnn-checkpoint-yield "history-place" (car pw))
+      (sb-thread:thread-yield)
+      (destructuring-bind (verdict rest next &rest ignored)
+          (fnn-call 'fn-his-build-place-run quantum remaining pw starts np
+                    *fnn-checkpoint-image-custody*)
         (declare (ignore ignored))
-        (when (eq verdict :done) (return t))
-        (let ((grow (and (consp verdict) (eq (car verdict) :grow-image))))
-          (unless (or (eq verdict :yield) grow)
-            (error 'fnn-history-image-refusal :verdict verdict
-                   :message (format nil "history image row refused by name: ~a" verdict)))
-          (fnn-checkpoint-yield "history-pages" ordinal)
-          (sb-thread:thread-yield)
-          (setq answer (fnn-call (if grow 'fn-his-row-grow 'fn-his-row-step)
-                                cursor *fnn-checkpoint-image-custody*)))))))
+        (setq remaining rest pw next)
+        (case verdict
+          (:done (return pw))
+          (:more nil)
+          (otherwise
+           (error 'fnn-history-image-refusal :verdict verdict
+                  :message (format nil "history image placement refused by name: ~a" verdict))))))))
 
 (defun fnn-history-image-build (records node salt position)
   "The image of RECORDS for a publication whose log POSITION is (K TRAIL):
@@ -3819,16 +3836,22 @@ WRITES); with no position, (values POSITION NIL): no binding, no image."
               (progn
                 (setq *fnn-checkpoint-image-custody* (fnn-core 'create-fn-hrecs$c))
                 (fnn-call 'fn-his-build-begin salt *fnn-checkpoint-image-custody*)
-                (loop for ev in records
-                      for ordinal from 0 do
-                        (when (fnn-core 'fn-his-build-yieldp ordinal)
-                          (fnn-checkpoint-yield "history" ordinal)
-                          (sb-thread:thread-yield))
-                        (fnn-history-image-row-run ev ordinal))
-                (fnn-checkpoint-image-refusal-test
-                 (fnn-call 'fn-his-build-finish
-                           (fnn-core 'fn-his-build-source-count records)
-                           *fnn-checkpoint-image-custody*)))))
+                (let* ((quantum (fnn-core 'fn-his-build-quantum))
+                       (plan (fnn-history-image-plan records quantum)))
+                  (destructuring-bind (verdict starts np &rest ignored)
+                      (fnn-call 'fn-his-build-open plan *fnn-checkpoint-image-custody*)
+                    (declare (ignore ignored))
+                    (when verdict
+                      (error 'fnn-history-image-refusal :verdict verdict
+                             :message (format nil "history image open refused by name: ~a" verdict)))
+                    (let* ((pw (fnn-history-image-place-run records quantum starts np))
+                           (closed (fnn-call 'fn-his-build-close plan pw starts np
+                                             *fnn-checkpoint-image-custody*)))
+                      (unless (eq (first closed) :ok)
+                        (error 'fnn-history-image-refusal :verdict (first closed)
+                               :message (format nil "history image close refused by name: ~a" (first closed))))))
+                  (fnn-checkpoint-image-refusal-test
+                   (fnn-call 'fn-his-build-finish (car plan) *fnn-checkpoint-image-custody*))))))
         (unless (and (consp answer) (>= (length answer) 3))
           (fnn-fault "ACL2 returned a malformed history image"))
         (destructuring-bind (verdict rec writes count &rest ignored) answer

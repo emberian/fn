@@ -45,9 +45,12 @@
 ;      effects (:publish and each :feed-io), in order, are the inline run's,
 ;      under every W.
 ;   R2 fn-orp-phased-answers-as-inline: the run ends in the inline run's
-;      answer (:accept, :refuse, :fence or :fault), under every W.
+;      answer (:accept, :refuse, :fence or :fault), under every W, given that
+;      the convert succeeded on every run that reaches it
+;      (fn-orp-reaches-convert).  That hypothesis is OWED, not discharged:
+;      see the note above R2.
 ;   R3 fn-orp-accepted-keeps-the-owner-effects: an accepted run has the
-;      inline run's owner effects in their order.
+;      inline run's owner effects in their order (same owed hypothesis).
 ;   R4 fn-orp-phased-holds-the-owner-only-in-quanta: every effect the run
 ;      labels :off is I/O and every I/O effect is :off.
 ;   R5 fn-orp-refusal-unstages-and-fence-keeps-the-stage: a refused run
@@ -56,7 +59,13 @@
 ;   R6 fn-orp-reservation-is-converted-or-released: RESERVE (the store-limit
 ;      caller) takes a growth reservation under E in quantum 1, before any
 ;      effect off O; acceptance converts it into the budget reduction, a later
-;      refusal releases it, never both.
+;      refusal releases it; an accepted run never releases.  With RESERVE
+;      quantum 3's :convert is a real call (CONVERT is its word) and can
+;      refuse, so :convert in the effects is an ATTEMPT, not a success; a
+;      run with both :convert and :release is exactly R7's refused convert,
+;      and it faults.
+;   R7 fn-orp-refused-convert-faults-after-release: a refused convert releases
+;      the reservation, then faults; it never accepts or continues.
 ; :continue is the caller's own work after the answer (the redeem reply, the
 ; budget reduction's reply, the BP drive): the host passes it to the wrapper
 ; as a continuation and it runs in the quantum that decides the answer, as
@@ -147,29 +156,35 @@
     nil))
 
 ; Quantum 3.
-(defun fn-orp-q3 (reserve feeds)
+(defun fn-orp-convert-tail (convert)
+  (declare (xargs :guard t))
+  (if (eq convert :converted) '(:continue :accept) '(:release :fault)))
+
+(defun fn-orp-q3 (reserve feeds convert)
   (declare (xargs :guard t))
   (let ((final (fn-orp-feeds-final feeds)))
     (cond ((eq final :ok)
            (append (fn-orp-feeds-replay feeds)
-                   (if reserve '(:install :convert :continue :accept) '(:install :continue :accept))))
+                   (if reserve
+                       (list* :install :convert (fn-orp-convert-tail convert))
+                     '(:install :continue :accept))))
           ((eq final :uncertain) '(:fence))
           (t '(:fault)))))
 
 ; Quantum 2 after a durable publication, then window B and quantum 3.
-(defun fn-orp-after-durable (reserve verdict feeds)
+(defun fn-orp-after-durable (reserve verdict feeds convert)
   (declare (xargs :guard t))
   (if (eq verdict :durable)
       (append (fn-orp-label :owner '(:complete :refresh))
               (fn-orp-label :off (fn-orp-feeds-io feeds))
-              (fn-orp-label :owner (fn-orp-q3 reserve feeds)))
+              (fn-orp-label :owner (fn-orp-q3 reserve feeds convert)))
     (fn-orp-label :owner '(:complete :fence))))
 
 (defun fn-orp-refused-in-q2 (reserve)
   (declare (xargs :guard t))
   (fn-orp-label :owner (if reserve '(:release :unstage :continue :refuse) '(:unstage :continue :refuse))))
 
-(defun fn-orp-run (reserve stage auth observe publish verdict feeds)
+(defun fn-orp-run (reserve stage auth observe publish verdict feeds convert)
   (declare (xargs :guard t))
   (cons
    '(:owner . :stage)
@@ -182,10 +197,21 @@
               (fn-orp-label :off (if (eq observe :ok) '(:observe :publish) '(:observe)))
               (cond ((eq observe :refused) (fn-orp-refused-in-q2 reserve))
                     ((not (eq observe :ok)) '((:owner . :fault)))
-                    ((eq publish :durable) (fn-orp-after-durable reserve verdict feeds))
+                    ((eq publish :durable) (fn-orp-after-durable reserve verdict feeds convert))
                     ((eq publish :refused) (fn-orp-refused-in-q2 reserve))
                     ((eq publish :uncertain) '((:owner . :fence)))
                     (t '((:owner . :fault))))))))))
+
+; The runs that read CONVERT: RESERVE, a staged and authorized record, an ok
+; observation, a durable publication and completion, every journal ok.  Every
+; other run ends before quantum 3's :convert and never reads the word
+; (fn-orp-convert-attempted-iff-reached below).
+(defun fn-orp-reaches-convert (reserve stage auth observe publish verdict feeds)
+  (declare (xargs :guard t))
+  (and reserve (eq stage :staged) auth (eq observe :ok)
+       (eq publish :durable) (eq verdict :durable)
+       (eq (fn-orp-feeds-final feeds) :ok)
+       t))
 
 ; -----------------------------------------------------------------------------
 ; The projections.
@@ -257,7 +283,7 @@
 (local (defthm fn-orp-labelsp-of-append
   (equal (fn-orp-labelsp (append a b)) (and (fn-orp-labelsp a) (fn-orp-labelsp b)))))
 (local (defthm fn-orp-true-listp-feeds-io (true-listp (fn-orp-feeds-io feeds))))
-(local (defthm fn-orp-true-listp-q3 (true-listp (fn-orp-q3 reserve feeds))))
+(local (defthm fn-orp-true-listp-q3 (true-listp (fn-orp-q3 reserve feeds convert))))
 (local (defthm fn-orp-durable-of-inline-feeds
   (equal (fn-orp-durable (fn-orp-inline-feeds feeds)) (fn-orp-feeds-io feeds))))
 (local (defthm fn-orp-durable-of-feeds-io
@@ -265,17 +291,29 @@
 (local (defthm fn-orp-durable-of-replay
   (equal (fn-orp-durable (fn-orp-feeds-replay feeds)) nil)))
 (local (defthm fn-orp-durable-of-q3
-  (equal (fn-orp-durable (fn-orp-q3 reserve feeds)) nil)))
-(local (defthm fn-orp-consp-q3 (consp (fn-orp-q3 reserve feeds))))
+  (equal (fn-orp-durable (fn-orp-q3 reserve feeds convert)) nil)))
+(local (defthm fn-orp-consp-q3 (consp (fn-orp-q3 reserve feeds convert))))
 (local (defthm fn-orp-answer-of-inline-feeds
-  (equal (fn-orp-answer (fn-orp-inline-feeds feeds)) (fn-orp-answer (fn-orp-q3 reserve feeds)))))
+  (implies (implies (and reserve (equal (fn-orp-feeds-final feeds) :ok))
+                    (equal convert :converted))
+           (equal (fn-orp-answer (fn-orp-inline-feeds feeds)) (fn-orp-answer (fn-orp-q3 reserve feeds convert))))))
 (local (defthm fn-orp-owner-of-feeds-io
   (equal (fn-orp-owner (fn-orp-feeds-io feeds)) nil)))
 (local (defthm fn-orp-owner-of-replay
   (equal (fn-orp-owner (fn-orp-feeds-replay feeds)) (fn-orp-feeds-replay feeds))))
 (local (defthm fn-orp-owner-of-inline-feeds-accepted
   (implies (equal (fn-orp-feeds-final feeds) :ok)
-           (equal (fn-orp-owner (fn-orp-inline-feeds feeds)) (fn-orp-owner (fn-orp-q3 reserve feeds))))))
+           (equal (fn-orp-owner (fn-orp-inline-feeds feeds))
+                  (append (fn-orp-feeds-replay feeds) '(:install :continue :accept))))))
+(local (defthm fn-orp-owner-of-q3-converted
+  (implies (and (equal (fn-orp-feeds-final feeds) :ok)
+                (or (not reserve) (equal convert :converted)))
+           (equal (fn-orp-owner (fn-orp-q3 reserve feeds convert))
+                  (append (fn-orp-feeds-replay feeds) '(:install :continue :accept))))))
+(local (defthm fn-orp-answer-of-inline-feeds-by-final
+  (equal (fn-orp-answer (fn-orp-inline-feeds feeds))
+         (let ((final (fn-orp-feeds-final feeds)))
+           (cond ((eq final :ok) :accept) ((eq final :uncertain) :fence) (t :fault))))))
 (local (defthm fn-orp-answer-of-inline-feeds-accept-iff
   (iff (equal (fn-orp-answer (fn-orp-inline-feeds feeds)) :accept)
        (equal (fn-orp-feeds-final feeds) :ok))))
@@ -290,37 +328,59 @@
 (local (defthm fn-orp-label-of-append
   (equal (fn-orp-label w (append a b)) (append (fn-orp-label w a) (fn-orp-label w b)))))
 (local (defthm fn-orp-labelsp-owner-q3
-  (fn-orp-labelsp (fn-orp-label :owner (fn-orp-q3 reserve feeds)))
+  (fn-orp-labelsp (fn-orp-label :owner (fn-orp-q3 reserve feeds convert)))
   :hints (("Goal" :in-theory (disable fn-orp-feeds-replay)))))
 (local (defthm fn-orp-member-of-append
   (iff (member-equal x (append a b)) (or (member-equal x a) (member-equal x b)))))
 
+(local (defthm fn-orp-before-of-append-absent
+  (implies (not (member-equal e a))
+           (equal (fn-orp-before e (append a b)) (append a (fn-orp-before e b))))))
+
 ; KEYSTONE R1.
 (defthm fn-orp-phased-keeps-the-durable-effects
-  (equal (fn-orp-durable (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))
+  (equal (fn-orp-durable (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
          (fn-orp-durable (fn-orp-inline stage auth observe publish verdict feeds))))
 
+; THE OWED HYPOTHESIS OF R2 AND R3.  On a run that reaches quantum 3's
+; :convert (fn-orp-reaches-convert), the convert word is :converted.  Nothing
+; in this book discharges it: CONVERT is the host's observation of the
+; converter, a free input here.  The discharge it waits on is a chain, open
+; at two links: (i) the host's word is :converted exactly when
+; fn-prl-convert-growth answers :protected-growth-admitted (the host call,
+; C's reconfig-host lane; no correspondence theorem yet); (ii) that answer is
+; G2 (books/page-read-budget-growth.lisp
+; fn-prl-convert-growth-when-charged-covers-the-reserve), whose
+; charged-covers-the-reserve hypothesis holds across draws only by repair
+; item PRL-ROW-SUM-INVARIANT (open, not a theorem).  Runs that do not reach
+; the convert are unconstrained by it, and R7 states what a refused convert
+; does instead.
 ; KEYSTONE R2.
 (defthm fn-orp-phased-answers-as-inline
-  (let ((answer (fn-orp-answer (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))))
+  (implies
+   (implies (fn-orp-reaches-convert reserve stage auth observe publish verdict feeds)
+            (equal convert :converted))
+   (let ((answer (fn-orp-answer (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))))
     (and (equal answer
                 (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds)))
-         (member-equal answer '(:accept :refuse :fence :fault)))))
+         (member-equal answer '(:accept :refuse :fence :fault))))))
 
-; KEYSTONE R3.
+; KEYSTONE R3.  The same owed hypothesis as R2.
 (defthm fn-orp-accepted-keeps-the-owner-effects
-  (implies (equal (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds))
-                  :accept)
-           (equal (fn-orp-owner (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))
+  (implies (and (implies (fn-orp-reaches-convert reserve stage auth observe publish verdict feeds)
+                         (equal convert :converted))
+                (equal (fn-orp-answer (fn-orp-inline stage auth observe publish verdict feeds))
+                       :accept))
+           (equal (fn-orp-owner (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
                   (fn-orp-owner (fn-orp-inline stage auth observe publish verdict feeds)))))
 
 ; KEYSTONE R4.
 (defthm fn-orp-phased-holds-the-owner-only-in-quanta
-  (fn-orp-labelsp (fn-orp-run reserve stage auth observe publish verdict feeds)))
+  (fn-orp-labelsp (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
 
 ; KEYSTONE R5.
 (defthm fn-orp-refusal-unstages-and-fence-keeps-the-stage
-  (let ((effects (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds))))
+  (let ((effects (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert))))
     (and (implies (and (equal (fn-orp-answer effects) :refuse) (equal stage :staged))
                   (member-equal :unstage (fn-orp-before :refuse effects)))
          (implies (member-equal (fn-orp-answer effects) '(:fence :fault))
@@ -331,9 +391,12 @@
 ; is held as a reservation across the windows).  It is taken in quantum 1
 ; before any effect off O, exactly for a staged, authorized record; an
 ; accepted run converts it into the budget reduction; a refusal after it
-; releases it before the unstage; never both.
+; releases it before the unstage.  :convert is the convert ATTEMPT: a run
+; may hold both :convert and :release, and then (R7) the convert refused,
+; the release follows it and the run faults (the last conjunct); an
+; accepted run holds :convert and never :release.
 (defthm fn-orp-reservation-is-converted-or-released
-  (let* ((effects (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds)))
+  (let* ((effects (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
          (answer (fn-orp-answer effects)))
     (and (iff (member-equal :reserve effects)
               (and reserve (equal stage :staged) auth))
@@ -341,10 +404,40 @@
                   (member-equal :reserve (fn-orp-before :observe effects)))
          (implies (equal answer :accept)
                   (iff (member-equal :convert effects) reserve))
-         (implies (member-equal :convert effects) (equal answer :accept))
+         (implies (member-equal :convert effects)
+                  (or (equal answer :accept)
+                      (and (equal answer :fault)
+                           (member-equal :release (fn-orp-before :fault effects)))))
          (implies (and (equal answer :refuse) (member-equal :reserve effects))
                   (member-equal :release (fn-orp-before :unstage effects)))
-         (not (and (member-equal :convert effects) (member-equal :release effects))))))
+         (implies (equal answer :accept) (not (member-equal :release effects)))
+         (implies (member-equal :release effects) (member-equal :reserve effects))
+         (implies (and (member-equal :convert effects) (member-equal :release effects))
+                  (equal answer :fault)))))
+
+; KEYSTONE R7.  A durable path to :converting (RESERVE, a staged and
+; authorized record, an ok observation, a durable publication and completion,
+; every journal ok) whose convert word is not :converted: the reservation is
+; released after the convert attempt, then the service faults; nothing is
+; accepted and the caller's :continue never runs.
+(defthm fn-orp-refused-convert-faults-after-release
+  (implies (and reserve (equal stage :staged) auth (equal observe :ok)
+                (equal publish :durable) (equal verdict :durable)
+                (equal (fn-orp-feeds-final feeds) :ok)
+                (not (equal convert :converted)))
+           (let ((effects (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert))))
+             (and (equal (fn-orp-answer effects) :fault)
+                  (member-equal :convert (fn-orp-before :release effects))
+                  (member-equal :release (fn-orp-before :fault effects))
+                  (not (member-equal :accept effects))
+                  (not (member-equal :continue effects))))))
+
+; The convert word is read exactly on the runs fn-orp-reaches-convert names:
+; :convert is among the effects iff the run reaches it, so R2/R3's owed
+; hypothesis constrains no run that ends earlier.
+(defthm fn-orp-convert-attempted-iff-reached
+  (iff (member-equal :convert (strip-cdrs (fn-orp-run reserve stage auth observe publish verdict feeds convert)))
+       (fn-orp-reaches-convert reserve stage auth observe publish verdict feeds)))
 
 (defun fn-orp-replay-peers (peers)
   (declare (xargs :guard t))
@@ -366,7 +459,9 @@
 ; :authorized or :unauthorized (fn-oclc-live-authorizep); the observation's,
 ; the publication's and the completion's words; in window B (:feed PEER)
 ; before each newly configured peer's journal, then its word; :feeds-done
-; after the last.
+; after the last.  With RESERVE :feeds-done answers the replays, :install and
+; :convert and the phase is :converting, where the convert's word is the event:
+; :converted continues and accepts, any other word releases and faults.
 (defun fn-orp-step (phase reserve event)
   (declare (xargs :guard t))
   (cond
@@ -400,11 +495,11 @@
            (mv (list (list* :off :feed-io (fn-orp-car (cdr event))))
                (list* :feed-io (fn-orp-car (cdr event)) (cdr phase))))
           ((eq event :feeds-done)
-           (mv (fn-orp-label :owner
-                             (append (fn-orp-replay-peers (cdr phase))
-                                     (if reserve '(:install :convert :continue :accept)
-                                       '(:install :continue :accept))))
-               :done))
+           (if reserve
+               (mv (fn-orp-label :owner (append (fn-orp-replay-peers (cdr phase)) '(:install :convert)))
+                   :converting)
+             (mv (fn-orp-label :owner (append (fn-orp-replay-peers (cdr phase)) '(:install :continue :accept)))
+                 :done)))
           (t (mv '((:owner . :fault)) :done))))
    ;; (:feed-io PEER . DONE): PEER's journal I/O ran; EVENT is its word.
    ((and (consp phase) (eq (car phase) :feed-io))
@@ -413,6 +508,9 @@
                                           (list (fn-orp-car (cdr phase)))))))
           ((eq event :uncertain) (mv '((:owner . :fence)) :done))
           (t (mv '((:owner . :fault)) :done))))
+   ;; :converting: the convert (fn-prl-convert-growth) ran; EVENT is its word.
+   ((eq phase :converting)
+    (mv (fn-orp-label :owner (fn-orp-convert-tail event)) :done))
    (t (mv '((:owner . :fault)) :done))))
 
 (defun fn-orp-trace (phase reserve events)
@@ -431,10 +529,14 @@
              (fn-orp-feed-events (cdr feeds)))
     '(:feeds-done)))
 
-(defun fn-orp-events (stage auth observe publish verdict feeds)
+(defun fn-orp-events-tail (reserve feeds convert)
+  (declare (xargs :guard t))
+  (append (fn-orp-feed-events feeds) (if reserve (list convert) nil)))
+
+(defun fn-orp-events (reserve stage auth observe publish verdict feeds convert)
   (declare (xargs :guard t))
   (list* :go stage (if auth :authorized :unauthorized) observe publish verdict
-         (fn-orp-feed-events feeds)))
+         (fn-orp-events-tail reserve feeds convert)))
 
 ; Window B's loop, from any peers already done.
 (local (defthm fn-orp-replay-peers-of-append
@@ -450,13 +552,14 @@
       (fn-orp-feed-ind (append done (list (fn-orp-car (car feeds)))) (cdr feeds))
     done)))
 (local (defthm fn-orp-trace-of-feeding
-  (implies (true-listp done) (equal (fn-orp-trace (cons :feeding done) reserve (fn-orp-feed-events feeds))
+  (implies (true-listp done) (equal (fn-orp-trace (cons :feeding done) reserve (fn-orp-events-tail reserve feeds convert))
          (append (fn-orp-label :off (fn-orp-feeds-io feeds))
                  (fn-orp-label :owner
                                (let ((final (fn-orp-feeds-final feeds)))
                                  (cond ((eq final :ok)
                                         (append (fn-orp-replay-peers (append done (fn-orp-peers feeds)))
-                                                (if reserve '(:install :convert :continue :accept)
+                                                (if reserve
+                                                    (list* :install :convert (fn-orp-convert-tail convert))
                                                   '(:install :continue :accept))))
                                        ((eq final :uncertain) '(:fence))
                                        (t '(:fault))))))))
@@ -467,5 +570,18 @@
 ; function the host's wrapper calls (host side: lane commit-held-host's
 ; successor, C).
 (defthm fn-orp-step-runs-the-phased-run
-  (equal (fn-orp-trace :start reserve (fn-orp-events stage auth observe publish verdict feeds))
-         (fn-orp-run reserve stage auth observe publish verdict feeds)))
+  (equal (fn-orp-trace :start reserve (fn-orp-events reserve stage auth observe publish verdict feeds convert))
+         (fn-orp-run reserve stage auth observe publish verdict feeds convert))
+  :hints (("Goal" :in-theory (disable fn-orp-events-tail))))
+
+(local (defthm fn-orp-labelsp-owner-replay-peers
+  (fn-orp-labelsp (fn-orp-label :owner (fn-orp-replay-peers peers)))))
+
+; KEYSTONE R4 per call.  Every effect fn-orp-step answers is labelled, and it
+; is labelled :off exactly when it is I/O: the host, which runs each effect
+; where its label says, holds the owner for no I/O in any single step.  The
+; subject is fn-orp-step, the function host/native/admin.lisp's phased
+; wrapper (lane reconfig-host) calls.
+(defthm fn-orp-step-holds-the-owner-only-in-quanta
+  (fn-orp-labelsp (mv-nth 0 (fn-orp-step phase reserve event)))
+  :hints (("Goal" :in-theory (enable fn-orp-step))))
