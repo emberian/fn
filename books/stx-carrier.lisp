@@ -45,6 +45,7 @@
 (include-book "def-loop")
 (include-book "statement-invariants")
 (include-book "article")
+(include-book "wire-lines")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -690,13 +691,32 @@
                         (fn-article-body article)
                       nil)))))
 
-; Kinds other than :article carry their payload as the article body, base64.
-; The body is accepted only in its canonical unwrapped spelling; the wrapping
-; question (RFC 4648 section 4 CRLF every 76 characters) is the caller's, and
-; fn-stx-strip-wsp removes only WSP, never CRLF.
+; Kinds other than :article carry base64, framed at 76 columns (transport
+; section 1.3). Unframed input keeps its existing meaning. Remove CRLF only
+; when re-framing the projected text reproduces the entire body exactly;
+; malformed line endings never turn into a different accepted payload.
 (defun fn-stx-body-payload (body)
   (declare (xargs :guard t))
-  (fn-stx-b64-decode-exact (fn-stx-strip-wsp body)))
+  (let* ((text (fn-wg-unlines 76 body))
+         (unframed (if (equal body (fn-wg-lines 76 text)) text body)))
+    (fn-stx-b64-decode-exact (fn-stx-strip-wsp unframed))))
+
+(defthm fn-stx-body-payload-of-framed-text
+  (implies (true-listp text)
+           (equal (fn-stx-body-payload (fn-wg-lines 76 text))
+                  (fn-stx-b64-decode-exact (fn-stx-strip-wsp text))))
+  :hints (("Goal" :in-theory (e/d (fn-stx-body-payload)
+                                  (fn-wg-lines fn-wg-unlines
+                                   fn-stx-b64-decode-exact fn-stx-strip-wsp)))))
+
+(defthm fn-stx-framed-body-round-trip
+  (implies (fn-cbor-octet-listp payload)
+           (equal (fn-stx-body-payload
+                   (fn-wg-lines 76 (fn-stx-b64-encode payload)))
+                  (fn-stx-ok (list payload))))
+  :hints (("Goal" :in-theory (disable fn-stx-body-payload fn-wg-lines
+                                    fn-stx-b64-encode fn-stx-strip-wsp
+                                    fn-stx-b64-decode-exact))))
 
 (defun fn-stx-payload-for (article header)
   (declare (xargs :guard t))

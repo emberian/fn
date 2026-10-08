@@ -23,6 +23,7 @@ class NativeGroupAuthorityTests(unittest.TestCase):
         def transit(client, stem):
             mid = "<" + stem + "@authority.invalid>"
             wire = ("Path: upstream!not-for-mail\r\nFrom: a@example.invalid\r\n"
+                    "Date: Wed, 30 Sep 2026 12:00:00 +0000\r\n"
                     "Newsgroups: fn.test\r\nSubject: governed\r\nMessage-ID: "
                     + mid + "\r\n\r\nbody\r\n").encode()
             offer, reply = client.post(wire, verb="IHAVE " + mid)

@@ -1,12 +1,12 @@
 ; Exact readonly projections factored from owner-canonical-state.
 (in-package "ACL2")
+(include-book "owner-authority-state")
 (include-book "owner-canonical-epoch")
 (include-book "snapshot-source-token")
 
 (defun fn-owner-canonical-state (state)
   (declare (xargs :stobjs state :guard t))
-  (and (boundp-global 'fn-owner-canonical-state state)
-       (f-get-global 'fn-owner-canonical-state state)))
+  (fn-oauth-get :canonical (fn-ost-authority state)))
 
 (defun fn-owner-canonical-availablep (durable-count state)
   (declare (xargs :stobjs state :guard t))

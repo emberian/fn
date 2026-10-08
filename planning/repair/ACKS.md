@@ -70,3 +70,20 @@ ratchet:owner_globals_check:books/runtime-operation-installed-source.lisp — C 
 ratchet:owner_globals_check:books/runtime-operation-source.lisp — C q0: measure existing books-side owner-global funnels (OWNER-CARRIER-GLOBALS), including the catalog-root pair consolidated into one slot — OWNER-CARRIER-GLOBALS S6 removes the globals
 ratchet:owner_globals_check:books/substrate-completed-source.lisp — C q0: measure existing books-side owner-global funnels (OWNER-CARRIER-GLOBALS), including the catalog-root pair consolidated into one slot — OWNER-CARRIER-GLOBALS S6 removes the globals
 ratchet:owner_globals_check:books/owner-publication-state.lisp — C q0: measure the single funnel replacing ten publication globals under OWNER-CARRIER-GLOBALS — OWNER-CARRIER-GLOBALS S6 moves the slot out of ACL2 globals
+
+ratchet:owner_globals_check:host/admission-preparation-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/admission-semantic-census-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/admission-semantic-node-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/index-connection-repin-prepare-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/index-reader-request-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/owner-exposure-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/payload-view-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/receiver-repin-source-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/receiver-source-gate-host.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+ratchet:owner_globals_check:host/recovery-payload-view-state.lisp — OWNER-CARRIER-GLOBALS: measure quoted wrapper globals in live include-book closure; no new state — carrier3 C8 scanner repair; retire with carried families/S6
+
+ratchet:owner_globals_check:books/owner-admission-state.lisp — OWNER-CARRIER-GLOBALS: count carried admission funnel until S6; reclaim-live moved from host, no additional state — carrier3 C8 admission migration
+
+ratchet:owner_globals_check:books/owner-authority-state.lisp — OWNER-CARRIER-GLOBALS: measure carried authority funnel using former canonical key; three observations moved together, no additional state — carrier3 C8 authority migration
+
+ratchet:owner_globals_check:books/owner-readers-state.lisp — OWNER-CARRIER-GLOBALS: count carried reader pair in former views key; no new state — carrier3 C8 reader migration

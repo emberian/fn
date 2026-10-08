@@ -30,7 +30,8 @@
 
 (defun ocbt-initialize (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-reader-views nil state))
+  (let* ((state (fn-ost-install-readers
+ (fn-ordr-put :views nil (fn-ost-readers state)) state))
          (state (f-put-global 'fn-owner-auth nil state))
          (state (f-put-global 'fn-owner-credits (fn-mca-default 4096) state))
          ; A sentinel in the parked obligation view: the callbacks keep it
