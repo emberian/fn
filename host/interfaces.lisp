@@ -134,6 +134,11 @@
   :keystones (fn-arx-entry-ok-buffer-is-the-frame-check)
   :root :extract)
 
+; Native span buffers use the same ACL2 profile value as ARTICLE.
+(definterface fn-ast-span-want
+  :class :common-lisp-compliant
+  :root :extract)
+
 (definterface fn-arx-read-cache-entries
   :class :common-lisp-compliant
   :root :extract)

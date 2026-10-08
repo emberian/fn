@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "nntp-responses")
 (include-book "nov-piece-window")
+(include-book "profile-limits")
 
 (defun fn-ast-at (i xs)
   (declare (xargs :guard (natp i) :measure (nfix i)))
@@ -771,9 +772,11 @@
 ;; in this call alone: the cursor the call returns is the unconsumed
 ;; remainder, offset first, so no read-ahead outlives the arena it was read
 ;; from.
+; Scheduling capacity is the profile's verified read window. The scan
+; equality above holds for every limit, independently of this row.
 (defun fn-ast-span-want ()
   (declare (xargs :guard t))
-  256)
+  (fn-profile-limit :read-window-octets))
 
 
 ; The chunk is the next octets of the cursor's own payload, as the arena has

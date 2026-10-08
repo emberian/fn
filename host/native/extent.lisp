@@ -621,7 +621,8 @@ a job that signalled, cancelled or not.  Nothing here settles or signals."
 (defstruct (fnn-window-span (:constructor make-fnn-window-span (token key base len dst)))
   token key base len dst)
 
-(defconstant +fnn-extent-span-capacity+ 16384)
+; Read ACL2's profile-backed span capacity when the native host loads.
+(defparameter +fnn-extent-span-capacity+ (fn-ast-span-want))
 
 (defun fnn-extent-window-span-at (worker token file eoff elen poff plen trailer i dst)
   "One lock, one ACL2 call: copy the window's octets from payload coordinate I
