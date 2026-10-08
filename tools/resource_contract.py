@@ -93,26 +93,26 @@ ROWS: tuple[Row, ...] = (
                   ("books/heap-reservation", "fn-heap-reserve-decide-holds-every-thread-the-node-runs"),
                   ("books/heap-reservation", "fn-heap-reserve-thread-refusal-exits-1")),
         proofs=("PRF-198",),
-        records=("planning/evidence/heap-from-profile-2026-09-26.md",
-                 "planning/evidence/heap-bounds-2026-09-28.md")),
+        records=("planning/records/heap-from-profile-2026-09-26.md",
+                 "planning/records/heap-bounds-2026-09-28.md")),
     Row("M2", "the figure holds every store the profile admits: the state term from T, H, R, A and the header limits",
         theorems=(("books/heap-store-figure", "fn-heap-store-figure-holds-every-store"),
                   ("books/heap-store-figure", "fn-heap-store-history-holds-payload-and-memberships"),
                   ("books/heap-store-figure", "fn-heap-records-retained-within-the-terms")),
         proofs=("PRF-198", "PRF-314"),
-        records=("planning/evidence/heap-bounds-2026-09-28.md",)),
+        records=("planning/records/heap-bounds-2026-09-28.md",)),
     Row("M2b", "a record's header state is charged to the history budget, so the figure's header term is a function of H (B9's first half); the base-plus-credited-pool restructure is the resource vector's (ST6)",
         theorems=(("books/heap-store-figure", "fn-heap-record-charge-is-the-budgets-charge"),
                   ("books/heap-store-figure", "fn-heap-record-charge-covers-the-state"),
                   ("books/heap-store-figure", "fn-heap-records-retained-within-the-terms"),
                   ("books/heap-figure", "fn-heap-small-run-base-of-an-empty-store")),
         proofs=("PRF-198",),
-        records=("planning/evidence/heap-bounds-2026-09-28.md",)),
+        records=("planning/records/heap-bounds-2026-09-28.md",)),
     Row("M3", "the reservation itemised: the terms add up to exactly the number the host is handed",
         theorems=(("books/heap-breakdown", "fn-heap-breakdown-sums-to-the-reservation"),
                   ("books/heap-breakdown", "fn-heap-breakdown-is-inits-reservation")),
         proofs=("PRF-375",),
-        records=("planning/evidence/f8-reservation-2026-09-28.md",)),
+        records=("planning/records/f8-reservation-2026-09-28.md",)),
     Row("M4", "the collector's trigger while a store opens is sized to the history it reads",
         theorems=(("books/heap-open-nursery", "fn-heap-open-nursery-trigger-bounds"),
                   ("books/heap-open-nursery", "fn-heap-store-figure-holds-every-store-at-the-open-trigger")),
@@ -123,11 +123,11 @@ ROWS: tuple[Row, ...] = (
                   ("books/heap-store-figure", "fn-heap-article-slots-are-held"),
                   ("books/heap-store-figure", "fn-heap-article-slots-bounds")),
         proofs=("PRF-377",),
-        records=("planning/evidence/zero-copy-commit-2026-09-28.md",)),
+        records=("planning/records/zero-copy-commit-2026-09-28.md",)),
     Row("M5b", "a disk stall is classified before slot or credit admission (B8)",
         theorems=(("books/owner-article-slots", "fn-oas-refusal-line-follows-the-disk-unfolds"),),
         proofs=("PRF-377",),
-        records=("planning/evidence/credits-stall-2026-09-28.md",)),
+        records=("planning/records/credits-stall-2026-09-28.md",)),
     Row("M6", "memory admission by credits: acquire before allocating, the ledger stays funded across every transition",
         theorems=(("books/memory-credits", "fn-mcr-transitions-keep-funded"),
                   ("books/memory-credits", "fn-mcr-acquire-refuses-exactly-past-the-budget"),
@@ -137,16 +137,16 @@ ROWS: tuple[Row, ...] = (
                   ("books/owner-credits", "fn-mca-commit-steps-keep-funded"),
                   ("books/owner-credits", "fn-mca-initial-funds-exactly-the-articles")),
         proofs=("PRF-380",),
-        records=("planning/evidence/f8-reservation-2026-09-28.md",
-                 "planning/evidence/credits-2026-09-28.md")),
+        records=("planning/records/f8-reservation-2026-09-28.md",
+                 "planning/records/credits-2026-09-28.md")),
     Row("M7", "a served connection's memory is named, and a capacity the machine cannot hold is refused by name",
         theorems=(("books/connection-budget", "fn-cbud-run-decide-refuses-exactly-past-the-limit"),
                   ("books/connection-read-quantum", "fn-cbud-step-read-octets-is-bounded"),
                   ("books/connection-budget", "fn-cbud-deltas-refusal-keeps-the-machine-held")),
         proofs=("PRF-223",),
-        records=("planning/evidence/connection-multiplexing-2026-09-26.md",)),
+        records=("planning/records/connection-multiplexing-2026-09-26.md",)),
     Row("M8", "the F8 split: virtual, accountable physical, working set",
-        records=("planning/evidence/f8-reservation-2026-09-28.md",)),
+        records=("planning/records/f8-reservation-2026-09-28.md",)),
     Row("M9", "the page pool (P12): an explicit cold-resource policy reserves its heap and executor threads at launch; stage 0 instead uses unfunded offline reads and a per-miss thread for served cold lines, with threads and buffers able to outlive a dependency timeout",
         theorems=(("books/cold-read-reservation", "fn-crv-accepted-launch-fits-observed-machine"),)),
     Row("M10", "the allocation epoch: no active admission term; allocation-epoch logic is included transitively in both native images, but stage 0 omits runtime bootstrap installation and the allocation-epoch host adapter is not loaded"),
@@ -200,11 +200,11 @@ ROWS: tuple[Row, ...] = (
         theorems=(("books/consumer-wait", "fn-cwait-capacity-is-positive"),)),
     Row("S1", "no non-tail recursion on a host-called path without a named bound (the depth lint)",
         records=("tools/depth_check.py", "tools/depth_baseline.json",
-                 "planning/evidence/open-depth-2026-09-28.md",
-                 "planning/evidence/serve-depth-2026-09-28.md",
-                 "planning/evidence/peer-list-depth-2026-09-28.md")),
+                 "planning/records/open-depth-2026-09-28.md",
+                 "planning/records/serve-depth-2026-09-28.md",
+                 "planning/records/peer-list-depth-2026-09-28.md")),
     Row("S1b", "the depth debt driven to zero, and raw host Lisp linted",
-        records=("tools/raw_depth_check.py", "tools/raw_depth_baseline.json")),
+        records=("tools/depth_check.py", "tools/depth_baseline.json")),
     Row("S2", "every thread's control stack is one profile constant; exhaustion is a fault",
         theorems=(("books/heap-reservation", "fn-heap-reserve-decide-holds-every-thread-the-node-runs"),),
         proofs=("PRF-198",)),
@@ -212,8 +212,8 @@ ROWS: tuple[Row, ...] = (
         theorems=(("books/owner-tls-prefix", "fn-own-read-tls-prefix-consumed-is-bounded"),
                   ("books/served-tls-prefix", "fn-served-step-counted-consumed-is-bounded")),
         proofs=("PRF-213", "PRF-223"),
-        records=("planning/evidence/connection-multiplexing-2026-09-26.md",
-                 "planning/evidence/tls-reload-2026-09-26.md")),
+        records=("planning/records/connection-multiplexing-2026-09-26.md",
+                 "planning/records/tls-reload-2026-09-26.md")),
     Row("C1", "every member of a barrier is told exactly one of accepted, refused, uncertain; a stall tells no member its outcome",
         theorems=(("books/owner-time-model", "fn-otm-stall-tells-no-member-its-outcome"),
                   ("books/owner-time-model", "fn-otm-shed-iff-slow"),
@@ -222,8 +222,8 @@ ROWS: tuple[Row, ...] = (
                   ("books/owner-time-model", "fn-otm-barrier-reader-bound"),
                   ("books/owner-batch", "fn-owb-fence-failed-answers-uncertain")),
         proofs=("PRF-311", "PRF-255"),
-        records=("planning/evidence/time-model-2026-09-27.md",
-                 "planning/evidence/time-model-2-2026-09-27.md")),
+        records=("planning/records/time-model-2026-09-27.md",
+                 "planning/records/time-model-2-2026-09-27.md")),
     Row("C2", "the health verdict names the disk's mode; the exit code is the verdict's",
         theorems=(("books/owner-time-model", "fn-otm-health-disk-held-iff-stalled-or-full"),
                   ("books/native-health", "fn-nh-exit-code-is-zero-or-past-the-outcome-codes")),
@@ -261,12 +261,12 @@ ROWS: tuple[Row, ...] = (
                   ("books/store-log", "fn-lg-rotation-entry-len"),
                   ("books/store-log-lineage", "fn-lgl-open-of-rotated-segment")),
         proofs=("PRF-936", "PRF-244", "PRF-268", "PRF-979"),
-        records=("planning/evidence/byte-model-2026-09-29.md",)),
+        records=("planning/records/byte-model-2026-09-29.md",)),
     Row("D5", "expiry releases only what no holder keeps; online compaction",
         theorems=(("books/expiry-verdict", "fn-xpy-releasablep-is-rule-or-expired-and-unheld"),
                   ("books/expiry-verdict", "fn-xpy-held-article-is-not-expired")),
         proofs=("PRF-918",),
-        records=("planning/evidence/expiry-q11-2026-09-28.md",)),
+        records=("planning/records/expiry-q11-2026-09-28.md",)),
     Row("X1", "a refused request has no effect on the state, per host refusal entry (admission, budget, configuration: by definition); the full-store POST refusal consumes exactly one transaction id, the records, groups and capacity kept, and every reader of ids accounts for it (B10)",
         theorems=(("books/refusal-effect", "fn-rfx-unserved-prepare-is-unchanged-by-definition"),
                   ("books/refusal-effect", "fn-rfx-unaffordable-prepare-is-unchanged-by-definition"),
@@ -275,9 +275,9 @@ ROWS: tuple[Row, ...] = (
                   ("books/refusal-effect", "fn-rfx-refused-post-keeps-configuration"),
                   ("books/refusal-effect", "fn-rfx-refused-post-consumes-one-txid"),
                   ("books/refusal-effect", "fn-rfx-config-record-txid-is-the-node-next-by-definition")),
-        records=("planning/evidence/closure-theorems-2026-09-29.md",)),
+        records=("planning/records/closure-theorems-2026-09-29.md",)),
     Row("X2", "the replay dispatcher's alphabet is the writers' alphabet (configuration deltas, store events; the defevent families by construction), read from the source at every make check; and every premise a hosted theorem assumes that no hosted theorem establishes is listed, baselined shrink-only",
-        records=("planning/evidence/closure-theorems-2026-09-29.md",)),
+        records=("planning/records/closure-theorems-2026-09-29.md",)),
 )
 
 
@@ -493,19 +493,13 @@ class Standing:
     pending: list[str] = field(default_factory=list)
     missing_proofs: list[str] = field(default_factory=list)
     missing_records: list[str] = field(default_factory=list)
-    proof_status: dict[str, str] = field(default_factory=dict)
+    proofs: list[str] = field(default_factory=list)   # cited ids the registry holds
     books: dict[str, dict] = field(default_factory=dict)   # green_check records
 
 
 def record_exists(root: Path, rel: str) -> bool:
-    """A cited record: a file in the tree, or a path the evidence index names."""
-    if (root / rel).exists():
-        return True
-    tools = str(Path(__file__).resolve().parent)
-    if tools not in sys.path:
-        sys.path.insert(0, tools)
-    import evidence_store  # noqa: PLC0415  (beside this file)
-    return evidence_store.exists(root, rel)
+    """A cited record: a committed file in the tree."""
+    return (root / rel).exists()
 
 
 def standings(root: Path = ROOT, certification: dict | None = None) -> list[Standing]:
@@ -521,13 +515,10 @@ def standings(root: Path = ROOT, certification: dict | None = None) -> list[Stan
             (s.pending if row.landing else s.missing_theorems).append(what)
         for pid in row.proofs:
             if pid in proofs:
-                s.proof_status[pid] = proofs[pid]["status"]
+                s.proofs.append(pid)
             else:
                 (s.pending if row.landing else s.missing_proofs).append(pid)
         for rel in row.records:
-            # A record under planning/evidence lives in the evidence archive
-            # once the history rewrite drops the directory: the committed
-            # index names it (evidence_store.exists reads tree or index).
             if not record_exists(root, rel):
                 (s.pending if row.landing else s.missing_records).append(rel)
         if certification is not None:
@@ -609,7 +600,7 @@ def table(root: Path = ROOT, as_json: bool = False) -> int:
     if as_json:
         print(json.dumps([{
             "row": s.row.id, "title": s.row.title, "landing": s.row.landing,
-            "proofs": s.proof_status, "pending": s.pending,
+            "proofs": s.proofs, "pending": s.pending,
             "missing": s.missing_theorems + s.missing_proofs + s.missing_records,
             "books": {b: {"verdict": r["verdict"], "note": r["note"]}
                       for b, r in s.books.items()},
@@ -617,8 +608,8 @@ def table(root: Path = ROOT, as_json: bool = False) -> int:
         return 0
     for s in rows:
         print(f"{s.row.id}  {s.row.title}")
-        for pid, status in s.proof_status.items():
-            print(f"      {pid}: {status}")
+        for pid in s.proofs:
+            print(f"      {pid}")
         for book, record in s.books.items():
             print(f"      {book}: {record['verdict']}  {record['note']}")
         for what in s.pending:

@@ -256,7 +256,9 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single)
-                           (fn-nntp-keywordp fn-nntp-tokenize
+                           (fn-auth-pendingp fn-auth-redeem-statep fn-auth-wire-tokenp
+                            fn-zc-statep member-equal
+                            fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
                             fn-auth-sessionp fn-peer-sessionp fn-post-sessionp

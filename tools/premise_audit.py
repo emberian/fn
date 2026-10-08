@@ -91,11 +91,15 @@ import argparse
 import collections
 import json
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import reach_check  # noqa: E402
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from tools import ratchet  # noqa: E402
 
 ROOT = reach_check.ROOT
 BASELINE = ROOT / "planning" / "premise-baseline.json"
@@ -133,6 +137,26 @@ def predicate_application(term):
     if term[0] in ("not", "implies", "iff", "or", "if", "and"):
         return None
     return term[0], (term[1] if len(term) > 1 else None)
+
+
+LOCAL_THEOREM = re.compile(r"\(local\s+\(defthmd?\s+([^\s()]+)", re.IGNORECASE)
+
+
+def local_theorems(books) -> set[str]:
+    """The theorems a book proves inside `(local ...)': a book-internal
+    proof step whose hypotheses the book's own later events discharge.  It
+    is never cited outside the book, so its hypotheses are no premise the
+    host must establish; a non-local theorem that keeps the same hypothesis
+    is audited in its own right."""
+    out = set()
+    for path in books:
+        try:
+            text = reach_check.file_text(path)
+        except OSError:
+            continue
+        text = re.sub(r"(?m);.*$", "", text)   # a commented-out event is no event
+        out.update(m.group(1).lower() for m in LOCAL_THEOREM.finditer(text))
+    return out
 
 
 def _substitute(term, env: dict):
@@ -330,6 +354,7 @@ class Audit:
         self.book_defs = set(graph.book_defs)
         self.generated = set(reach_check.record_definitions(graph.books))
         self.theorems = reach_check.theorem_forms(graph.books)
+        self.local = local_theorems(graph.books)
         # R -> [(theorem, book, argument-heads, hosted-establishment?)]
         self.concluded: dict[str, list] = collections.defaultdict(list)
         # R -> [theorem]: concluded under its own assumption (a preservation)
@@ -369,7 +394,7 @@ class Audit:
                 heads = (reach_check.tree_symbols(arg) & self.book_defs) - self.graph.stobj_names
                 hosted = bool(heads & reachable)
                 self.concluded[r].append((name, book, sorted(heads), hosted))
-            if not hyps or not assumed_heads:
+            if not hyps or not assumed_heads or name in self.local:
                 continue
             subject = reach_check.Subject(self.graph, name, form)
             self.subjects[name] = subject
@@ -428,9 +453,13 @@ def load_baseline() -> dict:
     return json.loads(BASELINE.read_text())
 
 
-def write_baseline(findings: dict) -> None:
+def write_baseline(findings: dict) -> int:
+    """Rewrite the baseline; it only shrinks (tools/ratchet.py): a new row needs an ACKS.md line."""
     current = load_baseline()
     existing = current.get("accepted", {})
+    old = ratchet.old_rows("premise_audit", BASELINE, lambda: dict.fromkeys(existing, 1))
+    if ratchet.report("premise_audit", ratchet.refused("premise_audit", old, dict.fromkeys(findings, 1))):
+        return 1
     accepted = {}
     for r in sorted(findings):
         accepted[r] = existing.get(r, findings[r]["class"] + "; no one has said which host entry establishes it")
@@ -445,6 +474,7 @@ def write_baseline(findings: dict) -> None:
             "proving the establishment at the host entry (an open, an init, a "
             "recovery), never by editing this file."),
          "accepted": accepted}, indent=2, sort_keys=True) + "\n")
+    return 0
 
 
 def summary_line(findings: dict, premises: dict, baseline: dict) -> str:
@@ -514,7 +544,8 @@ def main(argv=None) -> int:
     baseline = load_baseline()
 
     if arguments.baseline:
-        write_baseline(findings)
+        if write_baseline(findings):
+            return 1
         print(f"premise_audit: baseline written, {len(findings)} entries")
         return 0
     if arguments.pattern and not arguments.strict:

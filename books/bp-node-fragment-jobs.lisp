@@ -11,8 +11,8 @@
 ; row had no unfinished forwarding or delivery job, and the whole row it
 ; installs carries the family's job on as (:dispatch-pending).
 ;
-; Host path: host/native/bp-service.lisp fnn-bps-fragment-progress asks
-; fn-bpnf-family-next for a ready anchor, then fnn-bps-foundation-step calls
+; Host path: host/native/bp-service.lisp fnn-bps-fragment-effects asks
+; fn-bpfj-next-candidate for a ready anchor, then fnn-bps-foundation-step calls
 ; fn-bpnp-step with (:family A observation) and, after the kind-18
 ; publication, with (:persist-result EPOCH OP RESULT).  The theorems below
 ; are over fn-bpnp-step on exactly those two events.

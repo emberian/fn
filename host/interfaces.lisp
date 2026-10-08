@@ -3176,6 +3176,10 @@
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-open-establishes-the-relation))
 
+(definterface fn-bpnjc-answer
+  :class :common-lisp-compliant
+  :keystones (fn-bpnjc-answer-is-contact-next))
+
 (definterface fn-bpnjc-contact-next
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-offer-keeps-the-relation
@@ -3783,6 +3787,12 @@
   :keystones ((fn-idle-gc-verdict-collects-only-when-owed :via fn-idle-gc-verdict)
               (fn-idle-gc-verdict-collects-when-owed :via fn-idle-gc-verdict)
               fn-idle-gc-decide-never-collects-during-a-publication))
+
+(definterface fn-load-gc-decide
+  :class :common-lisp-compliant
+  :keystones ((fn-load-gc-verdict-collects-only-when-grown :via fn-load-gc-verdict)
+              (fn-load-gc-verdict-collects-when-grown :via fn-load-gc-verdict)
+              (fn-load-gc-wait-bounds-the-growth :via fn-load-gc-verdict)))
 
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)
@@ -5767,6 +5777,7 @@
 (definterface fn-owner-hroot-resize :class :program)
 (definterface fn-owner-hroot-transient :class :program)
 (definterface fn-owner-hroot-begin :class :program)
+(definterface fn-owner-hroot-note :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
 (definterface fn-owner-hroot-frontier-value :class :program)
 (definterface fn-owner-hroot-row :class :program)
@@ -5845,7 +5856,7 @@
 (definterface fn-bph-node-transfer :class :common-lisp-compliant :kinds ((argv true-listp)))
 ; The probe's BP extension and the node's startup check read one capacity figure.
 (definterface fn-bph-extend-reservation :class :common-lisp-compliant
-  :keystones ((fn-bph-extended-reservation-holds-bp-sessions :via fn-bpsp-node-capacity)))
+  :keystones (fn-bph-extended-reservation-holds-bp-sessions))
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
 ; STATUS/HEALTH project the accepted configuration, never run-only NIL fields.
 (definterface fn-native-operator-host-result-config :class :program)
@@ -5887,7 +5898,7 @@
 (definterface fn-bpsp-read-bound :class :common-lisp-compliant)
 (definterface fn-bpsp-root-release-ready :class :common-lisp-compliant)
 (definterface fn-bpsp-node-startup :class :common-lisp-compliant
-  :keystones ((fn-bpsp-node-startup-holds-the-capacity :via fn-bpsp-node-capacity)))
+  :keystones (fn-bpsp-node-startup-holds-the-capacity))
 (definterface fn-bpsp-write :class :common-lisp-compliant)
 (definterface fn-bpsrx-abort-plan :class :common-lisp-compliant)
 (definterface fn-bpsrx-authorizedp :class :common-lisp-compliant)

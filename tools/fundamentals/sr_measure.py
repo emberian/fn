@@ -12,6 +12,8 @@ loopback socket.  Allocation per read needs the heap hook image; not here.
 """
 import argparse, json, os, shutil, socket, statistics, subprocess, sys, time
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/
+from rep_measure import decided_heap_env  # noqa: E402
 
 def free_port():
     with socket.socket() as s:
@@ -111,7 +113,8 @@ def main():
             while not (d / "done").exists(): time.sleep(0.05)
     err = open(work / "owner.stderr", "wb")
     t0 = time.perf_counter()
-    proc = subprocess.Popen([img, "--fn", "operator", str(cfg), "run"], env=env,
+    proc = subprocess.Popen([img, "--fn", "operator", str(cfg), "run"],
+                            env=decided_heap_env(img, cfg, env),
                             stdout=subprocess.PIPE, stderr=err)
     out = {"image": img, "fixture": a.fixture, "articles": a.articles, "client": a.client}
     try:

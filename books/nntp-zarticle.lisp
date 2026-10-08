@@ -166,7 +166,7 @@
                          (fn-nntp-article-bytes article fn-arena)))))
   :hints (("Goal" :in-theory (disable fn-zdn-request fn-zdn-choose fn-zar-article
                                       fn-zar-stored fn-zdn-digest-of-dict
-                                      fn-zdn-dict-of-digest fn-zdn-choose-stored-only-shared
+                                      fn-zdn-dict-of-digest
                                       fn-zar-stored-denotes)
            :use ((:instance fn-zar-stored-denotes
                             (article (fn-zar-article (cadr (fn-zdn-request args)) index)))

@@ -27,8 +27,8 @@ how to read a claim. Each line names the file that says it at length.
 | what is decided | `planning/decisions.md` |
 | what fn must do | `planning/requirements.json`, then `specs/` |
 | what is to be proved | `planning/proofs.json`, `docs/proofs.md` |
-| what is true now | `planning/now.md`, `planning/current.md` (generated) |
-| what is broken | `planning/repair/STATUS.md` (generated from `planning/repair/items/`) |
+| what is true now | `planning/now.md`; `python3 tools/current_view.py` (computed) |
+| what is broken | `python3 planning/repair/repair.py report` (computed from `planning/repair/items/`) |
 | which examples must work | `tests/scenarios/catalog.json` |
 | how to test each kind of thing | `docs/testing.md` |
 

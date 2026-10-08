@@ -348,6 +348,7 @@
   (implies (member-equal e (mv-nth 0 (fn-arpn-split pend pins)))
            (and (member-equal e pend)
                 (fn-arpn-clear-through-p (car e) pins)))
+ :rule-classes nil
   :hints (("Goal" :use (:instance fn-arpn-split-acc-released-member
                                   (rel nil) (keep nil))
                   :in-theory (disable fn-arpn-clear-through-p))))
@@ -390,11 +391,11 @@
   :rule-classes :linear)
 
 ; A clear stamp is below every live pin.
-(defthm fn-arpn-clear-through-below-every-pin
+(local (defthm fn-arpn-clear-through-below-every-pin
   (implies (and (fn-arpn-pinsp pins)
                 (fn-arpn-clear-through-p s pins)
                 (< 0 (fn-arpn-pins-of h pins)))
-           (< s h)))
+           (< s h))))
 
 ; ... and a stamp that is not clear has a live pin at or below it.
 (defthm fn-arpn-not-clear-has-a-pin-at-or-below
@@ -463,8 +464,3 @@
                              (- (fn-arpn-pins-of h (second st)) 1)
                            (fn-arpn-pins-of h (second st))))))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-arpn-clear-through-below-every-pin
-                    fn-arpn-split-released-are-clear))

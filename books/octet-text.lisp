@@ -208,7 +208,8 @@
 
 (defthm fn-ot-nat-parse-accepts-only-digits
   (implies (fn-ot-nat-parse xs r max)
-           (and (consp xs) (fn-ot-digitsp xs r))))
+           (and (consp xs) (fn-ot-digitsp xs r)))
+  :rule-classes nil)
 
 ; The printer, tail-recursive from the least significant digit.
 (defun fn-ot-nat-digits (n radix acc)
@@ -322,7 +323,8 @@
 ; An accepted text is exactly two digits per octet: an odd length is refused.
 (defthm fn-ot-hex-decode-length
   (implies (not (mv-nth 0 (fn-ot-hex-decode xs)))
-           (equal (len xs) (* 2 (len (mv-nth 1 (fn-ot-hex-decode xs)))))))
+           (equal (len xs) (* 2 (len (mv-nth 1 (fn-ot-hex-decode xs))))))
+  :rule-classes nil)
 
 (local
  (defthm fn-ot-hex-split
@@ -1372,11 +1374,5 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:definition fn-ot-hex-decode)
-                    (:definition fn-ot-nat-digits)
-                    (:rewrite fn-ot-hex-decode-length)))
+                    (:definition fn-ot-nat-digits)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-ot-hex-decode-length
-                    fn-ot-nat-parse-accepts-only-digits))

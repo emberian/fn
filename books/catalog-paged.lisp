@@ -56,6 +56,7 @@
 ;; The live links' meaning and the commit/withdrawal keystones (gate C).
 (include-book "catalog-live-links")
 (include-book "def-representation-pages")
+(include-book "def-representation-pageread")
 (include-book "def-representation")
 (include-book "def-representation-tree")
 ;; The (group . number)-keyed tables as dense per-group runs (stage 4).
@@ -2425,6 +2426,52 @@
                                       fn-cat$p-lprev-put fn-cat$p-lprev-rem)
             :induct (fn-cat$p-link plan fn-cat$p)))))
 
+; One link-table write at a time: the fields it leaves alone and the one it changes.
+(local
+ (defthm fn-cp-next-rem-fields
+   (and (equal (nth 0 (fn-cat$p-lnext-rem k s)) (nth 0 s))
+        (equal (nth 1 (fn-cat$p-lnext-rem k s)) (nth 1 s))
+        (equal (nth 3 (fn-cat$p-lnext-rem k s)) (nth 3 s))
+        (equal (nth 4 (fn-cat$p-lnext-rem k s)) (nth 4 s))
+        (equal (nth 5 (fn-cat$p-lnext-rem k s)) (nth 5 s))
+        (equal (nth 0 (nth 2 (fn-cat$p-lnext-rem k s))) (nth 0 (nth 2 s)))
+        (equal (nth 1 (nth 2 (fn-cat$p-lnext-rem k s))) (hons-remove-assoc k (nth 1 (nth 2 s))))
+        (equal (nth 2 (nth 2 (fn-cat$p-lnext-rem k s))) (nth 2 (nth 2 s))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-lnext-rem)))))
+(local
+ (defthm fn-cp-next-put-fields
+   (and (equal (nth 0 (fn-cat$p-lnext-put k v s)) (nth 0 s))
+        (equal (nth 1 (fn-cat$p-lnext-put k v s)) (nth 1 s))
+        (equal (nth 3 (fn-cat$p-lnext-put k v s)) (nth 3 s))
+        (equal (nth 4 (fn-cat$p-lnext-put k v s)) (nth 4 s))
+        (equal (nth 5 (fn-cat$p-lnext-put k v s)) (nth 5 s))
+        (equal (nth 0 (nth 2 (fn-cat$p-lnext-put k v s))) (nth 0 (nth 2 s)))
+        (equal (nth 1 (nth 2 (fn-cat$p-lnext-put k v s))) (cons (cons k v) (nth 1 (nth 2 s))))
+        (equal (nth 2 (nth 2 (fn-cat$p-lnext-put k v s))) (nth 2 (nth 2 s))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-lnext-put)))))
+(local
+ (defthm fn-cp-prev-rem-fields
+   (and (equal (nth 0 (fn-cat$p-lprev-rem k s)) (nth 0 s))
+        (equal (nth 1 (fn-cat$p-lprev-rem k s)) (nth 1 s))
+        (equal (nth 3 (fn-cat$p-lprev-rem k s)) (nth 3 s))
+        (equal (nth 4 (fn-cat$p-lprev-rem k s)) (nth 4 s))
+        (equal (nth 5 (fn-cat$p-lprev-rem k s)) (nth 5 s))
+        (equal (nth 0 (nth 2 (fn-cat$p-lprev-rem k s))) (nth 0 (nth 2 s)))
+        (equal (nth 1 (nth 2 (fn-cat$p-lprev-rem k s))) (nth 1 (nth 2 s)))
+        (equal (nth 2 (nth 2 (fn-cat$p-lprev-rem k s))) (hons-remove-assoc k (nth 2 (nth 2 s)))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-lprev-rem)))))
+(local
+ (defthm fn-cp-prev-put-fields
+   (and (equal (nth 0 (fn-cat$p-lprev-put k v s)) (nth 0 s))
+        (equal (nth 1 (fn-cat$p-lprev-put k v s)) (nth 1 s))
+        (equal (nth 3 (fn-cat$p-lprev-put k v s)) (nth 3 s))
+        (equal (nth 4 (fn-cat$p-lprev-put k v s)) (nth 4 s))
+        (equal (nth 5 (fn-cat$p-lprev-put k v s)) (nth 5 s))
+        (equal (nth 0 (nth 2 (fn-cat$p-lprev-put k v s))) (nth 0 (nth 2 s)))
+        (equal (nth 1 (nth 2 (fn-cat$p-lprev-put k v s))) (nth 1 (nth 2 s)))
+        (equal (nth 2 (nth 2 (fn-cat$p-lprev-put k v s))) (cons (cons k v) (nth 2 (nth 2 s)))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-lprev-put)))))
+
 (local
  (defthm fn-cp-unlink-fields
    (and (equal (nth 0 (fn-cat$p-unlink plan fn-cat$p)) (nth 0 fn-cat$p))
@@ -2433,7 +2480,8 @@
         (equal (nth 0 (nth 2 (fn-cat$p-unlink plan fn-cat$p))) (nth 0 (nth 2 fn-cat$p)))
         (equal (nth 1 (nth 2 (fn-cat$p-unlink plan fn-cat$p))) (fn-cpl-unlink t plan (nth 1 (nth 2 fn-cat$p))))
         (equal (nth 2 (nth 2 (fn-cat$p-unlink plan fn-cat$p))) (fn-cpl-unlink nil plan (nth 2 (nth 2 fn-cat$p)))))
-   :hints (("Goal" :in-theory (enable fn-cat$p-unlink fn-cpl-unlink)
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-unlink fn-cpl-unlink)
+                                   (fn-cat$p-lnext-rem fn-cat$p-lnext-put fn-cat$p-lprev-rem fn-cat$p-lprev-put))
             :induct (fn-cat$p-unlink plan fn-cat$p)))))
 
 ; The overflow cells and the array length are not the links' fields.

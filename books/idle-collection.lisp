@@ -146,4 +146,72 @@
        (<= *fn-idle-gc-generation* *fn-idle-gc-pseudo-static*))
   :rule-classes nil)
 
-(in-theory (disable fn-idle-gc-quiet-next fn-idle-gc-verdict))
+
+
+; The collection under load (MEM-012, lane n-load-gc).
+;
+; The idle collection waits for three quiet seconds, so during a burst of
+; POSTs nothing releases pages: the garbage a burst promotes into generations
+; 0-3 stays resident, and the whole-process peak (Ruling 16: VmHWM over the
+; workload) carries about 38 MiB of it.  Each maintenance tick the host
+; therefore also hands `fn-load-gc-decide' the dynamic space in use now
+; (sb-kernel:dynamic-usage) and the figure it recorded right after the last
+; collection of either kind, and calls (sb-ext:gc :gen G) for the G the
+; verdict names; it records the in-use figure after every collection, idle or
+; load, and at the first tick.  It asks only when the idle verdict is :wait.
+; A publication does not exempt the verdict: the peak is what kills a small
+; machine, and the pause is measured (MEM-012).
+;
+; KEYSTONE `fn-load-gc-verdict-collects-only-when-grown'; its converse is
+; `fn-load-gc-verdict-collects-when-grown'.  `fn-load-gc-wait-bounds-the-growth'
+; is what the peak claim rests on: a :wait verdict means usage is under the base
+; plus the growth limit.  Host-side scope, not proved here: with the host
+; collecting on every :collect verdict at every one-second tick, the in-use
+; peak is at most B + growth-limit + one tick's allocation.
+
+(defconst *fn-load-gc-growth-octets* (* 1048576 (fn-profile-limit :load-gc-growth-mib)))
+(defconst *fn-load-gc-generation* (fn-profile-limit :load-gc-generation))
+
+(defun fn-load-gc-verdict (growth-limit generation usage base)
+  (declare (xargs :guard t))
+  (if (and (natp usage) (natp base) (natp growth-limit)
+           (<= (+ base growth-limit) usage))
+      (list :collect generation)
+    :wait))
+
+; The verdict at the profile's limits: the entry the host calls.
+(defun fn-load-gc-decide (usage base)
+  (declare (xargs :guard t))
+  (fn-load-gc-verdict *fn-load-gc-growth-octets* *fn-load-gc-generation* usage base))
+
+; KEYSTONE.
+(defthm fn-load-gc-verdict-collects-only-when-grown
+  (implies (not (equal (fn-load-gc-verdict growth-limit generation usage base) :wait))
+           (and (natp usage) (natp base) (natp growth-limit)
+                (<= (+ base growth-limit) usage)
+                (equal (fn-load-gc-verdict growth-limit generation usage base)
+                       (list :collect generation))))
+  :rule-classes nil)
+
+(defthm fn-load-gc-verdict-collects-when-grown
+  (implies (and (natp usage) (natp base) (natp growth-limit)
+                (<= (+ base growth-limit) usage))
+           (equal (fn-load-gc-verdict growth-limit generation usage base)
+                  (list :collect generation)))
+  :rule-classes nil)
+
+; The bound the peak claim rests on.
+(defthm fn-load-gc-wait-bounds-the-growth
+  (implies (and (equal (fn-load-gc-verdict growth-limit generation usage base) :wait)
+                (natp usage) (natp base) (natp growth-limit))
+           (< usage (+ base growth-limit)))
+  :rule-classes nil)
+
+; The profile's generation releases pages (above small_generation_limit of 1)
+; and is one SBCL has.
+(defthm fn-load-gc-generation-releases-pages
+  (and (< 1 *fn-load-gc-generation*)
+       (<= *fn-load-gc-generation* *fn-idle-gc-pseudo-static*))
+  :rule-classes nil)
+
+(in-theory (disable fn-idle-gc-quiet-next fn-idle-gc-verdict fn-load-gc-verdict))

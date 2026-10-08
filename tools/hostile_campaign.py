@@ -62,6 +62,7 @@ import time
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # the repository root
 from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
+from tools.rep_measure import decided_heap_env  # noqa: E402
 
 # The wall bound one served request may take.  The step budget is a wait, not
 # a cut, so a *clean* request is what this bounds: an oversized or hostile
@@ -173,6 +174,8 @@ class Node:
                     "--"] + argv
         err = open(self.stderr, "ab")
         self.process = subprocess.Popen(argv, cwd=os.getcwd(),
+                                        env=decided_heap_env(self.image, self.config,
+                                                             dict(os.environ)),
                                         stdout=subprocess.PIPE, stderr=err)
         # Read the readiness lines: "LISTENING <port>" and, when a tls_port is
         # configured, "LISTENING-TLS <port>" after it.

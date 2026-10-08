@@ -1,0 +1,478 @@
+{
+  "schema": 1,
+  "revision": "2d19648483483de40bb397ecac2d9f50324c98ac",
+  "label": "eg-base",
+  "image": "/tank/fn/scratch/entry-guards/native-base/tree/build/fn-host-developer",
+  "core_sha256": "1bff556c43722a391e373b460ec21ddf58f893f4abdeb2a2fcafbeaa047524a7",
+  "launcher_sha256": "934c0b3bcf7f5a185430b5bd296ae83e2efab05a511b9affb8a0b5ff6386bec7",
+  "client_sha256": {
+    "tools/throughput_gate.py": "2e760c66fcb212010c86958082658aafc1093820c5aac5e263518422c71efe89",
+    "tools/msgid_measure.py": "5356f13d17d73b80564bdce77ef0b992ea298ecda324a92f2cc7e6763806494a",
+    "tools/rep_measure.py": "a236c749ebc3ffc880c7b7b3322cce6d77a89b4bbc279f5d0a73f3baf996ebda",
+    "tools/signed_carriers.py": "353fdeae5290b2fb4fe11b6783397c506a29a6b9ab5831e069972db3cbb9e290",
+    "tools/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tools/wire_stream.py": "a0a3f1a65fbb5941f4f0156de2f09c731b2c0848c2dcde2ba8320b38100c2982",
+    "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/native_process.py": "fb8eb5e233d6211492a9b00512957873ae5224b73127f6830ed0010abd91475d"
+  },
+  "filesystem": "tmpfs",
+  "host": "hbox",
+  "started_utc": "2026-09-27T19:26:19Z",
+  "quiet_before": {
+    "own_unit": "throughput-gate-2d1964848348-20260927T192616Z.service",
+    "window_s": 10.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "run-r0daa8bbe28a740b5a669947302bfbe7c.scope",
+        "cpu_cores": 1.023,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start pk books/proto/adt-key-lib --upto adt-kgood"
+      },
+      {
+        "unit": "run-r7d5938987bad40a8804c178167411aa1.scope",
+        "cpu_cores": null,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start tmj books/owner-time-journal --upto fn-otm-dec-octets"
+      },
+      {
+        "unit": "run-r921ab1434d7843f1a4dac2d7e6ded659.scope",
+        "cpu_cores": 1.025,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_bp_fragment_node_native\""
+      },
+      {
+        "unit": "run-rf2521ea7c6f24f2cb64bef7894280db4.scope",
+        "cpu_cores": 1.027,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_bp_fragment_node_native\""
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.015,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "run-r1770d32b220c4c968decb911cb95e658.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py probe pk adt-kcovers-kill"
+      },
+      {
+        "unit": "run-r222a9e22823b4e23a01945923eed5adc.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r3172135e6c9b4b9fbfdea1d4891fb673.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r3327d2a1013a4e89b6f561100d5ef1d3.scope",
+        "cpu_cores": 0.007,
+        "description": "/usr/bin/taskset -c 20-23 python3 il_probe.py /tank/fn/scratch/input-loop/after-tree /tank/fn/scratch/input-loop/after-tree/build/fn-host-developer-prof - work/"
+      },
+      {
+        "unit": "run-r34a321fa054d4682bbdde7160d406205.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_owner\""
+      },
+      {
+        "unit": "run-r38f270a81e074dffadf0075ac1123b63.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py probe pgk pgs-c-step-hyps --full"
+      },
+      {
+        "unit": "run-r3e3d83aab85641939efb271b5c9660cc.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start apt tests/acl2/payload-arena-paged-tests --certify-missing"
+      },
+      {
+        "unit": "run-r433ed3ab525543f7bb32ed2b01530d96.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r46476bbb05c7495ea87227c5fe50cf96.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log.DeveloperCommitLogTests\""
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-r5324f18bcd874c93ae863932f2929e0c.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r55e2396cf1df4b709d61a6e2db9465b5.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_key_statements\""
+      },
+      {
+        "unit": "run-r5612dc97b3fa4c8ba4429ce21688e57d.scope",
+        "cpu_cores": 0.002,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r607704dc731243248ae71b504d98e6bf.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/bin/taskset -c 20-23 python3 il_probe.py /tank/fn/scratch/input-loop/after-tree /tank/fn/scratch/input-loop/after-tree/build/fn-host-developer-prof - work/"
+      },
+      {
+        "unit": "run-r80187f6a2e95463f83645b56abab0117.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r93fc62c1baf54be6bf9055ae7fd8b8e7.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start pgk books/proto/pagestore-keystones --upto #3"
+      },
+      {
+        "unit": "run-r946bcabd1dec43cb918b2746dda3d162.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r94ce92630cb145b4908e28ac82c9d18e.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_key_statements\""
+      },
+      {
+        "unit": "run-ra7a577be624e479393be755dd318c8ba.scope",
+        "cpu_cores": 0.002,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-ra98c14ecaaf24479a5f86add0982b1ef.scope",
+        "cpu_cores": 0.002,
+        "description": "/usr/bin/python3 /tank/fn/scratch/throughput-gate/native-img-b38938cac/tree/planning/evidence/pack-chain-open-2026-09-26/chain_fixture.py build /dev/shm/fn-fixt"
+      },
+      {
+        "unit": "run-rbc553aac6a3a47029c35101e57853ef1.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-rc0c3f6b88dc742af857600e106da055d.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_key_statements\""
+      },
+      {
+        "unit": "run-rc2e84288ab4e44d4897549961d863249.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start pe tools/extract/world --idle-timeout 0"
+      },
+      {
+        "unit": "run-rc4400c0bd6de4662a257c31a4161bc18.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/python3 -m unittest tests.test_native_commit_log.DeveloperCommitLogTests.test_the_segment_grows_and_a_death_while_it_grows_keeps_every_acknowledged_pos"
+      },
+      {
+        "unit": "run-rc67f5d21f32347f3a9b5926044ed2f45.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_owner\""
+      },
+      {
+        "unit": "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 prec1_replay.py /tank/fn/scratch/control-across-peers/native-prec1/tree /tank/fn/scratch/control-across-peers/native-m2/tree /tank/fn/scratch/c"
+      },
+      {
+        "unit": "run-rdac696656a04499e9aacf388d1b95116.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/bin/taskset -c 20-23 python3 /tank/fn/scratch/input-loop/il_probe.py /tank/fn/scratch/input-loop/after-tree /tank/fn/scratch/input-loop/after-tree/build/fn"
+      },
+      {
+        "unit": "run-rdd1fbceef9bc4b8e917fcb177119b628.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_owner\""
+      },
+      {
+        "unit": "run-rddae77595c6045a89137a2405c3861f2.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/throughput-gate/native-img-b38938cac/tree/tools/rep_measure.py --image /tank/fn/scratch/throughput-gate/native-img-b38938cac/t"
+      },
+      {
+        "unit": "run-reeb032cb776b4008aa5d71a428456370.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/bin/taskset -c 20-23 python3 /tank/fn/scratch/input-loop/il_probe.py /tank/fn/scratch/input-loop/before-tree /tank/fn/scratch/input-loop/before-tree/build/"
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.007,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      }
+    ]
+  },
+  "quiet": false,
+  "probe_rc": 0,
+  "probe_n": 1000,
+  "probe_wall_s": 1.173,
+  "probe_cpu_s": 1.173,
+  "probe_reported": {
+    "host": "native",
+    "transactions": 1000,
+    "payload_bytes": 2048,
+    "commit_seconds": 0.698,
+    "reopen_seconds": 0.376,
+    "status": "passed"
+  },
+  "probe_commit_ms": 0.698,
+  "probe_reopen_s": 0.376,
+  "phase_seconds": {
+    "probe": 2.283,
+    "alloc": 1.71,
+    "served": 2.593,
+    "signed": 33.284,
+    "checkpoint": 2.547
+  },
+  "alloc_condition": "TYPE-ERROR",
+  "probe_bytes_consed_per_commit": 1032675,
+  "post_load_s": 0.241,
+  "post_owner_cpu_ms": 2.4,
+  "post_n": 100,
+  "post_octets": 2048,
+  "post_median_ms": 2.054,
+  "post_p95_ms": 5.343,
+  "article_n": 100,
+  "article_median_ms": 0.403,
+  "article_p95_ms": 0.522,
+  "reopen_s": 0.193,
+  "reopen_last_stat": "223 0 <t17-000099@example.invalid> retrieved",
+  "signed_history_load_s": 5.835,
+  "post_signed_owner_cpu_ms": 118.6,
+  "post_signed_n": 100,
+  "post_signed_history": 1000,
+  "post_signed_history_signed": 32,
+  "post_signed_octets": 9522,
+  "post_signed_median_ms": 110.141,
+  "post_signed_p95_ms": 144.081,
+  "post_signed_group": "211 1100 1 1100 fn.test",
+  "carrier_sign_median_s": 0.111,
+  "checkpoint_article_octets": 31744,
+  "checkpoint_posts": 64,
+  "checkpoint_published": true,
+  "checkpoint_sequence": 64,
+  "checkpoint_suffix": 64,
+  "checkpoint_octets": 2099270,
+  "checkpoint_publish_ms": 370,
+  "checkpoint_steps": 7,
+  "checkpoint_seen_after_load_s": 0.502,
+  "box_load": {
+    "samples": 8,
+    "interval_s": 5.0,
+    "cpus": 24,
+    "box_cpu_busy_median": 0.353,
+    "box_cpu_busy_max": 0.375,
+    "loadavg1_median": 9.19,
+    "loadavg1_max": 9.6
+  },
+  "quiet_after": {
+    "own_unit": "throughput-gate-2d1964848348-20260927T192616Z.service",
+    "window_s": 5.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "run-r0daa8bbe28a740b5a669947302bfbe7c.scope",
+        "cpu_cores": 0.734,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start pk books/proto/adt-key-lib --upto adt-kgood"
+      },
+      {
+        "unit": "run-r66b90aebd8e24bcfa0103d2939f681f7.scope",
+        "cpu_cores": null,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_slow_disk\""
+      },
+      {
+        "unit": "run-r6b87a78c0e9a438296068e73b2d4d577.scope",
+        "cpu_cores": 0.137,
+        "description": "/usr/bin/sh -c \"python3 tools/runtime_image/node_measure.py core build/fn-host > /tank/fn/scratch/runtime-floor/m/core.json 2>&1; python3 tools/runtime_image/no"
+      },
+      {
+        "unit": "run-r921ab1434d7843f1a4dac2d7e6ded659.scope",
+        "cpu_cores": 1.059,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_bp_fragment_node_native\""
+      },
+      {
+        "unit": "run-rea47d98fced84dd1a3064817a739d05c.scope",
+        "cpu_cores": 1.085,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start tmj books/owner-time-journal --upto fn-otm-dec-octets"
+      },
+      {
+        "unit": "run-rfc7a7b2c6f4347ac87fbbe4ae50a8cef.scope",
+        "cpu_cores": 0.139,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py probe pgk pgs-open-after-commit --full"
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.042,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "run-r1770d32b220c4c968decb911cb95e658.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py probe pk adt-kcovers-kill"
+      },
+      {
+        "unit": "run-r222a9e22823b4e23a01945923eed5adc.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r3172135e6c9b4b9fbfdea1d4891fb673.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r3327d2a1013a4e89b6f561100d5ef1d3.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/bin/taskset -c 20-23 python3 il_probe.py /tank/fn/scratch/input-loop/after-tree /tank/fn/scratch/input-loop/after-tree/build/fn-host-developer-prof - work/"
+      },
+      {
+        "unit": "run-r34a321fa054d4682bbdde7160d406205.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_owner\""
+      },
+      {
+        "unit": "run-r3e3d83aab85641939efb271b5c9660cc.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start apt tests/acl2/payload-arena-paged-tests --certify-missing"
+      },
+      {
+        "unit": "run-r433ed3ab525543f7bb32ed2b01530d96.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r46476bbb05c7495ea87227c5fe50cf96.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log.DeveloperCommitLogTests\""
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-r5324f18bcd874c93ae863932f2929e0c.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r55e2396cf1df4b709d61a6e2db9465b5.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_key_statements\""
+      },
+      {
+        "unit": "run-r5612dc97b3fa4c8ba4429ce21688e57d.scope",
+        "cpu_cores": 0.002,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r607704dc731243248ae71b504d98e6bf.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/taskset -c 20-23 python3 il_probe.py /tank/fn/scratch/input-loop/after-tree /tank/fn/scratch/input-loop/after-tree/build/fn-host-developer-prof - work/"
+      },
+      {
+        "unit": "run-r80187f6a2e95463f83645b56abab0117.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r93fc62c1baf54be6bf9055ae7fd8b8e7.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start pgk books/proto/pagestore-keystones --upto #3"
+      },
+      {
+        "unit": "run-r946bcabd1dec43cb918b2746dda3d162.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-r94ce92630cb145b4908e28ac82c9d18e.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_key_statements\""
+      },
+      {
+        "unit": "run-ra7a577be624e479393be755dd318c8ba.scope",
+        "cpu_cores": 0.002,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-ra98c14ecaaf24479a5f86add0982b1ef.scope",
+        "cpu_cores": 0.002,
+        "description": "/usr/bin/python3 /tank/fn/scratch/throughput-gate/native-img-b38938cac/tree/planning/evidence/pack-chain-open-2026-09-26/chain_fixture.py build /dev/shm/fn-fixt"
+      },
+      {
+        "unit": "run-rbc553aac6a3a47029c35101e57853ef1.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_commit_log\""
+      },
+      {
+        "unit": "run-rc0c3f6b88dc742af857600e106da055d.scope",
+        "cpu_cores": 0.004,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_key_statements\""
+      },
+      {
+        "unit": "run-rc2e84288ab4e44d4897549961d863249.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/local/bin/swarm-build python3 tools/proof_repl.py start pe tools/extract/world --idle-timeout 0"
+      },
+      {
+        "unit": "run-rc4400c0bd6de4662a257c31a4161bc18.scope",
+        "cpu_cores": 0.003,
+        "description": "/usr/bin/python3 -m unittest tests.test_native_commit_log.DeveloperCommitLogTests.test_the_segment_grows_and_a_death_while_it_grows_keeps_every_acknowledged_pos"
+      },
+      {
+        "unit": "run-rc67f5d21f32347f3a9b5926044ed2f45.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_owner\""
+      },
+      {
+        "unit": "run-rc97c6d54014047148c75c546eb4d7c48.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 prec1_replay.py /tank/fn/scratch/control-across-peers/native-prec1/tree /tank/fn/scratch/control-across-peers/native-m2/tree /tank/fn/scratch/c"
+      },
+      {
+        "unit": "run-rdac696656a04499e9aacf388d1b95116.scope",
+        "cpu_cores": 0.005,
+        "description": "/usr/bin/taskset -c 20-23 python3 /tank/fn/scratch/input-loop/il_probe.py /tank/fn/scratch/input-loop/after-tree /tank/fn/scratch/input-loop/after-tree/build/fn"
+      },
+      {
+        "unit": "run-rdd1fbceef9bc4b8e917fcb177119b628.scope",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one tests.test_native_owner\""
+      },
+      {
+        "unit": "run-rddae77595c6045a89137a2405c3861f2.scope",
+        "cpu_cores": 0.002,
+        "description": "/usr/bin/python3 /tank/fn/scratch/throughput-gate/native-img-b38938cac/tree/tools/rep_measure.py --image /tank/fn/scratch/throughput-gate/native-img-b38938cac/t"
+      },
+      {
+        "unit": "run-reeb032cb776b4008aa5d71a428456370.scope",
+        "cpu_cores": 0.005,
+        "description": "/usr/bin/taskset -c 20-23 python3 /tank/fn/scratch/input-loop/il_probe.py /tank/fn/scratch/input-loop/before-tree /tank/fn/scratch/input-loop/before-tree/build/"
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      }
+    ]
+  },
+  "finished_utc": "2026-09-27T19:27:18Z"
+}

@@ -71,7 +71,7 @@ class RuntimeLookups(unittest.TestCase):
             sidecar = root / current_view.SIDECAR
             sidecar.parent.mkdir(parents=True)
             sidecar.write_text(json.dumps({'images': {'old-image': {
-                'source': 'original-identity', 'closure_manifest': 'historical-name'}},
+                'source': 'original-identity'}},
                 'capabilities': [{'host': {'file': 'host/example.lisp'}}]}))
             def git_run(command, **kwargs):
                 self.assertEqual(command[-1], 'new-object:host/example.lisp')
@@ -81,5 +81,4 @@ class RuntimeLookups(unittest.TestCase):
                 resolve.assert_called_once_with('original-identity', root)
             image = json.loads(sidecar.read_text())['images']['old-image']
             self.assertEqual(image['source'], 'original-identity')
-            self.assertEqual(image['closure_manifest'], 'historical-name')
             self.assertEqual(image['host_sha256'], {'host/example.lisp': hashlib.sha256(b'exact source').hexdigest()})

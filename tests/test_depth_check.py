@@ -1,5 +1,7 @@
-"""tools/depth_check.py: tail positions, the recursive components, the baseline rules."""
+"""tools/depth_check.py: tail positions, the recursive components, the baseline rules, the raw domain."""
+import tempfile
 import unittest
+from pathlib import Path
 
 from tools import depth_check as d
 
@@ -222,6 +224,83 @@ class ProgramEntryTests(unittest.TestCase):
         rows = d.program_entries(defs, {"fn-a", "fn-b", "fn-missing"})
         self.assertEqual([r["function"] for r in rows], ["fn-a"])
         self.assertEqual(rows[0]["where"], "host/a.lisp:1")
+
+
+
+def raw_rows_of(text):
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "host" / "native").mkdir(parents=True)
+        (root / "host" / "native" / "x.lisp").write_text(text)
+        rows, _size = d.raw_findings(root)
+        return {row["function"]: row for row in rows}
+
+
+class RawTailTests(unittest.TestCase):
+    def test_a_cons_around_the_recursion_is_found(self):
+        self.assertIn("f", raw_rows_of("(defun f (x) (if (consp x) (cons (car x) (f (cdr x))) nil))"))
+
+    def test_an_accumulator_loop_is_not(self):
+        self.assertEqual(raw_rows_of("(defun f (x acc) (if (consp x) (let ((y (car x)))"
+                                 " (f (cdr x) (cons y acc))) acc))"), {})
+
+    def test_a_special_binding_is_not_a_tail_context(self):
+        self.assertIn("f", raw_rows_of("(defun f (x) (let ((*depth* 1)) (if x (f (cdr x)) nil)))"))
+
+    def test_handler_case_and_loop_bodies_are_not_tail(self):
+        self.assertIn("f", raw_rows_of("(defun f (x) (handler-case (f (cdr x)) (error () nil)))"))
+        self.assertIn("f", raw_rows_of("(defun f (x) (dolist (y x) (f y)))"))
+
+    def test_mutual_recursion_through_a_callee(self):
+        found = raw_rows_of("(defun a (x) (progn (b x) nil)) (defun b (x) (when x (a (cdr x))))")
+        self.assertIn("a", found)
+        self.assertNotIn("b", found)  # b's call to a is its tail
+
+    def test_a_labels_function_is_its_own_definition(self):
+        found = raw_rows_of("(defun f (xs) (labels ((walk (x) (if x (1+ (walk (cdr x))) 0)))"
+                        " (walk xs)))")
+        self.assertIn("f/walk", found)
+        self.assertNotIn("f", found)
+
+    def test_a_new_threads_function_runs_on_its_own_stack(self):
+        self.assertEqual(raw_rows_of("(defun f (s) (sb-thread:make-thread (lambda () (f s))) s)"), {})
+
+    def test_a_def_actor_starters_thunk_runs_on_the_workers_stack(self):
+        spawn = "(def-actor spawn :kind :x :thread-name \"t\" :roster t :join j :failure :job)\n"
+        self.assertEqual(raw_rows_of(spawn + "(defun f (s) (spawn s nil (lambda () (f s)) (lambda (c) (f c))) s)"), {})
+        # the physical callback and before-start run on this thread's stack
+        self.assertIn("f", raw_rows_of(spawn + "(defun f (s) (spawn s nil nil nil (lambda (r) (f r))) s)"))
+        # an undeclared name's lambda is still read as called here
+        self.assertIn("f", raw_rows_of("(defun f (s) (spawn s nil (lambda () (f s))) s)"))
+
+    def test_a_lambda_argument_runs_on_this_stack(self):
+        self.assertIn("f", raw_rows_of("(defun f (s) (call-with s (lambda () (f s))) s)"))
+
+
+class RawBaselineTests(unittest.TestCase):
+    ROW = {"function": "f", "where": "host/native/x.lisp:1", "nontail_calls": ["f"],
+           "component": ["f"]}
+
+    def test_an_unlisted_finding_fails(self):
+        p = d.raw_check([self.ROW], {"bounded": {}, "debt": {}}, constants=set())
+        self.assertTrue(p and "depth_baseline.json" in p[0] and "raw" in p[0])
+
+    def test_operator_data_is_not_a_bound(self):
+        p = d.raw_check([self.ROW], {"bounded": {"f": "walks the operator's peer table"},
+                                 "debt": {}}, constants=set())
+        self.assertTrue(any("names no bound" in x for x in p))
+
+    def test_a_named_constant_is(self):
+        self.assertEqual(d.raw_check([self.ROW], {"bounded": {"f": "depth <= *fn-x*"}, "debt": {}},
+                                 constants={"*fn-x*"}), [])
+
+    def test_a_listed_function_that_no_longer_recurses_fails(self):
+        p = d.raw_check([], {"bounded": {}, "debt": {"f": "D27: a walk"}}, constants=set())
+        self.assertTrue(any("no longer" in x for x in p))
+
+    def test_the_tree_is_clean(self):
+        rows, _ = d.raw_findings()
+        self.assertEqual(d.raw_check(rows, d.load_baseline()["raw"]), [])
 
 
 if __name__ == "__main__":

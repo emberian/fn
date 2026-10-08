@@ -9,7 +9,7 @@ update their cells when they land; the audit records
 on image" cell holds one sentence for the latest image and is replaced, not
 appended to: earlier observations stay in their immutable records under
 [`evidence/`](evidence/), and the computed coordinates (implemented, proved,
-qualified, deployed) are in [the current view](current.md).
+qualified, deployed) are in the current view (`python3 tools/current_view.py`).
 
 | P | theorem | host-called subject | teeth | observed on image | obstruction |
 | --- | --- | --- | --- | --- | --- |
@@ -27,4 +27,4 @@ qualified, deployed) are in [the current view](current.md).
 
 Decisions: taken 2026-09-24 ~22:30 UTC as D23 (relay trust by carrier allowlist), D24 (peer node check carried), D25 (duplicate versus conflict keys on the poster's bytes), D26 (the ratchet's number is the 2-job measurement) in planning/decisions.md; the adopted defaults (P5's sentence, D02 over served POST, the kind-8 default with duplicates acknowledged, the five specific-purpose group names allowed) stand until ember says otherwise. Still ember's: none pending.
 
-Image under test and deployed node: see [the current view](current.md) (generated; `make check` fails when it is stale).
+Image under test and deployed node: see the current view (`python3 tools/current_view.py`).

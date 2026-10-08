@@ -40,6 +40,7 @@
 ; stated under archive = the view's articles.
 (in-package "ACL2")
 (include-book "catalog-number-index")
+(include-book "def-loop")
 ; A group's summary at a view below the count (lane scale-latency, PKT-870).
 (include-book "served-catalog-view")
 (include-book "newnews-stream-cursor")
@@ -650,58 +651,16 @@
 ; window reads the rows of its own numbers, each through a reader that
 ; checks its handle (see fn-cat-row-article).  They are what a cursor
 ; quantum runs (fn-ovw-lines), so their guard is checked once per quantum.
-(defun fn-nov-lines-for-numbers-cat-loop (group numbers v fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp v) (true-listp acc)) :verify-guards nil))
-  (if (consp numbers)
-      (let* ((number (car numbers))
-             (article (fn-scat-available-article group number v fn-arena fn-cat))
-             (over (if (and (consp article)
-                            (not (fn-nntp-article-tombstonep article fn-arena)))
-                       (fn-nov-overview article fn-arena)
-                     (list :error))))
-        (if (fn-nov-okp over)
-            (fn-nov-lines-for-numbers-cat-loop group
-                                               (cdr numbers)
-                                               v
-                                               fn-arena
-                                               fn-cat
-                                               (cons (fn-nov-line number over) acc))
-          (fn-nov-lines-for-numbers-cat-loop group (cdr numbers) v fn-arena fn-cat acc)))
-    (revappend acc nil)))
-
-(defun fn-nov-lines-for-numbers-cat (group numbers v fn-arena fn-cat)
-  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard (natp v)))
-  (mbe :logic
-       (if (consp numbers)
-           (let* ((number (car numbers))
-                  (article (fn-scat-available-article group number v fn-arena fn-cat))
-                  (over (if (and (consp article)
-                                 (not (fn-nntp-article-tombstonep article fn-arena)))
-                            (fn-nov-overview article fn-arena)
-                          (list :error))))
-             (if (fn-nov-okp over)
-                 (cons (fn-nov-line number over)
-                       (fn-nov-lines-for-numbers-cat group (cdr numbers) v fn-arena fn-cat))
-               (fn-nov-lines-for-numbers-cat group (cdr numbers) v fn-arena fn-cat)))
-         nil)
-       :exec (fn-nov-lines-for-numbers-cat-loop group numbers v fn-arena fn-cat nil)))
-
-(local
- (defthm fn-nov-lines-for-numbers-cat-loop-is-revappend
-   (equal (fn-nov-lines-for-numbers-cat-loop group numbers v fn-arena fn-cat acc)
-          (revappend acc (fn-nov-lines-for-numbers-cat group numbers v fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-nov-lines-for-numbers-cat-loop group numbers v fn-arena fn-cat acc)
-                   :in-theory (union-theories '(fn-nov-lines-for-numbers-cat-loop fn-nov-lines-for-numbers-cat revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-nov-lines-for-numbers-cat-loop)
-
-(verify-guards fn-nov-lines-for-numbers-cat
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-nov-lines-for-numbers-cat)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nov-lines-for-numbers-cat-loop-is-revappend (acc nil))))))
-
+(def-loop fn-nov-lines-for-numbers-cat (group numbers v fn-arena fn-cat)
+  :shape :map :over numbers :elt n :stobjs (fn-arena fn-cat)
+  :guard (natp v)
+  :let ((number n)
+        (article (fn-scat-available-article group number v fn-arena fn-cat))
+        (over (if (and (consp article) (not (fn-nntp-article-tombstonep article fn-arena)))
+                  (fn-nov-overview article fn-arena)
+                  (list :error))))
+  :keep (fn-nov-okp over)
+  :body (fn-nov-line number over))
 
 (defthm fn-nov-lines-for-numbers-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group)
@@ -751,55 +710,16 @@
 ;;; windowed reader, because a cursor that carries a server name reads them
 ;;; (fn-ovw-lines); their equation with the column fold is with the served
 ;;; range arm below (fn-nov-served-lines-for-numbers-cat-is-col).
-(defun fn-nov-served-lines-for-numbers-cat-loop (group numbers server v fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp v) (true-listp acc)) :verify-guards nil))
-  (if (consp numbers)
-      (let* ((number (car numbers))
-             (article (fn-scat-available-article group number v fn-arena fn-cat))
-             (over (if (and (consp article)
-                            (not (fn-scol-tombstonep article fn-arena fn-cat)))
-                       (fn-scol-overview-of article fn-arena fn-cat)
-                     (list :error))))
-        (if (fn-nov-okp over)
-            (fn-nov-served-lines-for-numbers-cat-loop
-             group (cdr numbers) server v fn-arena fn-cat
-             (cons (fn-nov-served-line number over server article) acc))
-          (fn-nov-served-lines-for-numbers-cat-loop group (cdr numbers) server v fn-arena fn-cat acc)))
-    (revappend acc nil)))
-
-(defun fn-nov-served-lines-for-numbers-cat (group numbers server v fn-arena fn-cat)
-  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard (natp v)))
-  (mbe :logic
-       (if (consp numbers)
-           (let* ((number (car numbers))
-                  (article (fn-scat-available-article group number v fn-arena fn-cat))
-                  (over (if (and (consp article)
-                                 (not (fn-scol-tombstonep article fn-arena fn-cat)))
-                            (fn-scol-overview-of article fn-arena fn-cat)
-                          (list :error))))
-             (if (fn-nov-okp over)
-                 (cons (fn-nov-served-line number over server article)
-                       (fn-nov-served-lines-for-numbers-cat group (cdr numbers) server v fn-arena fn-cat))
-               (fn-nov-served-lines-for-numbers-cat group (cdr numbers) server v fn-arena fn-cat)))
-         nil)
-       :exec (fn-nov-served-lines-for-numbers-cat-loop group numbers server v fn-arena fn-cat nil)))
-
-(local
- (defthm fn-nov-served-lines-for-numbers-cat-loop-is-revappend
-   (equal (fn-nov-served-lines-for-numbers-cat-loop group numbers server v fn-arena fn-cat acc)
-          (revappend acc (fn-nov-served-lines-for-numbers-cat group numbers server v fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-nov-served-lines-for-numbers-cat-loop group numbers server v fn-arena fn-cat acc)
-                   :in-theory (union-theories '(fn-nov-served-lines-for-numbers-cat-loop
-                                                fn-nov-served-lines-for-numbers-cat revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-nov-served-lines-for-numbers-cat-loop)
-
-(verify-guards fn-nov-served-lines-for-numbers-cat
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-nov-served-lines-for-numbers-cat)
-                                             (union-theories (theory 'minimal-theory)
-                                                             (executable-counterpart-theory :here)))
-           :use ((:instance fn-nov-served-lines-for-numbers-cat-loop-is-revappend (acc nil))))))
+(def-loop fn-nov-served-lines-for-numbers-cat (group numbers server v fn-arena fn-cat)
+  :shape :map :over numbers :elt n :stobjs (fn-arena fn-cat)
+  :guard (natp v)
+  :let ((number n)
+        (article (fn-scat-available-article group number v fn-arena fn-cat))
+        (over (if (and (consp article) (not (fn-scol-tombstonep article fn-arena fn-cat)))
+                  (fn-scol-overview-of article fn-arena fn-cat)
+                  (list :error))))
+  :keep (fn-nov-okp over)
+  :body (fn-nov-served-line number over server article))
 
 ;;; -----------------------------------------------------------------------------
 ;;; OVER/XOVER of a range answered in bounded windows (D27; PRF-1020; lanes
@@ -1633,11 +1553,29 @@
            :in-theory (disable fn-scat-range-numbers fn-nntp-group-range-numbers
                                fn-cat-view-articles fn-cnx-freshp))))
 
-; Raw compatibility low uses the retained-identity range pass. The actual
-; availability adapter has its own maintained fn-scat-available-low.
+(defthm fn-scat-group-low-pass-is-raw-first-p
+  (implies (natp v)
+           (equal (fn-scat-group-low-pass group v fn-cat)
+                  (fn-scat-raw-first-p group 1 (fn-cat-group-high group fn-cat) v fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-scat-view-list fn-scat-raw-first-p fn-scat-range-numbers)
+           :use ((:instance fn-scat-range-numbers-at-view)
+                 (:instance fn-scat-view-list-car (k 1) (top (fn-cat-group-high group fn-cat)))))))
+
+; Raw compatibility low is the retained-identity range pass (fn-scat-group-low-pass,
+; the specification); the availability adapter's maintained fn-scat-available-low
+; is a different value (it skips withdrawn and reclaimed rows).  The executable
+; reads the first retained number directly: fn-scat-raw-first-p probes numbers
+; 1, 2, ... and stops at the first kept one, so a GROUP costs the leading
+; non-kept numbers, not the whole range.
 (defun fn-scat-group-low (group v fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (fn-scat-group-low-pass group v fn-cat))
+  (declare (xargs :stobjs fn-cat :guard (natp v) :verify-guards nil))
+  (mbe :logic (fn-scat-group-low-pass group v fn-cat)
+       :exec (fn-scat-raw-first-p group 1 (nfix (- (fn-cat-group-next group fn-cat) 1))
+                                  v fn-cat)))
+
+(verify-guards fn-scat-group-low
+  :hints (("Goal" :use ((:instance fn-scat-group-low-pass-is-raw-first-p)))))
 
 (defthm fn-scat-group-low-by-definition
   (equal (fn-scat-group-low group v fn-cat)
@@ -1889,58 +1827,16 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nntp-hdr-lines-for-numbers-cat-loop (field group numbers v fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (fn-scat-guard) (true-listp acc)) :verify-guards nil))
-  (if (consp numbers)
-      (let* ((number (car numbers))
-             (article (fn-scat-available-article group number v fn-arena fn-cat))
-             (content (if (consp article)
-                          (fn-scol-hdr-content field article fn-arena fn-cat)
-                        (list :error))))
-        (if (fn-nntp-hdr-okp content)
-            (fn-nntp-hdr-lines-for-numbers-cat-loop field
-                                                    group
-                                                    (cdr numbers)
-                                                    v
-                                                    fn-arena
-                                                    fn-cat
-                                                    (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                                                                            (fn-nntp-hdr-octets content))
-                                                          acc))
-          (fn-nntp-hdr-lines-for-numbers-cat-loop field
-                                                  group
-                                                  (cdr numbers)
-                                                  v
-                                                  fn-arena
-                                                  fn-cat
-                                                  acc)))
-    (revappend acc nil)))
-
-(defun fn-nntp-hdr-lines-for-numbers-cat (field group numbers v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let* ((number (car numbers))
-                  (article (fn-scat-available-article group number v fn-arena fn-cat))
-                  (content (if (consp article)
-                               (fn-scol-hdr-content field article fn-arena fn-cat)
-                             (list :error))))
-             (if (fn-nntp-hdr-okp content)
-                 (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                                         (fn-nntp-hdr-octets content))
-                       (fn-nntp-hdr-lines-for-numbers-cat field group (cdr numbers) v fn-arena fn-cat))
-               (fn-nntp-hdr-lines-for-numbers-cat field group (cdr numbers) v fn-arena fn-cat)))
-         nil)
-       :exec (fn-nntp-hdr-lines-for-numbers-cat-loop field group numbers v fn-arena fn-cat nil)))
-
-(local
- (defthm fn-nntp-hdr-lines-for-numbers-cat-loop-is-revappend
-   (equal (fn-nntp-hdr-lines-for-numbers-cat-loop field group numbers v fn-arena fn-cat acc)
-          (revappend acc (fn-nntp-hdr-lines-for-numbers-cat field group numbers v fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-nntp-hdr-lines-for-numbers-cat-loop field group numbers v fn-arena fn-cat acc)
-                   :in-theory (union-theories '(fn-nntp-hdr-lines-for-numbers-cat-loop fn-nntp-hdr-lines-for-numbers-cat revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-hdr-lines-for-numbers-cat (field group numbers v fn-arena fn-cat)
+  :shape :map :over numbers :elt n :stobjs (fn-arena fn-cat)
+  :guard (fn-scat-guard)
+  :let ((number n)
+        (article (fn-scat-available-article group number v fn-arena fn-cat))
+        (content (if (consp article)
+                     (fn-scol-hdr-content field article fn-arena fn-cat)
+                     (list :error))))
+  :keep (fn-nntp-hdr-okp content)
+  :body (fn-nntp-hdr-line (fn-nntp-decimal-field number) (fn-nntp-hdr-octets content)))
 
 (defthm fn-nntp-hdr-lines-for-numbers-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat) group)
@@ -2218,76 +2114,22 @@
 
 ;;; XPAT (RFC 2980 section 2.9).
 
-(verify-guards fn-nntp-hdr-lines-for-numbers-cat-loop)
-
-(verify-guards fn-nntp-hdr-lines-for-numbers-cat
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-hdr-lines-for-numbers-cat)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-hdr-lines-for-numbers-cat-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-hdr-command-cat)
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nntp-xpat-lines-for-numbers-cat-loop (field patterns group numbers v fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (fn-scat-guard) (true-listp acc)) :verify-guards nil))
-  (if (consp numbers)
-      (let* ((number (car numbers))
-             (article (fn-scat-available-article group number v fn-arena fn-cat))
-             (content (if (consp article)
-                          (fn-scol-hdr-content field article fn-arena fn-cat)
-                        (list :error))))
-        (if (and (fn-nntp-hdr-okp content)
-                 (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
-            (fn-nntp-xpat-lines-for-numbers-cat-loop field
-                                                     patterns
-                                                     group
-                                                     (cdr numbers)
-                                                     v
-                                                     fn-arena
-                                                     fn-cat
-                                                     (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                                                                             (fn-nntp-hdr-octets content))
-                                                           acc))
-          (fn-nntp-xpat-lines-for-numbers-cat-loop field
-                                                   patterns
-                                                   group
-                                                   (cdr numbers)
-                                                   v
-                                                   fn-arena
-                                                   fn-cat
-                                                   acc)))
-    (revappend acc nil)))
-
-(defun fn-nntp-xpat-lines-for-numbers-cat (field patterns group numbers v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let* ((number (car numbers))
-                  (article (fn-scat-available-article group number v fn-arena fn-cat))
-                  (content (if (consp article)
-                               (fn-scol-hdr-content field article fn-arena fn-cat)
-                             (list :error))))
-             (if (and (fn-nntp-hdr-okp content)
-                      (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
-                 (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                                         (fn-nntp-hdr-octets content))
-                       (fn-nntp-xpat-lines-for-numbers-cat field patterns group
-                                                           (cdr numbers) v fn-arena fn-cat))
-               (fn-nntp-xpat-lines-for-numbers-cat field patterns group (cdr numbers)
-                                                   v fn-arena fn-cat)))
-         nil)
-       :exec (fn-nntp-xpat-lines-for-numbers-cat-loop field patterns group numbers v fn-arena fn-cat nil)))
-
-(local
- (defthm fn-nntp-xpat-lines-for-numbers-cat-loop-is-revappend
-   (equal (fn-nntp-xpat-lines-for-numbers-cat-loop field patterns group numbers v fn-arena fn-cat acc)
-          (revappend acc (fn-nntp-xpat-lines-for-numbers-cat field patterns group numbers v fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers-cat-loop field patterns group numbers v fn-arena fn-cat acc)
-                   :in-theory (union-theories '(fn-nntp-xpat-lines-for-numbers-cat-loop fn-nntp-xpat-lines-for-numbers-cat revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-xpat-lines-for-numbers-cat (field patterns group numbers v fn-arena fn-cat)
+  :shape :map :over numbers :elt n :stobjs (fn-arena fn-cat)
+  :guard (fn-scat-guard)
+  :let ((number n)
+        (article (fn-scat-available-article group number v fn-arena fn-cat))
+        (content (if (consp article)
+                     (fn-scol-hdr-content field article fn-arena fn-cat)
+                     (list :error))))
+  :keep (and (fn-nntp-hdr-okp content)
+             (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
+  :body (fn-nntp-hdr-line (fn-nntp-decimal-field number) (fn-nntp-hdr-octets content)))
 
 (defthm fn-nntp-xpat-lines-for-numbers-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat) group)
@@ -2550,61 +2392,14 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-rcompat-hdr-lines-cat-loop (group numbers server v fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (and (natp v) (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)) (true-listp acc)) :verify-guards nil))
-  (if (consp numbers)
-      (let ((content (fn-rcompat-xref-content server
-                                              (fn-scat-available-article group
-                                                                         (car numbers)
-                                                                         v
-                                                                         fn-arena
-                                                                         fn-cat)
-                                              fn-arena)))
-        (if (fn-nntp-hdr-okp content)
-            (fn-rcompat-hdr-lines-cat-loop group
-                                           (cdr numbers)
-                                           server
-                                           v
-                                           fn-arena
-                                           fn-cat
-                                           (cons (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
-                                                                   (fn-nntp-hdr-octets content))
-                                                 acc))
-          (fn-rcompat-hdr-lines-cat-loop group
-                                         (cdr numbers)
-                                         server
-                                         v
-                                         fn-arena
-                                         fn-cat
-                                         acc)))
-    (revappend acc nil)))
-
-(defun fn-rcompat-hdr-lines-cat (group numbers server v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp v)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
-                  :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let ((content (fn-rcompat-xref-content
-                           server (fn-scat-available-article group (car numbers) v fn-arena fn-cat)
-                           fn-arena)))
-             (if (fn-nntp-hdr-okp content)
-                 (cons (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
-                                         (fn-nntp-hdr-octets content))
-                       (fn-rcompat-hdr-lines-cat group (cdr numbers) server v fn-arena fn-cat))
-               (fn-rcompat-hdr-lines-cat group (cdr numbers) server v fn-arena fn-cat)))
-         nil)
-       :exec (fn-rcompat-hdr-lines-cat-loop group numbers server v fn-arena fn-cat nil)))
-
-(local
- (defthm fn-rcompat-hdr-lines-cat-loop-is-revappend
-   (equal (fn-rcompat-hdr-lines-cat-loop group numbers server v fn-arena fn-cat acc)
-          (revappend acc (fn-rcompat-hdr-lines-cat group numbers server v fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-rcompat-hdr-lines-cat-loop group numbers server v fn-arena fn-cat acc)
-                   :in-theory (union-theories '(fn-rcompat-hdr-lines-cat-loop fn-rcompat-hdr-lines-cat revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-rcompat-hdr-lines-cat (group numbers server v fn-arena fn-cat)
+  :shape :map :over numbers :elt n :stobjs (fn-arena fn-cat)
+  :guard (and (natp v) (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+  :let ((content (fn-rcompat-xref-content server
+                                          (fn-scat-available-article group n v fn-arena fn-cat)
+                                          fn-arena)))
+  :keep (fn-nntp-hdr-okp content)
+  :body (fn-nntp-hdr-line (fn-nntp-decimal-field n) (fn-nntp-hdr-octets content)))
 
 (defthm fn-rcompat-hdr-lines-cat-is-hdr-lines
   (implies (and (fn-cnx-freshp fn-cat) group)
@@ -2995,45 +2790,12 @@
   (fn-nntp-hdr-line (fn-nntp-decimal-field number)
                     (fn-stx-reader-item (cdr (hons-get (fn-article-msgid article) found)))))
 
-(defun fn-scat-vh-lines-loop (group numbers v found fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (fn-scat-guard) (true-listp acc))
-                  :verify-guards nil))
-  (if (consp numbers)
-      (let ((article (fn-scat-available-article group (car numbers) v fn-arena fn-cat)))
-        (fn-scat-vh-lines-loop group (cdr numbers) v found fn-arena fn-cat
-                               (if (consp article)
-                                   (cons (fn-scat-vh-line (car numbers) article found) acc)
-                                 acc)))
-    (revappend acc nil)))
-
-(defun fn-scat-vh-lines (group numbers v found fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard) :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let ((article (fn-scat-available-article group (car numbers) v fn-arena fn-cat)))
-             (if (consp article)
-                 (cons (fn-scat-vh-line (car numbers) article found)
-                       (fn-scat-vh-lines group (cdr numbers) v found fn-arena fn-cat))
-               (fn-scat-vh-lines group (cdr numbers) v found fn-arena fn-cat)))
-         nil)
-       :exec (fn-scat-vh-lines-loop group numbers v found fn-arena fn-cat nil)))
-
-(local
- (defthm fn-scat-vh-lines-loop-is-revappend
-   (equal (fn-scat-vh-lines-loop group numbers v found fn-arena fn-cat acc)
-          (revappend acc (fn-scat-vh-lines group numbers v found fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-scat-vh-lines-loop group numbers v found fn-arena fn-cat acc)
-                   :in-theory (union-theories '(fn-scat-vh-lines-loop fn-scat-vh-lines revappend
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-scat-vh-lines-loop)
-
-(verify-guards fn-scat-vh-lines
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-scat-vh-lines)
-                                             (union-theories (theory 'minimal-theory)
-                                                             (executable-counterpart-theory :here)))
-                  :use ((:instance fn-scat-vh-lines-loop-is-revappend (acc nil))))))
+(def-loop fn-scat-vh-lines (group numbers v found fn-arena fn-cat)
+  :shape :map :over numbers :elt n :stobjs (fn-arena fn-cat)
+  :guard (fn-scat-guard)
+  :let ((article (fn-scat-available-article group n v fn-arena fn-cat)))
+  :keep (consp article)
+  :body (fn-scat-vh-line n article found))
 
 ; Every number of NUMBERS drawn from ALL: its verdict is in the table of ALL.
 (defthm fn-scat-vh-want-member-view
@@ -3959,22 +3721,8 @@
 
 ; Guards of the arms the lift executes (books/served-catalog-chain.lisp
 ; fn-scr-command calls the dispatcher): the whole -cat path is guard-verified.
-(verify-guards fn-nntp-xpat-lines-for-numbers-cat-loop)
-
-(verify-guards fn-nntp-xpat-lines-for-numbers-cat
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-nntp-xpat-lines-for-numbers-cat)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-xpat-lines-for-numbers-cat-loop-is-revappend (acc nil))))))
 (verify-guards fn-nntp-xpat-response-cat)
 (verify-guards fn-rcompat-retrieval-cat)
-(verify-guards fn-rcompat-hdr-lines-cat-loop)
-
-(verify-guards fn-rcompat-hdr-lines-cat
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-rcompat-hdr-lines-cat)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-rcompat-hdr-lines-cat-loop-is-revappend (acc nil))))))
 (verify-guards fn-rcompat-hdr-cat)
 (verify-guards fn-rcompat-reply-cat)
 (verify-guards fn-nntp-number-withdrawn-p-cat)

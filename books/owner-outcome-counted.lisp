@@ -168,6 +168,33 @@
                  fn-served-transit-outcome fn-served-make-conn-group-indexed
                  fn-own-outcome-rendering fn-peer-decision)))))
 
+; The host reads the effects-and-owner half of the counted answer through
+; fn-oct-result (host/owner-host.lisp fn-owner-outcome and
+; fn-owner-transit-outcome), so the claims of PRF-932 about the uncounted
+; outcomes (books/owner-host-relation.lisp fn-ohr-outcome-preserves-ocl-
+; relation and its three siblings) are claims about the answer the running
+; owner installs: the read-back equals fn-oop-outcome and
+; fn-oop-transit-outcome.
+(defun fn-oct-result (counted)
+  (declare (xargs :guard t))
+  (if (consp counted) (car counted) nil))
+
+(defthm fn-oct-result-is-oop-outcome
+  (implies (equal counted (fn-oct-outcome oc id word icar carry pending))
+           (equal (fn-oop-outcome oc id word icar carry)
+                  (fn-oct-result counted)))
+  :hints (("Goal" :use fn-oct-outcome-has-the-original-result
+           :in-theory (e/d (fn-oct-result) (fn-oct-outcome-has-the-original-result))))
+  :rule-classes nil)
+
+(defthm fn-oct-result-is-oop-transit-outcome
+  (implies (equal counted (fn-oct-transit oc id kind reason word pending))
+           (equal (fn-oop-transit-outcome oc id kind reason word)
+                  (fn-oct-result counted)))
+  :hints (("Goal" :use fn-oct-transit-has-the-original-result
+           :in-theory (e/d (fn-oct-result) (fn-oct-transit-has-the-original-result))))
+  :rule-classes nil)
+
 (defthm fn-oct-control-has-the-original-owner
   (equal (car (fn-oct-control o word pending)) (fn-own-control-outcome o word))
   :hints (("Goal" :in-theory
