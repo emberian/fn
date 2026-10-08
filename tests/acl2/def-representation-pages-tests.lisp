@@ -17,6 +17,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/def-representation-pages")
+(include-book "../../books/def-representation-pageread")
 (include-book "../../books/def-representation")
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
@@ -177,3 +178,13 @@
 (assert-event (not (equal (pgs-apply-dirty (drt-pg-pages-of *drt-big*)
                                            (drt-pg-set-dirty *drt-big* 0 '(1 nil nil)))
                           (drt-pg-pages-of (update-nth 0 '(1 nil nil) *drt-big*)))))
+
+; The read side: the directory tape and the indexed pool read.
+(defconst *drt-rows* '((1 (1 2) t) (2 nil nil) (3 (9) nil)))
+(assert-event (equal (drt-pg-dir-rows *drt-rows*) '((0 5) (5 4) (9 5))))
+(assert-event (mv-let (r res fills)
+                (drt-pg-read-indexed 1 (drt-pg-dir-pages-of *drt-rows*) (drt-pg-pages-of *drt-rows*) nil 1 nil)
+                (and (equal r '(2 nil nil)) (equal res '((:rows . 0))) (equal fills '((:rows . 0) (:dir . 0))))))
+(assert-event (mv-let (r res fills)
+                (drt-pg-read-indexed 2 (drt-pg-dir-pages-of *drt-rows*) (drt-pg-pages-of *drt-rows*) nil 4 nil)
+                (and (equal r '(3 (9) nil)) (equal (len res) 2) (equal (len fills) 2))))

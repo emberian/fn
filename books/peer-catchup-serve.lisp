@@ -475,6 +475,7 @@
                                                    quantum fn-arena)))
            (and (member-equal a articles)
                 (fn-cu-servedp a groups trie fn-arena)))
+ :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-cu-servedp fn-cu-select-aux fn-cu-drop fn-cu-rev
                                       fn-cu-first fn-cu-member-first)
            :use ((:instance fn-cu-select-aux-served-member
@@ -579,7 +580,8 @@
                                                    pos served used fn-arena))))
               (or (<= (fn-cu-octets-of out fn-arena) quantum)
                   (equal (len out) 1))))
-   :hints (("Goal" :in-theory (disable fn-cu-servedp fn-nntp-article-bytes)))
+   :hints (("Goal" :induct (fn-cu-select-aux entries groups trie quantum pos served used fn-arena)
+                   :in-theory (disable fn-cu-servedp fn-nntp-article-bytes fn-cu-record-cost)))
    :rule-classes nil))
 
 (local
@@ -674,7 +676,3 @@
 
 (in-theory (disable fn-cu-serve-reply fn-cu-select fn-cu-servedp fn-cu-chain-step))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-cu-select-serves-only-retrievable))

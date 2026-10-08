@@ -49,24 +49,32 @@
 ;   fn-owb-batch-within-bounds (invariant): no open batch exceeds bmax
 ;     members or omax octets; fn-owb-take preserves it, the other
 ;     transitions empty or keep the open batch.
-;   T1 fn-owb-acknowledged-record-survives-crash: an acknowledged member's
-;     record is read by the scan of every admissible crash image (R at the
-;     cut; A-CRASH-IMAGE as fn-bs-crash-imagep; the tear of a pending write
-;     is the platform's, fn-lg-platform-tears-p, as store-log-crash's
-;     corollary states it).
+;   T1 (an acknowledged record is read by the scan of every admissible crash
+;     image) is the host-path theorem books/store-log-durable.lisp
+;     fn-lgu-acknowledge-acknowledges-only-recoverable-records (M1), stated of
+;     the acknowledgement the host runs (fn-lgu-acknowledge, fnn-log-finish);
+;     this layer's member-level restatement was deleted with PRF-253's
+;     reach finding (no host line calls the layer).
 ;   T4 fn-owb-batch-complete-is-the-sequential-complete: completing a batch
 ;     of tokens in order equals preparing and completing each member alone
 ;     after its predecessors: the same rows, the same deltas, the same
 ;     catalog and arena.  The content: fn-cat-intern reads no catalog state,
 ;     and a member's EXPECTED is the count its predecessors leave.
-;   T7 fn-owb-uncertain-batch-recovers-to-a-prefix: after a failed barrier
-;     the kernel is :fault, every member in flight is :uncertain, and the
-;     kernel recovered from the store the failed fsync left holds the
-;     committed records followed by a prefix of the batch.
-;   fn-owb-recover-establishes-relation: store-log-recover's obligation
-;     fn-assume-log-sole-pending-writer discharged by functional instantiation
-;     with fn-owb-sole-pending-writer, which every R-related store satisfies
-;     (fn-owb-related-state-is-the-sole-pending-writer).
+;   T7 (after a failed barrier the kernel recovered from the store the failed
+;     fsync left holds the committed records followed by a prefix of the batch)
+;     is books/store-log-failed-barrier.lisp
+;     fn-lgc-failed-barrier-recovers-a-prefix, stated of the concrete kernel
+;     the host sets with fn-lgc-fence-failed; the lemmas below it
+;     (fn-owb-failed-fence-is-the-crash-image, -image-admissible,
+;     fn-owb-image-scan-of-related-state,
+;     fn-owb-recovered-kernel-after-a-failed-fence) are its proof, and
+;     fn-owb-fence-failed-answers-uncertain is this layer's half.
+;   store-log-recover's obligation fn-assume-log-sole-pending-writer is no
+;     longer discharged here: the open the host runs never writes below the
+;     frontier (books/store-log-recover-copy.lisp fn-lgrc-program, RL-01) and
+;     establishes R itself (fn-lgrc-open-keeps-the-relation-at-every-cut), so
+;     the overwriting recovery (fn-lgk-recover-establishes-relation) is not
+;     the host's and its discharge went with it.
 
 (in-package "ACL2")
 (include-book "store-log-recover")
@@ -501,37 +509,6 @@
   :hints (("Goal" :in-theory (disable fn-owb-batch-octets fn-lg-log))))
 
 ; -----------------------------------------------------------------------------
-; The sole pending writer: store-log-recover's obligation, discharged.
-
-(defun fn-owb-sole-pending-writer (bs ino)
-  (declare (xargs :guard t :verify-guards nil))
-  (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino)))
-
-(defthm fn-owb-related-state-is-the-sole-pending-writer
-  (implies (fn-lgk-relp bs ks ino genesis max)
-           (fn-owb-sole-pending-writer bs ino))
-  :hints (("Goal" :in-theory (e/d (fn-lgk-relp) (fn-lgk-content-okp fn-lg-log)))))
-
-(defthm fn-owb-recover-establishes-relation
-  (let* ((unit (fn-bs-unit bs)) (c (fn-bs-durable-content bs ino))
-         (ks (fn-lgk-recover c genesis unit max next-txid))
-         (f (fn-lgk-frontier ks))
-         (bs1 (mv-nth 1 (fn-bs-write bs ino f (fn-bs-zeros (- (len c) f)) :ok)))
-         (bs2 (mv-nth 1 (fn-bs-fsync-file bs1 ino :ok))))
-    (implies (and (posp unit) ino (assoc-equal ino (fn-bs-inodes bs))
-                  (true-listp c) (equal (mod (len c) unit) 0)
-                  (fn-frame-digestp genesis)
-                  (fn-owb-sole-pending-writer bs ino)
-                  (not (fn-bs-ops-for-ino (fn-bs-pending bs) ino)))
-             (fn-lgk-relp bs2 ks ino genesis max)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories (theory 'minimal-theory)
-                                      '(fn-owb-sole-pending-writer))
-           :use ((:functional-instance fn-lgk-recover-establishes-relation
-                                       (fn-assume-log-sole-pending-writer
-                                        fn-owb-sole-pending-writer))))))
-
-; -----------------------------------------------------------------------------
 ; The crash images of a related state: the committed records are read by
 ; every admissible image's scan.
 
@@ -540,48 +517,6 @@
 
 (defthm fn-owb-prefixp-reflexive
   (fn-lg-prefixp a a))
-
-(local
- (defthm fn-owb-take-then-nthcdr
-   (implies (and (true-listp c) (natp n) (<= n (len c)))
-            (equal (append (fn-bs-take n c) (nthcdr n c)) c))))
-
-(local
- (defthm fn-owb-len-of-take
-   (implies (and (true-listp c) (natp n) (<= n (len c)))
-            (equal (len (fn-bs-take n c)) n))))
-
-; A content whose prefix scans completely and whose tail is zeros scans to
-; that prefix's records: the zeros end the scan (fn-lg-scan-of-zeros).
-(defthm fn-owb-scan-of-whole-content
-  (implies (and (true-listp c) (natp f) (<= f (len c))
-                (equal (fn-lg-scan (fn-bs-take f c) genesis unit max) (cons committed f))
-                (fn-lg-zerosp (nthcdr f c)))
-           (equal (fn-lg-scan c genesis unit max) (cons committed f)))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-owb-take-then-nthcdr (n f))
-                 (:instance fn-lg-scan-of-complete-append
-                            (d (fn-bs-take f c)) (x (nthcdr f c)) (prev genesis)))
-           :in-theory (disable fn-lg-scan fn-lg-scan-last fn-bs-take fn-lg-zerosp
-                               fn-lg-scan-of-complete-append fn-owb-take-then-nthcdr))))
-
-(defthm fn-owb-scan-of-related-content
-  (implies (and (fn-lgk-relp bs ks ino genesis max) (not (consp (fn-lgk-inflight ks))))
-           (equal (fn-lg-scan (fn-bs-durable-content bs ino) genesis (fn-bs-unit bs) max)
-                  (cons (fn-lgk-committed ks) (fn-lgk-frontier ks))))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp)
-                           (fn-lg-scan fn-lg-scan-last fn-lg-log fn-lg-recordsp fn-lg-zerosp
-                            fn-bs-take fn-frame-digestp mod fn-bs-durable-content
-                            fn-owb-scan-of-whole-content))
-           :use ((:instance fn-owb-scan-of-whole-content
-                            (c (fn-bs-durable-content bs ino)) (f (fn-lgk-frontier ks))
-                            (unit (fn-bs-unit bs)) (committed (fn-lgk-committed ks)))))))
-
-(defthm fn-owb-related-state-with-nothing-in-flight-is-fenced
-  (implies (and (fn-lgk-relp bs ks ino genesis max) (not (consp (fn-lgk-inflight ks))))
-           (fn-bs-fencedp bs ino))
-  :hints (("Goal" :in-theory (e/d (fn-lgk-relp fn-bs-fencedp) (fn-lgk-content-okp fn-lg-log)))))
 
 ; A batch in flight: the image's scan is the committed records then a prefix
 ; of the batch (store-log-crash's corollary under A-CRYPTO-TRAILER; the
@@ -604,67 +539,6 @@
                             (z (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
                             (committed (fn-lgk-committed ks)) (last (fn-lgk-last ks))
                             (batch (fn-lgk-inflight ks)))))))
-
-(local
- (defthm fn-owb-member-of-append-left
-   (implies (member-equal x a) (member-equal x (append a b)))))
-
-(defthm fn-owb-committed-record-survives-crash
-  (implies (and (fn-lgk-relp bs ks ino genesis max)
-                (member-equal r (fn-lgk-committed ks))
-                (fn-bs-crash-imagep bs image)
-                (implies (consp (fn-lgk-inflight ks))
-                         (fn-lg-platform-tears-p
-                          (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino))
-                          (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs))))
-           (member-equal r (car (fn-lg-scan (fn-bs-durable-content image ino)
-                                            genesis (fn-bs-unit bs) max))))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-owb-image-scan-of-related-state)
-                 (:instance fn-bs-crash-keeps-fenced-content (s bs)))
-           :in-theory (e/d (fn-lg-crash-verdictp)
-                           (fn-lg-scan fn-lgk-relp fn-bs-crash-imagep fn-bs-durable-content
-                            fn-lg-platform-tears-p fn-lg-prefixp fn-lg-log
-                            fn-bs-crash-keeps-fenced-content)))))
-
-(local
- (defthm fn-owb-member-record-in-records
-   (implies (member-equal m ms)
-            (member-equal (fn-owb-member-record m) (fn-owb-records ms)))))
-
-; T1.  An acknowledged member's record is in every admissible crash image.
-; Hypotheses: the layer aligned with the kernel, R at the cut (fn-lgk-relp),
-; A-CRASH-IMAGE (fn-bs-crash-imagep), and when a batch is in flight the tear
-; of its pending write is the platform's (fn-lg-platform-tears-p).  The ack
-; discipline is the layer's: fn-owb-finish-member acknowledges only a member
-; of WAITING, which fn-owb-fence filled from the fenced batch, so ACKED's
-; records are a prefix of the kernel's committed records.
-(defthm fn-owb-acknowledged-record-survives-crash
-  (implies (and (fn-owb-alignedp st)
-                (fn-lgk-relp bs (fn-owb-ks st) ino genesis max)
-                (member-equal m (fn-owb-acked st))
-                (fn-bs-crash-imagep bs image)
-                (implies (consp (fn-lgk-inflight (fn-owb-ks st)))
-                         (fn-lg-platform-tears-p
-                          (nthcdr (fn-lgk-frontier (fn-owb-ks st)) (fn-bs-durable-content image ino))
-                          (fn-lgk-inflight (fn-owb-ks st)) (fn-lgk-last (fn-owb-ks st))
-                          (fn-bs-unit bs))))
-           (member-equal (fn-owb-member-record m)
-                         (car (fn-lg-scan (fn-bs-durable-content image ino)
-                                          genesis (fn-bs-unit bs) max))))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-owb-committed-record-survives-crash
-                            (ks (fn-owb-ks st)) (r (fn-owb-member-record m)))
-                 (:instance fn-owb-member-record-in-records (ms (fn-owb-acked st)))
-                 (:instance fn-owb-member-of-append-left
-                            (x (fn-owb-member-record m))
-                            (a (fn-owb-records (fn-owb-acked st)))
-                            (b (fn-owb-records (fn-owb-waiting st)))))
-           :in-theory (e/d (fn-owb-alignedp)
-                           (fn-lg-scan fn-lgk-relp fn-bs-crash-imagep fn-bs-durable-content
-                            fn-lg-platform-tears-p fn-owb-committed-record-survives-crash
-                            fn-owb-member-record-in-records fn-owb-member-of-append-left
-                            fn-owb-records-of-append)))))
 
 ; -----------------------------------------------------------------------------
 ; T7.  The failed barrier (fsyncgate).
@@ -734,35 +608,6 @@
                             (image (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices))))))
            :in-theory (union-theories (theory 'minimal-theory)
                                       '(fn-lg-crash-verdictp fn-lgk-recover fn-lgk-fields-of-make)))))
-
-; T7.  After a failed barrier the kernel is faulted, every member in flight
-; or waiting is answered :uncertain, no member is acknowledged, and the
-; kernel recovered from the store the failure left holds the committed
-; records followed by a prefix of the batch in flight.
-(defthm fn-owb-uncertain-batch-recovers-to-a-prefix
-  (let* ((ks (fn-owb-ks st))
-         (st1 (fn-owb-fence-failed st))
-         (bs1 (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices))))
-         (ks2 (fn-lgk-recover (fn-bs-durable-content bs1 ino) genesis (fn-bs-unit bs) max next-txid)))
-    (implies (and (fn-owb-alignedp st)
-                  (fn-lgk-relp bs ks ino genesis max)
-                  (consp (fn-lgk-inflight ks))
-                  (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs))
-                  (fn-lg-platform-tears-p (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs1 ino))
-                                          (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
-             (and (equal (fn-lgk-phase (fn-owb-ks st1)) :fault)
-                  (equal (fn-owb-fault-words st1)
-                         (fn-owb-uncertain-words (append (fn-owb-waiting st) (fn-owb-inflight st))))
-                  (equal (mv-nth 0 (fn-owb-finish-member st1)) nil)
-                  (equal (fn-lgk-committed ks2)
-                         (append (fn-lgk-committed ks)
-                                 (nthcdr (len (fn-lgk-committed ks)) (fn-lgk-committed ks2))))
-                  (fn-lg-prefixp (nthcdr (len (fn-lgk-committed ks)) (fn-lgk-committed ks2))
-                                 (fn-lgk-inflight ks)))))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-owb-fence-failed-answers-uncertain)
-                 (:instance fn-owb-recovered-kernel-after-a-failed-fence (ks (fn-owb-ks st))))
-           :in-theory (union-theories (theory 'minimal-theory) '(fn-owb-alignedp)))))
 
 ; -----------------------------------------------------------------------------
 ; T4.  The batch of tokens is the sequential token protocol.

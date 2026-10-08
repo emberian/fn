@@ -1,5 +1,6 @@
 ;;; Explicit BP retained-session projection; one physical owner, no threads.
 (in-package "ACL2")
+; thread-confined: the BP node's single serialized serve loop (fnn-bp-session-loop) is the one physical owner (file header: no threads)
 (defstruct (fnn-bp-session-bank (:conc-name fnn-bpsb-)) grant ledger (held (make-hash-table :test #'eq)) slots incoming-cursor outgoing-cursor
   ;; S025: the installed profile (its no-progress bounds), the count of held :incoming
   ;; grants, and ACL2's verdict (fn-bpsp-incoming-contended) as of this scheduler turn.

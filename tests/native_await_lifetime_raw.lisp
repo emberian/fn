@@ -21,6 +21,12 @@
 (defun fnn-core (name &rest args)
   (declare (ignorable name args))
   (harness-stub-reached 'fnn-core "host/native/io.lisp"))
+(defun fnn-exit (code)
+  (declare (ignorable code))
+  (harness-stub-reached 'fnn-exit "host/native/io.lisp"))
+(defun fnn-exit-code-for (condition &optional step)
+  (declare (ignorable condition step))
+  (harness-stub-reached 'fnn-exit-code-for "host/native/io.lisp"))
 (defun fnn-extent-direct-start ()
   (harness-stub-reached 'fnn-extent-direct-start "host/native/extent.lisp"))
 (defun fnn-extent-end-recovery-cache ()
@@ -117,6 +123,9 @@
 (defun fnn-owner-feed-close-all (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-feed-close-all "host/native/owner.lisp"))
+(defun fnn-owner-fence-service (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-fence-service "host/native/owner.lisp"))
 (defun fnn-owner-frames-job (service job)
   (declare (ignorable service job))
   (harness-stub-reached 'fnn-owner-frames-job "host/native/owner.lisp"))
@@ -150,6 +159,9 @@
 (defun fnn-owner-peer-flight-startup (service capture)
   (declare (ignorable service capture))
   (harness-stub-reached 'fnn-owner-peer-flight-startup "host/native/owner.lisp"))
+(defun fnn-owner-peer-read-class (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-peer-read-class "host/native/owner.lisp"))
 (defun fnn-owner-reader-capture (event)
   (declare (ignorable event))
   (harness-stub-reached 'fnn-owner-reader-capture "host/native/owner.lisp"))
@@ -305,11 +317,11 @@
 ;; The actual mux terminal consumer closes its pending reply route too.
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-cleanup-receipt (:constructor %make-fnn-mux-cleanup-receipt)))
-   (defun fnn-mux-service) (defun fnn-mux-cleanup-debt)
+   (defun fnn-mux-service) (defun fnn-mux-read-class) (defun fnn-mux-cleanup-debt)
    (defun fnn-mux-cleanup-attempt) (defun fnn-mux-capture-output-grant)
    (defun fnn-mux-finish)))
 (load-deployed-forms "host/native/owner.lisp"
- '((defun fnn-owner-output-close) (defun fnn-owner-response-window-close)))
+ '((defun fnn-owner-install-or-end) (defun fnn-owner-output-close) (defun fnn-owner-response-window-close)))
 (defun fnn-owner-response-unpin (&rest args) (declare (ignore args)) nil)
 ;; Recording cleanup boundaries; real cleanup envelope/failure witnesses are
 ;; in native_mux_cleanup_raw. This fixture owns the reply-abandon consumer.

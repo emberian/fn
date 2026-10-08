@@ -1,0 +1,18 @@
+{
+ "category": "custody",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/page-read-ledger.lisp",
+ "id": "PRL-ROW-SUM-INVARIANT",
+ "locus": "page-read-ledger",
+ "notes": [
+  "the page-read ledger carries charged >= the sum of the bound rows' demands (per resource), preserved by admit/register/issue/settle/evict/close/reserve-growth; it discharges fn-prl-convert-growth-when-charged-covers-the-reserve's charged-covers hypothesis across draws, and it is the real custody claim (no release refunds another row's charge). Today release-reusable nfix-clamps.",
+  "2026-10-08 (deputy P): second consumer. books/owner-reconfig-phased.lisp R2 fn-orp-phased-answers-as-inline and R3 fn-orp-accepted-keeps-the-owner-effects carry the OWED hypothesis (implies (fn-orp-reaches-convert ...) (equal convert :converted)); CONVERT is the host's observation of the converter, a free input. Discharge needs this item AND a host correspondence (the host's word is :converted exactly when fn-prl-convert-growth answers :protected-growth-admitted; C's reconfig-host lane). R7 fn-orp-refused-convert-faults-after-release states the refused case."
+ ],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "source": "p-growth-reserve lane, S4 audit 2026-10-08",
+ "state": "deferred",
+ "title": "Page-read ledger row-sum invariant: charged covers the bound rows' demands",
+ "updated": "2026-10-08T09:30:00Z"
+}

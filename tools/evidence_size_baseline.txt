@@ -1,3 +1,2 @@
 # Grandfathered oversized planning raw logs (MODE §5).
 # This baseline only shrinks; commit a summary + the tail + the full log location.
-planning/reorg-dry-run.txt

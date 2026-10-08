@@ -20,7 +20,7 @@
 ;      name of ACL2's.
 ;      no host file names anything that is neither defined in this tree nor a
 ;      nothing in the tree defines (the findings whose "source" is null in
-;      planning/ledger.json).
+;      build/ledger/ledger.json).
 ;   1. Run the lint with this file absent.  Collect the reported names that
 ;   2. Build ACL2's vocabulary from the ACL2 8.7 sources in
 ;   3. Keep the intersection of (1) and (2); that is this file.  On

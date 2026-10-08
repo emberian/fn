@@ -116,6 +116,17 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertIn("1 fetched file(s) NOT written into this worktree", done.stdout)
         self.assertEqual((self.lane / "out/b.txt").read_text(), "box\n")
 
+    def test_a_wrap_spelled_with_an_env_assignment_runs(self):
+        # swarm-build's memory cap is the caller's: FN_REMOTE_CHECK_WRAP=
+        # "SWARM_MEM_MAX=16G swarm-build" must reach the wrap as environment.
+        wrap = Path(self.scratch.name) / "wrap.sh"
+        out = Path(self.scratch.name) / "seen.txt"
+        wrap.write_text(f'echo "$WRAP_SEEN" > {out}\nexec "$@"\n')
+        self.env["FN_REMOTE_CHECK_WRAP"] = f"WRAP_SEEN=16G sh {wrap}"
+        done = self.run_check("--cmd", "true")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(out.read_text(), "16G\n")
+
     def test_cmd_runs_one_command_in_the_box_tree(self):
         done = self.run_check("--cmd", "cat marker.txt; echo \"it's $((1 + 1))\"")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -240,16 +251,13 @@ class RemoteCheckTests(unittest.TestCase):
         (self.lane / "tools").mkdir()
         (self.lane / "tools/certs.py").write_text("print('  installed 3')\n")
         (self.lane / "tools/ledger.py").write_text(
-            "import pathlib\nfor n in ('ledger.json', 'ledger.md', 'proofs.json'):\n"
+            "import pathlib\nfor n in ('proofs.json',):\n"
             "    pathlib.Path('planning', n).write_text('regen ' + n)\n")
-        (self.lane / "tools/current_view.py").write_text(
-            "import pathlib\npathlib.Path('planning/current.md').write_text('regen current')\n")
         (self.lane / "tools/hot_path_check.py").write_text(
             "import pathlib, sys\nassert sys.argv[1:] == ['--refresh-stale']\n"
             "pathlib.Path('planning/hot-path-findings.json').write_text('refreshed')\n")
         (self.lane / "planning").mkdir()
-        for name in ("ledger.json", "ledger.md", "proofs.json", "current.md",
-                     "hot-path-findings.json"):
+        for name in ("proofs.json", "hot-path-findings.json"):
             (self.lane / "planning" / name).write_text("old\n")
         git(self.lane, "add", ".")
         git(self.lane, "commit", "-q", "-m", "tools")
@@ -258,7 +266,6 @@ class RemoteCheckTests(unittest.TestCase):
         log = (self.lane / "build/remote-check/hbox-regen.log").read_text()
         self.assertNotIn("certs install", log)
         self.assertIn("== phase command ", log)
-        self.assertEqual((self.lane / "planning/current.md").read_text(), "regen current")
         self.assertEqual((self.lane / "planning/proofs.json").read_text(), "regen proofs.json")
         self.assertEqual((self.lane / "planning/hot-path-findings.json").read_text(), "refreshed")
         skipped = self.run_check("--no-install-certs", "--cmd", "true")

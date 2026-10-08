@@ -1,0 +1,14 @@
+{
+ "category": "design",
+ "detail": "The stobj attach books (books/payload-arena-attach, history-paged-attach, catalog-paged-attach) must be loaded before the books that define or reach their attachable stobjs (FN-ARENA, FN-HIST, ...), but nothing in the include graph says so: the order lives only in the position of include lines in the generated umbrella (tools/extract/world.py's books/image-world*). Measured (lane n-tls, 2026-10-08, hbox, dev 697c03398): an umbrella of the include graph's 113 maximal books, which has the same closure by name (1,207 books), fails six includes (page-window-executor-host, owner-host, ...) with 'FN-ARENA/FN-HIST in use' at ATTACH-STOBJ-TABLE; it loads only after a hand-pinned prefix of the first 9 umbrella includes. Same class as the NOT-SEALED fault: an order the include graph does not express. Today's guard is static and after the fact: tools/host_check.py --attach-order (CONVERGE-1 red 1; make check and hbox_native's attach-order step) checks that an attach book precedes its stobj generic in an already-built order. Fix shape (coordinator, 2026-10-08): make that attach-order relation an explicit dependency the generator reads (each attach book declared as a prerequisite of its stobj's books, by include-book or by a declaration world.py consumes), so world.py derives the order rather than inheriting it, and the antichain umbrella (113 includes, 25.7% of the TLS budget vs the chained split's 59.3%) becomes valid without a pinned prefix.",
+ "file": "tools/extract/world.py",
+ "id": "ATTACH-ORDER-IMPLICIT",
+ "line": "1",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "medium",
+ "source": "n-tls",
+ "state": "open",
+ "title": "stobj attach books must precede their stobjs' books, but the include graph does not say so; only the umbrella's line order does",
+ "updated": "2026-10-08T06:00:00Z"
+}

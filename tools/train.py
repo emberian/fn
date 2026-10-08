@@ -7,10 +7,18 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
 
     train.py merge LANE@SHA [LANE@SHA ...]
     train.py regen [--label N]
-    train.py boxstep BOX             # hbox or persvati: the box step, recorded
+    train.py certify BOX             # books train: ONE farm run (install, certify), then the emits in its tree
+    train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
     train.py gate [--strict-lock]
     train.py push
     train.py status
+
+A books train runs `certify BOX`: one farm run of books/wire-export plus the
+train's changed books and tests (one cache install, one certify), then the emit
+and check half of BOX_CMD over ssh in that run's tree, under swarm-build and a
+timeout.  It records the same box-step.json as `boxstep` plus the farm run, the
+certify id and the install/certify/emit wall seconds (also in the train state,
+shown by `status`).
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
@@ -30,7 +38,10 @@ import os
 import shutil
 import subprocess
 import sys
+import re
+import shlex
 import tempfile
+import time
 from pathlib import Path
 
 PY = os.environ.get("TRAIN_PY", "python3.12")
@@ -38,10 +49,6 @@ PY3 = os.environ.get("TRAIN_PY3", "python3")
 
 # Conflicted files that are regenerated anyway: the train side wins.
 GENERATED = (
-    "planning/ledger.json",
-    "planning/ledger.md",
-    "planning/current.md",
-    "planning/repair/STATUS.md",
     "planning/interfaces.json",
     "specs/wire-grammar.json",
 )
@@ -49,18 +56,11 @@ GENERATED = (
 # event arrays, and lanes curate its rows (re-pointing a PRF row at a renamed
 # keystone), so a conflict there goes back to the lane like source does.
 # Tail-append files: keep both sides' lines.
-UNION = ("planning/evidence-index.tsv", "planning/decisions.md")
-EVIDENCE_INDEX = "planning/evidence-index.tsv"
-DEDUPE = ("planning/evidence-index.tsv",)
+UNION = ("planning/decisions.md",)
 
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
-    EVIDENCE_INDEX,
-    "planning/ledger.json",
-    "planning/ledger.md",
     "planning/proofs.json",
-    "planning/current.md",
-    "planning/repair/STATUS.md",
 )
 HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
 
@@ -68,9 +68,28 @@ BOX_CMD = (
     "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export && "
     "python3 tools/interface_emit.py --write && python3 tools/interface_emit.py --check && "
     "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check && "
-    "python3 tools/extract/world.py --check && python3 tools/build_lists_check.py && "
+    "python3 tools/extract/world.py --check && python3 tools/host_check.py --build-lists && "
     "python3 tools/host_check.py --read && python3 tools/host_check.py --world"
 )
+
+# The half of BOX_CMD after the certify step; `certify` runs it in the farm tree.
+# Timed one by one; interface_emit writes and checks in ONE invocation (it
+# computes the declarations and the host reading once).
+EMIT_STEPS = (
+    ("interface_emit", "python3 tools/interface_emit.py --write --check"),
+    ("protocol_emit", "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check"),
+    ("world", "python3 tools/extract/world.py --check"),
+    ("build_lists", "python3 tools/host_check.py --build-lists"),
+    ("host_read", "python3 tools/host_check.py --read"),
+    ("host_world", "python3 tools/host_check.py --world"),
+)
+EMIT_CMD = " && ".join(
+    f"{{ s=$(date +%s); {c}; r=$?; echo \"== step {n} $(( $(date +%s) - s ))\"; [ $r = 0 ]; }}"
+    for n, c in EMIT_STEPS)
+EMIT_TIMEOUT_SECONDS = 3600
+FARM_TIMEOUT_SECONDS = 1800
+SSH = os.environ.get("TRAIN_SSH", "ssh")
+WRAPS = {"hbox": "swarm-build"}
 
 # Paths whose change since the last box step makes a new box step necessary.
 BOX_PATHS = ("books", "specs", "tests/acl2")
@@ -78,12 +97,22 @@ BOX_PATHS = ("books", "specs", "tests/acl2")
 LOCAL_BOX_CHECKS = (
     ("interface_emit", ["tools/interface_emit.py", "--check"]),
     ("world", ["tools/extract/world.py", "--check"]),
-    ("build_lists", ["tools/build_lists_check.py"]),
+    ("build_lists", ["tools/host_check.py", "--build-lists"]),
     ("host_read", ["tools/host_check.py", "--read"]),
     ("host_world", ["tools/host_check.py", "--world"]),
 )
 
-GATES = ("ancestor", "ledger", "current_view", "main_last", "host_load", "box_step", "lock_delta", "secrets")
+# The Python suites the integrator ran by hand before a push, now gate
+# conditions: the push refuses on them like the others (train 36 pushed two
+# test_ledger reds through `gate; push` chained with `;`).  Always these; and
+# the test file of every tools/<x>.py the train changes, and every changed
+# tests/test_*.py except tests/test_native_* (they need a native image).  Each runs as `python -m unittest <file>` from the root
+# (test_train imports `tools.train`, so not as a bare script).
+UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
+              "tests/test_train.py", "tests/test_farm.py")
+
+GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
+         "box_step", "lock_delta", "secrets", "unit")
 
 
 class TrainError(Exception):
@@ -178,36 +207,8 @@ def _union_resolve(t: Train, path: str) -> None:
         if p.returncode < 0 or p.returncode > 127:
             raise TrainError(f"git merge-file failed for {path}")
         merged = p.stdout
-    if path in DEDUPE:
-        seen: set[str] = set()
-        keep = []
-        for line in merged.splitlines(keepends=True):
-            if line in seen:
-                continue
-            seen.add(line)
-            keep.append(line)
-        merged = "".join(keep)
     (t.root / path).write_text(merged)
     git(t.root, "add", "--", path)
-
-
-def _comm_23_missing(root: Path, path: str) -> list[str]:
-    """Lines of origin/dev:path (sorted) absent from the working file (comm -23)."""
-    ref = git(root, "show", f"origin/dev:{path}", check=False)
-    if ref.returncode != 0:
-        return []
-    have = sorted((root / path).read_text().splitlines())
-    want = sorted(ref.stdout.splitlines())
-    i = 0
-    missing = []
-    for w in want:
-        while i < len(have) and have[i] < w:
-            i += 1
-        if i < len(have) and have[i] == w:
-            i += 1
-        else:
-            missing.append(w)
-    return missing
 
 
 def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
@@ -246,14 +247,6 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         else:
             say(f"  conflict {f}: union of both sides")
             _union_resolve(t, f)
-    if (t.root / EVIDENCE_INDEX).exists():
-        missing = _comm_23_missing(t.root, EVIDENCE_INDEX)
-        if missing:
-            git(t.root, "merge", "--abort", check=False)
-            entry.update(status="conflict", files=[EVIDENCE_INDEX])
-            say(f"  lane {name}: evidence-index lost {len(missing)} origin/dev line(s); merge aborted")
-            t.save(st)
-            return False
     git(t.root, "commit", "--no-edit")
     entry.update(status="merged", merge=t.head(), files=conflicted)
     t.save(st)
@@ -307,11 +300,9 @@ def cmd_regen(t: Train, args) -> int:
         t.save(st)
         return rc
 
-    # ledger, current view, repair status, in this order
+    # ledger.py --write: proofs.json's event arrays (the views are not committed)
     for step, argv in (
         ("ledger", [PY, "tools/ledger.py", "--write"]),
-        ("current_view", [PY, "tools/current_view.py", "--write"]),
-        ("repair", [PY, "planning/repair/repair.py", "report"]),
     ):
         rc = t.run(f"regen-{step}", argv)
         if done(step, rc):
@@ -320,7 +311,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: ledger, current view, repair status"
+    msg = f"Regenerate train {n}: proofs.json events"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
@@ -359,6 +350,135 @@ def cmd_boxstep(t: Train, args) -> int:
     return 0
 
 
+def _changed_roots(t: Train, prefix: str) -> list[str]:
+    out = git(t.root, "diff", "--name-only", "--diff-filter=AM", "origin/dev", "HEAD", "--", prefix).stdout.split()
+    return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
+
+
+def cache_seed_command(t: Train, box: str, tree: str) -> tuple[str, str | None]:
+    """Best-effort reuse of the last box step's content-keyed emit caches.
+
+    ledger-forms, ledger-tree (including suspects), callgraph, reach,
+    certify-audit and wire-emit all validate content keys before reuse;
+    wire-emit also validates the destination wire-grammar.json bytes.
+    The success marker, not merely a local record, determines cache_seed.
+    """
+    def skip(reason):
+        return f"echo {shlex.quote('== cache seed skipped: ' + reason)}", None
+
+    try:
+        previous = load_box_record(t)
+        if not previous:
+            return skip("no previous box record")
+        if previous.get("box") != box:
+            return skip("previous box differs")
+        run = previous.get("run")
+        if not isinstance(run, str) or not run or Path(run).name != run:
+            return skip("no previous farm run")
+        record = json.loads((t.root / "build" / "farm" / f"{run}.json").read_text())
+        if record.get("host", record.get("box", box)) != box:
+            return skip("previous farm box differs")
+        previous_tree = record.get("remote_path")
+        if not isinstance(previous_tree, str) or not previous_tree:
+            return skip("no previous farm tree")
+    except (OSError, ValueError, AttributeError):
+        return skip("previous farm record unavailable")
+    source = shlex.quote(previous_tree.rstrip("/") + "/build/cache/.")
+    destination = shlex.quote(tree.rstrip("/") + "/build/cache/")
+    success = shlex.quote("== cache seed " + run)
+    if previous_tree.rstrip("/") == tree.rstrip("/"):
+        # farm reuses one remote tree per worktree: its build/cache is already there
+        return f"echo {shlex.quote('== cache seed ' + run + ' (same tree; cache in place)')}", run
+    return (f"if [ -d {source} ]; then "
+            f"if mkdir -p {destination} && cp -a {source} {destination}; then "
+            f"echo {success}; else echo '== cache seed skipped: copy failed'; fi; "
+            "else echo '== cache seed skipped: previous cache missing'; fi", run)
+
+
+def emit_remote_command(tree: str, envs: str, box: str, seed: str) -> str:
+    wrap = WRAPS.get(box, "")
+    body = (f"{seed}; {envs}; "
+            'eval "$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; '
+            + EMIT_CMD)
+    # The copy shares the emits' timeout and hbox resource wrapper.
+    return (f"cd {shlex.quote(tree)} && "
+            f"{wrap + ' ' if wrap else ''}timeout {EMIT_TIMEOUT_SECONDS} sh -c {shlex.quote(body)}")
+
+
+def cmd_certify(t: Train, args) -> int:
+    if t.dirty():
+        # farm ships the worktree (rsync without .git/ and build/), so an
+        # untracked file would be certified and emitted as if it were HEAD
+        raise TrainError("working tree is dirty (untracked files included); the box step ships HEAD")
+    ran_at = t.head()
+    books = _changed_roots(t, "books")
+    tests = _changed_roots(t, "tests/acl2")
+    roots = list(dict.fromkeys(["books/wire-export", *books, *tests]))
+    argv = [PY, "tools/farm.py"]
+    if books:
+        argv += ["--lane"]
+        for b in books:
+            argv += ["--affected-by", b]
+    argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", args.box, *roots]
+    t0 = time.monotonic()
+    say("$ " + " ".join(argv))
+    sub = subprocess.run(argv, cwd=t.root, capture_output=True, text=True)
+    t.logs.mkdir(parents=True, exist_ok=True)
+    (t.logs / f"certify-submit-{args.box}.log").write_text(sub.stdout + sub.stderr)
+    for line in sub.stderr.splitlines()[-12:]:
+        say("  | " + line)
+    run = sub.stdout.strip().splitlines()[-1].strip() if sub.stdout.strip() else ""
+    if sub.returncode != 0 or not run:
+        say(f"certify on {args.box}: submit failed (rc {sub.returncode}); nothing recorded")
+        return sub.returncode or 1
+    t1 = time.monotonic()
+    rc = t.run(f"certify-wait-{args.box}", [PY, "tools/farm.py", "wait", args.box, run])
+    t2 = time.monotonic()
+    if rc != 0:
+        say(f"certify on {args.box} failed (rc {rc}); nothing recorded")
+        return rc
+    rec = json.loads((t.root / "build" / "farm" / f"{run}.json").read_text())
+    tree = rec["remote_path"]
+    env = subprocess.run([PY3, "tools/box_table.py", "env", args.box], cwd=t.root, capture_output=True, text=True)
+    envs = env.stdout.strip() if env.returncode == 0 and env.stdout.strip() else "true"
+    seed, seed_run = cache_seed_command(t, args.box, tree)
+    remote_cmd = emit_remote_command(tree, envs, args.box, seed)
+    say(f"$ {SSH} {args.box} <emits in {tree}>")
+    log = t.logs / f"certify-emit-{args.box}.log"
+    p = subprocess.run([SSH, args.box, remote_cmd], capture_output=True, text=True)
+    log.write_text(p.stdout + p.stderr)
+    cache_seed = seed_run if seed_run and any(line == f"== cache seed {seed_run}" or line.startswith(f"== cache seed {seed_run} ")
+                                              for line in p.stdout.splitlines()) else None
+    steps = {m.group(1): int(m.group(2)) for m in re.finditer(r"^== step (\S+) (\d+)$", p.stdout, re.M)}
+    if p.returncode != 0:
+        say(f"emits on {args.box} failed (rc {p.returncode}; log {log}); nothing recorded")
+        for line in (p.stdout + p.stderr).splitlines()[-30:]:
+            say("  | " + line)
+        return p.returncode
+    for out in HBOX_OUTPUTS:
+        f = subprocess.run(f"{shlex.quote(SSH)} {args.box} {shlex.quote('cd ' + shlex.quote(tree) + ' && tar cf - ' + out)} | tar xf - -C {shlex.quote(str(t.root))}",
+                           shell=True, capture_output=True, text=True)
+        if f.returncode != 0:
+            say(f"could not fetch {out} from {args.box}:{tree}: {f.stderr.strip()}; nothing recorded")
+            return 1
+    t3 = time.monotonic()
+    wall = {"install": round(t1 - t0), "certify": round(t2 - t1), "emit": round(t3 - t2), "total": round(t3 - t0), "emit_steps": steps}
+    _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the train certify's emits on {args.box} at {ran_at[:9]}")
+    record = {"sha": t.head(), "ran_at": ran_at, "box": args.box, "run": run,
+              "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed}
+    t.dir.mkdir(parents=True, exist_ok=True)
+    box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    st = t.load()
+    st["box_wall"] = wall
+    st["box_run"] = run
+    st["cache_seed"] = cache_seed
+    t.save(st)
+    say(f"certify recorded: {args.box} run {run} at {record['sha'][:9]}; wall install {wall['install']}s "
+        f"certify {wall['certify']}s emit {wall['emit']}s "
+        f"({', '.join(f'{k} {v}s' for k, v in steps.items())}) total {wall['total']}s")
+    return 0
+
+
 # --------------------------------------------------------------------------- gate
 
 def _lock_keys(t: Train, cwd: Path) -> set[str] | None:
@@ -372,6 +492,45 @@ def _lock_keys(t: Train, cwd: Path) -> set[str] | None:
     except (ValueError, KeyError, TypeError, AttributeError):
         say("  lock_discipline_check output not parseable: " + (p.stdout + p.stderr)[-300:])
         return None
+
+
+def _ascii_gate(t: Train) -> int:
+    """ascii_check refusals in files this train changes (books/, host/).  The
+    tree carries older refusals (make check's debt); a train must add none:
+    U+2019 in host docstrings broke the ASCII-reading natives (lock-io-out)."""
+    changed = set(git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "books", "host").stdout.split())
+    if not changed:
+        say("books/ and host/ unchanged vs origin/dev: ascii_check skipped")
+        return 0
+    p = subprocess.run([PY, "tools/ascii_check.py"], cwd=t.root, capture_output=True, text=True)
+    t.logs.mkdir(parents=True, exist_ok=True)
+    (t.logs / "gate-ascii.log").write_text(p.stdout + p.stderr)
+    hits = [line for line in p.stdout.splitlines()
+            if line.startswith("REFUSED ") and line.split()[1].split(":")[0] in changed]
+    say(f"$ {PY} tools/ascii_check.py  -> {len(hits)} refusal(s) in {len(changed)} changed file(s)")
+    for line in hits[:20]:
+        say("  | " + line)
+    return 1 if hits else 0
+
+
+def unit_tests(root: Path, changed: list[str]) -> list[str]:
+    """UNIT_TESTS, then the tests of what the train changed, in order, once each."""
+    tests = list(UNIT_TESTS)
+    for path in changed:
+        p = Path(path)
+        if p.name.startswith("test_native_"):
+            # needs a native image (build/fn-host-*); N's native gate on the
+            # box is its gate, not this tree
+            continue
+        if p.parent.as_posix() == "tests" and p.name.startswith("test_") and p.suffix == ".py":
+            candidate = path
+        elif p.parent.as_posix() == "tools" and p.suffix == ".py":
+            candidate = f"tests/test_{p.stem}.py"
+        else:
+            continue
+        if candidate not in tests and (root / candidate).is_file():
+            tests.append(candidate)
+    return tests
 
 
 def cmd_gate(t: Train, args) -> int:
@@ -395,6 +554,9 @@ def cmd_gate(t: Train, args) -> int:
     # check-fast's main_last_check: a test file whose __main__ block is not last
     # silently skips every class after it (dev d67a244fa, tests/test_image_set.py)
     rec("main_last", t.run("gate-main_last", [PY, "tools/main_last_check.py"]))
+    # the teeth gate: a new toothless keystone or a stale teeth manifest
+    # (train 41: a lane's new keystones without teeth, caught by hand)
+    rec("keystone", t.run("gate-keystone", [PY, "tools/keystone_emit.py", "--check"]))
 
     host = git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "host").stdout.split()
     if host:
@@ -402,6 +564,8 @@ def cmd_gate(t: Train, args) -> int:
     else:
         say("host unchanged vs origin/dev: host_check --load skipped")
         rec("host_load", 0, skipped=True)
+
+    rec("ascii", _ascii_gate(t))
 
     box = load_box_record(t)
     if box is None:
@@ -449,6 +613,16 @@ def cmd_gate(t: Train, args) -> int:
         rec("secrets", t.run("gate-secrets", [PY3, "tools/secrets_check.py", *files]))
     else:
         rec("secrets", 0, skipped=True)
+
+    unit = unit_tests(t.root, files)
+    results = {}
+    for test in unit:
+        if not (t.root / test).is_file():
+            say(f"unit: {test} is missing")
+            results[test] = 1
+        else:
+            results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test])
+    rec("unit", 0 if all(v == 0 for v in results.values()) else 1, tests=results)
 
     bad = [n for n, g in gates.items() if g["rc"] != 0]
     say(f"gates at {head[:9]}: " + ", ".join(f"{n}={g['rc']}" for n, g in gates.items()))
@@ -501,6 +675,9 @@ def cmd_status(t: Train, args) -> int:
         say(f"  lane {l['name']}@{l['sha'][:9]}: {l['status']}" + (f" ({', '.join(l['files'])})" if l["files"] else ""))
     for s in st.get("regen", []):
         say(f"  regen {s['step']}: rc {s['rc']}")
+    if st.get("box_wall"):
+        w = st["box_wall"]
+        say(f"  certify {st.get('box_run')}: install {w['install']}s, certify {w['certify']}s, emit {w['emit']}s, total {w['total']}s")
     for n in GATES:
         g = st.get("gates", {}).get(n)
         if g:
@@ -519,6 +696,8 @@ def main(argv=None) -> int:
     r.add_argument("--label", metavar="N", help="the train number for the regen commit messages")
     b = sub.add_parser("boxstep")
     b.add_argument("box", choices=("hbox", "persvati"))
+    c = sub.add_parser("certify")
+    c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
     g.add_argument("--strict-lock", action="store_true")
     sub.add_parser("push")
@@ -526,7 +705,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     try:
         t = Train(toplevel(Path.cwd()))
-        return {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "gate": cmd_gate,
+        return {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
                 "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
     except TrainError as e:
         say(f"train: {e}")

@@ -308,11 +308,11 @@
           (not (fn-bprv-entry-decidedp entry journal)))
  :hints (("Goal" :induct (fn-bprv-no-committed-decisionsp journal)
    :in-theory (enable fn-bprv-entry-decidedp fn-bprv-decision-for-entryp))))
-(defthm fn-bprv-no-commit-no-committed-receipts
+(local (defthm fn-bprv-no-commit-no-committed-receipts
  (implies (and (fn-bprv-no-committed-decisionsp journal)
                (fn-bprv-entries-decidedp entries journal))
           (not (consp entries)))
- :hints (("Goal" :in-theory (enable fn-bprv-entries-decidedp))))
+ :hints (("Goal" :in-theory (enable fn-bprv-entries-decidedp)))))
 (defthm fn-bprv-no-committed-receipts-no-adu
  (implies (not (consp (fn-bpr-state-receipts st)))
           (equal (fn-bpr-receipt-adu st request) nil))
@@ -328,7 +328,3 @@
   :in-theory (disable fn-bprv-replay-receipts-have-committed-decisions
                        fn-bprv-no-commit-no-committed-receipts))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bprv-no-commit-no-committed-receipts))

@@ -82,8 +82,7 @@
 (load-deployed-forms "books/rev-onto.lisp" '((defun fn-ag-rev-onto)))
 (load-deployed-forms "books/scheduler-peers.lisp"
  '((defun fn-sched-pull-entry) (defun fn-sched-pull-next) (defun fn-sched-pull-interval)
-   (defun fn-sched-pull-busy) (defun fn-sched-pull-find) (defun fn-sched-pull-put-loop)
-   (defun fn-sched-pull-put) (defun fn-sched-pull-configure) (defun fn-sched-pull-duep)
+   (defun fn-sched-pull-busy) (defun fn-sched-pull-find) (def-loop fn-sched-pull-put) (defun fn-sched-pull-configure) (defun fn-sched-pull-duep)
    (defun fn-sched-pull-due-aux) (defun fn-sched-pull-due)))
 (load-deployed-forms "books/peer-pull.lisp"
  '((defun fn-pull-at) (defun fn-pull-plan-peer) (defun fn-pull-plan-interval)

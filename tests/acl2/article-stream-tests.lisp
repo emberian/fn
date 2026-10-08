@@ -140,3 +140,40 @@
       (not (fn-ast-cursorp (list :payload '(7) 0 nil nil t nil) fn-arena))
       (not (fn-ast-cursorp (list :xref-server nil 0 nil nil t (list :xref-server '(1) 2)) fn-arena))
       (fn-ast-cursorp (list :xref-server nil 0 nil nil t (list :xref-server '(110) '(110))) fn-arena)))
+
+; The span renderer (ARTICLE-RENDER-WALKS-FROM-WINDOW): over an arena payload
+; of 700 octets (crossing two 256-octet chunks, with dot-stuffed line starts)
+; the chunked render equals the per-octet render, whole and in windows of 7;
+; and fn-ast-chunk-validp has teeth: a chunk that is not the arena's span
+; changes the output, and is refused by the validity test.
+(defun astq-span-payload (n acc)
+  (declare (xargs :mode :program))
+  (if (zp n) acc
+    (astq-span-payload (- n 1)
+                       (cons (case (mod n 5) (0 10) (1 46) (t (+ 65 (mod n 26)))) acc))))
+
+(defun astq-span-run (payload fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (let* ((fn-arena (fn-arena-seal-list payload fn-arena))
+         (cur (list :payload nil 0 nil (list 0 0 (len payload) nil) t nil))
+         (bad (cons (if (equal (car payload) 7) 8 7) (cdr payload))))
+    (mv-let (c1 n1) (fn-ast-render-window-aux-chunk cur nil nil 5000 5000 nil fn-arena)
+      (mv-let (o1 m1) (fn-ast-render-window-aux cur nil 5000 5000 nil fn-arena)
+        (mv-let (c2 n2) (fn-ast-render-window-aux-chunk cur nil nil 5000 7 nil fn-arena)
+          (mv-let (o2 m2) (fn-ast-render-window-aux cur nil 5000 7 nil fn-arena)
+            (mv-let (cb nb) (fn-ast-render-window-aux-chunk cur nil bad 5000 5000 nil fn-arena)
+              (declare (ignore nb))
+              (mv (list (and (equal c1 o1) (equal n1 m1))
+                        (and (equal c2 o2) (equal n2 m2))
+                        (> (len o1) 700)
+                        (fn-ast-chunk-validp cur (fn-arena-get-span 0 0 300 fn-arena) fn-arena)
+                        (not (fn-ast-chunk-validp cur bad fn-arena))
+                        (not (equal cb o1)))
+                  fn-arena))))))))
+
+(defun astq-span-check (payload)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena) (astq-span-run payload fn-arena) r)))
+
+(assert-event (equal (astq-span-check (astq-span-payload 700 nil)) '(t t t t t t)))

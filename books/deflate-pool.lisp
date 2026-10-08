@@ -447,3 +447,44 @@
 ; The host's starting pool satisfies the invariant.
 (defthm fn-zpl-pool-okp-of-nil
   (fn-zpl-pool-okp nil fn-zin-win))
+
+; KEYSTONE (the host's first call).  fn-zpl-decode-bufs is what
+; host/native/deflate.lisp fnn-pzd-decode calls on a fresh buffer set, whose
+; POOL is NIL (the starting pool satisfies the invariant whatever the window
+; holds: fn-zpl-pool-okp of an atom is true).  The answer is
+; fn-pzd-decode's status, an :ok answer's output buffer holds the decoder's
+; octets, and the pool it returns satisfies the invariant the next call
+; assumes.
+; NATP N and the input-octet premise are redundant: both entries use the
+; same total decoder, whose output is a true list for every logical input.
+(local (defthm fn-zpl-empty-loop-true-list
+ (implies (true-listp fn-zin-out)
+  (true-listp (mv-nth 6 (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out))))
+ :hints (("Goal" :induct (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+          :in-theory (enable fn-zin-loop)))))
+
+(local (defthm fn-zpl-empty-payload-true-list
+ (true-listp (mv-nth 3 (fn-zin-payload-bufs b dict start end lim fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+ :hints (("Goal" :in-theory (e/d (fn-zin-payload-bufs) (fn-zin-loop fn-zin-payload-ready fn-zin-stored-status))))))
+
+(local (defthm fn-zpl-empty-payload-with-unconditional
+ (equal (fn-zin-payload-with b dict c lim)
+        (list (car (fn-zin-payload-bufs b dict 0 (len c) lim c fn-zin-win fn-zin-tab fn-zin-out))
+              (mv-nth 3 (fn-zin-payload-bufs b dict 0 (len c) lim c fn-zin-win fn-zin-tab fn-zin-out))))
+ :hints (("Goal" :in-theory (e/d (fn-zin-payload-with) (fn-zin-payload-bufs))))))
+
+(defthm fn-zpl-decode-bufs-from-the-empty-pool
+ (implies (fn-cbor-octet-listp dict)
+  (let ((r (fn-zpl-decode-bufs nil dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
+        (d (fn-pzd-decode dict c n)))
+   (and (equal (car (car r)) (car d))
+        (implies (equal (car d) :ok) (equal (mv-nth 4 r) (cadr d)))
+        (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r)))))
+ :hints (("Goal" :do-not-induct t
+          :use ((:instance fn-zpl-payload-bufs-is-payload-bufs
+                  (pool nil) (b (fn-pzd-budget (len c) n)) (start 0) (end (len c))
+                  (lim (+ 1 (nfix n))) (fn-octets c))
+                (:instance fn-zpl-decode-bufs-pool-okp (pool nil) (end (len c)) (fn-octets c)))
+          :in-theory (e/d (fn-zpl-decode-bufs fn-pzd-decode fn-pzd-answer)
+                           (fn-zpl-payload-bufs fn-zin-payload-bufs fn-zpl-pool-okp
+                            fn-zpl-decode-bufs-pool-okp fn-zpl-payload-bufs-is-payload-bufs)))))

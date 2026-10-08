@@ -50,8 +50,9 @@ nothing unanswered.
 
 THE SUBSTITUTION LOOP, which is what is left for a Create failure.  For a
 book whose Create failed, find the newest source bytes that ever certified
-(`tools/green_check.py`'s audit names the run; that run's manifest names the
-digest; `git log --all` and `git show` hold the bytes), write them into the
+(`git log --all` and `git show` hold the bytes; the digest of the last green
+once came from archived manifests, and the cert cache that replaced them keeps
+no history, so this loop currently finds nothing to substitute), write them into the
 *remote* tree only, and run again.  It is a weaker instrument than it looks:
 substituting a book's own source helps only when the book's own bytes are
 the problem, and on this tree the usual cause is drift underneath it.  On
@@ -402,20 +403,6 @@ class Substitution:
                 "green_manifest": self.green_run, "green_when": self.green_when}
 
 
-def last_green(audit: dict, runs: dict[str, green_check.Run],
-               book: str) -> tuple[str, green_check.Run] | None:
-    """The digest this book last certified at, and the run that says so."""
-    entry = audit["books_by_verdict"].get(book)
-    if entry is None:
-        return None
-    run_id = entry.get("last_green_any_digest")
-    if not run_id or run_id not in runs:
-        return None
-    run = runs[run_id]
-    digest = run.sources.get(f"{book}.lisp")
-    return (digest, run) if digest else None
-
-
 def source_at_digest(root: Path, book: str, digest: str,
                      limit: int = 400) -> tuple[str, str, bytes] | None:
     """The revision whose `book.lisp` hashes to `digest`, and those bytes.
@@ -440,26 +427,17 @@ def source_at_digest(root: Path, book: str, digest: str,
     return None
 
 
-def substitution_for(root: Path, audit: dict, runs: dict[str, green_check.Run],
-                     book: str, current_digest: str
+def substitution_for(root: Path, audit: dict, book: str, current_digest: str
                      ) -> tuple[Substitution, bytes] | str:
-    """This book's last green source, or the sentence saying why there is none."""
-    green = last_green(audit, runs, book)
-    if green is None:
-        return "never green at any digest in any manifest we hold"
-    digest, run = green
-    if digest == current_digest:
-        return (f"its newest green is at the digest it already carries "
-                f"({digest[:12]}, {run.when}); the failure is not in these "
-                f"bytes")
-    found = source_at_digest(root, book, digest)
-    if found is None:
-        return (f"no commit in this repository has {book}.lisp at digest "
-                f"{digest[:12]}, which {run.when} recorded as green")
-    revision, subject, blob = found
-    return (Substitution(book=book, digest=digest, revision=revision,
-                         subject=subject, green_run=run.run_id,
-                         green_when=run.when), blob)
+    """This book's last green source, or the sentence saying why there is none.
+
+    The cert cache is keyed by content and keeps no history of older digests,
+    and the archived manifests that did are no longer read, so there is
+    currently never a last green to substitute (a later lane removes the
+    loop or picks a history source).
+    """
+    return ("no last-green digest is recorded: the cert cache is keyed by "
+            "content and keeps no history of older digests")
 
 
 # --------------------------------------------------------------------------
@@ -568,7 +546,6 @@ def triage(host: str, roots: list[str], *, root: Path = ROOT,
     digests = closure_of(root, roots)
     books = sorted(digests)
     report = green_check.audit(root, roots)
-    runs = {run.run_id: run for run, _ in green_check.manifests(root)}
 
     substitutions: dict[str, Substitution] = {}
     sources: dict[str, bytes] = {}
@@ -630,8 +607,7 @@ def triage(host: str, roots: list[str], *, root: Path = ROOT,
                   and one.book not in untriageable]
         added = 0
         for book in wanted:
-            answer = substitution_for(root, report, runs, book,
-                                      digests.get(book, ""))
+            answer = substitution_for(root, report, book, digests.get(book, ""))
             if isinstance(answer, str):
                 untriageable[book] = answer
                 continue
@@ -787,24 +763,16 @@ def plan(root: Path, roots: list[str]) -> list[str]:
     """What a run would do, read off this tree, with no farm and no ACL2."""
     digests = closure_of(root, roots)
     report = green_check.audit(root, roots)
-    runs = {run.run_id: run for run, _ in green_check.manifests(root)}
     counts = report["standing_counts"]
     lines = [f"triage: {len(digests)} books under {len(roots)} root"
              f"{'' if len(roots) == 1 else 's'}; "
-             f"{counts.get('green', 0)} green at their digest and closure, "
-             f"{counts.get('stale', 0)} stale, {counts.get('unarchived', 0)} "
-             f"unarchived, {counts.get('red', 0)} red, "
-             f"{counts.get('never', 0)} never, {counts.get('absent', 0)} absent."]
+             f"{counts.get('green', 0)} green at their closure key, "
+             f"{counts.get('uncertified', 0)} uncertified, "
+             f"{counts.get('absent', 0)} absent."]
     for book, entry in report["books_by_verdict"].items():
-        state = green_check.standing(entry)
-        if state in ("green", "unarchived"):
-            continue   # a local unfiled green is triage's own working state
-        if state == "stale":
-            lines.append(f"triage: {book}: stale -- own digest certified, "
-                         f"{len(entry['deps_moved_since'])} dependencies moved "
-                         f"since; recertify at the current closure")
+        if green_check.standing(entry) == "green":
             continue
-        answer = substitution_for(root, report, runs, book, digests[book])
+        answer = substitution_for(root, report, book, digests[book])
         if isinstance(answer, str):
             lines.append(f"triage: {book}: cannot substitute -- {answer}")
         else:

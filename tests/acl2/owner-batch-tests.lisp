@@ -12,6 +12,8 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-batch")
+(include-book "../../books/store-log-failed-barrier")
+(include-book "../../books/defkeystone")
 (include-book "../../books/frame-trailer")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -57,32 +59,15 @@
 (defun owb-extent () (declare (xargs :guard t :verify-guards nil))
   (len (fn-bs-durable-content (owb-ext-bs) 0)))
 
-; The sole-pending-writer discharge, reachable: the store before recovery has
-; nothing pending; R is established.
+;; The recovered layer over the recovered store: R holds of the store the scan
+;; zeroed and fenced (and of its preallocated extension), the layer is aligned
+;; with the kernel, and it holds exactly the two committed records.
 (assert-event
- (let ((bs (owb-store (owb-content) nil)))
-   (and (fn-owb-sole-pending-writer bs 0)
-        (not (fn-bs-ops-for-ino (fn-bs-pending bs) 0))
-        (fn-lgk-relp (owb-bs0) (fn-owb-ks (owb-st0)) 0 (owb-genesis) (owb-max))
-        (fn-lgk-relp (owb-ext-bs) (fn-owb-ks (owb-st0)) 0 (owb-genesis) (owb-max))
-        (fn-owb-alignedp (owb-st0))
-        (equal (fn-owb-records (fn-owb-acked (owb-st0))) (list (owb-r 1) (owb-r 2)))
-        (null (fn-owb-waiting (owb-st0))) (null (fn-owb-members (owb-st0))))))
-
-; Hypothesis removal: another inode's write pending at recovery (removed:
-; fn-owb-sole-pending-writer).  The segment's fence does not drain it; R fails.
-(assert-event
- (let* ((bs (fn-bs-make (owb-unit) (list (cons 0 (owb-content)) (cons 1 nil)) nil
-                        (list (list :write 1 0 '(5 5 5 5))) 2))
-        (c (fn-bs-durable-content bs 0))
-        (ks (fn-owb-ks (owb-st0))) (f (fn-lgk-frontier ks))
-        (bs2 (owb-fsync (owb-write bs 0 f (fn-bs-zeros (- (len c) f))) 0)))
-   (and (posp (fn-bs-unit bs)) (assoc-equal 0 (fn-bs-inodes bs))
-        (true-listp c) (equal (mod (len c) (fn-bs-unit bs)) 0)
-        (fn-frame-digestp (owb-genesis))
-        (not (fn-bs-ops-for-ino (fn-bs-pending bs) 0))
-        (not (fn-owb-sole-pending-writer bs 0))
-        (not (fn-lgk-relp bs2 ks 0 (owb-genesis) (owb-max))))))
+ (and (fn-lgk-relp (owb-bs0) (fn-owb-ks (owb-st0)) 0 (owb-genesis) (owb-max))
+      (fn-lgk-relp (owb-ext-bs) (fn-owb-ks (owb-st0)) 0 (owb-genesis) (owb-max))
+      (fn-owb-alignedp (owb-st0))
+      (equal (fn-owb-records (fn-owb-acked (owb-st0))) (list (owb-r 1) (owb-r 2)))
+      (null (fn-owb-waiting (owb-st0))) (null (fn-owb-members (owb-st0)))))
 
 ; -----------------------------------------------------------------------------
 ; The served sequence: three connections' members taken into one batch.
@@ -307,6 +292,55 @@
         ; a take after the fault is refused: nothing enters a faulted kernel
         (equal (fn-owb-take st1 13 '(6 . 5) (owb-r 6) (owb-unit) (owb-bmax) (owb-omax)) st1))))
 
+; KEYSTONE fn-lgc-failed-barrier-recovers-a-prefix (books/store-log-failed-barrier),
+; reachable.  The host's concrete kernel at the failed barrier is the
+; abstraction of the logical one; fn-lgc-fence-failed faults it and keeps the
+; batch in flight and the acknowledged count; the kernel recovered from the
+; store the failed fsync left holds the committed records then a prefix of
+; that batch, under each of the three selections (partial, all, none).
+(assert-event
+ (let* ((ks (fn-owb-ks (owb-st4))) (bs (owb-bs4))
+        (c (fn-lgc-fence-failed (fn-lgc-of ks))))
+   (and (fn-lgk-relp bs ks 0 (owb-genesis) (owb-max))
+        (consp (fn-lgc-inflight (fn-lgc-of ks)))
+        (equal (fn-lgc-phase c) :fault)
+        (equal (fn-lgc-acked c) (fn-lgk-acked ks))
+        (equal (fn-lgc-inflight c) (fn-lgk-inflight ks))
+        (equal (fn-lgc-count c) 2)
+        (fn-bs-crash-choicesp (owb-choice (owb-e1)) (fn-bs-pending bs) (owb-unit))
+        (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed (owb-eio-ks (owb-choice (owb-e1)))))
+                       (fn-lgc-inflight c))
+        (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed (owb-eio-ks (owb-choice (owb-units)))))
+                       (fn-lgc-inflight c))
+        (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed (owb-eio-ks (owb-choice 0))))
+                       (fn-lgc-inflight c)))))
+
+;; KEYSTONE fn-lgc-failed-barrier-recovers-a-prefix, the complete statement at
+;; one binding (the selection where every pending octet landed, so the tear
+;; premise fn-lg-platform-tears-p is decided by the frames alone, with no call
+;; of the constrained fn-assume-crash-tearp): every hypothesis is asserted --
+;; R, a batch in flight, the admissible selection, the platform's tear -- and
+;; the whole conclusion -- the fault phase, the acknowledged records kept, the
+;; recovered kernel's committed records are the old committed records followed
+;; by a tail, and that tail is a prefix of the batch in flight.
+(assert-event
+ (let* ((ks (fn-owb-ks (owb-st4))) (bs (owb-bs4)) (choices (owb-choice (owb-units)))
+        (c (fn-lgc-fence-failed (fn-lgc-of ks)))
+        (bs1 (mv-nth 1 (mv-list 2 (fn-bs-fsync-file bs 0 (cons :eio choices)))))
+        (ks2 (fn-lgk-recover (fn-bs-durable-content bs1 0) (owb-genesis) (fn-bs-unit bs) (owb-max) 9)))
+   (and (fn-lgk-relp bs ks 0 (owb-genesis) (owb-max))
+        (consp (fn-lgc-inflight (fn-lgc-of ks)))
+        (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs))
+        (fn-lg-platform-tears-p (nthcdr (fn-lgc-frontier c) (fn-bs-durable-content bs1 0))
+                                (fn-lgc-inflight c) (fn-lgc-last c) (fn-bs-unit bs))
+        (equal (fn-lgc-phase c) :fault)
+        (equal (fn-lgc-acked c) (fn-lgk-acked ks))
+        (equal (fn-lgk-committed ks2)
+               (append (fn-lgk-committed ks)
+                       (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2))))
+        (equal (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2)) (owb-batch))
+        (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2)) (fn-lgc-inflight c)))))
+
 ; T7, hypothesis removal: R (the kernel of an unrelated store).  The failed
 ; fence of a store holding nothing leaves nothing; the recovered kernel's
 ; records are not the committed records followed by anything.
@@ -421,3 +455,33 @@
         (equal (second wrong) '(:expected-mismatch))
         (equal (third wrong) 1)
         (equal (fourth wrong) 0))))
+
+; The strengthened host claim keeps the relation and named tear premise.
+; Empty in-flight batches and arbitrary selectors are covered by its proof.
+(defteeth fn-lgc-failed-barrier-recovers-a-prefix
+  :subject fn-lgc-fence-failed
+  :claim
+  (let* ((c (fn-lgc-fence-failed (fn-lgc-of ks)))
+         (bs1 (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices))))
+         (ks2 (fn-lgk-recover (fn-bs-durable-content bs1 ino) genesis (fn-bs-unit bs) max next-txid)))
+    (((related (fn-lgk-relp bs ks ino genesis max))
+      (tear (fn-lg-platform-tears-p (nthcdr (fn-lgc-frontier c) (fn-bs-durable-content bs1 ino))
+                                    (fn-lgc-inflight c) (fn-lgc-last c) (fn-bs-unit bs))))
+     (and (equal (fn-lgc-phase c) :fault)
+          (equal (fn-lgc-acked c) (fn-lgk-acked ks))
+          (equal (fn-lgk-committed ks2)
+                 (append (fn-lgk-committed ks)
+                         (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2))))
+          (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2))
+                         (fn-lgc-inflight c)))))
+  :witness ((ks (fn-owb-ks (owb-st4))) (bs (owb-bs4))
+            (ino 0) (genesis (owb-genesis)) (max (owb-max)) (next-txid 9)
+            (choices (owb-choice (owb-units))))
+  :breaks
+  ((related ((bs (owb-store (fn-bs-zeros 64) (fn-bs-pending (owb-bs4))))))
+   (tear (:assumption fn-assume-crash-tearp)))
+  :mutations
+  ((resume-after-error (:conclusion (equal (fn-lgc-phase c) :ready)) ()
+    :fault "A failed barrier leaves the kernel ready instead of faulted.")))
+
+(defteeth-check (fn-lgc-failed-barrier-recovers-a-prefix))

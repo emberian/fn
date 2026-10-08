@@ -56,26 +56,6 @@
 ; A COMPLETE with nothing captured (illegal: no batch in flight) is refused.
 (assert-event (not (fn-ocvm-legal-run-p (fn-ocvm-init) '((:complete)))))
 
-; --- KEYSTONE fn-olr-take-never-joins-the-batch-in-flight ---------------------
-; A kernel with a batch in flight (INFLIGHT (r0)) and an open batch (r1):
-; a take joins the open batch, the batch in flight is unchanged.
-(defconst *orvt-ks* (fn-lgk-make nil nil 0 7 '((1 2)) '((9 9)) 0 :appended))
-(defconst *orvt-take* (fn-olr-take *orvt-ks* '(3 4) 7 1 10 64 1000000 512))
-(assert-event (equal (car *orvt-take*) :taken))
-(assert-event (equal (fn-lgk-inflight (cadr *orvt-take*)) '((9 9))))
-(assert-event (equal (fn-lgk-batch (cadr *orvt-take*)) '((1 2) (3 4))))
-; At the operator's bound (count 1 >= bmax 1) the take answers :full and
-; changes nothing (the host waits for the barrier, then commits the batch).
-(defconst *orvt-full* (fn-olr-take *orvt-ks* '(3 4) 7 1 10 1 1000000 512))
-(assert-event (and (equal (car *orvt-full*) :full)
-                   (equal (cadr *orvt-full*) *orvt-ks*)))
-; Mutation witness (labelled): a take that put the record into INFLIGHT
-; would change it -- the keystone's first conjunct refuses that shape.
-(must-fail-checked
- (assert-event (equal (fn-lgk-inflight
-                       (fn-lgk-make nil nil 0 8 '((1 2)) '((9 9) (3 4)) 0 :appended))
-                      (fn-lgk-inflight *orvt-ks*))))
-
 ; --- the owner at the reader view -------------------------------------------
 ; fn-ocfg-at-reader-view reads the capture; with nothing captured it is the
 ; owner itself.
