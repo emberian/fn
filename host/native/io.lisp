@@ -8668,7 +8668,7 @@ its head's trailer, which the open checks the head against
 closed segment stays active; the caller prepares one and asks again.  A
 rename whose outcome is unknown is a recovery event (the name may or may not
 be in journal/ while the closed segment would take more records). A definite
-rename refusal stages physical spare disposal for the caller’s off-lock drain."
+rename refusal stages physical spare disposal for the caller's off-lock drain."
   (let* ((log (fnn-store-log store))
          (ks (fnn-log-kernel log))
          (next (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))

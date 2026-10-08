@@ -157,7 +157,7 @@ history it read, as before."
             (format nil ".stage-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
 
 (defun fnn-admin-publish (store record authorization)
-  "Publish ACL2’s authorized record; stage cleanup for the caller’s off-lock unwind."
+  "Publish ACL2's authorized record; stage cleanup for the caller's off-lock unwind."
   (let* ((generation (fnn-core 'fn-native-admin-host-publication-generation authorization))
          (name (fnn-core 'fn-native-admin-host-publication-name authorization))
          (directory (fnn-config-dir store))

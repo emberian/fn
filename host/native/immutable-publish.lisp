@@ -27,7 +27,7 @@
 
 (defun fnn-immutable-drain-cleanups (&optional stage)
   "Take cleanup once and settle its receipt. Without STAGE, run off all locks;
-with STAGE, retain only that legacy caller’s immediate cleanup timing.
+with STAGE, retain only that legacy caller's immediate cleanup timing.
 A calling record remains discoverable until settlement. An interrupted drain
 leaves it for cold recovery; another drainer never reissues that unlink."
   (loop

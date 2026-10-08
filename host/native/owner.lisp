@@ -2602,8 +2602,8 @@ termination -- an unclassified exit, which is a fault (lane failure-scope
 review M3), installed before the mutex is released.")
 
 (defun fnn-owner-post-section (service)
-  "Drain physical cleanup after releasing O, preserving the section’s failure
-context. Cleanup never changes an immutable publication’s durable verdict."
+  "Drain physical cleanup after releasing O, preserving the section's failure
+context. Cleanup never changes an immutable publication's durable verdict."
   (handler-case
       (fnn-unwind-cleanups ()
         (fnn-owner-stop-wake service)
