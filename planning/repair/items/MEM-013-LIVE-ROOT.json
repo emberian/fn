@@ -1,0 +1,14 @@
+{
+ "category": "representation",
+ "detail": "The live history root (host/native/history-root.lisp:63-80, fnn-owner-history-root-fund/-refresh) builds its page image row by row through fn-his-row-begin/-step/-grow (books/history-image-row-step.lisp), so every region grow is a relocation through fn-hp-x-relocate and pgs-x-grow-image (books/pagestore-exec.lisp:2623): an exact-size resize-pgs-w copy of the whole word array per grow, plus zeroed holes left behind by relocation, and fn-owner-hroot-resize asks for the whole image at once (4096+1 pages at 25k; S's s-heap2 trace). MEM-013 B' moves only the checkpoint's history image onto the canonical placement (fn-hp-starts/fn-hp-npages, fn-hp-piw-canonical; lane n-mem13). This item moves the live root onto the same canonical placement and region-cursor writer, so its growth path has no resize copies and no holes. It bears on held ruling 20 (the live root's growth path). Urgency is decided by N's 25k probe on the train-27 developer image (does the refresh succeed with the MEM-010 reserve, and what does the page image free).",
+ "file": "host/native/history-root.lisp",
+ "id": "MEM-013-LIVE-ROOT",
+ "line": "63",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "source": "n-mem13",
+ "state": "open",
+ "title": "the live history root still builds by per-row relocation (resize copies and holes); move it onto MEM-013's canonical placement",
+ "updated": "2026-10-08T03:00:00Z"
+}
