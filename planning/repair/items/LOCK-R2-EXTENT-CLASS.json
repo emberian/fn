@@ -1,0 +1,16 @@
+{
+ "id": "LOCK-R2-EXTENT-CLASS",
+ "title": "Synchronous extent miss must release E while retaining exact read custody",
+ "detail": "REAL. fn-durable-realize-octet/span/octets hold E through fnn-extent-entry, whose miss calls fnn-extent-entry-direct then fnn-extent-read-verified / fnn-extent-read-entry / pread. E protects descriptors, cache and resource leases, so every cache hit and cold worker settlement waits behind a stalled disk. Served chunk spans bind *fnn-extent-no-io* and throw before this path, but the direct funded/offline fallback exists and BP can reach it with O held.",
+ "fix": "Use the existing issued-read ownership and exact file holds for capture, release E for pread, then verify and publish under E. ACL2 phases must retain descriptor and buffer custody across cancellation/retirement. A caller holding O must first enter the cold-read continuation; merely dropping E leaves its O stall.",
+ "owner": "deputy-C",
+ "state": "open",
+ "notes": [
+  "Statement first, lock-r2-class, 2026-10-08; traced checkout 414aed260. No numbered identifier required for descriptive LOCK repair IDs.",
+  "The cited fnn-owner-held-commit host macro is absent from this checkout; lane-commit-held-host contains an implementation to inspect as an integration dependency.",
+  "No extent edits made; E:fnn-extent-pread remains. fn-owner-page-read-direct-mode explicitly permits :funded-pool when :served with installed data, as well as offline, so the synchronous fallback cannot be dismissed as always offline.",
+  "An off-E read must retain the exact descriptor until physical return, preserve the funded discovery/read lease and keep the final cache borrow protected. fnn-extent-close checks fn-pio-direct-quiet-p for direct holds and fn-owner-page-read-close-preview for funded holds. Dropping E around pread without those joins permits retirement to close the captured fd.",
+  "Natives for C after the custody split: tests.test_native_page_io, tests.test_native_cold_off_loop, tests.test_native_slow_disk.",
+  "Round 2 scope investigation: no safe implementation confined to extent.lisp and page-read-host.lisp was found. The funded sync row is activation-local (fn-pio-own-admitted-token), while the offline sync path has no global file hold. Existing fn-pio-direct-admit/settle joins a physical executor row, issued-read roster and file-hold table; pretending a synchronous activation is that executor violates its holder relation. A new synchronous holder/phase must be modeled in the page-read ownership/direct books and their holder declarations before releasing E. O-held callers additionally need the owning lane continuation. No extent/page-read host edit is made; E:pread remains REAL."
+ ]
+}

@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
+(include-book "owner-retire")
+(include-book "config-owner-live")
 (include-book "config-owner-publish")
 (include-book "config-owner-carried")
 (include-book "config-owner-live-authorize-carried")
