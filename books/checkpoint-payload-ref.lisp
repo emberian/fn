@@ -75,3 +75,27 @@
            :use ((:instance cpl-nthcdr-append (n (car ref)) (a file) (b tail))
                  (:instance cpl-take-append (n (cadr ref)) (a (nthcdr (car ref) file)) (b tail))
                  (:instance cpl-len-nthcdr (n (car ref)) (x file))))))
+
+; The frame a payload takes in the file (books/checkpoint-payloads.lisp): one
+; fn-scc frame, a 37-octet header, the payload, a 32-octet trailer (the digest
+; the extent path verifies).  A ref points at the PAYLOAD, 37 octets into its
+; frame.  Frames of consecutive payloads lie end to end.
+(defconst *fn-cpl-header-octets* 37)
+(defconst *fn-cpl-trailer-octets* 32)
+
+(defun fn-cpl-frame-octets (n)
+  (declare (xargs :guard t))
+  (+ *fn-cpl-header-octets* (nfix n) *fn-cpl-trailer-octets*))
+
+; The frame's trailer as four u64 words, 8 octets to a word, big-endian: a
+; function of the payload (the payload lane fixes it as the frame's digest).
+(encapsulate (((fn-cpl-trailer-words *) => *))
+  (local (defun fn-cpl-trailer-words (payload) (declare (ignore payload)) (list 0 0 0 0)))
+  (defthm fn-cpl-trailer-words-shape
+    (and (true-listp (fn-cpl-trailer-words p))
+         (consp (fn-cpl-trailer-words p))
+         (equal (len (fn-cpl-trailer-words p)) 4)
+         (unsigned-byte-p 64 (car (fn-cpl-trailer-words p)))
+         (unsigned-byte-p 64 (cadr (fn-cpl-trailer-words p)))
+         (unsigned-byte-p 64 (caddr (fn-cpl-trailer-words p)))
+         (unsigned-byte-p 64 (cadddr (fn-cpl-trailer-words p))))))

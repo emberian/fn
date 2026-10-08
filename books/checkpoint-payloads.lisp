@@ -35,10 +35,7 @@
   (declare (xargs :guard (true-listp payload) :verify-guards nil))
   (car (fn-scc-frames (list payload) 0 1 0 *fn-scc-genesis*)))
 
-; The octets a frame of an n-octet payload occupies.
-(defun fn-cpl-frame-octets (n)
-  (declare (xargs :guard (natp n)))
-  (+ *fn-scc-segment-header-octets* (nfix n) *fn-frame-trailer-octets*))
+; (fn-cpl-frame-octets n) is books/checkpoint-payload-ref.lisp's: 37 + n + 32.
 
 ; A ref (books/checkpoint-payload-ref.lisp) names the payload's OCTETS inside
 ; its frame: offset = frame start + the header, len = the payload's count.
@@ -107,11 +104,31 @@
       (+ (fn-cpl-frame-octets (len (car ps))) (fn-cpl-delta-octets (cdr ps)))
     0))
 
-; (list bytes refs): the octets to append at the committed length L, and the
-; refs they will have.
+; The frame's 32-octet trailer: the digest over the genesis chain, the header
+; and the payload.  A function of the payload alone (index 0 of 1, sequence 0).
+(defun fn-cpl-trailer (p)
+  (declare (xargs :guard (true-listp p) :verify-guards nil))
+  (fn-scc-seal *fn-scc-genesis* (fn-scc-header 0 1 (len p) 0) p))
+
+(defun fn-cpl-trailers (ps)
+  (declare (xargs :guard (true-listp ps) :verify-guards nil))
+  (if (consp ps) (cons (fn-cpl-trailer (car ps)) (fn-cpl-trailers (cdr ps))) nil))
+
+; Each trailer is the last 32 octets of its ref's frame in FILE.
+(defun fn-cpl-trailers-at (refs trs file)
+  (declare (xargs :guard (and (true-list-listp refs) (true-listp file)) :verify-guards nil))
+  (if (consp refs)
+      (and (consp trs)
+           (equal (take 32 (nthcdr (- (fn-cpl-ref-end (car refs)) 32) file)) (car trs))
+           (fn-cpl-trailers-at (cdr refs) (cdr trs) file))
+    (null trs)))
+
+; (list bytes refs trailers): the octets to append at the committed length L,
+; the refs they will have, and each frame's trailer octets (the tape row
+; carries them so an arena extent can be sealed without reading the file).
 (defun fn-cpl-append-plan (l ps)
   (declare (xargs :guard (and (natp l) (true-list-listp ps)) :verify-guards nil))
-  (list (fn-cpl-frames ps) (fn-cpl-refs l ps)))
+  (list (fn-cpl-frames ps) (fn-cpl-refs l ps) (fn-cpl-trailers ps)))
 
 (defun fn-cpl-open-all (refs file)
   (declare (xargs :guard (and (true-list-listp refs) (true-listp file)) :verify-guards nil))
@@ -533,3 +550,243 @@
                         fn-cpl-append-plan-resolves)
            :in-theory (disable cpl-prefix-stable)))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; 6. Reclaim (CPL-3).  Facts about a verified read.
+
+; A file the reclaim plan reads: octets, and short enough that a payload's
+; length fits a frame header (no real file is 2^64 octets).
+(defun fn-cpl-filep (f)
+  (declare (xargs :guard t))
+  (and (fn-scc-octet-listp f) (< (+ 1 (len f)) *fn-scc-u64-bound*)))
+
+(local
+ (defthm cpl-take-octets
+   (implies (and (fn-scc-octet-listp x) (natp n) (<= n (len x)))
+            (fn-scc-octet-listp (take n x)))
+   :hints (("Goal" :induct (take n x)
+            :in-theory (e/d (take fn-scc-octet-listp) (fn-scc-octet-listp-facts))))))
+
+(local
+ (defthm cpl-open-seg-facts
+   (implies (and (fn-scc-octet-listp seg) (fn-cpl-open-seg ref seg))
+            (and (fn-scc-octet-listp (car (fn-cpl-open-seg ref seg)))
+                 (equal (len (car (fn-cpl-open-seg ref seg))) (fn-cpl-ref-len ref))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-scc-open-segment-chunk-octets (index 0) (count 1)
+                             (sequence 0) (prev *fn-scc-genesis*)))
+            :in-theory (e/d (fn-cpl-open-seg)
+                            (fn-scc-open-segment fn-scc-open-segment-chunk-octets))))))
+
+(local
+ (defthm cpl-open-seg-list
+   (implies (fn-cpl-open-seg ref seg)
+            (equal (fn-cpl-open-seg ref seg) (list (car (fn-cpl-open-seg ref seg)))))
+   :hints (("Goal" :in-theory (enable fn-cpl-open-seg)))))
+(local (in-theory (disable cpl-open-seg-list)))
+
+(local
+ (defthm cpl-open-seg-nil
+   (not (fn-cpl-open-seg ref nil))
+   :hints (("Goal" :in-theory (enable fn-cpl-open-seg fn-scc-open-segment
+                                      fn-scc-parse-header fn-scc-long-enoughp)))))
+
+(local
+ (defthm cpl-win-facts
+   (implies (and (fn-scc-octet-listp f) (natp s) (natp n) (cpl-win ref s n f))
+            (and (equal (cpl-win ref s n f) (list (car (cpl-win ref s n f))))
+                 (fn-scc-octet-listp (car (cpl-win ref s n f)))
+                 (equal (len (car (cpl-win ref s n f))) (fn-cpl-ref-len ref))
+                 (<= (+ s n) (len f))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance cpl-open-seg-facts (seg (take n (nthcdr s f))))
+                  (:instance cpl-take-octets (x (nthcdr s f)))
+                  (:instance cpl-open-seg-list (seg (take n (nthcdr s f)))))
+            :in-theory (e/d (cpl-win cpl-long-enough cpl-len-nthcdr)
+                            (cpl-open-seg-facts cpl-take-octets fn-cpl-open-seg))))))
+
+(local
+ (defthm cpl-open-facts
+   (implies (and (fn-scc-octet-listp f) (< (+ 1 (len f)) 18446744073709551616)
+                 (fn-cpl-open ref f))
+            (and (fn-cpl-payloadp (car (fn-cpl-open ref f)))
+                 (equal (fn-cpl-open ref f) (list (car (fn-cpl-open ref f))))
+                 (equal (len (car (fn-cpl-open ref f))) (fn-cpl-ref-len ref))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance cpl-win-facts (s (fn-cpl-ref-start ref))
+                             (n (fn-cpl-frame-octets (fn-cpl-ref-len ref)))))
+            :in-theory (e/d (cpl-open-as-win fn-cpl-payloadp fn-cpl-frame-octets)
+                            (cpl-win-facts cpl-win fn-cpl-open))))))
+
+(local
+ (defthm cpl-payloads-ok
+   (implies (and (fn-cpl-filep f) (fn-cpl-all-openp refs f))
+            (fn-cpl-payload-listp (fn-cpl-payloads-of refs f)))
+   :hints (("Goal" :induct (fn-cpl-all-openp refs f) :in-theory (disable cpl-open-facts))
+           (and stable-under-simplificationp
+                '(:use ((:instance cpl-open-facts (ref (car refs))))
+                  :in-theory (e/d (fn-cpl-filep) (cpl-open-facts)))))))
+
+(local
+ (defthm cpl-open-all-is-wrap
+   (implies (and (fn-cpl-filep f) (fn-cpl-all-openp refs f))
+            (equal (fn-cpl-open-all refs f) (fn-cpl-wrap (fn-cpl-payloads-of refs f))))
+   :hints (("Goal" :induct (fn-cpl-all-openp refs f) :in-theory (disable cpl-open-facts))
+           (and stable-under-simplificationp
+                '(:use ((:instance cpl-open-facts (ref (car refs))))
+                  :in-theory (e/d (fn-cpl-filep) (cpl-open-facts)))))))
+
+(local
+ (defthm cpl-payloads-delta
+   (implies (and (fn-cpl-filep f) (fn-cpl-all-openp refs f))
+            (equal (fn-cpl-delta-octets (fn-cpl-payloads-of refs f))
+                   (+ (fn-cpl-ref-lens refs) (* 69 (len refs)))))
+   :hints (("Goal" :induct (fn-cpl-all-openp refs f) :in-theory (disable cpl-open-facts))
+           (and stable-under-simplificationp
+                '(:use ((:instance cpl-open-facts (ref (car refs))))
+                  :in-theory (e/d (fn-cpl-filep) (cpl-open-facts)))))))
+
+; With the root switched atomically from (F, REFS) to (the fresh file, the
+; map), every live ref answers the same payload before and after.
+(defthm fn-cpl-compact-preserves-every-live-ref
+  (implies (and (fn-cpl-filep f) (fn-cpl-all-openp refs f))
+           (equal (fn-cpl-open-all (cadr (fn-cpl-compact-plan f refs))
+                                   (car (fn-cpl-compact-plan f refs)))
+                  (fn-cpl-open-all refs f)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance cpl-resolves-gen (pre nil) (post nil)
+                            (ps (fn-cpl-payloads-of refs f)))
+                 cpl-payloads-ok cpl-open-all-is-wrap)
+           :in-theory (disable cpl-resolves-gen cpl-payloads-ok cpl-open-all-is-wrap))))
+
+; The fresh file is the live payloads plus 69 octets of frame per live ref.
+(defthm fn-cpl-compact-size
+  (implies (and (fn-cpl-filep f) (fn-cpl-all-openp refs f))
+           (equal (len (car (fn-cpl-compact-plan f refs)))
+                  (+ (fn-cpl-ref-lens refs)
+                     (* (+ *fn-scc-segment-header-octets* *fn-frame-trailer-octets*)
+                        (len refs)))))
+  :hints (("Goal" :do-not-induct t
+           :use (cpl-payloads-ok cpl-payloads-delta
+                 (:instance fn-cpl-frames-len (ps (fn-cpl-payloads-of refs f))))
+           :in-theory (disable cpl-payloads-ok cpl-payloads-delta fn-cpl-frames-len))))
+
+; A delta appended to the fresh file while the compaction ran.
+(defthm fn-cpl-compact-concurrent-delta
+  (implies (and (fn-cpl-filep f) (fn-cpl-all-openp refs f) (fn-cpl-payload-listp ps))
+           (let* ((cp (fn-cpl-compact-plan f refs))
+                  (nf (car cp))
+                  (ap (fn-cpl-append-plan (len nf) ps))
+                  (g (append nf (car ap))))
+             (and (equal (fn-cpl-open-all (append (cadr cp) (cadr ap)) g)
+                         (append (fn-cpl-open-all refs f) (fn-cpl-wrap ps)))
+                  (equal (len g)
+                         (+ (fn-cpl-ref-lens refs) (fn-cpl-ref-lens (cadr ap))
+                            (* (+ *fn-scc-segment-header-octets* *fn-frame-trailer-octets*)
+                               (+ (len refs) (len ps))))))))
+  :hints (("Goal" :do-not-induct t
+           :use (cpl-payloads-ok cpl-payloads-delta fn-cpl-compact-preserves-every-live-ref
+                 (:instance fn-cpl-frames-len (ps (fn-cpl-payloads-of refs f)))
+                 (:instance fn-cpl-frames-len)
+                 (:instance fn-cpl-crash-new-root-after-durable-append
+                            (f (fn-cpl-frames (fn-cpl-payloads-of refs f)))
+                            (r0 (fn-cpl-refs 0 (fn-cpl-payloads-of refs f))))
+                 (:instance fn-cpl-refs-covered (l 0) (ps (fn-cpl-payloads-of refs f))
+                            (c (fn-cpl-delta-octets (fn-cpl-payloads-of refs f))))
+                 (:instance fn-cpl-append-plan-is-the-delta
+                            (l (fn-cpl-delta-octets (fn-cpl-payloads-of refs f))))
+                 (:instance cpl-frames-tl (ps (fn-cpl-payloads-of refs f))))
+           :in-theory (disable cpl-payloads-ok cpl-payloads-delta fn-cpl-frames-len
+                               fn-cpl-compact-preserves-every-live-ref fn-cpl-refs-covered
+                               cpl-frames-tl)))
+  :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; 7. The trailer.
+
+(defthm fn-cpl-trailer-shape
+  (implies (fn-cpl-payloadp p)
+           (and (fn-scc-octet-listp (fn-cpl-trailer p))
+                (equal (len (fn-cpl-trailer p)) 32)))
+  :hints (("Goal" :use ((:instance cpl-seal-facts (h (fn-scc-header 0 1 (len p) 0)) (p p)))
+           :in-theory (e/d (fn-cpl-trailer fn-cpl-payloadp)
+                           (cpl-seal-facts fn-scc-header fn-scc-seal)))))
+
+(local
+ (defthm cpl-frame-trailer-at
+   (implies (fn-cpl-payloadp p)
+            (equal (nthcdr (+ 37 (len p)) (fn-cpl-frame p)) (fn-cpl-trailer p)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance cpl-frame-shape)
+                  (:instance cpl-nthcdr-append (a (append (fn-scc-header 0 1 (len p) 0) p))
+                             (b (fn-cpl-trailer p))))
+            :in-theory (e/d (fn-cpl-trailer)
+                            (cpl-nthcdr-append cpl-frame-shape fn-scc-header fn-scc-seal))))))
+
+(local (defthm cpl-nthcdr-sum
+         (implies (and (natp a) (natp b))
+                  (equal (nthcdr (+ a b) x) (nthcdr b (nthcdr a x))))
+         :hints (("Goal" :induct (nthcdr a x)))))
+(local (defthm cpl-nthcdr-app
+         (implies (and (natp k) (<= k (len a)))
+                  (equal (nthcdr k (append a b)) (append (nthcdr k a) b)))
+         :hints (("Goal" :induct (nthcdr k a)))))
+
+; The frame's last 32 octets, wherever the frame sits in a file.
+(local
+ (defthm fn-cpl-trailer-in-file
+   (implies (and (true-listp pre) (true-listp post) (fn-cpl-payloadp p))
+            (equal (take 32 (nthcdr (+ (len pre) 37 (len p))
+                                    (append pre (fn-cpl-frame p) post)))
+                   (fn-cpl-trailer p)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance cpl-nthcdr-sum (a (len pre)) (b (+ 37 (len p)))
+                             (x (append pre (fn-cpl-frame p) post)))
+                  (:instance cpl-nthcdr-app (k (+ 37 (len p))) (a (fn-cpl-frame p)) (b post))
+                  cpl-frame-trailer-at fn-cpl-trailer-shape fn-cpl-frame-len
+                  (:instance cpl-take-len-append (f (fn-cpl-trailer p)) (z post)))
+            :in-theory (e/d (fn-cpl-frame-octets)
+                            (cpl-nthcdr-sum cpl-nthcdr-app cpl-frame-trailer-at
+                                            fn-cpl-trailer-shape fn-cpl-frame-len
+                                            cpl-take-len-append cpl-take-append))))))
+
+(local
+ (defthm cpl-trailers-step
+   (implies (and (true-listp pre) (true-listp post) (fn-cpl-payloadp p)
+                 (fn-cpl-trailers-at (fn-cpl-refs (len (append pre (fn-cpl-frame p))) ps)
+                                     (fn-cpl-trailers ps)
+                                     (append (append pre (fn-cpl-frame p))
+                                             (fn-cpl-frames ps) post)))
+            (fn-cpl-trailers-at (fn-cpl-refs (len pre) (cons p ps))
+                                (fn-cpl-trailers (cons p ps))
+                                (append pre (fn-cpl-frames (cons p ps)) post)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-cpl-frames fn-cpl-refs fn-cpl-trailers fn-cpl-trailers-at
+                                           cpl-len-append fn-cpl-ref-end fn-cpl-ref-offset
+                                           fn-cpl-ref-len)
+                            (fn-cpl-payloadp))
+            :use ((:instance fn-cpl-trailer-in-file (post (append (fn-cpl-frames ps) post)))
+                  (:instance fn-cpl-frame-len))))))
+
+(local
+ (defthm cpl-trailers-gen
+   (implies (and (true-listp pre) (true-listp post) (fn-cpl-payload-listp ps))
+            (fn-cpl-trailers-at (fn-cpl-refs (len pre) ps) (fn-cpl-trailers ps)
+                                (append pre (fn-cpl-frames ps) post)))
+   :hints (("Goal" :induct (fn-cpl-frames-ind pre ps)
+            :do-not '(generalize eliminate-destructors))
+           ("Subgoal *1/1"
+            :use ((:instance cpl-trailers-step (p (car ps)) (ps (cdr ps)))
+                  (:instance cpl-frame-tl2 (p (car ps))))
+            :in-theory (disable cpl-trailers-step fn-cpl-trailer-in-file fn-cpl-refs
+                                fn-cpl-frames fn-cpl-trailers fn-cpl-trailers-at)))))
+
+; The plan's trailers are the last 32 octets of each frame in the file after
+; the append.
+(defthm fn-cpl-append-plan-trailers
+  (implies (and (true-listp f) (fn-cpl-payload-listp ps))
+           (fn-cpl-trailers-at (cadr (fn-cpl-append-plan (len f) ps))
+                               (caddr (fn-cpl-append-plan (len f) ps))
+                               (append f (car (fn-cpl-append-plan (len f) ps)))))
+  :hints (("Goal" :use ((:instance cpl-trailers-gen (pre f) (post nil)))
+           :in-theory (disable cpl-trailers-gen))))
