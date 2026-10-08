@@ -574,26 +574,54 @@
   :rule-classes :forward-chaining))
 (local (defthm true-list-end-by-consp
   (implies (true-listp xs) (equal (equal xs nil) (not (consp xs))))))
+
+; Prove the shared guard facts once; Boolean normalization then handles
+; the preceding dispatch tests without reproving these facts in every arm.
+(local (defthm fn-native-admin-plan-guard-facts
+  (let ((words (fn-native-admin-words argv)))
+    (implies (fn-native-admin-argvp argv)
+      (and
+       (or (consp argv) (equal argv nil))
+       (or (consp (cdr argv)) (equal (cdr argv) nil))
+       (or (consp (cddr argv)) (equal (cddr argv) nil))
+       (or (consp (cdddr argv)) (equal (cdddr argv) nil))
+       (or (consp (cddddr argv)) (equal (cddddr argv) nil))
+       (or (consp words) (equal words nil))
+       (or (consp (cdr words)) (equal (cdr words) nil))
+       (or (consp (cddr words)) (equal (cddr words) nil))
+       (or (consp (cdddr words)) (equal (cdddr words) nil))
+       (implies (fn-native-admin-decimalp (cadr words)) (stringp (cadr words)))
+       (implies (fn-native-admin-decimalp (cadddr words)) (stringp (cadddr words)))
+       (implies (fn-native-admin-naturalp (cadddr words)) (stringp (cadddr words)))
+       (rationalp (fn-cfg-limit-ceiling (caddr words)))
+       (rationalp (fn-native-admin-decimal-value (coerce (cadddr words) 'list)))
+       (rationalp (len words))
+       (true-listp words)
+       (true-listp (true-list-fix argv)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           '(fn-native-admin-argvp-true-listp true-list-end-by-consp
+             fn-native-admin-decimalp-is-a-string
+             fn-native-admin-naturalp-is-a-string
+             (:type-prescription fn-native-admin-words)
+             (:type-prescription fn-native-admin-decimal-value)
+             (:type-prescription fn-cfg-limit-ceiling)
+             (:type-prescription len)
+             true-listp-of-list-fix)))))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
-                  :guard-hints
-                  ;; Preprocessing distributes the previous arms' tests
-                  ;; through the guard obligations.  Use only shape and
-                  ;; numeric types (703,408 -> 197,018 REPL steps).
-                  (("Goal" :do-not '(preprocess) :in-theory
-                    '(fn-native-admin-argvp-true-listp
-                      true-list-end-by-consp
-                      fn-native-admin-decimalp-is-a-string
-                      fn-native-admin-naturalp-is-a-string
-                      (:type-prescription fn-native-admin-words)
-                      (:type-prescription fn-native-admin-decimal-value)
-                      (:type-prescription len)
-                      (:type-prescription fn-cfg-limit-ceiling)
-                      true-listp-of-list-fix
-                      (:type-prescription true-list-fix)
-                      character-listp-coerce posp
-                      (:executable-counterpart equal))))))
+                  :guard-hints (("Goal" :do-not '(preprocess)
+                                :use fn-native-admin-plan-guard-facts
+                                :in-theory
+                                (union-theories (theory 'minimal-theory)
+                                 '(not implies
+                                  (:type-prescription fn-native-admin-argvp)
+                                  (:type-prescription fn-native-admin-decimalp)
+                                  (:type-prescription fn-native-admin-naturalp))))
+                               ("Goal'" :expand :lambdas
+                                :bdd (:vars nil :bdd-constructors nil)))))
   (if (not (fn-native-admin-argvp argv))
       (fn-native-admin-result :refused :argv nil nil nil nil nil)
     (let ((words (fn-native-admin-words argv)))
