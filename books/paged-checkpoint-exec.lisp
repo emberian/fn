@@ -119,9 +119,9 @@
   :hints (("Goal" :in-theory (enable fn-scc-program))))
 
 (defthm pckx-row-of-program
-  (equal (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off))
-         (cons 1 (cons (len (fn-scc-program (fn-pck-meta w)))
-                       (append (adt-tp-pack (fn-scc-program (fn-pck-meta w)))
+  (equal (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st))
+         (cons 1 (cons (len (fn-scc-program (fn-pck-meta w st)))
+                       (append (adt-tp-pack (fn-scc-program (fn-pck-meta w st)))
                                (list (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
                                      (car (fn-cpl-trailer-words (fn-pck-payload w)))
                                      (cadr (fn-cpl-trailer-words (fn-pck-payload w)))
@@ -130,10 +130,10 @@
   :hints (("Goal" :in-theory (e/d (fn-pck-enc-row adt-tp-rw adt-tp-fw adt-enc) (fn-pck-meta fn-pck-payload)))))
 
 (defthm fn-pck-x-row-words-is-the-row-length
-  (equal (len (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))
-         (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w)))))
+  (equal (len (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))
+         (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st)))))
   :hints (("Goal" :in-theory (e/d (fn-pck-x-row-words) (adt-tp-rw adt-tp-npk adt-tp-pack fn-pck-meta fn-pck-payload fn-pck-enc-row))
-           :use ((:instance adt-tp-len-pack (o (fn-scc-program (fn-pck-meta w))))
+           :use ((:instance adt-tp-len-pack (o (fn-scc-program (fn-pck-meta w st))))
                  pckx-row-of-program))))
 
 (defthm pckx-nth-append-split
@@ -193,27 +193,27 @@
   ; Word J of the row of event W (payload frame at OFF) is the buffer's word
   ; after the META tree of W is encoded; the payload contributes its length
   ; and its frame trailer's words.
-  (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j)
-                (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
+  (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j)
+                (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
            (equal (fn-pck-x-row-word j (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
                                      (car (fn-cpl-trailer-words (fn-pck-payload w)))
                                      (cadr (fn-cpl-trailer-words (fn-pck-payload w)))
                                      (caddr (fn-cpl-trailer-words (fn-pck-payload w)))
                                      (cadddr (fn-cpl-trailer-words (fn-pck-payload w)))
-                                     (fn-pck-x-encode (fn-pck-meta w) fn-octets))
-                  (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))
+                                     (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
+                  (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-pck-x-encode fn-pck-x-row-word fn-pck-x-row-words adt-tp-pack adt-tp-rw adt-tp-npk
                                fn-pck-meta fn-pck-payload fn-pck-enc-row)
-           :use ((:instance pckx-word-of-list (prog (fn-scc-program (fn-pck-meta w)))
-                            (fn-octets (fn-pck-x-encode (fn-pck-meta w) fn-octets))
+           :use ((:instance pckx-word-of-list (prog (fn-scc-program (fn-pck-meta w st)))
+                            (fn-octets (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
                             (off (+ *fn-cpl-header-octets* off))
                             (plen (len (fn-pck-payload w)))
                             (d0 (car (fn-cpl-trailer-words (fn-pck-payload w))))
                             (d1 (cadr (fn-cpl-trailer-words (fn-pck-payload w))))
                             (d2 (caddr (fn-cpl-trailer-words (fn-pck-payload w))))
                             (d3 (cadddr (fn-cpl-trailer-words (fn-pck-payload w)))))
-                 (:instance fn-pck-x-encode-is-the-program (x (fn-pck-meta w)))
+                 (:instance fn-pck-x-encode-is-the-program (x (fn-pck-meta w st)))
                  pckx-row-of-program))))
 
 ; -----------------------------------------------------------------------------
@@ -225,26 +225,26 @@
 ; (`fn-arena-payload'); a copy from the arena into the buffer without it needs
 ; a primitive `fn-arena' does not export.
 
-(defun fn-pck-x-encode-row (row fn-arena fn-octets)
-  ; The METADATA tree of the record ROW denotes into the buffer; the payload
+(defun fn-pck-x-encode-row (row fn-arena st fn-octets)
+  ; The METADATA tree of the record ROW denotes, at the fold state ST, into the buffer; the payload
   ; is not encoded here (it goes to the payload file, books/checkpoint-payloads.lisp).
   (declare (xargs :stobjs (fn-arena fn-octets) :guard t :verify-guards nil))
-  (fn-pck-x-encode (fn-pck-meta (fn-row-wire-of row fn-arena)) fn-octets))
+  (fn-pck-x-encode (fn-pck-meta (fn-row-wire-of row fn-arena) st) fn-octets))
 
 (defthm fn-pck-x-encode-row-is-the-meta-program
-  (implies (fn-sccb-treep (fn-pck-meta (fn-row-wire-of row fn-arena)))
-           (equal (fn-octets-list (fn-pck-x-encode-row row fn-arena fn-octets))
-                  (fn-scc-program (fn-pck-meta (fn-row-wire-of row fn-arena)))))
+  (implies (fn-sccb-treep (fn-pck-meta (fn-row-wire-of row fn-arena) st))
+           (equal (fn-octets-list (fn-pck-x-encode-row row fn-arena st fn-octets))
+                  (fn-scc-program (fn-pck-meta (fn-row-wire-of row fn-arena) st))))
   :hints (("Goal" :in-theory (disable fn-pck-x-encode-is-the-program)
            :use ((:instance fn-pck-x-encode-is-the-program
-                            (x (fn-pck-meta (fn-row-wire-of row fn-arena))))))))
+                            (x (fn-pck-meta (fn-row-wire-of row fn-arena) st)))))))
 
 (defthm fn-pck-x-row-word-of-row-is-the-row
   ; The host's call: word J of the row of the record ROW denotes, whose
   ; payload frame starts at FRAME in the payload file.  The row's offset
   ; word is the payload's (37 octets into the frame); PLEN is the payload's
   ; length and D0..D3 the trailer words the payload writer produced.
-  (implies (and (fn-sccb-treep (fn-pck-meta (fn-row-wire-of row fn-arena))) (natp j)
+  (implies (and (fn-sccb-treep (fn-pck-meta (fn-row-wire-of row fn-arena) st)) (natp j)
                 (equal off (+ *fn-cpl-header-octets* frame))
                 (equal plen (len (fn-pck-payload (fn-row-wire-of row fn-arena))))
                 (equal d0 (car (fn-cpl-trailer-words (fn-pck-payload (fn-row-wire-of row fn-arena)))))
@@ -252,9 +252,9 @@
                 (equal d2 (caddr (fn-cpl-trailer-words (fn-pck-payload (fn-row-wire-of row fn-arena)))))
                 (equal d3 (cadddr (fn-cpl-trailer-words (fn-pck-payload (fn-row-wire-of row fn-arena)))))
                 (< j (fn-pck-x-row-words
-                      (len (fn-scc-program (fn-pck-meta (fn-row-wire-of row fn-arena)))))))
-           (equal (fn-pck-x-row-word j off plen d0 d1 d2 d3 (fn-pck-x-encode-row row fn-arena fn-octets))
+                      (len (fn-scc-program (fn-pck-meta (fn-row-wire-of row fn-arena) st))))))
+           (equal (fn-pck-x-row-word j off plen d0 d1 d2 d3 (fn-pck-x-encode-row row fn-arena st fn-octets))
                   (nth j (adt-tp-rw *fn-pck-row-schema*
-                                    (fn-pck-enc-row (fn-row-wire-of row fn-arena) frame)))))
+                                    (fn-pck-enc-row (fn-row-wire-of row fn-arena) frame st)))))
   :hints (("Goal" :in-theory (disable fn-pck-x-row-word-is-the-row fn-pck-x-encode)
            :use ((:instance fn-pck-x-row-word-is-the-row (w (fn-row-wire-of row fn-arena)) (off frame))))))

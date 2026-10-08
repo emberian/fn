@@ -36,53 +36,53 @@
 
 (must-fail-checked
  (defthm pckxt-pack-index-is-j
-   (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j) (<= 2 j)
-                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
+   (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j) (<= 2 j)
+                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
             (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 0 nil
-                                  (fn-pck-x-encode (fn-pck-meta w) fn-octets))
-                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
+                                  (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
+                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
 (must-fail-checked
  (defthm pckxt-length-word-in-the-pack
-   (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j) (<= 2 j)
-                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
+   (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j) (<= 2 j)
+                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
             (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 1 nil
-                                  (fn-pck-x-encode (fn-pck-meta w) fn-octets))
-                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
+                                  (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
+                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
 (must-fail-checked
  (defthm pckxt-offset-and-length-swapped
-   (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j)
-                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
+   (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j)
+                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
             (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w)) (fn-cpl-trailer-words (fn-pck-payload w)) 2 t
-                                  (fn-pck-x-encode (fn-pck-meta w) fn-octets))
-                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
+                                  (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
+                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
 (must-fail-checked
  (defthm pckxt-trailer-reversed
-   (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp j)
-                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
+   (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp j)
+                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
             (equal (pckxt-word-at j (+ 37 off) (len (fn-pck-payload w))
                                   (reverse (fn-cpl-trailer-words (fn-pck-payload w))) 2 nil
-                                  (fn-pck-x-encode (fn-pck-meta w) fn-octets))
-                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
+                                  (fn-pck-x-encode (fn-pck-meta w st) fn-octets))
+                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
 (must-fail-checked
  (defthm pckxt-encodes-the-payload-too
    ; the buffer holds the whole event's program: the word count and the words
    ; are not the row's
-   (implies (and (fn-sccb-treep w) (fn-sccb-treep (fn-pck-meta w)) (natp j)
-                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w))))))
+   (implies (and (fn-sccb-treep w) (fn-sccb-treep (fn-pck-meta w st)) (natp j)
+                 (< j (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta w st))))))
             (equal (fn-pck-x-row-word j (+ 37 off) (len (fn-pck-payload w))
                                       (car (fn-cpl-trailer-words (fn-pck-payload w)))
                                       (cadr (fn-cpl-trailer-words (fn-pck-payload w)))
                                       (caddr (fn-cpl-trailer-words (fn-pck-payload w)))
                                       (cadddr (fn-cpl-trailer-words (fn-pck-payload w)))
                                       (fn-pck-x-encode w fn-octets))
-                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off)))))))
+                   (nth j (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row w off st)))))))
 
 (defconst *pckxt-record*
-  (fn-record-make 3 4 4 "<cp3@example.invalid>" '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17)
+  (fn-record-make 0 0 0 "<cp3@example.invalid>" '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17)
                   '("fn.test") "cp-pin-3" "cp-content-3" "cp-release-3" 3 841000000))
 
 (defconst *pckxt-off* 4096)
@@ -99,23 +99,23 @@
   (declare (xargs :guard (natp pack-at) :verify-guards nil))
   (with-local-stobj fn-octets
     (mv-let (ws fn-octets)
-      (let* ((fn-octets (fn-pck-x-encode (fn-pck-meta w) fn-octets))
+      (let* ((fn-octets (fn-pck-x-encode (fn-pck-meta w (fn-pck-seed)) fn-octets))
              (n (fn-pck-x-row-words (fn-octets-len fn-octets))))
         (mv (pckxt-collect 0 n (+ 37 off) (len (fn-pck-payload w))
                                     (fn-cpl-trailer-words (fn-pck-payload w)) pack-at swap fn-octets) fn-octets))
       ws)))
 
 (assert-event
- (and (fn-sccb-treep (fn-pck-meta *pckxt-record*))
+ (and (fn-sccb-treep (fn-pck-meta *pckxt-record* (fn-pck-seed)))
       (equal (len (fn-pck-payload *pckxt-record*)) 17)
       (equal (pckxt-words *pckxt-record* *pckxt-off* 2 nil)
-             (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off*)))
+             (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off* (fn-pck-seed))))
       ; the last six words are the ref (offset 37 into the frame, length) and the trailer, no payload octets
       (let ((ws (pckxt-words *pckxt-record* *pckxt-off* 2 nil)))
         (equal (nthcdr (- (len ws) 6) ws) (list 4133 17 11 22 33 44)))
       (not (equal (pckxt-words *pckxt-record* *pckxt-off* 0 nil)
-                  (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off*))))
+                  (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off* (fn-pck-seed)))))
       (not (equal (pckxt-words *pckxt-record* *pckxt-off* 1 nil)
-                  (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off*))))
+                  (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off* (fn-pck-seed)))))
       (not (equal (pckxt-words *pckxt-record* *pckxt-off* 2 t)
-                  (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off*))))))
+                  (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off* (fn-pck-seed)))))))
