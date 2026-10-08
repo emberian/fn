@@ -105,7 +105,7 @@ class RunpathCheckTests(unittest.TestCase):
             code, out, err = self.run_main(["--tree", str(top)])
             self.assertEqual(code, 0, err)
             self.assertIn("libexec/fn/runtime/sbcl: ELF; needs libc.so.103.0 libzstd.so.7.0", out)
-            self.assertIn("share/fn/rc.d/fn: starts /usr/local/fn-0123456789ab/bin/fn", out)
+            self.assertIn("share/fn/rc.d/fn: starts /usr/local/fn-0123456789ab/current/bin/fn", out)
             self.assertIn("the system's: libcrypto.so.3 libssl.so", out)
 
     def assert_finding(self, top: Path, fragment: str):
@@ -286,7 +286,7 @@ class RunpathCheckTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             top = self.release(Path(tmp))
             rc = (top / "share/fn/rc.d/fn").read_text().replace(
-                'daemon="/usr/local/fn-0123456789ab/bin/fn"', 'daemon="/usr/local/bin/python3"')
+                'daemon="/usr/local/fn-0123456789ab/current/bin/fn"', 'daemon="/usr/local/bin/python3"')
             (top / "share/fn/rc.d/fn").write_text(rc)
             code, _, err = self.run_main(["--tree", str(top)])
             self.assertEqual(code, 1)
@@ -322,8 +322,8 @@ class RunpathCheckTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             top = self.with_clients(self.release(Path(tmp)))
             rc = (top / "share/fn/rc.d/fn").read_text().replace(
-                'daemon="/usr/local/fn-0123456789ab/bin/fn"',
-                'daemon="/usr/local/fn-0123456789ab/clients/bin/fn"')
+                'daemon="/usr/local/fn-0123456789ab/current/bin/fn"',
+                'daemon="/usr/local/fn-0123456789ab/current/clients/bin/fn"')
             (top / "share/fn/rc.d/fn").write_text(rc)
             self.assert_finding(top, "share/fn/rc.d/fn: the node's service names clients/")
 

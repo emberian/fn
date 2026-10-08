@@ -36,8 +36,8 @@ GLIBC_FLOOR (the oldest glibc a Linux release supports), its
 DT_RPATH/DT_RUNPATH may not name a directory outside the release, and each DT_NEEDED name must be a file the
 release carries or the platform's C library (PLATFORM_LIBC); every shared
 object name the saved core may dlopen (the lib*.so strings in the core) must
-be carried by the release, the C library, or the system TLS library D35
-chose (SYSTEM_TLS); each service file (template) must start `PREFIX/bin/fn`.
+be carried by the release, the C library, or OpenBSD's base-system TLS
+library (SYSTEM_TLS); each service file (template) must start `PREFIX/bin/fn`.
 
 The release's `clients/` (packaging/install-clients.sh: fn-client and the
 other client programs, which are Python; the web face is the node's own,
@@ -130,14 +130,14 @@ PLATFORM_LIBC = re.compile(
 LIBC_LOADERS_BY = {"linux": {"/lib64/ld-linux-x86-64.so.2"}, "openbsd": {"/usr/libexec/ld.so"}}
 LIBC_LOADERS = {"/lib64/ld-linux-x86-64.so.2", "/usr/libexec/ld.so"}
 PLATFORMS = ("linux", "openbsd")
-# The system TLS library the image loads by dlopen: D35 as ember confirmed it
-# on 2026-09-26 ("no OpenSSL 3.5, the system libssl"; lane crypto-deps):
-# OpenSSL 3's sonames on Linux; on OpenBSD LibreSSL in the base system (the
-# core names it unversioned; ld.so resolves the installed major) or the
-# OpenSSL 3 pair under an operator's FN_OPENSSL_PREFIX (host/native/tls.lisp
-# `fnn-tls-configured-library-pair', an absolute path the operator names).
+# The system TLS library the image may leave unresolved.  Linux ships its own
+# OpenSSL 3.5.8 (D64): libssl.so.3 and libcrypto.so.3 are not the system's to
+# supply, so a core that names them fails unless the release carries the file.
+# OpenBSD keeps LibreSSL in the base system (the core names it unversioned;
+# ld.so resolves the installed major) or an OpenSSL 3 pair an operator names
+# by an absolute path (host/native/tls.lisp `fnn-tls-configured-library-pair').
 SYSTEM_TLS_BY = {
-    "linux": re.compile(r"^lib(?:ssl|crypto)\.so\.3$"),
+    "linux": re.compile(r"^$"),  # matches no soname
     "openbsd": re.compile(r"^lib(?:ssl|crypto)\.so(?:\.3|\.\d+\.\d+)?$"),
 }
 SYSTEM_TLS = re.compile(r"^lib(?:ssl|crypto)\.so(?:\.[\d.]+)?$")

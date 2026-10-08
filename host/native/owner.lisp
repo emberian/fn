@@ -299,7 +299,7 @@ not armed. Instrumentation has no semantic or admission role."
   ;; through the record log.  A served read step then queues its submission
   ;; and returns :await; the committer thread (fnn-owner-committer-loop)
   ;; admitted as the :commit class drains every queued submission in one
-  ;; quantum and fences the log once (fnn-owner-commit-queued-locked).
+  ;; quantum and fences the log once (fnn-owner-held-commit).
   ;; QUEUED counts the submissions queued since the last commit quantum
   ;; (host bookkeeping for the wake-up, never an input to a decision);
   ;; AWAITING maps a connection id to the mux connection waiting for its
@@ -420,7 +420,7 @@ function, whose counterparts fn-owner-index-rx-close / -connection-settle /
 
 
 
-;;; Inside a commit quantum (fnn-owner-commit-queued-locked) the effects that
+;;; Inside a commit quantum (fnn-owner-held-commit) the effects that
 ;;; would let a member's outcome leave the owner before the log's barrier are
 ;;; held here and released after it, in order: the service log lines and the
 ;;; feed resolutions.  NIL outside a commit quantum.
@@ -444,8 +444,6 @@ function, whose counterparts fn-owner-index-rx-close / -connection-settle /
 (defstruct (fnn-owner-job (:constructor %make-fnn-owner-job))
   (kind :batch) (intents nil) (plan nil) (resolutions nil))
 
-;;; The batch job a START is filling (fnn-owner-feed-intent), NIL outside one.
-(defvar *fnn-owner-job* nil)
 ;;; The last drained member's (OWNER ID TRANSITP KIND REASON): what renders
 ;;; its uncertain reply if the batch's barrier fails (fn-owner-uncertain-reply-of).
 (defvar *fnn-owner-uncertain-render* nil)
@@ -2817,10 +2815,12 @@ their inspections (:inspect) and a submission (:poster).")
 
 (def-section fnn-quantum-bp
   :actors (:bp)
-  :classes (:transit :control)
+  :classes (:transit :control :commit)
   :admits :live
   :doc "A quantum of the BP node: an application's delivery or receipt
-(:transit) and its control requests' reconfiguration (:control).")
+(:transit) and its control requests' reconfiguration (:control).  :commit is
+the held caller's second quantum (fnn-owner-held-commit): the COMPLETE of the
+batch it waited for, then its own submission.")
 
 (def-section fnn-quantum-connection
   :actors (:mux :web)
@@ -4270,12 +4270,14 @@ peer on its 437 line (fn-osp-transit-refusal-renders-its-reason)."
                                     *fnn-owner-transit-detail*))
   (fnn-owner-log))
 
-(defun fnn-owner-drain-one (service)
+(defun fnn-owner-drain-one (service intent-effect resolution-effect)
   "Take and complete at most one queued served submission; return cid, the
 completion reply (an ACL2 octet list, appended to the step's render plan),
 whether the outcome was uncertain, and ACL2's outcome word (the attempt's,
 :refused for a refusal before the attempt, :uncertain for a control fault),
-which books/owner-commit-steps.lisp fn-ocs-member-releases reads."
+which books/owner-commit-steps.lisp fn-ocs-member-releases reads.
+INTENT-EFFECT and RESOLUTION-EFFECT consume each publication synchronously:
+START captures it into the off-owner job; the immediate caller writes it."
   (setq *fnn-owner-transit-detail* nil
         *fnn-owner-transit-verdict* nil)
   (let* ((took (fnn-owner-take))
@@ -4361,20 +4363,19 @@ which books/owner-commit-steps.lisp fn-ocs-member-releases reads."
                   ;; or, in a batch START, the batch job's :intents phase
                   ;; before its :append (fnn-owner-feed-intent).  Empty is a
                   ;; complete plan when the ACL2 target set is empty.
-                  (fnn-owner-feed-intent service intent-publication)
+                  (funcall intent-effect intent-publication)
                   (let ((word (if transitp
                                   (fnn-owner-attempt-transit
                                    service msgid payload groups evidence t)
                                 (fnn-owner-attempt-served
                                  service msgid payload groups evidence))))
-                    (fnn-owner-feed-flush-after-barrier
-                     service
+                    (funcall resolution-effect
                      (fnn-owner-feed-step 'fn-owner-submission-resolution
                                           word (fnn-octet-list evidence)
                                           generation txid))
                     ;; Inside a commit quantum: how this member's
                     ;; connection is answered if the batch's barrier fails
-                    ;; (fnn-owner-commit-queued-locked), from the owner
+                    ;; (fnn-owner-held-commit), from the owner
                     ;; before its outcome is fed.
                     (when *fnn-owner-deferred*
                       (setq *fnn-owner-uncertain-render*
@@ -4421,23 +4422,11 @@ which books/owner-commit-steps.lisp fn-ocs-member-releases reads."
     (incf (fnn-owner-service-queued service))
     (sb-thread:condition-notify (fnn-owner-service-commit-ready service))))
 
-(defun fnn-owner-feed-intent (service publication)
-  "A member's intent frames: inside a batch START (*fnn-owner-job*) they join
-the batch job's :intents phase, written off the owner mutex before the log's
-append (books/owner-queued-work.lisp fn-oqw-batch-effect-order); otherwise
-they are written now."
-  (if *fnn-owner-job*
-      (let ((pairs (fnn-owner-feed-plan service publication)))
-        (when pairs
-          (push (cons :frames pairs) (fnn-owner-job-intents *fnn-owner-job*))))
-    (fnn-owner-feed-flush service publication)))
-
-(defun fnn-owner-feed-flush-after-barrier (service publication)
-  "A submission's feed resolution: flushed now, or, inside a commit quantum,
-after the batch's barrier (its record is durable only then)."
-  (if *fnn-owner-deferred*
-      (push (cons :feed publication) (cdr *fnn-owner-deferred*))
-    (fnn-owner-feed-flush service publication)))
+(defun fnn-owner-feed-intent (service job publication)
+  "Capture an intent for START's :intents phase, with no journal I/O."
+  (let ((pairs (fnn-owner-feed-plan service publication)))
+    (when pairs
+      (push (cons :frames pairs) (fnn-owner-job-intents job)))))
 
 (defun fnn-owner-deliver (service cid completion)
   "Hand CID's rendered COMPLETION (octets, or :uncertain) to its connection:
@@ -4512,8 +4501,7 @@ nil when nothing was queued (or the store does not commit through the log)."
         (setf (fnn-log-bmax log) bmax (fnn-log-omax log) omax))
       (fnn-owner-refresh-compression log)
       (let ((*fnn-log-batch* t)
-            (*fnn-owner-deferred* deferred)
-            (*fnn-owner-job* job))
+            (*fnn-owner-deferred* deferred))
         (handler-case
             (progn
               ;; One START takes at most the operator's batch bound of
@@ -4522,7 +4510,11 @@ nil when nothing was queued (or the store does not commit through the log)."
               (loop repeat (fnn-log-bmax log) do
                 (setq *fnn-owner-uncertain-render* nil)
                 (let ((mark (cdr deferred)))
-                  (multiple-value-bind (cid reply stop word) (fnn-owner-drain-one service)
+                  (multiple-value-bind (cid reply stop word)
+                      (fnn-owner-drain-one
+                       service
+                       (lambda (publication) (fnn-owner-feed-intent service job publication))
+                       (lambda (publication) (push (cons :feed publication) (cdr deferred))))
                     (unless cid (return))
                     (incf drained)
                     (if (and (not stop) (fnn-core 'fn-ocs-told-at-drain-p word))
@@ -4700,7 +4692,7 @@ barrier that does not return leaves the sealed batch uncertain
   "A START that kept no member of the log (every member a refusal told at
 its drain, or the START ended uncertain) still owes its drain's FNFD frames
 and its refusals' replies: JOB run as a :frames job (one phase, :intents),
-off the owner mutex except on the inline path.  Its uncertainty fences the
+off the owner mutex.  Its uncertainty fences the
 service (exit 3) and its fault stops it (exit 4), as the same frames
 written inside START did."
   (when (and job (fnn-owner-job-intents job))
@@ -4714,18 +4706,17 @@ written inside START did."
                                 (lambda () (fnn-fault "owner named the frames phase ~a" phase))))))
       (case (fnn-core 'fn-oqw-outcome-of-final final)
         (:fenced nil)
-        ;; This helper also runs inline inside an owner quantum. Signal the
-        ;; typed verdict to its existing boundary instead of reentering the
-        ;; owner mutex: section classification is the held counterpart,
-        ;; committer thread classification is the off-owner counterpart.
+        ;; Signal the typed verdict to the caller's boundary. A held caller
+        ;; carries it back into quantum 2 for the section's classification;
+        ;; the committer classifies it on its own thread.
         (:failed (error 'fnn-store-indeterminate
                         :message (format nil "owner frames outcome uncertain: ~a" condition)))
         (t (error 'fnn-store-fault
                   :message (format nil "owner frames job faulted: ~a" condition)))))))
 
 (defun fnn-owner-batch-job (service job)
-  "The whole batch JOB, off the owner mutex (the syncer thread's body, or
-inline in a bound submission's quantum).  Returns (values FINAL CONDITION)."
+  "The whole batch JOB on the syncer, off O, including a held caller's batch.
+Returns (values FINAL CONDITION)."
   (fnn-owner-run-job (fnn-owner-job-kind job)
                      (lambda (phase) (fnn-owner-batch-effect service job phase))))
 
@@ -4815,49 +4806,6 @@ members."
       (t (fnn-fault "owner named ~a for a batch's COMPLETE" action)))
     (length members)))
 
-(defun fnn-owner-commit-step-action (phase event)
-  "ACL2's action for the commit's PHASE and EVENT (fn-ocs-commit-step), for
-the inline commit, which holds no gate phase (only at an idle owner: its
-callers are the bound submission's :control quantum and the BP transit's
-:transit quantum, and while a batch is in flight the gate admits only
-:inspect, :commit and :reader, fn-ocp-in-flight-admits-only-inspect-commit-
-and-reader; no :reader quantum commits inline since r71 F5)."
-  (let ((action (fnn-core 'fn-ocs-commit-step phase event)))
-    (unless (member action '(:barrier :complete :stop :none :fault))
-      (fnn-fault "owner returned a malformed commit step ~a" action))
-    action))
-
-(defun fnn-owner-commit-queued-locked (service)
-  "The three steps in ONE quantum the caller already holds (a bound
-submission's or a BP transit's, which commit what is queued before their own
-record): START, the barrier inline, COMPLETE, each named by ACL2's
-fn-ocs-commit-step.  Returns the number of members committed (0 when nothing
-was queued)."
-  (multiple-value-bind (members uncertain deferred job)
-      (fnn-owner-commit-start-locked service)
-    (let ((action (fnn-owner-commit-step-action
-                   :idle (fnn-owner-commit-start-event members uncertain))))
-      (when (eq action :barrier)
-        ;; START captured the batch (fnn-owner-commit-start-locked): its job
-        ;; inline in this quantum (this path's I/O under the owner is
-        ;; HOST-LIFECYCLE's to retire), then the syncer's collection.
-        (multiple-value-bind (final condition) (fnn-owner-batch-job service job)
-          (let ((outcome (fnn-core 'fn-oqw-outcome-of-final final)))
-            (when (eq outcome :fault)
-              (error (or condition (make-condition 'fnn-store-fault
-                                                   :message "batch job faulted"))))
-            (fnn-log-sync-collected (fnn-store-log (fnn-owner-service-store service)))
-            (setq action (fnn-owner-commit-step-action
-                          :staged (if (eq outcome :fenced) :fenced :failed))))))
-      (case action
-        ((:complete :stop)
-         (fnn-owner-commit-complete-locked service action members deferred))
-        (:none nil)
-        (t (fnn-fault "owner named ~a for an inline commit" action)))
-      ;; No batch was captured: the drain's frames and refusals still go.
-      (unless (fnn-owner-job-plan job) (fnn-owner-frames-job service job)))
-    (length members)))
-
 (defun fnn-owner-reader-capture (event)
   "The reader view's capture at the committer's EVENT (host/owner-host.lisp
 fn-owner-reader-views-capture, books/owner-reader-view.lisp fn-ocv-capture):
@@ -4897,7 +4845,7 @@ preparing another batch (books/owner-commit-fairness.lisp)."
                     (when (and queued (not returned)
                                (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE"))
                       (fnn-err "pipeline: wake waiting=~a" waiting))
-                    (fnn-core 'fn-otm-committer-wake sched returned queued waiting)))))
+                    (fnn-core 'fn-otm-held-committer-wake sched returned queued waiting)))))
       (unless (member wake '(:collect :start-next :wait))
         (fnn-fault "owner returned a malformed committer wake ~a" wake))
       wake)))
@@ -4976,6 +4924,250 @@ Returns the cids told."
           do (fnn-owner-commit-release-member service m r))
     (mapcar #'first members)))
 
+;;; ---------------------------------------------------------------------------
+;;; The held commit (ruling 19, item LOCK-R2-COMMIT-INLINE-LOG-IO; books/
+;;; owner-commit-held.lisp, books/owner-time-held.lisp).  A bound submission
+;;; or a BP transit that finds members queued commits them before its own
+;;; record.  It used to run START, the whole batch job (log append,
+;;; preallocate, fdatasync) and COMPLETE inside the one quantum the caller
+;;; held, so the owner mutex was held across durable I/O.  Now the caller's
+;;; quantum runs only START; its batch runs on the syncer, or its frames-only
+;;; job runs on the caller, both off O; and the caller's WHOLE
+;;; sequence (its prefix and its submission) runs once, in the :commit
+;;; quantum that follows the batch's COMPLETE.  Every branch is ACL2's
+;;; (fn-otm-held-event, fn-otm-held-caller-wake); this only executes it.
+
+(defun fnn-owner-held-event (service event)
+  "Apply EVENT through fn-otm-held-plan; return ACTION and labelled EFFECTS.
+Called inside a quantum. The caller classifies :fault after settling its
+receipt, so an off-owner fault cannot strand the held slot."
+  (let ((gate (fnn-owner-service-gate service)))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (destructuring-bind (action sched effects)
+          (fnn-call 'fn-otm-held-plan (fnn-owner-gate-sched gate) event)
+        (unless (member action '(:sync :frames :submit :stop :none :complete :fault))
+          (fnn-fault "owner returned a malformed held commit step ~a" action))
+        (setf (fnn-owner-gate-sched gate) sched)
+        (values action effects)))))
+
+(defun fnn-owner-held-caller-wake (service returned)
+  "ACL2's wake for the held caller (fn-otm-held-caller-wake): :collect exactly
+when its batch is held, in flight and the syncer RETURNED, else :wait."
+  (let* ((gate (fnn-owner-service-gate service))
+         (sched (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                  (fnn-owner-gate-sched gate)))
+         (wake (fnn-core 'fn-otm-held-caller-wake sched returned)))
+    (unless (member wake '(:collect :wait))
+      (fnn-fault "owner returned a malformed held caller wake ~a" wake))
+    wake))
+
+(defun fnn-owner-held-start (service)
+  "Quantum 1, under the owner: START through ACL2's labelled held plan.
+Answers (:frames JOB EFFECTS) when START kept no member, or
+(:held MEMBERS DEFERRED JOB LIMITS NEED) when it captured a batch (:sync).
+Both jobs run off O before the caller's submission in quantum 2.  An uncertain START (:stop) is answered as the
+committer's is, then refused to the caller: the service is stopping."
+  (let ((limits (fnn-owner-core 'fn-owner-barrier-limits))
+        (need (fnn-owner-core 'fn-owner-space-need)))
+    (setf (fnn-owner-service-space-need service) need)
+    (fnn-owner-reader-capture :start)
+    (multiple-value-bind (members uncertain deferred job)
+        (fnn-owner-commit-start-locked service)
+      (multiple-value-bind (action effects)
+          (fnn-owner-held-event
+           service (fnn-core 'fn-och-held-event
+                             (fnn-owner-commit-start-event members uncertain)))
+        (case action
+          (:sync (list :held members deferred job limits need))
+          (:frames (fnn-owner-reader-capture :drop)
+                   (list :frames job effects))
+          (:stop (fnn-owner-reader-capture :drop)
+                 (fnn-owner-commit-complete-locked service :stop members deferred)
+                 (if (eq (fnn-core 'fn-och-caller-answer action) :stopping)
+                     (fnn-refuse "owner service is stopping")
+                   (fnn-fault "owner answered a held caller after a stop")))
+          (t (fnn-fault "owner named ~a after a held START" action)))))))
+
+(defun fnn-owner-held-await (service)
+  "Off the owner: sleep on the commit condition until ACL2 says :collect."
+  (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+    (loop until (eq (fnn-owner-held-caller-wake service (fnn-owner-service-synced service))
+                    :collect)
+          do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
+                                       (fnn-owner-service-commit-lock service)))))
+
+(defun fnn-owner-held-complete (service members deferred word condition thunk)
+  "Quantum 2, under the owner in a :commit quantum: the batch's WORD (:fenced
+or :failed) through ACL2's held event, COMPLETE (or the recovery stop, which
+answers every member as fn-ocs-member-release names), then :completed, or
+:completed-stopping when COMPLETE found the owner stopping.  The caller is
+answered by ACL2's word for the last action (fn-och-caller-answer, books/
+owner-commit-held.lisp fn-och-held-caller-answer): :submitted runs THUNK, the
+caller's whole sequence, here; :stopping is the stopping refusal, the
+submission never taken.  THUNK nil only settles the batch (a stop that
+refused the entry)."
+  (let ((store (fnn-owner-service-store service)) (done nil) (step nil) (action nil))
+    (unwind-protect
+         (progn
+           (setq step (fnn-owner-held-event service word))
+           ;; A barrier that ended in a fault is re-signalled here, under the
+           ;; owner, so the fault boundary classifies it (exit 4).
+           (when condition (error condition))
+           (fnn-log-sync-collected (fnn-store-log store))
+           (case step
+             (:complete
+              (fnn-owner-commit-complete-locked service :complete members deferred)
+              (fnn-owner-reader-capture :complete))
+             (:stop
+              (fnn-owner-reader-capture :drop)
+              (fnn-owner-commit-complete-locked service :stop members deferred))
+             (t (fnn-fault "owner named ~a after a held barrier" step)))
+           (setq done t))
+      (setq action (fnn-owner-held-event
+                    service (if (and (eq step :complete) (fnn-owner-service-stopping service))
+                                :completed-stopping
+                              :completed)))
+      (unless done (setq action :none))
+      ;; Submissions queued while the batch was held wait for the committer,
+      ;; which sleeps on this condition: tell it the batch has left flight.
+      (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+        (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))
+    (when thunk
+      (let ((answer (fnn-core 'fn-och-caller-answer action)))
+        (case answer
+          (:submitted (funcall thunk))
+          (:stopping (fnn-refuse "owner service is stopping"))
+          (t (fnn-fault "owner answered a held caller ~a" answer)))))))
+
+(defun fnn-owner-held-wait (service pending)
+  "The held batch's life after quantum 1, off the owner: the batch job on the
+syncer (as fnn-owner-commit-pipeline issues one), the wait for ACL2's
+:collect, the receipt.  Answers (MEMBERS DEFERRED WORD CONDITION) for quantum 2
+(fnn-owner-held-complete).  The committer never collects the batch nor opens
+a next one behind it (fn-otm-held-committer-wake answers :wait while held;
+fn-otm-held-wakes), so only this caller does."
+  (destructuring-bind (members deferred job limits need) pending
+    (let ((ledger (fnn-core 'fn-otb-ledger-init))
+          (syncer nil) (result nil) (syncer-actor nil) (syncer-grant nil)
+          (completion-pending nil) (word nil) (condition nil))
+      (unwind-protect
+           (progn
+             (fnn-owner-space-event service need)
+             (destructuring-bind (issued gen ledger2) (fnn-core 'fn-otb-issue ledger)
+               (unless (eq issued :issued)
+                 (fnn-fault "owner refused a barrier's issue: generation ~a is unresolved" gen))
+               (setq ledger ledger2)
+               (setq syncer-grant (fnn-owner-syncer-issue service gen job))
+               (setq completion-pending t)
+               (multiple-value-setq (syncer result syncer-actor syncer-grant)
+                 (fnn-owner-start-syncer service gen job syncer-grant)))
+             (fnn-owner-disk-event service :issue limits)
+             (fnn-owner-held-await service)
+             (fnn-owner-disk-event service :return)
+             (unless (fnn-owner-actor-join service syncer)
+               (fnn-fault "syncer physical lifecycle receipt missing"))
+             (destructuring-bind (rgen final . job-condition) (car result)
+               (setq completion-pending nil)
+               (multiple-value-bind (outcome answer ledger2)
+                   (fnn-owner-complete-generation ledger rgen final members)
+                 (declare (ignore ledger2))
+                 (setq members answer
+                       word (if (eq outcome :fenced) :fenced :failed))
+                 (fnn-owner-syncer-outcome service syncer-grant rgen)
+                 (when (eq outcome :fault)
+                   (setq condition (or job-condition
+                                       (make-condition 'fnn-store-fault
+                                                       :message "the batch job faulted")))))))
+        (when completion-pending
+          (fnn-owner-syncer-abandon service syncer-grant ledger members)))
+      (list members deferred word condition))))
+
+(defun fnn-owner-held-frames-wait (service job effects)
+  "Execute the held plan's :off effects outside O. The :intents phase is
+ACL2's :frames job, including FNFD append/barrier and refusal replies.
+Carry its terminal and condition into the next owner quantum."
+  (multiple-value-bind (word condition)
+      (fnn-owner-job-word
+       (lambda ()
+         (dolist (effect effects)
+           (unless (eq (car effect) :off)
+             (fnn-fault "held frames effect is not off-owner: ~a" effect))
+           (case (cdr effect)
+             (:intents (fnn-owner-frames-job service job))
+             (t (fnn-fault "unknown held frames effect: ~a" effect))))))
+    (list (fnn-core 'fn-och-frames-event
+                    (fnn-core 'fn-oqw-step :frames :intents word))
+          condition)))
+
+(defun fnn-owner-held-frames-complete (service result thunk)
+  "Quantum 2 for a no-member drain: settle its model event, classify any
+failed I/O under O, and only on :submit run the caller's whole sequence."
+  (let ((action (fnn-owner-held-event service (first result))))
+    (unwind-protect
+         (progn
+           (when (second result) (error (second result)))
+           (case (fnn-core 'fn-och-caller-answer action)
+             (:submitted (when thunk (funcall thunk)))
+             (:stopping (fnn-refuse "owner service is stopping"))
+             (t (fnn-fault "held frames job faulted"))))
+      (unless (eq action :submit)
+        (fnn-owner-held-event service :completed))
+      (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+        (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))))
+
+(defun fnn-owner-held-finish (service kind result thunk)
+  "Settle the captured job in quantum 2, then run THUNK if ACL2 submits."
+  (case kind
+    (:held (fnn-owner-held-complete service (first result) (second result)
+                                    (third result) (fourth result) thunk))
+    (:frames (fnn-owner-held-frames-complete service result thunk))
+    (t (fnn-fault "unknown held job kind: ~a" kind))))
+
+(defmacro fnn-owner-held-commit ((section service cid &rest class) &body body)
+  "START under O, execute the book-labelled job off O, then settle and run
+BODY in a :commit quantum. Both batch and frames-only STARTs hold the
+caller, so BODY has one expansion in quantum 2. A refused second entry
+still settles the held job."
+  (let ((pending (gensym "PENDING")) (batch (gensym "BATCH")) (entered (gensym "ENTERED")))
+    `(let* ((,pending (,section ,service ,cid
+                               (lambda () (fnn-owner-held-start ,service)) ,@class))
+            (,batch (case (first ,pending)
+                      (:held (fnn-owner-held-wait ,service (rest ,pending)))
+                      (:frames (fnn-owner-held-frames-wait
+                                ,service (second ,pending) (third ,pending)))))
+            (,entered nil))
+       (unwind-protect
+            (,section ,service ,cid
+                      (lambda ()
+                        (setq ,entered t)
+                        (fnn-owner-held-finish ,service (first ,pending) ,batch
+                                               (lambda () ,@body)))
+                      :commit)
+         (unless ,entered
+           (fnn-owner-gated (,service :commit)
+             (fnn-owner-held-finish ,service (first ,pending) ,batch nil)))))))
+
+(defun fnn-owner-committer-may-start (service)
+  "ACL2's answer (fn-otm-committer-may-start) to whether the committer may
+START: false while a batch is held or in flight.  Read under the gate mutex."
+  (let* ((gate (fnn-owner-service-gate service))
+         (sched (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                  (fnn-owner-gate-sched gate)))
+         (answer (fnn-core 'fn-otm-committer-may-start sched)))
+    (unless (member answer '(t nil))
+      (fnn-fault "owner returned a malformed committer may-start ~a" answer))
+    answer))
+
+(defun fnn-owner-committer-await-start (service)
+  "A refused START took nobody (:none).  Off the owner, sleep on the commit
+condition until ACL2 allows a START again or the owner stops: the held
+batch's COMPLETE and the stop both signal it."
+  (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+    (loop until (or (fnn-owner-service-stopping service)
+                    (fnn-owner-committer-may-start service))
+          do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
+                                       (fnn-owner-service-commit-lock service)))))
+
 (defun fnn-owner-commit-pipeline (service)
   "Batches through ACL2's pipelined commit (books/owner-commit-pipeline.lisp
 fn-ocp-commit-step): START (a :commit quantum; it seals the batch), the
@@ -4990,7 +5182,7 @@ leave only in its COMPLETE, after its barrier returned
   (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil) (abandoned nil)
         (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
         (need nil) (syncer-actor nil) (syncer-grant nil) (completion-pending nil)
-        (return-receipt '(:pipeline-returned nil :none nil nil))
+        (return-receipt '(:pipeline-returned nil :none nil nil)) (refused nil)
         ;; Lane time-bars (PRF-384): ACL2's ledger of the request in
         ;; flight -- its generation, whether its completion is still owed,
         ;; and the connections told before it (at a stall or a stop), which
@@ -5000,6 +5192,11 @@ leave only in its COMPLETE, after its barrier returned
     (fnn-owner-serialized
      service nil
      (lambda ()
+      ;; C6 gap 1 (books/owner-commit-held.lisp fn-och-committer-may-start): a
+      ;; caller's held batch is in flight; this pass takes nobody.
+      (if (not (fnn-owner-committer-may-start service))
+          (setq refused t action :none)
+       (progn
        ;; Lane time-model: the barrier's limits (D H C), from the
        ;; configuration generation current at the START
        ;; (fn-owner-barrier-limits).
@@ -5020,8 +5217,9 @@ leave only in its COMPLETE, after its barrier returned
          (:stop (fnn-owner-reader-capture :drop)
                 (fnn-owner-commit-complete-locked service :stop members deferred))
          (:none (fnn-owner-reader-capture :drop))
-         (t (fnn-fault "owner named ~a after a START" action))))
+         (t (fnn-fault "owner named ~a after a START" action))))))
      :commit)
+    (when refused (fnn-owner-committer-await-start service))
     ;; A START that captured no batch: its drain's frames and its refusals'
     ;; replies, off the owner mutex (lane owner-offlock).
     (unless (eq action :sync) (fnn-owner-frames-job service job))
@@ -5431,7 +5629,6 @@ own result vocabulary."
                       (and (fnn-owner-service-retire service) t)) :refused)
     (return-from fnn-owner-complete-bound-submission
       (fnn-owner-action 'fn-owner-retire-intake-refused)))
-  (fnn-owner-commit-queued-locked service)
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
       (fnn-fault "owner bound submit returned ~a" submitted))
@@ -5502,7 +5699,6 @@ own result vocabulary."
                       (and (fnn-owner-service-retire service) t)) :refused)
     (return-from fnn-owner-complete-bp-transit-submission
       (fnn-owner-action 'fn-owner-retire-intake-refused)))
-  (fnn-owner-commit-queued-locked service)
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
       (fnn-fault "owner BP transit submit returned ~a" submitted))
@@ -5681,9 +5877,8 @@ Path; until 2026-09-22 the payload was stored as read and INN refused it 437
 taken for this submission first, as fnn-owner-handle-chunk takes one per
 read; a refused reading leaves the owner clock-less and the submission is
 refused, not injected under a stale time (D10-a)."
-  (fnn-owner-serialized
-   service nil
-   (lambda ()
+  (fnn-owner-held-commit
+   (fnn-owner-serialized service nil :poster)
      (let* ((store (fnn-owner-service-store service))
             (armed (fnn-owner-control-arm-fault store)))
        (unwind-protect
@@ -5736,8 +5931,7 @@ refused, not injected under a stale time (D10-a)."
                                 reason))
                       status))
                 :clock-unusable))
-         (when armed (fnn-owner-control-disarm-fault store armed)))))
-   :poster))
+         (when armed (fnn-owner-control-disarm-fault store armed))))))
 
 (defun fnn-owner-redeem-quantum (service cid)
   "PRF-164 (PKT-439), PKT-828 open item 2: an XREDEEM PASS's publication in
@@ -6882,7 +7076,11 @@ EPIPE and the client saw a bare close)."
                        starttls consumed)))
            (when submitted
              (multiple-value-bind (reply-cid done stop)
-                 (multiple-value-prog1 (fnn-owner-drain-one service)
+                 (multiple-value-prog1
+                     (fnn-owner-drain-one
+                      service
+                      (lambda (publication) (fnn-owner-feed-flush service publication))
+                      (lambda (publication) (fnn-owner-feed-flush service publication)))
                    ;; Lane credits (fn-mca-settle): written synchronously.
                    (fnn-owner-action 'fn-owner-credits-settle))
                (when (and reply-cid (not (= reply-cid cid)))

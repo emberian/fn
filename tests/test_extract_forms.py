@@ -298,8 +298,124 @@ class FormsCheckerTests(unittest.TestCase):
         self.assertIn('WITH-SOURCE-FORM', out)
         self.assertNotIn('ACCEPTED', out)
 
+    def test_o1_equal_and_renamed_binders(self):
+        out = run_lisp('''
+(dolist (pair '(((f x) (f x))
+                ((let ((a 1)) (+ a a)) (let ((x 1)) (+ x x)))
+                ((labels ((f (a) (f a))) (function f))
+                 (labels ((g (x) (g x))) (function g)))
+                ((block a (return-from a 1)) (block x (return-from x 1)))
+                ((tagbody a (go a)) (tagbody x (go x)))
+                ((tagbody 1 (go 1)) (tagbody 2 (go 2)))
+                ((f . x) (f . x))))
+  (show (fe-alpha-equal (car pair) (cadr pair))))
+''')
+        self.assertEqual(out.split(), ['T'] * 7)
+
+    def test_o1_literal_free_and_global_identity(self):
+        out = run_lisp('''
+(dolist (pair '(((quote t123) (quote xtgt1)) ((f a) (f x))
+                ((defun f (a) a) (defun g (a) a))
+                ((function f) (function g))
+                ((quote #2A((a b))) (quote #2A((a c))))
+                ((quote #2A((a b))) (quote #(a b)))
+                ((quote 1.0) (quote 1.0d0))))
+  (multiple-value-bind (ok reason) (fe-alpha-equal (car pair) (cadr pair))
+    (show ok) (show (and (stringp reason) (plusp (length reason))))))
+''')
+        self.assertEqual(out.split(), ['NIL', 'T'] * 7)
+
+    def test_o1_capture_and_non_bijective(self):
+        out = run_lisp('''
+(dolist (pair '(((let ((a 1)) (let ((b 2)) a))
+                 (let ((x 1)) (let ((x 2)) x)))
+                ((let ((a 1) (b 2)) (+ a b)) (let ((x 1) (x 2)) (+ x x)))
+                ((let ((a 1)) x) (let ((x 1)) x))
+                ((let ((a 1)) (let ((a 2)) x)) (let ((x 1)) (let ((y 2)) x)))
+                ((labels ((f () 1) (g () 2)) (f)) (labels ((x () 1) (x () 2)) (x)))
+                ((block a (block b (return-from a 1))) (block x (block x (return-from x 1))))))
+  (show (fe-alpha-equal (car pair) (cadr pair))))
+''')
+        self.assertEqual(out.split(), ['NIL'] * 6)
+
+    def test_o1_uninterned_bijection(self):
+        out = run_lisp('''
+(let ((a (make-symbol "A")) (b (make-symbol "B"))
+      (x (make-symbol "X")) (y (make-symbol "Y")))
+  (show (fe-alpha-equal (list 'list a (list 'quote (vector b a)))
+                        (list 'list x (list 'quote (vector y x)))))
+  (show (fe-alpha-equal (list 'list a a) (list 'list x y)))
+  (show (fe-alpha-equal (list 'list a b) (list 'list x x)))
+  (show (fe-alpha-equal (list 'let (list (list a 1)) (list 'quote a))
+                        (list 'let (list (list x 1)) (list 'quote y)))))
+''')
+        self.assertEqual(out.split(), ['T', 'NIL', 'NIL', 'NIL'])
+
+    def test_o1_scope_defaults_declarations_and_shapes(self):
+        out = run_lisp('''
+(dolist (pair '(((lambda (&optional (a 1 p) &key ((:k b) a) &aux (c b))
+                  (declare (ignorable p) (type integer a b c)) (list a b c))
+                 (lambda (&optional (x 1 q) &key ((:k y) x) &aux (z y))
+                  (declare (ignorable q) (type integer x y z)) (list x y z)))
+                ((lambda (&key a) a) (lambda (&key ((:a x))) x))
+                ((let ((a 1)) (let ((b a)) b)) (let ((x 1)) (let ((y x)) y)))
+                ((let* ((a 1) (b a)) b) (let* ((x 1) (y x)) y))))
+  (show (fe-alpha-equal (car pair) (cadr pair))))
+(dolist (pair '(((lambda (&key a) a) (lambda (&key x) x))
+                ((let ((a 1) (b a)) b) (let ((x 1) (y x)) y))
+                ((flet ((f () (f))) (f)) (flet ((g () (g))) (g)))
+                ((lambda (&optional (a a)) a) (lambda (&optional (x x)) x))
+                ((let ((a 1)) (declare (type integer a)) a)
+                 (let ((x 1)) (declare (type string x)) x))
+                ((lambda (a) a) (lambda (x) x x))
+                ((let ((a 1)) a) (let ((x 2)) x))))
+  (show (fe-alpha-equal (car pair) (cadr pair))))
+''')
+        self.assertEqual(out.split(), ['T'] * 4 + ['NIL'] * 7)
+
+    def test_o1_shadowed_scope_and_malformed_shapes(self):
+        out = run_lisp('''
+(show (fe-alpha-equal '(let ((a 1)) (let ((a 2)) (let ((b 3)) (+ a b))))
+                      '(let ((x 1)) (let ((y 2)) (let ((x 3)) (+ y x))))))
+(dolist (pair '(((block nil) (block))
+                ((lambda (&key a) a) (lambda (&key ((:a x junk))) x))
+                ((let ((a 1)) a) (let ((x . 1)) x))
+                ((lambda (a) a) (lambda . x))))
+  (multiple-value-bind (ok why) (fe-alpha-equal (car pair) (cadr pair))
+    (show ok) (show (and (stringp why) (plusp (length why))))))
+''')
+        self.assertEqual(out.split(), ['T'] + ['NIL', 'T'] * 4)
+
+    def test_o1_all_canon_fixtures_round_trip(self):
+        # Reuse every canonicalizer fixture, including dynamically macroexpanded
+        # forms. Successful FE-CANON calls are audited through the actual FE-TEXT
+        # printer and FE-READ-BLOCK-FORMS reader. Refused fixtures still refuse.
+        original_run = run_lisp
+        prefix = '''
+(defvar *o1-original-canon* (symbol-function 'fe-canon))
+(defvar *o1-auditing* nil)
+(defvar *o1-errors* nil)
+(setf (symbol-function 'fe-canon)
+      (lambda (raw)
+        (let ((result (funcall *o1-original-canon* raw)))
+          (unless *o1-auditing*
+            (let ((*o1-auditing* t))
+              (multiple-value-bind (ok why)
+                  (fe-alpha-equal raw (car (fe-read-block-forms (fe-text raw))))
+                (unless ok (push why *o1-errors*)))))
+          result)))
+'''
+        def audited_run(body):
+            return original_run(prefix + body + '\n(assert (null *o1-errors*) () "O1: ~s" *o1-errors*)')
+        from unittest.mock import patch
+        with patch(__name__ + '.run_lisp', side_effect=audited_run):
+            for name in sorted(n for n in dir(self) if n.startswith('test_canon_')):
+                with self.subTest(fixture=name):
+                    getattr(self, name)()
+
     # -- X1 teeth: a manifest over synthetic units; the world's derivation is the REDERIVE table --------
     SETUP = '''
+(defpackage "ACL2_*1*_ACL2" (:use))
 (defvar *units* (list (cons "raw:ACL2::F" (format nil ";;;; UNIT raw:ACL2::F~%(DEFUN F (X) (CAR X))~%"))
                       (cons "star1:ACL2::F" (format nil ";;;; UNIT star1:ACL2::F~%(DEFUN ACL2_*1*_ACL2::F (X) (IF (CONSP X) (F X) (ERROR \\"guard\\")))~%"))
                       (cons "raw:ACL2::G" (format nil ";;;; UNIT raw:ACL2::G~%(DEFUN G (X) (F X))~%"))))
@@ -307,14 +423,69 @@ class FormsCheckerTests(unittest.TestCase):
   (format nil "#world_key~c~a~%#roots~c1~%~{~a~%~}" #\\Tab key #\\Tab
           (mapcar (lambda (u) (format nil "~a~c~a~c~a" (car u) #\\Tab (fe-sha256-hex (cdr u)) #\\Tab "world:defuns")) units)))
 (defun defs (units) (format nil "~{~a~}" (mapcar #'cdr units)))
-(defun world-of (units) (lambda (id) (cdr (assoc id units :test #'string=))))
+(defun synthetic-forms (text)
+  (let ((*fe-dummy-pkg* (find-package "ACL2"))) (fe-read-block-forms text)))
+(defun world-of (units)
+  (lambda (id) (let ((text (cdr (assoc id units :test #'string=))))
+                (values text (when text (synthetic-forms text))))))
 (defun swap (units id from to)
   (mapcar (lambda (u) (if (string= (car u) id)
                           (cons id (let ((p (search from (cdr u)))) (concatenate 'string (subseq (cdr u) 0 p) to (subseq (cdr u) (+ p (length from))))))
                           u)) units))
-(defun refusals (m d w) (fe-verify-core m d w "WORLD1"))
+(defun refusals (m d w)
+  (let ((raw nil))
+    (append (fe-verify-core m d (lambda (id)
+                                (multiple-value-bind (text forms) (funcall w id)
+                                  (when text (push (cons id forms) raw)) text)) "WORLD1")
+            (fe-check-alpha-units
+             (mapcar (lambda (b) (cons (car b) (synthetic-forms (cdr b)))) (fe-parse-defs d)) raw))))
 (defun mentions (rs id) (and rs (every (lambda (r) (search id r)) rs) t))
 '''
+
+    def test_o1_xt_verify_defs_wiring_rejects_shared_text_defect(self):
+        out = run_lisp(self.SETUP + '''
+;; The synthetic world supplies both text and pre-canonicalization forms.
+;; Fault injection makes the text derivation agree with the forged file,
+;; exactly the failure that a shared canonicalizer used to conceal.
+(let* ((*fe-dummy-pkg* (find-package "ACL2"))
+       (*fe-rt* (make-hash-table :test 'eq))
+       (world (world-of *units*))
+       (current *units*)
+       (stubs (list (cons 'fe-index-world (lambda () nil))
+                    (cons 'fe-index-sources (lambda (s) (declare (ignore s)) nil))
+                    (cons 'fe-read-runtime (lambda (s) (declare (ignore s)) nil))
+                    (cons 'fe-specials-from-ids (lambda (ids) (declare (ignore ids)) nil))
+                    (cons 'fe-star1-var-refs (lambda (forms) (declare (ignore forms)) nil))
+                    (cons 'fe-file-string (lambda (path)
+                           (if (search "manifest.tsv" path) (manifest current "WORLD1") (defs current))))
+                    (cons 'fe-derive-unit (lambda (id stobjs specials)
+                           (declare (ignore stobjs specials))
+                           (cons (nth-value 1 (funcall world id)) "synthetic world")))
+                    (cons 'fe-block-text (lambda (id forms)
+                           (declare (ignore forms)) (cdr (assoc id current :test #'string=))))))
+       (saved (mapcar (lambda (s) (cons (car s) (symbol-function (car s)))) stubs)))
+  (unwind-protect
+      (progn
+        (dolist (s stubs) (setf (symbol-function (car s)) (cdr s)))
+        (xt-verify-defs "/synthetic" "/unused" "/unused" "WORLD1")
+        (setq current (swap *units* "raw:ACL2::F" "(CAR X)" "(CDR X)"))
+        (show (fe-verify-core (manifest current "WORLD1") (defs current) (world-of current) "WORLD1"))
+        (handler-case (progn (xt-verify-defs "/synthetic" "/unused" "/unused" "WORLD1") (show "ACCEPTED-BAD"))
+          (error (e) (show e))))
+    (dolist (s saved) (setf (symbol-function (car s)) (cdr s)))))
+''')
+        self.assertIn('XT-VERIFY-DEFS OK 3 units', out)
+        self.assertIn('\nNIL\n', out)  # Existing text/digest gate accepts the injected fault.
+        self.assertIn('unit raw:ACL2::F: not alpha-equivalent to the derived form:', out)
+        self.assertNotIn('ACCEPTED-BAD', out)
+        self.assertNotIn('text differs', out)
+
+    def test_o1_unit_form_count(self):
+        out = run_lisp('''
+(show (fe-check-alpha-units '(("id" (f) (g))) '(("id" (f)))))
+(show (fe-check-alpha-units '(("id" (f))) '(("id" (f) (g)))))
+''')
+        self.assertEqual(out.count('unit id: not alpha-equivalent to the derived form: form counts differ'), 2)
 
     def test_clean_defs_are_accepted(self):
         out = run_lisp(self.SETUP + '(show (refusals (manifest *units* "WORLD1") (defs *units*) (world-of *units*)))')

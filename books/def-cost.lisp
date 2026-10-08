@@ -164,6 +164,8 @@
     (fn-cbor-octet-listp (binary-+ '1 (len a1)) "the kind check walks the octets (books/payload-kinds.lisp: at most linear in its argument)")
     (fn-octet-list-listp (binary-+ '1 (len a1)) "the kind check walks the outer list; each element's walk is the inner kind's")
     (fn-cat-count 0 "an abstract stobj count field")
+    (fn-cat-horizon 1 "one cell of the catalog's withdrawal horizon")
+    (fn-cat-group-raw-low 1 "one hash-table probe of the maintained raw low")
     (fn-arena-count 0 "an abstract stobj count field")
     (fn-cat-at 1 "one catalog row read")))
 

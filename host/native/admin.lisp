@@ -25,7 +25,7 @@
 ;;; production has no injection branch (fnn-developer-selector).
 
 (defparameter +fnn-admin-sections+
-  '("compaction" "inspect" "export" "reclaim" "reclaim-instant"
+  '("compaction" "compaction-status" "inspect" "export" "reclaim" "reclaim-instant"
     "limit-carry" "limit" "admin")
   "This file's owner sections, by the name FN_NATIVE_ADMIN_FAULT uses.")
 
@@ -359,27 +359,34 @@ Returns the ACL2-rendered reply octets for CID."
       (fnn-owner-octets-global 'fn-owner-output))))
 
 (defun fnn-owner-compaction-request (service)
-  "PKT-868: the operator's compaction request on the running owner.  ACL2
-answers it (host/owner-host.lisp fn-owner-sco-request, books/owner-compact-
-request.lisp fn-ock-request-word) under the owner mutex, from the free space
-read before (statvfs is I/O: never under the mutex); a request it answers
-:requested starts the owner's publication now, off the mutex
-(fnn-owner-maybe-publish: the spare, the capture, the bounded batches, the
-install, the drop).  The reply names the word; :blocked is a refusal (a
-deferral stands, and `status' names it)."
+  "Run the publication producer after the control receipt was answered.
+Observe its durable frontier/deferral through ACL2 until terminal."
   (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
-         (word (fnn-quantum-control
-                service nil
-                (lambda ()
-                  (fnn-admin-test-fault "compaction")
-                  (fnn-owner-core 'fn-owner-sco-request
-                                  (fnn-checkpoint-budget-test-override nil) free
-                                  (fnn-owner-monotonic-ms))))))
+         (admission (fnn-quantum-control
+                     service nil
+                     (lambda ()
+                       (fnn-admin-test-fault "compaction")
+                       (list (fnn-owner-core 'fn-owner-sco-request
+                                             (fnn-checkpoint-budget-test-override nil) free
+                                             (fnn-owner-monotonic-ms))
+                             (fnn-core 'fn-owner-sco-count *the-live-state*)))))
+         (word (first admission)) (target (second admission)))
     (unless (member word '(:requested :coalesced :nothing-to-compact :blocked))
       (fnn-fault "owner returned a malformed compaction answer ~a" word))
     (fnn-err "COMPACTION request answer=~(~a~)" word)
-    (when (eq word :requested)
-      (fnn-owner-maybe-publish service))
+    (when (member word '(:requested :coalesced))
+      (fnn-owner-maybe-publish service)
+      (loop
+        (let ((observed
+                (fnn-quantum-control
+                 service nil
+                 (lambda ()
+                   (fnn-admin-test-fault "compaction-status")
+                   (fnn-core 'fn-nco-owner-publication-word target *the-live-state*)))))
+          (case observed
+            ((:compacted :blocked) (setq word observed) (return))
+            (:requested (sleep (fnn-core 'fn-nco-wait-seconds)))
+            (t (fnn-fault "malformed publication receipt observation"))))))
     (list :reason (fnn-core 'fn-ock-request-status word) word)))
 
 (defun fnn-owner-inspect-request (service msgid)
@@ -665,6 +672,10 @@ or answer the one owner request an admin vector carries (PKT-868: the
 compaction request; row S3: the inspect request; Q16: the reclaim request;
 ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
 -reclaim-mode; row S1: a store limit, fnn-owner-limit-serialized)."
+  ;; Receipt reads are served by the control owner's receipt slot.
+  (when (fnn-core 'fn-nco-receipt-command argv)
+    (return-from fnn-owner-live-admin-serialized
+      (list :reason :refused :receipt-control-required)))
   ;; Row S9: the retire request, before any administrative plan.
   (let ((retire (fnn-core 'fn-nret-request argv)))
     (when retire
@@ -757,6 +768,8 @@ this executor.  The defensive status check keeps a malformed raw caller from
 turning a refusal into a physical mutation."
   (unless (fnn-admin-plan-acceptedp plan)
     (fnn-refuse "administrative request refused: ~a" (fnn-admin-plan-reason plan)))
+  (when (fnn-core 'fn-native-admin-host-owner-requestp plan)
+    (fnn-refuse "administrative request needs a running owner"))
     ; fnn-open-live-store(... t) takes the same nonblocking exclusive lock as
     ; owner.  A live owner therefore reaches the explicit `already locked'
     ; refusal; this command never starts another owner.

@@ -163,6 +163,12 @@
 (include-book "../books/feed-link-backoff")
 ; `peer feed NAME pause|resume': fn-owner-feed-peers answers fn-fps-live-names.
 (include-book "../books/feed-pause")
+;; The history-root refresh's status line (fn-owner-hroot-note, host/history-root-host.lisp,
+;; keeps the status in the history-root table under :last-refresh).
+(defun fn-owner-hroot-status-lines (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-hrs-line (fn-hroot-table-status (fn-owner-history-root-table state))))
+
 ; Step 8 (catalog slice): the served read over the catalog and the catalog at
 ; the owner's entries (books/served-catalog-chain, books/served-catalog-owner).
 (include-book "../books/served-catalog-owner")
@@ -267,6 +273,9 @@
 ;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
 (include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
+;; Ruling 19: the held commit over the scheduler value (fn-otm-held-*), which
+;; host/native/owner.lisp fnn-owner-held-commit calls in every image.
+(include-book "../books/owner-time-held")
 ;; Lane zero-copy-commit: the articles in flight within the slots the figure
 ;; holds (fn-oas-read-span, over fn-otm-read-span).
 (include-book "../books/owner-article-slots")
@@ -4557,22 +4566,6 @@
                        (fn-owner-exposure-limits state)
                        (len (fn-own-conns (fn-owner-core state)))
                        (fn-owner-exposure-now state)))
-
-; The refresh's word as ACL2 classifies it (books/history-root-credit.lisp
-; fn-hroot-refresh-status), held for `status' and `health' to render
-; (books/history-root-status.lisp fn-hrs-line).  Every word the host got is
-; noted: a building/installed word clears a refusal, a refusal or an
-; unrecognised word replaces it.  Returns the status for the host's log.
-(defun fn-owner-hroot-note (word state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((status (fn-hroot-refresh-status word))
-         (state (f-put-global 'fn-owner-history-root-status status state)))
-    (value status)))
-
-(defun fn-owner-hroot-status-lines (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-hrs-line (and (boundp-global 'fn-owner-history-root-status state)
-                    (f-get-global 'fn-owner-history-root-status state))))
 
 ; Step 8 (catalog slice): the read runs books/served-catalog-chain.lisp
 ; fn-scr-ocfg-read-span, the same chain with the catalog carried to the

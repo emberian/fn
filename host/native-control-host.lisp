@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../books/native-control")
 (include-book "../books/control-observation")
+(include-book "../books/control-receipt-wire")
 (include-book "../books/moderation-outcome")
 ;; host-decisions-2 packet B: the control launch decision (fn-ncla-).
 (include-book "../books/native-control-launch")
@@ -11,6 +12,7 @@
 (include-book "../books/control-request-word")
 (include-book "../books/consumer-local-control")
 (include-book "../books/consumer-wait-codec")
+(include-book "../books/owner-state-accessors") ; fn-owner-sco-global (fn-nco-owner-publication-word)
 (include-book "../books/consumer-reason")
 (include-book "../books/topic-history-local-control")
 (include-book "../books/native-live-buffer")
@@ -331,3 +333,13 @@
   (declare (xargs :stobjs fn-octets-ctl :mode :program))
   (append (fn-frb-site-decode fn-octets-ctl)
           (list (fn-ctlk-frame-handler fn-octets-ctl))))
+
+; Scalar publication observation for the receipt worker. All comparisons
+; and completion classification remain in ACL2.
+(defun fn-nco-owner-publication-word (target state)
+  (declare (xargs :stobjs state :guard t))
+  (fn-nco-publication-word target
+    (fn-owner-sco-global 'fn-owner-sco-durable state)
+    (fn-owner-sco-global 'fn-owner-sco-inflight state)
+    (fn-owner-sco-global 'fn-owner-sco-requested state)
+    (fn-owner-sco-global 'fn-owner-sco-deferred state)))
