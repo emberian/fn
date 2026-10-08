@@ -167,8 +167,7 @@
                 fn-owner-feed-auth-policy fn-owner-feed-backoff-ms
                 fn-owner-feed-configure fn-owner-feed-dial-open
                 fn-owner-feed-has-queued fn-owner-feed-host
-                fn-owner-feed-journal-begin fn-owner-feed-journal-offset
-                fn-owner-feed-journal-prefix-size fn-owner-feed-journal-scan
+                fn-owner-feed-journal-prefix-size fn-owner-feed-journal-replay
                 fn-owner-feed-lost fn-owner-feed-peers fn-owner-feed-port
                 fn-owner-feed-reconcile-apply fn-owner-feed-reconcile-next
                 fn-owner-feed-reply-article fn-owner-feed-reply-chunk
