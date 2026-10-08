@@ -396,6 +396,7 @@
 (include-book "../../books/connection-budget")
 (include-book "../../books/tls-proxy")
 (include-book "../../books/owner-stop-drain")
+(include-book "../../books/owner-time-held")
 (include-book "../../books/served-available-read")
 (include-book "../../books/article-stream-owner")
 (include-book "../../books/owner-time-journal-writer")

@@ -269,6 +269,9 @@
 ;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
 (include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
+;; Ruling 19: the held commit over the scheduler value (fn-otm-held-*), which
+;; host/native/owner.lisp fnn-owner-held-commit calls in every image.
+(include-book "../books/owner-time-held")
 ;; Lane zero-copy-commit: the articles in flight within the slots the figure
 ;; holds (fn-oas-read-span, over fn-otm-read-span).
 (include-book "../books/owner-article-slots")
