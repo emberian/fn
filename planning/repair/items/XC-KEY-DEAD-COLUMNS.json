@@ -1,0 +1,16 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "XC-KEY-DEAD-COLUMNS",
+ "notes": [
+  "On the host path, kind 1 passes zero for a,b,c,d,start and kind 2 passes zero for c,d in host/native/extent.lisp lookup calls. Those fields are absent from the respective token and are dead for those kinds; decoded kind 3 retains a,b,c,d,start. Drop the dead fields from the representation and restate fn-xc-lookup-hit-is-the-descriptor per kind. The :duplicate install answer is the interim all-kind guard against binding one ledger charge to two slots.",
+  "S/P ruling: admitted install answers exclude both :refused and :duplicate. The original exact descriptor lookup contract remains unchanged; do not silently canonicalize an arbitrary preexisting table."
+ ],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "p-xc-span; S/P ruling on token uniqueness, 2026-10-08",
+ "state": "open",
+ "title": "Remove token-absent fields from whole-entry and raw-window cache keys",
+ "updated": "2026-10-08T10:41:02Z"
+}
