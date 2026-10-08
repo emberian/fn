@@ -318,6 +318,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-open \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-representation-history-tests \
 	tests/acl2/def-representation-pages-tests \
 	tests/acl2/paged-checkpoint-tests \
 	tests/acl2/paged-checkpoint-host-tests \
