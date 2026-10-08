@@ -96,8 +96,11 @@
            (fn-hist$a-msgid-records m rest)))
   )
 
+; The exact test implies the key (stated over the test's body: the lemma
+; assumes no predicate of its own).
 (defthm fn-hist-article-matches-implies-key
-  (implies (fn-hist-article-matches m x)
+  (implies (and (fn-held-p (fn-cei-event-article x))
+                (equal m (fn-record-msgid (fn-cei-event-article x))))
            (and (stringp m) (equal (fn-hist-key-msgid x) m)))
   :hints (("Goal" :in-theory (e/d (fn-hist-key-msgid) (fn-hist-key-article fn-held-p fn-cei-event-article))
            :use ((:instance fn-hist-key-article-of-held)
