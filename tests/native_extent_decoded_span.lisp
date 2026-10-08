@@ -10,14 +10,46 @@
           when (and (consp form) (member (car form) '(defun defvar defparameter))
                     (member (cadr form) names)) do (eval form))))
 
-(xc2-load-native "host/native/extent.lisp"
- '(fnn-extent-copy-span fnn-extent-slot-lookup fnn-extent-slot-token fnn-extent-slot-touch
-   fnn-extent-window-cache-insert fnn-extent-lz-buffer-span fnn-extent-lz-buffer-octet
-   fn-durable-realize-lz-span fn-durable-realize-lz-octet *fnn-extent-run-dst*))
-(xc2-load-native "host/native/extent-decoded.lisp"
- '(fnn-extent-decoded-window-realize-octet fnn-extent-decoded-window-cache-run
-   fnn-extent-decoded-window-run-at fnn-extent-decoded-window-realize-run
-   fnn-extent-decoded-window-realize-span))
+(xc2-load-native "books/article-stream.lisp" '(fn-ast-span-want))
+; The warm core owns its startup constant/layout. These cases are smaller
+; than both the old 16 KiB span capacity and the current profile capacity;
+; this fixture qualifies decoded bytes, not native startup/profile loading.
+(defvar *fnn-extent-run-dst* nil)
+
+; Extract the complete native function closure of these roots from the two
+; extent files. Structs and the ACL2 world come from the required image; every
+; external native function/macro must exist there. No derived stub can replace
+; an image function. This is the closure harness form understood by harness_check.
+(defparameter *roots*
+  '(fn-durable-realize-lz-span fn-durable-realize-lz-octet
+    fnn-extent-window-cache-insert))
+(let ((definitions (make-hash-table :test 'eq)) (seen (make-hash-table :test 'eq)))
+  (dolist (path '("host/native/extent.lisp" "host/native/extent-decoded.lisp"))
+    (with-open-file (in path)
+      (loop for form = (read in nil :eof) until (eq form :eof)
+            when (and (consp form) (eq (car form) 'defun))
+              do (setf (gethash (second form) definitions) form))))
+  (labels ((visit (name)
+             (unless (gethash name seen)
+               (setf (gethash name seen) t)
+               (let ((form (gethash name definitions)))
+                 (if form
+                     (progn (walk (cdddr form)) (eval form))
+                   (unless (or (fboundp name) (find-class name nil))
+                     (error "native image lacks closure dependency ~s" name))))))
+           (walk (tree)
+             (when (consp tree)
+               (let ((head (car tree)))
+                 (cond ((member head '(quote function))
+                        (when (gethash (second tree) definitions) (visit (second tree))))
+                       (t
+                        (when (and (symbolp head)
+                                   (let ((name (symbol-name head)))
+                                     (and (<= 4 (length name))
+                                          (string= name "FNN-" :end1 4))))
+                          (visit head))
+                        (dolist (part tree) (walk part))))))))
+    (dolist (name *roots*) (visit name))))
 
 (defun xc2-read-octets (path)
   (with-open-file (in path :element-type '(unsigned-byte 8))
