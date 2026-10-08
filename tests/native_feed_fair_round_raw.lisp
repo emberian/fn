@@ -9,7 +9,7 @@
 (defconstant +fnn-max-read+ 65536)
 (defconstant +fnn-socket-read-attempt-max+ 65536)
 (load-deployed-forms "host/native/io.lisp"
- '((defmacro fnn-posix) (deftype fnn-octets) (defun fnn-make-octets) (defun fnn-octets)
+ '((defmacro fnn-guarded-by) (defmacro fnn-posix) (deftype fnn-octets) (defun fnn-make-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defun fnn-string-octets) (defun fnn-octets-string)
    (defvar *fnn-read-syscall*) (defvar *fnn-write-syscall*)
    (defun fnn-eintr-p) (defun fnn-would-block-p) (defun fnn-socket-fd)
@@ -137,8 +137,13 @@
          (words '(:mode :ready :send :need-input)) (inputs nil) (order nil) (dropped nil))
     (setf (symbol-function 'fnn-owner-transit-serialized)
           (lambda (service cid thunk) (declare (ignore service cid)) (funcall thunk))
+          ;; The subject is suffix/EOF retention across reply turns, not the article
+          ;; read: the probe is warm and reads no article.
+          (symbol-function 'fnn-owner-feed-reply-probe-locked)
+          (lambda (service peer-octets octets) (declare (ignore service peer-octets octets))
+            (values :warm nil))
           (symbol-function 'fnn-owner-feed-arena-step)
-          (lambda (name peer input now) (declare (ignore name peer now))
+          (lambda (name peer input now &optional article) (declare (ignore name peer now article))
             (push input inputs) (list (pop words) #(65 66)))
           (symbol-function 'fnn-owner-feed-word) #'first
           (symbol-function 'fnn-owner-feed-command) #'second
