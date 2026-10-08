@@ -12,6 +12,7 @@
 (include-book "../books/control-request-word")
 (include-book "../books/consumer-local-control")
 (include-book "../books/consumer-wait-codec")
+(include-book "../books/owner-state-accessors") ; fn-owner-sco-global (fn-nco-owner-publication-word)
 (include-book "../books/consumer-reason")
 (include-book "../books/topic-history-local-control")
 (include-book "../books/native-live-buffer")
