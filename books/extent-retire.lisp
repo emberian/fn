@@ -286,6 +286,7 @@
                 (not (member f named))
                 (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x)))
                             f))))
+ :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-xrt-quiet-files fn-arena$xcorr fn-arx-file-count
                                fn-arx-files-unnamed-names-none fn-arx-file-count-is-files-get)
@@ -329,7 +330,3 @@
                                       fn-arpn-unpin-at fn-arpn-held-p)
            :use ((:instance fn-xrt-quiet-files-keeps-every-unnamed-retired-file)))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-xrt-quiet-files-are-unnamed))

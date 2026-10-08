@@ -195,12 +195,12 @@
 ; never removed -- and the disjointness of the two namespaces below is the
 ; other half: no name a completed publication occupies is ever removed.
 
-(defthm fn-sn-sweep-removes-only-unheld-staging-names
+(local (defthm fn-sn-sweep-removes-only-unheld-staging-names
   (implies (member-equal name (car (fn-sn-sweep-staging s observed held)))
            (and (member-equal name observed)
                 (fn-sn-staging-namep name)
                 (not (fn-sn-name-memberp name held))))
-  :hints (("Goal" :induct (fn-sn-sweep-removals observed held))))
+  :hints (("Goal" :induct (fn-sn-sweep-removals observed held)))))
 
 (defthm fn-sn-final-namespace-name-is-not-a-staging-name
   (implies (fn-sn-final-namespace-namep name)
@@ -294,6 +294,7 @@
            (and (member-equal name observed)
                 (fn-sn-staging-namep name)
                 (not (fn-sn-name-memberp name held))))
+ :rule-classes nil
   :hints (("Goal" :use fn-sn-sweep-removes-only-unheld-staging-names
            :in-theory (disable fn-sn-sweep-removes-only-unheld-staging-names
                                fn-sn-sweep-staging fn-sn-staging-namep))))
@@ -513,8 +514,3 @@
 
 (in-theory (disable fn-sn-sweep-vocabulary))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-sn-sweep-removes-only-unheld-staging-names
-                    fn-sn-sweep-round-removes-only-unheld-staging-names))

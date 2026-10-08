@@ -52,7 +52,7 @@
 (defthm fn-pol-stmt-p-shape
   (implies (fn-stmt-p s)
            (and (true-listp s) (consp s)))
-  :rule-classes (:rewrite :forward-chaining)
+  :rule-classes (:forward-chaining)
   :hints (("Goal" :in-theory (enable fn-stmt-p))))
 
 (defconst *fn-pol-max-members* 64)
@@ -527,7 +527,3 @@
 
 (in-theory (disable fn-pol-internals))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable (:rewrite fn-pol-stmt-p-shape)))

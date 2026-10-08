@@ -1182,6 +1182,7 @@
                                    (fn-pull-local-code
                                     (fn-pull-event-octets event)))
                              (fn-pull-r-answers r)))))
+ :rule-classes nil
   ;; 198,297 prover steps; 404,347 with the step's line helpers open.
   :hints (("Goal" :in-theory (e/d (fn-pull-step)
                                   (fn-pull-command fn-pull-local-code fn-pull-event-octets
@@ -1247,6 +1248,7 @@
                 (equal (fn-pull-r-unavailable (car (fn-pull-step r event)))
                        (cons (fn-pull-r-current r)
                              (fn-pull-list (fn-pull-r-unavailable r))))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-pull-step)
                                   (fn-pull-next fn-pull-record-answer fn-pull-fail
                                    fn-pull-drain fn-pull-list
@@ -2166,8 +2168,3 @@
                     (:definition fn-pull-terminal-codep)
                     (:rewrite fn-pull-close-advances-only-past-a-fully-answered-round)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-pull-step-answers-only-from-the-local-node
-                    fn-pull-step-marks-unavailable-only-on-the-peers-reply))
