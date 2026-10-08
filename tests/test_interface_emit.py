@@ -589,7 +589,9 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertEqual(len(self.check(root)[0]), 1)
 
     def test_an_entry_the_reader_finds_no_definition_for_is_listed_not_failed(self):
-        root = self.fixture("fn-bpsp-node-capacity")
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+                '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n')
+        root = self.fixture("fn-bpsp-node-capacity", book)
         (root / "books" / "aa-entry.lisp").write_text('(in-package "ACL2")\n')
         problems, unresolved = self.check(root)
         self.assertEqual(problems, [])
