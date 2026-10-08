@@ -1110,6 +1110,32 @@
      "measure": true
     }
    ]
+  },
+  "fault-index-saturation-reopen": {
+   "about": "ADMISSION-RESERVES-NOT-REOPEN tooth (N, 2026-10-08): F4's workload at the filled preset inside a 32G cgroup; after a refusal-free first run, restart under the same machine budget reaches LISTENING. On train 45 the restart refused `cold startup refused: the process heap does not hold the store's protected runtime`.",
+   "preset": "filled",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "fault_index_saturation",
+     "colliding_ids": 2304,
+     "absent_ids": 32,
+     "collision_bits": 8,
+     "candidate_budget": 1048576,
+     "tag_batch": 4096,
+     "prefix_octets": 128,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
+    }
+   ],
+   "hooks": [
+    "planning/evidence/load/hooks/f4-index.lisp"
+   ]
   }
  },
  "cells": {
@@ -1146,7 +1172,8 @@
   "LIST-PROF-ALLOC": "list-prof-alloc",
   "W6q": "catchup-quiet",
   "F2S": "fault-crash-boundary-survey",
-  "W7": "extent-cache"
+  "W7": "extent-cache",
+  "F4R": "fault-index-saturation-reopen"
  },
  "stores": {
   "1k": 1000,
