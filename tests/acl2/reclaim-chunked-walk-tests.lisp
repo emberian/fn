@@ -106,7 +106,7 @@
                ((acc (fn-rcw-acc-init *rcw-configs*)) (configs *rcw-configs*) (chunk (take 1 *rcw-new*)))
                :fault "a chunk step that leaves the capture where it was")))
 
-; Host fnn-reclaim-pass: tests/test_native_reclaim_walk.py::
+; Host fnn-owner-reclaim-pass: tests/test_native_reclaim_walk.py::
 ; test_a_pass_longer_than_two_chunks_installs_and_counts_the_available.
 ; The local arena is filled by sealing the owner fixture's payloads.
 ; IMPLEMENTATION MUTATION: fail to carry the next handle across chunks.
