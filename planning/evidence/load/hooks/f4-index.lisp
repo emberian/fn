@@ -3,9 +3,12 @@
 ;;; RESPONSE: serial, numeric rows, done (or "error <text>"). No Lisp reader on request data.
 ;;; Read-buffer-fill runs under the owner mutex, before served lookup. That
 ;;; boundary works even when STAT uses the event trie rather than the catalog.
-;;; fn-cat$c-mpx is a stobj-field accessor MACRO in the image (t45: "is a macro, not a
-;;; function"), so it is expanded once at load, never funcalled. An observer error is
-;;; written to the response and never stops the owner.
+;;; Only exported, owner-level functions are used: the key is (fn-owner-mpx-key state)
+;;; (host/owner-host.lisp:2509), the health is (fn-cat-index-health key fn-cat) as the live
+;;; status line computes it (host/native-live-status-host.lisp:149), a tag is
+;;; (fn-mlh-tag msgid key) (books/msgid-linear-exec.lisp:91). Reaching into the catalog's
+;;; concrete fields faulted twice on train 45 (fn-cat is an abstract stobj over a paged one).
+;;; An observer error is written to the response and never stops the owner.
 (in-package "ACL2")
 (defvar *fnl-f4-last* 0)
 (defun fnl-f4-words (line)
@@ -20,18 +23,13 @@
            (serial (parse-integer (first words))))
       (when (> serial *fnl-f4-last*)
         (let* ((cat (fnn-live-cat))
-               (table (fnl-f4-mpx cat)))
+               (key (funcall 'fn-owner-mpx-key *the-live-state*)))
           (with-open-file (s response :direction :output :if-exists :supersede
                                       :if-does-not-exist :create)
             (format s "~d~%" serial)
             (cond
               ((and (= (length words) 2) (string= (second words) "health"))
-               (let* ((key (funcall 'fn-mlh-key-octets table))
-                      (live (funcall 'fn-cat$c-index-health key cat))
-                      (rebuilt (funcall 'fn-mlh-build-health key
-                                        (funcall 'fn-cat$c-rows-below-count cat))))
-                 (unless (equal live rebuilt) (error "F4 live/rebuilt health mismatch"))
-                 (format s "~{~d~^ ~}~%" rebuilt)))
+               (format s "~{~d~^ ~}~%" (funcall 'fn-cat-index-health key cat)))
               ((and (= (length words) 4) (string= (second words) "tags"))
                (let ((start (parse-integer (third words)))
                      (count (parse-integer (fourth words))))
@@ -40,7 +38,7 @@
                    (error "F4 bad candidate batch"))
                  (loop for i from start below (+ start count)
                        do (format s "~d ~d~%" i
-                                  (funcall 'fn-mlh-tag-of (format nil "<f4-~d@fn.test>" i) table)))))
+                                  (funcall 'fn-mlh-tag (format nil "<f4-~d@fn.test>" i) key)))))
               (t (error "F4 unknown observer request")))
             (format s "done~%")
             (finish-output s))
@@ -49,11 +47,9 @@
       (response (sb-ext:posix-getenv "FN_LOAD_F4_RESPONSE")))
   (when request
     (unless response (error "F4 requires response path"))
-    (dolist (sym '(fnn-owner-read-buffer-fill fnn-live-cat
-                   fn-mlh-key-octets fn-mlh-tag-of fn-cat$c-index-health
-                   fn-cat$c-rows-below-count fn-mlh-build-health))
+    (dolist (sym '(fnn-owner-read-buffer-fill fnn-live-cat fn-owner-mpx-key
+                   fn-mlh-tag fn-cat-index-health))
       (unless (fboundp sym) (error "F4 missing observer function ~a" sym)))
-    (setf (symbol-function 'fnl-f4-mpx) (compile nil '(lambda (cat) (fn-cat$c-mpx cat))))
     (sb-int:encapsulate 'fnn-owner-read-buffer-fill 'fn-load-f4
       (lambda (original &rest args)
         (handler-case (fnl-f4-observe request response)
