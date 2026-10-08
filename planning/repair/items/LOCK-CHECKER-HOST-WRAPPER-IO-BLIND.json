@@ -1,0 +1,13 @@
+{
+ "category": "checker",
+ "file": "tools/lock_discipline_check.py",
+ "id": "LOCK-CHECKER-HOST-WRAPPER-IO-BLIND",
+ "note": "Found by O1's DecisionRingLeaf tests: sb-posix:fsync under XDTRACE is red, but the same I/O through a host function the checker does not resolve as an I/O leaf (fnn-write-all) is not. Affects every leaf row (XTRACE, XDTRACE, XPWAKE, XTLSKX, ...) and every io_ok=false lock. Fix at the root: the checker's call graph must follow host defuns transitively to their io leaves (or refuse an unresolved callee under a no-I/O lock), with a teeth test: fnn-write-all under a leaf is red.",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "high",
+ "source": "Deputy O review of obs-decision-trace (2026-10-08)",
+ "state": "open",
+ "title": "lock_discipline does not see I/O reached under a lock through an unrecognised host wrapper (e.g. fnn-write-all), so any leaf lock can do I/O undetected",
+ "updated": "2026-10-08T00:31:49Z"
+}
