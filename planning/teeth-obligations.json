@@ -15884,9 +15884,85 @@
    "registry": true
   },
   {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "a457a125fe704611c590e099a468dc9a5f731781275677e5a86c287e4d56f4a7",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-admit-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-admit",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "8439aa9fde9ea79fad16fb75008f540a1bce84b671c896805c0ac091d7540463",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-close-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-close",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-prl-completion-refunds-at-most-once",
    "registry": true
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "e70ab755ad635efc26dad8c2808a746d9a8db9a31cfdf916d3c42ef047f74e73",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-convert-growth-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "51621b75233211ae0ff8db9aa205c48627d7eb675f0029e36c86b3a30da28e5e",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-convert-growth-under-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
   },
   {
    "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
@@ -15924,6 +16000,82 @@
     "reachable": 1
    },
    "subject": "fn-prl-evict",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "90667f18396249affc9cc2d9682c0e748bc8b9eade93543647e21a7b8b4b511b",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-evict-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-evict",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "3d246275aa72aba2bc959529e485202d6640476edab80c7c852f0323211bb55a",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-make-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-prl-make",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "e06b5b5dee4eaf8f995f9ee312ea9a70667e39285057c4af0857a13084900e34",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-register-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-register",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "59d6ac8b14284f822db1a9cd24c95ee3fb7e415ffc150ab899a2b9447a05af90",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-reserve-growth-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-reserve-growth",
    "witness": "executable"
   },
   {
@@ -15965,9 +16117,66 @@
    "witness": "lemma"
   },
   {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "b918bfc2034f1ed814337219b8504b889503b44dfe8ec10075fff99ec46f388c",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-row-sum-bound-reserve-natural",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "76202fdd3c5cd7470ebcff9ef18084eff77a0a19f3a579c58bb546c3dbc3d169",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-row-sum-covers-bound-reserve",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-prl-settle-never-reuses-identity",
    "registry": true
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "c0a01b80d1e98769584b7957167ace060077cc0161ad1f0247fd01a3736de428",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-settle-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-settle",
+   "witness": "executable"
   },
   {
    "class": "hand",

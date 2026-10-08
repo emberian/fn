@@ -19239,6 +19239,55 @@
           "name": "fn-tlsk-library-served-tls-never-falls-back"
         }
       ]
+    },
+    {
+      "id": "PRF-1343",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prl-make-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-register-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-admit-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-settle-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-evict-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-close-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-reserve-growth-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-convert-growth-preserves-row-sum-invp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-row-sum-bound-reserve-natural"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-row-sum-covers-bound-reserve"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-convert-growth-under-row-sum-invp"
+        }
+      ]
     }
   ]
 }
