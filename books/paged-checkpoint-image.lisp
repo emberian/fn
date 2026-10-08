@@ -325,6 +325,14 @@
                         (:instance pcks-consp-zeros (l wl)))
            :in-theory (disable pcks-dirty-at-open pcks-shift-of-number pcks-consp-zeros adt-tp-dirty-at adt-tp-number adt-tp-pages adt-tp-zeros pck-shift))))
 
+;; (pgs-dirty-lpages nil) as a rule of this book: certified inside the owner image
+;; (owner@books:books/owner), store-records-field's export theory leaves
+;; pgs-dirty-lpages and its executable counterpart disabled, so the empty-delta
+;; cases below would keep it unevaluated.
+(defthm pcki-dirty-lpages-nil
+  (equal (pgs-dirty-lpages nil) nil)
+  :hints (("Goal" :in-theory (enable pgs-dirty-lpages))))
+
 (defthm pcki-model-lpages
   (implies (and (natp cnt) (natp wl) (< 0 wl) (true-listp tail) (equal (len tail) (- cnt (* 2048 (floor cnt 2048)))))
            (equal (pgs-dirty-lpages (pck-shift 8 (adt-tp-dirty-at cnt tail (adt-tp-zeros wl))))
