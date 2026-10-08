@@ -2903,9 +2903,9 @@ fence; no semantic action of any worker, that one included, can run after it
 
 ANSWERING is also remembered in SPARING (PKT-562): a later stop -- the run's
 cleanup stop, which passes no ANSWERING -- spares it too, so it cannot shut
-the socket while that worker is still writing its reply. Shutdown targets and
-stop hooks are staged in one roster-owned receipt; the outer boundary wakes
-them only after releasing O."
+the socket while that worker is still writing its reply. Shutdown targets are
+staged in one roster-owned receipt; the outer boundary wakes them, and runs
+the stop hooks, only after releasing O."
   (let ((first-stop nil) (dominated nil))
     ;; Install the irreversible service fence before any fallible core drain,
     ;; I/O or log line (review M3c: the fence step cannot fail).  Lifecycle
@@ -2937,8 +2937,7 @@ them only after releasing O."
                   (remove nil
                           (cons (fnn-owner-service-listener service)
                                 (remove-if (lambda (socket) (member socket sparing))
-                                           (copy-list (fnn-owner-service-clients service)))))
-                  (copy-list (fnn-owner-service-stop-hooks service)))))))
+                                           (copy-list (fnn-owner-service-clients service))))))))))
   ;; The committer thread wakes, finds the owner stopping and returns.
   (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
     (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service)))
@@ -2962,7 +2961,9 @@ cannot enter a live quantum while its sockets have not yet been signalled."
     (when receipt
       (dolist (socket (second receipt))
         (fnn-socket-shutdown socket))
-      (dolist (hook (third receipt))
+      ;; The hooks are installed at start and never change after; the one
+      ;; claimed receipt runs them once, off O.
+      (dolist (hook (fnn-owner-service-stop-hooks service))
         (ignore-errors (funcall hook service)))
       (fnn-with-roster (service)
         (unless (and (eq receipt (fnn-owner-service-stop-wake service))
