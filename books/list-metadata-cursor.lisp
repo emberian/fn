@@ -8,6 +8,7 @@
 (include-book "list-row-cursor")
 (include-book "list-status-cursor")
 (include-book "def-cursor")
+(include-book "def-cursor-batch")
 (include-book "protocol-table")
 
 (local (in-theory (disable (tau-system))))
@@ -404,6 +405,28 @@
   :hints (("Goal" :in-theory (e/d (fn-lst-step fn-lst-remaining)
                                   (fn-cur-split fn-lst-one fn-cur-make fn-cur-progress
                                    fn-cur-pending fn-lst-progress-reference)))))
+
+;; The step's residual in the form def-cursor/batch states it (CAR, not MV-NTH).
+(defthm fn-lst-step-residual
+  (equal (append (car (fn-lst-step cur visits bytes fn-cat))
+                 (fn-lst-remaining (mv-nth 1 (fn-lst-step cur visits bytes fn-cat)) fn-cat))
+         (fn-lst-remaining cur fn-cat))
+  :rule-classes nil
+  :hints (("Goal" :use fn-lst-step-keeps-remaining
+           :in-theory (e/d (mv-nth) (fn-lst-step-keeps-remaining fn-lst-step fn-lst-remaining)))))
+
+; One host activation spends its whole visit budget on controller calls (a
+; probe of one article number each) until the first output, instead of one
+; call per activation: the number of activations a LIST costs is its emitted
+; windows plus ceil(calls / visits), not its calls.
+(encapsulate ()
+  (local (in-theory (disable mv-nth)))
+  (def-cursor/batch fn-lst (fn-cat)
+    :step fn-lst-step :stobjs (fn-cat)
+    :byte-proof fn-lst-step-byte-bound
+    :call-proof fn-lst-step-call-bound
+    :remaining (fn-lst-remaining cur fn-cat)
+    :residual-proof fn-lst-step-residual))
 
 ; A started LIST cursor owes the reference reply body: every selected group's
 ; row, then the terminator.

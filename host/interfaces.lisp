@@ -2172,6 +2172,7 @@
 
 (definterface fn-splan-cursor-resume-ms
   :class :common-lisp-compliant)
+(definterface fn-asto-resume-ms :class :common-lisp-compliant)
 
 
 ; Consumed by native owner/mux. LIST is a distinct query residual subject;

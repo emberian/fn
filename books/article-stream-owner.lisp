@@ -674,6 +674,30 @@
   (and (not (consp (fn-splan-cur plan)))
        (eq (fn-cbor-ag-car (fn-cbor-ag-car (fn-splan-rest plan))) :article-cursor)))
 
+;; The scheduling delay of a yielded plan, ACL2's: an ARTICLE or LIST quantum
+;; spends its whole grant of visits, so it resumes on the loop's next pass
+;; (fairness is the pass order, not a sleep); only an OVER/NEWNEWS quantum that
+;; may have made empty progress waits fn-splan-cursor-resume-ms.
+(defun fn-asto-resume-ms (plan)
+  (declare (xargs :guard t))
+  (if (or (fn-asto-plan-articlep plan) (fn-asto-preflight-planp plan)
+          (fn-qplan-lst-cursorp plan))
+      0
+    (fn-splan-cursor-resume-ms)))
+
+(defthm fn-asto-resume-ms-natp
+  (natp (fn-asto-resume-ms plan))
+  :rule-classes :type-prescription)
+
+(defthm fn-asto-resume-ms-lst-is-immediate
+  (implies (fn-qplan-lst-cursorp plan)
+           (equal (fn-asto-resume-ms plan) 0)))
+
+(defthm fn-asto-resume-ms-over-waits
+  (implies (and (not (fn-asto-plan-articlep plan)) (not (fn-asto-preflight-planp plan))
+                (not (fn-qplan-lst-cursorp plan)))
+           (posp (fn-asto-resume-ms plan))))
+
 (defun fn-asto-plan-render-step (plan fuel fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((rest (fn-splan-rest plan)))
