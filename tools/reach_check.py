@@ -105,6 +105,7 @@ import collections
 import json
 import pathlib
 import re
+import subprocess
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -578,14 +579,45 @@ def load_world(path):
     return coverage.World(json.loads(path.read_text(encoding="utf-8")))
 
 
+def certificate_expansions(book: str, names=()) -> "dict[str, str] | None":
+    """BOOK's make-event-generated `defun's from its certificate, or None.
+
+    ACL2 reads the cached certificate at BOOK's CURRENT closure key
+    (tools/cert_expansions.py); a book with no such certificate, or when ACL2
+    cannot be run, has no answer -- the caller keeps today's `needs --world'.
+    Memoised by the certificate's bytes."""
+    import cert_expansions
+    import certs
+    try:
+        cert = cert_expansions.current_cert(ROOT, book)
+        if cert is None:
+            return None
+        digest = certs.content_hash(cert)
+
+        def read():
+            import acl2_slots
+            return cert_expansions.read_expansions([cert], acl2_slots.configured_acl2(), ROOT)[0]
+        return memoised("expansion", book, digest, read)
+    except (OSError, ValueError, ImportError, subprocess.SubprocessError) as error:
+        print(f"reach_check: no expansion read for {book}: {error}", file=sys.stderr)
+        return None
+
+
 class Graph:
     """The call graph, and what a host line can reach through it."""
 
     generated: dict = {}           # make-event products (generated_templates)
+    generated_books: dict = {}     # name -> the books whose templates write it
+    expanded: dict = {}            # name -> (book, via) judged from a current certificate
     generated_callers: dict = {}
     shadow: dict = {}
 
-    def __init__(self, world: "pathlib.Path | str | None" = None) -> None:
+    def __init__(self, world: "pathlib.Path | str | None" = None,
+                 expansions=None) -> None:
+        # EXPANSIONS: book ('books/NAME') -> {generated name: defun text} or
+        # None where the book has no current certificate; default
+        # `certificate_expansions' (ACL2's own reading of the cert).
+        self.expansion_source = expansions or certificate_expansions
         self.books = sorted(ROOT.glob("books/*.lisp"))
         self.hosts = (sorted(ROOT.glob("host/*.lisp"))
                       + sorted(ROOT.glob("host/native/*.lisp")))
@@ -637,6 +669,16 @@ class Graph:
         # Names a make-event or generator template defines, whose body no
         # definition text holds (see `generated_templates').
         self.generated = self.generated_templates()
+        # A generated name whose book has a CURRENT certificate is defined by
+        # ACL2's own expansion recorded there: it becomes a node like any
+        # defun.  Without one (no cert, or a stale key) it stays generated,
+        # an unknown edge that needs --world.
+        self.expanded = self.expanded_definitions()
+        for name, (book, text) in self.expanded.items():
+            self.book_defs[name] = (book + ".lisp", text)
+            self.generated.pop(name, None)
+            bodies[name] = text
+        self.known |= set(self.expanded)
         self.edges = {name: self.mentions(form, name)
                       for name, form in bodies.items()}
         self.generated_callers = collections.defaultdict(set)
@@ -771,6 +813,7 @@ class Graph:
         the accessors fn-defrecord, defstobj and def-buffer generate (which
         have no `(defun' text) are not in this set."""
         found = collections.defaultdict(list)
+        self.generated_books = collections.defaultdict(set)
         for path in self.books:
             try:
                 text = file_text(path)
@@ -785,7 +828,25 @@ class Graph:
                 code = code_only(form)
                 for name in {m.group(1).lower() for m in DEFUN.finditer(code)} & names:
                     found[name].append(code)
+                    self.generated_books[name].add(str(path.relative_to(ROOT).with_suffix("")))
         return dict(found)
+
+    def expanded_definitions(self) -> dict:
+        """name -> (book, defun text) for each generated name that a current
+        certificate's make-event expansion defines.  The text is ACL2's own
+        printed `defun'; its edges are what ACL2 expanded, not a second reading
+        of any generator's table."""
+        wanted = collections.defaultdict(set)
+        for name, books in self.generated_books.items():
+            for book in books:
+                wanted[book].add(name)
+        found = {}
+        for book in sorted(wanted):
+            defined_here = self.expansion_source(book, wanted[book]) or {}
+            for name in sorted(wanted[book]):
+                if name in defined_here:
+                    found.setdefault(name, (book, code_only(defined_here[name])))
+        return found
 
     def generated_shadow(self, seen: set) -> dict:
         """unreached book function -> the generated names it may be reached

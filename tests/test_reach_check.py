@@ -950,6 +950,132 @@ class GeneratedDispatcherTests(unittest.TestCase):
             self.assertEqual([f.key() for f in findings], ["PRF-T2:fn-t-lone-prop"])
 
 
+class GeneratedExpansionTests(unittest.TestCase):
+    """REACH-CHECK-GENERATED-DISPATCHER-BLIND, second half: a generated
+    definition is judged from the expansion ACL2 recorded in a CURRENT
+    certificate.  With the expansion, source mode says reached; with no
+    current certificate it says needs --world; with the call gone from the
+    expansion it says unreachable."""
+
+    DISPATCH = "(defun fn-t-dispatch (x) (cond ((consp x) (fn-t-subject x)) (t nil)))"
+    EMPTY = "(defun fn-t-dispatch (x) (cond ((consp x) (cons x x)) (t nil)))"
+
+    def run_with(self, expansion):
+        base = GeneratedDispatcherTests()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base.tree(root)
+            seen = []
+
+            def provider(book, names):
+                seen.append((book, sorted(names)))
+                return expansion
+
+            loaded = reach_check.loaded_host_files(root=root)
+            with patch.object(reach_check, "ROOT", root), \
+                    patch.object(reach_check, "loaded_host_files", return_value=loaded), \
+                    patch.object(reach_check, "load_rows", return_value=base.ROWS):
+                graph = reach_check.Graph(expansions=provider)
+                findings = reach_check.audit(graph)[0]
+            return graph, {f.key(): reach_check.generated_through(graph, f) for f in findings}, seen
+
+    def test_a_current_expansion_makes_the_subject_reached(self):
+        graph, blind, seen = self.run_with({"fn-t-dispatch": self.DISPATCH})
+        self.assertEqual(seen, [("books/t", ["fn-t-dispatch"])])
+        self.assertIn("fn-t-subject", graph.reachable)
+        self.assertIn("fn-t-dispatch", graph.reachable)
+        self.assertNotIn("fn-t-dispatch", graph.generated)
+        self.assertNotIn("PRF-T1:fn-t-subject-prop", blind)
+        self.assertIn("PRF-T2:fn-t-lone-prop", blind)
+
+    def test_no_current_certificate_keeps_needs_world(self):
+        graph, blind, _ = self.run_with(None)
+        self.assertNotIn("fn-t-subject", graph.reachable)
+        self.assertIn("fn-t-dispatch", graph.generated)
+        self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
+
+    def test_a_certificate_that_does_not_define_the_name_keeps_needs_world(self):
+        graph, blind, _ = self.run_with({"fn-t-other": self.DISPATCH})
+        self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
+
+    def test_the_call_removed_from_the_expansion_is_unreachable_not_blind(self):
+        graph, blind, _ = self.run_with({"fn-t-dispatch": self.EMPTY})
+        self.assertNotIn("fn-t-subject", graph.reachable)
+        self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], [])
+
+
+class CertificateExpansionTests(unittest.TestCase):
+    """The reader and the currency rule, against a real ACL2 certificate."""
+
+    BOOK = (
+        "(in-package \"ACL2\")\n"
+        "(defun fn-t-subject (x) (cons x x))\n"
+        "(make-event\n"
+        " `(defun fn-t-dispatch (x)\n"
+        "    (cond ,@(list '((consp x) (fn-t-subject x))) (t nil))))\n")
+
+    @classmethod
+    def setUpClass(cls):
+        import acl2_slots
+        import cert_expansions
+        cls.cert_expansions = cert_expansions
+        cls.acl2 = acl2_slots.configured_acl2()
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.root = Path(cls.tmp.name)
+        (cls.root / "books").mkdir()
+        (cls.root / "tools").mkdir()
+        (cls.root / "books/t.lisp").write_text(cls.BOOK)
+        done = acl2_slots.run([cls.acl2], "reach_check test", cwd=cls.root / "books",
+                              input=b'(certify-book "t")\n(quit)\n',
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              check=False, timeout=300)
+        if not (cls.root / "books/t.cert").is_file():
+            cls.tmp.cleanup()
+            raise unittest.SkipTest("no ACL2 here: " + done.stdout.decode()[-300:])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def entry(self, cache):
+        """File the certificate under the key of the book's CURRENT bytes."""
+        import certs
+        import hashlib
+        key = certs.closure_key(self.root, "books/t")[0]
+        directory = cache / key / "origin0"
+        directory.mkdir(parents=True)
+        cert = self.root / "books/t.cert"
+        (directory / "book.cert").write_bytes(cert.read_bytes())
+        (directory / "meta.json").write_text(json.dumps(
+            {"book": "books/t", "cert_sha256": hashlib.sha256(cert.read_bytes()).hexdigest()}))
+
+    def test_acl2_reads_the_generated_definition_from_a_current_certificate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            self.entry(cache)
+            cert = self.cert_expansions.current_cert(self.root, "books/t", cache)
+            self.assertIsNotNone(cert)
+            read = self.cert_expansions.read_expansions([cert], self.acl2, self.root)[0]
+            self.assertEqual(list(read), ["fn-t-dispatch"])
+            self.assertIn("FN-T-SUBJECT", read["fn-t-dispatch"])
+
+    def test_a_changed_source_has_no_current_certificate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            self.entry(cache)
+            source = self.root / "books/t.lisp"
+            try:
+                source.write_text(self.BOOK + "(defun fn-t-new (x) x)\n")
+                self.assertIsNone(self.cert_expansions.current_cert(self.root, "books/t", cache))
+            finally:
+                source.write_text(self.BOOK)
+            self.assertIsNotNone(self.cert_expansions.current_cert(self.root, "books/t", cache))
+
+    def test_no_cache_entry_has_no_current_certificate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(self.cert_expansions.current_cert(self.root, "books/t", Path(tmp)))
+
+
 class ProseIsNotReachTests(unittest.TestCase):
     """CONVERGE-2 row 14: a docstring that cites a book program is prose, not
     a call; a crash campaign naming a program in code is a tie, not a host."""
