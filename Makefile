@@ -326,6 +326,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-stage \
 	books/paged-checkpoint-image \
 	books/paged-checkpoint-summary \
+	books/paged-checkpoint-bootstrap \
+	tests/acl2/paged-checkpoint-bootstrap-tests \
+	tests/acl2/pagestore-digest-fixture \
 	books/paged-checkpoint-open \
 	books/paged-checkpoint-root \
 	books/def-representation \
