@@ -4,11 +4,13 @@
  "file": "host/native/control-transport.lisp",
  "id": "CONTROL-REPLY-DEADLINE-NOT-WORK-BOUND",
  "line": "225",
- "notes": [],
+ "notes": [
+  "2026-10-08 (coordinator, via N): fix (b). Store-sized verbs (reclaim, publication, checkpoint) answer :requested with a receipt at once; the client observes completion through status; the reply deadline applies only to the acknowledgement (as BP and publication already behave). Books decide which verbs are store-sized: a declared class on the verb, not a size heuristic. Keystone: a :requested receipt is followed by exactly one completion status. Owner C (control transport). Then restore test_resident_set_of_a_pass_at_1k_and_10k's 10k reclaim to exit 0."
+ ],
  "owner": "deputy-C",
  "severity": "medium",
  "source": "n-g27-reds-2",
  "state": "open",
  "title": "a store-sized control verb (reclaim at 10k) is answered uncertain after a fixed 10 s reply grace that scales with request octets, not with the verb's work",
- "updated": "2026-10-08T07:30:00Z"
+ "updated": "2026-10-08T07:45:00Z"
 }
