@@ -24,6 +24,19 @@ class OwnerGlobalsCheckTests(unittest.TestCase):
                 "(f-get-global 'fn-store-sco-open state)\n")
         self.assertEqual(ogc.globals_of(text), [])
 
+    def test_books_funnels_remain_counted_until_state_moves(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "books").mkdir()
+            (root / "books" / "owner-retain-state.lisp").write_text(
+                "(f-get-global 'fn-owner-retain-carry state)\n"
+                "(f-put-global 'fn-owner-retain-carry carry state)\n")
+            self.assertEqual(ogc.scan(root), {
+                "books/owner-retain-state.lisp": ["fn-owner-retain-carry"]})
+            self.assertTrue(ogc.judge(ogc.scan(root), {}))
+
     def test_the_baseline_only_shrinks(self):
         found = {"host/a.lisp": ["fn-owner-a", "fn-owner-b"]}
         self.assertTrue(ogc.judge(found, {"host/a.lisp": 1}))
@@ -48,6 +61,17 @@ class RaiseNeedsAReasonTests(unittest.TestCase):
             path.write_text(json.dumps(baseline))
             code = ogc.main(["--root", str(root), "--baseline", str(path), "--write-baseline"] + argv)
             return code, json.loads(path.read_text())
+
+    def test_targeted_shrink_keeps_existing_red(self):
+        code, written = self.run_write(["--lower-to", "host/a-host.lisp=0"],
+                                       {"host/a-host.lisp": 1, "host/other.lisp": 3})
+        self.assertEqual(code, 0)
+        self.assertEqual(written["host/a-host.lisp"], 0)
+        self.assertEqual(written["host/other.lisp"], 3)
+        code, written = self.run_write(["--lower-to", "host/a-host.lisp=2"],
+                                       {"host/a-host.lisp": 1})
+        self.assertEqual(code, 1)
+        self.assertEqual(written["host/a-host.lisp"], 1)
 
     def test_a_raise_without_a_reason_is_refused(self):
         code, written = self.run_write([], {"host/a-host.lisp": 1})

@@ -13,7 +13,7 @@ owner value or a wrapper's own result.  Row Q3c's fifth metric counted
 (the owner globals are `f-put-global' names, not defvars): this is the real
 count.
 
-WHAT IT COUNTS.  Per file under host/, the distinct `fn-owner-*' names that
+WHAT IT COUNTS.  Per file under host/ and books/, the distinct `fn-owner-*' names that
 a global accessor reads or writes: a token ending in `-global'
 (f-put-global, f-get-global, boundp-global, makunbound-global, the natives'
 fnn-owner-list-global / fnn-owner-octets-global / fnn-global, ...) followed
@@ -59,7 +59,7 @@ sys.path.insert(0, str(ROOT))
 from tools import ratchet  # noqa: E402
 from tools import lisp_source  # noqa: E402
 BASELINE = ROOT / "tools" / "owner_globals_baseline.json"
-HOST_DIRS = ("host",)
+HOST_DIRS = ("host", "books")
 ACCESSOR = re.compile(r"(?:^|[\s(])[A-Za-z0-9*+/<>=!?.-]*-global\s+'(fn-owner-[a-z0-9*+/<>=!?.-]*)",
                       re.IGNORECASE)
 
@@ -167,6 +167,8 @@ def main(argv=None):
                         help="with --write-baseline: why an ACKed raise happened (one dated line is kept); "
                              "the raise itself needs a ratchet:owner_globals_check:<file> line in "
                              "planning/repair/ACKS.md")
+    parser.add_argument("--lower-to", default=None, metavar="FILE=N",
+                        help="shrink one row to N, retaining unrelated over-baseline findings")
     parser.add_argument("--raise-to", default=None, metavar="FILE=N",
                         help="with --write-baseline --reason and --admit: raise only FILE's row, to N")
     parser.add_argument("--admit", action="append", default=[], metavar="NAME",
@@ -185,6 +187,18 @@ def main(argv=None):
     stored = json.loads(baseline_path.read_text(encoding="utf-8")) if baseline_path.exists() else {}
     reasons = list(stored.get("_reasons", []))
     baseline = {k: v for k, v in stored.items() if not k.startswith("_")}
+    if args.write_baseline and args.lower_to:
+        path, _, value = args.lower_to.rpartition("=")
+        if (not value.isdigit() or path not in baseline
+                or int(value) >= baseline[path]):
+            print("owner_globals_check: --lower-to must strictly shrink an existing row")
+            return 1
+        baseline[path] = int(value)
+        baseline["_reasons"] = reasons
+        baseline_path.write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n")
+        print("owner_globals_check: {} lowered to {}; {} present".format(
+            path, value, len(found.get(path, []))))
+        return 0
     if args.write_baseline and args.raise_to:
         return write_named_raise(args, found, baseline, reasons, baseline_path)
     if args.write_baseline:

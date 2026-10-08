@@ -249,7 +249,7 @@
 (include-book "../../books/owner-report-capture")
 (include-book "../../books/index-writer-ticket")
 (include-book "../../books/catalog-may-seal")
-(include-book "../../books/catalog-root-incarnation")
+(include-book "../../books/owner-catalog-root-state")
 (include-book "../../books/payload-view-lease")
 (include-book "../../books/snapshot-capture-lease")
 (include-book "../../books/payload-view-arena")

@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
-(include-book "store-profile-facts")
 (include-book "store-genesis")
 (include-book "store-replay-bound")
 (include-book "store-profile-open")
@@ -102,7 +101,7 @@
 (include-book "owner-report-capture")
 (include-book "index-writer-ticket")
 (include-book "catalog-may-seal")
-(include-book "catalog-root-incarnation")
+(include-book "owner-catalog-root-state")
 (include-book "payload-view-lease")
 (include-book "snapshot-capture-lease")
 (include-book "payload-view-arena")
@@ -159,5 +158,3 @@
 (include-book "owner-advance-carried")
 (include-book "owner-intent-carried")
 (include-book "owner-parse-carried")
-(include-book "owner-identity-intern")
-(include-book "owner-identity-served")
