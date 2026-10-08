@@ -363,7 +363,8 @@ class Node:
         if invite.returncode or len(codes) != 1:
             raise RuntimeError("account invite exited {}: {}".format(
                 invite.returncode, (invite.stdout + invite.stderr)[-300:]))
-        login, password = "fit-" + secrets.token_hex(4), secrets.token_hex(12)
+        login = "fit-" + secrets.token_hex(4)
+        password = secrets.token_hex(12)
         conn = Client(self.tls_port, self.context())
         first, _ = conn.cmd("XREDEEM {} {}".format(codes[0].decode(), login))
         second, _ = conn.cmd("XREDEEM PASS " + password)
