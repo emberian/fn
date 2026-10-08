@@ -1,0 +1,47 @@
+; The copy followed by the complete open.  The positive state is reached
+; by the failed file barrier and process restart in lgrct-restarted.
+(in-package "ACL2")
+(include-book "store-log-critical-teeth-tests")
+(defun lgcp-boundary (unit octets pending ino dirs)
+ (declare (xargs :verify-guards nil))
+ (let ((inodes (list (cons 0 octets))))
+  (fn-bsc-make (fn-bs-make unit inodes nil pending ino) inodes dirs)))
+(defconst *lgcp-dirs* '((:journal ("K" . 0)) (:staging)))
+; This implementation mutation omits precisely fsync-file, then runs the
+; rename and both directory barriers, each through the actual step runner.
+(defun lgcp-skip-file-barrier (s j k stg stage genesis max floor)
+ (declare (xargs :verify-guards nil))
+ (let ((ops (fn-lgrc-attempt-ops s j k stg stage genesis max floor nil)))
+  (fn-bsc-bs (fn-lgrc-final (fn-bsc-run s (append (take 2 ops) (nthcdr 3 ops))) s))))
+; Host fnn-recover-log runs the copy before the open barriers.  Native path:
+; tests/campaign/test_native_operator_campaign.py::test_served_owner_cuts_stop_and_production_refusals.
+(defteeth fn-lgrc-open-keeps-the-relation-at-every-cut
+ :claim (let* ((bs (fn-bsc-bs s))
+         (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+         (ks (fn-lgt-recover o genesis (fn-bs-unit bs) max floor))
+         (ino (fn-bs-next-ino bs))
+         (final (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s))))
+    (((inode (natp ino))
+(stage-directory (fn-bs-dir-idp stg))
+(stage-name (fn-bs-namep stage))
+(fresh (not (fn-bsc-lookup s stg stage)))
+(quiet (null (fn-bs-pending bs)))
+(unit (posp (fn-bs-unit bs)))
+(aligned (equal (mod (len o) (fn-bs-unit bs)) 0))
+(genesis (fn-frame-digestp genesis)))
+(and (fn-lgk-relp final ks ino genesis max)
+                  (fn-lg-all-relp (fn-lg-run final ks (fn-lg-open-program) nil ino) ino genesis max))))
+ :subject fn-lgrc-attempt
+ :witness ((s *lgct-before*) (j :journal) (k "K") (stg :staging) (stage "stage") (genesis *lgct-genesis*) (max 4096) (floor 0))
+ :breaks ((inode ((s (lgcp-boundary 4 '(0 0 0 0) nil -1 *lgcp-dirs*)) (j :journal) (k "K") (stg :staging) (stage "stage") (genesis *lgct-genesis*) (max 4096) (floor 0)) :logical "isolated total-logic boundary outside the served store domain")
+(stage-directory ((s (lgcp-boundary 4 '(0 0 0 0) nil 1 '(nil (:journal ("K" . 0))))) (j :journal) (k "K") (stg nil) (stage "stage") (genesis *lgct-genesis*) (max 4096) (floor 0)) :logical "isolated total-logic boundary outside the served store domain")
+(stage-name ((s (lgcp-boundary 4 '(0 0 0 0) nil 1 '((:journal ("K" . 0)) (:staging nil)))) (j :journal) (k "K") (stg :staging) (stage nil) (genesis *lgct-genesis*) (max 4096) (floor 0)) :logical "isolated total-logic boundary outside the served store domain")
+(fresh ((s (lgcp-boundary 4 '(0 0 0 0) nil 1 '((:journal ("K" . 0)) (:staging ("stage" . 99))))) (j :journal) (k "K") (stg :staging) (stage "stage") (genesis *lgct-genesis*) (max 4096) (floor 0)) :logical "isolated total-logic boundary outside the served store domain")
+(quiet ((s (lgcp-boundary 4 '(0 0 0 0) '((:write 9 0 (1))) 1 *lgcp-dirs*)) (j :journal) (k "K") (stg :staging) (stage "stage") (genesis *lgct-genesis*) (max 4096) (floor 0)) :logical "isolated total-logic boundary outside the served store domain")
+(unit ((s (lgcp-boundary -1 nil nil 1 *lgcp-dirs*)) (j :journal) (k "K") (stg :staging) (stage "stage") (genesis *lgct-genesis*) (max 4096) (floor 0)) :logical "isolated total-logic boundary outside the served store domain")
+(aligned ((s (lgcp-boundary 4 '(0) nil 1 *lgcp-dirs*)) (j :journal) (k "K") (stg :staging) (stage "stage") (genesis *lgct-genesis*) (max 4096) (floor 0)) :logical "isolated total-logic boundary outside the served store domain")
+(genesis ((s (lgcp-boundary 4 '(0 0 0 0) nil 1 *lgcp-dirs*)) (j :journal) (k "K") (stg :staging) (stage "stage") (genesis nil) (max 4096) (floor 0)) :logical "isolated total-logic boundary outside the served store domain"))
+ :mutations ((skip-file-barrier (:conclusion (let ((final (lgcp-skip-file-barrier s j k stg stage genesis max floor))) (and (fn-lgk-relp final ks ino genesis max)
+                  (fn-lg-all-relp (fn-lg-run final ks (fn-lg-open-program) nil ino) ino genesis max))))
+ ((s *lgct-before*) (j :journal) (k "K") (stg :staging) (stage "stage") (genesis *lgct-genesis*) (max 4096) (floor 0))
+ :fault "publish the copied inode without its file barrier")))

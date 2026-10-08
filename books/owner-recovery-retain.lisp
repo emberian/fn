@@ -13,6 +13,7 @@
 (include-book "owner-canonical-state")
 (include-book "owner-authority-proposal-state")
 (include-book "owner-connection-state")
+(include-book "owner-publication-transitions")
 ; The "Theory" warning check costs about 20 ms on every :in-theory hint in this world.
 (local (set-inhibit-warnings "Theory"))
 
@@ -89,22 +90,11 @@
          (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))
          (state (f-put-global 'fn-owner-record-debt (nth 4 rebuilt) state))
          (state (f-put-global 'fn-owner-carried-usage (nth 5 rebuilt) state))
-         (state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base e) state))
-         ; No H0: the next publication is the whole capture of the canonical
-         ; rows (fn-owner-sco-prepare's nil branch), the checkpoint an open
-         ; of this history publishes.  The open notes the arena's count
-         ; because its rows ARE canonical (interned from the emptied or the
-         ; checkpoint's canonical arena); the rebuilt E's rows keep their
-         ; live handles, so E is not the canonical capture the incremental
-         ; path's base must be (fn-scka-next-checkpoint-is-capture) and no
-         ; count makes it one.  The whole walk is the publication's own cost
-         ; (fnn-checkpoint-walk walks every record either way).
-         (state (f-put-global 'fn-owner-sco-base-payloads nil state))
-         (state (f-put-global 'fn-owner-sco-durable count state))
-         (state (f-put-global 'fn-owner-sco-attempted count state))
-         (state (f-put-global 'fn-owner-sco-deferred nil state))
-         (state (f-put-global 'fn-owner-sco-inflight nil state))
-         (state (f-put-global 'fn-owner-orc-pass nil state))
+         ; The rebuilt base has no canonical H0. Reset durable/attempted to
+         ; COUNT and release the slot; pending/requested/serial survive.
+         (state (fn-ost-install-publication
+                 (fn-opub-reclaim-install (fn-ost-publication state)
+                                         (fn-scka-strip-base e) count) state))
          (state (fn-owner-put-credits (fn-orcp-release (fn-owner-credits state)) state)))
     (value count)))
 
@@ -113,7 +103,7 @@
          (nth 2 rebuilt))
   :hints (("Goal" :in-theory
            (union-theories
-            '(fn-owner-orcp-swap fn-owner-put-credits mv-nth nth zp car-cons cdr-cons
+            '(fn-owner-orcp-swap fn-owner-put-credits fn-ost-install-publication mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
               fn-owner-retain-carry-of-put
@@ -293,28 +283,11 @@
              ; the FNFD replay above, not this retained input.
              (state (f-put-global 'fn-owner-feed-inputs
                                   (fn-fc-table-initial-state) state))
-             ; The owner's checkpoint state: the capture it extends at its
-             ; next publication, the newest durable checkpoint's S (set by
-             ; fn-owner-sco-note-durable), and the count of the last attempt.
-             ; (kept stripped of its event index, rebuilt at the next
-             ; publication: fn-scka-restore-base-of-strip-of-capture)
-             (state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base extended) state))
-             ; The base's canonical payload count (the arena's count at the
-             ; open: fn-owner-sco-note-base-payloads), nil until noted.
-             (state (f-put-global 'fn-owner-sco-base-payloads nil state))
-             (state (f-put-global 'fn-owner-sco-durable nil state))
-             (state (f-put-global 'fn-owner-sco-attempted nil state))
-             ; PKT-492: the publication the owner deferred by name, or nil.
-             (state (f-put-global 'fn-owner-sco-deferred nil state))
-             ; PKT-583 (b): the count the publication in flight captured, or
-             ; nil; and the one coalesced request observed while it ran.
-             (state (f-put-global 'fn-owner-sco-inflight nil state))
-             (state (f-put-global 'fn-owner-sco-pending nil state))
-             ; PKT-868: an operator's standing compaction request
-             ; (fn-owner-sco-request), cleared by the capture it causes.
-             (state (f-put-global 'fn-owner-sco-requested nil state))
-             ; Q16: no reclaim pass in flight (fn-owner-orc-pass).
-             (state (f-put-global 'fn-owner-orc-pass nil state))
+             ; Preserve the capture serial exactly as the old installer did.
+             ; Install the stripped base; all other eight fields become nil.
+             (state (fn-ost-install-publication
+                     (fn-opub-install (fn-ost-publication state)
+                                      (fn-scka-strip-base extended)) state))
              ; The pending PreparedCommit of the catalog (fn-owner-prepare-buffer).
              (state (f-put-global 'fn-owner-cat-pending nil state))
              ; E (step 8): the catalog of the installed store's history, from
@@ -385,7 +358,7 @@
                         oc extended key fn-arena fn-cat fn-hist state)))))
   :hints (("Goal" :in-theory
            (union-theories
-            '(fn-owner-install-extended mv-nth nth zp car-cons cdr-cons
+            '(fn-owner-install-extended fn-ost-install-publication mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
               fn-owner-retain-carry-of-put
@@ -403,7 +376,7 @@
   :hints (("Goal" :cases ((equal oc :fault)) :in-theory
            (union-theories
             '((:executable-counterpart fn-lgoc-invariantp)
-              fn-owner-install-extended fn-owner-retain-statep
+              fn-owner-install-extended fn-ost-install-publication fn-owner-retain-statep
               mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)

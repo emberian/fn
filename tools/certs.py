@@ -38,30 +38,24 @@ its own path.  Each digest is of the book's read forms (``form_hash``), not its
 bytes: ACL2's own book-hash is a checksum of the forms it reads, so a comment
 or layout edit leaves every certificate valid, and the key agrees.
 
-**A closure may be composed from several snapshot origins.**  An ACL2
-certificate's post-alist names every sub-book by the absolute path it was
-certified at, which is why this module once installed a closure only from one
-origin.  Measured on persvati on 2026-09-23 with ACL2 8.7 and checksum
-book-hashes (``planning/evidence/certificate-cache-2026-09-23.md``), ACL2 does
-not use those names to decide anything: ``include-book-alist-subsetp``
-compares each entry's familiar name, certificate annotations and book-hash
-and ignores the full-book-name, and include-book opens only the files beside
-the including book.  A parent from origin A over children from origin B
-includes without a warning, with A and B on disk, removed, or edited; a new
-parent certified over a closure from three origins includes cleanly with all
-three removed; editing an event in the target's own child is still refused.
-``install-set`` takes one complete origin when there is a compatible one,
-and otherwise composes the closure book by book from usable entries with the
-same toolchain. It uses the same exact ACL2 post-alist selector as the
-incremental runner, and ``proof_artifacts.py acquire`` validates the loaded
-roots afterward. A live
-worktree that still exists on this machine is still not drawn from.  The
-measurement found nothing that requires this exclusion; it stays because no
-run needs a live tree's pairs when the farm publishes every certified book
-from a snapshot.  ``--require-origin`` keeps the single-origin rule for
-a caller that asks for it.  ``install`` is ``install-partial`` over every
-book here (or the named books' closures): one selection, ACL2's alist
-equality, for every installer; native builds use ``install-set``.
+**Project book identities are portable.** The pooled launcher, certifier and
+native image builder register
+``:FN "."`` through the tree's ``acl2-projects`` file. ACL2 resolves that
+relative directory against the file, and represents books beneath it as
+sysfiles such as ``(:FN . "books/base.lisp")`` in certificate alists and
+portcullis includes. Saved certification images rebind the project on restart.
+The cache copies certificates unchanged: it never rewrites checksummed data.
+A foreign origin path by itself is not an incompatibility; ACL2 compares
+familiar names, annotations and book hashes in ``include-book-alist-subsetp``.
+
+The v4 closure key and toolchain's ``project_directories`` contract separate
+these artifacts from older absolute-name certificates. Old manifests cannot
+publish into v4, and rekey cannot convert their namespace. This requires one
+fresh certification per needed closure/world/toolchain key, then all gates
+reuse those entries across roots. ``install-set`` prefers one complete origin
+and otherwise composes compatible pairs. ``install-partial`` does the same
+exact post-alist check for the incremental runner. Neither imposes a blanket
+foreign-path refusal. ``proof_artifacts.py acquire`` validates loaded roots.
 
 **A run need not find its whole closure cached.**  ``install-partial`` is
 what an incremental certification uses (``certify_books.py --incremental``,
@@ -161,6 +155,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ledger  # noqa: E402
 import cert_images  # noqa: E402
+import acl2_projects  # noqa: E402
 
 BOOK_DIRECTORIES = ("books", "tests/acl2")
 DEFAULT_CACHE = "~/.cache/fn-certs"
@@ -643,8 +638,9 @@ def closure_listing(books: dict[str, str]) -> list[str]:
 # certification image, whose include-books are the portcullis).  v2 had no
 # world and filed image-made pairs with plain ones; a plain world that
 # installed one replayed its portcullis ahead of an attach-stobj (batch BB,
-# 2026-09-29).  The tag keeps the key spaces apart.
-KEY_VERSION = "fn-cert-key-v3 forms+world"
+# 2026-09-29). v4 additionally requires the :FN project namespace. Old
+# absolute-name entries need fresh certification, never a digest-only rekey.
+KEY_VERSION = "fn-cert-key-v4 forms+world+project-fn"
 
 
 def form_hash(source: Path) -> str:
@@ -1955,6 +1951,7 @@ def _install_key(root: Path, required: dict[str, str], roots, recertify,
                  toolchain_identity: str, acl2) -> str:
     return stable_identity({
         "run": os.environ.get(INSTALL_RUN_ENV, ""),
+        "key_version": KEY_VERSION,
         "sources": closure_listing(required), "roots": sorted(roots),
         "recertify": sorted(recertify), "toolchain": toolchain_identity,
         "acl2": str(Path(acl2).resolve()) if acl2 is not None else "",
@@ -2336,9 +2333,9 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             origin_kind: str | None = None) -> Report:
     """Cache every pair a certification manifest still vouches for.
 
-    ``origin`` is the absolute worktree path the certificates were *produced*
-    in, which is what their sub-book paths point at.  It defaults to each
-    manifest's own evidence path, then to ``root``; a farm run passes the path
+    ``origin`` is the absolute worktree path the certificates were produced
+    in, retained as provenance even though :FN book names are relative. It
+    defaults to each manifest's own evidence path, then to ``root``; a farm run passes the path
     the run used on the box.  ``origin_kind`` says what that tree is
     (``worktree``, ``gate`` or ``run``), which is what decides whether the
     entry may be installed on a machine where the tree still exists.
@@ -2371,6 +2368,9 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
         if not record.compatibility:
             report.unverified.append(
                 f"{name}: no qualified ACL2 launcher/core/runtime fingerprint")
+            continue
+        if record.compatibility.get("project_directories") != acl2_projects.DIRECTORIES:
+            report.unverified.append(f"{name}: certification predates the :FN project namespace")
             continue
         if record.world != "plain" and record.world not in cert_images.worlds(
                 root.resolve(), name):
@@ -2778,13 +2778,11 @@ def legacy_byte_key(root: Path, name: str) -> str:
 def rekey(root: Path, cache: Path, names: list[str] | None = None) -> RekeyReport:
     """File every entry made for this tree's exact bytes under its form key too.
 
-    Byte-keyed (v1) entries were all made in a plain world; each is filed
-    under its plain v3 key.  Run once per cache when the key moved (forms
-    2026-09-28, worlds 2026-09-29), against a
-    checkout of the commit that moved it, so the next run does not recertify
-    what the cache already holds.  An entry is linked (hard links, the bytes
-    are immutable) only under the key of a book whose whole closure has the
-    bytes the old key named, so it describes exactly this tree's forms.
+    Only entries whose recorded toolchain already used :FN qualify. Genuine
+    pre-project entries cannot be migrated by relabeling source digests:
+    they must be certified afresh. The certificate bytes are never rewritten.
+    A qualifying entry is linked only when every source in its closure still
+    matches the bytes the old key named.
     """
     report = RekeyReport(cache=cache)
     # The books under books/ and tests/acl2/ and everything they include (the
@@ -2808,6 +2806,9 @@ def rekey(root: Path, cache: Path, names: list[str] | None = None) -> RekeyRepor
         for directory in sorted(old.iterdir()):
             meta = read_meta(directory)
             if not meta or meta.get("closure") != sources:
+                continue
+            # Rekeying source digests cannot convert absolute book names.
+            if (meta.get("toolchain") or {}).get("project_directories") != acl2_projects.DIRECTORIES:
                 continue
             target = cache / key / directory.name
             if (target / "meta.json").is_file():

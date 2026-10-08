@@ -8,6 +8,9 @@
 ; book-of-event, restated here so that no book is added to the world).
 (in-package "ACL2")
 
+(unless (fboundp 'book-name-relative)
+  (load (merge-pathnames "../../books/book-name-relative.lisp" *load-truename*)))
+
 (defun ri-book-of (name wrld)
   (cond ((getpropc name 'predefined nil wrld) :built-in)
         (t (let ((ev-wrld (decode-logical-name name wrld)))
@@ -17,13 +20,13 @@
                nil)))))
 
 (defun ri-book-string (b)
-  (cond ((stringp b)
-         ; A relocated certificate names the tree it was made in; the book is
-         ; the path below its last "/books/".
-         (let ((i (search "/books/" b :from-end t)))
-           (if i (subseq b (1+ i)) b)))
-        ((sysfile-p b) (concatenate 'string "[books]/" (sysfile-filename b)))
-        (t (format nil "~(~a~)" b))))
+  (let ((name (book-name-relative b (project-dir-alist (w *the-live-state*)))))
+    (cond ((and name (not (eql 0 (search ":" name))))
+           ; Legacy unmapped absolute names may name a different origin tree.
+           (let ((i (search "/books/" name :from-end t)))
+             (if i (subseq name (1+ i)) name)))
+          (name name)
+          (t (format nil "~(~a~)" b)))))
 
 (defun ri-callees (f wrld)
   (let ((out nil))

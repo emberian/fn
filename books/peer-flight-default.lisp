@@ -132,7 +132,11 @@
            (equal (fn-native-admin-plan argv)
                   (fn-native-admin-peer-extend-plan (fn-native-admin-words argv))))
   :rule-classes nil
-  :hints (("Goal" :expand ((fn-native-admin-plan argv))
+  :hints (("Goal" :expand ((fn-native-admin-plan argv)
+                           (fn-native-admin-plan-arms-1 argv) (fn-native-admin-plan-arms-2 argv)
+                           (fn-native-admin-plan-arms-3 argv) (fn-native-admin-plan-arms-4 argv)
+                           (fn-native-admin-plan-arms-5 argv) (fn-native-admin-plan-arms-6 argv)
+                           (fn-native-admin-plan-arms-7 argv))
            :in-theory (union-theories '(member-equal (:e member-equal) (:e equal) (:e len)
                                         fn-native-admin-complaints-wordsp)
                                       (theory 'minimal-theory))))))

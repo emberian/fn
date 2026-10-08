@@ -105,3 +105,34 @@
                (:conclusion (equal (fn-rcw-acc-finish (fn-rcw-acc-step acc configs chunk)) (fn-rcw-acc-finish acc)))
                ((acc (fn-rcw-acc-init *rcw-configs*)) (configs *rcw-configs*) (chunk (take 1 *rcw-new*)))
                :fault "a chunk step that leaves the capture where it was")))
+
+; Host fnn-owner-reclaim-pass: tests/test_native_reclaim_walk.py::
+; test_a_pass_longer_than_two_chunks_installs_and_counts_the_available.
+; The local arena is filled by sealing the owner fixture's payloads.
+; IMPLEMENTATION MUTATION: fail to carry the next handle across chunks.
+(defun rcw-reset-h-steps (acc configs chunks fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil :measure (len chunks)))
+  (if (consp chunks)
+      (let ((r (fn-rcw-canon-acc-step acc configs (car chunks) 0 fn-arena)))
+        (if (eq r :bad) :bad
+          (rcw-reset-h-steps (car r) configs (cdr chunks) fn-arena)))
+    acc))
+
+(defteeth fn-rcw-canon-acc-steps-is-the-checkpoint-capture
+  :claim (()
+    (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
+          (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0)))
+      (and (equal (eq r :bad) (eq all :bad))
+           (implies (not (eq r :bad))
+                    (equal (fn-rcw-acc-finish (car r)) (fn-sco-capture configs all))))))
+  :subject fn-rcw-canon-acc-steps
+  :witness ((configs *rcw-configs*) (chunks *rcw-c2*))
+  :stobjs ((fn-arena (fn-arn-seal-many *rpt-payloads* fn-arena)))
+  :mutations ((reset-handle
+               (:conclusion
+                (equal (fn-rcw-acc-finish
+                        (rcw-reset-h-steps (fn-rcw-acc-init configs) configs chunks fn-arena))
+                       (fn-sco-capture configs
+                         (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0))))
+               ((configs *rcw-configs*) (chunks *rcw-c2*))
+               :fault "the pass-2 loop restarts each chunk at handle zero")))

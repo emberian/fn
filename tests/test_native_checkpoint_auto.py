@@ -135,7 +135,10 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # RL-02: the blocked rule is books/owner-publication-lifecycle.lisp's
         # fn-opl-blockedp (the budget/space rule for a budget or space deferral,
         # the abandonment's eligibility by the clock otherwise).
-        self.assertIn("(fn-opl-blockedp", due)
+        self.assertIn("(fn-opub-due", due)
+        transitions = (ROOT / "books/owner-publication-transitions.lisp").read_text()
+        pure_due = native_cuts.host_function(transitions, "fn-opub-due")
+        self.assertIn("(fn-opl-blockedp", pure_due)
         self.assertIn("(fn-owner-sco-budget override profile)", due)
         self.assertIn("(fn-ockp-space free)", due)
         capture = native_cuts.host_function(owner_host, "fn-owner-sco-capture")

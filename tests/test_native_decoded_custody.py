@@ -20,6 +20,8 @@ NEW = "<decoded-competing@empirical.invalid>"
 BODY = ("actual decoded hold <&> " + "abcdefghijklmnop" * 4 + "\r\n") * 256
 
 
+# Critical host path: the physical decoded return calls fn-dwj-retire;
+# the cancelled job must not publish a scalar result after retirement.
 @requires(IMAGE)
 class NativeDecodedCustodyTests(unittest.TestCase):
     def wait_event(self, owner, pattern, timeout=120):
