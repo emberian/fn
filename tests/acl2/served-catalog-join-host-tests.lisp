@@ -73,13 +73,12 @@
     (list (scji-parts o fn-arena fn-cat)
           (list (and (<= v (len seen)) (fn-scj-no-rowsp (nthcdr v seen)))    ; fn-scjs-seenp
                 (and (natp v) (<= v (len records)) (true-listp records))     ; fn-scjs-historyp
-                (fn-scar-view-indexedp o)
                 (fn-scj-seqs-sortedp c)
                 (fn-cnx-freshp c)
                 (fn-scj-conns-versions-atmostp (fn-own-conns o) v))           ; fn-scj-versions-okp
           (fn-sjh-files-okp-exec files pending fn-arena fn-cat))))
 
-(defconst *sjht-okp* (list (list t t t t t) (list t t t t t t) t))
+(defconst *sjht-okp* (list (list t t t t t) (list t t t t t) t))
 
 (defun sjht-strip (parts)
   ; scji-parts ends with the live view's view-of; the teeth compare it apart.
@@ -95,7 +94,7 @@
          (o (fn-ocfg-owner oc))
          (s (fn-own-store o))
          (rows (fn-sf-records (fn-sn-files s)))
-         (fn-cat (fn-sca-load-held-rows (butlast rows 1) (fn-own-view-index (fn-own-view o))
+         (fn-cat (fn-sca-load-held-rows (butlast rows 1) (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                         fn-arena fn-cat))
          (row (fn-sn-completion-record s))
          (w (fn-held-wire-of row fn-arena))
@@ -163,9 +162,9 @@
 
 (assert-event (equal (sjht-exec *cet-t2-oc* *cet-t2-payloads* '(:expected 1))
                      (list (list t nil t)
-                           (list (list t t t t t) (list t t t t t t) nil)
+                           (list (list t t t t t) (list t t t t t) nil)
                            (list :pending-left
-                                 (list (list nil nil t nil t) (list t t t t t t) nil)
+                                 (list (list nil nil t nil t) (list t t t t t) nil)
                                  0 t))))
 
 ; -----------------------------------------------------------------------------
@@ -175,9 +174,9 @@
 
 (assert-event (equal (sjht-exec *cet-t2-oc* *cet-t2-payloads* :none)
                      (list (list t nil t)
-                           (list (list t t t t t) (list t t t t t t) nil)
+                           (list (list t t t t t) (list t t t t t) nil)
                            (list nil
-                                 (list (list nil nil t nil t) (list t t t t t t) t)
+                                 (list (list nil nil t nil t) (list t t t t t) t)
                                  0 t))))
 
 ; -----------------------------------------------------------------------------
@@ -302,7 +301,7 @@
          (o (fn-ocfg-owner oc))
          (s (fn-own-store o))
          (rows (fn-sf-records (fn-sn-files s)))
-         (fn-cat (fn-sca-load-held-rows (butlast rows 1) (fn-own-view-index (fn-own-view o))
+         (fn-cat (fn-sca-load-held-rows (butlast rows 1) (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                         fn-arena fn-cat))
          (row (fn-sn-completion-record s))
          (w (fn-held-wire-of row fn-arena))
@@ -325,10 +324,10 @@
                 (sjht-colsp-parts pending2 fn-arena fn-cat)
                 (scji-catalogp (fn-own-view-archive captured)
                                (if (fn-own-view-group-index captured)
-                                   (fn-gidx-pin-with-control (fn-own-view-index captured)
+                                   (fn-gidx-pin-with-control
                                                              (fn-own-view-group-index captured)
                                                              (fn-own-view-control captured))
-                                 (fn-own-view-index captured))
+                                 (fn-midx-build (fn-state-articles (fn-own-view-archive captured))))
                                (fn-scr-view-of (fn-own-view-version captured) fn-cat) fn-arena fn-cat)
                 (<= (nfix (fn-own-view-version captured)) (nfix (fn-own-view-version view2)))
                 (fn-cat-count fn-cat))

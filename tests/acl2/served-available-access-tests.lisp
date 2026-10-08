@@ -51,8 +51,7 @@
   `(fn-make-state '("fn.test" "fn.other") '(("fn.test" . 4) ("fn.other" . 2))
                   (fn-cat-view-articles ,v *avac-a* *avac-c*) 0 nil nil))
 (defmacro avac-index (v)
-  `(fn-gidx-pin (fn-midx-build (fn-cat-view-articles ,v *avac-a* *avac-c*))
-                (fn-gidx-build (fn-cat-view-articles ,v *avac-a* *avac-c*))))
+  `(fn-gidx-pin (fn-gidx-build (fn-cat-view-articles ,v *avac-a* *avac-c*))))
 (defconst *avac-agent* (fn-nntp-string-octets "fn.example.invalid"))
 (defconst *avac-table*
   (fn-cfg-access-table (fn-cfg-delta-rows (fn-cfg-account-access "" "fn.other" "*"))))
@@ -82,16 +81,16 @@
 ;; (fn-scar-auth-step-pinned), the generated delegate and the reference
 ;; delegate, over the fixture at catalog version 3.
 (defmacro avac-step (as cache config line)
-  `(fn-av-scr-auth-step ,as nil nil 3 nil ,cache (avac-arch 3) (avac-index 3) nil ,config
+  `(fn-av-scr-auth-step ,as nil nil 3 ,cache (avac-arch 3) (avac-index 3) nil ,config
                         *avac-obs* *avac-obs* (avac-event ,line) 3 *avac-a* *avac-c*))
 (defmacro avac-reference (as config line)
-  `(fn-scar-auth-step-pinned ,as nil nil nil (avac-arch 3) (avac-index 3) nil ,config
+  `(fn-scar-auth-step-pinned ,as nil nil (avac-arch 3) (avac-index 3) nil ,config
                              *avac-obs* *avac-obs* (avac-event ,line) *avac-a*))
 (defmacro avac-delegate (as cache config line)
-  `(fn-av-scr-auth-delegate ,as nil nil 3 nil ,cache (avac-arch 3) (avac-index 3) nil ,config
+  `(fn-av-scr-auth-delegate ,as nil nil 3 ,cache (avac-arch 3) (avac-index 3) nil ,config
                             *avac-obs* *avac-obs* (avac-event ,line) 3 *avac-a* *avac-c*))
 (defmacro avac-reference-delegate (as config line)
-  `(fn-scar-auth-delegate-pinned ,as nil nil nil (avac-arch 3) (avac-index 3) nil ,config
+  `(fn-scar-auth-delegate-pinned ,as nil nil (avac-arch 3) (avac-index 3) nil ,config
                                  *avac-obs* *avac-obs* (avac-event ,line) *avac-a*))
 
 ; The template access-check removed from the generator, verbatim.
@@ -113,7 +112,7 @@
                          (fn-post-result-effects r) (fn-post-result-submission r))))
 
 (defmacro avac-prefix (as line)
-  `(avac-prefix-auth-delegate ,as nil nil 3 nil nil (avac-arch 3) (avac-index 3) nil *avac-config*
+  `(avac-prefix-auth-delegate ,as nil nil 3 nil (avac-arch 3) (avac-index 3) nil *avac-config*
                               *avac-obs* *avac-obs* (avac-event ,line) 3 *avac-a* *avac-c*))
 
 (defun avac-flat (x)
@@ -251,13 +250,13 @@
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
   (let* ((fn-octets (fn-octets-from-list octets fn-octets))
          (n (fn-octets-len fn-octets)))
-    (mv (list (fn-av-span-restrictedp conn 0 n nil nil nil nil nil fn-octets fn-arena fn-cat)
-              (equal (fn-av-scr-feed-span conn 0 n nil nil nil nil nil fn-octets fn-arena fn-cat)
-                     (fn-scr-feed-span conn 0 n nil nil nil nil nil fn-octets fn-arena fn-cat))
+    (mv (list (fn-av-span-restrictedp conn 0 n nil nil nil nil fn-octets fn-arena fn-cat)
+              (equal (fn-av-scr-feed-span conn 0 n nil nil nil nil fn-octets fn-arena fn-cat)
+                     (fn-scr-feed-span conn 0 n nil nil nil nil fn-octets fn-arena fn-cat))
               (fn-record-octets-string
                (avac-flat (fn-served-result-effects
                            (fn-served-counted-result
-                            (fn-av-scr-step-span-fast conn 0 n nil nil nil nil nil
+                            (fn-av-scr-step-span-fast conn 0 n nil nil nil nil
                                                       fn-octets fn-arena fn-cat))))))
         fn-octets)))
 

@@ -96,7 +96,7 @@
 ; live one.
 (defconst *wit-art* (fn-make-article "<t1@x>" nil nil nil t 0))
 (defconst *wit-view*
-  (fn-own-view-make-visible 0 nil nil nil nil nil *wit-ws0* (list *wit-art*) nil nil))
+  (fn-own-view-make-visible 0 nil nil nil nil *wit-ws0* (list *wit-art*) nil nil))
 (defconst *wit-cv* (fn-wix-refresh nil (fn-own-view-withdrawals *wit-view*)))
 ; Positive: the antecedent and the conclusion, targeted (the walk finds the
 ; raw article) and untargeted (the catalog answers).

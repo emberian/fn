@@ -97,9 +97,7 @@
 (assert-event (not (fn-lgoc-invariantp
                     (fn-sbud-prepare *lgt-bad-reserved* *acar-t-record* 1000000))))
 
-; fn-lgoc-pidx-sbud-prepare-preserves-invariant: the host's prepare, with its
-; two carried index premises, on the same witness.
-(assert-event (fn-scar-view-indexedp (fn-ocfg-owner *lgt-reserved*)))
+; fn-lgoc-pidx-sbud-prepare-preserves-invariant: the host's prepare on the same witness.
 
 (assert-event (equal (fn-pidx-sbud-prepare *lgt-reserved* *acar-t-record* 1000000)
                      *lgt-prepared*))
@@ -387,45 +385,6 @@
       (fn-lgoc-invariantp (fn-rcon-ocfg-io *lgt-prepared* :recovery-barrier :ok))
       (fn-lgoc-invariantp (fn-rcon-ocfg-io *lgt-prepared* :complete :ok))))
 
-; G1-4, fn-lgoc-pidx-sbud-prepare-preserves-invariant's two index premises.
-; CORRUPTED owner: the finished owner (it holds the article) reserved again,
-; its view's Message-ID trie replaced by the empty trie (it hides the held
-; article; fn-scar-view-indexedp fails, the invariant holds).  A record under
-; the held Message-ID is still refused (the owner is unchanged, so the
-; invariant holds after it), and a fake trie refuses a fresh record
-; (post-identity-index-tests).  A corrupted index turns the host's prepare
-; into a refusal, never into a staging the invariant rejects, on every
-; witness tried; the premises are those of the bridge fn-pidx = fn-sbud
-; (post-identity-index-tests' teeth), not of this invariant.  No tooth here.
-; The Store index premise (fn-ceis-indexedp) is redundant: the weakened
-; theorem is proved in owner-prepare-served-events-tests
-; (g12b-lgoc-pidx-sbud-prepare-without-ceis-indexedp).
-(defconst *lgt-f-reserved* (fn-olr-ocfg-reserve *lgt-finished*))
-(defun lgt-view-with-index (v index)
-  (fn-own-view-make-visible
-   (fn-own-view-version v) (fn-own-view-frontier v) (fn-own-view-archive v)
-   (fn-own-view-verdicts v) index (fn-own-view-group-index v) (fn-own-view-withdrawals v)
-   (fn-own-view-raw v) (fn-own-view-withdrawn v) (fn-own-view-keyring v)))
-(defun lgt-owner-with-view (o v)
-  (fn-own-make (fn-own-store o) v (fn-own-conns o) (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
-               (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
-               (fn-own-node-secret o) (fn-own-refused o)))
-(defconst *lgt-blind-reserved*
-  (fn-ocfg-with-owner *lgt-f-reserved*
-                      (lgt-owner-with-view (fn-ocfg-owner *lgt-f-reserved*)
-                                           (lgt-view-with-index (fn-own-view (fn-ocfg-owner *lgt-f-reserved*))
-                                                                (fn-midx-build nil)))))
-(make-event
- `(defconst *lgt-blind-prepared*
-    ',(with-guard-checking :none
-        (fn-pidx-sbud-prepare *lgt-blind-reserved* (own-record 3 9 "<ocmt@example>") 1000000))))
-(assert-event
- (and (fn-lgoc-invariantp *lgt-blind-reserved*)
-      (not (fn-scar-view-indexedp (fn-ocfg-owner *lgt-blind-reserved*)))
-      (equal (lgt-phase *lgt-blind-prepared*) :reserved)
-      (fn-lgoc-invariantp *lgt-blind-prepared*)))
 ; fn-lgoc-ocl-relation-of-owner-with-store is a lemma of the step keystones
 ; (their hints instantiate it); it is no longer a registry event of PRF-286.
 

@@ -48,7 +48,6 @@
                      2))
 ; The conclusion.
 (assert-event (fn-ocl-relation *orec-t-oc*))
-(assert-event (fn-scar-view-indexedp (fn-ocfg-owner *orec-t-oc*)))
 ; Recovery answers the generation the live owner had published.
 (assert-event (equal (fn-ocfg-config *orec-t-oc*) (fn-ocfg-config *ocp-published*)))
 (assert-event (equal (fn-cfg-generation (fn-ocfg-config *orec-t-oc*)) 3))
@@ -57,7 +56,6 @@
 (defconst *orec-t-admin* (cdr (fn-ocfg-open *orec-t-oc* nil)))
 (assert-event (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *orec-t-admin*))))
 (assert-event (fn-ocl-relation *orec-t-admin*))
-(assert-event (fn-scar-view-indexedp (fn-ocfg-owner *orec-t-admin*)))
 
 ; The ground journal under the same fixtures (config-observed-tests'
 ; *cpo-t-configs*, *cpo-t-events*, frontier 8), with a zero connection bound.

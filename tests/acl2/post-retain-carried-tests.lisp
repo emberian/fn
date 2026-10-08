@@ -341,8 +341,6 @@
 
 ; Without fn-ocl-view-visiblep.
 
-; Without fn-scar-view-indexedp.
-
 ; Without fn-ceis-indexedp.
 
 

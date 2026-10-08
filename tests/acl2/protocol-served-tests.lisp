@@ -21,7 +21,7 @@
 ;      answer (221, 211, 411, 224; OVER's cursor arm answers a cursor only
 ;      with no Xref server named: c07's spot-check); and the composed subject
 ;      on BOTH routes reaches each declared row (fn-scr-command, the
-;      unrestricted route's command layer; fn-pix-command-pinned, the
+;      unrestricted route's command layer; fn-nntp-command-pinned, the
 ;      restricted route's dispatcher): a reply, never the 500 of an
 ;      unrecognized command (the HELP closure's converse, by evaluation).
 ;  (2) removal witnesses: view-articles (the pinned archive served at a view
@@ -179,7 +179,7 @@
 ;; Composed reachability on BOTH routes: each declared row's first :teeth
 ;; line draws a reply other than 500 from the unrestricted route's command
 ;; layer (fn-scr-command) and from the restricted route's dispatcher
-;; (fn-pix-command-pinned).
+;; (fn-nntp-command-pinned).
 (defun pst-first-lines (names rows)
   (declare (xargs :verify-guards nil))
   (if (consp names)
@@ -209,7 +209,7 @@
                              3 fn-arena fn-cat)))
            (pst-not-500
             (fn-nntp-result-effects
-             (fn-pix-command-pinned *pst-session* arch index nil *pst-env-x*
+             (fn-nntp-command-pinned *pst-session* arch index nil *pst-env-x*
                                     (fn-nntp-tokenize (fn-nntp-string-octets (car lines)))
                                     fn-arena)))
            (pst-reaches (cdr lines) arch index fn-arena fn-cat))
@@ -244,7 +244,7 @@
     (and (pst-not-500 (fn-nntp-result-effects
                        (fn-scr-command session arch index nil env tokens 3 fn-arena fn-cat)))
          (pst-not-500 (fn-nntp-result-effects
-                       (fn-pix-command-pinned session arch index nil env tokens fn-arena))))))
+                       (fn-nntp-command-pinned session arch index nil env tokens fn-arena))))))
 
 (defun pst-result-code (result)
   (declare (xargs :verify-guards nil))
@@ -487,7 +487,7 @@
                 (fn-nntp-date-response *pst-session* *pst-discovery-env-x*))
          (equal (pst-served-at-session *pst-session* *pst-discovery-env-x* "DATE"
                                        arch index *pst-a* *pst-c*)
-                (fn-pix-command-pinned *pst-session* arch index nil *pst-discovery-env-x*
+                (fn-nntp-command-pinned *pst-session* arch index nil *pst-discovery-env-x*
                                        (pst-tokens "DATE") *pst-a*))
          (equal (fn-nntp-result-effects (pst-served-at-session *pst-session* *pst-discovery-env-x*
                                          "DATE" arch index *pst-a* *pst-c*))
