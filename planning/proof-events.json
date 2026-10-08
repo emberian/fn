@@ -3167,11 +3167,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-intern-events-is-intern-at"
+          "name": "fn-ssr-step-rows-are-fn-scka-intern-at"
         },
         {
           "kind": "theorem",
-          "name": "fn-intern-events-arena-is-payloads"
+          "name": "fn-scka-fold-at-arena-is-payloads"
         },
         {
           "kind": "theorem",
@@ -3214,7 +3214,7 @@
           "name": "fn-bs-read-ranges-is-the-range"
         }
       ],
-      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-083 statement: fn-bs-read-ranges-read-the-whole-file, fn-scka-recover-rows-rii-is-recover-rows, fn-scka-src-payloads-of-canon-srcs. Not hosted-event claims; no reach baseline exemption is added."
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-083 statement: fn-bs-read-ranges-read-the-whole-file, fn-scka-recover-rows-rii-is-recover-rows, fn-scka-src-payloads-of-canon-srcs. Not hosted-event claims; no reach baseline exemption is added. Shared fold merge: replace the removed nil/0 intern correspondences with fn-ssr-step-rows-are-fn-scka-intern-at and fn-scka-fold-at-arena-is-payloads; no snapshot restriction."
     },
     {
       "id": "PRF-082",
