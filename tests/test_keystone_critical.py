@@ -377,6 +377,14 @@ class LowerStale(unittest.TestCase):
         self.assertEqual(sorted(dropped["base:durability"]), ["demoted", "gone"])
         self.assertEqual(new_owed["live"], owed["live"])
 
+    def test_retire_line_names_the_witness_files(self):
+        line = kc.retire_line("fn-k", {"owner_book": "tests/acl2/k-tests.lisp"},
+                              {"host_test": "tests/test_native_k.py::t", "trace_witness": "tests/acl2/k-tests.lisp::w",
+                               "mutation": "tests/acl2/k-tests.lisp::m"})
+        self.assertEqual(line, "completed fn-k: premises/wrong_answer tests/acl2/k-tests.lisp; "
+                               "host_test tests/test_native_k.py::t; trace_witness tests/acl2/k-tests.lisp::w; "
+                               "mutation tests/acl2/k-tests.lisp::m")
+
     def test_lower_complete_drops_only_current_full_packages(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

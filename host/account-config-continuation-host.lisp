@@ -88,9 +88,10 @@
                      (fn-owner-account-config-preparation-state state)
                      (fn-owner-account-config-source state))))
      (mv-let (word next) (fn-act-suspend (fn-cp-nth 1 row) output row)
-      (mv word fn-page-read-pool
-          (if (eq word :account-turn-retained)
-              (fn-owner-account-turn-keep next state) state)))))
+      (if (eq word :account-turn-retained)
+          (let ((state (fn-owner-account-turn-keep next state)))
+            (mv word fn-page-read-pool state))
+        (mv word fn-page-read-pool state)))))
    (t (mv :account-return-pending fn-page-read-pool state)))))
 
 (defun fn-owner-account-config-resume
