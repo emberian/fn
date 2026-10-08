@@ -66,7 +66,8 @@ is taken on tmpfs (/dev/shm), in one unit, on a box checked quiet.
             Each metric's value
             is the smaller of the two (a ratchet, as proof_cost's); `check`
             prints IMPROVED for a figure past the tolerance below it.  Refuses
-            to raise an existing figure without --allow-regression.
+            to raise an existing figure without a planning/repair/ACKS.md
+            `ratchet:throughput_gate:<metric>` line (tools/ratchet.py).
 """
 
 from __future__ import annotations
@@ -85,6 +86,8 @@ import threading
 import time
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from tools import ratchet  # noqa: E402
 BASELINE = ROOT / "planning" / "throughput-baseline.json"
 CAUSES = ROOT / "planning" / "throughput-causes.json"
 RUNS = ROOT / "planning" / "evidence" / "throughput"
@@ -744,7 +747,7 @@ def check(a):
 def write_baseline(a):
     release, dev = load_json(Path(a.release)), load_json(Path(a.dev))
     old = load_json(BASELINE, {"metrics": {}})
-    metrics, raised = {}, []
+    metrics = {}
     for metric, floor in METRICS.items():
         values = [d.get(metric) for d in (release, dev)]
         if values[0] is None and values[1] is not None and metric in NEW_METRICS:
@@ -754,12 +757,12 @@ def write_baseline(a):
             raise SystemExit("%s missing from a run" % metric)
         else:
             value = min(values)
-        prior = old.get("metrics", {}).get(metric, {}).get("value")
-        if prior is not None and value > prior and not a.allow_regression:
-            raised.append(metric)
         metrics[metric] = {"value": value, "floor": floor, "release": values[0], "dev": values[1]}
-    if raised:
-        raise SystemExit("would raise %s; rerun with --allow-regression and name the cause" % ", ".join(raised))
+    # Only a figure already in the baseline is compared: a metric new to it is declared by METRICS.
+    prior = {m: row["value"] for m, row in old.get("metrics", {}).items() if m in metrics}
+    if ratchet.report("throughput_gate", ratchet.refused(
+            "throughput_gate", prior, {m: row["value"] for m, row in metrics.items() if m in prior})):
+        return 1
     for metric, row in metrics.items():
         if row["dev"] > limit(row["value"], row["floor"]):
             print("dev %s: %s %s over the release's %s (limit %.3f): name it in %s"
@@ -817,7 +820,6 @@ def main(argv=None):
     w = sub.add_parser("baseline")
     w.add_argument("--release", required=True)
     w.add_argument("--dev", required=True)
-    w.add_argument("--allow-regression", action="store_true")
     a = p.parse_args(argv)
     if a.cmd == "box":
         return box(a)

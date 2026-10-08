@@ -97,6 +97,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import reach_check  # noqa: E402
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from tools import ratchet  # noqa: E402
+
 ROOT = reach_check.ROOT
 BASELINE = ROOT / "planning" / "premise-baseline.json"
 
@@ -428,9 +431,13 @@ def load_baseline() -> dict:
     return json.loads(BASELINE.read_text())
 
 
-def write_baseline(findings: dict) -> None:
+def write_baseline(findings: dict) -> int:
+    """Rewrite the baseline; it only shrinks (tools/ratchet.py): a new row needs an ACKS.md line."""
     current = load_baseline()
     existing = current.get("accepted", {})
+    old = ratchet.old_rows("premise_audit", BASELINE, lambda: dict.fromkeys(existing, 1))
+    if ratchet.report("premise_audit", ratchet.refused("premise_audit", old, dict.fromkeys(findings, 1))):
+        return 1
     accepted = {}
     for r in sorted(findings):
         accepted[r] = existing.get(r, findings[r]["class"] + "; no one has said which host entry establishes it")
@@ -445,6 +452,7 @@ def write_baseline(findings: dict) -> None:
             "proving the establishment at the host entry (an open, an init, a "
             "recovery), never by editing this file."),
          "accepted": accepted}, indent=2, sort_keys=True) + "\n")
+    return 0
 
 
 def summary_line(findings: dict, premises: dict, baseline: dict) -> str:
@@ -514,7 +522,8 @@ def main(argv=None) -> int:
     baseline = load_baseline()
 
     if arguments.baseline:
-        write_baseline(findings)
+        if write_baseline(findings):
+            return 1
         print(f"premise_audit: baseline written, {len(findings)} entries")
         return 0
     if arguments.pattern and not arguments.strict:

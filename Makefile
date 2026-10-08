@@ -2948,12 +2948,9 @@ check:
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
-# The raw host code (host/native/*.lisp) runs on the same 1,024 KiB stack and
-# depth_check reads only ACL2 functions: every non-tail recursion there is in
-# tools/raw_depth_baseline.json with its bound named (lane depth-debt; the
-# mux's per-step re-entry and the BP effect chain were loops made here).
-	@$(CHECK_STEP) $(PYTHON) tools/raw_depth_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_raw_depth_check
+# depth_check also reads the raw host code (host/native/*.lisp: the "raw" section
+# of the same baseline; the mux's per-step re-entry and the BP effect chain were
+# loops made by lane depth-debt).
 # Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
 # arithmetic on an observation's fields at a call site assumed a unit twice
 # (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json
