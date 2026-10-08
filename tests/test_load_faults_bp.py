@@ -392,6 +392,14 @@ class WireTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             peer.transfer(b'abc')
 
+    def test_refusal_is_typed_only_for_the_current_transfer(self):
+        frame = b'\x03\x04' + bytes(8)
+        with self.assertRaises(bp.TransferRefused) as caught:
+            self.peer([frame]).transfer(b'abc')
+        self.assertEqual(caught.exception.frame, frame)
+        with self.assertRaises(ValueError):
+            self.peer([b'\x03\x04' + (1).to_bytes(8, 'big')]).transfer(b'abc')
+
     def test_handshake_and_segment_frames_match_raw_peer_with_negotiated_mru(self):
         from tests.test_bp_node_native import RawTcpclPeer
         for length in (512, 1024, 1025, 2500):
@@ -456,6 +464,193 @@ class WireTests(unittest.TestCase):
         peer.segment_mru = 2
         with self.assertRaisesRegex(ValueError, '3/3'):
             peer.transfer(b'abc')
+
+
+class TransferTests(unittest.TestCase):
+    def setUp(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        pair = self.pair = object.__new__(bp.Pair)
+        pair.h = faults.History()
+        pair.notes = {'commands': [], 'inventory_exceptions': []}
+        pair.c = SimpleNamespace(image='/not-launched', recovery=1, serial=1,
+                                  run=SimpleNamespace(node=SimpleNamespace(work=root)))
+        pair.nodes = {'A': SimpleNamespace(work=root / 'A')}
+        pair.requests = {0: b'first', 1: b'second'}
+        pair.bundles, pair.acks, pair.offered, pair.cut_events = {}, {}, set(), []
+        self.sender, self.receiver = Mock(), Mock()
+        self.receiver.returncode = 0
+        self.receiver.communicate.return_value = (b'', b'')
+        pair.active = {'A': (self.sender, 1000)}
+        pair.relay = Mock()
+        pair.start_bp = Mock(return_value=(self.receiver, 1001))
+        pair.stop_bp = Mock()
+        pair.dispatch = Mock()
+        pair.capture_bundle = Mock()
+        self.enterContext(patch('tests.native_harness.environment', return_value={}))
+
+    @staticmethod
+    def result(rc=1, stdout=None):
+        if stdout is None:
+            stdout = (b'TCPCL bp-service event (:OUTBOUND-REFUSED 0 "bp-service" 4)\n'
+                      b'TCPCL bp-service refused outbound xfer=0 reason=4\n'
+                      b'BP forwarding retained reason=refused\n')
+        return SimpleNamespace(returncode=rc, stdout=stdout, stderr=b'')
+
+    def test_all_requests_and_retries_keep_one_durable_creation_sequence_namespace(self):
+        # Pin the real CLI boundary: distinct works share the SAME durable
+        # allocator; retry names/ADU/journal are stable. ACL2 owns its values.
+        commands = []
+        def command(argv, **kwargs):
+            commands.append(argv)
+            return self.result(rc=0, stdout=b'accepted\n')
+        with patch('tests.native_harness.run', side_effect=command):
+            for i in (0, 1, 0):
+                self.pair.transfer(i, 'clean', set())
+        self.assertEqual(len({str(c[7]) for c in commands}), 1)
+        self.assertEqual(Path(commands[0][7]).name, 'request-fnbs')
+        self.assertNotEqual(commands[0][10:12], commands[1][10:12])
+        self.assertEqual(commands[0][6:], commands[2][6:])
+        self.assertNotEqual(commands[0][7], self.pair.journal('A'))
+
+    def test_native_refusal_completes_without_waiting_for_unreached_fault_or_receipt(self):
+        for mode in ('clean', 'decision', 'kind7', 'drop'):
+            with self.subTest(mode=mode), patch('tests.native_harness.run', return_value=self.result()):
+                witnessed = set()
+                self.receiver.communicate.return_value = (b'BP refused xfer=0 reason=identity-conflict\n', b'')
+                refused = self.pair.execute({'action': 'transfer', 'i': 1, 'mode': mode}, witnessed)
+                self.assertEqual(refused['wire_refusals'], [{'xfer': 0, 'reason': 4}])
+                self.assertIn('identity-conflict', refused['receiver_reply'])
+                self.assertEqual(refused['rc'], 1)
+                self.assertEqual(witnessed, set())
+                self.assertEqual(self.pair.offered, set())
+                self.assertTrue(all(op['outcome'] == 'completed' for op in self.pair.h.ops))
+                self.assertTrue(all(op['rc'] == 1 for op in self.pair.h.ops))
+        self.receiver.output_until.assert_not_called()
+        self.sender.output_until.assert_not_called()
+        self.pair.capture_bundle.assert_not_called()
+        self.pair.dispatch.assert_not_called()
+        self.assertTrue(all(c.args == ('B',) and not c.kwargs for c in self.pair.stop_bp.call_args_list))
+
+    def test_non_refusal_errors_and_uncertainty_are_not_completed_exchange_refusals(self):
+        from tests.native_harness import EXIT
+        for result in (self.result(rc=EXIT.UNCERTAIN), self.result(stdout=b'open failed\n'),
+                       self.result(stdout=b'BP forwarding retained reason=refused\n')):
+            with self.subTest(result=result), patch('tests.native_harness.run', return_value=result):
+                with self.assertRaisesRegex(RuntimeError, 'bp-service run exit'):
+                    self.pair.transfer(1, 'kind7', set())
+        exchanges = [op for op in self.pair.h.ops if op['kind'] == 'BP-EXCHANGE']
+        self.assertTrue(all(op['outcome'] == 'attempted-uncertain' for op in exchanges))
+
+    def test_duplicate_refusal_is_an_outcome_without_a_duplicate_witness(self):
+        self.pair.bundles[0] = b'same accepted bundle'
+        with patch.object(bp, 'WirePeer') as make_peer:
+            peer = make_peer.return_value
+            peer.transfer.side_effect = bp.TransferRefused(b'\x03\x04' + bytes(8))
+            witnessed = set()
+            refused = self.pair.execute({'action': 'duplicate', 'i': 0}, witnessed)
+        self.assertEqual(refused['wire_hex'], '03040000000000000000')
+        self.assertEqual(self.pair.h.ops[0]['outcome'], 'completed')
+        self.assertNotIn('duplicate', witnessed)
+        self.assertEqual(self.pair.acks, {})
+
+    def test_duplicate_uses_same_accepted_bundle_in_fresh_sessions(self):
+        bundle = b'same accepted bundle'
+        self.pair.bundles[0] = bundle
+        peers = [Mock(), Mock()]
+        for peer in peers:
+            peer.transfer.return_value = b'\x02\x03' + bytes(8) + len(bundle).to_bytes(8, 'big')
+        with patch.object(bp, 'WirePeer', side_effect=peers) as make_peer:
+            witnessed = set()
+            for _ in range(2):
+                self.pair.transfer(0, 'duplicate', witnessed)
+        self.assertEqual(make_peer.call_count, 2)
+        for peer in peers:
+            peer.transfer.assert_called_once_with(bundle)
+            peer.close.assert_called_once_with(graceful=True)
+        self.assertEqual(witnessed, {'duplicate'})
+
+    def test_converge_retains_every_refusal_and_attempts_each_pending_request_once(self):
+        refusal = {'rc': 1, 'article': 1}
+        self.pair.transfer = Mock(side_effect=[refusal, None])
+        self.assertEqual(self.pair.converge(set()), [refusal])
+        self.assertEqual([c.args[:2] for c in self.pair.transfer.call_args_list], [(0, 'clean'), (1, 'clean')])
+
+    def test_one_inventory_failure_does_not_discard_the_other(self):
+        self.pair.observe_node = Mock(side_effect=[RuntimeError('A unreachable'), observation({'<b>': 'b'})])
+        observations = self.pair.observe()
+        self.assertEqual(observations, {'B': observation({'<b>': 'b'})})
+        self.assertEqual(self.pair.notes['inventory_exceptions'][0]['node'], 'A')
+        self.assertIn(('P5-RECOVERY', 'A: complete inventory missing'), bp.check([], observations))
+
+    def test_trial_collects_recipe_and_drain_refusals_then_checks_both_inventories(self):
+        pair = self.pair
+        pair.observe = Mock(return_value={'A': observation({'<lost>': 'digest'}), 'B': observation({})})
+        pair.close = Mock()
+        def make_pair(campaign, history):
+            pair.h, pair.notes = history, history.trial_notes
+            post(history, '<lost>', 'digest')
+            return pair
+        recipe = [{'step': 7, 'action': 'transfer', 'i': 0, 'mode': 'kind7'},
+                  {'step': 8, 'action': 'transfer', 'i': 1, 'mode': 'decision'}]
+        campaign = object.__new__(bp.BpCampaign)
+        with patch.object(bp, 'Pair', side_effect=make_pair), \
+                patch('tests.native_harness.run', return_value=self.result()):
+            h, findings, notes = campaign.trial(recipe)
+        self.assertIsNone(notes['exception'])
+        self.assertEqual([s['outcome'] for s in notes['steps']], ['completed', 'completed'])
+        self.assertEqual(len(notes['refusals']), 4)
+        self.assertEqual([r.get('phase') for r in notes['refusals']], [None, None, 'converge', 'converge'])
+        self.assertEqual(len(notes['observations']), 2)
+        self.assertFalse(any('inventory missing' in d for _, d in findings))
+        self.assertIn(('P1-DURABLE', 'B: missing or changed: <lost>'), findings)
+        self.assertIn(('P2-IDENTITY', 'divergence is nonzero'), findings)
+        self.assertTrue(any(p == 'P5-RECOVERY' and 'fn-tcl-delivery-refuse-reason' in d for p, d in findings))
+        self.assertTrue(all(op['outcome'] == 'completed' for op in h.ops))
+        pair.observe.assert_called_once()
+        pair.close.assert_called_once()
+
+    def test_unexpected_transfer_exception_still_attempts_inventory(self):
+        pair = self.pair
+        pair.observe = Mock(return_value={n: observation({}) for n in ('A', 'B')})
+        pair.close = Mock()
+        def make_pair(campaign, history):
+            pair.h, pair.notes = history, history.trial_notes
+            return pair
+        campaign = object.__new__(bp.BpCampaign)
+        with patch.object(bp, 'Pair', side_effect=make_pair), \
+                patch('tests.native_harness.run', return_value=self.result(stdout=b'unknown failure')):
+            _, findings, notes = campaign.trial([{'step': 7, 'action': 'transfer', 'i': 1, 'mode': 'clean'}])
+        self.assertEqual(notes['failing_step']['step'], 7)
+        self.assertEqual(notes['exception']['type'], 'RuntimeError')
+        self.assertEqual(len(notes['observations']), 2)
+        self.assertFalse(any('inventory missing' in d for _, d in findings))
+        pair.close.assert_called_once()
+
+    def test_other_boot_restores_true_domain_and_requires_recovery_observation(self):
+        from tests.native_harness import EXIT
+        pair = self.pair
+        pair.nodes['B'] = SimpleNamespace(work=pair.nodes['A'].work.parent / 'B')
+        lifecycle = pair.journal('B') / 'lifecycle'
+        lifecycle.mkdir(parents=True)
+        (lifecycle / 'held').write_bytes(b'held row')
+        domain = pair.journal('B') / 'clock-domain.fnb'
+        domain.write_bytes(b'true domain')
+        def dispatch(expected=0):
+            if expected == EXIT.UNCERTAIN:
+                self.assertEqual(domain.read_bytes(), b'other domain')
+                return SimpleNamespace(stderr=b'restart fenced: clock domain different-boot')
+            self.assertEqual(domain.read_bytes(), b'true domain')
+            return SimpleNamespace(stdout=b'BP FNBS recovered held=1\n')
+        pair.dispatch.side_effect = dispatch
+        with patch('tests.native_harness.Acl2Session'), \
+                patch('tests.native_harness.acl2_octets', return_value=b'other domain'), \
+                patch.object(Path, 'read_text', return_value='00000000-0000-0000-0000-000000000000'):
+            witnessed = set()
+            pair.other_boot(witnessed)
+        self.assertEqual(witnessed, {'different-boot'})
+        self.assertEqual(domain.read_bytes(), b'true domain')
+        self.assertEqual((lifecycle / 'held').read_bytes(), b'held row')
+        self.assertEqual(pair.dispatch.call_count, 2)
 
 
 if __name__ == '__main__':

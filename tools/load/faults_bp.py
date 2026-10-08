@@ -95,6 +95,13 @@ def complete_observation(obs):
             and isinstance(obs.get('article_count'), int))
 
 
+class TransferRefused(Exception):
+    """An observed XFER_REFUSE for this session's transfer, not a lost ACK."""
+    def __init__(self, frame):
+        self.frame = frame
+        super().__init__('XFER_REFUSE ' + frame.hex())
+
+
 class WirePeer:
     """Small synchronous raw TCPCL peer, like NativeBpNodeTests.RawTcpclPeer.
 
@@ -203,6 +210,8 @@ class WirePeer:
                 frame = self.frame()
                 if frame[0] != 4:
                     break
+            if frame[0] == 3 and int.from_bytes(frame[2:10], 'big') == 0:
+                raise TransferRefused(frame)
             if (frame[0] != 2 or frame[1] != flags
                     or int.from_bytes(frame[2:10], 'big') != 0
                     or int.from_bytes(frame[10:18], 'big') != end):
@@ -261,11 +270,19 @@ class BpCampaign(Campaign):
         h.recorder.interleaved = True
         notes = {'steps': [{'recipe': dict(step), 'outcome': 'not-attempted'} for step in recipe],
                  'failing_step': None, 'exception': None, 'cleanup_exceptions': [],
+                 'inventory_exceptions': [],
                  'nodes': {}, 'commands': [], 'refusals': [], 'recipe': list(recipe)}
         h.trial_notes = notes
         pair = None
         current = {'phase': 'setup'}
         step_log = None
+
+        def record_refusal(refused, context):
+            notes['refusals'].append(dict(refused, **context))
+            findings.append(('P5-RECOVERY', refused.get('operation', 'workflow-enqueue')
+                             + ' refused by ' + refused['decision'] + ': '
+                             + refused['reply_line'].strip()))
+
         try:
             pair = Pair(self, h)
             for step, step_log in zip(recipe, notes['steps']):
@@ -278,11 +295,9 @@ class BpCampaign(Campaign):
                 step_log.update(op_id=op['op_id'], send_time=op['send_time'], outcome=op['outcome'])
                 refused = pair.execute(step, witnessed)
                 if refused is not None:
-                    # An observed pre-publication refusal is a completed
-                    # operation, not an exception or uncertain acceptance.
-                    notes['refusals'].append(dict(refused, recipe=dict(step)))
-                    findings.append(('P5-RECOVERY', 'workflow-enqueue refused by '
-                                     + refused['decision'] + ': ' + refused['reply_line'].strip()))
+                    # Explicit refusals complete the attempt without making
+                    # its intended effect or fault witness true.
+                    record_refusal(refused, {'recipe': dict(step)})
                     h.complete(op, refused['reply_line'].encode('utf-8'))
                     op['rc'] = refused['rc']
                     step_log['refusal'] = refused
@@ -291,9 +306,8 @@ class BpCampaign(Campaign):
                 step_log.update(outcome=op['outcome'], complete_time=op['complete_time'])
             step_log = None
             current = {'phase': 'converge'}
-            pair.converge(witnessed)
-            current = {'phase': 'inventory'}
-            observations = pair.observe()
+            for refused in pair.converge(witnessed) or []:
+                record_refusal(refused, {'phase': 'converge'})
         except Exception as exc:
             notes['failing_step'] = current
             notes['exception'] = exception_details(exc)
@@ -302,6 +316,16 @@ class BpCampaign(Campaign):
             findings.append(('P5-RECOVERY', 'required observation failed: ' + type(exc).__name__ + ': ' + str(exc)))
         finally:
             if pair is not None:
+                # Inventories remain required evidence even after an earlier
+                # refusal or exception. Keep the original failure diagnostics.
+                try:
+                    observations = pair.observe()
+                except Exception as exc:
+                    details = exception_details(exc)
+                    notes['inventory_exceptions'].append(details)
+                    if notes['failing_step'] is None:
+                        notes.update(failing_step={'phase': 'inventory'}, exception=details)
+                    findings.append(('P5-RECOVERY', 'inventory failed: ' + str(exc)))
                 try:
                     pair.close()
                 except Exception as exc:
@@ -561,6 +585,7 @@ class Pair:
         self.file('A', 'bundle-%d.bp' % i).write_bytes(found[0])
 
     def transfer(self, i, mode, witnessed):
+        from tests.native_harness import EXIT
         if i not in self.requests or (mode == 'duplicate' and i not in self.bundles):
             return  # Deleted producer in a shrink candidate: explicit dependency no-op.
         sender, sender_port = self.active['A']
@@ -571,6 +596,7 @@ class Pair:
         op = self.h.plan('BP-EXCHANGE', {'i': i, 'mode': mode})
         op['step'] = self.h.recorder.control(['F8', 'exchange', str(i), mode])
         self.h.sent(op)
+        refused = None
         if mode == 'duplicate':
             op['bundle_sha256'] = hashlib.sha256(self.bundles[i]).hexdigest()
             peer = WirePeer(port, self.c.recovery, recorder=self.h.recorder, node='B')
@@ -579,18 +605,49 @@ class Pair:
                 self.acks[i] = ack
                 op['ack_hex'] = ack.hex()
                 peer.close(graceful=True)
+            except TransferRefused as exc:
+                peer.close()
+                refused = {'rc': EXIT.REFUSED, 'reply_line': str(exc) + '\r\n',
+                           'wire_hex': exc.frame.hex(), 'reason': exc.frame[1]}
             except BaseException:
                 peer.abort()
                 raise
         else:
             # A's listening node holds FNBS; the request uses a separate
-            # outbound journal of the same identity, exactly as the native
-            # dropped-receipt test does. bp-service owns bundle creation.
+            # outbound journal of the same identity, as the native receipt
+            # test does. Reuse it across ALL requests and retries: a fresh
+            # journal resets fn-bpn-sequence-recover to 0, colliding with the
+            # earlier (source, creation-time=0, sequence=0) bundle identity.
+            # fnn-command-bp-service-run owns allocation/reuse, not Python.
             work = 'f8-carrier-%d' % i
-            self.invoke('bp-service', 'run', '127.0.0.1', port,
-                        self.file('A', 'request-%d.adu' % i), self.file('A', 'request-fnbs-%d' % i),
+            result = self.invoke('bp-service', 'run', '127.0.0.1', port,
+                        self.file('A', 'request-%d.adu' % i), self.file('A', 'request-fnbs'),
                         self.eid('A'), self.eid('B'), work, work + '-attempt', 0,
-                        3600000, 2, 32, 1048576, 0, 0)
+                        3600000, 2, 32, 1048576, 0, 0, expected=None)
+            reply = result.stdout + result.stderr
+            if result.returncode != EXIT.OK:
+                reasons = re.findall(rb'^TCPCL [^\r\n]+ refused outbound xfer=([0-9]+) reason=([0-9]+)\r?$',
+                                     reply, re.MULTILINE)
+                if (result.returncode != EXIT.REFUSED or not reasons
+                        or b'BP forwarding retained reason=refused' not in reply):
+                    raise RuntimeError('bp-service run exit %s: %s'
+                                       % (result.returncode, reply.decode(errors='replace')))
+                refused = {'rc': result.returncode,
+                           'reply_line': reply.decode(errors='replace').rstrip() + '\r\n',
+                           'wire_refusals': [{'xfer': int(x), 'reason': int(r)} for x, r in reasons]}
+        if refused is not None:
+            refused.update(operation='BP-EXCHANGE', article=i, mode=mode,
+                           decision='fn-tcl-delivery-refuse-reason (books/tcpcl-delivery.lisp:52)')
+            self.h.complete(op, refused['reply_line'].encode())
+            op.update(rc=refused['rc'], refusal=refused)
+            # A refused reception has no new custody. Do not await kind7,
+            # receipt delivery or a lost-receipt cut that it never reached.
+            self.stop_bp('B')
+            out, err = receiver.communicate(timeout=self.c.recovery)
+            refused['receiver_reply'] = (out + err).decode(errors='replace')
+            op['owner_exit'] = receiver.returncode
+            self.relay.route(sender_port)
+            return refused
         if mode in CUTS:
             marker = receiver.output_until(CUTS[mode][1], timeout=self.c.recovery)
             op['cut_marker'] = marker.decode(errors='replace')
@@ -643,7 +700,11 @@ class Pair:
                 raise RuntimeError('different-boot fence changed held lifecycle')
         finally:
             domain.write_bytes(saved)
-        self.dispatch()
+        # fn-bpnf-clock-domain-plan returns :same after restoration, exactly
+        # as test_restart_in_another_boot_fences_and_keeps_rows requires.
+        recovered = self.dispatch()
+        if b'BP FNBS recovered held=' not in recovered.stdout:
+            raise RuntimeError('original boot-domain recovery observation missing')
         self.h.complete(op, b'different-boot fenced; unchanged lifecycle; original domain recovered\r\n')
         witnessed.add('different-boot')
 
@@ -652,7 +713,7 @@ class Pair:
         if action == 'post':
             return self.post(step)
         elif action in ('transfer', 'duplicate'):
-            self.transfer(step['i'], step.get('mode', 'duplicate'), witnessed)
+            return self.transfer(step['i'], step.get('mode', 'duplicate'), witnessed)
         elif action == 'restart' and 'A' in self.active:
             # Named external cut: after a completed article/receipt exchange.
             self.stop_bp('A', kill=True)
@@ -683,41 +744,52 @@ class Pair:
         # Shrinking must not manufacture loss merely by deleting an explicit
         # transfer step. POST creates an obligation; the fixed final drain
         # offers every remaining request that has not had a completed exchange.
+        refusals = []
         for i in sorted(self.requests.keys() - self.offered):
-            self.transfer(i, 'clean', witnessed)
+            refused = self.transfer(i, 'clean', witnessed)
+            if refused is not None:
+                refusals.append(refused)
+        return refusals
 
     def observe(self):
         observations = {}
         for name in ('A', 'B'):
-            self.stop_bp(name)
-            node = self.nodes[name]
-            self.start_reader(name)
             try:
-                articles = inventory(node.port, self.h, self.c.deadline)
-                duplicates = []
-                with Client(node.port, self.h, self.c.deadline) as client:
-                    status, numbers = client.command('LISTGROUP fn.test')
-                    if not status.startswith(b'211 '):
-                        raise RuntimeError('duplicate observation refused')
-                    seen = set()
-                    for number in numbers.splitlines():
-                        status, article = client.command('ARTICLE ' + number.decode())
-                        if not status.startswith(b'220 '):
-                            raise RuntimeError('duplicate observation ARTICLE refused')
-                        mid = next(row.split(b':', 1)[1].strip().decode() for row in article.split(b'\r\n\r\n')[0].splitlines()
-                                   if row.lower().startswith(b'message-id:'))
-                        if mid in seen:
-                            duplicates.append(mid)
-                        seen.add(mid)
-            finally:
-                self.stop_reader(name)
-            status = self.invoke('store', node.store, 'status', '--replay').stdout
-            counts = re.findall(rb'^transactions=[0-9]+ articles=([0-9]+) ', status, re.MULTILINE)
-            if len(counts) != 1:
-                raise RuntimeError('replayed article count missing')
-            observations[name] = {'articles': articles, 'article_count': int(counts[0]),
-                                  'duplicates': duplicates, 'complete': True}
+                observations[name] = self.observe_node(name)
+            except Exception as exc:
+                # One unavailable node must not discard the other's inventory.
+                self.notes['inventory_exceptions'].append(dict(exception_details(exc), node=name))
         return observations
+
+    def observe_node(self, name):
+        self.stop_bp(name)
+        node = self.nodes[name]
+        self.start_reader(name)
+        try:
+            articles = inventory(node.port, self.h, self.c.deadline)
+            duplicates = []
+            with Client(node.port, self.h, self.c.deadline) as client:
+                status, numbers = client.command('LISTGROUP fn.test')
+                if not status.startswith(b'211 '):
+                    raise RuntimeError('duplicate observation refused')
+                seen = set()
+                for number in numbers.splitlines():
+                    status, article = client.command('ARTICLE ' + number.decode())
+                    if not status.startswith(b'220 '):
+                        raise RuntimeError('duplicate observation ARTICLE refused')
+                    mid = next(row.split(b':', 1)[1].strip().decode() for row in article.split(b'\r\n\r\n')[0].splitlines()
+                               if row.lower().startswith(b'message-id:'))
+                    if mid in seen:
+                        duplicates.append(mid)
+                    seen.add(mid)
+        finally:
+            self.stop_reader(name)
+        status = self.invoke('store', node.store, 'status', '--replay').stdout
+        counts = re.findall(rb'^transactions=[0-9]+ articles=([0-9]+) ', status, re.MULTILINE)
+        if len(counts) != 1:
+            raise RuntimeError('replayed article count missing')
+        return {'articles': articles, 'article_count': int(counts[0]),
+                'duplicates': duplicates, 'complete': True}
 
     def close(self):
         errors = []
