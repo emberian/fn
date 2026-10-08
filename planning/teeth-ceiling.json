@@ -4,7 +4,6 @@
   "fn-av-mca-read-span-restricted-is-legacy",
   "fn-av-scr-auth-delegate-restricted-is-reference",
   "fn-av-scr-dispatch-core-restricted-is-reference",
-  "fn-lgrc-acknowledge-from-the-copy",
   "fn-lst-active-command-is-av-list-active",
   "fn-lst-counts-command-is-av-list-counts",
   "fn-lst-one-finite-progress",

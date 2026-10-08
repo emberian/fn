@@ -8859,9 +8859,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "bd0b465c5e589458c0c9a509900f0ca47673bf718b4710c7517715add088247c",
+   "bounds": [],
+   "claim_digest": "9b414fe577d9a90ef11e59078be6e74d2648016d5e10d263604de4bec402d408",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-lgrc-acknowledge-from-the-copy",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-copy-ack-teeth-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 3,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-lgu-acknowledge",
+   "witness": "lemma"
   },
   {
    "book_digest": "d587fa638c1a542955c2a0cf06540f12fbc83ba316f73268c10ad9d232b6d7da",

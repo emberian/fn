@@ -64,7 +64,7 @@
 ; the byte model's; A-WRITE-ISOLATION's cross-inode reading
 ; (specs/failures.md) is what lets the old inode's blocks survive its unlink.
 (in-package "ACL2")
-(include-book "store-log-durable")
+(include-book "store-log-prefix-durable")
 (include-book "store-log-damage")
 (include-book "store-log-route-programs")
 
@@ -2509,7 +2509,7 @@
             (fn-lgk-relp bs (fn-lgt-recover b genesis unit max floor) ino genesis max))
    :rule-classes nil))
 
-; KEYSTONE (M1 from the open).  From a quiet store: the copy, then the served
+; KEYSTONE (M1 from the open).  From a fresh stage: the copy, then the served
 ; run over the inode it published (whatever the host's operations), then
 ; the COMPLETE's acknowledgements (fn-lgu-acknowledge, the host's one call).
 ; STR is what the open read, as the host holds it (fn-lgc-open's input).
@@ -2518,6 +2518,173 @@
 ; image of every cut of the run.  No hypothesis relates the read to the
 ; durable content before the open: the read may hold a failed barrier's
 ; clean pages (RL-01).
+; Acknowledgement needs the durable prefix, not namespace publication or
+; R's zero-tail extent.  The first three real copy steps establish the
+; prefix relation, and the remaining name operations preserve it.
+(local
+ (defthm fn-lgrc-prefix-cache-create-store
+ (implies (not (fn-bsc-lookup s stg stage))
+  (and (equal (car (fn-bsc-step s (list :create stg stage :ok))) :ok)
+       (equal (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :create stg stage :ok))))
+        (fn-bs-make (fn-bs-unit (fn-bsc-bs s))
+         (cons (cons (fn-bs-next-ino (fn-bsc-bs s)) nil) (fn-bs-inodes (fn-bsc-bs s)))
+         (fn-bs-dirs (fn-bsc-bs s))
+         (append (fn-bs-pending (fn-bsc-bs s)) (list (list :set-entry stg stage (fn-bs-next-ino (fn-bsc-bs s)))))
+         (+ 1 (fn-bs-next-ino (fn-bsc-bs s)))))))
+ :hints (("Goal" :in-theory (e/d (fn-bsc-step fn-bsc-bs) (fn-bsc-lookup fn-bs-apply-op))))))
+(local
+ (defthm fn-lgrc-prefix-cache-write-store
+ (and (equal (car (fn-bsc-step s (list :write ino off x :ok)))
+             (car (fn-bs-write (fn-bsc-bs s) ino off x :ok)))
+      (equal (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :write ino off x :ok))))
+             (mv-nth 1 (fn-bs-write (fn-bsc-bs s) ino off x :ok))))
+ :hints (("Goal" :in-theory (e/d (fn-bsc-step fn-bsc-bs fn-bsc-vapply fn-bs-write) (fn-bs-apply-op))))))
+(local
+ (defthm fn-lgrc-prefix-cache-fsync-store
+ (and (equal (car (fn-bsc-step s (list :fsync-file ino :ok))) :ok)
+      (equal (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :fsync-file ino :ok))))
+             (mv-nth 1 (fn-bs-fsync-file (fn-bsc-bs s) ino :ok))))
+ :hints (("Goal" :in-theory (enable fn-bsc-step fn-bsc-bs fn-bs-fsync-file)))))
+(local
+ (defun fn-lgrc-prefix-three-steps (s stg stage x)
+ (declare (xargs :verify-guards nil))
+ (let ((ino (fn-bs-next-ino (fn-bsc-bs s))))
+  (mv-let (r1 s1) (fn-bsc-step s (list :create stg stage :ok))
+   (declare (ignore r1))
+   (mv-let (r2 s2) (fn-bsc-step s1 (list :write ino 0 x :ok))
+    (declare (ignore r2))
+    (mv-let (r3 s3) (fn-bsc-step s2 (list :fsync-file ino :ok))
+     (declare (ignore r3)) s3))))))
+(local
+ (defthm fn-lgrc-prefix-three-steps-copy-prefix
+ (implies (and (not (fn-bsc-lookup s stg stage)) (true-listp x))
+  (let ((ino (fn-bs-next-ino (fn-bsc-bs s)))
+        (bs3 (fn-bsc-bs (fn-lgrc-prefix-three-steps s stg stage x))))
+   (and (fn-lgp-headedp (fn-bs-inodes bs3) ino)
+        (equal (fn-bs-unit bs3) (fn-bs-unit (fn-bsc-bs s)))
+        (equal (fn-bs-ops-for-ino (fn-bs-pending bs3) ino) nil)
+        (equal (fn-bs-take (len x) (fn-bs-durable-content bs3 ino)) x)
+        (<= (len x) (len (fn-bs-durable-content bs3 ino))))))
+ :hints (("Goal" :in-theory (e/d (fn-lgrc-prefix-three-steps fn-lgp-headedp)
+                               (fn-bsc-step fn-bs-write fn-bs-fsync-file fn-bs-take fn-bs-durable-content
+                                fn-bs-ops-for-ino fn-bsc-lookup))))))
+(local
+ (defthm fn-lgrc-prefix-copy-holds-frontier
+ (implies (natp f)
+  (let ((x (fn-lgrc-copy-octets o f)))
+   (and (true-listp x) (<= f (len x))
+        (equal (fn-bs-take f x) (fn-bs-take f o)))))
+ :hints (("Goal" :in-theory (e/d (fn-lgrc-copy-octets) (fn-bs-take fn-bs-zeros))))))
+(local
+ (defthm fn-lgrc-prefix-shorten-equal-prefix
+ (implies (and (natp m) (natp n) (<= m n) (equal (fn-bs-take n c) x))
+          (equal (fn-bs-take m c) (fn-bs-take m x)))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn-lgp-take-of-take (x c)))
+          :in-theory (disable fn-bs-take fn-lgp-take-of-take)))))
+(local
+ (defthm fn-lgrc-prefix-three-steps-establish-prefix-relation
+ (let* ((bs (fn-bsc-bs s)) (unit (fn-bs-unit bs))
+        (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+        (ks (fn-lgt-recover o genesis unit max floor))
+        (x (fn-lgrc-copy-octets o (fn-lgk-frontier ks)))
+        (ino (fn-bs-next-ino bs)))
+  (implies (and (not (fn-bsc-lookup s stg stage)) (fn-frame-digestp genesis))
+   (fn-lgp-relp (fn-bsc-bs (fn-lgrc-prefix-three-steps s stg stage x)) ks ino genesis max)))
+ :hints (("Goal" :do-not-induct t :expand ((fn-lg-recordsp nil max))
+ :in-theory (e/d (fn-lgp-relp fn-lgp-contentp fn-lgt-recover fn-lgk-recover fn-lgk-fields-of-make)
+ (fn-lg-scan fn-lg-scan-last fn-bs-take fn-lgrc-copy-octets fn-lgrc-prefix-three-steps
+ fn-bsc-bs fn-bsc-content fn-bsc-lookup fn-bs-durable-content fn-bs-unit
+ fn-lgk-make fn-lgk-frontier fn-lgk-committed fn-lgk-last fn-lgk-acked fn-lgk-phase
+ fn-lgk-next-txid fn-lgk-inflight fn-lgk-batch fn-lgt-next-after fn-lg-log
+ fn-lgrc-prefix-three-steps-copy-prefix fn-lgrc-prefix-copy-holds-frontier))
+ :use (
+ (:instance fn-lgrc-prefix-copy-holds-frontier (o (fn-bsc-content s (fn-bsc-lookup s j k))) (f (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k)) genesis (fn-bs-unit (fn-bsc-bs s)) max floor))))
+ (:instance fn-lgrc-prefix-three-steps-copy-prefix (x (fn-lgrc-copy-octets (fn-bsc-content s (fn-bsc-lookup s j k)) (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k)) genesis (fn-bs-unit (fn-bsc-bs s)) max floor)))))
+ (:instance fn-lgrc-prefix-shorten-equal-prefix (m (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k)) genesis (fn-bs-unit (fn-bsc-bs s)) max floor))) (n (len (fn-lgrc-copy-octets (fn-bsc-content s (fn-bsc-lookup s j k)) (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k)) genesis (fn-bs-unit (fn-bsc-bs s)) max floor))))) (x (fn-lgrc-copy-octets (fn-bsc-content s (fn-bsc-lookup s j k)) (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k)) genesis (fn-bs-unit (fn-bsc-bs s)) max floor)))) (c (fn-bs-durable-content (fn-bsc-bs (fn-lgrc-prefix-three-steps s stg stage (fn-lgrc-copy-octets (fn-bsc-content s (fn-bsc-lookup s j k)) (fn-lgk-frontier (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k)) genesis (fn-bs-unit (fn-bsc-bs s)) max floor))))) (fn-bs-next-ino (fn-bsc-bs s)))))
+ (:instance fn-lgp-scan-of-consumed-prefix (x (fn-bsc-content s (fn-bsc-lookup s j k))) (prev genesis) (unit (fn-bs-unit (fn-bsc-bs s))))
+ (:instance fn-lg-scan-last-digestp (x (fn-bsc-content s (fn-bsc-lookup s j k))) (prev genesis) (unit (fn-bs-unit (fn-bsc-bs s))))
+ (:instance fn-lgc-scan-records-true-listp (octets (fn-bsc-content s (fn-bsc-lookup s j k))) (prev genesis) (unit (fn-bs-unit (fn-bsc-bs s)))))))))
+(local
+ (defthm fn-lgrc-prefix-file-filter-after-directory-fence
+ (equal (fn-bs-ops-for-ino (fn-bs-ops-not-for-dir ops d) ino)
+        (fn-bs-ops-for-ino ops ino))
+ :hints (("Goal" :induct (fn-bs-ops-not-for-dir ops d)
+          :in-theory (enable fn-bs-ops-not-for-dir fn-bs-ops-for-ino)))))
+(local
+ (defthm fn-lgrc-prefix-entry-appends-do-not-add-writes
+ (and (equal (fn-bs-ops-for-ino (append ops (list (list :set-entry d n i) (list :del-entry sd sn))) ino)
+             (fn-bs-ops-for-ino ops ino))
+      (equal (fn-bs-ops-for-ino (append ops (list (list :set-entry d n i))) ino)
+             (fn-bs-ops-for-ino ops ino)))
+ :hints (("Goal" :in-theory (enable fn-bs-ops-for-ino-of-append fn-bs-ops-for-ino)))))
+(local
+ (defthm fn-lgrc-prefix-rename-keeps-the-prefix-relation
+ (implies (fn-lgp-relp (fn-bsc-bs s) ks ino genesis max)
+          (fn-lgp-relp (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :rename sd sn dd dn :ok))))
+                     ks ino genesis max))
+ :hints (("Goal" :do-not-induct t
+          :in-theory (e/d (fn-lgp-relp fn-bs-durable-content fn-bsc-step fn-bsc-bs fn-bsc-vapply)
+                          (fn-lgrc-inodes-entry-is-durable-content fn-lgp-contentp fn-lgp-headedp fn-bs-apply-op fn-bsc-lookup
+                           fn-bs-ops-for-ino))))))
+(local
+ (defthm fn-lgrc-prefix-dir-fence-keeps-the-prefix-relation
+ (implies (fn-lgp-relp (fn-bsc-bs s) ks ino genesis max)
+          (fn-lgp-relp (fn-bsc-bs (mv-nth 1 (fn-bsc-step s (list :fsync-dir d :ok))))
+                     ks ino genesis max))
+ :hints (("Goal" :do-not-induct t
+          :in-theory (e/d (fn-lgp-relp fn-bs-durable-content fn-bsc-step fn-bsc-bs fn-bs-fsync-dir fn-bs-fence-dir
+                           fn-bs-apply-ops-inodes-are-apply-writes fn-bs-apply-writes-of-ops-for-dir)
+                          (fn-lgrc-inodes-entry-is-durable-content fn-lgp-contentp fn-lgp-headedp fn-bs-apply-ops fn-bs-ops-for-dir
+                           fn-bs-ops-not-for-dir fn-bs-ops-for-ino))))))
+(local
+ (defthm fn-lgrc-prefix-copy-name-tail-keeps-the-prefix-relation
+ (implies (fn-lgp-relp (fn-bsc-bs s) ks ino genesis max)
+  (fn-lgp-relp
+   (fn-bsc-bs (fn-lgrc-final (fn-bsc-run s (list (list :rename stg stage j k :ok)
+                                               (list :fsync-dir j :ok)
+                                               (list :fsync-dir stg :ok))) s))
+   ks ino genesis max))
+ :hints (("Goal" :do-not-induct t
+          :in-theory (e/d (fn-bsc-run fn-lgrc-final)
+                          (fn-lgp-relp fn-bs-durable-content fn-bsc-step fn-bsc-bs))))))
+(local
+ (defthm fn-lgrc-prefix-write-ok-status
+ (implies (assoc-equal ino (fn-bs-inodes bs))
+          (equal (car (fn-bs-write bs ino off x :ok)) :ok))
+ :hints (("Goal" :in-theory (enable fn-bs-write)))))
+(local
+ (defthm fn-lgrc-prefix-first-three-then-names
+ (let* ((ino (fn-bs-next-ino (fn-bsc-bs s)))
+        (s3 (fn-lgrc-prefix-three-steps s stg stage x))
+        (tail (list (list :rename stg stage j k :ok) (list :fsync-dir j :ok) (list :fsync-dir stg :ok))))
+  (implies (not (fn-bsc-lookup s stg stage))
+   (equal (fn-lgrc-final
+            (fn-bsc-run s (cons (list :create stg stage :ok)
+                          (cons (list :write ino 0 x :ok) (cons (list :fsync-file ino :ok) tail)))) s)
+          (fn-lgrc-final (fn-bsc-run s3 tail) s3))))
+ :hints (("Goal" :do-not-induct t
+          :in-theory (e/d (fn-bsc-run fn-lgrc-final fn-lgrc-prefix-three-steps assoc-equal)
+                          (fn-bsc-step fn-bs-write fn-bs-fsync-file fn-bsc-lookup fn-bsc-bs))))))
+(local
+ (defthm fn-lgrc-prefix-attempt-establishes-prefix-relation
+ (let* ((bs (fn-bsc-bs s))
+        (ks (fn-lgt-recover (fn-bsc-content s (fn-bsc-lookup s j k)) genesis (fn-bs-unit bs) max floor))
+        (ino (fn-bs-next-ino bs)))
+  (implies (and (not (fn-bsc-lookup s stg stage)) (fn-frame-digestp genesis))
+   (fn-lgp-relp (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s))
+               ks ino genesis max)))
+ :hints (("Goal" :do-not-induct t
+          :in-theory (e/d (fn-lgrc-attempt fn-lgrc-attempt-ops fn-lgrc-out)
+                          (fn-bsc-step fn-bsc-run fn-lgrc-final fn-lgrc-prefix-three-steps fn-lgp-relp fn-lgt-recover
+                           fn-bsc-content fn-bsc-lookup fn-bsc-bs fn-bs-unit fn-lgk-frontier fn-lgrc-copy-octets))
+          :use ((:instance fn-lgrc-prefix-three-steps-establish-prefix-relation))))))
+(local
+ (defthm fn-lgrc-prefix-relp-of-equal-read
+ (implies (and (equal a b) (fn-lgp-relp bs (fn-lgt-recover a genesis unit max floor) ino genesis max))
+          (fn-lgp-relp bs (fn-lgt-recover b genesis unit max floor) ino genesis max))
+ :rule-classes nil))
+
 (defthm fn-lgrc-acknowledge-from-the-copy
   (let* ((bs0 (fn-bsc-bs s))
          (unit (fn-bs-unit bs0))
@@ -2531,12 +2698,7 @@
                 (fn-lgc-host-run (mv-nth 1 (fn-lgc-open str genesis unit max floor))
                                  (fn-lgu-host-kops bs ks0 ops ino max))
                 n)))
-    (implies (and (natp ino) 
-                  (fn-bs-dir-idp stg) (fn-bs-namep stage)
-                  
-                  (not (fn-bsc-lookup s stg stage))
-                  (null (fn-bs-pending bs0))
-                  (posp unit)  (equal (mod (len o) unit) 0)
+    (implies (and (not (fn-bsc-lookup s stg stage))
                   (fn-frame-digestp genesis)
                   (equal o (fn-lgd-octets str)))
              (and (equal (fn-lgc-acked host) (fn-lgk-acked (cdr final)))
@@ -2561,14 +2723,14 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-lgrc-final-of-the-attempt-keeps-the-unit)
                                       (theory 'minimal-theory))
-           :use ((:instance fn-lgrc-copy-establishes-the-relation)
-                 (:instance fn-lgrc-relp-of-an-equal-read
+           :use ((:instance fn-lgrc-prefix-attempt-establishes-prefix-relation)
+                 (:instance fn-lgrc-prefix-relp-of-equal-read
                             (a (fn-bsc-content s (fn-bsc-lookup s j k)))
                             (b (fn-lgd-octets str))
                             (bs (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s)))
                             (unit (fn-bs-unit (fn-bsc-bs s)))
                             (ino (fn-bs-next-ino (fn-bsc-bs s))))
-                 (:instance fn-lgu-acknowledge-acknowledges-only-recoverable-records
+                 (:instance fn-lgp-acknowledge-acknowledges-only-recoverable-records
                             (bs (fn-bsc-bs (fn-lgrc-final (fn-lgrc-attempt s j k stg stage genesis max floor nil) s)))
                             (s str)
                             (ino (fn-bs-next-ino (fn-bsc-bs s))))))))

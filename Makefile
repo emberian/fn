@@ -901,6 +901,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-durable-tests \
 	tests/acl2/store-log-critical-teeth-tests \
 	tests/acl2/store-log-copy-teeth-tests \
+	tests/acl2/store-log-copy-ack-teeth-tests \
 	books/recovery-refinement \
 	books/recovery-refinement-store \
 	tests/acl2/recovery-refinement-tests \
