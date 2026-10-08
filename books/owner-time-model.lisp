@@ -948,8 +948,10 @@
                               (fn-otm-space-word (fn-otm-space s)
                                                  (fn-otm-space-observe arg (nfix reading))))
                              (t :fault)))))
-  :hints (("Goal" :in-theory (e/d (fn-otm-now fn-otm-regressions fn-otm-jseq fn-otm-space)
-                                  (fn-otm-disk-issue fn-otm-disk-tick fn-otm-disk-return)))))
+  :hints (("Goal" :in-theory
+           (union-theories '(fn-otm-disk-event fn-otm-dc-event fn-otm-of-keep
+                             fn-otm-now fn-otm-space fn-otm-c-of-list4 nfix)
+                           (theory 'minimal-theory)))))
 
 ;; PRF-359: the recorded space moves only at a :space event, to that
 ;; event's observation at the recorded time.
@@ -1159,8 +1161,12 @@
            (fn-otm-full-line-p (fn-otm-space-line (fn-otm-space s)))))
   ;; Named, not a rewrite rule: its right side opens the page's lines.
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-otm-full-p) (fn-otm-space-line fn-otm-full-line-p fn-otm-disk-body fn-otm-disk-tag fn-otm-disk-overdue-p
-                                      fn-otm-disk-stall-due-p fn-osch-chars-octets)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-otm-full-p)
+                (fn-otm-space-line fn-otm-full-line-p fn-otm-disk-body
+                 fn-otm-disk-tag fn-otm-disk-overdue-p fn-otm-disk-stall-due-p
+                 fn-osch-chars-octets fn-otm-sp-status fn-otm-now
+                 fn-otm-regressions fn-otm-disk-tag-cases)))))
 
 ;; Recovery needs no operator action: after the completion event the node
 ;; admits every POST, and no later clock event makes the disk slow again
@@ -1376,6 +1382,13 @@
                                     fn-ocs-reader-waits-p fn-ocs-in-flight-p fn-ocs-phase
                                     fn-ocs-lasti fn-ocm-next))))))
 
+;; Project through the existing scheduler bridges; do not reopen the pipeline's
+;; wait counters or the original state's record accessors.
+(local
+ (defthm fn-otm-lasti-of-ocs-make-by-definition
+   (equal (fn-ocs-lasti (fn-ocs-make ocm phase lasti)) (if lasti t nil))
+   :hints (("Goal" :in-theory (enable fn-ocs-lasti fn-ocs-make)))))
+
 (local
  (defthm fn-otm-next-state-in-flight
    (implies (fn-ocs-in-flight-p (fn-otm-phase s))
@@ -1386,9 +1399,12 @@
                           (if (mv-nth 0 (fn-otm-next s w))
                               (equal (mv-nth 0 (fn-otm-next s w)) :inspect)
                             (fn-otm-lasti s))))))
-   :hints (("Goal" :in-theory (e/d (fn-otm-next fn-ocp-next fn-ocs-next fn-ocs-make)
-                                   (fn-ocs-inspect-waits-p fn-ocs-commit-waits-p
-                                    fn-ocs-reader-waits-p fn-ocm-next))))))
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-otm-phase fn-otm-open-next fn-otm-lasti
+                              fn-otm-next-is-ocp-next fn-ocp-next-is-ocs-next
+                              fn-ocs-next fn-ocp-phase-of-ocs-make
+                              fn-otm-lasti-of-ocs-make-by-definition)
+                            (theory 'minimal-theory))))))
 
 (local
  (defthm fn-otm-commit-event-next-in-flight
