@@ -16,6 +16,12 @@
 (defun fnn-bridge-record-sequence (record)
   (declare (ignorable record))
   (harness-stub-reached 'fnn-bridge-record-sequence "host/native/io.lisp"))
+(defun fnn-immutable-drain-cleanups (&optional stage)
+  (declare (ignorable stage))
+  (harness-stub-reached 'fnn-immutable-drain-cleanups "host/native/immutable-publish.lisp"))
+(defun fnn-immutable-publish-deferred (publication stage final final-directory octets &key cleanup-directory observer operation-label fault-observer registered-step)
+  (declare (ignorable publication stage final final-directory octets cleanup-directory observer operation-label fault-observer registered-step))
+  (harness-stub-reached 'fnn-immutable-publish-deferred "host/native/immutable-publish.lisp"))
 ;;; ---- derived stubs: END ----
 (defconstant +fnn-exit-ok+ 0)
 (defconstant +fnn-export-chunk+ 1024)

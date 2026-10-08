@@ -25,8 +25,8 @@
                (list (fn-psub-pack-sub (fn-own-sub-make 0 0 0 nil nil)))
                nil nil nil nil))
 
-; The round-1 staged fixture has no connection. The close-NIL tooth below
-; deliberately supplies an invalid connection id, not a host-generated id.
+; The round-1 staged fixture has no connection. The close-NIL regressions
+; deliberately supply an invalid connection id, not a host-generated id.
 (defconst *orlt-staged-empty*
   (fn-ocfg-make *orlt-empty* (fn-cfg-initial) nil *fn-cfg-default-record*))
 
@@ -66,7 +66,6 @@
    (and (fn-ocfg-staged oc)
         (not (fn-own-pending (fn-ocfg-owner oc)))
         (not (equal (car event) :complete))
-        (implies (equal (car event) :close) (natp (cadr event)))
         (fn-own-pending (orlt-own-step (fn-ocfg-owner oc) event))
         (equal (fn-ocfg-config next) (fn-ocfg-config oc))
         (equal (fn-ocfg-staged next) (fn-ocfg-staged oc))
@@ -80,23 +79,22 @@
    (and (fn-ocfg-staged oc)
         (not (fn-own-pending (fn-ocfg-owner oc)))
         (equal (car event) :complete)
-        (implies (equal (car event) :close) (natp (cadr event)))
         (not (equal (fn-ocfg-staged next) (fn-ocfg-staged oc)))
         (not (and (equal (fn-ocfg-config next) (fn-ocfg-config oc))
                   (equal (fn-ocfg-staged next) (fn-ocfg-staged oc))
                   (not (fn-own-pending (fn-ocfg-owner next))))))))
 
-; L2 close-id hypothesis: round-1 counterexample, malformed :close NIL.
+; L2 positive regression: the round-1 :close NIL counterexample now keeps
+; the staged record. Check the whole strengthened antecedent and conclusion.
 (assert-event
  (let* ((oc *orlt-staged-empty*) (event '(:close nil))
         (next (orlt-ocfg-step oc event)))
    (and (fn-ocfg-staged oc)
         (not (fn-own-pending (fn-ocfg-owner oc)))
         (not (equal (car event) :complete))
-        (not (implies (equal (car event) :close) (natp (cadr event))))
-        (not (and (equal (fn-ocfg-config next) (fn-ocfg-config oc))
-                  (equal (fn-ocfg-staged next) (fn-ocfg-staged oc))
-                  (not (fn-own-pending (fn-ocfg-owner next))))))))
+        (equal (fn-ocfg-config next) (fn-ocfg-config oc))
+        (equal (fn-ocfg-staged next) (fn-ocfg-staged oc))
+        (not (fn-own-pending (fn-ocfg-owner next))))))
 
 ; L3 positive: an authorized default record stays authorized when a real
 ; connection closes. Check the complete antecedent and conclusion.
@@ -107,19 +105,27 @@
         (fn-ocfg-staged oc)
         (not (fn-own-pending (fn-ocfg-owner oc)))
         (member-equal (car event) '(:open :close :read :octets :fault))
-        (implies (equal (car event) :close) (natp (cadr event)))
         (fn-oclc-live-authorizep oc)
         (fn-oclc-live-authorizep next)
         (not (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner next)))))))
 
-; L3 close-id hypothesis: the same round-1 malformed event destroys the
-; staged authorization even though every retained hypothesis holds.
+; L3 positive regression: :close NIL also preserves staged authorization.
 (assert-event
  (let* ((oc *orlt-staged-empty*) (event '(:close nil))
         (next (orlt-ocfg-step oc event)))
    (and (fn-ocfg-staged oc)
         (not (fn-own-pending (fn-ocfg-owner oc)))
         (member-equal (car event) '(:open :close :read :octets :fault))
-        (not (implies (equal (car event) :close) (natp (cadr event))))
+        (fn-oclc-live-authorizep oc)
+        (fn-oclc-live-authorizep next))))
+
+; L3 reader-event exclusion: completion consumes the authorized staged
+; record. Every retained hypothesis holds, but the conclusion fails.
+(assert-event
+ (let* ((oc *orlt-staged-empty*) (event '(:complete))
+        (next (orlt-ocfg-step oc event)))
+   (and (fn-ocfg-staged oc)
+        (not (fn-own-pending (fn-ocfg-owner oc)))
+        (not (member-equal (car event) '(:open :close :read :octets :fault)))
         (fn-oclc-live-authorizep oc)
         (not (fn-oclc-live-authorizep next)))))

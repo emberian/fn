@@ -102,7 +102,17 @@ LOCAL_BOX_CHECKS = (
     ("host_world", ["tools/host_check.py", "--world"]),
 )
 
-GATES = ("ancestor", "ledger", "current_view", "main_last", "host_load", "box_step", "lock_delta", "secrets")
+# The Python suites the integrator ran by hand before a push, now gate
+# conditions: the push refuses on them like the others (train 36 pushed two
+# test_ledger reds through `gate; push` chained with `;`).  Always these; and
+# the test file of every tools/<x>.py the train changes, and every changed
+# tests/test_*.py except tests/test_native_* (they need a native image).  Each runs as `python -m unittest <file>` from the root
+# (test_train imports `tools.train`, so not as a bare script).
+UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
+              "tests/test_train.py", "tests/test_farm.py")
+
+GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
+         "box_step", "lock_delta", "secrets", "unit")
 
 
 class TrainError(Exception):
@@ -503,6 +513,26 @@ def _ascii_gate(t: Train) -> int:
     return 1 if hits else 0
 
 
+def unit_tests(root: Path, changed: list[str]) -> list[str]:
+    """UNIT_TESTS, then the tests of what the train changed, in order, once each."""
+    tests = list(UNIT_TESTS)
+    for path in changed:
+        p = Path(path)
+        if p.name.startswith("test_native_"):
+            # needs a native image (build/fn-host-*); N's native gate on the
+            # box is its gate, not this tree
+            continue
+        if p.parent.as_posix() == "tests" and p.name.startswith("test_") and p.suffix == ".py":
+            candidate = path
+        elif p.parent.as_posix() == "tools" and p.suffix == ".py":
+            candidate = f"tests/test_{p.stem}.py"
+        else:
+            continue
+        if candidate not in tests and (root / candidate).is_file():
+            tests.append(candidate)
+    return tests
+
+
 def cmd_gate(t: Train, args) -> int:
     if t.dirty():
         raise TrainError("working tree is dirty; gates must run at a committed HEAD")
@@ -524,6 +554,9 @@ def cmd_gate(t: Train, args) -> int:
     # check-fast's main_last_check: a test file whose __main__ block is not last
     # silently skips every class after it (dev d67a244fa, tests/test_image_set.py)
     rec("main_last", t.run("gate-main_last", [PY, "tools/main_last_check.py"]))
+    # the teeth gate: a new toothless keystone or a stale teeth manifest
+    # (train 41: a lane's new keystones without teeth, caught by hand)
+    rec("keystone", t.run("gate-keystone", [PY, "tools/keystone_emit.py", "--check"]))
 
     host = git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "host").stdout.split()
     if host:
@@ -580,6 +613,16 @@ def cmd_gate(t: Train, args) -> int:
         rec("secrets", t.run("gate-secrets", [PY3, "tools/secrets_check.py", *files]))
     else:
         rec("secrets", 0, skipped=True)
+
+    unit = unit_tests(t.root, files)
+    results = {}
+    for test in unit:
+        if not (t.root / test).is_file():
+            say(f"unit: {test} is missing")
+            results[test] = 1
+        else:
+            results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test])
+    rec("unit", 0 if all(v == 0 for v in results.values()) else 1, tests=results)
 
     bad = [n for n, g in gates.items() if g["rc"] != 0]
     say(f"gates at {head[:9]}: " + ", ".join(f"{n}={g['rc']}" for n, g in gates.items()))

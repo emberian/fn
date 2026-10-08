@@ -581,3 +581,217 @@
    :visits ((steps (+ 1 (len xs)) (+ 1 (len xs)) :attains ((xs '(1 2)))
                    :derived-by fn-dkt-walk)))
  :unchecked "defteeth refuses by name (:underived-record :not-called): V does not call fn-dkt-walk-route-visits")
+
+; A named assumption remains an explicit trust boundary, even with an
+; executable attachment for this test.  Its removal is never reachable.
+(encapsulate
+  (((fn-dkt-assume *) => *))
+  (local (defun fn-dkt-assume (x) (equal x 1)))
+  (defthm fn-dkt-assume-definition
+    (equal (fn-dkt-assume x) (equal x 1))))
+(defun fn-dkt-assume-exec (x)
+  (declare (xargs :guard t))
+  (equal x 1))
+(defattach fn-dkt-assume fn-dkt-assume-exec)
+(defun fn-dkt-assume-wrapper (x) (fn-dkt-assume x))
+(defthm fn-dkt-assumed-one
+  (implies (fn-dkt-assume-wrapper x) (equal x 1))
+  :rule-classes nil)
+(must-fail-checked
+ (defteeth fn-dkt-assumed-one
+   :claim (((trust (fn-dkt-assume-wrapper x))) (equal x 1))
+   :witness ((x 1))
+   :breaks ((trust (:assumption fn-dkt-assume-exec)))
+   :mutations ((two (:conclusion (equal x 2)) () :fault "Replace one with two.")))
+ :unchecked "An executable function is not an encapsulated signature.")
+(defthm fn-dkt-unrelated-assumption-test
+  (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
+  :rule-classes nil)
+(must-fail-checked
+ (defteeth fn-dkt-unrelated-assumption-test
+   :claim (((nat (natp x)) (small (< x 10))) (<= (fix y) (fn-dkt-add x y)))
+   :witness ((x 3) (y 4))
+   :breaks ((nat (:assumption fn-dkt-assume)) (small ((x 10))))
+   :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
+                       :fault "Replace inclusive bound with strict bound.")))
+ :unchecked "A constrained function unrelated to the labelled hypothesis is refused.")
+(defteeth fn-dkt-assumed-one
+  :claim (((trust (fn-dkt-assume-wrapper x))) (equal x 1))
+  :witness ((x 1))
+  :breaks ((trust (:assumption fn-dkt-assume)))
+  :mutations ((two (:conclusion (equal x 2)) () :fault "Replace one with two.")))
+(assert-event
+ (equal (fn-dk-get :removals
+                  (cdr (assoc-eq 'fn-dkt-assumed-one (table-alist 'fn-teeth (w state)))))
+        '((trust :assumption))))
+(defthm fn-dkt-nongenerated-instance-test
+  (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
+  :rule-classes nil)
+(must-fail-checked
+ (defteeth fn-dkt-nongenerated-instance-test
+   :claim (((nat (natp x)) (small (< x 10))) (<= (fix y) (fn-dkt-add x y)))
+   :instances (fn-dkt-add fn-dkt-assume-exec)
+   :witness ((x 3) (y 4))
+   :breaks ((nat ((x -1))) (small ((x 10))))
+   :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
+                       :fault "Replace inclusive bound with strict bound.")))
+ :unchecked "Functions not produced by the generator cannot witness its lemma.")
+; Scope is shared with the literal theorem, including shadowing in LET.
+(defthm fn-dkt-scoped
+  (let* ((y (+ 1 x)))
+    (let ((x y) (y (+ 1 y)))
+      (implies (< 1 x) (< 2 y))))
+  :rule-classes nil)
+(must-fail-checked
+ (defteeth fn-dkt-scoped
+   :claim (let* ((y (+ 1 x)))
+            (let ((x y) (y (+ 1 y)))
+              (((positive (< 1 x))) (< 2 y))))
+   :witness ((x 0))
+   :breaks ((positive ((x 0))))
+   :mutations ((strict (:conclusion (< 3 y)) () :fault "Raises the bound.")))
+ :unchecked "A false scoped antecedent cannot witness an implication.")
+(defteeth fn-dkt-scoped
+  :claim (let* ((y (+ 1 x)))
+           (let ((x y) (y (+ 1 y)))
+             (((positive (< 1 x))) (< 2 y))))
+  :witness ((x 1))
+  :breaks ((positive ((x 0))))
+  :mutations ((strict (:conclusion (< 3 y)) () :fault "Raises the bound.")))
+
+(defstobj fn-dkt-cell (fn-dkt-val :type integer :initially 0))
+(defun fn-dkt-fill (x fn-dkt-cell)
+  (declare (xargs :stobjs fn-dkt-cell :guard (integerp x)))
+  (let* ((fn-dkt-cell (update-fn-dkt-val x fn-dkt-cell)))
+    (mv :filled fn-dkt-cell)))
+(defthm fn-dkt-cell-positive
+  (implies (< 0 (fn-dkt-val fn-dkt-cell))
+           (< 0 (+ 1 (fn-dkt-val fn-dkt-cell))))
+  :rule-classes nil)
+(must-fail-checked
+ (defteeth fn-dkt-cell-positive
+   :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+           (< 0 (+ 1 (fn-dkt-val fn-dkt-cell))))
+   :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell)))
+   :witness ((x 0))
+   :breaks ((positive ((x -1))))
+   :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) ()
+                    :fault "Raises the bound.")))
+ :unchecked "The builder leaves the hypothesis false, even though the conclusion is true.")
+(must-fail-checked
+ (defteeth fn-dkt-cell-positive
+   :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+           (< 0 (+ 1 (fn-dkt-val fn-dkt-cell))))
+   :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell)))
+   :witness ((x 1))
+   :breaks ((positive ((x 0))))
+   :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) ()
+                    :fault "Raises the bound.")))
+ :unchecked "A false removed hypothesis with a true conclusion is not a removal witness.")
+(defteeth fn-dkt-cell-positive
+  :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+          (< 0 (+ 1 (fn-dkt-val fn-dkt-cell))))
+  :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell)))
+  :witness ((x 1))
+  :breaks ((positive ((x -1))))
+  :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) ()
+                   :fault "Raises the bound.")))
+
+(defstobj fn-dkt-other (fn-dkt-other-val :type integer :initially 0))
+(defthm fn-dkt-two-cells
+  (implies (and (< 0 (fn-dkt-val fn-dkt-cell))
+                (< 0 (fn-dkt-other-val fn-dkt-other)))
+           (< 0 (+ (fn-dkt-val fn-dkt-cell) (fn-dkt-other-val fn-dkt-other))))
+  :rule-classes nil)
+(defteeth fn-dkt-two-cells
+  :claim (((left (< 0 (fn-dkt-val fn-dkt-cell)))
+           (right (< 0 (fn-dkt-other-val fn-dkt-other))))
+          (< 0 (+ (fn-dkt-val fn-dkt-cell) (fn-dkt-other-val fn-dkt-other))))
+  :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell))
+           (fn-dkt-other (update-fn-dkt-other-val y fn-dkt-other)))
+  :witness ((x 2) (y 3))
+  :breaks ((left ((x -3))) (right ((y -2))))
+  :mutations ((sum (:conclusion (equal (* (fn-dkt-val fn-dkt-cell)
+                                         (fn-dkt-other-val fn-dkt-other))
+                                      (+ (fn-dkt-val fn-dkt-cell)
+                                         (fn-dkt-other-val fn-dkt-other)))) ()
+                   :fault "Multiplies instead of adding.")))
+
+; A logical snapshot is rendered by a live checker only after an
+; unconditional equality proof generated by defteeth.
+(defun fn-dkt-snapshot-check (fn-dkt-cell)
+  (declare (xargs :stobjs fn-dkt-cell :verify-guards nil))
+  (let ((fn-dkt-cell (update-fn-dkt-val (+ 1 (fn-dkt-val fn-dkt-cell)) fn-dkt-cell)))
+    (mv (< 0 (fn-dkt-val fn-dkt-cell)) fn-dkt-cell)))
+(defun fn-dkt-fake-check (fn-dkt-cell)
+  (declare (xargs :stobjs fn-dkt-cell))
+  (mv t fn-dkt-cell))
+(defthm fn-dkt-snapshot
+  (implies (< 0 (fn-dkt-val fn-dkt-cell))
+    (let ((after (update-fn-dkt-val (+ 1 (fn-dkt-val fn-dkt-cell)) fn-dkt-cell)))
+      (< 0 (fn-dkt-val after))))
+  :rule-classes nil)
+
+(must-fail-checked
+ (defteeth fn-dkt-snapshot
+  :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+    (let ((after (update-fn-dkt-val (+ 1 (fn-dkt-val fn-dkt-cell)) fn-dkt-cell)))
+      (< 0 (fn-dkt-val after))))
+  :witness ((x 1))
+  :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell)))
+  :stobj-checks
+  (((let ((after (update-fn-dkt-val (+ 1 (fn-dkt-val fn-dkt-cell)) fn-dkt-cell)))
+      (< 0 (fn-dkt-val after)))
+    (fn-dkt-fake-check fn-dkt-cell)))
+  :breaks ((positive ((x -1))))
+  :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) () :fault "Raises the bound.")))
+ :unchecked "A checker that always says true is not an unconditional refinement.")
+
+(defteeth fn-dkt-snapshot
+  :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+    (let ((after (update-fn-dkt-val (+ 1 (fn-dkt-val fn-dkt-cell)) fn-dkt-cell)))
+      (< 0 (fn-dkt-val after))))
+  :witness ((x 1))
+  :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell)))
+  :stobj-checks
+  (((let ((after (update-fn-dkt-val (+ 1 (fn-dkt-val fn-dkt-cell)) fn-dkt-cell)))
+      (< 0 (fn-dkt-val after)))
+    (fn-dkt-snapshot-check fn-dkt-cell)
+    :hints (("Goal" :in-theory (enable fn-dkt-snapshot-check)))))
+  :breaks ((positive ((x -1)) :logical "Exercises the grounded logical snapshot path."))
+  :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) () :fault "Raises the bound.")))
+
+(defteeth-check (fn-dkt-snapshot))
+(must-fail-checked (defteeth-check (fn-dkt-never-declared))
+ :unchecked "Explicit scope cannot omit a named obligation.")
+
+(must-fail-checked (defteeth-check fn-dkt-snapshot)
+ :unchecked "A malformed scope cannot silently select no obligations.")
+
+; A builder can return two stobjs plus an ordinary value. Logical removals
+; must use BOTH updated objects, exactly as the native positive test does.
+(defun fn-dkt-fill-both (x y fn-dkt-cell fn-dkt-other)
+ (declare (xargs :stobjs (fn-dkt-cell fn-dkt-other) :verify-guards nil))
+ (let* ((fn-dkt-cell (update-fn-dkt-val x fn-dkt-cell))
+       (fn-dkt-other (update-fn-dkt-other-val y fn-dkt-other)))
+  (mv :filled fn-dkt-cell fn-dkt-other)))
+(defthm fn-dkt-two-cells-built
+ (implies (and (< 0 (fn-dkt-val fn-dkt-cell))
+               (< 0 (fn-dkt-other-val fn-dkt-other)))
+  (< 0 (+ (fn-dkt-val fn-dkt-cell) (fn-dkt-other-val fn-dkt-other)))))
+(defteeth fn-dkt-two-cells-built
+ :claim (((left (< 0 (fn-dkt-val fn-dkt-cell)))
+          (right (< 0 (fn-dkt-other-val fn-dkt-other))))
+         (< 0 (+ (fn-dkt-val fn-dkt-cell) (fn-dkt-other-val fn-dkt-other))))
+ :witness ((x 2) (y 3))
+ :stobjs ((fn-dkt-cell (fn-dkt-fill-both x y fn-dkt-cell fn-dkt-other))
+          (fn-dkt-other fn-dkt-other))
+ :breaks ((left ((x -3)) :logical "Checks both logical builder outputs.")
+          (right ((y -2)) :logical "Checks both logical builder outputs."))
+ :mutations ((sum (:conclusion (equal (* (fn-dkt-val fn-dkt-cell)
+                                        (fn-dkt-other-val fn-dkt-other))
+                                     (+ (fn-dkt-val fn-dkt-cell)
+                                        (fn-dkt-other-val fn-dkt-other)))) ()
+                  :fault "Multiplies instead of adding.")))
+
+(defteeth-check)
