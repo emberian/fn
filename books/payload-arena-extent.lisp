@@ -459,6 +459,33 @@
                         (fn-arena-paged-get h i fn-arena-paged)
                         v)))))
 
+;; The span (row 21): the N octets from AT in one call.  An extent entry is
+;; one host call (fn-durable-realize-span: one lock and one ledger decision per
+;; borrowed window instead of per octet); every other entry kind reads octet by
+;; octet as before, from memory.
+(defun fn-arx-get-loop (h at n fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x
+                  :guard (and (natp h) (< h (fn-arena$x-count fn-arena$x))
+                              (fn-arena$x-wfp fn-arena$x)
+                              (natp at) (natp n)
+                              (<= (+ at n) (fn-arena$x-payload-len h fn-arena$x)))
+                  :measure (nfix n)))
+  (if (zp n)
+      nil
+    (cons (fn-arena$x-get h at fn-arena$x)
+          (fn-arx-get-loop h (+ 1 at) (1- n) fn-arena$x))))
+
+(defun fn-arena$x-get-span (h at n fn-arena$x)
+  (declare (xargs :stobjs fn-arena$x
+                  :guard (and (natp h) (< h (fn-arena$x-count fn-arena$x))
+                              (fn-arena$x-wfp fn-arena$x)
+                              (natp at) (natp n)
+                              (<= (+ at n) (fn-arena$x-payload-len h fn-arena$x)))))
+  (let ((e (fn-arena$x-exti h fn-arena$x)))
+    (if (fn-arn-extentp e)
+        (fn-durable-realize-span (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e) at n)
+      (fn-arx-get-loop h at n fn-arena$x))))
+
 (defun fn-arena$x-payload (h fn-arena$x)
   (declare (xargs :stobjs fn-arena$x
                   :guard (and (natp h) (< h (fn-arena$x-count fn-arena$x))
@@ -1217,6 +1244,55 @@
   :rule-classes nil
   :hints (("Goal" :cases ((equal (nth h (nth *fn-arena$x-exti* fn-arena$x)) :forgotten)))))
 
+(defthm fn-arx-get-loop-is-the-span
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (natp h) (< h (fn-arena$a-count fn-arena-extent))
+                (natp at) (natp n)
+                (<= (+ at n) (fn-arena$a-payload-len h fn-arena-extent)))
+           (equal (fn-arx-get-loop h at n fn-arena$x)
+                  (fn-arena$a-get-span h at n fn-arena-extent)))
+  :hints (("Goal" :induct (fn-arena$a-get-span h at n fn-arena-extent)
+                  :in-theory (disable fn-arena$xcorr fn-arena$x-get fn-arena$a-get))
+          ("Subgoal *1/2" :use ((:instance fn-arena-extent-get{correspondence} (i at))))))
+
+(defthm fn-arx-span-spec-is-the-loop
+  (implies (and (natp at) (natp n)
+                (fn-arn-extentp (nth h (nth *fn-arena$x-exti* fn-arena$x))))
+           (equal (fn-durable-span-spec (nth 0 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 1 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 2 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 3 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 4 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 5 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        at n)
+                  (fn-arx-get-loop h at n fn-arena$x)))
+  :hints (("Goal" :induct (fn-arx-get-loop h at n fn-arena$x)
+                  :in-theory (enable fn-arena$x-get fn-arena$x-exti))))
+
+(defthm fn-arena-extent-get-span{correspondence}
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (natp h) (< h (fn-arena$a-count fn-arena-extent))
+                (natp at) (natp n)
+                (<= (+ at n) (fn-arena$a-payload-len h fn-arena-extent)))
+           (equal (fn-arena$x-get-span h at n fn-arena$x)
+                  (fn-arena$a-get-span h at n fn-arena-extent)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-arena$xcorr fn-arena$x-get fn-arena$a-get-span
+                                      fn-arx-get-loop fn-durable-span-spec)
+                  :use (fn-arx-get-loop-is-the-span))))
+
+(defthm fn-arena-extent-get-span{guard-thm}
+  (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
+                (natp h) (< h (fn-arena$a-count fn-arena-extent))
+                (natp at) (natp n)
+                (<= (+ at n) (fn-arena$a-payload-len h fn-arena-extent)))
+           (and (natp h) (< h (fn-arena$x-count fn-arena$x))
+                (fn-arena$x-wfp fn-arena$x)
+                (natp at) (natp n)
+                (<= (+ at n) (fn-arena$x-payload-len h fn-arena$x))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((equal (nth h (nth *fn-arena$x-exti* fn-arena$x)) :forgotten)))))
+
 (defthm fn-arena-extent-payload{correspondence}
   (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
                 (natp h) (< h (fn-arena$a-count fn-arena-extent)))
@@ -1485,6 +1561,7 @@
   :exports ((fn-arena-extent-count :logic fn-arena$a-count :exec fn-arena$x-count)
             (fn-arena-extent-payload-len :logic fn-arena$a-payload-len :exec fn-arena$x-payload-len)
             (fn-arena-extent-get :logic fn-arena$a-get :exec fn-arena$x-get)
+            (fn-arena-extent-get-span :logic fn-arena$a-get-span :exec fn-arena$x-get-span)
             (fn-arena-extent-payload :logic fn-arena$a-payload :exec fn-arena$x-payload)
             (fn-arena-extent-seal-list :logic fn-arena$a-seal-list :exec fn-arena$x-seal-list
                                        :protect t)
