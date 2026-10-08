@@ -534,7 +534,14 @@ declared `:raw-with (:carried fn-owner-served-carried :assuming
 A-OWNER-INVARIANT-CARRIED)` (host/owner-served-carried.lisp): the row's
 proved writers are checked as above, and its completeness over every other
 state-returning writer is the named native trust marker, each owed writer a
-proof-owed item. The entry guard's arity and kind checks run before
+proof-owed item. A standalone book checks the owed functions its own world
+contains; absent names are printed as "left to host-ld" and recorded in the
+`fn-carried` row's `:left-to-host-ld` field (the source of truth). The native
+and extracted image drivers generate `build/carried-host-ld-manifest.lsp`
+from that table, read it back, and refuse the build if any owed or deferred
+name is not a function returning the carried state in the image world.
+Defined writers returning the wrong state still fail during certification.
+The entry guard's arity and kind checks run before
 either dispatch, and
 `planning/interfaces.json` (`raw_dispatched`) lists every such entry. The
 developer image keeps the counterpart path behind

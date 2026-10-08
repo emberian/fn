@@ -528,3 +528,4 @@
 (include-book "../../host/index-connection-repin-prepare-host")
 (include-book "../../host/receiver-repin-source-host")
 (include-book "../../host/owner-host")
+(include-book "../../host/owner-retain-host")

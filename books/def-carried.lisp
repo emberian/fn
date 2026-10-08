@@ -148,7 +148,12 @@
 ; check then refuses every returning entry that is neither listed nor owed
 ; (a writer added later is refused, by name, until it is proved or owed),
 ; an owed name that is also listed (proved: remove it from the owed list),
-; and an owed name that is no function returning ST in this world (stale).
+; and a defined owed name that does not return ST (stale). Undefined names
+; are printed as "left to host-ld" and recorded in :left-to-host-ld in the
+; fn-carried row, the source of truth. host-ld writes that table to a generated
+; manifest, reads it back, and checks ALL owed names in its complete world.
+; def-carried-check and the image gate refuse undefined owed names.
+; definterface uses the scoped check too: declarations may live in books.
 ; The escape waives completeness ONLY: every listed transition's generated
 ; statement, every open's witness and producers, every bridge is checked
 ; exactly as before, and an entry that is not a listed transition is still
@@ -836,6 +841,26 @@
          (cons (car owed) (fn-cd-all-stale-owed (cdr owed) st w)))
         (t (fn-cd-all-stale-owed (cdr owed) st w))))
 
+(defun fn-cd-left-to-host-ld (owed w)
+  (declare (xargs :mode :program))
+  ; Missing functions are deferred, never treated as checked writers.
+  (cond ((atom owed) nil)
+        ((eq (getpropc (car owed) 'formals :none w) :none)
+         (cons (car owed) (fn-cd-left-to-host-ld (cdr owed) w)))
+        (t (fn-cd-left-to-host-ld (cdr owed) w))))
+
+(defun fn-cd-host-owed-problem (name row w)
+  (declare (xargs :mode :program))
+  ; Full-world check: even an undefined owed name is stale here.
+  (let* ((st (fn-cd-state-stobj (fn-cd-get :invariant row) w))
+         (owed (union-eq (cadr (fn-cd-get :incomplete row))
+                         (fn-cd-get :left-to-host-ld row)))
+         (stale (and st (fn-cd-all-stale-owed owed st w))))
+    (and stale
+         (msg "~x0: left to host-ld obligations contain stale owed names ~x1; ~
+               no function returning the carried state ~x2 in the image world"
+              name stale st))))
+
 (defun fn-cd-invariant-problem (r w)
   (declare (xargs :mode :program))
   (let ((formals (getpropc r 'formals :none w)))
@@ -856,6 +881,7 @@
          (complete-by (fn-cd-get :complete-by row))
          (incomplete (fn-cd-get :incomplete row))
          (owed (cadr incomplete))
+         (known-owed (set-difference-eq owed (fn-cd-left-to-host-ld owed w)))
          (listed (append (strip-cars established) (strip-cars transitions)))
          (unlisted (and st (fn-cd-first-unlisted
                             (fn-cd-returning-entries (table-alist 'fn-interfaces w) st w)
@@ -884,12 +910,12 @@
       (msg "~x0 is owed under ~x1 and also a transition or establishing ~
             point of ~x2: its theorem is proved, so remove it from the owed list"
            (car (intersection-eq owed listed)) (car incomplete) name))
-     ((and st (fn-cd-stale-owed owed st w))
+     ((and st (fn-cd-stale-owed known-owed st w))
       (msg "~x0 is owed under ~x1 by ~x2 but is no function returning the ~
             carried state ~x3 in this world: a stale owed name; remove it.  ~
             Every stale owed name: ~x4"
-           (fn-cd-stale-owed owed st w) (car incomplete) name st
-           (fn-cd-all-stale-owed owed st w)))
+           (fn-cd-stale-owed known-owed st w) (car incomplete) name st
+           (fn-cd-all-stale-owed known-owed st w)))
      (unlisted
       (msg "host-called entry ~x0 (fn-interfaces) returns the carried state ~
             ~x1 and is neither a transition nor an establishing point of ~x2~@3: ~
@@ -967,7 +993,10 @@
                       ; recorded only when declared: a row without the
                       ; escape keeps its shape
                       (and (fn-cd-get :incomplete kvs)
-                           (list :incomplete (fn-cd-get :incomplete kvs))))))
+                           (list :incomplete (fn-cd-get :incomplete kvs)
+                                 :left-to-host-ld
+                                 (fn-cd-left-to-host-ld
+                                  (cadr (fn-cd-get :incomplete kvs)) w))))))
             (cond (msg (mv msg nil))
                   (msg2 (mv msg2 nil))
                   (t (mv (fn-cd-problem name row nil w) row))))))))))
@@ -1166,7 +1195,10 @@
           (fn-cd-declare ',name ',kvs (w state))
           (if problem
               (er soft 'def-carried "~x0: ~@1" ',name problem)
-            (value (fn-cd-events ',name row (w state)))))))))
+            (prog2$
+             (cw "def-carried ~x0: left to host-ld ~x1~%"
+                 ',name (fn-cd-get :left-to-host-ld row))
+             (value (fn-cd-events ',name row (w state))))))))))
 
 ; Re-run NAME's checks in the world as now loaded, the generated statements
 ; included: in the image world, where host/interfaces.lisp has declared
@@ -1175,11 +1207,55 @@
   `(make-event
     (let* ((row (cdr (assoc-eq ',name (table-alist 'fn-carried (w state)))))
            (problem (if row
-                        (fn-cd-problem ',name row t (w state))
+                        (or (fn-cd-host-owed-problem ',name row (w state))
+                            (fn-cd-problem ',name row t (w state)))
                       (msg "no carried invariant ~x0 in this world" ',name))))
       (if problem
           (er soft 'def-carried-check "~x0: ~@1" ',name problem)
         (value '(value-triple ',name))))))
+
+; The fn-carried table is the single source of truth. The image's host-ld
+; writes an object manifest from it, reads the file, checks exact agreement,
+; then discharges every owed name (including :left-to-host-ld) in this world.
+(defun fn-cd-host-manifest-problem (rows w)
+  (declare (xargs :mode :program))
+  (if (atom rows)
+      nil
+    (or (fn-cd-host-owed-problem (caar rows) (cdar rows) w)
+        (fn-cd-host-manifest-problem (cdr rows) w))))
+
+(defun fn-cd-read-host-manifest (path expected state)
+  (declare (xargs :stobjs state :mode :program))
+  (mv-let (channel state)
+    (open-input-channel path :object state)
+    (if (not channel)
+        (er soft 'def-carried-host-check "Cannot read manifest ~x0" path)
+      (mv-let (eof rows state)
+        (read-object channel state)
+        (mv-let (end extra state)
+          (read-object channel state)
+          (declare (ignore extra))
+          (let* ((state (close-input-channel channel state))
+                 (problem (if (or eof (not end) (not (equal rows expected)))
+                              (msg "Manifest ~x0 differs from fn-carried world" path)
+                            (fn-cd-host-manifest-problem rows (w state)))))
+            (if problem
+                (er soft 'def-carried-host-check "~@0" problem)
+              (value '(value-triple :carried-host-ld-checked)))))))))
+
+(defun fn-cd-host-manifest-event (path state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((rows (table-alist 'fn-carried (w state))))
+    (mv-let (channel state)
+      (open-output-channel path :object state)
+      (if (not channel)
+          (er soft 'def-carried-host-check "Cannot write manifest ~x0" path)
+        (let* ((state (print-object$ rows channel state))
+               (state (close-output-channel channel state)))
+          (fn-cd-read-host-manifest path rows state))))))
+
+(defmacro def-carried-host-check (path)
+  `(fn-cd-host-manifest-event ,path state))
 
 ; ---------------------------------------------------------------------------
 ; D40 (books/definterface.lisp `:raw-with (:carried NAME)').

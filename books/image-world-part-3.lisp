@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "owner-prepare-correspondence")
-(include-book "owner-store-budget")
 (include-book "store-identity-reserve")
 (include-book "owner-identity-prepare")
 (include-book "consumer-event-charge")
@@ -162,3 +160,4 @@
 (include-book "../host/index-connection-repin-prepare-host")
 (include-book "../host/receiver-repin-source-host")
 (include-book "../host/owner-host")
+(include-book "../host/owner-retain-host")

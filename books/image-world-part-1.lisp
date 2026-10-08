@@ -192,3 +192,4 @@
 (include-book "anchor-wire")
 (include-book "anchor-servers")
 (include-book "anchor-replace")
+(include-book "store-export")
