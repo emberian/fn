@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-machine-authorization")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 (defconst *bpna-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpna-peer* (cons :dtn '(47 47 102 110 45 98 47)))
@@ -121,6 +122,20 @@
       (fn-bpn-step *bpna-over-token*
                    (list :contact *bpna-peer* nil)))))))
 
+(defteeth fn-bpn-step-preserves-lifecycle-invariant
+  :claim (((invariant (fn-bpn-lifecycle-invariantp st)))
+          (fn-bpn-lifecycle-invariantp
+           (fn-bpn-answer-state (fn-bpn-step st event))))
+  :witness ((st *bpna-s-queued*) (event (list :contact *bpna-peer* t)))
+  :breaks ((invariant ((st *bpna-over-token*)
+                       (event (list :contact *bpna-peer* nil)))))
+  :mutations ((forgets-pending-authorization
+               (:conclusion
+                (null (fn-bpn-machine-state-pending
+                       (fn-bpn-answer-state (fn-bpn-step st event)))))
+               ((st *bpna-s-queued*) (event (list :contact *bpna-peer* t)))
+               :fault "starting owed work proposes a durable attempt before sending")))
+
 ; Build an applicable 4097-record restart history: queue token 0, then
 ; alternate attempting and requeued records for the same retained job.
 (defun fn-bpn-test-alternating-records (count token attemptingp)
@@ -140,6 +155,27 @@
 (defconst *bpna-overlong-restart-event*
   (list :restart *bpna-overlong-records* :ready))
 (assert-event (not (fn-bpn-machine-eventp *bpna-overlong-restart-event*)))
+;; Ground counterexample to the pre-seeding statement of
+;; fn-bpn-restart-step-of-ready-replay (ready replay alone, no record bound):
+;; this history replays :ready over the initial machine, yet the restart
+;; answers the :seed-frontier fence and not :restart-ready.  The ready-replay
+;; original statement is false for the current restart implementation; this
+;; is the ground counterexample requested by the round-4 audit, not a proof
+;; that adding hypotheses preserves the original claim.
+(assert-event
+ (with-guard-checking :none
+   (equal (car (fn-bpn-replay-records
+                (fn-bpn-initial-machine-state
+                 (fn-bpn-machine-state-config *bpna-s0*)
+                 (fn-bpn-machine-state-max-jobs *bpna-s0*)
+                 (fn-bpn-machine-state-max-octets *bpna-s0*))
+                *bpna-overlong-records*))
+          :ready)))
+(assert-event
+ (with-guard-checking :none
+   (equal (fn-bpn-answer-effects
+           (fn-bpn-restart-step *bpna-s0* *bpna-overlong-records* :ready))
+          '((:restart-fault :seed-frontier)))))
 ;; The restart now fences an over-long history itself (the seeded start does not
 ;; fit the lifecycle namespace), so the overlong event no longer escapes the
 ;; invariant: the answer is the :seed-frontier fence, still lifecycle-invariant.

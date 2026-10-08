@@ -543,65 +543,88 @@
        fn-bpn-answer-constructor-accessors)
      (theory 'minimal-theory)))))
 
+(defthm fn-bpn-restart-replay-step-preserves-lifecycle-invariant
+  (implies
+   (and (fn-bpn-machine-invariantp base)
+        (not (fn-bpn-machine-state-pending base))
+        (not (fn-bpn-machine-state-fenced base))
+        (<= (+ (fn-bpn-machine-state-next-token base) (len records))
+            *fn-bpn-machine-max-records*))
+   (fn-bpn-lifecycle-invariantp
+    (fn-bpn-answer-state (fn-bpn-restart-replay-step base records))))
+  :hints
+  (("Goal"
+    :do-not-induct t
+    :use
+    ((:instance fn-bpn-restart-replay-step-preserves-machine-invariant)
+     (:instance fn-bpn-replay-records-preserves-machine-invariant (st base))
+     (:instance fn-bpn-replay-ready-state-is-quiescent (st base))
+     (:instance fn-bpn-lifecycle-invariant-without-pending
+                (st (fn-bpn-answer-state (fn-bpn-restart-replay-step base records))))
+     (:instance fn-bpn-lifecycle-invariant-without-pending
+                (st (nth 1 (fn-bpn-replay-records base records))))
+     (:instance fn-bpn-resolve-orphans-step-preserves-lifecycle-invariant
+                (st (nth 1 (fn-bpn-replay-records base records)))))
+    :in-theory
+    (union-theories
+     '(fn-bpn-restart-replay-step fn-bpn-answer-constructor-accessors
+       fn-bpn-state-with-accessors)
+     (theory 'minimal-theory)))))
+
+(defthm fn-bpn-restart-step-from-preserves-lifecycle-invariant
+  (implies
+   (fn-bpn-machine-statep st)
+   (fn-bpn-lifecycle-invariantp
+    (fn-bpn-answer-state
+     (fn-bpn-restart-step-from st records sequence-ready jobs token))))
+  :hints
+  (("Goal"
+    :do-not-induct t
+    :use
+    ((:instance fn-bpn-sequence-fault-of-seeded-state-has-invariant (b st))
+     (:instance fn-bpn-sequence-fault-of-seeded-state-has-invariant
+                (b (fn-bpn-seeded-machine-state
+                    (fn-bpn-machine-state-config st)
+                    (fn-bpn-machine-state-max-jobs st)
+                    (fn-bpn-machine-state-max-octets st) jobs token)))
+     (:instance fn-bpn-lifecycle-invariant-without-pending
+                (st (fn-bpn-state-with st nil nil nil t 0)))
+     (:instance fn-bpn-lifecycle-invariant-without-pending
+                (st (fn-bpn-state-with
+                     (fn-bpn-seeded-machine-state
+                      (fn-bpn-machine-state-config st)
+                      (fn-bpn-machine-state-max-jobs st)
+                      (fn-bpn-machine-state-max-octets st) jobs token)
+                     nil nil nil t 0)))
+     (:instance fn-bpn-seeded-machine-state-accessors
+                (config (fn-bpn-machine-state-config st))
+                (max-jobs (fn-bpn-machine-state-max-jobs st))
+                (max-octets (fn-bpn-machine-state-max-octets st)))
+     (:instance fn-bpn-restart-from-base-invariant)
+     (:instance fn-bpn-restart-replay-step-preserves-lifecycle-invariant
+                (base (fn-bpn-seeded-machine-state
+                       (fn-bpn-machine-state-config st)
+                       (fn-bpn-machine-state-max-jobs st)
+                       (fn-bpn-machine-state-max-octets st) jobs token))))
+    :in-theory
+    (union-theories
+     '(fn-bpn-restart-step-from fn-bpn-restart-seed-fitsp
+       fn-bpn-answer-constructor-accessors natp (:type-prescription len)
+       fn-bpn-state-with-accessors)
+     (theory 'minimal-theory)))))
+
 (defthm fn-bpn-restart-step-preserves-lifecycle-invariant
   (implies
-   (and (fn-bpn-lifecycle-invariantp st)
-        (true-listp records)
-        (<= (len records) *fn-bpn-machine-max-records*))
+   (fn-bpn-machine-statep st)
    (fn-bpn-lifecycle-invariantp
     (fn-bpn-answer-state
      (fn-bpn-restart-step st records sequence-ready))))
   :hints
   (("Goal"
-    :use
-    ((:instance fn-bpn-lifecycle-invariant-implies-machine-invariant)
-     (:instance fn-bpn-restart-seed-fits-the-initial-machine)
-     (:instance fn-bpn-restart-step-preserves-machine-invariant)
-     (:instance fn-bpn-machine-invariant-components)
-     (:instance fn-bpn-machine-statep-components)
-     (:instance fn-bpn-initial-machine-state-has-invariant
-                (config (fn-bpn-machine-state-config st))
-                (max-jobs (fn-bpn-machine-state-max-jobs st))
-                (max-octets (fn-bpn-machine-state-max-octets st)))
-     (:instance fn-bpn-next-token-of-initial-machine-state
-                (config (fn-bpn-machine-state-config st))
-                (max-jobs (fn-bpn-machine-state-max-jobs st))
-                (max-octets (fn-bpn-machine-state-max-octets st)))
-     (:instance fn-bpn-initial-machine-state-is-quiescent
-                (config (fn-bpn-machine-state-config st))
-                (max-jobs (fn-bpn-machine-state-max-jobs st))
-                (max-octets (fn-bpn-machine-state-max-octets st)))
-     (:instance fn-bpn-replay-ready-state-is-quiescent
-                (st (fn-bpn-initial-machine-state
-                     (fn-bpn-machine-state-config st)
-                     (fn-bpn-machine-state-max-jobs st)
-                     (fn-bpn-machine-state-max-octets st))))
-     (:instance fn-bpn-replay-records-preserves-machine-invariant
-                (st (fn-bpn-initial-machine-state
-                     (fn-bpn-machine-state-config st)
-                     (fn-bpn-machine-state-max-jobs st)
-                     (fn-bpn-machine-state-max-octets st))))
-     (:instance fn-bpn-lifecycle-invariant-without-pending
-                (st (nth 1 (fn-bpn-replay-records
-                            (fn-bpn-initial-machine-state
-                             (fn-bpn-machine-state-config st)
-                             (fn-bpn-machine-state-max-jobs st)
-                             (fn-bpn-machine-state-max-octets st))
-                            records))))
-     (:instance fn-bpn-resolve-orphans-step-preserves-lifecycle-invariant
-                (st (nth 1 (fn-bpn-replay-records
-                            (fn-bpn-initial-machine-state
-                             (fn-bpn-machine-state-config st)
-                             (fn-bpn-machine-state-max-jobs st)
-                             (fn-bpn-machine-state-max-octets st))
-                            records)))))
+    :use ((:instance fn-bpn-restart-step-from-preserves-lifecycle-invariant
+                     (jobs nil) (token 0)))
     :in-theory
-    (union-theories
-     '(fn-bpn-restart-step fn-bpn-restart-step-from fn-bpn-restart-replay-step
-       fn-bpn-seeded-machine-state-of-no-jobs
-       fn-bpn-lifecycle-invariant-without-pending
-       fn-bpn-state-with-accessors fn-bpn-answer-constructor-accessors)
-     (theory 'minimal-theory)))))
+    (union-theories '(fn-bpn-restart-step) (theory 'minimal-theory)))))
 
 (defthm fn-bpn-true-list-of-length-three-reconstruction
   (implies (and (true-listp values)
@@ -861,11 +884,11 @@
      (theory 'minimal-theory)))))
 
 ; Keystone: this is the dispatcher called by fnn-bps-step in the native
-; service, with the bounded restart event contract carried at its boundary.
+; service.  Every event spelling preserves the invariant: an unknown kind is
+; a no-op and a restart whose history does not fit its namespace fences.
 (defthm fn-bpn-step-preserves-lifecycle-invariant
   (implies
-   (and (fn-bpn-lifecycle-invariantp st)
-        (fn-bpn-machine-eventp event))
+   (fn-bpn-lifecycle-invariantp st)
    (fn-bpn-lifecycle-invariantp
     (fn-bpn-answer-state (fn-bpn-step st event))))
   :hints

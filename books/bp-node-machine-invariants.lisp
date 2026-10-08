@@ -748,7 +748,6 @@
 (defthm fn-bpn-replay-records-preserves-machine-invariant
   (implies
    (and (fn-bpn-machine-invariantp st)
-        (true-listp records)
         (<= (+ (fn-bpn-machine-state-next-token st) (len records))
             *fn-bpn-machine-max-records*))
    (fn-bpn-machine-invariantp
@@ -1248,7 +1247,6 @@
 (defthm fn-bpn-restart-replay-step-preserves-machine-invariant
   (implies
    (and (fn-bpn-machine-invariantp base)
-        (true-listp records)
         (<= (+ (fn-bpn-machine-state-next-token base) (len records))
             *fn-bpn-machine-max-records*))
    (fn-bpn-machine-invariantp
@@ -1276,8 +1274,7 @@
 
 (defthm fn-bpn-restart-step-from-preserves-machine-invariant
   (implies
-   (and (fn-bpn-machine-statep st)
-        (true-listp records))
+   (fn-bpn-machine-statep st)
    (fn-bpn-machine-invariantp
     (fn-bpn-answer-state (fn-bpn-restart-step-from st records sequence-ready jobs token))))
   :hints
@@ -1298,9 +1295,7 @@
 
 (defthm fn-bpn-restart-step-preserves-machine-invariant
   (implies
-   (and (fn-bpn-machine-invariantp st)
-        (true-listp records)
-        (<= (len records) *fn-bpn-machine-max-records*))
+   (fn-bpn-machine-invariantp st)
    (fn-bpn-machine-invariantp
     (fn-bpn-answer-state (fn-bpn-restart-step st records sequence-ready))))
   :hints
@@ -1692,6 +1687,233 @@
                  (:instance fn-bpn-restart-seed-fits-the-initial-machine))
            :in-theory (union-theories
                        '(fn-bpn-restart-step fn-bpn-seeded-machine-state-of-no-jobs)
+                       (theory 'minimal-theory)))))
+
+;; A rotation checkpoint seeds the restart with the jobs and token of the
+;; machine the replay of the whole history left.  A replayed machine that is
+;; quiet (no contacts, no pending proposal, not fenced) IS the seeded machine of
+;; its own jobs and token (fn-bpn-quiet-state-is-seeded), so restarting over no
+;; records from those jobs and that token answers what the restart over the
+;; whole history answered (fn-bpn-restart-from-the-replayed-seed-is-the-restart).
+
+(defthm fn-bpn-quiet-state-is-seeded
+  (implies (and (fn-bpn-machine-statep s)
+                (null (fn-bpn-machine-state-contacts s))
+                (null (fn-bpn-machine-state-pending s))
+                (null (fn-bpn-machine-state-fenced s)))
+           (equal (fn-bpn-seeded-machine-state
+                   (fn-bpn-machine-state-config s)
+                   (fn-bpn-machine-state-max-jobs s)
+                   (fn-bpn-machine-state-max-octets s)
+                   (fn-bpn-machine-state-jobs s)
+                   (fn-bpn-machine-state-next-token s))
+                  s))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bpn-make-machine-state-of-accessors (x s))
+                 (:instance fn-bpn-machine-recordp-forward-shape (x s))
+                 (:instance fn-bpn-machine-statep-components (st s)))
+           :in-theory (union-theories
+                       '(fn-bpn-seeded-machine-state fn-bpn-machine-statep)
+                       (theory 'minimal-theory)))))
+
+(defthm fn-bpn-replay-records-keeps-contacts
+  (equal (fn-bpn-machine-state-contacts
+          (nth 1 (fn-bpn-replay-records st records)))
+         (fn-bpn-machine-state-contacts st))
+  :hints (("Goal"
+           :induct (fn-bpn-replay-records st records)
+           :in-theory (e/d (fn-bpn-replay-records fn-bpn-apply-record
+                            fn-bpn-state-with)
+                           (fn-bpn-record-applicablep)))))
+
+(defthm fn-bpn-initial-machine-state-has-no-contacts
+  (implies (and (fn-bpn-configp config)
+                (fn-bpn-machine-limitp max-jobs)
+                (fn-bpn-machine-limitp max-octets))
+           (null (fn-bpn-machine-state-contacts
+                  (fn-bpn-initial-machine-state config max-jobs max-octets))))
+  :hints (("Goal" :in-theory (enable fn-bpn-initial-machine-state))))
+
+(defthm fn-bpn-replay-records-keeps-config-and-limits
+  (and (equal (fn-bpn-machine-state-config
+               (nth 1 (fn-bpn-replay-records st records)))
+              (fn-bpn-machine-state-config st))
+       (equal (fn-bpn-machine-state-max-jobs
+               (nth 1 (fn-bpn-replay-records st records)))
+              (fn-bpn-machine-state-max-jobs st))
+       (equal (fn-bpn-machine-state-max-octets
+               (nth 1 (fn-bpn-replay-records st records)))
+              (fn-bpn-machine-state-max-octets st)))
+  :hints (("Goal"
+           :induct (fn-bpn-replay-records st records)
+           :in-theory (e/d (fn-bpn-replay-records fn-bpn-apply-record
+                            fn-bpn-state-with)
+                           (fn-bpn-record-applicablep)))))
+
+(defthm fn-bpn-ready-replay-over-a-quiet-state-is-seeded
+  (implies
+   (and (fn-bpn-machine-invariantp init)
+        (null (fn-bpn-machine-state-contacts init))
+        (null (fn-bpn-machine-state-pending init))
+        (null (fn-bpn-machine-state-fenced init))
+        (<= (+ (fn-bpn-machine-state-next-token init) (len records))
+            *fn-bpn-machine-max-records*)
+        (equal (car (fn-bpn-replay-records init records)) :ready))
+   (let ((rep (nth 1 (fn-bpn-replay-records init records))))
+     (and (fn-bpn-machine-statep rep)
+          (equal (fn-bpn-seeded-machine-state
+                  (fn-bpn-machine-state-config init)
+                  (fn-bpn-machine-state-max-jobs init)
+                  (fn-bpn-machine-state-max-octets init)
+                  (fn-bpn-machine-state-jobs rep)
+                  (fn-bpn-machine-state-next-token rep))
+                 rep)
+          (<= (fn-bpn-machine-state-next-token rep)
+              *fn-bpn-machine-max-records*))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-bpn-replay-records-preserves-machine-invariant
+                            (st init))
+                 (:instance fn-bpn-replay-ready-state-is-quiescent (st init))
+                 (:instance fn-bpn-replay-records-keeps-contacts (st init))
+                 (:instance fn-bpn-replay-records-keeps-config-and-limits (st init))
+                 (:instance fn-bpn-replay-ready-next-token (st init))
+                 (:instance fn-bpn-machine-invariant-components (st init))
+                 (:instance fn-bpn-quiet-state-is-seeded
+                            (s (nth 1 (fn-bpn-replay-records init records))))
+                 (:instance fn-bpn-machine-invariant-components
+                            (st (nth 1 (fn-bpn-replay-records init records)))))
+           :in-theory (disable fn-bpn-replay-records fn-bpn-seeded-machine-state
+                               fn-bpn-machine-invariantp fn-bpn-machine-statep
+                               fn-bpn-replay-records-preserves-machine-invariant
+                               fn-bpn-replay-ready-state-is-quiescent
+                               fn-bpn-replay-records-keeps-contacts fn-bpn-replay-records-keeps-config-and-limits
+                               fn-bpn-replay-ready-next-token))))
+
+(defthm fn-bpn-restart-from-a-quiet-seed
+  (implies
+   (and (fn-bpn-machine-statep st)
+        (fn-bpn-machine-statep s)
+        (null (fn-bpn-machine-state-contacts s))
+        (null (fn-bpn-machine-state-pending s))
+        (null (fn-bpn-machine-state-fenced s))
+        (equal (fn-bpn-machine-state-config s) (fn-bpn-machine-state-config st))
+        (equal (fn-bpn-machine-state-max-jobs s) (fn-bpn-machine-state-max-jobs st))
+        (equal (fn-bpn-machine-state-max-octets s)
+               (fn-bpn-machine-state-max-octets st))
+        (<= (fn-bpn-machine-state-next-token s) *fn-bpn-machine-max-records*))
+   (equal (fn-bpn-restart-step-from
+           st nil :ready (fn-bpn-machine-state-jobs s)
+           (fn-bpn-machine-state-next-token s))
+          (let ((resolved (fn-bpn-resolve-orphans-step s)))
+            (fn-bpn-answer
+             (fn-bpn-answer-state resolved)
+             (cons (list :restart-ready (len (fn-bpn-machine-state-jobs s)))
+                   (fn-bpn-answer-effects resolved))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-bpn-quiet-state-is-seeded)
+                 (:instance fn-bpn-machine-statep-components (st s))
+                 (:instance fn-bpn-restart-step-from-of-ready-replay
+                            (records nil)
+                            (jobs (fn-bpn-machine-state-jobs s))
+                            (token (fn-bpn-machine-state-next-token s))))
+           :in-theory (union-theories
+                       '(fn-bpn-restart-seed-fitsp fn-bpn-replay-records natp len fn-bpn-machine-u64p nth car-cons cdr-cons zp (:executable-counterpart zp) (:executable-counterpart binary-+))
+                       (theory 'minimal-theory)))))
+
+(defthm fn-bpn-config-of-initial-machine-state
+  (implies (and (fn-bpn-configp config)
+                (fn-bpn-machine-limitp max-jobs)
+                (fn-bpn-machine-limitp max-octets))
+           (equal (fn-bpn-machine-state-config
+                   (fn-bpn-initial-machine-state config max-jobs max-octets))
+                  config))
+  :hints (("Goal" :in-theory (enable fn-bpn-initial-machine-state))))
+
+(defthm fn-bpn-restart-from-the-replayed-seed-is-the-restart
+  (implies
+   (and (fn-bpn-machine-statep st)
+        (<= (len records) *fn-bpn-machine-max-records*)
+        (equal (car (fn-bpn-replay-records
+                     (fn-bpn-initial-machine-state
+                      (fn-bpn-machine-state-config st)
+                      (fn-bpn-machine-state-max-jobs st)
+                      (fn-bpn-machine-state-max-octets st))
+                     records))
+               :ready))
+   (let ((rep (nth 1 (fn-bpn-replay-records
+                      (fn-bpn-initial-machine-state
+                       (fn-bpn-machine-state-config st)
+                       (fn-bpn-machine-state-max-jobs st)
+                       (fn-bpn-machine-state-max-octets st))
+                      records))))
+     (equal (fn-bpn-restart-step-from
+             st nil :ready
+             (fn-bpn-machine-state-jobs rep)
+             (fn-bpn-machine-state-next-token rep))
+            (fn-bpn-restart-step st records :ready))))
+  :rule-classes nil
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-bpn-ready-replay-over-a-quiet-state-is-seeded
+                            (init (fn-bpn-initial-machine-state
+                                   (fn-bpn-machine-state-config st)
+                                   (fn-bpn-machine-state-max-jobs st)
+                                   (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-replay-records-keeps-config-and-limits
+                            (st (fn-bpn-initial-machine-state
+                                 (fn-bpn-machine-state-config st)
+                                 (fn-bpn-machine-state-max-jobs st)
+                                 (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-replay-records-keeps-contacts
+                            (st (fn-bpn-initial-machine-state
+                                 (fn-bpn-machine-state-config st)
+                                 (fn-bpn-machine-state-max-jobs st)
+                                 (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-replay-ready-state-is-quiescent
+                            (st (fn-bpn-initial-machine-state
+                                 (fn-bpn-machine-state-config st)
+                                 (fn-bpn-machine-state-max-jobs st)
+                                 (fn-bpn-machine-state-max-octets st))))
+                 (:instance fn-bpn-initial-machine-state-is-quiescent
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-initial-machine-state-has-no-contacts
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-config-of-initial-machine-state
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-limits-of-initial-machine-state
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-machine-statep-components)
+                 (:instance fn-bpn-initial-machine-state-has-invariant
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-next-token-of-initial-machine-state
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st)))
+                 (:instance fn-bpn-restart-from-a-quiet-seed
+                            (s (nth 1 (fn-bpn-replay-records
+                                       (fn-bpn-initial-machine-state
+                                        (fn-bpn-machine-state-config st)
+                                        (fn-bpn-machine-state-max-jobs st)
+                                        (fn-bpn-machine-state-max-octets st))
+                                       records))))
+                 (:instance fn-bpn-restart-step-of-ready-replay))
+           :in-theory (union-theories
+                       '(fn-bpn-machine-statep-components)
                        (theory 'minimal-theory)))))
 
 ;; The orphan resolution proposes a record; it never changes the owed jobs or
