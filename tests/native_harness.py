@@ -1297,6 +1297,15 @@ class Node:
         """`owner run STORE 0 ONCE N [FAULT]`, the store owner on an ephemeral
         port, drained and stopped at cleanup; (process, announced port)."""
         words = ["owner", "run", self.store_path, "0", "1" if once else "0", str(connections)]
+        # `heap -- owner run ...` names no store profile (profile=none, 1024 MB),
+        # so the heap is the one the probe decides for this node's served run
+        # over the same store, as Node.launch does, unless the node or the
+        # caller fixes its own (image_heap, SBCL_USER_ARGS, FN_TEST_HEAP_MB).
+        given = dict(self.env)
+        given.update(env or {})
+        if not (self.image_heap or "SBCL_USER_ARGS" in given or "FN_TEST_HEAP_MB" in given
+                or os.environ.get("FN_TEST_CONTROL_STACK_KB")):
+            env = {**decided_launch(self, image), **(env or {})}
         process = start(self.argv(image, words + ([fault] if fault else [])),
                         cwd=ROOT, env=self.environment(env))
         self.processes.append(process)
@@ -1397,6 +1406,24 @@ PEER_FLIGHT_POLICY = (8 << 20, 512 << 20, 2, 1, 64 << 20, 1 << 50)
 def fund_peer_flights(node, policy=PEER_FLIGHT_POLICY):
     (node.store_path / "peer-flight-profile").write_bytes(
         b"FNP1" + b"".join(v.to_bytes(8, "big") for v in policy))
+
+
+def decided_words_launch(case, image, words, env=None):
+    """The environment of a run of the image at the heap and control stack its
+    own probe decides for WORDS (`heap -- WORDS`, the words after `--fn`): the
+    figure packaging/fn's installed branch passes, which reads the store
+    profile, the peer flight profile, a BP node's session terms and this
+    machine.  The image launcher's saved figure is the small preset's, below
+    what the default profile's read pool and BP sessions need."""
+    probe = run([str(image), "--fn", "heap", "--", *[str(w) for w in words]],
+                cwd=ROOT, env=environment(env), timeout=120)
+    out = probe.stdout.decode("utf-8", "replace")
+    case.assertEqual(probe.returncode, 0, out + probe.stderr.decode("utf-8", "replace"))
+    heap = re.search(r"heap=(\d+) MB", out)
+    stack = re.search(r"stack=(\d+) KB", out)
+    case.assertTrue(heap and stack, out)
+    return {"SBCL_USER_ARGS": "--dynamic-space-size {}MB --control-stack-size {}KB".format(
+        heap.group(1), stack.group(1))}
 
 
 def decided_launch(node, image=None):
