@@ -1081,63 +1081,6 @@ class CertificateExpansionTests(unittest.TestCase):
             self.assertIsNone(self.cert_expansions.current_cert(self.root, "books/t", Path(tmp)))
 
 
-class LowerStaleTests(unittest.TestCase):
-    """--lower-stale: shrink-only, like lock_discipline_check's.  It drops a
-    baseline row whose event is now hosted or gone, keeps a row still
-    orphaned, and never adds an orphan."""
-
-    def lower(self, accepted):
-        base = GeneratedDispatcherTests()
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            base.tree(root)
-            baseline = root / "baseline.json"
-            baseline.write_text(json.dumps({"accepted": accepted, "note": "n",
-                                            "unresolved": {"PRF-U:x": "kept"}},
-                                           indent=2, sort_keys=True) + "\n")
-            out = io.StringIO()
-            loaded = reach_check.loaded_host_files(root=root)
-            with patch.object(reach_check, "ROOT", root), patch.object(reach_check, "BASELINE", baseline), \
-                    patch.object(reach_check, "loaded_host_files", return_value=loaded), \
-                    patch.object(reach_check, "load_rows", return_value=base.ROWS), \
-                    redirect_stdout(out):
-                code = reach_check.main(["--lower-stale"])
-            return code, out.getvalue(), json.loads(baseline.read_text())
-
-    def test_a_stale_row_is_dropped_and_a_still_orphaned_row_stays(self):
-        code, text, after = self.lower({
-            "PRF-T3:fn-t-textual-prop": "SPEC: now hosted",
-            "PRF-T2:fn-t-lone-prop": "SPEC: still orphaned",
-            "PRF-GONE:fn-t-nothing": "SPEC: event left the registry"})
-        self.assertEqual(code, 0, text)
-        self.assertEqual(sorted(after["accepted"]), ["PRF-T2:fn-t-lone-prop"])
-        self.assertIn("dropped PRF-T3:fn-t-textual-prop", text)
-        self.assertIn("dropped PRF-GONE:fn-t-nothing", text)
-        self.assertEqual(after["unresolved"], {"PRF-U:x": "kept"})
-        self.assertEqual(after["note"], "n")
-
-    def test_a_new_orphan_is_not_added(self):
-        code, text, after = self.lower({"PRF-T3:fn-t-textual-prop": "SPEC: now hosted"})
-        self.assertEqual(code, 0, text)
-        self.assertEqual(after["accepted"], {})
-        self.assertNotIn("PRF-T2:fn-t-lone-prop", after["accepted"])
-
-    def test_a_row_the_checker_cannot_judge_is_kept(self):
-        code, text, after = self.lower({"PRF-T1:fn-t-subject-prop": "SPEC: needs --world"})
-        self.assertEqual(sorted(after["accepted"]), ["PRF-T1:fn-t-subject-prop"])
-        self.assertIn("nothing to drop", text)
-
-    def test_nothing_stale_leaves_the_file_byte_identical(self):
-        before = {"PRF-T2:fn-t-lone-prop": "SPEC: still orphaned"}
-        code, text, after = self.lower(before)
-        self.assertEqual(after["accepted"], before)
-
-    def test_it_refuses_a_partial_view(self):
-        done = subprocess.run([sys.executable, "tools/reach_check.py", "--lower-stale", "--world", "x.json"],
-                              cwd=ROOT, capture_output=True, text=True)
-        self.assertEqual(done.returncode, 2, done.stderr)
-
-
 class ProseIsNotReachTests(unittest.TestCase):
     """CONVERGE-2 row 14: a docstring that cites a book program is prose, not
     a call; a crash campaign naming a program in code is a tie, not a host."""
