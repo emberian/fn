@@ -1204,6 +1204,251 @@ REDERIVE: unit id -> the block text it re-derives to, or NIL when it no longer d
       (loop for form = (read s nil :eof) until (eq form :eof) do (push form out)))
     (nreverse out)))
 
+(defun fe-alpha-equal (raw emitted)
+  "(FE-ALPHA-EQUAL RAW EMITTED), for RAW exactly as FE-DERIVE-UNIT produced
+it (a form in (CAR D), before FE-CANON) and EMITTED read back from defs.lisp
+by FE-READ-BLOCK-FORMS, returns T iff they are equal under a renaming:
+1. Walk both forms simultaneously with (raw-symbol . emitted-symbol) pairs
+per namespace: variables, local functions, block names, tagbody tags. Extend
+at LAMBDA, SB-INT:NAMED-LAMBDA (including &optional/&key/&aux defaults and
+supplied-p), LET, LET*, MULTIPLE-VALUE-BIND, SYMBOL-MACROLET, FLET, LABELS,
+BLOCK/RETURN-FROM, TAGBODY/GO, and DECLARE of those bindings. This walk shares
+no code with FE-CANON or its local functions.
+2. Bound occurrences match exactly the current pair (innermost wins). Each
+namespace environment is a bijection: different raw binders in scope cannot
+map to the same emitted symbol.
+3. Free symbols must be EQ, except uninterned symbols correspond under one
+bijection for the entire top-level form, preserving sharing.
+4. QUOTE data, FUNCTION of a global name, and top-level definition names
+(DEFUN/DEFMACRO/DEFVAR/DEFPARAMETER/DEFCONSTANT/DEFGLOBAL/DEFSTRUCT) are EQUAL,
+with uninterned symbols under that same bijection. Strings, numbers and
+characters are EQUAL (floats EQL); quoted arrays have equal dimensions and
+element-wise equal quoted data.
+5. Other conses are compared pairwise; an unrecognized binder is a call.
+On FALSE, the second value is a short path/reason."
+  (let ((gensyms nil))
+    (block answer
+      (labels
+          ((bad (path control &rest args)
+             (return-from answer (values nil (format nil "~a: ~a" path (apply #'format nil control args)))))
+           (symbol= (a z path)
+             (cond ((and (symbolp a) (symbolp z)
+                         (null (symbol-package a)) (null (symbol-package z)))
+                    (let ((forward (assoc a gensyms)) (backward (rassoc z gensyms)))
+                      (cond (forward (unless (eq (cdr forward) z) (bad path "~s has inconsistent uninterned identity" a)))
+                            (backward (bad path "~s vs ~s already paired" a z))
+                            (t (push (cons a z) gensyms)))))
+                   ((not (eq a z)) (bad path "~s vs ~s" a z))))
+           (data= (a z path)
+             (cond ((symbolp a) (symbol= a z path))
+                   ((consp a)
+                    (unless (consp z) (bad path "cons vs ~s" z))
+                    (data= (car a) (car z) (format nil "~a car" path))
+                    (data= (cdr a) (cdr z) (format nil "~a cdr" path)))
+                   ((stringp a) (unless (equal a z) (bad path "strings differ")))
+                   ((arrayp a)
+                    (unless (and (arrayp z) (not (stringp z))
+                                 (equal (array-dimensions a) (array-dimensions z)))
+                      (bad path "array dimensions/type differ"))
+                    (dotimes (i (array-total-size a))
+                      (data= (row-major-aref a i) (row-major-aref z i) (format nil "~a array ~d" path i))))
+                   ((not (equal a z)) (bad path "~s vs ~s" a z))))
+           (pairs (a z path fn)
+             (loop for i from 1 while (and (consp a) (consp z)) do
+               (funcall fn (pop a) (pop z) (format nil "~a ~d" path i)))
+             (unless (and (null a) (null z)) (bad path "list shapes/counts differ")))
+           (reference= (a z env ns path)
+             (let* ((scope (nth ns env)) (pair (assoc a scope)))
+               (cond (pair (unless (eql (cdr pair) z) (bad path "bound ~s requires ~s, got ~s" a (cdr pair) z)))
+                     ((rassoc z scope) (bad path "free ~s captured by ~s" a z))
+                     (t (data= a z path)))))
+           (extend (a z env ns path)
+             (unless (and (or (symbolp a) (and (= ns 3) (integerp a)))
+                          (or (symbolp z) (and (= ns 3) (integerp z))))
+               (bad path "invalid binder ~s vs ~s" a z))
+             (when (or (and (symbolp a) (null (symbol-package a)))
+                       (and (symbolp z) (null (symbol-package z))))
+               (symbol= a z path))
+             (let* ((scope (nth ns env))
+                    ;; Keep shadowed pairs to detect capture of a free name,
+                    ;; but only visible raw bindings constrain the bijection.
+                    (other (find-if (lambda (pair)
+                                      (and (eql z (cdr pair))
+                                           (eq pair (assoc (car pair) scope)))) scope))
+                    (new (copy-list env)))
+               (when (and other (not (eql a (car other))))
+                 (bad path "~s vs ~s already bound to ~s" a z (car other)))
+               (setf (nth ns new) (acons a z scope))
+               new))
+           (forms= (a z env path)
+             (loop for i from 1 while (and (consp a) (consp z)) do
+               (walk (pop a) (pop z) env (format nil "~a ~d" path i)))
+             (unless (and (null a) (null z)) (walk a z env (format nil "~a tail" path))))
+           (parameters (a z env path)
+             (let ((mode :required))
+               (pairs a z path
+                      (lambda (x y p)
+                        (cond
+                          ((member x lambda-list-keywords)
+                           (data= x y p)
+                           (unless (eq x '&allow-other-keys) (setq mode x)))
+                          ((member mode '(:required &rest))
+                           (if (symbolp x) (setq env (extend x y env 0 p)) (data= x y p)))
+                          ((member mode '(&optional &key &aux))
+                           (let* ((xs (if (consp x) x (list x)))
+                                  (ys (if (consp y) y (list y)))
+                                  (xh (car xs)) (yh (car ys))
+                                  (keyp (eq mode '&key))
+                                  (xn (if (and keyp (consp xh)) (cadr xh) xh))
+                                  (yn (if (and keyp (consp yh)) (cadr yh) yh)))
+                             (unless (= (length xs) (length ys)) (bad p "parameter shapes differ"))
+                             (when keyp
+                               (when (or (and (consp xh) (/= (length xh) 2))
+                                         (and (consp yh) (/= (length yh) 2)))
+                                 (bad p "keyword parameter shape differs"))
+                               (data= (if (consp xh) (car xh) (intern (symbol-name xn) "KEYWORD"))
+                                      (if (consp yh) (car yh) (intern (symbol-name yn) "KEYWORD")) p))
+                             (unless (or keyp (eq (consp x) (consp y))) (bad p "parameter shapes differ"))
+                             (when (cdr xs) (walk (cadr xs) (cadr ys) env (format nil "~a default" p)))
+                             (setq env (extend xn yn env 0 p))
+                             (when (cddr xs) (setq env (extend (caddr xs) (caddr ys) env 0 p)))
+                             (data= (cdddr xs) (cdddr ys) p)))
+                          (t (data= x y p)))))
+               env))
+           (declaration= (a z env path)
+             (unless (and (consp a) (consp z)) (bad path "declaration shapes differ"))
+             (data= (car a) (car z) path)
+             (case (car a)
+               ((ignore ignorable dynamic-extent)
+                (pairs (cdr a) (cdr z) path
+                       (lambda (x y p)
+                         (if (and (consp x) (eq (car x) 'function))
+                             (progn (unless (and (consp y) (eq (car y) 'function)) (bad p "FUNCTION declaration differs"))
+                                    (reference= (cadr x) (cadr y) env 1 p) (data= (cddr x) (cddr y) p))
+                             (reference= x y env 0 p)))))
+               ((inline notinline type ftype)
+                (let ((typed (member (car a) '(type ftype))))
+                  (when typed (data= (cadr a) (cadr z) path))
+                  (pairs (if typed (cddr a) (cdr a)) (if typed (cddr z) (cdr z)) path
+                         (lambda (x y p) (reference= x y env (if (eq (car a) 'type) 0 1) p)))))
+               (t (if (and (symbolp (car a)) (sb-ext:defined-type-name-p (car a)))
+                      (pairs (cdr a) (cdr z) path (lambda (x y p) (reference= x y env 0 p)))
+                      (data= (cdr a) (cdr z) path)))))
+           (walk (a z env path)
+             (cond
+               ((symbolp a) (reference= a z env 0 path))
+               ((atom a) (data= a z path))
+               ((not (consp z)) (bad path "cons vs ~s" z))
+               (t
+                (let ((op (car a)) (p (format nil "~a (~s ...)" path (car a))))
+                  ;; Operator identity is lexical only for ordinary calls.
+                  (case op
+                    ((quote declaim) (data= a z p))
+                    (otherwise
+                     (if (member op '(lambda sb-int:named-lambda defun defmacro defvar defparameter
+                                      defconstant sb-ext:defglobal defstruct let let* symbol-macrolet
+                                      multiple-value-bind flet labels function block return-from tagbody go
+                                      declare the sb-ext:truly-the sb-kernel:the* sb-c::with-source-form
+                                      load-time-value eval-when if progn setq catch throw unwind-protect
+                                      multiple-value-call multiple-value-prog1 locally progv))
+                         (progn
+                           (data= op (car z) p)
+                           (pairs a z p (lambda (x y q) (declare (ignore x y q)))))
+                         (if (symbolp op) (reference= op (car z) env 1 p) (walk op (car z) env p)))
+                     (case op
+                       ((lambda sb-int:named-lambda defun defmacro)
+                        (let* ((named (not (eq op 'lambda)))
+                               (global (member op '(defun defmacro)))
+                               (inner (if global (list nil nil nil nil) env)))
+                          (when named (data= (cadr a) (cadr z) p))
+                          (when global
+                            (setq inner (extend (if (consp (cadr a)) (cadadr a) (cadr a))
+                                                (if (consp (cadr z)) (cadadr z) (cadr z)) inner 2 p)))
+                          (setq inner (parameters (if named (caddr a) (cadr a)) (if named (caddr z) (cadr z)) inner p))
+                          (forms= (if named (cdddr a) (cddr a)) (if named (cdddr z) (cddr z)) inner p)))
+                       ((defvar defparameter defconstant sb-ext:defglobal)
+                        (data= (cadr a) (cadr z) p)
+                        (forms= (cddr a) (cddr z) (list nil nil nil nil) p))
+                       (defstruct
+                        (data= (cadr a) (cadr z) p)
+                        (pairs (cddr a) (cddr z) p
+                               (lambda (x y q)
+                                 (if (consp x)
+                                     (progn (unless (consp y) (bad q "slot shapes differ"))
+                                            (data= (car x) (car y) q)
+                                            (unless (eq (null (cdr x)) (null (cdr y))) (bad q "slot default missing"))
+                                            (when (cdr x) (walk (cadr x) (cadr y) (list nil nil nil nil) q))
+                                            (data= (cddr x) (cddr y) q))
+                                     (data= x y q)))))
+                       ((let let* symbol-macrolet)
+                        (let ((inner env))
+                          (pairs (cadr a) (cadr z) (format nil "~a binding" p)
+                                 (lambda (x y q)
+                                   (unless (eq (consp x) (consp y)) (bad q "binding shapes differ"))
+                                   (when (consp x)
+                                     (if (eq op 'symbol-macrolet) (data= (cdr x) (cdr y) q)
+                                         (forms= (cdr x) (cdr y) (if (eq op 'let*) inner env) q)))
+                                   (setq inner (extend (if (consp x) (car x) x) (if (consp y) (car y) y) inner 0 q))))
+                          (forms= (cddr a) (cddr z) inner p)))
+                       (multiple-value-bind
+                        (walk (caddr a) (caddr z) env p)
+                        (let ((inner env))
+                          (pairs (cadr a) (cadr z) p (lambda (x y q) (setq inner (extend x y inner 0 q))))
+                          (forms= (cdddr a) (cdddr z) inner p)))
+                       ((flet labels)
+                        (let ((inner env))
+                          (pairs (cadr a) (cadr z) p
+                                 (lambda (x y q) (setq inner (extend (car x) (car y) inner 1 q))))
+                          (pairs (cadr a) (cadr z) p
+                                 (lambda (x y q)
+                                   (pairs x y q (lambda (a b p) (declare (ignore a b p))))
+                                   (let ((local (extend (car x) (car y) (if (eq op 'labels) inner env) 2 q)))
+                                     (setq local (parameters (cadr x) (cadr y) local q))
+                                     (forms= (cddr x) (cddr y) local q))))
+                          (forms= (cddr a) (cddr z) inner p)))
+                       (function
+                        (cond ((symbolp (cadr a)) (reference= (cadr a) (cadr z) env 1 p))
+                              ((member (caadr a) '(lambda sb-int:named-lambda)) (walk (cadr a) (cadr z) env p))
+                              (t (data= (cadr a) (cadr z) p)))
+                        (data= (cddr a) (cddr z) p))
+                       (block (forms= (cddr a) (cddr z) (extend (cadr a) (cadr z) env 2 p) p))
+                       (return-from (reference= (cadr a) (cadr z) env 2 p) (forms= (cddr a) (cddr z) env p))
+                       (tagbody
+                        (let ((inner env))
+                          (pairs (cdr a) (cdr z) p
+                                 (lambda (x y q)
+                                   (unless (eq (atom x) (atom y)) (bad q "tag/statement shapes differ"))
+                                   (when (atom x) (setq inner (extend x y inner 3 q)))))
+                          (pairs (cdr a) (cdr z) p
+                                 (lambda (x y q) (if (atom x) (reference= x y inner 3 q) (walk x y inner q))))))
+                       (go (reference= (cadr a) (cadr z) env 3 p) (data= (cddr a) (cddr z) p))
+                       (declare (pairs (cdr a) (cdr z) p (lambda (x y q) (declaration= x y env q))))
+                       ((the sb-ext:truly-the sb-kernel:the* sb-c::with-source-form)
+                        (data= (cadr a) (cadr z) p) (walk (caddr a) (caddr z) env p) (data= (cdddr a) (cdddr z) p))
+                       (load-time-value
+                        (walk (cadr a) (cadr z) (list nil nil nil nil) p) (data= (cddr a) (cddr z) p))
+                       (eval-when (data= (cadr a) (cadr z) p) (forms= (cddr a) (cddr z) env p))
+                       (otherwise (forms= (cdr a) (cdr z) env p))))))))))
+        (handler-case
+            (progn (walk raw emitted (list nil nil nil nil) "form") (values t nil))
+          (type-error () (values nil "form: malformed binder/form shape")))))))
+
+(defun fe-check-alpha-units (blocks raw-units)
+  "Compare read-back BLOCKS with the raw forms saved while re-deriving units."
+  (let ((refusals nil))
+    (dolist (entry raw-units)
+      (let* ((id (car entry)) (raw (cdr entry)) (block (assoc id blocks :test #'string=))
+             (emitted (cdr block)))
+        (when block
+          (let ((reason
+                  (if (/= (length raw) (length emitted)) "form counts differ"
+                      (loop for a in raw for z in emitted for i from 1
+                            do (multiple-value-bind (ok why) (fe-alpha-equal a z)
+                                 (unless ok (return (format nil "form ~d: ~a" i why))))))))
+            (when reason
+              (push (format nil "unit ~a: not alpha-equivalent to the derived form: ~a" id reason) refusals))))))
+    (nreverse refusals)))
+
 (defun xt-verify-defs (out-dir src-dir rt-path world-key)
   "Re-derive every unit in OUT-DIR/manifest.tsv from this image's world and the ACL2 sources, compare with
 the manifest and with OUT-DIR/defs.lisp, and check the closure.  Signals a refusal naming each failing unit."
@@ -1217,16 +1462,20 @@ the manifest and with OUT-DIR/defs.lisp, and check the closure.  Signals a refus
          (blocks0 (mapcar (lambda (b) (cons (car b) (fe-read-block-forms (cdr b)))) (fe-parse-defs dtext)))
          (specials (append (fe-specials-from-ids (mapcar #'car (nth-value 1 (fe-parse-manifest mtext))))
                            (fe-star1-var-refs (mapcar #'cdr (remove "decl:specials" blocks0 :key #'car :test #'string=)))))
+         (raw-units nil)
          (rederive (lambda (id)
                      (handler-case
                          (let ((d (if (string= id "decl:prologue")
                                       (cons (fe-prologue-forms) "prologue")
                                       (fe-derive-unit id stobj-names specials))))
-                           (and d (fe-block-text id (car d))))
+                           (when d
+                             (push (cons id (car d)) raw-units)
+                             (fe-block-text id (car d))))
                        (error (e) (format nil "<derivation error: ~a>" e)))))
          (refusals (fe-verify-core mtext dtext rederive world-key))
          (blocks blocks0))
-    (setq refusals (append refusals (fe-check-closure blocks *fe-rt*)))
+    (setq refusals (append refusals (fe-check-alpha-units blocks0 raw-units)
+                           (fe-check-closure blocks *fe-rt*)))
     (if refusals
         (progn (format t "~&XT-VERIFY-DEFS REFUSED ~d~%~{  ~a~%~}" (length refusals) (subseq refusals 0 (min 40 (length refusals))))
                (error "xt-verify-defs REFUSED: ~d unit(s); first: ~a" (length refusals) (car refusals)))
