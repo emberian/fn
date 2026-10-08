@@ -1,7 +1,7 @@
 ;; The split of fn-native-admin-plan (books/native-admin.lisp) into seven guard-verified
 ;; chunks is the original cond cut at every seventh arm.  This book proves it:
 ;; fn-native-admin-plan-old-cond is the original cond, verbatim (books/native-admin.lisp
-;; at 46664b46b~1); chunk K answers what the old cond answers whenever no
+;; at origin/integrate/20261008x, train 51); chunk K answers what the old cond answers whenever no
 ;; earlier chunk selects an arm, one lemma per chunk, composed at the end.
 ;; In each -out proof, earlier selectors stay opaque: the next chunk's
 ;; theorem supplies precisely those hypotheses.  Only the current selector
@@ -15,7 +15,7 @@
 (defun fn-native-admin-plan-old-cond (argv)
   (declare (xargs :guard t :verify-guards nil))
   (let ((words (fn-native-admin-words argv)))
-    (cond
+      (cond
        ((and (equal (len words) 3)
              (equal (car words) "group")
              (equal (cadr words) "create")
@@ -417,8 +417,9 @@
        ; owner (host/native/operator.lisp fnn-operator-execute-compaction): a
        ; request for its publication, no configuration record
        ; (fn-native-admin-result-owner-requestp; books/owner-compact-request).
-       ((equal words '("compaction" "request"))
-        (fn-native-admin-result :accepted nil :request-compaction nil 0 nil nil))
+       ; Q16's reclaim modes use the same work-class/plan declaration.
+       ((fn-nco-store-plan-kind argv)
+        (fn-native-admin-result :accepted nil (fn-nco-store-plan-kind argv) nil 0 nil nil))
        ; Row S3 (lane operability-2): what `store inspect ID' sends a running
        ; owner (host/native/operator.lisp fnn-operator-execute-inspect): a
        ; request for its own lookup of ID, no configuration record
@@ -444,18 +445,7 @@
                                 (fn-ncfg-nth 2 words)))
        ((equal words '("export" "status"))
         (fn-native-admin-result :accepted nil :request-export-status nil 0 nil nil))
-       ; Q16: what `store reclaim' sends a running owner
-       ; (host/native/operator.lisp fnn-operator-execute-store-action): a
-       ; request for its reclaim pass (books/owner-reclaim.lisp), no
-       ; configuration record of the plan's own.
-       ((equal words '("reclaim" "request"))
-        (fn-native-admin-result :accepted nil :request-reclaim nil 0 nil nil))
-       ((equal words '("reclaim" "recorded"))
-        (fn-native-admin-result :accepted nil :request-reclaim-recorded nil 0 nil nil))
-       ((equal words '("reclaim" "dry-run"))
-        (fn-native-admin-result :accepted nil :request-reclaim-dry-run nil 0 nil nil))
-       (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))
-)))
+       (t (fn-native-admin-result :refused :syntax nil nil nil nil nil)))))
 
 (defun fn-native-admin-plan-old (argv)
   (declare (xargs :guard t :verify-guards nil))
@@ -608,11 +598,17 @@
   (let ((words (fn-native-admin-words argv)))
     (or (and (<= 3 (len words))
              (equal (car words) "group")
-             (equal (cadr words) "describe")) (and (<= 4 (len words))
+             (equal (cadr words) "describe"))
+        (and (<= 4 (len words))
              (equal (car words) "group")
-             (equal (cadr words) "moderate")) (and (<= 2 (len words))
+             (equal (cadr words) "moderate"))
+        (and (<= 2 (len words))
              (equal (car words) "group")
-             (equal (cadr words) "subscribe-default")) (and (consp words) (equal (car words) "motd")) (and (consp words) (equal (car words) "bp-boundary")) (and (consp words) (equal (car words) "bp-route")) (equal words '("compaction" "request")))))
+             (equal (cadr words) "subscribe-default"))
+        (and (consp words) (equal (car words) "motd"))
+        (and (consp words) (equal (car words) "bp-boundary"))
+        (and (consp words) (equal (car words) "bp-route"))
+        (fn-nco-store-plan-kind argv))))
 
 (defun fn-native-admin-plan-sel-7 (argv)
   (declare (xargs :guard t :verify-guards nil))
@@ -620,10 +616,13 @@
     (or (and (equal (fn-ncfg-first words) "inspect")
              (equal (fn-ncfg-second words) "request")
              (stringp (fn-ncfg-nth 2 words))
-             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words))))) (and (equal (fn-ncfg-first words) "export")
+             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
+        (and (equal (fn-ncfg-first words) "export")
              (equal (fn-ncfg-second words) "request")
              (stringp (fn-ncfg-nth 2 words))
-             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words))))) (equal words '("export" "status")) (equal words '("reclaim" "request")) (equal words '("reclaim" "recorded")) (equal words '("reclaim" "dry-run")) t)))
+             (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words)))))
+        (equal words '("export" "status"))
+        t)))
 
 (in-theory (disable fn-native-admin-plan-old-cond fn-native-admin-plan-old fn-native-admin-plan-sel-1 fn-native-admin-plan-sel-2 fn-native-admin-plan-sel-3 fn-native-admin-plan-sel-4 fn-native-admin-plan-sel-5 fn-native-admin-plan-sel-6 fn-native-admin-plan-sel-7 fn-native-admin-plan-arms-1 fn-native-admin-plan-arms-2 fn-native-admin-plan-arms-3 fn-native-admin-plan-arms-4 fn-native-admin-plan-arms-5 fn-native-admin-plan-arms-6 fn-native-admin-plan-arms-7))
 

@@ -9652,10 +9652,10 @@
         "fn-ocs-in-flight-admits-only-inspect-commit-and-reader",
         "fn-ocs-next-otherwise-is-ocm-next",
         "fn-ocs-inspect-pick-keeps-the-ocm",
-        "fn-ocs-complete-only-after-the-barrier",
+        "fn-otm-held-plan-complete-only-after-the-barrier",
         "fn-ocs-barrier-only-from-a-start",
         "fn-ocs-staged-only-by-a-start",
-        "fn-ocs-in-flight-until-completed",
+        "fn-otm-held-plan-in-flight-until-completed",
         "fn-ocs-inspect-first-when-not-last",
         "fn-ocs-inspect-waiting-picks-someone",
         "fn-ocs-other-pick-clears-lasti",
@@ -13447,7 +13447,8 @@
         "fn-ocf-potential-at-most-twenty-two",
         "fn-ocf-seal-potential-at-most-six",
         "fn-ocf-start-next-while-control-waits-is-within-the-budget",
-        "fn-ocp-no-start-next-while-a-shut-out-class-waits"
+        "fn-ocp-no-start-next-while-a-shut-out-class-waits",
+        "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits"
       ]
     },
     {
@@ -21782,9 +21783,6 @@
         "planning/evidence/served-available-consumer-20261003/checks.json",
         "tests/acl2/served-available-read-tests.lisp",
         "planning/evidence/served-available-owner-20261003/checks.json",
-        "books/group-summary-cursor.lisp",
-        "tests/acl2/group-summary-cursor-tests.lisp",
-        "planning/evidence/group-summary-cursor-20261003/checks.json",
         "books/list-metadata-cursor.lisp",
         "planning/evidence/list-metadata-controller-20261003/checks.json",
         "books/served-query-plan.lisp",
@@ -22827,6 +22825,115 @@
         "fn-prl-row-sum-bound-reserve-natural",
         "fn-prl-row-sum-covers-bound-reserve",
         "fn-prl-convert-growth-under-row-sum-invp"
+      ]
+    },
+    {
+      "id": "PRF-1357",
+      "title": "The host's wire events (SASL context, TLS established, account outcome) step the session with the store node's recognizer carried, not evaluated, so an accept costs no store walk",
+      "statement": "fn-scar-ocfg-read-step-is-reference-under-ocl-relation (books/owner-served-carried.lisp; hypotheses (fn-ocl-relation oc) and (fn-scar-view-indexedp (fn-ocfg-owner oc))): (fn-scar-ocfg-read-step oc id event fn-arena) = (fn-ocfg-read-step oc id event fn-arena), the effects and the configured owner alike, for every connection identifier and every event. The reference evaluates fn-auth-sessionp of the connection's session as the first test of fn-auth-step-pinned, and a reader's session pins the store's node (fn-ocar-own-reader-context), so fn-peer-sessionp ran fn-node-statep over the whole node: the (:sasl-context SEED BINDING) event that the native accept sends after every open (host/native/mux.lisp fnn-mux-admit -> fnn-owner-sasl-context -> fn-owner-sasl-context) cost 90 of 93 ms per greeting at 10,000 articles on persvati (acl2-entry FN-OWNER-SASL-CONTEXT 3622 ms over 40 connects; FN-OWNER-EXPOSURE-OPEN 2 ms). The carried step is the same step over fn-scar-dispatch and fn-scar-conn-boundedp with the store's node as live; fn-scar-own-read-step-full-is-own-read-step-full and fn-scar-ocfg-read-step-is-ocfg-read-step (hypotheses fn-node-statep of the store's node and fn-scar-view-indexedp) are the steps, and fn-scar-ocl-relation-carries-node-statep (existing) turns the node premise into the relation. host/owner-host.lisp fn-owner-sasl-context and fn-owner-tls-established and host/native-admin-host.lisp fn-owner-account-outcome call fn-scar-ocfg-read-step. Scope: the three host events through the owner's single-event read; the open (fn-ocar-exp-open, PRF-188) and the byte read (fn-scar-ocfg-read-tls-prefix) are unchanged. Not claimed: that fn-scar-view-indexedp holds at every host call (books/owner-offer-indexed.lisp carries it across the configured-owner transitions, as for the byte read).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-188"
+      ],
+      "assumptions": [],
+      "evidence": [
+        "books/owner-served-carried.lisp",
+        "tests/acl2/owner-served-carried-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native-admin-host.lisp"
+      ],
+      "progress_note": "Lane greeting-walk (2026-10-08), LOAD-T-CMD-GREETING. Teeth: tests/acl2/owner-served-carried-tests.lisp (the *ocl-t-new-open* witness, connection 1 takes (:sasl-context SEED NIL): carried = reference, no reply, the connection kept with its context installed, the store kept; the bad-node owner, relation false: the carried step keeps the connection and the reference drops it, and the unconditional equation is a must-fail-checked defthm).",
+      "events": [
+        "fn-scar-ocfg-read-step-is-reference-under-ocl-relation",
+        "fn-scar-ocfg-read-step-is-ocfg-read-step",
+        "fn-scar-own-read-step-full-is-own-read-step-full"
+      ]
+    },
+    {
+      "id": "PRF-1344",
+      "title": "Critical evidence package for the existing authorization keystones",
+      "statement": "Ruling 22: the 289 existing authorization keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1345",
+      "title": "Critical evidence package for the existing durability keystones",
+      "statement": "Ruling 22: the 411 existing durability keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1346",
+      "title": "Critical evidence package for the existing extraction keystones",
+      "statement": "Ruling 22: the 9 existing extraction keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1347",
+      "title": "Critical evidence package for the existing identity-binding keystones",
+      "statement": "Ruling 22: the 105 existing identity-binding keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1348",
+      "title": "Critical evidence package for the existing ownership-reclamation keystones",
+      "statement": "Ruling 22: the 186 existing ownership-reclamation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1349",
+      "title": "Critical evidence package for the existing parser-boundary keystones",
+      "statement": "Ruling 22: the 320 existing parser-boundary keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1350",
+      "title": "Critical evidence package for the existing resource-reservation keystones",
+      "statement": "Ruling 22: the 232 existing resource-reservation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
       ]
     }
   ]

@@ -130,12 +130,6 @@
           ("Subgoal 2" :in-theory (e/d (fn-cp-uintp fn-cei-get) (nth len)))))
 
 (local
- (defthm fn-hist-held-msgid-stringp
-   (implies (fn-held-p x) (stringp (fn-record-msgid x)))
-   :hints (("Goal" :in-theory (enable fn-held-p fn-held-internals fn-record-internals
-                                      fn-record-msgidp)))))
-
-(local
  (defthm fn-hist-records-for-non-string
    (implies (not (stringp m))
             (equal (fn-cei-article-records-for m events) nil))

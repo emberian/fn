@@ -29,6 +29,7 @@
 ; (planning/audit-2026-09-25-twins-fanin.md packet 4).  This book keeps the
 ; group-name rules, the plan, its deltas and the publication decision.
 (include-book "native-admin-shape")
+(include-book "control-observation")
 (include-book "native-admin-peer")
 ; PKT-211: `peer list' renders the carriage budget (its own book, D26).
 (include-book "native-admin-peer-budget")
@@ -146,7 +147,10 @@
         (principal (fn-native-admin-arg 2 words))
         (verb (fn-native-admin-arg 3 words))
         (ns (fn-native-admin-arg 4 words)))
-    (cond ((and (equal (len words) 2) (equal op "list"))
+    (cond ((and (equal (len words) 4) (equal op "receipt")
+                (member-equal principal '("status" "release")))
+           (fn-native-admin-result :accepted nil :request-receipt nil 0 nil nil))
+          ((and (equal (len words) 2) (equal op "list"))
            (fn-native-admin-result :accepted nil :list-control nil 0 nil nil))
           ((not (and (equal (len words) 5)
                      (member-equal op '("grant" "revoke"))))
@@ -609,11 +613,9 @@
              (:type-prescription len)
              true-listp-of-list-fix)))))
 
-; The plan's cond is cut into chunks of at most seven arms, each guard-verified
-; on its own: the guard conjecture of one cond repeats every earlier test in
-; every later arm, so its size is quadratic in the arm count.  A chunk falls
-; through to the next in the original arm order, so the composition below is
-; the original cond arm for arm (the chunks are that cond's text, cut).
+; Seven guard-verified chunks preserve the current plan's arm text and order.
+; Each chunk falls through to the next. Keeping at most seven arms in a
+; guard conjecture bounds the repeated earlier tests (D26).
 (defun fn-native-admin-plan-arms-7 (argv)
   (declare (xargs :guard (fn-native-admin-argvp argv)
                   :guard-hints (("Goal" :do-not '(preprocess)
@@ -653,16 +655,6 @@
                                 (fn-ncfg-nth 2 words)))
        ((equal words '("export" "status"))
         (fn-native-admin-result :accepted nil :request-export-status nil 0 nil nil))
-       ; Q16: what `store reclaim' sends a running owner
-       ; (host/native/operator.lisp fnn-operator-execute-store-action): a
-       ; request for its reclaim pass (books/owner-reclaim.lisp), no
-       ; configuration record of the plan's own.
-       ((equal words '("reclaim" "request"))
-        (fn-native-admin-result :accepted nil :request-reclaim nil 0 nil nil))
-       ((equal words '("reclaim" "recorded"))
-        (fn-native-admin-result :accepted nil :request-reclaim-recorded nil 0 nil nil))
-       ((equal words '("reclaim" "dry-run"))
-        (fn-native-admin-result :accepted nil :request-reclaim-dry-run nil 0 nil nil))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil)))))
 
 (defun fn-native-admin-plan-arms-6 (argv)
@@ -708,8 +700,9 @@
        ; owner (host/native/operator.lisp fnn-operator-execute-compaction): a
        ; request for its publication, no configuration record
        ; (fn-native-admin-result-owner-requestp; books/owner-compact-request).
-       ((equal words '("compaction" "request"))
-        (fn-native-admin-result :accepted nil :request-compaction nil 0 nil nil))
+       ; Q16's reclaim modes use the same work-class/plan declaration.
+       ((fn-nco-store-plan-kind argv)
+        (fn-native-admin-result :accepted nil (fn-nco-store-plan-kind argv) nil 0 nil nil))
        (t (fn-native-admin-plan-arms-7 argv)))))
 
 (defun fn-native-admin-plan-arms-5 (argv)
@@ -1179,7 +1172,7 @@
        (member-equal (fn-native-admin-result-kind result)
                      '(:request-compaction :request-inspect :request-reclaim
                        :request-reclaim-recorded :request-reclaim-dry-run
-                       :request-export :request-export-status))
+                       :request-export :request-export-status :request-receipt))
        t))
 
 ; Row S3: the Message-ID an inspect request carries (its value field), or nil.

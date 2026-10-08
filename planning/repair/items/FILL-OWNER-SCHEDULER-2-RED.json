@@ -1,13 +1,13 @@
 {
  "category": "implementation",
- "detail": "Red on set bdd4f40c4 (hbox:/tank/fn/scratch/fill-wt/native-fill-e2e) and set 55ff708a6 (lat1:/tank/fn/scratch/fill-wt/native-fill-e2e-lat1-55; scenario_suite run e2e); logs/test-tests.test_native_owner_scheduler.log. S134 (landed) is a different defect in the same module.",
+ "detail": "Mechanism: the test sets FN_NATIVE_EXTENT_CACHE_TEST_OFF=1; fnn-extent-cache-limit is then 0 (host/native/extent.lisp:256), ACL2's fn-pxe-cache-mode answers :read-resources-unavailable (books/page-read-executor.lisp:16: cache off never authorizes unfunded synchronous I/O), fnn-extent-entry-direct refuses the checkpoint walk's read (extent.lisp:1433), and fn-orln-read-refusal-outcome defers the publication (books/owner-resource-line.lisp). Case (b): the product refuses this configuration by an ACL2 decision, now a keystone (fn-orln-cache-off-walk-defers-the-publication, teeth in tests/acl2/owner-resource-line-tests.lisp); the test drops the cache-off env. The (1, b'') health-count half (18 not <= 17) is not addressed here. history-root-reserve-exhausted at open is a separate item (N's probe). The pool-exhausted-with-cache-on case is already relieved by fnn-extent-cache-yield-oldest (extent.lisp:1427). Natives: see state.",
  "file": "host/native/owner.lisp",
  "id": "FILL-OWNER-SCHEDULER-2-RED",
  "notes": [],
- "owner": "unowned",
+ "owner": "sched-a6",
  "severity": "medium",
  "source": "fill-20261004",
  "state": "open",
- "title": "tests.test_native_owner_scheduler 2F: test_health_carries_the_scheduler_lines_and_counts_the_classes (18 not <= 17: class counts) and test_the_a6_campaign_keeps_accepted_history_through_one_integrated_scenario ((1, b'') is not true)",
- "updated": "2026-10-04T19:41:19Z"
+ "title": "tests.test_native_owner_scheduler A6 campaign: the snapshot did not publish (cache-off configuration; the test was wrong)",
+ "updated": "2026-10-08T00:00:00Z"
 }

@@ -96,6 +96,13 @@ elif role == "core":
     if FAULT == "core-defs-tampered":
         sha = "0" * 64
     open(os.path.join(k, "defs.lisp.verified-sha256"), "w").write(sha + "\n")
+    nonce, evsha = "ab" * 16, hashlib.sha256(defs).hexdigest()
+    for phase in ("EXPORT", "VERIFY"):
+        if FAULT == "core-evidence-missing" and phase == "VERIFY":
+            continue
+        n = "cd" * 16 if FAULT == "core-evidence-nonce" and phase == "VERIFY" else nonce
+        h = "0" * 64 if FAULT == "core-evidence-sha" else evsha
+        open(os.path.join(k, phase.lower() + ".done"), "w").write("XT-%s-DONE %s %s\n" % (phase, n, h))
     open(os.path.join(k, "manifest.tsv"), "w").write("#world_key\tstand-in\n" + ("" if FAULT == "core-no-units" else "ACL2::FOO\t" + "a" * 64 + "\tworld\n"))
     open(os.path.join(k, "runtime.tsv"), "w").write("ACL2::HARD-ERROR\thost-only\n")
     if FAULT == "core-gaps":
@@ -112,6 +119,44 @@ elif role == "core":
     open(exe, "w").write("#!/bin/sh\nFAKE_CORE=1 exec %s %s sbcl \"$@\"\n" % (sys.executable, os.path.abspath(__file__)))
     os.chmod(exe, 0o755)
     print("core: built (stand-in)")
+
+elif role == "obligations":
+    # stand-in for tools/extract/obligations.py VERB ...: two items; compare is the real one
+    sys.path.insert(0, os.environ["FAKE_EXTRACT_DIR"])
+    import obligations
+    verb = args[0]
+    if verb == "forms":
+        os.makedirs(args[1], exist_ok=True)
+        open(os.path.join(args[1], "obligations.lisp"), "w").write("(stand-in)\n")
+        open(os.path.join(args[1], "expected.count"), "w").write("2\n")
+    elif verb in ("run-image", "run-core"):
+        core = verb == "run-core"
+        lines = ["OB VAR ACL2::*X* 1", "OB ENTRY ACL2::F ((1) NIL)"]
+        if core and FAULT == "obligations-differ":
+            lines[1] = "OB ENTRY ACL2::F (:UNKNOWN NIL)"
+        if core and FAULT == "obligations-truncated":
+            lines = lines[:1]
+        else:
+            lines.append("OB-END 2")
+        open(os.path.join(args[2], "core.out" if core else "image.out"), "w").write("\n".join(lines) + "\n")
+        if core and FAULT == "obligations-core-exit":
+            sys.exit(9)
+    elif verb == "compare":
+        sys.exit(obligations.compare(args[1]))
+
+elif role == "faults":
+    # stand-in for tools/extract/faults_diff.py IMAGE CORE OUT
+    out = args[2]
+    os.makedirs(out, exist_ok=True)
+    results = [{"case": "a", "verdict": "agree"}, {"case": "b", "verdict": "agree"}]
+    if FAULT == "faults-differ":
+        results[1]["verdict"] = "DIFFER"
+    if FAULT == "faults-error":
+        results[1].update(verdict="ERROR", error="boom")
+    if FAULT == "faults-none":
+        results = []
+    json.dump({"results": results}, open(os.path.join(out, "faults.json"), "w"))
+    sys.exit(1 if FAULT in ("faults-differ", "faults-error", "faults-none", "faults-exit") else 0)
 
 elif role == "owner":
     from owner import CASE, OBSERVATIONS
@@ -208,6 +253,8 @@ class Fixture:
         self.tools = gate.Tools(acl2=[str(bin_ / "acl2")],
                                 stateful=[PY, str(self.standin), "stateful"],
                                 owner=[PY, str(self.standin), "owner"],
+                                obligations=[PY, str(self.standin), "obligations"],
+                                faults=[PY, str(self.standin), "faults"],
                                 core=[PY, str(self.standin), "core", str(t)],
                                 store=str(self.store), source="stand-in")
         self.env = {"FAKE_EXTRACT_DIR": str(ROOT / "tools" / "extract"),
@@ -310,6 +357,36 @@ class ExtractGateTest(unittest.TestCase):
         self.assertEqual(m["core"]["defs_sha256"], hashlib.sha256(b"(defun foo (x) x)\n").hexdigest())
 
     # 1 core: the build and its products
+    def test_core_evidence_missing(self):
+        self.assertFails("core-evidence-missing", "core", "verify.done was not written")
+
+    def test_core_evidence_of_two_runs(self):
+        self.assertFails("core-evidence-nonce", "core", "different nonces")
+
+    def test_core_evidence_names_other_defs(self):
+        self.assertFails("core-evidence-sha", "core", "names other defs.lisp bytes")
+
+    def test_obligations_differ(self):
+        self.assertFails("obligations-differ", "obligations", "ENTRY ACL2::F")
+
+    def test_obligations_truncated(self):
+        self.assertFails("obligations-truncated", "obligations", "incomplete")
+
+    def test_obligations_core_exit(self):
+        self.assertFails("obligations-core-exit", "obligations", "run-core")
+
+    def test_faults_differ(self):
+        self.assertFails("faults-differ", "faults", "1 of 2 fault cases did not agree")
+
+    def test_faults_case_error(self):
+        self.assertFails("faults-error", "faults", "ERROR b boom")
+
+    def test_faults_no_case(self):
+        self.assertFails("faults-none", "faults", "ran no case")
+
+    def test_faults_exit_after_agreement(self):
+        self.assertFails("faults-exit", "faults", "faults_diff.py")
+
     def test_core_build_exit(self):
         self.assertFails("core-build-exit", "core", "core.sh exited 3")
 

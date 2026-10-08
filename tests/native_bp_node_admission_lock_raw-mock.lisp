@@ -26,6 +26,33 @@
 (defun fnn-octet-list (octets)
   (declare (ignorable octets))
   (harness-stub-reached 'fnn-octet-list "host/native/io.lisp"))
+(defun fnn-owner-commit-complete-locked (service action members deferred)
+  (declare (ignorable service action members deferred))
+  (harness-stub-reached 'fnn-owner-commit-complete-locked "host/native/owner.lisp"))
+(defun fnn-owner-commit-start-event (members uncertain)
+  (declare (ignorable members uncertain))
+  (harness-stub-reached 'fnn-owner-commit-start-event "host/native/owner.lisp"))
+(defun fnn-owner-commit-start-locked (service &key seal)
+  (declare (ignorable service seal))
+  (harness-stub-reached 'fnn-owner-commit-start-locked "host/native/owner.lisp"))
+(defun fnn-owner-frames-job (service job)
+  (declare (ignorable service job))
+  (harness-stub-reached 'fnn-owner-frames-job "host/native/owner.lisp"))
+(defun fnn-owner-held-complete (service members deferred word condition thunk)
+  (declare (ignorable service members deferred word condition thunk))
+  (harness-stub-reached 'fnn-owner-held-complete "host/native/owner.lisp"))
+(defun fnn-owner-held-event (service event)
+  (declare (ignorable service event))
+  (harness-stub-reached 'fnn-owner-held-event "host/native/owner.lisp"))
+(defun fnn-owner-job-word (thunk)
+  (declare (ignorable thunk))
+  (harness-stub-reached 'fnn-owner-job-word "host/native/owner.lisp"))
+(defun fnn-owner-reader-capture (event)
+  (declare (ignorable event))
+  (harness-stub-reached 'fnn-owner-reader-capture "host/native/owner.lisp"))
+(defun fnn-refuse (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
 (defun fnn-string-octets (string)
   (declare (ignorable string))
   (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
@@ -110,6 +137,9 @@
                 do (eval form) (setq found t) (return))
         (unless found (error "~a: ~s not found" path wanted))))))
 
+;; The shipped held-commit macro the request entry expands.
+(load "tests/fixtures/held_commit_prelude.lisp")
+
 ;; The global the request entry clears and the refusal line reads is the
 ;; owner's own (mission-signed-2), not a stand-in.
 (load-shipped "host/native/owner.lisp" '(defvar) '(*fnn-owner-transit-detail*))
@@ -144,7 +174,10 @@
                  '(:request-refused (0)))
     (error "revoked request was not refused"))
   (unless (equal (reverse *calls*)
-                 '(:lock :lock :trust :open-request-journal :lock :trust
+                 ;; The held commit's START is its own quantum under O (the
+                 ;; second :lock after the journal opens); the :commit quantum
+                 ;; follows it, re-reads trust there, and finds it revoked.
+                 '(:lock :lock :trust :open-request-journal :lock :lock :trust
                    :close-request-journal :lock))
     (error "request authorization/publication order ~s" (reverse *calls*)))
   ;; The refusal line was asked of ACL2 for this view, as refused, with the

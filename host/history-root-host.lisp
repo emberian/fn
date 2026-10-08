@@ -17,11 +17,25 @@
          (f-get-global 'fn-owner-history-roots state)))))
 (defun fn-owner-hroot-put (generation row state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((rest (remove1-assoc-equal generation
-                (and (boundp-global 'fn-owner-history-roots state)
-                     (f-get-global 'fn-owner-history-roots state)))))
-    (f-put-global 'fn-owner-history-roots
-      (if row (acons generation row rest) rest) state)))
+  (f-put-global 'fn-owner-history-roots
+    (fn-hroot-table-put (and (boundp-global 'fn-owner-history-roots state)
+                             (f-get-global 'fn-owner-history-roots state))
+                        generation row) state))
+;; The refresh's word as ACL2 classifies it (books/history-root-credit.lisp
+;; fn-hroot-refresh-status), held for `status' and `health' to render
+;; (books/history-root-status.lisp fn-hrs-line).  It lives in the history-root
+;; table (fn-owner-history-roots) under the reserved key :last-refresh
+;; (fn-hroot-table-note), not in a global of its own.  Every word the host got
+;; is noted: a building/installed word clears a refusal, a refusal or an
+;; unrecognised word replaces it.  Returns the status for the host's log.
+(defun fn-owner-hroot-note (word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((table (fn-hroot-table-note (fn-owner-history-root-table state) word))
+         (state (f-put-global 'fn-owner-history-roots table state)))
+    (value (fn-hroot-table-status table))))
+
+(definterface fn-owner-hroot-note :class :program)
+
 (defun fn-owner-hroot-resize (generation amount state)
   (declare (xargs :stobjs state :mode :program))
   (let ((r (fn-mcr-hroot-resize (fn-owner-credits state) (fn-hroot-credit-key generation) amount)))
@@ -29,6 +43,8 @@
         (let ((state (fn-owner-put-credits (cadr r) state)))
           (mv :funded state))
       (mv r state))))
+
+(definterface fn-owner-hroot-resize :class :program)
 ;; The per-event decode transient of a generation under construction: an ops
 ;; credit against the article pool (never the history-root reserve), drawn
 ;; before the decode and set back to 0 after it.  Refused by name,
@@ -40,6 +56,8 @@
         (let ((state (fn-owner-put-credits (cadr r) state)))
           (mv :funded state))
       (mv r state))))
+
+(definterface fn-owner-hroot-transient :class :program)
 (defun fn-owner-hroot-release-credit (generation state)
   (declare (xargs :stobjs state :mode :program))
   (let ((r (fn-mcr-resize (fn-owner-credits state) (cons :history-root-tail generation) 0)))
@@ -64,11 +82,15 @@
                  (state (f-put-global 'fn-owner-history-root-counter generation state))
                  (state (fn-owner-hroot-put generation (list :building nil nil) state)))
             (value (list :building generation))))))))
+
+(definterface fn-owner-hroot-begin :class :program)
 (defun fn-owner-hroot-abandon-word (generation state)
   (declare (xargs :stobjs state :mode :program))
   (let ((row (fn-owner-hroot-get generation state)))
     (value (if (and (eq (car row) :building) (not (caddr row)))
                :ready :history-root-held))))
+
+(definterface fn-owner-hroot-abandon-word :class :program)
 (defun fn-owner-hroot-abandon (generation state)
   (declare (xargs :stobjs state :mode :program))
   (mv-let (erp word state) (fn-owner-hroot-abandon-word generation state)
@@ -79,6 +101,8 @@
         (if (not (eq word :funded)) (value word)
           (let ((state (fn-owner-hroot-put generation nil state)))
             (value :released)))))))
+
+(definterface fn-owner-hroot-abandon :class :program)
 (defun fn-owner-hroot-current (state)
   (declare (xargs :stobjs state :mode :program))
   (and (boundp-global 'fn-owner-history-root-current state)
@@ -105,6 +129,8 @@
                        (t (list :event (fn-hist-at ordinal fn-hist)
                                 (fn-owner-hroot-frontier state))))))
       (mv nil word fn-hist state))))
+
+(definterface fn-owner-hroot-row :class :program)
 (defun fn-owner-hroot-activate (generation count captured-frontier state)
   (declare (xargs :stobjs state :mode :program))
   (let ((row (fn-owner-hroot-get generation state))
@@ -121,6 +147,8 @@
                   (state (fn-owner-hroot-put generation (list :live current nil) state))
                   (state (f-put-global 'fn-owner-history-root-current generation state)))
              (value (list :installed generation old)))))))
+
+(definterface fn-owner-hroot-activate :class :program)
 (defun fn-owner-hroot-pin (physical-generation fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((generation (fn-owner-hroot-current state))
@@ -161,6 +189,8 @@
                  (state (fn-owner-hroot-put generation
                           (list (car row) (cadr row) (remove1-assoc-equal token (caddr row))) state)))
             (value :returned)))))))
+
+(definterface fn-owner-hroot-return :class :program)
 ; INTERNAL pre-destruction word. The caller holds the owner gate through
 ; physical disposal and the existing credit return. Retired generations
 ; cannot acquire new leases, and an issued lease prevents this word.
@@ -169,6 +199,8 @@
   (let ((row (fn-owner-hroot-get generation state)))
     (value (if (and (eq (car row) :retired) (null (caddr row)))
                :ready :history-root-held))))
+
+(definterface fn-owner-hroot-retire-word :class :program)
 
 (defun fn-owner-hroot-retire (generation state)
   (declare (xargs :stobjs state :mode :program))
@@ -180,6 +212,8 @@
           (let ((state (fn-owner-hroot-put generation nil state)))
             (value :released)))))))
 
+(definterface fn-owner-hroot-retire :class :program)
+
 (defun fn-owner-hroot-read-plan (source ordinal state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((row (fn-owner-hroot-get (caddr source) state))
@@ -190,6 +224,8 @@
             ((not (and (natp ordinal) (< ordinal (cadddr source))))
              '(:refused :history-root-ordinal))
             (t (list :read (caddr source) ordinal))))))
+
+(definterface fn-owner-hroot-read-plan :class :program)
 
 ; Every replacement of canonical fn-hist changes this ACL2 incarnation before
 ; the host installs its new pointer. A same-count rewrite cannot pass a stale
@@ -207,6 +243,8 @@
              (state (f-put-global 'fn-owner-history-root-current nil state)))
         (value (list :detached generation))))))
 
+(definterface fn-owner-hroot-detach :class :program)
+
 ; A pinned old tail must remain funded after its formerly shared Store is
 ; replaced. Reserve that retention before publishing a source handle.
 (defun fn-owner-hroot-pin-funded (physical-generation fn-hist state)
@@ -221,14 +259,20 @@
           (let ((state (fn-owner-put-credits (cadr credit) state)))
             (fn-owner-hroot-pin physical-generation fn-hist state)))))))
 
+(definterface fn-owner-hroot-pin-funded :class :program)
+
 (defun fn-owner-hroot-frontier-value (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-hroot-frontier state)))
+
+(definterface fn-owner-hroot-frontier-value :class :program)
 
 (defun fn-owner-hroot-read-owned (source state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-mcr-op-owned (fn-mcr-op (cons :history-root-read (cadr source))
                                     (fn-mcr-ops (fn-owner-credits state))))))
+
+(definterface fn-owner-hroot-read-owned :class :program)
 (defun fn-owner-hroot-read-fund (source amount state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((row (fn-owner-hroot-get (caddr source) state))
@@ -240,6 +284,8 @@
         (if (not (eq (car r) :ok)) (value r)
           (let ((state (fn-owner-put-credits (cadr r) state)))
             (value :funded)))))))
+
+(definterface fn-owner-hroot-read-fund :class :program)
 
 ; Reclaim has already prepared its page-backed history candidate. Loading
 ; its fresh catalog must not also allocate an all-tail duplicate of history.
@@ -253,7 +299,13 @@
   (let ((fn-cat (fn-cat-clear-keyed key fn-cat)))
     (mv :cleared fn-cat)))
 
+(definterface fn-owner-orcp-load-catalog-begin :class :program)
+
 (defun fn-owner-orcp-load-catalog-chunk (rows view-index fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :mode :program))
   (let ((fn-cat (fn-sca-load-held-available-from rows view-index fn-arena fn-cat)))
     (mv :loaded fn-cat)))
+
+(definterface fn-owner-orcp-load-catalog-chunk :class :program
+  :keystones ((fn-rcw-load-chunks-keyed-is-keyed-load
+               :step-of fn-rcw-load-chunks fn-sca-load-held-available-from)))

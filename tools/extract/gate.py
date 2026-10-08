@@ -12,12 +12,19 @@ or missing output, a case that ran twice or not at all, a missing completion
 marker and zero executed cases each FAIL with a named reason.  Steps:
   1. core: tools/extract/core.sh (the export, X1/X2 and the SBCL build); its
      products must exist, the closure must have no gaps, and defs.lisp must be
-     the file xt-verify-defs verified;
+     the file xt-verify-defs verified: its record, and the export and verify
+     runs' completion evidence (image_run.py, one nonce, defs.lisp's SHA-256);
   1b. manifest: the frozen record of what was extracted (world digest, the
      core's products, the foreign libraries);
   2. transcripts: every case transcripts.py lists (its manifest.json),
      through IMAGE's and fn-core's `--fn model', byte-identical;
   3. probes: the boundary probes through both sides, every probe identical;
+  3b. obligations: X1's O2 and O3 (EXTRACTION-PROGRAM-20261007.md section 7) through
+      both sides (obligations.py): every extracted global, every ACL2 state global
+      the closure reads and every value core-world.lisp sets holds the image's
+      value in fn-core before fn starts; every root has the image's entry-guard
+      specification (fnn-entry-guard-spec, fnn-trailing-kind); exclusions are
+      obligations.py's reviewed EXCLUDED list, each printed with its reason;
   4. store: a copy of a real format-9 store, rebound, read through both;
   5. stateful: the writable verbs (`store ROOT post|recover|node-secret')
      through IMAGE and fn-core on twin stores, step for step
@@ -25,7 +32,10 @@ marker and zero executed cases each FAIL with a named reason.  Steps:
      every case of its manifest run once, every required class covered;
   5b. owner: actual barrier completion after the owner has told its poster
       uncertain; exact wire replies, durable reads and restart through the
-      reference image and fn-core (owner.py).
+      reference image and fn-core (owner.py);
+  6. faults: the fault corpus through both sides, observation for observation
+     (faults_diff.py): tests/fixtures/fuzz-nntp's reproducers, and the load
+     fault corpus's traces when FN_EXTRACT_FAULT_TRACES names its directory.
 There is no per-function differential step: the per-function evidence is X1
 (xt-verify-defs: every emitted form EQUAL to what ACL2 installed) and X2 (no
 undefined name), both inside core.sh.  The step this replaced generated
@@ -71,6 +81,9 @@ class Tools:
     # gate's tests substitute a stand-in
     stateful: list = field(default_factory=lambda: ["python3", str(X / "stateful.py")])
     owner: list = field(default_factory=lambda: ["python3", str(X / "owner.py")])
+    obligations: list = field(default_factory=lambda: ["python3", str(X / "obligations.py")])
+    faults: list = field(default_factory=lambda: ["python3", str(X / "faults_diff.py")])
+    fault_traces: list = field(default_factory=list)
     store: str = "/tank/fn/scratch/fixtures/n1k-2k/store"
     source: str = None
     variant: str = "default"
@@ -181,7 +194,8 @@ class Gate:
         host/native in a bare SBCL core, built from the same world."""
         self.step = "core"
         k = self.tree / "build" / "core"
-        (k / "fn-core").unlink(missing_ok=True)
+        for stale in ("fn-core", "export.done", "verify.done"):
+            (k / stale).unlink(missing_ok=True)
         log = self.c / "core-build.log"
         env = dict(self.env, FN_CORE_NAME="fn-core", FN_NATIVE_PROFILE="developer",
                    FN_CORE_OUT=str(k), FN_EXTRACT_IMAGE=str(self.image))
@@ -194,6 +208,19 @@ class Gate:
             self.fail("the closure has names nothing provides (%s)" % gaps)
         if (k / "defs.lisp.verified-sha256").read_text().strip() != sha256_file(k / "defs.lisp"):
             self.fail("defs.lisp is not the file xt-verify-defs verified")
+        # O1's evidence: both world runs completed in this invocation over these defs.lisp bytes
+        evidence = {}
+        for phase in ("EXPORT", "VERIFY"):
+            f = k / ("%s.done" % phase.lower())
+            self.nonempty(f, "core")
+            words = f.read_text().split()
+            if len(words) != 3 or words[0] != "XT-%s-DONE" % phase:
+                self.fail("%s is not completion evidence: %r" % (f, f.read_text()[:80]))
+            evidence[phase] = words
+        if evidence["EXPORT"][1] != evidence["VERIFY"][1]:
+            self.fail("the export and verify evidence carry different nonces (not one core.sh run)")
+        if {evidence["EXPORT"][2], evidence["VERIFY"][2]} != {sha256_file(k / "defs.lisp")}:
+            self.fail("the completion evidence names other defs.lisp bytes")
         units = [l for l in (k / "manifest.tsv").read_text().splitlines() if l.strip() and not l.startswith("#")]
         if not units:
             self.fail("manifest.tsv lists no units")
@@ -256,6 +283,52 @@ class Gate:
     STORE_READ = (b"CAPABILITIES\r\nMODE READER\r\nLIST\r\nLIST ACTIVE\r\nGROUP fn.test\r\nSTAT\r\nHEAD\r\nBODY\r\n"
                   b"ARTICLE 1\r\nARTICLE 2\r\nNEXT\r\nLAST\r\nOVER 1-3\r\nHDR Subject 1-3\r\nLISTGROUP fn.test 1-5\r\n"
                   b"ARTICLE 999\r\nARTICLE <nonexistent@example.invalid>\r\nNEWNEWS * 20000101 000000\r\nQUIT\r\n")
+
+    def obligations(self):
+        """O2 and O3 through both sides: the same forms, item for item (obligations.py)."""
+        self.step = "obligations"
+        d = self.c / "obligations"
+        k = self.tree / "build" / "core"
+        self.need("obligations.py forms", self.t.obligations + ["forms", d, k],
+                  stdout=self.c / "obligations-forms.log", stderr="stdout", log=self.c / "obligations-forms.log")
+        self.nonempty(d / "obligations.lisp", "obligations")
+        self.need("obligations.py run-image", self.t.obligations + ["run-image", self.image, d],
+                  stdout=self.c / "obligations-image.log", stderr="stdout", log=self.c / "obligations-image.log",
+                  env=self.acl2_env)
+        self.nonempty(d / "image.out", "obligations")
+        self.need("obligations.py run-core", self.t.obligations + ["run-core", self.core_exe, d],
+                  stdout=self.c / "obligations-core.log", stderr="stdout", log=self.c / "obligations-core.log",
+                  env=self.acl2_env)
+        self.nonempty(d / "core.out", "obligations")
+        log = self.c / "obligations-compare.log"
+        rc = self.run("obligations.py compare", self.t.obligations + ["compare", d], stdout=log, stderr="stdout")
+        last = [l for l in log.read_text().splitlines() if l.startswith("obligations: ")]
+        if rc != 0 or not last:
+            first = [l for l in log.read_text().splitlines() if l.startswith("DIFFER ")][:3]
+            self.fail("O2/O3 differ: %s%s" % ("; ".join(first) or describe_status(rc), self.tail(log, 1)))
+        print(last[-1])
+
+    def faults(self):
+        """The fault corpus through both sides (faults_diff.py): every case runs, every case agrees."""
+        self.step = "faults"
+        d = self.c / "faults"
+        log = self.c / "faults.log"
+        argv = self.t.faults + [self.image, self.core_exe, d]
+        for t in self.t.fault_traces:
+            argv += ["--traces", t]
+        rc = self.run("faults_diff.py", argv, stdout=log, stderr="stdout", env=self.acl2_env)
+        doc = self.load_json(d / "faults.json", "faults")
+        results = doc.get("results") or []
+        if not results:
+            self.fail("the fault differential ran no case")
+        bad = [r for r in results if r.get("verdict") != "agree"]
+        if bad:
+            self.fail("%d of %d fault cases did not agree; first: %s %s%s" % (
+                len(bad), len(results), bad[0].get("verdict"), bad[0].get("case"),
+                (" " + bad[0]["error"]) if bad[0].get("error") else ""))
+        if rc != 0:
+            self.fail("faults_diff.py %s%s" % (describe_status(rc), self.tail(log, 1)))
+        print("faults: %d cases agree" % len(results))
 
     def store(self):
         self.step = "store"
@@ -461,8 +534,9 @@ class Gate:
                 self.fail("unsupported extraction variant " + self.t.variant)
             for name, stepfn in (("1 core", self.core), ("1b manifest", self.manifest),
                                  ("2 transcripts", self.transcripts), ("3 probes", self.probes),
+                                 ("3b obligations", self.obligations),
                                  ("4 store", self.store), ("5 stateful", self.stateful),
-                                 ("5b owner", self.owner)):
+                                 ("5b owner", self.owner), ("6 faults", self.faults)):
                 print("==", name, flush=True)
                 stepfn()
                 sys.stdout.flush()
@@ -484,7 +558,8 @@ def tools_from_env():
     return Tools(acl2=[acl2], core=["sh", str(X / "core.sh")],
                  store=os.environ.get("EXTRACT_STORE", "/tank/fn/scratch/fixtures/n1k-2k/store"),
                  source=os.environ.get("FN_EXTRACT_SOURCE"),
-                 variant=os.environ.get("FN_EXTRACT_VARIANT", "default"))
+                 variant=os.environ.get("FN_EXTRACT_VARIANT", "default"),
+                 fault_traces=[t for t in os.environ.get("FN_EXTRACT_FAULT_TRACES", "").split(":") if t])
 
 
 def main(argv):

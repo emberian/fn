@@ -96,32 +96,30 @@ released, as it did when the drive ran in the reconfiguration's own section."
 (defun fnn-bpnc-execute (node grant)
   (if (not (eq (first grant) :execute))
       (list :reason :refused (second grant))
-    (let ((owner (fnn-bpnc-owner node)) (plan (second grant)) (drive nil))
+    (let ((owner (fnn-bpnc-owner node)) (plan (second grant)) (drive-after nil))
       (if (eq (fnn-owner-disk-admit owner) :shed)
           :busy
         (let ((answer
-                (fnn-quantum-bp
-                 owner nil
-                 (lambda ()
-                   (multiple-value-bind (word reason)
-                       (fnn-owner-live-reconfigure-locked
-                        owner
-                        (lambda (cid)
-                          (fnn-owner-result 'fn-ores-config-result-p
-                                            'fn-native-admin-host-owner-reconfigure cid plan)))
-                     (cond ((eq word :refused) (list :reason :refused reason))
-                           ((eq word :accepted)
-                            ;; Durable configuration is already published.  The
-                            ;; model begins its change here (it reads the owner
-                            ;; configuration); the drive runs after release.
-                            (when (fnn-bpnc-listeners node)
-                              (when *fnn-section-step*
-                                (fnn-fault "BP listener drive deferred inside an open durable window"))
-                              (fnn-bplc-begin-locked (fnn-bpnc-listeners node))
-                              (setq drive t))
-                            :accepted)
-                           (t word)))))))
-          (when drive (fnn-bpnc-drive-after owner node))
+                (fnn-owner-live-reconfigure (run drive fnn-quantum-bp owner nil)
+                    (word reason)
+                  :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-native-admin-host-owner-reconfigure pcid plan))
+                  :before (progn
+                            (fnn-rc-begin run nil)
+                            (drive))
+                  :continue
+                  (cond ((eq word :refused) (list :reason :refused reason))
+                        ((eq word :accepted)
+                         ;; Durable configuration is already published.  The
+                         ;; model begins its change here (it reads the owner
+                         ;; configuration); the drive runs after release.
+                         (when (fnn-bpnc-listeners node)
+                           (when *fnn-section-step*
+                             (fnn-fault "BP listener drive deferred inside an open durable window"))
+                           (fnn-bplc-begin-locked (fnn-bpnc-listeners node))
+                           (setq drive-after t))
+                         :accepted)
+                        (t word)))))
+          (when drive-after (fnn-bpnc-drive-after owner node))
           answer)))))
 
 (defun fnn-bpnc-handle (node socket)

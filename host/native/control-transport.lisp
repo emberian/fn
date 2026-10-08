@@ -8,7 +8,7 @@
 (defstruct (fnn-control-state (:constructor %make-fnn-control-state))
   path listener accept-thread service
   (lock (sb-thread:make-mutex :name "fn local control"))
-  (workers nil) (clients nil) (stopping nil) (max-clients 0)
+  (workers nil) (clients nil) (receipt nil) (stopping nil) (max-clients 0)
   (read-maximum 0)
   device inode lease-path lease-fd)
 
@@ -286,7 +286,7 @@ octets, or NIL.  PLAIN-THUNK encodes the plain request, only for a resend."
         (t (values (fnn-control-transport-outcome stage)
                    (fnn-core 'fn-native-control-host-transport-word stage)))))))
 
-(defun fnn-control-admin (path-octets argv)
+(defun fnn-control-admin-once (path-octets argv)
   "Send one ACL2-bounded administrative vector to the live owner.
 Answers (values STATUS WORD LINE): WORD is ACL2's reason word (PKT-453 (a)),
 LINE the owner's sentence when its reply carried one (kind 23), else NIL."
@@ -296,3 +296,32 @@ LINE the owner's sentence when its reply carried one (kind 23), else NIL."
     (fnn-control-reasoned-exchange
      (fnn-octets-string path-octets) reasoned
      (lambda () (fnn-core 'fn-native-control-host-admin-encode argv)))))
+
+(defvar *fnn-control-observe-pause* #'sleep
+  "Status scheduling seam; ACL2 supplies every interval.")
+
+(defun fnn-control-admin (path-octets argv)
+  "A store-sized request acknowledges first, then observes its receipt.
+Every status exchange has ACL2's reply bound; there is no work deadline."
+  (multiple-value-bind (status word line) (fnn-control-admin-once path-octets argv)
+    (setf status (fnn-core 'fn-nco-client-status status word))
+    (let ((query (fnn-core 'fn-nco-client-follow argv status word line)))
+      (unless query
+        (when (fnn-core 'fn-nco-client-heldp status word line)
+          (fnn-out "outstanding receipt=~a" (fnn-octets-string (fnn-octets line))))
+        (return-from fnn-control-admin (values status word line)))
+      (fnn-out "~a requested receipt=~a"
+               (fnn-octets-string (fnn-octets (first argv)))
+               (fnn-octets-string (fnn-octets line)))
+      (loop
+        (funcall *fnn-control-observe-pause* (fnn-core 'fn-nco-wait-seconds))
+        (multiple-value-bind (observed reason detail)
+            (fnn-control-admin-once path-octets query)
+          (setf observed (fnn-core 'fn-nco-client-observed-status observed reason))
+          (unless (fnn-core 'fn-nco-client-waitp observed reason)
+            ;; An uncertain/lost observation retains the receipt for an
+            ;; explicit later status. Release only a received terminal result.
+            (when (fnn-core 'fn-nco-client-releasep observed)
+              (fnn-control-admin-once
+               path-octets (fnn-core 'fn-nco-status-argv line t)))
+            (return (values observed reason detail))))))))

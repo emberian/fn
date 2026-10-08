@@ -13,7 +13,7 @@ import re
 import subprocess
 import unittest
 
-from tests.native_harness import EXIT_FAULT, EXIT_UNCERTAIN, ROOT, Node, native_image
+from tests.native_harness import EXIT_FAULT, EXIT_UNCERTAIN, ROOT, Node, article, native_image
 
 
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -212,8 +212,8 @@ class AdminSectionStructureTests(unittest.TestCase):
 
     SOURCE = ROOT / "host/native/admin.lisp"
     OWNER = ROOT / "host/native/owner.lisp"
-    SECTIONS = ("compaction", "inspect", "export", "reclaim", "reclaim-instant",
-                "limit-carry", "limit", "admin")
+    SECTIONS = ("compaction", "compaction-status", "inspect", "export", "reclaim", "reclaim-instant",
+                "limit-carry", "limit", "admin", "login-bindings", "login-bindings-record")
     # The offline command executors: no owner section; the command scope is
     # the generator's next piece (planning/handoff-2026-10-03/failure-scope.md).
     OFFLINE = ("fnn-admin-verify-under-lock",)
@@ -236,7 +236,11 @@ class AdminSectionStructureTests(unittest.TestCase):
         for transitional in ("(fnn-owner-serialized ", "(fnn-owner-gated ",
                              "(fnn-owner-transit-serialized ", "(fnn-section-run "):
             self.assertNotIn(transitional, body, transitional)
-        self.assertEqual(body.count("(fnn-quantum-control"), len(self.SECTIONS))
+        # A section is entered by its own call or as the SECTION of a live
+        # reconfiguration (fnn-owner-live-reconfigure (RUN DRIVE SECTION ...)).
+        self.assertEqual(body.count("(fnn-quantum-control")
+                         + body.count("(run drive fnn-quantum-control"),
+                         len(self.SECTIONS))
         for section in self.SECTIONS:
             self.assertIn('(fnn-admin-test-fault "{}")'.format(section), body, section)
 
@@ -246,11 +250,18 @@ class AdminSectionStructureTests(unittest.TestCase):
             if name in self.OFFLINE:
                 continue
             arms = re.findall(r"\(\s*(error|serious-condition|fnn-store-error)\s+\(", source)
-            if name == "fnn-owner-live-reconfigure-locked":
-                # Its one arm re-signals (ACL2's refusal un-stages, the
-                # condition goes on as itself): a cleanup, not a decision.
-                self.assertEqual(arms, ["fnn-store-error"], name)
-                self.assertIn("(error e)", source)
+            if name == "fnn-rc-window":
+                # A live reconfiguration's window keeps the condition it met
+                # as its result and the word ACL2's step takes
+                # (fnn-rc-classify); the :fence or :fault effect re-signals
+                # it under the owner (fnn-rc-resignal), where the section's
+                # one boundary classifies it: a hand-off, not a decision.
+                self.assertEqual(arms, ["serious-condition"], name)
+                self.assertIn("(fnn-rc-classify run condition)", source)
+                continue
+            if name == "fnn-rc-resignal":
+                self.assertEqual(arms, ["error"], name)
+                self.assertIn("(error (or (fnn-rc-condition run) default))", source)
                 continue
             if arms:
                 self.fail("{} decides the kind of a failure by a parent-class arm {}".format(
@@ -289,8 +300,11 @@ class AdminSectionBoundaryTests(unittest.TestCase):
         self.node = Node(self, DEVELOPER)
         self.node.init("fn.test")
 
-    def injected(self, section, kind, words, exit_code, line):
+    def injected(self, section, kind, words, exit_code, line, seed=False):
         owner = self.node.start(env={"FN_NATIVE_ADMIN_FAULT": "{}:{}".format(section, kind)})
+        if seed:
+            mid = "<compaction-status-section@example.invalid>"
+            self.assertEqual(self.node.post(mid, article(mid)).returncode, 0)
         request = self.node.operator(*words, expect=None)
         self.assertNotEqual(request.returncode, 0, request.stdout + request.stderr)
         self.node.exited(exit_code, timeout=180, process=owner)
@@ -308,6 +322,10 @@ class AdminSectionBoundaryTests(unittest.TestCase):
     def test_a_fault_in_the_compaction_section_stops_the_owner_as_a_fault(self):
         self.injected("compaction", "fault", ("store", "compact"),
                       EXIT_FAULT, b"owner quantum fault; process stopped")
+
+    def test_a_fault_in_the_compaction_status_section_stops_the_owner_as_a_fault(self):
+        self.injected("compaction-status", "fault", ("store", "compact"),
+                      EXIT_FAULT, b"owner quantum fault; process stopped", seed=True)
 
     def test_a_fault_in_the_admin_section_stops_the_owner_as_a_fault(self):
         self.injected("admin", "fault", ("group", "create", "fn.injected"),

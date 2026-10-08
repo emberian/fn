@@ -34,9 +34,36 @@
 (defun fnn-core (name &rest args)
   (declare (ignorable name args))
   (harness-stub-reached 'fnn-core "host/native/io.lisp"))
+(defun fnn-owner-commit-complete-locked (service action members deferred)
+  (declare (ignorable service action members deferred))
+  (harness-stub-reached 'fnn-owner-commit-complete-locked "host/native/owner.lisp"))
+(defun fnn-owner-commit-start-event (members uncertain)
+  (declare (ignorable members uncertain))
+  (harness-stub-reached 'fnn-owner-commit-start-event "host/native/owner.lisp"))
+(defun fnn-owner-commit-start-locked (service &key seal)
+  (declare (ignorable service seal))
+  (harness-stub-reached 'fnn-owner-commit-start-locked "host/native/owner.lisp"))
 (defun fnn-owner-complete-bp-transit-submission (service submit-callback msgid raw stored groups evidence generation txid planned-id planned-subject)
   (declare (ignorable service submit-callback msgid raw stored groups evidence generation txid planned-id planned-subject))
   (harness-stub-reached 'fnn-owner-complete-bp-transit-submission "host/native/owner.lisp"))
+(defun fnn-owner-frames-job (service job)
+  (declare (ignorable service job))
+  (harness-stub-reached 'fnn-owner-frames-job "host/native/owner.lisp"))
+(defun fnn-owner-held-complete (service members deferred word condition thunk)
+  (declare (ignorable service members deferred word condition thunk))
+  (harness-stub-reached 'fnn-owner-held-complete "host/native/owner.lisp"))
+(defun fnn-owner-held-event (service event)
+  (declare (ignorable service event))
+  (harness-stub-reached 'fnn-owner-held-event "host/native/owner.lisp"))
+(defun fnn-owner-job-word (thunk)
+  (declare (ignorable thunk))
+  (harness-stub-reached 'fnn-owner-job-word "host/native/owner.lisp"))
+(defun fnn-owner-reader-capture (event)
+  (declare (ignorable event))
+  (harness-stub-reached 'fnn-owner-reader-capture "host/native/owner.lisp"))
+(defun fnn-refuse (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 
 (defvar *actions* nil)
@@ -99,6 +126,9 @@
     (fn-owner-prov-post '(1)) (fn-owner-config-generation 1)
     (fn-owner-next-txid 2) (fn-owner-app-current-generation 1)
     (otherwise (error "unexpected owner core query ~s" name))))
+
+;; The shipped held-commit macro the dispatchers expand.
+(load "tests/fixtures/held_commit_prelude.lisp")
 
 ;; The dispatcher and the deployed txid check it calls, by name, so a rename
 ;; fails here rather than leaving a stub in its place.

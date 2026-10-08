@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "owner-time-model")
 (include-book "owner-commit-held")
+(include-book "defkeystone")
 
 (defun fn-otm-phase-of (s)
   (declare (xargs :guard t))
@@ -175,3 +176,202 @@
                  (:instance fn-otm-held-event-is-the-held-step
                             (s (mv-nth 1 (fn-otm-held-event s word)))
                             (event :completed-stopping))))))
+
+; The host-called labelled entry grows the held event, without a second
+; scheduler. The host executes these effects at their labels. :frames is
+; the no-member START's FNFD append/barrier before any caller submission.
+(defun fn-otm-held-plan (s event)
+  (declare (xargs :guard t))
+  (mv-let (action s2) (fn-otm-held-event s event)
+    (mv action s2 (fn-och-action-effects action))))
+
+; Every effect is labelled, and :off exactly for an I/O phase. This covers
+; the actual entry the host calls, including a START that kept no member.
+(defthm fn-otm-held-plan-labels-every-effect
+  (fn-och-labelsp (mv-nth 2 (fn-otm-held-plan s event)))
+  :hints (("Goal" :in-theory (e/d (fn-otm-held-plan fn-otm-held-event
+                                   fn-och-action-effects fn-och-step
+                                   fn-ocp-commit-step fn-ocs-commit-step)
+                                  (fn-otm-phase-of fn-otm-next-of fn-otm-held
+                                   fn-otm-with-step)))))
+
+(defteeth fn-otm-held-plan-labels-every-effect
+  :claim (() (fn-och-labelsp (mv-nth 2 (fn-otm-held-plan s event))))
+  :subject fn-otm-held-plan
+  :witness ((s (fn-otm-init)) (event :started-none-held))
+  :breaks ()
+  :mutations ((append-under-owner
+               (:conclusion
+                (fn-och-labelsp
+                 (cons (cons :owner :intents)
+                       (cdr (mv-nth 2 (fn-otm-held-plan s event))))))
+               ((s (fn-otm-init)) (event :started-none-held))
+               :fault "Run the no-member drain's feed append/barrier under O")))
+
+(defthm fn-otm-held-plan-no-member-drain-is-off-owner
+  (implies (and (not (fn-otm-held s))
+                (not (fn-ocs-in-flight-p (fn-otm-phase-of s))))
+           (mv-let (action s2 effects) (fn-otm-held-plan s :started-none-held)
+             (and (equal action :frames)
+                  (equal effects '((:off . :intents)))
+                  (fn-otm-held s2)
+                  (equal (fn-otm-phase-of s2) :staged)
+                  (not (fn-otm-committer-may-start s2)))))
+  :hints (("Goal" :in-theory (enable fn-otm-held-plan fn-otm-held-event
+                                    fn-och-action-effects fn-och-step))))
+
+(defteeth fn-otm-held-plan-no-member-drain-is-off-owner
+  :claim (((unheld (not (fn-otm-held s)))
+           (idle (not (fn-ocs-in-flight-p (fn-otm-phase-of s)))))
+          (mv-let (action s2 effects) (fn-otm-held-plan s :started-none-held)
+            (and (equal action :frames)
+                 (equal effects '((:off . :intents)))
+                 (fn-otm-held s2)
+                 (equal (fn-otm-phase-of s2) :staged)
+                 (not (fn-otm-committer-may-start s2)))))
+  :subject fn-otm-held-plan
+  :witness ((s (fn-otm-init)))
+  :breaks ((unheld ((s (fn-otm-with-step (fn-otm-init) :idle nil t))))
+           (idle ((s (fn-otm-with-step (fn-otm-init) :staged nil nil)))))
+  :mutations ((append-under-owner
+               (:conclusion
+                (equal (mv-nth 2 (fn-otm-held-plan s :started-none-held))
+                       '((:owner . :intents))))
+               ((s (fn-otm-init)))
+               :fault "Mutate the feed append's required execution label to :owner")))
+
+(defteeth fn-och-frames-held-until-the-job-returns
+  :claim (()
+          (and (equal (fn-och-step :idle nil nil :started-none-held)
+                      '(:frames :staged nil t))
+               (equal (mv-nth 0 (fn-och-step :staged nil t (fn-och-frames-event final)))
+                      (case final (:done :submit) (:uncertain :stop) (otherwise :fault)))
+               (iff (mv-nth 3 (fn-och-step :staged nil t (fn-och-frames-event final)))
+                    (not (equal final :done)))))
+  :subject fn-och-frames-event
+  :witness ((final :done))
+  :breaks ()
+  :mutations ((submit-on-uncertain
+               (:conclusion
+                (equal (mv-nth 0 (fn-och-step :staged nil t (fn-och-frames-event final)))
+                       :submit))
+               ((final :uncertain)) :fault "Submit after an ambiguous feed append")))
+
+(defteeth fn-och-held-crash-never-submits
+  :claim (((held held) (in-flight (fn-ocs-in-flight-p phase)))
+          (mv-let (action phase2 next2 held2) (fn-och-step phase next held :crash)
+            (and (equal action :stop)
+                 (equal phase2 :failed)
+                 (equal (mv-nth 0 (fn-och-step phase2 next2 held2 :completed)) :none))))
+  :subject fn-otm-held-plan
+  :witness ((held t) (phase :staged) (next nil))
+  :breaks ((held ((held nil) (phase :staged) (next nil)))
+           (in-flight ((held t) (phase :idle) (next nil))))
+  :mutations ((submit-after-crash
+               (:conclusion
+                (mv-let (action phase2 next2 held2) (fn-och-step phase next held :crash)
+                  (declare (ignore action))
+                  (equal (mv-nth 0 (fn-och-step phase2 next2 held2 :completed)) :submit)))
+               ((held t) (phase :staged) (next nil)) :fault "Complete a crashed job as accepted")))
+
+; PRF-267 / PRF-901: the host entry carries the original contracts.
+(defthm fn-otm-held-plan-complete-only-after-the-barrier
+  (implies (equal (mv-nth 0 (fn-otm-held-plan s event)) :complete)
+           (and (equal (fn-otm-phase-of s) :staged) (equal event :fenced)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+            (e/d (fn-otm-held-plan fn-otm-held-event fn-och-step
+                  fn-ocp-commit-step fn-ocs-commit-step
+                  fn-otm-held-committer-wake fn-och-committer-wake
+                  fn-ocp-committer-wake fn-ocp-wake)
+                 (fn-otm-held-event-without-a-held-batch-is-the-commit-event
+                  fn-otm-with-step fn-otm-phase-of fn-otm-next-of
+                  fn-otm-held fn-otm-ocp fn-ocp-ocs fn-ocp-open-next
+                  fn-ocp-excluded-waits-p fn-ocp-passes)))))
+
+(defthm fn-otm-held-plan-in-flight-until-completed
+  (implies (and (fn-ocs-in-flight-p (fn-otm-phase-of s))
+                (not (member-equal event
+                                   '(:completed :completed-stopping :frames-fenced))))
+           (fn-ocs-in-flight-p
+            (fn-otm-phase-of (mv-nth 1 (fn-otm-held-plan s event)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+            (e/d (fn-otm-held-plan fn-otm-held-event fn-och-step
+                  fn-ocp-commit-step fn-ocs-commit-step
+                  fn-otm-held-committer-wake fn-och-committer-wake
+                  fn-ocp-committer-wake fn-ocp-wake)
+                 (fn-otm-held-event-without-a-held-batch-is-the-commit-event
+                  fn-otm-with-step fn-otm-phase-of fn-otm-next-of
+                  fn-otm-held fn-otm-ocp fn-ocp-ocs fn-ocp-open-next
+                  fn-ocp-excluded-waits-p fn-ocp-passes)))))
+
+(defun fn-otm-ocs-event (phase event)
+  (declare (xargs :guard t))
+  (if (and (member-equal event '(:started :started-none :started-uncertain
+                                :fenced :failed :completed))
+           (not (and (equal phase :failed)
+                     (member-equal event '(:fenced :failed)))))
+      event :ocs-unknown))
+
+(defthm fn-otm-held-plan-carries-the-whole-ocs-step
+  (equal (fn-ocs-commit-step phase event)
+         (let* ((s (fn-otm-with-step (fn-otm-init) phase nil nil))
+                (plan (fn-otm-held-plan s (fn-otm-ocs-event phase event))))
+           (list (if (equal (mv-nth 0 plan) :sync) :barrier (mv-nth 0 plan))
+                 (fn-otm-phase-of (mv-nth 1 plan)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+            (e/d (fn-otm-held-plan fn-otm-held-event fn-och-step
+                  fn-ocp-commit-step fn-ocs-commit-step fn-otm-ocs-event
+                  fn-otm-held-committer-wake fn-och-committer-wake
+                  fn-ocp-committer-wake fn-ocp-wake)
+                 (fn-otm-held-event-without-a-held-batch-is-the-commit-event
+                  fn-otm-with-step fn-otm-phase-of fn-otm-next-of
+                  fn-otm-held fn-otm-ocp fn-ocp-ocs fn-ocp-open-next
+                  fn-ocp-excluded-waits-p fn-ocp-passes)))))
+
+(defthm fn-otm-held-committer-wake-is-ocp-when-unheld
+  (implies (not (fn-otm-held s))
+           (equal (fn-ocp-committer-wake (fn-otm-ocp s) returned queued w)
+                  (fn-otm-held-committer-wake s returned queued w)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-otm-committer-wake))))
+
+(defthm fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits
+  (implies (and (fn-ocp-excluded-waits-p w)
+                (<= *fn-ocp-pass-bound* (fn-ocp-passes (fn-otm-ocp s))))
+           (not (equal (fn-otm-held-committer-wake s returned queued w) :start-next)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-otm-held-committer-wake fn-och-committer-wake fn-ocp-wake)
+                (fn-otm-held-wakes fn-otm-phase-of fn-otm-next-of fn-otm-held
+                 fn-otm-ocp fn-ocp-passes fn-ocp-excluded-waits-p)))))
+
+; The old claims follow from the host-entry claims and the whole-step
+; correspondence. Neither proof unfolds OCS or uses the old keystone.
+(defthm fn-otm-held-plan-implies-ocs-barrier-property
+  (implies (equal (mv-nth 0 (fn-ocs-commit-step phase event)) :complete)
+           (and (equal phase :staged) (equal event :fenced)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-otm-ocs-event)
+                            (fn-ocs-commit-step
+                             fn-otm-held-plan fn-otm-phase-of fn-otm-with-step))
+           :use (fn-otm-held-plan-carries-the-whole-ocs-step
+                 (:instance fn-otm-held-plan-complete-only-after-the-barrier
+                            (s (fn-otm-with-step (fn-otm-init) phase nil nil))
+                            (event (fn-otm-ocs-event phase event)))))))
+
+(defthm fn-otm-held-plan-implies-ocs-in-flight-property
+  (implies (and (fn-ocs-in-flight-p phase) (not (equal event :completed)))
+           (fn-ocs-in-flight-p (mv-nth 1 (fn-ocs-commit-step phase event))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-otm-ocs-event)
+                            (fn-ocs-commit-step fn-ocs-in-flight-until-completed
+                             fn-otm-held-plan fn-otm-phase-of fn-otm-with-step))
+           :use (fn-otm-held-plan-carries-the-whole-ocs-step
+                 (:instance fn-otm-held-plan-in-flight-until-completed
+                            (s (fn-otm-with-step (fn-otm-init) phase nil nil))
+                            (event (fn-otm-ocs-event phase event)))))))
