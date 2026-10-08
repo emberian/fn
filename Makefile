@@ -2147,6 +2147,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-time-bars-tests \
 	books/owner-queued-work \
 	tests/acl2/owner-queued-work-tests \
+	books/owner-commit-held \
+	tests/acl2/owner-commit-held-tests \
+	books/owner-time-held \
+	tests/acl2/owner-time-held-tests \
+	books/owner-reconfig-phased \
+	tests/acl2/owner-reconfig-phased-tests \
 	books/feed-journal-order \
 	tests/acl2/feed-journal-order-tests \
 	tests/acl2/tls-handshake-budget-tests \
