@@ -22928,7 +22928,7 @@
     {
       "id": "PRF-1344",
       "title": "Critical evidence package for the existing authorization keystones",
-      "statement": "Ruling 22: the 274 existing authorization keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "statement": "Ruling 22: the 289 existing authorization keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
       "milestone": "M4",
       "requirements": [],
       "depends_on": [],
@@ -22941,7 +22941,7 @@
     {
       "id": "PRF-1345",
       "title": "Critical evidence package for the existing durability keystones",
-      "statement": "Ruling 22: the 448 existing durability keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "statement": "Ruling 22: the 479 existing durability keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
       "milestone": "M4",
       "requirements": [],
       "depends_on": [],
@@ -22954,7 +22954,7 @@
     {
       "id": "PRF-1346",
       "title": "Critical evidence package for the existing extraction keystones",
-      "statement": "Ruling 22: the 8 existing extraction keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "statement": "Ruling 22: the 17 existing extraction keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
       "milestone": "M4",
       "requirements": [],
       "depends_on": [],
@@ -22980,7 +22980,7 @@
     {
       "id": "PRF-1348",
       "title": "Critical evidence package for the existing ownership-reclamation keystones",
-      "statement": "Ruling 22: the 168 existing ownership-reclamation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "statement": "Ruling 22: the 186 existing ownership-reclamation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
       "milestone": "M4",
       "requirements": [],
       "depends_on": [],
@@ -22993,7 +22993,7 @@
     {
       "id": "PRF-1349",
       "title": "Critical evidence package for the existing parser-boundary keystones",
-      "statement": "Ruling 22: the 313 existing parser-boundary keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "statement": "Ruling 22: the 323 existing parser-boundary keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
       "milestone": "M4",
       "requirements": [],
       "depends_on": [],
@@ -23006,7 +23006,7 @@
     {
       "id": "PRF-1350",
       "title": "Critical evidence package for the existing resource-reservation keystones",
-      "statement": "Ruling 22: the 188 existing resource-reservation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "statement": "Ruling 22: the 232 existing resource-reservation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
       "milestone": "M4",
       "requirements": [],
       "depends_on": [],

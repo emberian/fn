@@ -26,15 +26,16 @@ THE EVIDENCE PACKAGE (deputy P's five parts), per critical keystone:
   mutation        DECLARED there: an implementation mutation caught by the
                   host test or the theorem; same existence check
 
-A NEW or CHANGED critical keystone (absent from the protected base, or its
-statement/claim digest differs from the base entry's digest) without the whole
+A NEW or CHANGED critical keystone (absent from planning/critical-base.json, the gate's own
+cutover, or its statement digest differs from the one recorded there) without the whole
 package is a HARD FAIL: no ceiling, no ACKS escape.  An EXISTING one without it
 must be listed in planning/critical-owed.json with a claimed item id; the list
-shrinks only (a name that gained the package, is no longer critical or is not
-in the base is a finding).  Redundant hypotheses are not detected here
+shrinks only (a name that gained the package, is no longer critical or is new or
+changed since the critical base is a finding).  Redundant hypotheses are not detected here
 (tools/premise_audit.py finds unestablished premises, not redundant ones): owed.
 
     python3 tools/keystone_critical.py --report        # classes, examples, package status
+    python3 tools/keystone_critical.py --write-critical-base   # the cutover, once
     python3 tools/keystone_critical.py --claim-owed    # claim items for unlisted existing criticals
 """
 from __future__ import annotations
@@ -52,6 +53,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MAP = ROOT / "tools/keystone_critical_map.json"
 EVIDENCE = ROOT / "planning/critical-evidence.json"
 OWED = ROOT / "planning/critical-owed.json"
+CBASE = ROOT / "planning/critical-base.json"
 INTERFACES = ROOT / "planning/interfaces.json"
 PARTS = ("premises", "wrong_answer", "host_test", "trace_witness", "mutation")
 DECLARED = ("host_test", "trace_witness", "mutation")
@@ -192,12 +194,17 @@ def missing(pkg: dict) -> list[str]:
 ITEM = re.compile(r"^PRF-\d{3,}$")
 
 
-def findings(current: dict[str, dict], base: dict | None, declared: dict, owed: dict,
+def findings(current: dict[str, dict], cbase: dict | None, declared: dict, owed: dict,
              reachable, root: Path = ROOT) -> tuple[list[str], dict]:
-    """(findings, summary).  CURRENT entries carry `critical` (and
-    `statement_digest`); a base entry may carry them too."""
+    """(findings, summary).  CBASE is planning/critical-base.json's `entries`
+    (name -> class, statement_digest): the gate's own cutover.  NEW is absent
+    from it, CHANGED has a different statement digest; both need the whole
+    package.  Everything else in it is existing debt, owed with an item."""
     problems: list[str] = []
-    base_entries = {e["name"]: e for e in (base or {}).get("entries", [])}
+    if cbase is None:
+        return ["critical gate: planning/critical-base.json is missing; "
+                "python3 tools/keystone_critical.py --write-critical-base (once)"], \
+            {"critical": 0, "complete": 0, "new_or_changed": 0, "owed": 0, "by_class": {}}
     critical = {n: e for n, e in current.items() if e.get("critical")}
     summary = {"critical": len(critical), "complete": 0, "new_or_changed": 0,
                "owed": 0, "by_class": {}}
@@ -205,17 +212,13 @@ def findings(current: dict[str, dict], base: dict | None, declared: dict, owed: 
         summary["by_class"][entry["critical"]] = summary["by_class"].get(entry["critical"], 0) + 1
         pkg = package(entry, declared.get(name), reachable, root)
         lacking = missing(pkg)
-        old = base_entries.get(name)
-        if base is None:
+        old = cbase.get(name)
+        if old is None:
             kind = "new"
-        elif old is None:
-            kind = "new"
+        elif old.get("statement_digest") != entry.get("statement_digest"):
+            kind = "changed"
         else:
-            was = old.get("statement_digest")
-            now = entry.get("statement_digest")
-            claim_changed = (old.get("claim_digest") and entry.get("claim_digest")
-                             and old["claim_digest"] != entry["claim_digest"])
-            kind = "changed" if (was and now and was != now) or claim_changed else "existing"
+            kind = "existing"
         if not lacking:
             summary["complete"] += 1
             if name in owed:
@@ -238,15 +241,41 @@ def findings(current: dict[str, dict], base: dict | None, declared: dict, owed: 
     for name in sorted(set(owed) - set(critical)):
         problems.append(f"critical gate: {name} is in planning/critical-owed.json and is no "
                         f"longer a critical registry keystone: remove it")
-    if base is not None:
-        for name in sorted(set(owed) & set(critical)):
-            if name not in base_entries:
-                problems.append(f"critical gate: {name} is new and cannot be owed: a new "
-                                f"critical keystone ships with its package")
+    for name in sorted(set(owed) & set(critical)):
+        if name not in cbase or cbase[name].get("statement_digest") != critical[name].get("statement_digest"):
+            problems.append(f"critical gate: {name} is new or changed since the critical base and "
+                            f"cannot be owed: it ships with its package")
     for name in sorted(set(declared) - set(critical)):
         problems.append(f"critical gate: planning/critical-evidence.json declares {name}, which "
                         f"is not a critical registry keystone")
     return problems, summary
+
+
+def load_critical_base() -> dict | None:
+    try:
+        return json.loads(CBASE.read_text(encoding="utf-8"))["entries"]
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def write_critical_base(current: dict[str, dict]) -> int:
+    """The cutover, written ONCE: the critical set now, with statement digests.
+    Never rewritten (a second run refuses); names leave it by hand-free
+    shrinkage only when a keystone stops being critical."""
+    if CBASE.exists():
+        print(f"{CBASE.name} exists: the critical base is written once")
+        return 1
+    entries = {n: {"class": e["critical"], "statement_digest": e["statement_digest"]}
+               for n, e in sorted(current.items()) if e.get("critical")}
+    CBASE.write_text(json.dumps({
+        "about": "The critical gate's cutover (Ruling 22): the critical keystones that existed "
+                 "when the gate landed, with statement digests. A critical keystone absent from "
+                 "this file, or with a different digest, is new or changed and needs the whole "
+                 "evidence package; the rest are existing debt owed in planning/critical-owed.json. "
+                 "Generated once by tools/keystone_critical.py --write-critical-base.",
+        "entries": entries}, indent=1) + "\n", encoding="utf-8")
+    print(f"wrote {CBASE.name} ({len(entries)} critical keystones)")
+    return 0
 
 
 def load_declared() -> dict:
@@ -301,15 +330,14 @@ def claim_owed(lane: str, write: bool) -> int:
     keystone to its class's item (and records its book)."""
     import subprocess
     ke, current = _current()
-    base, why = ke.base_manifest()
-    base_names = {e["name"] for e in (base or {}).get("entries", [])}
+    cbase = load_critical_base() or {}
     declared, owed, reach = load_declared(), load_owed(), lazy_reachable()
     groups: dict[tuple[str, str], list[str]] = {}
     for name, entry in sorted(current.items()):
         if not entry.get("critical") or name in owed:
             continue
-        if base is not None and name not in base_names:
-            continue  # new since the base: ships with its package, cannot be owed
+        if cbase.get(name, {}).get("statement_digest") != entry.get("statement_digest"):
+            continue  # new or changed since the critical base: ships with its package
         if not missing(package(entry, declared.get(name), reach)):
             continue
         groups.setdefault(entry["critical"], []).append(name)
@@ -353,8 +381,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--claim-owed", action="store_true")
     parser.add_argument("--write", action="store_true", help="with --claim-owed: claim and write")
+    parser.add_argument("--write-critical-base", action="store_true",
+                        help="write planning/critical-base.json once (the gate's cutover)")
     parser.add_argument("--lane", default=Path.cwd().name)
     args = parser.parse_args(argv)
+    if args.write_critical_base:
+        return write_critical_base(_current()[1])
     if args.claim_owed:
         return claim_owed(args.lane, args.write)
     report()

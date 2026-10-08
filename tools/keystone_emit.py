@@ -567,7 +567,7 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
     if base is not None:
         problems += toothless_findings(toothless, ceiling)
     critical, summary = keystone_critical.findings(
-        current, base, keystone_critical.load_declared(), keystone_critical.load_owed(),
+        current, keystone_critical.load_critical_base(), keystone_critical.load_declared(), keystone_critical.load_owed(),
         keystone_critical.lazy_reachable())
     CRITICAL[:] = critical  # reported by main(); never holds a manifest write hostage
     stale = [p for p in problems if "stale" in p or "is missing; run --write" in p]

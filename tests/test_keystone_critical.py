@@ -112,10 +112,44 @@ class Gate(unittest.TestCase):
 
     def run_gate(self, current, base_names, declared=None, owed=None, reachable=lambda s: True,
                  base_extra=None):
-        base = {"entries": [dict({"name": n, "class": "hand"}, **(base_extra or {}).get(n, {}))
-                            for n in base_names]}
-        return kc.findings({e["name"]: e for e in current}, base, declared or {}, owed or {},
+        """BASE_NAMES: the critical base (planning/critical-base.json), each
+        recorded with statement digest d1 unless BASE_EXTRA says otherwise."""
+        cbase = {n: dict({"class": "durability", "statement_digest": "d1"},
+                         **(base_extra or {}).get(n, {})) for n in base_names}
+        return kc.findings({e["name"]: e for e in current}, cbase, declared or {}, owed or {},
                            reachable, self.root)
+
+    def test_a_missing_critical_base_fails(self):
+        found, _ = kc.findings({"k": teeth("k")}, None, {}, {}, lambda s: True, self.root)
+        self.assertTrue(any("critical-base.json is missing" in f for f in found))
+
+    def test_a_keystone_added_after_the_cutover_hard_fails_even_when_the_teeth_base_knows_it(self):
+        found, _ = self.run_gate([teeth("old"), teeth("added-later")], ["old"],
+                                 owed={"old": {"item": "PRF-1345"}})
+        self.assertTrue(any("new durability keystone added-later" in f and "HARD FAIL" in f
+                            for f in found), found)
+        self.assertFalse(any("keystone old" in f for f in found), found)
+
+    def test_a_changed_statement_of_a_based_keystone_hard_fails_and_cannot_stay_owed(self):
+        found, _ = self.run_gate([teeth("k", statement_digest="d2")], ["k"],
+                                 owed={"k": {"item": "PRF-1345"}})
+        self.assertTrue(any("changed durability keystone k" in f and "HARD FAIL" in f
+                            for f in found), found)
+        self.assertTrue(any("cannot be owed" in f for f in found), found)
+
+    def test_an_unchanged_based_keystone_with_an_owed_item_passes(self):
+        found, summary = self.run_gate([teeth("k")], ["k"], owed={"k": {"item": "PRF-1345"}})
+        self.assertEqual((found, summary["owed"]), ([], 1))
+
+    def test_write_critical_base_is_written_once(self):
+        old = kc.CBASE
+        try:
+            kc.CBASE = self.root / "critical-base.json"
+            self.assertEqual(kc.write_critical_base({"k": teeth("k")}), 0)
+            self.assertEqual(kc.load_critical_base()["k"]["statement_digest"], "d1")
+            self.assertEqual(kc.write_critical_base({"k": teeth("k")}), 1)
+        finally:
+            kc.CBASE = old
 
     def test_new_critical_without_the_package_is_a_hard_fail(self):
         found, summary = self.run_gate([teeth("k")], [])
@@ -173,8 +207,7 @@ class Gate(unittest.TestCase):
 
     def test_a_changed_existing_critical_loses_its_owed_cover(self):
         found, _ = self.run_gate([teeth("k", statement_digest="d2")], ["k"],
-                                 owed={"k": {"item": "PRF-1344"}},
-                                 base_extra={"k": {"statement_digest": "d1"}})
+                                 owed={"k": {"item": "PRF-1344"}})
         self.assertTrue(any("changed" in f and "HARD FAIL" in f for f in found), found)
 
     def test_an_owed_name_that_gained_the_package_or_left_the_class_must_be_removed(self):

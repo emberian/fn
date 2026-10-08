@@ -381,6 +381,11 @@
    "item": "PRF-1348",
    "book": "books/payload-arena-extent.lisp"
   },
+  "fn-arx-intern-events-refines": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/payload-extent.lisp"
+  },
   "fn-asj-body-of-strip": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -511,6 +516,16 @@
    "item": "PRF-1344",
    "book": "books/nntp-auth.lisp"
   },
+  "fn-auth-starttls-after-authentication-is-refused-without-reset": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/nntp-auth.lisp"
+  },
+  "fn-auth-starttls-is-not-advertised-once-authenticated-on-any-connection": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/nntp-auth.lisp"
+  },
   "fn-auth-starttls-is-not-advertised-under-tls-on-any-connection": {
    "class": "authorization",
    "item": "PRF-1344",
@@ -631,6 +646,11 @@
    "item": "PRF-1344",
    "book": "books/nntp-auth.lisp"
   },
+  "fn-auth-view-excludes-unreadable-groups-on-any-connection": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/nntp-auth.lisp"
+  },
   "fn-auth-view-hides-the-queue-from-a-non-moderator": {
    "class": "authorization",
    "item": "PRF-1344",
@@ -650,6 +670,21 @@
    "class": "authorization",
    "item": "PRF-1344",
    "book": "books/auth-secret.lisp"
+  },
+  "fn-av-mca-read-span-restricted-is-legacy": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/served-available-access.lisp"
+  },
+  "fn-av-scr-auth-delegate-restricted-is-reference": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/served-available-access.lisp"
+  },
+  "fn-av-scr-dispatch-core-restricted-is-reference": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/served-available-access.lisp"
   },
   "fn-aw-add-fold-open-cost": {
    "class": "parser-boundary",
@@ -860,6 +895,21 @@
    "class": "authorization",
    "item": "PRF-1344",
    "book": "books/bp-node-machine-authorization.lisp"
+  },
+  "fn-bpnb-input-past-read-bound-is-refused": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/bp-node-budget-input.lisp"
+  },
+  "fn-bpnb-installed-backoff-refuses-another-backoff": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/bp-node-budget-input.lisp"
+  },
+  "fn-bpnb-installed-retries-refuses-another-retries": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/bp-node-budget-input.lisp"
   },
   "fn-bpnf-clock-domain-same-binds-durable-id": {
    "class": "durability",
@@ -1446,6 +1496,21 @@
    "item": "PRF-1345",
    "book": "books/store-init-log-publication.lisp"
   },
+  "fn-bs-init-log-complete-store-carries-the-node-secret": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-init-log-publication.lisp"
+  },
+  "fn-bs-init-log-complete-store-carries-the-peer-flight-profile": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-init-log-publication.lisp"
+  },
+  "fn-bs-init-log-crash-retry-is-old-or-new": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-init-log-publication.lisp"
+  },
   "fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log": {
    "class": "durability",
    "item": "PRF-1345",
@@ -1876,6 +1941,16 @@
    "item": "PRF-1350",
    "book": "books/connection-budget.lisp"
   },
+  "fn-cbud-live-held-charges-current-and-active": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/connection-budget.lisp"
+  },
+  "fn-cbud-live-held-releases-only-unneeded-slots": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/connection-budget.lisp"
+  },
   "fn-cbud-read-covers-the-step": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -2065,6 +2140,11 @@
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/cold-read-reservation.lisp"
+  },
+  "fn-csp-framer-window-accounts-for-every-octet": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/peer-catchup-spool-framer.lisp"
   },
   "fn-ctl-authorize-requires-a-covering-grant": {
    "class": "authorization",
@@ -2301,6 +2381,66 @@
    "item": "PRF-1349",
    "book": "books/consumer-wait-codec.lisp"
   },
+  "fn-dl-concat-loop-is-revappend": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/def-loop.lisp"
+  },
+  "fn-dl-fold-loop-is-revappend": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/def-loop.lisp"
+  },
+  "fn-dl-foldr-loop-is-foldr": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/def-loop.lisp"
+  },
+  "fn-dl-map-loop-is-revappend": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/def-loop.lisp"
+  },
+  "fn-dl-map-skip-loop-is-revappend": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/def-loop.lisp"
+  },
+  "fn-dl-step-loop-is-revappend": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/def-loop.lisp"
+  },
+  "fn-dl-sum-loop-is-plus": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/def-loop.lisp"
+  },
+  "fn-dl-thread-loop-is-revappend": {
+   "class": "extraction",
+   "item": "PRF-1346",
+   "book": "books/def-loop.lisp"
+  },
+  "fn-dwa-refused-retirement-preserves-carry": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/decoded-worker-assignment.lisp"
+  },
+  "fn-dwa-retirement-revokes-prior-authority": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/decoded-worker-assignment.lisp"
+  },
+  "fn-dwj-retired-job-refuses-scalar-publication": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/decoded-worker-job.lisp"
+  },
+  "fn-dwj-retirement-preserves-private-backing": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/decoded-worker-job.lisp"
+  },
   "fn-feed-journal-next-is-bounded-progress": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -2310,6 +2450,11 @@
    "class": "parser-boundary",
    "item": "PRF-1349",
    "book": "books/feed-journal.lisp"
+  },
+  "fn-fjo-an-intent-moved-past-another-resolution-replays-alike": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/feed-journal-order.lisp"
   },
   "fn-frame-decode-of-host-framing": {
    "class": "parser-boundary",
@@ -3216,6 +3361,11 @@
    "item": "PRF-1345",
    "book": "books/store-log-programs.lisp"
   },
+  "fn-lg-open-program-keeps-the-relation": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-route-programs.lisp"
+  },
   "fn-lg-order-program-keeps-the-relation": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3341,6 +3491,11 @@
    "item": "PRF-1345",
    "book": "books/store-log-kernel-concrete.lisp"
   },
+  "fn-lgc-failed-barrier-recovers-a-prefix": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-failed-barrier.lisp"
+  },
   "fn-lgc-log-len-is-the-log-length": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3356,6 +3511,11 @@
    "item": "PRF-1345",
    "book": "books/store-log-kernel-concrete.lisp"
   },
+  "fn-lgc-take-never-joins-the-batch-in-flight": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-kernel-concrete.lisp"
+  },
   "fn-lgd-loop-is-the-scan": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -3365,6 +3525,16 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-damage.lisp"
+  },
+  "fn-lgdm-entry-len-bounded-is-entry-len": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/store-log-entry-bound.lisp"
+  },
+  "fn-lgdm-entry-len-bounded-step": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/store-log-entry-bound.lisp"
   },
   "fn-lgdm-least-valid-finds-any-witness": {
    "class": "durability",
@@ -3501,6 +3671,11 @@
    "item": "PRF-1345",
    "book": "books/store-log-open-barriers.lisp"
   },
+  "fn-lgob-three-barrier-open-after-the-copy-is-the-five": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-open-barriers.lisp"
+  },
   "fn-lgob-three-barrier-open-is-the-five-at-every-cut": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3530,6 +3705,31 @@
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/store-log-reclaim.lisp"
+  },
+  "fn-lgrc-acknowledge-from-the-copy": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-recover-copy.lisp"
+  },
+  "fn-lgrc-attempt-makes-the-read-prefix-durable": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-recover-copy.lisp"
+  },
+  "fn-lgrc-dropping-open-loses-a-checkpointed-history": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-recover-copy.lisp"
+  },
+  "fn-lgrc-open-keeps-the-relation-at-every-cut": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-recover-copy.lisp"
+  },
+  "fn-lgrc-open-unlinks-no-segment": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-recover-copy.lisp"
   },
   "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was": {
    "class": "durability",
@@ -3605,6 +3805,56 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-txid.lisp"
+  },
+  "fn-lgu-acknowledge-acknowledges-only-recoverable-records": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-durable.lisp"
+  },
+  "fn-lgu-acknowledged-records-are-recovered-at-every-cut": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-durable.lisp"
+  },
+  "fn-lgu-complete-acknowledges-the-fenced-batch": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-durable.lisp"
+  },
+  "fn-lgu-crash-keeps-the-prefix": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-durable.lisp"
+  },
+  "fn-lgu-host-kernel-acknowledges-only-recoverable-records": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-durable.lisp"
+  },
+  "fn-lgu-safe-image-recovers-the-acknowledged-records": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-durable.lisp"
+  },
+  "fn-lgu-safe-image-scans-the-committed-records-first": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-durable.lisp"
+  },
+  "fn-lgu-take-verdict-admits-exactly-log-records": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-log-durable.lisp"
+  },
+  "fn-lgw-entry-len-bounded-is-entry-len": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/store-log-entry-bound.lisp"
+  },
+  "fn-lgw-entry-len-bounded-step": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/store-log-entry-bound.lisp"
   },
   "fn-lgw-open-chain-is-the-chain": {
    "class": "durability",
@@ -3715,6 +3965,11 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/payload-lz-record.lisp"
+  },
+  "fn-lzr-intern-events-refines": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/payload-lz-replay.lisp"
   },
   "fn-lzr-lz-read-is-the-lz-value": {
    "class": "durability",
@@ -4141,6 +4396,16 @@
    "item": "PRF-1349",
    "book": "books/native-hybrid-control.lisp"
   },
+  "fn-nir-resume-admits-identical-initial-contract-across-stamps": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/native-init-resume.lisp"
+  },
+  "fn-nir-resume-refuses-distinct-initial-changes": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/native-init-resume.lisp"
+  },
   "fn-nop-init-plain-groups-are-within-the-profile": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -4185,6 +4450,16 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/owner-bound-commit.lisp"
+  },
+  "fn-ocap-held-prefix-has-matching-funded-tariff": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/output-command-admission.lisp"
+  },
+  "fn-ocap-preview-keeps-input-prefix-bounds": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/output-command-admission.lisp"
   },
   "fn-ock-fast-path-within-k-by-definition": {
    "class": "durability",
@@ -4616,6 +4891,11 @@
    "item": "PRF-1348",
    "book": "books/owner-reclaim-pass.lisp"
   },
+  "fn-orcs-predict-seal-refines-intern": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/owner-reclaim-seal.lisp"
+  },
   "fn-orli-live-record-decides-the-context": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -4655,6 +4935,21 @@
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/owner-reader-establishment.lisp"
+  },
+  "fn-orv-accepted-launch-fits-observed-machine": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/output-reservation.lisp"
+  },
+  "fn-orv-accepted-launch-funds-output-dynamic-allowance": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/output-reservation.lisp"
+  },
+  "fn-orv-startup-hold-protects-owner-and-one-quantum": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/output-reservation.lisp"
   },
   "fn-osd-deadline-is-past-the-slow-deadline": {
    "class": "durability",
@@ -4786,6 +5081,26 @@
    "item": "PRF-1349",
    "book": "books/octet-text.lisp"
   },
+  "fn-otjs-consume-fields-bounded": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/owner-time-journal-stream.lisp"
+  },
+  "fn-otjs-consume-of-append": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/owner-time-journal-stream.lisp"
+  },
+  "fn-otjs-exit-refines-journal-exit": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/owner-time-journal-stream.lisp"
+  },
+  "fn-otjs-report-refines-journal-report": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/owner-time-journal-stream.lisp"
+  },
   "fn-otm-decisions-read-only-the-journal-state": {
    "class": "durability",
    "item": "PRF-1345",
@@ -4891,7 +5206,27 @@
    "item": "PRF-1345",
    "book": "books/owner-fault.lisp"
   },
+  "fn-own-served-conn-refuses-what-the-live-rule-refuses": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/served-access-revoke.lisp"
+  },
+  "fn-own-served-conn-refuses-what-the-pin-refuses": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/served-access-revoke.lisp"
+  },
+  "fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/served-access-revoke.lisp"
+  },
   "fn-owner-orcp-rebuild-establishes-retain-carry": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/owner-reclaim-carry.lisp"
+  },
+  "fn-owner-orcp-rebuild-of-capture-is-the-full-open": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/owner-reclaim-carry.lisp"
@@ -4991,6 +5326,11 @@
    "item": "PRF-1350",
    "book": "books/peer-carriage.lisp"
   },
+  "fn-pcb-carried-event-keeps-budget-schedule-admitted": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/peer-carriage.lisp"
+  },
   "fn-pcb-carried-event-keeps-history-admitted": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -5070,6 +5410,16 @@
    "class": "authorization",
    "item": "PRF-1344",
    "book": "books/peer-host.lisp"
+  },
+  "fn-pfr-accepted-launch-fits-machine": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/peer-flight-reservation.lisp"
+  },
+  "fn-pfr-held-startup-fits-capture": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/peer-flight-reservation.lisp"
   },
   "fn-pgs-fill-frame-is-frame-put": {
    "class": "durability",
@@ -5306,15 +5656,80 @@
    "item": "PRF-1350",
    "book": "books/page-read-ledger.lisp"
   },
+  "fn-prl-admit-preserves-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
+  "fn-prl-close-preserves-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
   "fn-prl-completion-refunds-at-most-once": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/page-read-ledger.lisp"
   },
+  "fn-prl-convert-growth-preserves-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
+  "fn-prl-convert-growth-under-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
+  "fn-prl-evict-preserves-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
+  "fn-prl-make-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
+  "fn-prl-register-preserves-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
+  "fn-prl-reserve-growth-preserves-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
+  "fn-prl-resident-shrink-keeps-funding": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-budget-growth.lisp"
+  },
+  "fn-prl-resident-shrink-preserves-custody": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-budget-growth.lisp"
+  },
+  "fn-prl-row-sum-bound-reserve-natural": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
+  "fn-prl-row-sum-covers-bound-reserve": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
+  },
   "fn-prl-settle-never-reuses-identity": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/page-read-ledger.lisp"
+  },
+  "fn-prl-settle-preserves-row-sum-invp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-ledger-rowsum.lisp"
   },
   "fn-prov-of-wire-of-a-durable-wire": {
    "class": "parser-boundary",
@@ -5371,6 +5786,16 @@
    "item": "PRF-1347",
    "book": "books/provenance.lisp"
   },
+  "fn-prstartup-accepted-default-launch-fits-machine": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-startup.lisp"
+  },
+  "fn-prstartup-admitted-capacity-is-funded": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/page-read-startup.lisp"
+  },
   "fn-prw-admit-preserves-pool-funding": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -5380,6 +5805,11 @@
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/page-window-lease.lisp"
+  },
+  "fn-psrv-store-prepare-next-keeps-the-stored-octets": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/store-budget-stored-post.lisp"
   },
   "fn-pta-admitted-is-the-gate-over-the-rows": {
    "class": "authorization",
@@ -5410,6 +5840,11 @@
    "class": "authorization",
    "item": "PRF-1344",
    "book": "books/peer-transit-authority.lisp"
+  },
+  "fn-pull-auth-after-extension": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/peer-pull-auth.lisp"
   },
   "fn-pwx-other-request-cannot-return-or-release": {
    "class": "ownership-reclamation",
@@ -5671,6 +6106,46 @@
    "item": "PRF-1349",
    "book": "books/records-concrete.lisp"
   },
+  "fn-rcw-acc-steps-is-capture": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-walk.lisp"
+  },
+  "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-walk.lisp"
+  },
+  "fn-rcw-finish-of-step": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-walk.lisp"
+  },
+  "fn-rcw-load-chunks-is-load": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-walk.lisp"
+  },
+  "fn-rcw-load-chunks-keyed-is-keyed-load": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-seal.lisp"
+  },
+  "fn-rcw-predict-acc-steps-is-predict": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-seal.lisp"
+  },
+  "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-seal.lisp"
+  },
+  "fn-rcw-srcs-steps-is-the-walk": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-seal.lisp"
+  },
   "fn-rdc-reset-is-served-open": {
    "class": "extraction",
    "item": "PRF-1346",
@@ -5911,6 +6386,86 @@
    "item": "PRF-1349",
    "book": "books/records-freeze.lisp"
   },
+  "fn-rlo-exhausted-settlement-keeps-free-head": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-install-bank-correspondence": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-install-establishes-free-chain": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/resource-output-chain.lisp"
+  },
+  "fn-rlo-install-keeps-representation": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-issue-drawn-bank-correspondence": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-issue-keeps-representation": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-issued-chain-is-tail": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/resource-output-chain.lisp"
+  },
+  "fn-rlo-issued-token-is-live": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-output-bank-correspondence": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-output-keeps-representation": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-output-settled-chain": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/resource-output-chain.lisp"
+  },
+  "fn-rlo-output-settled-token-is-not-live": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-physical-bank-correspondence": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-physical-keeps-representation": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
+  "fn-rlo-physical-settled-chain": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/resource-output-chain.lisp"
+  },
+  "fn-rlo-physical-settled-token-is-not-live": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-output.lisp"
+  },
   "fn-rpin-acquire-holds-the-captured-generation": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -6051,6 +6606,31 @@
    "item": "PRF-1347",
    "book": "books/relay-source-routes.lisp"
   },
+  "fn-rt-destroy-revokes-the-sub-bank": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-vector-tree.lisp"
+  },
+  "fn-rt-run-keeps-okp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-vector-tree.lisp"
+  },
+  "fn-rt-step-keeps-okp": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-vector-tree.lisp"
+  },
+  "fn-rt-step-refused-keeps-the-tree": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-vector-tree.lisp"
+  },
+  "fn-rt-sub-bank-steps-keep-the-root": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-vector-tree.lisp"
+  },
   "fn-rv-destroy-returns-exactly-the-unsettled-draws": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -6097,6 +6677,11 @@
    "book": "books/resource-vector.lisp"
   },
   "fn-rv-refused-run-keeps-the-bank": {
+   "class": "resource-reservation",
+   "item": "PRF-1350",
+   "book": "books/resource-vector.lisp"
+  },
+  "fn-rv-replayed-completion-is-stale": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/resource-vector.lisp"
@@ -6311,6 +6896,11 @@
    "item": "PRF-1350",
    "book": "books/store-budget.lisp"
   },
+  "fn-sca-load-held-rows-establishes-byte-facts": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/catalog-availability-refinement.lisp"
+  },
   "fn-scc-decode-segments-of-segments": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -6330,6 +6920,16 @@
    "class": "parser-boundary",
    "item": "PRF-1349",
    "book": "books/store-checkpoint-reader.lisp"
+  },
+  "fn-sccv-final-ok-is-runs-ok": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-checkpoint-verify.lisp"
+  },
+  "fn-sccv-step-is-seg-step": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-checkpoint-verify.lisp"
   },
   "fn-scka-batches-loop-is-rev-onto": {
    "class": "durability",
@@ -7046,10 +7646,45 @@
    "item": "PRF-1349",
    "book": "books/tcpcl-octets.lisp"
   },
+  "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/tcpcl-source-control-refinement.lisp"
+  },
+  "fn-tclsctl-source-drive-keepalive-refines-session": {
+   "class": "parser-boundary",
+   "item": "PRF-1349",
+   "book": "books/tcpcl-source-control-refinement.lisp"
+  },
   "fn-th-prefix-project-append": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-checkpoint-open.lisp"
+  },
+  "fn-tlsk-hybrid-is-served-only-when-offered": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/tls-key-exchange.lisp"
+  },
+  "fn-tlsk-library-served-tls-never-falls-back": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/tls-key-exchange.lisp"
+  },
+  "fn-tlsk-library-without-tls-never-refuses": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/tls-key-exchange.lisp"
+  },
+  "fn-tlsk-preferred-never-refuses": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/tls-key-exchange.lisp"
+  },
+  "fn-tlsk-required-serves-only-the-hybrid-list": {
+   "class": "authorization",
+   "item": "PRF-1344",
+   "book": "books/tls-key-exchange.lisp"
   },
   "fn-tlsr-decide-accepts-exactly-loaded-matching-current-covering-material": {
    "class": "authorization",
