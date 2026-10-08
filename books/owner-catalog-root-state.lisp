@@ -102,6 +102,18 @@
            (equal (assoc-equal key (nth 2 (fn-ost-install-catalog-root r state)))
                   (assoc-equal key (nth 2 state)))))
 
+; Export at the global-reader boundary: downstream minimal theories keep
+; GET-GLOBAL opaque, so the association rule alone cannot frame their reads.
+(defthm fn-ost-install-catalog-root-frames-get-global
+  (implies (not (equal key 'fn-owner-catalog-root))
+           (equal (get-global key (fn-ost-install-catalog-root r state))
+                  (get-global key state))))
+
+(defthm fn-ost-install-catalog-root-frames-boundp-global
+  (implies (not (equal key 'fn-owner-catalog-root))
+           (equal (boundp-global key (fn-ost-install-catalog-root r state))
+                  (boundp-global key state))))
+
 (defthm fn-ost-install-catalog-root-preserves-state-p1
   (implies (state-p1 state)
            (state-p1 (fn-ost-install-catalog-root r state)))

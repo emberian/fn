@@ -61,6 +61,18 @@
            (equal (assoc-equal key (nth 2 (fn-ost-install-publication r state)))
                   (assoc-equal key (nth 2 state)))))
 
+; Export at the global-reader boundary: downstream minimal theories keep
+; GET-GLOBAL opaque, so the association rule alone cannot frame their reads.
+(defthm fn-ost-install-publication-frames-get-global
+  (implies (not (equal key 'fn-owner-publication))
+           (equal (get-global key (fn-ost-install-publication r state))
+                  (get-global key state))))
+
+(defthm fn-ost-install-publication-frames-boundp-global
+  (implies (not (equal key 'fn-owner-publication))
+           (equal (boundp-global key (fn-ost-install-publication r state))
+                  (boundp-global key state))))
+
 (defthm fn-ost-install-publication-preserves-state-p1
   (implies (state-p1 state)
            (state-p1 (fn-ost-install-publication r state)))
