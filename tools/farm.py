@@ -83,7 +83,6 @@ import certs
 from certify_books import BOOK_NAME
 import chain_schedule
 DEPENDENCY_NAME = re.compile(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)+")
-import evidence_manifests
 import native_program_check
 
 HOSTS = {
@@ -666,8 +665,8 @@ CERTIFY_ID_PAUSE = 3
 def note_certify_id(root: Path, identifier: str, certify_id: str) -> None:
     """Record the run's certify-... id in its local run record (when there is one).
 
-    `evidence_manifests.py add RUN` maps a farm run to its certify id from
-    this record, so a lane need not `wait` (the fetched log) to file it.
+    `status` and a lane naming the run read the id from this record, so
+    neither needs the fetched log.
     """
     path = record_path(root, identifier)
     record = run_record(root, identifier)
@@ -1052,8 +1051,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8")
-    # The certify id, as soon as the runner names it (evidence_manifests add
-    # wanted it before `wait`; decision-keystones-2, 2026-09-29).
+    # The certify id, as soon as the runner names it (before `wait`).
     for attempt in range(CERTIFY_ID_ATTEMPTS):
         certify_id = remote_certify_id(host, remote, identifier)
         if certify_id:
@@ -1324,26 +1322,12 @@ def fetch(host: str, identifier: str, root: Path,
               check=False).stdout
     (root / "build" / "farm").mkdir(parents=True, exist_ok=True)
     (root / "build" / "farm" / f"{identifier}.log").write_text(log, encoding="utf-8")
-    archived: dict[str, int] = {}
     fetched_manifests: list[dict] = []
     for directory in sorted(set(EVIDENCE.findall(log))):
         local = root / directory
         local.mkdir(parents=True, exist_ok=True)
         fetch_evidence_dir(host, remote, directory, local)
         fetched_manifests.extend(certs.load_manifests(root, local / "manifest.json"))
-        # The fetched copy lands under `build/`, which is ignored and which a
-        # worktree removal takes with it, so the manifest is also filed under
-        # `planning/evidence/manifests/`.  Its `archived_from` names the box
-        # and the remote directory, because that is where the log stayed.
-        outcome = evidence_manifests.archive_run(
-            local, root, f"{host}:{remote}/{directory}")
-        archived[outcome] = archived.get(outcome, 0) + 1
-        if outcome in {"written", "present"}:
-            print(f"to cite it: {evidence_manifests.add_command(Path(directory).name)}")
-    if archived:
-        print("manifests archived under {}: {}".format(
-            evidence_manifests.ARCHIVE_REL,
-            ", ".join(f"{key} {value}" for key, value in sorted(archived.items()))))
     for directory in certs.BOOK_DIRECTORIES:
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--include=*.fasl", "--exclude=*",
@@ -1559,23 +1543,6 @@ def verdict_lines(root: Path, identifier: str, code: int) -> list[str]:
                 slow.append((seconds, book, jobs))
         lines.append(f"  manifest {directory / 'manifest.json'}: "
                      f"status {manifest.get('status', 'unknown')}")
-    # Judged here, where the committed archive is (the box's tree has no git).
-    installed_books = sorted({book for _, manifest in manifests
-                              for book, value in (manifest.get("book_provenance")
-                                                  or {}).items()
-                              if value == "installed"})
-    uncited: list[str] = []
-    if installed_books:
-        import certified_claims  # noqa: E402
-        try:
-            uncited = certified_claims.uncited_books(root, installed_books)
-        except Exception as error:  # a report line, never the verdict
-            lines.append(f"  (could not judge the installed books' citations: {error})")
-    if uncited:
-        lines.append(f"  installed-without-cited-manifest: {len(uncited)}: "
-                     + ", ".join(uncited[:20]) + (" ..." if len(uncited) > 20 else ""))
-        lines.append("    green_check and certified_claims owe these until a committed "
-                     "manifest certifies them: submit again with --recertify-uncited")
     lines.append(f"  certified here: passed {passed}, failed {len(failing) // 2}"
                  + (f", killed {len(killed) // 2}" if killed else "")
                  + f"; installed from the cache {installed}")
@@ -1596,8 +1563,7 @@ def fetch_logs(host: str, identifier: str, root: Path, remote: Path,
                into: Path) -> list[Path]:
     """One run's per-book logs and manifest, brought home and nothing else.
 
-    `fetch` is the evidence path: it archives the manifest under
-    `planning/evidence/manifests/`, rsyncs the run's new certificate pairs
+    `fetch` is the evidence path: it rsyncs the run's new certificate pairs
     into this worktree and publishes them to the box's cache and to the local
     one.  None of that may happen for a triage run, which certifies a tree
     whose sources have been substituted: its pairs are about a tree nobody
@@ -1801,19 +1767,6 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
     return 0
 
 
-def uncited_in_selection(root: Path, books: list[str], affected_by: list[str]) -> list[str]:
-    """The closure books of this selection no committed manifest certified at
-    their current digest (`certified_claims.uncited_books`)."""
-    import certify_books  # noqa: E402
-    import certified_claims  # noqa: E402
-    import ledger  # noqa: E402
-    roots = books or ledger.makefile_roots()
-    if affected_by:
-        roots = certify_books.affected_selection(books, ledger.makefile_roots(),
-                                                 affected_by)
-    return certified_claims.uncited_books(root, certify_books.with_dependencies(roots))
-
-
 # tools/boxes.sh's seam for the reservation wait (the tests stub it).
 BOXES = subprocess.run
 
@@ -1941,8 +1894,7 @@ def recertify_list(paths: list[str]) -> list[str]:
     """The books named in each --recertify-from FILE, in order, once each.
 
     Words are separated by whitespace or commas and `#' starts a comment, so
-    green_check's "installed-without-cited-manifest: N: a, b" line pasted
-    after its colon, or a one-per-line list, both read.  The file exists
+    a comma-separated list pasted from a report, or a one-per-line list, both read.  The file exists
     because a list held in one shell variable reached farm.py as a single
     argument under zsh (batch BB, 2026-09-28)."""
     books: list[str] = []
@@ -2005,10 +1957,6 @@ def main(argv: list[str] | None = None) -> int:
                              "never has to survive a shell's word splitting; "
                              "when the submit names no other book and no "
                              "--affected-by, these books are also its roots")
-    parser.add_argument("--recertify-uncited", action="store_true",
-                        help="add to --recertify every book of the closure no "
-                             "committed manifest certified at its current digest "
-                             "(the books a run would otherwise install uncited)")
     parser.add_argument("--timeout-seconds", type=int, default=1800,
                         help="per-ACL2-invocation timeout on the host")
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
@@ -2101,13 +2049,6 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError:
             parser.error(f"--jobs takes a positive count, auto or auto:N, "
                          f"not {arguments.jobs!r}")
-    if arguments.action == "submit" and arguments.recertify_uncited:
-        arguments.recertify = sorted(set(arguments.recertify)
-                                     | set(uncited_in_selection(
-                                         root, list(arguments.rest),
-                                         list(arguments.affected_by))))
-        print(f"--recertify-uncited: recertifying {len(arguments.recertify)} book(s)",
-              file=sys.stderr)
     try:
         if arguments.action == "submit":
             if named_box:

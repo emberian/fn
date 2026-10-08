@@ -2068,7 +2068,7 @@ def manifest_sources(manifest: dict, root: Path,
     ACL2, the book that run certified: the book-hash is a checksum of the read
     forms, so the certificate and every includer's stay valid.  For such a
     book this returns the *current* byte digest, so every consumer's plain
-    digest comparison (`certified_claims.certifies`, `closure_drift`,
+    digest comparison (`closure_drift`,
     green_check, current_view, proof_cost) accepts it.  Every other entry is
     returned as recorded; a manifest without form digests is unchanged.
     """

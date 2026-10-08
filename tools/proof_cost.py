@@ -2,7 +2,7 @@
 """Report measured ACL2 book cost at the current source and include closure.
 
 This is not a certification or cache-validity check. The default scans
-archived and local manifests for measured attempts of each book at its current
+the run-dir manifests (`build/acl2/certify-*/manifest.json`) of this tree for measured attempts of each book at its current
 include-closure bytes. An installed certificate has no proof time in that run.
 `--manifest` keeps the one-run diagnostic and never fails.
 
@@ -100,10 +100,76 @@ SCOPED, WIDE, UNKNOWN = "scoped", "wide", "unknown"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import acl2_cost  # noqa: E402
 import certs  # noqa: E402
-import green_check  # noqa: E402
 import ledger  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import ratchet as ratchet_rule  # noqa: E402
+
+# Measurements come from the run dirs of the tree this runs in; green_check
+# asks the cert cache and reads no manifest.
+RUN_ID = re.compile(r"certify-\d{8}T\d{6}Z-\d+")
+
+
+STAMP = re.compile(r"certify-(\d{8}T\d{6}Z)-\d+")
+
+
+def when(run_id: str) -> str:
+    """A `certify-<YYYYMMDD>T<HHMMSS>Z-<pid>` stamp as a UTC minute.
+
+    A pattern, not an example: a run-id literal in a tracked
+    file would read as a citation.
+    """
+    match = STAMP.match(run_id)
+    if not match:
+        return "unknown-time"
+    stamp = match.group(1)
+    return f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:8]}T{stamp[9:11]}:{stamp[11:13]}Z"
+
+
+@dataclass
+class Run:
+    """One manifest, reduced to what a green/red question needs."""
+
+    run_id: str
+    where: str
+    sources: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def stamp(self) -> str:
+        match = STAMP.match(self.run_id)
+        return match.group(1) if match else ""
+
+    @property
+    def when(self) -> str:
+        return when(self.run_id)
+
+    def cite(self) -> str:
+        return f"{self.when} {self.run_id} ({self.where})"
+
+
+def host_of(manifest: dict) -> str:
+    """The box a run happened on: its own recorded hostname."""
+    return str(manifest.get("hostname") or "unknown-host")
+
+
+def manifests(root: Path = ROOT, source_paths: set[str] | None = None) -> list[tuple[Run, dict]]:
+    """Every run-dir manifest of this tree (`build/acl2/certify-*/manifest.json`),
+    newest last.  A reader elsewhere cannot see them; the archived manifests of
+    other runs and boxes (D71) are not read.  `certs.load_manifests` skips an
+    unreadable or non-object file.
+    """
+    found: list[tuple[Run, dict]] = []
+    seen: set[str] = set()
+    for path in sorted(root.glob(certs.MANIFEST_GLOB)):
+        for manifest in certs.load_manifests(root, path, source_paths):
+            run_id = (path.parent.name if RUN_ID.fullmatch(path.parent.name)
+                      else str(manifest.get("run_id") or ""))
+            if not run_id or run_id in seen:
+                continue
+            seen.add(run_id)
+            found.append((Run(run_id=run_id, where=host_of(manifest),
+                              sources=manifest.get("source_digests_sha256") or {}), manifest))
+    return sorted(found, key=lambda pair: pair[0].stamp)
+
 
 
 
@@ -336,7 +402,7 @@ def current_books(root: Path) -> set[str]:
 
 def history(root: Path, books: set[str], *, toolchain: str | None = None,
             host: str | None = None,
-            runs: list[tuple[green_check.Run, dict]] | None = None
+            runs: list[tuple[Run, dict]] | None = None
             ) -> tuple[dict[tuple[str, str, str, str], Measurement], set[str], int]:
     """Select timed attempts; certs owns current closure hashing/comparison.
 
@@ -354,7 +420,7 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
     Steps missing from an older manifest are read from the run's local
     certify log where it still exists.
     """
-    runs = green_check.manifests(root) if runs is None else runs
+    runs = manifests(root) if runs is None else runs
     closures: dict[str, list[str] | None] = {}
     selected: dict[tuple[str, str, str, str], Measurement] = {}
     installed_current: set[str] = set()
@@ -429,7 +495,7 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
                 run.run_id, machine, identity, jobs,
                 book_steps(manifest, book), book_load(manifest, book), cpus)
             prior = selected.get(key)
-            # green_check.manifests is ordered by run-id timestamp; a newer
+            # manifests() is ordered by run-id timestamp; a newer
             # partial run only replaces the books it actually measured, a
             # passed attempt is never replaced by a failed one, and a slower
             # passed attempt of the same bytes never replaces a faster one.
@@ -456,7 +522,7 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
 def history_report(root: Path, threshold: float, *, toolchain: str | None = None,
                    host: str | None = None,
                    books: set[str] | None = None,
-                   runs: list[tuple[green_check.Run, dict]] | None = None,
+                   runs: list[tuple[Run, dict]] | None = None,
                    computed: tuple[dict, set[str], int] | None = None
                    ) -> list[str]:
     books = current_books(root) if books is None else books
@@ -471,7 +537,7 @@ def history_report(root: Path, threshold: float, *, toolchain: str | None = None
         f"unmeasured={len(missing)} installed-only={len(installed_only)}; "
         "fastest passed attempt per book/host/toolchain (load only adds time), "
         "current include closure",
-        "scope: archived and local measured attempts; elapsed time is per ACL2 "
+        "scope: this tree's run-dir measured attempts; elapsed time is per ACL2 "
         "process, never inferred from installed certificates; failed attempts "
         "retain their verdict",
     ]

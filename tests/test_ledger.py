@@ -696,57 +696,62 @@ class RegistryTests(unittest.TestCase):
 
 
 class GeneratedStatusTests(unittest.TestCase):
-    """A proof target's status is generated from green at these bytes (R2)."""
+    """A proof target's status is computed from the cert cache (R2), never stored."""
 
-    def status(self, names, books, manifest=None):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory).resolve()
-            (root / "books").mkdir()
-            (root / "books/a.lisp").write_text('(in-package "ACL2")\n(defthm t1 t)\n')
-            entry = {"id": "PRF-001", "evidence": []}
-            if manifest is not None:
-                folder = root / "planning/evidence/manifests"
-                folder.mkdir(parents=True)
-                (folder / "certify-20260901T010000Z-1.json").write_text(json.dumps(manifest(root)))
-                entry["evidence"].append("planning/evidence/manifests/certify-20260901T010000Z-1.json")
-                # Archived = filed: indexed by hash, bytes in a scratch archive.
-                import evidence_store
-                with mock.patch.dict(os.environ, {
-                        "FN_EVIDENCE_ARCHIVE": str(root / "_archive"),
-                        "FN_EVIDENCE_CACHE": str(root / "_cache")}):
-                    evidence_store.put(root, [entry["evidence"][-1]])
-                    return ledger.derived_status(entry, names, books, {}, root)
-            return ledger.derived_status(entry, names, books, {}, root)
-
-    def passed(self, root, digest=None):
+    def status(self, names, books, certified=None):
+        """derived_status over books/a, whose cache holds an entry at the
+        record identity when CERTIFIED (a fake cache directory; no ssh)."""
+        import green_check
+        import cert_images
         import certs
-        return {"status": "passed", "requested_books": ["books/a"],
-                "certificate_digests_sha256": {"books/a": "c" * 64},
-                "book_results": {"books/a": "passed"},
-                "source_digests_sha256": {
-                    "books/a.lisp": digest or certs.content_hash(root / "books/a.lisp")}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve() / "tree"
+            cache = Path(directory).resolve() / "cache"
+            (root / "books").mkdir(parents=True)
+            (root / "books/a.lisp").write_text('(in-package "ACL2")\n(defthm t1 t)\n')
+            if certified is not None:
+                for world in cert_images.worlds(root, "books/a"):
+                    key, _ = certs.closure_key(root, "books/a", world)
+                    entry = cache / key / "origin"
+                    entry.mkdir(parents=True)
+                    (entry / "book.cert").write_bytes(b"cert")
+                    (entry / "meta.json").write_text(json.dumps({
+                        "toolchain_identity": certified,
+                        "cert_sha256": __import__("hashlib").sha256(b"cert").hexdigest()}))
+            fake = green_check.Cache(local=cache, identity="record")
+            with mock.patch.object(green_check, "_DEFAULT", fake):
+                return ledger.derived_status({"id": "PRF-001"}, names, books, {}, root)
 
     def test_no_events_is_planned(self):
         self.assertEqual(self.status([], set()), "planned")
 
-    def test_events_without_a_cited_manifest_are_uncertified(self):
+    def test_events_with_no_cache_entry_are_uncertified(self):
         self.assertEqual(self.status(["t1"], {"books/a"}),
                          "uncertified-at-current-digest")
 
-    def test_a_cited_manifest_at_the_current_digest_certifies(self):
-        self.assertEqual(self.status(["t1"], {"books/a"}, self.passed), "certified")
+    def test_a_record_toolchain_cache_entry_certifies(self):
+        self.assertEqual(self.status(["t1"], {"books/a"}, certified="record"), "certified")
 
-    def test_a_cited_manifest_at_an_older_digest_does_not(self):
-        self.assertEqual(self.status(["t1"], {"books/a"},
-                                     lambda root: self.passed(root, "0" * 64)),
+    def test_an_entry_from_another_toolchain_does_not(self):
+        self.assertEqual(self.status(["t1"], {"books/a"}, certified="laptop"),
                          "uncertified-at-current-digest")
+
+    def test_regenerating_the_registry_stores_no_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "proofs.json"
+            path.write_text(json.dumps({"proofs": [
+                {"id": "PRF-001", "status": "certified", "evidence": [], "events": ["t1"]}]}))
+            with mock.patch.object(ledger, "PROOFS", path):
+                registry = json.loads(ledger.apply_events({"PRF-001": ["t1"]}))
+        self.assertEqual(registry["proofs"], [
+            {"id": "PRF-001", "evidence": [], "events": ["t1"]}])
 
 
 class RepositoryLedgerTests(unittest.TestCase):
-    """The real tree: the shipped ledger must be current and the cited events
+    """The real tree: the ledger must build and the cited events
     must pass the same checks the fixtures above describe."""
 
-    def test_the_checked_in_ledger_is_current(self):
+    def test_the_ledger_builds_and_registry_events_are_current(self):
         self.assertEqual(ledger.check_problems(), [])
 
     def test_every_named_assumption_has_an_encapsulate(self):
@@ -838,26 +843,6 @@ class TreeCacheTests(unittest.TestCase):
         with mock.patch.dict("os.environ", {"FN_LEDGER_TREE_CACHE": "0"}):
             self.assertIsNone(ledger._tree_cache_dir())
 
-
-
-class LaneCheckTests(unittest.TestCase):
-    """`make check-lane`: generated files are written aside, not compared."""
-
-    def test_without_the_flag_nothing_is_diverted(self):
-        with mock.patch.dict("os.environ", {}, clear=False) as env:
-            env.pop("FN_LANE_CHECK", None)
-            self.assertFalse(ledger.lane_generated("planning/ledger.md", "x"))
-
-    def test_with_the_flag_the_text_lands_in_the_directory_and_is_compared(self):
-        with tempfile.TemporaryDirectory() as directory, \
-                mock.patch.dict("os.environ", {"FN_LANE_CHECK": "1",
-                                               "FN_LANE_CHECK_DIR": directory}), \
-                mock.patch("sys.stderr") as stderr:
-            self.assertTrue(ledger.lane_generated("planning/ledger.md", "regenerated\n"))
-            written = Path(directory, "planning/ledger.md").read_text()
-            said = "".join(call.args[0] for call in stderr.write.call_args_list)
-        self.assertEqual(written, "regenerated\n")
-        self.assertIn("differs from the committed file", said)
 
 
 class SuspectCacheTests(unittest.TestCase):
@@ -1804,33 +1789,6 @@ class HandWrittenRecordLintTests(unittest.TestCase):
                           '(defun fn-s (x) (declare (xargs :mode :program)) x)\n'
                           }).books["books/s.lisp"]
         self.assertFalse(ledger.exports_no_rule(book))
-
-
-class FlipLinesTests(unittest.TestCase):
-    """obstructions-8 item 71: a regen that uncertifies rows says why, and
-    whether this branch's own change is the cause."""
-
-    def test_causes_are_grouped_and_attributed(self):
-        records = {
-            "books/a": {"verdict": "green", "certified_archived": True,
-                        "deps_moved_since": ["books/store-log.lisp"]},
-            "books/b": {"verdict": "green", "certified_archived": True,
-                        "deps_moved_since": ["books/store-log.lisp", "books/other.lisp"]},
-            "books/c": {"verdict": "never"},
-            "books/d": {"verdict": "green", "certified_archived": False,
-                        "deps_moved_since": []},
-        }
-        lines = ledger.flip_lines(
-            [("PRF-1", {"books/a"}), ("PRF-2", {"books/b"}), ("PRF-3", {"books/c"}),
-             ("PRF-4", {"books/d"})], records, changed={"books/store-log.lisp"})
-        self.assertIn("4 row(s) certified -> uncertified-at-current-digest", lines[0])
-        self.assertEqual(lines[1], "  books/store-log.lisp: 2 row(s) (this branch changes it: "
-                                   "expected until it is certified): PRF-1, PRF-2")
-        text = "\n".join(lines)
-        self.assertIn("books/other.lisp: 1 row(s) (not changed by this branch vs origin/dev: "
-                      "investigate): PRF-2", text)
-        self.assertIn("books/c.lisp (never): 1 row(s)", text)
-        self.assertIn("books/d.lisp (green only in an unarchived local run): 1 row(s)", text)
 
 
 class CursorBatchSourceTests(unittest.TestCase):

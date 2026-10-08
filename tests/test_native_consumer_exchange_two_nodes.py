@@ -50,7 +50,8 @@ import time
 import unittest
 
 from tests.native_harness import (
-    EXIT_OK, ROOT, Acl2Session, Client, Node, environment, free_port, native_image, requires, run, scratch, start)
+    EXIT_OK, ROOT, Acl2Session, Client, Node, environment, free_port, installed_launcher, native_image,
+    requires, run, scratch, start)
 from tests.test_native_peer_pull import RecordingProxy
 from tests.test_bp_contact_relay_native import ByteRelay
 from tests.native_image_provenance import assert_same_native_source
@@ -82,7 +83,10 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
 
     # -- native processes -----------------------------------------------------
     def native(self, *words, expected=EXIT_OK):
-        result = run([IMAGE, "--fn", *words], timeout=300)
+        # Through the installed launcher, as Node starts its owners (native
+        # harness, ruling of 2026-10-04): its heap probe sizes the process for
+        # the store; the image's saved default is the small preset's (MEM-002).
+        result = run([installed_launcher(IMAGE), *words], timeout=300)
         if expected is not None:
             self.assertEqual(result.returncode, expected,
                              (result.stdout + result.stderr).decode("utf-8", "replace"))
@@ -513,7 +517,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
                 "32", "1048576", "0", "0", "0"]
 
     def start_bp(self, node, peer):
-        process = start([IMAGE, "--fn", *self.bp_words(node, peer, listen=True)],
+        process = start([installed_launcher(IMAGE), *self.bp_words(node, peer, listen=True)],
                         cwd=ROOT, env=self.env)
         self.addCleanup(process.stop, 10)
         line = process.announcement(b"BP NODE LISTENING ", timeout=120)

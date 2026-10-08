@@ -932,6 +932,159 @@
 (in-theory (disable fn-heap-reclaim-demand-octets fn-heap-reclaim-octets
                     fn-heap-reclaim-excess-octets))
 
+;; THE HISTORY ROOTS (lane mem10-hroot, 2026-10-07; MEM-010, MEM-011;
+;; planning/design/history-root-reserve-2026-10-07.md).  The live P3 history
+;; root holds the whole history as a page image, and two generations coexist
+;; across a publication (the retained one and the candidate being built).
+;; The figure holds them as their own term, outside the articles' pool
+;; (books/memory-credits.lisp fn-mcr-hroot-resize draws it, never the pool).
+;;
+;; A root at the profile's bounds: at most T rows and H event octets.  The
+;; image is four word columns of one word a row (each starts at a page) and
+;; one octet column of 16384 octets a page, so at most
+;; 1 + 4 ceil(T/2048) + ceil(H/16384) pages; a page store of NP pages holds
+;; 2048 NP words (data), 2048 NT (table, NT = pgs-ntables NP), 2 NP flags,
+;; NT table flags and a directory of a few pages; the suffix array holds at
+;; most T cells, 8 octets each, and the header 4096.
+(defun fn-heap-hroot-ntables (np)
+  (declare (xargs :guard (natp np)))
+  (if (zp np) 0 (+ 1 (floor (1- np) 341))))
+
+(defun fn-heap-hroot-dir-pages (nt)
+  (declare (xargs :guard (natp nt)))
+  (+ 2 (ceiling (* 6 (nfix nt)) 2048)))
+
+(defun fn-heap-hroot-image-octets (np)
+  (declare (xargs :guard (natp np)))
+  (let* ((np (nfix np)) (nt (fn-heap-hroot-ntables np)))
+    (+ 512 (* 8 (+ (* 2048 np) (* 2 np) (* 2049 nt)
+                   (* 2048 (fn-heap-hroot-dir-pages nt)))))))
+
+(defun fn-heap-hroot-npages (profile)
+  (declare (xargs :guard t))
+  (+ 1 (* 4 (ceiling (nfix (fn-bs-profile-max-transactions profile)) 2048))
+     (ceiling (nfix (fn-bs-profile-max-history-octets profile)) 16384)))
+
+; A root's memory at the bounds (fn-hroot-memory-octets over its page store).
+(defun fn-heap-hroot-memory-bound (profile)
+  (declare (xargs :guard t))
+  (+ (fn-heap-hroot-image-octets (fn-heap-hroot-npages profile))
+     (* 8 (nfix (fn-bs-profile-max-transactions profile)))
+     4096))
+
+;; The most one generation's RESIDENT credit asks: the tail demand (twice the
+;; root's memory) dominates the event, grow and retain demands.  The per-event
+;; decode transient (books/history-root-credit.lisp fn-hroot-event-transient) is
+;; NOT here: it is its own ops credit against the article pool, released after
+;; the decode, so the reserve is the two generations' images only.
+(defun fn-heap-hroot-demand-bound (profile)
+  (declare (xargs :guard t))
+  (+ (* 2 (fn-heap-hroot-memory-bound profile))
+     (* 64 (+ 1 (nfix (fn-bs-profile-max-transactions profile))))
+     (fn-heap-hroot-image-octets (fn-heap-hroot-npages profile))))
+
+; The reserve: the retained generation and the candidate, each at the most
+; its credit asks.
+(defun fn-heap-hroot-reserve-octets (profile)
+  (declare (xargs :guard t))
+  (* 2 (fn-heap-hroot-demand-bound profile)))
+
+(in-theory (disable fn-heap-hroot-reserve-octets fn-heap-hroot-demand-bound
+                    fn-heap-hroot-memory-bound fn-heap-hroot-npages fn-heap-hroot-image-octets
+                    fn-heap-hroot-ntables fn-heap-hroot-dir-pages))
+
+(defthm fn-heap-hroot-dir-pages-natp
+  (natp (fn-heap-hroot-dir-pages nt))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-heap-hroot-dir-pages))))
+(defthm fn-heap-hroot-ntables-natp
+  (natp (fn-heap-hroot-ntables np))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-heap-hroot-ntables))))
+(defthm fn-heap-hroot-image-octets-natp
+  (natp (fn-heap-hroot-image-octets np))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-heap-hroot-image-octets))))
+(defthm fn-heap-hroot-npages-natp
+  (natp (fn-heap-hroot-npages profile))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-heap-hroot-npages) (fn-bs-profile-max-history-octets fn-bs-profile-max-transactions fn-bs-profile-max-record-octets)))))
+(defthm fn-heap-hroot-memory-bound-natp
+  (natp (fn-heap-hroot-memory-bound profile))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-heap-hroot-memory-bound) (fn-bs-profile-max-history-octets fn-bs-profile-max-transactions fn-bs-profile-max-record-octets)))))
+(defthm fn-heap-hroot-demand-bound-natp
+  (natp (fn-heap-hroot-demand-bound profile))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-heap-hroot-demand-bound) (fn-bs-profile-max-history-octets fn-bs-profile-max-transactions fn-bs-profile-max-record-octets)))))
+(defthm fn-heap-hroot-reserve-octets-natp
+  (natp (fn-heap-hroot-reserve-octets profile))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-heap-hroot-reserve-octets) (fn-bs-profile-max-history-octets fn-bs-profile-max-transactions fn-bs-profile-max-record-octets)))))
+
+(defthm fn-heap-hroot-ntables-monotone
+  (implies (and (natp a) (natp b) (<= a b))
+           (<= (fn-heap-hroot-ntables a) (fn-heap-hroot-ntables b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-hroot-ntables))))
+
+(defthm fn-heap-hroot-dir-pages-monotone
+  (implies (and (natp a) (natp b) (<= a b))
+           (<= (fn-heap-hroot-dir-pages a) (fn-heap-hroot-dir-pages b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-hroot-dir-pages))))
+
+(defthm fn-heap-hroot-image-octets-monotone
+  (implies (and (natp a) (natp b) (<= a b))
+           (<= (fn-heap-hroot-image-octets a) (fn-heap-hroot-image-octets b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-hroot-image-octets)
+           :use (fn-heap-hroot-ntables-monotone
+                 (:instance fn-heap-hroot-dir-pages-monotone
+                            (a (fn-heap-hroot-ntables a)) (b (fn-heap-hroot-ntables b)))))))
+
+(defthm fn-heap-hroot-ceiling-2048-monotone
+  (implies (and (natp x) (natp y) (<= x y))
+           (<= (ceiling x 2048) (ceiling y 2048)))
+  :rule-classes nil)
+(defthm fn-heap-hroot-ceiling-16384-monotone
+  (implies (and (natp x) (natp y) (<= x y))
+           (<= (ceiling x 16384) (ceiling y 16384)))
+  :rule-classes nil)
+
+(defthm fn-heap-hroot-npages-monotone
+  (implies (and (<= (nfix (fn-bs-profile-max-history-octets p1))
+                    (nfix (fn-bs-profile-max-history-octets p2)))
+                (<= (nfix (fn-bs-profile-max-transactions p1))
+                    (nfix (fn-bs-profile-max-transactions p2))))
+           (<= (fn-heap-hroot-npages p1) (fn-heap-hroot-npages p2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-hroot-npages)
+                                  (ceiling rewrite-ceiling-to-floor fn-bs-profile-max-history-octets
+                                   fn-bs-profile-max-transactions))
+           :use ((:instance fn-heap-hroot-ceiling-2048-monotone
+                            (x (nfix (fn-bs-profile-max-transactions p1)))
+                            (y (nfix (fn-bs-profile-max-transactions p2))))
+                 (:instance fn-heap-hroot-ceiling-16384-monotone
+                            (x (nfix (fn-bs-profile-max-history-octets p1)))
+                            (y (nfix (fn-bs-profile-max-history-octets p2))))))))
+
+(defthm fn-heap-hroot-reserve-octets-monotone
+  (implies (and (<= (nfix (fn-bs-profile-max-history-octets p1))
+                    (nfix (fn-bs-profile-max-history-octets p2)))
+                (<= (nfix (fn-bs-profile-max-transactions p1))
+                    (nfix (fn-bs-profile-max-transactions p2))))
+           (<= (fn-heap-hroot-reserve-octets p1) (fn-heap-hroot-reserve-octets p2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-heap-hroot-reserve-octets fn-heap-hroot-demand-bound
+                                   fn-heap-hroot-memory-bound)
+                                  (fn-heap-hroot-image-octets fn-heap-hroot-npages
+                                   fn-bs-profile-max-history-octets
+                                   fn-bs-profile-max-transactions))
+           :use (fn-heap-hroot-npages-monotone
+                 (:instance fn-heap-hroot-image-octets-monotone
+                            (a (fn-heap-hroot-npages p1)) (b (fn-heap-hroot-npages p2)))))))
+
 ; Everything but the collector's room: the state at the profile's bounds,
 ; the open's transient at the input's bound, the request in flight and the
 ; articles.  A live reclaim's reserve is NOT here: it is the operator's
@@ -945,7 +1098,8 @@
                                 (fn-heap-open-octets-bound profile observed)
                                 (fn-heap-open-records-bound profile observed))
      (fn-heap-store-inflight-octets profile)
-     (fn-heap-articles-octets profile)))
+     (fn-heap-articles-octets profile)
+     (fn-heap-hroot-reserve-octets profile)))
 
 (defthm fn-heap-store-base-octets-natp
   (natp (fn-heap-store-base-octets profile core observed))
@@ -1269,6 +1423,7 @@
            :use ((:instance fn-heap-open-bounds-of-nil (profile p1))
                  (:instance fn-heap-open-bounds-of-nil (profile p2))
                  (:instance fn-heap-articles-octets-monotone)
+                 (:instance fn-heap-hroot-reserve-octets-monotone)
                  (:instance fn-heap-open-chunk-bound-monotone
                             (ou1 (fn-bs-profile-max-history-octets p1))
                             (ou2 (fn-bs-profile-max-history-octets p2))))
