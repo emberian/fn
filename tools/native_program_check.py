@@ -957,6 +957,56 @@ def render(report: Report) -> str:
     return "\n".join(lines)
 
 
+def verify_held_commit_crash_points(owner_text=None, held_text=None, feed_text=None):
+    """The split adds volatile scheduling boundaries, not new disk operations.
+
+    Both boundaries are :crash in fn-och-step (a held job becomes failed,
+    never submitted). Batch write/fence cuts retain verify_log_cut_map's
+    programs. The frames-only path uses the existing FNFD phase machine:
+    before write, written but not durable, and append-durable; :crash at
+    any of them becomes :uncertain and recovery scans the journal.
+    This is structural correspondence, not runtime/OS verification.
+    """
+    from tests.campaign.native_cuts import host_function
+    owner = owner_text if owner_text is not None else (ROOT / "host/native/owner.lisp").read_text()
+    held = held_text if held_text is not None else (ROOT / "books/owner-commit-held.lisp").read_text()
+    feed = feed_text if feed_text is not None else (ROOT / "books/feed-journal.lisp").read_text()
+    problems = []
+    macro = next(f for f in lisp_source.forms(owner)
+                 if f.startswith("(defmacro fnn-owner-held-commit "))
+    sequence = [macro.find(x) for x in ("(fnn-owner-held-start ", "(fnn-owner-held-wait ",
+                                      "(fnn-owner-held-frames-wait", "(fnn-owner-held-finish ")]
+    if not (0 <= sequence[0] < sequence[1] < sequence[2] < sequence[3]):
+        problems.append("held boundaries are not START, off-owner job, quantum-2 receipt")
+    if macro.count(",@body") != 1:
+        problems.append("held caller body does not have one expansion")
+    step = host_function(held, "fn-och-step")
+    if "((and (eq event :crash) (fn-ocs-in-flight-p phase)) (mv :stop :failed nil t))" not in step:
+        problems.append("held scheduling boundaries have no failed :crash transition")
+    # An added injection coordinate needs its own model mapping; it must
+    # not silently slip through the existing batch/log cut inventory.
+    held_forms = [f for f in lisp_source.forms(owner)
+                  if f.startswith("(defun fnn-owner-held-") or f == macro]
+    if any("(fnn-at " in lisp_source.code_only(f) for f in held_forms):
+        problems.append("held helper adds an unmapped injection cut")
+    append = host_function(owner, "fnn-owner-feed-append-locked")
+    points = [append.find(x) for x in ("(fnn-owner-feed-phase journal :append)",
+                                      "(fnn-write-all ",
+                                      "(fnn-owner-feed-phase journal :written)",
+                                      "(fnn-fsync-file ",
+                                      "(fnn-owner-feed-phase journal :append-durable)")]
+    if not (all(x >= 0 for x in points) and points == sorted(points)):
+        problems.append("FNFD physical cuts differ from append/write/written/barrier/durable")
+    phase = host_function(feed, "fn-feed-journal-phase-step")
+    for transition in ("((member-equal event '(:failed :crash)) :uncertain)",
+                       "((and (equal phase :ready) (equal event :append)) :write)",
+                       "((and (equal phase :write) (equal event :written)) :sync)",
+                       "((and (equal phase :sync) (equal event :append-durable)) :ready)"):
+        if transition not in phase:
+            problems.append("FNFD model lacks physical/crash transition: " + transition)
+    return problems
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--json", action="store_true")
@@ -1030,7 +1080,11 @@ def main(argv=None) -> int:
         print("log cut inventory: FAIL")
     else:
         print(f"log cut inventory: PASS ({total} cuts; {segments} segment cuts)")
-    return 0 if report.ok and not arms and not statement and not holder and not inventory else 1
+    held = verify_held_commit_crash_points()
+    for problem in held:
+        print("held commit mismatch: " + problem)
+    print("held commit crash points: " + ("FAIL" if held else "PASS"))
+    return 0 if report.ok and not arms and not statement and not holder and not inventory and not held else 1
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ Every path is in a temporary directory: FN_NATIVE_IMAGE and FN_NATIVE_LOG.
 """
 import os
 import pathlib
+import platform
 import re
 import subprocess
 import tempfile
@@ -59,7 +60,14 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
                    "FN_NATIVE_IMAGE": str(base / "fn-host-test"),
                    "FN_NATIVE_LOG": str(base / "build.log")}
             env.update({k: (v.replace("$BASE", str(base))) for k, v in extra.items()})
-            env.pop("FN_OPENSSL_PREFIX", None)
+            # D64: on Linux the build requires a prefix holding the shipped
+            # OpenSSL 3.5.8 pair; a stub pair that carries the version string.
+            if "FN_OPENSSL_PREFIX" not in extra:
+                prefix = base / "openssl"
+                (prefix / "lib").mkdir(parents=True)
+                (prefix / "lib" / "libssl.so.3").write_bytes(b"x")
+                (prefix / "lib" / "libcrypto.so.3").write_bytes(b"OpenSSL 3.5.8 \n")
+                env["FN_OPENSSL_PREFIX"] = str(prefix)
             env.pop("FN_TLS_LIMIT", None)
             (base / "build.lisp").write_text(build_text)
             answer = subprocess.run(["sh", str(SCRIPT)], env=env, cwd=ROOT,
@@ -122,12 +130,12 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
                          (ROOT / "packaging" / "fn").read_text().count("fn_decide_heap() {"))
         self.assertIn("--max-history-octets 8388608", self.probe_text)
         # HST-016: the ML-DSA-65 library is built into lib/ beside the image
-        # and named to the build; no OpenSSL prefix is needed.
+        # and named to the build; the shipped OpenSSL prefix is passed through (D64).
         self.assertEqual(len(library), 1, answer.stderr)
         line = [x for x in log.splitlines() if x.startswith("mldsa=")][0]
         named, openssl = line[len("mldsa="):].split(" openssl=")
         self.assertEqual(os.path.realpath(named), os.path.realpath(library[0]))
-        self.assertEqual(openssl, "unset")
+        self.assertEqual(openssl, str(base / "openssl"))
         # The catalog is recorded beside the image (tools/image_set.py reads it).
         self.assertEqual(self.catalog_text, "paged\n")
         # So is the source the image was built from (S057): this checkout's
@@ -151,6 +159,15 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
             r"--max-(?:transactions|history-octets|record-octets|groups-per-article|open-suffix) (\d+)",
             script)]
         self.assertEqual(sorted(figures), sorted(flags))
+
+    @unittest.skipUnless(platform.system() == "Linux", "the shipped-prefix rule is Linux's (D64)")
+    def test_a_linux_build_without_the_shipped_openssl_is_refused(self):
+        for prefix in ("", "$BASE/no-such-prefix"):
+            with self.subTest(prefix=prefix):
+                answer, _log, _, _ = self.build("ACL2 !>", FN_OPENSSL_PREFIX=prefix)
+                self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
+                self.assertIn("OpenSSL 3.5.8", answer.stderr)
+                self.assertNotIn("built ", answer.stdout)
 
     def test_a_failed_acl2_names_its_real_exit_status(self):
         """S142: inside `if ! cmd; then`, $? is the negation's 0, so every

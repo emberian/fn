@@ -108,6 +108,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-wg-` | `wire-grammar`, `tests/acl2/wire-grammar-tests` | The exported wire grammars (Mini M5): one grammar language as data, one total guard-verified interpreter (`fn-wg-encode`, `fn-wg-decode`), and its two round trips for every well-formed grammar (`fn-wg-decode-of-encode`, `fn-wg-encode-of-decode`: canonicity) |
 | `fn-wf-` | `wire-family-fncu` (and the other `wire-family-*` books), their `tests/acl2/*-tests` | One exported wire-grammar family each: its grammar constant over `fn-wg-`, and the agreement of the host-called codec with the interpreter (`fn-wf-fncu-encode-agrees`, `fn-wf-fncu-decode-agrees`), so the generic round trips are the family's |
 | `fn-stid-` | `store-identity`, `tests/acl2/store-identity-tests` | `fn identity CONTROL` (Mini M4): the store-identity request and the owner's reply over the wire-grammar interpreter (FNCT kinds 24/25), the client's line and exit code; `fn-stid-reply-of-a-genesis-decodes` |
+| `fn-lpf-` | `live-profile-control` | Bounded live-owner profile request/reply for heap preflight (FNCT kinds 26/27); fixed profile grammar, round trip, and frame bounds |
 | `fn-wgx-` | `wire-export` | The exported wire-grammar file `specs/wire-grammar.json` as an ACL2 value (`fn-wgx-file`), its vectors and their check (`fn-wgx-vectors-decode`), and its digest (`*fn-wgx-file-digest*`) the store-identity reply reports |
 | `fn-wire-` | `wire`, `wire-invariants` | NNTP line framing, dot stuffing, bounded retained input |
 | `fn-bch-`, `fn-bchs-` | `packed-octets`, `body-chunks`, `body-chunks-span`, `tests/acl2/body-chunks-tests` | The article body held in article mode (lane chunked-body, B6): octets packed in a natural (256^n sentinel; `packed-octets`: the codec, the divide-and-conquer digit reader), the canonical store of fixed-size packed blocks (`body-chunks`: `fn-bch-wf-is-of-octets`, the held body's invariant `fn-bch-body-okp` and its lines `fn-bch-held-lines`), and the span append straight from the octet buffer (`body-chunks-span`: `fn-bchs-push-span-is-push-list`) |
@@ -455,3 +456,5 @@ anything a book does not already decide.
 | `fn-saw-` | `served-auth-wire-bridge`, `tests/acl2/served-auth-wire-bridge-tests` | Served command framing and authentication hold composition (PKT-390) |
 
 | `fn-rip-` | `native-redeem-input` | Redeem client credential and reply admission; actual native input and wire constructor subjects. |
+
+| `fn-hcr-` | `history-served-reconfigure` | Resident history refinement of live configuration completion and publication; verdict and owner equal the replay reference under the carried owner/history relation. |

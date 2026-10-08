@@ -27,10 +27,21 @@
       (funcall thunk))))
 (defun fnn-owner-disk-admit (owner) (declare (ignore owner)) :ok)
 (defun fnn-owner-result (&rest arguments) (declare (ignore arguments)) :result)
-(defun fnn-owner-live-reconfigure-locked (owner thunk)
-  (declare (ignore owner thunk))
-  (note :publish)
-  (values :accepted nil))
+;; The quanta of a live reconfiguration (host/native/admin.lisp
+;; fnn-owner-live-reconfigure) collapse here to one section whose published
+;; answer is :accepted; the caller's CONTINUE runs inside it, as it does in
+;; the quantum that decides the answer.
+(defmacro fnn-owner-live-reconfigure
+    ((run drive section service cid &rest class) (word reason)
+     &key before stage reserve convert release continue)
+  (declare (ignore run drive before stage reserve convert release))
+  `(,section ,service ,cid
+             (lambda ()
+               (note :publish)
+               (let ((,word :accepted) (,reason nil))
+                 (declare (ignorable ,word ,reason))
+                 ,continue))
+             ,@class))
 (defun fnn-fault (&rest arguments) (error "fault ~s" arguments))
 (defun fnn-bplc-begin-locked (node) (declare (ignore node)) (note :begin))
 (defun fnn-bplc-reconfigure (node)   ; the pre-split entry, if still shipped

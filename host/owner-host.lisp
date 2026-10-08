@@ -166,6 +166,12 @@
 (include-book "../books/feed-link-backoff")
 ; `peer feed NAME pause|resume': fn-owner-feed-peers answers fn-fps-live-names.
 (include-book "../books/feed-pause")
+;; The history-root refresh's status line (fn-owner-hroot-note, host/history-root-host.lisp,
+;; keeps the status in the history-root table under :last-refresh).
+(defun fn-owner-hroot-status-lines (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-hrs-line (fn-hroot-table-status (fn-owner-history-root-table state))))
+
 ; Step 8 (catalog slice): the served read over the catalog and the catalog at
 ; the owner's entries (books/served-catalog-chain, books/served-catalog-owner).
 (include-book "../books/served-catalog-owner")
@@ -270,6 +276,13 @@
 ;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
 (include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
+;; Ruling 19: the live reconfiguration as quanta (fn-orp-step), which
+;; host/native/admin.lisp fnn-owner-live-reconfigure drives in every image.
+(include-book "../books/owner-reconfig-phased")
+(include-book "../books/owner-time-reconfig")
+;; Ruling 19: the held commit over the scheduler value (fn-otm-held-*), which
+;; host/native/owner.lisp fnn-owner-held-commit calls in every image.
+(include-book "../books/owner-time-held")
 ;; Lane zero-copy-commit: the articles in flight within the slots the figure
 ;; holds (fn-oas-read-span, over fn-otm-read-span).
 (include-book "../books/owner-article-slots")
@@ -342,27 +355,6 @@
 ; operation which preserves membership may use fn-owner-replace-core.
 ; Defined by books/owner-state-accessors.lisp under the same name.
 
-;; A live owner's administrative publication (PKT-837): the authorization
-;; from the owner's carried state, books/config-owner-live-authorize.lisp
-;; fn-olau-authorize -- the candidate is the one record applied to the
-;; carried node and configuration, no Store record read and no history
-;; replayed.  Under the owner's invariant, at :ready, with the observed
-;; configuration history the carried one and the record at the frontier, it
-;; EQUALS fn-cvec-native-admin-authorize over the carried rows and frontier,
-;; the replaying decision it replaced (KEYSTONE
-;; fn-olau-authorize-is-the-replayed-authorization).  Called from
-;; host/native/admin.lisp fnn-admin-authorize-owner, after
-;; fn-owner-reconfigure-authorizedp (PRF-287) answered for the staged record,
-;; through the wrapper below, over the carried history.
-;; Sweep S033: the same authorization over the owner's carried configuration
-;; history, with no history read: the host observes only whether the next
-;; generation's file (fn-owner-cfg-next-name, from the carried
-;; configuration) already exists, and passes that as OCCUPIED
-;; (books/config-owner-live-authorize-carried.lisp fn-olau-authorize-carried;
-;; KEYSTONE fn-olau-authorize-carried-is-the-observed-authorization: under the
-;; owner's invariant it equals fn-olau-authorize over the carried history and
-;; the names on disk).  Called from host/native/admin.lisp
-;; fnn-admin-authorize-owner.  Neither writes any global.
 ; Private allocation identity. The actual native catalog installer reserves
 ; before publishing a replacement pointer. The counter is never reset by open,
 ; reclaim or failed publication; the owner carrier migration must move both
@@ -377,6 +369,10 @@
         (let* ((state (f-put-global 'fn-owner-catalog-root-counter next1 state))
                (state (f-put-global 'fn-owner-catalog-root-incarnation token state)))
           (mv nil token state))))))
+
+; PRF-1272: allocation-generation producer, distinct from history version.
+; Program global/native installation refinement remains pending.
+(definterface fn-owner-catalog-root-reserve :class :program)
 
 (defun fn-owner-catalog-root-current (state)
   (declare (xargs :stobjs state :mode :program))
@@ -417,31 +413,29 @@
                         (fn-auth-access-read (fn-served-conn-session sc) config))
                   state))))))))
 
-(defun fn-owner-cfg-next-name (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (value (fn-olau-next-name (fn-owner-ocfg state))))
+;; Actual pre-chunk reader consumer; starting context is not per-command auth/pin.
+(definterface fn-owner-catalog-capture-context :class :program)
 
 ; Capture under the owner mutex; window A authorizes this immutable value.
 (defun fn-owner-cfg-capture (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-owner-ocfg state)))
 
-(defun fn-owner-cfg-native-admin-authorize-carried
-    (record-octets lock-owned occupied profile state)
-  (declare (xargs :stobjs state
-                  :guard (and (boundp-global 'fn-owner state)
-                              (fn-cbor-octet-listp record-octets))))
-  (let ((parsed (fn-cfg-decode-exact record-octets)))
-    (value
-     (if (not (fn-record-parse-okp parsed))
-         (fn-native-admin-publication-result :refused :decode nil nil nil)
-       (fn-olau-authorize-carried (fn-owner-ocfg state)
-                                  (fn-record-parse-value parsed)
-                                  lock-owned (and occupied t) profile)))))
+(definterface fn-owner-cfg-capture
+  :class :common-lisp-compliant)
+
+; The capture is a readout, so its state result preserves every carried
+; predicate.  Used by fn-owner-served-carried, not cited as a keystone.
+(defthm fn-owner-cfg-capture-state-by-definition
+  (equal (mv-nth 2 (fn-owner-cfg-capture state)) state)
+  :hints (("Goal" :in-theory '(fn-owner-cfg-capture))))
 
 (defun fn-owner-clock-observation (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-own-clock (fn-owner-core state))))
+
+(definterface fn-owner-clock-observation
+  :class :common-lisp-compliant)
 
 (defun fn-owner-stamp-status (state)
   ; The native submission boundary asks ACL2 whether this owner's current
@@ -451,6 +445,9 @@
   (value (if (natp (fn-record-stamp-of-observation
                     (fn-own-clock (fn-owner-core state))))
              :usable :clock-unusable)))
+
+(definterface fn-owner-stamp-status
+  :class :common-lisp-compliant)
 
 
 
@@ -468,6 +465,9 @@
 (defun fn-owner-live-post-config (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-own-config (fn-owner-core state))))
+
+(definterface fn-owner-live-post-config
+  :class :common-lisp-compliant)
 
 ; fn-owner-install-ocfg is the exact logical state/effects subject in
 ; books/owner-obligation-state. Its W9 update never reconstructs a ledger.
@@ -494,6 +494,9 @@
                     state)))
         (value :installed))
     (value :refused))))
+
+(definterface fn-owner-install-node-secret
+  :class :common-lisp-compliant)
 
 ; Every projection `fn-owner-install-effects' makes EXCEPT the reply octets,
 ; which are never built as a list here: `fn-owner-output' is NIL and the reply is
@@ -563,6 +566,9 @@
         (fn-owner-install-extended
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
          (car opened) (fn-mpxt-key-of-entry entry) fn-arena fn-cat fn-hist state))))))
+
+(definterface fn-owner-recover-from-store-open
+  :class ::program)
 
 ; The recoveries below were the retired Python bridge's (tools/run_owner.py,
 ; now gone); no loaded host line calls them (S115 follow-up).  The catalog the
@@ -664,6 +670,9 @@
           (value :installed))
       (value :refused)))))
 
+(definterface fn-owner-install-profile
+  :class ::program)
+
 ;; Row S1: serve an applied limit's profile (the one the configuration
 ;; history now records, fn-lim-effective, fn-lim-effective-of-append-record)
 ;; as the owner's served bound, carried verdict and store profile.  The
@@ -692,6 +701,10 @@
           (value :installed))
       (value :refused)))))
 
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-owner-apply-limit-profile
+  :class :common-lisp-compliant)
+
 ; fn-owner-store-profile is defined in owner-history-capture.
 
 ;; PRF-996: the running owner's carried (REQUESTED . FUNDED)
@@ -712,6 +725,9 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-limit-carry state)))
 
+(definterface fn-owner-limit-carried
+  :class ::program)
+
 ;; After decision D of `policy set FIELD N' is published (accepted) or
 ;; refused, the carry becomes fn-lim-carry-after; the answer is the new
 ;; funded profile, which the caller installs (fn-owner-apply-limit-profile)
@@ -721,6 +737,9 @@
   (let* ((carry (fn-lim-carry-after field n d (fn-owner-limit-carry state)))
          (state (f-put-global 'fn-owner-limit-carry carry state)))
     (value (fn-lim-carry-funded carry))))
+
+(definterface fn-owner-limit-decided
+  :class ::program)
 
 ;; The live report's limit lines (fn-lim-reported-triple-is-the-decisions).
 (defun fn-owner-limit-report (state)
@@ -750,6 +769,9 @@
     (value (list (nfix (fn-sbud-payload-bound profile))
                  (nfix (fn-sbud-group-bound profile))))))
 
+(definterface fn-owner-control-profile-bounds
+  :class ::program)
+
 ; The served posting bound: the profile's article octets and its header
 ; limits (fields 15 to 17, PRF-230), read from the opened profile; the host
 ; computes nothing (ACL2's `fn-inj-post-bound', read back by
@@ -778,12 +800,17 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-sf-records-count (fn-sn-files (fn-own-store (fn-owner-core state)))))
 
+(definterface fn-owner-sco-count :class :common-lisp-compliant)
+
 ; The newest durable checkpoint the Store open verified: its S, or NIL.
 (defun fn-owner-sco-note-durable (sequence state)
   (declare (xargs :stobjs state :guard t))
   (let ((state (f-put-global 'fn-owner-sco-durable (and (natp sequence) sequence)
                              state)))
     (value :noted)))
+
+(definterface fn-owner-sco-note-durable
+  :class :common-lisp-compliant)
 
 ; The base's canonical payload count after the Store open: the arena's
 ; count the host read (host/native/owner.lisp fnn-owner-recover-core).  Both
@@ -795,6 +822,9 @@
   (declare (xargs :stobjs state :guard t))
   (let ((state (f-put-global 'fn-owner-sco-base-payloads (and (natp count) count) state)))
     (value :noted)))
+
+(definterface fn-owner-sco-note-base-payloads
+  :class :common-lisp-compliant)
 
 ; fn-owner-sco-deferred: defined by books/owner-state-accessors.lisp under the same name
 ; (host/web-host.lisp's readiness observation reads it without this file).
@@ -857,6 +887,9 @@
                         (state (f-put-global 'fn-owner-sco-requested nil state)))
                    (value next))))))))
 
+(definterface fn-owner-sco-due
+  :class ::program)
+
 ; PKT-868: the operator's compaction request (`store compact' or `store
 ; checkpoint' while the owner runs; the admin plan :request-compaction,
 ; host/native/admin.lisp fnn-owner-live-admin-serialized).  The answer is
@@ -888,6 +921,9 @@
                                    state)))
           (value word))))))
 
+(definterface fn-owner-sco-request
+  :class ::program)
+
 ; The one coalesced request, for the status report: t while a due
 ; observation waits for the publication in flight to finish.
 (defun fn-owner-sco-pending (state)
@@ -904,6 +940,9 @@
 ; root prefix off O, and exact reconstruction by fn-hsc-complete-capture.
 ; fn-owner-oex-capture and its served entry are defined in owner-history-capture.
 
+; host/native/admin.lisp dispatches it (lane operability-7, row S3b).
+
+
 ; The first half's answer from NEXT and WALKED computed elsewhere: the
 ; reclaim pass builds NEXT chunk by chunk (books/reclaim-chunked-walk.lisp
 ; KEYSTONE fn-rcw-canon-acc-steps-is-the-checkpoint-capture: the capture of
@@ -915,6 +954,10 @@
   (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
       nil
     (list next (fn-scka-lens-setup (reverse (nth 1 walked)) seg) walked)))
+
+; host/native/owner.lisp dispatches it (lane reclaim, PRF-1315).
+(definterface fn-owner-sco-next-of
+  :class ::program)
 
 ; Off the mutex, over the values captured above and the live arena, READ
 ; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
@@ -949,6 +992,10 @@
                  next0)))
     (fn-owner-sco-next-of next walked seg)))
 
+; host/native/owner.lisp dispatches it (lane composed-owner).
+(definterface fn-owner-sco-next
+  :class ::program)
+
 
 (defun fn-owner-sco-setup-of (prepared frontier revision log seg budget free)
   ; The second half: (list SETUP NEXT N ARUN) as fn-owner-sco-prepare answers.
@@ -961,6 +1008,10 @@
       (list setup next (nth 0 ws)
             (list (nth 0 ws) (nth 2 ws)
                   (fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0))))))
+
+; host/native/owner.lisp dispatches it (lane composed-owner).
+(definterface fn-owner-sco-setup-of
+  :class ::program)
 
 (defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
                                   walked fn-arena)
@@ -1017,6 +1068,9 @@
                               state)))
     (value (if durablep (fn-sco-sequence next) :none))))
 
+(definterface fn-owner-sco-publication-done
+  :class :common-lisp-compliant)
+
 ; RL-02 (books/owner-publication-lifecycle.lisp): a publication that captured
 ; and ended without a durable checkpoint and without a budget or space deferral
 ; settles its own capture here, under the owner mutex, in the host's done
@@ -1050,6 +1104,11 @@
          (state (f-put-global 'fn-owner-sco-inflight (cadr r) state))
          (state (f-put-global 'fn-owner-sco-deferred (caddr r) state)))
     (value (if (fn-opl-holdsp count serial pass inflight current) (caddr r) :stale))))
+
+; RL-02: the settlement of an abandoned capture (host/native/owner.lisp
+; fnn-owner-publish-captured's done quantum).
+(definterface fn-owner-sco-publication-abandoned
+  :class :common-lisp-compliant)
 
 ;; Q16 (lane online-reclaim): `store reclaim' on a running owner
 ;; (books/owner-reclaim.lisp).  The pass runs on its own thread
@@ -1104,6 +1163,10 @@
                                   now))
             (or dry (eq mode :reclaim) (fn-rci-recordedp v))))))))
 
+; host/native/admin.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-request
+  :class ::program)
+
 (defun fn-owner-orc-request-status (word)
   (declare (xargs :guard t))
   ; Q16 (a): the pass's answers -- :installed and :none accepted; a deferral
@@ -1116,9 +1179,16 @@
       :refused
     (fn-orc-request-status word)))
 
+; host/native/admin.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-request-status
+  :class :common-lisp-compliant)
+
 ; Reclaim takes the same slot and metadata effects as its reference capture;
 ; its record slot stays empty and the consumer streams the pinned root.
 ; fn-owner-orc-capture and its served entry are defined in owner-history-capture.
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+
 
 ; Off the mutex, pure over the captured values and the arena below the
 ; captured count: the context (the recorded instant's for a reclaim,
@@ -1141,10 +1211,19 @@
      (fn-xpy-rci-context v s fn-arena))
    feeds))
 
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-ctx
+  :class ::program)
+
 ; The pass is done with CTX: its fast alists are freed (fn-rclp-ctx-free).
 (defun fn-owner-orc-ctx-free (ctx)
   (declare (xargs :guard t))
   (fn-rclp-ctx-free ctx))
+
+; host/native/owner.lisp dispatches it once the pass is done with its
+; context (lane reclaim-retention).
+(definterface fn-owner-orc-ctx-free
+  :class :common-lisp-compliant)
 
 ; One chunk of the reclaim walk (books/owner-reclaim.lisp fn-orc-chunk's two
 ; halves, fn-orc-fold-of-append and fn-orc-rewrite-rows-of-append joining
@@ -1156,23 +1235,43 @@
   (declare (xargs :stobjs fn-arena :mode :program))
   (fn-orc-fold rows ctx acc fn-arena))
 
+; host/native/owner.lisp dispatches them (lane online-reclaim; split into
+; the fold and the rewrite by lane reclaim, PRF-1315).
+(definterface fn-owner-orc-fold-chunk
+  :class ::program)
+
 (defun fn-owner-orc-rewrite-chunk (rows ctx fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (fn-orc-rewrite-rows rows ctx fn-arena))
+
+(definterface fn-owner-orc-rewrite-chunk
+  :class ::program)
 
 (defun fn-owner-orc-init ()
   (declare (xargs :guard t))
   (fn-rcls-init))
 
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-init
+  :class :common-lisp-compliant)
+
 (defun fn-owner-orc-classes (ctx fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (fn-xpy-ctx-classes ctx fn-arena))
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-classes
+  :class ::program)
 
 (defun fn-owner-orc-decide (mode profile v s now acc fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (if (eq mode :dry-run)
       (fn-lgr-decide-stream profile (fn-rcl-config-rule v) now s acc t fn-arena)
     (fn-rci-decide-stream profile v s acc nil fn-arena)))
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-decide
+  :class ::program)
 
 ; A pass that installs nothing ends here (under the mutex): nothing in
 ; flight.  (A pass that installs ends in fn-owner-orc-swap.)
@@ -1187,6 +1286,10 @@
          (state (f-put-global 'fn-owner-orc-pass (car r) state))
          (state (f-put-global 'fn-owner-sco-inflight (cadr r) state)))
     (value :finished)))
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orc-finish
+  :class ::program)
 
 ; The served POST bound (D27): the carried Store profile's payload bound
 ; (`fn-sbud-payload-bound', books/store-budget-naming, which never exceeds the
@@ -1217,6 +1320,9 @@
         (value :refused)
       (let ((state (fn-owner-replace-core (fn-own-configure owner next) state)))
         (value :configured))))))
+
+(definterface fn-owner-posting-configure
+  :class ::program)
 
 ; The committed record octets of the carried Store, from the carried
 ; (K . SUM) of the first K records advanced over the records committed since
@@ -1253,6 +1359,10 @@
       (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
         (mv nil (list (fn-sf-records-count (fn-sn-files s)) bytes debt) fn-hist state)))))
 
+; host/native/admin.lisp dispatches it (lane limits-live).
+(definterface fn-owner-limit-use
+  :class ::program)
+
 ; The owner's verdict on one more record of KIND: the carried profile's count
 ; and history gates against the Store it carries, and the capacity vector
 ; (books/store-capacity-vector.lisp `fn-cvec-verdict-at': a release
@@ -1271,6 +1381,9 @@
                                        (fn-sf-records-count (fn-sn-files s)) bytes debt)
                fn-hist state)))))
 
+(definterface fn-owner-publication-verdict
+  :class ::program)
+
 ; Exact current CPE encoded charge, not the historical fixed512 ceiling.
 ; The cached history/debt getters are shared with all owner publications.
 ; Invalid or not-yet-supported event tags have zero charge and are refused.
@@ -1285,6 +1398,8 @@
                  (fn-owner-profile-carry state) (fn-owner-store-profile state)
                  (fn-sf-records-count (fn-sn-files s)) bytes debt event)
             fn-hist state)))))
+
+(definterface fn-owner-consumer-publication-verdict :class :program)
 
 ; The identity preflight's verdict on one ACL2-constructed EVENT (lane
 ; bp-retention-leftovers).  Its kind is the WIRE event's
@@ -1309,6 +1424,9 @@
                      (fn-oii-publication-group-count event) debt)
                 fn-hist state)))))))
 
+(definterface fn-owner-identity-publication-verdict
+  :class ::program)
+
 ; One imminent reservation, checked under the native owner's serialization.
 ; OPERATION is the canonical retention publication or NIL for ordinary work.
 ; The purpose is derived from current replay/consumer eligibility in ACL2.
@@ -1329,6 +1447,8 @@
                   fn-hist state)))
         (let ((state (f-put-global 'fn-owner-identity-grant nil state)))
           (mv nil next fn-hist state))))))
+
+(definterface fn-owner-identity-reservation :class :program)
 
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
@@ -1454,20 +1574,32 @@
   (let ((state (fn-owner-put-credits (fn-mca-seal (fn-owner-credits state)) state)))
     (value :ok)))
 
+(definterface fn-owner-credits-seal
+  :class ::program)
+
 (defun fn-owner-credits-batch-done (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-put-credits (fn-mca-batch-done (fn-owner-credits state)) state)))
     (value :ok)))
+
+(definterface fn-owner-credits-batch-done
+  :class ::program)
 
 (defun fn-owner-credits-settle (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-put-credits (fn-mca-settle (fn-owner-credits state)) state)))
     (value :ok)))
 
+(definterface fn-owner-credits-settle
+  :class ::program)
+
 (defun fn-owner-credits-stop (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-put-credits (fn-mca-stop (fn-owner-credits state)) state)))
     (value :ok)))
+
+(definterface fn-owner-credits-stop
+  :class ::program)
 
 (defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
                                            tlsp live state)
@@ -1521,6 +1653,9 @@
                                                            hneed core threads stack hs)))
                               state)))
     (value (car d))))
+
+(definterface fn-owner-connection-budget
+  :class ::program)
 
 (defun fn-owner-reconfigure (id kind name-octets fn-arena state)
   ; Answers a ConfigResult: :staged with exactly one encoded configuration
@@ -1577,15 +1712,18 @@
                             (cons :unavailable (cdr old-canonical))) state)))
         (value word)))))
 
-(defun fn-owner-reconfigure-complete (generation state)
+(include-book "../books/history-served-reconfigure")
+
+(defun fn-owner-reconfigure-complete (generation fn-hist state)
   ; Called only after Store.write_config_record has named the record durable;
   ; an uncertain write has no call here and forces recovery.  The whole
-  ; completion is ACL2's `fn-oclc-publish' (books/config-owner-carried): the
+  ; completion is ACL2's resident `fn-hcr-publish' (history-served-reconfigure): the
   ; refusal, the carried physical history in one owner transition, the posting
   ; configuration of the published generation, and the verdict.  On :refused
   ; and :recovery-required its owner is the one installed now, so the host
   ; installs it unconditionally and decides nothing.  Under the owner's
-  ; invariant it is `fn-ocl-publish' (fn-oclc-publish-is-publish, PRF-274).
+  ; invariant and history correspondence it is fn-oclc-publish
+  ; (fn-hcr-publish-is-reference), hence fn-ocl-publish (PRF-274).
   ;
   ; Stage 0 (MODE 2026-10-01 section 3, no gate before its producer): the
   ; consumer-authority completion (`fn-ccp-publish' over the proposal saved by
@@ -1598,32 +1736,25 @@
   ; never reused.  Forward completion (AUTHORITY-FIELD lane): the authority
   ; binding produced on the stage path and proved to reach this call, then
   ; this body returns to the consume + fn-ccp-publish + install collector.
-  (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-authority-proposal-clear state)))
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (fn-hist state)
+      (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (let ((state (fn-owner-authority-proposal-clear state)))
     (mv-let (verdict next)
-      (fn-oclc-publish (fn-owner-ocfg state) generation
-                       (fn-owner-served-post-bound state))
+      (fn-hcr-publish (fn-owner-ocfg state) generation
+                      (fn-owner-served-post-bound state) fn-hist)
       (let* ((state (fn-owner-install-ocfg next state))
              (state (if (equal verdict :durable)
                         (fn-owner-connection-held-refresh state)
                       state)))
-        (value verdict)))))
+        (mv nil verdict fn-hist state))))))
 
+(definterface fn-owner-reconfigure-complete
+  :class ::program)
 
-;; PKT-827 (b), PRF-287: the live request's authorization from the owner's
-;; carried state, asked after staging and before publication
-;; (host/native/admin.lisp fnn-owner-live-reconfigure-locked).  ACL2's
-;; fn-oclc-live-authorizep: the staged record applies to the carried node and
-;; configuration; an authorized record's completion is :durable
-;; (fn-oclc-live-authorizep-is-durable-completion) and under the owner's
-;; invariant the history reopens to the state it installs
-;; (fn-oclc-authorized-record-reopens).  It reads no record.
-(defun fn-owner-reconfigure-authorizedp (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (value (fn-oclc-live-authorizep (fn-owner-ocfg state))))
 
 ;; lane prepare-served: a live request refused BEFORE its record was written
-;; (the authorization above, the candidate open, or the immutable publisher's
+;; (the captured authorization, the candidate open, or the immutable publisher's
 ;; :refused; host/native/admin.lisp fnn-owner-live-reconfigure-locked) drops
 ;; the staged record, ACL2's fn-psrv-unstage (KEYSTONE
 ;; fn-psrv-unstage-preserves-invariant).  Before it the staged record stayed:
@@ -1636,14 +1767,23 @@
          (state (fn-owner-install-ocfg (fn-psrv-unstage before) state)))
     (value (if (fn-ocfg-staged before) :unstaged :none))))
 
+(definterface fn-owner-reconfigure-unstage
+  :class :common-lisp-compliant)
+
 (defun fn-owner-config-generation (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-cfg-generation (fn-owner-config state))))
+
+(definterface fn-owner-config-generation
+  :class :common-lisp-compliant)
 
 (defun fn-owner-config-served (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-store-cfg-join-names
           (fn-cnode-served-of (fn-owner-config state)))))
+
+(definterface fn-owner-config-served
+  :class ::program)
 
 ; -----------------------------------------------------------------------------
 ; The transaction path: the same observations run_store.py reports, each one
@@ -1765,6 +1905,9 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-owner-core state)))
 
+(definterface fn-owner-snapshot
+  :class :common-lisp-compliant)
+
 ;; The reply a member's connection gets for the word :uncertain, rendered
 ;; from OWNER, the owner before the member's outcome was fed: the effects of
 ;; the served outcome (fn-acar-own-outcome, as fn-owner-outcome feeds it) or
@@ -1783,6 +1926,9 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-olr-bounds (fn-owner-config state))))
 
+(definterface fn-owner-log-bounds
+  :class :common-lisp-compliant)
+
 ;; Lane compression-extents-2 (PRF-341): the compression threshold from the
 ;; live configuration, the `compress-min-octets' limit row
 ;; (books/payload-lz-append.lisp fn-lzr-config-min; no row is 0, off): the
@@ -1790,6 +1936,9 @@
 (defun fn-owner-compress-min-octets (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-lzr-config-min (fn-cfg-value (fn-owner-config state)))))
+
+(definterface fn-owner-compress-min-octets
+  :class :common-lisp-compliant)
 
 ;; Lane time-model-2: the three disk rows, (D H C) as the operator set them
 ;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
@@ -1811,9 +1960,21 @@
   (value (fn-ort-retire-step s0 s seconds (fn-owner-feed-pending state)
                              (fn-own-queue (fn-owner-core state)))))
 
+(definterface fn-owner-retire-step
+  :class ::program
+  ;; The host step is fn-ort-retire-step: the counted drain over the carried
+  ;; feed count, intake fenced, and the owner's queue as the producer fence.
+  :keystones ((fn-ort-retire-step-ends-by-the-window :via fn-ort-retire-step)
+              (fn-ort-retire-step-drains-a-settled-zero :via fn-ort-retire-step)
+              (fn-ort-retire-step-waits-while-anything-drains :via fn-ort-retire-step)))
+
 (defun fn-owner-retire-report (step state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-oret-report step (fn-owner-ocfg state))))
+
+(definterface fn-owner-retire-report
+  :class ::program
+  :keystones ((fn-oret-report-carries-the-obligations-report :via fn-oret-report)))
 
 (defun fn-owner-barrier-limits (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
@@ -1821,6 +1982,9 @@
     (value (fn-otm-limits (list (fn-cfg-limit v "barrier-deadline-ms")
                                 (fn-cfg-limit v "barrier-stall-ms")
                                 (fn-cfg-limit v "clock-event-ms"))))))
+
+(definterface fn-owner-barrier-limits
+  :class :common-lisp-compliant)
 
 ;; PRF-359 (PKT-872): the free octets a write needs admitted
 ;; (books/owner-time-model.lisp fn-otm-space-need): PRF-129's maintenance
@@ -1833,6 +1997,9 @@
     (value (fn-otm-space-need (fn-olr-omax v) (fn-smr-reserve-octets)
                               (fn-cfg-limit v "disk-reserve-octets")))))
 
+(definterface fn-owner-space-need
+  :class :common-lisp-compliant)
+
 ;; Whether the oldest queued submission is a served POST's (not a control
 ;; submission, not a peer transit): the only kind a slow disk sheds.
 (defun fn-owner-queue-head-served-p (state)
@@ -1842,6 +2009,9 @@
                 (not (fn-own-transit-subp (car q)))
                 (not (fn-own-control-submissionp (car q)))
                 t))))
+
+(definterface fn-owner-queue-head-served-p
+  :class :common-lisp-compliant)
 
 ;; The carried obligation-id trie (books/post-retain-carried.lisp): the
 ;; global's writers are fn-owner-install-extended (every recovery: the
@@ -2001,6 +2171,12 @@
   (value (fn-cat-may-seal (fn-owner-index-writer-ticket state)
                           (fn-owner-cat-pending-now state))))
 
+; host/native/owner.lisp asks it before the POST's seal (lane arena-forget).
+(definterface fn-owner-cat-may-seal
+  :class :common-lisp-compliant
+  :keystones ((fn-cat-may-seal-is-the-prepare-transition-gate :via fn-cat-may-seal)
+              (fn-cat-may-seal-admits-the-prepare-after-the-seal :via fn-cat-may-seal)))
+
 ; Literal host-wrapper boundary; not a prepare-transition keystone.
 (defthm fn-owner-cat-may-seal-refines-cat-by-definition
   (equal (fn-owner-cat-may-seal state)
@@ -2018,6 +2194,9 @@
                             (fn-owner-cat-pending-now state)))
       (value :recovery-required)
     (fn-owner-cat-prepare-sealed-produced fn-arena fn-cat state)))
+
+(definterface fn-owner-cat-prepare-sealed
+  :class :common-lisp-compliant)
 
 ; fn-pout-refuse-reservation (books/owner-prepare-outcome.lisp): :refused
 ; exactly when the Store's gate fn-sn-refuse-reservation-enabledp holds, else
@@ -2051,6 +2230,9 @@
 (defun fn-owner-arena-count (fn-arena)
   (declare (xargs :stobjs (fn-arena) :mode :program))
   (fn-arena-count fn-arena))
+
+(definterface fn-owner-arena-count
+  :class ::program)
 
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
@@ -2221,12 +2403,18 @@
      (fn-th-local-propose operation projection txid source-sequence
                           observed-uid entropy-id quota))))
 
+(definterface fn-owner-topic-propose
+  :class :common-lisp-compliant)
+
 ; The local-control socket binds its one OS owner to fn-col's fixed principal.
 ; These ACL2 calls alone choose the operation, current cursor scope and Store
 ; coordinates.  No request may provide qver, view, principal or event bytes.
 (defun fn-owner-consumer-local-bootstrap (history incarnation state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-col-bootstrap (fn-owner-core state) history incarnation)))
+
+(definterface fn-owner-consumer-local-bootstrap
+  :class :common-lisp-compliant)
 
 ;; The consumer count is the carried Store profile's field 9 (D27, PRF-167),
 ;; read by ACL2 (host/store-host.lisp `fn-store-profile-max-consumers'); before
@@ -2238,6 +2426,9 @@
                            (fn-owner-store-profile state))
                           consumer group)))
 
+(definterface fn-owner-consumer-local-register
+  :class ::program)
+
 ; PRF-234: the plain ack is today's for an unbound consumer and refused
 ; (:bound) for a consumer the configuration binds to an account
 ; (books/consumer-bound.lisp fn-cbind-plain-ack-of-an-unbound-consumer-is-
@@ -2246,13 +2437,23 @@
   (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state) (fn-cbor-octet-listp cursor-octets))))
   (value (fn-cbind-plain-ack (fn-owner-ocfg state) cursor-octets)))
 
+(definterface fn-owner-consumer-local-ack
+  :class :common-lisp-compliant
+  :kinds ((cursor-octets fn-cbor-octet-listp)))
+
 (defun fn-owner-consumer-local-position (consumer state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-col-position (fn-owner-core state) consumer)))
 
+(definterface fn-owner-consumer-local-position
+  :class :common-lisp-compliant)
+
 (defun fn-owner-consumer-local-status (consumer state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-col-status (fn-owner-core state) consumer)))
+
+(definterface fn-owner-consumer-local-status
+  :class :common-lisp-compliant)
 
 (defun fn-owner-consumer-local-poll (consumer fn-arena fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
@@ -2278,14 +2479,24 @@
                          fn-hist)
         fn-hist state)))
 
+(definterface fn-owner-consumer-local-poll
+  :class ::program)
+
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-col-unregister (fn-owner-core state) consumer)))
+
+(definterface fn-owner-consumer-local-unregister
+  :class :common-lisp-compliant)
 
 (defun fn-owner-checkpoint-clone-phase (marker-octets state)
   (declare (xargs :stobjs state :guard (and (boundp-global 'fn-owner state) (fn-cbor-octet-listp marker-octets))))
   (value (fn-cpa-clone-phase-of-octets
           (fn-owner-store state) marker-octets)))
+
+(definterface fn-owner-checkpoint-clone-phase
+  :class :common-lisp-compliant
+  :kinds ((marker-octets fn-cbor-octet-listp)))
 
 ; fn-pout-known-abort (books/owner-prepare-outcome.lisp): :aborted exactly
 ; when the Store's gate fn-sn-known-abort-enabledp holds, else :fault
@@ -2301,6 +2512,9 @@
     ; over ALPHA of the staged row (books/store-intern.lisp fn-row-wire-of).
     (value (if record (fn-rcon-store-event-encode (fn-row-wire-of record fn-arena)) nil))))
 
+(definterface fn-owner-pending-octets
+  :class :common-lisp-compliant)
+
 ; The staged record's sequence, the one the host names its transaction file
 ; from (host/native/owner.lisp fnn-owner-publish-prepared); the host holds no
 ; count of its own.  It is the committed count
@@ -2309,6 +2523,9 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   ; fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence (books/records-concrete).
   (value (fn-rcon-sbud-pending-sequence (fn-owner-store state))))
+
+(definterface fn-owner-pending-sequence
+  :class :common-lisp-compliant)
 
 ; The POST admission boundary over the profile the owner was handed at open
 ; (`fn-owner-install-profile'); without one the payload bound is 0.
@@ -2339,6 +2556,10 @@
                                 (fn-owner-store-profile state)
                                 msgid-octets payload-length group-count charge
                                 (fn-owner-mpx-key state) fn-cat)))))
+
+(definterface fn-owner-post-boundary
+  :class ::program
+  :kinds ((msgid-octets fn-cbor-octet-listp) (payload-length natp)))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
@@ -2399,6 +2620,9 @@
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
     (mv-let (erp val state) (fn-owner-finish-synced fn-hist state)
       (mv erp val fn-hist state))))
+
+(definterface fn-owner-finish
+  :class :common-lisp-compliant)
 
 ; The article completion of the submission in flight (served POST, control
 ; post): the word is fn-own-finish's (books/owner-served-invariants.lisp),
@@ -2491,6 +2715,9 @@
       (fn-owner-finish-submission-synced fn-arena fn-cat fn-hist state)
       (mv erp val fn-cat fn-hist state))))
 
+(definterface fn-owner-finish-submission
+  :class ::program)
+
 ;; The completion of an identity event that carried an article (a signed
 ;; composite: signed-post), with the catalog's T4 then T2 over the pending
 ;; row fn-owner-cat-prepare-sealed prepared after the host's seal, exactly as
@@ -2527,6 +2754,9 @@
                 (if (or (equal (car cword) :stale-token) (equal (car cword) :expected-mismatch))
                     (mv nil :fault fn-cat fn-hist state)
                   (mv nil word fn-cat fn-hist state))))))))))
+
+(definterface fn-owner-finish-identity
+  :class ::program)
 
 ; fn-pout-begin (books/owner-prepare-outcome.lisp): :begun exactly when the
 ; begin's gate fn-pout-begin-admitsp holds (KEYSTONE
@@ -2721,6 +2951,9 @@
     (value (and (fn-own-bp-transit-submissionp sub)
                 (fn-peer-submission-octets (fn-own-sub-decision sub))))))
 
+(definterface fn-owner-bp-transit-raw
+  :class :common-lisp-compliant)
+
 ; `fn operator CONFIG post': the operator is a posting agent and this node
 ; its injecting agent (RFC 5537 section 3.5).  books/owner.lisp
 ; fn-own-operator-submit injects the payload under the owner's posting
@@ -2742,6 +2975,9 @@
 (defun fn-owner-moderation-plan (op login id reason fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :guard (boundp-global 'fn-owner state)))
   (value (fn-mvb-plan op login id reason (fn-owner-ocfg state) fn-arena)))
+
+(definterface fn-owner-moderation-plan
+  :class :common-lisp-compliant)
 
 ; After the records flip the node holds the stored article's HANDLE; the
 ; retry arm reads the octets under it through the arena
@@ -2783,6 +3019,10 @@
     (value (if (fn-inj-injectedp decision)
                nil
              (fn-inj-decision-reason decision)))))
+
+(definterface fn-owner-operator-refusal-reason
+  :class :common-lisp-compliant
+  :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp) (payload fn-cbor-octet-listp)))
 
 ; -----------------------------------------------------------------------------
 ; The AUTHINFO policy (RFC 4643), set once at start-up and pinned per
@@ -2847,6 +3087,9 @@
                          fn-hist)
         fn-hist state)))
 
+(definterface fn-owner-consumer-local-bound-poll
+  :class ::program)
+
 ;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
 ;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
 ;; `poll' (SECRET nil) or `bound-poll' request answers now, or (:sleep MS)
@@ -2863,15 +3106,25 @@
                                    consumer secret elapsed seconds fn-arena fn-hist)
         fn-hist state)))
 
+(definterface fn-owner-consumer-local-wait-step
+  :class ::program)
+
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :guard t))
   (value (fn-cwait-admit waiters)))
+
+(definterface fn-owner-consumer-local-wait-admit
+  :class :common-lisp-compliant)
 
 (defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp cursor-octets)))
   (value (fn-cbind-ack (fn-owner-ocfg state) (fn-owner-auth state)
                        cursor-octets secret)))
+
+(definterface fn-owner-consumer-local-bound-ack
+  :class ::program
+  :kinds ((cursor-octets fn-cbor-octet-listp)))
 
 ; Install a complete ACL2-built authentication configuration.  The native
 ; auth profile parser calls this after owner recovery and before the listener
@@ -2884,6 +3137,9 @@
       (value :rejected)
     (let ((state (f-put-global 'fn-owner-auth acfg state)))
       (value :ok)))))
+
+(definterface fn-owner-set-auth-config
+  :class :common-lisp-compliant)
 
 ; -----------------------------------------------------------------------------
 ; The transit port (specs/peering.md 2.2).
@@ -2943,11 +3199,18 @@
          (fn-owner-peer-for-address (fn-record-string-octets "::1") state))
         (t (value nil))))
 
+(definterface fn-owner-peer-for-socket-address
+  :class ::program)
+
 (defun fn-owner-open-peer (peer-octets state)
   (declare (xargs :stobjs state :verify-guards t
                   :guard (and (boundp-global 'fn-owner state)
                               (fn-cbor-octet-listp peer-octets))))
   (fn-owner-callback-open-peer peer-octets state))
+
+(definterface fn-owner-open-peer
+  :class :common-lisp-compliant
+  :kinds ((peer-octets fn-cbor-octet-listp)))
 
 ; The transfer decision for the transit submission in flight, over the LIVE
 ; node and the live configuration (RFC 4644 2.4.2: the offer was advisory).
@@ -3092,6 +3355,10 @@
                                       state)))
             (value (fn-peer-decision-kind d))))))))))
 
+(definterface fn-owner-transit-decide
+  :class ::program
+  :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp)))
+
 ; The transit reply.  `kind' and `reason' are the decision this image just
 ; made; `word' is the store's observed outcome (:durable, :refused,
 ; :uncertain), ignored unless the decision was :want.
@@ -3119,6 +3386,8 @@
   (let* ((state (f-put-global 'fn-owner-control-reason :retiring state))
          (state (f-put-global 'fn-owner-app-refusal-reason :retiring state)))
     (value :refused)))
+
+(definterface fn-owner-retire-intake-refused :class :program)
 
 ; The only host projection of a bounded feed step.  The ACL2 subject has
 ; already selected the next table, journal records and effects together.  A
@@ -3256,31 +3525,30 @@
                      state)))
         (value :ok)))))
 
+(definterface fn-owner-feed-reconcile-apply
+  :class ::program)
+
 (defun fn-owner-feed-journal-peer-validp (peer-octets state)
   (declare (xargs :stobjs state :guard t))
   (value (if (fn-feed-namep peer-octets) t nil)))
-
-(defun fn-owner-feed-journal-begin (state)
-  (declare (xargs :stobjs state :guard t))
-  (let ((state (f-put-global 'fn-owner-feed-safe-offset 0 state)))
-    (value :ok)))
 
 (defun fn-owner-feed-journal-prefix-size (state)
   (declare (xargs :stobjs state :guard t))
   (value *fn-feed-journal-prefix-size*))
 
-(defun fn-owner-feed-journal-offset (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-feed-safe-offset state)))
-  (value (f-get-global 'fn-owner-feed-safe-offset state)))
+(definterface fn-owner-feed-journal-prefix-size
+  :class :common-lisp-compliant)
 
 ; A transit transfer that became durable owes the feed journal the same
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
 ; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
 ; accepted it.  Read before the outcome moves the owner, as for POST.
-; The call is fn-oop-transit-outcome (books/owner-outcome-pinned.lisp): the
-; transit outcome over the configured owner, whose effects and owner are
-; fn-own-transit-outcome's (fn-oop-transit-outcome-is-own-transit-outcome)
-; and whose pin table follows a durable completion's advance, as
+; The call is fn-oct-transit (books/owner-outcome-counted.lisp), whose
+; effects/configured-owner projection is fn-oop-transit-outcome. Under the
+; carried fn-ocl-relation its effects and owner are fn-own-transit-outcome's
+; (fn-oct-transit-is-own-transit-outcome-under-ocl-relation and
+; fn-oop-transit-outcome-is-own-transit-outcome). It uses fn-oop-advance,
+; whose pin table follows a durable completion's advance, as
 ; fn-ocfg-advance's does (PKT-889: fn-owner-replace-core kept the pin the
 ; connection was opened under, so the carried relation was false after a
 ; durable transfer on a connection older than the live configuration;
@@ -3294,6 +3562,11 @@
          (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
+
+(definterface fn-owner-transit-outcome
+  :class ::program
+  :keystones
+  ((fn-oct-transit-is-own-transit-outcome-under-ocl-relation :via fn-oct-transit)))
 
 ; The service-log line for the transit outcome about to be fed, read off the
 ; owner BEFORE fn-owner-transit-outcome moves it (books/owner-log.lisp
@@ -3330,6 +3603,9 @@
                              state)))
     (value :ok)))
 
+(definterface fn-owner-transit-log-line
+  :class :common-lisp-compliant)
+
 (defun fn-owner-transit-kind (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-kind state)))
   (value (f-get-global 'fn-owner-transit-kind state)))
@@ -3338,9 +3614,15 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-reason state)))
   (value (f-get-global 'fn-owner-transit-reason state)))
 
+(definterface fn-owner-transit-reason
+  :class :common-lisp-compliant)
+
 (defun fn-owner-transit-evidence (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-evidence state)))
   (value (f-get-global 'fn-owner-transit-evidence state)))
+
+(definterface fn-owner-transit-evidence
+  :class :common-lisp-compliant)
 
 ; The word the host observed for the submission in flight (:durable,
 ; :refused, :uncertain or anything else) is fed back as one owner event;
@@ -3393,6 +3675,9 @@
          (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
     (value :fed)))
 
+(definterface fn-owner-outcome
+  :class ::program)
+
 ;; A served POST shed while the disk is slow (books/owner-time-model.lisp
 ;; fn-otm-admit-post answered :shed): the submission in flight gets
 ;; fn-own-outcome's :refused outcome -- nothing durable, no pin moved, the
@@ -3416,6 +3701,9 @@
                      state)))
         (value :shed)))))
 
+(definterface fn-owner-shed-outcome
+  :class ::program)
+
 ; The control result is projected before the event consumes the in-flight
 ; submission.  The state transition uses fn-own-outcome-completion and
 ; fn-own-feed-durable exactly as the served outcome; only wire rendering and
@@ -3437,6 +3725,9 @@
          (state (f-put-global 'fn-owner-feed-pending (cdr counted) state)))
     (value result)))
 
+(definterface fn-owner-control-outcome
+  :class ::program)
+
 ; Row S10: the reason the last control completion kept (nil when it was not
 ; a refusal, or none completed yet); host/native/owner.lisp's reply site
 ; takes it when the admission decision names none.
@@ -3445,6 +3736,10 @@
   (value (if (boundp-global 'fn-owner-control-reason state)
              (f-get-global 'fn-owner-control-reason state)
            nil)))
+
+; host/native/owner.lisp dispatches it (lane correctness-remainder).
+(definterface fn-owner-control-reason
+  :class ::program)
 
 (defun fn-owner-bp-transit-outcome (word fn-arena state)
   (declare (ignore fn-arena) (xargs :stobjs (state fn-arena) :mode :program))
@@ -3455,6 +3750,9 @@
          (state (f-put-global 'fn-owner-feed-pending (cdr counted) state)))
     (value result)))
 
+(definterface fn-owner-bp-transit-outcome
+  :class ::program)
+
 ; The allocation domain the owner's live node carries (every name ever
 ; created): the store bridge's fn-store-cfg-domain reads the global
 ; fn-store-sn, which the owner never sets (its store lives in fn-owner), so
@@ -3463,6 +3761,9 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-store-cfg-join-names
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
+
+(definterface fn-owner-domain
+  :class ::program)
 
 (defun fn-owner-group-codes (name-octets state)
   ; Resolve submitted names against the owner's current allocation domain.
@@ -3476,9 +3777,16 @@
               names (fn-state-groups
                      (fn-node-acceptance (fn-owner-node state))))))))
 
+(definterface fn-owner-group-codes
+  :class ::program
+  :kinds ((name-octets fn-octet-list-listp)))
+
 (defun fn-owner-next-txid (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-state-next-txid (fn-node-acceptance (fn-owner-node state)))))
+
+(definterface fn-owner-next-txid
+  :class :common-lisp-compliant)
 
 (defun fn-owner-next-store-coordinates (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
@@ -3486,14 +3794,23 @@
          (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
     (value (list (fn-sn-identity-next s) txid txid))))
 
+(definterface fn-owner-next-store-coordinates
+  :class :common-lisp-compliant)
+
 (defun fn-owner-hybrid-snapshots (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-sn-keyring-snapshots (fn-owner-store state))))
+
+(definterface fn-owner-hybrid-snapshots
+  :class :common-lisp-compliant)
 
 (defun fn-owner-hybrid-current-enrollment (generation state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-hl-current-enrollment
           generation (fn-sn-keyring-snapshots (fn-owner-store state)))))
+
+(definterface fn-owner-hybrid-current-enrollment
+  :class :common-lisp-compliant)
 
 ; TRANSITP is the host's path: t only for the NNTP transit attempt, whose
 ; delivering boundary fn-owner-transit-decide just read; served POST, bound
@@ -3514,6 +3831,9 @@
 (defun fn-owner-login-bindings-plan (bindings state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-lb-sync-plan bindings (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state))))))
+
+(definterface fn-owner-login-bindings-plan
+  :class :common-lisp-compliant)
 
 ;; The posting policy's gate for the served submission in flight
 ;; (books/login-binding-live.lisp fn-lb-ocfg-gate: the policy of the owner's
@@ -3536,6 +3856,9 @@
             (fn-owner-transit-carried-list transitp state)
             (and transitp t) plans (fn-owner-parse-carry state)))))
 
+(definterface fn-owner-peer-carrier-plan
+  :class ::program)
+
 ;; C1 (control messages): the filing step every ingress takes first,
 ;; books/peer-authored-accept.lisp fn-pa-filing-plan over the received
 ;; octets, the ingress's group names and the owner's allocation domain (the
@@ -3550,21 +3873,27 @@
           (fn-state-groups (fn-node-acceptance (fn-owner-node state)))
           (fn-owner-parse-carry state))))
 
+(definterface fn-owner-control-filing
+  :class ::program
+  :kinds ((group-octets fn-octet-list-listp)))
+
 ;; PKT-101: whether a SIGHUP asks for a reopen of `[log] path'
 ;; (books/owner-log-reopen.lisp fn-olr-decide, KEYSTONE
-;; fn-olr-reopen-iff-requested), and on :reopen the line the reopened file
-;; starts with, left in `fn-owner-log-line' for host/native/owner.lisp
-;; fnn-owner-maybe-reopen-log.
+;; fn-olr-reopen-iff-requested).  The answer is (KIND N LINE): the decision
+;; fn-olr-decide made and, on :reopen, the line the reopened file starts
+;; with (NIL otherwise).  The line is the wrapper's own result, read by
+;; host/native/owner.lisp fnn-owner-maybe-reopen-log from the same return,
+;; not left in a state global for a later read.
 (defun fn-owner-log-reopen (configured handled requested state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (let* ((decision (fn-olr-decide configured handled requested))
-         (state (f-put-global 'fn-owner-log-line
-                              (if (equal (car decision) :reopen)
-                                  (fn-olr-line requested
-                                               (fn-own-clock (fn-owner-core state)))
-                                nil)
-                              state)))
-    (value decision)))
+  (let ((decision (fn-olr-decide configured handled requested)))
+    (value (append decision
+                   (list (and (equal (car decision) :reopen)
+                              (fn-olr-line requested
+                                           (fn-own-clock (fn-owner-core state)))))))))
+
+(definterface fn-owner-log-reopen
+  :class :common-lisp-compliant)
 
 ;; PKT-069: the gate host/native/owner.lisp fnn-owner-complete-bound-submission
 ;; asks before it calls a commit callback (books/owner-bound-commit.lisp
@@ -3575,9 +3904,16 @@
           received group-octets
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
 
+(definterface fn-owner-bound-commit-gate
+  :class :common-lisp-compliant
+  :kinds ((group-octets fn-octet-list-listp)))
+
 (defun fn-owner-served-carried-word (word detail state)
   (declare (xargs :stobjs state :guard t))
   (value (fn-pa-served-word word detail)))
+
+(definterface fn-owner-served-carried-word
+  :class :common-lisp-compliant)
 
 ; The served POST's word (PKT-473, PRF-184): fn-pa-served-post-word names a
 ; durable composite whose key change the Store refused.  Called by
@@ -3585,6 +3921,9 @@
 (defun fn-owner-served-post-word (word detail state)
   (declare (xargs :stobjs state :guard t))
   (value (fn-pa-served-post-word word detail)))
+
+(definterface fn-owner-served-post-word
+  :class :common-lisp-compliant)
 
 ; PRF-099: the carried usage of the boundary whose release evidence is
 ; EVIDENCE (a string), from the owner's (K . TALLY) cache over the committed
@@ -3627,6 +3966,9 @@
           usage))
        fn-hist state))))
 
+(definterface fn-owner-peer-carried-relay-event
+  :class ::program)
+
 ; PRF-099: the refusal class of a present carrier on transit
 ; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,
 ; :unsupported-profile, :signature-failed or :malformed, or nil.  ED and ML
@@ -3644,6 +3986,9 @@
             (fn-owner-transit-carried-list transitp state) ed ml
             plans (fn-owner-parse-carry state)))))
 
+(definterface fn-owner-transit-refusal-class
+  :class ::program)
+
 ; PKT-473 (PRF-184): an accepted transit arm's verdict
 ; (books/peer-carriage.lisp fn-pcb-transit-verdict) under the same keyring
 ; snapshots and carried list as fn-owner-peer-carrier-plan, read before the
@@ -3656,6 +4001,9 @@
             received (fn-sn-keyring-snapshots (fn-owner-store state))
             (fn-owner-transit-carried-list transitp state)
             (and transitp t) ed ml plans (fn-owner-parse-carry state)))))
+
+(definterface fn-owner-transit-verdict
+  :class ::program)
 
 (defun fn-owner-peer-carried-event
     (coordinates msgid received group-codes obligation subject evidence charge
@@ -3679,6 +4027,8 @@
         ;; error triple, and ACL2 refuses it where one value is required
         ;; (the 9c344d1d image build, native-build-production.log:8292).
         (fn-own-clock (fn-owner-core state)))))))
+
+(definterface fn-owner-peer-carried-event :class :program)
 
 ;; PRF-098: the revoked arm's kind-4 event (fn-pa-revoked-event), for the
 ;; NNTP transit attempt only, with both primitive observations the host made
@@ -3704,6 +4054,8 @@
         observed-ml-key ed-observation ml-observation
         (fn-own-clock (fn-owner-core state)))))))
 
+(definterface fn-owner-peer-revoked-event :class :program)
+
 ;; PRF-098: the key-statement executor (books/key-statements.lisp), run by
 ;; the owner after it committed a kind-4 statement composite EVENT.  The
 ;; request names the primitive observation the host must make (the PoP's
@@ -3713,6 +4065,9 @@
   (declare (xargs :stobjs state :guard t))
   (value (fn-ks-pop-request event)))
 
+(definterface fn-owner-key-statement-request
+  :class :common-lisp-compliant)
+
 ;; Lane ack-before-barrier (books/owner-ack-after-barrier.lisp): whether the
 ;; committed kind-4 composite EVENT carries a key statement, whose commit the
 ;; owner fences before its crash cut and its executor run
@@ -3721,6 +4076,9 @@
 (defun fn-owner-statement-fence (event state)
   (declare (xargs :stobjs state :guard t))
   (value (fn-oab-fence-before-change event)))
+
+(definterface fn-owner-statement-fence
+  :class :common-lisp-compliant)
 
 ;; The grants a statement is decided under (books/key-statements.lisp
 ;; fn-ks-statement-rows): at acceptance the live configuration's; at open
@@ -3741,6 +4099,9 @@
                      (fn-owner-key-statement-rows event at-open state)
                      observed-ml-key ed-observation ml-observation)))
 
+(definterface fn-owner-key-statement-plan
+  :class ::program)
+
 (defun fn-owner-key-statement-event
     (event observed-ml-key ed-observation ml-observation coordinates at-open
            state)
@@ -3751,9 +4112,15 @@
                         (first coordinates) (second coordinates)
                         (third coordinates))))
 
+(definterface fn-owner-key-statement-event
+  :class ::program)
+
 (defun fn-owner-key-statement-log-line (plan outcome at-open state)
   (declare (xargs :stobjs state :guard t))
   (value (fn-ks-log-line plan outcome at-open)))
+
+(definterface fn-owner-key-statement-log-line
+  :class :common-lisp-compliant)
 
 ;; PRF-098, the crash cut: the open's recovery (books/key-statements.lisp
 ;; fn-ks-recover) executes the newest Store record when it is a statement.
@@ -3767,6 +4134,10 @@
                (fn-ks-pending (car records))
              nil))))
 
+(definterface fn-owner-key-statement-pending
+  :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
+
 ;; PRF-166 (PKT-325): `keys redecide MSGID' (books/key-statements.lisp
 ;; fn-ks-find-statement, fn-ks-redecide-plan, fn-ks-redecide-event).  The
 ;; stored statement MSGID (octets) names among the Store's records, or nil;
@@ -3777,6 +4148,10 @@
 ;; mutex; the host observes, commits and logs.
 (include-book "../books/owner-history-find")
 
+(definterface fn-owner-key-statement-redecide-find
+  :class :common-lisp-compliant
+  :kinds ((msgid fn-cbor-octet-listp)))
+
 (defun fn-owner-key-statement-redecide-plan
     (event observed-ml-key ed-observation ml-observation state)
   (declare (xargs :stobjs state :mode :program))
@@ -3784,6 +4159,9 @@
                               (fn-sn-keyring-snapshots (fn-owner-store state))
                               (fn-owner-key-statement-rows event nil state)
                               observed-ml-key ed-observation ml-observation)))
+
+(definterface fn-owner-key-statement-redecide-plan
+  :class ::program)
 
 (defun fn-owner-key-statement-redecide-event
     (event observed-ml-key ed-observation ml-observation coordinates state)
@@ -3795,9 +4173,15 @@
                                (first coordinates) (second coordinates)
                                (third coordinates))))
 
+(definterface fn-owner-key-statement-redecide-event
+  :class ::program)
+
 (defun fn-owner-key-statement-redecide-log-line (plan outcome state)
   (declare (xargs :stobjs state :guard t))
   (value (fn-ks-redecide-log-line plan outcome)))
+
+(definterface fn-owner-key-statement-redecide-log-line
+  :class :common-lisp-compliant)
 
 ;; D27: the signed composite against the profile the owner was handed at
 ;; open (books/store-budget-naming.lisp fn-sbud-signed-event-boundary):
@@ -3805,6 +4189,9 @@
 (defun fn-owner-signed-event-boundary (event state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sbud-signed-event-boundary (fn-owner-store-profile state) event)))
+
+(definterface fn-owner-signed-event-boundary
+  :class ::program)
 
 (defun fn-owner-article-count (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
@@ -3825,6 +4212,9 @@
          (p (fn-prov-make-post principal (fn-cfg-generation cfg))))
     (value (fn-record-string-octets
             (if (fn-prov-durablep p) (fn-prov-wire p) (fn-prov-render p))))))
+
+(definterface fn-owner-prov-post
+  :class :common-lisp-compliant)
 
 (defun fn-owner-existing-action (msgid-octets payload group-codes fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -3891,6 +4281,10 @@
                               (fn-lb-verdict-line verdict) state)))
     (value verdict)))
 
+(definterface fn-owner-login-gate-buffer
+  :class :common-lisp-compliant
+  :keystones ((fn-ars-lb-ocfg-gate-is-reference :via fn-ars-lb-ocfg-gate)))
+
 (defun fn-owner-control-filing-buffer (group-octets fn-octets state)
   (declare (xargs :stobjs (fn-octets state)
                   :guard (and (boundp-global 'fn-owner state)
@@ -3900,9 +4294,18 @@
           (fn-state-groups (fn-node-acceptance (fn-owner-node state)))
           fn-octets)))
 
+(definterface fn-owner-control-filing-buffer
+  :class :common-lisp-compliant
+  :kinds ((group-octets fn-octet-list-listp))
+  :keystones ((fn-ars-filing-plan-is-reference :via fn-ars-filing-plan)))
+
 (defun fn-owner-peer-carrier-form-buffer (fn-octets state)
   (declare (xargs :stobjs (fn-octets state)))
   (value (fn-ars-carrier-form fn-octets)))
+
+(definterface fn-owner-peer-carrier-form-buffer
+  :class :common-lisp-compliant
+  :keystones ((fn-ars-carrier-form-is-reference :via fn-ars-carrier-form)))
 
 ; The transit verdict the service log records (fn-owner-transit-verdict's
 ; twin; fn-ars-transit-verdict-is-reference): on the unsigned arm it reads
@@ -3914,6 +4317,10 @@
           (fn-sn-keyring-snapshots (fn-owner-store state))
           (fn-owner-transit-carried-list transitp state)
           (and transitp t) ed ml fn-octets)))
+
+(definterface fn-owner-transit-verdict-buffer
+  :class :common-lisp-compliant
+  :keystones ((fn-ars-transit-verdict-is-reference :via fn-ars-transit-verdict)))
 
 (defun fn-owner-peer-carrier-plan-buffer (transitp fn-octets state)
   (declare (xargs :stobjs (fn-octets state)
@@ -3961,11 +4368,14 @@
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
+      (let* ((result (fn-scar-ocfg-read-step (fn-owner-ocfg state)
                                         id (list :tls-established) fn-arena))
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
+
+(definterface fn-owner-tls-established
+  :class ::program)
 
 ; The host's (:sasl-context SEED BINDING) wire event (books/nntp-auth.lisp):
 ; SEED, fresh OS CSPRNG octets the SCRAM server nonce is derived from, and
@@ -3978,20 +4388,32 @@
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
+      (let* ((result (fn-scar-ocfg-read-step (fn-owner-ocfg state)
                                         id (list :sasl-context seed binding)
                                         fn-arena))
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
 
+; host/native/owner.lisp dispatches it (lane compress-8 (sasl union)).
+(definterface fn-owner-sasl-context
+  :class :program)
+
 (defun fn-owner-sasl-seed-octets ()
   (declare (xargs :mode :program))
   *fn-sasl-seed-octets*)
 
+; host/native/owner.lisp dispatches it (lane compress-8 (sasl union)).
+(definterface fn-owner-sasl-seed-octets
+  :class :program)
+
 (defun fn-owner-sasl-binding-octets ()
   (declare (xargs :mode :program))
   *fn-sasl-binding-octets*)
+
+; host/native/mux.lisp dispatches it (lane compress-8 (sasl union)).
+(definterface fn-owner-sasl-binding-octets
+  :class :program)
 
 ;; RFC 8054 (lane compress): the compression layer this connection's session
 ;; owes the host after a 206 (books/nntp-auth.lisp fn-auth-compress): the
@@ -4005,6 +4427,10 @@
     (value (and conn
                 (let ((z (fn-auth-session-compress (fn-own-conn-session conn))))
                   (and (fn-zc-owedp z) (cadr z)))))))
+
+; host/native/owner.lisp dispatches it (lane compress-8).
+(definterface fn-owner-compress-owed
+  :class ::program)
 
 ; Open pins the committed view and opens one served connection over it
 ; (fn-own-open); the greeting is the effect list it returns.  A refused open
@@ -4025,6 +4451,9 @@
                                 (fn-own-view (fn-owner-core state))))
          (state (f-put-global 'fn-owner-reader-views views state)))
     (value (if (consp views) t nil))))
+
+(definterface fn-owner-reader-views-capture
+  :class ::program)
 
 ; A reader entry at the reader view: while a capture is held the entry runs
 ; on the owner with the reader view in place of the working view
@@ -4049,6 +4478,9 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
                   :verify-guards t))
   (fn-owner-callback-open state))
+
+(definterface fn-owner-open
+  :class :common-lisp-compliant)
 
 
 ; One observed socket region is one ACL2 prefix transition
@@ -4140,6 +4572,10 @@
                      (fn-hsb-refusal-line (fn-hsb-detail r) source)
                    nil)))))
 
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget).
+(definterface fn-owner-handshake-admit
+  :class :program)
+
 ;; THE PROXY HEADER ON A TRUSTED PATH (books/tls-proxy.lisp, PRF-986 item 4).
 ;; After the proxy's own handshake slot is admitted (fn-owner-handshake-admit
 ;; with the transport peer), the host asks whether the peer is a trusted
@@ -4153,6 +4589,10 @@
                (append path (list (fn-pxy-deadline now ms ticks-per-second)))
              path))))
 
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-begin
+  :class :program)
+
 ;; OCTETS, everything read for the header so far: (:more K), (:header N
 ;; SOURCE) or (:refuse REASON LINE), LINE the service log's line naming the
 ;; transport peer (FAMILY . ADDRESS).
@@ -4163,6 +4603,10 @@
                (list :refuse (cadr r) (fn-pxy-refusal-line (cadr r) (cons family address)))
              r))))
 
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-step
+  :class :program)
+
 ;; A timer observation: nil while time remains, otherwise ACL2's refusal
 ;; line. The same check runs before a read; fn-owner-proxy-step checks again
 ;; after it, so scheduler delay cannot authorize a header past the deadline.
@@ -4171,6 +4615,10 @@
   (let ((r (fn-pxy-observe nil deadline now)))
     (value (and (equal (car r) :refuse)
                 (fn-pxy-refusal-line (cadr r) (cons family address))))))
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-timeout-line
+  :class :program)
 
 ;; The header named SOURCE (or :local): the proxy's handshake ID is handed
 ;; over to the asserted source, which is charged its own per-source budget
@@ -4194,6 +4642,10 @@
                    nil)
                  asserted))))
 
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-handover
+  :class :program)
+
 ;; A handshake fn-owner-handshake-admit admitted ended: completed, failed,
 ;; timed out or closed.
 (defun fn-owner-handshake-done (id state)
@@ -4204,6 +4656,10 @@
     (let ((state (fn-owner-connection-held-refresh state)))
       (value :ok))))
 
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget).
+(definterface fn-owner-handshake-done
+  :class :program)
+
 ;; A socket that waited for a slot left without a decision (its deadline,
 ;; its peer's close, the service's stop).
 (defun fn-owner-handshake-leave (state)
@@ -4213,6 +4669,10 @@
                              state)))
     (value :ok)))
 
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget).
+(definterface fn-owner-handshake-leave
+  :class :program)
+
 ;; The octets one served step may read (books/connection-budget.lisp
 ;; fn-cbud-step-read-octets): 512 under a step rate, 4 KiB without one.
 ;; host/native/owner.lisp fnn-owner-refresh-read-octets reads it under the
@@ -4221,6 +4681,9 @@
 (defun fn-owner-read-octets (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cbud-step-read-octets (fn-owner-exposure-limits state))))
+
+(definterface fn-owner-read-octets
+  :class ::program)
 
 ;; Once per run, after recovery and before listen: the listener the owner is
 ;; about to bind (FAMILY, ADDRESS-LIST as ACL2 projected them) decides the
@@ -4252,6 +4715,9 @@
          (state (f-put-global 'fn-owner-exposure-close nil state))
          (state (f-put-global 'fn-owner-exposure-public publicp state)))
     (value (if publicp :public :loopback))))
+
+(definterface fn-owner-exposure-install-set
+  :class :common-lisp-compliant)
 
 ;; The accept.  PEER-OCTETS is fn-owner-peer-for-socket-address's answer.
 ;; The result is the new connection id, or NIL; `fn-owner-output' holds the
@@ -4291,6 +4757,11 @@
              (state (f-put-global 'fn-owner-submittedp nil state)))
         (value nil)))))
 
+(definterface fn-owner-exposure-open
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp))
+  :keystones ((fn-olog-socket-connection-line-is-one-line :via fn-olog-socket-connection-line)))
+
 ;; Before a served step: :proceed, or the milliseconds to wait.
 (defun fn-owner-exposure-charge (id state)
   (declare (xargs :stobjs state :mode :program))
@@ -4299,6 +4770,9 @@
                            (fn-owner-exposure-now state)))
          (state (f-put-global 'fn-owner-exposure (cdr r) state)))
     (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
+
+(definterface fn-owner-exposure-charge
+  :class ::program)
 
 ;; On a receive timeout: (DECISION TAIL'), DECISION :keep, :close (RFC 3977
 ;; 3.1: close, send nothing) or (:refuse REASON).  TAIL is the reply's send
@@ -4315,6 +4789,13 @@
          (state (f-put-global 'fn-owner-exposure (cadr r) state)))
     (value (list (car r) (caddr r)))))
 
+(definterface fn-owner-exposure-idle
+  :class ::program
+  :keystones ((fn-exp-idle-delivery-keeps-while-the-peer-reads :via fn-exp-idle-delivery)
+              (fn-exp-idle-delivery-keeps-at-delivery :via fn-exp-idle-delivery)
+              (fn-exp-idle-delivery-refuses-what-the-send-verdict-refuses :via fn-exp-idle-delivery)
+              (fn-exp-idle-delivery-is-idle-without-delivery :via fn-exp-idle-delivery)))
+
 ; The transport accepted the whole of a reply whose drain outlasted its step:
 ; its last activity advances (books/public-exposure-reply.lisp
 ; fn-exp-progress, keystone fn-exp-idle-keeps-after-progress; Codex r67 F3,
@@ -4329,12 +4810,19 @@
                              state)))
     (value :ok)))
 
+(definterface fn-owner-exposure-progress
+  :class ::program
+  :keystones ((fn-exp-idle-keeps-after-progress :via fn-exp-progress)))
+
 (defun fn-owner-exposure-release (id state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-owner-exposure
                              (fn-exp-release (fn-owner-exposure-state state) id)
                              state)))
     (value :released)))
+
+(definterface fn-owner-exposure-release
+  :class ::program)
 
 ;; The lines `health' appends (host/native-live-status-host.lisp).
 ;; PRF-211: the capacity and the count, the last line of `status'.
@@ -4349,22 +4837,6 @@
                        (fn-owner-exposure-limits state)
                        (len (fn-own-conns (fn-owner-core state)))
                        (fn-owner-exposure-now state)))
-
-; The refresh's word as ACL2 classifies it (books/history-root-credit.lisp
-; fn-hroot-refresh-status), held for `status' and `health' to render
-; (books/history-root-status.lisp fn-hrs-line).  Every word the host got is
-; noted: a building/installed word clears a refusal, a refusal or an
-; unrecognised word replaces it.  Returns the status for the host's log.
-(defun fn-owner-hroot-note (word state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((status (fn-hroot-refresh-status word))
-         (state (f-put-global 'fn-owner-history-root-status status state)))
-    (value status)))
-
-(defun fn-owner-hroot-status-lines (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-hrs-line (and (boundp-global 'fn-owner-history-root-status state)
-                    (f-get-global 'fn-owner-history-root-status state))))
 
 ; Step 8 (catalog slice): the read runs books/served-catalog-chain.lisp
 ; fn-scr-ocfg-read-span, the same chain with the catalog carried to the
@@ -4411,6 +4883,11 @@
                     (fn-owner-install-ocfg after state) state)))
     (value (list word next))))))
 
+; One retained preflight quantum, with selection installed once on READY;
+; replay consumes the immutable render plan without repeating authority.
+; PROGRAM owner installation and complete guard/refinement bridge are open.
+(definterface fn-owner-article-ready-plan-step :class :program)
+
 ;; C3 / PRF-933 for a retrieval's preflight (books/article-stream-owner.lisp
 ;; fn-asto-plan-unavailable; the line is books/owner-resource-line.lisp
 ;; fn-orln-preflight-line): PLAN with its first preflight answered by the 403
@@ -4422,6 +4899,13 @@
   (declare (xargs :guard t))
   (let ((line (fn-orln-preflight-line word since now limit)))
     (and line (fn-asto-plan-unavailable plan line))))
+
+;; A preflight whose payload read did not come is answered 403 in its place.
+(definterface fn-owner-article-preflight-unavailable
+  :class :common-lisp-compliant
+  :keystones ((fn-asto-an-unavailable-preflight-is-answered-in-its-place
+               :via fn-asto-plan-unavailable)
+              (fn-orln-preflight-line-is-a-403 :via fn-orln-preflight-line)))
 
 (defun fn-owner-chunk-span-evaluate (id start end sched fn-octets fn-arena fn-cat state)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
@@ -4614,6 +5098,8 @@
                       (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                       (f-get-global 'fn-owner-exposure-close state))))))))))
 
+(definterface fn-owner-unavailable-line-at :class :program)
+
 ; PRF-1073: named refusal before dependency allocation; not a deadline.
 (defun fn-owner-resource-unavailable-line-at (id start word fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program)
@@ -4639,9 +5125,13 @@
                       (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                       (f-get-global 'fn-owner-exposure-close state))))))))))
 
+(definterface fn-owner-resource-unavailable-line-at :class :program)
+
 (defun fn-owner-chunk-span (id start end sched fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (fn-owner-chunk-span-at id start end sched fn-octets fn-arena fn-cat state))
+
+(definterface fn-owner-chunk-span :class :program)
 
 ; Explicit congruent RX readers. Both children come from the SAME provider;
 ; callers cannot pair a foreign carry with an incoming/receive byte object.
@@ -4727,6 +5217,9 @@
                   :verify-guards t))
   (fn-owner-callback-close id fn-arena state))
 
+(definterface fn-owner-close
+  :class :common-lisp-compliant)
+
 ; The host-fault boundary (books/owner-fault.lisp).
 ;
 ; tools/run_owner.py calls this when it has caught an exception it did not
@@ -4745,6 +5238,9 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
                   :verify-guards t))
   (fn-owner-callback-fault id state))
+
+(definterface fn-owner-fault
+  :class :common-lisp-compliant)
 
 (defun fn-owner-advance (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -4771,6 +5267,9 @@
          (state (fn-owner-install-ocfg
                  (fn-ocfg-observe (fn-owner-ocfg state) obs) state)))
     (value outcome)))
+
+(definterface fn-owner-observe
+  :class :common-lisp-compliant)
 
 (defun fn-owner-declare-group (name-octets fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -4851,6 +5350,10 @@
                   (fn-cfg-ag-car (fn-cfg-ag-cdr transport))))
              nil))))
 
+(definterface fn-owner-feed-host
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
+
 (defun fn-owner-feed-port (peer-octets state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp peer-octets)))
@@ -4859,6 +5362,10 @@
                (nfix (if (equal (len transport) 5) (cadddr transport)
                        (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport)))))
              0))))
+
+(definterface fn-owner-feed-port
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (defun fn-owner-feed-security (peer-octets state)
   "ACL2-owned outbound security tuple; old records are clear by definition."
@@ -4869,19 +5376,34 @@
                (car (cddddr transport))
              '(:clear)))))
 
+(definterface fn-owner-feed-security
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
+
 (defun fn-owner-feed-auth-policy (peer-octets state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp peer-octets)))
   (value (fn-cfg-peer-outbound-auth
           (fn-owner-feed-record peer-octets state))))
 
+(definterface fn-owner-feed-auth-policy
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
+
 (defun fn-owner-feed-profile-decode (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (fn-fap-decode octets))
 
+(definterface fn-owner-feed-profile-decode
+  :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp)))
+
 (defun fn-owner-feed-profile-max-octets ()
   (declare (xargs :guard t))
   *fn-fap-max-octets*)
+
+(definterface fn-owner-feed-profile-max-octets
+  :class :common-lisp-compliant)
 
 (defun fn-owner-feed-streamingp (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -4906,6 +5428,10 @@
     (value (if (and record (natp (fn-cfg-peer-backoff record)))
                (fn-cfg-peer-backoff record)
              0))))
+
+(definterface fn-owner-feed-backoff-ms
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
 
 ; Is there an entry this feed could OFFER if it had a connection: a
 ; `:queued` one, which is what `fn-feed-selection` picks.  Queue length is
@@ -4951,6 +5477,10 @@
                                         (fn-owner-core state)))))
               (fn-owner-feed-stop-key peer state)
               (fn-owner-feed-stopped state))))))
+
+(definterface fn-owner-feed-has-queued
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (defun fn-owner-feed-queue-length (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -5009,6 +5539,10 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
                          state)))
             (value (if (equal security :implicit) :await-tls :await-greeting))))))))
 
+(definterface fn-owner-feed-dial-open
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
+
 (defun fn-owner-feed-tls-established (peer-octets fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program
                   :guard (fn-cbor-octet-listp peer-octets)))
@@ -5039,10 +5573,17 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
           (:need-input (value (fn-owner-feed-word-publication :need-input nil nil)))
           (otherwise (value (fn-owner-feed-word-publication :invalid nil nil))))))))
 
+(definterface fn-owner-feed-tls-established
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
+
 (defun fn-owner-feed-read-limit ()
   "ACL2-owned upper bound for one native feed socket-read observation."
   (declare (xargs :guard t))
   *fn-feed-wire-input-max-chunk-octets*)
+
+(definterface fn-owner-feed-read-limit
+  :class :common-lisp-compliant)
 
 ; The raw socket layer enforces this one TCP completion deadline after DNS has
 ; produced an address.  It is deliberately a local ACL2 policy rather than a
@@ -5054,6 +5595,9 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
   "ACL2-owned TCP completion deadline for one outbound peer dial."
   (declare (xargs :guard t))
   *fn-owner-feed-connect-timeout-seconds*)
+
+(definterface fn-owner-feed-connect-timeout
+  :class :common-lisp-compliant)
 
 ; The outbound feed's send bound (inspection sweep 2026-10-03 S035): a
 ; command (a TAKETHIS or IHAVE with its whole article) is written in quanta of
@@ -5070,6 +5614,9 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
 written within SECONDS."
   (declare (xargs :guard t))
   (cons *fn-owner-feed-send-quantum-octets* *fn-owner-feed-send-quantum-seconds*))
+
+(definterface fn-owner-feed-send-quantum
+  :class :common-lisp-compliant)
 
 ; One tick for one peer: the records first, then the bytes.
 (defun fn-owner-feed-tick (peer-octets monotonic state)
@@ -5258,6 +5805,9 @@ itself."
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
     (mv nil t fn-hist state)))
 
+(definterface fn-owner-feed-reply-sync
+  :class ::program)
+
 ; The article this reply sends, from the connection's CURRENT framer state and
 ; the owner's in-flight offer, committing nothing: the same pure framer step
 ; fn-owner-feed-reply-chunk-synced takes (fn-fc-table-lookup, fn-fc-step,
@@ -5295,6 +5845,10 @@ itself."
                          (fn-ofa-feed-article owner msgid fn-arena fn-hist))
                     state)))))))))
 
+(definterface fn-owner-feed-reply-article
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
+
 ; The feed reply entry: the history stobj refreshed against the owner's Store
 ; first (fn-host-hist-sync; fn-hist-served-sync-is-sync and the carried
 ; prefix establish R), then the reply committed with the article
@@ -5307,6 +5861,10 @@ itself."
     (mv-let (erp val state)
       (fn-owner-feed-reply-chunk-synced peer-octets octets monotonic article fn-arena state)
       (mv erp val fn-hist state))))
+
+(definterface fn-owner-feed-reply-chunk
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
 
 
 ; The connection to ONE peer is gone.  The host reports the event and the
@@ -5349,29 +5907,47 @@ itself."
 
 ; One bounded read from the physical journal. The scanner owns acceptance,
 ; the exact safe offset and the entry fed to the existing replay transition.
-(defun fn-owner-feed-journal-scan (peer-octets prefix frame fn-arena state)
-  (declare (ignore fn-arena) (xargs :stobjs (state fn-arena) :mode :program
-                  :guard (and (fn-cbor-octet-listp frame)
-                              (fn-cbor-octet-listp peer-octets))))
+; The owner's side of a journal the host scanned OFF the owner (ruling 19,
+; books/owner-reconfig-phased.lisp (:feed-replay . PEER)): the host read the
+; journal's frames and ran the pure scanner fn-feed-journal-scan over them
+; (nothing writes a newly configured peer's journal before it is installed),
+; so the entries it returned, in order, and the safe offset the last of them
+; ended at, are applied here under the owner exactly as
+; fn-owner-feed-journal-scan applies each :next entry: the counted replay,
+; the intent, then the offset.
+(defun fn-owner-feed-journal-replay-entries (peer entries state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (atom entries)
+      state
+    (let* ((entry (car entries))
+           (state (fn-owner-feed-replay-counted peer (list entry) state))
+           (state (f-put-global
+                   'fn-owner-feed-intents
+                   (fn-own-feed-intent-apply
+                    (f-get-global 'fn-owner-feed-intents state)
+                    (fn-feed-journal-kind entry)
+                    (fn-feed-journal-values entry))
+                   state)))
+      (fn-owner-feed-journal-replay-entries peer (cdr entries) state))))
+
+(defun fn-owner-feed-journal-replay (peer-octets entries offset state)
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let* ((peer (fn-store-octets->string peer-octets))
-         (result (fn-feed-journal-scan peer-octets prefix frame
-                   (f-get-global 'fn-owner-feed-safe-offset state))))
+         (state (f-put-global 'fn-owner-feed-safe-offset 0 state)))
     (if (equal peer :bad)
         (value :invalid)
-      (if (equal (car result) :next)
-          (let* ((entry (nth 2 result))
-                 (state (fn-owner-feed-replay-counted peer (list entry) state))
-                 (state (f-put-global
-                         'fn-owner-feed-intents
-                         (fn-own-feed-intent-apply
-                          (f-get-global 'fn-owner-feed-intents state)
-                          (fn-feed-journal-kind entry)
-                          (fn-feed-journal-values entry))
-                         state))
-                 (state (f-put-global 'fn-owner-feed-safe-offset
-                                      (nth 1 result) state)))
-            (value :next))
-        (value (car result))))))
+      (let* ((state (fn-owner-feed-journal-replay-entries peer entries state))
+             (state (f-put-global 'fn-owner-feed-safe-offset (nfix offset) state)))
+        (value :ok)))))
+
+; The journal a live reconfiguration opens off the owner (ruling 19): the host
+; runs the pure scanner over the frames it read and applies the entries it
+; returned here under the owner (books/owner-reconfig-phased.lisp
+; (:feed-replay . PEER)).
+(definterface fn-owner-feed-journal-replay
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
 
 ; The fence a process death owes every feed: one (:feed-restart peer) record
 ; per peer, durable, then fn-feed-restart on each.  fn-own-reopen does the
@@ -5397,11 +5973,17 @@ itself."
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-pull-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
 
+(definterface fn-owner-pull-plans
+  :class :common-lisp-compliant)
+
 ; PRF-325: the peers this node catches up from (books/peer-catchup.lisp
 ; `fn-cu-plans'); host/native/pull-service.lisp drives each round.
 (defun fn-owner-catchup-plans (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-cu-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
+
+(definterface fn-owner-catchup-plans
+  :class :common-lisp-compliant)
 
 ;; Q16 (a) (lane online-reclaim-3): the pass that installs
 ;; (books/owner-reclaim-pass.lisp), driven by host/native/owner.lisp
@@ -5447,6 +6029,10 @@ itself."
                 (mv nil (list :captured captured
                               (fn-own-max-conns (fn-owner-core state))) fn-hist state)))))))))
 
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-capture
+  :class ::program)
+
 ; The rewritten rows' tombstoned records are no longer interned before the
 ; PRF-1258: the subject is the host-called prediction, including both its
 ; returned row column and the arena effects of sealing its payload column.
@@ -5481,6 +6067,10 @@ itself."
   (declare (xargs :mode :program))
   (list (fn-sn-keyring s) (fn-sn-keyring-generation s)))
 
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-keyring
+  :class ::program)
+
 ; Off the mutex, pure: the rebuild (fn-orcp-rebuild: KEYSTONE
 ; fn-orcp-rebuild-is-the-full-open) and the carried folds the install makes
 ; over the rebuilt Store (fn-owner-install-extended, fn-owner-install-
@@ -5505,14 +6095,25 @@ itself."
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-mpx-key state)))
 
+(definterface fn-owner-orcp-key
+  :class :program)
+
 (defun fn-owner-orcp-salt (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-gen-verdict-salt (and (boundp-global 'fn-store-genesis state)
                                    (f-get-global 'fn-store-genesis state)))))
 
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-salt
+  :class ::program)
+
 (defun fn-owner-orcp-view-index (oc)
   (declare (xargs :mode :program))
   (fn-own-view-index (fn-own-view (fn-ocfg-owner oc))))
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-view-index
+  :class ::program)
 
 ; The swap word over the owner now (under the mutex; fn-orcp-swap-word):
 ; the capture's count, frontier and Store against the owner's, the commit
@@ -5544,6 +6145,10 @@ itself."
                                readers)
             oc (nth 1 rebuilt))))))
 
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-swap-word
+  :class ::program)
+
 ; Defined under the same host-called name in books/owner-recovery-retain.lisp.
 
 ; A pass that installs nothing ends here (under the mutex): its credit back,
@@ -5552,6 +6157,10 @@ itself."
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-put-credits (fn-orcp-release (fn-owner-credits state)) state)))
     (fn-owner-orc-finish state)))
+
+; host/native/owner.lisp dispatches it (lane online-reclaim).
+(definterface fn-owner-orcp-finish
+  :class ::program)
 
 ; Serialized indexed reader completion follows its actual owner STATE subjects.
 (include-book "index-reader-request-host")
@@ -5572,6 +6181,14 @@ itself."
           ((not (fn-wire-fast-statep wire)) (value :invalid-wire))
           (t (value (fn-ocap-preview wire start end fn-octets))))))
 
+; Actual admitted pre-factory output consumer. Every family a row of
+; books/output-tariff-families.lisp names is priced from what its factory
+; touches (ARTICLE, HEAD, BODY, STAT: the row it serves); every other family
+; is (:unpriced F) and answered 403 by name in accounted mode.  The
+; reply-within-tariff bound over the exec arm is not yet a theorem
+; (PGO-TARIFF-ARTICLE-REPLY-WITHIN-TARIFF, PRF-1316).
+(definterface fn-owner-output-preview :class :program)
+
 ; The tariff producer the admission gate consumes (planning/design/tariff-
 ; 2026-10-04.md Q3).  ACL2 prices every family a row of
 ; books/output-tariff-families.lisp names, from the connection's reader
@@ -5589,6 +6206,12 @@ itself."
                (fn-tariff-family-preview preview (fn-own-conn-live-session owner conn)
                                          (fn-own-conn-config conn) fn-arena fn-cat)
              (fn-ocap-unpriced-tariff preview)))))
+
+(definterface fn-owner-output-tariff-preview
+  :class :program
+  :keystones ((fn-tariff-family-preview-charges-before-effect :via fn-tariff-family-preview)
+              (fn-tariff-article-prices-the-served-row :via fn-tariff-article-number-charge)
+              (fn-tariff-article-prices-the-served-msgid :via fn-tariff-article-msgid-charge)))
 
 ; The admission's refusal answered on the wire (books/output-admission-line.lisp):
 ; an unpriced family 403 with the connection kept, an unaffordable reply 400
@@ -5617,3 +6240,7 @@ itself."
                       consumed
                       (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                       (f-get-global 'fn-owner-exposure-close state))))))))))
+
+(definterface fn-owner-output-refusal-line-at
+  :class :program
+  :keystones ((fn-oadl-refusal-is-one-line :via fn-oadl-refusal-span)))

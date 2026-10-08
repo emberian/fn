@@ -42,7 +42,7 @@ class BoxTableTests(unittest.TestCase):
         self.assertEqual(rows["cloud1"]["check_jobs"], "4")
         self.assertEqual(rows["cloud2"]["cache"], "~/fn-certcache")
         self.assertEqual(rows["cloud2"]["wrap"], "swarm-build")
-        self.assertEqual(rows["cloud2"]["openssl"], "system")
+        self.assertEqual(rows["cloud2"]["openssl"], "bundled")
         farm = box_table.farm_rows(FIXED, env)
         self.assertEqual(set(farm["cloud1"]), {"acl2", "sbcl", "cache", "wrap"})
 

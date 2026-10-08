@@ -76,6 +76,7 @@
                 (fn-owner-oex-capture-served fn-owner-oex-capture-served-preserves-retain-state)
                 (fn-owner-orc-capture-served fn-owner-orc-capture-served-preserves-retain-state)
                 (fn-owner-history-startup fn-owner-history-startup-preserves-retain-state)
+                (fn-owner-cfg-capture fn-owner-cfg-capture-state-by-definition)
                 ; the pilot's (books/owner-retain-carried.lisp)
                 (fn-owner-prepare-identity fn-owner-prepare-identity-preserves-retain-state)
                 (fn-owner-prepare-identity-served fn-owner-prepare-identity-served-preserves-carried-state)
@@ -155,8 +156,7 @@
                 fn-owner-bplc-turn-plan fn-owner-cat-may-seal
                 fn-owner-cat-prepare-sealed fn-owner-catalog-capture-context
                 fn-owner-catalog-root-reserve fn-owner-catchup-plans
-                fn-owner-cfg-native-admin-authorize-carried
-                fn-owner-cfg-next-name fn-owner-checkpoint-clone-phase
+                fn-owner-checkpoint-clone-phase
                 fn-owner-chunk-span fn-owner-clock-observation
                 fn-owner-compress-min-octets fn-owner-compress-owed
                 fn-owner-config-generation fn-owner-config-served
@@ -182,8 +182,7 @@
                 fn-owner-feed-auth-policy fn-owner-feed-backoff-ms
                 fn-owner-feed-configure fn-owner-feed-dial-open
                 fn-owner-feed-has-queued fn-owner-feed-host
-                fn-owner-feed-journal-begin fn-owner-feed-journal-offset
-                fn-owner-feed-journal-prefix-size fn-owner-feed-journal-scan
+                fn-owner-feed-journal-prefix-size fn-owner-feed-journal-replay
                 fn-owner-feed-lost fn-owner-feed-peers fn-owner-feed-port
                 fn-owner-feed-reconcile-apply fn-owner-feed-reconcile-next
                 fn-owner-feed-reply-article fn-owner-feed-reply-chunk
@@ -239,7 +238,7 @@
                 fn-owner-proxy-step fn-owner-proxy-timeout-line
                 fn-owner-publication-verdict fn-owner-pull-plans
                 fn-owner-queue-head-served-p fn-owner-read-octets
-                fn-owner-reader-views-capture fn-owner-reconfigure-authorizedp
+                fn-owner-reader-views-capture
                 fn-owner-reconfigure-complete fn-owner-reconfigure-deltas
                 fn-owner-reconfigure-unstage fn-owner-recover-from-store-open
                 fn-owner-remote-ingress fn-owner-remote-operation-preflight
@@ -323,3 +322,83 @@
                 fn-workflow-take-submit fn-workflow-undertake-record
                 fn-workflow-work-status))
   :trace nil)
+
+(definterface fn-owner-control-submit
+  :class :common-lisp-compliant
+  :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))
+  :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)"))
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+(definterface fn-owner-io
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+;; The POST's take (host/native/owner.lisp fnn-owner-take).  Undeclared until
+;; lane post-guard-off: the raw host reached it through fnn-owner-result,
+;; which the host reading does not see, so it now dispatches it through
+;; fnn-owner-core and checks the result's recognizer itself.
+(definterface fn-owner-take
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+
+
+
+
+
+
+
+
+
+
+
+
+(definterface fn-owner-io-served
+  :class :common-lisp-compliant
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+(definterface fn-owner-known-abort-served
+  :class :common-lisp-compliant
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+(definterface fn-owner-prepare-consumer-served
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+(definterface fn-owner-prepare-identity-served
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+(definterface fn-owner-prepare-retention-served
+  :class :common-lisp-compliant
+  :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp))
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+(definterface fn-owner-prepare-topic-served
+  :class :common-lisp-compliant
+  ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
+  ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
+  ;; (specs/failures.md: the writers that row owes are unproved).
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
+(definterface fn-owner-refuse-reservation-served
+  :class :common-lisp-compliant
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))

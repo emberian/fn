@@ -36,6 +36,11 @@
 (include-book "byte-store-txn-seam")
 (local (include-book "arithmetic/top" :dir :system))
 
+(local (defthmd fn-bs-keys-belowp-excludes-bound-local-rewrite
+  (implies (fn-bs-keys-belowp x n)
+           (not (assoc-equal n x)))
+  :hints (("Goal" :by fn-bs-keys-belowp-excludes-bound))))
+
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-bs-dir-idp)
@@ -48,7 +53,7 @@
                           (:definition fn-bs-tear-write)
                           (:definition fn-th-exact-octets-p)
                           (:definition fn-th-source-id-p)
-                          (:rewrite fn-bs-keys-belowp-excludes-bound))))
+                          (:rewrite fn-bs-keys-belowp-excludes-bound-local-rewrite))))
 
 ; The readers only.  fn-bs-invariants-vocabulary is seventy rules over alists,
 ; octets, tears and selections; enabling it book-wide made the name-list

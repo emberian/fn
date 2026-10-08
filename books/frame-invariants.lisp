@@ -34,6 +34,18 @@
                           fn-frame-codec-vocabulary
                           (:d fn-frame-split)
                           (:d fn-frame-u64-bytes))))
+
+(local (defthm fn-frame-len-2-conses-local-rewrite
+  (implies (equal (len xs) 2)
+           (and (consp xs) (consp (cdr xs))))
+  :hints (("Goal" :by fn-frame-len-2-conses))))
+
+(local (defthm fn-frame-len-4-conses-local-rewrite
+  (implies (equal (len xs) 4)
+           (and (consp xs) (consp (cdr xs))
+                (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
+  :hints (("Goal" :by fn-frame-len-4-conses))))
+
 (local (include-book "arithmetic/top" :dir :system))
 
 ; The splitter is reasoned about through its lemmas, never by unrolling it on
@@ -69,7 +81,7 @@
            :use ((:instance fn-cbor-u16-from-upper-bound (xs xs))
                  (:instance fn-frame-len-2-conses (xs xs)))
            :in-theory (disable fn-cbor-u16-from-upper-bound fn-cbor-u16-from
-                               fn-cbor-octet-listp fn-frame-len-2-conses)))
+                               fn-cbor-octet-listp fn-frame-len-2-conses-local-rewrite)))
   :rule-classes :linear)
 
 (defthm fn-frame-u32-from-is-integerp
@@ -93,7 +105,7 @@
            :use ((:instance fn-cbor-u32-from-upper-bound (xs xs))
                  (:instance fn-frame-len-4-conses (xs xs)))
            :in-theory (disable fn-cbor-u32-from-upper-bound fn-cbor-u32-from
-                               fn-cbor-octet-listp fn-frame-len-4-conses)))
+                               fn-cbor-octet-listp fn-frame-len-4-conses-local-rewrite)))
   :rule-classes :linear)
 
 (defthm fn-frame-u16-from-is-natural
@@ -202,7 +214,7 @@
 ; wildmat decoder and `fn-cbor-at-mostp`.  Together they made plain append
 ; associativity take minutes.  All are closed from here; the facts they carry
 ; are re-stated below on the specific terms that need them.
-(local (in-theory (disable fn-frame-len-2-conses fn-frame-len-4-conses
+(local (in-theory (disable fn-frame-len-2-conses-local-rewrite fn-frame-len-4-conses-local-rewrite
                            
                            fn-cbor-u16-bytes fn-cbor-u32-bytes fn-frame-u64-bytes
                            fn-frame-textp fn-frame-blobp
@@ -337,7 +349,7 @@
    (implies (and (true-listp xs) (equal (len xs) 2))
             (equal (fn-frame-item 1 xs) (car (cdr xs))))
    :hints (("Goal" :do-not-induct t
-            :in-theory (enable fn-frame-item fn-frame-len-2-conses)))))
+            :in-theory (enable fn-frame-item fn-frame-len-2-conses-local-rewrite)))))
 (local
  (defthm fn-frame-true-listp-of-append
    (equal (true-listp (append a b)) (true-listp b))
@@ -355,7 +367,7 @@
             (equal (cons (car xs) (cons (car (cdr xs)) rest))
                    (append xs rest)))
    :hints (("Goal" :do-not-induct t
-            :in-theory (enable fn-frame-len-2-conses)
+            :in-theory (enable fn-frame-len-2-conses-local-rewrite)
             :expand ((len xs) (len (cdr xs)) (len (cdr (cdr xs)))
                      (true-listp xs) (true-listp (cdr xs))
                      (true-listp (cdr (cdr xs))))))))

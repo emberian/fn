@@ -2920,6 +2920,7 @@ it is never retired -- a CHECKED exclusion (fnn-owner-release-extents faults
 by name if it ever enters the retired set), the file resource's :excluded
 root history-image (books/page-read-direct.lisp, def-holder fn-pio-file-holds;
 c05 finding F1).")
+(fnn-guarded-by *fnn-extent-image-id* *fnn-extent-lock*)
 
 (defun fnn-state-checkpoint-adopt-image (store s)
   "The checkpoint's history image adopted (host/store-node-host.lisp
@@ -2936,7 +2937,7 @@ checked; the last row compared with the checkpoint's last record): (values
                      ;; the image's id is excluded from retirement for the
                      ;; process's life (fn-pgs-fill-frame preads it off the
                      ;; lock): fnn-owner-release-extents checks it
-                     (setq *fnn-extent-image-id* file)
+                     (fnn-extent-image-publish file)
                      (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
                        (fnn-err "PAGE-IO image file=~d" file))
                      (fnn-call 'fn-store-sco-image-open file (fnn-live-hrecs) *the-live-state*)))
@@ -7176,7 +7177,7 @@ with its depth, and the rows under it name the path that called it."
     fn-cat$c-group-number fn-cat$c-msgid-seqs fn-cat$c-at fn-cat$c-visible-at
     fn-cat$c-group-next fn-cat$c-group-count
     ;; the maintained group summary and withdrawal horizon (one cell each)
-    fn-cat$c-group-live-count fn-cat$c-group-live-low fn-cat$c-group-live-high
+    fn-cat$c-group-live-count fn-cat$c-group-live-low fn-cat$c-group-live-high fn-cat$c-group-raw-low
     fn-cat$c-horizon
     ;; the catalog finders over them
     fn-cnx-view-seq fn-cnx-view-range fn-scat-range-numbers

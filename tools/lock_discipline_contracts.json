@@ -399,6 +399,8 @@
   "fnn-connection-scoped",
   "fnn-log-sealed-effect",
   "fnn-section-envelope",
+  "fnn-owner-live-reconfigure",
+  "fnn-owner-held-commit",
   "fnn-with-observed-owner",
   "fnn-native-with-observation",
   "fnn-with-observed-mutex",
@@ -409,23 +411,57 @@
   "fnn-native-observed-thread-thunk"
  ],
  "realization_via": {
-  "fnn-arena-pin": ["fnn-arena-pins-step"],
-  "fnn-arena-unpin": ["fnn-arena-pins-step"],
-  "fnn-arena-retire": ["fnn-arena-pins-step"],
-  "fnn-arena-clear-p": ["fnn-arena-pins-step"],
-  "fnn-log-reseat-fenced": ["fnn-arena-retire"],
-  "fnn-log-batch-finish": ["fnn-log-reseat-fenced"],
-  "fnn-finish": ["fnn-log-reseat-fenced"],
-  "fnn-owner-finish-store": ["fnn-log-reseat-fenced"],
-  "fnn-owner-commit-complete-locked": ["fnn-log-batch-finish"],
-  "fnn-owner-publish-prepared": ["fnn-owner-finish-store"],
-  "fnn-owner-attempt": ["fnn-owner-publish-prepared"],
-  "fnn-owner-release-pending-extents-locked": ["fnn-arena-clear-p"],
-  "fnn-owner-reclaim-pass": ["fnn-arena-pin"],
-  "fnn-owner-response-pin": ["fnn-owner-response-pin-step"],
-  "fnn-owner-response-unpin": ["fnn-owner-response-pin-step"],
-  "fnn-owner-cold-transfer-result-locked": ["fnn-extent-direct-settle"],
-  "fnn-extent-executor-loop": ["fnn-extent-executor-actual-return"]
+  "fnn-arena-pin": [
+   "fnn-arena-pins-step"
+  ],
+  "fnn-arena-unpin": [
+   "fnn-arena-pins-step"
+  ],
+  "fnn-arena-retire": [
+   "fnn-arena-pins-step"
+  ],
+  "fnn-arena-clear-p": [
+   "fnn-arena-pins-step"
+  ],
+  "fnn-log-reseat-fenced": [
+   "fnn-arena-retire"
+  ],
+  "fnn-log-batch-finish": [
+   "fnn-log-reseat-fenced"
+  ],
+  "fnn-finish": [
+   "fnn-log-reseat-fenced"
+  ],
+  "fnn-owner-finish-store": [
+   "fnn-log-reseat-fenced"
+  ],
+  "fnn-owner-commit-complete-locked": [
+   "fnn-log-batch-finish"
+  ],
+  "fnn-owner-publish-prepared": [
+   "fnn-owner-finish-store"
+  ],
+  "fnn-owner-attempt": [
+   "fnn-owner-publish-prepared"
+  ],
+  "fnn-owner-release-pending-extents-locked": [
+   "fnn-arena-clear-p"
+  ],
+  "fnn-owner-reclaim-pass": [
+   "fnn-arena-pin"
+  ],
+  "fnn-owner-response-pin": [
+   "fnn-owner-response-pin-step"
+  ],
+  "fnn-owner-response-unpin": [
+   "fnn-owner-response-pin-step"
+  ],
+  "fnn-owner-cold-transfer-result-locked": [
+   "fnn-extent-direct-settle"
+  ],
+  "fnn-extent-executor-loop": [
+   "fnn-extent-executor-actual-return"
+  ]
  },
  "gated_macros": {
   "fnn-section-envelope": {
@@ -551,12 +587,11 @@
   "fnn-owner-accept": "the primary accept/SIGTERM loop runs on the caller thread of fnn-owner-run after startup (owner.lisp:5959ff)"
  },
  "entries_are_actors": false,
- "private_owner_commands": {
- },
+ "private_owner_commands": {},
  "test_only_entries": {
   "fnn-pull-worker-guarded": {
-  "file": "host/native/pull-service.lisp",
-  "why": "lane lock-model-gaps: the guarded wrapper of the pull worker (host/native/pull-service.lisp:1196-1200). The running host never calls it: fnn-pull-service-start spawns (lambda () (fnn-pull-worker runtime)) under the def-actor starter's own escape (:1205-1222), and only tests/native_feed_credential_raw-mock.lisp:201 calls the wrapper. Without this row it counts as a second, main-thread actor of everything the pull worker touches."
+   "file": "host/native/pull-service.lisp",
+   "why": "lane lock-model-gaps: the guarded wrapper of the pull worker (host/native/pull-service.lisp:1196-1200). The running host never calls it: fnn-pull-service-start spawns (lambda () (fnn-pull-worker runtime)) under the def-actor starter's own escape (:1205-1222), and only tests/native_feed_credential_raw-mock.lisp:201 calls the wrapper. Without this row it counts as a second, main-thread actor of everything the pull worker touches."
   }
  },
  "diagnostic_sinks": {
@@ -580,7 +615,9 @@
    "file": "host/native/owner.lisp",
    "results_param": "results",
    "tag": ":fnn-extent-cold",
-   "arm_calls": ["fnn-owner-cold-line"],
+   "arm_calls": [
+    "fnn-owner-cold-line"
+   ],
    "why": "lane lock-model-gaps-2: the mux loop never waits for a cold page (owner.lisp:6310-6326). fnn-owner-handle-chunk-step answers (values :cold READ) when the read's first value is :fnn-extent-cold and calls fnn-owner-chunk-results only in the else branch (:6339-6343); chunk-results calls fnn-owner-cold-line, which awaits the page, only in its :fnn-extent-cold arm (:5698). Reached through that one edge the arm is dead, so R9 does not count the await. The checker verifies the guard, that the argument is an unassigned local, and that every call to cold-line in chunk-results sits in that arm; the other callers of chunk-results (fnn-owner-handle-chunk, fnn-owner-cold-line itself) are not pruned."
   }
  ],
@@ -777,6 +814,19 @@
    "acquire_core": "fn-owner-page-file-pin-read",
    "release": "fnn-extent-discovery-release",
    "why": "snapshot page lease: acquired under O+E, released in the unwind-protect cleanup or handed off (owner.lisp:4898-4917)"
+  },
+  "fn-pgs-fill-frame": {
+   "kind": "permanent-file",
+   "root": "*fnn-extent-image-id*",
+   "table": "*fnn-extent-fds*",
+   "publish": "fnn-extent-image-publish",
+   "close": "fnn-extent-close",
+   "register": "fnn-extent-register",
+   "why": "The adopted image is a one-time registered process-lifetime root. The checker verifies immutable publication, reader identity/capture under E, close rejection before any registry close, and absence of other registry removers. No lock exemption.",
+   "publish_callers": [
+    "fnn-state-checkpoint-adopt-image"
+   ],
+   "register_at": "fnn-extent-register-at"
   }
  },
  "callback_contexts": {
@@ -863,6 +913,10 @@
    "scope": "result",
    "why": "the spool worker's condition is its RESULT: the loop stores it (catchup-spool.lisp:62, 68) and fnn-csp-worker-take re-signals any condition that is not an fnn-os-error as fnn-fault on the taking thread (catchup-spool.lisp:128-142), while an fnn-os-error stays the per-peer status :error ACL2 decides on"
   },
+  "fnn-rc-window": {
+   "scope": "result",
+   "why": "ruling 19 (host/native/admin.lisp fnn-owner-live-reconfigure): a condition a window of a live reconfiguration meets is the window's RESULT: fnn-rc-classify keeps it with the word ACL2's fn-orp-step takes (:uncertain, :refused or :fault), and the :fence or :fault effect the step answers re-signals it under the owner (fnn-rc-resignal, in a quantum of the caller's section), where the section's one boundary classifies it by its class and the publication step the window left"
+  },
   "fnn-extent-executor-job": {
    "scope": "result",
    "why": "a cold job's fault is its RESULT, settled by the owner after actual return (extent.lisp:479-505)"
@@ -915,7 +969,7 @@
   }
  },
  "commit_pipeline": [
-  "fnn-owner-commit-queued-locked",
+  "fnn-owner-held-start",
   "fnn-owner-commit-sync"
  ],
  "close_primitives": [
@@ -965,7 +1019,10 @@
  "nonblocking_close_sites": {
   "fnn-mux-close-wake": {
    "close_call": "sb-posix:close",
-   "slots": ["fnn-mux-loop-wake-read", "fnn-mux-loop-wake-write"],
+   "slots": [
+    "fnn-mux-loop-wake-read",
+    "fnn-mux-loop-wake-write"
+   ],
    "pipe_call": "sb-posix:pipe",
    "why": "close(2) of a pipe end does not block (Deputy C2 ruling 2026-10-07). verify_pipe_close_sites checks that the descriptor closed here is a let-bound read of the two wake slots, that every store into those slots in the host is NIL or a result of (sb-posix:pipe) (fnn-mux-start), and that no constructor call passes a slot keyword, so the slots hold only pipe ends."
   }

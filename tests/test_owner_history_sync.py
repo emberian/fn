@@ -101,13 +101,14 @@ class HistoryStartup(unittest.TestCase):
                     'fn-owner-key-statement-redecide-find', 'fn-bprj-install',
                     'fn-owner-sco-capture-served', 'fn-owner-oex-capture-served',
                     'fn-owner-orc-capture-served', 'fn-owner-orcp-capture',
-                    'fn-native-live-status-host-answer')
+                    'fn-native-live-status-host-answer', 'fn-owner-reconfigure-complete')
         for subject in subjects:
             with self.subTest(subject=subject):
                 self.assertIn(subject, reach.known)
                 self.assertNotIn('fn-pgs-fill-frame', reach.get(subject, {}))
         self.assertIn('fn-pgs-fill-frame', reach['fn-owner-sco-capture'])
         self.assertIn('fn-pgs-fill-frame', reach['fn-bpaj-replay'])
+        self.assertIn('fn-pgs-fill-frame', reach['fn-oclc-publish'])
 
     def test_install_loads_before_mutex_and_maintenance(self):
         source = (ROOT / 'host/native/owner.lisp').read_text()
@@ -116,7 +117,10 @@ class HistoryStartup(unittest.TestCase):
         install = source[start:end]
         sync = install.index('(fnn-owner-history-sync-first)')
         self.assertLess(sync, install.index('(sb-thread:make-mutex'))
-        self.assertLess(sync, install.index('(fnn-owner-history-root-maintain'))
+        self.assertNotIn('(fnn-owner-history-root-maintain', install)
+        run = source[source.index('(defun fnn-owner-run ('):]
+        self.assertLess(run.index('(fnn-mux-budget-install'),
+                        run.index('(fnn-owner-history-root-maintain'))
         first = definitions(ROOT / 'host/native/history-root.lisp')['fnn-owner-history-sync-first']
         self.assertFalse(mentions(first, 'fnn-owner-gated'))
         self.assertIn('fn-owner-history-startup', str(first))

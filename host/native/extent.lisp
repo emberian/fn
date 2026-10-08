@@ -379,7 +379,9 @@ still the core's fault (fn-pwr-outcome; specs/storage.md PRF-1057)."
     (unless (fnn-core-cold-single 'fn-crw-supportedp (cddr token) ticket)
       (fnn-fault "window descriptor is not representable by the selected native ABI"))
     (let ((fd nil) (incarnation nil) (plan nil)
-          (input (fn-octets$c-reserve 64 (create-fn-octets$c)))
+          (input (fn-octets$c-reserve (fn-profile-limit :read-span-octets)
+                                      (create-fn-octets$c)))
+          (answer :continue)
           (hash (create-pgs-digest-state)) (window (create-fn-ew-buffer))
           (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
           (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT")))
@@ -398,13 +400,22 @@ still the core's fault (fn-pwr-outcome; specs/storage.md PRF-1057)."
                   (first (fnn-core-cold-pool 'fn-owner-page-window-work-permittedp
                             (fnn-cold-worker-row worker) token)))
           (return (list plan window)))
-        (destructuring-bind (status next hash1) (fnn-core-cold-values 'fn-ews-tick plan hash)
+        ;; One span per iteration (books/extent-window-span.lisp): the core
+        ;; digests every block of the span read, and runs to the next I/O
+        ;; need, inside one call.  A :READ answer from the span read is that
+        ;; need, so the tick is skipped; any other answer goes through
+        ;; FN-EWS-TICK-TO-IO, which resumes a spent tick quantum (:CONTINUE)
+        ;; or reports the stream's terminal status.
+        (destructuring-bind (status next hash1)
+            (if (eq answer :read)
+                (list :read plan hash)
+              (fnn-core-cold-values 'fn-ews-tick-to-io plan hash))
           (setq plan next hash hash1)
           (case status
-            (:continue nil)
+            (:continue (setq answer :continue))
             (:read
              ;; :READ status requests I/O; :READ plan phase is terminal.
-             (let ((effect (fnn-core-cold-single 'fn-ews-effect plan hash)))
+             (let ((effect (fnn-core-cold-single 'fn-ews-span-effect plan hash)))
                (unless effect (return (list plan window)))
                ;; Developer observation gate (PRF-1057, SCN-216; as the
                ;; decoded controller's, SCN-1129): the core has selected this
@@ -429,10 +440,9 @@ still the core's fault (fn-pwr-outcome; specs/storage.md PRF-1057)."
                   "read-return token=~s fd=~d offset=~d count=~d got=~d status=~s injected=~s"
                   token fd (fifth effect) (sixth effect) (svref input 1) io-status
                   (equal mode "short"))
-                 (destructuring-bind (answer next hash1 window1)
-                     (fnn-core-cold-values 'fn-ews-read effect io-status plan input hash window)
-                   (declare (ignore answer))
-                   (setq plan next hash hash1 window window1)))))
+                 (destructuring-bind (answer1 next hash1 window1)
+                     (fnn-core-cold-values 'fn-ews-read-span effect io-status plan input hash window)
+                   (setq answer answer1 plan next hash hash1 window window1)))))
             (otherwise (return (list plan window)))))))))
 
 (defun fnn-extent-executor-actual-return (worker)
@@ -608,6 +618,10 @@ I, else borrow a span from I and read it, else the scalar borrow."
 ;;; is asked of the verified-window cache (fn-owner-page-window-cache-span-at),
 ;;; and what neither holds is the core's cold descriptor, as the scalar path
 ;;; answers its octet.
+;; The verified-window cache (below, THE VERIFIED-WINDOW CACHE); defined before
+;; fnn-extent-window-cache-run reads it.
+(defvar *fnn-extent-window-cache* nil)
+(fnn-guarded-by *fnn-extent-window-cache* *fnn-extent-lock*)
 (defvar *fnn-extent-run-dst* nil) ; the run's one buffer
 (fnn-guarded-by *fnn-extent-run-dst* *fnn-extent-lock*)
 
@@ -730,9 +744,8 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ;;; fn-arx-read-cache-entries, the bound books/cold-line-quanta.lisp's
 ;;; quanta are shaped to); the oldest is evicted, and its exact :cached row
 ;;; released (fn-prl-evict), on insertion and when its file retires
-;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW).
-(defvar *fnn-extent-window-cache* nil)
-(fnn-guarded-by *fnn-extent-window-cache* *fnn-extent-lock*)
+;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW); the
+;;; variable is defined above the renderer's span, its first reader.
 (defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
 
 (defun fnn-extent-window-cache-insert (token plan window)
@@ -1911,36 +1924,48 @@ Anything but :stale removes the row (the file pin) and idles the worker."
               ;; array and the fill (as fnn-with-octets-rd sets them)
               (vector (make-array 16384 :element-type '(unsigned-byte 8)) 16384)))))
 
+(defun fnn-extent-image-publish (file)
+  "Publish the immutable history-image root exactly once, after registration."
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (when *fnn-extent-image-id*
+      (error 'fnn-extent-fault :message "history image is already adopted"))
+    (unless (gethash file *fnn-extent-fds*)
+      (error 'fnn-extent-fault :message "history image has no registered descriptor"))
+    (setq *fnn-extent-image-id* file))
+  file)
+
+(defun fnn-extent-image-file ()
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    *fnn-extent-image-id*))
+
 (defun fn-pgs-fill-frame (file addr sel base pgs-mem)
   (unless (and (member sel '(0 1 2)) (integerp base) (<= 0 base)
                (<= (+ base 2048) (fn-pgs-frame-len sel pgs-mem)))
     (error 'fnn-extent-fault
            :message (format nil "history-page-read: frame ~a at word ~a is outside the page store"
                             sel base)))
-  (let ((st (fnn-live-pgb)))
-    ;; R3: the pread runs inside the extent-lock region that looked up its
-    ;; descriptor, so a page file closed or replaced under the lock cannot
-    ;; hand this read a descriptor number the kernel has reused.  A caller
-    ;; already inside the extent lock (the limit and live reconfiguration
-    ;; quanta reach this through ACL2's history refresh) reads under its own
-    ;; hold: with-mutex is not recursive.  The short-read fault names the
-    ;; path from the same region, for the same reason.
-    (flet ((read-page ()
-             (let ((fd (gethash file *fnn-extent-fds*))
-                   (base-off (gethash file *fnn-extent-bases* 0)))
-               (unless (and fd (integerp addr) (<= 0 addr))
-                 (error 'fnn-extent-fault
-                        :message (format nil "history-page-read: no page file ~a (page ~a)"
-                                         file addr)))
-               (let ((got (fnn-extent-pread fd (svref st 0) (+ base-off (* addr 16384)))))
-                 (unless (= got 16384)
-                   (error 'fnn-extent-fault
-                          :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
-                                           addr (gethash file *fnn-extent-paths*) got)))))))
-      (if (sb-thread:holding-mutex-p *fnn-extent-lock*)
-          (read-page)
-        (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
-          (read-page))))
+  ;; This boundary is startup/off-owner only. Never inherit an E hold across
+  ;; the physical read. The adopted image has the checked lifetime exclusion
+  ;; declared by page-read-direct's history-image holder root.
+  (when (sb-thread:holding-mutex-p *fnn-extent-lock*)
+    (error 'fnn-extent-fault :message "history-page-read: caller holds extent lock"))
+  (let ((st (fnn-live-pgb)) (fd nil) (base-off nil) (path nil))
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+      (unless (and *fnn-extent-image-id* (eql file *fnn-extent-image-id*))
+        (error 'fnn-extent-fault :message "history-page-read: file is not the adopted history image"))
+      (setq fd (gethash file *fnn-extent-fds*)
+            base-off (gethash file *fnn-extent-bases* 0)
+            path (gethash file *fnn-extent-paths*))
+      (unless (and fd (integerp addr) (<= 0 addr))
+        (error 'fnn-extent-fault
+               :message (format nil "history-page-read: no page file ~a (page ~a)" file addr))))
+    ;; fnn-extent-close refuses this process-lifetime id. Capture the
+    ;; fault's pathname with the descriptor.
+    (let ((got (fnn-extent-pread fd (svref st 0) (+ base-off (* addr 16384)))))
+      (unless (= got 16384)
+        (error 'fnn-extent-fault
+               :message (format nil "history-page-read: page ~a of ~a: ~a of 16384 octets"
+                                addr path got))))
     (fn-pgb-frame-put sel base st pgs-mem)))
 
 (defun acl2_*1*_acl2::fn-pgs-fill-frame (file addr sel base pgs-mem)
@@ -1985,6 +2010,10 @@ Anything but :stale removes the row (the file pin) and idles the worker."
   "Physical retirement: workers keep descriptors; cache credits release on
 actual eviction, descriptor credits only after successful OS close."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    ;; The immutable history image is a process-lifetime root, including
+    ;; while a startup/off-owner page read has released E.
+    (when (and *fnn-extent-image-id* (member *fnn-extent-image-id* ids))
+      (error 'fnn-extent-fault :message "history image cannot be retired"))
     (let ((closed 0) (keep nil))
       (dolist (id ids)
         ;; the direct arm's reads: one lookup of the holds table (KEYSTONE

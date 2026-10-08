@@ -62,7 +62,9 @@ class SchedulerSourceTests(unittest.TestCase):
         # and fold are fn-ocp-next / fn-ocp-observe, which are fn-ocs-next's
         # (fn-ocp-next-is-ocs-next; fn-ocm-next's pick outside a batch,
         # fn-osch-next's for the four classes: PRF-267, PRF-248).
-        self.assertIn("'fn-otm-next", owner)
+        # (the pick is fn-otm-hold-next, which is fn-otm-next outside a live
+        # reconfiguration's hold: fn-otm-hold-next-without-the-hold-is-next)
+        self.assertIn("'fn-otm-hold-next", owner)
         self.assertIn("'fn-otm-observe", owner)
         # The committer's pipeline: START (it seals) as a :commit quantum, the
         # SYNC in the syncer thread with the owner released, at most one
@@ -70,7 +72,7 @@ class SchedulerSourceTests(unittest.TestCase):
         # quantum, which seals the next batch only after the replies.
         batch = owner[owner.index("(defun fnn-owner-commit-pipeline "):owner.index("(defun fnn-owner-committer-loop")]
         self.assertIn("'fn-otm-commit-event", owner)
-        self.assertIn("'fn-otm-committer-wake", owner)
+        self.assertIn("'fn-otm-held-committer-wake", owner)
         self.assertLess(batch.index("(fnn-owner-commit-start-locked service)"),
                         batch.index("(fnn-owner-start-syncer service gen job syncer-grant)"))
         self.assertLess(batch.index("(fnn-owner-start-syncer service gen job syncer-grant)"),
@@ -89,20 +91,28 @@ class SchedulerSourceTests(unittest.TestCase):
         self.assertIn(":inspect))", live)
         # Each member's reply is the release ACL2 names (fn-ocs-member-releases,
         # keystone fn-ocs-members-told-only-after-the-barrier): the COMPLETE
-        # takes ACL2's action, never a host-computed flag, and the inline
-        # commit asks fn-ocs-commit-step for its steps.
-        complete = owner[owner.index("(defun fnn-owner-commit-complete-locked "):owner.index("(defun fnn-owner-commit-step-action")]
+        # takes ACL2's action, never a host-computed flag, and the held
+        # commit asks fn-otm-held-plan for its steps and their labels.
+        complete = owner[owner.index("(defun fnn-owner-commit-complete-locked "):owner.index("(defun fnn-owner-reader-capture ")]
         self.assertIn("'fn-ocs-member-releases action", complete)
         self.assertNotIn("(cons :close (second m))", complete)
-        inline = owner[owner.index("(defun fnn-owner-commit-queued-locked "):owner.index("(defun fnn-owner-commit-event ")]
-        self.assertIn("fnn-owner-commit-step-action", inline)
-        self.assertIn("'fn-ocs-commit-step", owner)
-        # fnn-core answers an mv function's FIRST value (the action): taking
-        # (first ...) of that keyword is a memory fault at nil in the saved
-        # image's compiled code (the operator post's inline commit, AW r4).
-        step = owner[owner.index("(defun fnn-owner-commit-step-action "):owner.index("(defun fnn-owner-commit-queued-locked ")]
-        self.assertIn("(fnn-core 'fn-ocs-commit-step phase event)", step)
-        self.assertNotIn("(first (fnn-core", step)
+        held = owner[owner.index("(defun fnn-owner-held-event "):owner.index("(defun fnn-owner-commit-pipeline ")]
+        self.assertIn("(fnn-call 'fn-otm-held-plan (fnn-owner-gate-sched gate) event)", held)
+        self.assertIn("(fnn-core 'fn-och-held-event", held)
+        self.assertIn("'fn-otm-held-caller-wake", held)
+        self.assertNotIn("fnn-owner-commit-queued-locked", owner)
+        # The batch job never runs in a caller's quantum: START (quantum 1)
+        # and COMPLETE (quantum 2) are the caller's, the job is the syncer's.
+        start = owner[owner.index("(defun fnn-owner-held-start "):owner.index("(defun fnn-owner-held-await ")]
+        self.assertNotIn("fnn-owner-batch-job", start)
+        complete_held = owner[owner.index("(defun fnn-owner-held-complete "):owner.index("(defun fnn-owner-held-wait ")]
+        self.assertNotIn("fnn-owner-batch-job", complete_held)
+        self.assertIn("'fn-otm-held-committer-wake", owner)
+        # Every caller that may submit goes through the one wrapper.
+        for name, count in (("bp-app.lisp", 1), ("bp-node.lisp", 1), ("hybrid-control.lisp", 1)):
+            text = (ROOT / "host" / "native" / name).read_text()
+            self.assertEqual(text.count("(fnn-owner-held-commit "), count, name)
+        self.assertEqual(owner.count("(fnn-owner-held-commit\n   (fnn-owner-serialized service nil :poster)"), 1)
         commit_class = (ROOT / "books" / "owner-commit-class.lisp").read_text()
         self.assertIn("(fn-osch-next (fn-ocm-sched s) w)", commit_class)
         self.assertIn("(fn-osch-observe (fn-ocm-sched s) class hold-ms wait-ms)", commit_class)
@@ -751,8 +761,7 @@ class SchedulerNativeTests(unittest.TestCase):
     def test_the_a6_campaign_keeps_accepted_history_through_one_integrated_scenario(self):
         # Row A6, GPT-6's integrated campaign (planning/review-2026-09-28-gpt6.md),
         # in ONE scenario on the developer image: every completion delayed at
-        # its barrier (0.6 s), the extent cache off (every payload read cold:
-        # cache pressure), an OLD reader pinned before new writes, a snapshot
+        # its barrier (0.6 s), an OLD reader pinned before new writes, a snapshot
         # (the checkpoint publication, which reads the live arena off the
         # mutex under its generation pin, books/arena-reader-pins.lisp) racing
         # the old reader's reads, then a crash (SIGKILL) with one completion
@@ -762,7 +771,11 @@ class SchedulerNativeTests(unittest.TestCase):
         # during the snapshot); the article whose completion the crash cut is
         # all there or not there -- never a damaged body.
         self.reap(self.owner)
-        env = {"FN_NATIVE_OWNER_TEST_BARRIER_MS": "600", "FN_NATIVE_EXTENT_CACHE_TEST_OFF": "1"}
+        # The extent cache stays on: with it off ACL2 refuses every cold
+        # read (fn-pxe-cache-mode) and defers the checkpoint publication
+        # (fn-orln-cache-off-walk-defers-the-publication), so the snapshot
+        # this scenario waits for could not exist.
+        env = {"FN_NATIVE_OWNER_TEST_BARRIER_MS": "600"}
         self.owner = self.start_owner(env, image=DEVELOPER)
         bodies = {}
 

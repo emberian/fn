@@ -71,3 +71,13 @@
       (equal (fn-orln-read-refusal-outcome :checkpoint-walk :invalid-read-demand) :fault)
       (equal (fn-orln-read-refusal-outcome :checkpoint-release :invalid-resource-state) :fault)
       (equal (fn-orln-read-refusal-outcome :served-line :read-resources-unavailable) :fault)))
+
+; KEYSTONE fn-orln-cache-off-walk-defers-the-publication.  Satisfiable and
+; wrong-answer: cache off is the exhausted pool's refusal and defers the
+; walk; cache on is ready and is not a refusal.
+(assert-event
+ (and (equal (fn-pxe-cache-mode nil) :read-resources-unavailable)
+      (equal (fn-orln-read-refusal-outcome :checkpoint-walk (fn-pxe-cache-mode nil)) :defer-publication)
+      (equal (fn-pxe-cache-mode t) :ready)
+      (not (fn-orln-refusalp (fn-pxe-cache-mode t)))
+      (equal (fn-orln-read-refusal-outcome :checkpoint-walk (fn-pxe-cache-mode t)) :fault)))

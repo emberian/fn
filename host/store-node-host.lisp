@@ -90,6 +90,7 @@
 (include-book "../books/provenance-inspect")
 ;; lane proto-determinism: fn-store-sn-replay-digest-report (the end of this file).
 (include-book "../books/state-digest")
+(include-book "../books/definterface")
 
 ; Startup owns the whole load; served readers have only incremental sync.
 (include-book "../books/owner-history-carried")
@@ -113,6 +114,9 @@
         (state (f-put-global 'fn-store-sco-open nil state))
         (state (f-put-global 'fn-store-cfg-open-configs nil state)))
     (value :ready)))
+
+(definterface fn-store-sn-reset
+  :class ::program)
 
 ; The committed record octets and the completion debt of the standalone
 ; Store, carried as (K . VALUE) and advanced over the records committed since
@@ -195,9 +199,15 @@
                                              payload-length group-count
                                              debt))))))
 
+(definterface fn-store-sn-article-verdict-word
+  :class ::program)
+
 (defun fn-store-sn-headroom (profile state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sbud-headroom profile (f-get-global 'fn-store-sn state))))
+
+(definterface fn-store-sn-headroom
+  :class ::program)
 
 ; The bounded observed-image entry validates the decoded record list and
 ; frontier, constructs its own replaying kernel image, and invokes actual
@@ -207,6 +217,9 @@
   ; operator's `max-config-generations' of the profile the store runs under.
   (declare (xargs :mode :program))
   (fn-bs-profile-max-config-generations profile))
+
+(definterface fn-store-config-observation-limit
+  :class ::program)
 
 ; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
 ; operator data (D27: no fixed cap), one control-stack frame per element.
@@ -237,6 +250,8 @@
         (fn-nco-result :fault :input nil)
       (fn-nco-observe converted max-generations))))
 
+(definterface fn-store-config-observation :class :program)
+
 (defun fn-store-config-initial-observation (entries max-generations)
   "Initialization-only observation; an empty directory may receive genesis."
   (declare (xargs :mode :program))
@@ -244,6 +259,8 @@
     (if (equal converted :bad)
         (fn-nco-result :fault :input nil)
       (fn-nco-observe-initial converted max-generations))))
+
+(definterface fn-store-config-initial-observation :class :program)
 
 ; A loop (PKT-877, lane serve-depth): the recursion took one control-stack
 ; frame per configuration record, and the configuration history grows with
@@ -280,6 +297,11 @@
         (nfix acc)
       (fn-ofr-configs-next records acc))))
 
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-cfg-next-txid
+  :class ::program
+  :kinds ((octet-records fn-octet-list-listp)))
+
 ;; The served profile: the sealed one under the configuration history's
 ;; :set-limit rows (books/limits-live.lisp fn-lim-effective).
 (defun fn-store-lim-effective (sealed octet-records)
@@ -290,6 +312,11 @@
         sealed
       (fn-lim-effective sealed records))))
 
+; host/native/admin.lisp, host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-lim-effective
+  :class ::program
+  :kinds ((octet-records fn-octet-list-listp)))
+
 ;; Row S1: the offline store's use a limit decision reads, (TRANSACTIONS
 ;; HISTORY-OCTETS COMPLETION-DEBT) of the replayed Store (store-budget.lisp fn-sbud-used,
 ;; fn-sbud-bytes-used), for `policy set' with no owner running.
@@ -298,6 +325,10 @@
   (let ((sn (f-get-global 'fn-store-sn state)))
     (value (list (fn-sbud-used sn) (fn-sbud-bytes-used sn)
                  (fn-cvec-record-debt (fn-sf-records (fn-sn-files sn)))))))
+
+; host/native/admin.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-lim-use
+  :class ::program)
 
 (defun fn-store-cfg-native-admin-authorize
     (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets
@@ -330,6 +361,10 @@ reopen predicate, writer-lock observation and observed final namespace."
           (fn-cvec-native-admin-authorize
            rows frontier config-records (fn-record-parse-value parsed)
            lock-owned names profile))))))
+
+(definterface fn-store-cfg-native-admin-authorize
+  :class ::program
+  :kinds ((octet-records fn-octet-list-listp) (config-octet-records fn-octet-list-listp) (record-octets fn-cbor-octet-listp) (observed-name-octets fn-octet-list-listp)))
 
 ;; PKT-510 (1): the offline request's authorization from the open's carried
 ;; fold (books/config-carried-open.lisp
@@ -374,6 +409,10 @@ reopen predicate, writer-lock observation and observed final namespace."
                      (fn-sco-records (car carried)) frontier config-records
                      (fn-record-parse-value parsed) lock-owned names profile
                      (cadr carried) (caddr carried)))))))
+
+(definterface fn-store-cfg-native-admin-authorize-carried
+  :class ::program
+  :kinds ((config-octet-records fn-octet-list-listp) (record-octets fn-cbor-octet-listp) (observed-name-octets fn-octet-list-listp)))
 
 ; The same authorization flattened for a caller that reads one form:
 ; (status reason generation name).  The generation and the filename are
@@ -473,6 +512,9 @@ reopen predicate, writer-lock observation and observed final namespace."
                (or (fn-sopc-refusal-text refusal) (fn-sorr-refusal-text refusal)))
            nil)))
 
+(definterface fn-store-open-refusal-text
+  :class ::program)
+
 ; Where the last open's replay stopped, for the fault's line, or nil.
 (defun fn-store-open-stop-text (state)
   (declare (xargs :stobjs state :mode :program))
@@ -480,10 +522,16 @@ reopen predicate, writer-lock observation and observed final namespace."
              (f-get-global 'fn-store-open-stop state)
            nil)))
 
+(definterface fn-store-open-stop-text
+  :class ::program)
+
 ; The repair verb's answer while its semantics wait on ember (PKT-444).
 (defun fn-store-repair-control-text ()
   (declare (xargs :mode :program))
   *fn-sopc-repair-undecided-text*)
+
+(definterface fn-store-repair-control-text
+  :class ::program)
 
 ; The physical configuration and Store histories share transaction IDs, but
 ; have independent sequence spaces. ACL2 interleaves them at recovery, with
@@ -525,6 +573,10 @@ reopen predicate, writer-lock observation and observed final namespace."
         :bad
       records)))
 
+(definterface fn-store-sn-recover-records
+  :class ::program
+  :kinds ((octet-records fn-octet-list-listp) (config-octet-records fn-octet-list-listp)))
+
 (defun fn-store-sn-recover-rows (rows frontier config-octet-records state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-octet-list-listp config-octet-records)))
@@ -539,6 +591,10 @@ reopen predicate, writer-lock observation and observed final namespace."
       (let ((pair (fn-rii-sco-extend-open (fn-sco-capture config-records nil)
                                           config-records rows frontier)))
         (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
+
+(definterface fn-store-sn-recover-rows
+  :class ::program
+  :kinds ((config-octet-records fn-octet-list-listp)))
 
 ;; ---------------------------------------------------------------------------
 ;; P3: the state checkpoint (books/store-checkpoint-open.lisp,
@@ -559,12 +615,19 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-ssr-seed (if checkpoint (fn-sco-identity checkpoint)
                            (fn-stxk-initial-context 0))))))
 
+; Source: host/store-node-host.lisp, program mode over STATE.
+(definterface fn-store-statement-replay-seed
+  :class :program)
+
 (defun fn-store-sco-clear (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
          (state (f-put-global 'fn-store-sco-load nil state))
          (state (f-put-global 'fn-store-sco-open nil state)))
     (value :cleared)))
+
+(definterface fn-store-sco-clear
+  :class ::program)
 
 ; PLAN: one frame (HEADER A B TRAILER) per segment in file order, as the
 ; host's range reads placed them (fnn-state-checkpoint-plan,
@@ -614,6 +677,8 @@ reopen predicate, writer-lock observation and observed final namespace."
             (list :refused (if (and (consp o) (consp (cdr o))) (cadr o) :malformed))
             state fn-octets)))))
 
+(definterface fn-store-sco-decode :class :program)
+
 (defun fn-store-sco-decode-finish (i end fn-octets state)
   (declare (xargs :stobjs (fn-octets state) :mode :program))
   (let* ((load (and (boundp-global 'fn-store-sco-load state)
@@ -660,6 +725,8 @@ reopen predicate, writer-lock observation and observed final namespace."
                              :malformed))
             state fn-octets)))))
 
+(definterface fn-store-sco-decode-finish :class :program)
+
 ;; PKT-854 (books/store-checkpoint-digest.lisp): `store ROOT digest' asks
 ;; for the loaded checkpoint's verifiable digest before its open; the load
 ;; keeps the tables' part, and right after the arena is sealed (the arena
@@ -675,6 +742,10 @@ reopen predicate, writer-lock observation and observed final namespace."
          (state (f-put-global 'fn-store-sco-checkpoint-digest nil state)))
     (value t)))
 
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-want-checkpoint-digest
+  :class ::program)
+
 (defun fn-store-sco-note-checkpoint-digest (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((td (and (boundp-global 'fn-store-sco-tables-digest state)
@@ -688,6 +759,10 @@ reopen predicate, writer-lock observation and observed final namespace."
                       state)))
           (value t))
       (value nil))))
+
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-note-checkpoint-digest
+  :class ::program)
 
 ; The `checkpoint-digest' line: the sequence S and the digest, or `none'
 ; when the open loaded no checkpoint (a full replay).  Not a `digest ' line:
@@ -712,15 +787,24 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (and (boundp-global 'fn-store-sco-log-position state)
               (f-get-global 'fn-store-sco-log-position state))))
 
+(definterface fn-store-sco-log-position
+  :class ::program)
+
 ; The checkpoint's file name: the rename target of the byte program
 ; fn-bs-scp-program (step 6, (:rename :staging STAGE :root NAME)).
 (defun fn-store-sco-file-name ()
   (declare (xargs :mode :program))
   (nth 4 (nth 6 (fn-bs-scp-program ".stage-checkpoint" '(0)))))
 
+(definterface fn-store-sco-file-name
+  :class ::program)
+
 (defun fn-store-sco-segment-header-octets ()
   (declare (xargs :mode :program))
   *fn-scc-segment-header-octets*)
+
+(definterface fn-store-sco-segment-header-octets
+  :class ::program)
 
 ; The most octets one range read of the checkpoint takes: one whole segment
 ; written with segment size R, the profile's max-record-octets.
@@ -728,9 +812,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :mode :program))
   (fn-scc-segment-max-octets (fn-bs-profile-max-record-octets profile)))
 
+(definterface fn-store-sco-segment-read-bound
+  :class ::program)
+
 (defun fn-store-sco-trailer-octets ()
   (declare (xargs :mode :program))
   *fn-frame-trailer-octets*)
+
+(definterface fn-store-sco-trailer-octets
+  :class ::program)
 
 ; The most octets of checkpoint file the reader holds in the buffer, from
 ; the profile (books/store-checkpoint-reader.lisp fn-sccr-file-read-bound:
@@ -739,6 +829,9 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :mode :program))
   (fn-sccr-file-read-bound (fn-bs-profile-max-history-octets profile)
                            (fn-bs-profile-max-record-octets profile)))
+
+(definterface fn-store-sco-file-read-bound
+  :class ::program)
 
 ; Whether the segment whose HEADER the host holds is read, given the
 ; octets read so far: (:ok EXTENT CHUNK-OCTETS), (:refused :header) or
@@ -750,6 +843,9 @@ reopen predicate, writer-lock observation and observed final namespace."
                          (fn-store-sco-segment-read-bound profile)
                          (fn-store-sco-file-read-bound profile)))
 
+(definterface fn-store-sco-segment-admit
+  :class ::program)
+
 ; The committed record count the open observed: the selected pack's
 ; coverage LOWER, or one past the last ACL2-bound transaction sequence.
 (defun fn-store-sco-observed-count (sequences lower)
@@ -759,6 +855,9 @@ reopen predicate, writer-lock observation and observed final namespace."
         (max lower (+ 1 last-sequence))
       (nfix lower))))
 
+(definterface fn-store-sco-observed-count
+  :class ::program)
+
 ; The open's choice (fn-sco-select) under the profile's K.
 ; A file without the arena run is refused by name (:arena ->
 ; reason=checkpoint-arena: books/store-checkpoint-arena-load.lisp
@@ -766,6 +865,9 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-sco-select (status sequence count profile)
   (declare (xargs :mode :program))
   (fn-scka-select-named status sequence count (fn-bs-profile-max-open-suffix profile)))
+
+(definterface fn-store-sco-select
+  :class ::program)
 
 ; The open from the loaded checkpoint and the suffix's ROWS.  It mirrors the
 ; full recover (fn-store-sn-recover-records, the intern,
@@ -805,6 +907,10 @@ reopen predicate, writer-lock observation and observed final namespace."
       (let ((pair (fn-sfi-extend-open checkpoint config-records rows frontier next)))
         (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
 
+(definterface fn-store-sn-recover-from-checkpoint
+  :class ::program
+  :kinds ((config-octet-records fn-octet-list-listp)))
+
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the
 ; payload read through the arena), encoded.
 ; A loop (PKT-877, lane serve-depth): the recursion took one control-stack
@@ -839,6 +945,9 @@ reopen predicate, writer-lock observation and observed final namespace."
           (take (nfix count) (nthcdr (nfix start) (fn-sco-records (fn-store-sco-current state))))
           fn-arena)))
 
+(definterface fn-store-sco-prefix-octets-range
+  :class ::program)
+
 ; Row S3b (lane operability-7): the running owner's export
 ; (host/native/owner.lisp fnn-owner-export-write) walks the captured record
 ; list a chunk at a time, off the owner mutex, through the live arena its
@@ -859,6 +968,10 @@ reopen predicate, writer-lock observation and observed final namespace."
   (mv-let (chunk rest) (fn-store-sco-split records n nil)
     (list (fn-store-sco-encode-records chunk fn-arena) rest)))
 
+; host/native/owner.lisp dispatches it (lane operability-7, row S3b).
+(definterface fn-store-sco-encode-chunk
+  :class ::program)
+
 ; The covered prefix's LAST record's octets, or NIL: the owner reads its
 ; pending key statement off the history's last record, which after a log
 ; checkpoint open with an empty suffix is the prefix's (host/native/io.lisp
@@ -868,6 +981,9 @@ reopen predicate, writer-lock observation and observed final namespace."
   (let ((records (fn-sco-records (fn-store-sco-current state))))
     (value (and (consp records)
                 (fn-rcon-store-event-encode (fn-row-wire-of (car (last records)) fn-arena))))))
+
+(definterface fn-store-sco-last-record-octets
+  :class ::program)
 
 ;; The verb's walk of the live rows (lane checkpoint-arena-3): each sealing
 ;; row's canonical payload length and SOURCE (its handle in the live arena,
@@ -884,6 +1000,9 @@ reopen predicate, writer-lock observation and observed final namespace."
          (state (f-put-global 'fn-store-sco-pass (list records nil nil) state)))
     (value (len records))))
 
+(definterface fn-store-sco-pass-begin
+  :class ::program)
+
 (defun fn-store-sco-pass-step (n fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((pass (and (boundp-global 'fn-store-sco-pass state)
@@ -893,6 +1012,9 @@ reopen predicate, writer-lock observation and observed final namespace."
                  (list nil nil nil)))
          (state (f-put-global 'fn-store-sco-pass next state)))
     (value (atom (nth 0 next)))))
+
+(definterface fn-store-sco-pass-step
+  :class ::program)
 
 ; The verb's pipeline setup from the recovered Store, after the walk above.
 ; Under the records flip the file is the arena run of the live rows'
@@ -948,6 +1070,10 @@ reopen predicate, writer-lock observation and observed final namespace."
                      next0)))
         (value (if (equal next :bad) nil (list next lens srcs)))))))
 
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-publish-next
+  :class ::program)
+
 (defun fn-store-sco-publish-setup-of (prepared segment-octets budget free revision log state)
   ; The second half: PREPARED from fn-store-sco-publish-next, LOG the F
   ; row's log position (with the history image's binding when the
@@ -965,6 +1091,11 @@ reopen predicate, writer-lock observation and observed final namespace."
         (value (list setup (fn-sco-sequence next)
                      (list (nth 0 ws) (nth 2 ws)
                            (fn-scka-initial-state srcs (nth 1 ws) 0))))))))
+
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-publish-setup-of
+  :class ::program
+  :exempt ((segment-octets "a segment descriptor, not bytes")))
 
 (defun fn-store-sco-publish-setup (segment-octets budget free revision log fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -1001,6 +1132,10 @@ reopen predicate, writer-lock observation and observed final namespace."
               (fn-his-check-row (1- (len records)) (car (last records)) file fn-hrecs$c)
               (mv nil (if (eq cv :ok) nil cv) fn-hrecs$c state))))))))
 
+; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-store-sco-image-open
+  :class ::program)
+
 (defun fn-store-sn-domain (state)
   ; The allocation domain the live node carries: every name ever created.
   (declare (xargs :stobjs state :mode :program))
@@ -1018,6 +1153,9 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-cfg-generation (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (f-get-global 'fn-store-cfg state))))
+
+(definterface fn-store-cfg-generation
+  :class ::program)
 
 ; Executes by a loop (lane depth-debt, PRF-919): its depth was the length of
 ; operator data (D27: no fixed cap), one control-stack frame per element.
@@ -1293,9 +1431,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-store-cfg-last-octets state)))
 
+(definterface fn-store-cfg-last-octets
+  :class ::program)
+
 (defun fn-store-cfg-last-reason (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-store-cfg-last-reason state)))
+
+(definterface fn-store-cfg-last-reason
+  :class ::program)
 
 (defun fn-store-sn-io (operation result state)
   (declare (xargs :stobjs state :mode :program))
@@ -1311,6 +1455,9 @@ reopen predicate, writer-lock observation and observed final namespace."
                  (t (fn-rcon-sn-io s operation result)))))
     (let ((state (f-put-global 'fn-store-sn next state)))
       (value (fn-sf-phase (fn-sn-files next))))))
+
+(definterface fn-store-sn-io
+  :class ::program)
 
 ;
 ; THE POST ENTRY (records-flip): the duplicate test reads the stored article's
@@ -1383,6 +1530,10 @@ reopen predicate, writer-lock observation and observed final namespace."
                     (mv nil (list :seal (fn-record-payload record))
                         fn-arena state)))))))))))
 
+(definterface fn-store-sn-prepare
+  :class ::program
+  :kinds ((msgid-octets fn-cbor-octet-listp) (payload fn-cbor-octet-listp) (id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
+
 ; A semantic refusal consumes the already durable allocator reservation using
 ; the proved composition transition, which advances the same live node to the
 ; durable frontier.  It is never a host-side frontier rewind.
@@ -1396,6 +1547,9 @@ reopen predicate, writer-lock observation and observed final namespace."
              (equal (fn-sf-phase (fn-sn-files next)) :ready))
         (let ((state (f-put-global 'fn-store-sn next state))) (value :refused))
       (value :fault))))
+
+(definterface fn-store-sn-refuse-reservation
+  :class ::program)
 
 ; Prepare a retention delta in the canonical Store transaction namespace.
 ; KIND is selected by ACL2 vocabulary; the native host supplies only bounded
@@ -1437,6 +1591,9 @@ reopen predicate, writer-lock observation and observed final namespace."
           (value :aborted))
       (value :fault))))
 
+(definterface fn-store-sn-known-abort
+  :class ::program)
+
 (defun fn-store-sn-pending-octets (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((record (fn-sf-record-candidate
@@ -1449,12 +1606,18 @@ reopen predicate, writer-lock observation and observed final namespace."
                (fn-rcon-store-event-encode (fn-row-wire-of record fn-arena))
              nil))))
 
+(definterface fn-store-sn-pending-octets
+  :class ::program)
+
 ; The staged record's sequence: the developer `store post' names its
 ; transaction file from it (books/store-budget-naming.lisp).
 (defun fn-store-sn-pending-sequence (state)
   (declare (xargs :stobjs state :mode :program))
   ; fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence (books/records-concrete).
   (value (fn-rcon-sbud-pending-sequence (f-get-global 'fn-store-sn state))))
+
+(definterface fn-store-sn-pending-sequence
+  :class ::program)
 
 (defun fn-store-sn-finish (state)
   (declare (xargs :stobjs state :mode :program))
@@ -1482,17 +1645,26 @@ reopen predicate, writer-lock observation and observed final namespace."
         (let ((state (f-put-global 'fn-store-sn next state))) (value :durable))
       (value :fault))))
 
+(definterface fn-store-sn-finish
+  :class ::program)
+
 (defun fn-store-sn-article-count (state)
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-state-articles
                (fn-node-acceptance
                 (fn-sn-node (f-get-global 'fn-store-sn state)))))))
 
+(definterface fn-store-sn-article-count
+  :class ::program)
+
 (defun fn-store-sn-next-txid (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-state-next-txid
           (fn-node-acceptance
            (fn-sn-node (f-get-global 'fn-store-sn state))))))
+
+(definterface fn-store-sn-next-txid
+  :class ::program)
 
 (defun fn-store-sn-existing-action (msgid-octets payload group-codes fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program
@@ -1508,6 +1680,10 @@ reopen predicate, writer-lock observation and observed final namespace."
                      (f-get-global 'fn-store-sn state) fn-arena)))
         (value (if action action :absent))))))
 
+(definterface fn-store-sn-existing-action
+  :class ::program
+  :kinds ((msgid-octets fn-cbor-octet-listp) (payload fn-cbor-octet-listp)))
+
 (defun fn-store-sn-group-next (code state)
   (declare (xargs :stobjs state :mode :program))
   (let ((group (if (natp code) (fn-store-group-name code (fn-store-sn-domain state)) nil)))
@@ -1518,13 +1694,22 @@ reopen predicate, writer-lock observation and observed final namespace."
                                  (fn-sn-node (f-get-global 'fn-store-sn state)))))
              0))))
 
+(definterface fn-store-sn-group-next
+  :class ::program)
+
 (defun fn-store-sn-pin-count (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-rtf-pin-count (f-get-global 'fn-store-sn state))))
 
+(definterface fn-store-sn-pin-count
+  :class ::program)
+
 (defun fn-store-sn-reserved (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-rtf-reserved (f-get-global 'fn-store-sn state))))
+
+(definterface fn-store-sn-reserved
+  :class ::program)
 
 (defun fn-store-sn-lookup (msgid-octets fn-arena fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program
@@ -1543,6 +1728,10 @@ reopen predicate, writer-lock observation and observed final namespace."
                                  fn-arena)
             fn-hist state)))))
 
+(definterface fn-store-sn-lookup
+  :class ::program
+  :kinds ((msgid-octets fn-cbor-octet-listp)))
+
 (defun fn-store-sn-lookup-foundp (msgid-octets fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program
                   :guard (fn-cbor-octet-listp msgid-octets)))
@@ -1553,6 +1742,10 @@ reopen predicate, writer-lock observation and observed final namespace."
       (mv-let (fn-hist state) (fn-host-hist-sync store fn-hist state)
         (mv nil (fn-apr-foundp (fn-store-octets->string msgid-octets) store fn-hist)
             fn-hist state)))))
+
+(definterface fn-store-sn-lookup-foundp
+  :class ::program
+  :kinds ((msgid-octets fn-cbor-octet-listp)))
 
 ; -----------------------------------------------------------------------------
 ; The served statement query (decision D21)
@@ -1658,9 +1851,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-sn-sweep-round (f-get-global 'fn-store-sn state)
                             observed overp held)))
 
+(definterface fn-store-sn-sweep-round
+  :class ::program)
+
 (defun fn-store-sn-staging-observation-limit (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-sn-staging-observation-limit)))
+
+(definterface fn-store-sn-staging-observation-limit
+  :class ::program)
 
 ; -----------------------------------------------------------------------------
 ; Provenance (books/provenance, books/provenance-codec)
@@ -1684,6 +1883,9 @@ reopen predicate, writer-lock observation and observed final namespace."
             (fn-cfg-policy (fn-cfg-value cfg) "path-identity")
             (fn-cfg-generation cfg)))))
 
+(definterface fn-store-prov-post
+  :class ::program)
+
 (defun fn-store-prov-describe (evidence-octets state)
   ; The lossless line the CLI prints for one stored evidence value.  A value
   ; written before this lane decodes as the `:legacy' kind and prints as
@@ -1704,6 +1906,10 @@ reopen predicate, writer-lock observation and observed final namespace."
                   :guard (fn-cbor-octet-listp msgid-octets)))
   (value (fn-provi-of-msgid (fn-sn-node (f-get-global 'fn-store-sn state))
                             (fn-store-octets->string msgid-octets))))
+
+(definterface fn-store-prov-for-msgid
+  :class ::program
+  :kinds ((msgid-octets fn-cbor-octet-listp)))
 
 ;; ---------------------------------------------------------------------------
 ;; Replay determinism (lane proto-determinism, 2026-09-27): the digest of the
@@ -1774,6 +1980,9 @@ reopen predicate, writer-lock observation and observed final namespace."
                                         (f-get-global 'fn-store-genesis state))))
                    (fn-store-sco-checkpoint-digest-line state)))))
 
+(definterface fn-store-sn-replay-digest-report
+  :class ::program)
+
 ; The checkpoint file of a publication that carries a history image
 ; (lane composed-owner; books/history-image-snapshot.lisp): the image
 ; region (fn-his-region-octets NP: the header, zeros to the base, NP pages)
@@ -1787,7 +1996,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   (let ((region (if (natp image-np) (fn-his-region-octets image-np) 0)))
     (nfix (- (nfix free) region))))
 
+; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-his-stream-free
+  :class :common-lisp-compliant)
+
 (defun fn-his-file-octets (image-np stream-octets)
   (declare (xargs :guard t))
   (+ (if (natp image-np) (fn-his-region-octets image-np) 0)
      (nfix stream-octets)))
+
+; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
+(definterface fn-his-file-octets
+  :class :common-lisp-compliant)

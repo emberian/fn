@@ -27,6 +27,8 @@
  (fn-record-string-octets "operation observation=unavailable reason=owner-not-running
 "))
 
+(definterface fn-native-operation-host-offline :class :program)
+
 (defun fn-native-operation-host-report (state)
  (declare (xargs :stobjs state :mode :program))
  (mv-let (word octets) (fn-owner-operation-report *fn-nls-chunk-octets* state)
@@ -48,6 +50,9 @@
                            (f-get-global 'fn-store-sn state)
                            (f-get-global 'fn-store-cfg state)
                            obs fn-arena))))
+
+(definterface fn-native-live-status-host-offline
+  :class ::program)
 
 (defun fn-native-live-status-host-answer-resident (request cached obs min log-sink sched fn-arena fn-cat fn-hist state)
   ; The running owner's page for one FNLS request, under its mutex
@@ -180,6 +185,9 @@
             request cached obs min log-sink sched fn-arena fn-cat fn-hist state)
       fn-hist state)))
 
+(definterface fn-native-live-status-host-answer
+  :class ::program)
+
 ; lane obligations-paged (books/native-live-pages.lisp).  The running owner's
 ; page of a paged report, under its mutex (host/native/control.lisp
 ; `fnn-control-live-pages-answer'): (REPLY CACHE').  CACHE is the owner's
@@ -191,6 +199,9 @@
   (fn-nlp-answer request cache (fn-nlp-live-retention (fn-owner-ocfg state))
                  *fn-nls-chunk-octets*))
 
+(definterface fn-native-live-pages-host-answer
+  :class ::program)
+
 (defun fn-native-live-pages-host-requestp (octets)
   (declare (xargs :mode :program
                   :guard (fn-cbor-octet-listp octets)))
@@ -200,9 +211,15 @@
   (declare (xargs :mode :program))
   (fn-nlp-pagedp kind))
 
+(definterface fn-native-live-pages-host-pagedp
+  :class ::program)
+
 (defun fn-native-live-pages-host-request-encode (kind version page)
   (declare (xargs :mode :program))
   (fn-nlp-request-encode kind version page))
+
+(definterface fn-native-live-pages-host-request-encode
+  :class ::program)
 
 (defun fn-native-live-pages-host-client-step (version page reply)
   ; (:done CHUNK) (:next CHUNK VERSION' PAGE') (:restart) (:refused)
@@ -210,15 +227,24 @@
   (declare (xargs :mode :program))
   (fn-nlp-client-step version page reply))
 
+(definterface fn-native-live-pages-host-client-step
+  :class ::program)
+
 (defun fn-native-live-pages-host-offline-start (state)
   ; The replayed Store's report cursor (fn-nlp-offline-start).
   (declare (xargs :stobjs state :mode :program))
   (fn-nlp-offline-start (fn-nls-retention (f-get-global 'fn-store-sn state))))
 
+(definterface fn-native-live-pages-host-offline-start
+  :class ::program)
+
 (defun fn-native-live-pages-host-offline-step (cursor)
   ; (CHUNK CURSOR' DONEP): KEYSTONE fn-nlp-offline-pages-join-to-the-report.
   (declare (xargs :mode :program))
   (fn-nlp-offline-step cursor *fn-nls-chunk-octets*))
+
+(definterface fn-native-live-pages-host-offline-step
+  :class ::program)
 
 (defun fn-native-live-status-host-requestp (octets)
   (declare (xargs :mode :program
@@ -229,6 +255,9 @@
   (declare (xargs :mode :program))
   (fn-cev-any-request-encode kind offset))
 
+(definterface fn-native-live-status-host-request-encode
+  :class ::program)
+
 (defun fn-native-live-status-host-client-step-chunks (chunks n total digest reply)
   ; lane scale-reads: the client's step over the pages so far, newest first,
   ; and their joined length N (books/native-status-columns.lisp
@@ -237,9 +266,15 @@
   (declare (xargs :mode :program))
   (fn-nsc-client-step chunks n total digest reply))
 
+(definterface fn-native-live-status-host-client-step-chunks
+  :class ::program)
+
 (defun fn-native-live-status-host-route (socket-present outcome)
   (declare (xargs :mode :program))
   (fn-nls-route socket-present outcome))
+
+(definterface fn-native-live-status-host-route
+  :class ::program)
 
 ; Row S3d: the exit the client reads back from the `store inspect --group'
 ; report it printed (books/owner-inspect-group.lisp fn-oig-report-exit): 0 for
@@ -248,13 +283,23 @@
   (declare (xargs :mode :program))
   (fn-oig-report-exit octets))
 
+(definterface fn-native-live-status-host-inspect-group-exit
+  :class ::program
+  :exempt ((octets "the report's own octets, read back for its exit (fn-oig-report-exit decides 0 or 1 from the report's first word)")))
+
 (defun fn-native-live-status-host-max-frame ()
   (declare (xargs :mode :program))
   *fn-nls-max-frame*)
 
+(definterface fn-native-live-status-host-max-frame
+  :class ::program)
+
 (defun fn-native-live-status-host-max-restarts ()
   (declare (xargs :mode :program))
   *fn-nls-max-restarts*)
+
+(definterface fn-native-live-status-host-max-restarts
+  :class ::program)
 
 ;; PRF-112: the health verdict (books/native-health.lisp).
 (defun fn-native-health-host-offline (profile min state)
@@ -277,6 +322,9 @@
         (list :fenced (fn-nh-fenced-report (cadr step)))
       step)))
 
+(definterface fn-native-health-host-step
+  :class ::program)
+
 ;; friend-path-2: the node that is not running (books/native-health.lisp).
 ;; (:not-running) from the step above: the host opens the Store read-only and
 ;; prints this report, with the last run line of the service log.
@@ -289,26 +337,48 @@
   (declare (xargs :mode :program))
   (fn-nh-not-running-lines last))
 
+(definterface fn-native-health-host-not-running-lines
+  :class ::program)
+
 (defun fn-native-health-host-log-tail-octets ()
   (declare (xargs :mode :program))
   (fn-nh-log-tail-octets))
+
+(definterface fn-native-health-host-log-tail-octets
+  :class ::program)
 
 (defun fn-native-health-host-last-run (tail)
   (declare (xargs :mode :program))
   (fn-nh-last-run tail))
 
+(definterface fn-native-health-host-last-run
+  :class ::program)
+
 (defun fn-native-health-host-run-started-line ()
   (declare (xargs :mode :program))
   (fn-nh-run-started-line))
+
+(definterface fn-native-health-host-run-started-line
+  :class ::program)
 
 (defun fn-native-health-host-run-opened-line (ms)
   (declare (xargs :mode :program))
   (fn-nh-run-opened-line ms))
 
+(definterface fn-native-health-host-run-opened-line
+  :class ::program)
+
 (defun fn-native-health-host-run-stopped-line (code reason)
   (declare (xargs :mode :program))
   (fn-nh-run-stopped-line code reason))
 
+(definterface fn-native-health-host-run-stopped-line
+  :class ::program)
+
 (defun fn-native-health-host-exit (octets)
   (declare (xargs :mode :program))
   (fn-nh-report-exit octets))
+
+(definterface fn-native-health-host-exit
+  :class :program
+  :exempt ((octets "the health report's summary structure (fnn-operator-health-report)")))
