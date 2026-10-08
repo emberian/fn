@@ -5418,7 +5418,6 @@
         "fn-arena-seals-keep-sealed",
         "fn-arena-seal-new-handle",
         "fn-arena-seal-buffer{correspondence}",
-        "adt-corr-scalar-octets-row",
         "fn-arn-store-corr-of-commit",
         "fn-arn-store-corr-of-open"
       ],
@@ -8963,7 +8962,6 @@
         "fn-arena-seal-list{correspondence}",
         "fn-arena-seal-buffer{correspondence}",
         "fn-arena-seal-range{correspondence}",
-        "adt-corr-scalar-octets-row",
         "fn-arena-seal-range-is-seal-list"
       ]
     },
@@ -10298,13 +10296,7 @@
       ],
       "assumptions": [],
       "status": "uncertified-at-current-digest",
-      "events": [
-        "adt-pg-corr-append",
-        "adt-pg-append-step-bound",
-        "adt-pg-corr-scalar-octets-row",
-        "adt-pg-corr-scalar-octets-row-in-pages",
-        "adt-pg-corr-clear"
-      ],
+      "events": [],
       "evidence": [
         "books/payload-arena-paged.lisp",
         "tests/acl2/payload-arena-paged-tests.lisp",

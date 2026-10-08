@@ -4994,10 +4994,6 @@
         },
         {
           "kind": "theorem",
-          "name": "adt-corr-scalar-octets-row"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-arn-store-corr-of-commit"
         },
         {
@@ -8605,10 +8601,6 @@
         },
         {
           "kind": "theorem",
-          "name": "adt-corr-scalar-octets-row"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-arena-seal-range-is-seal-list"
         }
       ]
@@ -9962,28 +9954,7 @@
     },
     {
       "id": "PRF-281",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "adt-pg-corr-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "adt-pg-append-step-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "adt-pg-corr-scalar-octets-row"
-        },
-        {
-          "kind": "theorem",
-          "name": "adt-pg-corr-scalar-octets-row-in-pages"
-        },
-        {
-          "kind": "theorem",
-          "name": "adt-pg-corr-clear"
-        }
-      ]
+      "events": []
     },
     {
       "id": "PRF-285",
