@@ -920,6 +920,21 @@ class RawMacroTemplateTests(unittest.TestCase):
         self.assertIn(("fnn-section", None), calls)
         self.assertIn(("fnn-gate", 1), calls)
 
+    def test_held_commit_checks_emitted_section_calls_and_body(self):
+        calls = self.calls("""(fnn-owner-held-commit
+          (fnn-owner-serialized (fnn-service x) nil)
+          (fnn-body x))""")
+        self.assertIn(("fnn-owner-serialized", 3), calls)
+        self.assertIn(("fnn-owner-serialized", 4), calls)
+        self.assertNotIn(("fnn-owner-serialized", 2), calls)
+        self.assertIn(("fnn-service", 1), calls)
+        self.assertIn(("fnn-body", 1), calls)
+        findings = RawArityTests().scan("""
+          (defun fnn-section (service cid thunk) thunk)
+          (fnn-owner-held-commit (fnn-section service nil) (fnn-body))""")
+        self.assertEqual(len(findings), 1, findings)
+        self.assertIn("called with 4 arguments", findings[0]["problem"])
+
     def test_interpolated_heads_and_quoted_data_are_not_calls(self):
         calls = self.calls("""(defmacro envelope (name x)
           `(progn (,name ,x) '(fn-data ,x) (fn-live ,(fn-expand x))
