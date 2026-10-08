@@ -15,14 +15,69 @@
                 (fnn-developer-selector "FN_APP_JOURNAL_TEST_FAIL") ""))))
     (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
 
+(defvar *fnn-immutable-cleanups* nil
+  "Post-authority stage cleanup receipts, guarded by the close-debt mutex.")
+(fnn-guarded-by *fnn-immutable-cleanups* *fnn-close-debts-lock*)
+
+(defun fnn-immutable-queue-cleanup (stage directory operation)
+  "Stage cleanup only; no publication outcome depends on its observation."
+  (sb-thread:with-mutex (*fnn-close-debts-lock*)
+    (push (list :pending stage directory operation) *fnn-immutable-cleanups*))
+  nil)
+
+(defun fnn-immutable-drain-cleanups (&optional stage)
+  "Take cleanup once and settle its receipt. Without STAGE, run off all locks;
+with STAGE, retain only that legacy caller’s immediate cleanup timing.
+A calling record remains discoverable until settlement. An interrupted drain
+leaves it for cold recovery; another drainer never reissues that unlink."
+  (loop
+    (let ((entry
+            (sb-thread:with-mutex (*fnn-close-debts-lock*)
+              (let ((entry (find-if (lambda (receipt)
+                                      (and (eq (first receipt) :pending)
+                                           (or (null stage) (eq (second receipt) stage))))
+                                    *fnn-immutable-cleanups*)))
+                (when entry (setf (first entry) :calling))
+                entry))))
+      (unless entry (return))
+      ;; Best effort, exactly as the old inline cleanup. A leftover name
+      ;; never revokes the final name's authority barrier.
+      (handler-case
+       (progn
+        (fnn-unlink (second entry))
+        (when (third entry)
+          (fnn-immutable-test-fault "cleanup" (third entry) (fourth entry))
+          (fnn-fsync-dir (third entry))))
+       (fnn-os-error () nil))
+      (sb-thread:with-mutex (*fnn-close-debts-lock*)
+        (unless (and (member entry *fnn-immutable-cleanups* :test #'eq)
+                     (eq (first entry) :calling))
+          (fnn-fault "immutable cleanup lost its receipt"))
+        (setf *fnn-immutable-cleanups*
+              (delete entry *fnn-immutable-cleanups* :test #'eq))))))
+
 (defun fnn-immutable-publish-effect
+    (publication stage final final-directory octets
+                 &key cleanup-directory observer operation-label fault-observer registered-step)
+  "Publish with the existing immediate stage-cleanup timing.
+Off-lock cleanup consumers use fnn-immutable-publish-deferred and drain after release."
+  (unwind-protect
+      (fnn-immutable-publish-deferred
+       publication stage final final-directory octets
+       :cleanup-directory cleanup-directory :observer observer
+       :operation-label operation-label :fault-observer fault-observer
+       :registered-step registered-step)
+    (fnn-immutable-drain-cleanups stage)))
+
+(defun fnn-immutable-publish-deferred
   (publication stage final final-directory octets
                &key cleanup-directory observer operation-label fault-observer registered-step)
   "Execute an ACL2-authorized immutable publication state.  PUBLICATION must
 come from the caller's ACL2 allocation/admission machine after it establishes
 exclusive authority and absence of that machine's exact final name.  Those are
 trusted caller observations rather than protection from hostile raw Lisp.  The
-executor does not assert the premise itself and returns fn-jpub's classification."
+executor does not assert the premise itself and returns fn-jpub's classification.
+Stage cleanup is queued; the caller must drain it after releasing its locks."
   (unless (eq (fnn-immutable-close-observation) :closed)
     (fnn-indeterminate "prior immutable staging descriptor return remains unobserved"))
   (unless (and (eq (fnn-core 'fn-jpub-host-authorized-initialp publication) t)
@@ -124,16 +179,7 @@ executor does not assert the premise itself and returns fn-jpub's classification
         ; Cleanup is after the authority barrier and cannot change its result.
         ; Reopen sweeps a surviving stage; this best-effort barrier merely
         ; prevents clean runs from accumulating names after a process death.
-        (ignore-errors
-          (fnn-unlink stage)
-          (when cleanup-directory
-            ; Cleanup is explicitly post-authority.  Its fault hook proves
-            ; consumers do not turn a durable final-name barrier into an
-            ; uncertain publication merely because stage removal was not
-            ; durably observed.
-            (fnn-immutable-test-fault "cleanup" cleanup-directory
-                                      operation-label)
-            (fnn-fsync-dir cleanup-directory)))))
+        (fnn-immutable-queue-cleanup stage cleanup-directory operation-label)))
     (when close-debt
       (fnn-indeterminate "immutable staging descriptor return unobserved; custody held"))
     (fnn-core 'fn-jpub-host-outcome publication)))

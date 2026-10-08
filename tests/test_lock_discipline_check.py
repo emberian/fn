@@ -2116,9 +2116,12 @@ class PrivateOwnerCommands(unittest.TestCase):
         self.assertEqual({k: v for k, v in without.items() if "write-seq" not in k and "finish" not in k},
                          {k: v for k, v in with_row.items() if "write-seq" not in k and "finish" not in k})
 
-    def test_the_real_row_holds_on_the_real_tree(self):
+    def test_the_real_tree_needs_no_private_owner_row(self):
+        # LOCK-R2-OFFLINE-ONESHOT-HOLD: the one-shot commands print and pause
+        # between owner quanta, so the BP obligation runner's exemption is gone.
         an, model, checker = ldc.build(ROOT, ROOT / "tools" / "lock_discipline_contracts.json")
-        self.assertIn("fnn-carry-execute", model.private_owner["O"]["functions"])
+        self.assertEqual(checker.c.raw.get("private_owner_commands"), {})
+        self.assertNotIn("O", model.private_owner)
 
 
 class ManualGrabCriticalSection(unittest.TestCase):
