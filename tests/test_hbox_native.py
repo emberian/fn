@@ -702,7 +702,7 @@ class BoxRowTests(unittest.TestCase):
     def test_persvati_row(self):
         row = self.row("persvati")
         self.assertEqual(row, {"BASE": "'~/fn-gates'", "CACHE": "'~/fn-certcache'",
-                               "WRAP": "''", "IMAGES_BASE": "''", "OPENSSL": "'bundled'"})
+                               "WRAP": "'/tank/fn/bin/persvati-jobs'", "IMAGES_BASE": "''", "OPENSSL": "'bundled'"})
         resolved = self.row("persvati", "/home/u")
         self.assertEqual((resolved["BASE"], resolved["CACHE"]),
                          ("'/home/u/fn-gates'", "'/home/u/fn-certcache'"))
