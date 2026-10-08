@@ -590,3 +590,88 @@ These are per-book wall seconds, including loading, from the two manifests:
 The first premerge ledger/keystone/interface checks reported Ledger OK, zero
 keystone findings, and zero interface findings. Final critical classification
 and host-test findings are recorded after merging origin/dev below.
+
+### Round 5b merged closure and final gates
+
+Merged origin/dev `805c28f30` in `4c467e429`. The merged run
+`run-20261008T215106Z-f71f`, manifest `certify-20261008T215149Z-277565`,
+passed all 75 newly certified books with one cached dependency, two jobs on
+persvati cores 0-11. A scoped record-toolchain audit of its 19 roots and their
+complete 76-book closure has zero non-green books at the current closure keys.
+The manifest source audit has zero forbidden-facility findings.
+
+| Touched book (without `.lisp`) | Merged wall seconds |
+| --- | ---: |
+| `books/octet-buffer-exact` | 0.466 |
+| `books/def-buffer-exact` | 0.315 |
+| `books/extent-cache-storage` | 2.420 |
+| `books/extent-cache-storage-rows` | 1.970 |
+| `books/extent-cache-storage-walk` | 2.720 |
+| `books/extent-cache-storage-sound` | 3.021 |
+| `books/extent-cache-storage-complete` | 2.770 |
+| `books/extent-cache-storage-install` | 4.375 |
+| `books/extent-cache-memory` | 1.718 |
+| `books/extent-cache-memory-proof` | 1.868 |
+| `books/extent-cache-memory-install` | 2.670 |
+| `books/extent-cache-memory-refund` | 1.417 |
+| `tests/acl2/extent-cache-storage-fixtures` | 1.668 |
+| `tests/acl2/extent-cache-storage-entry-tests` | 1.470 |
+| `tests/acl2/extent-cache-storage-decoded-tests` | 1.618 |
+| `tests/acl2/extent-cache-storage-complete-tests` | 1.870 |
+| `tests/acl2/extent-cache-storage-install-tests` | 2.070 |
+| `tests/acl2/extent-cache-storage-memory-tests` | 1.569 |
+| `tests/acl2/extent-cache-storage-live-tests` | 1.368 |
+
+Every touched book is below 10 seconds. The complete dependency closure is
+**not** below the two-job D26 bound: `books/extent-cache` 104.118s,
+`books/deflate-inflate` 29.489s, `books/extent-window-compressed` 13.852s, and
+`books/def-representation-paged` 10.913s. These are unchanged dependency books;
+extent-cache belongs to S and is expressly outside this lane's edit scope.
+
+`ledger.py --check`: Ledger OK, 8240 lint warnings. Regenerating after the merge
+removed stale generated event arrays already retired by the authoritative
+proof-events registry; no theorem or registry statement was weakened.
+`unittest tests.test_ledger tests.test_keystone_emit tests.test_keystone_critical`:
+215 tests ran: 214 passed and one optional `FN_CRITICAL_PROOF_REPL` world fixture skipped.
+`interface_emit.py --check` on persvati: 1890 declared, 1841/1841 dispatched,
+zero findings; one existing unresolved tariff citation is listed, not a failure.
+No new host interface swaps are included; s-xc2 owns them.
+
+All 21 new critical entries declare the proved init/install trace and mutation
+references in `planning/critical-evidence.json`; `host_test` is explicitly null
+until S supplies its host test and reachable caller. The classification map
+includes these split proof books. No owed row is added: `claim_owed` explicitly
+skips new/changed criticals and `findings` rejects such an exemption.
+
+`keystone_emit --write-manifest` completed its write, then `--check` exited 1.
+Its exact 26 findings and summary are:
+
+```text
+keystone_emit: critical gate: existing ownership-reclamation keystone fn-dwj-retired-job-refuses-scalar-publication lacks the evidence package and has no owed item in planning/critical-owed.json (tools/keystone_critical.py --claim-owed)
+keystone_emit: critical gate: existing ownership-reclamation keystone fn-rcw-load-chunks-is-load lacks the evidence package and has no owed item in planning/critical-owed.json (tools/keystone_critical.py --claim-owed)
+keystone_emit: critical gate: existing ownership-reclamation keystone fn-rcw-load-chunks-keyed-is-keyed-load lacks the evidence package and has no owed item in planning/critical-owed.json (tools/keystone_critical.py --claim-owed)
+keystone_emit: critical gate: changed ownership-reclamation keystone fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open lacks the evidence package (HARD FAIL, no ceiling): premises (positive witness book is not certified at its current closure key)
+keystone_emit: critical gate: changed ownership-reclamation keystone fn-rcw-srcs-steps-is-the-walk lacks the evidence package (HARD FAIL, no ceiling): premises (positive witness book is not certified at its current closure key)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-decoded-span-at-answers-a-covered-slot lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-decoded-span-at-answers-from-a-matching-slot lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-decoded-span-at-is-the-cached-bytes lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-decoded-span-at-is-the-per-slot-span lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-decoded-span-at-is-the-returned-bytes lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-decoded-span-at-miss-changes-nothing lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-entry-span-at-answers-a-covered-slot lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-entry-span-at-answers-from-a-matching-slot lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-entry-span-at-is-the-entry-bytes lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new identity-binding keystone fn-xc-entry-span-at-miss-changes-nothing lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new ownership-reclamation keystone fn-xc-free-bytes-releases-freed-row lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new resource-reservation keystone fn-xc-init-all-readies-all-rows lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new resource-reservation keystone fn-xc-init-all-refuses-more-entries-than-rows lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new resource-reservation keystone fn-xc-init-all-refuses-more-windows-than-rows lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new resource-reservation keystone fn-xc-install-decoded-bytes-installs-the-table-decision lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new resource-reservation keystone fn-xc-install-decoded-bytes-stores-the-pair lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new resource-reservation keystone fn-xc-install-entry-bytes-installs-the-table-decision lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new resource-reservation keystone fn-xc-install-entry-bytes-stores-the-pair lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new ownership-reclamation keystone fn-xc-install-entry-funded-releases-the-victim-buffer lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new ownership-reclamation keystone fn-xc-yield-bytes-releases-yielded-row lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: critical gate: new ownership-reclamation keystone fn-xce-every-resident-row-is-charged lacks the evidence package (HARD FAIL, no ceiling): host_test (not declared in planning/critical-evidence.json)
+keystone_emit: 14 defkeystone form(s) in 4 book(s), 26 finding(s)
+```

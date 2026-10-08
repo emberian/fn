@@ -15323,14 +15323,6 @@
    "registry": true
   },
   {
-   "book": "books/store-log-route.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-olr-crash-reads-a-prefix-of-the-history",
-   "registry": true,
-   "statement_digest": "768a644d2c25a9142be3a2892af190a787d4dc8e5c7d1d6c27f33fcc654c6da4"
-  },
-  {
    "book": "books/store-log-extend.lisp",
    "class": "hand",
    "critical": "durability",
@@ -22446,14 +22438,6 @@
    "book": "books/recovery-refinement.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new",
-   "registry": true,
-   "statement_digest": "1b9637869447013b6dcb1a1c6677cc4cc3c792edfb875c2a2eca639248eb05ac"
-  },
-  {
-   "book": "books/recovery-refinement.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-rr-medium-full-open-holds-its-records",
    "registry": true,
    "statement_digest": "eada7c6d65f985859e07a35021c26224ba675111c84b2d959bfaff0d5cc1a416"
@@ -26398,27 +26382,6 @@
    "registry": true
   },
   {
-   "book": "books/store-export-durability.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-sxd-crash-is-incomplete-or-complete",
-   "registry": true,
-   "statement_digest": "0644f138f5cbb8f40e67086860fbbd55bef204cd0dc21bd7f37a3f7997a919bc"
-  },
-  {
-   "book": "books/store-export-durability.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
-   "registry": true,
-   "statement_digest": "8ab1e23ac1eaaf664d83ea559e3d1afb974bcbc4dfa8cff47f1f27b167c93f06"
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxi-stream-plan-is-the-import-plan",
-   "registry": true
-  },
-  {
    "class": "hand",
    "name": "fn-sxp-import-of-export-replays-the-same-history",
    "registry": true
@@ -28361,10 +28324,12 @@
    "witness": "lemma"
   },
   {
+   "book": "books/extent-cache-memory.lisp",
    "book_digest": "0cd260bb403e9e8f2cb4a447460759c562e6edf5e05faed2dd5e0310f241dbfb",
    "bounds": [],
    "claim_digest": "9c5e20f7892a7250a0dec5a6cdda14ce0e200cbb26f8bc8e53c435751803fd8c",
    "class": "generated",
+   "critical": "ownership-reclamation",
    "mutations": "edits:1",
    "name": "fn-xc-install-entry-funded-releases-the-victim-buffer",
    "owed_met": null,
@@ -28376,6 +28341,7 @@
     "logical": 0,
     "reachable": 0
    },
+   "statement_digest": "d86ab5a02534aad36b89d1d88db658debf9f9a7d291d4082129c4f1464195ca9",
    "subject": "fn-xc-install-entry-funded",
    "witness": "lemma"
   },
