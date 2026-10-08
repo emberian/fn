@@ -486,6 +486,7 @@ def run_phase(run, ph, d):
     posts_over_at = None
 
     count_mode = ph.get("count", "group")
+    pending = []
 
     def poll():
         nonlocal first_import
@@ -494,7 +495,7 @@ def run_phase(run, ph, d):
             # and contaminates the pace): progress is B's own auto-checkpoint sequence line, read
             # from its log file; one record per imported article (A's checkpoint-digest sequence
             # equals its article count).
-            log.poll()
+            pending.extend(log.poll())     # round lines read here are handed to the main loop below
             n = log.sequence
         else:
             n = group_count(bc)
@@ -516,7 +517,8 @@ def run_phase(run, ph, d):
 
     while True:
         n = poll()
-        for rec in log.poll():
+        fresh, pending[:] = pending + log.poll(), []
+        for rec in fresh:
             if rec["round"] == "done" and mode != "feed" and rec["position"] >= (target or 0) and done is None:
                 done = rec
         if mode == "feed":
