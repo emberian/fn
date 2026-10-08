@@ -113,6 +113,15 @@ class LateGuard(unittest.TestCase):
         self.assertLess(out.index("(def-loop"), out.index("fn-nntp-active-lines-true-listp"))
         self.assertEqual(out.count("verify-guards"), 1)
 
+    def test_a_guard_callee_verified_later_moves_up(self):
+        # wire's fn-wire-lines-size: its :guard calls fn-wire-octet-linesp, whose
+        # verify-guards sat at the book's end; def-loop verifies guards where it stands
+        out = self.conv("late-guard-in-guard")
+        self.assertLess(out.index("(verify-guards fn-wire-octet-linesp)"), out.index("(def-loop"))
+        self.assertLess(out.index("(verify-guards fn-wire-octet-listp)"),
+                        out.index("(verify-guards fn-wire-octet-linesp)"))
+        self.assertEqual(out.count("(verify-guards fn-wire-octet-linesp)"), 1)
+
 
 class ExecDiffers(unittest.TestCase):
     """The exec-differs drain (lane drain-gv3): a hand loop that is the logic's terms in
@@ -283,10 +292,73 @@ class Ledger(unittest.TestCase):
                          "fn-dl-sum-loop-is-plus")
         self.assertEqual(d.library_bridge("(def-loop f (x) :shape :concat :over x)"),
                          "fn-dl-concat-loop-is-revappend")
+        self.assertEqual(d.library_bridge("(def-loop f (x) :shape :thread :over x)"),
+                         "fn-dl-thread-loop-is-revappend")
 
     def test_loopish_names_only(self):
         self.assertTrue(d.LOOPISH.search("fn-x-loop-is-rev-onto"))
         self.assertFalse(d.LOOPISH.search("fn-x-is-sorted"))
+
+
+class VocabTwo(unittest.TestCase):
+    """Real loops of the second vocabulary lane, at the pre-conversion revision: a
+    :thread (a state threaded through spliced rows), a :foldr read through the
+    guard-free accessors, a countdown :step with the accumulator before a stobj, a
+    :map with the accumulator before a stobj.  The expected outputs are the tool's
+    own, each certified in its book on persvati (REGEN=1 rewrites them)."""
+
+    def check(self, tag, shape):
+        text = (FIX / f"vc2-{tag}.in.lisp").read_text()
+        conv, resid = d.analyse(text, tag, {})
+        self.assertEqual(resid, [])
+        self.assertEqual(len(conv), 1)
+        self.assertEqual(conv[0]["spec"].shape, shape)
+        out = d.apply_text(text, conv)
+        expected = FIX / f"vc2-{tag}.out.lisp"
+        if os.environ.get("REGEN"):
+            expected.write_text(out)
+        self.assertEqual(out, expected.read_text())
+        self.assertEqual(d.loop_count(out), 0)
+        return out
+
+    def test_thread_owner_feed_tick(self):
+        out = self.check("tick", "thread")
+        self.assertIn(":make (cons tbl dl-rows) :st-of (car dl-r) :rows-of (cdr dl-r)", out)
+
+    def test_thread_with_a_state_dependent_stop_and_stobj(self):
+        out = self.check("served-feed", "thread")
+        self.assertIn(":done (or", out)
+        self.assertIn(":stobjs fn-arena", out)
+
+    def test_foldr_through_ag_accessors(self):
+        self.check("ng-len", "foldr")
+
+    def test_countdown_step_with_acc_before_stobj(self):
+        out = self.check("words", "step")
+        self.assertIn(":measure (nfix k)", out)
+
+    def test_map_with_acc_before_stobj(self):
+        self.check("rewrite-rows", "map")
+
+    def test_concat_with_a_guard_total_reversal(self):
+        out = self.check("append-pieces", "concat")
+        self.assertIn(":rev fn-ag-rev-onto", out)
+
+    def refused(self, tag):
+        text = (FIX / f"vc2-refuse-{tag}.in.lisp").read_text()
+        conv, resid = d.analyse(text, tag, {})
+        self.assertEqual(conv, [])
+        return resid
+
+    def test_sum_with_a_state_thread_stays_refused_by_name(self):
+        (row,) = self.refused("fit-count")
+        self.assertEqual(row[0], "fn-lg-fit-count")
+        self.assertIn("a state thread", row[2])
+
+    def test_early_exit_thread_stays_refused_by_name(self):
+        (row,) = self.refused("restart-fold")
+        self.assertEqual(row[0], "fn-own-feed-port-restart-fold")
+        self.assertIn("a state thread", row[2])
 
 
 if __name__ == "__main__":

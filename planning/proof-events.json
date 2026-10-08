@@ -15833,7 +15833,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-own-feed-tick-loop-is-rev-onto"
+          "name": "fn-dl-thread-loop-is-revappend"
         },
         {
           "kind": "theorem",
@@ -15845,19 +15845,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-scr-dispatch-events-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-scr-scan-span-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-served-dispatch-events-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-served-feed-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
