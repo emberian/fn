@@ -30,7 +30,7 @@ A missing required observation never supplies a passing zero-violations bar.
 
 | Cell | Required externally visible result | Control and finite scope |
 | --- | --- | --- |
-| F1 | P4-RECLAIM, P2-IDENTITY: a cold-read completion after cache reuse across publication returns its accepted octets or a named refusal, never another article's bytes. | 25 distinct 32 KiB articles, checkpoint then restart, cache restricted to one entry. Hold the first cache-eligible window release, request a checkpoint/publication and 24 other cold reads, then release. Requires publication, drop calls and actual window evictions during the hold; otherwise not measured. |
+| F1 | P4-RECLAIM, P2-IDENTITY: a cold-read completion after cache reuse across publication returns its accepted octets (`faults.digest`) or a named refusal, never another article's bytes. | Separate E (entry) and W (window) trials, each with 25 distinct 512 KiB articles, checkpoint then restart, cache restricted to one entry. Hold the first entry cache store / cache-eligible window release; concurrently request checkpoint/publication and 24 other cold reads, then release. Each route requires publication, file-drop calls, actual eviction and reuse during the hold; otherwise that route is not measured. Both routes must qualify to supply the cell's zero-violation bars. |
 | F4 | P2-IDENTITY: under saturation and across restart, every existing Message-ID resolves to original octets, absent IDs are absent, and neither same-byte nor changed-byte reposts are accepted. | Up to 1,048,576 candidates, ACL2 tag oracle in batches of 4,096; 2,304 present candidates and 32 absent candidates sharing eight low tag bits, plus 62 IDs with a 128-character shared prefix and wide fan-out. STAT/ARTICLE on every ID before and after restart. Requires unplaced > 0 in both epochs. |
 | F2 | P1-DURABLE: every read 240 survives, Path/Xref excepted. P2-IDENTITY: only attempted IDs/octets exist, uncertain POSTs whole or absent. P5-RECOVERY: clean recovery after two process deaths reaches LISTENING and accepts a POST within 60 s. | 100 POSTs at intended 20/s with one requested publication; count boundary calls, then sample first/middle/last of each, 16 shrink reruns per finding. Full LIST ACTIVE/LISTGROUP/ARTICLE inventory, including numeric and Message-ID lookup routes. |
 | F6 | P8-CLIENTS: fragmented/pipelined GROUP, ARTICLE, HEAD, STAT, POST+body, and invalid command have the same replies as the unfragmented reference; invalid command is refused by name; another client meets a 10 s deadline. | Every split of the reference transcript is eligible; 64 evenly spaced splits including the endpoints when long. One variant changes exposure-connections to 32 after ARTICLE's status line. Fresh-store RSS must stay within 16 MiB of reference. 16 shrink reruns. |
@@ -70,18 +70,45 @@ and data, not those runtime claims. See specs/failures.md and the existing
 native crash-model/torn-journal campaigns for the separate model correspondence.
 
 F1's `f1-delay.lisp` uses `FN_LOAD_F1_ARM`, `FN_LOAD_F1_RELEASE` and
-`FN_LOAD_F1_WITNESS` paths, `FN_LOAD_F1_N` (cache-eligible call number),
+`FN_LOAD_F1_WITNESS` paths, `FN_LOAD_F1_ROUTE` (`E`, the default, or `W`),
+`FN_LOAD_F1_N` (armed call number; W counts cache-eligible calls only),
 `FN_LOAD_F1_SECONDS` (maximum hold) and `FN_LOAD_F1_CACHE` (test cache size,
-never larger than the image's allowance). Its `held`/`released` witness counts
-window installs, file-drop calls, actual returned eviction tokens and optional
-`fn-xc-install` calls, in that order. A timeout row is not a release witness.
-This tree has no `fn-xc-install`; its concrete window cache uses
-`fnn-extent-window-cache-insert`. Counts alone do not establish reuse: at least
-one actual eviction is required. The harness releases the hook even on setup
-failure. In this tree `fnn-owner-cold-window-result-locked` calls release with
-the owner mutex held, so publication may be blocked throughout the hold. The
-hook preserves that locking and reports this experiment not measured if the
-required interleaving is unreachable; it never fabricates a release receipt.
+never larger than the image's allowance, including zero). E holds before
+`fnn-extent-cache-store(file eoff elen trailer octets &optional token)`;
+the token is forwarded unchanged, including NIL in offline mode. Its
+`fnn-extent-cache-forget(entries)` wrapper counts removed entries rather than
+returned tokens, so offline evictions count too. A successful competing store
+must consume a position vacated during the hold to count as reuse. W holds
+before `fnn-extent-window-release(worker token &optional cachep)` only with
+cachep and a positive cache limit; `fnn-extent-window-cache-insert` records
+returned eviction tokens and inserts that replaced an occupied position.
+
+Witness rows are `held ROUTE FUNCTION N`, `token ROUTE TOKEN`, and
+`released ROUTE FUNCTION INSTALLS DROPS EVICTIONS REUSES` (or `timeout` with
+the same counts). Counts cover only the hold: the held call's own installation
+after release cannot qualify. W also records `pool W funded|unfunded` from
+the actual `fnn-extent-pool-funded-p` decision. Results and traces retain the
+raw witness, function, counts, per-route coverage and missing-evidence reason.
+Torn, mismatched and timeout rows cannot supply a release witness.
+
+W uses the default startup configuration in this tree:
+`fnn-owner-page-read-startup` calls `fn-owner-page-read-install-default`, which
+calls `fn-owner-page-read-install-baseline` and supplies the data needed for
+`:funded-pool` in `fn-owner-page-read-direct-mode`. The five `[resources]`
+keys `cold_heap_octets`, `cold_workers`, `cold_descriptors`, `cold_read_ids`
+and `cold_file_ids` are parsed by `books/native-config.lisp`, but an explicit
+cold policy is refused as `:unpriced-complete-cold-profile` by
+`fn-prstartup-default-plan` in `books/page-read-startup.lisp`; they are not
+an enable switch. Leave them absent. If the running image does not observe
+a funded default pool, W is NOT-MEASURED with that reason, never forced by
+changing a pool mode in the hook. A funded pool alone does not prove the
+response-capture window route was reached: the hold witness is still required.
+
+The harness releases on setup failure too, and collects the held and competing
+replies after release. It never unlocks an owner or extent mutex. Entry callers
+hold the extent mutex; `fnn-owner-cold-window-result-locked` calls window release
+with the owner mutex held. Either can prevent this interleaving, yielding
+NOT-MEASURED. Publication completed only after release cannot qualify.
 
 F4's `f4-index.lisp` observes the live catalog at
 `fnn-owner-read-buffer-fill`, under the owner mutex. `FN_LOAD_F4_REQUEST` is a

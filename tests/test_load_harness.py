@@ -1082,18 +1082,132 @@ class FaultSlotAndIndexTests(unittest.TestCase):
         from tools.load.faults import History, verify_slot_reuse, report, metrics, f1_evidence
         h = History()
         self.post(h, '<a>')
-        self.probe(h, 'F1', '<a>')
-        ev = dict(f1_evidence('held\nreleased 12 1 11 0\n'), publication='installed', complete=True)
-        fs, checked = verify_slot_reuse(h.ops, ev)
-        self.assertEqual(fs, [])
-        self.assertEqual(set(checked), {'P4-RECLAIM', 'P2-IDENTITY'})
-        for key in ('held', 'released', 'publication', 'drop_calls', 'evictions', 'complete'):
-            missing = dict(ev, **{key: 0})
-            fs, checked = verify_slot_reuse(h.ops, missing)
-            self.assertEqual(checked, [], key)
-            self.assertEqual(metrics(report(h, fs, checked)), {}, key)
-        self.assertNotIn('released', f1_evidence('held\ntimeout 12 1 11 0\n'))
-        self.assertNotIn('released', f1_evidence('held\nreleased 12 1'))
+        op = self.probe(h, 'F1', '<a>')
+        for route, function in (('E', 'fnn-extent-cache-store'), ('W', 'fnn-extent-window-release')):
+            op['route'] = route
+            held = 'pool %s funded\nheld %s %s 2\n' % (route, route, function)
+            row = 'released %s %s 12 1 11 10\n' % (route, function)
+            ev = dict(f1_evidence(held + row, route), publication='installed', complete=True)
+            self.assertEqual(ev['held_function'], function)
+            self.assertEqual(ev['held_call'], 2)
+            fs, checked = verify_slot_reuse(h.ops, ev)
+            self.assertEqual(fs, [])
+            self.assertEqual(set(checked), {'P4-RECLAIM', 'P2-IDENTITY'})
+            keys = ['held', 'released', 'publication', 'installs', 'drop_calls', 'evictions', 'reuses', 'complete']
+            if route == 'W':
+                keys.append('funded_pool')
+            for key in keys:
+                missing = dict(ev, **{key: 0})
+                fs, checked = verify_slot_reuse(h.ops, missing)
+                self.assertEqual(checked, [], (route, key))
+                self.assertEqual(metrics(report(h, fs, checked)), {}, (route, key))
+            for bad in (row.replace('released', 'timeout'), row[:-1], row[:-4], row.replace('12', '-1'),
+                        row.replace('12', 'bad'), row.replace(function, 'wrong-function')):
+                self.assertNotIn('released', f1_evidence(held + bad, route))
+            self.assertNotIn('released', f1_evidence(row, route))
+            other = 'W' if route == 'E' else 'E'
+            self.assertNotIn('released', f1_evidence(held + row, other))
+            self.assertEqual(verify_slot_reuse(h.ops, dict(ev, route=other))[1], [])
+
+    def test_f1_both_routes_required_and_findings_survive_missing_coverage(self):
+        from tools.load import faults
+        props = ['P4-RECLAIM', 'P2-IDENTITY']
+        for missing in (None, 'E', 'W'):
+            seen = []
+            def route(campaign, h, ph, name):
+                seen.append(name)
+                measured = name != missing
+                notes = dict(status='measured' if measured else 'not-measured', reason='no reuse')
+                return notes, [('P2-IDENTITY', name + ': changed bytes')], props if measured else []
+            with patch.object(faults, 'f1_route', side_effect=route), \
+                    patch.object(faults.Campaign, 'emit'):
+                out = faults.slot_reuse(SimpleNamespace(), {})
+            self.assertEqual(seen, ['E', 'W'])
+            self.assertEqual(set(out['routes']), {'E', 'W'})
+            self.assertEqual(set(out['faults']['checked']), set(props) if missing is None else set())
+            self.assertEqual(len(out['faults']['violations'][0]['details']), 2)
+            if missing:
+                self.assertEqual(out['status'], 'not-measured')
+                self.assertIn(missing + ': no reuse', out['reason'])
+
+    def test_f1_route_orchestration_release_cleanup_and_late_publication(self):
+        import threading
+        import time
+        from tools.load import faults
+        from tools import msgid_measure
+        for route in ('E', 'W'):
+            for mode in ('reuse', 'no-reuse', 'blocked-publication', 'unreached', 'seed-refused'):
+                with self.subTest(route=route, mode=mode), tempfile.TemporaryDirectory() as tmp:
+                    work = Path(tmp)
+                    node = SimpleNamespace(work=work, env={}, port=1, err_n=0, stop=lambda: None)
+                    h, churn_started = faults.History(), threading.Event()
+                    release, witness = work / 'f1-release', work / 'f1-witness'
+                    function = faults.F1_FUNCTIONS[route]
+                    campaign = SimpleNamespace(deadline=1, recovery=.15, node=lambda **kw: node)
+                    starts, controls = [], []
+                    def start(node, history):
+                        starts.append(dict(node.env))
+                        node.err_n += 1
+                        (work / ('owner.%d.err' % node.err_n)).touch()
+                    def wait_release():
+                        end = time.monotonic() + 2
+                        while not release.exists() and time.monotonic() < end:
+                            time.sleep(.002)
+                        if not release.exists():
+                            raise TimeoutError('test hook was not released')
+                    def control(node, history, *words):
+                        controls.append(words)
+                        if len(controls) == 2:
+                            if not churn_started.wait(2):
+                                raise TimeoutError('publication prevented competing read dispatch')
+                            if mode == 'blocked-publication':
+                                wait_release()
+                        return 0, 'queued'
+                    campaign.start, campaign.control = start, control
+                    case = self
+                    class SeedClient:
+                        def __init__(self, *args):
+                            pass
+                        def __enter__(self):
+                            return self
+                        def __exit__(self, *args):
+                            pass
+                        def post(self, i, size):
+                            case.assertEqual(size, 524288)
+                            if mode == 'seed-refused':
+                                return b'441 refused\r\n'
+                            case.post(h, msgid_measure.msgid(i))
+                            return b'240 accepted\r\n'
+                    def probe(client, mid, cell, held=False, route=None):
+                        if held:
+                            if mode != 'unreached':
+                                witness.write_text('pool %s funded\nheld %s %s 1\n' % (route, route, function))
+                                wait_release()
+                                n = 0 if mode == 'no-reuse' else 1
+                                with witness.open('a') as f:
+                                    f.write('released %s %s 2 1 %d %d\n' % (route, function, n, n))
+                        else:
+                            churn_started.set()
+                        op = self.probe(h, cell, mid)
+                        op.update(route=route, held=held)
+                    with patch.object(faults, 'Client', SeedClient), \
+                            patch.object(faults, 'fault_probe', side_effect=probe), \
+                            patch.object(faults, 'wait_log', return_value='CHECKPOINT auto sequence=2'):
+                        notes, findings, checked = faults.f1_route(campaign, h, {'cold_reads': 2}, route)
+                    self.assertTrue(release.exists())
+                    self.assertEqual(findings, [])
+                    self.assertEqual(notes['held_function'], function)
+                    self.assertEqual(bool(checked), mode == 'reuse')
+                    if mode != 'seed-refused':
+                        self.assertEqual(starts[1]['FN_LOAD_F1_ROUTE'], route)
+                    if mode in ('reuse', 'no-reuse', 'blocked-publication'):
+                        self.assertTrue(churn_started.is_set())
+                        self.assertEqual(controls, [('store', 'checkpoint')] * 2)
+                    if mode == 'blocked-publication':
+                        self.assertNotIn('publication', notes)
+                    if route == 'W' and mode == 'unreached':
+                        self.assertIn('Funded pool not observed', notes['reason'])
+                        self.assertIn(':unpriced-complete-cold-profile', notes['reason'])
 
     def test_f1_other_article_bytes_and_unnamed_or_partial_refusals_fail(self):
         from tools.load.faults import History, verify_slot_reuse
