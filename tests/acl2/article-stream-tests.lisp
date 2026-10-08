@@ -1,6 +1,7 @@
 ; Actual guard-verified selector: valid inputs and reference outcomes.
 (in-package "ACL2")
 (include-book "../../books/article-stream")
+(include-book "must-fail-checked")
 
 (defconst *astq-one*
   (fn-make-article "<one@query.example>" 0 '("fn.a" "fn.other")
@@ -177,3 +178,32 @@
     (mv-let (r fn-arena) (astq-span-run payload fn-arena) r)))
 
 (assert-event (equal (astq-span-check (astq-span-payload 700 nil)) '(t t t t t t)))
+
+; A real arena payload: the header/body boundary (offset 14) is inside the span.
+(defun astq-preflight-span-run (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((payload '(83 117 98 106 101 99 116 58 32 120 13 10 13 10 65 66 13 10))
+         (h (fn-arena-count fn-arena))
+         (fn-arena (fn-arena-seal-list payload fn-arena))
+         (source (list h 0 18 nil))
+         (scan (list source source nil t 0 nil nil))
+         (expected (list (list h 18 0 nil) source nil t 2 (list h 14 4 nil) nil)))
+    (mv-let (span used) (fn-ast-scan-step-span scan 18 32 fn-arena)
+      (mv-let (scalar scalar-used) (fn-ast-scan-step scan 18 fn-arena)
+        (let ((dropped (fn-ast-scan-bytes scan (fn-arena-get-span h 0 17 fn-arena))))
+          (mv (list (and (natp 18) (equal span scalar) (equal used scalar-used)
+                         (equal span expected) (equal used 18))
+                    (equal dropped expected)
+                    (equal dropped (list (list h 17 1 nil) source t nil 1
+                                         (list h 14 4 nil) nil)))
+              fn-arena))))))
+
+(defun astq-preflight-span-check ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena) (astq-preflight-span-run fn-arena) result)))
+
+(assert-event (equal (astq-preflight-span-check) '(t nil t)))
+
+(must-fail-checked
+ (assert-event (cadr (astq-preflight-span-check))))

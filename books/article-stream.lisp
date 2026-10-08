@@ -166,9 +166,9 @@
         ((equal matched 2) (if (equal byte 13) 3 0))
         (t (cond ((equal byte 10) 4) ((equal byte 13) 1) (t 0)))))
 
-(defun fn-ast-scan-one (scan fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (let* ((source (fn-ast-at 0 scan)) (byte (fn-ast-source-byte source fn-arena))
+(defun fn-ast-scan-byte (scan byte)
+  (declare (xargs :guard t))
+  (let* ((source (fn-ast-at 0 scan))
          (next (fn-ast-source-next source)) (pending (fn-ast-at 2 scan))
          (sep (fn-ast-separator-next (fn-ast-at 4 scan) byte)))
     (list next (fn-ast-at 1 scan) (equal byte 13) (equal byte 10) sep
@@ -176,6 +176,10 @@
           (or (fn-ast-at 6 scan) (not (fn-octetp byte))
               (if pending (not (equal byte 10))
                 (or (equal byte 0) (equal byte 10)))))))
+
+(defun fn-ast-scan-one (scan fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (fn-ast-scan-byte scan (fn-ast-source-byte (fn-ast-at 0 scan) fn-arena)))
 
 (defun fn-ast-scan-step (scan fuel fn-arena)
   (declare (xargs :stobjs fn-arena :guard (natp fuel) :verify-guards nil :measure (nfix fuel)))
@@ -193,6 +197,214 @@
 
 (verify-guards fn-ast-scan-step
   :hints (("Goal" :in-theory (disable fn-ast-scan-one fn-ast-at))))
+
+; The span preflight folds the identical byte transition. The only
+; external premise is the scalar scan guard; bounds are discharged here.
+
+(defun fn-ast-scan-bytes (scan bytes)
+  (declare (xargs :guard t))
+  (if (atom bytes) scan
+    (fn-ast-scan-bytes (fn-ast-scan-byte scan (car bytes)) (cdr bytes))))
+
+(local
+ (defthm fn-ast-scan-byte-source
+  (equal (fn-ast-at 0 (fn-ast-scan-byte scan byte))
+         (fn-ast-source-next (fn-ast-at 0 scan)))
+  :hints (("Goal" :in-theory (enable fn-ast-scan-byte fn-ast-at)))))
+
+(local
+ (defun-nx fn-ast-scan-range (scan h at n fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil :measure (nfix n)))
+  (if (zp n) scan
+    (fn-ast-scan-range (fn-ast-scan-byte scan (fn-arena-get h at fn-arena))
+                       h (+ 1 at) (1- n) fn-arena))))
+
+(local
+ (defthm fn-ast-scan-bytes-of-span
+  (equal (fn-ast-scan-bytes scan (fn-arena-get-span h at n fn-arena))
+         (fn-ast-scan-range scan h at n fn-arena))
+  :hints (("Goal" :induct (fn-ast-scan-range scan h at n fn-arena)
+            :in-theory (e/d (fn-ast-scan-bytes fn-ast-scan-range
+                             fn-arena-get-span-is-the-gets)
+                            (fn-ast-scan-byte fn-arena-get))))))
+
+(local
+ (defthm fn-ast-scan-range-is-scan-step
+  (implies (and (natp n) (natp h) (< h (fn-arena-count fn-arena))
+                (natp at) (<= (+ at n) (fn-arena-payload-len h fn-arena))
+                (equal h (fn-ast-at 0 (fn-ast-at 0 scan)))
+                (equal at (nfix (fn-ast-at 1 (fn-ast-at 0 scan))))
+                (<= n (nfix (fn-ast-at 2 (fn-ast-at 0 scan)))))
+           (equal (mv-list 2 (fn-ast-scan-step scan n fn-arena))
+                  (list (fn-ast-scan-range scan h at n fn-arena) n)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-ast-scan-range scan h at n fn-arena)
+            :expand ((fn-ast-scan-range scan h at n fn-arena)
+                     (fn-ast-scan-step scan n fn-arena))
+            :in-theory (e/d (fn-ast-scan-step fn-ast-scan-range fn-ast-scan-one fn-ast-source-byte fn-ast-source-next fn-ast-at)
+                            (fn-ast-scan-byte
+                             fn-arena-get fn-arena-get-is-nth
+                             fn-arena-count fn-arena-count-is-len
+                             fn-arena-payload-len fn-arena-payload-len-is-len-nth))))))
+
+(local
+ (defthm fn-ast-scan-step-pair
+  (equal (list (car (fn-ast-scan-step scan fuel fn-arena))
+               (cadr (fn-ast-scan-step scan fuel fn-arena)))
+         (fn-ast-scan-step scan fuel fn-arena))
+  :hints (("Goal" :induct (fn-ast-scan-step scan fuel fn-arena)
+            :in-theory (disable fn-ast-scan-one)))))
+
+(local
+ (defthm fn-ast-scan-step-count-natural
+  (natp (cadr (fn-ast-scan-step scan fuel fn-arena)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (fn-ast-scan-step scan fuel fn-arena)
+            :in-theory (disable fn-ast-scan-one)))))
+
+(local
+ (defthm fn-ast-scan-step-fuel-composes
+  (equal (mv-list 2 (fn-ast-scan-step scan (+ (nfix a) (nfix b)) fn-arena))
+         (let* ((r (mv-list 2 (fn-ast-scan-step scan (nfix a) fn-arena)))
+                (s (mv-list 2 (fn-ast-scan-step (car r) (nfix b) fn-arena))))
+           (list (car s) (+ (cadr r) (cadr s)))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-ast-scan-step scan a fn-arena)
+            :in-theory (disable fn-ast-scan-one)))))
+
+(defun fn-ast-source-readablep (source fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source))))
+    (and (natp h) (< h (fn-arena-count fn-arena))
+         (< at (fn-arena-payload-len h fn-arena))
+         (not (zp (nfix (fn-ast-at 2 source)))))))
+
+(defun fn-ast-scan-step-span (scan fuel limit fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (natp fuel) :verify-guards nil
+                  :measure (nfix fuel)
+                  :hints (("Goal" :in-theory (disable fn-ast-scan-one fn-ast-scan-bytes)))))
+  (if (or (zp fuel) (zp (nfix (fn-ast-at 2 (fn-ast-at 0 scan)))))
+      (mv scan 0)
+    (let* ((source (fn-ast-at 0 scan)) (h (fn-ast-at 0 source))
+           (at (nfix (fn-ast-at 1 source))))
+      (if (fn-ast-source-readablep source fn-arena)
+          (let* ((n (min fuel (min (max 1 (nfix limit))
+                              (min (nfix (fn-ast-at 2 source))
+                                   (- (fn-arena-payload-len h fn-arena) at)))))
+                 (next (fn-ast-scan-bytes scan (fn-arena-get-span h at n fn-arena))))
+            (mv-let (done used) (fn-ast-scan-step-span next (- fuel n) limit fn-arena)
+              (mv done (+ n used))))
+        (mv-let (done used)
+          (fn-ast-scan-step-span (fn-ast-scan-one scan fn-arena) (1- fuel) limit fn-arena)
+          (mv done (+ 1 used)))))))
+
+(local
+ (defthm fn-ast-scan-step-after-span
+  (implies (and (natp n) (natp fuel) (<= n fuel)
+                (natp h) (< h (fn-arena-count fn-arena))
+                (natp at) (<= (+ at n) (fn-arena-payload-len h fn-arena))
+                (equal h (fn-ast-at 0 (fn-ast-at 0 scan)))
+                (equal at (nfix (fn-ast-at 1 (fn-ast-at 0 scan))))
+                (<= n (nfix (fn-ast-at 2 (fn-ast-at 0 scan)))))
+           (equal (let ((r (fn-ast-scan-step
+                            (fn-ast-scan-bytes scan (fn-arena-get-span h at n fn-arena))
+                            (- fuel n) fn-arena)))
+                    (list (car r) (+ n (cadr r))))
+                  (fn-ast-scan-step scan fuel fn-arena)))
+  :hints (("Goal"
+           :use (fn-ast-scan-range-is-scan-step
+                 (:instance fn-ast-scan-step-fuel-composes (a n) (b (- fuel n))))
+           :in-theory (disable fn-ast-scan-step fn-ast-scan-bytes fn-ast-scan-range
+                               fn-arena-get-span fn-ast-at fn-ast-scan-one
+                               fn-arena-get-span-is-the-gets)))))
+
+(local
+ (defthm fn-ast-mv-nth-one
+  (equal (mv-nth 1 x) (cadr x))
+  :hints (("Goal" :expand ((mv-nth 1 x) (mv-nth 0 (cdr x)))))))
+
+(local
+ (defthm fn-ast-fuel-cancel
+  (implies (acl2-numberp rest)
+           (equal (+ n (- n) rest) rest))
+  :hints (("Goal" :use (:instance associativity-of-+ (x n) (y (- n)) (z rest))
+            :in-theory (disable associativity-of-+)))))
+
+(local
+ (defthm fn-ast-scan-step-after-span-rest
+  (implies (and (natp n) (natp rest)
+                (natp h) (< h (fn-arena-count fn-arena))
+                (natp at) (<= (+ at n) (fn-arena-payload-len h fn-arena))
+                (equal h (fn-ast-at 0 (fn-ast-at 0 scan)))
+                (equal at (nfix (fn-ast-at 1 (fn-ast-at 0 scan))))
+                (<= n (nfix (fn-ast-at 2 (fn-ast-at 0 scan)))))
+           (equal (let ((r (fn-ast-scan-step
+                            (fn-ast-scan-bytes scan (fn-arena-get-span h at n fn-arena))
+                            rest fn-arena)))
+                    (list (car r) (+ n (cadr r))))
+                  (fn-ast-scan-step scan (+ n rest) fn-arena)))
+  :hints (("Goal"
+           :use (:instance fn-ast-scan-step-after-span (fuel (+ n rest)))
+           :in-theory (disable fn-ast-scan-step fn-ast-scan-bytes fn-ast-scan-range
+                               fn-ast-scan-step-after-span fn-ast-scan-bytes-of-span
+                               fn-arena-get-span fn-ast-at fn-ast-scan-one
+                               fn-arena-get-span-is-the-gets)))))
+
+(local
+ (defthm fn-ast-scan-span-is-scan-step
+  (implies (and (natp n) (natp h) (< h (fn-arena-count fn-arena))
+                (natp at) (<= (+ at n) (fn-arena-payload-len h fn-arena))
+                (equal h (fn-ast-at 0 (fn-ast-at 0 scan)))
+                (equal at (nfix (fn-ast-at 1 (fn-ast-at 0 scan))))
+                (<= n (nfix (fn-ast-at 2 (fn-ast-at 0 scan)))))
+           (equal (list (fn-ast-scan-bytes scan (fn-arena-get-span h at n fn-arena)) n)
+                  (fn-ast-scan-step scan n fn-arena)))
+  :hints (("Goal" :use fn-ast-scan-range-is-scan-step
+           :in-theory (disable fn-ast-scan-step fn-ast-scan-range fn-ast-scan-bytes
+                               fn-arena-get-span fn-arena-get-span-is-the-gets)))))
+
+(local
+ (defthm fn-ast-fuel-cancel-rest
+  (implies (acl2-numberp fuel)
+           (equal (+ n fuel (- n)) fuel))
+  :hints (("Goal" :use (:instance fn-ast-fuel-cancel (rest fuel))))))
+
+(defthm fn-ast-scan-step-span-is-byte-scan
+  (implies (natp fuel)
+           (equal (mv-list 2 (fn-ast-scan-step-span scan fuel limit fn-arena))
+                  (mv-list 2 (fn-ast-scan-step scan fuel fn-arena))))
+  :hints (("Goal" :induct (fn-ast-scan-step-span scan fuel limit fn-arena)
+           :in-theory (e/d (fn-ast-scan-step-span fn-ast-source-readablep)
+                            (associativity-of-+ commutativity-2-of-+ distributivity-of-minus-over-+ fn-ast-scan-bytes-of-span fn-ast-scan-byte fn-ast-scan-bytes fn-ast-scan-range
+                             fn-ast-scan-one fn-ast-at
+                             fn-arena-get-span fn-arena-get-span-is-the-gets
+                             fn-arena-count-is-len fn-arena-payload-len-is-len-nth)))))
+
+(defthm fn-ast-scan-span-used-natural
+  (implies (natp fuel)
+           (natp (mv-nth 1 (fn-ast-scan-step-span scan fuel limit fn-arena))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn-ast-scan-step-span-is-byte-scan
+           :in-theory (disable fn-ast-scan-step-span fn-ast-scan-step
+                               fn-ast-scan-step-span-is-byte-scan))))
+(defthm fn-ast-scan-span-count-natural
+  (implies (natp fuel)
+           (natp (cadr (fn-ast-scan-step-span scan fuel limit fn-arena))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn-ast-scan-step-span-is-byte-scan
+           :in-theory (disable fn-ast-scan-step-span fn-ast-scan-step
+                               fn-ast-scan-step-span-is-byte-scan))))
+(verify-guards fn-ast-scan-step-span
+  :hints (("Goal" :in-theory (disable fn-ast-scan-one fn-ast-scan-bytes fn-ast-at
+                                     fn-arena-get-span fn-arena-get-span-is-the-gets
+                                     fn-arena-count-is-len fn-arena-payload-len-is-len-nth
+                                     fn-ast-scan-step-span-is-byte-scan))))
+
+(local (in-theory (disable fn-ast-mv-nth-one fn-ast-fuel-cancel fn-ast-fuel-cancel-rest
+                           fn-ast-scan-step-pair fn-ast-scan-step-count-natural
+                           fn-ast-scan-span-count-natural fn-ast-scan-byte-source
+                           fn-ast-scan-bytes-of-span fn-ast-scan-span-is-scan-step
+                           fn-ast-scan-step-after-span fn-ast-scan-step-after-span-rest)))
 
 (defun fn-ast-scan-donep (scan)
   (declare (xargs :guard t))
@@ -563,12 +775,6 @@
   (declare (xargs :guard t))
   256)
 
-(defun fn-ast-source-readablep (source fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (let ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source))))
-    (and (natp h) (< h (fn-arena-count fn-arena))
-         (< at (fn-arena-payload-len h fn-arena))
-         (not (zp (nfix (fn-ast-at 2 source)))))))
 
 ; The chunk is the next octets of the cursor's own payload, as the arena has
 ; them, no more than the source's remainder.
