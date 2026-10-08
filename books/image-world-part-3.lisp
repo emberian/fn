@@ -102,6 +102,7 @@
 (include-book "native-live-pages")
 (include-book "owner-operation-report")
 (include-book "control-observation")
+(include-book "control-receipt-wire")
 (include-book "moderation-outcome")
 (include-book "native-control-launch")
 (include-book "native-control-line")

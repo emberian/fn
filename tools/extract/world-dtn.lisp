@@ -395,6 +395,7 @@
 (include-book "../../books/index-reader-rx-source-completion")
 (include-book "../../books/native-control")
 (include-book "../../books/control-observation")
+(include-book "../../books/control-receipt-wire")
 (include-book "../../books/moderation-outcome")
 (include-book "../../books/native-control-launch")
 (include-book "../../books/native-control-reason")

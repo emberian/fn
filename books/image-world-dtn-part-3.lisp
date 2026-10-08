@@ -92,6 +92,7 @@
 (include-book "index-reader-rx-source-completion")
 (include-book "native-control")
 (include-book "control-observation")
+(include-book "control-receipt-wire")
 (include-book "moderation-outcome")
 (include-book "native-control-launch")
 (include-book "native-control-reason")

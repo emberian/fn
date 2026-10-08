@@ -34,18 +34,15 @@
 (include-book "peer-invite")
 (include-book "native-hybrid-control")
 (include-book "wire-family-identity")
+(include-book "control-observation")
 
 ; -----------------------------------------------------------------------------
 ; The kinds.
 
 (defconst *fn-ctlk-store-kinds*
-  (list *fn-nhctrl-enroll-kind* *fn-nhctrl-author-kind* *fn-nhctrl-revoke-kind*
-        *fn-nhctrl-enroll-next-kind* *fn-nhctrl-revoke-next-kind*
-        *fn-pinv-issue-kind* *fn-pinv-accept-kind* *fn-pinv-confirm-kind*
-        *fn-pinv-redecide-kind* *fn-pinv-bindings-kind*))
-
+  (fn-nco-handler-kinds *fn-nco-kind-table* :store))
 (defconst *fn-ctlk-read-kinds*
-  (list *fn-tlsr-request-kind* *fn-wf-identity-request-kind*))
+  (fn-nco-handler-kinds *fn-nco-kind-table* :read))
 
 (defun fn-ctlk-word (kind)
   (declare (xargs :guard t))
