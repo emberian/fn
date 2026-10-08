@@ -3557,7 +3557,12 @@
         "fn-bpnr-retired-names-never-the-selected-directory",
         "fn-bpnrd-due-rotation-event-by-definition",
         "fn-bpnrd-due-rotation-preserves-recovery",
-        "fn-bpnrd-rotation-keeps-every-held-family"
+        "fn-bpnrd-rotation-keeps-every-held-family",
+        "fn-bpnr-checkpoint-recovery-equals-full-machine",
+        "fn-bpnj-rotation-restart-succeeds-with-owed-work",
+        "fn-bpnp-rotation-restart-keeps-owed-work",
+        "fn-bpnp-rotation-recovery-seeds-owed-jobs",
+        "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work"
       ]
     },
     {

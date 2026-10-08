@@ -46,7 +46,9 @@ class NativeBpNodeTests(unittest.TestCase):
     # Critical BP path: fnn-bps-foundation-step calls fn-bpnj-step; its base
     # persistence/result arms reach fn-bpn-step.  Rotation publication drives
     # fn-bpnp-rotate-step, and open feeds fn-bpnr-seed-state's checkpoint jobs
-    # into fn-bpnr-recover-auto-event and the composed recovery step.
+    # into fn-bphp-recover-auto-event and the composed recovery step.  The
+    # hypothesis-free fn-bphp-recover-auto-event-is-bpnr equates the host's
+    # event builder to fn-bpnr-recover-auto-event, the recovery theorems' subject.
     # Seed-omission implementation mutation: /tmp/p7/bprot-mutant.patch.
     # Deputy N: owed-job restart GREEN, real 15145158d (native-bpr-real2-
     # 15145158d); FAILS mutant 5e4632275 (native-bpr-mut2-rot), under

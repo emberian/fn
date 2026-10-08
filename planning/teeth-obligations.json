@@ -2927,7 +2927,7 @@
   },
   {
    "book": "books/bp-node-machine-authorization.lisp",
-   "book_digest": "857579f7c7d549c8e70d2da16b5cf5f3035614e8c0ae1337269c6bc826cfdbf6",
+   "book_digest": "a59950230e896e40e67bd8f89cb4791c30a929ec3cb38a32f71dd68e740995de",
    "bounds": [],
    "claim_digest": "d3a369281edd6d35d47d457235885d53042aa0cfd4a52cef5ef7daf84d783b35",
    "class": "generated",
@@ -2944,7 +2944,7 @@
     "reachable": 1
    },
    "statement_digest": "7835dd94232397b340afa45cb102a602fc8798e02d05cce9b0264480e365e153",
-   "subject": null,
+   "subject": "fn-bpn-step",
    "witness": "executable"
   },
   {
@@ -3286,21 +3286,24 @@
    "registry": true
   },
   {
+   "book": "books/bp-node-rotation-recovery.lisp",
    "book_digest": "4e1c6780fb2ea2c9ca6c6d8a7d8ea596566041beeef0732220af41d46cdf8b21",
    "bounds": [],
    "claim_digest": "22bacb0f2e9956a9a63f658e7c8758f4623733bc461f2f86aa94bae753afc39b",
    "class": "generated",
+   "critical": "durability",
    "mutations": "edits:1",
    "name": "fn-bpnj-rotation-restart-succeeds-with-owed-work",
    "owed_met": null,
    "owner_book": "tests/acl2/bp-node-rotation-recovery-tests.lisp",
-   "registry": false,
+   "registry": true,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 5
    },
+   "statement_digest": "5abc9e9411bfdf13211ff4c87e7f090e8e65df885a1ec87070099bb8238f40d0",
    "subject": "fn-bpnj-step",
    "witness": "executable"
   },
@@ -3535,59 +3538,68 @@
    "statement_digest": "2599aef2ee532adc39daf6ee6ecfa929ff66d2aff7b7daccced9a9ad54d4378b"
   },
   {
+   "book": "books/bp-node-rotation.lisp",
    "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "965a192906280811b3aafe7f9b8926bb2d3413d9c9133136f6375b6f108cd8bf",
    "class": "generated",
+   "critical": "durability",
    "mutations": "edits:1",
    "name": "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
    "owed_met": null,
    "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
-   "registry": false,
+   "registry": true,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
    },
+   "statement_digest": "ceeb49d815d5bc59d88a569245e6b339f6123b7ee8a31628df1912c9c7404a72",
    "subject": "fn-bpnp-rotate-step",
    "witness": "executable"
   },
   {
+   "book": "books/bp-node-rotation.lisp",
    "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "f0411da1adab956f97e825ba1f10478f9385c4476e9f97368da2163e4bc8fab1",
    "class": "generated",
+   "critical": "durability",
    "mutations": "edits:1",
    "name": "fn-bpnp-rotation-recovery-seeds-owed-jobs",
    "owed_met": null,
    "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
-   "registry": false,
+   "registry": true,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
    },
+   "statement_digest": "89f2697ba1e31872058906ade4f0ca539f5795924a0fdcb685292351d381030f",
    "subject": "fn-bpnp-rotate-step",
    "witness": "executable"
   },
   {
+   "book": "books/bp-node-rotation.lisp",
    "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "184fbbc1ac0f651012f0ef0e8a598295147341edc8748bfaf06fc6ce76ff0198",
    "class": "generated",
+   "critical": "durability",
    "mutations": "edits:1",
    "name": "fn-bpnp-rotation-restart-keeps-owed-work",
    "owed_met": null,
    "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
-   "registry": false,
+   "registry": true,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 4,
     "reachable": 2
    },
+   "statement_digest": "3f68e6d24bdfa0c6d7558c6b36c229a1953fffd1e266e8ca039b38ede91e98c3",
    "subject": "fn-bpnr-seed-state",
    "witness": "executable"
   },
@@ -3863,21 +3875,24 @@
    "statement_digest": "78c84edfa7e463e84b8f1502bfb5d364478987c89f73371adb846187b9d699e0"
   },
   {
+   "book": "books/bp-node-rotation-equivalence.lisp",
    "book_digest": "9ee49445ce7573c178eba106f39e7efbd61eb68aaab101b8e053ce7f5ebb12d1",
    "bounds": [],
    "claim_digest": "831f130d43bdddde74a181f8c889b24554d0cbe57f204e7dcddb6c35914b6d86",
    "class": "generated",
+   "critical": "durability",
    "mutations": "edits:1",
    "name": "fn-bpnr-checkpoint-recovery-equals-full-machine",
    "owed_met": null,
    "owner_book": "tests/acl2/bp-node-rotation-equivalence-tests.lisp",
-   "registry": false,
+   "registry": true,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 6
    },
+   "statement_digest": "a3f05731cfb9e1967e14325626ec97bfa9658ddcb7b80688bb65598a6f56a85a",
    "subject": "fn-bpnj-step",
    "witness": "executable"
   },
@@ -3923,11 +3938,25 @@
   },
   {
    "book": "books/bp-node-rotation.lisp",
-   "class": "hand",
+   "book_digest": "592eaa9cbd54a2f71ae5d7d68e946b346ff12a7e082e17f8a9811b2cf44918bb",
+   "bounds": [],
+   "claim_digest": "3c12c2c43cc743b04827ca5f55c34f00aa7abb1a0041538dff87c90c62d19c6e",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-bpnr-recover-from-checkpoint-equals-full-recover",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-critical-tests.lisp",
    "registry": true,
-   "statement_digest": "c9bf3bda6aac57ee60f5c3a97524fa97ba99eee8cf3616be4a6a1397623e93c0"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "c9bf3bda6aac57ee60f5c3a97524fa97ba99eee8cf3616be4a6a1397623e93c0",
+   "subject": "fn-bpnr-recover-auto-event",
+   "witness": "executable"
   },
   {
    "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
@@ -3966,11 +3995,25 @@
   },
   {
    "book": "books/bp-node-rotation.lisp",
-   "class": "hand",
+   "book_digest": "592eaa9cbd54a2f71ae5d7d68e946b346ff12a7e082e17f8a9811b2cf44918bb",
+   "bounds": [],
+   "claim_digest": "a3c1aee163fa2866e2ad0d75101b02abb73a16845adb845389ec918bd6717930",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-bpnr-rotation-crash-recovers-old-or-new",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-critical-tests.lisp",
    "registry": true,
-   "statement_digest": "e1108b544f071f8d131163a8db87c826e5f69e4e0b43cc95146114a2f0525a91"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "e1108b544f071f8d131163a8db87c826e5f69e4e0b43cc95146114a2f0525a91",
+   "subject": "fn-bpnr-recover-auto-event",
+   "witness": "executable"
   },
   {
    "book": "books/bp-node-rotation-buffer.lisp",
