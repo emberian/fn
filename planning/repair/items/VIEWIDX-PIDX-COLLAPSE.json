@@ -1,0 +1,14 @@
+{
+ "category": "debt",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "books/post-identity-index.lisp",
+ "id": "VIEWIDX-PIDX-COLLAPSE",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "low",
+ "source": "s-viewidx",
+ "state": "deferred",
+ "title": "With the view trie gone the fn-pidx-* prepare chain (books/post-identity-index.lisp) equals its fn-* references by definition (fn-pidx-find-article ignores its view argument; each layer is proved EQUAL to the reference). Collapse = the host (host/owner-host.lisp fn-pidx-existing-action, fn-pidx-sbud-prepare, the -cat twins) and ~24 books (post-identity-catalog, post-prepare-catalog, post-retain-carried, withdrawal-index-carried, owner-log-ocl, owner-number-bound*, peer-transit-indexed, poster-bytes-*, store-reclaim-buffer, ...) call the reference or the -cat function directly, then delete the twins and the by-definition equations. Not mechanical: the -cat and fn-prc- layers are stated over fn-pidx-find-article / fn-pidx-accept-prepare and their proofs rewrite through the equations, the host guard fn-pidx-view-okp is evaluated nowhere but named by the guards; needs its own lane with certify of the whole affected tree",
+ "updated": "2026-10-08T12:00:00Z"
+}
