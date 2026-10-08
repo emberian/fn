@@ -17,6 +17,10 @@
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
+;; The constrained seam, attached: the frame trailer's words.
+(defun pckit-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
+(defattach (fn-cpl-trailer-words pckit-trailer))
+
 (must-fail-checked
  (defthm pckit-no-residency
    (implies (and (true-listp pw) (natp wl) (natp npn)
@@ -47,13 +51,24 @@
               (equal (pgs-x-abs-dirty (pgs-dirty-lpages d) (pgs-x-grow-image npn pgs-mem)) d)))
    :hints (("Goal" :do-not-induct t :in-theory (disable pcks-res-hi pcki-dirty-pos pcki-prestate-dirty fn-pck-x-prestate)))))
 
-(defconst *pckit-prefix* (cons '(1 . 2) '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17)))
-(defconst *pckit-delta* (cons '(3 . 4) '(9 8 7)))
+(defun pckit-rec (i n)
+  (declare (xargs :mode :program))
+  (fn-record-make i (+ 1 i) 0 "<a@x>" (make-list n :initial-element 7)
+                  '("fn.test") "o" "s" "e" 1 5))
 
-(defconst *pckit-w1*
+(defconst *pckit-prefix* (pckit-rec 0 5))
+(defconst *pckit-delta* (pckit-rec 1 3))
+
+; Attachments are not callable in a defconst, hence functions.
+(defun pckit-w1 ()
+  (declare (xargs :verify-guards nil))
   (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows (list *pckit-prefix*))))
-(defconst *pckit-w2*
+(defun pckit-w2 ()
+  (declare (xargs :verify-guards nil))
   (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows (list *pckit-prefix* *pckit-delta*))))
+(defun pckit-base ()
+  (declare (xargs :verify-guards nil))
+  (fn-pck-plen (list *pckit-prefix*) 0))
 
 ; (list (pcki-img of the empty image) (pcki-img of the prefix after its commit)
 ; (the keystone's pre-state equation on the grown image) (pcki-img of both after
@@ -69,21 +84,21 @@
               (let* ((pgs-mem (pgs-x-grow-image 10 pgs-mem))
                      (c0 (pcki-img nil pgs-mem)))
                 (mv-let (v0 fn-octets pgs-mem)
-                  (fn-pck-x-stage-rows (list *pckit-prefix*) 0 fn-arena fn-octets pgs-mem)
+                  (fn-pck-x-stage-rows (list *pckit-prefix*) 0 0 (fn-pck-seed) fn-arena fn-octets pgs-mem)
                   (declare (ignore v0))
                   (let* ((pgs-mem (pgs-x-commit-durable '(8) pgs-mem))
-                         (c1 (pcki-img *pckit-w1* pgs-mem))
+                         (c1 (pcki-img (pckit-w1) pgs-mem))
                          (pgs-mem (pgs-x-grow-image 12 pgs-mem))
-                         (cnt (len *pckit-w1*))
-                         (wl (- (len *pckit-w2*) cnt))
-                         (d (pck-shift 8 (adt-tp-dirty-at cnt (nthcdr (* 2048 (floor cnt 2048)) *pckit-w1*)
+                         (cnt (len (pckit-w1)))
+                         (wl (- (len (pckit-w2)) cnt))
+                         (d (pck-shift 8 (adt-tp-dirty-at cnt (nthcdr (* 2048 (floor cnt 2048)) (pckit-w1))
                                                           (adt-tp-zeros wl))))
                          (c2 (equal (pgs-x-abs-dirty (pgs-dirty-lpages d) pgs-mem) d)))
                     (mv-let (v1 fn-octets pgs-mem)
-                      (fn-pck-x-stage-rows (list *pckit-delta*) cnt fn-arena fn-octets pgs-mem)
+                      (fn-pck-x-stage-rows (list *pckit-delta*) cnt (pckit-base) (fn-pck-st-of (fn-pck-seed) (list *pckit-prefix*)) fn-arena fn-octets pgs-mem)
                       (declare (ignore v1))
                       (let* ((pgs-mem (pgs-x-commit-durable '(8) pgs-mem))
-                             (c3 (pcki-img *pckit-w2* pgs-mem)))
+                             (c3 (pcki-img (pckit-w2) pgs-mem)))
                         (mv (list c0 c1 c2 c3) pgs-mem fn-octets fn-arena))))))
               (mv out pgs-mem fn-octets)))
           (mv out pgs-mem)))
@@ -91,5 +106,8 @@
 
 (assert-event
  (and (fn-sccb-treep *pckit-prefix*) (fn-sccb-treep *pckit-delta*)
-      (< (len *pckit-w2*) 2048)
+      (fn-pck-sccb-listp (list *pckit-prefix* *pckit-delta*) (fn-pck-seed))
+      (not (equal (fn-pck-st-of (fn-pck-seed) (list *pckit-prefix* *pckit-delta*)) :bad))
+      (> (pckit-base) 0)
+      (< (len (pckit-w2)) 2048)
       (equal (pckit-run) (list t t t t))))

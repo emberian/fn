@@ -58,7 +58,8 @@
 
 (defthm fn-pck-publish-plan-commits-the-delta
   (implies (and (true-listp prefix) (true-listp delta)
-                (fn-pck-sccb-listp (append prefix delta))
+                (fn-pck-sccb-listp (append prefix delta) (fn-pck-seed))
+                (fn-pck-plen-okp (append prefix delta))
                 (equal (car (fn-pck-publish-plan configs prefix delta)) :commit))
            (and (equal (cadr (fn-pck-publish-plan configs prefix delta))
                        (fn-pck-dirty configs prefix delta))
@@ -67,7 +68,7 @@
                                         (cadr (fn-pck-publish-plan configs prefix delta)))
                        (fn-pck-pages configs (append prefix delta)))
                 (<= (len (cadr (fn-pck-publish-plan configs prefix delta)))
-                    (+ *fn-pck-root-pages* (fn-pck-delta-page-bound delta)))))
+                    (+ *fn-pck-root-pages* (fn-pck-delta-page-bound delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix))))))
   :hints (("Goal" :in-theory (disable fn-pck-dirty fn-pck-pages fn-pck-root-fitsp
                                       fn-pck-delta-page-bound)
            :use (fn-pck-dirty-is-the-delta fn-pck-dirty-bound))))
@@ -78,12 +79,12 @@
                        '(:refused :checkpoint-root-over-k))
                 (not (fn-pck-root-fitsp configs (append prefix delta))))))
 
-(defun fn-pck-publish-plan-at (cnt tail tree delta)
+(defun fn-pck-publish-plan-at (cnt tail tree delta base st)
   ; The plan from the host's summary of the store: the tape's word count and
   ; last partial page, the root tree (the live fold state's), the delta.
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-pck-root-fitsp-tree tree)
-      (list :commit (fn-pck-dirty-at cnt tail (fn-pck-root-pages-of-tree tree) delta))
+      (list :commit (fn-pck-dirty-at cnt tail (fn-pck-root-pages-of-tree tree) delta base st))
     (list :refused :checkpoint-root-over-k)))
 
 (defthm fn-pck-publish-plan-at-is-the-plan
@@ -93,9 +94,13 @@
     (implies (and (equal cnt (len w))
                   (equal tail (nthcdr (* *pgs-page-words* (floor (len w) *pgs-page-words*)) w))
                   (true-listp delta)
+                  (equal base (fn-pck-plen prefix 0))
+                  (equal st (fn-pck-st-of (fn-pck-seed) prefix))
                   (equal c (fn-sco-capture configs prefix))
-                  (equal tree (fn-pck-root-tree-of-capture (fn-sco-extend c configs delta))))
-             (equal (fn-pck-publish-plan-at cnt tail tree delta)
+                  (equal tree (fn-pck-root-tree-of-capture (fn-sco-extend c configs delta)
+                                                            (fn-pck-f configs (append prefix delta))
+                                                            (fn-pck-plen (append prefix delta) 0))))
+             (equal (fn-pck-publish-plan-at cnt tail tree delta base st)
                     (fn-pck-publish-plan configs prefix delta))))
   :hints (("Goal" :in-theory (e/d (fn-pck-publish-plan fn-pck-publish-plan-at fn-pck-root-pages-of fn-pck-root-fitsp)
                                   (fn-pck-dirty-at fn-pck-root-tree-of-capture fn-sco-extend fn-sco-capture
@@ -107,7 +112,7 @@
 ; -----------------------------------------------------------------------------
 ; 2. Open
 
-(defun fn-pck-open-raw-selection (filep disk r mode count k)
+(defun fn-pck-open-raw-selection (filep disk r mode file count k)
   ; Which open the page store and the counts allow, ignoring the log's start.
   ; The reasons are fn-sco-select's.
   (declare (xargs :guard t :verify-guards nil))
@@ -116,34 +121,34 @@
     (let ((o (pgs-open disk r mode)))
       (if (equal (car o) :ok)
           (fn-sco-select :ok
-                         (len (fn-sco-records (fn-pck-capture-of-pages (second (pgs-view o)))))
+                         (len (fn-sco-records (fn-pck-capture-of-pages (second (pgs-view o)) file)))
                          count k)
         (fn-sco-select :corrupt 0 count k)))))
 
-(defun fn-pck-open-selection (filep disk r mode count k log)
+(defun fn-pck-open-selection (filep disk r mode file count k log)
   ; Which open runs.  FILEP: the page file exists.  COUNT: the records the log
   ; has ever held.  LOG = (START . TAIL).  A checkpoint open that the log
   ; cannot serve (START past the checkpoint's S) is refused by name; a full
   ; replay is impossible then too, the log no longer holds records 0..START.
   (declare (xargs :guard t :verify-guards nil))
-  (let ((sel (fn-pck-open-raw-selection filep disk r mode count k)))
+  (let ((sel (fn-pck-open-raw-selection filep disk r mode file count k)))
     (if (and (equal (car sel) :checkpoint)
              (not (fn-pck-log-retains log (cadr sel))))
         (list :refused :log-past-checkpoint)
       sel)))
 
 (defthm fn-pck-open-selection-bounds-the-suffix
-  (implies (equal (car (fn-pck-open-selection filep disk r mode count k log)) :checkpoint)
+  (implies (equal (car (fn-pck-open-selection filep disk r mode file count k log)) :checkpoint)
            (and (not (equal filep nil)) (equal (car (pgs-open disk r mode)) :ok) (natp count)
-                (equal (cadr (fn-pck-open-selection filep disk r mode count k log))
-                       (len (fn-sco-records (fn-pck-capture-of-pages (second (pgs-view (pgs-open disk r mode)))))))
-                (<= (cadr (fn-pck-open-selection filep disk r mode count k log)) count)
-                (<= (- count (cadr (fn-pck-open-selection filep disk r mode count k log))) k)
-                (fn-pck-log-retains log (cadr (fn-pck-open-selection filep disk r mode count k log)))))
+                (equal (cadr (fn-pck-open-selection filep disk r mode file count k log))
+                       (len (fn-sco-records (fn-pck-capture-of-pages (second (pgs-view (pgs-open disk r mode))) file))))
+                (<= (cadr (fn-pck-open-selection filep disk r mode file count k log)) count)
+                (<= (- count (cadr (fn-pck-open-selection filep disk r mode file count k log))) k)
+                (fn-pck-log-retains log (cadr (fn-pck-open-selection filep disk r mode file count k log)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-pck-capture-of-pages pgs-open pgs-view fn-sco-records fn-pck-log-retains)
-           :expand ((fn-pck-open-selection filep disk r mode count k log)
-                    (fn-pck-open-raw-selection filep disk r mode count k))
+           :expand ((fn-pck-open-selection filep disk r mode file count k log)
+                    (fn-pck-open-raw-selection filep disk r mode file count k))
            :do-not-induct t)))
 
 ; -----------------------------------------------------------------------------
@@ -208,11 +213,16 @@
                   (or (equal sv (pgs-slot (third p) (pgs-root-slots r disk)))
                       (equal sv (fourth p))
                       (not (pgs-rec-valid sv)))
+                  (fn-pck-resolvesp prefix 0 file)
+                  (implies (equal (pgs-view (pgs-open (pgs-crash disk r (second p) keep (third p) sv) r mode))
+                                  (list (pgs-next-txid (pgs-root-slots r disk))
+                                        (fn-pck-pages configs (append prefix delta))))
+                           (fn-pck-resolvesp (append prefix delta) 0 file))
                   (consp log) (natp (car log)) (true-listp (cdr log))
                   (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log))
                   (<= (car log) floor))
              (equal (fn-pck-recover (pgs-crash disk r (second p) keep (third p) sv)
-                                    r mode log2 configs frontier max-conns)
+                                    r mode file log2 configs frontier max-conns)
                     (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -286,12 +296,16 @@
   (implies (equal (car (fn-pck-catalog-publish-plan h s)) :write)
            (and (fn-pck-carriedp h)
                 (equal (fn-pck-catalog-publish-plan h s)
-                       (list :write (fn-pck-cat-pages h) s)))))
+                       (list :write (fn-pck-cat-pages h) s))))
+  :hints (("Goal" :in-theory (union-theories '(fn-pck-catalog-publish-plan car-cons cdr-cons (:executable-counterpart equal))
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-pck-catalog-publish-plan-skips-only-an-overflow
   (implies (equal (car (fn-pck-catalog-publish-plan h s)) :skip)
            (and (not (fn-pck-carriedp h))
-                (equal (fn-pck-catalog-publish-plan h s) '(:skip :catalog-overflow)))))
+                (equal (fn-pck-catalog-publish-plan h s) '(:skip :catalog-overflow))))
+  :hints (("Goal" :in-theory (union-theories '(fn-pck-catalog-publish-plan car-cons cdr-cons (:executable-counterpart equal))
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-pck-catalog-skip-leaves-a-rebuilding-root
   ; The older root, written at an earlier S0 < S, is not adopted at S.
