@@ -186,7 +186,12 @@
          (cons :history-root (cons :refused (cdr w))))
         (t (list :history-root :uncertain))))
 
-(defthm fn-hroot-begin-word-refused-is-the-resizes-own
+; The theorems from here through the building-iff are -unfolds: each
+; selects a branch of the definition above and restates it, not a keystone.
+; The claim with teeth is the host composition (word -> status -> line, two
+; host calls, no single ACL2 function), witnessed by fn-hroot-begin-teeth-*
+; and books/history-root-status.lisp fn-hrs-teeth-*.
+(defthm fn-hroot-begin-word-refused-is-the-resizes-own-unfolds
   (implies (equal (car (fn-hroot-begin-resize l g)) :refused)
            (and (equal (fn-hroot-begin-word l g)
                        (list :refused (cadr (fn-hroot-begin-resize l g))
@@ -196,31 +201,31 @@
                        (list :history-root :refused (cadr (fn-hroot-begin-resize l g))
                              (fn-hroot-begin-ask) (fn-hroot-begin-room l g))))))
 
-(defthm fn-hroot-begin-word-funded-is-the-resizes-own
+(defthm fn-hroot-begin-word-funded-is-the-resizes-own-unfolds
   (implies (equal (car (fn-hroot-begin-resize l g)) :ok)
            (and (equal (fn-hroot-begin-word l g) :funded)
                 (equal (fn-hroot-begin-ledger l g) (cadr (fn-hroot-begin-resize l g)))
                 (equal (fn-hroot-refresh-status (fn-hroot-begin-word l g))
                        '(:history-root :building)))))
 
-(defthm fn-hroot-begin-word-refuses-exactly-when-the-resize-does
+(defthm fn-hroot-begin-word-refuses-exactly-when-the-resize-does-unfolds
   (equal (equal (fn-hroot-begin-word l g) :funded)
          (equal (car (fn-hroot-begin-resize l g)) :ok)))
 
 ; K3: every refused word is reported refused with its own reason and detail,
 ; never building; a word nobody recognises is :uncertain.
-(defthm fn-hroot-refresh-status-of-a-refusal
+(defthm fn-hroot-refresh-status-of-a-refusal-unfolds
   (implies (and (consp w) (equal (car w) :refused) (consp (cdr w)))
            (equal (fn-hroot-refresh-status w)
                   (list* :history-root :refused (cdr w)))))
 
-(defthm fn-hroot-refresh-status-of-a-refusal-is-not-building
+(defthm fn-hroot-refresh-status-of-a-refusal-is-not-building-unfolds
   (implies (and (consp w) (equal (car w) :refused) (consp (cdr w)))
            (and (equal (cadr (fn-hroot-refresh-status w)) :refused)
                 (not (equal (fn-hroot-refresh-status w) '(:history-root :building)))
                 (not (equal (fn-hroot-refresh-status w) '(:history-root :uncertain))))))
 
-(defthm fn-hroot-refresh-status-is-building-exactly-for-the-ok-words
+(defthm fn-hroot-refresh-status-is-building-exactly-for-the-ok-words-unfolds
   (iff (equal (fn-hroot-refresh-status w) '(:history-root :building))
          (or (equal w :funded)
              (and (consp w) (member-equal (car w) '(:building :installed)))))

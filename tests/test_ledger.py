@@ -759,8 +759,8 @@ class CitedSuspectAdviceTests(unittest.TestCase):
 
     def test_agents_md_says_the_same(self):
         text = " ".join((Path(__file__).resolve().parents[1] / "AGENTS.md").read_text().split())
-        self.assertIn("name those lemmas `-unfolds` or `-by-definition` and do not "
-                      "cite them as events", text)
+        self.assertIn("Lemmas that only unfold are named `-unfolds` or "
+                      "`-by-definition` and not cited as events", text)
 
 
 class RegistryTests(unittest.TestCase):
@@ -1589,22 +1589,27 @@ class DefkeystoneExpansionTests(unittest.TestCase):
         self.assertIn("fn-dkt-add-adds", names)
         # the weakened theorems are asked to FAIL, so they are not theorems
         self.assertNotIn("fn-dkt-add-adds-without-natp", names)
-        # must-fail is opt-in (:must-fail t): only fn-dkt-add-adds-again's
-        # weakened and mutant statements are registered and paired
+        # must-fail is opt-in: the adder and multiple-value examples
+        # register their weakened and mutant statements.
         self.assertEqual(book.paired_must_fails,
                          {"fn-dkt-add-adds-again-without-natp",
                           "fn-dkt-add-adds-again-without-small",
-                          "fn-dkt-add-adds-again-mutant-weaker"})
-        # three generated must-fails, nine literal ones around refused forms
-        # (the ninth: a :derived-by whose V does not call the route twin)
-        self.assertEqual(book.must_fails, 12)
+                          "fn-dkt-add-adds-again-mutant-weaker",
+                          "fn-dkt-two-first-is-x-without-nat",
+                          "fn-dkt-two-first-is-x-mutant-second-output"})
+        # Five generated checks plus eighteen refused source forms (the
+        # malformed-scope and two-stobj-builder fixtures of 83d922dcb).
+        self.assertEqual(book.must_fails, 23)
         # a defteeth's bound is a theorem of its book, from the claim
         self.assertIn("fn-dkt-add-adds-source-visits-steps", names)
         # a restating defkeystone declares the teeth of the REGISTRY keystone
         # it restates (fn-dkt-add-adds-source), as the defteeth does
         self.assertEqual(set(book.teeth_declared),
                          {"fn-dkt-add-adds-source", "fn-dkt-add-adds-again",
-                          "fn-dkt-walk-of-true-list"})
+                          "fn-dkt-walk-of-true-list", "fn-dkt-two-first-is-x",
+                          "fn-dkt-assumed-one", "fn-dkt-scoped",
+                          "fn-dkt-cell-positive", "fn-dkt-two-cells",
+                          "fn-dkt-two-cells-built", "fn-dkt-snapshot"})
         # a bound :derived-by a def-cost row is a theorem of its book too
         self.assertIn("fn-dkt-walk-of-true-list-visits-steps", names)
         self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})
@@ -1937,6 +1942,38 @@ class CursorBatchSourceTests(unittest.TestCase):
             if text.endswith(' :bogus t'):
                 form += [ledger.Sym(':bogus'), ledger.Sym('t')]
             self.assertEqual(ledger.generated_expansion(form), [])
+
+
+class DefLoopRunMirrorTests(unittest.TestCase):
+    def test_stobj_refusal_threads_store_but_retains_accumulator(self):
+        form = ledger.read_forms("""(def-loop/run walk (xs acc mem)
+          :acc acc :st mem :quantum 3 :row (row (car xs) acc mem)
+          :success :ok :guard (natp acc) :end-status (if xs :bad :ok))""")[0]
+        events = ledger.generated_expansion(form)
+        self.assertEqual([str(e[1]) for e in events],
+                         ['walk-all', 'walk-run', 'walk-drive', 'walk-drive-is-all'])
+        self.assertIn('(mv dl-v xs acc mem)', ledger.source_text(events[1]))
+        self.assertIn('(mv-let (dl-v dl-a2 mem)', ledger.source_text(events[1]))
+        self.assertIn('(walk-drive (1- dl-fuel) dl-rest dl-a2 mem)',
+                      ledger.source_text(events[2]))
+        self.assertEqual(events[3][2], ledger.read_forms(
+            '(equal (walk-drive (+ 1 (len xs)) xs acc mem) (walk-all xs acc mem))')[0])
+
+    def test_pure_defaults_and_nil_over(self):
+        forms = ledger.read_forms('(def-loop/run walk (xs acc) :over nil :acc acc '
+                                  ':quantum 1 :row (row (car xs) acc))')
+        events = ledger.generated_expansion(forms[0])
+        self.assertIn('(mv :done nil acc)', ledger.source_text(events[1]))
+        self.assertNotIn(':stobjs', ledger.source_text(events))
+        self.assertIn('(walk-run 1 xs acc)', ledger.source_text(events[2]))
+
+    def test_missing_or_nil_terms_and_reserved_formals(self):
+        base = '(def-loop/run walk (xs acc) :acc acc :quantum 1 :row (row xs acc))'
+        for bad in (base.replace(':quantum 1', ':quantum nil'),
+                    base.replace(':row (row xs acc)', ':row nil'),
+                    base.replace(':acc acc', ':acc xs'),
+                    base.replace('(xs acc)', '(xs acc dl-k)', 1)):
+            self.assertEqual(ledger.generated_expansion(ledger.read_forms(bad)[0]), [])
 
 
 if __name__ == "__main__":

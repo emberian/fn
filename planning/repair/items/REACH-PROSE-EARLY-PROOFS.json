@@ -13,7 +13,8 @@
   "PRF-008: fn-checkpoint-admissible-capture-value-is-valid (books/checkpoint.lisp; subjects fn-checkpoint-capture, fn-checkpoint-capture-value, fn-checkpointp)",
   "PRF-014: fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation (books/owner-served-carried.lisp; subjects fn-ocfg-read-tls-prefix, fn-scar-ocfg-read-tls-prefix)",
   "PRF-016: fn-wm-match-codepoints-work-cost-bound (books/wildmat-work.lisp; subjects fn-wm-match-codepoints-work, fn-wm-rightmost-work-budget, fn-wm-work-cost)",
-  "PRF-037: fn-cpc-valid-is-capture-value (books/checkpoint-codec.lisp; subjects fn-checkpoint-capture, fn-checkpoint-capture-value, fn-checkpoint-frontier)"
+  "PRF-037: fn-cpc-valid-is-capture-value (books/checkpoint-codec.lisp; subjects fn-checkpoint-capture, fn-checkpoint-capture-value, fn-checkpoint-frontier)",
+  "World reach gate at 87daf18f5 (first --world --strict run, N; build/coordinator/lanedumps/n-world34-reach.log): 4 of this item's events recur as NEW orphans with no baseline entry. Coordinator rule 2026-10-08: no baseline entry; the reach step stays red by design while this item owns them; each event's disposition says host code or unreachable-in-composition."
  ],
- "updated": "2026-10-07T14:30:00Z"
+ "updated": "2026-10-08T07:30:00Z"
 }

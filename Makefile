@@ -660,6 +660,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cold-read-reservation \
 	tests/acl2/cold-read-reservation-tests \
 	books/page-read-budget-growth \
+	books/page-read-ledger-rowsum \
+	tests/acl2/page-read-ledger-rowsum-tests \
 	tests/acl2/page-read-budget-growth-tests \
 	books/page-read-startup \
 	books/peer-flight-reservation \
@@ -2441,8 +2443,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-image-builder-tests \
 	tests/acl2/history-image-binding-tests \
 	tests/acl2/history-image-campaign-tests \
+	books/image-world-part-1 \
+	books/image-world-part-2 \
+	books/image-world-part-3 \
 	books/image-world \
+	books/image-world-dtn-part-1 \
+	books/image-world-dtn-part-2 \
+	books/image-world-dtn-part-3 \
 	books/image-world-dtn \
+	books/image-world-store-test-part-1 \
+	books/image-world-store-test-part-2 \
 	books/image-world-store-test \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
@@ -2713,6 +2723,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_unhooked
 	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
+	@$(CHECK_STEP) $(PYTHON) tools/harness_check.py --lint test-stubs --quiet
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_proof_repl_smoke
 	@$(CHECK_EXECUTE)
 
@@ -3081,6 +3092,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_carried_entries
 	@$(CHECK_STEP) $(PYTHON) tools/cost_obligations.py --check
 # What the certified world says about each host-called entry (lane
 # coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump

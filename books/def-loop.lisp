@@ -884,6 +884,16 @@
        ((lambda ,svars (declare (ignorable ,@svars)) ,term)
         ,@(strip-cdrs (fn-dl-sp-parts svars 0))))))
 
+(defun fn-dl-fold-substitution (name formals svars st loop done row next fail let m)
+  (declare (xargs :mode :program))
+  `((fn-dl-fo-done ,(fn-dl-sp-lam svars done))
+                          (fn-dl-fo-step ,(fn-dl-fo-lam svars st (fn-dl-proof-let let row)))
+                          (fn-dl-fo-next ,(fn-dl-sp-lam svars (fn-dl-proof-let let (fn-dl-sp-tuple svars next))))
+                          (fn-dl-fo-m ,(fn-dl-sp-lam svars m))
+                          (fn-dl-fo-fail (lambda () ,fail))
+                          (fn-dl-fold ,(fn-dl-fo-lam svars st `(,name ,@formals)))
+                          (fn-dl-fold-loop ,(fn-dl-fo-loop-lam svars st loop formals))))
+
 (defun fn-dl-fold-events (name formals svars st stobjp done row elt next fail let
                                guard guard-hints guard-theory acc loop measure progress-hints)
   (declare (xargs :mode :program))
@@ -942,13 +952,7 @@
                   :use ((:instance
                          (:functional-instance
                           fn-dl-fold-loop-is-revappend
-                          (fn-dl-fo-done ,(fn-dl-sp-lam svars done))
-                          (fn-dl-fo-step ,(fn-dl-fo-lam svars st (fn-dl-proof-let let row)))
-                          (fn-dl-fo-next ,(fn-dl-sp-lam svars (fn-dl-proof-let let (fn-dl-sp-tuple svars next))))
-                          (fn-dl-fo-m ,(fn-dl-sp-lam svars m))
-                          (fn-dl-fo-fail (lambda () ,fail))
-                          (fn-dl-fold ,(fn-dl-fo-lam svars st `(,name ,@formals)))
-                          (fn-dl-fold-loop ,(fn-dl-fo-loop-lam svars st loop formals)))
+                          ,@(fn-dl-fold-substitution name formals svars st loop done row next fail let m))
                          (dl-s ,(fn-dl-sp-tuple svars svars)) (dl-acc ,acc) (dl-st ,st)))
                   :expand ,calls
                   :in-theory (union-theories '(,name ,loop car-cons cdr-cons)
@@ -966,6 +970,10 @@
                                             (union-theories (theory 'minimal-theory)
                                                             (executable-counterpart-theory :here))))))
       (in-theory (disable ,loop))
+      (table fn-teeth-instances ',name
+             '(:lemma fn-dl-fold-loop-is-revappend :functions (,name ,loop)
+               :substitution
+               ,(fn-dl-fold-substitution name formals svars st loop done row next fail let m)))
       (table fn-generated ',name '(:def-loop :shape :fold :loop ,loop :bridge ,bridge)))))
 
 
@@ -1092,6 +1100,11 @@
                                             (union-theories (theory 'minimal-theory)
                                                             (executable-counterpart-theory :here))))))
       (in-theory (disable ,loop))
+      (table fn-teeth-instances ',name
+             '(:lemma fn-dl-thread-loop-is-revappend :functions (,name ,loop)
+               :substitution
+               ,(cddr (cadr (fn-dl-th-inst 'fn-dl-thread-loop-is-revappend name formals xs st acc
+                                           loop done rows-let next-let make st-of rows-of m)))))
       (table fn-generated ',name '(:def-loop :shape :thread :loop ,loop :bridge ,bridge)))))
 
 ; -----------------------------------------------------------------------------
