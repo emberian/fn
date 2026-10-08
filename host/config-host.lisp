@@ -107,3 +107,7 @@
      (if (equal (fn-native-admin-clock-status clock) :accepted)
          (fn-native-admin-clock-stamp clock)
        *fn-cfg-default-stamp*))))
+
+(definterface fn-cfg-host-initial-octets-at
+  :class ::program
+  :kinds ((name-octets-list fn-octet-list-listp)))

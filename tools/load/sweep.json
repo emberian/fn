@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "queue_timeout": 172800,
+  "busy_sample_seconds": 5,
+  "busy_max": 4,
+  "retry_seconds": 240,
+  "attempts": 8,
+  "lanes": [
+    {
+      "name": "persvati",
+      "box": "persvati",
+      "memory": "16G",
+      "cells": [
+        {
+          "key": "w2-r1",
+          "cell": "W2@10k/R1",
+          "timeout": 3000
+        },
+        {
+          "key": "w2-r4",
+          "cell": "W2@10k/R4",
+          "timeout": 3000
+        },
+        {
+          "key": "w2-r16",
+          "cell": "W2@10k/R16",
+          "timeout": 3000
+        },
+        {
+          "key": "w2-r31",
+          "cell": "W2@10k/R31",
+          "timeout": 3000
+        },
+        {
+          "key": "tcmd-1k",
+          "cell": "T-CMD@1k",
+          "timeout": 2400
+        },
+        {
+          "key": "tcmd-10k",
+          "cell": "T-CMD@10k",
+          "timeout": 2400
+        },
+        {
+          "key": "tcmd-25k",
+          "cell": "T-CMD@25k",
+          "timeout": 2400
+        },
+        {
+          "key": "tcmd-50k",
+          "cell": "T-CMD@50k",
+          "timeout": 3000
+        },
+        {
+          "key": "w1-small",
+          "cell": "W1/small",
+          "timeout": 3000,
+          "work": "nvme"
+        },
+        {
+          "key": "w1-default",
+          "cell": "W1/default",
+          "timeout": 3000,
+          "work": "nvme"
+        },
+        {
+          "key": "w14",
+          "cell": "W14",
+          "timeout": 3000
+        },
+        {
+          "key": "w8s-10k",
+          "cell": "W8S@10k",
+          "timeout": 5400
+        },
+        {
+          "key": "w8s-50k",
+          "cell": "W8S@50k",
+          "timeout": 5400
+        },
+        {
+          "key": "tops",
+          "cell": "T-OPS",
+          "timeout": 7200,
+          "image": "fn-host-developer"
+        },
+        {
+          "key": "w7",
+          "cell": "W7",
+          "timeout": 14400,
+          "memory": "24G",
+          "runner": "w7_extent",
+          "readers": [
+            1,
+            16
+          ],
+          "runs": 3,
+          "mode": "full"
+        },
+        {
+          "key": "w6q-1k",
+          "cell": "W6q@1k",
+          "timeout": 7200
+        },
+        {
+          "key": "w6q-5k",
+          "cell": "W6q@5k",
+          "timeout": 7200
+        },
+        {
+          "key": "w6q-10k",
+          "cell": "W6q@10k",
+          "timeout": 7200
+        }
+      ]
+    },
+    {
+      "name": "hbox-16a",
+      "box": "hbox",
+      "memory": "16G",
+      "cells": [
+        {
+          "key": "w13",
+          "cell": "W13",
+          "timeout": 3000,
+          "arms": "A,B"
+        },
+        {
+          "key": "f2s",
+          "cell": "F2S",
+          "timeout": 14400
+        },
+        {
+          "key": "f6",
+          "cell": "F6",
+          "timeout": 7200
+        }
+      ]
+    },
+    {
+      "name": "hbox-16b",
+      "box": "hbox",
+      "memory": "16G",
+      "cells": [
+        {
+          "key": "fresh",
+          "cell": "L-FRESH",
+          "timeout": 3000
+        },
+        {
+          "key": "f5",
+          "cell": "F5",
+          "timeout": 7200
+        },
+        {
+          "key": "capacity",
+          "cell": "conn-capacity",
+          "timeout": 7200
+        }
+      ]
+    },
+    {
+      "name": "hbox-32",
+      "box": "hbox",
+      "memory": "32G",
+      "cells": [
+        {
+          "key": "w15",
+          "cell": "W15",
+          "timeout": 21600,
+          "image": "fn-host-developer",
+          "sweep": [
+            "1k",
+            "10k",
+            "25k",
+            "50k",
+            "100k"
+          ]
+        },
+        {
+          "key": "f3",
+          "cell": "F3",
+          "timeout": 14400
+        }
+      ]
+    }
+  ],
+  "w7_bars": [
+    {
+      "id": "W7-P99",
+      "quantity": "worst ARTICLE p99 ratio R16/R1 (three runs each)",
+      "cell": "W7",
+      "workload": "extent-cache",
+      "time": true,
+      "source": "tools/load/w7_extent.py evaluate",
+      "checks": [
+        {
+          "metric": "extent.p99_ratio",
+          "cmp": "le",
+          "threshold": 2
+        }
+      ]
+    },
+    {
+      "id": "W7-HIT",
+      "quantity": "extent hit lower bound does not fall from R1 to R16 (tolerance 0.005)",
+      "cell": "W7",
+      "workload": "extent-cache",
+      "source": "tools/load/w7_extent.py evaluate",
+      "checks": [
+        {
+          "metric": "extent.hit_non_decreasing",
+          "cmp": "eq",
+          "threshold": 1
+        }
+      ]
+    }
+  ]
+}

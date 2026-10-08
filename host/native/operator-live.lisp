@@ -308,6 +308,7 @@ profile bounds the credentials (max-credentials, D27, PRF-102)."
        :socket-present #'fnn-operator-live-socket-present
        :live-status #'fnn-control-live-status
        :status-tail #'fnn-operator-live-status-tail
+       :profile #'fnn-live-profile-read
        :admin-observe #'fnn-operator-live-admin-observe
        :admin #'fnn-operator-live-admin
        :request #'fnn-operator-live-request))

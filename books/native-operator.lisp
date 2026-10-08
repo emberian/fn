@@ -7,12 +7,8 @@
 ; may not supply defaults, select a command, or decide an outcome.
 
 (in-package "ACL2")
-(include-book "native-config")
-(include-book "def-loop")
-(include-book "native-config-show")
 (include-book "native-config-paths")
 (include-book "native-admin")
-(include-book "accounts")
 (include-book "native-auth-admin")
 (include-book "native-retire")
 (include-book "tls-self-signed")
@@ -20,6 +16,8 @@
 (include-book "outcome-class")
 ; PKT-209: `control log' and `control evidence MESSAGE-ID'.
 (include-book "control-evidence-grammar")
+; The "Theory" warning check costs about 20 ms on every :in-theory hint in this world.
+(local (set-inhibit-warnings "Theory"))
 
 ; PKT-867 (D27): no word count and no word length.  The kernel admits the
 ; argv (its ARG_MAX); the parse is one pass over it, and every field a word
@@ -351,8 +349,39 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; LARGEST T or NIL, REST the other words in order; :bad for a repeated word
 ; or a budget that is not a positive decimal.  Every other flag carries one
 ; value (the profile grammar), so a flag's value is never read as a word here.
+(local
+ (deftheory fn-nop-parse-init-sizing-hint-rules
+  (union-theories (theory 'minimal-theory)
+      '((:compound-recognizer natp-compound-recognizer)
+       (:compound-recognizer posp-compound-recognizer)
+       (:definition atom) (:definition char) (:definition fix)
+       (:definition fn-native-admin-decimal-value)
+       (:definition fn-native-admin-decimal-value-aux)
+       (:definition fn-native-admin-digit-value)
+       (:definition fn-nop-flag-wordp)
+       (:definition fn-nop-profile-decimal) (:definition len)
+       (:definition length) (:definition natp) (:definition nfix)
+       (:definition not) (:definition nth) (:definition o-finp)
+       (:definition o-p) (:definition o<) (:definition posp)
+       (:definition synp) (:elim car-cdr-elim)
+       (:executable-counterpart <) (:executable-counterpart binary-*)
+       (:executable-counterpart binary-+)
+       (:executable-counterpart consp)
+       (:executable-counterpart equal) (:executable-counterpart if)
+       (:executable-counterpart len) (:executable-counterpart natp)
+       (:executable-counterpart nfix) (:executable-counterpart not)
+       (:executable-counterpart posp)
+       (:executable-counterpart tau-system)
+       (:executable-counterpart zp) (:rewrite commutativity-of-+)
+       (:rewrite fold-consts-in-+) (:rewrite unicity-of-0)
+       (:type-prescription fn-native-admin-decimal-value-aux)
+       (:type-prescription len)))))
+
 (defun fn-nop-parse-init-sizing (words budget largest)
-  (declare (xargs :guard t :measure (len words)))
+  (declare (xargs :guard t :measure (len words)
+                  :hints (("Goal" :in-theory (theory (quote fn-nop-parse-init-sizing-hint-rules))))
+                  :guard-hints (("Goal" :in-theory (union-theories (theory (quote fn-nop-parse-init-sizing-hint-rules))
+                                  (quote ((:definition fn-nop-parse-init-sizing) (:induction fn-nop-parse-init-sizing) (:type-prescription fn-nop-parse-init-sizing))))))))
   (cond ((atom words) (list budget largest nil))
         ((equal (car words) "--budget")
          (let ((mb (if (consp (cdr words)) (fn-nop-profile-decimal (cadr words)) nil)))
@@ -539,16 +568,26 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
               (fn-bs-profile-max-group-name-octets
                (fn-bs-profile-resolve (caddr (nth 4 result)) nil)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-nop-parse-init-plain fn-nop-result
-                                   fn-nop-refused fn-nop-usage
-                                   fn-native-operator-result-status)
-                                  (fn-nop-group-names-within
-                                   fn-bs-profile-max-group-name-octets
-                                   fn-bs-profile-resolve
-                                   fn-nop-parse-profile-flags
-                                   fn-nop-parse-init-groups
-                                   fn-nop-some-flag-wordp
-                                   fn-native-admin-some-group-name-reservedp)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-nop-parse-init-plain)
+                              (:definition fn-nop-refused) (:definition fn-nop-result)
+                              (:definition fn-nop-usage) (:definition not)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-nop-parse-init-groups)
+                              (:executable-counterpart not) (:rewrite car-cons)
+                              (:rewrite cdr-cons) (:rewrite nth-0-cons) (:rewrite nth-add1)
+                              (:type-prescription fn-bs-profile-resolve)
+                              (:type-prescription fn-native-admin-some-group-name-reservedp)
+                              (:type-prescription fn-nop-group-names-within)
+                              (:type-prescription fn-nop-parse-init-request)
+                              (:type-prescription fn-nop-parse-init-sizing)
+                              (:type-prescription fn-nop-refused)
+                              (:type-prescription fn-nop-result)
+                              (:type-prescription fn-nop-some-flag-wordp)
+                              (:type-prescription fn-nop-usage))))))
 
 ;; PKT-708 (decided by the coordinator 2026-09-27): a mission's node files its
 ;; readers' own cancels, so its `init' also serves control.cancel, the group
@@ -632,8 +671,11 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
             (member-equal "control.cancel"
                           (fn-nop-parse-init-groups (fn-nop-with-cancel-group w) nil)))
    :hints (("Goal" :cases ((consp w))
-            :in-theory (disable fn-nop-parse-init-groups-keeps-its-words
-                                fn-nop-with-cancel-group-has-it)
+            :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition not) (:executable-counterpart equal)
+                              (:executable-counterpart fn-nop-parse-init-groups)
+                              (:executable-counterpart member-equal)
+                              (:rewrite fn-nop-with-cancel-group-of-an-atom)))
             :use ((:instance fn-nop-parse-init-groups-keeps-its-words
                              (x "control.cancel")
                              (words (fn-nop-with-cancel-group w)) (acc nil))
@@ -650,12 +692,23 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                   (equal (fn-native-operator-result-status result) :accepted))
              (member-equal "control.cancel" (cadr (nth 4 result)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-nop-result fn-nop-refused fn-nop-usage
-                                   fn-native-operator-result-status)
-                                  (fn-native-mission-request
-                                   fn-native-mission-default-groups
-                                   fn-nop-some-flag-wordp
-                                   fn-native-admin-some-group-name-reservedp)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-config-ops-mission)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-nop-parse-init)
+                              (:definition fn-nop-refused) (:definition fn-nop-result)
+                              (:definition fn-nop-usage) (:definition not)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart not) (:rewrite car-cons)
+                              (:rewrite cdr-cons) (:rewrite fn-nop-parse-with-cancel-keeps-it)
+                              (:rewrite nth-0-cons) (:rewrite nth-add1)
+                              (:type-prescription fn-native-admin-some-group-name-reservedp)
+                              (:type-prescription fn-native-mission-request)
+                              (:type-prescription fn-nop-parse-init-sizing)
+                              (:type-prescription fn-nop-refused)
+                              (:type-prescription fn-nop-result)
+                              (:type-prescription fn-nop-some-flag-wordp)
+                              (:type-prescription fn-nop-usage))))))
 
 ;  The developer image's `store ROOT init [PROFILE-FLAGS] [GROUP ...]'
 ; (host/native/io.lisp fnn-command-developer-init): the operator's profile
@@ -682,8 +735,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 (defthm fn-nop-developer-init-groups-are-not-flags-by-definition
   (implies (equal (car (fn-nop-developer-init words)) :init)
            (not (fn-nop-some-flag-wordp (cadr (fn-nop-developer-init words)))))
-  :hints (("Goal" :in-theory (disable fn-nop-parse-profile-flags
-                                      fn-bs-profile-resolve))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-nop-developer-init)
+                              (:definition not) (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-nop-some-flag-wordp)
+                              (:executable-counterpart not) (:rewrite car-cons)
+                              (:rewrite cdr-cons) (:type-prescription fn-bs-profile-resolve)
+                              (:type-prescription fn-nop-parse-profile-flags))))))
 
 ; `store export DIR' and `store import DIR [--FIELD N ...]' (D34, fresh
 ; deploys; books/store-export.lisp): the archive of a store's committed
@@ -948,8 +1008,32 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 ; Row Q10a: `tls self-signed NAME [NAME ...] [--days N]' (NAMES-REV newest
 ; first; DAYS NIL until given).
+(local
+ (deftheory fn-nop-self-signed-words-hint-rules
+  (union-theories (theory 'minimal-theory)
+      '((:compound-recognizer natp-compound-recognizer)
+       (:definition atom) (:definition fix)
+       (:definition fn-native-admin-decimal-value)
+       (:definition fn-native-admin-decimal-value-aux)
+       (:definition fn-native-admin-digit-value)
+       (:definition fn-nop-profile-decimal) (:definition len)
+       (:definition natp) (:definition nfix) (:definition not)
+       (:definition null) (:definition o-finp) (:definition o-p)
+       (:definition o<) (:definition synp)
+       (:executable-counterpart binary-*)
+       (:executable-counterpart binary-+)
+       (:executable-counterpart consp) (:executable-counterpart nfix)
+       (:executable-counterpart tau-system)
+       (:rewrite commutativity-of-+) (:rewrite fold-consts-in-+)
+       (:rewrite unicity-of-0)
+       (:type-prescription fn-native-admin-decimal-value-aux)
+       (:type-prescription len)))))
+
 (defun fn-nop-self-signed-words (words names-rev days)
-  (declare (xargs :guard t :measure (len words)))
+  (declare (xargs :guard t :measure (len words)
+                  :hints (("Goal" :in-theory (theory (quote fn-nop-self-signed-words-hint-rules))))
+                  :guard-hints (("Goal" :in-theory (union-theories (theory (quote fn-nop-self-signed-words-hint-rules))
+                                  (quote ()))))))
   (cond ((atom words) (list (fn-ncfg-reverse names-rev) days))
         ((equal (car words) "--days")
          (if (and (consp (cdr words)) (null days) (fn-nop-profile-decimal (cadr words)))
@@ -1301,8 +1385,32 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
 ; octets; the node directory is everything before its last `/'.
 ; Row Q10a: `--tls-port P' and each `--tls-name NAME' (NAMES-REV, newest
 ; first).
+(local
+ (deftheory fn-nop-mission-options-hint-rules
+  (union-theories (theory 'minimal-theory)
+      '((:compound-recognizer natp-compound-recognizer)
+       (:definition atom) (:definition fix)
+       (:definition fn-native-admin-decimal-value)
+       (:definition fn-native-admin-decimal-value-aux)
+       (:definition fn-native-admin-digit-value)
+       (:definition fn-nop-profile-decimal) (:definition len)
+       (:definition natp) (:definition nfix) (:definition not)
+       (:definition o-finp) (:definition o-p) (:definition o<)
+       (:definition synp) (:executable-counterpart binary-*)
+       (:executable-counterpart binary-+)
+       (:executable-counterpart consp)
+       (:executable-counterpart equal) (:executable-counterpart nfix)
+       (:executable-counterpart tau-system)
+       (:rewrite commutativity-of-+) (:rewrite fold-consts-in-+)
+       (:rewrite unicity-of-0)
+       (:type-prescription fn-native-admin-decimal-value-aux)
+       (:type-prescription len)))))
+
 (defun fn-nop-mission-options (words host port tls-port names-rev)
-  (declare (xargs :guard t :measure (len words)))
+  (declare (xargs :guard t :measure (len words)
+                  :hints (("Goal" :in-theory (theory (quote fn-nop-mission-options-hint-rules))))
+                  :guard-hints (("Goal" :in-theory (union-theories (theory (quote fn-nop-mission-options-hint-rules))
+                                  (quote ()))))))
   (cond ((atom words) (list host port tls-port (fn-ncfg-reverse names-rev)))
         ((and (equal (car words) "--host") (consp (cdr words)) (stringp (cadr words)))
          (fn-nop-mission-options (cddr words) (cadr words) port tls-port names-rev))
@@ -1549,12 +1657,19 @@ is installed into the owner for both served and control submission."
                   (natp port) (< 0 port) (<= port 65535)
                   (not (equal port
                               (fn-native-operator-result-run-listener-port result))))))
-  :hints (("Goal" :in-theory (e/d (fn-ncfg-tls-port-okp
-                                   fn-native-operator-result-run-listener-port)
-                                  (fn-native-operator-result-run-tls-cert-octets
-                                   fn-native-operator-result-run-tls-key-octets
-                                   fn-native-operator-result-run-oncep
-                                   fn-native-operator-result-run-planp))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:compound-recognizer natp-compound-recognizer)
+                              (:definition fn-native-config-listener-port)
+                              (:definition fn-native-config-listener-tls-port)
+                              (:definition fn-native-config-tls-cert)
+                              (:definition fn-native-operator-result-config)
+                              (:definition fn-native-operator-result-run-implicit-tls-port)
+                              (:definition fn-native-operator-result-run-listener-port)
+                              (:definition fn-ncfg-tls-port-okp) (:definition natp)
+                              (:executable-counterpart not)
+                              (:type-prescription fn-native-operator-result-run-planp)
+                              (:type-prescription fn-native-operator-result-run-tls-cert-octets)
+                              (:type-prescription fn-native-operator-result-run-tls-key-octets)))))
   :rule-classes nil)
 
 ; PRF-211 (NNT-043): the owner a run installs is bounded one past the width
@@ -1903,7 +2018,32 @@ formed and the operator asked for something the node declined to do."
                    (fn-native-auth-result-config
                     (fn-native-auth-load octets presentp requiredp protected-onlyp
                                          tls-availablep max-credentials)))))
-  :hints (("Goal" :in-theory (e/d (fn-native-auth-load) (fn-auth-configp fn-auth-make-config fn-native-auth-parse-lines fn-ncfg-lines))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:compound-recognizer booleanp-compound-recognizer)
+                              (:definition fn-native-auth-load)
+                              (:definition fn-native-auth-max-lines)
+                              (:definition fn-native-auth-max-octets)
+                              (:definition fn-native-auth-result-config)
+                              (:definition fn-native-auth-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-nop-auth-file-creds)
+                              (:definition nfix) (:definition not)
+                              (:executable-counterpart binary-*)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cons) (:executable-counterpart equal)
+                              (:executable-counterpart fn-auth-config-creds)
+                              (:executable-counterpart fn-auth-configp)
+                              (:executable-counterpart fn-auth-make-config)
+                              (:executable-counterpart fn-native-auth-result-config)
+                              (:executable-counterpart fn-native-auth-result-status)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart if) (:executable-counterpart not)
+                              (:rewrite car-cons) (:rewrite cdr-cons) (:rewrite distributivity)
+                              (:rewrite fn-auth-config-creds-of-fn-auth-make-config)
+                              (:rewrite fn-nop-auth-configp-of-make-config)
+                              (:type-prescription fn-auth-cred-listp)
+                              (:type-prescription fn-native-auth-parse-lines)
+                              (:type-prescription fn-ncfg-ascii-octetsp)))))
   :rule-classes nil)
 
 (local (defthm fn-nop-find-cred-of-append
@@ -1915,14 +2055,26 @@ formed and the operator asked for something the node declined to do."
 (local (defthm fn-nop-account-cred-principal-is-its-names
   (equal (fn-auth-cred-principal (fn-auth-account-cred row))
          (fn-acct-local-principal (fn-auth-cred-name (fn-auth-account-cred row))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-account-cred) (fn-acct-local-principal))))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-acct-text-verifier)
+                              (:definition fn-auth-account-cred)
+                              (:definition fn-record-string-octets) (:definition hide)
+                              (:rewrite fn-auth-cred-name-of-fn-auth-make-cred)
+                              (:rewrite fn-auth-cred-principal-of-fn-auth-make-cred)))))))
 (local (defthm fn-nop-find-cred-of-account-creds
   (implies (fn-auth-find-cred name (fn-auth-account-creds rows))
            (equal (fn-auth-cred-principal
                    (fn-auth-find-cred name (fn-auth-account-creds rows)))
                   (fn-acct-local-principal name)))
-  :hints (("Goal" :in-theory (e/d (fn-auth-find-cred fn-auth-account-creds)
-                                  (fn-auth-credp fn-auth-account-cred fn-acct-local-principal))))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-auth-account-creds)
+                              (:definition fn-auth-find-cred) (:definition not)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:induction fn-auth-account-creds) (:rewrite car-cons)
+                              (:rewrite cdr-cons)
+                              (:rewrite fn-nop-account-cred-principal-is-its-names)
+                              (:type-prescription fn-auth-account-creds)
+                              (:type-prescription fn-auth-credp)))))))
 
 (local (defthm fn-nop-configp-has-a-cred-list
   (implies (fn-auth-configp x) (fn-auth-cred-listp (fn-auth-config-creds x)))
@@ -2238,21 +2390,42 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         (fn-native-operator-run config argv))
                        :accepted)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-parse-command fn-nop-parse-init
-                                   fn-nop-parse-init-plain
-                                   fn-nop-usage fn-nop-refused fn-nop-result
-                                   fn-native-operator-result-status)
-                                  (fn-native-admin-group-name-reservedp
-                                   fn-native-admin-some-group-name-reservedp
-                                   fn-nop-parse-init-groups fn-nop-argument-texts
-                                   fn-nop-parse-profile-flags
-                                   fn-bs-profile-resolve
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-bs-pf) (:definition fn-bs-profile-field)
+                              (:definition fn-bs-profile-max-group-name-octets)
+                              (:definition fn-native-config-ops-mission)
+                              (:definition fn-native-mission-request)
+                              (:definition fn-native-operator-command-preflight)
+                              (:definition fn-native-operator-preflight-needs-config-p)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-native-operator-run) (:definition fn-ncfg-first)
+                              (:definition fn-ncfg-rest) (:definition fn-ncfg-second)
+                              (:definition fn-ncfg-third) (:definition fn-nop-parse-command)
+                              (:definition fn-nop-parse-init)
+                              (:definition fn-nop-parse-init-plain) (:definition fn-nop-refused)
+                              (:definition fn-nop-result) (:definition fn-nop-some-flag-wordp)
+                              (:definition fn-nop-usage) (:definition not)
+                              (:executable-counterpart cons) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-native-config-operator-availablep)
+                              (:executable-counterpart fn-native-config-ops-mission)
+                              (:executable-counterpart fn-native-mission-default-groups)
+                              (:executable-counterpart fn-nop-parse-init-groups)
+                              (:executable-counterpart fn-nop-usage)
+                              (:executable-counterpart fn-nop-with-cancel-group)
+                              (:executable-counterpart not) (:rewrite car-cons)
+                              (:rewrite fn-nop-some-reserved-when-member)
+                              (:type-prescription fn-native-admin-group-name-reservedp)
+                              (:type-prescription fn-native-config-load)
+                              (:type-prescription fn-nop-argument-texts)
+                              (:type-prescription fn-nop-parse-command)
+                              (:type-prescription fn-nop-parse-init-request)
+                              (:type-prescription fn-nop-parse-init-sizing)
+                              (:type-prescription fn-nop-refused)
+                              (:type-prescription fn-nop-result)
+                              (:type-prescription fn-nop-usage)
+                              (:type-prescription member-equal))))))
 
 ; KEYSTONE (M5, the operator entry to compaction).  The subject is
 ; `fn-native-operator-run' (host/native-operator-host.lisp calls it) and the
@@ -2271,19 +2444,37 @@ when that store already exists is `fn-native-operator-init-outcome'."
                    (fn-native-operator-run config argv))
                   :compact))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-parse-command fn-nop-parse-store
-                                   fn-nop-usage fn-nop-refused fn-nop-result
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-native-operator-result-native-action)
-                                  (fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-command-preflight)
+                              (:definition fn-native-operator-preflight-needs-config-p)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-native-operator-run) (:definition fn-ncfg-first)
+                              (:definition fn-ncfg-nth) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-ncfg-third)
+                              (:definition fn-nop-parse-command)
+                              (:definition fn-nop-parse-store) (:definition fn-nop-result)
+                              (:definition fn-nop-usage) (:definition not)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-native-operator-preflight-needs-config-p)
+                              (:executable-counterpart fn-native-operator-result-native-action)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart fn-ncfg-rest)
+                              (:executable-counterpart fn-nop-parse-store)
+                              (:executable-counterpart fn-nop-usage)
+                              (:executable-counterpart member-equal)
+                              (:executable-counterpart natp) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-native-config-load)
+                              (:type-prescription fn-ncfg-ascii-octetsp)
+                              (:type-prescription fn-nop-argvp)
+                              (:type-prescription fn-nop-parse-command)
+                              (:type-prescription fn-nop-usage))))))
 
 (local
  (defthm fn-nop-result-accessors
@@ -2298,8 +2489,22 @@ when that store already exists is `fn-native-operator-init-outcome'."
 (local
  (defthm fn-nop-parse-init-command
    (equal (fn-native-operator-result-command (fn-nop-parse-init w c)) "init")
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-init fn-nop-usage fn-nop-refused)
-                                   (fn-nop-result fn-native-operator-result-command fn-nop-parse-init-groups fn-nop-parse-profile-flags fn-bs-profile-resolve fn-native-admin-some-group-name-reservedp fn-nop-group-names-within fn-bs-profile-max-group-name-octets))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-config-ops-mission)
+                              (:definition fn-native-mission-request)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-nop-parse-init)
+                              (:definition fn-nop-parse-init-plain) (:definition fn-nop-refused)
+                              (:definition fn-nop-some-flag-wordp) (:definition fn-nop-usage)
+                              (:definition not) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-native-mission-default-groups)
+                              (:executable-counterpart fn-native-mission-request)
+                              (:executable-counterpart fn-nop-parse-init-groups)
+                              (:executable-counterpart fn-nop-with-cancel-group)
+                              (:executable-counterpart not) (:rewrite fn-nop-result-accessors)
+                              (:type-prescription fn-nop-parse-init-request)
+                              (:type-prescription fn-nop-parse-init-sizing)))))))
 
 (local
  (defthm fn-nop-parse-post-command
@@ -2342,11 +2547,22 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         (fn-nop-parse-store (cdr words) config))))
    :rule-classes nil
    :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
-                             '(fn-nop-parse-command fn-nop-usage fn-nop-refused fn-nop-result-accessors
-                             fn-nop-parse-init-command fn-nop-parse-post-command fn-nop-parse-principal-command
-                             fn-nop-parse-administration-command fn-nop-parse-store-command
-                             fn-nop-parse-peering fn-nop-parse-moderate fn-nop-moderate-plan
-                             fn-nop-parse-keys fn-nop-parse-carry fn-nop-parse-tls fn-nop-parse-account))))))
+                             '((:definition fn-nop-moderate-plan)
+                              (:definition fn-nop-parse-account)
+                              (:definition fn-nop-parse-carry)
+                              (:definition fn-nop-parse-command) (:definition fn-nop-parse-keys)
+                              (:definition fn-nop-parse-moderate)
+                              (:definition fn-nop-parse-peering) (:definition fn-nop-parse-tls)
+                              (:definition fn-nop-refused) (:definition fn-nop-usage)
+                              (:definition not) (:executable-counterpart cons)
+                              (:executable-counterpart equal) (:executable-counterpart not)
+                              (:executable-counterpart stringp)
+                              (:rewrite fn-nop-parse-administration-command)
+                              (:rewrite fn-nop-parse-init-command)
+                              (:rewrite fn-nop-parse-post-command)
+                              (:rewrite fn-nop-parse-principal-command)
+                              (:rewrite fn-nop-parse-store-command)
+                              (:rewrite fn-nop-result-accessors)))))))
 
 (local
  (defthm fn-nop-parse-store-compact-words
@@ -2357,10 +2573,27 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :compact))
             (equal w '("compact")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
-                                      fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)
-                                   (fn-nop-parse-profile-flags))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition char)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-nth)
+                              (:definition fn-ncfg-rest) (:definition fn-ncfg-second)
+                              (:definition fn-nop-archive-pathp)
+                              (:definition fn-nop-msgid-wordp) (:definition fn-nop-parse-store)
+                              (:definition fn-nop-result) (:definition fn-nop-usage)
+                              (:definition length) (:definition nth) (:executable-counterpart <)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart len) (:executable-counterpart natp)
+                              (:executable-counterpart not) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-cevg-groupp)
+                              (:type-prescription fn-nop-parse-profile-flags)
+                              (:type-prescription fn-record-msgidp) (:type-prescription len)))))))
 
 (local
  (defthm fn-nop-parse-command-compact-words
@@ -2387,13 +2620,32 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                         :compact)))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-third) (:definition member-equal)
+                              (:definition not) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)))))))
 
 (local
  (defthm fn-nop-native-action-of-unaccepted
    (implies (not (equal (fn-native-operator-result-status result) :accepted))
             (equal (fn-native-operator-result-native-action result) :none))
-   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-third) (:definition member-equal)
+                              (:definition not) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart consp)
+                              (:executable-counterpart equal)))))))
 
 (local
  (defthm fn-nop-parse-command-compact-action-words
@@ -2442,19 +2694,37 @@ when that store already exists is `fn-native-operator-init-outcome'."
                    (fn-native-operator-run config argv))
                   :checkpoint))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-parse-command fn-nop-parse-store
-                                   fn-nop-usage fn-nop-refused fn-nop-result
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-native-operator-result-native-action)
-                                  (fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-command-preflight)
+                              (:definition fn-native-operator-preflight-needs-config-p)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-native-operator-run) (:definition fn-ncfg-first)
+                              (:definition fn-ncfg-nth) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-ncfg-third)
+                              (:definition fn-nop-parse-command)
+                              (:definition fn-nop-parse-store) (:definition fn-nop-result)
+                              (:definition fn-nop-usage) (:definition not)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-native-operator-preflight-needs-config-p)
+                              (:executable-counterpart fn-native-operator-result-native-action)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart fn-ncfg-rest)
+                              (:executable-counterpart fn-nop-parse-store)
+                              (:executable-counterpart fn-nop-usage)
+                              (:executable-counterpart member-equal)
+                              (:executable-counterpart natp) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-native-config-load)
+                              (:type-prescription fn-ncfg-ascii-octetsp)
+                              (:type-prescription fn-nop-argvp)
+                              (:type-prescription fn-nop-parse-command)
+                              (:type-prescription fn-nop-usage))))))
 
 (local
  (defthm fn-nop-parse-store-checkpoint-words
@@ -2465,10 +2735,27 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :checkpoint))
             (equal w '("checkpoint")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
-                                      fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)
-                                   (fn-nop-parse-profile-flags))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition char)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-nth)
+                              (:definition fn-ncfg-rest) (:definition fn-ncfg-second)
+                              (:definition fn-nop-archive-pathp)
+                              (:definition fn-nop-msgid-wordp) (:definition fn-nop-parse-store)
+                              (:definition fn-nop-result) (:definition fn-nop-usage)
+                              (:definition length) (:definition nth) (:executable-counterpart <)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart len) (:executable-counterpart natp)
+                              (:executable-counterpart not) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-cevg-groupp)
+                              (:type-prescription fn-nop-parse-profile-flags)
+                              (:type-prescription fn-record-msgidp) (:type-prescription len)))))))
 
 (local
  (defthm fn-nop-parse-command-checkpoint-words
@@ -2495,7 +2782,17 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                         :checkpoint)))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-third) (:definition member-equal)
+                              (:definition not) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)))))))
 
 (local
  (defthm fn-nop-parse-command-checkpoint-action-words
@@ -2544,19 +2841,37 @@ when that store already exists is `fn-native-operator-init-outcome'."
                    (fn-native-operator-run config argv))
                   :reclaim))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-parse-command fn-nop-parse-store
-                                   fn-nop-usage fn-nop-refused fn-nop-result
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-native-operator-result-native-action)
-                                  (fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-command-preflight)
+                              (:definition fn-native-operator-preflight-needs-config-p)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-native-operator-run) (:definition fn-ncfg-first)
+                              (:definition fn-ncfg-nth) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-ncfg-third)
+                              (:definition fn-nop-parse-command)
+                              (:definition fn-nop-parse-store) (:definition fn-nop-result)
+                              (:definition fn-nop-usage) (:definition not)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-native-operator-preflight-needs-config-p)
+                              (:executable-counterpart fn-native-operator-result-native-action)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart fn-ncfg-rest)
+                              (:executable-counterpart fn-nop-parse-store)
+                              (:executable-counterpart fn-nop-usage)
+                              (:executable-counterpart member-equal)
+                              (:executable-counterpart natp) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-native-config-load)
+                              (:type-prescription fn-ncfg-ascii-octetsp)
+                              (:type-prescription fn-nop-argvp)
+                              (:type-prescription fn-nop-parse-command)
+                              (:type-prescription fn-nop-usage))))))
 
 (local
  (defthm fn-nop-parse-store-reclaim-words
@@ -2567,10 +2882,27 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :reclaim))
             (equal w '("reclaim")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
-                                      fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)
-                                   (fn-nop-parse-profile-flags))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition char)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-nth)
+                              (:definition fn-ncfg-rest) (:definition fn-ncfg-second)
+                              (:definition fn-nop-archive-pathp)
+                              (:definition fn-nop-msgid-wordp) (:definition fn-nop-parse-store)
+                              (:definition fn-nop-result) (:definition fn-nop-usage)
+                              (:definition length) (:definition nth) (:executable-counterpart <)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart len) (:executable-counterpart natp)
+                              (:executable-counterpart not) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-cevg-groupp)
+                              (:type-prescription fn-nop-parse-profile-flags)
+                              (:type-prescription fn-record-msgidp) (:type-prescription len)))))))
 
 (local
  (defthm fn-nop-parse-command-reclaim-words
@@ -2597,7 +2929,17 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                         :reclaim)))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-third) (:definition member-equal)
+                              (:definition not) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)))))))
 
 (local
  (defthm fn-nop-parse-command-reclaim-action-words
@@ -2620,10 +2962,14 @@ when that store already exists is `fn-native-operator-init-outcome'."
            (equal (fn-nop-argument-texts argv) '("store" "reclaim")))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
-                             '(fn-native-operator-run fn-native-operator-command-preflight
-                             fn-native-operator-preflight-needs-config-p fn-nop-usage
-                             fn-nop-native-action-of-unaccepted fn-nop-result-accessors
-                             (:executable-counterpart fn-native-operator-result-native-action)))
+                             '((:definition fn-native-operator-command-preflight)
+                              (:definition fn-native-operator-preflight-needs-config-p)
+                              (:definition fn-native-operator-run) (:definition fn-nop-usage)
+                              (:definition not) (:executable-counterpart car)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-native-operator-result-native-action)
+                              (:rewrite fn-nop-native-action-of-unaccepted)
+                              (:rewrite fn-nop-result-accessors)))
            :use ((:instance fn-nop-parse-command-reclaim-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
@@ -2646,19 +2992,37 @@ when that store already exists is `fn-native-operator-init-outcome'."
                    (fn-native-operator-run config argv))
                   :reclaim-dry-run))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-parse-command fn-nop-parse-store
-                                   fn-nop-usage fn-nop-refused fn-nop-result
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-native-operator-result-native-action)
-                                  (fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-command-preflight)
+                              (:definition fn-native-operator-preflight-needs-config-p)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-native-operator-run) (:definition fn-ncfg-first)
+                              (:definition fn-ncfg-nth) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-ncfg-third)
+                              (:definition fn-nop-parse-command)
+                              (:definition fn-nop-parse-store) (:definition fn-nop-result)
+                              (:definition fn-nop-usage) (:definition not)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-native-operator-preflight-needs-config-p)
+                              (:executable-counterpart fn-native-operator-result-native-action)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart fn-ncfg-rest)
+                              (:executable-counterpart fn-nop-parse-store)
+                              (:executable-counterpart fn-nop-usage)
+                              (:executable-counterpart member-equal)
+                              (:executable-counterpart natp) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-native-config-load)
+                              (:type-prescription fn-ncfg-ascii-octetsp)
+                              (:type-prescription fn-nop-argvp)
+                              (:type-prescription fn-nop-parse-command)
+                              (:type-prescription fn-nop-usage))))))
 
 (local
  (defthm fn-nop-parse-store-reclaim-dry-run-words
@@ -2669,10 +3033,27 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :reclaim-dry-run))
             (equal w '("reclaim" "--dry-run")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
-                                      fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)
-                                   (fn-nop-parse-profile-flags))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition char)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-nth)
+                              (:definition fn-ncfg-rest) (:definition fn-ncfg-second)
+                              (:definition fn-nop-archive-pathp)
+                              (:definition fn-nop-msgid-wordp) (:definition fn-nop-parse-store)
+                              (:definition fn-nop-result) (:definition fn-nop-usage)
+                              (:definition length) (:definition nth) (:executable-counterpart <)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart len) (:executable-counterpart natp)
+                              (:executable-counterpart not) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-cevg-groupp)
+                              (:type-prescription fn-nop-parse-profile-flags)
+                              (:type-prescription fn-record-msgidp) (:type-prescription len)))))))
 
 (local
  (defthm fn-nop-parse-command-reclaim-dry-run-words
@@ -2699,7 +3080,17 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                         :reclaim-dry-run)))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-third) (:definition member-equal)
+                              (:definition not) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)))))))
 
 (local
  (defthm fn-nop-parse-command-reclaim-dry-run-action-words
@@ -2748,19 +3139,37 @@ when that store already exists is `fn-native-operator-init-outcome'."
                    (fn-native-operator-run config argv))
                   :reclaim-recorded))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-parse-command fn-nop-parse-store
-                                   fn-nop-usage fn-nop-refused fn-nop-result
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-native-operator-result-native-action)
-                                  (fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-command-preflight)
+                              (:definition fn-native-operator-preflight-needs-config-p)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-native-operator-run) (:definition fn-ncfg-first)
+                              (:definition fn-ncfg-nth) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-second) (:definition fn-ncfg-third)
+                              (:definition fn-nop-parse-command)
+                              (:definition fn-nop-parse-store) (:definition fn-nop-result)
+                              (:definition fn-nop-usage) (:definition not)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart consp) (:executable-counterpart equal)
+                              (:executable-counterpart fn-native-operator-preflight-needs-config-p)
+                              (:executable-counterpart fn-native-operator-result-native-action)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart fn-ncfg-rest)
+                              (:executable-counterpart fn-nop-parse-store)
+                              (:executable-counterpart fn-nop-usage)
+                              (:executable-counterpart member-equal)
+                              (:executable-counterpart natp) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-native-config-load)
+                              (:type-prescription fn-ncfg-ascii-octetsp)
+                              (:type-prescription fn-nop-argvp)
+                              (:type-prescription fn-nop-parse-command)
+                              (:type-prescription fn-nop-usage))))))
 
 (local
  (defthm fn-nop-parse-store-reclaim-recorded-words
@@ -2771,10 +3180,27 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :reclaim-recorded))
             (equal w '("reclaim" "--recorded")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-result
-                                      fn-native-operator-result-status
-                                      fn-native-operator-result-arguments)
-                                   (fn-nop-parse-profile-flags))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition char)
+                              (:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-nth)
+                              (:definition fn-ncfg-rest) (:definition fn-ncfg-second)
+                              (:definition fn-nop-archive-pathp)
+                              (:definition fn-nop-msgid-wordp) (:definition fn-nop-parse-store)
+                              (:definition fn-nop-result) (:definition fn-nop-usage)
+                              (:definition length) (:definition nth) (:executable-counterpart <)
+                              (:executable-counterpart binary-+) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart cons)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)
+                              (:executable-counterpart fn-ncfg-nth)
+                              (:executable-counterpart len) (:executable-counterpart natp)
+                              (:executable-counterpart not) (:executable-counterpart zp)
+                              (:rewrite car-cons) (:rewrite cdr-cons)
+                              (:type-prescription fn-cevg-groupp)
+                              (:type-prescription fn-nop-parse-profile-flags)
+                              (:type-prescription fn-record-msgidp) (:type-prescription len)))))))
 
 (local
  (defthm fn-nop-parse-command-reclaim-recorded-words
@@ -2801,7 +3227,17 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                         :reclaim-recorded)))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory (enable fn-native-operator-result-native-action)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '((:definition fn-native-operator-result-arguments)
+                              (:definition fn-native-operator-result-command)
+                              (:definition fn-native-operator-result-native-action)
+                              (:definition fn-native-operator-result-status)
+                              (:definition fn-ncfg-first) (:definition fn-ncfg-rest)
+                              (:definition fn-ncfg-third) (:definition member-equal)
+                              (:definition not) (:executable-counterpart car)
+                              (:executable-counterpart cdr) (:executable-counterpart consp)
+                              (:executable-counterpart equal)
+                              (:executable-counterpart fn-ncfg-first)))))))
 
 (local
  (defthm fn-nop-parse-command-reclaim-recorded-action-words

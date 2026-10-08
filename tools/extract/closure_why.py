@@ -21,7 +21,11 @@ FN-CORE-TABLE-DIGESTS manifest) are exactly the `table:` targets of edges.tsv
 (the tables an emitted form reads, found by xt-fe-export's closure walk) and
 the host's INSTALL_TABLES; and no table is a defs.lisp unit.
 
-usage: closure_why.py OUT [--tree TREE] [--target ID ...] [--json] [--check] [--check-tables]
+With --check-props it checks O2's world reads: every FGETPROP/SGETPROP/GETPROPC/GLOBAL-VAL in
+defs.lisp that names its symbol and property reads a pair the snapshot carries; a read of a symbol
+computed at run time may only ask for a property carried for every closure function (FUNCTION_PROPS).
+
+usage: closure_why.py OUT [--tree TREE] [--target ID ...] [--json] [--check] [--check-tables] [--check-props]
 """
 from __future__ import annotations
 
@@ -223,6 +227,108 @@ def table_problems(out: Path) -> list[str]:
     return problems
 
 
+# The properties the snapshot carries for every closure function (core-export.lisp
+# xt-snapshot-stored-properties and its computed GUARD/SYMBOL-CLASS/STOBJS-OUT): a read of one of them
+# with a symbol computed at run time is answered for any function the closure holds.
+FUNCTION_PROPS = {"ACL2::FORMALS", "ACL2::STOBJS-IN", "ACL2::GUARD", "ACL2::SYMBOL-CLASS", "ACL2::STOBJ",
+                  "ACL2::ABSSTOBJ-INFO", "ACL2::STOBJ-FUNCTION", "ACL2::INVARIANT-RISK", "ACL2::PREDEFINED",
+                  "ACL2::CONST", "ACL2::TABLE-ALIST", "ACL2::STOBJS-OUT"}
+# The definitions of the property readers themselves read a property passed in.
+# GLOBAL-VAL's own definition reads GLOBAL-VALUE of its argument; its callers are checked as GLOBAL-VAL reads.
+ACCESSOR_UNITS = {"%s:ACL2::%s" % (k, f) for k in ("raw", "star1")
+                  for f in ("FGETPROP", "SGETPROP", "GETPROPC", "GETPROP", "GLOBAL-VAL")}
+READERS = re.compile(r"\((?:ACL2::)?(FGETPROP|SGETPROP|GETPROPC|GLOBAL-VAL) ")
+QUOTED = re.compile(r"\(COMMON-LISP:QUOTE ([^()\s]+)\)$")
+
+
+def _qualified_symbol(text: str) -> str:
+    return text if "::" in text or text.startswith(":") else "ACL2::" + text
+
+
+def snapshot_props(core_world: str) -> dict[str, set[str]]:
+    """{symbol: {property}} of xl-set-world-snapshot's rows."""
+    for head in ("(XL-SET-WORLD-SNAPSHOT (QUOTE (", "(XL-SET-WORLD-SNAPSHOT '("):
+        at = core_world.find(head)
+        if at >= 0:
+            break
+    else:
+        raise ValueError("core-world.lisp has no world snapshot")
+    i, rows = at + len(head), {}
+    while True:
+        while core_world[i] in " \n\t":
+            i += 1
+        if core_world[i] == ")":
+            return rows
+        end = _sexp_end(core_world, i)
+        j = i + 1
+        k = j
+        while core_world[k] not in " ()\n\t":
+            k += 1
+        sym, props = _qualified_symbol(core_world[j:k]), set()
+        p = k
+        while True:
+            while core_world[p] in " \n\t":
+                p += 1
+            if p >= end - 1 or core_world[p] == ")":
+                break
+            q = _sexp_end(core_world, p)
+            if core_world[p] == "(":
+                r = p + 1
+                while core_world[r] not in " ()\n\t":
+                    r += 1
+                props.add(_qualified_symbol(core_world[p + 1:r]))
+            p = q
+        rows.setdefault(sym, set()).update(props)
+        i = end
+
+
+def _args(text: str, i: int, n: int) -> list[str]:
+    out = []
+    for _ in range(n):
+        while text[i] in " \n\t":
+            i += 1
+        if text[i] == ")":
+            break
+        j = _sexp_end(text, i) if text[i] == "(" else i + len(re.match(r"[^\s()]+", text[i:]).group(0))
+        out.append(text[i:j])
+        i = j
+    return out
+
+
+def prop_problems(out: Path) -> list[str]:
+    """O2: every world property an emitted form reads by name is one the snapshot carries."""
+    props = snapshot_props((out / "core-world.lisp").read_text(encoding="latin-1"))
+    defs = (out / "defs.lisp").read_text(encoding="latin-1")
+    problems = []
+    for unit in re.split(r"(?m)^;;;; UNIT ", defs)[1:]:
+        uid, body = unit.split("\n", 1)
+        uid = uid.strip()
+        for m in READERS.finditer(body):
+            reader = m.group(1)
+            args = _args(body, m.end(), 2)
+            if reader == "GLOBAL-VAL":
+                sym_text, prop = (args[0] if args else ""), "ACL2::GLOBAL-VALUE"
+            else:
+                if len(args) < 2:
+                    continue
+                sym_text = args[0]
+                pq = QUOTED.match(args[1])
+                if not pq:
+                    if uid not in ACCESSOR_UNITS:
+                        problems.append("%s: %s reads a property computed at run time (%s)" % (uid, reader, args[1][:60]))
+                    continue
+                prop = _qualified_symbol(pq.group(1))
+            sq = QUOTED.match(sym_text)
+            if sq:
+                sym = _qualified_symbol(sq.group(1))
+                if prop not in props.get(sym, set()):
+                    problems.append("%s: %s reads %s of %s, which the snapshot does not carry" % (uid, reader, prop, sym))
+            elif prop not in FUNCTION_PROPS and uid not in ACCESSOR_UNITS:
+                problems.append("%s: %s reads %s of a symbol computed at run time; the snapshot carries it only for "
+                                "listed symbols" % (uid, reader, prop))
+    return sorted(set(problems))
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("out", type=Path)
@@ -233,7 +339,17 @@ def main(argv=None) -> int:
                     help="X2: exit 1, naming a path, if a BANNED unit is reachable from a root")
     ap.add_argument("--check-tables", action="store_true",
                     help="X3: exit 1, naming each table, unless the snapshot carries exactly the tables read")
+    ap.add_argument("--check-props", action="store_true",
+                    help="O2: exit 1, naming each read, unless every world property an emitted form reads by name is carried")
     a = ap.parse_args(argv)
+    if a.check_props:
+        problems = prop_problems(a.out)
+        for p in problems:
+            print("closure_why: %s" % p, file=sys.stderr)
+        if problems:
+            return 1
+        print("closure_why: every world property the emitted forms read by name is carried")
+        return 0
     if a.check_tables:
         problems = table_problems(a.out)
         for p in problems:

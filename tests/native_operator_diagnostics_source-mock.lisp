@@ -69,8 +69,9 @@
 ; The BP node's contact MRUs (host/native/tcpcl.lisp), read by the heap probe's BP terms.
 (defparameter +fnn-tcl-transfer-mru+ 1048576)
 (defparameter +fnn-tcl-segment-mru+ 1024)
+(defparameter *fnn-operator-live-owner* nil)
 (source-forms (or (third sb-ext:*posix-argv*) "host/native/heap.lisp")
-              '(fnn-heap-store-profile fnn-heap-operator-profile
+              '(fnn-heap-store-profile fnn-heap-operator-store-profile fnn-heap-operator-profile
                 fnn-heap-command-profile fnn-command-heap)
               '(fnn-heap-profile-refusal fnn-heap-command-profile-base))
 ; The probe's BP terms live beside the BP node since 5d3acefc1 (define before use).
@@ -105,6 +106,7 @@
   (case entry
     (fn-pfr-operation-observes-p (eq (first args) :run))
     (fn-native-operator-host-preflight :preflight)
+    (fn-omr-control-path-octets nil)
     (fn-native-operator-host-preflight-needs-config-path-p nil)
     (fn-native-operator-host-preflight-needs-config-p t)
     (fn-native-config-host-max-octets 8192)

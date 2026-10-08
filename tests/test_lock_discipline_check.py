@@ -453,6 +453,52 @@ class R2Blocking(unittest.TestCase):
         self.assertIn("fn-splan-cursor-step -> fn-arena-get", "\n".join(found[0].trail))
 
 
+class HeldCommitEffects(unittest.TestCase):
+    """Real macro, with observable I/O leaves as the effect implementations."""
+    @classmethod
+    def setUpClass(cls):
+        import lisp_source
+        owner = (ROOT / "host/native/owner.lisp").read_text()
+        cls.macro = next(f for f in lisp_source.forms(owner)
+                         if f.startswith("(defmacro fnn-owner-held-commit "))
+        cls.fixture = """
+(defun section (s cid thunk &optional class)
+  (sb-thread:with-mutex ((fnn-owner-service-lock s)) (funcall thunk)))
+(defun fnn-owner-held-start (s) (list :frames nil '((:off . :intents))))
+(defun fnn-owner-held-frames-wait (s job effects) (sleep 1))
+(defun fnn-owner-held-wait (s pending) (sleep 1))
+(defun fnn-owner-held-finish (s kind result thunk) (when thunk (funcall thunk)))
+"""
+
+    def test_single_body_is_seen_under_owner_and_job_is_off(self):
+        src = self.fixture + self.macro + """
+(defun caller (s)
+  (fnn-owner-held-commit (section s nil) (sleep 2)))
+"""
+        found = [f for f in run(src, ["R2"]) if f.rule == "R2"]
+        self.assertEqual([(f.function, f.key, f.weight) for f in found],
+                         [("caller", "O:sleep", 1)])
+        self.assertEqual(self.macro.count(",@body"), 1)
+
+    def test_moving_frames_back_into_start_is_refused(self):
+        src = self.fixture.replace("(list :frames nil '((:off . :intents)))",
+                                   "(fnn-owner-held-frames-wait s nil nil)")
+        src += self.macro + "(defun caller (s) (fnn-owner-held-commit (section s nil) nil))"
+        self.assertIn(("fnn-owner-held-frames-wait", "O:sleep"), keys(run(src, ["R2"]), "R2"))
+
+    def test_drain_capture_callbacks_do_not_reach_the_immediate_writer(self):
+        src = """
+(defun drain (intent resolution) (funcall intent) (funcall resolution))
+(defun immediate () (drain (lambda () (sleep 1)) (lambda () (sleep 2))))
+(defun start (s)
+  (sb-thread:with-mutex ((fnn-owner-service-lock s))
+    (drain (lambda () nil) (lambda () nil))))
+"""
+        self.assertEqual(keys(run(src, ["R2"]), "R2"), [])
+        mutant = src.replace("(lambda () nil)", "(lambda () (sleep 1))", 1)
+        self.assertIn(("start", "O:sleep"), keys(run(mutant, ["R2"]), "R2"))
+
+
 class R1State(unittest.TestCase):
     def test_a_thread_reading_owner_state_off_the_mutex_is_refused(self):
         src = """

@@ -312,6 +312,16 @@
           ((equal (car d) :at-restart) "recorded")
           (t (fn-lim-word (nth 1 d))))))
 
+; The live host asks whether D installs a funded profile; presentation text
+; from fn-lim-decision-word is not an installation decision.
+(defun fn-lim-decision-appliedp (d)
+  (declare (xargs :guard t))
+  (and (consp d) (eq (car d) :applied)))
+
+(defthm fn-lim-decision-appliedp-by-definition
+  (equal (fn-lim-decision-appliedp d)
+         (and (consp d) (equal (car d) :applied))))
+
 (defun fn-lim-decision-reason (d)
   (declare (xargs :guard t))
   (intern-in-package-of-symbol (fn-lim-decision-word d) 'fn-lim-decide))

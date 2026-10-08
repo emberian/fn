@@ -35,6 +35,11 @@
 ;;; (fnn-entry-guard-spec, fnn-trailing-kind), the image's values -----------
 (defvar *xl-props* (make-hash-table :test 'eq))
 (defvar *xl-world-snapshot-loaded-p* nil)
+(defun xl-ensure-packages (names)
+  "Make each package NAMES lists that this core lacks, empty: the carried KNOWN-PACKAGE-ALIST names
+every package of the world, and reading it interns the symbols of its import lists."
+  (dolist (name names)
+    (unless (find-package name) (make-package name :use nil))))
 (defun xl-set-world-snapshot (rows)
   "Install property pairs exported from the selected ACL2 world.
 Presence is distinct from a present NIL value; no classes are inferred here."

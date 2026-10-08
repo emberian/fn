@@ -38,6 +38,12 @@ if name == "lock_discipline_check":
     # the checker's current shape: `new` is a list of key strings
     print(json.dumps({"new": list(keys), "stale": [], "findings": []}))
     sys.exit(0)
+if name == "world" and os.environ.get("STUB_WORLD"):
+    # world.py re-links the umbrella: one part appears, one goes
+    with open("books/image-world-part-9.lisp", "w") as f:
+        f.write("new part\\n")
+    if os.path.exists("books/image-world-part-1.lisp"):
+        os.remove("books/image-world-part-1.lisp")
 if mode == "write" and name == "ledger":
     with open("planning/proofs.json", "a") as f:
         f.write("regen\\n")
@@ -48,7 +54,8 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
-         "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py"]
+         "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
+         "tests/test_keystone_critical.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in planning/interfaces.json specs/wire-grammar.json; do
@@ -296,6 +303,29 @@ class MergeTests(TrainBase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("keystone_emit --write-manifest", self.stub_log())
 
+    def test_world_part_conflict_takes_train_side(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        sha = self.lane("w", {"books/image-world-part-2.lisp": "lane part\n"})
+        sh(self.seed, "git", "checkout", "-q", "-B", "devtip", "origin/dev")
+        (self.seed / "books").mkdir(exist_ok=True)
+        self.advance_dev({"books/image-world-part-2.lisp": "dev part\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+        p = self.train("merge", f"w@{sha}")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual((self.work / "books/image-world-part-2.lisp").read_text(), "dev part\n")
+
+    def test_regen_commits_world_parts_added_and_removed(self):
+        (self.work / "books").mkdir(exist_ok=True)
+        (self.work / "books/image-world-part-1.lisp").write_text("old part\n")
+        self.commit(self.work, "a part")
+        r = self.train("regen", extra_env={"STUB_WORLD": "1"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sh(self.work, "git", "status", "--porcelain").stdout.strip(), "")
+        tracked = sh(self.work, "git", "ls-files", "books").stdout.split()
+        self.assertIn("books/image-world-part-9.lisp", tracked)
+        self.assertNotIn("books/image-world-part-1.lisp", tracked)
+
     def test_curated_proofs_conflict_goes_back_to_the_lane(self):
         # proofs.json rows are lane-curated: a conflict is not resolved to ours.
         sha = self.lane("p", {"planning/proofs.json": "lane repoint\n"})
@@ -340,7 +370,7 @@ class RegenTests(TrainBase):
         p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["ledger --write", "keystone_emit --write-manifest"])
+        self.assertEqual(log, ["world ", "ledger --write", "keystone_emit --write-manifest"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
 
@@ -538,7 +568,7 @@ class PushTests(TrainBase):
         self.ready()
         self.train("gate")
         log = self.stub_log()
-        for name in ("test_ledger", "test_keystone_emit", "test_train", "test_farm"):
+        for name in ("test_ledger", "test_keystone_emit", "test_keystone_critical", "test_train", "test_farm"):
             self.assertIn(name + " ", log)
         self.assertNotIn("test_current_view ", log)
         (self.work / "tools/current_view.py").write_text(STUB + "# changed\n")
