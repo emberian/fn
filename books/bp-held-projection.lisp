@@ -170,7 +170,7 @@
          (fn-bpnr-replay-from ck rows base))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
-                       '(fn-bphp-replay-from fn-bpnr-replay-from
+                       '(fn-bphp-replay-from fn-bpnr-replay-from-is-unseeded
                          fn-bpnf-family-replay-rows fn-bphp-replay-rows-is-aux
                          (:executable-counterpart fn-bpnf-held-octets))
                        (theory 'minimal-theory)))))

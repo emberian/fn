@@ -116,6 +116,8 @@
      (when (member *mode* '(:state-fault :both-fault :spool-close-fault)) (error "state-fault")) :state)
     ((fn-bpn-machine-invariantp fn-bpn-host-lifecycle-recovery-ready-p fn-bpn-host-lifecycle-recovery-agrees-p) t)
     (fn-bpn-host-lifecycle-recovery :recovery)
+    (fn-bpnr-seed-state :state)
+    (fn-bpnr-plan-start-token 0)
     (fn-bprpf-admit-recovery nil)
     (fn-bpnf-base-job-count 0)
     (otherwise nil)))

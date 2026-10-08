@@ -1086,7 +1086,7 @@
   (list :recover-fnbs 2 nil :ready *bpcx-n16-replay* 1))
 (defconst *bpcx-n16-q*
   (fn-bpnf-answer-state (fn-bpnp-step *bpcx-raw-s0* *bpcx-n16-event*)))
-(defconst *bpcx-n16-ck* (fn-bpnr-checkpoint-of-event *bpcx-n16-event* 1))
+(defconst *bpcx-n16-ck* (fn-bpnr-checkpoint-of-event *bpcx-n16-event* 1 *bpcx-n16-q*))
 (defconst *bpcx-n16-budget*
   (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base *bpcx-n16-q*))))
 ;; The file the rotation publishes: the projection with the rotation's own
@@ -1240,7 +1240,7 @@
 (defun bpcx-n16-ck0 ()
   (fn-bpnr-checkpoint-of-replay 1 (fn-bpnr-replay-from nil (bpcx-n16-rows0)
                                                         (fn-bpnf-base *bpcx-raw-s0*))
-                                1))
+                                1 nil 0))
 (defun bpcx-n16-rck0 () (fn-bpnr-rotation-checkpoint (bpcx-n16-ck0) 2))
 (defun bpcx-n16-reopen0 (suffix budget)
   (fn-bpnr-recover-auto-event
@@ -1315,7 +1315,8 @@
 (defun bpcx-n16-bad-ck ()
   (fn-bpnr-rotation-checkpoint
    (fn-bpnr-checkpoint-of-replay
-    1 (fn-bpnr-replay-from nil *bpcx-n16-bad-rows* (fn-bpnf-base *bpcx-raw-s0*)) 0)
+    1 (fn-bpnr-replay-from nil *bpcx-n16-bad-rows* (fn-bpnf-base *bpcx-raw-s0*)) 0
+    nil 0)
    1))
 (assert-event
  (equal (car (fn-bpnr-replay-from nil *bpcx-n16-bad-rows* (fn-bpnf-base *bpcx-raw-s0*)))

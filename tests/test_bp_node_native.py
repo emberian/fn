@@ -43,6 +43,18 @@ PRODUCER = native_image("FN_NATIVE_HOST")
 
 @requires(IMAGE, PRODUCER)
 class NativeBpNodeTests(unittest.TestCase):
+    # Critical BP path: fnn-bps-foundation-step calls fn-bpnj-step; its base
+    # persistence/result arms reach fn-bpn-step.  Rotation publication drives
+    # fn-bpnp-rotate-step, and open feeds fn-bpnr-seed-state's checkpoint jobs
+    # into fn-bphp-recover-auto-event and the composed recovery step.  The
+    # hypothesis-free fn-bphp-recover-auto-event-is-bpnr equates the host's
+    # event builder to fn-bpnr-recover-auto-event, the recovery theorems' subject.
+    # Seed-omission implementation mutation: /tmp/p7/bprot-mutant.patch.
+    # Deputy N: owed-job restart GREEN, real 15145158d (native-bpr-real2-
+    # 15145158d); FAILS mutant 5e4632275 (native-bpr-mut2-rot), under
+    # hbox:/tank/fn/scratch/bp-rot.  These are image observations, not a claim
+    # that the recovery-event-only theorems themselves observe base jobs.
+
     def setUp(self):
         if self._testMethodName in (
                 "test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
@@ -1249,6 +1261,60 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(unrelated.returncode, EXIT.OK, unrelated.stderr)
         self.assertIn(b"pinned=yes", unrelated.stdout)
 
+    def test_rotation_with_owed_jobs_restarts_with_them(self):
+        """A selected checkpoint must carry an undelivered receipt job.
+
+        The relay has no destination until after rotation and restart.  The
+        recovery count is checked before dispatch can recreate any outbox
+        work, so omitting checkpoint seeding cannot pass by later repair.
+        """
+        receiver, port = self.start_node(True)
+        sent = self.send_request(port, "rotation-owed")
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stdout + sent.stderr)
+        self.assertEqual(receiver.returncode, EXIT.OK, out + err)
+        self.assertIn(b"BP node receipt queued", out)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+        disconnected = self.dispatch_receiver()
+        self.assertEqual(disconnected.returncode, EXIT.OK,
+                         disconnected.stdout + disconnected.stderr)
+        self.assertIn(b"BP queue recovered jobs=1", disconnected.stdout)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+        code, out, err = self.rotate_receiver()
+        self.assertEqual(code, EXIT.OK, out + err)
+        self.assertIn(b"BP queue recovered jobs=1", out)
+        self.assertIn(b"BP journal generation selected generation=1", out)
+        self.assertTrue((self.receiver_journal / "bp-generation.fnb").is_file())
+        selected = self.receiver_journal / "lifecycle-g00000000000000000001"
+        self.assertTrue(selected.is_dir())
+        self.assertEqual(list(selected.glob("*.fnb")), [])
+
+        # A separate process reopens the selected, empty generation while
+        # the peer is still disconnected.  Its job must come from the seed.
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, EXIT.OK,
+                         restarted.stdout + restarted.stderr)
+        self.assertIn(b"BP queue recovered jobs=1", restarted.stdout)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+        sender, port = self.start_node(False, once=False)
+        self.relay.route(port)
+        delivered = self.dispatch_receiver()
+        self.assertEqual(delivered.returncode, EXIT.OK,
+                         delivered.stdout + delivered.stderr)
+        self.assertIn(b"BP queue recovered jobs=1", delivered.stdout)
+        self.assertTrue(any(line.startswith(b"BP transport work=") and
+                            b"status=forwarded" in line
+                            for line in delivered.stdout.splitlines()),
+                        delivered.stdout)
+        self.wait_for_output(sender, b"BP node delivery receipt-accepted", timeout=120)
+        sender.stop(grace=5)
+        self.assertIn(b"pinned=no", self.sender_status().stdout)
+        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+        self.assertEqual(self.receiver_articles(), 1)
+
     def test_disconnected_delivery_restarts_and_releases_only_matching_obligation(self):
         """One real POST survives application, job and checkpoint death cuts.
 
@@ -1330,6 +1396,11 @@ class NativeBpNodeTests(unittest.TestCase):
         checkpoint_fault = {}
         cut_code, cut_out, cut_err = self.rotate_receiver(
             "stage", observer=lambda **fields: checkpoint_fault.update(fields))
+        # The node owes two requeued receipt jobs here; the rotation must
+        # reach the stage cut with them (it was refused before the
+        # checkpoint carried the base machine's jobs).
+        self.assertNotIn(b"BP journal rotation refused", cut_out)
+        self.assertIn(b"BP journal rotation stopped at=stage", cut_out)
         observe("checkpoint-stage-cut", exit_code=cut_code,
                 stdout=cut_out, stderr=cut_err, fault=checkpoint_fault)
         sender, sender_port = self.start_node(False, once=False)

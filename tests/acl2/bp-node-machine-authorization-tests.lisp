@@ -2,6 +2,8 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-machine-authorization")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
+(include-book "bp-node-rotation-due-tests")
 
 (defconst *bpna-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpna-peer* (cons :dtn '(47 47 102 110 45 98 47)))
@@ -121,6 +123,22 @@
       (fn-bpn-step *bpna-over-token*
                    (list :contact *bpna-peer* nil)))))))
 
+(defteeth fn-bpn-step-preserves-lifecycle-invariant
+  :claim (((invariant (fn-bpn-lifecycle-invariantp st)))
+          (fn-bpn-lifecycle-invariantp
+           (fn-bpn-answer-state (fn-bpn-step st event))))
+  :subject fn-bpn-step
+  :witness ((st (fn-bpnf-base (bprd-traced-q)))
+            (event (list :contact *bpcx-dest* t)))
+  :breaks ((invariant ((st *bpna-over-token*)
+                       (event (list :contact *bpna-peer* nil)))))
+  :mutations ((forgets-pending-authorization
+               (:conclusion
+                (null (fn-bpn-machine-state-pending
+                       (fn-bpn-answer-state (fn-bpn-step st event)))))
+               ((st *bpna-s-queued*) (event (list :contact *bpna-peer* t)))
+               :fault "starting owed work proposes a durable attempt before sending")))
+
 ; Build an applicable 4097-record restart history: queue token 0, then
 ; alternate attempting and requeued records for the same retained job.
 (defun fn-bpn-test-alternating-records (count token attemptingp)
@@ -140,12 +158,40 @@
 (defconst *bpna-overlong-restart-event*
   (list :restart *bpna-overlong-records* :ready))
 (assert-event (not (fn-bpn-machine-eventp *bpna-overlong-restart-event*)))
-(local
- (must-fail-checked
-  (defthm fn-bpn-tooth-step-without-bounded-event
-    (fn-bpn-lifecycle-invariantp
-     (fn-bpn-answer-state
-      (fn-bpn-step *bpna-s0* *bpna-overlong-restart-event*))))))
+;; Ground counterexample to the pre-seeding statement of
+;; fn-bpn-restart-step-of-ready-replay (ready replay alone, no record bound):
+;; this history replays :ready over the initial machine, yet the restart
+;; answers the :seed-frontier fence and not :restart-ready.  The ready-replay
+;; original statement is false for the current restart implementation; this
+;; is the ground counterexample requested by the round-4 audit, not a proof
+;; that adding hypotheses preserves the original claim.
+(assert-event
+ (with-guard-checking :none
+   (equal (car (fn-bpn-replay-records
+                (fn-bpn-initial-machine-state
+                 (fn-bpn-machine-state-config *bpna-s0*)
+                 (fn-bpn-machine-state-max-jobs *bpna-s0*)
+                 (fn-bpn-machine-state-max-octets *bpna-s0*))
+                *bpna-overlong-records*))
+          :ready)))
+(assert-event
+ (with-guard-checking :none
+   (equal (fn-bpn-answer-effects
+           (fn-bpn-restart-step *bpna-s0* *bpna-overlong-records* :ready))
+          '((:restart-fault :seed-frontier)))))
+;; The restart now fences an over-long history itself (the seeded start does not
+;; fit the lifecycle namespace), so the overlong event no longer escapes the
+;; invariant: the answer is the :seed-frontier fence, still lifecycle-invariant.
+(assert-event
+ (with-guard-checking :none
+   (equal (fn-bpn-answer-effects
+           (fn-bpn-step *bpna-s0* *bpna-overlong-restart-event*))
+          '((:restart-fault :seed-frontier)))))
+(assert-event
+ (with-guard-checking :none
+   (fn-bpn-lifecycle-invariantp
+    (fn-bpn-answer-state
+     (fn-bpn-step *bpna-s0* *bpna-overlong-restart-event*)))))
 
 ; A merely typed pending value can pair a queued record with a send.  The old
 ; machine invariant accepts it; the new relation rejects it, and a durable
@@ -209,3 +255,39 @@
     (equal (fn-cbor-ag-car
             (fn-bpn-pending-record *bpna-fake-accept-pending*))
            :queued))))
+
+;; Implementation mutant: the contact dispatch still stages the real send,
+;; but binds it to a :queued record instead of the required :attempting
+;; record.  This is the authorization relation's concrete failure, separate
+;; from the rotation mutant (empty jobs can still be lifecycle-invariant).
+(defun bpna-mutant-step-with-unbound-send (st event)
+  (let* ((answer (fn-bpn-step st event))
+         (next (fn-bpn-answer-state answer))
+         (pending (fn-bpn-machine-state-pending next))
+         (wrong (fn-bpn-make-pending
+                 (fn-bpn-pending-token pending)
+                 (list :queued (fn-bpn-pending-token pending)
+                       (car (fn-bpn-machine-state-jobs next)))
+                 (fn-bpn-pending-success-effects pending)
+                 (fn-bpn-pending-refusal-effect pending)
+                 (fn-bpn-pending-uncertainty-effect pending))))
+    (fn-bpn-answer
+     (fn-bpn-state-with next (fn-bpn-machine-state-jobs next)
+                        (fn-bpn-machine-state-contacts next) wrong
+                        (fn-bpn-machine-state-fenced next)
+                        (fn-bpn-machine-state-next-token next))
+     (fn-bpn-answer-effects answer))))
+(assert-event
+ (let* ((st (fn-bpnf-base (bprd-traced-q)))
+        (event (list :contact *bpcx-dest* t)))
+   (and (consp (fn-bpn-machine-state-jobs st))
+        (fn-bpn-lifecycle-invariantp st)
+        (fn-bpn-lifecycle-invariantp (fn-bpn-answer-state (fn-bpn-step st event)))
+        (not (fn-bpn-lifecycle-invariantp
+              (fn-bpn-answer-state (bpna-mutant-step-with-unbound-send st event)))))))
+(must-fail-checked
+ (assert-event
+  (fn-bpn-lifecycle-invariantp
+   (fn-bpn-answer-state
+    (bpna-mutant-step-with-unbound-send (fn-bpnf-base (bprd-traced-q))
+                                      (list :contact *bpcx-dest* t))))))

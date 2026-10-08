@@ -18,7 +18,7 @@
   (list (list :row 1 "held" #\c -7 '(1 2 3 255 0) 'fn-bpnr-dec 'car nil t)
         (list :row 2 (cons 4000 '(9 9 9)) "" (cons :k (cons 5 nil)))))
 (defconst *bpnrbt-ck*
-  (fn-bpnr-checkpoint 3 *bpnrbt-held* '((:handoff 1)) '(2 . 7) 11 1311))
+  (fn-bpnr-checkpoint 3 *bpnrbt-held* '((:handoff 1)) '(2 . 7) 11 1311 nil 0))
 (defconst *bpnrbt-budget* (fn-bpnr-depth-budget 4))
 ; The file ends in fn-frame-trailer, a constrained digest whose executable
 ; attachment ACL2 ignores while it evaluates a defconst: every value built
