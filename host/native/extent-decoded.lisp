@@ -185,6 +185,19 @@ carry 0, input 1, hash 2, zin 3, win 4, tab 5, out 6, window 7; the input is (sv
          (and (typep window '(simple-array (unsigned-byte 8) (*)))
               (= (length window) (fn-profile-limit :read-window-octets))))))
 
+(defun fnn-extent-decoded-window-cache-insert (token window)
+  "The kind-3 backing still uses the decoded span export. Extent lock held."
+  (fnn-extent-cache-ready)
+  (destructuring-bind (word slot evicted xcs xcc)
+      (fnn-call 'fn-xc-install-window token *fnn-extent-xcs* *fnn-extent-xcc*)
+    (setq *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc)
+    (case word
+      ((:installed :replaced)
+       (setf (svref *fnn-extent-slots* slot) (cons nil window))
+       (values (and evicted (list evicted)) t))
+      ((:present :duplicate) (values (list token) nil))
+      (t (fnn-fault "the decoded cache refused a window ACL2 had already cached")))))
+
 (defun fnn-extent-decoded-window-cache-attempt (worker token)
   "Extent lock held, the returned job's last borrow released.  NIL, or (:cached
 ROW EVICTED): the job retired and its window moved into the cache; ROW is the
@@ -207,7 +220,7 @@ pushed out (the caller releases their rows)."
             (fnn-err "DECODED-WINDOW backing token=~s word=:REUSABLE scope=:persistent-partial-fixed-storage"
                      token)
             (multiple-value-bind (evicted cachedp)
-                (fnn-extent-window-cache-insert token nil window)
+                (fnn-extent-decoded-window-cache-insert token window)
               (list :cached row evicted cachedp))))))))
 
 (defun fnn-extent-decoded-window-cache-run

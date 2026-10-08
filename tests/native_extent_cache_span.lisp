@@ -4,6 +4,7 @@
 (load "tests/native_extent_span_loader.lisp")
 (xc2-load-native "books/article-stream.lisp" '(fn-ast-span-want))
 (defvar *fnn-extent-run-dst* nil)
+(defvar *fnn-extent-xcw* nil)
 (defparameter *roots*
   '(fnn-extent-window-realize-span fnn-extent-window-cache-insert
     fnn-extent-window-pread))
@@ -24,6 +25,7 @@
        (hash (create-pgs-digest-state)) (window (create-fn-ew-buffer)) (plan nil)
        (*fnn-page-read-pool* (create-fn-page-read-pool))
        (*fnn-extent-xcs* nil) (*fnn-extent-xcc* nil) (*fnn-extent-slots* nil)
+       (*fnn-extent-xcw* nil)
        (*fnn-extent-run-dst* nil)
        (*fnn-extent-window-worker* nil) (*fnn-extent-window-token* nil))
   (fnn-cold-guard-cache-prepare
@@ -62,18 +64,21 @@
       (multiple-value-bind (evicted cachedp) (fnn-extent-window-cache-insert token plan window)
         (assert cachedp) (assert (null evicted)))))
   ;; Observation only: forward every call and every value to the actual dispatcher.
-  (let ((dispatch (symbol-function 'fnn-call)) (calls 0))
+  (let ((dispatch (symbol-function 'fnn-call)) (calls 0) (digest-steps 0))
     (unwind-protect
         (progn
           (setf (symbol-function 'fnn-call)
                 (lambda (name &rest args)
                   (when (eq name 'fn-xc-span-at) (incf calls))
+                  (when (member name '(fn-ews-begin fn-ews-tick fn-ews-read))
+                    (incf digest-steps))
                   (apply dispatch name args)))
           (assert (equal (fnn-extent-window-realize-span 7 0 2048 0 2048 trailer 0 2048) payload))
           (assert (= calls 1))
           (assert (equal (fnn-extent-window-realize-span 7 0 2048 0 2048 trailer 2040 8)
                          (subseq payload 2040)))
           (assert (= calls 2))
+          (assert (zerop digest-steps))
           (assert (null (fnn-extent-window-realize-span 7 0 2048 0 2048 trailer 0 0)))
           (assert (= calls 2))
           (assert (equal (catch 'fnn-extent-cold

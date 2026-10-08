@@ -11,6 +11,7 @@
 ; than both the old 16 KiB span capacity and the current profile capacity;
 ; this fixture qualifies decoded bytes, not native startup/profile loading.
 (defvar *fnn-extent-run-dst* nil)
+(defvar *fnn-extent-xcw* nil)
 
 ; Extract the complete native function closure of these roots from the two
 ; extent files. Structs and the ACL2 world come from the required image; every
@@ -18,7 +19,7 @@
 ; an image function. This is the closure harness form understood by harness_check.
 (defparameter *roots*
   '(fn-durable-realize-lz-span fn-durable-realize-lz-octet
-    fnn-extent-window-cache-insert))
+    fnn-extent-decoded-window-cache-insert))
 (xc2-load-native-closure *roots*)
 
 (defun xc2-read-octets (path)
@@ -64,7 +65,7 @@
       (setf job (fourth cached))
       (update-fn-prp-data (list (third cached) 0 0 0 1) *fnn-page-read-pool*)
       (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-        (assert (null (fnn-extent-window-cache-insert token nil (svref job 7)))))
+        (assert (null (fnn-extent-decoded-window-cache-insert token (svref job 7)))))
       (third cached))))
 
 (let* ((root (sb-ext:posix-getenv "FN_XC2_FIXTURE"))
@@ -77,6 +78,7 @@
                         (fn-prl-register (fn-prl-make '(1000000 0 8 4 20)) 7 '(64 0 1 0 0)))))
        (*fnn-page-read-pool* (create-fn-page-read-pool))
        (*fnn-extent-xcs* nil) (*fnn-extent-xcc* nil) (*fnn-extent-slots* nil)
+       (*fnn-extent-xcw* nil)
        (*fnn-extent-run-dst* nil)
        (*fnn-extent-window-mode* t) (*fnn-extent-window-worker* nil)
        (*fnn-extent-window-token* nil))

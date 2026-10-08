@@ -20,6 +20,45 @@
 (defconst *xcst-cells* '(1 0 2))
 (defconst *xcst-window* (list (append '(1 2 3) (make-list (- *fn-ew-span-capacity* 3) :initial-element 0))))
 (defconst *xcst-dst* (list (make-list *fn-ew-span-capacity* :initial-element 0)))
+(defconst *xcst-wins* (list (list *xcst-plan*) (list *xcst-window*)))
+(defconst *xcst-c* *fn-ew-span-capacity*)
+(defconst *xcst-plen* (+ *xcst-c* 3))
+(defconst *xcst-t0* (list :window 7 11 100 *xcst-plen* 100 *xcst-plen* 0 77))
+(defconst *xcst-t1* (list :window 8 11 100 *xcst-plen* 100 *xcst-plen* *xcst-c* 77))
+(defconst *xcst-p0* (list :verified 11 100 *xcst-plen* 0 *xcst-c* 77 0 7 47 *xcst-t0* 100 *xcst-plen* 0))
+(defconst *xcst-p1* (list :verified 11 100 *xcst-plen* *xcst-c* 3 77 0 8 47 *xcst-t1* 100 *xcst-plen* *xcst-c*))
+(defconst *xcst-ledger2* (list nil nil nil (list (cons *xcst-t0* '((300000 0 0 0 0) :cached nil)) (cons *xcst-t1* '((300000 0 0 0 0) :cached nil))) nil))
+(defconst *xcst-returned2* (list nil nil nil (list (cons *xcst-t0* '((300000 0 0 0 0) :window :returned 0)) (cons *xcst-t1* '((300000 0 0 0 0) :window :returned 0))) nil))
+(defconst *xcst-worker1* (list 0 8 :returned *xcst-t1*))
+(defconst *xcst-slots2* (list (list 2 t 7 0 11 100 *xcst-plen* 100 *xcst-plen* 0 0 0 77 0)
+                              (list 2 t 8 0 11 100 *xcst-plen* 100 *xcst-plen* 0 0 *xcst-c* 77 1)))
+(defconst *xcst-cells2* '(2 0 2))
+(defconst *xcst-win0* (list (append '(4 5 6) (make-list (- *fn-ew-span-capacity* 3) :initial-element 0))))
+(defconst *xcst-win1* (list (append '(7 8 9) (make-list (- *fn-ew-span-capacity* 3) :initial-element 0))))
+(defconst *xcst-wins2* (list (list *xcst-p0* *xcst-p1*) (list *xcst-win0* *xcst-win1*)))
+
+
+(defconst *xcst-slots2r* (list (list 2 t 7 0 11 100 *xcst-plen* 100 *xcst-plen* 0 0 0 77 0)
+                               '(0 nil 0 0 0 0 0 0 0 0 0 0 0 0)))
+(defconst *xcst-worker0* (list 0 7 :returned *xcst-t0*))
+(defconst *xcst-slots9* (append (make-list 8 :initial-element '(0 nil 0 0 0 0 0 0 0 0 0 0 0 0))
+                                (list (list 2 t 8 0 11 100 *xcst-plen* 100 *xcst-plen* 0 0 *xcst-c* 77 1))))
+(defconst *xcst-wins9* (list (append (make-list 8 :initial-element nil) (list *xcst-p1*))
+                             (append (make-list 8 :initial-element nil) (list *xcst-win1*))))
+(defconst *xcst-slots2c* (list (list 2 t 7 0 11 100 *xcst-plen* 100 *xcst-plen* 0 0 0 77 0)
+                               (list 2 t 8 0 11 100 *xcst-plen* 100 *xcst-plen* 1 0 *xcst-c* 77 1)))
+(defconst *xcst-wins2l* (list (list *xcst-p0* (append *xcst-p1* 9)) (list *xcst-win0* *xcst-win1*)))
+(defconst *xcst-wins2s* (list (list *xcst-p0* *xcst-p0*) (list *xcst-win0* *xcst-win0*)))
+
+(defconst *xcst-slots9s* (append (make-list 8 :initial-element '(0 nil 0 0 0 0 0 0 0 0 0 0 0 0))
+                                 (list (car *xcst-slots*))))
+(defconst *xcst-wins9s* (list (append (make-list 8 :initial-element nil) (list *xcst-plan*))
+                              (append (make-list 8 :initial-element nil) (list *xcst-window*))))
+(defconst *xcst-winsl* (list (list (append *xcst-plan* 9)) (list *xcst-window*)))
+(defconst *xcst-end2* (+ *xcst-c* 99))
+(defconst *xcst-end-frac* (+ *xcst-c* 3/2))
+(defconst *xcst-p-past* (+ *xcst-c* 3))
+
 
 (defun xcst-install-without-duplicate-check (kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
   (declare (xargs :stobjs (fn-xcs fn-xcc) :guard (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc))))
@@ -53,396 +92,224 @@
             (er soft 'xcst-ground-witness "Witness translation failed")
           (value (list 'defthm ',name (fn-dt-subst term alist)
                        :rule-classes nil
-                       :hints '(("Goal" :in-theory
+                       :hints '(("Goal" :expand ((:free (a b c d e f g h i j k l m n) (fn-xc-span-at a b c d e f g h i j k l m n))) :in-theory
                                  (union-theories (enable fn-xc-slot-token fn-xc-token fn-xcs-get-kind-is-nth fn-xcs-get-tokp-is-nth fn-xcs-get-tid-is-nth fn-xcs-get-tcid-is-nth fn-xcs-get-file-is-nth fn-xcs-get-eoff-is-nth fn-xcs-get-elen-is-nth fn-xcs-get-a-is-nth fn-xcs-get-b-is-nth fn-xcs-get-c-is-nth fn-xcs-get-d-is-nth fn-xcs-get-start-is-nth fn-xcs-get-trailer-is-nth nth)
                                                  (executable-counterpart-theory :here)))))))))))
+(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-positive-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k 0))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (natp k)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (< k (mv-nth 1 r))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (<= (mv-nth 1 r) *fn-ew-span-capacity*) (<= (+ p (mv-nth 1 r)) end) (<= (+ p (mv-nth 1 r)) plen) (<= (+ p (mv-nth 1 r)) (+ (fn-prl-nth 7 token) (nth 5 plan))) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window)) :byte) (equal (nth k (nth 0 (mv-nth 3 r))) (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window)))))))
 
-(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-positive-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k 0))
-  (and (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (natp k)) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (< k (mv-nth 1 r))) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (<= (mv-nth 1 r) *fn-ew-span-capacity*)
-          (<= (+ p (mv-nth 1 r)) end)
-          (<= (+ p (mv-nth 1 r)) plen)
-          (<= (+ p (mv-nth 1 r))
-              (+ (fn-prl-nth 7 token) (nth 5 plan)))
-          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))
-                 :byte)
-          (equal (nth k (nth 0 (mv-nth 3 r)))
-                 (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window)))))))
+(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-without-index-natural-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 0) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k -1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (< k (mv-nth 1 r))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (natp k))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (<= (mv-nth 1 r) *fn-ew-span-capacity*) (<= (+ p (mv-nth 1 r)) end) (<= (+ p (mv-nth 1 r)) plen) (<= (+ p (mv-nth 1 r)) (+ (fn-prl-nth 7 token) (nth 5 plan))) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window)) :byte) (equal (nth k (nth 0 (mv-nth 3 r))) (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window))))))))
 
-(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-without-index-natural-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 0) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k -1))
-  (and (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (< k (mv-nth 1 r))) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)) (not (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (natp k))) (not (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (<= (mv-nth 1 r) *fn-ew-span-capacity*)
-          (<= (+ p (mv-nth 1 r)) end)
-          (<= (+ p (mv-nth 1 r)) plen)
-          (<= (+ p (mv-nth 1 r))
-              (+ (fn-prl-nth 7 token) (nth 5 plan)))
-          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))
-                 :byte)
-          (equal (nth k (nth 0 (mv-nth 3 r)))
-                 (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))))))))
+(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-without-index-in-span-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k 2))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (natp k)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (< k (mv-nth 1 r)))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (<= (mv-nth 1 r) *fn-ew-span-capacity*) (<= (+ p (mv-nth 1 r)) end) (<= (+ p (mv-nth 1 r)) plen) (<= (+ p (mv-nth 1 r)) (+ (fn-prl-nth 7 token) (nth 5 plan))) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window)) :byte) (equal (nth k (nth 0 (mv-nth 3 r))) (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window))))))))
 
-(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-without-index-in-span-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k 2))
-  (and (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (natp k)) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)) (not (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (< k (mv-nth 1 r)))) (not (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (<= (mv-nth 1 r) *fn-ew-span-capacity*)
-          (<= (+ p (mv-nth 1 r)) end)
-          (<= (+ p (mv-nth 1 r)) plen)
-          (<= (+ p (mv-nth 1 r))
-              (+ (fn-prl-nth 7 token) (nth 5 plan)))
-          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))
-                 :byte)
-          (equal (nth k (nth 0 (mv-nth 3 r)))
-                 (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))))))))
+(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-without-returned-ready-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*) (returned-ledger nil) (worker *xcst-worker*) (k 0))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (natp k)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (< k (mv-nth 1 r))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (<= (mv-nth 1 r) *fn-ew-span-capacity*) (<= (+ p (mv-nth 1 r)) end) (<= (+ p (mv-nth 1 r)) plen) (<= (+ p (mv-nth 1 r)) (+ (fn-prl-nth 7 token) (nth 5 plan))) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window)) :byte) (equal (nth k (nth 0 (mv-nth 3 r))) (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window))))))))
 
-(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-without-returned-ready-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger nil) (worker *xcst-worker*) (k 0))
-  (and (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (natp k)) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (< k (mv-nth 1 r))) (not (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready))) (not (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (<= (mv-nth 1 r) *fn-ew-span-capacity*)
-          (<= (+ p (mv-nth 1 r)) end)
-          (<= (+ p (mv-nth 1 r)) plen)
-          (<= (+ p (mv-nth 1 r))
-              (+ (fn-prl-nth 7 token) (nth 5 plan)))
-          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))
-                 :byte)
-          (equal (nth k (nth 0 (mv-nth 3 r)))
-                 (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))))))))
-
-(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-mutant-overrun-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k 0))
-  (and (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (natp k)) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (< k (mv-nth 1 r))) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)) (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (<= (mv-nth 1 r) *fn-ew-span-capacity*)
-          (<= (+ p (mv-nth 1 r)) end)
-          (<= (+ p (mv-nth 1 r)) plen)
-          (<= (+ p (mv-nth 1 r))
-              (+ (fn-prl-nth 7 token) (nth 5 plan)))
-          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))
-                 :byte)
-          (equal (nth k (nth 0 (mv-nth 3 r)))
-                 (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))))) (not (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (declare (ignorable r token)) (<= (+ p (mv-nth 1 r) 1) (+ (fn-prl-nth 7 token) (nth 5 plan)))))))
+(xcst-ground-witness fn-xc-span-at-is-the-returned-bytes-mutant-overrun-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k 0))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (natp k)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (< k (mv-nth 1 r))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (equal (fn-pwr-outcome returned-ledger worker token plan) :ready)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (<= (mv-nth 1 r) *fn-ew-span-capacity*) (<= (+ p (mv-nth 1 r)) end) (<= (+ p (mv-nth 1 r)) plen) (<= (+ p (mv-nth 1 r)) (+ (fn-prl-nth 7 token) (nth 5 plan))) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window)) :byte) (equal (nth k (nth 0 (mv-nth 3 r))) (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window))))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (declare (ignorable r s token plan window)) (<= (+ p (mv-nth 1 r) 1) (+ (fn-prl-nth 7 token) (nth 5 plan)))))))
 
 (defteeth fn-xc-span-at-is-the-returned-bytes
-  :claim (let* ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))
-         (token (fn-xc-slot-token (mv-nth 2 r) slots))) (((index-natural (natp k)) (index-in-span (< k (mv-nth 1 r))) (returned-ready (equal (fn-pwr-outcome returned-ledger worker token plan) :ready))) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (<= (mv-nth 1 r) *fn-ew-span-capacity*)
-          (<= (+ p (mv-nth 1 r)) end)
-          (<= (+ p (mv-nth 1 r)) plen)
-          (<= (+ p (mv-nth 1 r))
-              (+ (fn-prl-nth 7 token) (nth 5 plan)))
-          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))
-                 :byte)
-          (equal (nth k (nth 0 (mv-nth 3 r)))
-                 (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer
-                                          (+ p k) window))))))
+  :claim (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins)) (window (fn-xcw-window (fn-xc-row s cells) wins))) (((index-natural (natp k)) (index-in-span (< k (mv-nth 1 r))) (returned-ready (equal (fn-pwr-outcome returned-ledger worker token plan) :ready))) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (<= (mv-nth 1 r) *fn-ew-span-capacity*) (<= (+ p (mv-nth 1 r)) end) (<= (+ p (mv-nth 1 r)) plen) (<= (+ p (mv-nth 1 r)) (+ (fn-prl-nth 7 token) (nth 5 plan))) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window)) :byte) (equal (nth k (nth 0 (mv-nth 3 r))) (mv-nth 1 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer (+ p k) window))))))
   :subject fn-xc-span-at
-  :witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k 0))
+  :witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*) (k 0))
   :witness-lemma fn-xc-span-at-is-the-returned-bytes-positive-witness
-  :breaks ((index-natural ((p 0) (k -1)) :lemma fn-xc-span-at-is-the-returned-bytes-without-index-natural-witness)
-           (index-in-span ((k 2)) :lemma fn-xc-span-at-is-the-returned-bytes-without-index-in-span-witness)
-           (returned-ready ((returned-ledger nil)) :lemma fn-xc-span-at-is-the-returned-bytes-without-returned-ready-witness))
-  :mutations ((overrun (:conclusion (<= (+ p (mv-nth 1 r) 1) (+ (fn-prl-nth 7 token) (nth 5 plan)))) () :fault "a span copy extending one byte past the published window" :lemma fn-xc-span-at-is-the-returned-bytes-mutant-overrun-witness)))
+  :breaks (
+(index-natural ((p 0) (k -1)) :lemma fn-xc-span-at-is-the-returned-bytes-without-index-natural-witness)           (index-in-span ((k 2)) :lemma fn-xc-span-at-is-the-returned-bytes-without-index-in-span-witness)           (returned-ready ((returned-ledger nil)) :lemma fn-xc-span-at-is-the-returned-bytes-without-returned-ready-witness))
+  :mutations (
+(overrun (:conclusion (<= (+ p (mv-nth 1 r) 1) (+ (fn-prl-nth 7 token) (nth 5 plan)))) () :fault "a span copy extending one byte past the published window" :lemma fn-xc-span-at-is-the-returned-bytes-mutant-overrun-witness)))
 
-(xcst-ground-witness fn-xc-span-at-answers-an-owed-hit-positive-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*))
-  (and (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 hit) :hit)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (fn-pwc-cachedp ledger token)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (natp end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (< p end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer p window))
-                 :byte)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (equal (mv-nth 2 r) (mv-nth 1 hit))))))
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-positive-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i)))))
 
-(xcst-ground-witness fn-xc-span-at-answers-an-owed-hit-without-candidate-witness ((from 1) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*))
-  (and (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (fn-pwc-cachedp ledger token)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (natp end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (< p end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer p window))
-                 :byte)) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 hit) :hit))) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (equal (mv-nth 2 r) (mv-nth 1 hit)))))))
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-table-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots2*) (cells '(2 0 3)) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells)))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
 
-(xcst-ground-witness fn-xc-span-at-answers-an-owed-hit-without-cached-witness ((from 0) (ledger *xcst-returned*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*))
-  (and (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 hit) :hit)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (natp end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (< p end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer p window))
-                 :byte)) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (fn-pwc-cachedp ledger token))) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (equal (mv-nth 2 r) (mv-nth 1 hit)))))))
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-from-witness ((from 2) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i)))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
 
-(xcst-ground-witness fn-xc-span-at-answers-an-owed-hit-without-end-natural-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 3/2) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*))
-  (and (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 hit) :hit)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (fn-pwc-cachedp ledger token)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (< p end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer p window))
-                 :byte)) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (natp end))) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (equal (mv-nth 2 r) (mv-nth 1 hit)))))))
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-region-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p 1) (end *xcst-end2*) (slots *xcst-slots2r*) (cells '(2 1 1)) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker0*) (i 0))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells)))))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
 
-(xcst-ground-witness fn-xc-span-at-answers-an-owed-hit-without-nonempty-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 1) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*))
-  (and (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 hit) :hit)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (fn-pwc-cachedp ledger token)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (natp end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer p window))
-                 :byte)) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (< p end))) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (equal (mv-nth 2 r) (mv-nth 1 hit)))))))
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-rows-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots9*) (cells '(1 0 9)) (wins *xcst-wins9*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 8))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins)))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
 
-(xcst-ground-witness fn-xc-span-at-answers-an-owed-hit-without-first-byte-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 3) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*))
-  (and (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 hit) :hit)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (fn-pwc-cachedp ledger token)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (natp end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (< p end)) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer p window))
-                 :byte))) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (equal (mv-nth 2 r) (mv-nth 1 hit)))))))
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-match-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots2c*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
 
-(xcst-ground-witness fn-xc-span-at-answers-an-owed-hit-mutant-always-miss-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*))
-  (and (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 hit) :hit)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (fn-pwc-cachedp ledger token)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (natp end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (< p end)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer p window))
-                 :byte)) (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (equal (mv-nth 2 r) (mv-nth 1 hit)))) (not (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (declare (ignorable hit token r)) (equal (mv-nth 0 r) :miss)))))
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-end-natural-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end-frac*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
 
-(defteeth fn-xc-span-at-answers-an-owed-hit
-  :claim (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
-         (token (fn-xc-slot-token (mv-nth 1 hit) slots))
-         (r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                           slots cells window dst))) (((candidate (equal (mv-nth 0 hit) :hit)) (cached (fn-pwc-cachedp ledger token)) (end-natural (natp end)) (nonempty (< p end)) (first-byte (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
-                                          file eoff elen poff plen trailer p window))
-                 :byte))) (and (equal (mv-nth 0 r) :span)
-          (posp (mv-nth 1 r))
-          (equal (mv-nth 2 r) (mv-nth 1 hit)))))
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-nonempty-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-c*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
+
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-cached-witness ((from 0) (ledger *xcst-returned2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
+
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-plan-list-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2l*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
+
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-without-first-byte-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-p-past*) (end *xcst-end2*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))))
+
+(xcst-ground-witness fn-xc-span-at-answers-a-covered-slot-mutant-first-candidate-only-witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (fn-xccp cells) (fn-xc-readyp slots cells))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp from) (<= from i))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (natp end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (< p end)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (fn-pwc-cachedp ledger token)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (true-listp plan)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (declare (ignorable r row token plan window)) (equal (mv-nth 2 r) (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)))))))
+
+(defteeth fn-xc-span-at-answers-a-covered-slot
+  :claim (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (row (fn-xc-row i cells)) (token (fn-xc-slot-token i slots)) (plan (fn-xcw-plan row wins)) (window (fn-xcw-window row wins))) (((table (and (fn-xccp cells) (fn-xc-readyp slots cells))) (from (and (natp from) (<= from i))) (region (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))) (rows (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))) (match (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)) (end-natural (natp end)) (nonempty (< p end)) (cached (fn-pwc-cachedp ledger token)) (plan-list (true-listp plan)) (first-byte (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan file eoff elen poff plen trailer p window)) :byte))) (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r)) (natp (mv-nth 2 r)) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))
   :subject fn-xc-span-at
-  :witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*) (returned-ledger *xcst-returned*) (worker *xcst-worker*))
-  :witness-lemma fn-xc-span-at-answers-an-owed-hit-positive-witness
-  :breaks ((candidate ((from 1)) :lemma fn-xc-span-at-answers-an-owed-hit-without-candidate-witness)
-           (cached ((ledger *xcst-returned*)) :lemma fn-xc-span-at-answers-an-owed-hit-without-cached-witness)
-           (end-natural ((end 3/2)) :lemma fn-xc-span-at-answers-an-owed-hit-without-end-natural-witness)
-           (nonempty ((end 1)) :lemma fn-xc-span-at-answers-an-owed-hit-without-nonempty-witness)
-           (first-byte ((p 3)) :lemma fn-xc-span-at-answers-an-owed-hit-without-first-byte-witness))
-  :mutations ((always-miss (:conclusion (equal (mv-nth 0 r) :miss)) () :fault "suppressing an owed warm hit" :lemma fn-xc-span-at-answers-an-owed-hit-mutant-always-miss-witness)))
+  :witness ((from 0) (ledger *xcst-ledger2*) (file 11) (eoff 100) (elen *xcst-plen*) (poff 100) (plen *xcst-plen*) (trailer 77) (p *xcst-c*) (end *xcst-end2*) (slots *xcst-slots2*) (cells *xcst-cells2*) (wins *xcst-wins2*) (dst *xcst-dst*) (returned-ledger *xcst-returned2*) (worker *xcst-worker1*) (i 1))
+  :witness-lemma fn-xc-span-at-answers-a-covered-slot-positive-witness
+  :breaks (
+(table ((cells '(2 0 3))) :lemma fn-xc-span-at-answers-a-covered-slot-without-table-witness)           (from ((from 2)) :lemma fn-xc-span-at-answers-a-covered-slot-without-from-witness)           (region ((p 1) (i 0) (slots *xcst-slots2r*) (cells '(2 1 1)) (worker *xcst-worker0*)) :lemma fn-xc-span-at-answers-a-covered-slot-without-region-witness)           (rows ((i 8) (slots *xcst-slots9*) (cells '(1 0 9)) (wins *xcst-wins9*)) :lemma fn-xc-span-at-answers-a-covered-slot-without-rows-witness)           (match ((slots *xcst-slots2c*)) :lemma fn-xc-span-at-answers-a-covered-slot-without-match-witness)           (end-natural ((end *xcst-end-frac*)) :lemma fn-xc-span-at-answers-a-covered-slot-without-end-natural-witness)           (nonempty ((end *xcst-c*)) :lemma fn-xc-span-at-answers-a-covered-slot-without-nonempty-witness)           (cached ((ledger *xcst-returned2*)) :lemma fn-xc-span-at-answers-a-covered-slot-without-cached-witness)           (plan-list ((wins *xcst-wins2l*)) :lemma fn-xc-span-at-answers-a-covered-slot-without-plan-list-witness)           (first-byte ((p *xcst-p-past*)) :lemma fn-xc-span-at-answers-a-covered-slot-without-first-byte-witness))
+  :mutations (
+(first-candidate-only (:conclusion (equal (mv-nth 2 r) (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)))) () :fault "answering only from the first slot the lookup selects, so a later slot holding the octet is missed" :lemma fn-xc-span-at-answers-a-covered-slot-mutant-first-candidate-only-witness)))
 
-(xcst-ground-witness fn-xc-span-at-hit-touches-only-the-selected-slot-positive-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*))
-  (and (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                         slots cells window dst))) (declare (ignorable r)) (equal (mv-nth 0 r) :span)) (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                         slots cells window dst))) (declare (ignorable r)) (and (equal (mv-nth 4 r)
-                         (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells)))
-                  (equal (mv-nth 5 r)
-                         (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells)))))))
+(xcst-ground-witness fn-xc-span-at-hit-touches-only-the-selected-slot-positive-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  (and  (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (and (equal (mv-nth 4 r) (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells))) (equal (mv-nth 5 r) (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells)))))))
 
-(xcst-ground-witness fn-xc-span-at-hit-touches-only-the-selected-slot-without-span-witness ((from 0) (ledger nil) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*))
-  (and (not (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                         slots cells window dst))) (declare (ignorable r)) (equal (mv-nth 0 r) :span))) (not (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                         slots cells window dst))) (declare (ignorable r)) (and (equal (mv-nth 4 r)
-                         (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells)))
-                  (equal (mv-nth 5 r)
-                         (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells))))))))
-
-(xcst-ground-witness fn-xc-span-at-hit-touches-only-the-selected-slot-mutant-omit-touch-witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*))
-  (and (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                         slots cells window dst))) (declare (ignorable r)) (equal (mv-nth 0 r) :span)) (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                         slots cells window dst))) (declare (ignorable r)) (and (equal (mv-nth 4 r)
-                         (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells)))
-                  (equal (mv-nth 5 r)
-                         (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells))))) (not (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                         slots cells window dst))) (declare (ignorable r)) (and (equal (mv-nth 4 r) slots) (equal (mv-nth 5 r) cells))))))
+(xcst-ground-witness fn-xc-span-at-hit-touches-only-the-selected-slot-mutant-omit-touch-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (and (equal (mv-nth 4 r) (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells))) (equal (mv-nth 5 r) (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells))))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (and (equal (mv-nth 4 r) slots) (equal (mv-nth 5 r) cells))))))
 
 (defteeth fn-xc-span-at-hit-touches-only-the-selected-slot
-  :claim (let ((r (fn-xc-span-at from ledger plan file eoff elen poff plen trailer p end
-                         slots cells window dst))) (((span (equal (mv-nth 0 r) :span))) (and (equal (mv-nth 4 r)
-                         (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells)))
-                  (equal (mv-nth 5 r)
-                         (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells))))))
+  :claim (let ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (() (and (equal (mv-nth 4 r) (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells))) (equal (mv-nth 5 r) (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells))))))
   :subject fn-xc-span-at
-  :witness ((from 0) (ledger *xcst-cached*) (plan *xcst-plan*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (window *xcst-window*) (dst *xcst-dst*))
+  :witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
   :witness-lemma fn-xc-span-at-hit-touches-only-the-selected-slot-positive-witness
-  :breaks ((span ((ledger nil)) :lemma fn-xc-span-at-hit-touches-only-the-selected-slot-without-span-witness))
-  :mutations ((omit-touch (:conclusion (and (equal (mv-nth 4 r) slots) (equal (mv-nth 5 r) cells))) () :fault "copying bytes but omitting the slot recency update" :lemma fn-xc-span-at-hit-touches-only-the-selected-slot-mutant-omit-touch-witness)))
+  :breaks (
+)
+  :mutations (
+(omit-touch (:conclusion (and (equal (mv-nth 4 r) slots) (equal (mv-nth 5 r) cells))) () :fault "copying bytes but omitting the slot recency update" :lemma fn-xc-span-at-hit-touches-only-the-selected-slot-mutant-omit-touch-witness)))
+
+(xcst-ground-witness fn-xc-span-at-answers-from-a-matching-slot-positive-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins))) (declare (ignorable r s token plan)) (equal (mv-nth 0 r) :span)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins))) (declare (ignorable r s token plan)) (and (natp s) (and (natp from) (<= from s)) (< s (fn-xcs-count slots)) (fn-xc-slot-matchp s nil 2 file eoff elen poff plen 0 0 trailer p slots) (fn-pwc-cachedp ledger token) (fn-pwr-plan-matches-token plan token)))))
+
+(xcst-ground-witness fn-xc-span-at-answers-from-a-matching-slot-without-span-witness ((from 0) (ledger nil) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  (and (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins))) (declare (ignorable r s token plan)) (equal (mv-nth 0 r) :span))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins))) (declare (ignorable r s token plan)) (and (natp s) (and (natp from) (<= from s)) (< s (fn-xcs-count slots)) (fn-xc-slot-matchp s nil 2 file eoff elen poff plen 0 0 trailer p slots) (fn-pwc-cachedp ledger token) (fn-pwr-plan-matches-token plan token))))))
+
+(xcst-ground-witness fn-xc-span-at-answers-from-a-matching-slot-mutant-stale-plan-accepted-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins))) (declare (ignorable r s token plan)) (equal (mv-nth 0 r) :span)) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins))) (declare (ignorable r s token plan)) (and (natp s) (and (natp from) (<= from s)) (< s (fn-xcs-count slots)) (fn-xc-slot-matchp s nil 2 file eoff elen poff plen 0 0 trailer p slots) (fn-pwc-cachedp ledger token) (fn-pwr-plan-matches-token plan token))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins))) (declare (ignorable r s token plan)) (not (fn-pwr-plan-matches-token plan token))))))
+
+(defteeth fn-xc-span-at-answers-from-a-matching-slot
+  :claim (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (s (mv-nth 2 r)) (token (fn-xc-slot-token s slots)) (plan (fn-xcw-plan (fn-xc-row s cells) wins))) (((span (equal (mv-nth 0 r) :span))) (and (natp s) (and (natp from) (<= from s)) (< s (fn-xcs-count slots)) (fn-xc-slot-matchp s nil 2 file eoff elen poff plen 0 0 trailer p slots) (fn-pwc-cachedp ledger token) (fn-pwr-plan-matches-token plan token))))
+  :subject fn-xc-span-at
+  :witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  :witness-lemma fn-xc-span-at-answers-from-a-matching-slot-positive-witness
+  :breaks (
+(span ((ledger nil)) :lemma fn-xc-span-at-answers-from-a-matching-slot-without-span-witness))
+  :mutations (
+(stale-plan-accepted (:conclusion (not (fn-pwr-plan-matches-token plan token))) () :fault "copying from a row whose plan was written for another slot's token" :lemma fn-xc-span-at-answers-from-a-matching-slot-mutant-stale-plan-accepted-witness)))
+
+(xcst-ground-witness fn-xc-span-at-miss-changes-nothing-positive-witness ((from 0) (ledger nil) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (not (equal (mv-nth 0 r) :span))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (and (equal (mv-nth 0 r) :miss) (equal (mv-nth 1 r) 0) (equal (mv-nth 2 r) nil) (equal (mv-nth 3 r) dst) (equal (mv-nth 4 r) slots) (equal (mv-nth 5 r) cells)))))
+
+(xcst-ground-witness fn-xc-span-at-miss-changes-nothing-without-miss-witness ((from 0) (ledger *xcst-cached*) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  (and (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (not (equal (mv-nth 0 r) :span)))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (and (equal (mv-nth 0 r) :miss) (equal (mv-nth 1 r) 0) (equal (mv-nth 2 r) nil) (equal (mv-nth 3 r) dst) (equal (mv-nth 4 r) slots) (equal (mv-nth 5 r) cells))))))
+
+(xcst-ground-witness fn-xc-span-at-miss-changes-nothing-mutant-miss-reports-bytes-witness ((from 0) (ledger nil) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  (and (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (not (equal (mv-nth 0 r) :span))) (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (and (equal (mv-nth 0 r) :miss) (equal (mv-nth 1 r) 0) (equal (mv-nth 2 r) nil) (equal (mv-nth 3 r) dst) (equal (mv-nth 4 r) slots) (equal (mv-nth 5 r) cells))) (not (let* ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (declare (ignorable r)) (equal (mv-nth 1 r) 1)))))
+
+(defteeth fn-xc-span-at-miss-changes-nothing
+  :claim (let ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))) (((miss (not (equal (mv-nth 0 r) :span)))) (and (equal (mv-nth 0 r) :miss) (equal (mv-nth 1 r) 0) (equal (mv-nth 2 r) nil) (equal (mv-nth 3 r) dst) (equal (mv-nth 4 r) slots) (equal (mv-nth 5 r) cells))))
+  :subject fn-xc-span-at
+  :witness ((from 0) (ledger nil) (file 11) (eoff 100) (elen 3) (poff 100) (plen 3) (trailer 77) (p 1) (end 99) (slots *xcst-slots*) (cells *xcst-cells*) (wins *xcst-wins*) (dst *xcst-dst*))
+  :witness-lemma fn-xc-span-at-miss-changes-nothing-positive-witness
+  :breaks (
+(miss ((ledger *xcst-cached*)) :lemma fn-xc-span-at-miss-changes-nothing-without-miss-witness))
+  :mutations (
+(miss-reports-bytes (:conclusion (equal (mv-nth 1 r) 1)) () :fault "a declined walk that still reports a span length" :lemma fn-xc-span-at-miss-changes-nothing-mutant-miss-reports-bytes-witness)))
+
+
+; A row left behind by another window must never yield bytes: slot 1 (token
+; t1) carries the plan written for t0, so fn-pwc-span-at refuses the plan/token
+; mismatch and the walk ends in :miss.  Removing the plan/token check would
+; answer :span; the unchecked statement is must-fail.
+(xcst-ground-witness xcst-stale-row-answers-miss ()
+  (let ((r (fn-xc-span-at 0 *xcst-ledger2* 11 100 *xcst-plen* 100 *xcst-plen* 77 *xcst-c* *xcst-end2*
+                          *xcst-slots2* *xcst-cells2* *xcst-wins2s* *xcst-dst*)))
+    (and (equal (mv-nth 0 r) :miss) (equal (mv-nth 1 r) 0)
+         (not (fn-pwr-plan-matches-token (fn-xcw-plan 1 *xcst-wins2s*) *xcst-t1*)))))
+
+(local (must-fail-checked (defthm xcst-stale-row-would-answer-span
+  (equal (mv-nth 0 (fn-xc-span-at 0 *xcst-ledger2* 11 100 *xcst-plen* 100 *xcst-plen* 77 *xcst-c* *xcst-end2*
+                                  *xcst-slots2* *xcst-cells2* *xcst-wins2s* *xcst-dst*))
+         :span)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (enable fn-xc-slot-token fn-xc-token fn-xcs-get-kind-is-nth fn-xcs-get-tokp-is-nth fn-xcs-get-tid-is-nth fn-xcs-get-tcid-is-nth fn-xcs-get-file-is-nth fn-xcs-get-eoff-is-nth fn-xcs-get-elen-is-nth fn-xcs-get-a-is-nth fn-xcs-get-b-is-nth fn-xcs-get-c-is-nth fn-xcs-get-d-is-nth fn-xcs-get-start-is-nth fn-xcs-get-trailer-is-nth nth)
+                                            (executable-counterpart-theory :here)))))))
+
+; The first-candidate-only walk (no continuation) is the design this lane
+; replaces: on S's two-window request it answers :miss while the real walk
+; answers :span from slot 1.
+(defun xcst-first-candidate-span-at (from ledger file eoff elen poff plen trailer p end
+                                          fn-xcs fn-xcc fn-xcw fn-ew-span)
+  (declare (xargs :stobjs (fn-xcs fn-xcc fn-xcw fn-ew-span)
+                  :guard (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (natp from) (natp p)
+                              (natp end) (natp plen))
+                  :verify-guards nil))
+  (mv-let (word slot)
+    (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p fn-xcs fn-xcc)
+    (if (and (equal word :hit) (natp slot) (< slot (fn-xcs-count fn-xcs))
+             (fn-xc-cellsp fn-xcc) (natp p) (natp end) (natp plen))
+        (mv-let (answer j fn-ew-span)
+          (fn-xc-span-row slot ledger file eoff elen poff plen trailer p end
+                          fn-xcs fn-xcc fn-xcw fn-ew-span)
+          (if (equal answer :span)
+              (mv :span (- j p) slot fn-ew-span fn-xcs fn-xcc)
+            (mv :miss 0 nil fn-ew-span fn-xcs fn-xcc)))
+      (mv :miss 0 nil fn-ew-span fn-xcs fn-xcc))))
+
+(xcst-ground-witness xcst-first-candidate-only-misses-what-the-walk-answers ()
+  (and (equal (mv-nth 0 (xcst-first-candidate-span-at 0 *xcst-ledger2* 11 100 *xcst-plen* 100 *xcst-plen* 77 *xcst-c* *xcst-end2*
+                                                      *xcst-slots2* *xcst-cells2* *xcst-wins2* *xcst-dst*))
+              :miss)
+       (equal (mv-nth 0 (fn-xc-span-at 0 *xcst-ledger2* 11 100 *xcst-plen* 100 *xcst-plen* 77 *xcst-c* *xcst-end2*
+                                       *xcst-slots2* *xcst-cells2* *xcst-wins2* *xcst-dst*))
+              :span)
+       (equal (mv-nth 2 (fn-xc-span-at 0 *xcst-ledger2* 11 100 *xcst-plen* 100 *xcst-plen* 77 *xcst-c* *xcst-end2*
+                                       *xcst-slots2* *xcst-cells2* *xcst-wins2* *xcst-dst*))
+              1)
+       (equal (mv-nth 1 (fn-xc-span-at 0 *xcst-ledger2* 11 100 *xcst-plen* 100 *xcst-plen* 77 *xcst-c* *xcst-end2*
+                                       *xcst-slots2* *xcst-cells2* *xcst-wins2* *xcst-dst*))
+              3)))
+
+(local (must-fail-checked (defthm xcst-first-candidate-only-would-answer-span
+  (equal (mv-nth 0 (xcst-first-candidate-span-at 0 *xcst-ledger2* 11 100 *xcst-plen* 100 *xcst-plen* 77 *xcst-c* *xcst-end2*
+                                                 *xcst-slots2* *xcst-cells2* *xcst-wins2* *xcst-dst*))
+         :span)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (enable fn-xc-slot-token fn-xc-token fn-xcs-get-kind-is-nth fn-xcs-get-tokp-is-nth fn-xcs-get-tid-is-nth fn-xcs-get-tcid-is-nth fn-xcs-get-file-is-nth fn-xcs-get-eoff-is-nth fn-xcs-get-elen-is-nth fn-xcs-get-a-is-nth fn-xcs-get-b-is-nth fn-xcs-get-c-is-nth fn-xcs-get-d-is-nth fn-xcs-get-start-is-nth fn-xcs-get-trailer-is-nth nth)
+                                            (executable-counterpart-theory :here)))))))
+
+; The host installs through fn-xc-install-window-bytes and initialises through
+; fn-xc-init-windows: nine windows are refused by name (the fn-xcw row count is
+; the profile's eight), eight are laid out, and an install stores the plan and
+; the staged octets with the slot.
+(xcst-ground-witness xcst-init-windows-refuses-nine-and-readies-eight ()
+  (and (equal (mv-nth 0 (fn-xc-init-windows 0 9 nil nil)) :refused-window-rows)
+       (equal (mv-nth 1 (fn-xc-init-windows 0 9 nil nil)) nil)
+       (equal (mv-nth 2 (fn-xc-init-windows 0 9 nil nil)) nil)
+       (equal (mv-nth 0 (fn-xc-init-windows 0 8 nil nil)) :initialized)
+       (equal (fn-xc-nw (mv-nth 2 (fn-xc-init-windows 0 8 nil nil))) 8)))
+
+(xcst-ground-witness xcst-install-window-bytes-stores-the-pair ()
+  (let* ((free '(0 nil 0 0 0 0 0 0 0 0 0 0 0 0))
+         (r (fn-xc-install-window-bytes *xcst-token* *xcst-plan* (list free free) '(1 0 2)
+                                        (list (list nil nil) (list *xcst-window* *xcst-window*))
+                                        *xcst-window*)))
+    (and (equal (mv-nth 0 r) :installed) (equal (mv-nth 1 r) 0)
+         (equal (fn-xcw-plan 0 (mv-nth 5 r)) *xcst-plan*)
+         (equal (take 3 (nth 0 (fn-xcw-window 0 (mv-nth 5 r)))) '(1 2 3))
+         (equal (fn-xcw-plan 1 (mv-nth 5 r)) nil)
+         (equal (mv-nth 0 (fn-xc-install-window-bytes *xcst-token* *xcst-plan* nil '(1 0 0)
+                                                      (list (list nil nil) (list *xcst-window* *xcst-window*))
+                                                      *xcst-window*))
+                :refused)
+         (equal (mv-nth 5 (fn-xc-install-window-bytes *xcst-token* *xcst-plan* nil '(1 0 0)
+                                                      (list (list nil nil) (list *xcst-window* *xcst-window*))
+                                                      *xcst-window*))
+                (list (list nil nil) (list *xcst-window* *xcst-window*))))))
 
 (xcst-ground-witness fn-xc-held-token-has-one-slot-positive-witness ((slots *xcst-slots*) (i 0) (k 0) (token *xcst-token*))
   (and (fn-xc-token-disjointp slots) (fn-xc-holds i token slots) (fn-xc-holds k token slots) (equal i k)))
@@ -531,45 +398,76 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here)))))))
 
-; Actual stobj execution of the same model poststate. The host's publication
-; provenance is fn-pwc-cache-only-a-published-window, not these fixtures.
-(defun xcst-native-positive (fn-xcs fn-xcc fn-ew-buffer fn-ew-span)
-  (declare (xargs :stobjs (fn-xcs fn-xcc fn-ew-buffer fn-ew-span) :verify-guards nil))
+; Actual stobj execution, end to end through the host entries: init, two
+; installs (the table decision plus the stored plan and window), then one
+; walk.  The host's publication provenance is fn-pwc-cache-only-a-published-window,
+; not these fixtures.
+(defun xcst-native-single (fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span)
+  (declare (xargs :stobjs (fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span) :verify-guards nil))
   (let* ((fn-xcs (fn-xcs-clear fn-xcs)) (fn-xcc (fn-xcc-clear fn-xcc))
          (fn-ew-buffer (update-fn-ew-bytesi 0 1 fn-ew-buffer))
          (fn-ew-buffer (update-fn-ew-bytesi 1 2 fn-ew-buffer))
          (fn-ew-buffer (update-fn-ew-bytesi 2 3 fn-ew-buffer)))
-    (mv-let (init fn-xcs fn-xcc) (fn-xc-init 0 2 fn-xcs fn-xcc)
-      (mv-let (installed target evicted fn-xcs fn-xcc)
-        (fn-xc-install-window *xcst-token* fn-xcs fn-xcc)
+    (mv-let (init fn-xcs fn-xcc) (fn-xc-init-windows 0 2 fn-xcs fn-xcc)
+      (mv-let (installed target evicted fn-xcs fn-xcc fn-xcw)
+        (fn-xc-install-window-bytes *xcst-token* *xcst-plan* fn-xcs fn-xcc fn-xcw fn-ew-buffer)
         (mv-let (lookup found)
           (fn-xc-lookup 0 2 11 100 3 100 3 0 0 77 1 fn-xcs fn-xcc)
-          (mv-let (word1 byte1)
-            (fn-pwr-byte-at *xcst-returned* *xcst-worker* *xcst-token* *xcst-plan* 11 100 3 100 3 77 1 fn-ew-buffer)
-            (mv-let (word2 byte2)
-              (fn-pwr-byte-at *xcst-returned* *xcst-worker* *xcst-token* *xcst-plan* 11 100 3 100 3 77 2 fn-ew-buffer)
-              (mv-let (word count slot fn-ew-span fn-xcs fn-xcc)
-                (fn-xc-span-at 0 *xcst-cached* *xcst-plan* 11 100 3 100 3 77 1 99 fn-xcs fn-xcc fn-ew-buffer fn-ew-span)
-                (mv (and (equal init :initialized) (equal installed :installed) (equal target 0) (not evicted)
-                         (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-readyp fn-xcs fn-xcc)
-                         (fn-ew-bufferp fn-ew-buffer) (fn-ew-spanp fn-ew-span)
-                         (equal lookup :hit) (equal found 0)
-                         (fn-pwc-cachedp *xcst-cached* *xcst-token*)
-                         (equal (fn-pwr-outcome *xcst-returned* *xcst-worker* *xcst-token* *xcst-plan*) :ready)
-                         (equal word1 :byte) (equal word2 :byte)
-                         (equal word :span) (equal count 2) (equal slot 0)
-                         (equal byte1 2) (equal byte2 3)
-                         (equal (fn-ew-span-bytesi 0 fn-ew-span) byte1)
-                         (equal (fn-ew-span-bytesi 1 fn-ew-span) byte2)
-                         (natp 0) (< 0 count) (<= count *fn-ew-span-capacity*)
-                         (<= (+ 1 count) 99) (<= (+ 1 count) 3)
-                         (<= (+ 1 count) (+ (nth 7 *xcst-token*) (nth 5 *xcst-plan*)))
-                         (equal (fn-xcs-get-stamp 0 fn-xcs) 1) (equal (fn-xc-tick fn-xcc) 2)
-                         (fn-xc-token-disjointp fn-xcs))
-                    fn-xcs fn-xcc fn-ew-buffer fn-ew-span)))))))))
+          (mv-let (word count slot fn-ew-span fn-xcs fn-xcc)
+            (fn-xc-span-at 0 *xcst-cached* 11 100 3 100 3 77 1 99 fn-xcs fn-xcc fn-xcw fn-ew-span)
+            (mv (and (equal init :initialized) (equal installed :installed) (equal target 0) (not evicted)
+                     (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-readyp fn-xcs fn-xcc)
+                     (fn-ew-bufferp fn-ew-buffer) (fn-ew-spanp fn-ew-span) (fn-xcwp fn-xcw)
+                     (equal lookup :hit) (equal found 0)
+                     (equal (fn-xcw-plansi 0 fn-xcw) *xcst-plan*)
+                     (equal word :span) (equal count 2) (equal slot 0)
+                     (equal (fn-ew-span-bytesi 0 fn-ew-span) 2)
+                     (equal (fn-ew-span-bytesi 1 fn-ew-span) 3)
+                     (equal (fn-xcs-get-stamp 0 fn-xcs) 1) (equal (fn-xc-tick fn-xcc) 2)
+                     (fn-xc-token-disjointp fn-xcs))
+                fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span)))))))
 
-(assert-event (xcst-native-positive fn-xcs fn-xcc fn-ew-buffer fn-ew-span)
-         :stobjs-out '(nil fn-xcs fn-xcc fn-ew-buffer fn-ew-span))
+(assert-event (xcst-native-single fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span)
+         :stobjs-out '(nil fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span))
+
+; S's counterexample on live stobjs: window [0,C) in slot 0 and [C,C+3) in
+; slot 1; a request at p = C selects slot 0 first, which cannot supply the
+; octet, and the walk answers from slot 1.
+(defun xcst-native-two-windows (fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span)
+  (declare (xargs :stobjs (fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span) :verify-guards nil))
+  (let* ((fn-xcs (fn-xcs-clear fn-xcs)) (fn-xcc (fn-xcc-clear fn-xcc))
+         (fn-ew-buffer (update-fn-ew-bytesi 0 4 fn-ew-buffer))
+         (fn-ew-buffer (update-fn-ew-bytesi 1 5 fn-ew-buffer))
+         (fn-ew-buffer (update-fn-ew-bytesi 2 6 fn-ew-buffer)))
+    (mv-let (init fn-xcs fn-xcc) (fn-xc-init-windows 0 2 fn-xcs fn-xcc)
+      (mv-let (w0 s0 e0 fn-xcs fn-xcc fn-xcw)
+        (fn-xc-install-window-bytes *xcst-t0* *xcst-p0* fn-xcs fn-xcc fn-xcw fn-ew-buffer)
+        (let* ((fn-ew-buffer (update-fn-ew-bytesi 0 7 fn-ew-buffer))
+               (fn-ew-buffer (update-fn-ew-bytesi 1 8 fn-ew-buffer))
+               (fn-ew-buffer (update-fn-ew-bytesi 2 9 fn-ew-buffer)))
+          (mv-let (w1 s1 e1 fn-xcs fn-xcc fn-xcw)
+            (fn-xc-install-window-bytes *xcst-t1* *xcst-p1* fn-xcs fn-xcc fn-xcw fn-ew-buffer)
+            (mv-let (first-word first-slot)
+              (fn-xc-lookup 0 2 11 100 *xcst-plen* 100 *xcst-plen* 0 0 77 *xcst-c* fn-xcs fn-xcc)
+              (mv-let (word count slot fn-ew-span fn-xcs fn-xcc)
+                (fn-xc-span-at 0 *xcst-ledger2* 11 100 *xcst-plen* 100 *xcst-plen* 77 *xcst-c* *xcst-end2*
+                               fn-xcs fn-xcc fn-xcw fn-ew-span)
+                (mv (and (equal init :initialized)
+                         (equal w0 :installed) (equal s0 0) (not e0)
+                         (equal w1 :installed) (equal s1 1) (not e1)
+                         (equal first-word :hit) (equal first-slot 0)
+                         (equal (fn-xcw-plansi 0 fn-xcw) *xcst-p0*)
+                         (equal (fn-xcw-plansi 1 fn-xcw) *xcst-p1*)
+                         (equal word :span) (equal count 3) (equal slot 1)
+                         (equal (fn-ew-span-bytesi 0 fn-ew-span) 7)
+                         (equal (fn-ew-span-bytesi 1 fn-ew-span) 8)
+                         (equal (fn-ew-span-bytesi 2 fn-ew-span) 9)
+                         (equal (fn-xcs-get-stamp 1 fn-xcs) 2))
+                    fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span)))))))))
+
+(assert-event (xcst-native-two-windows fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span)
+         :stobjs-out '(nil fn-xcs fn-xcc fn-xcw fn-ew-buffer fn-ew-span))
+
 
 ; Every transition has a nonempty ground control; the write control meets
 ; the precise outside-target absence precondition.

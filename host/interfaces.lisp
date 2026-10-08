@@ -4945,16 +4945,17 @@
 ;; books/extent-cache.lisp: the payload extent cache's decisions.  The host
 ;; keeps one value per slot number (host/native/extent.lisp); ACL2 says which
 ;; slot holds a descriptor, which an install takes, which yields under pressure.
-(definterface fn-xc-init :class :common-lisp-compliant
-  :keystones (fn-xc-init-initializes fn-xc-init-lookups-miss))
+(definterface fn-xc-init-windows :class :common-lisp-compliant
+  :keystones (fn-xc-init-windows-refuses-more-windows-than-rows
+              fn-xc-init-windows-readies-the-rows))
 (definterface fn-xc-lookup :class :common-lisp-compliant
   :kinds ((from natp) (pos natp))
   :keystones (fn-xc-lookup-hit-is-the-descriptor fn-xc-lookup-miss-is-absent))
 (definterface fn-xc-span-at :class :common-lisp-compliant
-  :kinds ((from natp) (plan true-listp) (plen natp) (p natp) (end natp))
-  :keystones (fn-xc-span-at-is-the-returned-bytes
-              fn-xc-span-at-answers-an-owed-hit
-              fn-xc-span-at-hit-touches-only-the-selected-slot))
+  :kinds ((from natp) (plen natp) (p natp) (end natp))
+  :keystones (fn-xc-span-at-answers-a-covered-slot
+              fn-xc-span-at-is-the-returned-bytes
+              fn-xc-span-at-answers-from-a-matching-slot))
 (definterface fn-xc-touch :class :common-lisp-compliant
   :keystones (fn-xc-lookup-after-touch))
 (definterface fn-xc-install-entry :class :common-lisp-compliant
@@ -4963,6 +4964,9 @@
 (definterface fn-xc-install-window :class :common-lisp-compliant
   :keystones ((fn-xc-install-then-lookup-hits :via fn-xc-install)
               (fn-xc-install-occupancy :via fn-xc-install)))
+(definterface fn-xc-install-window-bytes :class :common-lisp-compliant
+  :keystones (fn-xc-install-window-bytes-installs-the-table-decision
+              fn-xc-install-window-bytes-stores-the-pair))
 (definterface fn-xc-yield :class :common-lisp-compliant
   :keystones (fn-xc-yield-an-entry
               (fn-xc-eviction-releases-exactly-the-slots-charge :via fn-xc-slot-token)))

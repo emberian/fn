@@ -297,6 +297,33 @@
     "proof_statement_diff origin/lane/s-extent-cache books/extent-cache.lisp": "18 expected differences: the same 14 round-2 changed events plus four new core events. One added local lemma. No additional changes to accepted statements. Cross-book audit against c4dcdaea3 proves all 199 accepted event statements, bodies and rule classes byte-identical apart from hints; additions are one local helper and the two full-strength theorems.",
     "host_check --load": "exit 1; diagnosed host merge integration finding above"
    }
+  },
+  {
+   "author": "Claude Sonnet p-xc-span",
+   "round": 4,
+   "status": "proved and certified on persvati; audit pending",
+   "gap": "S's counterexample (xc2-full-window-can-hide-a-later-span): the slot table selects kind-2 slots by start bound only, so with window [0,C) in slot 0 and [C,C+3) in slot 1 a request at p=C selected slot 0 and answered :miss although slot 1 held the octet. A false miss, never wrong bytes.",
+   "fix": "The per-slot plan and backing window live in the sibling stobj fn-xcw (plans array; windows array of fn-xcw-win, congruent to fn-ew-buffer), and fn-xc-span-at walks the candidates itself in one call: lookup from FROM, try the selected slot's own row, on a decline continue from slot+1, measure = slot count - from. fn-xc-install-window-bytes stores the plan and the staged window with the slot; fn-xc-init-windows refuses more windows than rows by name (:refused-window-rows).",
+   "signature": "(fn-xc-span-at from ledger file eoff elen poff plen trailer p end fn-xcs fn-xcc fn-xcw fn-ew-span) -> (mv word count slot fn-ew-span fn-xcs fn-xcc), word :span or :miss; (fn-xc-install-window-bytes token plan fn-xcs fn-xcc fn-xcw fn-ew-buffer) -> (mv word slot evicted fn-xcs fn-xcc fn-xcw); (fn-xc-init-windows ne nw fn-xcs fn-xcc) -> (mv word fn-xcs fn-xcc).",
+   "old_export_deleted": "The earlier fn-xc-span-at (plan and window arguments) is deleted, not twinned. Its K1 statements follow from the new ones by instantiation: fn-xc-span-at-is-the-returned-bytes (C2) is the old statement with plan and window read from the answering slot's row; fn-xc-span-at-answers-an-owed-hit is restated over the walk and follows from the covered-slot keystone (fn-xc-span-at-answers-a-covered-slot, C1) with the answered slot equal to the first candidate (fn-xc-span-at-answers-no-earlier-than-the-first-candidate); fn-xc-span-at-hit-touches-only-the-selected-slot now holds without its span hypothesis (a miss names no slot and touches none).",
+   "keystones": [
+    "fn-xc-span-at-answers-a-covered-slot",
+    "fn-xc-span-at-is-the-returned-bytes",
+    "fn-xc-span-at-answers-from-a-matching-slot",
+    "fn-xc-span-at-hit-touches-only-the-selected-slot",
+    "fn-xc-span-at-miss-changes-nothing",
+    "fn-xc-span-at-answers-an-owed-hit",
+    "fn-xc-span-at-never-answers-a-freed-slot",
+    "fn-xc-install-window-bytes-stores-the-pair",
+    "fn-xc-install-window-bytes-leaves-other-rows",
+    "fn-xc-install-window-bytes-installs-the-table-decision",
+    "fn-xc-init-windows-refuses-more-windows-than-rows",
+    "fn-xc-init-windows-readies-the-rows"
+   ],
+   "stale_row": "fn-pwc-span-at checks the row's plan against the slot's token (fn-pwr-plan-matches-token) before copying; fn-xc-span-at-answers-from-a-matching-slot exports that check, xcst-stale-row-answers-miss shows a row written for another token answers :miss, and the unchecked statement is must-fail.",
+   "host_premise": "The host calls fn-xc-init-windows (not fn-xc-init) and fn-xc-install-window-bytes (not fn-xc-install-window) for kind-2 windows, and fn-xc-span-at with FROM = 0 and the descriptor, once per stretch; it keeps no per-slot plan or window and runs no candidate loop. Declaring them in host/interfaces.lisp (and dropping the fn-xc-init and fn-xc-install-window host entries) lands with the host change in s-xc2, which also includes books/extent-cache-span in host/page-read-host.lisp and tools/extract/world*.lisp.",
+   "tests": "tests/acl2/extent-cache-span-tests.lisp: S's counterexample is C1's positive witness (answered from slot 1), a removal witness per hypothesis group, the first-candidate-only mutation (also a defined first-candidate function that misses where the walk answers, with its must-fail statement), and live-stobj runs of both windows end to end.",
+   "certify": "run-20261008T170104Z-4746 (persvati): books/extent-cache-span 5.0 s, tests 4.0 s at one job, no book over 10 s."
   }
  ],
  "owner": "C",
@@ -304,5 +331,5 @@
  "source": "CONVERGE-2 row 21, coordinator 2026-10-07 15:40",
  "state": "open",
  "title": "The ARTICLE renderer walks the payload from octet 0 while the borrowed window is the payload's last one, so every octet below the window start asks the wrong question; row21-span's below slot memoizes that answer",
- "updated": "2026-10-08T12:08:17Z"
+ "updated": "2026-10-08T17:30:00Z"
 }

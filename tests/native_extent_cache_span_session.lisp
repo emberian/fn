@@ -5,6 +5,11 @@
 ; This entry comes from the required developer image, never a test stub.
 (defparameter *roots* '(fnn-command-acl2))
 (dolist (name *roots*) (assert (fboundp name)))
+; Saved operator images start LD without LP's connected-directory setup.
+; Restore that ordinary session state before INCLUDE-BOOK, not a proof mode.
+(f-put-global 'connected-book-directory (namestring (truename ".")) *the-live-state*)
 (fnn-command-acl2 "session" nil)
-(load "tests/native_extent_cache_span.lisp")
+(if (sb-ext:posix-getenv "FN_XC2_FIXTURE")
+    (load "tests/native_extent_decoded_span.lisp")
+  (load "tests/native_extent_cache_span.lisp"))
 (sb-ext:exit :code 0)

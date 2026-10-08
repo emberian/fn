@@ -19,18 +19,23 @@ SBCL = os.environ.get("FN_XC2_SBCL") or shutil.which("sbcl")
 
 
 def span_export_forms():
+    # Keep the book's executable definitions and admission lemmas unchanged.
+    # The existing image already supplies the two included dependencies.
     source = (ROOT / "books/extent-cache-span.lisp").read_text()
     lines = source.splitlines(keepends=True)
     forms = ledger.Reader(source).top_level()
-    names = {"fn-xc-span-end", "fn-xc-span-end-bounds",
-             "fn-xc-span-end-positive", "fn-xc-span-at"}
     chosen = []
+    prefix = True
+    installation = {"fn-xcw-copy", "fn-xcw-plan-octets", "fn-xcw-store",
+                    "fn-xc-install-window-bytes", "fn-xc-init-windows"}
     for index, (form, line) in enumerate(forms):
-        if (isinstance(form, list) and len(form) > 1
-                and str(form[1]).lower() in names):
+        if (isinstance(form, list) and form
+                and str(form[0]).lower() not in {"include-book", "in-package"}
+                and (prefix or (len(form) > 1 and str(form[1]).lower() in installation))):
             end = forms[index + 1][1] - 1 if index + 1 < len(forms) else len(lines)
             chosen.append("".join(lines[line - 1:end]))
-    assert len(chosen) == len(names)
+        if isinstance(form, list) and len(form) > 1 and str(form[1]).lower() == "fn-xc-span-at":
+            prefix = False
     return "\n".join(chosen)
 
 
@@ -47,8 +52,10 @@ class NativeExtentCacheSpanTests(unittest.TestCase):
                 env=dict(os.environ, FN_XC2_RAW_EXTENT=str(Path(directory) / "extent")),
                 input=forms, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, timeout=180)
-            error_at = result.stdout.find("Unhandled")
-            detail = result.stdout[error_at:error_at + 3500] if error_at >= 0 else result.stdout[-6000:]
+            error_at = result.stdout.find("ACL2 Error")
+            if error_at < 0:
+                error_at = result.stdout.find("Unhandled")
+            detail = result.stdout[max(0, error_at - 2500):error_at + 3500] if error_at >= 0 else result.stdout[-6000:]
             self.assertEqual(result.returncode, 0, detail)
             self.assertIn("native_extent_cache_span: PASS", result.stdout, detail)
             self.assertNotIn("ACL2 Error", result.stdout)

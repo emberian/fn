@@ -81,15 +81,17 @@ Missing wait/pin/other owner edges leave full PageIO replay unavailable."
 ;; The payload extent cache.  ACL2 owns every decision about it
 ;; (books/extent-cache.lisp: which slot holds a descriptor, which slot an
 ;; install takes, which slot yields under pool pressure, which slots a retiring
-;; file takes with it, and the charge each slot hands back); the host keeps only
-;; what ACL2 cannot hold, one value per slot number.
+;; file takes with it, and the charge each slot hands back). Raw window backing
+;; is also ACL2's, in fn-xcw; entry and decoded backing await sibling exports.
 (defvar *fnn-extent-xcs* nil)   ; ACL2's slot table (fn-xcs)
 (fnn-guarded-by *fnn-extent-xcs* *fnn-extent-lock*)
 (defvar *fnn-extent-xcc* nil)   ; its clock and geometry cells (fn-xcc)
 (fnn-guarded-by *fnn-extent-xcc* *fnn-extent-lock*)
+(defvar *fnn-extent-xcw* nil)   ; ACL2's raw plans and window bytes (fn-xcw)
+(fnn-guarded-by *fnn-extent-xcw* *fnn-extent-lock*)
 ;; Slot S of the first NE: the verified entry's octet vector; slot S of the
-;; next NW: a verified window's (PLAN . WINDOW) (PLAN is NIL for a decoded
-;; window).  A slot ACL2 holds free holds NIL here.  Capacity is a static pool
+;; next NW: a decoded window's (NIL . WINDOW), or NIL for a raw window held
+;; in fn-xcw. A slot ACL2 holds free holds NIL here. Capacity is a static pool
 ;; allowance, not a per-entry credit that eviction pretends to reclaim.
 (defvar *fnn-extent-slots* (vector))
 (fnn-guarded-by *fnn-extent-slots* *fnn-extent-lock*)
@@ -304,12 +306,13 @@ developer cache-off selector).  ACL2 refuses a figure its scans do not support."
   (unless *fnn-extent-xcs*
     (let ((ne (fnn-extent-cache-limit)) (nw (fnn-extent-window-limit)))
       (destructuring-bind (word xcs xcc)
-          (fnn-call 'fn-xc-init ne nw (create-fn-xcs$c) (create-fn-xcc$c))
+          (fnn-call 'fn-xc-init-windows ne nw (create-fn-xcs$c) (create-fn-xcc$c))
         (unless (eq word :initialized)
           (fnn-fault "the extent cache refused its profile figures ~d entries, ~d windows: ~a"
                      ne nw word))
         (setq *fnn-extent-xcs* xcs
               *fnn-extent-xcc* xcc
+              *fnn-extent-xcw* (create-fn-xcw)
               *fnn-extent-slots* (make-array (+ ne nw) :initial-element nil)))))
   t)
 
@@ -743,25 +746,22 @@ to the window's end.  (values WORD OCTETS COUNT): :span, or the borrow's word."
 
 (defun fnn-extent-window-cache-run (file eoff elen poff plen trailer p end)
   "One locked stretch: ACL2 selects its backing slot, bounds/copies the span
-and touches the hit. The native array only supplies the selected backing."
+and touches the hit, searching every candidate in its window stobj."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-    (let ((slot (fnn-extent-slot-lookup 2 file eoff elen poff plen 0 0 trailer p 0)))
-      (when slot
-        (let* ((backing (svref *fnn-extent-slots* slot))
-               (dst (or *fnn-extent-run-dst*
-                        (setq *fnn-extent-run-dst* (create-fn-ew-span))))
-               (ledger (fnn-core-cold-single 'fn-owner-page-read-ledger
-                                              (fnn-live-page-read-pool))))
-          (destructuring-bind (word count selected span xcs xcc)
-              (fnn-call 'fn-xc-span-at slot ledger (car backing)
-                        file eoff elen poff plen trailer p end
-                        *fnn-extent-xcs* *fnn-extent-xcc* (cdr backing) dst)
-            (declare (ignore selected))
-            (setq *fnn-extent-run-dst* span
-                  *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc)
-            (when (eq word :span)
-              (incf (first *fnn-extent-stats*) count)
-              (values (fnn-extent-copy-span span count) count))))))))
+    (fnn-extent-cache-ready)
+    (let* ((dst (or *fnn-extent-run-dst*
+                    (setq *fnn-extent-run-dst* (create-fn-ew-span))))
+           (ledger (fnn-core-cold-single 'fn-owner-page-read-ledger
+                                          (fnn-live-page-read-pool))))
+      (destructuring-bind (word count selected span xcs xcc)
+          (fnn-call 'fn-xc-span-at 0 ledger file eoff elen poff plen trailer p end
+                    *fnn-extent-xcs* *fnn-extent-xcc* *fnn-extent-xcw* dst)
+        (declare (ignore selected))
+        (setq *fnn-extent-run-dst* span
+              *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc)
+        (when (eq word :span)
+          (incf (first *fnn-extent-stats*) count)
+          (values (fnn-extent-copy-span span count) count))))))
 
 (defun fnn-extent-window-realize-run (file eoff elen poff plen trailer p end)
   "(values OCTETS COUNT) for a stretch starting at P and ending at or before END."
@@ -824,22 +824,23 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ;;; fn-owner-page-window-cache-span-at-is-the-cached-bytes), with no worker,
 ;;; pread or owner settlement.  ACL2's slot table selects matching windows,
 ;;; moves successful hits to most recent and chooses evictions.  The host's
-;;; slot array holds (PLAN . WINDOW); the token is reconstructed by ACL2.
+;;; fn-xcw holds the plans and windows; the token is reconstructed by ACL2.
 ;;; Eviction releases the exact :cached row (fn-prl-evict), including when
 ;;; its file retires (fnn-extent-cache-drop-files).
 (defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
 
 (defun fnn-extent-window-cache-insert (token plan window)
   "Extent lock held, the :cached row already ACL2's.  ACL2 places the window
-(books/extent-cache.lisp fn-xc-install-window); the tokens to release: the
+(books/extent-cache-span.lisp fn-xc-install-window-bytes); the tokens to release: the
 slot's victim, or the new row itself when ACL2 already holds that window."
   (fnn-extent-cache-ready)
-  (destructuring-bind (word slot evicted xcs xcc)
-      (fnn-call 'fn-xc-install-window token *fnn-extent-xcs* *fnn-extent-xcc*)
-    (setq *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc)
+  (destructuring-bind (word slot evicted xcs xcc xcw)
+      (fnn-call 'fn-xc-install-window-bytes token plan
+                *fnn-extent-xcs* *fnn-extent-xcc* *fnn-extent-xcw* window)
+    (setq *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc *fnn-extent-xcw* xcw)
     (case word
       ((:installed :replaced)
-       (setf (svref *fnn-extent-slots* slot) (cons plan window))
+       (fnn-extent-slot-clear slot)
        (values (and evicted (list evicted)) t))
       ((:present :duplicate) (values (list token) nil))
       (t (fnn-fault "the window cache refused a window ACL2 had already cached")))))

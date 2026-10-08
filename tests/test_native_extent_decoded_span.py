@@ -12,6 +12,8 @@ import tempfile
 import unittest
 import zlib
 
+from tests.test_native_extent_cache_span import span_export_forms
+
 ROOT = Path(__file__).resolve().parents[1]
 CORE = os.environ.get("FN_XC2_NATIVE_CORE")
 SBCL = os.environ.get("FN_XC2_SBCL") or shutil.which("sbcl")
@@ -29,9 +31,11 @@ class NativeExtentDecodedSpanTests(unittest.TestCase):
                 [SBCL, "--tls-limit", "20480", "--dynamic-space-size", "2048",
                  "--control-stack-size", "8192KB", "--core", CORE,
                  "--noinform", "--disable-debugger", "--load",
-                 "tests/native_extent_decoded_span.lisp"],
+                 "tests/native_extent_cache_span_session.lisp"],
                 cwd=ROOT, env=dict(os.environ, FN_XC2_FIXTURE=directory),
+                input=span_export_forms() + "\n:q\n",
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, timeout=180)
             self.assertEqual(result.returncode, 0, result.stdout[-12000:])
             self.assertIn("native_extent_decoded_span: PASS", result.stdout)
+            self.assertNotIn("ACL2 Error", result.stdout)
