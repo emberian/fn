@@ -309,6 +309,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/checkpoint-payload-ref \
 	books/checkpoint-payloads \
 	books/checkpoint-payloads-exec \
+	books/checkpoint-frame-fit \
 	books/checkpoint-payloads-extent \
 	books/paged-checkpoint \
 	books/catalog-pages \
@@ -325,6 +326,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/paged-checkpoint-host-tests \
 	tests/acl2/checkpoint-payloads-tests \
 	tests/acl2/checkpoint-payloads-exec-tests \
+	tests/acl2/checkpoint-frame-fit-tests \
 	tests/acl2/paged-checkpoint-exec-tests \
 	tests/acl2/paged-checkpoint-stage-tests \
 	tests/acl2/paged-checkpoint-image-tests \

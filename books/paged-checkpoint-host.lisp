@@ -17,7 +17,7 @@
 ;
 ;   fn-pck-publish-plan-commits-the-delta     a commit plan is fn-pck-dirty and
 ;                              applies to the new image, within the dirty bound
-;   fn-pck-publish-plan-refuses-only-an-over-k-root
+;   fn-pck-publish-plan-refuses-by-name
 ;   fn-pck-open-selection-bounds-the-suffix   a checkpoint open has S <= count
 ;                              and suffix <= K
 ;   fn-pck-compact-keeps-both-slots           the compacted log still retains
@@ -41,6 +41,7 @@
 
 (in-package "ACL2")
 (include-book "paged-checkpoint")
+(include-book "checkpoint-frame-fit")
 (include-book "catalog-pages")
 (include-book "catalog-availability-owner-load")
 (local (include-book "arithmetic/top" :dir :system))
@@ -49,12 +50,14 @@
 ; 1. Publication
 
 (defun fn-pck-publish-plan (configs prefix delta)
-  ; (:commit DIRTY) or (:refused :checkpoint-root-over-k); a refusal writes
+  ; (:commit DIRTY) or a named root/payload refusal; a refusal writes
   ; nothing and the log is kept whole.
   (declare (xargs :guard t :verify-guards nil))
-  (if (fn-pck-root-fitsp configs (append prefix delta))
-      (list :commit (fn-pck-dirty configs prefix delta))
-    (list :refused :checkpoint-root-over-k)))
+  (let ((frame-verdict (fn-pck-frame-verdict (fn-pck-frame-lengths delta))))
+    (cond ((not (eq frame-verdict :ok)) frame-verdict)
+          ((fn-pck-root-fitsp configs (append prefix delta))
+           (list :commit (fn-pck-dirty configs prefix delta)))
+          (t (list :refused :checkpoint-root-over-k)))))
 
 (defthm fn-pck-publish-plan-commits-the-delta
   (implies (and (true-listp prefix) (true-listp delta)
@@ -73,11 +76,15 @@
                                       fn-pck-delta-page-bound)
            :use (fn-pck-dirty-is-the-delta fn-pck-dirty-bound))))
 
-(defthm fn-pck-publish-plan-refuses-only-an-over-k-root
+(defthm fn-pck-publish-plan-refuses-by-name
   (implies (equal (car (fn-pck-publish-plan configs prefix delta)) :refused)
-           (and (equal (fn-pck-publish-plan configs prefix delta)
-                       '(:refused :checkpoint-root-over-k))
-                (not (fn-pck-root-fitsp configs (append prefix delta))))))
+           (or (and (equal (fn-pck-publish-plan configs prefix delta)
+                           '(:refused :payload-over-frame))
+                    (not (eq (fn-pck-frame-verdict (fn-pck-frame-lengths delta)) :ok)))
+               (and (equal (fn-pck-publish-plan configs prefix delta)
+                           '(:refused :checkpoint-root-over-k))
+                    (not (fn-pck-root-fitsp configs (append prefix delta))))))
+  :hints (("Goal" :in-theory (disable fn-pck-root-fitsp fn-pck-frame-lengths))))
 
 (defun fn-pck-publish-plan-at (cnt tail tree delta base st)
   ; The plan from the host's summary of the store: the tape's word count and
@@ -86,9 +93,13 @@
                               (fn-sccb-treep tree) (natp base)
                               (fn-pck-sccb-listp delta st))
                   :verify-guards nil))
-  (if (fn-pck-root-fitsp-tree tree)
-      (list :commit (fn-pck-dirty-at cnt tail (fn-pck-root-pages-of-tree tree) delta base st))
-    (list :refused :checkpoint-root-over-k)))
+  ; A refused payload delta writes nothing. The host makes this same length
+  ; decision concretely before materializing any wire values or doing I/O.
+  (let ((frame-verdict (fn-pck-frame-verdict (fn-pck-frame-lengths delta))))
+    (cond ((not (eq frame-verdict :ok)) frame-verdict)
+          ((fn-pck-root-fitsp-tree tree)
+           (list :commit (fn-pck-dirty-at cnt tail (fn-pck-root-pages-of-tree tree) delta base st)))
+          (t (list :refused :checkpoint-root-over-k)))))
 
 (defthm fn-pck-publish-plan-at-is-the-plan
   ; The summary plan is the model plan: CNT and TAIL are those of the prefix's
