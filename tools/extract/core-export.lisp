@@ -51,6 +51,21 @@
       (xt-core-roots (cdr tokens) w
                      (if (and (xt-core-root-p s w) (not (member-eq s acc))) (cons s acc) acc)))))
 
+; Every constrained function a host word names: the host realizes it (fn-sig-verify,
+; fn-durable-realize-*, fn-pgs-fill-frame, ...) and calls it through fnn-call, whose
+; fnn-entry-guard-spec reads its formals; it is no closure root, so without this the
+; snapshot lacked them and fn-core skipped their entry checks (O3,
+; tools/extract/obligations.py).
+(defun xt-core-token-functions (tokens w acc)
+  (if (endp tokens) (reverse acc)
+    (let ((s (intern-in-package-of-symbol (car tokens) 'xt-core-roots)))
+      (xt-core-token-functions (cdr tokens) w
+                               (if (and (getpropc s 'constrainedp nil w)
+                                        (not (eq (getpropc s 'formals :none w) :none))
+                                        (not (member-eq s acc)))
+                                   (cons s acc)
+                                 acc)))))
+
 ; The live stobjs host/native fetches by name (user-stobj-alist): each stobj a
 ; word names, by its creator, so the closure holds it.
 (defun xt-core-stobj-creators (tokens w acc)
@@ -397,11 +412,8 @@
                                               (list 'quote
                                                     (xt-world-snapshot
                                                      (remove-duplicates-eq
-                                                      ; every root too: a constrained function the host
-                                                      ; realizes (fn-sig-verify, fn-durable-realize-*, ...)
-                                                      ; is a root but no closure entry, and fnn-entry-guard-spec
-                                                      ; reads its formals (O3, obligations.py)
-                                                      (append roots
+                                                      ; every function a host word names (xt-core-token-functions)
+                                                      (append (xt-core-token-functions tokens w nil)
                                                               (xt-entry-fns entries nil)
                                                               (xt-stobj-closure-1 stobjs nil w)
                                                               tables

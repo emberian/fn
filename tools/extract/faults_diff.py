@@ -33,6 +33,8 @@ import fuzz_nntp as fz  # noqa: E402
 
 def blob(octets):
     """A byte observation: its length and digest, and the first 200 octets for the report."""
+    if isinstance(octets, str):
+        octets = octets.encode("latin-1")
     return {"len": len(octets), "sha256": hashlib.sha256(octets).hexdigest(),
             "head": octets[:200].decode("latin-1")}
 
