@@ -333,6 +333,15 @@
   (equal (pgs-dirty-lpages nil) nil)
   :hints (("Goal" :in-theory (enable pgs-dirty-lpages))))
 
+(defthm pcki-natp-8-floor (implies (natp cnt) (natp (+ 8 (floor cnt 2048)))) :rule-classes nil)
+
+(defthm pcki-zeros-tl (true-listp (adt-tp-zeros wl)) :hints (("Goal" :in-theory (enable adt-tp-zeros))) :rule-classes nil)
+
+(defthm pcki-posp-from-natp (implies (and (natp wl) (< 0 wl)) (posp wl)) :rule-classes nil)
+
+(defthm pcki-len-zeros (implies (natp wl) (equal (len (adt-tp-zeros wl)) wl))
+  :hints (("Goal" :in-theory (enable adt-tp-zeros))))
+
 (defthm pcki-model-lpages
   (implies (and (natp cnt) (natp wl) (< 0 wl) (true-listp tail) (equal (len tail) (- cnt (* 2048 (floor cnt 2048)))))
            (equal (pgs-dirty-lpages (pck-shift 8 (adt-tp-dirty-at cnt tail (adt-tp-zeros wl))))
@@ -340,9 +349,10 @@
   :hints (("Goal" :use (pcki-model-shift
                         (:instance pcks-dirty-lpages-of-number (j (+ 8 (floor cnt 2048))) (ps (adt-tp-pages (append tail (adt-tp-zeros wl)))))
                         (:instance pcks-len-pages-of-tail-words (w (adt-tp-zeros wl)))
-                        (:instance pcks-consp-zeros (l wl)))
-           :in-theory (disable pcki-model-shift pcks-dirty-lpages-of-number pcks-len-pages-of-tail-words pcks-consp-zeros
-                               adt-tp-dirty-at adt-tp-number adt-tp-pages adt-tp-zeros pck-shift pgs-dirty-lpages))))
+                        (:instance pcks-consp-zeros (l wl))
+                        pcki-natp-8-floor pcki-zeros-tl pcki-posp-from-natp)
+           :in-theory (union-theories '(pcki-len-zeros (:type-prescription len) (:compound-recognizer natp-compound-recognizer))
+                                      (theory 'minimal-theory)))))
 
 (defthm pcki-dirty-pos
   (implies (and (pcki-img pw pgs-mem) (natp wl) (< 0 wl) (natp npn)
@@ -359,7 +369,10 @@
                  (:instance pcki-dirty-iota (q (floor (len pw) 2048)) (n (floor (+ (- (len pw) (* 2048 (floor (len pw) 2048))) wl 2047) 2048)))
                  (:instance pcki-pages-of-zero-padded (tail (nthcdr (* 2048 (floor (len pw) 2048)) pw))))
            :in-theory (e/d (pcki-img) (pcki-arith2 pcki-model-shift pcki-model-lpages pcks-len-tail pcki-dirty-iota pcki-pages-of-zero-padded
-                                       pgs-x-grow-image pgs-x-words adt-tp-pages adt-tp-zeros adt-tp-dirty-at pck-shift nthcdr take adt-tp-number pgs-dirty-lpages pgs-x-abs-dirty)))))
+                                       pgs-x-grow-image pgs-x-words adt-tp-pages adt-tp-zeros adt-tp-dirty-at pck-shift nthcdr take adt-tp-number pgs-dirty-lpages pgs-x-abs-dirty
+                                       pcks-pages-short adt-tp-pages-of-append-aligned pgs-consp-nthcdr pgs-nthcdr-too-far
+                                       adt-tp-nthcdr-short pcks-nthcdr-too-long natp-posp posp-rw adt-tp-tail-is-page-prefix
+                                       pgs-x-write-facts)))))
 
 (defthm pcki-hi-bound
   (implies (and (natp cnt) (natp wl) (natp npn) (<= (+ 8 (floor (+ cnt wl 2047) 2048)) npn))
@@ -437,6 +450,8 @@
           ("Subgoal 1" :use ((:instance pgs-x-write-facts (a 0) (j 0)))
            :in-theory (disable pgs-x-write-facts pgs-x-write))))
 
+(in-theory (disable pgs-x-write-facts))
+
 (defthm pcki-vis-of-write
   (implies (and (natp lp) (natp off))
            (equal (pcki-vis n (mv-nth 1 (pgs-x-write lp off v pgs-mem))) (pcki-vis n pgs-mem)))
@@ -461,14 +476,14 @@
            (equal (pcki-shape (mv-nth 1 (fn-pck-x-put-row j nw p tl fn-octets pgs-mem))) (pcki-shape pgs-mem)))
   :hints (("Goal" :induct (pcks-put-ind j nw p tl fn-octets pgs-mem)
            :in-theory (union-theories '(pcks-put-row-open pcks-put-row-done (:induction pcks-put-ind) pcki-shape-of-wr)
-                                      (disable fn-pck-x-put-row pcks-wr pcki-shape pgs-x-write)))))
+                                      (disable fn-pck-x-put-row pcks-wr pcki-shape pgs-x-write pgs-x-write-facts)))))
 
 (defthm pcki-shape-of-stage
   (implies (natp p)
            (equal (pcki-shape (mv-nth 2 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem))) (pcki-shape pgs-mem)))
   :hints (("Goal" :induct (pcks-stage-ind rows p base st fn-arena fn-octets pgs-mem)
            :in-theory (union-theories '(pcks-stage-open pcks-stage-done (:induction pcks-stage-ind) pcki-shape-of-put-row)
-                                      (disable fn-pck-x-stage-rows fn-pck-x-put-row fn-pck-x-encode-row fn-pck-x-row-words pcki-shape fn-pck-x-tl fn-pck-x-payload-len fn-cpl-frame-octets)))))
+                                      (disable fn-pck-x-stage-rows fn-pck-x-put-row fn-pck-x-encode-row fn-pck-x-row-words pcki-shape fn-pck-x-tl fn-pck-x-payload-len fn-cpl-frame-octets pgs-x-write-facts)))))
 
 (defthm pcki-vis-vi
   (implies (and (equal (pcki-vis n a) (pcki-vis n b)) (natp n) (natp j) (< j n))
@@ -717,7 +732,8 @@
            :in-theory (disable pcki-hi-bound pcki-img-of-grown pcki-prestate-res pcki-grown-vlen pcki-img-of-stage pcki-lpages-nat
                                pcks-len-tail pcki-img-of-durable pgs-x-grow-image pgs-x-commit-durable fn-pck-x-stage-rows
                                pcks-wlen pcks-wlist adt-tp-dirty-at adt-tp-zeros pck-shift pgs-dirty-lpages pcki-img
-                               pcks-wlen-is-len-words pcks-wlist-is-dlo-of-words pcks-len-dlo-list pcks-res-hi pcks-res))))
+                               pcks-wlen-is-len-words pcks-wlist-is-dlo-of-words pcks-len-dlo-list pcks-res-hi pcks-res
+                               adt-tp-pages adt-tp-tail-is-page-prefix pcks-iota-step natp-posp posp-rw))))
 
 (defthm pcki-wlist-is-words
   (implies (and (fn-pck-sccb-listp (fn-rows-wire-of rows fn-arena) st)
