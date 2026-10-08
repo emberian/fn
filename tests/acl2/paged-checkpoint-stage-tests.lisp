@@ -16,6 +16,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/paged-checkpoint-stage")
+(include-book "../../books/paged-checkpoint-summary")
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
@@ -139,7 +140,13 @@
                         (equal base0 (fn-pck-plen prefix 0))
                         (equal (fn-ssr-at 0 st) nil)
                         (fn-pck-context-agreep st (fn-pck-st-of (fn-pck-seed) prefix))
-                        (fn-pck-sccb-listp (fn-rows-wire-of delta fn-arena) st))))
+                        (fn-pck-sccb-listp (fn-rows-wire-of delta fn-arena) st)
+                        (pcki-img (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix)) pgs-mem)
+                        (< (fn-pck-plen delta base0) 18446744073709551616)
+                        (adt-tp-seq-lens-ok *fn-pck-row-schema* (fn-pck-rows-from delta base0 st))
+                        (let ((wl (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta base0 st)))))
+                          (and (pcks-res cnt0 (+ cnt0 wl) pgs-mem)
+                               (<= (+ cnt0 wl) (* 2048 (- (pgs-v-length pgs-mem) 8))))))))
         (mv-let (v1 fn-octets pgs-mem cnt1 base1 ctx1 tail1)
           (fn-pck-x-stage-rows delta (+ cnt0 shift) base0 st fn-arena fn-octets pgs-mem)
           (let* ((all (append prefix delta))
