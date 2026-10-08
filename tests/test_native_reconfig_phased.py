@@ -16,6 +16,7 @@ class PhasedReconfigurationAdapterTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("live/held never read disk; offline/stale controls passed", result.stdout)
+        self.assertIn("NNTP/BP kind-table dispatch and peer refusal passed", result.stdout)
 
     def test_capture_conversion_and_lock_placement(self):
         result = subprocess.run(

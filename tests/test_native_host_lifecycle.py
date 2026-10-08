@@ -183,11 +183,16 @@ class WorkerRosterTests(auto.AutoCheckpointFixture):
         taken = journal / "{:06d}.log".format(int(active[:6]) + 1)
         taken.write_bytes(b"")
         self.addCleanup(lambda: taken.unlink() if taken.exists() else None)
-        self.op("store", "checkpoint")
+        # S2/S3: the CLI follows the receipt to its terminal refusal. A
+        # failed rotation starts no publisher, so it must not poll forever.
+        refused = self.op("store", "checkpoint")
+        self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stdout + refused.stderr)
+        self.assertIn(b"compaction requested receipt=", refused.stdout)
         self.assertIsNotNone(self.owner_line(owner, ROTATION_REFUSED, deadline=60.0),
                              "the rotation was not refused by name")
         # Refused again at a later decision: still no NIL worker.
-        self.op("store", "checkpoint")
+        refused = self.op("store", "checkpoint")
+        self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stdout + refused.stderr)
         self.nudge(30)
         self.assertIsNone(owner.poll())
         self.node.stop(process=owner, expect=EXIT.OK)

@@ -7990,17 +7990,19 @@ may already hold it)."
 answers that the rotation's spare is missing, the spare made off the owner
 mutex (host/native/io.lisp fnn-log-prepare-spare: create, preallocate, fence
 in staging/) and the decision taken once more.  The rotation under the mutex
-is then a rename.  A spare that cannot be made is a failed publication:
-logged, serving continues."
+is then a rename. A refused start is logged and returned as the second
+value, so a receipt worker can complete with that condition; automatic
+maintenance continues serving."
   (let ((store (fnn-owner-service-store service)))
     (loop repeat 2 do
-      (unless (eq (fnn-owner-maybe-publish-quantum service) :needs-spare)
-        (return))
+      (multiple-value-bind (word refusal) (fnn-owner-maybe-publish-quantum service)
+        (unless (eq word :needs-spare)
+          (return (values word refusal))))
       (handler-case (fnn-log-prepare-spare store)
         ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
         (fnn-store-error (e)
           (fnn-err "CHECKPOINT auto failed: ~a" e)
-          (return))))))
+          (return (values :failed e)))))))
 
 (defun fnn-log-rotation-ready-p (store)
   "Whether the rotation the capture performs can run as a rename now: the
@@ -8065,13 +8067,14 @@ reads run as a :control quantum; the thread's registration is the roster's."
                              ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
                              (fnn-store-error (e)
                                (fnn-err "CHECKPOINT auto failed: ~a" e)
-                               :failed)))
-                 (captured (and (not (eq position :failed))
-                                (fnn-owner-core 'fn-owner-sco-capture
-                                                (fnn-checkpoint-budget-test-override nil)
-                                                free (fnn-checkpoint-revision)))))
-            (unless (or (eq position :failed)
-                        (and (true-listp captured) (= (length captured) 13)))
+                               ;; No producer was started. Preserve the
+                               ;; physical refusal for a waiting receipt;
+                               ;; automatic maintenance may ignore it.
+                               (return-from quantum (values :failed e)))))
+                 (captured (fnn-owner-core 'fn-owner-sco-capture
+                                           (fnn-checkpoint-budget-test-override nil)
+                                           free (fnn-checkpoint-revision))))
+            (unless (and (true-listp captured) (= (length captured) 13))
               (fnn-fault "owner returned a malformed checkpoint capture"))
             ;; The publication reads the live arena outside the mutex, so it
             ;; pins the generation as such a reader here, under the mutex,
@@ -8081,8 +8084,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
             ;; mutex). The registered job unpins once during cleanup; a
             ;; definite no-child or physically ended parked child unpins at
             ;; its terminal callback. A torn release retains native debt.
-            (unless (eq position :failed)
-              (fnn-owner-publisher-start service captured position))))))))))
+            (values (fnn-owner-publisher-start service captured position) nil)))))))))
 
 ;;; Row S3b (lane operability-7): `store export DIR' on the running owner
 ;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
