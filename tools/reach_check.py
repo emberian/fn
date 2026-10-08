@@ -400,22 +400,28 @@ def cursor_definitions(paths):
     return found
 
 
-def absstobjs(paths):
+def absstobjs(paths, extra=()):
     """name -> {"exports": {export: (logic, exec)}, "file": rel} for every
     `defabsstobj' (and the plain stobj names of every `defstobj').
 
     An export is what a host line calls (`fn-arena-seal-list'); its :logic
     function is what theorems are stated over and its :exec function is what
     runs.  The recognizer and the creator are read as exports too.  A
-    `defstobj' contributes only its name (to `stobj_names')."""
+    `defstobj' contributes only its name (to `stobj_names').  EXTRA is
+    (file, form text) pairs ACL2 itself expanded (a make-event generator's
+    defabsstobj, `expansion_forms'), read as if written in the file."""
     found = {}
+    sources = []
     for path in paths:
         try:
             text = file_text(path)
         except OSError:
             continue
-        rel = str(path.relative_to(ROOT))
-        for form in file_forms(path):
+        sources.append((str(path.relative_to(ROOT)), file_forms(path)))
+    for rel, form in extra:
+        sources.append((rel, [form]))
+    for rel, source_forms in sources:
+        for form in source_forms:
             head = re.match(r"\((defabsstobj|defstobj)\s", form, re.I)
             if not head:
                 continue
@@ -579,8 +585,9 @@ def load_world(path):
     return coverage.World(json.loads(path.read_text(encoding="utf-8")))
 
 
-def certificate_expansions(book: str, names=()) -> "dict[str, str] | None":
-    """BOOK's make-event-generated `defun's from its certificate, or None.
+def certificate_expansions(book: str) -> "list[tuple[str, str, str]] | None":
+    """BOOK's make-event-generated (kind, name, text) definitions (defun,
+    defstobj, defabsstobj) from its certificate, or None.
 
     ACL2 reads the cached certificate at BOOK's CURRENT closure key
     (tools/cert_expansions.py); a book with no such certificate, or when ACL2
@@ -631,10 +638,28 @@ class Graph:
                           **self.read_definitions(self.books)}
         host_defs = self.read_definitions(self.hosts)
         attached = attachments(self.books)
+        # What a make-event generator produced, from ACL2's own expansion in a
+        # CURRENT certificate (`expansion_forms'): its defuns are ordinary
+        # definitions, its defstobj/defabsstobj forms are read below as if
+        # written in the book.  Without a current certificate a generated
+        # name stays an unknown edge (`needs --world').
+        self.known = set(self.book_defs) | set(host_defs) | set(attached)
+        self.generated = self.generated_templates()
+        expansion_stobjs = []
+        self.expanded = {}
+        for book, items in self.expansion_forms().items():
+            for kind, name, text in items:
+                if kind in ("defstobj", "defabsstobj"):
+                    expansion_stobjs.append((book + ".lisp", text))
+                elif name not in self.book_defs:
+                    self.expanded[name] = (book, code_only(text))
+        for name, (book, text) in self.expanded.items():
+            self.book_defs[name] = (book + ".lisp", text)
+            self.generated.pop(name, None)
         # Abstract stobjs: each export is a callable book function whose body
         # is its :logic and :exec functions; an attached implementation's
         # export with the same :logic is what the generic's export runs.
-        self.stobjs = absstobjs(self.books)
+        self.stobjs = absstobjs(self.books, expansion_stobjs)
         self.stobj_names = set(self.stobjs) | {"state"}
         self.export_of = {}
         by_logic = collections.defaultdict(set)
@@ -668,17 +693,6 @@ class Graph:
         bodies.update({n: f for n, (_, f) in host_defs.items()})
         # Names a make-event or generator template defines, whose body no
         # definition text holds (see `generated_templates').
-        self.generated = self.generated_templates()
-        # A generated name whose book has a CURRENT certificate is defined by
-        # ACL2's own expansion recorded there: it becomes a node like any
-        # defun.  Without one (no cert, or a stale key) it stays generated,
-        # an unknown edge that needs --world.
-        self.expanded = self.expanded_definitions()
-        for name, (book, text) in self.expanded.items():
-            self.book_defs[name] = (book + ".lisp", text)
-            self.generated.pop(name, None)
-            bodies[name] = text
-        self.known |= set(self.expanded)
         self.edges = {name: self.mentions(form, name)
                       for name, form in bodies.items()}
         self.generated_callers = collections.defaultdict(set)
@@ -831,21 +845,26 @@ class Graph:
                     self.generated_books[name].add(str(path.relative_to(ROOT).with_suffix("")))
         return dict(found)
 
-    def expanded_definitions(self) -> dict:
-        """name -> (book, defun text) for each generated name that a current
-        certificate's make-event expansion defines.  The text is ACL2's own
-        printed `defun'; its edges are what ACL2 expanded, not a second reading
-        of any generator's table."""
-        wanted = collections.defaultdict(set)
-        for name, books in self.generated_books.items():
-            for book in books:
-                wanted[book].add(name)
+    def expansion_forms(self) -> dict:
+        """book ('books/NAME') -> [(kind, name, text)] that ACL2 expanded in
+        the book's CURRENT certificate, for the books whose text cannot show
+        what they define: those a generator template writes a `defun' for
+        (`generated_books') and those that call `def-representation' (a
+        make-event whose defabsstobj and executables no `defun' text holds).
+        A book with no current certificate is absent."""
+        wanted = {book for books in self.generated_books.values() for book in books}
+        for path in self.books:
+            try:
+                if "(def-representation" in file_text(path):
+                    wanted.add(str(path.relative_to(ROOT).with_suffix("")))
+            except OSError:
+                continue
         found = {}
         for book in sorted(wanted):
-            defined_here = self.expansion_source(book, wanted[book]) or {}
-            for name in sorted(wanted[book]):
-                if name in defined_here:
-                    found.setdefault(name, (book, code_only(defined_here[name])))
+            items = self.expansion_source(book)
+            if items:
+                found[book] = [(kind, name, text.strip().lower() if kind in ("defstobj", "defabsstobj") else text)
+                               for kind, name, text in items]
         return found
 
     def generated_shadow(self, seen: set) -> dict:

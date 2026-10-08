@@ -1,4 +1,4 @@
-"""The definitions a certified book's make-events produced, read from its certificate.
+"""The definitions (defun, defstobj, defabsstobj) a certified book's make-events produced, read from its certificate.
 
 A book's `.cert` records every `make-event` expansion (its :EXPANSION-ALIST):
 the form ACL2 itself evaluated to define a generated function.  This module
@@ -56,12 +56,14 @@ _DEFINITIONS = r'''
 (defun fn-ce-walk (x)
  (declare (xargs :mode :program))
  (cond ((atom x) nil)
+       ((eq (car x) 'local) nil)
        ((eq (car x) 'record-expansion)
         (and (consp (cdr x)) (consp (cddr x)) (fn-ce-walk (caddr x))))
        ((and (member-eq (car x) '(defun defund defun-nx defund-nx defun-inline
-                                  defund-inline defun-notinline defun$))
+                                  defund-inline defun-notinline defun$
+                                  defstobj defabsstobj))
              (consp (cdr x)) (symbolp (cadr x)))
-        (cw "~%@@DEFUN ~x0 ~x1~%" (cadr x) x))
+        (cw "~%@@DEFUN ~x0 ~x1 ~x2~%" (car x) (cadr x) x))
        (t (fn-ce-walk-list x))))
 (defun fn-ce-walk-list (x)
  (declare (xargs :mode :program))
@@ -108,8 +110,8 @@ def _driver(paths: list[Path], packages: list[str]) -> str:
 
 
 def read_expansions(paths: list[Path], acl2: str, root: Path,
-                    timeout: int = 300) -> list[dict[str, str]]:
-    """One {name: defun text} per certificate, in PATHS' order, from ACL2."""
+                    timeout: int = 300) -> list[list[tuple[str, str, str]]]:
+    """One [(kind, name, text)] per certificate, in PATHS' order, from ACL2."""
     packages = list(cert_alists._KNOWN_PACKAGES)
     for _ in range(25):
         done = acl2_slots.run([acl2], "cert_expansions", cwd=root,
@@ -133,30 +135,31 @@ def read_expansions(paths: list[Path], acl2: str, root: Path,
     raise ValueError("ACL2 certificate-expansion probe exceeded package retry bound")
 
 
-def _split(output: str, count: int) -> list[dict[str, str]]:
-    """The printed `@@BOOK n' / `@@DEFUN name form' stream, per certificate.
-    A printed form may wrap, so a definition runs to the next marker."""
-    books: list[dict[str, str]] = [{} for _ in range(count)]
+def _split(output: str, count: int) -> list[list[tuple[str, str, str]]]:
+    """The printed `@@BOOK n' / `@@DEFUN kind name form' stream, per
+    certificate: (kind, name, text), kind and name lowercased.  A printed form
+    wraps, so a definition runs to the next marker."""
+    books: list[list[tuple[str, str, str]]] = [[] for _ in range(count)]
     current = None
-    name = None
+    entry = None
     chunks: list[str] = []
 
     def close():
-        if current is not None and name is not None:
-            books[current][name] = " ".join(chunks)
+        if current is not None and entry is not None:
+            books[current].append((entry[0], entry[1], " ".join(chunks)))
 
     for line in output.splitlines():
         if line.startswith("@@BOOK "):
             close()
-            current, name, chunks = int(line.split()[1]), None, []
+            current, entry, chunks = int(line.split()[1]), None, []
         elif line.startswith("@@DEFUN "):
             close()
-            _, name, rest = line.split(" ", 2)
-            name, chunks = name.lower(), [rest]
+            _, kind, name, rest = (line.split(" ", 3) + [""])[:4]
+            entry, chunks = (kind.lower(), name.lower()), [rest]
         elif line.startswith("@@DONE"):
             close()
-            name = None
-        elif name is not None:
+            entry = None
+        elif entry is not None:
             chunks.append(line)
     return books
 

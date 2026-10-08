@@ -54,18 +54,21 @@ class GraphTests(unittest.TestCase):
         self.assertIn("fn-bs-txn-name-impl", self.graph.reachable)
 
     def test_a_defstobj_creator_is_reached_through_the_abstract_creator(self):
-        """books/payload-arena-paged.lisp `(defstobj fn-arena$p ...)' is the
-        foundation of `fn-arena-paged', whose :creator runs `:exec
-        create-fn-arena$p'; the paged arena is reached through the live
+        """books/payload-arena-paged.lisp's `(def-representation fn-arena-paged
+        ...)' (c6bf5db63: the hand stobjs fn-arena$p are gone) expands, in the
+        book's certificate, to `(defstobj fn-arena-paged$c ...)' under the
+        `defabsstobj fn-arena-paged', whose :creator runs `:exec
+        create-fn-arena-paged$c'; the paged arena is reached through the live
         extent arena's seal (host/bp-ingress-host.lisp -> fn-arena-seal-list
         -> ... -> fn-arena-paged-seal-list), so its creator ran too: a
         theorem concluding of `(create-fn-arena$p)' is concluded of a
         reached function (the premise audit's establishment by the
         creator)."""
-        self.assertIn("create-fn-arena$p", self.graph.book_defs)
-        self.assertNotIn("create-fn-arena$p", self.graph.stobj_names)
-        self.assertIn("create-fn-arena$p", self.graph.reachable)
-        self.assertIn("create-fn-arena-paged", self.graph.host_chain("create-fn-arena$p"))
+        creator = "create-fn-arena-paged$c"
+        self.assertIn(creator, self.graph.book_defs)
+        self.assertNotIn(creator, self.graph.stobj_names)
+        self.assertIn(creator, self.graph.reachable)
+        self.assertIn("create-fn-arena-paged", self.graph.host_chain(creator))
 
     def test_only_loaded_hosts_seed_book_symbols(self):
         self.assertGreater(self.graph.seeds["host"], 0)
@@ -234,12 +237,14 @@ class SubjectRuleTests(unittest.TestCase):
         self.assertTrue(self.subject("fn-own-read-preserves-relation").hosted(self.graph))
 
     def test_an_absstobj_export_reaches_the_attached_implementation(self):
-        """(attach-stobj fn-arena fn-arena-paged): the host's fn-arena-get
-        runs fn-arena$p-get, so the paged correspondence is hosted and the
-        retired byte-array one is not."""
+        """(attach-stobj fn-arena fn-arena-extent) over the extent arena, whose
+        inner stobj is fn-arena-paged (c6bf5db63 renamed fn-arena$p-get to the
+        generated fn-arena-paged$c-inner-get): the host's fn-arena-get runs it,
+        so the paged correspondence is hosted and the retired byte-array one
+        is not."""
         self.assertIn("fn-arena-get", self.graph.reachable)
         self.assertIn("fn-arena-paged-get", self.graph.reachable)
-        self.assertIn("fn-arena$p-get", self.graph.reachable)
+        self.assertIn("fn-arena-paged$c-inner-get", self.graph.reachable)
         paged = reach_check.Subject(self.graph, "fn-arena-paged-get{correspondence}", None)
         self.assertEqual(paged.functions, ["fn-arena-paged-get"])
         self.assertTrue(paged.hosted(self.graph))
@@ -967,8 +972,8 @@ class GeneratedExpansionTests(unittest.TestCase):
             base.tree(root)
             seen = []
 
-            def provider(book, names):
-                seen.append((book, sorted(names)))
+            def provider(book):
+                seen.append(book)
                 return expansion
 
             loaded = reach_check.loaded_host_files(root=root)
@@ -980,8 +985,8 @@ class GeneratedExpansionTests(unittest.TestCase):
             return graph, {f.key(): reach_check.generated_through(graph, f) for f in findings}, seen
 
     def test_a_current_expansion_makes_the_subject_reached(self):
-        graph, blind, seen = self.run_with({"fn-t-dispatch": self.DISPATCH})
-        self.assertEqual(seen, [("books/t", ["fn-t-dispatch"])])
+        graph, blind, seen = self.run_with([("defun", "fn-t-dispatch", self.DISPATCH)])
+        self.assertEqual(seen, ["books/t"])
         self.assertIn("fn-t-subject", graph.reachable)
         self.assertIn("fn-t-dispatch", graph.reachable)
         self.assertNotIn("fn-t-dispatch", graph.generated)
@@ -995,11 +1000,11 @@ class GeneratedExpansionTests(unittest.TestCase):
         self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
 
     def test_a_certificate_that_does_not_define_the_name_keeps_needs_world(self):
-        graph, blind, _ = self.run_with({"fn-t-other": self.DISPATCH})
+        graph, blind, _ = self.run_with([("defun", "fn-t-other", self.DISPATCH)])
         self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
 
     def test_the_call_removed_from_the_expansion_is_unreachable_not_blind(self):
-        graph, blind, _ = self.run_with({"fn-t-dispatch": self.EMPTY})
+        graph, blind, _ = self.run_with([("defun", "fn-t-dispatch", self.EMPTY)])
         self.assertNotIn("fn-t-subject", graph.reachable)
         self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], [])
 
@@ -1056,8 +1061,8 @@ class CertificateExpansionTests(unittest.TestCase):
             cert = self.cert_expansions.current_cert(self.root, "books/t", cache)
             self.assertIsNotNone(cert)
             read = self.cert_expansions.read_expansions([cert], self.acl2, self.root)[0]
-            self.assertEqual(list(read), ["fn-t-dispatch"])
-            self.assertIn("FN-T-SUBJECT", read["fn-t-dispatch"])
+            self.assertEqual([(kind, name) for kind, name, _ in read], [("defun", "fn-t-dispatch")])
+            self.assertIn("FN-T-SUBJECT", read[0][2])
 
     def test_a_changed_source_has_no_current_certificate(self):
         with tempfile.TemporaryDirectory() as tmp:
