@@ -39,9 +39,10 @@
 ; residual PCK-OPEN-DECODE-LIST).  (4) Equations over the logic of the stobjs.
 
 (in-package "ACL2")
-(include-book "paged-checkpoint-image")
+(include-book "pagestore-exec")
 (include-book "paged-checkpoint-exec")
 (include-book "statement-recover-stream")
+(include-book "payload-extent")
 (include-book "consumer-event-index")
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -87,13 +88,61 @@
   (let ((d (fn-scc-decode-tree (fn-octets-list fn-octets))))
     (if (and (consp d) (eq (car d) :ok) (consp (cdr d))) (list :ok (cadr d)) :refused)))
 
-(defun pcko-tape (pos lim seq acc index reads pgs-mem fn-arena fn-octets)
-  ; The events tape from word POS to LIM: tag, octet count, packed octets, one
-  ; record at a time, until a word that is not the tag.
+;; The frame trailer the row carries as four words (8 octets to a word,
+;; big-endian), as the 32 octets the payload file wrote after the frame, and the
+;; natural the extent descriptor commits to (fn-arx-trailer-nat).
+(defun pcko-be (w)
+  (declare (xargs :guard (natp w)))
+  (list (mod (floor w 72057594037927936) 256) (mod (floor w 281474976710656) 256)
+        (mod (floor w 1099511627776) 256) (mod (floor w 4294967296) 256)
+        (mod (floor w 16777216) 256) (mod (floor w 65536) 256)
+        (mod (floor w 256) 256) (mod w 256)))
+
+(defun pcko-trailer (d0 d1 d2 d3)
+  (declare (xargs :guard (and (natp d0) (natp d1) (natp d2) (natp d3))))
+  (fn-arx-trailer-nat (append (pcko-be d0) (pcko-be d1) (pcko-be d2) (pcko-be d3))))
+
+(defun pcko-recp (tree)
+  ; The row's metadata tree is a record's: tagged :r around a wire record.
+  (declare (xargs :guard t))
+  (and (consp tree) (eq (car tree) :r) (consp (cdr tree)) (fn-record-p (cadr tree))))
+
+(defun pcko-ev (tree)
+  ; The event the metadata names with no payload to join (fn-pck-join's other arm).
+  (declare (xargs :guard t))
+  (if (and (consp tree) (consp (cdr tree))) (cadr tree) nil))
+
+(defun pcko-ref-step (acc tree off len d0 d1 d2 d3 fid fn-arena)
+  ; One tape row interned.  A record row is sealed BY REF: its arena entry is the
+  ; extent of the payload file FID at the row's ref (the frame starts 37 octets
+  ; before the payload, the protected prefix is header and payload, the trailer
+  ; the row's four words), its held row has the metadata and the handle and no
+  ; facts decided; no payload octet is read.  Any other row interns its event
+  ; as before.  (mv acc fn-arena).
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-ssr-statep acc) (natp fid) (natp off) (natp len)
+                              (natp d0) (natp d1) (natp d2) (natp d3))))
+  (if (pcko-recp tree)
+      (if (<= 37 off)
+          (let* ((h (fn-arena-count fn-arena))
+                 (row (fn-held-plain (cadr tree) h))
+                 (fn-arena (fn-arena-seal-extent fid (- off 37) (+ len 37) off len
+                                                 (pcko-trailer d0 d1 d2 d3) fn-arena))
+                 (identity (fn-replay-identity-step (fn-ssr-at 3 acc) row)))
+            (if (equal (fn-stxk-context-kind identity) :ok)
+                (mv (fn-ssr-publish acc row (cadr tree) identity) fn-arena)
+              (mv :bad fn-arena)))
+        (mv :bad fn-arena))
+    (fn-ssr-intern-step acc (list (pcko-ev tree)) nil nil :resident nil fn-arena)))
+
+(defun pcko-tape (pos lim seq acc index reads fid pgs-mem fn-arena fn-octets)
+  ; The events tape from word POS to LIM: tag, octet count, packed metadata
+  ; octets, then the ref (offset, length) and the trailer words, one row at a
+  ; time, until a word that is not the tag.
   ; (mv verdict acc index reads fn-arena fn-octets).
   (declare (xargs :stobjs (pgs-mem fn-arena fn-octets)
                   :measure (nfix (- (nfix lim) (nfix pos)))
-                  :guard (and (natp pos) (natp lim) (natp seq) (natp reads)
+                  :guard (and (natp pos) (natp lim) (natp seq) (natp reads) (natp fid)
                               (<= lim (pgs-x-len 0 pgs-mem))
                               (or (eq acc :bad) (fn-ssr-statep acc))
                               (fn-octets-p fn-octets))
@@ -103,7 +152,8 @@
           (if (< (+ pos 1) lim)
               (let* ((n (nfix (pcko-w (+ pos 1) pgs-mem)))
                      (nw (pcko-nw n))
-                     (npos (+ pos 2 nw)))
+                     (tl (+ pos 2 nw))
+                     (npos (+ tl 6)))
                 (if (<= npos lim)
                     (let ((fn-octets (fn-octets-clear fn-octets)))
                       (mv-let (reads fn-octets)
@@ -112,25 +162,30 @@
                           (if (eq d :refused)
                               (mv :record acc index reads fn-arena fn-octets)
                             (mv-let (acc2 fn-arena)
-                              (fn-ssr-intern-step acc (list (cadr d)) nil nil :resident nil fn-arena)
+                              (pcko-ref-step acc (cadr d) (pcko-w tl pgs-mem) (pcko-w (+ tl 1) pgs-mem)
+                                             (pcko-w (+ tl 2) pgs-mem) (pcko-w (+ tl 3) pgs-mem)
+                                             (pcko-w (+ tl 4) pgs-mem) (pcko-w (+ tl 5) pgs-mem)
+                                             fid fn-arena)
                               (if (eq acc2 :bad)
-                                  (mv :intern acc2 index reads fn-arena fn-octets)
+                                  (mv :intern acc2 index (+ reads 6) fn-arena fn-octets)
                                 (pcko-tape npos lim (1+ seq) acc2
-                                           (fn-cei-put seq (cadr d) index) reads
+                                           (fn-cei-put seq (fn-ag-car (fn-ssr-at 0 acc2)) index)
+                                           (+ reads 6) fid
                                            pgs-mem fn-arena fn-octets)))))))
                   (mv :truncated acc index (+ reads 2) fn-arena fn-octets)))
             (mv :truncated acc index (+ reads 1) fn-arena fn-octets))
         (mv :ok acc index (+ reads 1) fn-arena fn-octets))
     (mv :ok acc index reads fn-arena fn-octets)))
 
-(defun fn-pck-x-open (npg pgs-mem fn-arena fn-octets)
-  ; The open of the NPG-page image in PGS-MEM: the root row from words 0 ..
-  ; 8*2048, then the events tape from word 8*2048 to NPG*2048, record by record.
+(defun fn-pck-x-open (npg pgs-mem fid fn-arena fn-octets)
+  ; The open of the NPG-page image in PGS-MEM against the payload file FID: the
+  ; root row from words 0 .. 8*2048, then the events tape from word 8*2048 to
+  ; NPG*2048, row by row.
   ; (mv VERDICT ROWS ROOTS INDEX READS fn-arena fn-octets): VERDICT :ok or a
   ; refusal by name; ROWS the arena rows, ROOTS the four fold roots, INDEX the
-  ; event index, READS the words read.
+  ; event index over the rows, READS the words read.
   (declare (xargs :stobjs (pgs-mem fn-arena fn-octets) :verify-guards nil))
-  (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))
+  (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid)
            (eql (pcko-w 0 pgs-mem) 1))
       (let* ((n (nfix (pcko-w 1 pgs-mem)))
              (nw (pcko-nw n)))
@@ -143,7 +198,7 @@
                       (mv :root nil nil nil reads fn-arena fn-octets)
                     (let ((root (cadr d)))
                       (mv-let (verdict acc index reads fn-arena fn-octets)
-                        (pcko-tape 16384 (* 2048 npg) 0 (fn-ssr-seed (fn-stxk-initial-context 0)) nil reads
+                        (pcko-tape 16384 (* 2048 npg) 0 (fn-ssr-seed (fn-stxk-initial-context 0)) nil reads fid
                                    pgs-mem fn-arena fn-octets)
                         (mv verdict (fn-ssr-rows acc)
                             (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root))
@@ -236,21 +291,12 @@
 (defun pcko-ok-treep (d)
   (and (consp d) (eq (car d) :ok) (consp (cdr d))))
 
-(defun pcko-trees (l)
-  ; The trees of the rows of L: what `fn-pck-capture-of-pages' makes of the tape.
-  (declare (xargs :measure (len l) :verify-guards nil))
-  (if (and (consp l) (equal (car l) 1))
-      (let ((d (fn-scc-decode-tree (adt-tp-unpack (cadr l) (cddr l)))))
-        (cons (if (pcko-ok-treep d) (cadr d) nil)
-              (pcko-trees (adt-tp-restf *fn-pck-row-schema* (cdr l)))))
-    nil))
-
 (defun pcko-wellp (l)
-  ; Every row of L lies within L and decodes.
+  ; Every row of L lies within L and its metadata decodes.
   (declare (xargs :measure (len l) :verify-guards nil))
   (if (and (consp l) (equal (car l) 1))
       (and (consp (cdr l))
-           (<= (+ 2 (adt-tp-npk (cadr l))) (len l))
+           (<= (+ 8 (adt-tp-npk (cadr l))) (len l))
            (pcko-ok-treep (fn-scc-decode-tree (adt-tp-unpack (cadr l) (cddr l))))
            (pcko-wellp (adt-tp-restf *fn-pck-row-schema* (cdr l))))
     t))
@@ -261,21 +307,13 @@
   (declare (xargs :measure (len l) :verify-guards nil))
   (cond ((atom l) 0)
         ((equal (car l) 1)
-         (+ 2 (adt-tp-npk (cadr l)) (pcko-cost (adt-tp-restf *fn-pck-row-schema* (cdr l)))))
+         (+ 8 (adt-tp-npk (cadr l)) (pcko-cost (adt-tp-restf *fn-pck-row-schema* (cdr l)))))
         (t 1)))
 
 (defthm pcko-restf-is-nthcdr
   (equal (adt-tp-restf *fn-pck-row-schema* w)
-         (nthcdr (adt-tp-npk (car w)) (cdr w)))
+         (nthcdr (+ 6 (adt-tp-npk (car w))) (cdr w)))
   :hints (("Goal" :expand ((adt-tp-restf *fn-pck-row-schema* w)))))
-
-(defthm pcko-trees-is-the-model
-  (equal (pcko-trees l)
-         (fn-pck-dec-rows (adt-tp-dseq *fn-pck-row-schema* l)))
-  :hints (("Goal" :induct (pcko-trees l)
-           :in-theory (e/d (fn-pck-dec-row) (adt-tp-restf))
-           :expand ((adt-tp-dseq *fn-pck-row-schema* l)
-                    (adt-tp-decf *fn-pck-row-schema* (cdr l))))))
 
 (defthm pcko-nw-is-npk
   (implies (natp n) (equal (pcko-nw n) (adt-tp-npk n)))

@@ -678,10 +678,11 @@
                                 (:instance pck-dec-row-of-enc-row (w (car recs)) (off base))))))
 
 (defthm pck-dec-rows-of-rows
-  (implies (and (fn-pck-sccb-listp recs) (fn-pck-resolvesp recs 0 file))
+  (implies (and (fn-pck-sccb-listp recs (fn-pck-seed)) (fn-pck-resolvesp recs 0 file)
+                (not (equal (fn-pck-st-of (fn-pck-seed) recs) :bad)))
            (equal (fn-pck-dec-rows (fn-pck-rows recs) file) recs))
   :hints (("Goal" :in-theory (enable fn-pck-rows)
-           :use ((:instance pck-dec-rows-of-rows-from (base 0))))))
+           :use ((:instance pck-dec-rows-of-rows-from (base 0) (st (fn-pck-seed)))))))
 
 (defun fn-pck-capture-of-pages (pages file)
   ; The capture the pages hold: the records from the events tape, the four
@@ -796,7 +797,8 @@
 
 (defthm pck-recordsp-parts
   (implies (fn-pck-recordsp configs recs)
-           (and (fn-pck-sccb-listp recs) (fn-pck-plen-okp recs)))
+           (and (fn-pck-sccb-listp recs (fn-pck-seed)) (fn-pck-plen-okp recs)
+                (not (equal (fn-pck-st-of (fn-pck-seed) recs) :bad))))
   :hints (("Goal" :in-theory (enable fn-pck-recordsp))))
 
 (defthm pck-capture-of-pages
@@ -891,14 +893,14 @@
                             fn-pck-root-pages-of fn-pck-rows adt-tp-dirty pck-shift))
            :use ((:instance pck-lpages-ok-shifted-dirty (k *fn-pck-root-pages*)
                             (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix)))
-                            (n (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0)))))
+                            (n (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix)))))
                  (:instance pck-lpages-ok-number-then (lo 0)
                             (n (len (fn-pck-pages configs prefix)))
                             (ps (fn-pck-root-pages-of configs (append prefix delta)))
                             (l2 (pgs-dirty-lpages
                                  (pck-shift *fn-pck-root-pages*
                                             (adt-tp-dirty (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix))
-                                                          (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))))
+                                                          (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix))))))))
                  (:instance pck-len-root-pages-of (recs (append prefix delta)))))))
 
 (defthm pck-disk-holds-facts
@@ -909,7 +911,7 @@
 
 (defthm pck-open-view-after-commit
   (implies (and (true-listp prefix) (true-listp delta)
-                (fn-pck-sccb-listp (append prefix delta))
+                (fn-pck-sccb-listp (append prefix delta) (fn-pck-seed))
                 (fn-pck-plen-okp (append prefix delta))
                 (fn-pck-disk-holds disk r mode configs prefix)
                 (pgs-alloc-inv alloc disk))
@@ -924,7 +926,7 @@
                  (:instance pck-dirty-lpages-ok)))))
 
 (defthm pck-recordsp-sccb
-  (implies (fn-pck-recordsp configs recs) (fn-pck-sccb-listp recs))
+  (implies (fn-pck-recordsp configs recs) (fn-pck-sccb-listp recs (fn-pck-seed)))
   :hints (("Goal" :in-theory (enable fn-pck-recordsp))))
 
 (defthm pck-true-listp-append
@@ -950,7 +952,7 @@
                  (:instance pck-capture-of-pages (recs (append prefix delta)))
                  (:instance fn-owner-recover-from-checkpoint-equals-full-recover
                             (prefix (append prefix delta)))
-                 (:instance pck-sccb-listp-of-append (a prefix) (b delta))
+                 (:instance pck-sccb-listp-of-append (a prefix) (b delta) (st (fn-pck-seed)))
                  (:instance pck-recordsp-sccb (recs (append prefix delta)))
                  (:instance pck-recordsp-parts (recs (append prefix delta)))
                  (:instance pck-true-listp-append (a prefix) (b delta))))))
