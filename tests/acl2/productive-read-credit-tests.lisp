@@ -36,7 +36,7 @@
       (p
         (car
           (fn-mca-read-span
-            (fn-mcr-make 0 0 0 0 0 0 nil)
+            (fn-mcr-make 0 0 0 0 0 0 nil 0 nil)
             *pcrt-clocked-queued-selected*
             nil
             0
@@ -55,7 +55,7 @@
           (equal
             (car
               (fn-mcr-resize
-                (fn-mcr-make 0 0 0 0 0 0 nil)
+                (fn-mcr-make 0 0 0 0 0 0 nil 0 nil)
                 (fn-mca-conn-key 0)
                 (fn-mca-need (fn-own-tls-result-owner r0) 0 107552)))
             :ok))
@@ -63,7 +63,7 @@
           (equal
             (car
               (fn-mcr-resize
-                (fn-mcr-make 0 0 0 0 0 0 nil)
+                (fn-mcr-make 0 0 0 0 0 0 nil 0 nil)
                 (fn-mca-conn-key 0)
                 (fn-mca-need (fn-own-tls-result-owner r1) 0 107552)))
             :ok)))

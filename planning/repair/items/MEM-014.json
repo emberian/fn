@@ -1,0 +1,14 @@
+{
+ "category": "resource-accounting",
+ "detail": "The MEM-010 reserve (95012bfb4, on dev since train 26) holds two history-root images at the profile's bound: small 54 MiB, development 145 MiB, scale 4,627 MiB. Two images, because across a publication the retained generation (the one readers hold) and the candidate being built coexist, and the candidate is funded for its full image (fn-owner-hroot-resize, host/history-root-host.lisp; fn-mcr-hroot-resize in books/memory-credits.lisp). Lever: release the retained generation's image before the candidate's full allocation, so the reserve is one image plus the candidate's growth; at most half the reserve comes off the figure (scale: up to 2,313 MiB, less the candidate growth step). This needs a reader-lifetime statement first: no reader, feed resolution or publication reads the retained root after the point where it is released (the retained root is what serves reads while the candidate builds), or the candidate is built in place over it under a proved ordering. Owed, not for the current push (S, 2026-10-08).",
+ "file": "books/memory-credits.lisp",
+ "id": "MEM-014",
+ "line": "373",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "source": "n-mem10",
+ "state": "open",
+ "title": "the history-root reserve holds two images (retained + candidate); releasing the retained one before the candidate's allocation halves it, given a reader-lifetime statement",
+ "updated": "2026-10-08T03:00:00Z"
+}

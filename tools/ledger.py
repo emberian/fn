@@ -16,12 +16,14 @@ and, for the host files, every name they use that nothing they load defines.
 What it checks (``--check``): that every theorem cited by
 ``planning/proof-events.json`` exists, is not SUSPECT, and lives in a book
 inside the Makefile root closure; that ``planning/proofs.json`` ``events``
-match the curated map; and that ``planning/ledger.json`` and
-``planning/ledger.md`` are not stale.
+match the curated map; and that the ledger builds.  ``build/ledger/ledger.json``
+and ``ledger.md`` are views of the tree: written by ``--write``, printed by
+``--stdout``, never committed.
 
 Usage:
     python3 tools/ledger.py            # report the ledger on stdout
-    python3 tools/ledger.py --write    # regenerate the three generated files
+    python3 tools/ledger.py --write    # regenerate proofs.json events; write build/ledger/*
+    python3 tools/ledger.py --stdout   # print the ledger markdown
     python3 tools/ledger.py --check    # fail on drift; used by `make check`
 """
 
@@ -40,7 +42,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # One module under both names.  `from tools import ledger' (interface_emit,
-# harness_check, check_scaffold, ...) and `import ledger' (certified_claims,
+# harness_check, check_scaffold, ...) and `import ledger' (green_check,
 # depth_check, ...) made two module objects, so a tree cache entry pickled by
 # one (its classes named `ledger.Tree') failed the other's isinstance check
 # and was analysed again, four minutes on persvati, in three of make check's
@@ -57,8 +59,10 @@ if __name__ == "tools.ledger":
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LEDGER_JSON = ROOT / "planning/ledger.json"
-LEDGER_MD = ROOT / "planning/ledger.md"
+# Generated views: a pure function of the tree, so never committed.  `--write`
+# puts them under build/ (gitignored); `--stdout` prints the markdown.
+LEDGER_JSON = ROOT / "build/ledger/ledger.json"
+LEDGER_MD = ROOT / "build/ledger/ledger.md"
 PROOF_EVENTS = ROOT / "planning/proof-events.json"
 PROOFS = ROOT / "planning/proofs.json"
 
@@ -133,7 +137,8 @@ class Reader:
         """Every top-level form, paired with the line it starts on.
 
         A whole text read from its start is answered from the per-text cache
-        (`_cached_top_level`): the same bytes always read the same."""
+        (`_cached_top_level`): the same bytes always read the same. The
+        returned forms are shared read-only data; copy locally before editing."""
         if self.pos == 0 and type(self) is Reader and len(self.source) >= _FORMS_CACHE_MIN:
             return _cached_top_level(self)
         return self._top_level()
@@ -352,12 +357,13 @@ def number(text: str) -> object:
 # host_check --load 13,137 times (288 s); proof_repl start 3 times a book.
 # A text's forms are a function of its bytes and this reader, so an entry
 # is named by the digest of both and is valid exactly when its name
-# matches.  Each hit unpickles a fresh copy, so no caller sees another's
-# objects.  In-process first, then build/cache/ledger-forms/ (one file per
+# matches. Callers only read forms (including retained bodies and generator
+# inputs); transformations build new lists. Share the parsed list in-process
+# so repeat reads do not unpickle it again. Then build/cache/ledger-forms/ (one file per
 # text; a reader change starts a new format directory and removes the old
 # ones).  FN_LEDGER_FORMS_CACHE=0 turns the disk half off; a path moves it.
 _FORMS_CACHE_MIN = 2048
-_FORMS_MEMO: dict[bytes, bytes] = {}
+_FORMS_MEMO: dict[bytes, list[tuple[object, int]]] = {}
 _FORMS_FORMAT: "str | None" = None
 
 
@@ -380,30 +386,32 @@ def _forms_cache_dir() -> "Path | None":
 def _cached_top_level(reader: "Reader") -> list[tuple[object, int]]:
     import pickle
     key = hashlib.sha256(reader.source.encode("utf-8", "surrogatepass")).digest()
-    data = _FORMS_MEMO.get(key)
-    directory = None
-    if data is None:
-        directory = _forms_cache_dir()
-        if directory is not None:
-            try:
-                data = (directory / key.hex()[:2] / (key.hex() + ".pickle")).read_bytes()
-            except OSError:
-                data = None
+    forms = _FORMS_MEMO.get(key)
+    if forms is not None:
+        reader.pos = len(reader.source)
+        return forms
+    directory = _forms_cache_dir()
+    data = None
+    if directory is not None:
+        try:
+            data = (directory / key.hex()[:2] / (key.hex() + ".pickle")).read_bytes()
+        except OSError:
+            pass
     if data is not None:
         try:
             forms = pickle.loads(data)
         except Exception:
             forms = None
         if isinstance(forms, list):
-            _FORMS_MEMO[key] = data
+            _FORMS_MEMO[key] = forms
             reader.pos = len(reader.source)
             return forms
     forms = reader._top_level()
-    data = pickle.dumps(forms, protocol=pickle.HIGHEST_PROTOCOL)
-    _FORMS_MEMO[key] = data
+    _FORMS_MEMO[key] = forms
     if directory is not None:
+        data = pickle.dumps(forms, protocol=pickle.HIGHEST_PROTOCOL)
         _forms_cache_write(directory, key.hex(), data)
-    return pickle.loads(data)
+    return forms
 
 
 def _forms_cache_write(directory: Path, name: str, data: bytes) -> None:
@@ -954,6 +962,31 @@ def def_loop_bodies(name: str, formals: list, options: dict) -> tuple:
     rec = term(name, *next_args)
     again = lambda value: term(loop, *next_args, value)
     test = term("consp", xs)
+    if shape == ":fold":
+        # books/def-loop.lisp fn-dl-fold-events: ST threads through every step;
+        # ROW is an (mv ROW-VALUE ST) term and both bodies return (mv ROWS ST).
+        # The recursion's state is the list SVARS of the formals NEXT changes.
+        fold_st = options.get(":st")
+        fail = option(":fail", ":bad")
+        svars = [xs] if not isinstance(options.get(":over"), list) else list(options[":over"])
+        terms = [option(":next")] if len(svars) == 1 else [subst(t) for t in options.get(":next", [])]
+        call_args = [terms[svars.index(f)] if f in svars else f for f in formals]
+        recur, step_loop = term(name, *call_args), lambda row: term(loop, *call_args, row)
+        done_test, bindings = option(":done"), option(":let")
+        let_wrap = (lambda x: term("let*", bindings, x)) if present(bindings) else (lambda x: x)
+        mvs = lambda *v: term("mv", *v)
+        failed = lambda var: term("if", term("eq", var, fail), mvs(fail, fold_st))
+        logic = term("if", done_test, mvs(Sym("nil"), fold_st),
+                     let_wrap(term("mv-let", [Sym("dl-row"), fold_st], option(":row"),
+                                   failed(Sym("dl-row"))
+                                   + [term("mv-let", [Sym("dl-rest"), fold_st], recur,
+                                           failed(Sym("dl-rest"))
+                                           + [mvs(term("cons", Sym("dl-row"), Sym("dl-rest")), fold_st)])])))
+        loop_body = term("if", done_test, mvs(term("revappend", acc, Sym("nil")), fold_st),
+                         let_wrap(term("mv-let", [Sym("dl-row"), fold_st], option(":row"),
+                                       failed(Sym("dl-row"))
+                                       + [step_loop(term("cons", Sym("dl-row"), acc))])))
+        return logic, loop_body
     if shape == ":into":
         logic = term("if", test,
                      term("let", [[st, [options.get(":write"), body, st]]], rec), st)
@@ -4541,7 +4574,7 @@ def load_tree(*, lazy: bool = False) -> Tree:
         # Pickled classes are named by their module.  `python3 tools/ledger.py`
         # runs its main() from the imported module `ledger' (see the end of
         # this file), so a script run and every importer (teeth_check,
-        # certified_claims, ...) pickle and read the same ledger.Tree under
+        # green_check, ...) pickle and read the same ledger.Tree under
         # one key; before 2026-09-28 the key held __name__ and the two never
         # shared an entry (defkeystone).
         shared.update(_PICKLE_MODULE.encode() + b"\0")
@@ -4654,10 +4687,9 @@ def ledger_markdown(ledger: dict) -> str:
         "# Generated assurance ledger",
         "",
         "Generated by `tools/ledger.py` from `books/*.lisp` and",
-        "`tests/acl2/*.lisp`. Do not edit by hand; run",
-        "`python3 tools/ledger.py --write`. `make check` fails when this file is",
-        "stale. Counts describe artifacts, not coverage; see",
-        "[the proof strategy](../docs/proofs.md) for what a count does not mean.",
+        "`tests/acl2/*.lisp`. Not committed: `python3 tools/ledger.py --write`",
+        "writes it under `build/ledger/`. Counts describe artifacts, not coverage; see",
+        "[the proof strategy](../../docs/proofs.md) for what a count does not mean.",
         "",
         "## Totals",
         "",
@@ -4897,18 +4929,18 @@ def event_books(tree: Tree, curated: dict) -> dict[str, set[str]]:
 
 def derived_status(entry: dict, names: list[str], books: set[str],
                    state: dict, root: Path = ROOT) -> str:
-    """A proof target's ``status``: generated, never typed.
+    """A proof target's status, computed on demand and never stored.
 
     ``planned`` when the target cites no event; ``certified`` when every
-    event's defining book is green at these bytes
-    (tools/green_check.py ``green_at_these_bytes``: green_check's verdict at
-    the book's current digest and include closure, from an archived
-    manifest -- the one meaning of "certified", row R2); otherwise
+    event's defining book is green (tools/green_check.py
+    ``green_at_these_bytes``: the record box's cert cache holds an entry at
+    the book's current closure key made on the record toolchain -- the one
+    meaning of "certified", row R2); otherwise
     ``uncertified-at-current-digest``.  The row's ``evidence`` citations are
     provenance, not the rule.  The status speaks for the cited events only;
     the target's statement may say more than they prove.  STATE caches
-    green_check's report under ``"__green__"`` (apply_events fills it once
-    for every row's books).
+    green_check's report under ``"__green__"`` so a caller judging many rows
+    asks the cache once.
     """
     if not names:
         return "planned"
@@ -4921,8 +4953,7 @@ def derived_status(entry: dict, names: list[str], books: set[str],
     report = state.get("__green__") or {}
     records = report.get("books_by_verdict", {})
     if any(book not in records for book in books):
-        report = green_check.audit(root, roots=sorted(set(books) | set(records)),
-                                    include_local=False)
+        report = green_check.audit(root, roots=sorted(set(books) | set(records)))
         state["__green__"] = report
         records = report.get("books_by_verdict", {})
     if all(green_check.green_at_these_bytes(records.get(book)) for book in books):
@@ -4930,19 +4961,13 @@ def derived_status(entry: dict, names: list[str], books: set[str],
     return "uncertified-at-current-digest"
 
 
-def apply_events(regenerated: dict[str, list[str]],
-                 books: "dict[str, set[str]] | None" = None) -> str:
-    """``proofs.json`` with regenerated ``events`` and ``status``; the rest untouched."""
+def apply_events(regenerated: dict[str, list[str]]) -> str:
+    """``proofs.json`` with regenerated ``events``; the rest untouched.
+
+    A stored ``status`` is dropped: it is computed on demand
+    (``derived_status``), so the registry changes only when its content does.
+    """
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-    state: dict = {}
-    flipped: list[tuple[str, set[str]]] = []
-    if books is not None and any(books.values()):
-        here = str(Path(__file__).resolve().parent)
-        if here not in sys.path:
-            sys.path.insert(0, here)
-        import green_check
-        state["__green__"] = green_check.audit(
-            ROOT, roots=sorted(set().union(*books.values())), include_local=False)
     for entry in registry["proofs"]:
         names = regenerated.get(entry["id"], [])
         # proofs.json's events are GENERATED from planning/proof-events.json:
@@ -4959,91 +4984,13 @@ def apply_events(regenerated: dict[str, list[str]],
             entry["events"] = names
         else:
             entry.pop("events", None)
-        if books is not None:
-            before = entry.get("status")
-            entry["status"] = derived_status(entry, names, books.get(entry["id"], set()),
-                                             state)
-            if before == "certified" and entry["status"] != "certified":
-                flipped.append((entry["id"], books.get(entry["id"], set())))
-    if flipped:
-        for line in flip_lines(flipped, (state.get("__green__") or {}).get(
-                "books_by_verdict", {})):
-            print(line, file=sys.stderr)
+        entry.pop("status", None)
     return json.dumps(registry, indent=2, ensure_ascii=False) + "\n"
-
-
-def flip_lines(flipped: list[tuple[str, set[str]]], records: dict,
-               changed: "set[str] | None" = None) -> list[str]:
-    """Why each row this regen took from certified is no longer certified,
-    grouped by cause (obstructions-8 item 71: store-lineage-3's persvati regen
-    uncertified 16 rows, which read as a cache-key bug; it was the lane's own
-    books/store-log.lisp edit moving their closures -- right, and expected
-    until the runner certifies the branch).  A cause is a book of the row
-    whose own digest has no green run, or a dependency moved since its green;
-    each is marked `this branch' when `git diff origin/dev` changes it."""
-    if changed is None:
-        done = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "origin/dev",
-                               "--", "books", "tests/acl2"], capture_output=True, text=True,
-                              check=False)
-        changed = set(done.stdout.split()) if done.returncode == 0 else set()
-    causes: dict[str, list[str]] = {}
-    for ident, event_books in flipped:
-        found = False
-        for book in sorted(event_books):
-            record = records.get(book) or {}
-            moved = list(record.get("deps_moved_since") or [])
-            if record.get("verdict") != "green":
-                moved.append(f"{book}.lisp ({record.get('verdict', 'unjudged')})")
-            elif not record.get("certified_archived"):
-                moved.append(f"{book}.lisp (green only in an unarchived local run)")
-            for cause in moved:
-                causes.setdefault(cause, []).append(ident)
-                found = True
-        if not found:
-            causes.setdefault("(no cause recorded)", []).append(ident)
-    lines = [f"ledger: {len(flipped)} row(s) certified -> uncertified-at-current-digest "
-             "by this regen; by cause:"]
-    for cause, idents in sorted(causes.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-        path = cause.split(" ", 1)[0]
-        ours = "this branch changes it: expected until it is certified" if path in changed \
-            else "not changed by this branch vs origin/dev: investigate"
-        unique = sorted(set(idents))
-        lines.append(f"  {cause}: {len(unique)} row(s) ({ours}): {', '.join(unique[:8])}"
-                     + (" ..." if len(unique) > 8 else ""))
-    return lines
 
 
 # --------------------------------------------------------------------------
 # entry points
 # --------------------------------------------------------------------------
-
-
-def lane_generated(relative: str, expected: str) -> bool:
-    """Under `make check-lane`, write a generated file aside instead of comparing.
-
-    A lane must not commit planning/ledger.* or planning/current.md (the
-    deputy regenerates them at merge), so in a lane they are stale by
-    design and `make check` was red in every lane that touched a book: 112
-    runs in 70 lanes regenerated and reverted by hand (friction review
-    2026-09-26 section 6).  With FN_LANE_CHECK set, the regenerated text goes
-    to $FN_LANE_CHECK_DIR (or a temporary directory), the comparison with the
-    committed file is printed, and only generation itself can fail.  The
-    proofs.json event arrays are not in this set: a lane owns its registry
-    rows and commits them regenerated.
-    """
-    if not os.environ.get("FN_LANE_CHECK"):
-        return False
-    directory = Path(os.environ.get("FN_LANE_CHECK_DIR")
-                     or tempfile.mkdtemp(prefix="fn-lane-check-"))
-    target = directory / relative
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(expected, encoding="utf-8")
-    committed = ROOT / relative
-    same = committed.is_file() and committed.read_text(encoding="utf-8") == expected
-    print(f"lane check: {relative} regenerated to {target} "
-          f"({'same as' if same else 'differs from'} the committed file; "
-          f"the deputy regenerates it at merge)", file=sys.stderr)
-    return True
 
 
 def analysis_problems(tree: Tree) -> list[str]:
@@ -5072,18 +5019,14 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
     problems.extend(event_problems)
 
     ledger = build_ledger(tree)
-    for path, expected in ((LEDGER_JSON, json.dumps(ledger, indent=2,
-                                                    ensure_ascii=False) + "\n"),
-                           (LEDGER_MD, ledger_markdown(ledger)),
-                           (PROOFS, apply_events(regenerated,
-                                                 event_books(tree, curated)))):
-        relative = path.relative_to(ROOT).as_posix()
-        if path != PROOFS and lane_generated(relative, expected):
-            continue
-        if not path.is_file():
-            problems.append(f"{relative}: missing; run `python3 tools/ledger.py --write`")
-        elif path.read_text(encoding="utf-8") != expected:
-            problems.append(f"{relative}: stale; run `python3 tools/ledger.py --write`")
+    # The ledger views are computed, not compared: building them is the check.
+    ledger_markdown(ledger)
+    expected = apply_events(regenerated)
+    relative = PROOFS.relative_to(ROOT).as_posix()
+    if not PROOFS.is_file():
+        problems.append(f"{relative}: missing; run `python3 tools/ledger.py --write`")
+    elif PROOFS.read_text(encoding="utf-8") != expected:
+        problems.append(f"{relative}: stale; run `python3 tools/ledger.py --write`")
     return problems
 
 
@@ -5095,11 +5038,11 @@ def write_all() -> list[str]:
     curated = load_proof_events()
     problems, regenerated = validate_events(tree, curated)
     ledger = build_ledger(tree)
+    LEDGER_JSON.parent.mkdir(parents=True, exist_ok=True)
     LEDGER_JSON.write_text(json.dumps(ledger, indent=2, ensure_ascii=False) + "\n",
                            encoding="utf-8")
     LEDGER_MD.write_text(ledger_markdown(ledger), encoding="utf-8")
-    PROOFS.write_text(apply_events(regenerated, event_books(tree, curated)),
-                      encoding="utf-8")
+    PROOFS.write_text(apply_events(regenerated), encoding="utf-8")
     return problems
 
 
@@ -5152,24 +5095,19 @@ def book_report(paths: list[str]) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    import evidence_store  # noqa: PLC0415  (beside this file; tools/ is on sys.path)
     try:
         return _main(argv)
     except AnalysisIncomplete as error:
         print(f"ERROR: analysis-incomplete: {error}", file=sys.stderr)
         return 1
-    except evidence_store.EvidenceError as error:
-        # Uncertain (3) when committed evidence could not be read, refused (4)
-        # when its bytes are there and wrong; never a plain failure (r61 F3).
-        print(f"ERROR: {evidence_store.outcome(error)}: committed evidence cannot be "
-              f"accepted: {error}", file=sys.stderr)
-        return evidence_store.exit_code(error)
 
 
 def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--write", action="store_true",
-                        help="regenerate ledger.json, ledger.md and proofs.json events")
+                        help="regenerate proofs.json events and write build/ledger/ledger.{json,md}")
+    parser.add_argument("--stdout", action="store_true",
+                        help="print the ledger markdown and stop")
     parser.add_argument("--check", action="store_true",
                         help="fail on an unknown or SUSPECT cited theorem, or stale output")
     parser.add_argument("--strict", action="store_true",
@@ -5193,6 +5131,10 @@ def _main(argv: list[str] | None = None) -> int:
         for problem in problems:
             print(f"ERROR: {problem}", file=sys.stderr)
         return 1 if problems else 0
+    if arguments.stdout:
+        tree = load_tree()
+        sys.stdout.write(ledger_markdown(build_ledger(tree)))
+        return 1 if analysis_problems(tree) else 0
     if arguments.book:
         return book_report(arguments.book)
     if arguments.check:
@@ -5205,8 +5147,8 @@ def _main(argv: list[str] | None = None) -> int:
             print(f"WARN: {warning}", file=sys.stderr)
         if problems or (warnings and arguments.strict):
             return 1
-        print(f"Ledger OK: generated counts, cited events and registry are "
-              f"current; {len(warnings)} lint warnings.")
+        print(f"Ledger OK: cited events and registry are "
+              f"current and the ledger builds; {len(warnings)} lint warnings.")
         return 0
     if arguments.write:
         problems = write_all()

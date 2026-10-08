@@ -14,11 +14,16 @@ class RepairVerifyTests(unittest.TestCase):
         r = self.d
         os.makedirs(f"{r}/planning/repair/items")
         shutil.copy(TOOL, f"{r}/planning/repair/repair.py")
+        os.makedirs(f"{r}/tools")
+        shutil.copy(os.path.join(os.path.dirname(TOOL), "..", "..", "tools", "repair_unittest.py"),
+                    f"{r}/tools/repair_unittest.py")
+        os.makedirs(f"{r}/tests")
+        open(f"{r}/tests/__init__.py", "w").close()
         with open(f"{r}/planning/repair/forbidden.txt", "w") as f:
             f.write("host/native/owner.lisp\n")
         with open(f"{r}/planning/repair/items/T1.json", "w") as f:
             json.dump({"id": "T1", "state": "open", "title": "t", "notes": []}, f)
-        os.makedirs(f"{r}/src")
+        os.makedirs(f"{r}/src"); open(f"{r}/src/__init__.py", "w").close()
         with open(f"{r}/src/a.py", "w") as f:
             f.write("X = 1\n")
         sh("git init -q && git add -A && git -c user.email=t@t -c user.name=t commit -q -m base", r)
@@ -37,9 +42,18 @@ class RepairVerifyTests(unittest.TestCase):
             f.write(text)
         sh(f"git add -A && git -c user.email=t@t -c user.name=t commit -q -m '{msg}'", self.d)
 
+    REGRESSION = ("import unittest\nfrom src.a import X\nclass R(unittest.TestCase):\n"
+                  "    def test_x(self):\n        self.assertEqual(X, %d, 'x must be two')\n")
+
+    def claim_regression(self, expected=2):
+        self.run_tool("claim", "T1", "--files", "src/*.py,tests/*",
+                      "--test", "python3 -m unittest tests.test_r", "--harness", "tests/test_r.py",
+                      "--expect-failure", "tests.test_r.R.test_x",
+                      "--failure-message", "1 != 2 : x must be two")
+        self.commit("tests/test_r.py", self.REGRESSION % expected, "T1: regression")
+
     def test_a_good_fix_verifies(self):
-        self.run_tool("claim", "T1", "--files", "src/*.py",
-                      "--test", "python3 -c 'import sys; sys.path.insert(0,\"src\"); import a; assert a.X == 2'")
+        self.claim_regression()
         self.commit("src/a.py", "X = 2\n", "T1: fix X")
         r = self.run_tool("verify", "T1", "--base", self.base)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -59,11 +73,11 @@ class RepairVerifyTests(unittest.TestCase):
         self.assertIn("forbidden zone", r.stdout)
 
     def test_a_test_that_passes_at_base_is_refused(self):
-        self.run_tool("claim", "T1", "--files", "src/*.py", "--test", "true")
+        self.claim_regression(expected=1)
         self.commit("src/a.py", "X = 2\n", "T1: fix")
         r = self.run_tool("verify", "T1", "--base", self.base)
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn("PASSES at the base", r.stdout)
+        self.assertIn("base did not produce exactly the intended assertion failure", r.stdout)
 
     def test_over_budget_and_unnamed_commit_are_refused(self):
         self.run_tool("claim", "T1", "--files", "src/*.py", "--budget", "3")

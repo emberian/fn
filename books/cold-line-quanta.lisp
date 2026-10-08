@@ -156,10 +156,10 @@
                   (nth (fn-clq-held demand cache) demand)))
   :hints (("Goal" :induct (fn-clq-run demand cache))))
 
-(defthm fn-clq-member-of-held-prefix
+(local (defthm fn-clq-member-of-held-prefix
   (implies (member-equal x (take (fn-clq-held demand cache) demand))
            (member-equal x cache))
-  :hints (("Goal" :induct (fn-clq-held demand cache))))
+  :hints (("Goal" :induct (fn-clq-held demand cache)))))
 
 (defthm fn-clq-run-keeps-members
   (implies (member-equal x cache)
@@ -511,7 +511,3 @@
            :in-theory (disable fn-clq-line fn-clq-chunks ceiling fn-clq-line-finishes)
            :use ((:instance fn-clq-line-finishes (quanta (fn-clq-chunks demand q)))))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-clq-member-of-held-prefix))

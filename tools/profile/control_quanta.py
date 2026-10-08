@@ -15,6 +15,9 @@ Writes OUT_DIR/quanta.json.
 import json, os, re, shutil, socket, subprocess, sys, time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/
+from rep_measure import decided_heap_env  # noqa: E402
+
 image, src, out = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 rounds = int(sys.argv[4]) if len(sys.argv) > 4 else 3
 if out.exists():
@@ -28,7 +31,8 @@ cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\
                '[log]\npath = "%s"\n' % (out / "store", port, out / "control.sock", out / "service.log"))
 env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
 env.pop("ACL2_SYSTEM_BOOKS", None)
-owner = subprocess.Popen([str(image), "--fn", "operator", str(cfg), "run"], env=env,
+owner = subprocess.Popen([str(image), "--fn", "operator", str(cfg), "run"],
+                         env=decided_heap_env(image, cfg, env),
                          stdout=subprocess.PIPE, stderr=open(out / "owner.stderr", "wb"))
 t0 = time.time()
 line = b""

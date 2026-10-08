@@ -317,7 +317,6 @@
                                             fn-retain-admit-preserves-statep
                                             fn-bprl-admit-pins
                                             fn-bprl-admissible-id-not-pinned
-                                            fn-not-member-of-subset
                                             fn-bprl-subsetp-of-cons
                                             fn-bprl-archive-bindings-after-cons-pin)))))
 

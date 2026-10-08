@@ -94,7 +94,7 @@
 (defun fnn-call (name &rest args)
   (push name *fx-trace*)
   (case name
-    (fn-owner-hroot-resize (list :funded nil))
+    ((fn-owner-hroot-resize fn-owner-hroot-transient) (list :funded nil))
     ((create-fn-hrecs$s create-fn-hist$p) (list (vector nil 0 nil nil)))
     (fn-his-build-begin (list (second args)))
     (fn-hist$p-dispose
@@ -125,7 +125,8 @@
               (list :done ordinal root))
           (list :yield (1+ ordinal) root))))
     ((fn-hroot-index-demand fn-hroot-read-demand) (list :ok 1000))
-    ((fn-hroot-event-demand fn-hroot-retain-demand fn-hroot-root-retain-demand fn-hroot-tail-demand) (list 1000))
+    ((fn-hroot-event-demand fn-hroot-retain-demand fn-hroot-root-retain-demand fn-hroot-tail-demand
+      fn-hroot-event-transient fn-hroot-grow-transient) (list 1000))
     (fn-hist$p-append
       (setf (aref (second args) 0) (append (aref (second args) 0) (list (first args))))
       (list (second args)))

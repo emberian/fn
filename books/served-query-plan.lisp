@@ -63,24 +63,67 @@
 
 ; Exactly one accepted LIST controller call per activation. Empty progress
 ; retains the cursor and response capture; no warmth-based completion.
-(defun fn-qplan-rest-cursor-step (rest w fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp w)))
+;
+; The skipped prefix of non-cursor effects grows with the range (an OVER over
+; a whole group skips one effect per article before the first cursor), so the
+; executable is a tail-recursive worker that carries the skipped prefix
+; reversed in ACC and restores it with revappend at the first cursor or LIST
+; effect; the logical definition below is the plain recursion.
+(defun fn-qplan-rest-cursor-step-acc (rest w acc fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp w) (true-listp acc))))
   (if (consp rest)
       (cond
        ((fn-lst-effectp (car rest))
         (mv-let (octets next calls state)
           (fn-lst-step (fn-cur-at 1 (car rest)) w w fn-cat)
           (declare (ignore calls state))
-          (mv :ok (cons (fn-nntp-reply-effect octets)
-                        (if (fn-lst-livep next)
-                            (cons (fn-lst-effect next) (cdr rest))
-                          (cdr rest))))))
+          (mv :ok (revappend acc
+                             (fn-splan-reply-then
+                              octets
+                              (if (fn-lst-livep next)
+                                  (cons (fn-lst-effect next) (cdr rest))
+                                (cdr rest)))))))
        ((fn-splan-cursor-effectp (car rest))
-        (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
-       (t (mv-let (status next)
-            (fn-qplan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
-            (mv status (cons (car rest) next)))))
-    (mv :ok rest)))
+        (mv-let (status next)
+          (fn-splan-rest-cursor-step rest w fn-arena fn-cat)
+          (mv status (revappend acc next))))
+       (t (fn-qplan-rest-cursor-step-acc (cdr rest) w (cons (car rest) acc)
+                                         fn-arena fn-cat)))
+    (mv :ok (revappend acc rest))))
+
+(defun fn-qplan-rest-cursor-step (rest w fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp w)
+                  :verify-guards nil))
+  (mbe
+   :logic
+   (if (consp rest)
+       (cond
+        ((fn-lst-effectp (car rest))
+         (mv-let (octets next calls state)
+           (fn-lst-step (fn-cur-at 1 (car rest)) w w fn-cat)
+           (declare (ignore calls state))
+           (mv :ok (fn-splan-reply-then
+                    octets
+                    (if (fn-lst-livep next)
+                        (cons (fn-lst-effect next) (cdr rest))
+                      (cdr rest))))))
+        ((fn-splan-cursor-effectp (car rest))
+         (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+        (t (mv-let (status next)
+             (fn-qplan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
+             (mv status (cons (car rest) next)))))
+     (mv :ok rest))
+   :exec (fn-qplan-rest-cursor-step-acc rest w nil fn-arena fn-cat)))
+
+; The worker is the logical function with the reversed prefix put back.
+(defthm fn-qplan-rest-cursor-step-acc-is-the-reference
+  (equal (fn-qplan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
+         (mv (mv-nth 0 (fn-qplan-rest-cursor-step rest w fn-arena fn-cat))
+             (revappend acc (mv-nth 1 (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-qplan-rest-cursor-step-acc rest w acc fn-arena fn-cat))))
+
+(verify-guards fn-qplan-rest-cursor-step)
 
 (defun fn-qplan-cursor-step (plan w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp w)))
@@ -92,6 +135,161 @@
                     fn-qplan-rest-at-cursorp fn-qplan-at-cursorp fn-qplan-rest-head-len
                     fn-qplan-window-size fn-qplan-window
                     fn-qplan-rest-cursor-step fn-qplan-cursor-step))
+
+; The effects in front of a cursor do not accumulate on the facade either
+; (the LIST arm included): an empty quantum answers just the next cursor.
+; Octet-less effects that are no cursor of any kind: what fn-qplan-rest-at-
+; cursorp skips and a window renders as nothing.
+(defun fn-qplan-rest-empties (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (+ (if (and (not (fn-qplan-cursor-effectp (car rest)))
+                  (atom (fn-srb-effect-octets (car rest))))
+             1 0)
+         (fn-qplan-rest-empties (cdr rest)))
+    0))
+
+(defun fn-qplan-empties (p)
+  (declare (xargs :guard t))
+  (fn-qplan-rest-empties (fn-splan-rest p)))
+
+(local
+ (defthm fn-qplan-rest-empties-of-reply-then
+   (<= (fn-qplan-rest-empties (fn-splan-reply-then octets tail))
+       (fn-qplan-rest-empties tail))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-splan-reply-then fn-nntp-reply-effect
+                                      fn-qplan-rest-empties fn-qplan-cursor-effectp
+                                      fn-lst-effectp)))))
+
+; A new cursor effect in front of a tail is no empty effect.
+(local
+ (defthm fn-qplan-rest-empties-of-cursor-effects
+   (and (equal (fn-qplan-rest-empties (cons (fn-ovw-cursor-effect cur) tail))
+               (fn-qplan-rest-empties tail))
+        (equal (fn-qplan-rest-empties (cons (fn-nnw-meta-effect cur) tail))
+               (fn-qplan-rest-empties tail))
+        (equal (fn-qplan-rest-empties (cons (fn-lst-effect cur) tail))
+               (fn-qplan-rest-empties tail)))
+   :hints (("Goal" :in-theory (enable fn-qplan-rest-empties fn-qplan-cursor-effectp
+                                      fn-splan-cursor-effectp fn-ovw-cursor-effectp
+                                      fn-nnw-meta-effectp fn-ovw-cursor-effect
+                                      fn-nnw-meta-effect fn-lst-effect fn-lst-effectp)))))
+
+; The OVER/NEWNEWS arm: one step at a cursor effect of REST.
+(local
+ (defthm fn-qplan-splan-arm-adds-no-empty-effect
+   (implies (fn-splan-cursor-effectp (car rest))
+            (<= (fn-qplan-rest-empties
+                 (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))
+                (fn-qplan-rest-empties rest)))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t
+            :expand ((fn-splan-rest-cursor-step rest wl fn-arena fn-cat))
+            :in-theory (e/d (fn-qplan-rest-empties fn-qplan-cursor-effectp)
+                            (fn-ovw-step fn-ovw-cursorp fn-nnw-meta-livep
+                             fn-nnw-stream-batch fn-splan-rest-cursor-step))))))
+
+(defthm fn-qplan-rest-cursor-step-adds-no-empty-effect
+  (<= (fn-qplan-rest-empties
+       (mv-nth 1 (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)))
+      (fn-qplan-rest-empties rest))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)
+           :in-theory (e/d (fn-qplan-rest-cursor-step fn-qplan-rest-empties)
+                           (fn-lst-step fn-lst-livep fn-lst-effect fn-splan-rest-cursor-step)))))
+
+(defthm fn-qplan-cursor-step-adds-no-empty-effect
+  (<= (fn-qplan-empties (mv-nth 1 (fn-qplan-cursor-step p wl fn-arena fn-cat)))
+      (fn-qplan-empties p))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-qplan-cursor-step fn-qplan-empties)
+                                  (fn-qplan-rest-cursor-step)))))
+
+; -----------------------------------------------------------------------------
+; The host runs this facade, not the fn-splan entries it extends.  On a plan
+; with no LIST effect each fn-qplan entry IS the fn-splan entry (PRF-1020's
+; claims about the OVER/NEWNEWS plan are stated over the fn-splan entries:
+; fn-splan-cursor-step-of-okp-is-ok, fn-splan-window-size-is-positive-until-
+; done); these equalities tie them to the entries host/native/owner.lisp
+; calls (fnn-owner-cursor-step: fn-qplan-cursor-step; fnn-owner-render-next:
+; fn-qplan-at-cursorp, fn-qplan-window).  A plan that holds a LIST effect is
+; outside them: that effect is the facade's, not the fn-splan model's.
+(defun fn-qplan-rest-no-lstp (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (and (not (fn-lst-effectp (car rest)))
+           (fn-qplan-rest-no-lstp (cdr rest)))
+    t))
+
+(local
+ (defthm fn-qplan-no-lst-cursor-effect
+   (implies (not (fn-lst-effectp e))
+            (equal (fn-qplan-cursor-effectp e) (fn-splan-cursor-effectp e)))
+   :hints (("Goal" :in-theory (enable fn-qplan-cursor-effectp)))))
+
+(local
+ (defthm fn-qplan-rest-head-len-is-splan
+   (implies (fn-qplan-rest-no-lstp rest)
+            (equal (fn-qplan-rest-head-len rest) (fn-splan-rest-head-len rest)))
+   :hints (("Goal" :in-theory (enable fn-qplan-rest-head-len fn-splan-rest-head-len
+                                      fn-qplan-rest-no-lstp)))))
+
+(local
+ (defthm fn-qplan-rest-at-cursorp-is-splan
+   (implies (fn-qplan-rest-no-lstp rest)
+            (equal (fn-qplan-rest-at-cursorp rest) (fn-splan-rest-at-cursorp rest)))
+   :hints (("Goal" :in-theory (enable fn-qplan-rest-at-cursorp fn-splan-rest-at-cursorp
+                                      fn-qplan-rest-no-lstp)))))
+
+(local
+ (defthm fn-qplan-rest-donep-is-splan
+   (implies (fn-qplan-rest-no-lstp rest)
+            (equal (fn-qplan-rest-donep rest) (fn-splan-rest-donep rest)))
+   :hints (("Goal" :in-theory (enable fn-qplan-rest-donep fn-splan-rest-donep
+                                      fn-qplan-rest-no-lstp)))))
+
+(local
+ (defthm fn-qplan-rest-cursor-step-is-splan
+   (implies (fn-qplan-rest-no-lstp rest)
+            (equal (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)
+                   (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))
+   :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)
+            :in-theory (e/d (fn-qplan-rest-cursor-step fn-qplan-rest-no-lstp
+                             fn-qplan-cursor-effectp)
+                            (fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep
+                             fn-nnw-stream-batch fn-lst-step fn-lst-remaining fn-lst-livep
+                             fn-nntp-reply-effect fn-lst-effect mv-nth fn-splan-cursor-effectp
+                             fn-nnw-meta-effectp fn-ovw-cursor-effect fn-nnw-meta-effect))
+            :expand ((fn-splan-rest-cursor-step rest w fn-arena fn-cat)
+                     (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat))))))
+
+(defthm fn-qplan-window-size-is-splan-window-size
+  (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
+           (equal (fn-qplan-window-size p) (fn-splan-window-size p)))
+  :hints (("Goal" :in-theory (enable fn-qplan-window-size fn-splan-window-size)))
+  :rule-classes nil)
+
+(defthm fn-qplan-donep-is-splan-donep
+  (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
+           (equal (fn-qplan-donep p) (fn-splan-donep p)))
+  :hints (("Goal" :in-theory (enable fn-qplan-donep fn-splan-donep)))
+  :rule-classes nil)
+
+(defthm fn-qplan-at-cursorp-is-splan-at-cursorp
+  (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
+           (equal (fn-qplan-at-cursorp p) (fn-splan-at-cursorp p)))
+  :hints (("Goal" :in-theory (enable fn-qplan-at-cursorp fn-splan-at-cursorp)))
+  :rule-classes nil)
+
+(defthm fn-qplan-cursor-step-is-splan-cursor-step
+  (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
+           (equal (fn-qplan-cursor-step p w fn-arena fn-cat)
+                  (fn-splan-cursor-step p w fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (e/d (fn-qplan-cursor-step fn-splan-cursor-step)
+                                  (fn-qplan-rest-cursor-step fn-splan-rest-cursor-step))
+           :use ((:instance fn-qplan-rest-cursor-step-is-splan (rest (fn-splan-rest p))))))
+  :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
 ; What a query plan owes with every cursor read as its completion: LIST
@@ -128,6 +326,13 @@
    (and (fn-lst-effectp (fn-lst-effect cur))
         (equal (fn-cur-at 1 (fn-lst-effect cur)) cur))
    :hints (("Goal" :in-theory (enable fn-lst-effect fn-lst-effectp fn-cur-at)))))
+
+(local
+ (defthm fn-qplan-cw-octets-of-reply-then
+   (equal (fn-qplan-cw-octets (fn-splan-reply-then octets tail) wl fn-arena fn-cat)
+          (append octets (fn-qplan-cw-octets tail wl fn-arena fn-cat)))
+   :hints (("Goal" :in-theory (enable fn-splan-reply-then fn-qplan-cw-octets)
+            :do-not-induct t))))
 
 (local
  (defthm fn-qplan-ovw-effect-not-list

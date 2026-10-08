@@ -17,6 +17,7 @@
 
 (in-package "ACL2")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
+(include-book "def-loop")
 (include-book "body-chunks") ; the body held in article mode (B6)
 
 ; ---------------------------------------------------------------------------
@@ -130,39 +131,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-wire-append-loop (left right acc)
-  (declare (xargs :measure (acl2-count left) :guard (true-listp acc) :verify-guards nil))
-  (if (consp left)
-      (fn-wire-append-loop (cdr left) right (cons (car left) acc))
-    (revappend acc right)))
-
-(defun fn-wire-append (left right)
-  (declare (xargs :guard t :measure (acl2-count left) :verify-guards nil))
-  (mbe :logic
-       (if (consp left)
-           (cons (car left) (fn-wire-append (cdr left) right))
-         right)
-       :exec (fn-wire-append-loop left right nil)))
-
-(local
- (defthm fn-wire-append-loop-is-revappend
-   (equal (fn-wire-append-loop left right acc)
-          (revappend acc (fn-wire-append left right)))
-   :hints (("Goal" :induct (fn-wire-append-loop left right acc)
-                   :in-theory (union-theories '(fn-wire-append-loop fn-wire-append revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-wire-append-loop)
-
-(verify-guards fn-wire-append
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-wire-append)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-wire-append-loop-is-revappend (acc nil))))))
-
+(def-loop fn-wire-append (left right)
+  :shape :map :over left :elt l
+  :tail right
+  :body l)
 
 (defun fn-wire-outbound-ok (octets)
   (declare (xargs :guard t))
@@ -222,37 +194,16 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-wire-outbound-lines-aux octets (nfix limit) nil nil))
 
+(verify-guards fn-wire-stuff-line)
+
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-wire-render-lines-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-wire-render-lines-loop (cdr rev)
-                                 (fn-wire-append (fn-wire-stuff-line (car rev))
-                                                 (fn-wire-append '(13 10) acc)))
-    acc))
-
-(defun fn-wire-render-lines (lines)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count lines)))
-  (mbe :logic
-       (if (consp lines)
-           (fn-wire-append (fn-wire-stuff-line (car lines))
-                           (fn-wire-append '(13 10)
-                                           (fn-wire-render-lines (cdr lines))))
-         nil)
-       :exec (fn-wire-render-lines-loop (fn-ag-rev-onto lines nil) nil)))
-
-(local
- (defthm fn-wire-render-lines-loop-of-rev-onto
-   (equal (fn-wire-render-lines-loop (fn-ag-rev-onto lines zs) nil)
-          (fn-wire-render-lines-loop zs (fn-wire-render-lines lines)))
-   :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-wire-render-lines-loop fn-wire-render-lines fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-wire-render-lines (lines)
+  :shape :foldr :over lines :elt l
+  :combine (fn-wire-append (fn-wire-stuff-line l) (fn-wire-append '(13 10) acc)) :init nil
+  :rev fn-ag-rev-onto)
 
 (defun fn-wire-render-block (article limit)
   (declare (xargs :guard t :verify-guards nil))
@@ -474,35 +425,21 @@
   (declare (xargs :guard t))
   (+ 2 (fn-wire-list-length line)))
 
+(verify-guards fn-wire-octetp)
+
+(verify-guards fn-wire-octet-listp)
+
+(verify-guards fn-wire-octet-linesp)
+
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-wire-lines-size-loop (rev acc)
-  (declare (xargs :guard (natp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-wire-lines-size-loop (cdr rev) (+ (fn-wire-line-cost (car rev)) acc))
-    acc))
-
-(defun fn-wire-lines-size (lines)
-  (declare (xargs :guard (fn-wire-octet-linesp lines)
-                  :verify-guards nil))
-  (mbe :logic
-       (if (consp lines)
-           (+ (fn-wire-line-cost (car lines))
-              (fn-wire-lines-size (cdr lines)))
-         0)
-       :exec (fn-wire-lines-size-loop (fn-ag-rev-onto lines nil) 0)))
-
-(local
- (defthm fn-wire-lines-size-loop-of-rev-onto
-   (equal (fn-wire-lines-size-loop (fn-ag-rev-onto lines zs) 0)
-          (fn-wire-lines-size-loop zs (fn-wire-lines-size lines)))
-   :hints (("Goal" :induct (fn-ag-rev-onto lines zs)
-                   :in-theory (union-theories '(fn-wire-lines-size-loop fn-wire-lines-size fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-wire-lines-size (lines)
+  :shape :foldr :over lines :elt l
+  :combine (+ (fn-wire-line-cost l) acc) :init 0
+  :rev fn-ag-rev-onto
+  :guard (fn-wire-octet-linesp lines) :loop-guard (natp acc))
 
 (defthm fn-wire-lines-size-cons
   (equal (fn-wire-lines-size (cons line lines))
@@ -1355,16 +1292,11 @@
 ; -----------------------------------------------------------------------------
 ; Executable guard closure
 
-(verify-guards fn-wire-octetp)
-(verify-guards fn-wire-octet-listp)
-(verify-guards fn-wire-octet-linesp)
-(verify-guards fn-wire-stuff-line)
 (verify-guards fn-wire-unstuff-line)
 (verify-guards fn-wire-reverse-octets-aux)
 (verify-guards fn-wire-reverse-octets)
 (verify-guards fn-wire-reverse-lines-aux)
 (verify-guards fn-wire-reverse-lines)
-(verify-guards fn-wire-append)
 (verify-guards fn-wire-outbound-ok)
 (verify-guards fn-wire-outbound-refused)
 (verify-guards fn-wire-outbound-okp)
@@ -1372,13 +1304,6 @@
 (verify-guards fn-wire-outbound-reason)
 (verify-guards fn-wire-outbound-lines-aux)
 (verify-guards fn-wire-outbound-lines)
-(verify-guards fn-wire-render-lines-loop)
-
-(verify-guards fn-wire-render-lines
-  :hints (("Goal" :in-theory (union-theories '(fn-wire-render-lines fn-wire-render-lines-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-wire-render-lines-loop-of-rev-onto (zs nil))))))
 (verify-guards fn-wire-render-block)
 (verify-guards fn-wire-prefixp)
 (verify-guards fn-wire-outbound-command-line-aux)
@@ -1387,13 +1312,6 @@
 (verify-guards fn-wire-modep)
 (verify-guards fn-wire-make-state)
 (verify-guards fn-wire-line-cost)
-(verify-guards fn-wire-lines-size-loop)
-
-(verify-guards fn-wire-lines-size
-  :hints (("Goal" :in-theory (union-theories '(fn-wire-lines-size fn-wire-lines-size-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-wire-lines-size-loop-of-rev-onto (zs nil))))))
 (verify-guards fn-wire-statep)
 (verify-guards fn-wire-held-octets)
 (verify-guards fn-wire-initial-state)

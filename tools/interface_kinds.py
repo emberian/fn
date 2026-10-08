@@ -145,7 +145,7 @@ def tree_files() -> list[tuple[str, str]]:
     """books/*.lisp and the ACL2-mode host files (the raw host is not ACL2)."""
     files = [(p.relative_to(ROOT).as_posix(), p.read_text(encoding="utf-8"))
              for p in sorted((ROOT / "books").glob("*.lisp"))]
-    tree = ledger.load_tree()
+    tree = ledger.load_tree(lazy=True)
     raw = ledger.raw_host_paths(tree)
     for relative in sorted(tree.hosts):
         if relative not in raw:

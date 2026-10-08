@@ -8,7 +8,8 @@
  "fix": "Retire the inline barrier path: queue the batch to the syncer/committer and complete in a later quantum (the owner already has the START/SYNC/COMPLETE split and the committer thread), or record a decision that the inline path is permitted for bound submissions and declare it as a scoped R2 exception with its bound.",
  "id": "LOCK-R2-COMMIT-INLINE-LOG-IO",
  "notes": [
-  "Not fixed in lane/lock-owner-class; design question, state stays open. fnn-owner-complete-bound-submission (owner.lisp) and fnn-owner-complete-bp-transit-submission call fnn-owner-commit-queued-locked, which must finish START/barrier/COMPLETE before the caller's own submit-callback runs, and both are reached from callers that hold O up the stack (bp-app.lisp:143 via fnn-bpapp-accept-locked inside fnn-quantum-bp; hybrid-control.lisp:166; owner.lisp:5604). Retiring the inline barrier means returning from the held quantum between START and the submission, which the callers' straight-line sequence (submit, take, intent, flush, Store attempt, resolution) does not allow, and the commit step table (fnn-owner-commit-step-action :idle) is written for an idle owner with no gate phase. Needs: ACL2 statement of the bound-submission as a two-quantum sequence (commit-then-submit) with the gate phase in between, or a recorded decision that a bound submission commits inline with the stated bound."
+  "Not fixed in lane/lock-owner-class; design question, state stays open. fnn-owner-complete-bound-submission (owner.lisp) and fnn-owner-complete-bp-transit-submission call fnn-owner-commit-queued-locked, which must finish START/barrier/COMPLETE before the caller's own submit-callback runs, and both are reached from callers that hold O up the stack (bp-app.lisp:143 via fnn-bpapp-accept-locked inside fnn-quantum-bp; hybrid-control.lisp:166; owner.lisp:5604). Retiring the inline barrier means returning from the held quantum between START and the submission, which the callers' straight-line sequence (submit, take, intent, flush, Store attempt, resolution) does not allow, and the commit step table (fnn-owner-commit-step-action :idle) is written for an idle owner with no gate phase. Needs: ACL2 statement of the bound-submission as a two-quantum sequence (commit-then-submit) with the gate phase in between, or a recorded decision that a bound submission commits inline with the stated bound.",
+  "Key the checker was blind to until it resolved the *fnn-write-syscall* seam (LOCK-CHECKER-HOST-WRAPPER-IO-BLIND): R2|fnn-write-range|O:sb-unix:unix-write, the log frame write itself (fnn-log-pwrite io.lisp:7350 -> fnn-write-range), reached from the same inline commit chain and from fnn-bpapp-deliver (bp-app.lisp:248). Retiring the inline path removes it."
  ],
  "owner": "unassigned",
  "scenario": "A BP application delivery (or any bound submission with queued members) takes the inline path: O held across pwrite+fdatasync; a slow device stalls readers and control for the fdatasync duration.",
@@ -16,5 +17,5 @@
  "source": "lock-triage-r2 on origin/dev d3b392c32 (tools/lock_discipline_check.py --check --json; new R2 findings)",
  "state": "open",
  "title": "Inline commit (fnn-owner-commit-queued-locked) runs the whole batch job, log append/preallocate/fdatasync and the sync wait, under the owner mutex",
- "updated": "2026-10-06T23:55:36Z"
+ "updated": "2026-10-07T00:00:00Z"
 }

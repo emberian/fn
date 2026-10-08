@@ -324,14 +324,15 @@
   (let* ((fig (fn-mca-figure-octets profile core nursery live))
          (base (fn-mca-base-octets profile core live))
          (open (fn-mca-owner-octets profile live)))
-    (fn-mcr-make fig (- base (+ (fn-heap-articles-octets profile) open)) 0 open
-                 (- fig base) 0 nil)))
+    (fn-mcr-make fig (- base (+ (fn-heap-articles-octets profile) open
+                                (fn-heap-hroot-reserve-octets profile)))
+                 0 open (- fig base) 0 nil (fn-heap-hroot-reserve-octets profile) nil)))
 
 ; Before a run installs its budget: a ledger that admits one article at
 ; RESERVE (as fn-owner-article-slots admits one slot).
 (defun fn-mca-default (reserve)
   (declare (xargs :guard t))
-  (fn-mcr-make reserve 0 0 0 0 0 nil))
+  (fn-mcr-make reserve 0 0 0 0 0 nil 0 nil))
 
 ; -----------------------------------------------------------------------------
 ; The theorems.
@@ -556,23 +557,25 @@
 ;; splits it.
 (local
  (defthm fn-mca-accessors-of-make
-   (and (equal (fn-mcr-budget (fn-mcr-make b ba c co r d o)) (nfix b))
-        (equal (fn-mcr-base (fn-mcr-make b ba c co r d o)) (nfix ba))
-        (equal (fn-mcr-cache (fn-mcr-make b ba c co r d o)) (nfix c))
-        (equal (fn-mcr-completion (fn-mcr-make b ba c co r d o)) (nfix co))
-        (equal (fn-mcr-runtime (fn-mcr-make b ba c co r d o)) (nfix r))
-        (equal (fn-mcr-drawn (fn-mcr-make b ba c co r d o)) (nfix d))
-        (equal (fn-mcr-ops (fn-mcr-make b ba c co r d o)) o))
+   (and (equal (fn-mcr-budget (fn-mcr-make b ba c co r d o h hs)) (nfix b))
+        (equal (fn-mcr-base (fn-mcr-make b ba c co r d o h hs)) (nfix ba))
+        (equal (fn-mcr-cache (fn-mcr-make b ba c co r d o h hs)) (nfix c))
+        (equal (fn-mcr-completion (fn-mcr-make b ba c co r d o h hs)) (nfix co))
+        (equal (fn-mcr-runtime (fn-mcr-make b ba c co r d o h hs)) (nfix r))
+        (equal (fn-mcr-drawn (fn-mcr-make b ba c co r d o h hs)) (nfix d))
+        (equal (fn-mcr-ops (fn-mcr-make b ba c co r d o h hs)) o)
+        (equal (fn-mcr-hroot (fn-mcr-make b ba c co r d o h hs)) (nfix h))
+        (equal (fn-mcr-hroots (fn-mcr-make b ba c co r d o h hs)) hs))
    :hints (("Goal" :in-theory (enable fn-mcr-make fn-mcr-budget fn-mcr-base fn-mcr-cache
                                       fn-mcr-completion fn-mcr-runtime fn-mcr-drawn
-                                      fn-mcr-ops)))))
+                                      fn-mcr-ops fn-mcr-hroot fn-mcr-hroots)))))
 
 (local
  (defthm fn-mca-base-splits
    (equal (fn-mca-base-octets profile core live)
           (+ (fn-heap-core-dynamic core) (fn-heap-store-state-bound profile)
              (fn-mca-owner-octets profile live) (fn-heap-store-inflight-octets profile)
-             (fn-heap-articles-octets profile)))
+             (fn-heap-articles-octets profile) (fn-heap-hroot-reserve-octets profile)))
    :hints (("Goal" :in-theory (union-theories '(fn-mca-base-octets fn-mca-owner-octets
                                                 fn-mca-reclaim-reserve-octets
                                                 fn-heap-store-base-octets
@@ -586,7 +589,8 @@
         (natp (fn-heap-store-state-bound profile))
         (natp (fn-mca-owner-octets profile live))
         (natp (fn-heap-store-inflight-octets profile))
-        (natp (fn-heap-articles-octets profile)))
+        (natp (fn-heap-articles-octets profile))
+        (natp (fn-heap-hroot-reserve-octets profile)))
    :rule-classes nil
    :hints (("Goal" :in-theory (enable fn-mca-owner-octets fn-mca-reclaim-reserve-octets)))))
 
@@ -598,13 +602,16 @@
 ;; The ledger's arithmetic, over opaque parts.
 (local
  (defthm fn-mca-initial-shape
-   (implies (and (natp d) (natp st) (natp o) (natp i) (natp a) (natp fig)
-                 (<= (+ d st o i a) fig))
-            (let ((l (fn-mcr-make fig (- (+ d st o i a) (+ a o)) 0 o (- fig (+ d st o i a)) 0 nil)))
+   (implies (and (natp d) (natp st) (natp o) (natp i) (natp a) (natp h) (natp fig)
+                 (<= (+ d st o i a h) fig))
+            (let ((l (fn-mcr-make fig (- (+ d st o i a h) (+ a o h)) 0 o (- fig (+ d st o i a h)) 0 nil
+                                  h nil)))
               (and (fn-mcr-fundedp l) (equal (- (fn-mcr-budget l) (fn-mcr-total l)) a)
-                   (equal (fn-mcr-budget l) fig) (equal (fn-mcr-completion l) o))))
+                   (equal (fn-mcr-budget l) fig) (equal (fn-mcr-completion l) o)
+                   (equal (fn-mcr-hroot l) h) (equal (fn-mcr-hroots l) nil))))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-mcr-fundedp fn-mcr-total) (fn-mcr-make))))))
+   :hints (("Goal" :in-theory (e/d (fn-mcr-fundedp fn-mcr-total fn-mcr-opsp fn-mcr-ops-credit)
+                                   (fn-mcr-make))))))
 
 ;; KEYSTONE.  The launcher's reservation is the budget: the ledger a run
 ;; starts from is funded, and what it leaves free for operations is exactly
@@ -617,7 +624,9 @@
     (and (fn-mcr-fundedp l)
          (equal (- (fn-mcr-budget l) (fn-mcr-total l)) (fn-heap-articles-octets profile))
          (equal (fn-mcr-budget l) (fn-mca-figure-octets profile core nursery live))
-         (equal (fn-mcr-completion l) (fn-mca-owner-octets profile live))))
+         (equal (fn-mcr-completion l) (fn-mca-owner-octets profile live))
+         (equal (fn-mcr-hroot l) (fn-heap-hroot-reserve-octets profile))
+         (equal (fn-mcr-hroots l) nil)))
   :hints (("Goal" :in-theory (union-theories '(fn-mca-initial fn-mca-figure-octets
                                                fn-mca-base-splits
                                                nfix natp-compound-recognizer)
@@ -626,6 +635,7 @@
                             (d (fn-heap-core-dynamic core)) (st (fn-heap-store-state-bound profile))
                             (o (fn-mca-owner-octets profile live)) (i (fn-heap-store-inflight-octets profile))
                             (a (fn-heap-articles-octets profile))
+                            (h (fn-heap-hroot-reserve-octets profile))
                             (fig (fn-heap-with-nursery (fn-mca-base-octets profile core live)
                                                        nursery)))
                  (:instance fn-mca-parts-natp)
@@ -683,6 +693,69 @@
    :hints (("Goal" :in-theory (e/d (fn-mca-initial)
                                    (fn-mcr-make fn-mca-owner-octets fn-mca-figure-octets
                                     fn-mca-base-octets fn-heap-articles-octets))))))
+
+(local
+ (defthm fn-mca-roots-generic-ledger
+   (implies (and (equal (fn-mcr-ops l) nil) (equal (fn-mcr-hroots l) nil)
+                 (equal (fn-mcr-hroot l) r) (natp r)
+                 (equal (fn-mcr-free l) a) (natp a))
+            (let* ((res (fn-mcr-hroot-resize l :root-a r)) (l2 (cadr res)))
+              (and (equal (car res) :ok)
+                   (equal (fn-mcr-free l2) a)
+                   (equal (car (fn-mcr-resize l2 :article-pool a)) :ok)
+                   (equal (fn-mcr-hroot-resize l2 :root-b 1)
+                          '(:refused :history-root-reserve-exhausted)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-mcr-free fn-mcr-hroot-sum-with fn-mcr-credit-of fn-mcr-set fn-mcr-put fn-mcr-drop fn-mcr-opsp fn-mcr-ops-credit)
+                                   (fn-mcr-total fn-mcr-resize fn-mcr-hroot-resize
+                                    fn-mcr-hroot-resize-leaves-the-pool-and-the-total))
+            :use ((:instance fn-mcr-hroot-resize-leaves-the-pool-and-the-total (id :root-a) (n r))
+                  (:instance fn-mcr-hroot-resize-refuses-exactly-past-the-reserve (id :root-a) (n r))
+                  (:instance fn-mcr-hroot-resize-sets-the-sum (id :root-a) (n r))
+                  (:instance fn-mcr-hroot-resize-sets-the-credit (id :root-a) (n r) (a :root-b))
+                  (:instance fn-mcr-hroot-resize-refused-by-name
+                             (l (cadr (fn-mcr-hroot-resize l :root-a r))) (id :root-b) (n 1))
+                  (:instance fn-mcr-hroot-resize-refuses-exactly-past-the-reserve
+                             (l (cadr (fn-mcr-hroot-resize l :root-a r))) (id :root-b) (n 1)))))))
+
+(local
+ (defthm fn-mca-initial-roots-facts
+   (let ((l (fn-mca-initial profile core nursery live)))
+     (and (equal (fn-mcr-ops l) nil) (equal (fn-mcr-hroots l) nil)
+          (equal (fn-mcr-hroot l) (fn-heap-hroot-reserve-octets profile))
+          (equal (fn-mcr-free l) (fn-heap-articles-octets profile))))
+   :hints (("Goal" :in-theory (union-theories '(fn-mcr-free) (theory 'minimal-theory))
+            :use (fn-mca-initial-funds-exactly-the-articles
+                  fn-mca-initial-draws-nothing-and-holds-nothing)))))
+;; KEYSTONE (K3; lane mem10-hroot, MEM-010 / MEM-011).  The history roots draw
+;; the reserve the figure holds for them and never the articles' pool: with
+;; the roots at the whole reserve, the free room is still exactly the pool,
+;; the pool is admitted whole, and the reserve is a real limit (one octet
+;; past it is refused by name).  The old draw's refusal is the teeth:
+;; books/memory-credits.lisp fn-mcr-hroot-teeth-the-old-draw-refuses-the-
+;; candidate.
+(defthm fn-mca-roots-draw-the-reserve-and-never-the-articles
+  (let* ((l (fn-mca-initial profile core nursery live))
+         (r (fn-mcr-hroot-resize l :root-a (fn-heap-hroot-reserve-octets profile)))
+         (l2 (cadr r)))
+    (and (equal (car r) :ok)
+         (equal (fn-mcr-free l2) (fn-heap-articles-octets profile))
+         (equal (car (fn-mcr-resize l2 :article-pool (fn-heap-articles-octets profile))) :ok)
+         (equal (fn-mcr-hroot-resize l2 :root-b 1)
+                '(:refused :history-root-reserve-exhausted))))
+  :hints (("Goal" :in-theory (disable fn-mca-initial fn-mcr-free fn-mcr-resize fn-mcr-hroot-resize
+                                      fn-mcr-total fn-mca-initial-roots-facts
+                                      fn-mcr-resize-refuses-exactly-past-the-budget
+                                      fn-mcr-hroot-resize-refuses-exactly-past-the-reserve
+                                      fn-mcr-hroot-resize-refused-by-name
+                                      fn-mcr-hroot-resize-leaves-the-pool-and-the-total
+                                      fn-mcr-hroot-resize-sets-the-credit
+                                      fn-mcr-hroot-resize-sets-the-sum)
+           :use (fn-mca-initial-roots-facts
+                 (:instance fn-mca-roots-generic-ledger
+                            (l (fn-mca-initial profile core nursery live))
+                            (r (fn-heap-hroot-reserve-octets profile))
+                            (a (fn-heap-articles-octets profile)))))))
 
 (defthm fn-mca-initial-is-pass-free
   (fn-mca-pass-free-p (fn-mca-initial profile core nursery live) profile live)

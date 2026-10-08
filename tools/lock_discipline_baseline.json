@@ -1250,22 +1250,6 @@
    "reason": "io leaf sb-posix:stat runs while holding XTLSRELOAD; reached from 1 site(s) under XTLSRELOAD, e.g. fnn-tls-owner-reload (host/native/tls-reload.lisp:76)"
   },
   {
-   "key": "R2|fnn-unlink|K:sb-posix:unlink",
-   "count": 1,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:840",
-   "reason": "io leaf sb-posix:unlink runs while holding K; reached from 1 site(s) under K, e.g. fnn-snapshot-job-freeze-log (host/native/snapshot-producer.lisp:533)"
-  },
-  {
-   "key": "R2|fnn-unlink|O:sb-posix:unlink",
-   "count": 17,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/io.lisp:840",
-   "reason": "io leaf sb-posix:unlink runs while holding O; reached from 17 site(s) under O, e.g. fnn-owner-reclaim-request (host/native/admin.lisp:422)"
-  },
-  {
    "key": "R4|fnn-control-launch-client|no-handler:fn local control client",
    "count": 1,
    "rule": "R4",
@@ -1408,14 +1392,6 @@
    "category": "violation",
    "where": "host/native/signatures.lisp:274",
    "reason": "handler clause error consumes ['fault'] without routing it to the fence"
-  },
-  {
-   "key": "R7|fnn-immutable-publish-effect|swallow:ignore-errors:fault",
-   "count": 1,
-   "rule": "R7",
-   "category": "violation",
-   "where": "host/native/immutable-publish.lisp:71",
-   "reason": "handler clause ignore-errors consumes ['fault'] without routing it to the fence"
   },
   {
    "key": "R7|fnn-journal-write|swallow:error:fault",

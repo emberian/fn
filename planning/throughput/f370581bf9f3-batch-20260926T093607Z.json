@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "revision": "f370581bf9f365d210bb869f2f08e543d1ce0724",
+  "label": "batch",
+  "image": "/tank/fn/scratch/throughput-gate/native-img-f370581bf9f3/tree/build/fn-host-developer",
+  "core_sha256": "65fe9d655ba706eeda59d8f84666ea298376209cef41af8f4f6327eb9a49384b",
+  "launcher_sha256": "4db6451b82dc09e8a02c62e582d5eded61b01008127d7980e169c9632e05fc34",
+  "client_sha256": {
+    "tools/throughput_gate.py": "ae4bea0205b84a4002140455b5c3be59c1912bbe2cf6ad45be8b46ecbce94860",
+    "tools/msgid_measure.py": "97a1a72895819546455f64b0d8752e961e983a1757fb58615ce4c5dd408e6fa4",
+    "tools/rep_measure.py": "51f6dc95b094f85310a998e0f095c7aea44effba153f54d71b7932b5949bb3d0",
+    "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/native_process.py": "e7e838e986057786f6657ac13acd1326a93699d36bc3d4ea01cc6393a0f98fec"
+  },
+  "filesystem": "tmpfs",
+  "host": "hbox",
+  "started_utc": "2026-09-26T09:36:08Z",
+  "quiet_before": {
+    "own_unit": "throughput-gate-f370581bf9f3-20260926T093607Z.service",
+    "window_s": 10.0,
+    "threshold_cores": 0.05,
+    "busy": [
+      {
+        "unit": "pco-scale1.service",
+        "cpu_cores": 1.005,
+        "description": "/usr/bin/sh -c \"cd /tank/fn/scratch/pack-chain-open/native-img3/tree && export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8 LD_LIBRARY_PATH=/tank/fn/tool"
+      },
+      {
+        "unit": "run-r93ea9d6f40bd4b63bf359d1108b3294a.scope",
+        "cpu_cores": 1.019,
+        "description": "/usr/bin/env FN_NATIVE_DEVELOPER_HOST=/tank/fn/gates/qual-b6759850-20260926/build/images/b675985074cf14b009204f6eb3e5409f4a025a80/fn-host-developer python3 -m u"
+      }
+    ],
+    "idle": [
+      {
+        "unit": "fn-node.service",
+        "cpu_cores": 0.001,
+        "description": "fn native news node (bbf52159)"
+      },
+      {
+        "unit": "init.scope",
+        "cpu_cores": 0.007,
+        "description": "System and Service Manager"
+      },
+      {
+        "unit": "oa-native-r3.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh /tank/fn/scratch/outcome-algebra/r3native.sh"
+      },
+      {
+        "unit": "run-r514690a1d9bf45689e6da4d69a9e139a.scope",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/python3 /tank/fn/scratch/owner-checkpoint/meas.py /tank/fn/scratch/owner-checkpoint/tree /tank/fn/scratch/owner-checkpoint/tree/build/fn-host /tank/fn/"
+      },
+      {
+        "unit": "run-rfea618457ed4462bad243a522c784565.scope",
+        "cpu_cores": 0.006,
+        "description": "/usr/local/bin/swarm-build python3 tools/mission_lab.py up"
+      },
+      {
+        "unit": "spike-reader-node.service",
+        "cpu_cores": 0.001,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/spike_reader_node.py --image /tank/fn/scratch/spike-reader/tree/build/fn-host-developer --tree /tank/fn/scratch/spike-"
+      },
+      {
+        "unit": "spike-reader-web.service",
+        "cpu_cores": 0.0,
+        "description": "/usr/bin/sh -c \"exec python3 client/tools/fn_web.py --node 127.0.0.1:11919 --tls-cert node1/cert.pem --user ember --port 8919 --outbox web/outbox --marks web/ma"
+      }
+    ]
+  },
+  "quiet": false,
+  "refused": "box not quiet: pco-scale1.service (1.005 cores), run-r93ea9d6f40bd4b63bf359d1108b3294a.scope (1.019 cores)"
+}

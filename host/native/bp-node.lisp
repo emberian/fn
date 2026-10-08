@@ -943,9 +943,10 @@ uncertain, as it does everywhere else."
   (fnn-bpnode-route-by-owner bp)
   (let* ((peer (fnn-bp-eid peer-id))
          (first-answer
-           (car (fnn-core 'fn-bpnjc-contact-next (fnn-bps-state bp)
-                          peer (fnn-bps-routing bp) nil
-                          (fnn-core 'fn-bpnjc-contact-cursor (fnn-bps-cursors bp) peer)))))
+           (fnn-core 'fn-bpnjc-answer
+                     (fnn-core 'fn-bpnjc-contact-next (fnn-bps-state bp)
+                               peer (fnn-bps-routing bp) nil
+                               (fnn-core 'fn-bpnjc-contact-cursor (fnn-bps-cursors bp) peer)))))
     (unless (eq (first first-answer) :close)
       (fnn-out "BP node receipt contact peer=~a" peer-id)
       (setf (fnn-bps-transfer-scope bp) :connection)
@@ -1090,7 +1091,7 @@ over N rows takes ceiling(N/64) turns and resumes where it yielded.")
                     (if (fnn-bp-receipt-cursor-started contact)
                         (fnn-bp-receipt-cursor-cursor contact)
                         (fnn-core 'fn-bpnjc-contact-cursor (fnn-bps-cursors bp) peer))))
-          (answer (car result)) (started nil)
+          (answer (fnn-core 'fn-bpnjc-answer result)) (started nil)
           (*fnn-bps-retained-send*
            (lambda (service effect)
             (when started (fnn-fault "BP receipt turn issued multiple send effects"))

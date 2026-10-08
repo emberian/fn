@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/catalog-pool.lisp",
+ "id": "CPG-DMAP-PAGED",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "high",
+ "slice": "storage",
+ "source": "s-pool",
+ "state": "open",
+ "title": "fn-dmap (numbers and live links) and fn-mlh stay resident in the heap in phase 2b; the group-number reader reads only the row the dense map names. Owed: read the dense map's runs and the mlh pages through the pool (the generated :pages read of fn-dmap and fn-mlh), then CPG group-number touches the dense-map page plus the row's pages, with the bound stated.",
+ "updated": "2026-10-07T23:29:28Z"
+}

@@ -27,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sr_measure import Conn, free_port, cpu_ms
 import sr_measure
+from rep_measure import decided_heap_env  # noqa: E402  (sr_measure put tools/ on sys.path)
 
 WINDOW = re.compile(rb"^lookups window (\d+):(.*)$")
 
@@ -54,7 +55,8 @@ def main():
                        env=env, check=True, stdout=subprocess.PIPE)
     env["FN_NATIVE_COUNT_LOOKUPS"] = "1"
     errpath = work / "owner.stderr"; err = open(errpath, "wb")
-    proc = subprocess.Popen([img, "--fn", "operator", str(cfg), "run"], env=env,
+    proc = subprocess.Popen([img, "--fn", "operator", str(cfg), "run"],
+                            env=decided_heap_env(img, cfg, env),
                             stdout=subprocess.PIPE, stderr=err)
     out = {"image": img, "articles": a.articles, "commands": {}}
     try:

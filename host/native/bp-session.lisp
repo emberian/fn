@@ -1,5 +1,6 @@
 ;;; Explicit BP retained-session projection; one physical owner, no threads.
 (in-package "ACL2")
+; thread-confined: the BP node's single serialized serve loop (fnn-bp-session-loop) is the one physical owner (file header: no threads)
 (defstruct (fnn-bp-session-bank (:conc-name fnn-bpsb-)) grant ledger (held (make-hash-table :test #'eq)) slots incoming-cursor outgoing-cursor
   ;; S025: the installed profile (its no-progress bounds), the count of held :incoming
   ;; grants, and ACL2's verdict (fn-bpsp-incoming-contended) as of this scheduler turn.
@@ -22,14 +23,9 @@
         (node (fnn-bps-node-profile bp))
         (store (fnn-owner-service-store owner))
         (core (fnn-heap-core-octets))
-        (grant (fnn-core 'fn-bpsp-startup profile
-                 (fnn-core 'fn-bpsp-captured-wire-span transfer (fnn-core 'fn-bpnpf-bundle-octets node)) segment
+        (grant (fnn-core 'fn-bpsp-node-startup profile node transfer segment
                  (sb-ext:dynamic-space-size)
-                 (fnn-core 'fn-heap-figure-octets (fnn-store-config store) core +fnn-gc-nursery-octets+)
-                 (fnn-core 'fn-bpsp-held-projection
-                  (fnn-core 'fn-bpnpf-held-octets node)
-                  (fnn-core 'fn-bpnpf-rows node)
-                  (fnn-core 'fn-bpnpf-adu-octets node))))
+                 (fnn-core 'fn-heap-figure-octets (fnn-store-config store) core +fnn-gc-nursery-octets+)))
         (bank (make-fnn-bp-session-bank :grant grant :profile profile
                   :ledger (fnn-core 'create-fn-resource-ledger))))
   (unless (eq (first grant) :hold)

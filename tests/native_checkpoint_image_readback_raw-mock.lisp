@@ -40,7 +40,7 @@
    (defmacro fnn-unwind-cleanups)
    (deftype fnn-octets) (defun fnn-make-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defmacro fnn-posix) (defun fnn-open)
-   (defun fnn-close) (defvar *fnn-immutable-close-debts*)
+   (defun fnn-close) (defvar *fnn-close-debts-lock*) (defvar *fnn-immutable-close-debts*)
    (defun fnn-immutable-close-observation) (defun fnn-immutable-close-handle)
    (defun fnn-unlink) (defun fnn-durable-step) (defun fnn-replace)
    (defun fnn-read-exact-fd) (defun fnn-write-staged-at) (defun fnn-checkpoint-yield)

@@ -1,0 +1,14 @@
+{
+ "category": "bug",
+ "detail": "W15 on the CONVERGE-3 developer image (dev 0b4d3b183), hbox load 21-25, tmpfs, curve fixtures, heap decided by the image's probe, 20 s at rest after open by replay. Anonymous (RssAnon) at rest: 1k 44.7 MB, 10k 83.2 MB, 25k 147.0 MB, 50k 424.8 MB; peak anon 56, 102, 180, 624 MB; file-backed flat at 564 MB; VmHWM 691 MB to 1194 MB (fn-core at 50k: anon 731 MB, file 121 MB, VmRSS 852 MB vs the image's 989 MB). SBCL room by type (census-W15_*.txt, dynamic space incl. the core): from 1k to 50k CONS +168 MB, SIMPLE-CHARACTER-STRING +78 MB, SIMPLE-ARRAY-UNSIGNED-BYTE-64 +75 MB, SIMPLE-ARRAY-UNSIGNED-BYTE-8 +28 MB, SIMPLE-VECTOR +6 MB. S3's stobjs walked slot by slot: CAT 33.1 MB at 50k (exponent 0.98), ARENA 1.6 MB, HIST 1.9 MB: all linear and together about 37 MB, so over 90% of the anonymous growth is outside the named stobjs (open-by-replay residue, decoded rows, message-id strings, U64 tables). Which structures are meant to become page-bounded is S's list (CAT rows, message-id table, dense map); this item asks for the remaining ~350 MB at 50k to be attributed and bounded. Peak anon at open by replay (624 MB at 50k) exceeds at-rest by 200 MB. The 128 MiB bar is far off at these sizes. Evidence: planning/evidence/load/2026-10-07-w15-img2/ and 2026-10-07-w15-core/.",
+ "file": "books/catalog-paged.lisp",
+ "id": "LOAD-W15-ANON-0b4d3b18385a",
+ "line": "",
+ "notes": [],
+ "owner": "deputy-L",
+ "severity": "high",
+ "source": "tools/load W15",
+ "state": "open",
+ "title": "W15: at-rest anonymous heap grows superlinearly 25k to 50k (147 MB to 425 MB; 44 MB at 1k) and is not the stobjs",
+ "updated": "2026-10-07T23:38:59Z"
+}

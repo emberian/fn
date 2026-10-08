@@ -5,9 +5,6 @@
 # minutes), one instance at a time (flock).  For each live line of
 # ~/.config/fn/mirror-targets -- `NAME ADDRESS UNTIL` (UNTIL an ISO UTC
 # time; a line past it is skipped) -- it pushes, as fn@ADDRESS:
-#   /tank/fn/evidence/   (not incoming/): a box's certify run reads every
-#                        archived manifest from its local mirror
-#                        (FN_EVIDENCE_ARCHIVE, tools/box_bootstrap.sh)
 #   /tank/fn/images/SET  each image set published after the newest one the
 #                        box holds (SHA256SUMS present), whole
 # Nothing is deleted on either side.  Log: ~/.cache/fn-box-mirror.log.
@@ -23,7 +20,7 @@ case ${1:-} in
     install)
         mkdir -p "$HOME/.local/bin" "$HOME/.config/systemd/user" "$HOME/.config/fn" "$HOME/.cache"
         cp "$0" "$HOME/.local/bin/fn-box-mirror" && chmod 755 "$HOME/.local/bin/fn-box-mirror"
-        printf '[Unit]\nDescription=push hbox evidence and image sets to rented fn boxes\n[Service]\nType=oneshot\nNice=10\nExecStart=%s/.local/bin/fn-box-mirror\n' "$HOME" \
+        printf '[Unit]\nDescription=push hbox image sets to rented fn boxes\n[Service]\nType=oneshot\nNice=10\nExecStart=%s/.local/bin/fn-box-mirror\n' "$HOME" \
             > "$HOME/.config/systemd/user/fn-box-mirror.service"
         printf '[Unit]\nDescription=fn-box-mirror every 5 minutes\n[Timer]\nOnActiveSec=3min\nOnUnitInactiveSec=5min\n[Install]\nWantedBy=timers.target\n' \
             > "$HOME/.config/systemd/user/fn-box-mirror.timer"
@@ -46,7 +43,6 @@ while read -r name addr until; do
     [ "$end" -gt "$now" ] || continue
     {
         echo "$(date -u +%FT%TZ) $name $addr"
-        rsync -a --exclude=incoming -e "$SSH" /tank/fn/evidence/ "fn@$addr:/tank/fn/evidence/" || echo "  evidence rsync exit $?"
         have=$($SSH -n "fn@$addr" 'ls /tank/fn/images 2>/dev/null')
         # Only sets published after the newest one the box holds (hbox keeps
         # older sets no lane asks a rented box for).
