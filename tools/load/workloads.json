@@ -62,6 +62,20 @@
    "1114112",
    "--max-groups-per-article",
    "16"
+  ],
+  "peers": [
+   "--max-transactions",
+   "16384",
+   "--max-history-octets",
+   "67108864",
+   "--max-record-octets",
+   "196608",
+   "--max-article-octets",
+   "32768",
+   "--max-groups-per-article",
+   "16",
+   "--max-open-suffix",
+   "128"
   ]
  },
  "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up).",
@@ -373,18 +387,22 @@
    "own_nodes": true
   },
   "catchup": {
-   "about": "Two nodes on one box; B pulls a 1000- then a 10000-article backlog from A (L-CATCHUP).",
-   "preset": "small",
+   "about": "Two nodes on one box (W6a, L-CATCHUP): A holds N articles (the cell's store, preloaded by POSTs), B is a fresh node that pulls them by `peer catch-up A 2` (tests/test_native_peer_catchup.py's setup: its store profile, path-identity, flight funding, source-address 127.0.0.9). Pace is B's articles per second from LISTENING to the round=done log line, and from process launch; B's count is polled twice a second for the per-1000 split times; A and B are compared article by article at the end.",
+   "preset": "peers",
    "groups": [
     "fn.test"
    ],
    "sampler_s": 1.0,
    "settle_s": 3,
+   "peers": {
+    "mode": "catchup"
+   },
    "phases": [
     {
      "name": "pull",
-     "kind": "unimplemented",
-     "reason": "the two-node harness is lane L6; tests/test_native_peer_catchup measures the pace today",
+     "kind": "peers",
+     "mode": "catchup",
+     "deadline_s": 2400,
      "measure": true
     }
    ]
@@ -510,6 +528,77 @@
      "measure": true
     }
    ]
+  },
+  "catchup-prof": {
+   "about": "The mechanism run of W6a (not a matrix cell; run as catchup-prof@10k): the same cell with B carrying tools/load hooks/w6-prof.lisp, sb-sprof CPU samples of every B thread, one flat report per 120 s window, so the early and the late windows of a 10,000-article catch-up can be compared function by function.",
+   "preset": "peers",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "peers": {
+    "mode": "catchup",
+    "prof_window_s": 120
+   },
+   "phases": [
+    {
+     "name": "pull",
+     "kind": "peers",
+     "mode": "catchup",
+     "deadline_s": 2400,
+     "measure": true
+    }
+   ]
+  },
+  "peers-feed": {
+   "about": "A takes open-loop POSTs at 20/s with B as its feed peer (W6b); 1300 POSTs, past the 1,024 undelivered-article bound of `peer add`. Records A's POST p50/p99 (before and after the 1,024th), the backlog A holds that B does not (feed lag, a proxy for the queue depth), the drain time after the last POST, and the A/B comparison.",
+   "preset": "peers",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "peers": {
+    "mode": "feed"
+   },
+   "phases": [
+    {
+     "name": "feed",
+     "kind": "peers",
+     "mode": "feed",
+     "rate_per_s": 20,
+     "posts": 1300,
+     "octets": 2048,
+     "drain_s": 300,
+     "measure": true
+    }
+   ]
+  },
+  "peers-catchup-load": {
+   "about": "Catch-up while A takes POSTs (W6c): 15 s of 20 POSTs/s on A alone (idle p50/p99), then B pulls A's backlog while the POSTs continue; A's POST p99 during the round against idle (proposal bar: within 3x).",
+   "preset": "peers",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "peers": {
+    "mode": "catchup-load"
+   },
+   "phases": [
+    {
+     "name": "pull-under-load",
+     "kind": "peers",
+     "mode": "catchup-load",
+     "rate_per_s": 20,
+     "baseline_s": 15,
+     "octets": 2048,
+     "deadline_s": 2400,
+     "drain_s": 180,
+     "measure": true
+    }
+   ]
   }
  },
  "cells": {
@@ -525,7 +614,9 @@
   "T-CMD": "commands",
   "W15": "mem-vs-size",
   "conn-capacity": "conn-capacity",
-  "T-OPS": "prof-ops"
+  "T-OPS": "prof-ops",
+  "W6b": "peers-feed",
+  "W6c": "peers-catchup-load"
  },
  "stores": {
   "1k": 1000,
