@@ -378,11 +378,11 @@
 
 ; An octet list in words, eight to a word, little-endian, the last zero padded.
 (defun adt-tp-wd (o k)
-  (declare (xargs :verify-guards nil :guard t))
+  (declare (xargs :verify-guards nil :guard (natp k)))
   (if (or (zp k) (atom o)) 0 (+ (nfix (car o)) (* 256 (adt-tp-wd (cdr o) (1- k))))))
 
 (defun adt-tp-pack (o)
-  (declare (xargs :verify-guards nil :guard t :measure (len o)))
+  (declare (xargs :verify-guards nil :guard (true-listp o) :measure (len o)))
   (if (atom o) nil (cons (adt-tp-wd o 8) (adt-tp-pack (nthcdr 8 o)))))
 
 (defun adt-tp-unw (k w)
@@ -400,20 +400,33 @@
   (if (zp n) nil
     (append (adt-tp-unw (min n 8) (car ws)) (adt-tp-unpack (nfix (- n 8)) (cdr ws)))))
 
+; Executable encoding needs list structure only, not a whole-store check of
+; scalar domains. The generated records discharge this per delta row.
+(defun adt-tp-field-shapesp (s rec)
+  (declare (xargs :guard t))
+  (and (true-listp rec)
+       (if (atom s) t
+         (and (or (not (adt-octets-kind-p (car s))) (true-listp (car rec)))
+              (adt-tp-field-shapesp (cdr s) (cdr rec))))))
+(defun adt-tp-rows-shapesp (s a)
+  (declare (xargs :guard t))
+  (if (atom a) t
+    (and (adt-tp-field-shapesp s (car a)) (adt-tp-rows-shapesp s (cdr a)))))
+
 ; A record: the tag 1, then each field.
 (defun adt-tp-fw (s rec)
-  (declare (xargs :verify-guards nil :guard t))
+  (declare (xargs :verify-guards nil :guard (adt-tp-field-shapesp s rec)))
   (cond ((atom s) nil)
         ((adt-octets-kind-p (car s))
          (cons (len (car rec)) (append (adt-tp-pack (car rec)) (adt-tp-fw (cdr s) (cdr rec)))))
         (t (cons (adt-enc (car s) (car rec)) (adt-tp-fw (cdr s) (cdr rec))))))
 
 (defun adt-tp-rw (s rec)
-  (declare (xargs :verify-guards nil :guard t))
+  (declare (xargs :verify-guards nil :guard (adt-tp-field-shapesp s rec)))
   (cons 1 (adt-tp-fw s rec)))
 
 (defun adt-tp-seq-words (s a)
-  (declare (xargs :verify-guards nil :guard t))
+  (declare (xargs :verify-guards nil :guard (adt-tp-rows-shapesp s a)))
   (if (atom a) nil (append (adt-tp-rw s (car a)) (adt-tp-seq-words s (cdr a)))))
 
 (defun adt-tp-decf (s w)
@@ -515,7 +528,7 @@
 ; The page image of a sequence, the sequence of a page image, and the dirty
 ; set of an append: the three the generator names.
 (defun adt-tp-pages-of (s a)
-  (declare (xargs :verify-guards nil :guard t))
+  (declare (xargs :verify-guards nil :guard (adt-tp-rows-shapesp s a)))
   (adt-tp-pages (adt-tp-seq-words s a)))
 
 (defun adt-tp-of-pages (s pages)
@@ -691,7 +704,7 @@
   :hints (("Goal" :in-theory (enable adt-tp-dirty-at adt-tp-dirty))))
 
 (defun adt-tp-extend-dirty-at (s cnt tail xs)
-  (declare (xargs :verify-guards nil :guard t))
+  (declare (xargs :verify-guards nil :guard (and (natp cnt) (true-listp tail) (adt-tp-rows-shapesp s xs))))
   (adt-tp-dirty-at cnt tail (adt-tp-seq-words s xs)))
 
 (defthm adt-tp-extend-dirty-at-is-extend-dirty
@@ -1183,3 +1196,13 @@
                             (o (len (adt-tp-seq-words s (take i a))))
                             (l (len (adt-tp-seq-words s (cons x (nthcdr (+ 1 i) a)))))
                             (n (len (adt-tp-seq-words s (update-nth i x a)))))))))
+
+; Runtime side of the generated page writer. These guards concern the input
+; structure; the existing u64 and refinement theorems retain their statements.
+(verify-guards adt-tp-wd)
+(verify-guards adt-tp-pack)
+(verify-guards adt-tp-fw :hints (("Goal" :in-theory (enable adt-tp-field-shapesp))))
+(verify-guards adt-tp-rw)
+(verify-guards adt-tp-seq-words :hints (("Goal" :in-theory (enable adt-tp-rows-shapesp))))
+(verify-guards adt-tp-pages-of)
+(verify-guards adt-tp-extend-dirty-at)

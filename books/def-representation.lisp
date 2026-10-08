@@ -2059,7 +2059,7 @@
         (adt-tp-schema-ok ,s)
         :rule-classes nil)
       (defun ,pages-of (a)
-        (declare (xargs :verify-guards nil :guard t))
+        (declare (xargs :guard (adt-tp-rows-shapesp ,s a)))
         (adt-tp-pages-of ,s a))
       (defun ,of-pages (c)
         (declare (xargs :verify-guards nil :guard t))
@@ -2088,7 +2088,8 @@
                  :in-theory (e/d (,ap ,pages-of ,extend-dirty)
                                  (adt-tp-pages-of-extend-is-apply-dirty)))))
       (defun ,extend-dirty-at (cnt tail xs)
-        (declare (xargs :verify-guards nil :guard t))
+        (declare (xargs :guard (and (natp cnt) (true-listp tail)
+                                    (adt-tp-rows-shapesp ,s xs))))
         (adt-tp-extend-dirty-at ,s cnt tail xs))
       (defthm ,(adt-sym name "-EXTEND-DIRTY-AT-IS-EXTEND-DIRTY")
         ; CNT and TAIL are the word count and last partial page of A's tape.
