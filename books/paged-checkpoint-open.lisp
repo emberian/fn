@@ -103,34 +103,43 @@
   (fn-arx-trailer-nat (append (pcko-be d0) (pcko-be d1) (pcko-be d2) (pcko-be d3))))
 
 (defun pcko-recp (tree)
-  ; The row's metadata tree is a record's: tagged :r around a wire record.
+  ; The row's metadata tree is a record's: tagged :r around the held row (handle 0).
   (declare (xargs :guard t))
-  (and (consp tree) (eq (car tree) :r) (consp (cdr tree)) (fn-record-p (cadr tree))))
+  (and (consp tree) (eq (car tree) :r) (consp (cdr tree)) (fn-held-p (cadr tree))))
 
 (defun pcko-ev (tree)
   ; The event the metadata names with no payload to join (fn-pck-join's other arm).
   (declare (xargs :guard t))
   (if (and (consp tree) (consp (cdr tree))) (cadr tree) nil))
 
+(defun pcko-reseat (row h)
+  ; The held row ROW with handle H.
+  (declare (xargs :guard (fn-held-p row)))
+  (fn-held-make (fn-record-sequence row) (fn-record-txid row) (fn-record-generation row)
+                (fn-record-msgid row) h (fn-record-groups row) (fn-record-obligation-id row)
+                (fn-record-content-subject row) (fn-record-release-evidence row)
+                (fn-record-charge row) (fn-record-stamp row) (fn-held-facts row)
+                (fn-held-context row) (fn-held-numbers row) (fn-held-withdrawn row)))
+
 (defun pcko-ref-step (acc tree off len d0 d1 d2 d3 fid fn-arena)
   ; One tape row interned.  A record row is sealed BY REF: its arena entry is the
   ; extent of the payload file FID at the row's ref (the frame starts 37 octets
   ; before the payload, the protected prefix is header and payload, the trailer
-  ; the row's four words), its held row has the metadata and the handle and no
-  ; facts decided; no payload octet is read.  Any other row interns its event
-  ; as before.  (mv acc fn-arena).
+  ; the row's four words) and its held row is the one the tape carries (facts and
+  ; context decided at the writer), with the handle the seal returns; no payload
+  ; octet is read.  Any other row interns its event as before.  (mv acc fn-arena).
   (declare (xargs :stobjs fn-arena
                   :guard (and (fn-ssr-statep acc) (natp fid) (natp off) (natp len)
                               (natp d0) (natp d1) (natp d2) (natp d3))))
   (if (pcko-recp tree)
       (if (<= 37 off)
           (let* ((h (fn-arena-count fn-arena))
-                 (row (fn-held-plain (cadr tree) h))
+                 (row (pcko-reseat (cadr tree) h))
                  (fn-arena (fn-arena-seal-extent fid (- off 37) (+ len 37) off len
                                                  (pcko-trailer d0 d1 d2 d3) fn-arena))
                  (identity (fn-replay-identity-step (fn-ssr-at 3 acc) row)))
             (if (equal (fn-stxk-context-kind identity) :ok)
-                (mv (fn-ssr-publish acc row (cadr tree) identity) fn-arena)
+                (mv (fn-ssr-publish acc row row identity) fn-arena)
               (mv :bad fn-arena)))
         (mv :bad fn-arena))
     (fn-ssr-intern-step acc (list (pcko-ev tree)) nil nil :resident nil fn-arena)))
