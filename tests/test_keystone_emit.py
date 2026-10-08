@@ -237,6 +237,36 @@ class WriteManifest(unittest.TestCase):
 
 
 class NewWitnessClasses(unittest.TestCase):
+    def test_scoped_claim_preserves_labels_and_scopes_mutation(self):
+        form = ke.ledger.read_forms('''
+          (defteeth scoped
+            :claim (let* ((y (+ 1 x)))
+                     (let ((x y) (y (+ 1 y)))
+                       (((positive (< 1 x))) (< 2 y))))
+            :witness ((x 1)) :breaks ((positive ((x 0))))
+            :mutations ((strict (:conclusion (< 3 y)) () :fault "too high")))
+        ''')[0]
+        parts = ke.ledger.defteeth_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual(parts["labels"], [ke.ledger.Sym("positive")])
+        self.assertEqual(ke.ledger.head(parts["hyps"][0]), "let*")
+        events = ke.ledger.teeth_events(parts, "defteeth")
+        self.assertEqual(len(events), 4)  # witness, removal, mutation, row
+        mutation_terms = events[2][1][1:]
+        self.assertEqual(len(mutation_terms), 3)  # antecedent, conclusion, not mutant
+        self.assertEqual(ke.ledger.head(mutation_terms[-1][-1][1]), "let*")
+        form[-1][0][1][1] = ke.ledger.read_forms("(< 2 y)")[0]
+        self.assertIsNone(ke.ledger.defteeth_parts(form))  # unchanged conclusion
+
+    def test_stobj_builders_are_read_without_evaluation(self):
+        parts = self.parts(extra=":stobjs ((cell (fill x cell)))")
+        self.assertIsNotNone(parts)
+        self.assertEqual(ke.ledger.head(parts["options"][":stobjs"][0][1]), "fill")
+        self.assertIsNone(self.parts(extra=":stobjs ((cell))"))
+        self.assertIsNone(self.parts(extra=":stobjs ((cell cell) (cell cell))"))
+        self.assertIsNone(self.parts(extra=":stobjs ((cell cell)) :instances (run loop)"))
+        self.assertIsNone(self.parts(extra=":stobjs ((cell cell)) :witness-lemma fact"))
+
     def parts(self, removal="(:assumption assumed)", extra=""):
         return ke.ledger.defteeth_parts(ke.ledger.read_forms(f"""
           (defteeth example :claim (((trust (assumed x))) (equal x 1))

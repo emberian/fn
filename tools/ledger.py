@@ -1199,7 +1199,7 @@ def defrecord_export_expansion(form: list) -> list:
 # (`fn-dk-refusal`) expands to nothing here: certification is the authority
 # on the refusal, and a guess at a refused form's events would be a lie.
 
-DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":instances", ":breaks",
+DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":instances", ":stobjs", ":breaks",
                  ":mutations", ":corrupt", ":visits", ":allocation", ":must-fail",
                  ":hints"}
 DEFKEYSTONE_KEYS = DEFTEETH_KEYS | {":id", ":restates", ":hyps", ":rule-classes",
@@ -1257,6 +1257,10 @@ def _dk_entry_opts(tail: list, keys: set[str]) -> dict | None:
 
 def _dk_claimp(x: object) -> bool:
     """``(((L1 H1) ... (Ln Hn)) C)`` with distinct labels."""
+    if head(x) in {"let", "let*"}:
+        return (len(x) == 3 and isinstance(_dk_nil(x[1]), list)
+                and all(isinstance(b, list) and len(b) == 2 and isinstance(b[0], Sym)
+                        for b in _dk_nil(x[1])) and _dk_claimp(x[2]))
     if not (isinstance(x, list) and len(x) == 2 and isinstance(_dk_nil(x[0]), list)):
         return False
     labels = []
@@ -1266,6 +1270,18 @@ def _dk_claimp(x: object) -> bool:
             return False
         labels.append(str(pair[0]))
     return len(labels) == len(set(labels))
+
+
+def _dk_claim_core(claim):
+    return _dk_claim_core(claim[2]) if head(claim) in {"let", "let*"} else claim
+
+
+def _dk_claim_scope(claim, term):
+    if head(claim) not in {"let", "let*"}:
+        return term
+    return [claim[0], claim[1],
+            [Sym("declare"), [Sym("ignorable")] + [b[0] for b in _dk_nil(claim[1])]],
+            _dk_claim_scope(claim[2], term)]
 
 
 def _dk_bound_entries(x: object) -> list | None:
@@ -1323,9 +1339,14 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
     claim = options.get(":claim")
     if claim is None or not _dk_claimp(claim):
         return None
-    labels = [pair[0] for pair in _dk_nil(claim[0])]
-    hyps = [pair[1] for pair in _dk_nil(claim[0])]
-    concl = claim[1]
+    core = _dk_claim_core(claim)
+    labels = [pair[0] for pair in _dk_nil(core[0])]
+    hyps = [_dk_claim_scope(claim, pair[1]) for pair in _dk_nil(core[0])]
+    concl = _dk_claim_scope(claim, core[1])
+    if ":stobjs" in options and not (
+            _dk_bindingsp(_dk_nil(options[":stobjs"]))
+            and ":instances" not in options and ":witness-lemma" not in options):
+        return None
     witness = options.get(":witness")
     if not (witness and _dk_bindingsp(witness)):
         return None
@@ -1374,13 +1395,13 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
             return None
         edit = m[1]
         if head(edit) == ":conclusion" and len(edit) == 2:
-            if _dk_constantp(edit[1]) or edit[1] == concl:
+            if _dk_constantp(edit[1]) or edit[1] == core[1]:
                 return None
         elif head(edit) == ":hypothesis" and len(edit) == 3 and isinstance(edit[1], Sym):
             if str(edit[1]) not in {str(x) for x in labels}:
                 return None
             if (isinstance(edit[2], Sym) and str(edit[2]) == "t") \
-                    or edit[2] == hyps[[str(x) for x in labels].index(str(edit[1]))]:
+                    or _dk_claim_scope(claim, edit[2]) == hyps[[str(x) for x in labels].index(str(edit[1]))]:
                 return None
         else:
             return None
@@ -1621,7 +1642,8 @@ def teeth_events(parts: dict, by: str, formula: object = None) -> list:
                                            _dk_implies(retained, concl)] + hint_args]])
     for m in parts["mutations"]:
         bindings = _dk_override(witness, m[2])
-        edit = m[1]
+        edit = list(m[1])
+        edit[-1] = _dk_claim_scope(parts["claim"], edit[-1])
         if head(edit) == ":conclusion":
             terms = hyps + [concl, [Sym("not"), edit[1]]]
             mutant = _dk_implies(hyps, edit[1])

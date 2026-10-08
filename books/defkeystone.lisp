@@ -14,9 +14,12 @@
 ;   (defteeth NAME
 ;     :claim (((L1 H1) ... (Ln Hn)) C)      ; REQUIRED: labelled source hypotheses
 ;                                           ; and the conclusion
+;                                           ; may be inside outer LET / LET*
 ;     [:subject FN]                         ; the host-called function; REQUIRED
 ;                                           ; when a bound is stated
 ;     :witness ((VAR VAL) ...)              ; the positive witness, executable;
+;     [:stobjs ((STOBJ BUILDER) ...)]       ; fresh locals per conjunct; BUILDER
+;                                           ; returns STOBJ (possibly among MV outputs)
 ;     [:instances (GENERATED-FN GENERATED-LOOP)] ; use the generator-recorded
 ;                                           ; functional substitution at :witness
 ;     [:witness-lemma THM]                  ; or a named ground theorem instead of
@@ -78,6 +81,21 @@
 ; every mutation/removal.  The resulting checks must be closed terms, and
 ; execute normally.  The witness row is :instance, not direct execution of
 ; the abstract theorem's constrained stand-ins.
+;
+; LOCAL STOBJS. :stobjs names world-checked stobjs other than STATE. Each
+; executable conjunct runs with fresh WITH-LOCAL-STOBJ objects, initialized
+; by the builders under its witness/override bindings. Multiple-value
+; builders bind their declared stobj outputs and discard ordinary outputs.
+; The generated local checker is a logic-mode function. Native translation
+; still requires a single-threaded executable conjunct: this option does
+; not turn logical stobj snapshots or DEFUN-NX predicates into live code.
+; Logical and lemma checks retain their existing meaning and restrictions;
+; they do not execute the builders or count as live-stobj witnesses.
+;
+; SCOPED CLAIMS. Outer LET/LET* bindings are preserved in the statement
+; compared to the world's theorem, and bound before each hypothesis,
+; conclusion and edited term is checked. Splitting an implication into
+; independently evaluated conjuncts never hides a false antecedent.
 ;
 ; MUTATIONS (c04 1c) are CHECKED EDITS of the claim, never a free term, each
 ; naming the FAULT it models (:fault "..."): (:conclusion C2) is the claim
@@ -159,7 +177,7 @@
 
 
 (defconst *fn-dk-spec-keys*
-  '(:claim :subject :witness :witness-lemma :instances :breaks :mutations :corrupt
+  '(:claim :subject :witness :witness-lemma :instances :stobjs :breaks :mutations :corrupt
     :visits :allocation :must-fail :hints))
 
 (defconst *fn-dk-keys*
@@ -184,21 +202,46 @@
 
 (defun fn-dk-claimp (x)
   (declare (xargs :mode :program))
-  (and (true-listp x) (equal (len x) 2)
+  (if (and (consp x) (member-eq (car x) '(let let*)))
+      (and (true-listp x) (equal (len x) 3)
+           (doublet-listp (cadr x))
+           (symbol-listp (strip-cars (cadr x)))
+           (fn-dk-claimp (caddr x)))
+    (and (true-listp x) (equal (len x) 2)
        (fn-dk-labelled-hypsp (car x))
-       (no-duplicatesp-eq (strip-cars (car x)))))
+       (no-duplicatesp-eq (strip-cars (car x))))))
+
+(defun fn-dk-claim-core (claim)
+  (declare (xargs :mode :program))
+  (if (member-eq (car claim) '(let let*))
+      (fn-dk-claim-core (caddr claim))
+    claim))
+
+(defun fn-dk-claim-scope (claim term)
+  (declare (xargs :mode :program))
+  (if (member-eq (car claim) '(let let*))
+      (list (car claim) (cadr claim)
+            (list 'declare (cons 'ignorable (strip-cars (cadr claim))))
+            (fn-dk-claim-scope (caddr claim) term))
+    term))
+
+(defun fn-dk-claim-scopes (claim terms)
+  (declare (xargs :mode :program))
+  (if (atom terms) nil
+    (cons (fn-dk-claim-scope claim (car terms))
+          (fn-dk-claim-scopes claim (cdr terms)))))
 
 (defun fn-dk-claim-labels (claim)
   (declare (xargs :mode :program))
-  (strip-cars (car claim)))
+  (strip-cars (car (fn-dk-claim-core claim))))
 
 (defun fn-dk-claim-hyps (claim)
   (declare (xargs :mode :program))
-  (strip-cadrs (car claim)))
+  (fn-dk-claim-scopes claim (strip-cadrs (car (fn-dk-claim-core claim)))))
 
 (defun fn-dk-claim-concl (claim)
   (declare (xargs :mode :program))
-  (cadr claim))
+  (fn-dk-claim-scope claim (cadr (fn-dk-claim-core claim))))
 
 (defun fn-dk-implies (hyps concl)
   (declare (xargs :mode :program))
@@ -214,7 +257,9 @@
 
 (defun fn-dk-statement (claim)
   (declare (xargs :mode :program))
-  (fn-dk-implies (fn-dk-claim-hyps claim) (fn-dk-claim-concl claim)))
+  (let ((core (fn-dk-claim-core claim)))
+    (fn-dk-claim-scope claim
+      (fn-dk-implies (strip-cadrs (car core)) (cadr core)))))
 
 ; defkeystone derives the claim from TERM's source `implies'/`and'.
 (defun fn-dk-source-hyps (term)
@@ -418,14 +463,14 @@
       (cond
        ((eq (car edit) :conclusion)
         (cond ((fn-dk-constantp (cadr edit)) (list (car m) :constant-conclusion))
-              ((equal (cadr edit) (fn-dk-claim-concl claim)) (list (car m) :same-conclusion))
+              ((equal (cadr edit) (cadr (fn-dk-claim-core claim))) (list (car m) :same-conclusion))
               (t (fn-dk-first-bad-edit (cdr mutations) claim))))
        (t
         (let ((i (position-eq (cadr edit) labels)))
           (cond ((null i) (list (car m) :edit-names-no-hypothesis))
                 ((or (eq (caddr edit) t) (equal (caddr edit) ''t))
                  (list (car m) :trivial-hypothesis))
-                ((equal (caddr edit) (nth i hyps)) (list (car m) :same-hypothesis))
+                ((equal (fn-dk-claim-scope claim (caddr edit)) (nth i hyps)) (list (car m) :same-hypothesis))
                 (t (fn-dk-first-bad-edit (cdr mutations) claim)))))))))
 
 (defun fn-dk-spec-refusal (name kvs keys)
@@ -446,6 +491,11 @@
       (cons :unknown-keyword (fn-dk-unknown-keys-of kvs keys)))
      ((not (assoc-keyword :claim kvs)) (list :no-claim name))
      ((not (fn-dk-claimp claim)) (list :bad-claim claim))
+     ((and (assoc-keyword :stobjs kvs)
+           (not (and (fn-dk-bindingsp (fn-dk-get :stobjs kvs))
+                     (not (fn-dk-get :instances kvs))
+                     (not (fn-dk-get :witness-lemma kvs)))))
+      (list :bad-stobjs (fn-dk-get :stobjs kvs)))
      ((not (and (fn-dk-get :witness kvs)
                 (fn-dk-bindingsp (fn-dk-get :witness kvs))))
       (list :no-witness name))
@@ -606,9 +656,9 @@
   (let ((hyps (fn-dk-claim-hyps claim))
         (concl (fn-dk-claim-concl claim)))
     (if (eq (car edit) :conclusion)
-        (fn-dk-implies hyps (cadr edit))
+        (fn-dk-implies hyps (fn-dk-claim-scope claim (cadr edit)))
       (fn-dk-implies (fn-dk-with (position-eq (cadr edit) (fn-dk-claim-labels claim))
-                                 (caddr edit) hyps)
+                                 (fn-dk-claim-scope claim (caddr edit)) hyps)
                      concl))))
 
 (defun fn-dk-mutant-witness-terms (claim edit)
@@ -618,10 +668,10 @@
   (let ((hyps (fn-dk-claim-hyps claim))
         (concl (fn-dk-claim-concl claim)))
     (if (eq (car edit) :conclusion)
-        (append hyps (list concl `(not ,(cadr edit))))
+        (append hyps (list concl `(not ,(fn-dk-claim-scope claim (cadr edit)))))
       (let ((i (position-eq (cadr edit) (fn-dk-claim-labels claim))))
         (append (fn-dk-without i hyps)
-                (list (caddr edit) `(not ,(nth i hyps)) `(not ,concl)))))))
+                (list (fn-dk-claim-scope claim (caddr edit)) `(not ,(nth i hyps)) `(not ,concl)))))))
 
 (defun fn-dk-mutants (name claim witness mutations hint-args must-fail)
   (declare (xargs :mode :program))
@@ -1150,13 +1200,93 @@
       (if (not (fn-dk-assumption-breakp entry))
           (fn-dt-assumption-problem (cdr breaks) claim w)
         (mv-let (bad hyp)
-          (fn-dt-translate (cadr (assoc-eq (car entry) (car claim))) w)
+          (fn-dt-translate
+           (fn-dk-claim-scope claim
+             (cadr (assoc-eq (car entry) (car (fn-dk-claim-core claim))))) w)
           (cond ((or (not (getpropc fn 'constrainedp nil w))
                      (getpropc fn 'unnormalized-body nil w))
                  (list :not-constrained (car entry) fn))
-                ((or bad (not (fn-dt-calls-assumption (all-fnnames hyp) fn nil w)))
+                ((or bad (not (fn-dt-calls-assumption
+                               (all-fnnames (fn-dt-instantiate hyp nil)) fn nil w)))
                  (list :assumption-not-called (car entry) fn))
                 (t (fn-dt-assumption-problem (cdr breaks) claim w))))))))
+
+; Each conjunct starts from its own local objects: evaluating a conclusion
+; that updates an object must not alter a later mutation's input state.
+(defun fn-dt-local-stobjs (todo active body)
+  (declare (xargs :mode :program))
+  (if (atom todo)
+      body
+    (let ((next (append active (list (car todo)))))
+      `(with-local-stobj ,(car todo)
+         (mv-let (fn-dt-result ,@next)
+           ,(fn-dt-local-stobjs (cdr todo) next body)
+           ,(if active `(mv fn-dt-result ,@active) 'fn-dt-result))))))
+
+(defun fn-dt-builder-vars (out i st)
+  (declare (xargs :mode :program))
+  (if (atom out) nil
+    (cons (or (car out) (packn-pos (list 'fn-dt-ignored- i) st))
+          (fn-dt-builder-vars (cdr out) (1+ i) st))))
+
+(defun fn-dt-builder-bind (builders body w)
+  (declare (xargs :mode :program))
+  (if (atom builders) body
+    (let* ((st (caar builders))
+           (form (cadar builders))
+           (out (and (consp form) (getpropc (car form) 'stobjs-out nil w)))
+           (rest (fn-dt-builder-bind (cdr builders) body w)))
+      (if (not (consp (cdr out)))
+          `(let ((,st ,form)) ,rest)
+        (let* ((vars (fn-dt-builder-vars out 0 st))
+               (ignored (set-difference-eq vars (remove nil out))))
+          `(mv-let ,vars ,form
+             (declare (ignore ,@ignored))
+             ,rest))))))
+
+(defun fn-dt-live-conjunct (term builders w)
+  (declare (xargs :mode :program))
+  ; FN-DK-ALL-AT emits LET* with an ignorable declaration. Preserve the
+  ; bindings outside the locals, since builders may depend on their values.
+  (if (not (and (consp term) (eq (car term) 'let*)))
+      (er hard 'defteeth "Unexpected stobj witness conjunct: ~x0" term)
+    `(let* ,(cadr term) ,(caddr term)
+       ,(fn-dt-local-stobjs
+         (strip-cars builders) nil
+         (fn-dt-builder-bind builders
+           `(mv ,(cadddr term) ,@(strip-cars builders)) w)))))
+
+(defun fn-dt-live-conjuncts (terms builders w)
+  (declare (xargs :mode :program))
+  (if (atom terms) nil
+    (cons (fn-dt-live-conjunct (car terms) builders w)
+          (fn-dt-live-conjuncts (cdr terms) builders w))))
+
+(defun fn-dt-stobj-events (events builders name i w)
+  (declare (xargs :mode :program))
+  (if (atom events) nil
+    (let* ((event (car events))
+           (value (cadr event))
+           (logical (and (consp value) (eq (car value) 'with-guard-checking)))
+           (fn (packn-pos (list name '-stobj-check- i) name)))
+      (append
+       (if (or (not (eq (car event) 'assert-event)) logical)
+           (list (fn-dt-bridge-assert event w))
+         (let ((body (if (eq (car value) 'and)
+                         (fn-dk-conj (fn-dt-live-conjuncts (cdr value) builders w))
+                       (fn-dt-live-conjunct value builders w))))
+           `((local (defun ,fn ()
+                      (declare (xargs :verify-guards nil))
+                      ,body))
+             (assert-event (,fn) ,@(cddr event)))))
+       (fn-dt-stobj-events (cdr events) builders name (1+ i) w)))))
+
+(defun fn-dt-stobjs-problem (builders w)
+  (declare (xargs :mode :program))
+  (if (atom builders) nil
+    (if (or (eq (caar builders) 'state) (not (stobjp (caar builders) t w)))
+        (list :not-a-local-stobj (caar builders))
+      (fn-dt-stobjs-problem (cdr builders) w))))
 
 (defun fn-dt-expand (name by kvs state)
   (declare (xargs :mode :program :stobjs state))
@@ -1164,7 +1294,8 @@
   (let* ((w (w state))
          (claim (fn-dk-get :claim kvs))
          (subject (fn-dk-get :subject kvs))
-         (problem (or (fn-dt-world-problem name claim w)
+         (problem (or (fn-dt-stobjs-problem (fn-dk-get :stobjs kvs) w)
+                      (fn-dt-world-problem name claim w)
                       (fn-dt-assumption-problem (fn-dk-get :breaks kvs) claim w)
                       (fn-dt-instance-problem name (fn-dk-get :instances kvs) w)
                       (fn-dt-derivation-problem name :visits (fn-dk-get :visits kvs)
@@ -1178,12 +1309,14 @@
              (instances (fn-dk-get :instances kvs))
              (row (cdr (assoc-eq (car instances) (table-alist 'fn-teeth-instances w)))))
         (value (cons 'progn
+                    (if (fn-dk-get :stobjs kvs)
+                        (fn-dt-stobj-events events (fn-dk-get :stobjs kvs) name 0 w)
                      (fn-dt-bridge-events
                       (if instances
                           (fn-dt-instance-events events
                            (fn-dt-instance-subst (fn-dk-get :substitution row) w) w)
                         events)
-                      w)))))))
+                      w))))))))
 
 (defun fn-teeth-form (name kvs)
   (declare (xargs :mode :program))

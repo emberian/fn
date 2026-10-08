@@ -636,4 +636,85 @@
    :mutations ((strict (:conclusion (< (fix y) (fn-dkt-add x y))) ((x 0))
                        :fault "Replace inclusive bound with strict bound.")))
  :unchecked "Functions not produced by the generator cannot witness its lemma.")
+; Scope is shared with the literal theorem, including shadowing in LET.
+(defthm fn-dkt-scoped
+  (let* ((y (+ 1 x)))
+    (let ((x y) (y (+ 1 y)))
+      (implies (< 1 x) (< 2 y))))
+  :rule-classes nil)
+(must-fail-checked
+ (defteeth fn-dkt-scoped
+   :claim (let* ((y (+ 1 x)))
+            (let ((x y) (y (+ 1 y)))
+              (((positive (< 1 x))) (< 2 y))))
+   :witness ((x 0))
+   :breaks ((positive ((x 0))))
+   :mutations ((strict (:conclusion (< 3 y)) () :fault "Raises the bound.")))
+ :unchecked "A false scoped antecedent cannot witness an implication.")
+(defteeth fn-dkt-scoped
+  :claim (let* ((y (+ 1 x)))
+           (let ((x y) (y (+ 1 y)))
+             (((positive (< 1 x))) (< 2 y))))
+  :witness ((x 1))
+  :breaks ((positive ((x 0))))
+  :mutations ((strict (:conclusion (< 3 y)) () :fault "Raises the bound.")))
+
+(defstobj fn-dkt-cell (fn-dkt-val :type integer :initially 0))
+(defun fn-dkt-fill (x fn-dkt-cell)
+  (declare (xargs :stobjs fn-dkt-cell :guard (integerp x)))
+  (let ((fn-dkt-cell (update-fn-dkt-val x fn-dkt-cell)))
+    (mv :filled fn-dkt-cell)))
+(defthm fn-dkt-cell-positive
+  (implies (< 0 (fn-dkt-val fn-dkt-cell))
+           (< 0 (+ 1 (fn-dkt-val fn-dkt-cell))))
+  :rule-classes nil)
+(must-fail-checked
+ (defteeth fn-dkt-cell-positive
+   :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+           (< 0 (+ 1 (fn-dkt-val fn-dkt-cell))))
+   :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell)))
+   :witness ((x 0))
+   :breaks ((positive ((x -1))))
+   :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) ()
+                    :fault "Raises the bound.")))
+ :unchecked "The builder leaves the hypothesis false, even though the conclusion is true.")
+(must-fail-checked
+ (defteeth fn-dkt-cell-positive
+   :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+           (< 0 (+ 1 (fn-dkt-val fn-dkt-cell))))
+   :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell)))
+   :witness ((x 1))
+   :breaks ((positive ((x 0))))
+   :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) ()
+                    :fault "Raises the bound.")))
+ :unchecked "A false removed hypothesis with a true conclusion is not a removal witness.")
+(defteeth fn-dkt-cell-positive
+  :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+          (< 0 (+ 1 (fn-dkt-val fn-dkt-cell))))
+  :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell)))
+  :witness ((x 1))
+  :breaks ((positive ((x -1))))
+  :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) ()
+                   :fault "Raises the bound.")))
+
+(defstobj fn-dkt-other (fn-dkt-other-val :type integer :initially 0))
+(defthm fn-dkt-two-cells
+  (implies (and (< 0 (fn-dkt-val fn-dkt-cell))
+                (< 0 (fn-dkt-other-val fn-dkt-other)))
+           (< 0 (+ (fn-dkt-val fn-dkt-cell) (fn-dkt-other-val fn-dkt-other))))
+  :rule-classes nil)
+(defteeth fn-dkt-two-cells
+  :claim (((left (< 0 (fn-dkt-val fn-dkt-cell)))
+           (right (< 0 (fn-dkt-other-val fn-dkt-other))))
+          (< 0 (+ (fn-dkt-val fn-dkt-cell) (fn-dkt-other-val fn-dkt-other))))
+  :stobjs ((fn-dkt-cell (fn-dkt-fill x fn-dkt-cell))
+           (fn-dkt-other (update-fn-dkt-other-val y fn-dkt-other)))
+  :witness ((x 2) (y 3))
+  :breaks ((left ((x -3))) (right ((y -2))))
+  :mutations ((sum (:conclusion (equal (* (fn-dkt-val fn-dkt-cell)
+                                         (fn-dkt-other-val fn-dkt-other))
+                                      (+ (fn-dkt-val fn-dkt-cell)
+                                         (fn-dkt-other-val fn-dkt-other)))) ()
+                   :fault "Multiplies instead of adding.")))
+
 (defteeth-check)
