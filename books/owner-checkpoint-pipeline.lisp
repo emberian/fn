@@ -129,7 +129,7 @@
                            fn-scc-nat-octets fn-cp-idp fn-cp-id-length-bound floor
                            fn-nntp-response-text-true-listp fn-nntp-clean-line-is-response-text
                            fn-nov-clean-linep fn-nntp-response-textp fn-scc-octet-listp-true
-                           fn-nntp-article-idp-is-consp fn-oct-bufp-true-listp fn-octets$c-bufp
+                           fn-oct-bufp-true-listp fn-octets$c-bufp
                            fn-ockp-rows-encodablep fn-ockp-tables-encodablep
                            fn-ockp-rows-program-octets fn-ockp-program-octets)))
 

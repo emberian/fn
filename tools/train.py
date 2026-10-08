@@ -51,6 +51,9 @@ PY3 = os.environ.get("TRAIN_PY3", "python3")
 GENERATED = (
     "planning/interfaces.json",
     "specs/wire-grammar.json",
+    # keystone_emit --write-manifest rewrites it from the tree at regen;
+    # its owners say never hand-merge it (trains 41, 45, 46 conflicted on it)
+    "planning/teeth-obligations.json",
 )
 # planning/proofs.json is NOT here: ledger.py --write regenerates only its
 # event arrays, and lanes curate its rows (re-pointing a PRF row at a renamed
@@ -61,6 +64,7 @@ UNION = ("planning/decisions.md",)
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
     "planning/proofs.json",
+    "planning/teeth-obligations.json",
 )
 HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
 
@@ -303,6 +307,9 @@ def cmd_regen(t: Train, args) -> int:
     # ledger.py --write: proofs.json's event arrays (the views are not committed)
     for step, argv in (
         ("ledger", [PY, "tools/ledger.py", "--write"]),
+        # the teeth obligation manifest of the merged tree (the keystone gate
+        # checks it; a conflict on it took the train side at merge)
+        ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
     ):
         rc = t.run(f"regen-{step}", argv)
         if done(step, rc):
@@ -311,7 +318,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: proofs.json events"
+    msg = f"Regenerate train {n}: proofs.json events, teeth obligation manifest"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1

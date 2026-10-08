@@ -5,7 +5,7 @@
  "severity": "medium",
  "slice": "proofs",
  "source": "CONVERGE-2 row 15 (lane/reach-code-only)",
- "state": "open",
+ "state": "landed",
  "title": "79 reach_check false greens in the store's crash and recovery models (record log, byte store, recovery refinement, import/export/init publication, checkpoint open): subjects reached only through host prose (22 PRFs: PRF-245, PRF-041, PRF-273, PRF-1214, PRF-1212, PRF-244, PRF-936, PRF-270, PRF-907, PRF-264, PRF-1040, PRF-1216, PRF-1319, PRF-217, PRF-370, PRF-369, PRF-083, PRF-044, PRF-945, PRF-920, PRF-342, PRF-372)",
  "notes": [
   "Each event's subject is named only in host prose (a docstring or comment), never in host code, so reach_check counted it reached until lane/reach-code-only. Per event, one of: the host does run it under another name, so name the correspondence or equality reach_check accepts; or a crash campaign judges the host with it, so make the campaign name it in code (it then counts campaign-tied); or the claim is about a model the host does not run, so re-scope the PRF statement to say so (no served claim). Never re-baseline.",
@@ -89,7 +89,8 @@
   "PRF-342: fn-hp-x-relocate-refines (books/history-pages-relocate.lisp; subjects fn-hp-piw, fn-hp-x-relocate)",
   "PRF-372: fn-hrc-flush-one-rel (books/history-records.lisp; subjects fn-hrc-flush-one)",
   "PRF-372: fn-hrs-loop-placement (books/history-records.lisp; subjects fn-hp-lens, fn-hp-x-append-loop)",
-  "World reach gate at 87daf18f5 (first --world --strict run, N; build/coordinator/lanedumps/n-world34-reach.log): 79 of this item's events recur as NEW orphans with no baseline entry. Coordinator rule 2026-10-08: no baseline entry; the reach step stays red by design while this item owns them; each event's disposition says host code or unreachable-in-composition."
+  "World reach gate at 87daf18f5 (first --world --strict run, N; build/coordinator/lanedumps/n-world34-reach.log): 79 of this item's events recur as NEW orphans with no baseline entry. Coordinator rule 2026-10-08: no baseline entry; the reach step stays red by design while this item owns them; each event's disposition says host code or unreachable-in-composition.",
+  "p-reach-prose2 (Sonnet, 2026-10-08): all 79 events disposed. 77 are NEW orphans at origin/dev 9a9fa4bab and each is (c) unreachable-in-composition: theorem and book unchanged, event removed from the PRF event list (proof-events.json note per row, statement of each PRF marks it). One (fn-hp-x-relocate-refines, PRF-342) is hosted and stays a registered event. No campaign was made to name the model symbols: native_cuts.py judges the host against byte programs, not against fn-bs-crash and its siblings, and a symbol in a string would be cosmetic. Owed pieces are homed in REACH-PROSE-CRASH-ORACLE (campaign oracle, (a) candidates, the streaming scan). No baseline entry. Rows left with no registered events: see ledger."
  ],
- "updated": "2026-10-08T07:30:00Z"
+ "updated": "2026-10-08T14:00:00Z"
 }

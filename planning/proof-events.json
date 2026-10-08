@@ -1143,6 +1143,10 @@
         {
           "kind": "theorem",
           "name": "fn-served-step-nntp-steps-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-core-codepoint-start-work-bound"
         }
       ],
       "deferred": [
@@ -1631,15 +1635,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bs-store-crash-image-scans"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-store-crash-image-is-kernel-admissible",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-store-recovery-is-a-kernel-crash"
         },
         {
@@ -1656,22 +1651,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-crash-image-reads-the-config",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-crash-image-frontier-decodes-to-a-natural",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-crash-image-namespace-is-contiguous",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-crash-image-records-do-not-fault"
         },
         {
           "kind": "theorem",
@@ -1680,10 +1661,6 @@
         {
           "kind": "theorem",
           "name": "fn-bs-k6-actual-record-linked-input-has-exact-frame"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame"
         },
         {
           "kind": "theorem",
@@ -1696,10 +1673,6 @@
         {
           "kind": "theorem",
           "name": "fn-bs-k6-related-attempted-crash-reads-exact-frame"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-k6-related-staged-durable-final-name-absent"
         },
         {
           "kind": "theorem",
@@ -1779,12 +1752,6 @@
         {
           "kind": "theorem",
           "name": "fn-sn-sweep-rounds-end-done-or-refused"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-stable-prefix-retained-by-byte-crash",
-          "note": "K5: under the byte/kernel relation and a modeled crash image, the scanner keeps the durable record list as a prefix and adds at most one record.",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
         },
         {
           "kind": "theorem",
@@ -1872,12 +1839,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-k0-pending-staging-extension-preserves-relation",
-          "note": "Appending pending operations that name no :root/:transactions entry and write no authority inode keeps the relation outside the recovery window (the write and unlink steps).",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-k0-staging-fence-preserves-relation",
           "note": "fsync of the staging directory keeps the relation from any related state outside the recovery window.",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
@@ -1914,18 +1875,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
-          "note": "A quiet byte store whose scan succeeds, whose authority inodes are known and whose scanned frontier and records form a kernel history is related to the recovered kernel (the scanned frontier and records, no successes) at every barrier count 0..5, :recovering below five and :ready at five.",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-recover-program-keeps-relation-at-every-cut",
-          "note": "K0 at recover-replayed and the five recover-barrier cuts: from a crash image of any related state and any kernel whose (:recover) observation is the recovered kernel, every pair of the run is related, the last pair is the image with the :ready kernel at five barriers.",
-          "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-host-reopened-kernel-is-the-recovered-kernel",
           "note": "Host subject: when fn-cpo-open-observed succeeds (fn-store-sn-recover, host/store-node-host.lisp:156, reached through fnn-bridge-recover, host/native/io.lisp:713, called at :1478) its file kernel is exactly the recovered kernel at zero barriers over the frontier and records it was given; with fn-bs-recover-program-keeps-relation-at-every-cut this is fn-bs-host-recovery-keeps-relation-at-every-cut, and with the sweep keystone fn-bs-host-recovery-sweep-starts-related (every recovery-stage-unlinked cut)."
         },
@@ -1935,7 +1884,8 @@
           "note": "Link error arm of P-RECORD: from a related staged input, for every outcome of link(2) at 941 -- refused before issue or issued and then reported as an errno -- the resulting byte state with the kernel's (:record-link :error) observation is related.",
           "pending_subject": "model-only: the subject is a byte-model program coordinate (books/byte-store-programs.lisp) that no host line calls. The native host is tied to that program only by tools/native_program_check.py, a static source-order transcription check (host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-finish, fnn-recover, fnn-sweep-staging), not by a theorem; see planning/v0-audit-p10-p11.md P10."
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-041 statement: fn-bs-crash-image-namespace-is-contiguous, fn-bs-crash-image-reads-the-config, fn-bs-crash-image-records-do-not-fault, fn-bs-k0-pending-staging-extension-preserves-relation, fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame, fn-bs-k6-related-staged-durable-final-name-absent, fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel, fn-bs-recover-program-keeps-relation-at-every-cut, fn-bs-stable-prefix-retained-by-byte-crash, fn-bs-store-crash-image-is-kernel-admissible, fn-bs-store-crash-image-scans. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-042",
@@ -1999,10 +1949,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bs-related-allocation-is-fresh"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-frontier-noncommit-observation-preserves-relation"
         },
         {
@@ -2029,7 +1975,8 @@
           "kind": "theorem",
           "name": "fn-bsi-current-init-program-establishes-current-image"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-044 statement: fn-bs-related-allocation-is-fresh. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-043",
@@ -3240,10 +3187,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-scka-recover-rows-rii-is-recover-rows"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-scka-write-run-is-run-segments"
         },
         {
@@ -3253,10 +3196,6 @@
         {
           "kind": "theorem",
           "name": "fn-sshr-share-is-identity"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-scka-src-payloads-of-canon-srcs"
         },
         {
           "kind": "theorem",
@@ -3273,12 +3212,9 @@
         {
           "kind": "theorem",
           "name": "fn-bs-read-ranges-is-the-range"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-read-ranges-read-the-whole-file"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-083 statement: fn-bs-read-ranges-read-the-whole-file, fn-scka-recover-rows-rii-is-recover-rows, fn-scka-src-payloads-of-canon-srcs. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-082",
@@ -8596,20 +8532,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
-          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import writes fn-bs-imp-program step for step (native_cuts.verify_import_cut_map). Teeth: tests/acl2/store-import-publication-tests.lisp (reachable run, every landing at import-published, six hypothesis-removal witnesses)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-imp-classify-by-what-is-known",
-          "note": "The recovery classification over every crash image; host: fnn-command-store-import calls fn-bs-imp-classify (fnn-import-classify). Teeth: the four verdicts reached at import-published in the test book."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-init-pub-admission-proceeds-only-on-nothing",
           "note": "Host: host/native/io.lisp fnn-command-init-published asks fn-bs-init-pub-admission (over fnn-import-classify's fn-bs-imp-classify) before it writes anything. Teeth: every admission arm in tests/acl2/store-init-publication-tests.lisp."
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-217 statement: fn-bs-imp-classify-by-what-is-known, fn-bs-imp-program-crash-is-no-store-or-the-complete-store. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-246",
@@ -8999,41 +8926,18 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lg-tear-write-is-pieces"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-crash-of-aligned-append"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lg-batch-tear-is-a-prefix"
         },
         {
           "kind": "theorem",
-          "name": "fn-lg-batch-crash-is-a-prefix"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lg-no-forgery-under-a-crypto-trailer"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-244 statement: fn-bs-crash-of-aligned-append, fn-lg-batch-crash-is-a-prefix, fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer, fn-lg-tear-write-is-pieces. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-245",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-lg-scan-of-complete-append"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-scan-last-of-complete-append"
-        },
         {
           "kind": "theorem",
           "name": "fn-lgk-append-preserves-relation"
@@ -9060,43 +8964,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgk-crash-of-related-state-is-a-prefix"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-scan-consumed-aligned"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-scan-consumed-within"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lg-scan-of-take-consumed"
         },
         {
           "kind": "theorem",
           "name": "fn-lg-recovered-frontier-is-the-last-complete-record"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-scan-last-digestp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgk-recovered-content-okp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgk-recover-establishes-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-txids-strictly-increase"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgt-recovered-okp-of-verdict"
         },
         {
           "kind": "theorem",
@@ -9128,14 +9000,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lg-decode-is-the-scan"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgd-loop-is-the-scan"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lg-append-program-keeps-the-relation"
         },
         {
@@ -9145,16 +9009,9 @@
         {
           "kind": "theorem",
           "name": "fn-lg-fence-program-keeps-the-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgrc-attempt-makes-the-read-prefix-durable"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lg-open-kernel-is-the-recovered-kernel"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-245 statement: fn-lg-decode-is-the-scan, fn-lg-open-kernel-is-the-recovered-kernel, fn-lg-scan-consumed-aligned, fn-lg-scan-consumed-within, fn-lg-scan-last-digestp, fn-lg-scan-last-of-complete-append, fn-lg-scan-of-complete-append, fn-lg-txids-strictly-increase, fn-lgd-loop-is-the-scan, fn-lgk-crash-of-related-state-is-a-prefix, fn-lgk-recover-establishes-relation, fn-lgk-recovered-content-okp, fn-lgrc-attempt-makes-the-read-prefix-durable, fn-lgt-recovered-okp-of-verdict. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-253",
@@ -9457,13 +9314,8 @@
     },
     {
       "id": "PRF-264",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-olr-crash-reads-a-prefix-of-the-history",
-          "note": "Subject: the kernel transitions host/native/io.lisp fnn-log-take/-append/-fence call (fn-olr-take, fn-lgk-append, fn-lgk-fence); the link kept by fn-olr-linkp-of-*."
-        }
-      ]
+      "events": [],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-264 statement: fn-olr-crash-reads-a-prefix-of-the-history. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-265",
@@ -9478,21 +9330,6 @@
     {
       "id": "PRF-270",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-lgw-segment-drop-preserves-the-open",
-          "note": "KEYSTONE T8 over the streamed open. Host: host/native/io.lisp fnn-log-scan-segments streams each closed segment (fnn-log-stream-segment: fn-lgw-start GENESIS 1, fn-lgw-step per entry) and carries fn-lgc-last of its kernel to the next; fn-lgw-open-chain-records is that fold. fnn-recover-log-from-log-checkpoint replays the checkpoint then that suffix. Teeth: tests/acl2/store-log-segments-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgw-open-chain-is-the-chain",
-          "note": "The host's streamed fold is the model chain over the segments' octets."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgw-segment-is-the-scan",
-          "note": "One segment's stream is the model's scan (by fn-lgw-run-is-the-open)."
-        },
         {
           "kind": "theorem",
           "name": "fn-lgs-open-plan-scan-ignores-covered",
@@ -9516,7 +9353,8 @@
           "kind": "theorem",
           "name": "fn-native-operator-run-compact-action-is-only-store-compact"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-270 statement: fn-lgw-open-chain-is-the-chain, fn-lgw-segment-drop-preserves-the-open, fn-lgw-segment-is-the-scan. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-271",
@@ -9655,22 +9493,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgob-file-fence-keeps-entry-operations"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-one-barrier-loses-a-rotated-segment"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-journal-fence-keeps-the-rotated-segment"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-fence-of-a-fenced-file-is-identity"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lgob-three-barrier-open-is-the-five-at-every-cut"
         },
         {
@@ -9679,40 +9501,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgob-only-a-write-unfences-a-file"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lgob-three-barrier-open-after-the-copy-is-the-five"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-three-barriers-keep-the-rotated-segment"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgrc-dropping-open-loses-a-checkpointed-history"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgrc-open-unlinks-no-segment"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-two-barriers-without-parent-lose-an-imported-store"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgob-three-barriers-keep-the-imported-store"
         },
         {
           "name": "fn-lgrc-open-keeps-the-relation-at-every-cut"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-273 statement: fn-lgob-fence-of-a-fenced-file-is-identity, fn-lgob-file-fence-keeps-entry-operations, fn-lgob-journal-fence-keeps-the-rotated-segment, fn-lgob-one-barrier-loses-a-rotated-segment, fn-lgob-only-a-write-unfences-a-file, fn-lgob-three-barriers-keep-the-imported-store, fn-lgob-three-barriers-keep-the-rotated-segment, fn-lgob-two-barriers-without-journal-lose-a-rotated-segment, fn-lgob-two-barriers-without-parent-lose-an-imported-store, fn-lgrc-dropping-open-loses-a-checkpointed-history, fn-lgrc-open-unlinks-no-segment. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-268",
@@ -11950,10 +11745,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hp-x-append-step-refines"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-hp-x-init-refines"
         },
         {
@@ -11964,7 +11755,8 @@
           "kind": "theorem",
           "name": "fn-hp-records-at-is-nth"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-342 statement: fn-hp-x-append-step-refines. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-348",
@@ -12728,28 +12520,13 @@
     },
     {
       "id": "PRF-369",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-sxi-stream-plan-is-the-import-plan",
-          "note": "KEYSTONE (no hypotheses). Host: host/native/io.lisp fnn-import-pass calls fn-sxi-head, fn-sxi-start, fn-sxi-want and fn-sxi-step per chunk, fn-sxi-final; fnn-command-store-import runs it twice. Teeth: tests/acl2/store-import-stream-tests.lisp (every chunking, each refusal by name incl. a cross-chunk sequence; mutation witnesses: swapped and dropped chunks, an uncarried sequence)."
-        }
-      ]
+      "events": [],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-369 statement: fn-sxi-stream-plan-is-the-import-plan. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-370",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-sxd-crash-is-incomplete-or-complete",
-          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-export (the program's steps and cuts, tests/campaign/native_cuts.py verify_export_cut_map). Teeth: tests/acl2/store-export-durability-tests.lisp (a full run, both arms reached; mutation: the MANIFEST renamed before the sync; hypothesis removal: a stale MANIFEST, a short write reported :ok, an entry named MANIFEST)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
-          "note": "KEYSTONE. Host: host/native/io.lisp fnn-import-pass asks fn-sxd-archive-verdict before reading any entry."
-        }
-      ]
+      "events": [],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-370 statement: fn-sxd-crash-is-incomplete-or-complete, fn-sxd-import-verdict-is-incomplete-or-complete. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-372",
@@ -12797,16 +12574,9 @@
         {
           "kind": "theorem",
           "name": "fn-hrc-at-is-nth"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrc-flush-one-rel"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hrs-loop-placement"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-372 statement: fn-hrc-flush-one-rel, fn-hrs-loop-placement. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-371",
@@ -12959,8 +12729,16 @@
     },
     {
       "id": "PRF-383",
-      "events": [],
-      "note": "fn-dl-map-loop-is-revappend retained unchanged in books/def-loop.lisp and marked unreachable-in-composition in the PRF-383 statement (see PRF-919). Not a hosted-event claim; no reach baseline exemption is added."
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-rows-with-key-loop-is-revappend-of-the-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-peer-names-loop-is-revappend-of-the-walk"
+        }
+      ]
     },
     {
       "id": "PRF-376",
@@ -13458,21 +13236,10 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lgrs-journal-fence-names-the-acknowledged-batch"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-907 statement: fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was, fn-lgrs-journal-fence-names-the-acknowledged-batch, fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-908",
@@ -13856,10 +13623,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lgu-acknowledged-records-are-recovered-at-every-cut"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lgu-take-verdict-admits-exactly-log-records"
         },
         {
@@ -13880,21 +13643,14 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgu-safe-image-recovers-the-acknowledged-records"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lgu-safe-image-scans-the-committed-records-first"
         },
         {
           "kind": "theorem",
           "name": "fn-lgu-crash-keeps-the-prefix"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-lgrc-attempt-makes-the-read-prefix-durable"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-936 statement: fn-lgrc-attempt-makes-the-read-prefix-durable, fn-lgu-acknowledged-records-are-recovered-at-every-cut, fn-lgu-safe-image-recovers-the-acknowledged-records. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-942",
@@ -14315,12 +14071,9 @@
         {
           "kind": "theorem",
           "name": "fn-clo-capture-of-clean-stop-opens-or-identity"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-clo-observed-at-the-computed-frontier"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-945 statement: fn-clo-observed-at-the-computed-frontier. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-950",
@@ -15933,11 +15686,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hib-replay-extends",
-          "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-hib-fill-rel",
           "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
         },
@@ -15976,7 +15724,8 @@
           "name": "fn-hib-complete-progress",
           "pending_subject": "Subject is not yet host-called: the served checkpoint does not write the history image and the served open does not adopt it (lane composed-owner NEXT, the served wiring); the adoption, binding and request/completion functions named are the ones the host will call."
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-920 statement: fn-hib-replay-extends. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-923",
@@ -18075,27 +17824,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-rr-open-is-the-full-open-of-the-recovered-records"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rr-log-crash-image-quiet-recovers-committed"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rr-log-crash-image-recovers-a-tree-sequence-member"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rr-acknowledged-record-is-in-every-tree-sequence-member"
         },
         {
           "kind": "theorem",
@@ -18109,7 +17838,8 @@
           "kind": "theorem",
           "name": "fn-rr-medium-full-open-holds-its-records"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-1212 statement: fn-rr-acknowledged-record-is-in-every-tree-sequence-member, fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member, fn-rr-log-crash-image-quiet-recovers-committed, fn-rr-log-crash-image-recovers-a-tree-sequence-member, fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-1213",
@@ -18125,37 +17855,14 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-lgk-relp-implies-fn-rrc-relp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rrc-crash-content-is-the-projected-crash-content"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rrc-projection-is-related"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rrc-projected-image-is-admissible-with-the-same-segment"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rrc-log-crash-image-recovers-a-tree-sequence-member"
         },
         {
           "kind": "theorem",
           "name": "fn-rrc-keeping-the-segment-keeps-the-lifted-relation"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-1214 statement: fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight, fn-rrc-crash-content-is-the-projected-crash-content, fn-rrc-log-crash-image-recovers-a-tree-sequence-member, fn-rrc-projected-image-is-admissible-with-the-same-segment, fn-rrc-projection-is-related, fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-1215",
@@ -18180,12 +17887,8 @@
     },
     {
       "id": "PRF-1216",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new"
-        }
-      ]
+      "events": [],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-1216 statement: fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-1217",
@@ -18905,12 +18608,9 @@
         {
           "kind": "theorem",
           "name": "fn-bs-init-log-crash-retry-is-old-or-new"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bs-init-log-complete-store-carries-the-node-secret"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-1040 statement: fn-bs-init-log-complete-store-carries-the-node-secret. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-1313",
@@ -19098,13 +18798,10 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bs-init-log-complete-store-carries-the-peer-flight-profile"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-pfd-init-reserves-the-default-launch"
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged and marked unreachable-in-composition in the PRF-1319 statement: fn-bs-init-log-complete-store-carries-the-peer-flight-profile. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-1323",

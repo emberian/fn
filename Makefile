@@ -371,6 +371,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wildmat-work \
 	books/wildmat-cursor \
 	tests/acl2/wildmat-cursor-tests \
+	tests/acl2/wildmat-cursor-bound-tests \
 	books/wildmat-live \
 	tests/acl2/wildmat-live-tests \
 	tests/acl2/wildmat-parser-invariants-tests \
@@ -923,6 +924,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
+	tests/acl2/payload-lz-replay-tests \
+	tests/acl2/payload-lz-replay-compressed-tests \
 	tests/acl2/payload-lz-scalar-realizer-tests \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
@@ -1469,6 +1472,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/path-update \
 	books/path-update-tail \
 	books/peer-config \
+	books/config-walk-loops \
+	tests/acl2/config-walk-loops-tests \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
 	tests/acl2/peer-inbound-tests \
@@ -1724,6 +1729,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
 	books/owner-outcome-pinned \
+	tests/acl2/catchup-carried-transit-tests \
 	books/owner-host-relation \
 	tests/acl2/owner-host-relation-tests \
 	books/owner-host-relation-span \

@@ -47,6 +47,11 @@
 ; HELP over the served step, RFC 3977 section 7.2: the 100 line, one line
 ; per table row, the terminating dot.
 (include-book "arena-lift")
+
+(local (defthmd fn-help-nth-of-a-constant-local-rewrite
+  (implies (and (syntaxp (quotep n)) (posp n))
+           (equal (nth n x) (nth (- n 1) (cdr x))))
+  :hints (("Goal" :by fn-help-nth-of-a-constant))))
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-auth-step-pinned 8)
@@ -234,7 +239,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
@@ -276,7 +281,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
@@ -318,7 +323,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
@@ -360,7 +365,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
@@ -402,7 +407,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
@@ -444,7 +449,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
@@ -486,7 +491,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
@@ -528,7 +533,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
@@ -573,7 +578,7 @@
                             fn-nntp-command-pinned fn-nntp-archive-keywordp
                             fn-nntp-session-command fn-auth-single
                             fn-nntp-single
-                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
+                            fn-help-inj-nth-is-nth fn-help-six-list-rebuild fn-help-nth-of-a-constant-local-rewrite fn-help-nth-0 fn-help-rebuild-post fn-help-rebuild-peer fn-help-rebuild-auth)
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp

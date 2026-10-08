@@ -5,7 +5,7 @@
     "declared": 1840,
     "declared_and_dispatched": 1791,
     "guard_verified": 1091,
-    "with_keystone": 290,
+    "with_keystone": 291,
     "with_fold_keystone_only": 3,
     "raw_dispatched": 20
   },
@@ -12008,7 +12008,16 @@
       "class": "program",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-oct-transit-is-own-transit-outcome-under-ocl-relation",
+          "via": "fn-oct-transit"
+        },
+        {
+          "theorem": "fn-oop-transit-outcome-is-own-transit-outcome",
+          "via": "fn-oop-transit-outcome"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -36530,6 +36539,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
+        "host/native/bp-node.lisp",
         "host/native/heap.lisp"
       ],
       "applied_directly_in": []
@@ -36554,7 +36564,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/heap.lisp"
+        "host/native/bp-node.lisp"
       ],
       "applied_directly_in": []
     },
@@ -36578,7 +36588,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/heap.lisp"
+        "host/native/bp-node.lisp"
       ],
       "applied_directly_in": []
     },
@@ -36602,7 +36612,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
-        "host/native/heap.lisp"
+        "host/native/bp-node.lisp"
       ],
       "applied_directly_in": []
     },

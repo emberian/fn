@@ -567,15 +567,16 @@ stop, caught before the first POST instead of at the second."
 
 (defun fnn-owner-measure-note (label start bytes)
   (let* ((held (- (fnn-owner-measure-now) start))
-         (consed (- (sb-ext:get-bytes-consed) bytes))
-         (row (or (gethash label *fnn-owner-measure-table*)
-                  (setf (gethash label *fnn-owner-measure-table*)
-                        (list 0 0 0 0 0)))))
-    (incf (first row))
-    (incf (second row) held)
-    (setf (third row) (max (third row) held))
-    (incf (fourth row) consed)
-    (setf (fifth row) (max (fifth row) consed))))
+         (consed (- (sb-ext:get-bytes-consed) bytes)))
+    (sb-ext:with-locked-hash-table (*fnn-owner-measure-table*)
+      (let ((row (or (gethash label *fnn-owner-measure-table*)
+                     (setf (gethash label *fnn-owner-measure-table*)
+                           (list 0 0 0 0 0)))))
+        (incf (first row))
+        (incf (second row) held)
+        (setf (third row) (max (third row) held))
+        (incf (fourth row) consed)
+        (setf (fifth row) (max (fifth row) consed))))))
 
 (defmacro fnn-owner-measured ((label &optional cid (operation '*fnn-trace-operation*)
                                     (connection-generation '*fnn-trace-connection-generation*)) &body body)
@@ -594,15 +595,19 @@ stop, caught before the first POST instead of at the second."
 
 (defun fnn-owner-measure-report ()
   (when *fnn-owner-measure*
-    (maphash
-     (lambda (label row)
-       (destructuring-bind (count held most consed most-consed) row
-         (format *error-output*
+    ;; Module actors can still finish a measured activation during teardown.
+    ;; Copy the rows under their update lock; output holds no table lock.
+    (let ((rows nil))
+      (sb-ext:with-locked-hash-table (*fnn-owner-measure-table*)
+        (maphash (lambda (label row) (push (cons label (copy-list row)) rows))
+                 *fnn-owner-measure-table*))
+      (dolist (entry rows)
+        (destructuring-bind (label count held most consed most-consed) entry
+          (format *error-output*
                  "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d max-bytes=~d~%"
                  label count
                  held most
-                 consed most-consed)))
-     *fnn-owner-measure-table*)
+                 consed most-consed))))
     (finish-output *error-output*)))
 
 (defun fnn-owner-core (name &rest args)
@@ -1657,7 +1662,11 @@ one ring, so the table's key and the served boundary's are one source."
                      ;; batches by the committer thread.
                      :batching (fnn-store-logp store)
                      :stopping nil))
-              (fnn-owner-history-root-maintain service)
+              ;; The first history root refresh is not here: it draws the
+              ;; history-root reserve, which only the run's ledger holds
+              ;; (fnn-owner-run, after fnn-mux-budget-install; the default
+              ;; ledger's reserve is 0).  The history load stays an install
+              ;; step.
               (fnn-owner-history-sync-first service)
               (progn
                 (setf (fnn-owner-service-feeds service)
@@ -1764,7 +1773,11 @@ Use its held fence without recursively acquiring the owner's mutex."
            (serious-condition (condition)
              (setq kind (fn-fs-classify (fnn-condition-class condition)
                                         *fnn-section-step*))
-             (when escape (funcall escape condition))))
+             (if escape
+                 (funcall escape condition)
+               ;; A :result actor normally captures its own outcome, but
+               ;; this boundary can itself detect an escaped ACL2 step.
+               (fnn-owner-thread-escape service condition "actor boundary"))))
       ;; THUNK has completed its entire unwind before recording its end.
       ;; Registration remains until a parent physically joins the thread.
       (fnn-with-roster (service)
@@ -2046,7 +2059,8 @@ since 21d932152).  Reserved here, it needs no section after the step."
 
 (defun fnn-owner-output-begin-locked (service cid)
   "Owner held. Retain operation identity and draw before setup/preview."
-  (when (fnn-owner-service-output-ledger service)
+  (when (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+          (fnn-owner-service-output-ledger service))
     (unless *fnn-response-capture*
       (fnn-refuse "accounted output requires registered response custody for ~s" cid))
     (unless (fnn-response-capture-grant *fnn-response-capture*)
@@ -2064,7 +2078,8 @@ answers it on the wire (books/output-admission-line.lisp: an unpriced family
 or an unaffordable reply).  Absent policy passes the buffer: the pass-through
 goes in the commit that prices the last family a stock node serves
 (specs/resource-vector.md, the dated open precondition)."
-  (if (null (fnn-owner-service-output-ledger service)) (length incoming)
+  (if (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+        (null (fnn-owner-service-output-ledger service))) (length incoming)
     (let* ((preview (fnn-core-buffer-state 'fn-owner-output-preview cid 0 (length incoming)))
            (tariff (fnn-owner-core 'fn-owner-output-tariff-preview cid preview))
            (capacity
@@ -8717,16 +8732,14 @@ torn last entry follows.  Answers the offset the writer resumes at."
       (let* ((decided (fnn-owner-serialized
                        service nil
                        (lambda ()
-                         ;; The decision and the line it rendered leave the
-                         ;; section together: the global is read while the
-                         ;; owner is held, so the line written below is the
-                         ;; one this decision produced.
-                         (cons (fnn-owner-core 'fn-owner-log-reopen
-                                               (and *fnn-owner-log-path* t)
-                                               *fnn-owner-log-handled* requested)
-                               (fnn-global 'fn-owner-log-line)))))
-             (decision (car decided))
-             (line (cdr decided)))
+                         ;; The decision and the line it rendered are one
+                         ;; answer of the wrapper: (KIND N LINE).
+                         (fnn-owner-core 'fn-owner-log-reopen
+                                         (and *fnn-owner-log-path* t)
+                                         *fnn-owner-log-handled* requested))))
+             (shaped (and (consp decided) (= (length decided) 3)))
+             (decision (and shaped (list (first decided) (second decided))))
+             (line (and shaped (third decided))))
         (unless (and (consp decision)
                      (member (first decision) '(:reopen :ignore :none))
                      (integerp (second decision)))
@@ -9121,6 +9134,12 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   ;; machine (books/connection-budget.lisp), refused by name
                   ;; before anything listens; then the I/O loops.
                   (fnn-mux-budget-install service tls-context)
+                  ;; The first history root refresh, under the ledger that
+                  ;; funds the reserve (fn-mca-initial): at the install it
+                  ;; met the default ledger's reserve of 0 and was refused
+                  ;; by name on every open.  The history is loaded already
+                  ;; (fnn-owner-history-sync-first, in the install).
+                  (fnn-owner-history-root-maintain service)
                   (sb-thread:with-mutex ((fnn-owner-service-lock service))
                     (fnn-payload-lifecycle-start service))
                   (fnn-owner-start-committer service)

@@ -215,14 +215,27 @@
 (defthm fn-frame-len-2-conses
   (implies (equal (len xs) 2)
            (and (consp xs) (consp (cdr xs))))
+ :rule-classes nil
   :hints (("Goal" :expand ((len xs) (len (cdr xs))))))
+
+(local (defthm fn-frame-len-2-conses-local-rewrite
+  (implies (equal (len xs) 2)
+           (and (consp xs) (consp (cdr xs))))
+  :hints (("Goal" :by fn-frame-len-2-conses))))
 
 (defthm fn-frame-len-4-conses
   (implies (equal (len xs) 4)
            (and (consp xs) (consp (cdr xs))
                 (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
+ :rule-classes nil
   :hints (("Goal" :expand ((len xs) (len (cdr xs)) (len (cdr (cdr xs)))
                            (len (cdr (cdr (cdr xs))))))))
+
+(local (defthm fn-frame-len-4-conses-local-rewrite
+  (implies (equal (len xs) 4)
+           (and (consp xs) (consp (cdr xs))
+                (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
+  :hints (("Goal" :by fn-frame-len-4-conses))))
 
 ; Every fact the splitter is used for is now a lemma.  Opening its definition
 ; on a literal length would unroll it and defeat those lemmas, so from here it
@@ -319,7 +332,7 @@
     fn-frame-split-suffix-octets fn-frame-split-exists
     fn-frame-split-exists-consp fn-frame-split-suffix-len
     fn-frame-split-reassembles
-    fn-frame-split-of-append fn-frame-len-2-conses fn-frame-len-4-conses
+    fn-frame-split-of-append
     fn-frame-symbol-listp-true-listp
     fn-frame-u16-from-natp fn-frame-u32-from-natp
     fn-frame-octet-listp-of-append fn-frame-len-of-append
@@ -332,8 +345,7 @@
              fn-frame-split-suffix-octets fn-frame-split-exists
              fn-frame-split-exists-consp fn-frame-split-suffix-len
              fn-frame-split-reassembles
-             fn-frame-split-of-append fn-frame-len-2-conses
-             fn-frame-len-4-conses
+             fn-frame-split-of-append
              fn-frame-symbol-listp-true-listp fn-frame-u16-from-natp
              fn-frame-u32-from-natp fn-frame-octet-listp-of-append
              fn-frame-len-of-append fn-frame-u16-bytes-len
@@ -345,12 +357,5 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:linear fn-frame-at-mostp-bounds-len)
-                    (:rewrite fn-frame-len-2-conses)
-                    (:rewrite fn-frame-len-4-conses)))
+(in-theory (disable (:linear fn-frame-at-mostp-bounds-len)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-frame-len-2-conses
-                    fn-frame-len-4-conses))

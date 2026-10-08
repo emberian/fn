@@ -532,11 +532,14 @@ failed effects remain discoverable while independent physical cleanup runs."
 
 (defun fnn-mux-drained-p (service)
   "Root teardown requires physical loop return and no retained cleanup debt.
-A literal socket-shut return is not a descriptor-close/accounting proof."
+A literal socket-shut return is not a descriptor-close/accounting proof.
+Observe monotonic CLOSED under the producers' lock before inspecting the
+queues without it; producers cannot append after that observation."
   (every (lambda (loop)
            (let ((thread (fnn-mux-loop-thread loop)))
              (and (or (null thread) (not (sb-thread:thread-alive-p thread)))
-                  (fnn-mux-loop-closed loop)
+                  (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+                    (fnn-mux-loop-closed loop))
                   (null (fnn-mux-loop-inbox loop))
                   (null (fnn-mux-loop-arrived loop))
                   (null (fnn-mux-loop-conns loop))

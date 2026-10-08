@@ -22,15 +22,19 @@
 
 (include-book "served-catalog-join-open")
 
+(local (defthmd fn-cpr-config-firstp-has-config-local-rewrite
+  (implies (fn-cpr-config-firstp configs events) (consp configs))
+  :hints (("Goal" :by fn-cpr-config-firstp-has-config))))
+
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-ctl-visible-articles)
                           (:definition fn-ctl-visible-filter)
-                          (:rewrite fn-cpr-config-firstp-has-config)
+                          (:rewrite fn-cpr-config-firstp-has-config-local-rewrite)
                           (:rewrite fn-gidx-refresh-is-build)
                           (:rewrite fn-stxa-is-no-other-wire-event))))
 
-(local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
+(local (in-theory (disable fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
                            fn-nntp-index-msgid-okp fn-cp-id-length-bound)))
 
