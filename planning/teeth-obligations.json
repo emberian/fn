@@ -3717,32 +3717,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-crash-image-namespace-is-contiguous",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-image-reads-the-config",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-image-records-do-not-fault",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-crash-image-relates-to-recovery-entry-kernel",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-bs-crash-image-reopens",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-of-aligned-append",
    "registry": true
   },
   {
@@ -3787,16 +3767,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-imp-classify-by-what-is-known",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-init-log-classify-by-what-is-known",
    "registry": true
   },
@@ -3809,7 +3779,7 @@
    "name": "fn-bs-init-log-complete-store-carries-the-node-secret",
    "owed_met": null,
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -3828,7 +3798,7 @@
    "name": "fn-bs-init-log-complete-store-carries-the-peer-flight-profile",
    "owed_met": null,
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -3964,11 +3934,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-k0-pending-staging-extension-preserves-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-k0-record-cleanup-cut-relation",
    "registry": true
   },
@@ -4024,11 +3989,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-k6-actual-record-file-cut-has-exact-frame",
    "registry": true
   },
@@ -4055,11 +4015,6 @@
   {
    "class": "hand",
    "name": "fn-bs-k6-related-input-file-cut-has-no-transaction-pending",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-k6-related-staged-durable-final-name-absent",
    "registry": true
   },
   {
@@ -4099,22 +4054,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-read-ranges-concatenate",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-bs-read-ranges-is-the-range",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-read-ranges-read-the-whole-file",
    "registry": true
   },
   {
@@ -4134,32 +4079,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-recover-program-keeps-relation-at-every-cut",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-related-allocation-is-fresh",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-scp-program-crash-is-old-or-new",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-stable-prefix-retained-by-byte-crash",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-store-crash-image-is-kernel-admissible",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-store-crash-image-scans",
    "registry": true
   },
   {
@@ -5028,11 +4948,6 @@
   {
    "class": "hand",
    "name": "fn-clo-finalize-never-answers-frontier-at-the-computed-frontier",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-clo-observed-at-the-computed-frontier",
    "registry": true
   },
   {
@@ -7548,11 +7463,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hib-replay-extends",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hib-undone-evict",
    "registry": true
   },
@@ -7904,11 +7814,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hp-x-append-step-refines",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hp-x-at-is-nth",
    "registry": true
   },
@@ -7960,11 +7865,6 @@
   {
    "class": "hand",
    "name": "fn-hrc-at-is-nth",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hrc-flush-one-rel",
    "registry": true
   },
   {
@@ -8030,11 +7930,6 @@
   {
    "class": "hand",
    "name": "fn-hrs-disk-history-len",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hrs-loop-placement",
    "registry": true
   },
   {
@@ -8554,22 +8449,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-batch-crash-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-batch-tear-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-decode-is-the-scan",
    "registry": true
   },
   {
@@ -8594,11 +8474,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-open-kernel-is-the-recovered-kernel",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-open-program-keeps-the-relation",
    "registry": true
   },
@@ -8615,31 +8490,6 @@
   {
    "class": "hand",
    "name": "fn-lg-reserve-program-keeps-the-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-consumed-aligned",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-consumed-within",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-last-digestp",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-last-of-complete-append",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-of-complete-append",
    "registry": true
   },
   {
@@ -8669,17 +8519,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-tear-write-is-pieces",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-torn-variant-len",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-txids-strictly-increase",
    "registry": true
   },
   {
@@ -8782,11 +8622,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgd-loop-is-the-scan",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgdm-damage-lies-in-the-last-write",
    "registry": true
   },
@@ -8870,11 +8705,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgk-crash-of-related-state-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgk-fence-content",
    "registry": true
   },
@@ -8896,16 +8726,6 @@
   {
    "class": "hand",
    "name": "fn-lgk-prepare-preserves-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgk-recover-establishes-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgk-recovered-content-okp",
    "registry": true
   },
   {
@@ -8935,31 +8755,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgob-fence-of-a-fenced-file-is-identity",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-file-fence-keeps-entry-operations",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-journal-fence-keeps-the-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-one-barrier-loses-a-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-only-a-write-unfences-a-file",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states",
    "registry": true
   },
@@ -8971,26 +8766,6 @@
   {
    "class": "hand",
    "name": "fn-lgob-three-barrier-open-is-the-five-at-every-cut",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-three-barriers-keep-the-imported-store",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-three-barriers-keep-the-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-two-barriers-without-parent-lose-an-imported-store",
    "registry": true
   },
   {
@@ -9050,42 +8825,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgrc-attempt-makes-the-read-prefix-durable",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrc-dropping-open-loses-a-checkpointed-history",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgrc-open-keeps-the-relation-at-every-cut",
    "registry": true
   },
   {
    "class": "hand",
-   "name": "fn-lgrc-open-unlinks-no-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-journal-fence-names-the-acknowledged-batch",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed",
    "registry": true
   },
   {
@@ -9140,11 +8885,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgt-recovered-okp-of-verdict",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgu-acknowledge-acknowledges-only-recoverable-records",
    "registry": true
   },
@@ -9157,7 +8897,7 @@
    "name": "fn-lgu-acknowledged-records-are-recovered-at-every-cut",
    "owed_met": null,
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 3,
@@ -9219,7 +8959,7 @@
    "name": "fn-lgu-safe-image-recovers-the-acknowledged-records",
    "owed_met": null,
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 2,
@@ -9307,27 +9047,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgw-open-chain-is-the-chain",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgw-run-nf-then-fold-is-run",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-lgw-run-of-set-next-is-run-nf",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgw-segment-drop-preserves-the-open",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgw-segment-is-the-scan",
    "registry": true
   },
   {
@@ -12506,11 +12231,6 @@
   {
    "class": "hand",
    "name": "fn-olog-socket-connection-line-is-one-line",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-olr-crash-reads-a-prefix-of-the-history",
    "registry": true
   },
   {
@@ -18270,31 +17990,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-rr-acknowledged-record-is-in-every-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-quiet-recovers-committed",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-rr-medium-full-open-holds-its-records",
    "registry": true
   },
@@ -18315,42 +18010,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-crash-content-is-the-projected-crash-content",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-rrc-keeping-the-segment-keeps-the-lifted-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-log-crash-image-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-projected-image-is-admissible-with-the-same-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-projection-is-related",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record",
    "registry": true
   },
   {
@@ -19358,22 +19018,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-scka-recover-rows-rii-is-recover-rows",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-scka-restore-base-of-strip-of-capture",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-scka-seal-n-compose",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-scka-src-payloads-of-canon-srcs",
    "registry": true
   },
   {
@@ -21593,21 +21243,6 @@
   {
    "class": "hand",
    "name": "fn-stxe-token-code-of-code-token",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxd-crash-is-incomplete-or-complete",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxi-stream-plan-is-the-import-plan",
    "registry": true
   },
   {
