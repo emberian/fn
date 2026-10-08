@@ -12,7 +12,6 @@
   "fn-dl-sum-loop-is-plus",
   "fn-dwj-retired-job-refuses-scalar-publication",
   "fn-lg-open-program-keeps-the-relation",
-  "fn-lgc-failed-barrier-recovers-a-prefix",
   "fn-lgob-three-barrier-open-after-the-copy-is-the-five",
   "fn-lgrc-acknowledge-from-the-copy",
   "fn-lgrc-attempt-makes-the-read-prefix-durable",
@@ -33,7 +32,6 @@
   "fn-ocap-preview-keeps-input-prefix-bounds",
   "fn-orcs-predict-seal-refines-intern",
   "fn-proto-archive-command-cat-is-pinned",
-  "fn-psrv-store-prepare-next-keeps-the-stored-octets",
   "fn-qplan-cw-drain-is-a-prefix",
   "fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
   "fn-rcw-load-chunks-is-load",
@@ -43,7 +41,6 @@
   "fn-sca-load-held-rows-establishes-byte-facts",
   "fn-scat-group-low-is-archive",
   "fn-scat-group-summary-is-archive",
-  "fn-sccv-step-is-seg-step",
-  "fn-zpl-decode-bufs-from-the-empty-pool"
+  "fn-sccv-step-is-seg-step"
  ]
 }

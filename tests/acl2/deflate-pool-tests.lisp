@@ -251,7 +251,7 @@
                :logical "An improper preset has an ignored tail in the window but is not an octet list in the returned pool."))
   :mutations
   ((status (:conclusion (equal (car (fn-pzd-decode dict c n)) :error))
-           nil :fault "Reports an error for a successfully decoded stored block."))
+           () :fault "Reports an error for a successfully decoded stored block."))
   :hints (("Goal" :do-not '(preprocess)
            :use ((:instance fn-zin-payload-ready-shape
                    (dict '(1)) (fn-zin-win nil) (fn-zin-tab nil)))

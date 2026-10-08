@@ -744,7 +744,7 @@
       (< 0 (fn-dkt-val after)))
     (fn-dkt-fake-check fn-dkt-cell)))
   :breaks ((positive ((x -1))))
-  :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) nil :fault "Raises the bound.")))
+  :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) () :fault "Raises the bound.")))
  :unchecked "A checker that always says true is not an unconditional refinement.")
 
 (defteeth fn-dkt-snapshot
@@ -759,7 +759,7 @@
     (fn-dkt-snapshot-check fn-dkt-cell)
     :hints (("Goal" :in-theory (enable fn-dkt-snapshot-check)))))
   :breaks ((positive ((x -1)) :logical "Exercises the grounded logical snapshot path."))
-  :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) nil :fault "Raises the bound.")))
+  :mutations ((high (:conclusion (< 2 (fn-dkt-val fn-dkt-cell))) () :fault "Raises the bound.")))
 
 (defteeth-check (fn-dkt-snapshot))
 (must-fail-checked (defteeth-check (fn-dkt-never-declared))

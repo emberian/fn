@@ -227,6 +227,6 @@
     (:conclusion
       (let ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena))))
         (fn-sbud-store-extents-okp next fn-arena)))
-    nil :fault "The host publishes the prepared store without sealing its payload.")))
+    () :fault "The host publishes the prepared store without sealing its payload.")))
 
 (defteeth-check (fn-psrv-store-prepare-next-keeps-the-stored-octets))
