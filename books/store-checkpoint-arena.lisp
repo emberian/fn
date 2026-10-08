@@ -6,17 +6,23 @@
 ; of a capture over rows (books/store-checkpoint-tables.lisp) hold handles
 ; into an arena the file did not carry.  This book is the missing half:
 ;
-;   THE CANONICAL INTERN.  The full recover interns the decoded journal into
-;   the emptied arena under keyring NIL and generation 0
-;   (host/store-node-host.lisp fn-store-sn-recover, fn-intern-events): the
-;   k-th article-bearing event gets handle k and the arena is the list of
-;   their payloads.  `fn-scka-intern-at' is that intern without the arena
-;   (the handle is a counter) and `fn-scka-payloads' the arena it builds;
-;   KEYSTONE `fn-intern-events-is-intern-at' says the intern IS the pair.
-;   A checkpoint holds the tables of the capture of the canonical rows of
-;   the live store's WIRE history (alpha, fn-rows-wire-of), whatever handles
-;   and contexts the live rows carry, and the canonical arena.
-;
+;   THE CANONICAL INTERN.  The recover interns the decoded journal into the
+;   emptied arena through the host's worker, fn-ssr-intern-step, which freezes
+;   in each row the statement keyring and generation in force before its event
+;   (host/native/io.lisp fnn-bridge-recover-begin, from the initial context;
+;   a checkpoint's suffix from its captured identity, fn-store-statement-
+;   replay-seed): the k-th article-bearing event gets handle k and the arena
+;   is the list of their payloads.  `fn-scka-intern-at' (books/store-
+;   checkpoint-fold.lisp) is that intern without the arena (the handle is a
+;   counter) and `fn-scka-payloads' the arena it builds; KEYSTONES
+;   `fn-scka-fold-at-is-the-ssr-step' and `fn-scka-fold-at-arena-is-payloads'
+;   say the intern IS the pair.  A checkpoint holds the tables of the capture
+;   of the canonical rows of the live store's WIRE history (alpha,
+;   fn-rows-wire-of), whatever handles and contexts the live rows carry, and
+;   the canonical arena.  The canonical rows carry the REPLAY's contexts, not
+;   keyring NIL / generation 0: after a keyring rotation a checkpoint open
+;   serves the generations a full replay serves.
+
 ;   THE ARENA RUN (A).  One more run of FNSC segments, written FIRST in the
 ;   file and framed and chained from the genesis with sequence S by the
 ;   codec's own `fn-scc-frames': chunk 0 is the tag and the payload count,
@@ -506,21 +512,27 @@
 ; carrying the fold state (the rows, newest first, ride in the state), one
 ; frame per row of the store on every checkpoint publication.
 (defun fn-scka-canon-fold (rows fn-arena h acc)
-  (declare (xargs :stobjs fn-arena :guard (and (natp h) (fn-ssr-statep acc))
+  (declare (xargs :stobjs fn-arena :guard (and (natp h) (or (eq acc :bad) (fn-ssr-statep acc)))
                   :verify-guards nil))
-  (if (atom rows)
-      acc
-    (let* ((w (fn-row-wire-of (car rows) fn-arena))
-           (row (fn-scka-intern-one w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) h))
-           (identity (fn-replay-identity-step (fn-ssr-at 3 acc) row)))
-      (if (or (eq row :bad) (not (equal (fn-stxk-context-kind identity) :ok)))
-          :bad
-        (fn-scka-canon-fold (cdr rows) fn-arena (if (fn-scka-sealsp w) (+ 1 h) h)
-                            (fn-ssr-publish acc row w identity))))))
+  (cond
+   ((eq acc :bad) :bad)
+   ((atom rows) acc)
+   (t (let* ((w (fn-row-wire-of (car rows) fn-arena))
+             (row (fn-scka-intern-one w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) h))
+             (identity (fn-replay-identity-step (fn-ssr-at 3 acc) row)))
+        (if (or (eq row :bad) (not (equal (fn-stxk-context-kind identity) :ok)))
+            :bad
+          (fn-scka-canon-fold (cdr rows) fn-arena (if (fn-scka-sealsp w) (+ 1 h) h)
+                              (fn-ssr-publish acc row w identity)))))))
 
 (defun fn-scka-canon-rows (rows fn-arena h id)
   (declare (xargs :stobjs fn-arena :guard (natp h) :verify-guards nil))
   (fn-ssr-rows (fn-scka-canon-fold rows fn-arena h (fn-ssr-seed id))))
+
+(verify-guards fn-scka-canon-fold
+  :hints (("Goal" :in-theory (e/d (fn-ssr-statep) (fn-row-wire-of fn-scka-intern-one fn-scka-sealsp
+                                                   fn-ssr-publish fn-replay-identity-step fn-ssr-at)))))
+(verify-guards fn-scka-canon-rows)
 
 (defthm fn-scka-canon-fold-is-fold-of-alpha
   (equal (fn-scka-canon-fold rows fn-arena h acc)
