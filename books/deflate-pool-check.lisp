@@ -108,8 +108,12 @@
                          (:e fn-zin-win-append-back) (:e fn-zin-tab-append-back))))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE: the check is the invariant.
+; The check is the invariant.
 
+; Not a registry claim: the check is a test and diagnosis tool, and this
+; equality is what lets a witness that runs it on a pool the entry returned
+; read as a check of the invariant.  The served claim about the invariant is
+; books/deflate-pool.lisp fn-zpl-decode-bufs-from-the-empty-pool.
 (defthm fn-zpl-pool-check-is-pool-okp
   (equal (fn-zpl-pool-check pool fn-zin-win)
          (fn-zpl-pool-okp pool fn-zin-win))

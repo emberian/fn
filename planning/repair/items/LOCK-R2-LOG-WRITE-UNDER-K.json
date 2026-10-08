@@ -1,0 +1,19 @@
+{
+ "id": "LOCK-R2-LOG-WRITE-UNDER-K",
+ "category": "lock-discipline",
+ "file": "host/native/io.lisp",
+ "line": "7350",
+ "owner": "deputy-C",
+ "severity": "medium",
+ "slice": "host",
+ "source": "lane lock-wrapper-io: lock_discipline_check now follows funcall of *fnn-write-syscall*",
+ "state": "open",
+ "title": "The log frame write (fnn-log-pwrite -> fnn-write-range -> unix-write) runs under the log lock K from fnn-snapshot-job-freeze-log (snapshot-producer.lisp:542 -> fnn-log-rotate io.lisp:8648)",
+ "keys": [
+  "R2|fnn-write-range|K:sb-unix:unix-write"
+ ],
+ "notes": [
+  "Sibling of the already-baselined R2|fnn-log-pwrite|K:sb-posix:lseek (same call, the write half the checker could not see). Trail: fnn-snapshot-job-freeze-log (snapshot-producer.lisp:542) -> fnn-log-rotate (io.lisp:8648) -> fnn-log-pwrite (io.lisp:7350) -> fnn-write-range (io.lisp:683). K serializes the log, so a stalled write blocks every appender and the syncer for its duration. Decision owed: rotation's seal frame written under K by design (declare K io_ok-for-rotation with the bound, a contract row) or the freeze moves the write out of K. Not the checker's to decide."
+ ],
+ "updated": "2026-10-07T00:00:00Z"
+}

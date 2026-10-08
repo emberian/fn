@@ -38,11 +38,12 @@
                   (member (cadr form) '(fnn-connect-start fnn-connect-poll fnn-socket-read-now fnn-socket-write-now)))
           do (load-deployed-forms "host/native/io.lisp" (list (list 'defun (cadr form))))))
 (defparameter *fn-feed-wire-input-max-chunk-octets* 512)
+(load-deployed-forms "books/owner-log-route.lisp"
+ '((defconst *fn-olr-batch-records-default*) (defconst *fn-olr-batch-octets-default*)))
 (load-deployed-forms "books/rev-onto.lisp" '((defun fn-ag-rev-onto)))
 (load-deployed-forms "books/scheduler-peers.lisp"
  '((defun fn-sched-pull-entry) (defun fn-sched-pull-next) (defun fn-sched-pull-interval)
-   (defun fn-sched-pull-busy) (defun fn-sched-pull-find) (defun fn-sched-pull-put-loop)
-   (defun fn-sched-pull-put) (defun fn-sched-pull-configure) (defun fn-sched-pull-duep)
+   (defun fn-sched-pull-busy) (defun fn-sched-pull-find) (def-loop fn-sched-pull-put) (defun fn-sched-pull-configure) (defun fn-sched-pull-duep)
    (defun fn-sched-pull-due-aux) (defun fn-sched-pull-due)
    (defun fn-sched-pull-start) (defun fn-sched-pull-finish)))
 (load-deployed-forms "books/peer-pull.lisp"
@@ -70,6 +71,8 @@
   (declare (ignore service cid)) (funcall thunk))
 (defun fnn-owner-core (subject)
   (case subject (fn-owner-pull-plans *plans*) (fn-owner-catchup-plans *cu-plans*)
+    ;; (bmax omax): fn-olr-bounds of the default configuration
+    (fn-owner-log-bounds (list *fn-olr-batch-records-default* *fn-olr-batch-octets-default*))
     (otherwise (error "unexpected owner subject ~s" subject))))
 (defun fnn-owner-wall-milliseconds () 1000)
 (defun fnn-pull-profile (plan) (declare (ignore plan)) nil)

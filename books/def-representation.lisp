@@ -302,7 +302,7 @@
               ,st))))
        `(defthm ,(adt-sym put "-UNFOLDS")
           (equal (,put n x c) (adt-pg-rput ,ci n x *adt-pg-rows* c))
-          :hints (("Goal" :in-theory (enable ,put adt-pg-rput))))
+          :hints (("Goal" :in-theory (e/d (,put adt-pg-rput) (floor mod (tau-system))))))
        `(defun ,get (n ,st)
           (declare (xargs :stobjs ,st :guard (natp n)
                           :guard-hints (("Goal" :in-theory (disable floor mod)
@@ -327,7 +327,7 @@
               0))))
        `(defthm ,(adt-sym get "-UNFOLDS")
           (equal (,get n c) (adt-pg-rget ,ci n *adt-pg-rows* c))
-          :hints (("Goal" :in-theory (enable ,get adt-pg-rget))))
+          :hints (("Goal" :in-theory (e/d (,get adt-pg-rget) (floor mod (tau-system))))))
        `(in-theory (disable ,put ,get))
        (adt-pg-col-events name (cdr cols) (+ 1 ci))))))
 
@@ -1827,7 +1827,8 @@
      (adt-pg-tree-field-events name fields trees 0)
      `((defun ,enc (rec)
          (declare (xargs :guard (and (true-listp rec) ,@okps)
-                         :guard-hints (("Goal" :in-theory (enable adt-tree-okp-is-sccb-treep)))))
+                         :guard-hints (("Goal" :in-theory (union-theories '(adt-tree-okp-is-sccb-treep fn-sccb-treep-is-treep)
+                                                                    (theory 'minimal-theory))))))
          (list ,@(adt-tree-enc-terms fields trees 0)))
        (defthm ,(adt-sym enc "-IS-TMASK-ENC")
          (equal (,enc rec) (adt-pg-tmask-enc ',mask rec))
@@ -1870,6 +1871,37 @@
         (declare (xargs :guard (and (,(adt-sym name "$AP") ,a) (true-listp rec) ,@okps
                                     (adt-rec-p ,schema-const (,(adt-sym name "-TREE-ENC") rec)))))
         (append ,a (list (,(adt-sym name "-TREE-ENC") rec)))))))
+
+; The tree append's two obligations (APPEND-T{CORRESPONDENCE} and
+; APPEND-T{PRESERVED}) carry the hypothesis `adt-rec-p' of the whole encoded
+; record; the uniform OB-HINTS enable the recognizers and the logic names, and
+; the prover opens that hypothesis into one clause per column.  Each is one
+; rewrite by the library lemmas already proved for the export, so it is closed
+; from the minimal theory plus exactly those rules; every other obligation
+; keeps the uniform hints.
+(defun rep-obligation-hints (thm-name name hints)
+  (let ((nm (symbol-name thm-name)))
+    (cond
+     ((equal nm (concatenate 'string (symbol-name (adt-sym name "-APPEND-T")) "{CORRESPONDENCE}"))
+      `(("Goal" :in-theory (union-theories
+                            '(,(adt-sym name "$CORR") ,(adt-sym name "$AP") ,(adt-sym name "$A-APPEND-T")
+                              ,(adt-sym name "$C-APPEND-T-IS-APPEND") ,(adt-sym name "$C-APPEND-UNFOLDS")
+                              adt-pg-corr-append)
+                            (theory 'minimal-theory)))))
+     ((equal nm (concatenate 'string (symbol-name (adt-sym name "-APPEND-T")) "{PRESERVED}"))
+      `(("Goal" :in-theory (union-theories
+                            '(,(adt-sym name "$AP") ,(adt-sym name "$A-APPEND-T") adt-seq-p-of-append)
+                            (theory 'minimal-theory)))))
+     (t hints))))
+
+(defun rep-obligation-thms (missing name hints wrld)
+  (if (endp missing)
+      nil
+    (cons `(defthm ,(car (car missing))
+             ,(untranslate (cadr (car missing)) t wrld)
+             :rule-classes nil
+             :hints ,(rep-obligation-hints (car (car missing)) name hints))
+          (rep-obligation-thms (cdr missing) name hints wrld))))
 
 (defun rep-pg-seq-events (name fields0 trees once)
   (let* ((fields (adt-norm-fields fields0))
@@ -1938,7 +1970,7 @@
        ,@(and once (adt-pg-once-events name fields trees schema-const))
        (make-event
         (er-let* ((missing (defabsstobj-missing-events ,@(cdr defabs))))
-          (value (cons 'progn (adt-obligation-thms missing ',ob-hints (w state))))))
+          (value (cons 'progn (rep-obligation-thms missing ',name ',ob-hints (w state))))))
        ,defabs
        (defthm ,(adt-sym name "-COUNT-IS-LEN")
          (equal (,(adt-sym name "-COUNT") ,name) (len ,name))

@@ -40,13 +40,11 @@
 ;   and that view is the replay of at most the records the Store held at
 ;   the capture (fn-ocl-view-historyp's version bound).
 ;
-;   KEYSTONE fn-olr-take-never-joins-the-batch-in-flight: the log's take
-;   (books/store-log-route.lisp fn-olr-take, which host/native/io.lisp
-;   fnn-log-take calls for every member a START or START-NEXT drains) never
-;   changes the kernel's batch in flight; a taken record joins the open
-;   batch, which is appended only after the batch in flight is fenced
-;   (fn-ocp-sync-only-when-none-in-flight).  So a POST a reader queued
-;   during a barrier never joins the batch in flight.
+;   fn-lgc-take-never-joins-the-batch-in-flight (books/store-log-kernel-concrete.lisp,
+;   PRF-288): the host's concrete take (host/native/io.lisp fnn-log-take, every
+;   member a START or START-NEXT drains) never changes the kernel's batch in
+;   flight; a taken record joins the open batch, which is appended only after
+;   the batch in flight is fenced (fn-ocp-sync-only-when-none-in-flight).
 (in-package "ACL2")
 (include-book "owner-commit-pipeline")
 (include-book "config-owner-live-complete")
@@ -214,22 +212,6 @@
                                fn-ocvm-inv-gives-the-completed-prefix
                                fn-ocv-reader-view fn-ocvm-views fn-ocvm-w
                                fn-ocvm-c fn-ocvm-a fn-ocvm-b (fn-ocvm-init)))))
-
-; -----------------------------------------------------------------------------
-; A POST queued during a barrier never joins the batch in flight.
-
-(defthm fn-olr-take-never-joins-the-batch-in-flight
-  (and (equal (fn-lgk-inflight (cadr (fn-olr-take ks record txid count octets bmax omax unit)))
-              (fn-lgk-inflight ks))
-       (implies (equal (car (fn-olr-take ks record txid count octets bmax omax unit)) :taken)
-                (equal (fn-lgk-batch (cadr (fn-olr-take ks record txid count octets bmax omax unit)))
-                       (append (true-list-fix (fn-lgk-batch ks)) (list record)))))
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-olr-take fn-lgk-prepare fn-lgk-make fn-lgk-inflight
-                                fn-lgk-batch fn-lgk-committed fn-lgk-last fn-lgk-frontier
-                                fn-lgk-next-txid fn-lgk-acked fn-lgk-phase nth-add1
-                                nth-0-cons car-cons cdr-cons nth)
-                              (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; The owner with another view.

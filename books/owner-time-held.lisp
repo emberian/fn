@@ -54,6 +54,17 @@
   (fn-och-caller-wake (fn-otm-phase-of s) (fn-otm-held s) (if returned t nil)))
 
 ; -----------------------------------------------------------------------------
+; The value after a step, read back (D26: the keystones below read the
+; value through this instead of reopening fn-otm-with-step).
+(local (defthm fn-oth-with-step-reads
+  (let ((s2 (fn-otm-with-step s ph n h)))
+    (and (equal (fn-otm-phase-of s2) (if (fn-ocs-in-flight-p ph) ph :idle))
+         (equal (fn-otm-next-of s2) (if n t nil))
+         (equal (fn-otm-held s2) (if h t nil))
+         (equal (fn-otm-disk s2) (fn-otm-disk s))
+         (equal (fn-otm-clock s2) (fn-otm-clock s))))
+  :hints (("Goal" :in-theory (enable fn-otm-with-step)))))
+
 ; KEYSTONE.  The lifted entries are owner-commit-held's on S's projection:
 ; the action, phase, next and held of fn-otm-held-event are fn-och-step's.
 (defthm fn-otm-held-event-is-the-held-step
@@ -65,7 +76,9 @@
          (equal (fn-otm-next-of s2) (if (mv-nth 2 r) t nil))
          (equal (fn-otm-held s2) (if (mv-nth 3 r) t nil))
          (equal (fn-otm-disk s2) (fn-otm-disk s))
-         (equal (fn-otm-clock s2) (fn-otm-clock s)))))
+         (equal (fn-otm-clock s2) (fn-otm-clock s))))
+  :hints (("Goal" :in-theory (disable fn-otm-with-step fn-och-step fn-otm-phase-of fn-otm-next-of
+                                      fn-otm-held fn-otm-disk fn-otm-clock))))
 
 ; KEYSTONE.  With nothing held and no held event, the held event IS the time
 ; model's commit event (S0 over the value).
@@ -73,7 +86,14 @@
   (implies (and (not (fn-otm-held s))
                 (not (member-equal event '(:started-held :started-none-held))))
            (equal (fn-otm-held-event s event) (fn-otm-commit-event s event)))
-  :hints (("Goal" :in-theory (enable fn-otm-commit-event fn-ocp-commit-event))))
+  :hints (("Goal" :in-theory (e/d (fn-otm-commit-event fn-ocp-commit-event fn-otm-with-step
+                                   fn-otm-held-event)
+                                  (fn-och-step fn-ocp-commit-step fn-otm-keep fn-oth-with-step-reads
+                                   fn-otm-held-event-is-the-held-step fn-ocs-in-flight-p
+                                   fn-otm-make fn-ocp-make fn-ocs-make))
+                  :use ((:instance fn-och-step-without-a-held-batch-is-the-pipelines
+                                   (phase (fn-otm-phase-of s)) (next (fn-otm-next-of s))
+                                   (held nil))))))
 
 ; KEYSTONE.  The wakes over the value: with nothing held the committer's is
 ; the time model's; with a batch held the committer waits and the caller
@@ -123,3 +143,35 @@
                 (iff (fn-otm-committer-may-start s)
                      (not (fn-ocs-in-flight-p (fn-otm-phase-of s)))))))
 
+
+; KEYSTONE.  The held caller's answer over the host's own quantum-2 sequence
+; (host/native/owner.lisp fnn-owner-held-complete): the batch's word
+; (:fenced or :failed) through fn-otm-held-event, then :completed, or
+; :completed-stopping when that step was :complete and the owner is stopping,
+; then fn-och-caller-answer of the action.  For the batch quantum 1 left held
+; at :staged it is the held outcome of S7 (fn-och-held-caller-answer): the
+; submission is taken exactly when the job ran every phase and the owner is
+; not stopping.
+(defthm fn-otm-held-quantum-2-answers-the-held-outcome
+  (implies (and (fn-otm-held s)
+                (equal (fn-otm-phase-of s) :staged)
+                (member-equal word '(:fenced :failed)))
+           (mv-let (step s2) (fn-otm-held-event s word)
+             (equal (fn-och-caller-answer
+                     (mv-nth 0 (fn-otm-held-event
+                                s2 (if (and (equal step :complete) stopping)
+                                       :completed-stopping
+                                     :completed))))
+                    (fn-och-held-outcome (if (equal word :fenced) :done :uncertain)
+                                         stopping))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-oqw-outcome-of-final)
+                           (fn-otm-held-event fn-otm-phase-of fn-otm-next-of fn-otm-held
+                            fn-otm-with-step fn-otm-disk fn-otm-clock))
+           :use ((:instance fn-otm-held-event-is-the-held-step (event word))
+                 (:instance fn-otm-held-event-is-the-held-step
+                            (s (mv-nth 1 (fn-otm-held-event s word)))
+                            (event :completed))
+                 (:instance fn-otm-held-event-is-the-held-step
+                            (s (mv-nth 1 (fn-otm-held-event s word)))
+                            (event :completed-stopping))))))

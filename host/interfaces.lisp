@@ -3788,12 +3788,6 @@
               (fn-idle-gc-verdict-collects-when-owed :via fn-idle-gc-verdict)
               fn-idle-gc-decide-never-collects-during-a-publication))
 
-(definterface fn-load-gc-decide
-  :class :common-lisp-compliant
-  :keystones ((fn-load-gc-verdict-collects-only-when-grown :via fn-load-gc-verdict)
-              (fn-load-gc-verdict-collects-when-grown :via fn-load-gc-verdict)
-              (fn-load-gc-wait-bounds-the-growth :via fn-load-gc-verdict)))
-
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)
 
@@ -4653,13 +4647,25 @@
 (definterface fn-his-build-source-count
   :class :common-lisp-compliant
   :kinds ((records true-listp)))
-(definterface fn-his-build-yieldp
-  :class :common-lisp-compliant
-  :kinds ((ordinal natp)))
 
 (definterface fn-his-build-begin
   :class :common-lisp-compliant
   :kinds ((salt natp)))
+
+(definterface fn-his-build-quantum :class :common-lisp-compliant)
+(definterface fn-his-plan-begin :class :common-lisp-compliant)
+(definterface fn-his-place-begin :class :common-lisp-compliant)
+(definterface fn-his-plan-run
+  :class :common-lisp-compliant
+  :kinds ((dl-k natp)))
+(definterface fn-his-build-open
+  :class :common-lisp-compliant)
+(definterface fn-his-build-place-run
+  :class :common-lisp-compliant
+  :kinds ((k natp)))
+(definterface fn-his-build-close
+  :class :common-lisp-compliant
+  :kinds ((np natp)))
 
 (definterface fn-his-row-begin
   :class :common-lisp-compliant)
@@ -5777,6 +5783,7 @@
 (definterface fn-owner-hroot-resize :class :program)
 (definterface fn-owner-hroot-transient :class :program)
 (definterface fn-owner-hroot-begin :class :program)
+(definterface fn-owner-hroot-note :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
 (definterface fn-owner-hroot-frontier-value :class :program)
 (definterface fn-owner-hroot-row :class :program)

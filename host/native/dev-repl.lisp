@@ -239,14 +239,22 @@ normal fencing. Earlier evaluated/admitted forms are never rolled back."
       (setf *fnn-dev-repl* nil)))))))
 
 (defun fnn-dev-repl-stop (service)
+ "Publish STOPPING and capture wake targets under XCTL; signal after release.
+The sole REPL worker keeps socket-close custody and admits no later client;
+after signaling, recheck the monotone stopping fence under XCTL."
  (declare (ignore service))
  (when *fnn-dev-repl*
-  (let ((control *fnn-dev-repl*))
+  (let* ((control *fnn-dev-repl*)
+         (sockets
+           (fnn-with-control (control)
+            (unless (fnn-control-state-stopping control)
+             (setf (fnn-control-state-stopping control) t)
+             (remove nil (cons (fnn-control-state-listener control)
+                               (copy-list (fnn-control-state-clients control))))))))
+   (dolist (socket sockets) (fnn-socket-shutdown socket))
    (fnn-with-control (control)
-    (setf (fnn-control-state-stopping control) t)
-    (dolist (socket (fnn-control-state-clients control)) (fnn-socket-shutdown socket)))
-   (when (fnn-control-state-listener control)
-    (fnn-socket-shutdown (fnn-control-state-listener control))))))
+    (unless (fnn-control-state-stopping control)
+     (fnn-fault "developer REPL stop lost its fence"))))))
 
 (defun fnn-dev-repl-close (service)
  (fnn-dev-repl-stop service)

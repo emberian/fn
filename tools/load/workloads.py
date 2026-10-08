@@ -24,6 +24,7 @@ PHASE_KINDS = {
     "census": set(),
     "prof": {"article_kib", "reps"},
     "publish": set(),
+    "publish_live": {"rate_per_s", "octets", "before_s", "after_s", "max_wait_s"},
     "read": {"readers", "count", "duration_s", "cmd", "poster"},
     "hold": {"steps", "step_settle_s", "close"},
     "idle": {"seconds"},
@@ -31,6 +32,7 @@ PHASE_KINDS = {
     "reopen": set(),
     "checkpoint": set(),
     "verify": {"count"},
+    "peers": {"mode", "rate_per_s", "baseline_s", "posts", "deadline_s", "drain_s", "octets"},
     "unimplemented": {"reason"},
 }
 COMMON = {"name", "kind", "measure"}
@@ -104,6 +106,8 @@ def resolve(cell_id, data=None):
     if variant:
         if variant in spec.get("variants", ()):
             spec["preset"] = variant
+            if variant in spec.get("variant_preload", {}):
+                spec.setdefault("store", {})["preload"] = spec["variant_preload"][variant]
         elif re.fullmatch(r"R\d+", variant):
             phases = [p for p in spec["phases"] if p["name"] == variant]
             if not phases:

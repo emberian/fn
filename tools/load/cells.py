@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 
+from . import peers
 from .result import fit_exponent
 
 
@@ -40,7 +41,9 @@ def derive(workload, phases):
         if p.get("status") == "not-implemented":
             nm.setdefault("*", p.get("reason"))
     fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers, "article-sizes": _sizes, "growth": _growth,
-          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "prof-ops": _prof}.get(workload)
+          "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "publish-stall": _stall, "prof-ops": _prof,
+          "catchup": peers.derive_catchup, "catchup-prof": peers.derive_catchup, "peers-feed": peers.derive_catchup,
+          "peers-catchup-load": peers.derive_catchup}.get(workload)
     if fn:
         fn(phases, m, nm)
     if workload == "rss-small-filled" and "rss_kib.hwm" not in m:
@@ -328,11 +331,34 @@ def _commands(phases, m, nm):
         if st.get("p99_ms") is not None:
             worst = max(worst or 0, st["p99_ms"])
         elif st.get("n"):
-            nm["cmd.p99_ms." + name] = "fewer than 200 samples"
+            nm["cmd.p99_ms." + name] = "fewer than 200 samples (n=%d, time budget); max %s ms" % (st["n"], st.get("max_ms"))
+            if st.get("max_ms") is not None:
+                worst = max(worst or 0, st["max_ms"])      # a command under 200 samples is judged on its worst sample
     for name, v in (ph.get("cpu_ms_per_op_by_cmd") or {}).items():
         m["cmd.cpu_ms_per_op." + name] = v
     if worst is not None:
         m["cmd.p99_ms.max"] = worst
+
+
+def _stall(phases, m, nm):
+    ph = _phase(phases, "publish-live")
+    if not ph or ph.get("status") not in (None, "ok"):
+        nm["publish.stall_max_s"] = (ph or {}).get("reason") or "publish-live phase did not complete"
+        return
+    m["publish.stall_max_s"] = ph.get("stall_max_s")
+    m["publish.window_s"] = ph.get("window_s")
+    m["publish.window_posts"] = ph.get("window_posts")
+    m["publish.done_gap_max_s"] = ph.get("done_gap_max_s")
+    m["publish.window_late_max_s"] = ph.get("window_late_max_s")
+    m["publish.achieved_per_s"] = ph.get("achieved_per_s_in_window")
+    st = (ph.get("cmd") or {}).get("POST") or {}
+    if st.get("p99_ms") is not None:
+        m["publish.post_p99_ms"] = st["p99_ms"]
+    elif st.get("n"):
+        nm["publish.post_p99_ms"] = "fewer than 200 POSTs inside the window (n=%d); max reported as publish.stall_max_s" % st["n"]
+    if st.get("p50_ms") is not None:
+        m["publish.post_p50_ms"] = st["p50_ms"]
+    m["publish.hwm_before_kib"], m["publish.hwm_after_kib"] = ph.get("hwm_before_kib"), ph.get("hwm_after_kib")
 
 
 def merge_sweep(cell_id, workload, subs):
@@ -368,7 +394,7 @@ def merge_sweep(cell_id, workload, subs):
     cmd_exp = [v for k, v in metrics.items() if k.startswith("cmd.p99_ms.") and k.endswith(".exponent") and not k.startswith("cmd.p99_ms.max")]
     if cmd_exp:
         metrics["cmd.p99_exponent.max"] = max(cmd_exp)
-    for name in ("cmd.p99_ms.max",):
+    for name in ("cmd.p99_ms.max", "publish.stall_max_s"):
         vals = [v for k, v in metrics.items() if k.startswith(name + "@")]
         if vals:
             metrics[name] = max(vals)

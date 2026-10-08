@@ -48,7 +48,8 @@ from tools.load import cells as cells_mod          # noqa: E402
 from tools.load import result as res_mod            # noqa: E402
 from tools.load import workloads as wl              # noqa: E402
 
-BOX_BASE = "/tank/fn/scratch/load-harness"
+NOFILE = [None]            # soft RLIMIT_NOFILE the run raised itself to (recorded in each cell box dict)
+BOX_BASE = os.environ.get("FN_LOAD_BOX_BASE", "/tank/fn/scratch/load-harness")
 # One-off hook files live in the evidence dir (not tools/load): O2's FN_TRACE spans replace them.
 HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
 HOOK = HOOKS / "w13-idle-gc.lisp"
@@ -229,6 +230,7 @@ class Node:
         self.launcher, self.env = target.launcher(self.work, hooks, self.env)
         self.gc_log = Path(gc_log)
         self.proc, self.pid, self.port = None, None, None
+        self.post_init, self.log_path = [], None      # peers.py: operator words run after init; an [log] path
         self.config = self.work / "fn.toml"
         self.store = self.work / "store"
         self.err_n = 0
@@ -237,12 +239,14 @@ class Node:
 
     def write_config(self):
         import socket
-        with socket.socket() as s:
-            s.bind(("127.0.0.1", 0))
-            self.port = s.getsockname()[1]
+        if self.port is None:
+            with socket.socket() as s:
+                s.bind(("127.0.0.1", 0))
+                self.port = s.getsockname()[1]
         server = ""        # fn.toml has no [server] table (books/native-config.lisp: key-allowedp); the cap is policy, see apply_policy
-        self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n%s'
-                               % (self.store, self.port, self.work / "c.sock", server))
+        self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n%s%s'
+                               % (self.store, self.port, self.work / "c.sock", server,
+                                  '[log]\npath = "%s"\n' % self.log_path if self.log_path else ""))
 
     def argv(self, *words):
         return [str(self.launcher), "--fn", "operator", str(self.config), *words]
@@ -253,6 +257,15 @@ class Node:
                            stderr=subprocess.STDOUT, timeout=900)
         if p.returncode != 0:
             raise CellError("operator init exit %d: %s" % (p.returncode, p.stdout[-400:].decode("utf-8", "replace")))
+        for words in self.post_init:
+            self.operator(*words)
+
+    def operator(self, *words):
+        """An offline `operator CONFIG words...` verb (owner stopped or not yet started); stdout+stderr."""
+        p = subprocess.run(self.argv(*words), env=self.env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=900)
+        if p.returncode != 0:
+            raise CellError("operator %s exit %d: %s" % (" ".join(words[:3]), p.returncode, p.stdout[-400:].decode("utf-8", "replace")))
+        return p.stdout.decode("utf-8", "replace")
 
     def decide_heap(self):
         """The heap and control stack the image's own probe decides for this store (MEM-002):
@@ -580,6 +593,8 @@ class Run:
             raise CellError("no articles to read: the store is empty and nothing was POSTed")
         lat = [[] for _ in range(readers)]
         bad = collections.Counter()
+        bad_win = collections.Counter()        # refusals per whole second since the phase began, by reply code
+        t_phase = time.monotonic()
         done = itertools.count()
         errs = []
         lock = threading.Lock()
@@ -611,6 +626,7 @@ class Run:
                         lat[k].append(d)
                     else:
                         bad[refusal_name(rep)] += 1
+                        bad_win[(int(time.monotonic() - t_phase), rep[:3].decode("latin-1"))] += 1
                 c.close()
             except Exception as e:      # noqa: BLE001
                 errs.append(repr(e))
@@ -659,9 +675,91 @@ class Run:
             out["cmd"]["POST"] = res_mod.lat_stats(plat)
         if bad:
             out["bad_replies"] = dict(bad)
+            codes = sorted({c for _, c in bad_win})
+            out["bad_per_window"] = {c: {"total": sum(v for (w, cc), v in bad_win.items() if cc == c),
+                                         "windows": len({w for (w, cc) in bad_win if cc == c}),
+                                         "max_per_1s": max(v for (w, cc), v in bad_win.items() if cc == c),
+                                         "of_windows": int(secs) + 1} for c in codes}
         if errs:
             out["errors"] = errs
             self.errors += errs
+        return out
+
+    def phase_publish_live(self, ph):
+        """W8 stall row: open-loop POSTs at rate_per_s on one connection; after before_s a checkpoint is requested from the
+        running owner (`store checkpoint` with an owner is a request to it, docs/operator-internals.md); the window runs until
+        the owner logs the publication done.  Reports the longest POST stall (intended send to 240), p99 of POSTs whose
+        intended time is inside the window, window duration, VmHWM before and after."""
+        rate, octets = ph["rate_per_s"], ph["octets"]
+        before_s, after_s, max_wait = ph.get("before_s", 5), ph.get("after_s", 5), ph.get("max_wait_s", 600)
+        c = self.conn()
+        if c is None:
+            raise CellError("no connection for the POST stream")
+        errp = self.node.work / ("owner.%d.err" % self.node.err_n)
+        err0 = errp.stat().st_size if errp.exists() else 0
+        hwm0 = (proc_snapshot(self.node.pid) or {}).get("hwm")
+        gap = 1.0 / rate
+        recs = []                       # (intended, done, latency or None)
+        stop = threading.Event()
+
+        def poster():
+            try:
+                t0 = time.perf_counter()
+                k = 0
+                while not stop.is_set():
+                    intended = t0 + k * gap
+                    now = time.perf_counter()
+                    if intended > now:
+                        time.sleep(intended - now)
+                    d = post_one(c, self.ctr, octets)
+                    done = time.perf_counter()
+                    recs.append((intended, done, d, (done - intended) if d is not None else None))
+                    k += 1
+            except Exception as e:      # noqa: BLE001
+                self.errors.append(repr(e))
+        th = threading.Thread(target=poster)
+        th.start()
+        t_start = time.perf_counter()
+        time.sleep(before_s)
+        t_req = time.perf_counter()
+        w0 = time.monotonic()
+        req = subprocess.run(self.node.argv("store", "checkpoint"), env=self.node.env, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, timeout=600)
+        reply = req.stdout.decode("utf-8", "replace").strip()[-300:]
+        t_end, end_line = None, None
+        deadline = time.monotonic() + max_wait
+        if req.returncode == 0 and reply.split()[:1] != ["nothing-to-compact"]:
+            while time.monotonic() < deadline:
+                new = errp.read_bytes()[err0:].decode("utf-8", "replace") if errp.exists() else ""
+                done_lines = [ln for ln in new.splitlines() if ln.startswith("CHECKPOINT auto ") and "failed" not in ln and "refused" not in ln]
+                if done_lines:
+                    t_end, end_line = time.perf_counter(), done_lines[-1]
+                    break
+                time.sleep(0.2)
+        time.sleep(after_s)
+        stop.set()
+        th.join()
+        hwm1 = (proc_snapshot(self.node.pid) or {}).get("hwm")
+        out = {"cmd": {}, "hwm_before_kib": hwm0, "hwm_after_kib": hwm1, "request_reply": reply, "request_rc": req.returncode,
+               "owner_log": end_line}
+        ok = [r for r in recs if r[2] is not None]
+        if t_end is None:
+            out["status"] = "not-measured"
+            out["reason"] = "no 'CHECKPOINT auto' line within %d s of the request (reply: %s)" % (max_wait, reply)
+            return out
+        inwin = [r[2] for r in ok if t_req <= r[0] <= t_end]          # a POST's own wall: send to 240
+        before = [r[2] for r in ok if r[0] < t_req]
+        behind = [r[3] for r in ok if t_req <= r[0] <= t_end]         # from the intended send time (includes a backlog)
+        dones = sorted(r[1] for r in ok if t_req - 1 <= r[1] <= t_end + 1)
+        out["window_s"] = round(t_end - t_req, 3)
+        out["window_posts"] = len(inwin)
+        out["window_late_max_s"] = round(max(behind), 4) if behind else None
+        out["achieved_per_s_in_window"] = round(len(inwin) / (t_end - t_req), 2) if t_end > t_req else None
+        out["stall_max_s"] = round(max(inwin), 4) if inwin else None
+        out["done_gap_max_s"] = round(max((b - a for a, b in zip(dones, dones[1:])), default=0), 4)
+        out["cmd"]["POST"] = res_mod.lat_stats(inwin) if inwin else {}
+        out["cmd"]["POST_before"] = res_mod.lat_stats(before) if before else {}
+        out["posts_refused_or_failed"] = len(recs) - len(ok)
         return out
 
     def args_known_floor(self):
@@ -685,7 +783,10 @@ class Run:
         out, cpu_ms, bad = {}, {}, {}
         for name, mk in plan.items():
             ts, c0 = [], (proc_snapshot(self.node.pid) or {}).get("cpu_s")
+            t_cmd = time.monotonic()
             for k in range(reps):
+                if k >= 10 and time.monotonic() - t_cmd > ph.get("budget_s", 90):
+                    break          # a command that costs seconds (LIST is O(n)) stops at its time budget; n is recorded and p99 stays null
                 text, multi = mk(k)
                 t0 = time.perf_counter()
                 rep = c.line(text)
@@ -697,7 +798,7 @@ class Run:
             c1 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
             out[name] = res_mod.lat_stats(ts)
             if c0 is not None and c1 is not None:
-                cpu_ms[name] = round((c1 - c0) * 1000.0 / reps, 3)
+                cpu_ms[name] = round((c1 - c0) * 1000.0 / max(1, len(ts)), 3)
         c.close()
         ts = []
         c0 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
@@ -802,6 +903,11 @@ class Run:
                 first_bad = first_bad or {"id": i, "got_octets": len(body), "want_octets": len(want)}
         c.close()
         return {"verified": len(ids), "mismatches": mism, "first_mismatch": first_bad}
+
+    def phase_peers(self, ph):
+        """W6: a second node B beside the harness node A (tools/load/peers.py)."""
+        from . import peers
+        return peers.run_phase(self, ph, sys.modules[__name__])
 
     def phase_census(self, ph):
         """SBCL's accounting of the dynamic space (the one-off w15-census.lisp hook), raw and after a full GC."""
@@ -1003,13 +1109,22 @@ class Run:
                 time.sleep(1)
                 base = (proc_snapshot(node.pid) or {}).get("vmrss")
                 want = (mc or 32) + 1
-                held, greetings = [], collections.Counter()
-                for _ in range(want):
-                    c = m.Conn(node.port)
+                held, greetings, last = [], collections.Counter(), None
+                for i in range(want):
+                    # One loopback source address per 16,384 connections: a single
+                    # source runs out of ephemeral ports near 28k (conncap-hbox4).
+                    try:
+                        c = m.Conn(node.port, source="127.0.0.%d" % (1 + i // 16384))
+                    except ConnectionRefusedError as e:
+                        greetings["refused"] += 1
+                        last = str(e)[-200:]
+                        break
+                    except OSError as e:
+                        t["client_error"] = "%s after %d connections" % (e, i)
+                        break
                     held.append(c)
                     greetings[c.greeting[:3].decode("latin-1")] += 1
                 admitted = greetings.get("200", 0)
-                last = held[-1].greeting.decode("latin-1").strip()
                 after = (proc_snapshot(node.pid) or {}).get("vmrss")
                 t.update(started=True, admitted=admitted, past_cap_greeting=last if admitted < want else None,
                          vmrss_base_kib=base, vmrss_held_kib=after,
@@ -1027,6 +1142,8 @@ class Run:
             while mc <= ph.get("max_try", 4096):
                 t = trial(preset, mc)
                 trials.append(t)
+                if t.get("client_error"):
+                    break                       # the client ran out, not the node: no first_refused
                 if t.get("started") and t.get("admitted") == mc:
                     good = mc
                     mc *= 2
@@ -1083,6 +1200,10 @@ def prepare_store(node, run, spec, cache_dir, key):
         lock = node.store / "writer.lock"
         lock.touch()
         lock.chmod(0o600)
+        rb = subprocess.run([str(node.launcher), "--fn", "store", str(node.store), "rebind-filesystem"], env=node.env,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=900)     # a copy on another filesystem than the fixture's (PKT-579)
+        if rb.returncode != 0:
+            raise CellError("fixture rebind-filesystem exit %d: %s" % (rb.returncode, rb.stdout[-400:].decode("utf-8", "replace")))
         node.start()
         ids, group = discover_ids(node.port)
         if not ids:
@@ -1111,6 +1232,7 @@ def prepare_store(node, run, spec, cache_dir, key):
     with contextlib.suppress(OSError):
         cached.mkdir(parents=True, exist_ok=True)
         shutil.copytree(node.store, cached / "store", symlinks=True)
+    node.decided = None     # the probe decides again for the filled store: the empty store's heap refuses its cold start
     node.start()
     run.ctr.refusals.clear()
     run.ctr.admitted = run.ctr.refused = 0
@@ -1140,6 +1262,10 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
                 spec.get("heap", "decided"), None)
     ctr = Counters()
     run = Run(node, spec, ctr, args)
+    run.peers = None
+    if spec.get("peers"):
+        from . import peers
+        run.peers = peers.setup(node, spec, sys.modules[__name__])
     run.cell_id = cell.id
     cr = {"trace": None, "cell": cell.id, "workload": cell.workload, "target": target.kind, "arm": arm, "rep": rep,
           "preset": spec["preset"], "flags": node.flags, "git": args.rev, "status": "running",
@@ -1151,7 +1277,7 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
           "box": {"name": args.box, "cores": len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count(),
                   "loadavg_start": loadavg(), "arc_bytes_start": arc_size(),
                   "pinned": sorted(os.sched_getaffinity(0)) if args.cores else None,
-                  "busy_cores_set": ("%d-%d" % (min(os.sched_getaffinity(0)), max(os.sched_getaffinity(0)))) if args.cores else None,
+                  "nofile_soft": NOFILE[0], "busy_cores_set": ("%d-%d" % (min(os.sched_getaffinity(0)), max(os.sched_getaffinity(0)))) if args.cores else None,
                   "busy_cores_start": busy_cores(sorted(os.sched_getaffinity(0))) if args.cores else None, "fs": fs_type(work)},
           "loopback_only": True}
     if sub:
@@ -1231,6 +1357,9 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         cr["traceback"] = traceback.format_exc()[-900:]
     finally:
         node.sampler.stop_ev.set()
+        if run.peers:
+            with contextlib.suppress(Exception):
+                run.peers.close(keep=args.keep)
         with contextlib.suppress(Exception):
             cr["exit_code"] = node.stop()
         cr["refusals"] = dict(ctr.refusals)
@@ -1269,7 +1398,18 @@ def run_sweep(cell_id, cell, target, arm, rep, args, data, res, write):
     return merged
 
 
+def raise_nofile(want=65536):
+    """The driver and the owner it starts inherit RLIMIT_NOFILE: lift the soft limit so a capacity or reader cell is not capped by 1024."""
+    import resource
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    new = want if hard == resource.RLIM_INFINITY else min(want, hard)
+    if new > soft:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (new, hard))
+    return resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+
+
 def cmd_run(args):
+    NOFILE[0] = raise_nofile()
     data = wl.load()
     args.bars = res_mod.load_bars()
     args.data = data
@@ -1351,7 +1491,7 @@ def cmd_box(args):
         if p.returncode:
             raise SystemExit("rsync %s failed: %s" % (src, p.stderr))
     inner = ["python3", "-m", "tools.load.driver", "run", "--cell", args.cell, "--label", args.label, "--out", runs,
-             "--box", args.box, "--repeat", str(args.repeat)]
+             "--box", args.box, "--repeat", str(args.repeat), "--cache", "%s/stores" % base]
     for img in args.image:
         inner += ["--image", img]
     for core in args.fn_core:

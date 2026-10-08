@@ -11,8 +11,8 @@ time of three books over the ten-second line, steps unchanged.
         --jobs 2 [BOOK ...]           # default: every book of the Makefile roots
     python3 tools/tau_cost.py wait persvati <run-id> --remote-root ...
     python3 tools/tau_cost.py rank build/tau-cost/<run-id> [...] \\
-        --json planning/evidence/tau-cost-<date>.json
-    python3 tools/tau_cost.py apply planning/evidence/tau-cost-<date>.json \\
+        --json build/tau-cost-<date>.json
+    python3 tools/tau_cost.py apply build/tau-cost-<date>.json \\
         [--min-seconds 1 --min-fraction 0.2]
 
 `run` needs a remote root holding the certificates of the tree
@@ -63,7 +63,6 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import evidence_store
 import farm  # noqa: E402
 import ledger  # noqa: E402
 import rule_cost  # noqa: E402
@@ -526,15 +525,12 @@ def main(argv: list[str] | None = None) -> int:
             files = []
             for item in args.logs:
                 files += sorted(item.glob("*.log")) if item.is_dir() else [item]
-            ranking = json.loads(evidence_store.read_input_text(ROOT, args.ranking))
+            ranking = json.loads(Path(args.ranking).read_text(encoding="utf-8"))
             print("\n".join(repair(rank(files, 0.5), ranking)))
             return 0
-        result = json.loads(evidence_store.read_input_text(ROOT, args.ranking))
+        result = json.loads(Path(args.ranking).read_text(encoding="utf-8"))
         print("\n".join(apply(result, args.min_seconds, args.min_fraction)))
         return 0
-    except evidence_store.EvidenceError as error:
-        print(f"tau_cost: {type(error).__name__}: {error}", file=sys.stderr)
-        return evidence_store.exit_code(error)
     except (TauCostError, rule_cost.RuleCostError, OSError) as error:
         print(f"tau_cost: {error}", file=sys.stderr)
         return 2

@@ -89,3 +89,54 @@
                                 *olact-free* *olaut-profile*))
       (equal (fn-olau-authorize-carried *ocp-closed* *olaut-record* nil nil *olaut-profile*)
              (fn-native-admin-publication-result :refused :lock nil nil nil))))
+
+
+(include-book "../../books/defkeystone")
+(defconst *olact-octets* (fn-cfg-encode *olaut-record*))
+(assert-event
+ (and (eq (symbol-class 'fn-olau-authorize-observed (w state)) :common-lisp-compliant)
+      (equal (fn-record-parse-value (fn-cfg-decode-exact *olact-octets*)) *olaut-record*)
+      (equal (fn-olau-authorize-observed *ocp-closed* nil t :absent *olaut-profile*)
+             (fn-native-admin-publication-result :refused :decode nil nil nil))
+      (equal (fn-olau-authorize-observed *ocp-closed* nil t :error *olaut-profile*)
+             (fn-native-admin-publication-result :fault :observation nil nil nil))))
+
+(defteeth fn-olau-authorize-observed-is-the-carried-authorization
+  :claim (((observed (member-equal observation '(:present :absent)))
+           (parsed (fn-record-parse-okp (fn-cfg-decode-exact record-octets))))
+          (equal (fn-olau-authorize-observed oc record-octets lock-owned observation profile)
+                 (fn-olau-authorize-carried
+                  oc (fn-record-parse-value (fn-cfg-decode-exact record-octets))
+                  lock-owned (equal observation :present) profile)))
+  :subject fn-olau-authorize-observed
+  :witness ((oc *ocp-closed*) (record-octets *olact-octets*)
+            (lock-owned t) (observation :absent) (profile *olaut-profile*))
+  :breaks ((observed ((observation :error)))
+           (parsed ((record-octets nil))))
+  :mutations ((inverted-observation
+               (:conclusion
+                (equal (fn-olau-authorize-observed oc record-octets lock-owned observation profile)
+                       (fn-olau-authorize-carried
+                        oc (fn-record-parse-value (fn-cfg-decode-exact record-octets))
+                        lock-owned (equal observation :absent) profile)))
+               ((observation :present))
+               :fault "Treating a present next-generation name as free")))
+
+; A2 needs only the reader-event restriction: the decision reads the store
+; and configuration, not the stage or pending slot.  Closing NIL is now a
+; positive witness.  A store event can change the captured authorization.
+(defteeth fn-olau-authorize-carried-across-reader-events
+  :claim (((reader-window
+            (member-equal (car event) '(:open :close :read :octets :fault))))
+          (equal (fn-olau-authorize-carried (fn-ocfg-step oc event fn-arena)
+                                            record lock-owned occupied profile)
+                 (fn-olau-authorize-carried oc record lock-owned occupied profile)))
+  :subject fn-olau-authorize-carried
+  :witness ((oc *ocp-closed*) (event '(:close nil)) (record *olaut-record*)
+            (lock-owned t) (occupied nil) (profile *olaut-profile*))
+  :breaks ((reader-window ((event '(:store (:io :start-frontier nil))))))
+  :mutations ((store-in-reader-window
+               (:hypothesis reader-window
+                (member-equal (car event) '(:open :close :read :octets :fault :store)))
+               ((event '(:store (:io :start-frontier nil))))
+               :fault "Admitting a frontier reservation while authorizing a captured owner")))

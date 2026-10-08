@@ -35,6 +35,9 @@
 (defun fnn-owner-fence-service (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-fence-service "host/native/owner.lisp"))
+(defun fnn-owner-install-or-end (install original label)
+  (declare (ignorable install original label))
+  (harness-stub-reached 'fnn-owner-install-or-end "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 (declaim (declaration xargs))
 

@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.load import cells, result, workloads
+from tools.load import cells, peers, result, workloads
 
 
 def cell_result(**over):
@@ -354,6 +354,127 @@ class ReportAndItemTests(unittest.TestCase):
             self.assertEqual(result.file_items(res, result.load_bars(), items_dir=d), [])
             res = self.res(metrics={})
             self.assertEqual(result.file_items(res, result.load_bars(), items_dir=d), [])
+
+DONE = ("catch-up peer=A round=done position=1000 end=1000 imported=1000 duplicate=0 refused=0 "
+        "digest=" + "ab" * 32 + " transport=clear")
+FAILED = ("catch-up peer=A round=failed position=9954 end=10000 imported=9954 duplicate=0 refused=0 "
+          "digest=" + "cd" * 32 + " reason=round-deadline transport=clear")
+
+
+class PeersTests(unittest.TestCase):
+    def test_round_lines_parse_done_and_failed_with_reason(self):
+        d = peers.parse_round_line("2026-10-07T18:00:00Z info " + DONE)
+        self.assertEqual((d["round"], d["position"], d["imported"], d["reason"], d["transport"]), ("done", 1000, 1000, None, "clear"))
+        f = peers.parse_round_line(FAILED)
+        self.assertEqual((f["round"], f["reason"], f["imported"], f["end"]), ("failed", "round-deadline", 9954, 10000))
+        pre = peers.parse_round_line(FAILED.replace("transport=clear", "at=preamble"))
+        self.assertEqual(pre["at"], "preamble")
+        self.assertIsNone(peers.parse_round_line("catch-up peer=A starting"))
+
+    def test_splits_are_the_seconds_per_thousand(self):
+        series = [(1.0, 0), (2.0, 400), (3.0, 1000), (4.0, 1500), (5.0, 2600), (6.0, 2999)]
+        self.assertEqual(peers.splits(series, 0.0), [3.0, 2.0])      # 1000 at t=3, 2000 at t=5; 2999 is partial
+        self.assertEqual(peers.splits([], 0.0), [])
+        self.assertEqual(peers.splits([(9.0, 5000)], 4.0), [5.0, 0.0, 0.0, 0.0, 0.0])
+
+    def test_cpu_splits_difference_the_cpu_at_each_thousand(self):
+        rows = [(500, 2.0, 5.0), (1000, 3.0, 9.0), (1900, 4.0, 15.0), (2100, 5.5, 18.0)]
+        self.assertEqual(peers.cpu_splits(rows, (1.0, 1.0)), [{"a_cpu_s": 2.0, "b_cpu_s": 8.0}, {"a_cpu_s": 2.5, "b_cpu_s": 9.0}])
+
+    def test_gc_and_thread_splits_per_thousand(self):
+        gc = ["GC 100 5000 52428800", "GC 200 9000 104857600", "GC 400 30000 157286400", "junk"]
+        out = peers.gc_splits(gc, 0, [250, 450])
+        self.assertEqual(out[0], {"gc_ms": 9.0, "gcs": 2, "dynamic_mib_after_gc": 100.0})
+        self.assertEqual(out[1], {"gc_ms": 21.0, "gcs": 1, "dynamic_mib_after_gc": 150.0})
+        td = peers.thread_deltas({"1 sbcl": 1.0}, [{"1 sbcl": 3.0, "2 w": 1.0}, {"1 sbcl": 4.0, "2 w": 9.0}], top=1)
+        self.assertEqual(td, [{"1 sbcl": 2.0}, {"2 w": 8.0}])
+        self.assertEqual([r[0] for r in peers.crossings([(500,), (1000,), (1001,), (2500,)])], [1000, 2500])
+
+    def test_pace_and_thin(self):
+        self.assertEqual(peers.pace(1000, 34.2), 29.24)
+        self.assertIsNone(peers.pace(10, 0))
+        pts = [(i, i) for i in range(1000)]
+        t = peers.thin(pts, 100)
+        self.assertLessEqual(len(t), 101)
+        self.assertEqual(t[-1], pts[-1])
+        self.assertEqual(peers.thin(pts[:5], 100), pts[:5])
+
+    def test_compare_counts_missing_extra_and_differing_ignoring_path_and_xref(self):
+        def art(mid, body, path="Path: a!not-for-mail", xref="Xref: a fn.test:1"):
+            return ("%s\r\n%s\r\nMessage-ID: %s\r\n\r\n%s\r\n" % (path, xref, mid, body)).encode()
+        a = {"<1>": art("<1>", "x"), "<2>": art("<2>", "y"), "<3>": art("<3>", "z")}
+        b = {"<1>": art("<1>", "x", "Path: b!a!not-for-mail", "Xref: b fn.test:9"), "<2>": art("<2>", "CHANGED"), "<4>": art("<4>", "w")}
+        c = peers.compare(a, ["<1>", "<2>", "<3>"], b, ["<1>", "<2>", "<4>"])
+        self.assertEqual((c["missing"], c["extra"], c["differing"], c["divergence"]), (1, 1, 1, 3))
+        self.assertFalse(c["order_equal"])
+        same = peers.compare(a, ["<1>"], dict(a), ["<1>"])
+        self.assertEqual(same["divergence"], 0)
+        self.assertTrue(same["order_equal"])
+
+    def test_chain_digest_is_the_tests_recurrence_over_articles_without_xref(self):
+        calls = []
+        fake = lambda data: (calls.append(data), bytes([len(data) % 256]) * 32)[1]
+        arts = {"<1>": b"Xref: n fn.test:1\r\nA: b\r\n\r\nbody\r\n"}
+        h = peers.chain_digest(["<1>"], arts, fake)
+        self.assertEqual(len(h), 64)
+        self.assertEqual(calls[0], b"A: b\r\n\r\nbody\r\n")        # Xref dropped before hashing
+        self.assertEqual(calls[1], bytes(32) + fake(b"A: b\r\n\r\nbody\r\n") + b"<1>")
+        self.assertEqual(peers.chain_digest([], {}, fake), "00" * 32)
+
+    def test_digest_lines_keep_the_last_hex_word_of_each_line(self):
+        text = ("digest history " + "11" * 32 + "\ndigest canonical " + "22" * 32 + "\nnoise\ndigest state " + "33" * 32
+                + "\ncheckpoint-digest sequence=1000 " + "44" * 32 + "\nopen=checkpoint:1000 suffix=0\n")
+        self.assertEqual(peers.digest_lines(text), {"history": "11" * 32, "canonical": "22" * 32, "state": "33" * 32,
+                                                    "checkpoint-digest": "44" * 32})
+
+    def test_p99_ratio_needs_200_samples_on_both_sides(self):
+        idle, during = result.lat_stats([0.01] * 300), result.lat_stats([0.025] * 300)
+        self.assertEqual(peers.p99_ratio(during, idle), 2.5)
+        self.assertIsNone(peers.p99_ratio(result.lat_stats([0.01] * 50), idle))
+        self.assertEqual(peers.lag_summary([(0, 10, 10), (1, 50, 20), (2, 60, 60)]), {"max": 30, "final": 0})
+
+    def phase(self, **over):
+        r = {"nominal": 1000, "mode": "catchup", "terminal": "round-done", "pace_excl_start": 31.5, "pace_incl_start": 29.2,
+             "b_count_final": 1000, "rounds_failed": 0, "first_import_s": 3.1, "chain_equal": True, "a_count_final": 1000,
+             "compare": {"divergence": 0}, "b_mem": {"vmrss": 150000, "hwm": 160000, "peak_vmrss": 155000}}
+        r.update(over)
+        return [{"name": "pull", "kind": "peers", "measure": True, "peers": r, "mem": {"vmrss": 1, "hwm": 2, "anon": 3, "file": 4}}]
+
+    def test_catchup_metrics_name_the_nominal_n_and_both_paces(self):
+        m, nm = cells.derive("catchup", self.phase())
+        self.assertEqual((m["catchup.rate_1000"], m["catchup.rate_incl_start_1000"]), (31.5, 29.2))
+        self.assertEqual((m["peers.divergence"], m["peers.digest_chain_equal"], m["b.rss_kib.hwm"]), (0, 1, 160000))
+        self.assertNotIn("catchup.rate_10000", m)
+
+    def test_a_failed_round_is_not_measured_with_its_terminal_and_divergence_fails(self):
+        m, nm = cells.derive("catchup", self.phase(nominal=10000, pace_excl_start=None, pace_incl_start=None, terminal="deadline-2400s",
+                                                    compare={"divergence": 46}, chain_equal=False))
+        self.assertIn("deadline-2400s", nm["catchup.rate_10000"])
+        cr = cell_result(cell="W6a@10k", workload="catchup", metrics=m, not_measured=nm)
+        rows = {r["bar"]: r for r in result.judge_cell(cr, result.load_bars())}
+        self.assertEqual(rows["L-CATCHUP"]["verdict"], "NOT-MEASURED")
+        self.assertEqual(rows["L-DIVERGE-CATCHUP"]["verdict"], "FAIL")
+
+    def test_post_p99_under_load_is_judged_by_ratio_and_labelled_proposal(self):
+        ph = self.phase(mode="catchup-load", post_idle=result.lat_stats([0.01] * 300), post_during=result.lat_stats([0.04] * 300))
+        m, nm = cells.derive("peers-catchup-load", ph)
+        self.assertEqual(m["post.p99_ratio"], 4.0)
+        cr = cell_result(cell="W6c@1k", workload="peers-catchup-load", metrics=m, not_measured=nm)
+        rows = {r["bar"]: r for r in result.judge_cell(cr, result.load_bars())}
+        self.assertEqual(rows["L-CATCHUP-POST-P99"]["verdict"], "FAIL")
+        self.assertIn("PROPOSAL", rows["L-CATCHUP-POST-P99"]["quantity"])
+
+    def test_w6_cells_resolve_with_their_peers_mode_and_the_test_profile(self):
+        data = workloads.load()
+        a = workloads.resolve("W6a@10k", data)
+        self.assertEqual((a.spec["peers"]["mode"], a.spec["store"]["preload"], a.spec["phases"][0]["kind"]), ("catchup", 10000, "peers"))
+        self.assertEqual(workloads.resolve("W6b", data).spec["phases"][0]["posts"], 1300)
+        c = workloads.resolve("W6c@1k", data).spec["phases"][0]
+        self.assertEqual((c["rate_per_s"], c["mode"]), (20, "catchup-load"))
+        flags = workloads.init_flags(data, "peers")
+        self.assertIn("32768", flags)                                  # tests/test_native_peer_catchup PROFILE
+        self.assertEqual(flags[flags.index("--max-history-octets") + 1], str(64 << 20))
+
 
 
 if __name__ == "__main__":

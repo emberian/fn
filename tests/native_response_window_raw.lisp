@@ -26,9 +26,6 @@
   (harness-stub-reached 'fnn-extent-executor-drained-p "host/native/extent.lisp"))
 (defun fnn-extent-executor-stop ()
   (harness-stub-reached 'fnn-extent-executor-stop "host/native/extent.lisp"))
-(defun fnn-extent-window-observation (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-extent-window-observation "host/native/extent.lisp"))
 (defun fnn-extent-window-settle-fault (worker token)
   (declare (ignorable worker token))
   (harness-stub-reached 'fnn-extent-window-settle-fault "host/native/extent.lisp"))
@@ -69,9 +66,6 @@
 (defun fnn-mux-queue (loop conn octets op after &optional end)
   (declare (ignorable loop conn octets op after end))
   (harness-stub-reached 'fnn-mux-queue "host/native/mux.lisp"))
-(defun fnn-mux-read-class (loop conn)
-  (declare (ignorable loop conn))
-  (harness-stub-reached 'fnn-mux-read-class "host/native/mux.lisp"))
 (defun fnn-mux-start (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-mux-start "host/native/mux.lisp"))
@@ -163,6 +157,9 @@
 (defun fnn-owner-peer-flight-startup (service capture)
   (declare (ignorable service capture))
   (harness-stub-reached 'fnn-owner-peer-flight-startup "host/native/owner.lisp"))
+(defun fnn-owner-peer-read-class (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-peer-read-class "host/native/owner.lisp"))
 (defun fnn-owner-reader-capture (event)
   (declare (ignorable event))
   (harness-stub-reached 'fnn-owner-reader-capture "host/native/owner.lisp"))
@@ -250,11 +247,19 @@
   (harness-stub-reached 'fnn-tls-consume-plaintext "host/native/tls.lisp"))
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/extent.lisp"
- '((defvar *fnn-extent-lock*) (defvar *fnn-extent-window-mode*)
-   (defvar *fnn-extent-window-worker*) (defvar *fnn-extent-window-token*)))
+ '((defvar *fnn-extent-lock*) (defmacro fnn-extent-native-observe) (defvar *fnn-extent-window-mode*)
+   (defvar *fnn-extent-window-worker*) (defvar *fnn-extent-window-token*)
+   (defun fnn-extent-window-observation)))
+;; Developer-only observations are off.
+(defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (load-deployed-forms "host/native/owner.lisp"
  '((defun fnn-owner-window-activation) (defun fnn-owner-cold-remove-locked)
    (defun fnn-owner-cold-window-result-locked) (defun fnn-owner-response-window-close)))
+;; The window close runs as one fnn-quantum-mux-finish quantum; this fixture's subject
+;; is the window's custody inside it, so the quantum just runs its thunk (the
+;; envelope itself is native_section_envelope_raw's subject).
+(defun fnn-quantum-mux-finish (service cid thunk &optional class)
+  (declare (ignore service cid class)) (funcall thunk))
 (defvar *window-returned* nil)
 (defvar *window-word* :ready)
 (defvar *window-effects* nil)
@@ -267,7 +272,8 @@
   (setq *window-word* :cancelled) :cancelled)
 (defun fnn-extent-window-settle-cancelled (worker token)
   (push (list :release worker token) *window-effects*) *window-release-word*)
-(defun fnn-extent-window-release (worker token)
+(defun fnn-extent-window-release (worker token &optional cachep)
+  (declare (ignore cachep))
   (push (list :release worker token) *window-effects*) *window-release-word*)
 (defun fnn-owner-output-observe-returned (service read) (declare (ignore service read)))
 (defun fnn-owner-output-dependency-consumed (service read)

@@ -72,16 +72,15 @@ import cert_images  # noqa: E402
 import certs
 import unhooked  # noqa: E402
 import chain_schedule  # noqa: E402
-import evidence_manifests  # noqa: E402
 import ledger  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parent.parent
 READER = Path(ledger.__file__).resolve()
 BUILD_ROOT = ROOT / "build" / "acl2"
-# Archived manifests, read only for the per-book wall times that order a
+# Earlier run manifests, read only for the per-book wall times that order a
 # parallel schedule (`chain_schedule.quiet_walls`).  Nothing about a verdict comes from here.
-WALL_HISTORY = ROOT / "planning" / "evidence" / "manifests"
+WALL_HISTORY = BUILD_ROOT
 SUCCESS_PREFIX = "FN_CERTIFY_SUCCESS "
 # A failed certify-book prints this and nothing else can: always a failure.
 FATAL_MARKERS = ("CERTIFICATION FAILED",)
@@ -939,20 +938,8 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def record(run_dir: Path, manifest: dict[str, Any]) -> None:
-    """Write the run's manifest and file the durable copy beside it.
-
-    `build/` is ignored, so the run directory this returns to the caller is
-    the one a lane cites and the one a worktree removal or a gate reaper
-    deletes.  The manifest is the claim and is 4 kB to 200 kB; it goes to
-    `planning/evidence/manifests/<run-id>.json` as an ignored draft. Filing
-    with `evidence_manifests.py add RUN-ID` archives its bytes and stages
-    planning/evidence-index.tsv for the claim's commit. The
-    log stays here, and the archived copy records where here was.
-    """
+    """Write the run's manifest into its run dir; the dir is the record."""
     write_json(run_dir / "manifest.json", manifest)
-    if evidence_manifests.archive_run(run_dir, ROOT) in {"written", "present"}:
-        print(f"certify_books: to cite this run: "
-              f"{evidence_manifests.add_command(run_dir.name)}", file=sys.stderr, flush=True)
 
 
 def git_facts() -> dict[str, Any]:
@@ -1053,16 +1040,6 @@ def main() -> int:
             "the rest, dependencies first; a root that installs is not "
             "certified again. The manifest records each book as installed or "
             "certified"
-        ),
-    )
-    parser.add_argument(
-        "--recertify-uncited",
-        action="store_true",
-        help=(
-            "add to --recertify every book of the selected roots' closure that "
-            "no committed manifest under planning/evidence/manifests certified "
-            "at its current digest and closure, so a cited run certifies what "
-            "the cache would otherwise install uncited (implies --incremental)"
         ),
     )
     parser.add_argument(
@@ -1185,11 +1162,6 @@ def main() -> int:
         args.jobs = requested_jobs
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
-    if args.recertify_uncited:
-        if args.closure:
-            parser.error("--recertify-uncited takes books out of the cache install, "
-                         "and --closure installs nothing; choose one")
-        args.incremental = True
     if args.recertify:
         if args.closure:
             parser.error("--recertify takes books out of the cache install, and "
@@ -1227,13 +1199,6 @@ def main() -> int:
             args.books = with_dependencies(args.books)
         except ValueError as error:
             parser.error(str(error))
-    if args.recertify_uncited and args.books:
-        import certified_claims  # noqa: E402  (lazy: it reads the ledger tree)
-        uncited = certified_claims.uncited_books(ROOT, args.books)
-        print(f"--recertify-uncited: {len(uncited)} of {len(args.books)} books have no "
-              "committed manifest at their current digest; certifying them afresh",
-              flush=True)
-        args.recertify = sorted(set(args.recertify) | set(uncited))
     missing = [book for book in args.recertify if book not in args.books]
     if missing:
         parser.error("a book to recertify is not in the selected roots' closure: "
@@ -1800,10 +1765,6 @@ def main() -> int:
             }
         except OSError as error:
             manifest["cert_cache"] = {"error": str(error), "per_book": cache_events}
-    if args.incremental and manifest.get("installed_books"):
-        import certified_claims  # noqa: E402
-        manifest["installed_uncited"] = certified_claims.uncited_books(
-            ROOT, sorted(manifest["installed_books"]))
     if success:
         manifest["status"] = "passed"
     else:
@@ -1821,13 +1782,6 @@ def main() -> int:
 
     if args.incremental:
         print(f"Installed from the cache: {len(manifest['installed_books'])} books")
-        uncited = manifest.get("installed_uncited") or []
-        if uncited:
-            print(f"installed-without-cited-manifest: {len(uncited)}: "
-                  + ", ".join(uncited[:20]) + (" ..." if len(uncited) > 20 else ""))
-            print("  ACL2 accepts these pairs, but no committed manifest certified them at "
-                  "these bytes, so green_check and certified_claims still owe them; rerun "
-                  "with --recertify-uncited to certify exactly those")
     print("ACL2 certification passed: " + (", ".join(args.books) or "nothing left to certify"))
     print(f"Certification evidence: {run_dir.relative_to(ROOT)}")
     return 0

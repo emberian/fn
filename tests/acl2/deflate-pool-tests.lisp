@@ -6,6 +6,7 @@
 (include-book "../../books/deflate-pool-check")
 (include-book "payload-lz-record-tests")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 ; Reads over one buffer set: POOLED = the pool the first read starts from is
 ; the host's NIL, the second read's the first's answer; FORGED = a first read
@@ -78,6 +79,22 @@
          (equal (car (nth 3 *dpt-pooled*)) (car d))
          (equal (nth 5 *dpt-pooled*) (cadr d))
          (equal (nth 4 *dpt-pooled*) (list *plz-dict* 2749 750))))
+  :hints (("Goal" :in-theory (enable (:e fn-pzd-decode))))
+  :rule-classes nil)
+
+;; KEYSTONE fn-zpl-decode-bufs-from-the-empty-pool, reachable: the host's first
+;; call (POOL = NIL) over the held-out stream answers the decoder's status, the
+;; output buffer holds the decoder's octets, and the pool it returns satisfies
+;; the invariant (evaluated: C1, the check, which fn-zpl-pool-check-is-pool-okp
+;; equates with fn-zpl-pool-okp).  Every hypothesis is checked affirmatively.
+(defthm dpt-empty-pool-witness
+  (let ((d (fn-pzd-decode *plz-dict* *plz-dict-block* 750)))
+    (and (fn-cbor-octet-listp *plz-dict-block*) (natp 750) (fn-cbor-octet-listp *plz-dict*)
+         (equal (car (nth 0 *dpt-pooled*)) (car d))
+         (equal (car d) :ok)
+         (equal (nth 2 *dpt-pooled*) (cadr d))
+         (equal (nth 1 *dpt-pooled*) (list *plz-dict* 2749 750))
+         (equal (nth 7 *dpt-pooled*) t)))
   :hints (("Goal" :in-theory (enable (:e fn-pzd-decode))))
   :rule-classes nil)
 
@@ -170,3 +187,79 @@
        (not (equal (nth 0 *dpt-truncated*) (nth 0 *dpt-full*))))
   :hints (("Goal" :in-theory (enable (:e fn-pzd-decode) (:e dpt-unpooled))))
   :rule-classes nil)
+
+(defun dpt-conclusion (dict c n fn-zin-win fn-zin-tab fn-zin-out)
+  (declare (xargs :stobjs (fn-zin-win fn-zin-tab fn-zin-out) :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (ok fn-zin-win fn-zin-tab fn-zin-out fn-octets)
+      (let ((fn-octets (fn-octets-from-list c fn-octets)))
+        (mv-let (status pool fn-zin-win fn-zin-tab fn-zin-out)
+          (fn-zpl-decode-bufs nil dict (len c) n fn-octets fn-zin-win fn-zin-tab fn-zin-out)
+          (let ((d (fn-pzd-decode dict c n)))
+            (mv (and (equal (car status) (car d))
+                     (implies (equal (car d) :ok)
+                              (equal (fn-zin-out-list fn-zin-out) (cadr d)))
+                     (fn-zpl-pool-check pool fn-zin-win))
+                fn-zin-win fn-zin-tab fn-zin-out fn-octets))))
+      (mv ok fn-zin-win fn-zin-tab fn-zin-out))))
+
+(defthm dpt-conclusion-refines
+  (equal
+    (let ((r (fn-zpl-decode-bufs nil dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
+          (d (fn-pzd-decode dict c n)))
+      (and (equal (car (car r)) (car d))
+           (implies (equal (car d) :ok) (equal (mv-nth 4 r) (cadr d)))
+           (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r))))
+    (mv-nth 0 (dpt-conclusion dict c n fn-zin-win fn-zin-tab fn-zin-out)))
+  :hints (("Goal" :in-theory (e/d (dpt-conclusion fn-octets$a-from-list fn-octets$a-list)
+                                  (fn-zpl-decode-bufs fn-pzd-decode fn-zpl-pool-check fn-zpl-pool-okp)))))
+
+(local (defthm dpt-snoc-total
+ (equal (fn-oct-snoc xs x) (append xs (list x)))
+ :hints (("Goal" :induct (fn-oct-snoc xs x) :in-theory '(fn-oct-snoc binary-append)))))
+
+(local (defthm dpt-dotted-ready
+ (equal (fn-zin-payload-ready '(1 . 300) fn-zin-win fn-zin-tab)
+        (fn-zin-payload-ready '(1) fn-zin-win fn-zin-tab))
+ :hints (("Goal" :in-theory
+          (set-difference-theories
+           (enable fn-zin-payload-ready fn-oct-cat fn-oct-snoc-is-append)
+           (executable-counterpart-theory :here))))))
+
+(defteeth fn-zpl-decode-bufs-from-the-empty-pool
+  :subject fn-zpl-decode-bufs
+  :claim (((dictionary (fn-cbor-octet-listp dict)))
+    (let ((r (fn-zpl-decode-bufs nil dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
+          (d (fn-pzd-decode dict c n)))
+      (and (equal (car (car r)) (car d))
+           (implies (equal (car d) :ok) (equal (mv-nth 4 r) (cadr d)))
+           (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r)))))
+  :witness ((c (fn-pzd-stored '(65 66))) (dict '(1 2)) (n 2))
+  :stobjs ((fn-zin-win (fn-zin-win-clear fn-zin-win))
+           (fn-zin-tab (fn-zin-tab-clear fn-zin-tab))
+           (fn-zin-out (fn-zin-out-clear fn-zin-out)))
+  :stobj-checks
+  (((let ((r (fn-zpl-decode-bufs nil dict (len c) n c fn-zin-win fn-zin-tab fn-zin-out))
+          (d (fn-pzd-decode dict c n)))
+      (and (equal (car (car r)) (car d))
+           (implies (equal (car d) :ok) (equal (mv-nth 4 r) (cadr d)))
+           (fn-zpl-pool-okp (mv-nth 1 r) (mv-nth 2 r))))
+    (dpt-conclusion dict c n fn-zin-win fn-zin-tab fn-zin-out)
+    :hints (("Goal" :use dpt-conclusion-refines :in-theory nil))))
+  :breaks
+  ((dictionary ((dict '(1 . 300)) (c nil) (n 1))
+               :logical "An improper preset has an ignored tail in the window but is not an octet list in the returned pool."))
+  :mutations
+  ((status (:conclusion (equal (car (fn-pzd-decode dict c n)) :error))
+           () :fault "Reports an error for a successfully decoded stored block."))
+  :hints (("Goal" :do-not '(preprocess)
+           :use ((:instance fn-zin-payload-ready-shape
+                   (dict '(1)) (fn-zin-win nil) (fn-zin-tab nil)))
+           :in-theory
+           (e/d (fn-zpl-decode-bufs fn-zpl-payload-bufs fn-zpl-prepare fn-zpl-reusep
+                 fn-zpl-pool-okp)
+                ((:e fn-zpl-decode-bufs) (:e fn-zpl-payload-bufs)
+                 fn-zin-payload-ready (:e fn-zin-payload-ready)
+                 fn-zin-loop fn-pzd-decode fn-zin-stored-status fn-zin-payload-ready-shape)))))
+
+(defteeth-check (fn-zpl-decode-bufs-from-the-empty-pool))

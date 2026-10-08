@@ -122,7 +122,6 @@
                                    (path (fn-own-feed-path-of
                                           (fn-own-sub-octets (fn-own-inflight o))))))
            :in-theory (disable fn-own-submission-targets-are-feed-targets
-                               fn-own-feed-never-offers-a-loop
                                fn-own-submission-targets fn-own-feed-targets
                                fn-own-feed-tablep fn-own-sub-origin
                                fn-own-sub-feed-groups fn-own-sub-octets

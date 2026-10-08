@@ -29,7 +29,7 @@ GATES = {
     "world-check": ("tools/extract/world.py", "--check"),
     "interfaces-check": ("tools/interface_emit.py", "--check"),
     "host-books": ("tools/host_check.py", "--books"),
-    "attach-order": ("tools/attach_order_check.py",),
+    "attach-order": ("tools/host_check.py", "--attach-order"),
 }
 SCHEMA = 1
 PYTHON_FLAGS = ("-I", "-S")  # No user/site startup hooks or external import paths.
