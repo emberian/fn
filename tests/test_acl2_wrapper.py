@@ -46,6 +46,7 @@ FAKE_ACL2 = r"""#!/bin/sh
   printf 'ACL2_CUSTOMIZATION=%s\n' "${ACL2_CUSTOMIZATION-unset}"
   printf 'ACL2_BOOK_HASH_ALISTP=%s\n' "${ACL2_BOOK_HASH_ALISTP-unset}"
   printf 'ACL2_SYSTEM_BOOKS=%s\n' "${ACL2_SYSTEM_BOOKS-unset}"
+  printf 'ACL2_PROJECTS=%s\n' "${ACL2_PROJECTS-unset}"
   printf 'SBCL_USER_ARGS=%s\n' "${SBCL_USER_ARGS-unset}"
   printf 'args=%s\n' "$*"
 } >> "$FAKE_EVENTS"
@@ -147,12 +148,14 @@ class PassThroughTests(unittest.TestCase):
             harness = Harness(directory)
             result = harness.run([], ACL2_CUSTOMIZATION="/home/me/custom.lsp",
                                  ACL2_BOOK_HASH_ALISTP="T",
-                                 ACL2_SYSTEM_BOOKS="/elsewhere/books")
+                                 ACL2_SYSTEM_BOOKS="/elsewhere/books",
+                                 ACL2_PROJECTS="/other/tree/acl2-projects")
             self.assertEqual(result.returncode, 0, result.stderr)
             recorded = harness.recorded()
             self.assertIn("ACL2_CUSTOMIZATION=NONE", recorded)
             self.assertIn("ACL2_BOOK_HASH_ALISTP=NIL", recorded)
             self.assertIn("ACL2_SYSTEM_BOOKS=unset", recorded)
+            self.assertIn(f"ACL2_PROJECTS={ROOT / 'acl2-projects'}", recorded)
 
     def test_the_child_heap_is_capped_on_the_laptop(self):
         """Every ACL2 the wrapper starts gets a bounded dynamic space (the

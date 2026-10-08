@@ -44,7 +44,7 @@ class ACL2AlistProbeTests(unittest.TestCase):
                 return mock.Mock(returncode=0, stdout=b'The name "INSTANCE" does not designate any package')
             return mock.Mock(returncode=0, stdout=b'ACL2 !>@@PAIR 0 1 T T\n@@DONE 1\n')
 
-        with mock.patch.object(certs.cert_alists.subprocess, "run", run):
+        with mock.patch.object(certs.cert_alists.acl2_slots, "run", run):
             result = certs.cert_alists.acl2_certificate_pairs(
                 [Path("a.cert"), Path("b.cert")], [(0, 1)], Path("acl2"), Path("."))
         self.assertEqual(result, {(0, 1): (True, True)})
@@ -60,7 +60,7 @@ class ACL2AlistProbeTests(unittest.TestCase):
             return mock.Mock(returncode=0, stdout=b'ACL2 !>@@PAIR 0 1 T NIL\n@@DONE 1\n')
 
         paths = [Path(f"c{i}.cert") for i in range(5)]
-        with mock.patch.object(certs.cert_alists.subprocess, "run", run):
+        with mock.patch.object(certs.cert_alists.acl2_slots, "run", run):
             result = certs.cert_alists.acl2_certificate_pairs(paths, [(1, 3)], Path("acl2"),
                                                               Path("."))
         self.assertEqual(result, {(1, 3): (True, False)})
@@ -74,7 +74,7 @@ class ACL2AlistProbeTests(unittest.TestCase):
         for output in (b'@@UNREADABLE 1\n@@PAIR 0 1 NIL NIL\n@@DONE 1\n',
                        b'@@PAIR 0 1 T T\n'):
             with self.subTest(output=output):
-                with mock.patch.object(certs.cert_alists.subprocess, "run",
+                with mock.patch.object(certs.cert_alists.acl2_slots, "run",
                                        return_value=mock.Mock(returncode=0,
                                                               stdout=output)):
                     with self.assertRaises(ValueError):
@@ -88,6 +88,7 @@ TEXT_CERT = ('(IN-PACKAGE "ACL2")\n"ACL2 Version 8.7"\n'
 # ACL2 8.7's compact serializer: binary, opening with the `#Z` magic.
 SERIALIZED = b"\n#Z(|ACL2|\x00\x01\x02 fake serialized certificate\n"
 TEST_COMPATIBILITY = {
+    "project_directories": {":FN": "."},
     "schema": "fn-acl2-toolchain-v1",
     "launcher_chain_sha256": ["1" * 64],
     "core_sha256": "2" * 64,
@@ -114,6 +115,7 @@ def worktree(directory: str, books: dict[str, str] | None = None,
     """A throwaway worktree: books, and a certificate pair for some of them."""
     root = Path(directory).resolve()
     (root / "books").mkdir(parents=True, exist_ok=True)
+    (root / certs.acl2_projects.FILENAME).write_text(certs.acl2_projects.CONTENTS)
     (root / "tests" / "acl2").mkdir(parents=True, exist_ok=True)
     for name, text in (books or BOOKS).items():
         (root / f"{name}.lisp").write_text(text)
