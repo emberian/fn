@@ -523,12 +523,12 @@
         ; into the image for `fn --version'; a missing or malformed file
         ; stops the build.
         (fnn-select-release-version)
-        ; The system libssl is the explicit native STARTTLS trust boundary.  It loads
+        ; The shipped libssl is the explicit native STARTTLS trust boundary.  It loads
         ; after io.lisp because its deadline/descriptor helpers are physical
         ; transport primitives, not protocol decisions.
         (load "host/native/tls.lisp")
-        ; The build-time feature check: the system libssl pair (OpenSSL 3.0+
-        ; or LibreSSL 3+) resolves every function tls.lisp calls.
+        ; The build-time feature check: the shipped libssl pair named by
+        ; FN_OPENSSL_PREFIX resolves every function tls.lisp calls.
         (fnn-tls-initialize)
         ; Native BLAKE3 (A-CRYPTO-NATIVE; lanes digest-native, blake3-digest):
         ; the vendored C in lib/libfn-blake3 (tools/build_blake3.sh;

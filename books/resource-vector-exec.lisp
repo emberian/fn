@@ -897,6 +897,7 @@
 ; no served call reconstructs or validates the complete logical bank.
 (encapsulate ()
 (local (include-book "arithmetic-5/top" :dir :system))
+(local (in-theory (disable (:type-prescription true-listp-update-nth) (:type-prescription update-nth) (:type-prescription true-listp))))
 
 (local
  (defmacro fn-rl-array-proof-facts (field bits)
@@ -1407,7 +1408,7 @@
       (list (+ x0 (nfix a0)) (+ x1 (nfix a1)) (+ x2 (nfix a2)) (+ x3 (nfix a3)) (+ x4 (nfix a4)) (+ x5 (nfix a5)) (+ x6 (nfix a6)) (+ x7 (nfix a7)) (+ x8 (nfix a8))) ledger)))))
  :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn-rl-charge-from fn-rl-update-ci fn-rl-proof-row-write)
-   (nth update-nth fn-rl-update-nth-cons nfix default-plus-1 default-plus-2))))))
+   (nth update-nth fn-rl-update-nth-cons nfix default-plus-1 default-plus-2 (:type-prescription true-listp-update-nth) (:type-prescription update-nth) (:type-prescription true-listp)))))))
 
 (local (defthm fn-rl-charge-effects
  (implies (and (fn-resource-ledgerp ledger) (fn-rv-vectorp demand))
@@ -1422,7 +1423,7 @@
   :in-theory (e/d (fn-rv-plus fn-rl-drawn-list)
    (fn-rl-charge-from fn-rl-proof-row-write update-fn-rl-gensi update-fn-rl-phasesi
     fn-rl-list-9-fields fn-rl-drawn-list-is-field fn-rl-drawni-nat fn-rl-drawni nfix
-    nth update-nth fn-rl-update-nth-cons fn-rv-nats-p fn-rv-vectorp default-plus-1 default-plus-2))))))
+    nth update-nth fn-rl-update-nth-cons fn-rv-nats-p fn-rv-vectorp unsigned-byte-p integer-range-p default-plus-1 default-plus-2))))))
 
 (local (defthm fn-rl-rows-from-drawn-update
  (equal (fn-rl-rows-from i (update-nth 1 v ledger)) (fn-rl-rows-from i ledger))
@@ -1465,7 +1466,7 @@
      (update-nth 1 (list (nfix (- x0 (fn-rl-c0i slot ledger))) (nfix (- x1 (fn-rl-c1i slot ledger))) (nfix (- x2 (fn-rl-c2i slot ledger))) (nfix (- x3 (fn-rl-c3i slot ledger))) (nfix (- x4 0)) (nfix (- x5 0)) (nfix (- x6 0)) (nfix (- x7 0)) (nfix (- x8 0))) ledger))))
  :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn-rl-release-from fn-rl-ci fn-rl-update-ci fn-rl-proof-row-write)
-  (nth update-nth fn-rl-update-nth-cons nfix default-plus-1 default-plus-2 default-minus))))))
+  (nth update-nth fn-rl-update-nth-cons nfix default-plus-1 default-plus-2 default-minus (:type-prescription true-listp-update-nth) (:type-prescription update-nth) (:type-prescription true-listp)))))))
 
 (local (defthm fn-rl-c0i-nfix
  (implies (and (fn-resource-ledgerp ledger) (fn-rl-wfp ledger) (fn-rl-slotp slot ledger))

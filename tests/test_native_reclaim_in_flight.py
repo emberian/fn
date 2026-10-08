@@ -7,12 +7,9 @@ a dry run and a recorded pass are requested meanwhile; both answer REFUSED
 by name (in-flight or queued) and never finish the held pass's slot;
 releasing the stall, the held pass installs.
 
-The refusal is ACL2's at either of the two admissions over the slot: the
-request's quantum (books/owner-reclaim.lisp fn-orc-request-status, KEYSTONE
-fn-orc-request-accepted-only-when-it-runs; the owner logs `RECLAIM request
-mode=M answer=in-flight') or, when a pass took the slot between the request
-and the capture, the capture's (fn-orc-capture-slot; `RECLAIM dry-run
-refused: in-flight' / `RECLAIM deferred reason=in-flight').
+S3a now refuses both at receipt admission, before either producer runs.
+Both CLI replies name the same held receipt; the owner's log contains only
+the original producer admission, and that pass alone completes after release.
 """
 import re
 import threading
@@ -55,15 +52,22 @@ class NativeReclaimInFlight(unittest.TestCase):
             second = self.reclaim(node, "--recorded", expect=None)
             self.assertEqual(second.returncode, EXIT.REFUSED, (second.stdout, second.stderr[-600:]))
             self.assertNotIn(b"installed", second.stdout)
-            refused = self.owner_lines(owner, re.compile(rb"RECLAIM (dry-run refused: (in-flight|queued)|deferred reason=(in-flight|queued)"
-                                                       rb"|request mode=(dry-run|recorded) answer=(in-flight|queued))"), 2)
-            self.assertEqual(len(refused), 2, owner.stderr.since(0)[-3000:])
+            # S3a: receipt admission refuses these before entering a producer.
+            receipts = []
+            for reply in (dry, second):
+                self.assertIn(b"reclaim receipt-in-flight", reply.stdout)
+                held_receipt = re.search(rb"outstanding receipt=(\S+)", reply.stdout)
+                self.assertIsNotNone(held_receipt, reply.stdout)
+                receipts.append(held_receipt.group(1))
+            self.assertEqual(receipts[0], receipts[1])
+            self.assertEqual(len(re.findall(rb"RECLAIM request mode=", owner.stderr.since(0))), 1)
             stall.unlink()
             worker.join(timeout=1300)
             self.assertFalse(worker.is_alive())
             done = result["done"]
             self.assertEqual(done.returncode, EXIT.OK, (done.stdout, done.stderr[-600:]))
             self.assertIn(b"installed", done.stdout, done.stdout)
+            self.assertIn(b"requested receipt=" + receipts[0], done.stdout)
             with Client(node.port, timeout=300, greeting=None) as c:
                 self.assertTrue(c.command("STAT %s" % expiry.msgid("p0")).startswith(b"430 article reclaimed"))
                 self.assertTrue(c.command("STAT %s" % expiry.msgid("n0")).startswith(b"223"))

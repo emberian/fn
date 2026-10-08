@@ -25,8 +25,8 @@
 ;;; production has no injection branch (fnn-developer-selector).
 
 (defparameter +fnn-admin-sections+
-  '("compaction" "inspect" "export" "reclaim" "reclaim-instant"
-    "limit-carry" "limit" "admin")
+  '("compaction" "compaction-status" "inspect" "export" "reclaim" "reclaim-instant"
+    "limit-carry" "limit" "admin" "login-bindings" "login-bindings-record")
   "This file's owner sections, by the name FN_NATIVE_ADMIN_FAULT uses.")
 
 (defun fnn-admin-test-fault (section)
@@ -102,30 +102,6 @@ set, exact record, candidate replay/open result and generated final name."
       (fnn-refuse "ACL2 refused administrative publication: ~a"
                   (fnn-core 'fn-native-admin-host-publication-reason result)))))
 
-(defun fnn-admin-authorize-owner (store record)
-  "A live owner's authorization: ACL2's
-fn-owner-cfg-native-admin-authorize-carried over the owner's carried
-configuration history (books/config-owner-live-authorize-carried.lisp,
-sweep S033), equal to fn-olau-authorize over that history and the names on
-disk (fn-olau-authorize-carried-is-the-observed-authorization), itself the
-decision fnn-admin-authorize asks over a history it reads
-(fn-olau-authorize-is-the-replayed-authorization).  The host reads no
-history: it observes one name, the next generation's, which ACL2 names."
-  (let* ((next (fnn-owner-core 'fn-owner-cfg-next-name))
-         (occupied (and (stringp next)
-                        (fnn-lstat (fnn-join (fnn-config-dir store) next))
-                        t))
-         (result (fnn-owner-core
-                  'fn-owner-cfg-native-admin-authorize-carried
-                  (fnn-octet-list record)
-                  (fnn-admin-lock-observation store)
-                  occupied
-                  (fnn-store-config store))))
-    (if (eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
-        result
-      (fnn-refuse "ACL2 refused administrative publication: ~a"
-                  (fnn-core 'fn-native-admin-host-publication-reason result)))))
-
 (defun fnn-admin-authorize-carried (store config-records record observed-names)
   "The offline request's authorization from the open's carried fold
 (PKT-510 (1)): ACL2's fn-store-cfg-native-admin-authorize-carried, which is
@@ -156,8 +132,14 @@ history it read, as before."
   (fnn-join (fnn-staging store)
             (format nil ".stage-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
 
-(defun fnn-admin-publish (store record authorization)
-  "Publish ACL2's authorized record; stage cleanup for the caller's off-lock unwind."
+(defun fnn-admin-publish-effect (store record authorization)
+  "Execute ACL2's publication plan for RECORD: the immutable publication's
+steps (open, write, fsync, link, directory fsync, close), which set
+*fnn-section-step*; the stage cleanup is queued, and the caller drains it
+(fnn-immutable-drain-cleanups) after releasing its locks.  Answers (values OUTCOME GENERATION NAME), OUTCOME the
+publication's own classification (books/journal-publish.lisp: :durable,
+:refused or :uncertain).  It touches no owner state: the offline command and
+a live reconfiguration's window A (fnn-owner-live-reconfigure) both run it."
   (let* ((generation (fnn-core 'fn-native-admin-host-publication-generation authorization))
          (name (fnn-core 'fn-native-admin-host-publication-name authorization))
          (directory (fnn-config-dir store))
@@ -165,10 +147,17 @@ history it read, as before."
     (unless (and (integerp generation) (>= generation 0)
                  (stringp name) (= (length name) 12) (null (position #\/ name)))
       (fnn-fault "ACL2 returned an invalid administrative publication plan"))
-    (case (fnn-immutable-publish-deferred
-           (fnn-core 'fn-native-admin-host-publication-jpub authorization)
-           (fnn-admin-stage-path store) final directory (fnn-octets record)
-           :cleanup-directory (fnn-staging store))
+    (values (fnn-immutable-publish-deferred
+             (fnn-core 'fn-native-admin-host-publication-jpub authorization)
+             (fnn-admin-stage-path store) final directory (fnn-octets record)
+             :cleanup-directory (fnn-staging store))
+            generation name)))
+
+(defun fnn-admin-publish (store record authorization)
+  "The offline command's publication: the outcome as a result or a condition."
+  (multiple-value-bind (outcome generation name)
+      (fnn-admin-publish-effect store record authorization)
+    (case outcome
       (:durable (values generation name))
       (:refused (fnn-refuse "configuration record publication refused"))
       (:uncertain (setf (fnn-store-fenced store) t)
@@ -212,8 +201,8 @@ uncertainty."
 
 The Store bridge is a separate ACL2 global and does not follow live owner
 reconfiguration.  The caller is inside an owner section
-(fnn-owner-live-reconfigure-locked's callers are all quanta of the one
-envelope): a failed observation after the publication leaves this body as
+(fnn-owner-live-reconfigure's quanta 2 and 3 are quanta of the caller's
+section, the one envelope): a failed observation after the publication leaves this body as
 the condition it is, the section's boundary classifies it by its concrete
 class (books/failure-scope.lisp fn-fs-classify) and stops the service before
 the owner mutex is released, so this writer never continues with its old
@@ -245,25 +234,87 @@ fault included, as an uncertain outcome)."
       (fnn-fault "owner returned a malformed un-stage word ~a" word))
     word))
 
-(defun fnn-owner-live-reconfigure-locked (service stage)
-  "Stage, publish and complete one ACL2-constructed configuration record.
+;;; ---------------------------------------------------------------------------
+;;; The live reconfiguration as ACL2-ordered quanta (ruling 19, item
+;;; LOCK-R2-LIVE-RECONFIGURE-IO; books/owner-reconfig-phased.lisp).
+;;;
+;;; The host holds a RUN: ACL2's PHASE (fn-orp-step), the effects of the last
+;;; step not yet executed, and the captured values the windows need.  It feeds
+;;; fn-orp-step the observation of the effect it last executed and executes
+;;; the effects answered, each where its label says: (:owner . E) inside a
+;;; quantum of the caller's section, (:off . E) with the owner mutex O and the
+;;; extent mutex E both released.  It decides nothing: every branch below is a
+;;; step of fn-orp-step (keystone fn-orp-step-runs-the-phased-run: the host's
+;;; loop over the step runs exactly fn-orp-run) or an ACL2 word it passes on.
 
-The caller holds the owner mutex.  STAGE is called with a private logical
-connection id and answers the owner's ConfigResult (books/owner-results.lisp,
-checked by fnn-owner-result); only :staged continues, and its octets are the
-one configuration record to publish.
-Answers :accepted once the record is durable and the owner installed it, or
-:refused before any publication."
-  ;; Reuse the model's existing generation pin: a private logical
-  ;; connection is opened and closed under this mutex without acquiring
-  ;; a socket.  Its pin is therefore the current generation checked by
-  ;; fn-ocfg-reconfig-refusal; raw Lisp never supplies that decision.
-  ;; `fn-owner-open' answers the new connection's integer id, or NIL
-  ;; when the model refused the open, as the socket path reads it
-  ;; (host/native/owner.lisp).  It is not an action keyword: through
-  ;; `fnn-owner-action' every live request faulted here and stopped the
-  ;; owner (the dabebb84 matrix run, V0-CFG-LIVE).
-  (let ((record nil))
+(defstruct (fnn-reconfig (:conc-name fnn-rc-))
+  (service nil)
+  (reserve nil)        ; fn-orp-step's RESERVE: only `store limit' reserves
+  (phase :start)       ; ACL2's phase
+  (event :go)          ; the observation the next step is fed
+  (pending nil)        ; the labelled effects of the last step not yet executed
+  (startedp nil)
+  (record nil)         ; the staged record's octets
+  (reason nil)         ; ACL2's reason for a refusal
+  (word nil)           ; :accepted or :refused, for the caller's continuation
+  (captured nil)       ; immutable owner configuration captured under O
+  (profile nil)        ; profile and writer-lock observation captured under O
+  (lock-owned nil)
+  (authorization nil)  ; one authorization over the capture and lstat observation
+  (generation nil)     ; the published record's generation and name
+  (name nil)
+  (step nil)           ; *fnn-section-step* at the end of the last window
+  (condition nil)      ; the condition a window met, re-signalled under O
+  (fence-store nil)    ; an uncertain publication: the store is fenced under O
+  (missing nil)        ; peers whose journals window B has yet to scan
+  (prefix-size nil)    ; ACL2's journal prefix size, read under O
+  (scanned nil)        ; (PEER JOURNAL ENTRIES OFFSET) per scanned journal, newest first
+  (installedp nil)
+  (holdp nil)          ; the gate's hold (fn-otm-hold-begin) is up
+  (answer nil)         ; the caller's continuation's values
+  (windowp nil))       ; true while an off-owner window is next
+
+(defun fnn-rc-advance (run)
+  "Feed the pending EVENT to ACL2's step: its effects and next phase."
+  (destructuring-bind (effects phase)
+      (fnn-call 'fn-orp-step (fnn-rc-phase run) (and (fnn-rc-reserve run) t)
+                (fnn-rc-event run))
+    (unless (and (listp effects)
+                 (every (lambda (e) (and (consp e) (member (car e) '(:owner :off))))
+                        effects))
+      (fnn-fault "owner returned a malformed reconfiguration step ~s" effects))
+    (setf (fnn-rc-pending run) effects
+          (fnn-rc-phase run) phase)))
+
+(defun fnn-rc-next-feed-event (run)
+  "Window B's event after a journal returned: (:feed PEER) for the next newly
+configured peer, else :feeds-done."
+  (let ((peer (pop (fnn-rc-missing run))))
+    (if peer (list :feed peer) :feeds-done)))
+
+(defun fnn-rc-prime (run)
+  "Ask ACL2 for the next effects while none are pending and the run lasts."
+  (loop while (and (null (fnn-rc-pending run))
+                   (not (eq (fnn-rc-phase run) :done)))
+        do (when (and (consp (fnn-rc-phase run)) (eq (car (fnn-rc-phase run)) :feeding))
+             (setf (fnn-rc-event run) (fnn-rc-next-feed-event run)))
+           (fnn-rc-advance run)))
+
+(defun fnn-rc-resignal (run default)
+  "Under the owner: the condition a window met, else DEFAULT, re-signalled
+with the publication step the window left, so the section's one boundary
+classifies it as it did when the window ran inside the section."
+  (setq *fnn-section-step* (fnn-rc-step run))
+  (error (or (fnn-rc-condition run) default)))
+
+(defun fnn-rc-do-stage (run stage)
+  "Effect :stage, under O: ACL2's staging entry, STAGE (lambda (CID)) -- the
+caller's (fnn-owner-result 'fn-ores-config-result-p 'ENTRY CID ...) -- over a
+private logical connection (its pin is the current generation
+fn-ocfg-reconfig-refusal checks).  `fn-owner-open' answers the new
+connection's integer id, or NIL when the model refused the open (it is not an
+action keyword).  A staged record's octets are the one configuration record to
+publish; a refusal keeps ACL2's reason (:busy while another record is staged)."
   (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
                 (unless (or (null opened) (and (integerp opened) (>= opened 0)))
                   (fnn-fault "owner returned a malformed connection id"))
@@ -271,51 +322,374 @@ Answers :accepted once the record is durable and the owner installed it, or
          (result (and (integerp cid) (funcall stage cid)))
          (staged (and result (fnn-core 'fn-ores-config-word result))))
     (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
-    (unless (eq staged :staged)
-      ;; The second value is the staging step's reason, a field of its
-      ;; ConfigResult (fn-cfg-delta-reason's word, :no-such-grant and the
-      ;; rest), or NIL when nothing was staged.
-      (return-from fnn-owner-live-reconfigure-locked
-        (values :refused
-                (and (eq staged :refused)
-                     (fnn-core 'fn-ores-config-reason result)))))
-    (setq record (fnn-octets (fnn-core 'fn-ores-config-octets result))))
-  ;; PKT-827 (b), PRF-287: authorized from the owner's carried state before
-  ;; anything is published: ACL2 answers whether the staged record applies to
-  ;; the carried node and configuration (host/owner-host.lisp
-  ;; fn-owner-reconfigure-authorizedp).  A refusal here is a refusal before
-  ;; publication, as fnn-admin-authorize's below.
-  (unless (fnn-owner-core 'fn-owner-reconfigure-authorizedp)
-    (fnn-owner-reconfigure-unstage)
-    (fnn-refuse "ACL2 refused administrative publication: the staged record does not apply to the carried configuration"))
-  (let ((store (fnn-owner-service-store service)))
-    (multiple-value-bind (published ignored-name)
-        ;; lane prepare-served: a refusal here is before anything was written
-        ;; (the candidate open's refusal, or the immutable publisher's
-        ;; :refused), so the staged record is dropped (ACL2's
-        ;; fn-psrv-unstage) and the refusal passes on.  An uncertain
-        ;; publication or a fault is not a refusal: the owner keeps the
-        ;; stage, the store is fenced, and recovery decides.
-        (handler-case
-            (let ((authorization
-                    ;; Over the state the owner carries (PKT-837, dev's
-                    ;; PKT-840; sweep S033): no Store record read, no
-                    ;; configuration record read, one name observed.
-                    (fnn-admin-authorize-owner store record)))
-              (fnn-admin-publish store record authorization))
-          (fnn-store-error (e)
-            (when (eq (type-of e) 'fnn-store-error)
-              (fnn-owner-reconfigure-unstage))
-            (error e)))
-      (declare (ignore ignored-name))
-      (unless (eq (fnn-owner-action
-                   'fn-owner-reconfigure-complete published)
-                  :durable)
-        (fnn-indeterminate
-         "owner rejected a durably published configuration"))
-      (fnn-owner-refresh-config-cache service published)
-      (fnn-owner-feed-refresh-configuration service)
-      :accepted))))
+    (cond ((eq staged :staged)
+           (setf (fnn-rc-record run)
+                 (fnn-octets (fnn-core 'fn-ores-config-octets result)))
+           :staged)
+          (t (setf (fnn-rc-reason run)
+                   (and (eq staged :refused) (fnn-core 'fn-ores-config-reason result)))
+             (or staged :none)))))
+
+(defun fnn-rc-do-authorize (run)
+  "Effect :authorize, under O: capture the owner once and decide the staged
+record's live authorization over that value.  Window A uses the same immutable
+capture with one name observation (fn-olau-authorize-observed); no owner state
+is read there.  A1 connects that entry to the carried authorization, and
+fn-olau-authorize-carried-across-reader-events preserves it across readers."
+  (let ((store (fnn-owner-service-store (fnn-rc-service run))))
+    (setf (fnn-rc-captured run) (fnn-owner-core 'fn-owner-cfg-capture)
+          (fnn-rc-profile run) (fnn-store-config store)
+          (fnn-rc-lock-owned run) (fnn-admin-lock-observation store))
+    (if (fnn-core 'fn-oclc-live-authorizep (fnn-rc-captured run))
+        :authorized
+      :unauthorized)))
+
+(defun fnn-rc-do-complete (run)
+  "Effect :complete, under O: the owner installs the durably published record
+(fn-owner-reconfigure-complete); ACL2's verdict is the event."
+  (fnn-owner-action 'fn-owner-reconfigure-complete (fnn-rc-generation run)))
+
+(defun fnn-rc-do-refresh (run)
+  "Effect :refresh, under O: the store's configuration cache follows the
+generation the owner installed, and ACL2's live configuration names the
+journals window B provisions (newly configured peers only; fnn-owner-feed-
+configured-missing).  ACL2's journal prefix size is read here for window B."
+  (fnn-owner-refresh-config-cache (fnn-rc-service run) (fnn-rc-generation run))
+  (setf (fnn-rc-prefix-size run)
+        (fnn-nat (fnn-owner-core 'fn-owner-feed-journal-prefix-size))
+        (fnn-rc-missing run)
+        (fnn-owner-feed-configured-missing (fnn-rc-service run))))
+
+(defun fnn-rc-do-replay (run peer)
+  "Effect (:feed-replay . PEER), under O: the owner applies the entries
+window B's scan of PEER's journal returned."
+  (let ((scanned (find peer (fnn-rc-scanned run) :key #'first :test #'equal)))
+    (unless scanned (fnn-fault "no scanned FNFD journal for peer ~a" peer))
+    (fnn-owner-feed-replay peer (third scanned) (fourth scanned))))
+
+(defun fnn-rc-do-install (run)
+  "Effect :install, under O: the journals window B opened join the feeds."
+  (fnn-owner-feed-install
+   (fnn-rc-service run)
+   (loop for entry in (reverse (fnn-rc-scanned run))
+         collect (cons (first entry) (second entry))))
+  (setf (fnn-rc-installedp run) t))
+
+(defun fnn-rc-owner-effect (run effect)
+  "Execute one owner effect under O.  Answers :reserve, :convert, :release or
+:continue for the caller's own work (the macro runs it in the quantum), else
+NIL.  The event the effect observed is left for the next step."
+  (let ((what (if (consp effect) (car effect) effect)))
+    (case what
+      ((:stage :reserve :convert :release :continue)
+       (when (eq what :continue)
+         (setf (fnn-rc-word run)
+               (if (equal (cdr (first (fnn-rc-pending run))) :accept) :accepted :refused)))
+       what)
+      (:authorize (setf (fnn-rc-event run) (fnn-rc-do-authorize run)) nil)
+      (:complete (setf (fnn-rc-event run) (fnn-rc-do-complete run)) nil)
+      (:refresh (fnn-rc-do-refresh run) nil)
+      (:feed-replay (fnn-rc-do-replay run (cdr effect)) nil)
+      (:install (fnn-rc-do-install run) nil)
+      (:unstage (fnn-owner-reconfigure-unstage) nil)
+      ((:accept :refuse) nil)
+      (:fence
+       (when (fnn-rc-fence-store run)
+         (setf (fnn-store-fenced (fnn-owner-service-store (fnn-rc-service run))) t))
+       (fnn-rc-resignal run (make-condition 'fnn-store-indeterminate
+                                            :message "owner rejected a durably published configuration")))
+      (:fault
+       (fnn-rc-resignal run (make-condition 'fnn-store-fault
+                                            :message "the configuration change faulted")))
+      (t (fnn-fault "owner named the reconfiguration effect ~s" effect)))))
+
+(defun fnn-rc-hold (run entry)
+  "Under O: the gate's hold, ACL2's fn-otm-hold-begin (ENTRY :begin) in the
+quantum that leaves the owner for its first window, fn-otm-hold-end (:end) in
+the quantum whose step answered :done.  A second reconfiguration is refused :busy at its staging
+(fn-ocfg-reconfig-refusal) before it gets here; the hold's :busy here, or an
+end that finds no hold, is a fault."
+  (let ((word (fnn-owner-reconfig-hold (fnn-rc-service run) entry)))
+    (unless (eq word (if (eq entry :begin) :held :released))
+      (fnn-fault "owner answered the reconfiguration hold ~(~a~) with ~a" entry word))
+    (setf (fnn-rc-holdp run) (eq entry :begin))))
+
+(defun fnn-rc-leave (run)
+  "Under O, last in every quantum of the section (its unwind-protect cleanup,
+outside the caller's E): a run that leaves for its first window takes the
+gate's hold (fn-otm-hold-begin) before it releases the owner; a run that does
+not wait for a window, because its step answered :done (accept, refuse) or
+the quantum is being left by the fence or fault it re-signalled, releases it
+(fn-otm-hold-end)."
+  (cond ((and (fnn-rc-windowp run) (not (fnn-rc-holdp run)))
+         (fnn-rc-hold run :begin))
+        ((and (not (fnn-rc-windowp run)) (fnn-rc-holdp run))
+         (fnn-rc-hold run :end))))
+
+(defun fnn-rc-owner-quantum (run)
+  "Under O, in a quantum of the caller's section: execute the owner effects
+ACL2 names, in order, until one is the caller's own (answered, for the macro
+to run) or the next is off the owner (the run waits for its window) or the run is done (the hold is released; NIL)."
+  (loop
+    (fnn-rc-prime run)
+    (let ((head (first (fnn-rc-pending run))))
+      (cond ((null head)
+             (setf (fnn-rc-windowp run) nil)
+             (return nil))
+            ((eq (car head) :off)
+             (setf (fnn-rc-windowp run) t)
+             (return nil))
+            (t (pop (fnn-rc-pending run))
+               (let ((stop (fnn-rc-owner-effect run (cdr head))))
+                 (when stop (return stop))))))))
+
+(defun fnn-rc-classify (run condition)
+  "A window met CONDITION.  It is kept to be re-signalled under O; the word
+is the one ACL2's step takes: :uncertain for an indeterminate outcome,
+:refused for a plain refusal (nothing was written), else :fault."
+  (setf (fnn-rc-condition run) condition)
+  (cond ((typep condition 'fnn-store-indeterminate) :uncertain)
+        ((eq (type-of condition) 'fnn-store-error)
+         (setf (fnn-rc-condition run) nil)
+         :refused)
+        (t :fault)))
+
+(defun fnn-rc-do-observe (run)
+  "Effect (:off . :observe): observe the next name derived from the captured
+owner, then authorize that immutable value exactly once.  A missing name is
+:absent; an invalid name is an unknown observation, which ACL2 faults."
+  (let* ((store (fnn-owner-service-store (fnn-rc-service run)))
+         (next (fnn-core 'fn-olau-next-name (fnn-rc-captured run)))
+         (observation (if (stringp next)
+                          (if (fnn-lstat (fnn-join (fnn-config-dir store) next))
+                              :present :absent)
+                        :unknown))
+         (result (fnn-core 'fn-olau-authorize-observed
+                           (fnn-rc-captured run) (fnn-octet-list (fnn-rc-record run))
+                           (fnn-rc-lock-owned run) observation (fnn-rc-profile run))))
+    (setf (fnn-rc-authorization run) result)
+    (case (fnn-core 'fn-native-admin-host-publication-status result)
+      (:accepted :ok)
+      (:refused
+       (setf (fnn-rc-reason run)
+             (fnn-core 'fn-native-admin-host-publication-reason result))
+       :refused)
+      (otherwise :fault))))
+
+(defun fnn-rc-do-publish (run)
+  "Effect (:off . :publish): ACL2's publication plan executed, off O and E.
+The outcome is the publication's own word; an uncertain one fences the store
+and the service when quantum 2 re-signals it."
+  (unwind-protect
+       (multiple-value-bind (outcome generation name)
+           (fnn-admin-publish-effect (fnn-owner-service-store (fnn-rc-service run))
+                                     (fnn-rc-record run) (fnn-rc-authorization run))
+         (setf (fnn-rc-generation run) generation
+               (fnn-rc-name run) name)
+         (when (eq outcome :uncertain)
+           (setf (fnn-rc-fence-store run) t
+                 (fnn-rc-condition run)
+                 (make-condition 'fnn-store-indeterminate
+                                 :message "configuration record publication is uncertain")))
+         outcome)
+    ;; The queued stage cleanup (the unlink and its directory fsync) runs
+    ;; here, with no lock held.
+    (fnn-immutable-drain-cleanups)))
+
+(defun fnn-rc-do-feed-io (run peer)
+  "Effect (:off . (:feed-io . PEER)): open, read and repair PEER's journal
+(fnn-owner-feed-open).  A journal that did not return closes every journal
+this window opened."
+  (multiple-value-bind (journal entries offset)
+      (fnn-owner-feed-open (fnn-owner-service-store (fnn-rc-service run))
+                           peer (fnn-rc-prefix-size run))
+    (push (list peer journal entries offset) (fnn-rc-scanned run))
+    :ok))
+
+(defun fnn-rc-close-scanned (run)
+  "Close the journals scanned and not installed; the first failure is lost to
+the condition already carried."
+  (unless (fnn-rc-installedp run)
+    (fnn-owner-feed-close-entries
+     (loop for entry in (fnn-rc-scanned run) collect (cons (first entry) (second entry))))
+    (setf (fnn-rc-scanned run) nil)))
+
+(defun fnn-rc-window (run)
+  "Off O and E: execute the effects ACL2 labels :off, in order, until the
+next is an owner effect or the run is done.  *fnn-section-step* is this
+window's own binding; the value it ends at travels to quantum 2."
+  (let ((*fnn-section-step* nil))
+    (unwind-protect
+         (loop
+           (fnn-rc-prime run)
+           (let ((head (first (fnn-rc-pending run))))
+             (unless (and head (eq (car head) :off))
+               (return))
+             (pop (fnn-rc-pending run))
+             (let ((effect (cdr head)))
+               ;; A condition a window meets is its RESULT: classified into
+               ;; the word ACL2's step takes, kept, and re-signalled under O
+               ;; by the :fence or :fault effect (fnn-rc-resignal), where the
+               ;; section's one boundary classifies it.
+               (setf (fnn-rc-event run)
+                     (handler-case
+                         (cond ((eq effect :observe) (fnn-rc-do-observe run))
+                               ((eq effect :publish) (fnn-rc-do-publish run))
+                               ((and (consp effect) (eq (car effect) :feed-io))
+                                (fnn-rc-do-feed-io run (cdr effect)))
+                               (t (fnn-fault "owner named the reconfiguration window effect ~s"
+                                             effect)))
+                       (serious-condition (condition)
+                         (fnn-rc-close-scanned run)
+                         (fnn-rc-classify run condition)))))))
+      (setf (fnn-rc-step run) *fnn-section-step*))
+    (setf (fnn-rc-windowp run) nil)))
+
+(defun fnn-rc-begin (run reserve)
+  "Register the request: RESERVE for the store-limit caller.  Nothing runs
+until the caller's drive."
+  (setf (fnn-rc-reserve run) reserve
+        (fnn-rc-startedp run) t)
+  nil)
+
+(defmacro fnn-owner-live-reconfigure
+    ((run drive section service cid &rest class) (word reason)
+     &key before stage reserve convert release continue)
+  "Stage, publish and complete one ACL2-constructed configuration record as
+quanta of the caller's SECTION, the durable I/O off the owner (ruling 19; ACL2:
+books/owner-reconfig-phased.lisp fn-orp-step, keystone
+fn-orp-step-runs-the-phased-run).  The caller's section call is this form's
+(SECTION SERVICE CID CLASS...), as fnn-owner-held-commit's is; BEFORE is its
+quantum-1 body, which ends by registering the request,
+(fnn-rc-begin RUN RESERVE), and calling (DRIVE) in tail position.  STAGE is
+ACL2's staging entry as (lambda (CID) (fnn-owner-result 'fn-ores-config-result-p
+'ENTRY CID ARG...)).  Answers the values of the last quantum's CONTINUE.
+
+STATEMENT.  QUANTUM 1 (the entry, under O): BEFORE, then :stage, :authorize
+and, for `store limit' (RESERVE true), :reserve under E; a refusal there
+unstages and answers.  WINDOW A (no O, no E): :observe, the lstat of the next
+generation's name, then :publish, the immutable publication (open, write,
+fsync, link, directory fsync, unlink, close).  QUANTUM 2 (SECTION again, as
+class :commit under the hold): by the outcome :complete and :refresh (the store's configuration cache
+and the newly configured peers); a refused publication releases, unstages and
+answers; an uncertain one fences and a fault faults, the window's condition
+re-signalled under O.  WINDOW B (no O): (:feed-io . PEER), each newly
+configured journal's open, read and repair.  QUANTUM 3 (SECTION again, :commit):
+(:feed-replay . PEER) for each, :install, then :convert under E when reserved.
+Its verdict, mapped by fn-orp-convert-event, feeds :converting: ACL2 answers
+:continue/:accept or :release/:fault;
+with no new peer quantum 3 is quantum 2's tail.  CONTINUE is the caller's work
+after the answer, run in the quantum that decides it, with WORD (:accepted or
+:refused) and REASON (ACL2's).  RESERVE, CONVERT and RELEASE are the
+store-limit pool reservation: taken in quantum 1 under E; CONVERT returns the
+pool verdict, and CONVERT and RELEASE take E themselves; nobody holds E across a window.
+
+HELD BETWEEN QUANTA.  The staged record: ACL2 refuses a second reconfiguration
+while it stands (fn-ocfg-reconfig-refusal :busy, the stage entry's reason, so a
+second caller's CONTINUE sees (:refused :busy)) and :begin and :take
+(fn-ocfg-step).  The gate's hold (books/owner-time-reconfig.lisp): taken by
+fn-otm-hold-begin in the quantum that leaves for window A, released by
+fn-otm-hold-end in the quantum whose step answered :done.  Under it the gate
+admits only :inspect, :reader and :commit (this form's re-entry: fn-otm-hold-
+next).  H3's committer START/wake exclusion needs the commit-held-host lane's
+fn-otm-committer-may-start/held-wake integration (RULING19-MODEL-AWAITS-HOST);
+fn-otm-hold-next alone proves only the gate's admitted classes.
+
+WHAT A WINDOW OBSERVES.  Window A: the filesystem, and the values quantum 1
+captured (the record, owner configuration, profile and writer-lock observation);
+fn-olau-authorize-observed authorizes the capture with the one lstat result.  Window B:
+the feed directory and the journals of peers no installed feed serves, which
+nothing writes before :install; no owner state.  A concurrent quantum sees the
+owner either as before :complete (the old configuration, the record staged) or
+as after it.
+
+NO HALF-INSTALLED CONFIGURATION.  ACL2 installs the new configuration in the
+one quantum that runs :complete (fn-owner-reconfigure-complete) and the
+store's cache follows in that quantum; the feed table changes only at :install.
+No concurrent caller can see the store's cache, the owner's configuration and
+the feeds disagree except between quantum 2 and quantum 3, in which the staged
+record is gone and no journal exists for a new peer: the hold, which stands
+until the step is done, excludes other mutators.  Excluding the committer's
+START additionally requires the H3 integration named above."
+  (let ((stop (gensym "STOP")) (results (gensym "RESULTS")))
+    `(let* ((,run (make-fnn-reconfig :service ,service))
+            (,results nil))
+       (unwind-protect
+            (flet ((,drive ()
+                     (loop
+                       (let ((,stop (fnn-rc-owner-quantum ,run)))
+                         (case ,stop
+                           (:stage (setf (fnn-rc-event ,run) (fnn-rc-do-stage ,run ,stage)))
+                           (:reserve (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+                                       ,reserve))
+                           (:convert
+                            (setf (fnn-rc-event ,run)
+                                  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+                                    (fnn-core 'fn-orp-convert-event ,convert))))
+                           (:release (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+                                       ,release))
+                           (:continue
+                            (setf (fnn-rc-answer ,run)
+                                  (multiple-value-list
+                                   (let ((,word (fnn-rc-word ,run))
+                                         (,reason (fnn-rc-reason ,run)))
+                                     (declare (ignorable ,word ,reason))
+                                     ,continue))))
+                           (t (return)))))
+                     (values-list (fnn-rc-answer ,run))))
+              (setq ,results
+                    (multiple-value-list
+                     (,section ,service ,cid
+                              (lambda () (unwind-protect ,before (fnn-rc-leave ,run)))
+                              ,@class)))
+              (loop while (fnn-rc-windowp ,run)
+                    do (fnn-rc-window ,run)
+                       (setq ,results
+                             (multiple-value-list
+                              (,section ,service ,cid
+                               (lambda () (unwind-protect (,drive) (fnn-rc-leave ,run)))
+                               :commit))))
+              (values-list ,results))
+         (fnn-rc-close-scanned ,run)))))
+
+;;; PKT-221: the credential file's login bindings, published into the owner's
+;;; configuration, one record per delta list ACL2's fn-lb-sync-plan names.
+;;; This runs outside any quantum: a plan quantum, then each record through
+;;; fnn-owner-live-reconfigure.  At the start (fnn-native-auth-install, an
+;;; owner startup hook) it runs after the gate exists and the committer and mux
+;;; are started but before any listener is bound
+;;; (host/native/owner.lisp fnn-owner-run: fnn-owner-run-startup-hooks precedes
+;;; fnn-listen), so no client quantum can interleave and no hold is needed; on a
+;;; running owner the credential reload (host/native/login-bindings.lisp) takes
+;;; the gate's hold per record, and ACL2 refuses a record staged on a plan a
+;;; concurrent change outdated.
+(defun fnn-native-auth-publish-bindings (service octets presentp max-credentials)
+  "Publish the credential file's login bindings into the owner's configuration.
+PKT-221: ACL2's fn-lb-sync-plan names the delta lists; each is staged and made
+durable through fnn-owner-live-reconfigure, the one live path.  Answers
+:accepted, or :refused before any record whose publication was refused
+(records published before it stand)."
+  (let ((plan (fnn-quantum-control
+               service nil
+               (lambda ()
+                 (fnn-admin-test-fault "login-bindings")
+                 (fnn-owner-core 'fn-owner-login-bindings-plan
+                                 (fnn-core 'fn-native-auth-host-load-bindings
+                                           octets presentp max-credentials))))))
+    (unless (and (consp plan) (eq (first plan) :ok) (listp (second plan)))
+      (fnn-err "login bindings refused: ~a" (and (consp plan) (second plan)))
+      (return-from fnn-native-auth-publish-bindings :refused))
+    (dolist (deltas (second plan) :accepted)
+      (unless (eq (fnn-owner-live-reconfigure (run drive fnn-quantum-control service nil)
+                      (word reason)
+                    :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-owner-reconfigure-deltas pcid deltas))
+                    :before (progn
+                              (fnn-admin-test-fault "login-bindings-record")
+                              (fnn-rc-begin run nil)
+                              (drive))
+                    :continue word)
+                  :accepted)
+        (return-from fnn-native-auth-publish-bindings :refused)))))
 
 ;;; PRF-164 (PKT-439): the owner's side of XREDEEM.  The connection CID
 ;;; holds (books/nntp-auth.lisp fn-auth-redeem-waitp) after its read; the
@@ -325,61 +699,82 @@ Answers :accepted once the record is durable and the owner installed it, or
 ;;; reaches the publication in-process, the way peer accept does
 ;;; (host/native/peer-invite.lisp), not over the control socket: no control
 ;;; request kind is used.
-(defun fnn-owner-account-redeem (service cid)
+(defun fnn-owner-account-redeem (service cid class)
   "Plan, publish, then answer: 281 only after the redeem record is durable.
+Runs as the quanta of fnn-owner-serialized (CLASS, ACL2's publication class)
+for the connection CID, which must still wait for the owner's word; the reply
+is the continuation's, so it leaves only after the durable publication
+(fnn-owner-live-reconfigure).
 
-Returns the ACL2-rendered reply octets for CID."
-  (let* ((salt (fnn-csprng-octets (fnn-core 'fn-acct-host-salt-octets)
-                                  "credential salt"))
-         (bound (fnn-profile-nat 'fn-store-profile-max-credentials
-                                 (fnn-owner-service-store service)))
-         (published
-           (fnn-owner-live-reconfigure-locked
-            service
-            (lambda (pcid)
-              (fnn-owner-result 'fn-ores-config-result-p
-                                'fn-acct-host-owner-redeem-stage
-                                pcid cid salt bound)))))
-    (unless (member published '(:accepted :refused))
-      (fnn-fault "owner returned a malformed publication word"))
-    ;; The model's crash cut after fn-ocl-publish's root barrier and before
-    ;; the reply (books/accounts.lisp
-    ;; fn-acct-redeem-bounded-plan-after-its-redeem-is-bound); a developer
-    ;; image dies here on request.
-    (when (and (eq published :accepted)
-               (fnn-developer-selector "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"))
-      (fnn-err "account redeem: developer stop after the publication")
-      (sb-ext:exit :code 137 :abort t))
-    (fnn-log-line (fnn-owner-core 'fn-acct-host-owner-redeem-log-line published))
-    (let ((word (fnn-owner-core 'fn-acct-host-owner-redeem-word published)))
-      (unless (member word '(:bound :refused))
-        (fnn-fault "owner returned a malformed redeem word"))
-      (unless (eq (fnn-owner-action 'fn-owner-account-outcome cid word) :ok)
-        (fnn-fault "owner rejected the redeem outcome"))
-      (fnn-owner-octets-global 'fn-owner-output))))
+Returns the ACL2-rendered reply octets for CID, or NIL when the connection no
+longer waits."
+  (let ((salt nil) (bound nil))
+  (fnn-owner-live-reconfigure (run drive fnn-owner-serialized service cid class)
+      (published reason)
+    :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-acct-host-owner-redeem-stage pcid cid salt bound))
+    :before
+    (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
+         (progn
+           (setq salt (fnn-csprng-octets (fnn-core 'fn-acct-host-salt-octets)
+                                         "credential salt")
+                 bound (fnn-profile-nat 'fn-store-profile-max-credentials
+                                        (fnn-owner-service-store service)))
+           (fnn-rc-begin run nil)
+           (drive)))
+    :continue
+    (progn
+      (unless (member published '(:accepted :refused))
+        (fnn-fault "owner returned a malformed publication word"))
+      ;; The model's crash cut after fn-ocl-publish's root barrier and before
+      ;; the reply (books/accounts.lisp
+      ;; fn-acct-redeem-bounded-plan-after-its-redeem-is-bound); a developer
+      ;; image dies here on request.
+      (when (and (eq published :accepted)
+                 (fnn-developer-selector "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"))
+        (fnn-err "account redeem: developer stop after the publication")
+        (sb-ext:exit :code 137 :abort t))
+      (fnn-log-line (fnn-owner-core 'fn-acct-host-owner-redeem-log-line published))
+      (let ((word (fnn-owner-core 'fn-acct-host-owner-redeem-word published)))
+        (unless (member word '(:bound :refused))
+          (fnn-fault "owner returned a malformed redeem word"))
+        ;; The connection may have left while the record was published
+        ;; (the windows hold no owner): it is then answered nothing, as a
+        ;; connection that no longer waits is.
+        (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
+             (progn
+               (unless (eq (fnn-owner-action 'fn-owner-account-outcome cid word) :ok)
+                 (fnn-fault "owner rejected the redeem outcome"))
+               (fnn-octet-list (fnn-owner-octets-global 'fn-owner-output)))))))))
 
 (defun fnn-owner-compaction-request (service)
-  "PKT-868: the operator's compaction request on the running owner.  ACL2
-answers it (host/owner-host.lisp fn-owner-sco-request, books/owner-compact-
-request.lisp fn-ock-request-word) under the owner mutex, from the free space
-read before (statvfs is I/O: never under the mutex); a request it answers
-:requested starts the owner's publication now, off the mutex
-(fnn-owner-maybe-publish: the spare, the capture, the bounded batches, the
-install, the drop).  The reply names the word; :blocked is a refusal (a
-deferral stands, and `status' names it)."
+  "Run the publication producer after the control receipt was answered.
+Observe its durable frontier/deferral through ACL2 until terminal."
   (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
-         (word (fnn-quantum-control
-                service nil
-                (lambda ()
-                  (fnn-admin-test-fault "compaction")
-                  (fnn-owner-core 'fn-owner-sco-request
-                                  (fnn-checkpoint-budget-test-override nil) free
-                                  (fnn-owner-monotonic-ms))))))
+         (admission (fnn-quantum-control
+                     service nil
+                     (lambda ()
+                       (fnn-admin-test-fault "compaction")
+                       (list (fnn-owner-core 'fn-owner-sco-request
+                                             (fnn-checkpoint-budget-test-override nil) free
+                                             (fnn-owner-monotonic-ms))
+                             (fnn-core 'fn-owner-sco-count *the-live-state*)))))
+         (word (first admission)) (target (second admission)))
     (unless (member word '(:requested :coalesced :nothing-to-compact :blocked))
       (fnn-fault "owner returned a malformed compaction answer ~a" word))
     (fnn-err "COMPACTION request answer=~(~a~)" word)
-    (when (eq word :requested)
-      (fnn-owner-maybe-publish service))
+    (when (member word '(:requested :coalesced))
+      (fnn-owner-maybe-publish service)
+      (loop
+        (let ((observed
+                (fnn-quantum-control
+                 service nil
+                 (lambda ()
+                   (fnn-admin-test-fault "compaction-status")
+                   (fnn-core 'fn-nco-owner-publication-word target *the-live-state*)))))
+          (case observed
+            ((:compacted :blocked) (setq word observed) (return))
+            (:requested (sleep (fnn-core 'fn-nco-wait-seconds)))
+            (t (fnn-fault "malformed publication receipt observation"))))))
     (list :reason (fnn-core 'fn-ock-request-status word) word)))
 
 (defun fnn-owner-inspect-request (service msgid)
@@ -463,16 +858,15 @@ The reply names the word."
       ;; before the pass reads it; a refusal is before anything was written.
       (let ((clock (fnn-store-prepare-observation)))
         (destructuring-bind (recorded &optional reason &rest ignored)
-            (fnn-quantum-control
-             service nil
-             (lambda ()
-               (fnn-admin-test-fault "reclaim-instant")
-               (multiple-value-list
-                (fnn-owner-live-reconfigure-locked
-                 service
-                 (lambda (cid)
-                   (fnn-owner-result 'fn-ores-config-result-p
-                                     'fn-owner-orc-instant-stage cid clock))))))
+            (fnn-owner-live-reconfigure (run drive fnn-quantum-control service nil)
+                (word why)
+              :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-owner-orc-instant-stage pcid clock))
+              :before
+              (progn
+                (fnn-admin-test-fault "reclaim-instant")
+                (fnn-rc-begin run nil)
+                (drive))
+              :continue (list word why))
           (declare (ignore ignored))
           (unless (eq recorded :accepted)
             (fnn-err "RECLAIM instant refused: ~(~a~)" reason)
@@ -559,83 +953,125 @@ ordinary live reconfiguration, and on :applied served at once."
               history (and seen (fnn-heap-history-observation
                                  (fnn-store-root store) seen)))))
      (let ((answer
-    (fnn-quantum-control
-     service nil
-     (lambda ()
-      (fnn-admin-test-fault "limit")
-      ;; A concurrent limit change moved the carry after the observation
-      ;; above: the history is observed again off the mutexes, never here.
-      ;; The carry moves only in a quantum of the owner, so this read holds
-      ;; until the quantum ends.
-      (if (not (equal (car (fnn-owner-core 'fn-owner-limit-carried)) seen))
-       :carry-moved
-      ;; The store's use reads only the owner's carried state, and its
-      ;; carried-debt fallback can load history pages through the extent
-      ;; mutex (fn-pgs-fill-frame takes it non-recursively): read it here,
-      ;; under the owner mutex and before the extent mutex.
-      (let ((use (fnn-owner-core 'fn-owner-limit-use)))
-      ;; The extent mutex owns pool draws independently of the owner mutex.
-      ;; Keep it through preview, durability and the exact budget reduction.
-      (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-       (let* ((carry (fnn-owner-core 'fn-owner-limit-carried))
-              ;; The history's requested profile and what this process
-              ;; serves and admits under before D, both carried by the
-              ;; owner from its open (host/owner-host.lisp
-              ;; fn-owner-limit-carry; fn-lim-carry-after-is-the-history):
-              ;; no walk of the configuration history per request.
-              (values (car carry))
-              (funded (cdr carry))
-              (initial (progn
-                   (unless (and (consp carry) values funded)
-                     (fnn-fault "owner carries no limit profile"))
-                   (fnn-lim-decision store plan values use run-mb core observations
-                                     history)))
-              (growth (fnn-core 'fn-lim-protected-growth
-                                (fnn-core 'fn-lim-apply-row values
-                                          (fnn-lim-plan-field plan) (fnn-lim-plan-n plan))
-                                funded core (fnn-gc-nursery-octets)))
-              (preview (first (fnn-core-page-read-pool
-                               'fn-owner-page-read-protected-growth-preview growth)))
-              (d (fnn-core 'fn-lim-article-decision
-                           (fnn-core 'fn-lim-pool-decision initial preview)
-                           (fnn-core 'fn-lim-apply-row values
-                                     (fnn-lim-plan-field plan) (fnn-lim-plan-n plan)) funded))
-              (line (fnn-lim-line plan d store values funded)))
-         (fnn-err "LIMIT ~a" line)
-         (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
-             (list :reason :refused (fnn-lim-reason d) line)
-           (multiple-value-bind (word reason)
-               (fnn-owner-live-reconfigure-locked
-                service
-                (lambda (cid)
-                  (fnn-owner-result 'fn-ores-config-result-p
-                                    'fn-native-admin-host-owner-reconfigure cid plan)))
-             (cond
-               ((eq word :refused) (list :reason :refused reason))
-               (t
-                ;; ACL2's served profile after D (fn-lim-funded-after,
-                ;; fn-lim-funded-after-decide): the requested candidate on
-                ;; :applied -- the profile every later open computes from the
-                ;; history this record ended (fn-lim-effective-of-append-
-                ;; record) -- else the one already served: a recorded change
-                ;; does not fund.
-                ;; The carry moves to fn-lim-carry-after (the record is
-                ;; published); its funded half is the answer.
-                (let ((served (fnn-owner-core 'fn-owner-limit-decided
-                                              (fnn-lim-plan-field plan)
-                                              (fnn-lim-plan-n plan) d)))
-                  (unless (equal served funded)
-                    (unless (eq (first (fnn-core-page-read-pool
-                                        'fn-owner-page-read-protected-growth growth))
-                                :protected-growth-admitted)
-                      (fnn-indeterminate
-                       "owner lost the protected space of a durably recorded limit"))
-                    (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
-                                :installed)
-                      (fnn-indeterminate
-                       "owner refused a durably recorded limit's profile"))
-                    (setf (fnn-store-config store) served)))
-                (list :reason :accepted (fnn-lim-reason d) line)))))))))))))
+            (let ((growth nil) (d nil) (line nil) (funded nil) (token nil))
+              ;; The decision, with the pool preview, is quantum 1's, under O
+              ;; and then E; its reservation (:reserve) is the preview it
+              ;; stands on.  The budget reduction is :convert's, under E, in
+              ;; the quantum that installs.
+              (fnn-owner-live-reconfigure (run drive fnn-quantum-control service nil)
+                  (word reason)
+                :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-native-admin-host-owner-reconfigure pcid plan))
+                :before
+                (progn
+                  (fnn-admin-test-fault "limit")
+                  ;; A concurrent limit change moved the carry after the
+                  ;; observation above: the history is observed again off the
+                  ;; mutexes, never here.  The carry moves only in a quantum
+                  ;; of the owner, so this read holds until the quantum ends.
+                  (if (not (equal (car (fnn-owner-core 'fn-owner-limit-carried)) seen))
+                      :carry-moved
+                    ;; The store's use reads only the owner's carried state, and
+                    ;; its carried-debt fallback can load history pages through
+                    ;; the extent mutex (fn-pgs-fill-frame takes it
+                    ;; non-recursively): read it here, under the owner mutex and
+                    ;; before the extent mutex.
+                    (let* ((use (fnn-owner-core 'fn-owner-limit-use))
+                           ;; The extent mutex owns pool draws independently of
+                           ;; the owner mutex: held for the preview and the
+                           ;; decision, released before the staging, and taken
+                           ;; again by the reservation, ACL2's own admission
+                           ;; (:reserve) of the same growth.
+                           (decided
+                       (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+                        (let* ((carry (fnn-owner-core 'fn-owner-limit-carried))
+                               ;; The history's requested profile and what this
+                               ;; process serves and admits under before D, both
+                               ;; carried by the owner from its open
+                               ;; (host/owner-host.lisp fn-owner-limit-carry;
+                               ;; fn-lim-carry-after-is-the-history): no walk of
+                               ;; the configuration history per request.
+                               (values (car carry))
+                               (initial (progn
+                                          (setq funded (cdr carry))
+                                          (unless (and (consp carry) values funded)
+                                            (fnn-fault "owner carries no limit profile"))
+                                          (fnn-lim-decision store plan values use run-mb core
+                                                            observations history))))
+                          (setq growth (fnn-core 'fn-lim-protected-growth
+                                                 (fnn-core 'fn-lim-apply-row values
+                                                           (fnn-lim-plan-field plan)
+                                                           (fnn-lim-plan-n plan))
+                                                 funded core (fnn-gc-nursery-octets)))
+                          (let ((preview (first (fnn-core-page-read-pool
+                                                 'fn-owner-page-read-protected-growth-preview
+                                                 growth))))
+                            (setq d (fnn-core 'fn-lim-article-decision
+                                              (fnn-core 'fn-lim-pool-decision initial preview)
+                                              (fnn-core 'fn-lim-apply-row values
+                                                        (fnn-lim-plan-field plan)
+                                                        (fnn-lim-plan-n plan))
+                                              funded)
+                                  line (fnn-lim-line plan d store values funded)
+                                  ;; Reserve only the growth this decision funds
+                                  ;; live; a recorded-only change needs zero.
+                                  growth (fnn-core 'fn-lim-protected-growth
+                                                   (fnn-core 'fn-lim-funded-after d funded
+                                                             (fnn-core 'fn-lim-apply-row values
+                                                                       (fnn-lim-plan-field plan)
+                                                                       (fnn-lim-plan-n plan)))
+                                                   funded core (fnn-gc-nursery-octets))))
+                          (fnn-err "LIMIT ~a" line)
+                          (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
+                              (list :reason :refused (fnn-lim-reason d) line)
+                            :go)))))
+                      (if (eq decided :go)
+                          (progn
+                            (fnn-rc-begin run t)
+                            (drive))
+                        decided))))
+                ;; The growth is reserved in quantum 1 under E, taken by the
+                ;; reservation itself (fn-prl-reserve-growth,
+                ;; host/page-read-host.lisp), converted
+                ;; into the budget reduction in quantum 3 and evicted when the
+                ;; change is refused; nobody holds E across a window.  A
+                ;; reservation ACL2 refuses after the record was staged drops
+                ;; the stage and refuses by ACL2's word (the decision above
+                ;; admitted the same amount a moment before).
+                :reserve
+                (let* ((reserved (fnn-core-page-read-pool
+                                  'fn-owner-page-read-growth-reserve growth))
+                       (word (first reserved)))
+                  (cond ((eq word :admitted) (setq token (second reserved)))
+                        (t (fnn-owner-reconfigure-unstage)
+                           (fnn-refuse "owner refused the limit's growth reservation: ~(~a~)"
+                                       word))))
+                :release
+                (unless (eq (first (fnn-core-page-read-pool
+                                    'fn-owner-page-read-growth-release token))
+                            :evicted)
+                  (fnn-fault "owner lost the growth reservation of a refused limit"))
+                :convert
+                ;; Every reserved run calls the real ledger conversion, even
+                ;; a recorded-only change (zero live growth).  Its raw verdict
+                ;; goes through fn-orp-convert-event to the :converting phase;
+                ;; only fn-orp-step decides release/fault versus continuation.
+                (first (fnn-core-page-read-pool
+                        'fn-owner-page-read-growth-convert token growth))
+                :continue
+                (if (eq word :refused)
+                    (list :reason :refused reason)
+                  (progn
+                    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+                      (let ((served (fnn-owner-core 'fn-owner-limit-decided
+                                                    (fnn-lim-plan-field plan)
+                                                    (fnn-lim-plan-n plan) d)))
+                        (when (fnn-core 'fn-lim-decision-appliedp d)
+                          (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
+                                      :installed)
+                            (fnn-indeterminate
+                             "owner refused a durably recorded limit's profile"))
+                          (setf (fnn-store-config store) served))))
+                    (list :reason :accepted (fnn-lim-reason d) line)))))))
        (unless (eq answer :carry-moved) (return answer))))))
 
 (defun fnn-admin-execute-limit (store plan)
@@ -665,6 +1101,10 @@ or answer the one owner request an admin vector carries (PKT-868: the
 compaction request; row S3: the inspect request; Q16: the reclaim request;
 ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
 -reclaim-mode; row S1: a store limit, fnn-owner-limit-serialized)."
+  ;; Receipt reads are served by the control owner's receipt slot.
+  (when (fnn-core 'fn-nco-receipt-command argv)
+    (return-from fnn-owner-live-admin-serialized
+      (list :reason :refused :receipt-control-required)))
   ;; Row S9: the retire request, before any administrative plan.
   (let ((retire (fnn-core 'fn-nret-request argv)))
     (when retire
@@ -687,24 +1127,23 @@ ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
     (when (fnn-lim-plan-p plan)
       (return-from fnn-owner-live-admin-serialized
         (fnn-owner-limit-serialized service plan))))
-  (fnn-quantum-control
-   service nil
-   (lambda ()
-     (fnn-admin-test-fault "admin")
-     ;; PKT-453 (a): a refusal answers (:reason :refused REASON), the
-     ;; plan's reason or the staging step's, both ACL2's.  The quantum's
-     ;; value is the answer: no early return crosses its boundary (lane
-     ;; failure-scope: an unwind no condition explains is a fault).
-     (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
-       (if (not (fnn-admin-plan-acceptedp plan))
-           (list :reason :refused (fnn-admin-plan-reason plan))
-         (multiple-value-bind (word reason)
-             (fnn-owner-live-reconfigure-locked
-              service
-              (lambda (cid)
-                (fnn-owner-result 'fn-ores-config-result-p
-                                  'fn-native-admin-host-owner-reconfigure cid plan)))
-           (if (eq word :refused) (list :reason :refused reason) word)))))))
+  (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
+    (fnn-owner-live-reconfigure (run drive fnn-quantum-control service nil)
+        (word reason)
+      :stage (lambda (pcid) (fnn-owner-result 'fn-ores-config-result-p 'fn-native-admin-host-owner-reconfigure pcid plan))
+      :before
+      (progn
+        (fnn-admin-test-fault "admin")
+        ;; PKT-453 (a): a refusal answers (:reason :refused REASON), the
+        ;; plan's reason or the staging step's, both ACL2's.  The quantum's
+        ;; value is the answer: no early return crosses its boundary (lane
+        ;; failure-scope: an unwind no condition explains is a fault).
+        (if (not (fnn-admin-plan-acceptedp plan))
+            (list :reason :refused (fnn-admin-plan-reason plan))
+          (progn
+            (fnn-rc-begin run nil)
+            (drive))))
+      :continue (if (eq word :refused) (list :reason :refused reason) word))))
 
 (defun fnn-admin-publish-record (store record)
   "Authorize, publish and read back one configuration RECORD (ACL2's octets)
@@ -757,6 +1196,8 @@ this executor.  The defensive status check keeps a malformed raw caller from
 turning a refusal into a physical mutation."
   (unless (fnn-admin-plan-acceptedp plan)
     (fnn-refuse "administrative request refused: ~a" (fnn-admin-plan-reason plan)))
+  (when (fnn-core 'fn-native-admin-host-owner-requestp plan)
+    (fnn-refuse "administrative request needs a running owner"))
     ; fnn-open-live-store(... t) takes the same nonblocking exclusive lock as
     ; owner.  A live owner therefore reaches the explicit `already locked'
     ; refusal; this command never starts another owner.

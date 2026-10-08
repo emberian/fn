@@ -159,3 +159,8 @@
 (include-book "owner-config-observe")
 (include-book "owner-served-carried")
 (include-book "owner-commit-carried")
+(include-book "owner-refresh-indexed")
+(include-book "owner-bound-commit")
+(include-book "owner-log-reopen")
+(include-book "owner-prepare-carried")
+(include-book "post-identity-index")

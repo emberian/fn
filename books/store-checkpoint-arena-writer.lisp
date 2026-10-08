@@ -685,7 +685,7 @@
                             (srcs (nth 1 pst)) (k (nfix (car (nth 2 pst)))) (fn-octets nil)))
            :in-theory (e/d (fn-oct-append-list-is-append)
                            (fn-scka-append-batch-is-body fn-scka-append-batch fn-scka-body
-                            fn-scka-head fn-scc-le-digits fn-sccr-nth-is-cell
+                            fn-scka-head fn-scc-le-digits
                             fn-ockp-admit-frames fn-scc-header fn-scc-seal fn-scc-frames
                             fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp)))))
 
@@ -756,7 +756,7 @@
                                fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp fn-scka-chunks
                                ; rules the octet buffer and the NNTP books export that
                                ; fire on every list here and never help
-                               fn-nntp-article-idp-is-consp fn-oct-bufp-true-listp
+                                fn-oct-bufp-true-listp
                                fn-octets$c-bufp)))
           ("Subgoal *1/4" :use ((:instance fn-scka-write-step-batch
                                            (count (+ (car pst) (len (nth 2 pst)))))))))
@@ -841,7 +841,8 @@
   ; from the base's length on.
   (declare (xargs :stobjs fn-arena :guard (and (natp h0) (true-listp records))
                   :verify-guards nil))
-  (let ((canon (fn-scka-canon-rows (nthcdr (len (fn-sco-records base)) records) fn-arena h0)))
+  (let ((canon (fn-scka-canon-rows (nthcdr (len (fn-sco-records base)) records) fn-arena h0
+                                   (fn-sco-identity base))))
     (if (equal canon :bad)
         :bad
       (fn-sco-extend base configs canon))))
@@ -862,10 +863,12 @@
           (append (fn-rows-wire-of a fn-arena) (fn-rows-wire-of b fn-arena)))))
 
 (local
- (defthm fn-scka-len-intern-at
-   (implies (not (equal (fn-scka-intern-at ws h) :bad))
-            (equal (len (fn-scka-intern-at ws h)) (len ws)))
-   :hints (("Goal" :in-theory (disable fn-scka-intern-one fn-scka-sealsp)))))
+ (defthm fn-scka-append-is-bad
+   (equal (equal (append x r) :bad) (and (atom x) (equal r :bad)))))
+
+(local
+ (defthm fn-scka-rows-wire-of-true-listp
+   (true-listp (fn-rows-wire-of rows fn-arena))))
 
 (local
  (defthm fn-scka-len-take
@@ -880,50 +883,76 @@
    (implies (and (natp n) (<= n (len x)))
             (equal (append (take n x) (nthcdr n x)) x))))
 
-; KEYSTONE (the owner's next): from a BASE that is the capture of the
+;; KEYSTONE (the owner's next): from a BASE that is the capture of the
 ; canonical rows of the first PLEN live rows, with H0 their canonical
 ; payload count, NEXT is the capture of the canonical rows of all of them:
 ; the file the publication writes is that of fn-store-sco-publish-setup's
-; NEXT for the same rows, so the load and open keystones hold of it.
+; NEXT for the same rows, so the load and open keystones hold of it.  The
+; canonical rows are the fold-context rows (books/store-checkpoint-fold.lisp):
+; the rows after BASE are interned from the seed of BASE's captured identity
+; (fn-sco-identity), which is the state the full fold reaches at that point
+; (fn-scka-fold-at-seed), so a keyring rotation inside the first PLEN rows
+; reaches the rows after it.
 (defthm fn-scka-next-checkpoint-is-capture
   (implies (and (natp plen) (<= plen (len records))
                 (equal base (fn-sco-capture configs
-                                            (fn-scka-canon-rows (take plen records) fn-arena 0)))
+                                            (fn-scka-canon-rows (take plen records) fn-arena 0
+                                                                (fn-stxk-initial-context 0))))
                 (equal h0 (len (fn-scka-canon-payloads (take plen records) fn-arena)))
-                (not (equal (fn-scka-canon-rows records fn-arena 0) :bad)))
+                (not (equal (fn-scka-canon-rows records fn-arena 0 (fn-stxk-initial-context 0))
+                            :bad)))
            (equal (fn-scka-next-checkpoint base h0 configs records fn-arena)
-                  (fn-sco-capture configs (fn-scka-canon-rows records fn-arena 0))))
+                  (fn-sco-capture configs
+                                  (fn-scka-canon-rows records fn-arena 0 (fn-stxk-initial-context 0)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-scka-append-take-nthcdr-all (n plen) (x records))
                  (:instance fn-scka-intern-at-of-append
                             (ws (fn-rows-wire-of (take plen records) fn-arena))
-                            (vs (fn-rows-wire-of (nthcdr plen records) fn-arena)) (h 0))
+                            (vs (fn-rows-wire-of (nthcdr plen records) fn-arena))
+                            (id (fn-stxk-initial-context 0)) (h 0))
                  (:instance fn-scka-intern-at-of-append-bad
                             (ws (fn-rows-wire-of (take plen records) fn-arena))
-                            (vs (fn-rows-wire-of (nthcdr plen records) fn-arena)) (h 0))
-                 (:instance fn-scka-intern-at-store-eventsp
-                            (ws (fn-rows-wire-of (take plen records) fn-arena)))
+                            (vs (fn-rows-wire-of (nthcdr plen records) fn-arena))
+                            (id (fn-stxk-initial-context 0)) (h 0))
                  (:instance fn-scka-intern-at-true-listp
-                            (ws (fn-rows-wire-of (take plen records) fn-arena)) (h 0))
+                            (ws (fn-rows-wire-of (take plen records) fn-arena))
+                            (id (fn-stxk-initial-context 0)) (h 0))
                  (:instance fn-scka-intern-at-true-listp
                             (ws (fn-rows-wire-of (nthcdr plen records) fn-arena))
-                            (h (len (fn-scka-payloads (fn-rows-wire-of (take plen records)
-                                                                        fn-arena)))))
+                            (id (fn-replay-identity-loop
+                                 (fn-scka-intern-at (fn-rows-wire-of (take plen records) fn-arena)
+                                                    (fn-stxk-initial-context 0) 0)
+                                 (fn-stxk-initial-context 0)))
+                            (h (len (fn-scka-payloads (fn-rows-wire-of (take plen records) fn-arena)))))
+                 (:instance fn-scka-len-intern-at
+                            (ws (fn-rows-wire-of (take plen records) fn-arena))
+                            (id (fn-stxk-initial-context 0)) (h 0))
+                 (:instance fn-scka-rows-wire-of-true-listp (rows (take plen records)))
+                 (:instance fn-scka-identity-of-capture
+                            (records (fn-scka-intern-at (fn-rows-wire-of (take plen records) fn-arena)
+                                                        (fn-stxk-initial-context 0) 0)))
                  (:instance fn-sco-extend-of-capture
-                            (prefix (fn-scka-intern-at (fn-rows-wire-of (take plen records)
-                                                                         fn-arena) 0))
+                            (prefix (fn-scka-intern-at (fn-rows-wire-of (take plen records) fn-arena)
+                                                       (fn-stxk-initial-context 0) 0))
                             (suffix (fn-scka-intern-at
                                      (fn-rows-wire-of (nthcdr plen records) fn-arena)
+                                     (fn-replay-identity-loop
+                                      (fn-scka-intern-at (fn-rows-wire-of (take plen records) fn-arena)
+                                                         (fn-stxk-initial-context 0) 0)
+                                      (fn-stxk-initial-context 0))
                                      (len (fn-scka-payloads (fn-rows-wire-of (take plen records)
                                                                               fn-arena)))))))
            :in-theory (e/d (fn-scka-canon-rows-is-intern-at-of-alpha
-                            fn-scka-canon-payloads-is-payloads-of-alpha)
+                            fn-scka-canon-payloads-is-payloads-of-alpha
+                            fn-scka-next-checkpoint
+                            fn-scka-sco-records-of-capture)
                            (fn-scka-append-take-nthcdr-all fn-scka-intern-at-of-append
-                            fn-scka-intern-at-of-append-bad fn-scka-intern-at-store-eventsp
-                            fn-scka-intern-at-true-listp fn-sco-extend-of-capture
-                            fn-scka-intern-at fn-scka-payloads fn-rows-wire-of
-                            fn-sco-extend fn-sco-capture fn-scka-canon-rows
-                            fn-scka-canon-payloads)))))
+                            fn-scka-intern-at-of-append-bad fn-scka-intern-at-true-listp
+                            fn-sco-extend-of-capture fn-scka-intern-at fn-scka-payloads
+                            fn-rows-wire-of fn-sco-extend fn-sco-capture fn-scka-canon-rows
+                            fn-scka-canon-payloads fn-replay-identity-loop fn-scka-len-intern-at
+                            fn-scka-intern-at-bad-iff)))))
+
 
 ; -----------------------------------------------------------------------------
 ; 6. The base the owner KEEPS between publications (lane checkpoint-arena-3;

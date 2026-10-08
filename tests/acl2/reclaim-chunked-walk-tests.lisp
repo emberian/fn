@@ -54,7 +54,7 @@
 (bpr-lift fn-rcw-canon-acc-steps 4)
 (defun rcw-canon-of (rows h fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-scka-canon-rows rows fn-arena h))
+  (fn-scka-canon-rows rows fn-arena h (fn-stxk-initial-context 0)))
 (bpr-lift rcw-canon-of 2)
 (bpr-lift fn-rcw-seal-count 1)
 (make-event `(defconst *rcw-canon* ',(in-arena-rcw-canon-of *rpt-payloads* *rcw-new* 0)))

@@ -27,7 +27,7 @@ substantial changes, then the spec you touch. Proposals and open questions are n
   `-by-definition` and not cited as events (`ledger.py --check`).
 - Keystones ship with teeth: a positive witness asserting the whole antecedent and conclusion,
   and a hypothesis-removal witness. keystone_emit's toothless list is becoming the ledger of keystones
-  without teeth (shrink-only, lane x-teeth-ratchet); until then TEETH-OWED items exempt. A failed proof search is not a counterexample.
+  without teeth (shrink-only, lane x-teeth-ratchet); until then TEETH-OWED items exempt. Ruling 22: a new or changed CRITICAL keystone (durability, authorization, identity-binding, ownership-reclamation, resource-reservation, parser-boundary, extraction; `tools/keystone_critical_map.json`) needs the whole evidence package or `keystone_emit --check` fails (no ceiling); existing ones are owed in `planning/critical-owed.json`. A failed proof search is not a counterexample.
 - No skip-proofs, defaxiom, trust tags or :program; never weaken a theorem, lock rule or
   ratchet to go green; never re-baseline; no vacuous statements.
 - A named assumption is an `encapsulate` with a local witness in `books/assumptions*.lisp`,
@@ -42,6 +42,8 @@ substantial changes, then the spec you touch. Proposals and open questions are n
 - Work only in your worktree, `build/lanes/<name>`. Never stash; never reset or check out
   ~/dev/fn; commit named files with `git commit -F`; run `tools/secrets_check.py <files>`;
   push `HEAD:lane/<name>` only. The integrator alone writes origin/dev.
+- When your branch merges to dev, the deputy that owns the worktree removes it
+  (`git worktree remove build/lanes/<name>`); a dirty merged worktree is salvaged first.
 - Claim new ids first: `tools/next_id.py claim KIND --lane NAME`.
 - Iterate in `tools/proof_repl.py` (seconds per attempt, steps not seconds); certify is for
   READY, not iteration. Certify with

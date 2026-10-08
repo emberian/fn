@@ -199,6 +199,8 @@
     "planning/ledger.json": "retired by lane x-views-out: `python3 tools/ledger.py --write` saves build/ledger/ledger.json (recoverable with `git show a13cfe7fa:PATH`)",
     "planning/repair/STATUS.md": "retired by lane x-views-out: `python3 planning/repair/repair.py report` prints it (recoverable with `git show a13cfe7fa:PATH`)",
     "planning/host-realization.json": "retired by lane x-views-out: `python3 tools/lock_discipline_check.py --emit-realization` prints the table (recoverable with `git show a13cfe7fa:PATH`)",
-    "planning/reorg-dry-run.txt": "retired by lane x-views-out: a one-shot dry-run log (recoverable with `git show a13cfe7fa:PATH`)"
+    "planning/reorg-dry-run.txt": "retired by lane x-views-out: a one-shot dry-run log (recoverable with `git show a13cfe7fa:PATH`)",
+    "tools/hazard_rule_followthrough.py": "one-shot, done: it gave the hazard-rule census (planning/hazard-rules-baseline.json, deleted on dev in aeb4905df) its permanent forms in 0b8bf9d36 and fb9d1c16a; the targeted residual was closed by lane p-hazard-targeted (each exported rule is :rule-classes nil, a consumer that needs the rewrite proves a local twin)",
+    "tests/test_hazard_rule_followthrough.py": "retired with tools/hazard_rule_followthrough.py"
   }
 }
