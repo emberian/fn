@@ -418,6 +418,11 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-olau-next-name (fn-owner-ocfg state))))
 
+; Capture under the owner mutex; window A authorizes this immutable value.
+(defun fn-owner-cfg-capture (state)
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
+  (value (fn-owner-ocfg state)))
+
 (defun fn-owner-cfg-native-admin-authorize-carried
     (record-octets lock-owned occupied profile state)
   (declare (xargs :stobjs state
