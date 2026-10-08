@@ -229,6 +229,12 @@
   :hints (("Goal" :in-theory (disable fn-sco-extend fn-sco-capture)
            :use fn-sco-extend-of-capture)))
 
+(defun fn-pck-plen-okp (recs)
+  ; The payload file the frames of RECS fill is under 2^64 octets (the offset
+  ; and length fields of a row are words).
+  (declare (xargs :guard t :verify-guards nil))
+  (< (fn-pck-plen recs 0) 18446744073709551616))
+
 (defun fn-pck-sccb-listp (recs)
   (declare (xargs :guard t :verify-guards nil))
   ; Every event and its metadata tree are encodable trees.
@@ -242,7 +248,8 @@
   ; fn-sct-decode-file-of-file-is-the-capture (fn-sct-tables-treep), made
   ; the stronger fn-sccb-treep the catalog's row codec uses.
   (declare (xargs :guard t :verify-guards nil))
-  (and (fn-pck-sccb-listp recs) (fn-sccb-treep (fn-pck-root-tree configs recs))))
+  (and (fn-pck-sccb-listp recs) (fn-pck-plen-okp recs)
+       (fn-sccb-treep (fn-pck-root-tree configs recs))))
 
 (defun fn-pck-zero-pages (n)
   (declare (xargs :guard (natp n)))
@@ -334,12 +341,6 @@
   (equal (fn-pck-rows (append a b))
          (append (fn-pck-rows a) (fn-pck-rows-from b (fn-pck-plen a 0))))
   :hints (("Goal" :in-theory (enable fn-pck-rows))))
-
-(defun fn-pck-plen-okp (recs)
-  ; The payload file the frames of RECS fill is under 2^64 octets (the offset
-  ; and length fields of a row are words).
-  (declare (xargs :guard t :verify-guards nil))
-  (< (fn-pck-plen recs 0) 18446744073709551616))
 
 (defthm pck-plen-monotone
   (<= base (fn-pck-plen recs base))
@@ -469,16 +470,61 @@
 
 (in-theory (disable fn-pck-dec-row fn-pck-dec-tree fn-pck-enc-row))
 
-(defthm pck-dec-row-of-enc-row
-  (implies (fn-sccb-treep x) (equal (fn-pck-dec-row (fn-pck-enc-row x)) x))
-  :hints (("Goal" :in-theory (enable fn-pck-dec-row fn-pck-enc-row)
+(defthm pck-record-with-payload-facts
+  (implies (fn-record-p w)
+           (and (fn-record-p (fn-pck-record-with-payload w nil))
+                (equal (fn-pck-record-with-payload w (fn-record-payload w)) w)
+                (true-listp (fn-record-payload w))
+                (equal (fn-pck-record-with-payload (fn-pck-record-with-payload w nil) p)
+                       (fn-pck-record-with-payload w p))))
+  :hints (("Goal" :in-theory (enable fn-pck-record-with-payload fn-record-shape-vocabulary))))
+
+(defthm pck-join-of-meta
+  ; Joining an event's metadata with its own payload gives the event back.
+  (equal (fn-pck-join (fn-pck-meta w) (fn-pck-payload w)) w)
+  :hints (("Goal" :in-theory (e/d (fn-pck-join fn-pck-meta fn-pck-payload) (fn-pck-record-with-payload))
+           :use (pck-record-with-payload-facts
+                 (:instance pck-record-with-payload-facts (p (fn-record-payload w)))))))
+
+(defthm pck-dec-tree-of-program
+  (implies (fn-sccb-treep x)
+           (equal (fn-pck-dec-tree (list (fn-scc-program x) off len)) x))
+  :hints (("Goal" :in-theory (enable fn-pck-dec-tree)
            :use ((:instance fn-scc-decode-tree-of-encode)
                  (:instance fn-sccb-treep-is-treep)))))
 
+(defun fn-pck-resolvesp (recs base file)
+  ; PCK-OPEN-PAYLOAD-RESOLVES: the payload file holds each event's payload at
+  ; the offset its row names (frames end to end from BASE).
+  (declare (xargs :guard (natp base) :verify-guards nil))
+  (if (atom recs)
+      t
+    (and (equal (fn-cpl-resolve (fn-cpl-ref base (len (fn-pck-payload (car recs)))) file)
+                (fn-pck-payload (car recs)))
+         (fn-pck-resolvesp (cdr recs)
+                           (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))
+                           file))))
+
+(defthm pck-dec-row-of-enc-row
+  (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp off)
+                (equal (fn-cpl-resolve (fn-cpl-ref off (len (fn-pck-payload w))) file)
+                       (fn-pck-payload w)))
+           (equal (fn-pck-dec-row (fn-pck-enc-row w off) file) w))
+  :hints (("Goal" :in-theory (e/d (fn-pck-dec-row fn-pck-enc-row) (fn-pck-join fn-pck-meta fn-pck-payload pck-join-of-meta))
+           :use (pck-join-of-meta))))
+
+(defthm pck-dec-rows-of-rows-from
+  (implies (and (fn-pck-sccb-listp recs) (natp base) (fn-pck-resolvesp recs base file))
+           (equal (fn-pck-dec-rows (fn-pck-rows-from recs base) file) recs))
+  :hints (("Goal" :induct (fn-pck-plen recs base)
+           :in-theory (e/d (fn-pck-dec-rows fn-pck-rows-from fn-pck-sccb-listp fn-pck-resolvesp)
+                           (fn-pck-dec-row fn-pck-enc-row fn-pck-meta fn-pck-payload)))))
+
 (defthm pck-dec-rows-of-rows
-  (implies (fn-pck-sccb-listp recs) (equal (fn-pck-dec-rows (fn-pck-rows recs)) recs))
-  :hints (("Goal" :in-theory (e/d (fn-pck-rows fn-pck-dec-rows fn-pck-sccb-listp)
-                                  (fn-pck-dec-row fn-pck-enc-row)))))
+  (implies (and (fn-pck-sccb-listp recs) (fn-pck-resolvesp recs 0 file))
+           (equal (fn-pck-dec-rows (fn-pck-rows recs) file) recs))
+  :hints (("Goal" :in-theory (enable fn-pck-rows)
+           :use ((:instance pck-dec-rows-of-rows-from (base 0))))))
 
 (defun fn-pck-capture-of-pages (pages file)
   ; The capture the pages hold: the records from the events tape, the four
@@ -565,16 +611,16 @@
 (defthm pck-nthcdr-root
   (equal (nthcdr (len r) (append r c)) c))
 
-(defthm pck-ap-enc-row
-  (implies (fn-sccb-treep x) (fn-pck-row$ap (list (fn-pck-enc-row x))))
-  :hints (("Goal" :use ((:instance pck-rows-ap (recs (list x))))
-           :in-theory (e/d (fn-pck-rows fn-pck-sccb-listp) (pck-rows-ap)))))
+(defthm pck-ap-enc-root
+  (implies (fn-sccb-treep x) (fn-pck-row$ap (list (fn-pck-enc-root x))))
+  :hints (("Goal" :in-theory (enable fn-pck-row$ap adt-seq-p adt-rec-p adt-val-okp fn-pck-enc-root)
+           :use ((:instance pck-program-octetsp)))))
 
 (in-theory (disable fn-pck-root-tree))
 
 (defthm pck-root-decodes
   (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs) (true-listp t0))
-           (equal (fn-pck-dec-row (car (fn-pck-row-of-pages
+           (equal (fn-pck-dec-tree (car (fn-pck-row-of-pages
                                         (adt-tp-take *fn-pck-root-pages*
                                                      (append (fn-pck-root-pages-of configs recs) t0)))))
                   (fn-pck-root-tree configs recs)))
@@ -588,12 +634,18 @@
                             (m (- *fn-pck-root-pages*
                                   (len (fn-pck-row-pages-of
                                         (list (fn-pck-enc-root (fn-pck-root-tree configs recs))))))))
-                 (:instance pck-ap-enc-row (x (fn-pck-root-tree configs recs)))
-                 (:instance pck-dec-row-of-enc-row (x (fn-pck-root-tree configs recs)))))))
+                 (:instance pck-ap-enc-root (x (fn-pck-root-tree configs recs)))
+                 (:instance pck-dec-tree-of-program (x (fn-pck-root-tree configs recs)) (off 0) (len 0))))))
+
+(defthm pck-recordsp-parts
+  (implies (fn-pck-recordsp configs recs)
+           (and (fn-pck-sccb-listp recs) (fn-pck-plen-okp recs)))
+  :hints (("Goal" :in-theory (enable fn-pck-recordsp))))
 
 (defthm pck-capture-of-pages
-  (implies (and (true-listp recs) (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs))
-           (equal (fn-pck-capture-of-pages (fn-pck-pages configs recs))
+  (implies (and (true-listp recs) (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                (fn-pck-resolvesp recs 0 file))
+           (equal (fn-pck-capture-of-pages (fn-pck-pages configs recs) file)
                   (fn-sco-capture configs recs)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-pck-capture-of-pages fn-pck-pages fn-pck-root-tree fn-sco-capture)
@@ -605,6 +657,7 @@
                             (c (fn-pck-row-pages-of (fn-pck-rows recs))))
                  (:instance pck-of-pages-of-inst (a (fn-pck-rows recs)))
                  (:instance pck-rows-ap (recs recs))
+                 (:instance pck-recordsp-parts)
                  (:instance pck-dec-rows-of-rows)
                  (:instance pck-len-root-pages-of (recs recs))))))
 
