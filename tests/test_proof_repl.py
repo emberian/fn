@@ -2970,11 +2970,13 @@ class SendFileTests(unittest.TestCase):
             out = io.StringIO()
             with mock.patch.object(proof_repl, "session_directory",
                                    return_value=proof_repl.ROOT / session_dir), \
-                    mock.patch.object(proof_repl.certs, "valid_looking", return_value=True), \
+                    mock.patch.object(proof_repl, "install_closure",
+                                      return_value=(True, "proof-repl: acquired (test)", [])) as acquired, \
                     mock.patch.object(proof_repl, "send_many", side_effect=fake_many), \
                     mock.patch.object(proof_repl, "record_sent") as recorded, \
                     contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
                 code = proof_repl.send_file(args)
+            self.acquired = acquired.call_args_list
             return code, sent, out.getvalue(), recorded
 
     def test_every_form_in_order_with_the_includes_made_the_sessions(self):
@@ -2986,6 +2988,8 @@ class SendFileTests(unittest.TestCase):
         self.assertEqual(sent[1][1], '(include-book "wire")')  # books/ is the session's dir
         self.assertIn("4 form(s) of tests/acl2/", out)
         recorded.assert_called_once()
+        # The include's closure is acquired (hermetically here) before any form goes.
+        self.assertEqual([call.args[0] for call in self.acquired], ["books/wire"])
 
     def test_a_form_leaving_the_loop_refuses_the_whole_file(self):
         code, sent, _, _ = self.run_send_file("(defthm o8-b (equal x x))\n(value :q)\n")
