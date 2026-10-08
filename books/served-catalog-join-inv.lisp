@@ -165,7 +165,7 @@
   (let* ((oc (fn-ock-install replayed opened max-conns))
          (o (fn-ocfg-owner oc))
          (c (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
-                                   (fn-own-view-index (fn-own-view o)) fn-arena fn-cat)))
+                                   (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o)))) fn-arena fn-cat)))
     (implies (and (not (equal oc :fault))
                   (fn-own-store-idlep (fn-own-store o))
                   (true-listp (fn-sf-records (fn-sn-files (fn-own-store o))))
@@ -187,12 +187,12 @@
                             (p (fn-own-start (fn-sn-open-state opened) max-conns)))
                  (:instance fn-scj-rows-invp-of-load
                             (events (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))))
-                            (idx (fn-own-view-index (fn-own-view (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))))
+                            (idx (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))))))
                  (:instance fn-scj-live-okp-of-joined-view
                             (view (fn-own-view (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))
                             (fn-cat (fn-sca-load-held-rows
                                      (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner (fn-ock-install replayed opened max-conns)))))
-                                     (fn-own-view-index (fn-own-view (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))
+                                     (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))))
                                      fn-arena fn-cat)))))))
 
 ; KEYSTONE (E at recovery and the checkpoint open: the owner
@@ -212,18 +212,17 @@
                   (true-listp suffix)
                   (fn-statep (fn-own-view-archive (fn-own-view o))))
              (fn-scj-invp o fn-arena
-                          (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view o))
+                          (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                                  fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-ock-recover-extended true-listp-append)
                                       (theory 'minimal-theory))
            :use ((:instance fn-scj-joinp-at-recover)
                  (:instance fn-sca-ocl-relation-at-recover
-                            (view-index (fn-own-view-index
-                                         (fn-own-view (fn-ocfg-owner
+                            (view-index (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner
                                                        (fn-ock-recover-extended
                                                         (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
-                                                        configs frontier max-conns))))))
+                                                        configs frontier max-conns))))))))
                  (:instance fn-scj-invp-at-install
                             (replayed (fn-sco-cpr-finish
                                        (fn-sco-cpr (fn-sco-extend (fn-sco-capture configs prefix) configs suffix))
@@ -263,7 +262,7 @@
                   (fn-statep (fn-own-view-archive (fn-own-view o))))
              (fn-scj-invp o arena
                           (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
-                                                 (fn-own-view-index (fn-own-view o))
+                                                 (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                                  arena fn-cat))))
   :hints (("Goal" :use ((:instance fn-scj-invp-at-recover
                                    (prefix nil)
@@ -330,7 +329,7 @@
          (a (car (fn-state-articles acc2)))
          (events2 (append events0 (list event)))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
@@ -518,7 +517,7 @@
          (acc2 (fn-node-acceptance (fn-sn-node s2)))
          (events2 (append events0 (list event)))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
@@ -584,7 +583,7 @@
          (a (car (fn-state-articles acc2)))
          (events2 (append events0 (list event)))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
@@ -695,7 +694,7 @@
          (view2 (fn-own-view o2))
          (acc2 (fn-node-acceptance (fn-sn-node s2)))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))

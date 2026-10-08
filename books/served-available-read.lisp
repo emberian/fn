@@ -96,15 +96,13 @@
                                    injection wire-event v fn-arena fn-cat))))
 
 (defun fn-av-scr-peer-step
-    (ps live trie lver arts archive index verdicts config observation injection wire-event
+    (ps live lver arts archive index verdicts config observation injection wire-event
         v fn-arena fn-cat)
-  ; TRIE is kept for the equation with the scar layer (whose peer arm reads
-  ; it); the catalog's arm reads LVER instead.
+  ; The scar layer's peer arm answers over ARTS; the catalog's arm reads LVER.
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (natp v)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
-                  :verify-guards nil)
-           (ignorable trie))
+                  :verify-guards nil))
   (cond
    ((not (fn-scar-peer-sessionp ps live)) (fn-post-make-result ps nil nil))
    ((null (fn-peer-session-peer ps))
@@ -114,7 +112,7 @@
                        observation injection wire-event v fn-arena fn-cat))))
 
 (defun fn-av-scr-auth-delegate
-    (as live trie lver arts cache archive index verdicts config observation injection wire-event
+    (as live lver arts cache archive index verdicts config observation injection wire-event
         v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (natp v)
@@ -127,17 +125,17 @@
       (let ((view (fn-scr-cached-view as config archive index cache)))
         (if view
             (let ((r (fn-scar-peer-step-pinned
-                      (fn-auth-view-session as config) live trie arts
+                      (fn-auth-view-session as config) live arts
                       (fn-ag-car view) (fn-ag-cdr view) verdicts
                       (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
                       observation injection wire-event fn-arena)))
               (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                                    (fn-post-result-effects r)
                                    (fn-post-result-submission r)))
-          (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config
+          (fn-scar-auth-delegate-pinned as live arts archive index verdicts config
                                         observation injection wire-event fn-arena)))
     (let ((r (fn-av-scr-peer-step
-              (fn-auth-view-session as config) live trie lver arts archive index verdicts
+              (fn-auth-view-session as config) live lver arts archive index verdicts
               (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
               observation injection wire-event v fn-arena fn-cat)))
       (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
@@ -145,7 +143,7 @@
                            (fn-post-result-submission r)))))
 
 (defun fn-av-scr-auth-step
-    (as live trie lver arts cache archive index verdicts config observation injection wire-event
+    (as live lver arts cache archive index verdicts config observation injection wire-event
         v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (natp v)
@@ -173,21 +171,21 @@
                (fn-nntp-command-arguments-at-mostp tokens))
           (let ((r (fn-auth-command as config (car tokens) (cdr tokens))))
             (if r r
-              (fn-av-scr-auth-delegate as live trie lver arts cache archive index verdicts config
+              (fn-av-scr-auth-delegate as live lver arts cache archive index verdicts config
                                     observation injection wire-event v fn-arena fn-cat)))
-        (fn-av-scr-auth-delegate as live trie lver arts cache archive index verdicts config observation
+        (fn-av-scr-auth-delegate as live lver arts cache archive index verdicts config observation
                               injection wire-event v fn-arena fn-cat))))
    ((fn-auth-client-eventp wire-event)
-    (fn-av-scr-auth-delegate as live trie lver arts cache archive index verdicts config observation
+    (fn-av-scr-auth-delegate as live lver arts cache archive index verdicts config observation
                             injection wire-event v fn-arena fn-cat))
    (t (fn-post-make-result as nil nil))))
 
-(defun fn-av-scr-dispatch-core (conn event live trie lver arts cache fn-arena fn-cat)
+(defun fn-av-scr-dispatch-core (conn event live lver arts cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
                   :verify-guards nil))
   (let* ((v (fn-scr-view-of (fn-served-pinned-version (fn-served-conn-pinned conn)) fn-cat))
-         (r (fn-av-scr-auth-step (fn-served-conn-session conn) live trie lver arts cache
+         (r (fn-av-scr-auth-step (fn-served-conn-session conn) live lver arts cache
                               (fn-served-conn-archive conn)
                               (fn-served-conn-pinned-index conn)
                               (fn-served-conn-verdicts conn)
@@ -224,39 +222,39 @@
                                 (fn-served-account (fn-served-conn-session conn))))
                                 nil))))))
 
-(defun fn-av-scr-dispatch (conn event live trie lver arts cache fn-arena fn-cat)
+(defun fn-av-scr-dispatch (conn event live lver arts cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
                   :verify-guards nil))
   (if (fn-served-advance-eventp event)
-      (let ((r (fn-av-scr-dispatch-core (fn-scr-repin conn fn-cat) event live trie lver arts cache fn-arena fn-cat)))
+      (let ((r (fn-av-scr-dispatch-core (fn-scr-repin conn fn-cat) event live lver arts cache fn-arena fn-cat)))
         (if (fn-served-selectedp (fn-served-result-effects r))
             r
           (fn-served-make-result
            (fn-served-conn-with-wire conn (fn-served-conn-wire (fn-served-result-conn r)))
            (fn-served-result-effects r))))
-    (fn-av-scr-dispatch-core conn event live trie lver arts cache fn-arena fn-cat)))
+    (fn-av-scr-dispatch-core conn event live lver arts cache fn-arena fn-cat)))
 
-(defun fn-av-scr-dispatch-events-loop (conn events live trie lver arts cache fn-arena fn-cat acc)
+(defun fn-av-scr-dispatch-events-loop (conn events live lver arts cache fn-arena fn-cat acc)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
                   :verify-guards nil))
   (if (consp events)
-      (let ((here (fn-av-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat)))
+      (let ((here (fn-av-scr-dispatch conn (car events) live lver arts cache fn-arena fn-cat)))
         (fn-av-scr-dispatch-events-loop
-         (fn-served-result-conn here) (cdr events) live trie lver arts cache fn-arena fn-cat
+         (fn-served-result-conn here) (cdr events) live lver arts cache fn-arena fn-cat
          (fn-ag-rev-onto (fn-served-result-effects here) acc)))
     (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
 
-(defun fn-av-scr-dispatch-events (conn events live trie lver arts cache fn-arena fn-cat)
+(defun fn-av-scr-dispatch-events (conn events live lver arts cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
                   :verify-guards nil))
   (mbe :logic
   (if (consp events)
-      (let* ((here (fn-av-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat))
+      (let* ((here (fn-av-scr-dispatch conn (car events) live lver arts cache fn-arena fn-cat))
              (tail (fn-av-scr-dispatch-events (fn-served-result-conn here)
-                                           (cdr events) live trie lver arts cache fn-arena fn-cat)))
+                                           (cdr events) live lver arts cache fn-arena fn-cat)))
         (fn-served-make-result
          (fn-served-result-conn tail)
          (mbe :logic (append (fn-served-result-effects here)
@@ -264,9 +262,9 @@
               :exec (fn-ag-append (fn-served-result-effects here)
                                   (fn-served-result-effects tail)))))
     (fn-served-make-result conn nil))
-  :exec (fn-av-scr-dispatch-events-loop conn events live trie lver arts cache fn-arena fn-cat nil)))
+  :exec (fn-av-scr-dispatch-events-loop conn events live lver arts cache fn-arena fn-cat nil)))
 
-(defun fn-av-scr-feed-byte (conn byte live trie lver arts cache fn-arena fn-cat)
+(defun fn-av-scr-feed-byte (conn byte live lver arts cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
@@ -274,9 +272,9 @@
   (let ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
     (fn-av-scr-dispatch-events
      (fn-served-conn-with-wire conn (fn-wire-result-state fed))
-     (fn-wire-result-events fed) live trie lver arts cache fn-arena fn-cat)))
+     (fn-wire-result-events fed) live lver arts cache fn-arena fn-cat)))
 
-(defun fn-av-scr-feed-span (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+(defun fn-av-scr-feed-span (conn i end live lver arts cache fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
                               (natp i) (natp end) (<= i end)
@@ -290,13 +288,13 @@
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-haltedp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (let ((here (fn-av-scr-feed-byte conn (fn-octets-get i fn-octets) live trie lver arts cache fn-arena fn-cat)))
+    (let ((here (fn-av-scr-feed-byte conn (fn-octets-get i fn-octets) live lver arts cache fn-arena fn-cat)))
       (if (fn-served-submission (fn-served-result-effects here))
           (fn-served-counted-make
            1 (fn-served-make-result (fn-served-result-conn here)
                                     (fn-served-result-effects here)))
         (let* ((tail (fn-av-scr-feed-span (fn-served-result-conn here) (+ 1 i) end
-                                       live trie lver arts cache fn-octets fn-arena fn-cat))
+                                       live lver arts cache fn-octets fn-arena fn-cat))
                (result (fn-served-counted-result tail)))
           (fn-served-counted-make
            (+ 1 (fn-served-counted-consumed tail))
@@ -307,7 +305,7 @@
                  :exec (fn-ag-append (fn-served-result-effects here)
                                      (fn-served-result-effects result))))))))))
 
-(defun fn-av-scr-scan-span-loop (conn i end live trie lver arts cache fn-octets fn-arena fn-cat
+(defun fn-av-scr-scan-span-loop (conn i end live lver arts cache fn-octets fn-arena fn-cat
                                    consumed acc)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
@@ -327,18 +325,18 @@
            (next (fn-wsp-next w))
            (here (fn-av-scr-dispatch-events
                   (fn-served-conn-with-wire conn (fn-wsp-state w))
-                  (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+                  (fn-wsp-events w) live lver arts cache fn-arena fn-cat)))
       (if (fn-served-submission (fn-served-result-effects here))
           (fn-served-counted-make
            (+ consumed (- next i))
            (fn-served-make-result (fn-served-result-conn here)
                                   (fn-ag-rev-onto acc (fn-served-result-effects here))))
         (fn-av-scr-scan-span-loop (fn-served-result-conn here) next end
-                               live trie lver arts cache fn-octets fn-arena fn-cat
+                               live lver arts cache fn-octets fn-arena fn-cat
                                (+ consumed (- next i))
                                (fn-ag-rev-onto (fn-served-result-effects here) acc))))))
 
-(defun fn-av-scr-scan-span (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+(defun fn-av-scr-scan-span (conn i end live lver arts cache fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
                               (natp i) (natp end) (<= i end)
@@ -357,7 +355,7 @@
            (next (fn-wsp-next w))
            (here (fn-av-scr-dispatch-events
                   (fn-served-conn-with-wire conn (fn-wsp-state w))
-                  (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+                  (fn-wsp-events w) live lver arts cache fn-arena fn-cat)))
       ;; PKT-600: yield after the event that completed a submission; the host
       ;; re-enters at i + consumed.
       (if (fn-served-submission (fn-served-result-effects here))
@@ -366,7 +364,7 @@
            (fn-served-make-result (fn-served-result-conn here)
                                   (fn-served-result-effects here)))
         (let* ((tail (fn-av-scr-scan-span (fn-served-result-conn here) next end
-                                       live trie lver arts cache fn-octets fn-arena fn-cat))
+                                       live lver arts cache fn-octets fn-arena fn-cat))
                (tail-result (fn-served-counted-result tail)))
           (fn-served-counted-make
            (+ (- next i) (fn-served-counted-consumed tail))
@@ -376,9 +374,9 @@
                                 (fn-served-result-effects tail-result))
                  :exec (fn-ag-append (fn-served-result-effects here)
                                      (fn-served-result-effects tail-result)))))))))
-  :exec (fn-av-scr-scan-span-loop conn i end live trie lver arts cache fn-octets fn-arena fn-cat 0 nil)))
+  :exec (fn-av-scr-scan-span-loop conn i end live lver arts cache fn-octets fn-arena fn-cat 0 nil)))
 
-(defun fn-av-scr-step-span-core (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+(defun fn-av-scr-step-span-core (conn i end live lver arts cache fn-octets fn-arena fn-cat)
   (declare (xargs :verify-guards nil :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
                               (natp i) (natp end) (<= i end)
@@ -387,8 +385,8 @@
   (let* ((wire (fn-served-conn-wire conn))
          ;; PKT-479: executed one framed event at a time (fn-av-scr-scan-span,
          ;; equal to the byte fold by fn-scr-scan-span-is-feed-span).
-         (fed (mbe :logic (fn-av-scr-feed-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
-                   :exec (fn-av-scr-scan-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat)))
+         (fed (mbe :logic (fn-av-scr-feed-span conn i end live lver arts cache fn-octets fn-arena fn-cat)
+                   :exec (fn-av-scr-scan-span conn i end live lver arts cache fn-octets fn-arena fn-cat)))
          (result (fn-served-counted-result fed))
          (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
     (fn-served-counted-make
@@ -409,14 +407,14 @@
                 (list (fn-nntp-close-effect))
               nil)))))))
 
-(defun fn-av-scr-step-span-fast (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+(defun fn-av-scr-step-span-fast (conn i end live lver arts cache fn-octets fn-arena fn-cat)
   (declare (xargs :verify-guards nil :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (if (not (fn-wire-fast-statep (fn-served-conn-wire conn)))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (fn-av-scr-step-span-core conn i end live trie lver arts cache fn-octets fn-arena fn-cat)))
+    (fn-av-scr-step-span-core conn i end live lver arts cache fn-octets fn-arena fn-cat)))
 
 (defun fn-av-scr-own-read-span (o id i end cache fn-octets fn-arena fn-cat)
   (declare (xargs :verify-guards nil :stobjs (fn-octets fn-arena fn-cat)
@@ -425,13 +423,12 @@
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
         (live (fn-sn-node (fn-own-store o)))
-        (trie (fn-own-view-index (fn-own-view o)))
         (lver (fn-own-view-version (fn-own-view o)))
         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
     (if conn
         (let* ((counted
                  (fn-av-scr-step-span-fast
-                  (fn-own-tls-served-conn o conn) i end live trie lver arts cache fn-octets fn-arena fn-cat))
+                  (fn-own-tls-served-conn o conn) i end live lver arts cache fn-octets fn-arena fn-cat))
                (result
                  (fn-scar-finish-read
                   o conn (fn-served-counted-result counted) live)))

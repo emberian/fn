@@ -44,7 +44,7 @@
   (let* ((oc (fn-ock-install replayed opened max-conns))
          (o (fn-ocfg-owner oc))
          (records (fn-sf-records (fn-sn-files (fn-own-store o))))
-         (c (fn-sca-load-held-rows records (fn-own-view-index (fn-own-view o)) fn-arena fn-cat)))
+         (c (fn-sca-load-held-rows records (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o)))) fn-arena fn-cat)))
     (implies (and (not (equal oc :fault))
                   (fn-ocl-relation oc)
                   (fn-own-store-idlep (fn-own-store o))
@@ -65,7 +65,7 @@
                             (o (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))
                  (:instance fn-scj-seqs-sortedp-at-open
                             (st (fn-own-store (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))
-                            (idx (fn-own-view-index (fn-own-view (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))))))))
+                            (idx (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))))))))))
 
 ; KEYSTONE (the checkpoint open and recovery): the owner
 ; fn-owner-install-extended installs from a checkpoint's rows PREFIX and the
@@ -86,7 +86,7 @@
                   (fn-scj-rows-clearp (append prefix suffix))
                   (true-listp suffix))
              (fn-sjh-okp o nil fn-arena
-                         (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view o))
+                         (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                                 fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-ock-recover-extended true-listp-append)
@@ -94,11 +94,10 @@
            :use ((:instance fn-scj-joinp-at-recover)
                  (:instance fn-ock-recover-installs-ocl-relation)
                  (:instance fn-sca-ocl-relation-at-recover
-                            (view-index (fn-own-view-index
-                                         (fn-own-view (fn-ocfg-owner
+                            (view-index (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner
                                                        (fn-ock-recover-extended
                                                         (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
-                                                        configs frontier max-conns))))))
+                                                        configs frontier max-conns))))))))
                  (:instance fn-sjh-okp-at-install
                             (replayed (fn-sco-cpr-finish
                                        (fn-sco-cpr (fn-sco-extend (fn-sco-capture configs prefix) configs suffix))
@@ -127,7 +126,7 @@
                   (not (equal oc :fault)))
              (fn-sjh-okp o nil arena
                          (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
-                                                (fn-own-view-index (fn-own-view o))
+                                                (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                                 arena fn-cat))))
   :hints (("Goal" :use ((:instance fn-sjh-okp-at-recover
                                    (prefix nil)

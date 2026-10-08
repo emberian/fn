@@ -30,9 +30,9 @@
   (implies (fn-scr-conn-okp conn fn-arena fn-cat)
            (fn-scr-conn-okp (fn-served-result-conn
                              (fn-served-counted-result
-                              (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)))
+                              (fn-scar-feed-span conn i end live arts fn-octets fn-arena)))
                             fn-arena fn-cat))
-  :hints (("Goal" :induct (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)
+  :hints (("Goal" :induct (fn-scar-feed-span conn i end live arts fn-octets fn-arena)
            :in-theory (e/d (fn-scar-feed-span fn-served-counted-result fn-served-counted-make)
                            (fn-scr-conn-okp fn-scar-feed-byte fn-served-submission fn-scar-feed-span-is-feed-counted
                             fn-served-closed-wirep fn-served-haltedp)))))
@@ -41,7 +41,7 @@
   (implies (fn-scr-conn-okp conn fn-arena fn-cat)
            (fn-scr-conn-okp (fn-served-result-conn
                              (fn-served-counted-result
-                              (fn-scar-step-span-fast conn i end live trie arts fn-octets fn-arena)))
+                              (fn-scar-step-span-fast conn i end live arts fn-octets fn-arena)))
                             fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-span-fast fn-scar-step-span-core)
                                   (fn-scr-conn-okp fn-scar-feed-span fn-served-closed-wirep fn-scar-feed-span-is-feed-counted fn-scar-step-span-core-is-step-counted-core fn-scar-step-span-fast-is-step-counted-fast
@@ -125,14 +125,12 @@
                                                  (fn-scar-step-span-fast
                                                   (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o)))
                                                   i end (fn-sn-node (fn-own-store o))
-                                                  (fn-own-view-index (fn-own-view o))
                                                   (fn-state-articles (fn-own-view-archive (fn-own-view o)))
                                                   fn-octets fn-arena))))
                              (:instance fn-scj-served-conn-okp-of-pins)
                              (:instance fn-scj-conn-okp-of-scar-step-span-fast
                                         (conn (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o))))
                                         (live (fn-sn-node (fn-own-store o)))
-                                        (trie (fn-own-view-index (fn-own-view o)))
                                         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))))))
 
 ; A view's trie is its visible list's index (fn-scar-view-indexedp of an

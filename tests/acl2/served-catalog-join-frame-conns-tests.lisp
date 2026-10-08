@@ -206,7 +206,7 @@
          (targets (fn-sca-targets-of (fn-record-msgid row)
                                      (fn-own-view-withdrawals (fn-own-view fo)))))
     (mv-let (word pending2 fn-cat)
-      (fn-sca-finish token pending (fn-own-view-index (fn-own-view fo)) targets fn-cat)
+      (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive (fn-own-view fo))) targets fn-cat)
       (declare (ignore word pending2))
       (let* ((advanced (fn-ocfg-advance finished id))
              (ao (fn-ocfg-owner advanced)))

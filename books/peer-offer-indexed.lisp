@@ -1,23 +1,19 @@
-; fn: the IHAVE/CHECK duplicate test answered from the Message-ID trie.
+; fn: the IHAVE/CHECK duplicate test, and the Message-ID retrieval twins.
 ;
 ; fn-peer-decide-offer (books/peer-inbound.lisp) decides "already have it"
 ; with fn-peer-history-hasp: fn-acceptedp, a scan of the node's article list,
 ; then fn-node-find-binding, a scan of its bindings -- O((N + B) * L) per
-; offer.  The owner already maintains a trie over its committed view's
-; articles (fn-own-view-index, refreshed by fn-own-refresh through
-; fn-midx-refresh; books/msgid-index.lisp).  This book is the peer step with
-; that trie and the article list it was built from passed alongside, and the
-; history test answered by one fn-midx-lookup when the session's node holds
-; exactly that article list.  Otherwise it is the scan, unchanged.
+; offer.  fn-pix-history-hasp is the test with the article list it is asked
+; of passed alongside: when the session's node holds exactly that list the
+; answer is the specification's lookup, fn-find-article (the served step
+; answers it from the catalog's Message-ID column, books/served-catalog-chain
+; fn-scr-history-hasp).  Otherwise it is the scan, unchanged.
 ;
-; The keystone is fn-pix-history-hasp-is-peer-history-hasp: under the trie's
-; correspondence to the list and fn-node-statep of the node, the indexed test
-; is the scan, for every Message-ID.  The node premise is used once, for the
-; bindings: every binding's Message-ID is an article's (fn-node-statep's
-; fn-subsetp conjunct), so the binding scan adds nothing the article scan
-; has not answered.  Each copy below is proved EQUAL to its reference under
-; the correspondence alone; the peer step's own fn-peer-sessionp test
-; supplies fn-node-statep, exactly as the reference's guard needs it.
+; The keystone is fn-pix-history-hasp-is-peer-history-hasp: under
+; fn-node-statep of the node, the test is the scan, for every Message-ID.  The
+; node premise is used once, for the bindings: every binding's Message-ID is
+; an article's (fn-node-statep's fn-subsetp conjunct), so the binding scan
+; adds nothing the article scan has not answered.
 
 (in-package "ACL2")
 (include-book "peer-inbound")
@@ -29,27 +25,19 @@
 ; The history test
 
 ; The fast path is taken only when the session node's article list IS the
-; list the trie was built from.  The owner's fn-own-refresh stores the store
-; node's own acceptance in the view, so after a refresh the two are the same
-; object and Common Lisp's EQUAL answers on its first pointer comparison.
-(defun fn-pix-history-hasp (msgid node trie arts)
+; list the answer is asked of (ARTS).  The owner's fn-own-refresh stores the
+; store node's own acceptance in the view, so after a refresh the two are the
+; same object and Common Lisp's EQUAL answers on its first pointer
+; comparison.  The answer there is the specification's lookup,
+; fn-find-article (the served step reads the catalog's column for it:
+; books/served-catalog-chain.lisp fn-scr-history-hasp).
+(defun fn-pix-history-hasp (msgid node arts)
   (declare (xargs :guard t))
   (if (and (stringp msgid)
-           ; Non-empty, by length: no character list is built
-           ; (fn-pix-nonempty-key-is-positive-length).
            (< 0 (length msgid))
            (equal (fn-state-articles (fn-node-acceptance node)) arts))
-      ; The trie walked by index (fn-midx-concrete-lookup-is-lookup: equal
-      ; to fn-midx-lookup for every Message-ID and trie).
-      (if (fn-mxc-lookup msgid trie) t nil)
+      (if (fn-find-article msgid arts) t nil)
     (fn-peer-history-hasp msgid node)))
-
-; A string's character list is non-empty exactly when its length is positive.
-(local (defthm fn-pix-nonempty-key-is-positive-length
-  (implies (stringp msgid)
-           (equal (consp (fn-midx-key-chars msgid)) (< 0 (length msgid))))
-  :hints (("Goal" :in-theory (enable fn-midx-key-chars length)
-           :expand ((len (coerce msgid 'list)))))))
 
 (local (defthm fn-pix-binding-found-is-member
   (implies (consp (fn-node-find-binding m bs))
@@ -100,22 +88,16 @@
                             (m msgid)
                             (as (fn-state-articles (fn-node-acceptance node))))))))
 
-; KEYSTONE.  The indexed history test is the scan, for every Message-ID,
-; whenever the trie is the one built from the list it is keyed to.
+; KEYSTONE.  The history test with the specification's lookup is the scan,
+; for every Message-ID.
 (defthm fn-pix-history-hasp-is-peer-history-hasp
-  (implies (and (fn-node-statep node)
-                (fn-midx-correspondencep trie arts))
-           (equal (fn-pix-history-hasp msgid node trie arts)
+  (implies (fn-node-statep node)
+           (equal (fn-pix-history-hasp msgid node arts)
                   (fn-peer-history-hasp msgid node)))
-  :hints (("Goal" :in-theory (e/d (fn-pix-history-hasp
-                                   fn-midx-correspondencep
-                                   fn-midx-concrete-lookup-is-lookup
-                                   fn-pix-nonempty-key-is-positive-length)
-                                  (fn-peer-history-hasp fn-node-statep
-                                   fn-midx-lookup fn-midx-build
-                                   fn-midx-key-chars))
-           :use ((:instance fn-midx-lookup-of-build-is-find-article-for-nonempty
-                            (articles arts))))))
+  :hints (("Goal" :in-theory (e/d (fn-pix-history-hasp)
+                                  (fn-peer-history-hasp fn-node-statep fn-find-article))
+           :use ((:instance fn-pix-find-article-iff-accepted
+                            (m msgid) (as arts))))))
 
 ; -----------------------------------------------------------------------------
 ; The offer decision, the transit commands and the pinned peer step that

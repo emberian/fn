@@ -146,7 +146,7 @@
   (implies (and (fn-pc-p pending)
                 (equal token (fn-pc-token pending))
                 (equal (fn-pc-expected pending) (len fn-cat)))
-           (equal (mv-nth 1 (fn-sca-finish token pending view-index targets fn-cat)) nil))
+           (equal (mv-nth 1 (fn-sca-finish token pending visible targets fn-cat)) nil))
   :hints (("Goal" :in-theory (e/d (fn-sca-finish fn-sca-complete fn-cat-complete fn-cat-complete-hidden
                                    fn-pc-p)
                                   (fn-sca-withdraw-targets fn-cat-commit fn-delta-of-row fn-cat-at
@@ -200,7 +200,7 @@
 (defthm fn-sjh-carried-finish-by-premises
   (let* ((o2 (cdr (fn-ccar-own-finish o cfg fn-arena)))
          (view2 (fn-own-view o2))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
@@ -271,7 +271,7 @@
 (defthm fn-sjh-okp-after-finish-by-premises
   (let* ((o2 (cdr (fn-ccar-own-finish o cfg fn-arena)))
          (view2 (fn-own-view o2))
-         (fin (fn-sca-finish token pending (fn-own-view-index view2)
+         (fin (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view2))
                              fn-cat)))
@@ -300,7 +300,7 @@
          (o2 (cdr res))
          (view2 (fn-own-view o2))
          (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
-         (fin (fn-sca-finish token pending (fn-own-view-index view2)
+         (fin (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view2))
                              fn-cat)))
@@ -334,7 +334,7 @@
          (o2 (cdr res))
          (view2 (fn-own-view o2))
          (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
-         (fin (fn-sca-finish token pending (fn-own-view-index view2)
+         (fin (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view2))
                              fn-cat)))

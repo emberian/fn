@@ -100,12 +100,11 @@
   (declare (xargs :stobjs fn-arena :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
         (live (fn-sn-node (fn-own-store o)))
-        (trie (fn-own-view-index (fn-own-view o)))
         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
     (if conn
         (let* ((counted
                  (fn-scar-step-counted-fast
-                  (fn-own-tls-served-conn o conn) octets live trie arts fn-arena))
+                  (fn-own-tls-served-conn o conn) octets live arts fn-arena))
                (result
                  (fn-scar-finish-read
                   o conn (fn-served-counted-result counted) live)))

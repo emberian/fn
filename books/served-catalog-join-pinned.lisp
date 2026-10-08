@@ -269,7 +269,7 @@
                                         fn-cat-count-is-len)
                                       (theory 'minimal-theory))
            :use ((:instance fn-sca-finish-keeps-pinned-views
-                            (v (fn-scr-view-of v fn-cat)) (view-index idx))))))
+                            (v (fn-scr-view-of v fn-cat)) (visible idx))))))
 
 ; KEYSTONE (a pinned catalog view survives the host's finish).  Any reader
 ; pinned at a version V -- a connection, the live view, a captured reader
@@ -495,7 +495,7 @@
          (s2 (fn-own-store o2))
          (view2 (fn-own-view o2))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
@@ -524,12 +524,12 @@
                  (:instance fn-scj-conns-versions-atmostp-monotone (conns (fn-own-conns o))
                             (m (fn-own-view-version (fn-own-view o))) (n (len events0)))
                  (:instance fn-scj-conns-pinp-of-finish (conns (fn-own-conns o))
-                            (idx (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+                            (idx (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))))
                  (:instance fn-scj-seqs-sortedp-of-finish (c fn-cat)
-                            (idx (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+                            (idx (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))))))))
@@ -669,7 +669,7 @@
          (a (car (fn-state-articles acc2)))
          (events2 (append events0 (list event)))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
@@ -715,14 +715,14 @@
            :use ((:instance fn-scj-joinp-at-host-finish)
                  (:instance fn-scj-conns-pinp-at-host-finish)
                  (:instance fn-scj-freshp-of-finish (c fn-cat)
-                            (idx (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+                            (idx (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))))
                  (:instance fn-scj-live-okp-of-joinp
                             (o (cdr (fn-ccar-own-finish o cfg fn-arena)))
                             (fn-cat (mv-nth 2 (fn-sca-finish token pending
-                                                             (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))
+                                                             (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
                                                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                                                 (fn-own-view-withdrawals
                                                                                  (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
@@ -730,7 +730,7 @@
                  (:instance fn-scj-owner-catalogp-of-conns-and-live
                             (o (cdr (fn-ccar-own-finish o cfg fn-arena)))
                             (fn-cat (mv-nth 2 (fn-sca-finish token pending
-                                                             (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))
+                                                             (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
                                                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                                                 (fn-own-view-withdrawals
                                                                                  (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))

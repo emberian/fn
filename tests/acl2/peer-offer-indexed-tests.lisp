@@ -62,28 +62,20 @@
 
 ; -----------------------------------------------------------------------------
 ; The keystone fn-pix-history-hasp-is-peer-history-hasp on the witness, and
-; one failure per hypothesis.
+; one failure per hypothesis.  (Its trie-correspondence hypothesis was
+; deleted with the trie: the fast path answers fn-find-article over the
+; list, which is the scan's answer under the node invariant alone.)
 
-(assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* *pix-t-arts*)
                      (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*)))
-(assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* *pix-t-trie* *pix-t-arts*) t))
-(assert-event (equal (fn-pix-history-hasp "<loop@example.invalid>" *pt-node1* *pix-t-trie* *pix-t-arts*) nil))
-
-; Correspondence hypothesis: the empty trie keyed to the same list.  The
-; fast path is taken (the list matches) and answers "absent" where the scan
-; answers "held".
-(assert-event (not (fn-midx-correspondencep nil *pix-t-arts*)))
-(assert-event (null (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil *pix-t-arts*)))
-(assert-event (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*))
-(must-fail-checked
- (assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil *pix-t-arts*)
-                      (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*))))
+(assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* *pix-t-arts*) t))
+(assert-event (equal (fn-pix-history-hasp "<loop@example.invalid>" *pt-node1* *pix-t-arts*) nil))
 ; At the step: peer-guard-carried-tests (fn-pgc-peer-arm, the served arm).
 
 ; Node hypothesis: a node whose binding names a Message-ID no article has
 ; (fn-node-statep's binding-subset conjunct fails).  Trie and list agree
-; (both empty); the trie answers "absent" and the scan, through the binding,
-; answers "held".
+; (both empty); the list lookup answers "absent" and the scan, through the
+; binding, answers "held".
 (defconst *pix-t-orphan*
   (fn-node-make-state (fn-node-acceptance *pt-node0*)
                       (fn-node-retention *pt-node0*)
@@ -91,16 +83,15 @@
                       (list (fn-node-make-binding "<orphan@example.invalid>"
                                                   "subject" "ob-orphan"))))
 (assert-event (not (fn-node-statep *pix-t-orphan*)))
-(assert-event (fn-midx-correspondencep (fn-midx-build nil) nil))
 (assert-event (equal (fn-state-articles (fn-node-acceptance *pix-t-orphan*)) nil))
 (assert-event (fn-peer-history-hasp "<orphan@example.invalid>" *pix-t-orphan*))
 (must-fail-checked
- (assert-event (equal (fn-pix-history-hasp "<orphan@example.invalid>" *pix-t-orphan* nil nil)
+ (assert-event (equal (fn-pix-history-hasp "<orphan@example.invalid>" *pix-t-orphan* nil)
                       (fn-peer-history-hasp "<orphan@example.invalid>" *pix-t-orphan*))))
 
-; A list the trie is not keyed to: the fast path is not taken and the answer
-; is the scan's, whatever the trie holds.
-(assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil '(:other))
+; A list that is not the node's: the fast path is not taken and the answer
+; is the scan's.
+(assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* '(:other))
                      (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*)))
 
 ; -----------------------------------------------------------------------------
@@ -134,9 +125,7 @@
 
 ; -----------------------------------------------------------------------------
 ; The Message-ID lookup by index (books/msgid-index-concrete.lisp) on the
-; served path (lane/rep-records-2).  fn-pix-history-hasp above now looks up
-; with fn-mxc-lookup; its answers on the witness are unchanged (the asserts
-; above run against the rerouted definition).  The reader retrieval chain:
+; served path (lane/rep-records-2).  The reader retrieval chain:
 ; the bottom twin answers STAT for the held Message-ID from the trie (223)
 ; and 430 for an absent one, equal to the reference; the top twin, the one
 ; books/served-carried.lisp calls, equals its reference on the witness
@@ -188,12 +177,8 @@
       (eq (symbol-class 'fn-pix-peer-delegate-pinned (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-scar-peer-step-pinned (w state)) :common-lisp-compliant)))
 
-; The history test's non-empty test is by length (no character list): the
-; empty Message-ID takes the scan, and both answer nil; the empty trie with
-; the matching list answers nil for the held one (the lookup answers), where
-; the scan answers t.
-(assert-event (equal (fn-pix-history-hasp "" *pt-node1* *pix-t-trie* *pix-t-arts*)
+; The history test's non-empty test is by length: the empty Message-ID takes
+; the scan, and both answer nil.
+(assert-event (equal (fn-pix-history-hasp "" *pt-node1* *pix-t-arts*)
                      (fn-peer-history-hasp "" *pt-node1*)))
-(assert-event (null (fn-pix-history-hasp "" *pt-node1* *pix-t-trie* *pix-t-arts*)))
-(assert-event (and (null (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil *pix-t-arts*))
-                   (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*)))
+(assert-event (null (fn-pix-history-hasp "" *pt-node1* *pix-t-arts*)))

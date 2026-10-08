@@ -2656,7 +2656,7 @@
                  (state (fn-orc-writer-enter state)))
             (mv-let (word pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
-                             pending (fn-own-view-index view)
+                             pending (fn-state-articles (fn-own-view-archive view))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view))
                              fn-cat)
@@ -2706,7 +2706,7 @@
                  (state (fn-orc-writer-enter state)))
             (mv-let (cword pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
-                             pending (fn-own-view-index view)
+                             pending (fn-state-articles (fn-own-view-archive view))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view))
                              fn-cat)
@@ -5699,9 +5699,12 @@ itself."
   (value (fn-gen-verdict-salt (and (boundp-global 'fn-store-genesis state)
                                    (f-get-global 'fn-store-genesis state)))))
 
+;; The visible-set test of the reclaim's load reads a Message-ID trie built
+;; from the view's visible list here and dropped with the load.
 (defun fn-owner-orcp-view-index (oc)
   (declare (xargs :mode :program))
-  (fn-own-view-index (fn-own-view (fn-ocfg-owner oc))))
+  (fn-midx-build
+   (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))))
 
 ; The swap word over the owner now (under the mutex; fn-orcp-swap-word):
 ; the capture's count, frontier and Store against the owner's, the commit

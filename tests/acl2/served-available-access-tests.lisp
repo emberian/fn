@@ -96,7 +96,7 @@
 
 ; The template access-check removed from the generator, verbatim.
 (defun avac-prefix-auth-delegate
-    (as live trie lver arts cache archive index verdicts config observation injection wire-event
+    (as live lver arts cache archive index verdicts config observation injection wire-event
         v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (let* ((restricted (fn-auth-access-read as config))
@@ -106,7 +106,7 @@
          (ix (if restricted (if view (fn-ag-cdr view)
                               (fn-auth-view-index as config archive index)) index))
          (r (fn-av-scr-peer-step
-             (fn-auth-view-session as config) live trie lver arts a ix verdicts
+             (fn-auth-view-session as config) live lver arts a ix verdicts
              (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
              observation injection wire-event v fn-arena fn-cat)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))

@@ -3,7 +3,7 @@
 ; to keep each book under 10 s): what one article's drop-via removes from the
 ; old visible list is exactly what T4 withdraws (fn-scj-drop-via-is-keep,
 ; fn-scj-visible-add-kept-is-keep), and the new article is visible exactly
-; when the rebuilt index shows its Message-ID (fn-scj-visible-add-shows-a).
+; when the refresh keeps its Message-ID (fn-scj-visible-add-shows-a).
 
 (in-package "ACL2")
 
@@ -17,13 +17,13 @@
 ; -----------------------------------------------------------------------------
 ; The refresh's side: what one article's drop-via removes.
 
-(defun fn-scj-keep (arts targets index)
+(defun fn-scj-keep (arts targets shown)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp arts)
       (if (and (member-equal (fn-article-msgid (car arts)) targets)
-               (not (fn-midx-lookup (fn-article-msgid (car arts)) index)))
-          (fn-scj-keep (cdr arts) targets index)
-        (cons (car arts) (fn-scj-keep (cdr arts) targets index)))
+               (not (fn-ctl-has-msgid-p (fn-article-msgid (car arts)) shown)))
+          (fn-scj-keep (cdr arts) targets shown)
+        (cons (car arts) (fn-scj-keep (cdr arts) targets shown)))
     nil))
 
 
@@ -49,7 +49,7 @@
 
 (defthm fn-scj-keep-of-no-targets
   (implies (true-listp arts)
-           (equal (fn-scj-keep arts nil index) arts)))
+           (equal (fn-scj-keep arts nil shown) arts)))
 
 
 (defthm fn-scj-acceptedp-of-member
@@ -99,11 +99,6 @@
            (iff (fn-find-article m v2) (fn-ctl-has-msgid-p m v2)))
   :hints (("Goal" :in-theory (enable fn-find-article fn-midx-string-article-listp))))
 
-(defthm fn-scj-lookup-of-build-iff-has-msgid
-  (implies (and (stringp m) (fn-midx-string-article-listp v2))
-           (iff (fn-midx-lookup m (fn-midx-build v2)) (fn-ctl-has-msgid-p m v2)))
-  :hints (("Goal" :in-theory (disable fn-midx-build fn-midx-lookup))))
-
 (defthm fn-scj-string-msgid-of-member
   (implies (and (fn-midx-string-article-listp v) (member-equal x v))
            (and (stringp (fn-article-msgid x)) (consp x)))
@@ -118,10 +113,10 @@
                 (subsetp-equal w v))
            (equal (fn-ctl-drop-via w ws (fn-article-msgid a) verdicts)
                   (fn-scj-keep w (fn-sca-targets-of (fn-article-msgid a) ws)
-                               (fn-midx-build (fn-ctl-visible-add a v old ws verdicts)))))
+                               (fn-ctl-visible-add a v old ws verdicts))))
   :hints (("Goal" :induct (fn-scj-keep w (fn-sca-targets-of (fn-article-msgid a) ws)
-                                       (fn-midx-build (fn-ctl-visible-add a v old ws verdicts)))
-           :in-theory (disable fn-ctl-withdrawn-via-p fn-ctl-visible-add fn-midx-build fn-midx-lookup
+                                       (fn-ctl-visible-add a v old ws verdicts))
+           :in-theory (disable fn-ctl-withdrawn-via-p fn-ctl-visible-add 
                                fn-sca-targets-of fn-scj-withdrawn-via-iff fn-ctl-has-msgid-p
                                fn-midx-string-article-listp))
           ("Subgoal *1/2" :use ((:instance fn-scj-withdrawn-via-iff (x (car w)))))
@@ -141,9 +136,9 @@
                       (fn-ctl-drop-via v ws (fn-article-msgid a) verdicts)
                     v)
                   (fn-scj-keep v (fn-sca-targets-of (fn-article-msgid a) ws)
-                               (fn-midx-build (fn-ctl-visible-add a v old ws verdicts)))))
+                               (fn-ctl-visible-add a v old ws verdicts))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-ctl-visible-add fn-midx-build fn-sca-targets-of fn-ctl-drop-via
+           :in-theory (disable fn-ctl-visible-add  fn-sca-targets-of fn-ctl-drop-via
                                fn-scj-drop-via-is-keep fn-ctl-causes-p)
            :use ((:instance fn-scj-drop-via-is-keep (w v))))))
 
@@ -160,7 +155,7 @@
                 (stringp (fn-article-msgid a))
                 (no-duplicatesp-equal (fn-article-msgids (cons a v)))
                 (fn-midx-string-article-listp (fn-ctl-visible-add a v old ws verdicts)))
-           (iff (fn-midx-lookup (fn-article-msgid a) (fn-midx-build (fn-ctl-visible-add a v old ws verdicts)))
+           (iff (fn-ctl-has-msgid-p (fn-article-msgid a) (fn-ctl-visible-add a v old ws verdicts))
                 (not (fn-ctl-withdrawn-by-p a ws (cons a old) verdicts))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-ctl-visible-add)

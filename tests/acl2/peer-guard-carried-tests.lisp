@@ -40,15 +40,15 @@
 ; node after one transit transfer and its durable completion; `live' is that
 ; node, the object the session holds, as fn-own-conn-live-session makes it.
 
-(defun pgc-scar (ps live event trie arts fn-arena)
+(defun pgc-scar (ps live event arts fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects
-   (fn-scar-peer-step-pinned ps live trie arts *pix-t-archive* nil nil
+   (fn-scar-peer-step-pinned ps live arts *pix-t-archive* nil nil
                              *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
-(defun pgc-arm (ps event trie arts fn-arena)
+(defun pgc-arm (ps event arts fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects
-   (fn-pgc-peer-arm ps trie arts *pix-t-archive* nil nil
+   (fn-pgc-peer-arm ps arts *pix-t-archive* nil nil
                     *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
 (defun pgc-ref (ps event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -67,29 +67,29 @@
 (bpr-lift pgc-arm 4)
 (bpr-lift pgc-ref 2)
 (bpr-lift pgc-scar 5)
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-arts*)
                      (list (pt-reply "435 duplicate"))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-arts*)
                      (list (pt-echo "438 " *pt-id1*))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-arts*)
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
                            (fn-nntp-begin-article-effect))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <loop@example.invalid>") *pix-t-arts*)
                      (list (pt-echo "238 " *pt-idloop*))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-arts*)
                      (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "IHAVE <a1@example.invalid>"))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-arts*)
                      (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "CHECK <a1@example.invalid>"))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-arts*)
                      (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "IHAVE <loop@example.invalid>"))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <loop@example.invalid>") *pix-t-arts*)
                      (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "CHECK <loop@example.invalid>"))))
 ; The other transit arms and a delegated command.
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "MODE STREAM") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "MODE STREAM") *pix-t-arts*)
                      (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "MODE STREAM"))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CAPABILITIES") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CAPABILITIES") *pix-t-arts*)
                      (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "CAPABILITIES"))))
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "STAT <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "STAT <a1@example.invalid>") *pix-t-arts*)
                      (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "STAT <a1@example.invalid>"))))
 
 ; The transfer arm: after IHAVE of an absent id the session awaits the
@@ -97,12 +97,12 @@
 ; effects, and a non-article event is the reference's 436 and close.
 (defconst *pgc-t-awaiting*
   (fn-post-result-session
-   (in-arena-fn-scar-peer-step-pinned *sr-arena* *pt-ps1* *pt-node1* *pix-t-trie* *pix-t-arts* *pix-t-archive* nil nil *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>"))))
+   (in-arena-fn-scar-peer-step-pinned *sr-arena* *pt-ps1* *pt-node1* *pix-t-arts* *pix-t-archive* nil nil *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>"))))
 (assert-event (fn-peer-session-transfer *pgc-t-awaiting*))
 (assert-event (fn-peer-sessionp *pgc-t-awaiting*))
 (defun pgc-scar-full (ps event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-scar-peer-step-pinned ps *pt-node1* *pix-t-trie* *pix-t-arts*
+  (fn-scar-peer-step-pinned ps *pt-node1* *pix-t-arts*
                             *pix-t-archive* nil nil *pt-inj* *pt-obs* *pt-obs*
                             event fn-arena))
 (bpr-lift pgc-scar-full 2)
@@ -123,12 +123,10 @@
 
 ; A session holding a node that is not a node state: *pix-t-orphan*
 ; (peer-offer-indexed-tests), whose binding names a Message-ID no article
-; has.  The trie and list agree (both empty).
+; has.
 (defconst *pgc-t-orphan-ps* (fn-peer-with-node *pt-ps1* *pix-t-orphan*))
-(defconst *pgc-t-empty-trie* (fn-midx-build nil))
 (assert-event (not (fn-node-statep *pix-t-orphan*)))
 (assert-event (not (fn-peer-sessionp *pgc-t-orphan-ps*)))
-(assert-event (fn-midx-correspondencep *pgc-t-empty-trie* nil))
 (assert-event (fn-pgc-peer-sessionp *pgc-t-orphan-ps*))
 
 ; fn-scar-peer-step-pinned-is-peer-step-pinned, hypothesis (fn-node-statep
@@ -136,37 +134,31 @@
 ; comparison admits the session; the carried step takes the orphaned id
 ; (335) where the reference, whose recognizer refuses the session, answers
 ; nothing.
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pgc-t-orphan-ps* *pix-t-orphan* (pt-cmd "IHAVE <orphan@example.invalid>") *pgc-t-empty-trie* nil)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pgc-t-orphan-ps* *pix-t-orphan* (pt-cmd "IHAVE <orphan@example.invalid>") nil)
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
                            (fn-nntp-begin-article-effect))))
 (assert-event (equal (in-arena-pgc-ref *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>"))
                      nil))
 (must-fail-checked
- (assert-event (equal (in-arena-pgc-scar *sr-arena* *pgc-t-orphan-ps* *pix-t-orphan* (pt-cmd "IHAVE <orphan@example.invalid>") *pgc-t-empty-trie* nil)
+ (assert-event (equal (in-arena-pgc-scar *sr-arena* *pgc-t-orphan-ps* *pix-t-orphan* (pt-cmd "IHAVE <orphan@example.invalid>") nil)
                       (in-arena-pgc-ref *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>")))))
 ; With a node-state `live' the same session is tested by fn-node-statep and
 ; refused, as the reference refuses it.
-(assert-event (equal (in-arena-pgc-scar *sr-arena* *pgc-t-orphan-ps* *pt-node1* (pt-cmd "IHAVE <orphan@example.invalid>") *pgc-t-empty-trie* nil)
+(assert-event (equal (in-arena-pgc-scar *sr-arena* *pgc-t-orphan-ps* *pt-node1* (pt-cmd "IHAVE <orphan@example.invalid>") nil)
                      (in-arena-pgc-ref *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>"))))
 
 ; fn-pgc-peer-arm-is-peer-step-pinned, hypothesis fn-peer-sessionp: the
 ; same orphan session at the arm.
 (must-fail-checked
- (assert-event (equal (in-arena-pgc-arm *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>") *pgc-t-empty-trie* nil)
+ (assert-event (equal (in-arena-pgc-arm *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>") nil)
                       (in-arena-pgc-ref *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>")))))
 ; Hypothesis (fn-peer-session-peer ps): a real reader session.  The arm
 ; decides the offer (a refusal, no peer record) where the reference
 ; delegates to the reader's step (502).
 (assert-event (fn-peer-sessionp *pt-reader*))
 (must-fail-checked
- (assert-event (equal (in-arena-pgc-arm *sr-arena* *pt-reader* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+ (assert-event (equal (in-arena-pgc-arm *sr-arena* *pt-reader* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-arts*)
                       (in-arena-pgc-ref *sr-arena* *pt-reader* (pt-cmd "IHAVE <a1@example.invalid>")))))
-; Hypothesis (fn-midx-correspondencep trie arts): the empty trie keyed to
-; the node's list takes the held id (335) where the reference refuses it.
-(must-fail-checked
- (assert-event (equal (in-arena-pgc-arm *sr-arena* *pt-ps1* (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
-                      (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "IHAVE <a1@example.invalid>")))))
-
 ; fn-pgc-retain-admissiblep-is-retain-admissiblep, hypothesis
 ; fn-retain-statep: a ledger whose reserved count disagrees with its pins.
 ; The guard-t copy admits; the reference, whose logic conjoins the
@@ -188,33 +180,20 @@
 (assert-event (not (fn-node-statep *pgc-t-bad-ledger-node*)))
 (must-fail-checked
  (assert-event (equal (fn-pgc-decide-offer *pgc-t-bad-ledger-node* *pt-cfg* "innA" nil
-                                           *pt-idloop* nil 0 *pgc-t-empty-trie* nil)
+                                           *pt-idloop* nil 0 nil)
                       (fn-peer-decide-offer *pgc-t-bad-ledger-node* *pt-cfg* "innA" nil
                                             *pt-idloop* nil 0))))
 
 ; fn-pgc-decide-offer-is-peer-decide-offer, reachable positive: the node
-; holds the offered id and the trie is keyed to its list; both answer
+; holds the offered id and the list is its own; both answer
 ; :have (the 435/438 of the arm above).
 (assert-event (fn-node-statep *pt-node1*))
-(assert-event (fn-midx-correspondencep *pix-t-trie* *pix-t-arts*))
 (assert-event
  (let ((d (fn-pgc-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1* nil 0
-                               *pix-t-trie* *pix-t-arts*)))
+                               *pix-t-arts*)))
    (and (equal (fn-peer-decision-kind d) :have)
         (equal d (fn-peer-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1*
                                        nil 0)))))
-; Hypothesis (fn-midx-correspondencep trie arts): the empty trie over the
-; same node's list; the copy wants the held id, the reference has it.
-(assert-event (not (fn-midx-correspondencep nil *pix-t-arts*)))
-(assert-event (equal (fn-peer-decision-kind
-                      (fn-pgc-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1*
-                                           nil 0 nil *pix-t-arts*))
-                     :want))
-(must-fail-checked
- (assert-event (equal (fn-pgc-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1*
-                                           nil 0 nil *pix-t-arts*)
-                      (fn-peer-decide-offer *pt-node1* *pt-cfg* "innA" nil *pt-id1*
-                                            nil 0))))
 
 ; -----------------------------------------------------------------------------
 ; A peer's retrieval by Message-ID (lane/rep-records-2): the peer commands do
@@ -226,7 +205,7 @@
 (defun pgc-arm-pinned (event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects
-   (fn-pgc-peer-arm *pt-ps1* *pix-t-trie* *pix-t-arts* *pix-t-archive* *pix-t-pin* nil
+   (fn-pgc-peer-arm *pt-ps1* *pix-t-arts* *pix-t-archive* *pix-t-pin* nil
                     *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
 (bpr-lift pgc-arm-pinned 1)
 (defun pgc-ref-pinned (event fn-arena)

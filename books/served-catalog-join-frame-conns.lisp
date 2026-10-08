@@ -533,7 +533,7 @@
 
 (defthm fn-scj-sconn-atmostp-of-scar-dispatch-core
   (implies (fn-scj-sconn-atmostp conn n)
-           (fn-scj-sconn-atmostp (fn-served-result-conn (fn-scar-dispatch-core conn event live trie arts fn-arena))
+           (fn-scj-sconn-atmostp (fn-served-result-conn (fn-scar-dispatch-core conn event live arts fn-arena))
                                  n))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-scar-dispatch-core fn-scj-sconn-atmostp
@@ -555,7 +555,7 @@
 
 (defthm fn-scj-sconn-atmostp-of-scar-dispatch
   (implies (fn-scj-sconn-atmostp conn n)
-           (fn-scj-sconn-atmostp (fn-served-result-conn (fn-scar-dispatch conn event live trie arts fn-arena))
+           (fn-scj-sconn-atmostp (fn-served-result-conn (fn-scar-dispatch conn event live arts fn-arena))
                                  n))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-scar-dispatch fn-scj-sconn-atmostp-of-scar-dispatch-core
@@ -566,9 +566,9 @@
 (defthm fn-scj-sconn-atmostp-of-scar-dispatch-events
   (implies (fn-scj-sconn-atmostp conn n)
            (fn-scj-sconn-atmostp (fn-served-result-conn
-                                  (fn-scar-dispatch-events conn events live trie arts fn-arena))
+                                  (fn-scar-dispatch-events conn events live arts fn-arena))
                                  n))
-  :hints (("Goal" :induct (fn-scar-dispatch-events conn events live trie arts fn-arena)
+  :hints (("Goal" :induct (fn-scar-dispatch-events conn events live arts fn-arena)
            :in-theory (union-theories
                        '(fn-scar-dispatch-events fn-scj-sconn-atmostp-of-scar-dispatch
                          fn-served-result-conn-of-fn-served-make-result)
@@ -576,7 +576,7 @@
 
 (defthm fn-scj-sconn-atmostp-of-scar-feed-byte
   (implies (fn-scj-sconn-atmostp conn n)
-           (fn-scj-sconn-atmostp (fn-served-result-conn (fn-scar-feed-byte conn byte live trie arts fn-arena))
+           (fn-scj-sconn-atmostp (fn-served-result-conn (fn-scar-feed-byte conn byte live arts fn-arena))
                                  n))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-scar-feed-byte fn-scj-sconn-atmostp-of-scar-dispatch-events
@@ -587,9 +587,9 @@
   (implies (fn-scj-sconn-atmostp conn n)
            (fn-scj-sconn-atmostp (fn-served-result-conn
                                   (fn-served-counted-result
-                                   (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)))
+                                   (fn-scar-feed-span conn i end live arts fn-octets fn-arena)))
                                  n))
-  :hints (("Goal" :induct (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)
+  :hints (("Goal" :induct (fn-scar-feed-span conn i end live arts fn-octets fn-arena)
            :in-theory (e/d (fn-scar-feed-span fn-served-counted-result fn-served-counted-make)
                            (fn-scj-sconn-atmostp fn-scar-feed-byte fn-served-submission
                             fn-scar-feed-span-is-feed-counted
@@ -603,7 +603,7 @@
   (implies (fn-scj-sconn-atmostp conn n)
            (fn-scj-sconn-atmostp (fn-served-result-conn
                                   (fn-served-counted-result
-                                   (fn-scar-step-span-fast conn i end live trie arts fn-octets fn-arena)))
+                                   (fn-scar-step-span-fast conn i end live arts fn-octets fn-arena)))
                                  n))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-span-fast fn-scar-step-span-core)
                                   (fn-scj-sconn-atmostp fn-scar-feed-span fn-served-closed-wirep
@@ -673,14 +673,12 @@
                              (:instance fn-scj-sconn-atmostp-of-scar-step-span-fast
                                         (conn (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o))))
                                         (live (fn-sn-node (fn-own-store o)))
-                                        (trie (fn-own-view-index (fn-own-view o)))
                                         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
                              (:instance fn-scj-sconn-atmostp-pinned
                                         (sconn (fn-served-result-conn (fn-served-counted-result
                                          (fn-scar-step-span-fast
                                           (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o)))
                                           i end (fn-sn-node (fn-own-store o))
-                                          (fn-own-view-index (fn-own-view o))
                                           (fn-state-articles (fn-own-view-archive (fn-own-view o)))
                                           fn-octets fn-arena)))))
                              (:instance fn-scj-versions-atmost-of-scar-finish-read
@@ -690,7 +688,6 @@
                                          (fn-scar-step-span-fast
                                           (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o)))
                                           i end (fn-sn-node (fn-own-store o))
-                                          (fn-own-view-index (fn-own-view o))
                                           (fn-state-articles (fn-own-view-archive (fn-own-view o)))
                                           fn-octets fn-arena))))))))
 

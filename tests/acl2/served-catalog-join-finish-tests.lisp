@@ -110,7 +110,7 @@
                                                      (fn-own-view-verdicts view2)))
                      (<= (nfix (fn-own-view-version view)) (len events0)))))
     (mv-let (word pending2 fn-cat)
-      (fn-sca-finish token pending (fn-own-view-index view2)
+      (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                      (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                         (fn-own-view-withdrawals view2))
                      fn-cat)

@@ -272,19 +272,17 @@
 ; The join of the load.
 
 ; KEYSTONE (E for the join, over any related acceptance).  The catalog the
-; host loads from ROWS under a view's index is joined to that view when the
-; loaded catalog is related to an acceptance (the row relation) whose
-; articles the view filters (its visible list) and indexes (its index is
-; built from the visible list), the rows carry no withdrawal and every row's
-; sequence is below the view's version.
+; host loads from ROWS under the trie built from a view's visible list is
+; joined to that view when the loaded catalog is related to an acceptance
+; (the row relation) whose articles the view filters (its visible list), the
+; rows carry no withdrawal and every row's sequence is below the view's
+; version.
 (defthm fn-scj-joinp-of-load
-  (let ((c (fn-sca-load-held-rows rows (fn-own-view-index view) fn-arena fn-cat)))
+  (let ((c (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat)))
     (implies (and (fn-scj-acc-rowsp acc c)
                   (fn-article-listp g (fn-state-articles acc))
                   (equal (fn-state-articles (fn-own-view-archive view))
                          (fn-ctl-visible-articles (fn-state-articles acc) ws vs))
-                  (equal (fn-own-view-index view)
-                         (fn-midx-build (fn-state-articles (fn-own-view-archive view))))
                   (fn-scj-rows-clearp rows)
                   (fn-scj-rows-seqs-below rows (fn-own-view-version view)))
              (fn-scj-joinp view fn-arena c)))
@@ -295,17 +293,17 @@
                             fn-midx-build fn-ctl-visible-filter fn-article-listp
                             fn-scj-rows-arts fn-cat-view-below fn-scj-vis-below
                             fn-scj-load-held-rows-keeps-raw-identity))
-           :use ((:instance fn-scj-load-invp-of-load-held-rows-from (c nil) (idx (fn-own-view-index view)))
-                 (:instance fn-scj-seqs-below-of-load-held-rows-from (c nil) (idx (fn-own-view-index view))
+           :use ((:instance fn-scj-load-invp-of-load-held-rows-from (c nil) (idx (fn-midx-build (fn-state-articles (fn-own-view-archive view)))))
+                 (:instance fn-scj-seqs-below-of-load-held-rows-from (c nil) (idx (fn-midx-build (fn-state-articles (fn-own-view-archive view))))
                             (v (fn-own-view-version view)))
                  (:instance fn-scj-view-below-is-vis-below
-                            (c (fn-sca-load-held-rows rows (fn-own-view-index view) fn-arena fn-cat))
-                            (i (len (fn-sca-load-held-rows rows (fn-own-view-index view) fn-arena fn-cat))))
-                 (:instance fn-scj-acc-rowsp (c (fn-sca-load-held-rows-from rows (fn-own-view-index view) nil)))
-                 (:instance fn-scj-load-invp (c (fn-sca-load-held-rows-from rows (fn-own-view-index view) nil))
-                            (idx (fn-own-view-index view)))
+                            (c (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))
+                            (i (len (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))))
+                 (:instance fn-scj-acc-rowsp (c (fn-sca-load-held-rows-from rows (fn-midx-build (fn-state-articles (fn-own-view-archive view))) nil)))
+                 (:instance fn-scj-load-invp (c (fn-sca-load-held-rows-from rows (fn-midx-build (fn-state-articles (fn-own-view-archive view))) nil))
+                            (idx (fn-midx-build (fn-state-articles (fn-own-view-archive view)))))
                  (:instance fn-scj-shown-of-index-of-visible (xs (fn-state-articles acc))
-                            (idx (fn-own-view-index view))
+                            (idx (fn-midx-build (fn-state-articles (fn-own-view-archive view))))
                             (vis (fn-state-articles (fn-own-view-archive view))))))))
 
 ; -----------------------------------------------------------------------------
@@ -501,13 +499,13 @@
                   (fn-scj-rows-clearp rows)
                   (fn-scj-rows-seqs-below rows (fn-own-view-version view)))
              (fn-scj-joinp view fn-arena
-                           (fn-sca-load-held-rows rows (fn-own-view-index view) fn-arena fn-cat))))
+                           (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-scar-view-indexedp fn-midx-correspondencep)
                                       (theory 'minimal-theory))
            :use ((:instance fn-scj-current-view-filters-the-acceptance)
                  (:instance fn-scj-acc-rowsp-at-idle-related-owner
-                            (view-index (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))))
+                            (view-index (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc)))))))
                  (:instance fn-own-node-statep-acceptance-articles
                             (node (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))))
                  (:instance fn-scj-joinp-of-load
@@ -557,7 +555,7 @@
                   (fn-scj-rows-clearp rows)
                   (fn-rows-composites-okp rows fn-arena))
              (fn-scj-joinp view fn-arena
-                           (fn-sca-load-held-rows rows (fn-own-view-index view) fn-arena fn-cat))))
+                           (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-scj-view-currentp)
                                       (theory 'minimal-theory))
@@ -709,7 +707,7 @@
                   (fn-rows-composites-okp (append prefix suffix) fn-arena)
                   (fn-scj-rows-clearp (append prefix suffix)))
              (fn-scj-joinp (fn-own-view o) fn-arena
-                           (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view o))
+                           (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                                   fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-ock-recover-extended) (theory 'minimal-theory))
@@ -766,7 +764,7 @@
                   (not (equal oc :fault)))
              (fn-scj-joinp (fn-own-view o) arena
                            (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
-                                                  (fn-own-view-index (fn-own-view o))
+                                                  (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                                   arena fn-cat))))
   :hints (("Goal" :use ((:instance fn-scj-joinp-at-recover
                                    (prefix nil)

@@ -163,12 +163,12 @@
 ; -----------------------------------------------------------------------------
 ; T2 and R1: the completion, hidden when the view no longer shows the row.
 
-(defun fn-sca-complete (token pending view-index fn-cat)
+(defun fn-sca-complete (token pending visible fn-cat)
   (declare (xargs :stobjs fn-cat
                   :guard (fn-pc-optionp pending)
                   :guard-hints (("Goal" :in-theory (enable fn-pc-p)))))
   (if (and pending
-           (not (fn-midx-lookup (fn-record-msgid (fn-pc-held pending)) view-index)))
+           (not (fn-ctl-has-msgid-p (fn-record-msgid (fn-pc-held pending)) visible)))
       (fn-cat-complete-hidden token pending (fn-pc-expected pending) fn-cat)
     (fn-cat-complete token pending fn-cat)))
 
@@ -181,7 +181,7 @@
                 (equal (fn-held-wire-of (fn-pc-held pending) fn-arena) w)
                 (fn-record-p w))
            (fn-cat-history-relation (append records (list w)) fn-arena
-                                    (mv-nth 2 (fn-sca-complete token pending view-index fn-cat))))
+                                    (mv-nth 2 (fn-sca-complete token pending visible fn-cat))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-sca-complete fn-cat-relation-of-complete)
                               (theory 'minimal-theory))
@@ -208,11 +208,11 @@
   :keep (and (fn-ctl-withdrawalp w) (equal (fn-ctl-w-cause w) cause))
   :body (fn-ctl-w-target w))
 
-(defun fn-sca-withdraw-targets (targets view-index by fn-cat)
+(defun fn-sca-withdraw-targets (targets visible by fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp by)))
   (if (consp targets)
       (let ((fn-cat
-             (if (fn-midx-lookup (car targets) view-index)
+             (if (fn-ctl-has-msgid-p (car targets) visible)
                  fn-cat
                (let ((seq (fn-cat-view-last-visible
                            (fn-cat-msgid-seqs (car targets) fn-cat)
@@ -220,14 +220,14 @@
                  (if (and (natp seq) (< seq (fn-cat-count fn-cat)))
                      (fn-cat-withdraw seq by fn-cat)
                    fn-cat)))))
-        (fn-sca-withdraw-targets (cdr targets) view-index by fn-cat))
+        (fn-sca-withdraw-targets (cdr targets) visible by fn-cat))
     fn-cat))
 
 (defthm fn-sca-withdraw-targets-keeps-the-relation
   (implies (and (fn-cat-history-relation records fn-arena fn-cat) (natp by))
            (fn-cat-history-relation records fn-arena
-                                    (fn-sca-withdraw-targets targets view-index by fn-cat)))
-  :hints (("Goal" :induct (fn-sca-withdraw-targets targets view-index by fn-cat)
+                                    (fn-sca-withdraw-targets targets visible by fn-cat)))
+  :hints (("Goal" :induct (fn-sca-withdraw-targets targets visible by fn-cat)
            :in-theory (union-theories
                        '(fn-sca-withdraw-targets fn-cat-relation-of-withdraw)
                        (theory 'minimal-theory)))))
@@ -950,17 +950,17 @@
 ; committed withdrawn at its own index.  A refused completion (a stale
 ; token, a count the pending row did not expect) changes nothing.
 
-(defun fn-sca-finish (token pending view-index targets fn-cat)
+(defun fn-sca-finish (token pending visible targets fn-cat)
   (declare (xargs :stobjs fn-cat
                   :guard (fn-pc-optionp pending)
                   :guard-hints (("Goal" :in-theory (enable fn-pc-p)))))
   (if (and pending
            (equal token (fn-pc-token pending))
            (equal (fn-pc-expected pending) (fn-cat-count fn-cat)))
-      (let ((fn-cat (fn-sca-withdraw-targets targets view-index
+      (let ((fn-cat (fn-sca-withdraw-targets targets visible
                                              (fn-pc-expected pending) fn-cat)))
-        (fn-sca-complete token pending view-index fn-cat))
-    (fn-sca-complete token pending view-index fn-cat)))
+        (fn-sca-complete token pending visible fn-cat))
+    (fn-sca-complete token pending visible fn-cat)))
 
 (local (defthm fn-sca-withdrawn-of-assign
    (equal (fn-held-withdrawn (fn-cat-assign h c)) (fn-held-withdrawn h))
@@ -968,7 +968,7 @@
                                       fn-held-internals)))))
 
 (local (defthm fn-sca-len-of-withdraw-targets
-   (equal (len (fn-sca-withdraw-targets targets view-index by fn-cat)) (len fn-cat))
+   (equal (len (fn-sca-withdraw-targets targets visible by fn-cat)) (len fn-cat))
    :hints (("Goal" :in-theory (enable fn-sca-withdraw-targets fn-cat-mark-withdrawn)))))
 
 (local (defthm fn-sca-len-of-withdraw
@@ -984,9 +984,9 @@
 ; Pinned readers: a version at or below the count sees no change.
 (local (defthm fn-sca-view-articles-of-withdraw-targets-pinned
    (implies (and (natp v) (<= v (fn-cat-count fn-cat)))
-            (equal (fn-cat-view-articles v fn-arena (fn-sca-withdraw-targets targets view-index by fn-cat))
+            (equal (fn-cat-view-articles v fn-arena (fn-sca-withdraw-targets targets visible by fn-cat))
                    (fn-cat-view-articles v fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-sca-withdraw-targets targets view-index by fn-cat)
+   :hints (("Goal" :induct (fn-sca-withdraw-targets targets visible by fn-cat)
             :in-theory (e/d (fn-sca-withdraw-targets)
                             (fn-cat-withdraw-is-mark fn-cat-view-articles fn-cat-view-last-visible
                              fn-cat-msgid-seqs-is-seqs-for))))))
@@ -1000,13 +1000,13 @@
                 (equal (fn-held-wire-of (fn-pc-held pending) fn-arena) w)
                 (fn-record-p w))
            (fn-cat-history-relation (append records (list w)) fn-arena
-                                    (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat))))
+                                    (mv-nth 2 (fn-sca-finish token pending visible targets fn-cat))))
   :hints (("Goal" :in-theory (e/d (fn-sca-finish) (fn-sca-complete fn-cat-history-relation
                                                    fn-sca-withdraw-targets))
            :use ((:instance fn-sca-withdraw-targets-keeps-the-relation
                             (by (fn-pc-expected pending)))
                  (:instance fn-sca-complete-keeps-the-relation
-                            (fn-cat (fn-sca-withdraw-targets targets view-index
+                            (fn-cat (fn-sca-withdraw-targets targets visible
                                                              (fn-pc-expected pending) fn-cat)))))))
 
 
@@ -1039,14 +1039,14 @@
              (fn-cat-ocl-relation
               (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))
               fn-arena
-              (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat)))))
+              (mv-nth 2 (fn-sca-finish token pending visible targets fn-cat)))))
   :hints (("Goal" :use ((:instance fn-cat-ocl-relation-of-article-finish-by
                                    (w (fn-held-wire-of (fn-pc-held pending) fn-arena))
                                    (fn-cat2 (mv-nth 2 (fn-sca-finish
                                                        (cons (nfix (cdr (fn-sf-completion
                                                                          (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
                                                              (fn-pc-expected pending))
-                                                       pending view-index targets fn-cat))))
+                                                       pending visible targets fn-cat))))
                         (:instance fn-sca-finish-keeps-the-relation
                                    (records records0)
                                    (token (cons (nfix (cdr (fn-sf-completion
@@ -1057,7 +1057,7 @@
 
 (local (defthm fn-sca-view-articles-of-complete-pinned
    (implies (and (natp v) (<= v (fn-cat-count fn-cat)))
-            (equal (fn-cat-view-articles v fn-arena (mv-nth 2 (fn-sca-complete token pending view-index fn-cat)))
+            (equal (fn-cat-view-articles v fn-arena (mv-nth 2 (fn-sca-complete token pending visible fn-cat)))
                    (fn-cat-view-articles v fn-arena fn-cat)))
    :hints (("Goal" :in-theory (e/d (fn-sca-complete fn-cat-complete fn-cat-complete-hidden)
                                    (fn-cat-commit-is-append fn-cat-view-articles))))))
@@ -1067,7 +1067,7 @@
 (defthm fn-sca-finish-keeps-pinned-views
   (implies (and (natp v) (<= v (fn-cat-count fn-cat)))
            (equal (fn-cat-view-articles v fn-arena
-                                        (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat)))
+                                        (mv-nth 2 (fn-sca-finish token pending visible targets fn-cat)))
                   (fn-cat-view-articles v fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-sca-finish) (fn-sca-complete fn-sca-withdraw-targets
                                                    fn-cat-view-articles)))))
@@ -1136,9 +1136,9 @@
 
 (local (defthm fn-sca-withdrawn-cell-of-withdraw-targets
    (implies (and (natp s) (fn-held-withdrawn (nth s fn-cat)))
-            (equal (fn-held-withdrawn (nth s (fn-sca-withdraw-targets targets view-index by fn-cat)))
+            (equal (fn-held-withdrawn (nth s (fn-sca-withdraw-targets targets visible by fn-cat)))
                    (fn-held-withdrawn (nth s fn-cat))))
-   :hints (("Goal" :induct (fn-sca-withdraw-targets targets view-index by fn-cat)
+   :hints (("Goal" :induct (fn-sca-withdraw-targets targets visible by fn-cat)
             :in-theory (e/d (fn-sca-withdraw-targets)
                             (fn-cat-view-last-visible fn-cat-msgid-seqs-is-seqs-for))))))
 
@@ -1162,8 +1162,8 @@
   (implies (and (fn-pc-p pending)
                 (equal token (fn-pc-token pending))
                 (equal (fn-pc-expected pending) (fn-cat-count fn-cat))
-                (not (fn-midx-lookup (fn-record-msgid (fn-pc-held pending)) view-index)))
-           (let ((c2 (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat))))
+                (not (fn-ctl-has-msgid-p (fn-record-msgid (fn-pc-held pending)) visible)))
+           (let ((c2 (mv-nth 2 (fn-sca-finish token pending visible targets fn-cat))))
              (and (equal (fn-cat-count c2) (+ 1 (fn-cat-count fn-cat)))
                   (not (fn-cat-visible-at (fn-cat-count fn-cat) v c2)))))
   :hints (("Goal" :in-theory (enable fn-sca-finish fn-sca-complete fn-cat-complete-hidden
@@ -1171,14 +1171,14 @@
 
 (local (defthm fn-sca-withdraw-targets-hides
    (implies (and (member-equal mid targets)
-                 (not (fn-midx-lookup mid view-index))
+                 (not (fn-ctl-has-msgid-p mid visible))
                  (equal seq (fn-cat-view-last-visible (fn-cat-msgid-seqs mid fn-cat)
                                                       (fn-cat-count fn-cat) fn-cat))
                  seq
                  (null (fn-held-withdrawn (fn-cat-at seq fn-cat)))
                  (natp v) (< (fn-cat-count fn-cat) v))
-            (not (fn-cat-visible-at seq v (fn-sca-withdraw-targets targets view-index by fn-cat))))
-   :hints (("Goal" :induct (fn-sca-withdraw-targets targets view-index by fn-cat)
+            (not (fn-cat-visible-at seq v (fn-sca-withdraw-targets targets visible by fn-cat))))
+   :hints (("Goal" :induct (fn-sca-withdraw-targets targets visible by fn-cat)
             :in-theory (e/d (fn-sca-withdraw-targets fn-cat-visiblep)
                             (fn-cat-view-last-visible))))))
 
@@ -1189,7 +1189,7 @@
 
 (local (defthm fn-sca-visible-at-of-complete-below
    (implies (and (natp seq) (< seq (fn-cat-count fn-cat)))
-            (equal (fn-cat-visible-at seq v (mv-nth 2 (fn-sca-complete token pending view-index fn-cat)))
+            (equal (fn-cat-visible-at seq v (mv-nth 2 (fn-sca-complete token pending visible fn-cat)))
                    (fn-cat-visible-at seq v fn-cat)))
    :hints (("Goal" :in-theory (enable fn-sca-complete fn-cat-complete fn-cat-complete-hidden
                                       fn-cat-visiblep)))))
@@ -1202,13 +1202,13 @@
                 (equal token (fn-pc-token pending))
                 (equal (fn-pc-expected pending) (fn-cat-count fn-cat))
                 (member-equal mid targets)
-                (not (fn-midx-lookup mid view-index))
+                (not (fn-ctl-has-msgid-p mid visible))
                 (equal seq (fn-cat-view-last-visible (fn-cat-msgid-seqs mid fn-cat)
                                                      (fn-cat-count fn-cat) fn-cat))
                 seq
                 (null (fn-held-withdrawn (fn-cat-at seq fn-cat)))
                 (natp v) (< (fn-cat-count fn-cat) v))
-           (not (fn-cat-visible-at seq v (mv-nth 2 (fn-sca-finish token pending view-index
+           (not (fn-cat-visible-at seq v (mv-nth 2 (fn-sca-finish token pending visible
                                                                   targets fn-cat)))))
   :hints (("Goal" :in-theory (e/d (fn-sca-finish)
                                   (fn-sca-complete fn-sca-withdraw-targets
@@ -1280,7 +1280,7 @@
 (defthm fn-scol-okp-of-sca-complete
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scol-row-okp (fn-pc-held pending) fn-arena))
-           (fn-scol-okp fn-arena (mv-nth 2 (fn-sca-complete token pending view-index fn-cat))))
+           (fn-scol-okp fn-arena (mv-nth 2 (fn-sca-complete token pending visible fn-cat))))
   :hints (("Goal" :in-theory (e/d (fn-sca-complete fn-cat-complete fn-cat-complete-hidden)
                                   (fn-held-with-withdrawn fn-cat-commit-is-append
                                    fn-midx-lookup fn-scol-okp)))))
@@ -1288,8 +1288,8 @@
 ; T4.
 (defthm fn-scol-okp-of-sca-withdraw-targets
   (implies (and (fn-scol-okp fn-arena fn-cat) (natp by))
-           (fn-scol-okp fn-arena (fn-sca-withdraw-targets targets view-index by fn-cat)))
-  :hints (("Goal" :induct (fn-sca-withdraw-targets targets view-index by fn-cat)
+           (fn-scol-okp fn-arena (fn-sca-withdraw-targets targets visible by fn-cat)))
+  :hints (("Goal" :induct (fn-sca-withdraw-targets targets visible by fn-cat)
            :in-theory (e/d (fn-sca-withdraw-targets)
                            (fn-cat-view-last-visible fn-cat-withdraw-is-mark fn-midx-lookup
                             fn-scol-okp)))))
@@ -1299,5 +1299,5 @@
   (implies (and (fn-scol-okp fn-arena fn-cat)
                 (fn-scol-row-okp (fn-pc-held pending) fn-arena)
                 (or (null pending) (natp (fn-pc-expected pending))))
-           (fn-scol-okp fn-arena (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat))))
+           (fn-scol-okp fn-arena (mv-nth 2 (fn-sca-finish token pending visible targets fn-cat))))
   :hints (("Goal" :in-theory (e/d (fn-sca-finish) (fn-sca-complete fn-sca-withdraw-targets)))))

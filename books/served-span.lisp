@@ -38,7 +38,7 @@
 ; by index instead of consuming a list.  Its shape is fn-scar-feed-counted's,
 ; byte for byte, so the correspondence below is a plain induction.
 
-(defun fn-scar-feed-span (conn i end live trie arts fn-octets fn-arena)
+(defun fn-scar-feed-span (conn i end live arts fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
                               (natp i) (natp end) (<= i end)
@@ -51,7 +51,7 @@
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-haltedp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (let ((here (fn-scar-feed-byte conn (fn-octets-get i fn-octets) live trie arts fn-arena)))
+    (let ((here (fn-scar-feed-byte conn (fn-octets-get i fn-octets) live arts fn-arena)))
       ;; PKT-600: yield after the octet that completed a submission; the host
       ;; re-enters at i + consumed (host/native/owner.lisp, the serve loop's
       ;; retained offset).
@@ -60,7 +60,7 @@
            1 (fn-served-make-result (fn-served-result-conn here)
                                     (fn-served-result-effects here)))
         (let* ((tail (fn-scar-feed-span (fn-served-result-conn here) (+ 1 i) end
-                                        live trie arts fn-octets fn-arena))
+                                        live arts fn-octets fn-arena))
                (tail-result (fn-served-counted-result tail)))
           (fn-served-counted-make
            (+ 1 (fn-served-counted-consumed tail))
@@ -73,9 +73,9 @@
 
 (defthm fn-scar-feed-span-consumed-is-natural
   (natp (fn-served-counted-consumed
-         (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)))
+         (fn-scar-feed-span conn i end live arts fn-octets fn-arena)))
   :rule-classes (:rewrite :type-prescription)
-  :hints (("Goal" :induct (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)
+  :hints (("Goal" :induct (fn-scar-feed-span conn i end live arts fn-octets fn-arena)
            :in-theory (e/d (fn-served-counted-make fn-served-counted-consumed)
                            (fn-scar-feed-byte fn-wire-fast-statep)))))
 
@@ -86,8 +86,8 @@
              (fn-served-conn-wire
               (fn-served-result-conn
                (fn-served-counted-result
-                (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena))))))
-   :hints (("Goal" :induct (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)
+                (fn-scar-feed-span conn i end live arts fn-octets fn-arena))))))
+   :hints (("Goal" :induct (fn-scar-feed-span conn i end live arts fn-octets fn-arena)
             :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
                             (fn-scar-feed-byte fn-wire-fast-statep))))))
 
@@ -121,10 +121,10 @@
 ; induction on the range gives the equality; a closed wire and a handshaking
 ; session answer alike on both sides.
 (defthm fn-scar-feed-span-is-feed-counted
-  (equal (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)
+  (equal (fn-scar-feed-span conn i end live arts fn-octets fn-arena)
          (fn-scar-feed-counted conn (fn-oct-slice-list i end fn-octets)
-                               live trie arts fn-arena))
-  :hints (("Goal" :induct (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)
+                               live arts fn-arena))
+  :hints (("Goal" :induct (fn-scar-feed-span conn i end live arts fn-octets fn-arena)
            :in-theory (e/d (fn-scar-feed-span fn-scar-feed-counted
                             fn-served-counted-make fn-served-counted-consumed
                             fn-served-counted-result)
@@ -141,7 +141,7 @@
 ; -----------------------------------------------------------------------------
 ; The read entries, each the shape of its list twin.
 
-(defun fn-scar-step-span-core (conn i end live trie arts fn-octets fn-arena)
+(defun fn-scar-step-span-core (conn i end live arts fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
                               (natp i) (natp end) (<= i end)
@@ -151,8 +151,8 @@
          ;; fn-scar-scan-span, equal to the byte fold under this guard by
          ;; fn-scar-scan-span-is-feed-counted and
          ;; fn-scar-feed-span-is-feed-counted).
-         (fed (mbe :logic (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)
-                   :exec (fn-scar-scan-span conn i end live trie arts fn-octets fn-arena)))
+         (fed (mbe :logic (fn-scar-feed-span conn i end live arts fn-octets fn-arena)
+                   :exec (fn-scar-scan-span conn i end live arts fn-octets fn-arena)))
          (result (fn-served-counted-result fed))
          (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
     (fn-served-counted-make
@@ -174,24 +174,24 @@
               nil)))))))
 
 (defthm fn-scar-step-span-core-is-step-counted-core
-  (equal (fn-scar-step-span-core conn i end live trie arts fn-octets fn-arena)
+  (equal (fn-scar-step-span-core conn i end live arts fn-octets fn-arena)
          (fn-scar-step-counted-core conn (fn-oct-slice-list i end fn-octets)
-                                    live trie arts fn-arena))
+                                    live arts fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-span-core fn-scar-step-counted-core)
                                   (fn-scar-feed-counted fn-served-closed-wirep)))))
 
-(defun fn-scar-step-span-fast (conn i end live trie arts fn-octets fn-arena)
+(defun fn-scar-step-span-fast (conn i end live arts fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena)
                   :guard (and (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets)))))
   (if (not (fn-wire-fast-statep (fn-served-conn-wire conn)))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (fn-scar-step-span-core conn i end live trie arts fn-octets fn-arena)))
+    (fn-scar-step-span-core conn i end live arts fn-octets fn-arena)))
 
 (defthm fn-scar-step-span-fast-is-step-counted-fast
-  (equal (fn-scar-step-span-fast conn i end live trie arts fn-octets fn-arena)
+  (equal (fn-scar-step-span-fast conn i end live arts fn-octets fn-arena)
          (fn-scar-step-counted-fast conn (fn-oct-slice-list i end fn-octets)
-                                    live trie arts fn-arena))
+                                    live arts fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-span-fast fn-scar-step-counted-fast)
                                   (fn-scar-step-span-core fn-scar-step-counted-core
                                    fn-wire-fast-statep)))))
@@ -204,12 +204,11 @@
                               (<= end (fn-octets-len fn-octets)))))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
         (live (fn-sn-node (fn-own-store o)))
-        (trie (fn-own-view-index (fn-own-view o)))
         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
     (if conn
         (let* ((counted
                  (fn-scar-step-span-fast
-                  (fn-own-tls-served-conn o conn) i end live trie arts fn-octets fn-arena))
+                  (fn-own-tls-served-conn o conn) i end live arts fn-octets fn-arena))
                (result
                  (fn-scar-finish-read
                   o conn (fn-served-counted-result counted) live)))

@@ -438,19 +438,16 @@
                             (conn (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
                                                       (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))
                             (live (fn-sn-node (fn-own-store o)))
-                            (trie (fn-own-view-index (fn-own-view o)))
                             (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
                  (:instance fn-scr-conn-okp-of-scar-dispatch
                             (conn (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
                                                       (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))
                             (live (fn-sn-node (fn-own-store o)))
-                            (trie (fn-own-view-index (fn-own-view o)))
                             (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
                  (:instance fn-scj-sconn-atmostp-of-scar-dispatch
                             (conn (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
                                                       (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))
                             (live (fn-sn-node (fn-own-store o)))
-                            (trie (fn-own-view-index (fn-own-view o)))
                             (arts (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                             (n (fn-own-view-version (fn-own-view o))))
                  (:instance fn-sjh-rs-sconn-atmostp-of-own-served-conn
