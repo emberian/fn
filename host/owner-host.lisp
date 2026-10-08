@@ -343,27 +343,6 @@
 ; operation which preserves membership may use fn-owner-replace-core.
 ; Defined by books/owner-state-accessors.lisp under the same name.
 
-;; A live owner's administrative publication (PKT-837): the authorization
-;; from the owner's carried state, books/config-owner-live-authorize.lisp
-;; fn-olau-authorize -- the candidate is the one record applied to the
-;; carried node and configuration, no Store record read and no history
-;; replayed.  Under the owner's invariant, at :ready, with the observed
-;; configuration history the carried one and the record at the frontier, it
-;; EQUALS fn-cvec-native-admin-authorize over the carried rows and frontier,
-;; the replaying decision it replaced (KEYSTONE
-;; fn-olau-authorize-is-the-replayed-authorization).  Called from
-;; host/native/admin.lisp fnn-admin-authorize-owner, after
-;; fn-owner-reconfigure-authorizedp (PRF-287) answered for the staged record,
-;; through the wrapper below, over the carried history.
-;; Sweep S033: the same authorization over the owner's carried configuration
-;; history, with no history read: the host observes only whether the next
-;; generation's file (fn-owner-cfg-next-name, from the carried
-;; configuration) already exists, and passes that as OCCUPIED
-;; (books/config-owner-live-authorize-carried.lisp fn-olau-authorize-carried;
-;; KEYSTONE fn-olau-authorize-carried-is-the-observed-authorization: under the
-;; owner's invariant it equals fn-olau-authorize over the carried history and
-;; the names on disk).  Called from host/native/admin.lisp
-;; fnn-admin-authorize-owner.  Neither writes any global.
 ; Private allocation identity. The actual native catalog installer reserves
 ; before publishing a replacement pointer. The counter is never reset by open,
 ; reclaim or failed publication; the owner carrier migration must move both
@@ -418,27 +397,16 @@
                         (fn-auth-access-read (fn-served-conn-session sc) config))
                   state))))))))
 
-(defun fn-owner-cfg-next-name (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (value (fn-olau-next-name (fn-owner-ocfg state))))
-
 ; Capture under the owner mutex; window A authorizes this immutable value.
 (defun fn-owner-cfg-capture (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-owner-ocfg state)))
 
-(defun fn-owner-cfg-native-admin-authorize-carried
-    (record-octets lock-owned occupied profile state)
-  (declare (xargs :stobjs state
-                  :guard (and (boundp-global 'fn-owner state)
-                              (fn-cbor-octet-listp record-octets))))
-  (let ((parsed (fn-cfg-decode-exact record-octets)))
-    (value
-     (if (not (fn-record-parse-okp parsed))
-         (fn-native-admin-publication-result :refused :decode nil nil nil)
-       (fn-olau-authorize-carried (fn-owner-ocfg state)
-                                  (fn-record-parse-value parsed)
-                                  lock-owned (and occupied t) profile)))))
+; The capture is a readout, so its state result preserves every carried
+; predicate.  Used by fn-owner-served-carried, not cited as a keystone.
+(defthm fn-owner-cfg-capture-state-by-definition
+  (equal (mv-nth 2 (fn-owner-cfg-capture state)) state)
+  :hints (("Goal" :in-theory '(fn-owner-cfg-capture))))
 
 (defun fn-owner-clock-observation (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
@@ -1752,20 +1720,8 @@
         (value verdict)))))
 
 
-;; PKT-827 (b), PRF-287: the live request's authorization from the owner's
-;; carried state, asked after staging and before publication
-;; (host/native/admin.lisp fnn-owner-live-reconfigure-locked).  ACL2's
-;; fn-oclc-live-authorizep: the staged record applies to the carried node and
-;; configuration; an authorized record's completion is :durable
-;; (fn-oclc-live-authorizep-is-durable-completion) and under the owner's
-;; invariant the history reopens to the state it installs
-;; (fn-oclc-authorized-record-reopens).  It reads no record.
-(defun fn-owner-reconfigure-authorizedp (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (value (fn-oclc-live-authorizep (fn-owner-ocfg state))))
-
 ;; lane prepare-served: a live request refused BEFORE its record was written
-;; (the authorization above, the candidate open, or the immutable publisher's
+;; (the captured authorization, the candidate open, or the immutable publisher's
 ;; :refused; host/native/admin.lisp fnn-owner-live-reconfigure-locked) drops
 ;; the staged record, ACL2's fn-psrv-unstage (KEYSTONE
 ;; fn-psrv-unstage-preserves-invariant).  Before it the staged record stayed:

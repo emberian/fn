@@ -909,8 +909,7 @@
 ; host/native/owner.lisp fnn-owner-reconfig-hold, fnn-owner-gate-pick).
 (definterface fn-otm-hold-next
   :class :common-lisp-compliant
-  :keystones (fn-otm-hold-admits-only-inspect-commit-and-reader
-              fn-otm-hold-next-without-the-hold-is-next))
+  :keystones (fn-otm-hold-admits-only-inspect-commit-and-reader))
 
 (definterface fn-otm-hold-begin
   :class :common-lisp-compliant
@@ -1623,14 +1622,21 @@
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
 
-(definterface fn-owner-cfg-native-admin-authorize-carried
-  :class :common-lisp-compliant
-  :kinds ((record-octets fn-cbor-octet-listp))
-  :keystones ((fn-olau-authorize-carried-is-the-observed-authorization
-               :via fn-olau-authorize-carried)))
-
-(definterface fn-owner-cfg-next-name
+(definterface fn-owner-cfg-capture
   :class :common-lisp-compliant)
+
+(definterface fn-oclc-live-authorizep
+  :class :common-lisp-compliant
+  :keystones (fn-orl-reader-events-keep-the-authorization))
+
+(definterface fn-olau-next-name
+  :class :common-lisp-compliant)
+
+(definterface fn-olau-authorize-observed
+  :class :common-lisp-compliant
+  :keystones (fn-olau-authorize-observed-is-the-carried-authorization
+              (fn-olau-authorize-carried-across-reader-events
+               :via fn-olau-authorize-carried)))
 
 (definterface fn-owner-checkpoint-clone-phase
   :class :common-lisp-compliant
@@ -2010,12 +2016,12 @@
 ; The live reconfiguration as ACL2-ordered quanta (ruling 19): the host's
 ; loop over this step, in host/native/admin.lisp fnn-owner-live-reconfigure,
 ; runs each effect it names where its label says.
+(definterface fn-orp-convert-event
+  :class :common-lisp-compliant)
+
 (definterface fn-orp-step
   :class :common-lisp-compliant
   :keystones (fn-orp-step-holds-the-owner-only-in-quanta))
-
-(definterface fn-owner-reconfigure-authorizedp
-  :class :common-lisp-compliant)
 
 (definterface fn-owner-reconfigure-complete
   :class ::program)
@@ -4702,6 +4708,8 @@
 ; The live limit/profile/pool join in host/native/admin.lisp.
 (definterface fn-lim-apply-row :class :common-lisp-compliant)
 (definterface fn-lim-protected-growth :class :common-lisp-compliant)
+(definterface fn-lim-funded-after :class :common-lisp-compliant)
+(definterface fn-lim-decision-appliedp :class :common-lisp-compliant)
 (definterface fn-lim-pool-decision :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
