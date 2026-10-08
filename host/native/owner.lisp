@@ -190,7 +190,15 @@ not armed. Instrumentation has no semantic or admission role."
   token worker prev next queuedp settledp outcome output-grants
   ;; T: issued by the unfunded cold line (host/native/extent.lisp
   ;; fnn-extent-issue-direct), settled by fn-pio-direct-settle, no ledger.
-  directp windowp borrowedp abandonedp)
+  directp windowp borrowedp abandonedp
+  ;; WAITINGP: a miss that found every cold-read worker busy, queued for one
+  ;; (books/cold-read-wait.lisp); it holds no worker and no token.  CID: the
+  ;; connection that missed.  ADMITTED-AT: the instant ACL2 told it a worker
+  ;; was idle for it; the worker is held for CID's re-run until it issues or
+  ;; +fnn-cold-admit-hold-ms+ passes.
+  waitingp cid admitted-at
+  ;; WID: the id ACL2's queue (fn-cwq-arrive) gave it; its place in line is ACL2's.
+  wid)
 
 ;;; Retained admission envelope. Every phase/verdict is an opaque ACL2
 ;;; result; these fields retain I/O references across unlocked yields.
@@ -5997,7 +6005,127 @@ in a fault; DEADLINE (internal real time) bounds the whole feed.
             (fnn-owner-cold-read-next read) nil
             (fnn-owner-cold-read-queuedp read) nil))))
 
+;;; The bounded wait for a cold-read worker (books/cold-read-wait.lisp; item
+;;; COLD-READ-WORKERS-REFUSE-AT-16).  A miss that finds every worker busy is
+;;; not refused: ACL2 (fn-cwq-arrive) admits it, queues it, or refuses it by
+;;; name only when the queue is full; a queued miss is a waiting
+;;; fnn-owner-cold-read the mux polls like any pending read, and ACL2
+;;; (fn-cwq-step) answers it :admit (a worker is idle for it: the line runs
+;;; again and issues), (:wait MS), or :unavailable at the dependency
+;;; deadline.  Nothing waits under the owner mutex; the host holds the queued
+;;; objects and counts, ACL2 decides.  The queue is bounded by the profile
+;;; (:cold-wait-queue); its storage is charged in books/cold-read-reservation.lisp.
+(defvar *fnn-cold-waiters* nil)  ; the waiting reads (objects), in no order the host relies on
+(fnn-guarded-by *fnn-cold-waiters* *fnn-extent-lock*)
+;; ACL2's queue value (fn-cwq-new): the waiting count, every place in line and
+;; the ids are its.  The host only holds it between calls.
+(defvar *fnn-cold-queue* nil)
+(fnn-guarded-by *fnn-cold-queue* *fnn-extent-lock*)
+(defconstant +fnn-cold-admit-hold-ms+ 50)
+
+(defun fnn-cold-queue-locked ()
+  "Extent lock held: ACL2's queue, created by ACL2 on first use."
+  (or *fnn-cold-queue* (setq *fnn-cold-queue* (fnn-core 'fn-cwq-new))))
+
+(defun fnn-cold-idle-rows-locked ()
+  "Extent lock held: the idle cold-read workers' rows, offered to ACL2, which counts them."
+  (loop for worker = *fnn-cold-free* then (fnn-cold-worker-next worker)
+        while worker collect (fnn-cold-worker-row worker)))
+
+(defun fnn-cold-waiter-drop-locked (read)
+  "Extent lock held: READ leaves the line, in ACL2's queue and in the host's objects."
+  (setq *fnn-cold-queue* (fnn-core 'fn-cwq-drop (fnn-cold-queue-locked) (fnn-owner-cold-read-wid read))
+        *fnn-cold-waiters* (delete read *fnn-cold-waiters* :test #'eq)))
+
+(defun fnn-cold-waiters-purge-locked (now)
+  "Extent lock held: an admitted waiter whose line never issued (it ran warm,
+or its connection went) stops holding its worker after the hold."
+  (dolist (read (copy-list *fnn-cold-waiters*))
+    (let ((at (fnn-owner-cold-read-admitted-at read)))
+      (when (and at (<= +fnn-cold-admit-hold-ms+ (- now at)))
+        (fnn-cold-waiter-drop-locked read)))))
+
+(defun fnn-owner-cold-wait-arrive (cid force)
+  "Owner mutex held.  :ISSUE (go and take a worker), a waiting read, or
+:read-resources-unavailable (ACL2's refusal: the queue is full).  FORCE: the
+issue just found no worker, so :ADMIT cannot be taken."
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (let ((now (fnn-owner-monotonic-ms)))
+      (fnn-cold-waiters-purge-locked now)
+      (let ((mine (find-if (lambda (read)
+                             (and (eql cid (fnn-owner-cold-read-cid read))
+                                  (fnn-owner-cold-read-admitted-at read)))
+                           *fnn-cold-waiters*)))
+        (when mine
+          (fnn-cold-waiter-drop-locked mine)
+          (return-from fnn-owner-cold-wait-arrive :issue)))
+      (destructuring-bind (word queue id)
+          (fnn-call 'fn-cwq-arrive (fnn-cold-queue-locked)
+                    (if force nil (fnn-cold-idle-rows-locked)))
+        (case word
+          (:admit :issue)
+          (:enqueue
+           (let ((read (%make-fnn-owner-cold-read :waitingp t :windowp t :cid cid :wid id)))
+             (setq *fnn-cold-queue* queue
+                   *fnn-cold-waiters* (nconc *fnn-cold-waiters* (list read)))
+             read))
+          (:queue-full :read-resources-unavailable)
+          (otherwise (fnn-fault "owner returned a malformed cold wait arrival")))))))
+
+(defun fnn-owner-cold-wait-poll (read line-since since)
+  "Never waits.  (values WORD SINCE NOW LIMIT) for a waiting READ, as
+fnn-owner-cold-poll's: :serve (a worker is idle for it: the line runs again
+and issues), :unavailable (ACL2's deadline), or (:wait MS)."
+  (let* ((now (fnn-owner-monotonic-ms)) (limit nil))
+    (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+      (fnn-cold-waiters-purge-locked now)
+      (cond
+        ((fnn-owner-cold-read-admitted-at read) (values :serve since now limit))
+        ((and line-since
+              (eq (fnn-core 'fn-otb-line-dependency-step line-since now limit) :unavailable))
+         (fnn-cold-waiter-drop-locked read)
+         (values :unavailable line-since now limit))
+        (t
+         (destructuring-bind (decision queue)
+             (fnn-call 'fn-cwq-step (fnn-cold-queue-locked) (fnn-owner-cold-read-wid read)
+                       (fnn-cold-idle-rows-locked) since now limit)
+           (setq *fnn-cold-queue* queue)
+           (cond ((eq decision :gone)
+                  (setq *fnn-cold-waiters* (delete read *fnn-cold-waiters* :test #'eq))
+                  (values :serve since now limit))
+                 ((eq decision :admit)
+                  (setf (fnn-owner-cold-read-admitted-at read) now)
+                  (values :serve since now limit))
+                 ((eq decision :unavailable)
+                  (setq *fnn-cold-waiters* (delete read *fnn-cold-waiters* :test #'eq))
+                  (values :unavailable since now limit))
+                 ((and (consp decision) (eq (car decision) :wait)
+                       (integerp (second decision)) (plusp (second decision)))
+                  (values decision since now limit))
+                 (t (fnn-fault "owner returned a malformed cold wait step")))))))))
+
+(defun fnn-owner-cold-wait-cancel (read)
+  "A waiting read stops waiting (its connection or response ended)."
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (fnn-cold-waiter-drop-locked read)))
+
 (defun fnn-owner-cold-issue-locked (service cid entry)
+  "THE ONE FUNNEL of a miss's issue.  A miss that finds no worker waits
+(fnn-owner-cold-wait-arrive); a waiting read is returned for the caller to
+poll.  The issue itself is fnn-owner-cold-issue-now."
+  (let ((gate (if (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+                    (plusp (fnn-core 'fn-cwq-waiting (fnn-cold-queue-locked))))
+                  (fnn-owner-cold-wait-arrive cid nil)
+                :issue)))
+    (if (not (eq gate :issue))
+        gate
+      (let ((got (fnn-owner-cold-issue-now service cid entry)))
+        (if (eq got :read-resources-unavailable)
+            (let ((wait (fnn-owner-cold-wait-arrive cid t)))
+              (if (eq wait :issue) got wait))
+          got)))))
+
+(defun fnn-owner-cold-issue-now (service cid entry)
   "Validated descriptor capture, owner mutex held, before retirement.
 The issued row (the read's pin on its file incarnation) and its worker are
 bound here, before the mutex that excludes retirement is released: by the
@@ -6347,6 +6475,16 @@ LINE-SINCE: this read is a re-run line's, whose first miss was at
 LINE-SINCE; ACL2's line deadline (fn-otb-line-dependency-step) answers
 :unavailable once it has passed, even for a page that came."
   (when (keywordp read) (return-from fnn-owner-cold-await (values read 0 0 nil)))
+  (when (fnn-owner-cold-read-waitingp read)
+    ;; The blocking form of fnn-owner-cold-wait-poll, on a caller that holds
+    ;; no lock: ACL2's wait, slept at most the mux's poll interval.
+    (let ((since (fnn-owner-monotonic-ms)))
+      (loop
+        (multiple-value-bind (word since1 now limit)
+            (fnn-owner-cold-wait-poll read line-since since)
+          (if (consp word)
+              (sleep (/ (min (second word) 2) 1000))
+            (return (values word since1 now limit)))))))
   (let* ((since (fnn-owner-monotonic-ms)) (limit nil)
          (token (fnn-owner-cold-read-token read))
          (worker (fnn-owner-cold-read-worker read)))
@@ -6472,6 +6610,8 @@ came and READ is settled, as CLASS: fnn-owner-cold-settle), :unavailable
 (ACL2's deadline passed, the read's publication revoked), (:wait MS), or READ
 itself when it is a refusal word."
   (when (keywordp read) (return-from fnn-owner-cold-poll (values read since since nil)))
+  (when (fnn-owner-cold-read-waitingp read)
+    (return-from fnn-owner-cold-poll (fnn-owner-cold-wait-poll read line-since since)))
   (let* ((now (fnn-owner-monotonic-ms)) (limit nil)
          (token (fnn-owner-cold-read-token read))
          (worker (fnn-owner-cold-read-worker read))
@@ -6497,6 +6637,8 @@ itself when it is a refusal word."
           (t (fnn-fault "owner returned a malformed dependency step")))))
 
 (defun fnn-owner-cold-cancel (read)
+  (when (fnn-owner-cold-read-waitingp read)
+    (return-from fnn-owner-cold-cancel (fnn-owner-cold-wait-cancel read)))
   (if (fnn-owner-cold-read-windowp read)
       (unless (fnn-owner-cold-read-settledp read)
         (setf (fnn-owner-cold-read-abandonedp read) t)

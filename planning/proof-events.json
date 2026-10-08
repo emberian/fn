@@ -687,12 +687,9 @@
         {
           "kind": "theorem",
           "name": "fn-checkpoint-admissible-capture-is-exact"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-checkpoint-admissible-capture-value-is-valid"
         }
-      ]
+      ],
+      "note": "Model-only theorem retained unchanged in books/checkpoint.lisp and marked unreachable-in-composition in the PRF-008 statement: fn-checkpoint-admissible-capture-value-is-valid. Not a hosted-event claim; no reach baseline exemption is added."
     },
     {
       "id": "PRF-010",
@@ -906,11 +903,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
-          "note": "The per-read owner transition the host calls (host/owner-host.lisp fn-owner-chunk calls fn-scar-ocfg-read-tls-prefix) equals fn-ocfg-read-tls-prefix under fn-ocl-relation and the owner view trie premise fn-scar-view-indexedp (carried by books/owner-offer-indexed.lisp); it takes the store node's fn-node-statep from that relation instead of evaluating it (O(N^2) in the archive) four times per read. Teeth: tests/acl2/owner-served-carried-tests.lisp."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-pgc-peer-arm-is-peer-step-pinned",
           "note": "D24: the peer arm is guard-verified with guard fn-pgc-peer-sessionp, the peer session recognizer without its node conjunct; its offer decision calls fn-pgc-retain-admissiblep, fn-retain-admissiblep's executable body with guard t, and its transfer arm is fn-peer-step's without that function's own session test. It equals fn-peer-step-pinned under fn-peer-sessionp, a named peer and the trie correspondence. The host's call (fn-owner-chunk -> fn-scar-ocfg-read-tls-prefix -> ... -> fn-scar-peer-step-pinned) supplies fn-peer-sessionp from the carried premise fn-node-statep of the store's node (fn-ocl-relation / fn-own-relation, established at open and preserved by every owner step) by one pointer comparison of the session's node with it, so no peer event evaluates fn-node-statep. Teeth: tests/acl2/peer-guard-carried-tests.lisp, including a structural check that no guard on the chain names fn-node-statep."
         },
@@ -974,7 +966,8 @@
           "name": "fn-bpi-ingress-prepare-carried-is-prepare",
           "note": "The BP ingress prepare: host/bp-ingress-host.lisp fn-bpi-host-prepare calls fn-bpi-ingress-prepare-carried (books/bp-ingress-carried.lisp) over the arena's count; under fn-snt-relation it equals fn-bpi-ingress-prepare, every argument (the policy test without fn-sn-statep, the prepare fn-pcar-spc-prepare without the replay). With the host's seal it is the entry fn-bpi-ingress-prepare-interned (fn-bpi-ingress-prepare-interned-unfolds). Teeth: tests/acl2/bp-ingress-carried-tests.lisp (related reserved store prepares alike; related duplicate refused alike; CORRUPTED store with a refused-reservation node over the durable history: the carried prepare stages the duplicate, the specification refuses it)."
         }
-      ]
+      ],
+      "note": "Model-only theorem retained unchanged in books/owner-served-carried.lisp and marked unreachable-in-composition in the PRF-014 statement: fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation. Not a hosted-event claim; no reach baseline exemption is added."
     },
     {
       "id": "PRF-015",
@@ -1133,10 +1126,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-wm-match-codepoints-work-cost-bound"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-article-parse-work-value"
         },
         {
@@ -1167,7 +1156,8 @@
           "name": "fn-transfer-missing-ranges-work-public-bound",
           "note": "no caller; v1"
         }
-      ]
+      ],
+      "note": "fn-wm-match-codepoints-work-cost-bound retained unchanged in books/wildmat-work.lisp and marked unreachable-in-composition in the PRF-016 statement. Not a hosted-event claim; no reach baseline exemption is added."
     },
     {
       "id": "PRF-019",
@@ -1605,15 +1595,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-cpc-valid-is-capture-value",
-          "pending_subject": "fn-cpc-validp has no caller in host/, tools/ or any other book; the served restore path is host/checkpoint-host.lisp -> fn-checkpoint-restore (which tests the same journal-interval condition as its :suffix clause) and no theorem equates the two. Review section 4, the theorem-subject rule."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cpc-valid-refuses-generation-mismatch",
           "pending_subject": "fn-cpc-validp has no caller in host/, tools/ or any other book; the served restore path is host/checkpoint-host.lisp -> fn-checkpoint-restore (which tests the same journal-interval condition as its :suffix clause) and no theorem equates the two. Review section 4, the theorem-subject rule."
         }
-      ]
+      ],
+      "note": "Model-only theorem retained unchanged in books/checkpoint-codec.lisp and marked unreachable-in-composition in the PRF-037 statement: fn-cpc-valid-is-capture-value. Not a hosted-event claim; no reach baseline exemption is added."
     },
     {
       "id": "PRF-039",
@@ -12973,12 +12959,8 @@
     },
     {
       "id": "PRF-383",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-dl-map-loop-is-revappend"
-        }
-      ]
+      "events": [],
+      "note": "fn-dl-map-loop-is-revappend retained unchanged in books/def-loop.lisp and marked unreachable-in-composition in the PRF-383 statement (see PRF-919). Not a hosted-event claim; no reach baseline exemption is added."
     },
     {
       "id": "PRF-376",
@@ -15515,27 +15497,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-dl-map-loop-is-revappend"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dl-sum-loop-is-plus"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpah-apply-delivery-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
-          "name": "fn-dl-foldr-loop-is-foldr"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpfs-cut-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dl-map-skip-loop-is-revappend"
         },
         {
           "kind": "theorem",
@@ -15572,10 +15538,6 @@
         {
           "kind": "theorem",
           "name": "fn-bpnp-deferral-replace-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dl-step-loop-is-revappend"
         },
         {
           "kind": "theorem",
@@ -15651,10 +15613,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-dl-fold-loop-is-revappend"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ipp-split-at-loop-is-rev-onto"
         },
         {
@@ -15679,10 +15637,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-dl-concat-loop-is-revappend"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-native-auth-line-count-loop-is-plus"
         },
         {
@@ -15704,10 +15658,6 @@
         {
           "kind": "theorem",
           "name": "fn-own-feed-port-restart-fold-loop-is-fold"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dl-thread-loop-is-revappend"
         },
         {
           "kind": "theorem",
@@ -15777,7 +15727,8 @@
           "kind": "theorem",
           "name": "fn-wss-ew-loop-nil"
         }
-      ]
+      ],
+      "note": "Library witness lemmas of books/def-loop.lisp retained unchanged and marked unreachable-in-composition in the PRF-919 statement: fn-dl-concat-loop-is-revappend, fn-dl-fold-loop-is-revappend, fn-dl-foldr-loop-is-foldr, fn-dl-map-loop-is-revappend, fn-dl-map-skip-loop-is-revappend, fn-dl-step-loop-is-revappend, fn-dl-sum-loop-is-plus, fn-dl-thread-loop-is-revappend. Not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-947",

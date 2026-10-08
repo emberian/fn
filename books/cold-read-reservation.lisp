@@ -5,6 +5,7 @@
 (include-book "heap-reservation")
 (include-book "native-config")
 (include-book "page-read-resources")
+(include-book "cold-read-wait")
 
 (defun fn-crv-nth (n x)
   (declare (xargs :guard (natp n)))
@@ -22,7 +23,8 @@
 
 (defun fn-crv-native-baseline (policy profile)
   (declare (xargs :guard t))
-  (* (nfix (fn-crv-nth 1 policy)) (fn-crv-native-per-worker profile)))
+  (+ (* (nfix (fn-crv-nth 1 policy)) (fn-crv-native-per-worker profile))
+     (fn-cwq-queue-octets)))
 
 (defun fn-crv-pool-budget (policy profile)
   (declare (xargs :guard t))
@@ -88,6 +90,13 @@
            :in-theory (e/d (fn-crv-extend-reservation fn-crv-nth fn-crv-policy-p)
                             (fn-heap-grow-runtime-dynamic fn-heap-mb-of fn-heap-reservation-octets
                              fn-heap-machine-octets fn-native-config-cold-resources-wfp)))))
+
+; The bounded wait's queue is charged: the pool's native baseline is at least
+; its storage (books/cold-read-wait.lisp), whatever the worker count.
+(defthm fn-crv-native-baseline-charges-the-cold-wait-queue
+  (<= (fn-cwq-queue-octets) (fn-crv-native-baseline policy profile))
+  :hints (("Goal" :in-theory (enable fn-crv-native-baseline fn-crv-native-per-worker)))
+  :rule-classes nil)
 
 (in-theory (disable fn-crv-nth fn-crv-policy-p fn-crv-native-per-worker
                     fn-crv-native-baseline fn-crv-pool-budget fn-crv-extend-reservation))
