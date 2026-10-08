@@ -15,6 +15,13 @@
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
+;; The constrained seams, attached: the log position F (any encodable tree) and
+;; the frame trailer's words.
+(defun pckh-f (configs recs) (declare (xargs :guard t) (ignore configs recs)) nil)
+(defattach fn-pck-f pckh-f)
+(defun pckh-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
+(defattach fn-cpl-trailer-words pckh-trailer)
+
 ; 1. The max floor.
 (defun pckh-max-floor (sa sb) (max (fn-pck-slot-s sa) (fn-pck-slot-s sb)))
 
@@ -72,26 +79,27 @@
 (defconst *pckh-store0* (pckh-recs-from 0 1 300))
 (defconst *pckh-d1* (pckh-recs-from 300 2 20))
 (defconst *pckh-d2* (pckh-recs-from 320 3 20))
-(defconst *pckh-st0* (fn-pck-st-of (fn-pck-seed) *pckh-store0*))
-(defconst *pckh-st1* (fn-pck-st-of (fn-pck-seed) (append *pckh-store0* *pckh-d1*)))
+; Attachments are not callable in a defconst, hence functions.
+(defun pckh-st0 () (declare (xargs :verify-guards nil)) (fn-pck-st-of (fn-pck-seed) *pckh-store0*))
+(defun pckh-st1 () (declare (xargs :verify-guards nil)) (fn-pck-st-of (fn-pck-seed) (append *pckh-store0* *pckh-d1*)))
 
-(defconst *pckh-full1* (len (fn-pck-pages nil (append *pckh-store0* *pckh-d1*))))
-(defconst *pckh-full2* (len (fn-pck-pages nil (append *pckh-store0* *pckh-d1* *pckh-d2*))))
-(defconst *pckh-dirty1* (len (cadr (fn-pck-publish-plan nil *pckh-store0* *pckh-d1*))))
-(defconst *pckh-dirty2* (len (cadr (fn-pck-publish-plan nil (append *pckh-store0* *pckh-d1*) *pckh-d2*))))
+(defun pckh-full1 () (declare (xargs :verify-guards nil)) (len (fn-pck-pages nil (append *pckh-store0* *pckh-d1*))))
+(defun pckh-full2 () (declare (xargs :verify-guards nil)) (len (fn-pck-pages nil (append *pckh-store0* *pckh-d1* *pckh-d2*))))
+(defun pckh-dirty1 () (declare (xargs :verify-guards nil)) (len (cadr (fn-pck-publish-plan nil *pckh-store0* *pckh-d1*))))
+(defun pckh-dirty2 () (declare (xargs :verify-guards nil)) (len (cadr (fn-pck-publish-plan nil (append *pckh-store0* *pckh-d1*) *pckh-d2*))))
 
 (assert-event (and (equal (car (fn-pck-publish-plan nil *pckh-store0* *pckh-d1*)) :commit)
                    (equal (car (fn-pck-publish-plan nil (append *pckh-store0* *pckh-d1*) *pckh-d2*)) :commit)))
 ; red: a whole-image rewrite grows with the store; green: a publication writes K + delta pages.
 (assert-event (and (fn-pck-sccb-listp (append *pckh-store0* *pckh-d1* *pckh-d2*) (fn-pck-seed))
-                   (not (equal *pckh-st1* :bad))
+                   (not (equal (pckh-st1) :bad))
                    (fn-pck-plen-okp (append *pckh-store0* *pckh-d1* *pckh-d2*))))
-(assert-event (< *pckh-full1* *pckh-full2*))
-(assert-event (<= *pckh-dirty1* (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckh-d1* (fn-pck-plen *pckh-store0* 0) *pckh-st0*))))
-(assert-event (<= *pckh-dirty2* (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckh-d2* (fn-pck-plen (append *pckh-store0* *pckh-d1*) 0) *pckh-st1*))))
-(assert-event (< *pckh-dirty2* *pckh-full2*))
+(assert-event (< (pckh-full1) (pckh-full2)))
+(assert-event (<= (pckh-dirty1) (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckh-d1* (fn-pck-plen *pckh-store0* 0) (pckh-st0)))))
+(assert-event (<= (pckh-dirty2) (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckh-d2* (fn-pck-plen (append *pckh-store0* *pckh-d1*) 0) (pckh-st1)))))
+(assert-event (< (pckh-dirty2) (pckh-full2)))
 (value-triple (cw "pages per publication: whole image ~x0 then ~x1; dirty ~x2 then ~x3~%"
-                  *pckh-full1* *pckh-full2* *pckh-dirty1* *pckh-dirty2*))
+                  (pckh-full1) (pckh-full2) (pckh-dirty1) (pckh-dirty2)))
 
 ; 5. The tail of dirty-at must come from page k = floor(cnt/2048).  Off by one
 ; page (the tail read from page k-1) is not adt-tp-dirty.
