@@ -67,24 +67,14 @@
 ; include: the resolution events and the carried identity prepare.  Each
 ; keeps the history and the index.
 
-
-
-
-
-
-
 ; The store-only kernel crash is the one Store transition that breaks the
 ; relation; the host never issues it (see the head of this book).
 (defun fn-osi-host-store-eventp (event)
   (declare (xargs :guard t))
   (not (and (consp event) (equal (car event) :crash))))
 
-
-
 ; -----------------------------------------------------------------------------
 ; Establishment
-
-
 
 (defthm fn-osi-observed-seed-is-replaying
   (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-seed groups capacity
@@ -92,8 +82,6 @@
          :replaying)
   :hints (("Goal" :in-theory (e/d (fn-sn-observed-seed)
                                   (fn-node-initial-state)))))
-
-
 
 (defthm fn-osi-own-start-store
   (equal (fn-own-store (fn-own-start store max-conns)) store)
@@ -136,8 +124,6 @@
 
 ; -----------------------------------------------------------------------------
 ; The carried article prepare's Store step keeps the history and the index.
-
-
 
 ; -----------------------------------------------------------------------------
 ; The raw owner.  Only the :store, :complete and :reopen events of
@@ -186,10 +172,6 @@
                                    fn-own-conn-boundedp fn-own-outcome-completion
                                    fn-own-find-conn-id)))))
 
-
-
-
-
 ; The model's restart re-establishes the relation whatever the old Store.
 
 
@@ -210,10 +192,6 @@
                        (fn-own-reopen o (cadr event) (caddr event)))))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-own-step))))
-
-
-
-
 
 ; -----------------------------------------------------------------------------
 ; The configured owner.
@@ -238,45 +216,10 @@
                            (fn-own-read-full fn-own-read-step-full
                             fn-own-connection-events-keep-store-bound-and-ledger)))))
 
-
-
 (defthm fn-osi-ocfg-with-owner-store
   (equal (fn-own-store (fn-ocfg-owner (fn-ocfg-with-owner oc owner)))
          (fn-own-store owner))
   :hints (("Goal" :in-theory (enable fn-ocfg-with-owner))))
-
-
-
-
-
-;; PRF-191: the prepare fn-owner-prepare-buffer installs since
-;; books/post-identity-index.lisp.  It keeps the index with no hypothesis on
-;; the view: whichever node its duplicate test yields, the Store it returns
-;; is the one it was given or that Store with the record staged.
-
-
-
-
-;; The view trie (fn-scar-view-indexedp, books/owner-offer-indexed.lisp) is
-;; kept alike: only the refresh changes the view.
-(defthm fn-osi-pidx-prepare-keeps-view-indexed
-  (implies (fn-scar-view-indexedp (fn-ocfg-owner oc))
-           (fn-scar-view-indexedp
-            (fn-ocfg-owner (fn-pidx-sbud-prepare oc record budget))))
-  :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-pidx-sbud-prepare
-                                   fn-pidx-opc-prepare fn-pidx-opc-owner-prepare
-                                   fn-ocfg-with-owner)
-                                  (fn-midx-correspondencep fn-own-refresh
-                                   fn-pidx-spc-prepare
-                                   fn-sbud-admitp fn-sbud-used fn-sbud-count)))))
-
-
-
-
-
-
-
-
 
 (defthm fn-osi-ocfg-open-keeps-store
   (and (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))
@@ -407,10 +350,6 @@
                                   (fn-bs-profile-admittedp fn-osb-config
                                    fn-own-configure)))))
 
-
-
-
-
 (defun fn-osi-live-owner (configs prefix suffix frontier max-conns evs fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (fn-osi-host-run (fn-osi-open configs prefix suffix frontier max-conns) evs fn-arena))
@@ -474,13 +413,6 @@
 ;; Store, under its carried relation and index, the Store check the host runs
 ;; (no whole-node or whole-store recognizer, no history walk) is the
 ;; receiver's checked Store predicate.
-
-
-
-
-
-
-
 
 (in-theory (disable fn-osi-open fn-osi-live-owner fn-osi-live-store
                     fn-osi-host-step fn-osi-host-run))

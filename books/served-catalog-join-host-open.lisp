@@ -59,7 +59,7 @@
                                         fn-scj-freshp-of-load fn-sjh-ocl-gives-cst fn-sjh-ocl-facts-for-prepare)
                                       (theory 'minimal-theory))
            :use ((:instance fn-scj-invp-at-install)
-                 (:instance fn-scj-installed-view-current-and-indexed)
+                 (:instance fn-scj-installed-view-current)
                  (:instance fn-scj-ock-install-conns)
                  (:instance fn-sjh-current-view-seen-and-history
                             (o (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))

@@ -270,7 +270,6 @@
                   (fn-evc-stxap r)
                   (fn-row-composite-okp r fn-arena)
                   (fn-scj-invp o fn-arena fn-cat)
-                  (fn-scar-view-indexedp o)
                   (fn-scj-rows-invp fn-cat events0)
                   (true-listp events0)
                   (fn-cst-relation s2)
@@ -294,7 +293,7 @@
                   (fn-scj-seqs-sortedp fn-cat)
                   (fn-cnx-freshp fn-cat)
                   (fn-scj-conns-versions-atmostp (fn-own-conns o) (fn-own-view-version view))
-                  (fn-scj-view-indexesp view2)
+                  (fn-scj-view-gidxp view2)
                   (fn-statep (fn-own-view-archive view2)))
              (and (fn-scj-invp o2 fn-arena c2)
                   (fn-scj-seqs-sortedp c2)
@@ -331,7 +330,6 @@
                   (fn-scjs-seenp o)
                   (fn-scjs-historyp o)
                   (consp records)
-                  (fn-scar-view-indexedp o)
                   (fn-cst-relation s2)
                   (fn-own-store-idlep s2)
                   (fn-rows-composites-okp records fn-arena)
@@ -351,7 +349,7 @@
                   (fn-scj-seqs-sortedp fn-cat)
                   (fn-cnx-freshp fn-cat)
                   (fn-scj-versions-okp o)
-                  (fn-scj-view-indexesp view2)
+                  (fn-scj-view-gidxp view2)
                   (fn-statep (fn-own-view-archive view2)))
              (and (fn-scj-invp o2 fn-arena c2)
                   (fn-scj-seqs-sortedp c2)
@@ -420,7 +418,6 @@
          (fn-scjs-seenp o)
          (fn-scjs-historyp o)
          (consp records)
-         (fn-scar-view-indexedp o)
          (fn-cst-relation s2)
          (fn-own-store-idlep s2)
          (fn-rows-composites-okp records fn-arena)
@@ -441,7 +438,7 @@
          (fn-scj-seqs-sortedp fn-cat)
          (fn-cnx-freshp fn-cat)
          (fn-scj-versions-okp o)
-         (fn-scj-view-indexesp view2)
+         (fn-scj-view-gidxp view2)
          (fn-statep (fn-own-view-archive view2)))))
 
 (defthm fn-sjh-idf-premises-of-okp
@@ -459,7 +456,6 @@
                                         fn-ccar-ocl-relation-carries-sn-statep
                                         fn-sjh-ocl-gives-visible
                                         fn-sjh-invp-gives-view-gidx fn-sjh-finish-keeps-view-gidx
-                                        fn-sjh-finish-keeps-view-indexed fn-sjh-view-indexesp-of-parts
                                         fn-sjh-completion-record-needs-records
                                         fn-sjh-linkp-at-enabled-completion (:e fn-evc-stxap))
                                       (theory 'minimal-theory))
@@ -499,7 +495,6 @@
              (and (fn-ccar-completion-enabledp (fn-own-store o))
                   (fn-scjs-historyp o)
                   (fn-scj-versions-okp o)
-                  (fn-scar-view-indexedp o)
                   (fn-rows-composites-okp records fn-arena)
                   (fn-rows-handles-inp records fn-arena)
                   (fn-scj-rows-clearp records)
@@ -520,8 +515,7 @@
                   (fn-sjh-okp o2 nil fn-arena (mv-nth 2 fin)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-sjh-okp-when-parts fn-sjh-idf-premises-facts fn-sjh-pc-p-non-nil
-                                        fn-sjh-idf-carried-by-premises fn-sjh-finish-side-facts
-                                        fn-sjh-finish-keeps-view-indexed fn-sjh-sca-finish-clears-pending)
+                                        fn-sjh-idf-carried-by-premises fn-sjh-finish-side-facts fn-sjh-sca-finish-clears-pending)
                                       (theory 'minimal-theory))
            :use ((:instance fn-sjh-finish-store-image)
                  (:instance fn-sjh-idf-premises-facts)))))
@@ -576,7 +570,6 @@
                                         fn-sjh-ocl-acceptance-statep
                                         fn-sjh-ocl-gives-visible
                                         fn-sjh-invp-gives-view-gidx fn-sjh-finish-keeps-view-gidx
-                                        fn-sjh-finish-keeps-view-indexed fn-sjh-view-indexesp-of-parts
                                         fn-sjh-completion-record-needs-records
                                         fn-sjh-linkp-at-enabled-completion)
                                       (theory 'minimal-theory))

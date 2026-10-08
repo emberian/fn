@@ -83,24 +83,18 @@
          (fn-own-conns o))
   :hints (("Goal" :in-theory (e/d (fn-own-finish fn-own-complete fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-sn-finish
-                                   fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawn fn-midx-refresh
+                                   fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawn
                                    fn-gidx-refresh fn-ctl-visible-state-of fn-sn-completion-enabledp
                                    fn-own-completion-names-submission-p fn-own-view-make-visible)))))
 
 (defthm fn-sjh-finish-keeps-view-gidx
   (implies (and (fn-ccar-completion-enabledp (fn-own-store o))
-                (fn-sjh-view-gidxp (fn-own-view o)))
-           (fn-sjh-view-gidxp (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
-  :hints (("Goal" :in-theory (e/d (fn-crf-with-store) (fn-ccar-own-finish fn-own-refresh fn-sjh-view-gidxp))
+                (fn-scj-view-gidxp (fn-own-view o)))
+           (fn-scj-view-gidxp (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+  :hints (("Goal" :in-theory (e/d (fn-crf-with-store) (fn-ccar-own-finish fn-own-refresh fn-scj-view-gidxp))
            :use ((:instance fn-scj-host-finish-view-and-store)
                  (:instance fn-sjh-refresh-keeps-gidx
                             (o (fn-crf-with-store o (fn-ccar-sn-finish-enabled (fn-own-store o)))))))))
-
-(defthm fn-sjh-finish-keeps-view-indexed
-  (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (cdr (fn-ccar-own-finish o cfg fn-arena))))
-  :hints (("Goal" :in-theory '(fn-ccar-own-finish-is-own-finish fn-own-finish cdr-cons
-                               fn-oix-complete-keeps-view-indexed))))
 
 (defthm fn-sjh-not-enabled-at-ready
   (implies (equal (fn-sf-phase (fn-sn-files s)) :ready)
@@ -173,7 +167,6 @@
          (fn-scjs-seenp o)
          (fn-scjs-historyp o)
          (consp records)
-         (fn-scar-view-indexedp o)
          (fn-cst-relation s2)
          (fn-own-store-idlep s2)
          (fn-rows-composites-okp records fn-arena)
@@ -194,7 +187,7 @@
          (fn-scj-seqs-sortedp fn-cat)
          (fn-cnx-freshp fn-cat)
          (fn-scj-versions-okp o)
-         (fn-scj-view-indexesp view2)
+         (fn-scj-view-gidxp view2)
          (fn-statep (fn-own-view-archive view2)))))
 
 (defthm fn-sjh-carried-finish-by-premises
@@ -228,7 +221,6 @@
                                         fn-sjh-ocl-acceptance-statep
                                         fn-sjh-ocl-gives-visible
                                         fn-sjh-invp-gives-view-gidx fn-sjh-finish-keeps-view-gidx
-                                        fn-sjh-finish-keeps-view-indexed fn-sjh-view-indexesp-of-parts
                                         fn-sjh-completion-record-needs-records
                                         fn-sjh-linkp-at-enabled-completion)
                                       (theory 'minimal-theory))
@@ -254,7 +246,6 @@
              (and (fn-ccar-completion-enabledp (fn-own-store o))
                   (fn-scjs-historyp o)
                   (fn-scj-versions-okp o)
-                  (fn-scar-view-indexedp o)
                   (fn-rows-composites-okp records fn-arena)
                   (fn-rows-handles-inp records fn-arena)
                   (fn-scj-rows-clearp records)
@@ -280,8 +271,7 @@
                   (fn-sjh-okp o2 nil fn-arena (mv-nth 2 fin)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-sjh-okp-when-parts fn-sjh-premises-facts fn-sjh-pc-p-non-nil
-                                        fn-sjh-carried-finish-by-premises fn-sjh-finish-side-facts
-                                        fn-sjh-finish-keeps-view-indexed fn-sjh-sca-finish-clears-pending)
+                                        fn-sjh-carried-finish-by-premises fn-sjh-finish-side-facts fn-sjh-sca-finish-clears-pending)
                                       (theory 'minimal-theory))
            :use ((:instance fn-sjh-finish-store-image)
                  (:instance fn-sjh-premises-facts)))))

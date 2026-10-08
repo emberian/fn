@@ -4269,12 +4269,9 @@
 ; (fn-scr-ocfg-read-span-is-reference-under-ocl-relation, through
 ; books/owner-served-carried.lisp fn-scar-ocfg-read-tls-prefix): it takes the
 ; store node's fn-node-statep from that relation instead of re-evaluating it,
-; O(N^2) in the archive, four times per read.  It also passes the owner
-; view's Message-ID trie to the peer step, so an IHAVE/CHECK duplicate test is
-; one trie lookup instead of a scan of the node's articles and bindings
-; (books/peer-offer-indexed.lisp, fn-pix-history-hasp-is-peer-history-hasp);
-; the trie premise fn-scar-view-indexedp is carried by every owner transition
-; (books/owner-offer-indexed.lisp).  A peer session's events run
+; O(N^2) in the archive, four times per read.  An IHAVE/CHECK duplicate test
+; reads the node's articles and bindings (books/peer-offer-indexed.lisp,
+; fn-pix-history-hasp-is-peer-history-hasp).  A peer session's events run
 ; fn-pgc-peer-arm (books/peer-guard-carried.lisp, D24), whose guard names no
 ; node recognizer, so no peer event evaluates fn-node-statep either
 ; (fn-pgc-peer-arm-is-peer-step-pinned).

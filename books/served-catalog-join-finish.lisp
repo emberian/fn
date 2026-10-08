@@ -244,7 +244,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-ctl-visible-state-of fn-own-view-make-visible)))))
 
 ; The row side of the finish: the invariant carried, the relation with the
@@ -379,7 +379,6 @@
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
     (implies (and (fn-scj-joinp view fn-arena fn-cat)
-                  (fn-scar-view-indexedp o)
                   (fn-scj-rows-invp fn-cat events0)
                   (fn-cst-relation s2)
                   (fn-own-store-idlep s2)
@@ -405,7 +404,7 @@
              (and (fn-scj-joinp view2 fn-arena c2)
                   (fn-scj-rows-invp c2 events2))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn-scar-view-indexedp fn-cat-count-is-len nfix fix
+           :in-theory (union-theories '( fn-cat-count-is-len nfix fix
                                         fn-scj-len-of-snoc (:type-prescription len)
                                         (:executable-counterpart fn-held-p))
                                       (theory 'minimal-theory))
@@ -439,7 +438,7 @@
   (equal (fn-own-store (fn-own-refresh x)) (fn-own-store x))
   :hints (("Goal" :in-theory (e/d (fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-ctl-visible-state-of fn-own-view-make-visible)))))
 
 ; The owner the host's finish installs (fn-ccar-own-finish: fn-apc-own-finish
@@ -493,7 +492,6 @@
                                       fn-cat))))
     (implies (and (fn-ccar-completion-enabledp (fn-own-store o))
                   (fn-scj-joinp view fn-arena fn-cat)
-                  (fn-scar-view-indexedp o)
                   (fn-scj-rows-invp fn-cat events0)
                   (fn-cst-relation s2)
                   (fn-own-store-idlep s2)
@@ -550,7 +548,6 @@
                   (not (fn-ocfg-staged oc))
                   (fn-sn-completion-enabledp (fn-own-store o))
                   (fn-scj-joinp view fn-arena fn-cat)
-                  (fn-scar-view-indexedp o)
                   (fn-scj-rows-invp fn-cat events0)
                   (fn-cst-relation s2)
                   (fn-own-store-idlep s2)

@@ -6,7 +6,7 @@
 ; host's catalog carries with the owner.  This book proves that every owner
 ; transition which changes the Store (or completes a transaction whose record
 ; loads no catalog row) keeps it with the catalog UNTOUCHED.  One lemma per
-; transition, in the pattern of books/owner-offer-indexed.lisp; every one
+; transition; every one
 ; reduces to a single keystone:
 ;
 ;   fn-scjs-invp-of-store-frame -- an owner O2 over O's view and
@@ -36,8 +36,6 @@
 ; refresh moves the view's version only up, an advance re-pins at it.
 ;
 ; Named hypotheses and their sources:
-;   fn-scar-view-indexedp  -- books/owner-offer-indexed.lisp carries it
-;                             across every owner transition.
 ;   fn-scjs-historyp       -- natp version, version <= len, a true-list history:
 ;                             fn-own-relation gives it (fn-scjs-historyp-of-own-relation).
 ;   fn-statep              -- of the refreshed view's archive: the catalog
@@ -141,7 +139,7 @@
             (fn-own-view-version (fn-own-view o))))
    :hints (("Goal" :in-theory (e/d (fn-own-refresh)
                                    (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                    fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                    fn-ctl-refresh-withdrawn fn-gidx-refresh
                                     fn-ctl-visible-state-of))))))
 
 (defthm fn-scjs-invp-of-store-frame-unrefreshed
@@ -171,12 +169,6 @@
            (fn-scjs-store-seenp s (len (fn-sf-records (fn-sn-files s)))))
   :hints (("Goal" :in-theory (enable fn-scjs-store-seenp fn-scjs-seen-records))))
 
-(defthm fn-scjs-view-indexedp-of-same-view
-  (implies (equal (fn-own-view o2) (fn-own-view o))
-           (equal (fn-scar-view-indexedp o2) (fn-scar-view-indexedp o)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory '(fn-scar-view-indexedp))))
-
 (defthm fn-scjs-frame-records-facts
   (let ((v (fn-own-view-version (fn-own-view o)))
         (records (fn-sf-records (fn-sn-files (fn-own-store o))))
@@ -192,7 +184,6 @@
   (let ((v (fn-own-view-version (fn-own-view o)))
         (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
-                  (fn-scar-view-indexedp o)
                   (natp v)
                   (<= v (len records))
                   (true-listp records)
@@ -207,7 +198,6 @@
                         fn-own-refresh-keeps-fields natp (:e fn-snt-idle-phasep) (:e member-equal) (:e equal))
            :use (fn-scjs-invp-of-store-frame-unrefreshed
                  fn-scjs-seenp-and-framep-give-no-rows
-                 fn-scjs-view-indexedp-of-same-view
                  fn-scjs-frame-records-facts
                  (:instance fn-scj-invp-of-refresh (o o2))
                  (:instance fn-scjs-seenp (o (fn-own-refresh o2)))
@@ -394,8 +384,7 @@
 (defthm fn-scjs-historyp-of-own-relation
   (implies (fn-own-relation o) (fn-scjs-historyp o))
   :hints (("Goal" :in-theory (e/d (fn-own-relation fn-own-view-okp fn-scjs-historyp)
-                                  (fn-own-conns-okp fn-own-ledger-durablep fn-own-facts-okp
-                                   fn-midx-correspondencep fn-own-prefix-archive fn-ctl-visible-state
+                                  (fn-own-conns-okp fn-own-ledger-durablep fn-own-facts-okp fn-own-prefix-archive fn-ctl-visible-state
                                    fn-gidx-build fn-ctl-subseq-diff fn-own-ids-below-next-p))
            :use ((:instance fn-sf-state-records-are-true-list (s (fn-sn-files (fn-own-store o))))))))
 
@@ -565,7 +554,6 @@
 (defthm fn-scjs-owner-with-store-keeps-invp
   (let ((o2 (fn-ocl-owner-with-store o st)))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (fn-scjs-store-framep (fn-own-store o) st (fn-own-view-version (fn-own-view o)))
                   (fn-statep (fn-own-view-archive (fn-own-view o2))))
@@ -599,7 +587,6 @@
 (defthm fn-scjs-store-step-keeps-invp
   (implies (and (fn-scj-invp o fn-arena fn-cat)
                 (fn-scjs-seenp o)
-                (fn-scar-view-indexedp o)
                 (fn-scjs-historyp o)
                 (not (member-equal (car event) '(:finish :crash :recover)))
                 (fn-statep (fn-own-view-archive (fn-own-view (fn-own-store-step o event)))))
@@ -639,7 +626,6 @@
   (let ((s (fn-own-store o)))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
@@ -667,7 +653,6 @@
   (let ((s (fn-own-store o)))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (equal (car event) :finish)
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
@@ -859,17 +844,17 @@
            (fn-scj-conn-pinp
             (fn-own-conn-make-group-indexed id (fn-own-view-version view) (fn-own-view-frontier view)
                                             wire session (fn-own-view-archive view) config observation
-                                            (fn-own-view-verdicts view) (fn-own-view-index view)
+                                            (fn-own-view-verdicts view)
                                             (fn-own-view-group-index view) (fn-own-view-control view))
             fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-scj-live-okp fn-scj-conn-pinp fn-scj-conn-pinned-index
                                    fn-scr-live-catalogp fn-scr-fields-catalogp
                                    fn-own-conn-make-group-indexed fn-own-conn-archive
-                                   fn-own-conn-version fn-own-conn-index fn-own-conn-group-index
+                                   fn-own-conn-version fn-own-conn-group-index
                                    fn-own-conn-control fn-served-pinned-make fn-served-pinned-version
                                    fn-own-view-live-fields)
                                   (fn-scr-catalogp fn-scr-view-of fn-own-view-live
-                                   fn-own-view-version fn-own-view-archive fn-own-view-index
+                                   fn-own-view-version fn-own-view-archive
                                    fn-own-view-group-index fn-own-view-control fn-own-view-frontier
                                    fn-own-view-verdicts fn-gidx-pin-with-control)))))
 
@@ -885,7 +870,7 @@
                                    fn-post-make-session fn-nntp-set-cursor fn-nntp-open-session
                                    fn-own-find-conn fn-scj-no-rowsp fn-own-view-group-index
                                    fn-own-view-version fn-own-view-frontier fn-own-view-archive
-                                   fn-own-view-verdicts fn-own-view-index fn-own-view-control)))))
+                                   fn-own-view-verdicts fn-own-view-control)))))
 
 (defthm fn-scjs-acar-advance-keeps-invp
   (implies (fn-scj-invp o fn-arena fn-cat)
@@ -899,7 +884,7 @@
                                    fn-post-make-session fn-nntp-set-cursor fn-acar-open-session
                                    fn-own-find-conn fn-scj-no-rowsp fn-own-view-group-index
                                    fn-own-view-version fn-own-view-frontier fn-own-view-archive
-                                   fn-own-view-verdicts fn-own-view-index fn-own-view-control)))))
+                                   fn-own-view-verdicts fn-own-view-control)))))
 
 (defthm fn-scjs-outcome-keeps-invp
   (implies (fn-scj-invp o fn-arena fn-cat)
@@ -1012,7 +997,6 @@
   (let ((s (fn-own-store o)))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
@@ -1031,7 +1015,6 @@
   (let* ((o (fn-ocfg-owner oc)) (s (fn-own-store o)))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
@@ -1051,7 +1034,6 @@
     (implies (and (fn-hist-of-storep fn-hist s)
                   (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
@@ -1081,7 +1063,6 @@
   (let ((o (fn-ocfg-owner oc)) (o2 (fn-ocfg-owner (fn-ocfg-step oc (list :store ev) fn-arena))))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (not (member-equal (car ev) '(:finish :crash :recover)))
                   (fn-statep (fn-own-view-archive (fn-own-view o2))))
@@ -1097,7 +1078,6 @@
   (let ((o (fn-ocfg-owner oc)) (o2 (fn-ocfg-owner (fn-pcar-sbud-prepare oc record budget))))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (fn-statep (fn-own-view-archive (fn-own-view o2))))
              (and (fn-scj-invp o2 fn-arena fn-cat)
@@ -1134,7 +1114,6 @@
          (v (fn-own-view-version (fn-own-view o))))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (if (fn-ocfg-staged oc)
                       (fn-scjs-store-framep s (fn-cpo-configure-durable s (fn-ocfg-staged oc)) v)
@@ -1176,7 +1155,6 @@
   (let ((o (fn-ocfg-owner oc)) (o2 (fn-ocfg-owner (fn-ccar-ocfg-prepare-identity oc e))))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
                   (fn-scjs-seenp o)
-                  (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (fn-statep (fn-own-view-archive (fn-own-view o2))))
              (and (fn-scj-invp o2 fn-arena fn-cat)
@@ -1566,7 +1544,7 @@
                                    fn-post-make-session fn-nntp-set-cursor fn-nntp-open-session
                                    fn-own-find-conn fn-own-view-group-index
                                    fn-own-view-version fn-own-view-frontier fn-own-view-archive
-                                   fn-own-view-verdicts fn-own-view-index fn-own-view-control)))))
+                                   fn-own-view-verdicts fn-own-view-control)))))
 
 (defthm fn-scjs-acar-advance-keeps-versions
   (implies (fn-scjs-versionsp o)
@@ -1578,7 +1556,7 @@
                                    fn-post-make-session fn-nntp-set-cursor fn-acar-open-session
                                    fn-own-find-conn fn-own-view-group-index
                                    fn-own-view-version fn-own-view-frontier fn-own-view-archive
-                                   fn-own-view-verdicts fn-own-view-index fn-own-view-control)))))
+                                   fn-own-view-verdicts fn-own-view-control)))))
 
 
 (defthm fn-scjs-outcome-keeps-versions

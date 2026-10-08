@@ -91,8 +91,7 @@
                  (:instance fn-scjs-rix-ocfg-complete-keeps-invp)
                  (:instance fn-scjs-rix-ocfg-complete-keeps-versions)
                  (:instance fn-sjh-finish-side-facts (o (fn-ocfg-owner oc)) (cfg nil) (c2 fn-cat))
-                 (:instance fn-sjh-finish-store-image (o (fn-ocfg-owner oc)) (cfg nil))
-                 (:instance fn-sjh-finish-keeps-view-indexed (o (fn-ocfg-owner oc)) (cfg nil))))))
+                 (:instance fn-sjh-finish-store-image (o (fn-ocfg-owner oc)) (cfg nil))))))
 
 (defthm fn-sjh-prepare-event-staging
   (implies (and (member-equal (car ev) '(:prepare-retention :prepare-consumer :prepare-topic))
@@ -159,8 +158,7 @@
                             (files2 (fn-sn-files (fn-snrt-step (fn-own-store (fn-ocfg-owner oc)) ev))))
                  (:instance fn-scjs-ocfg-store-step-keeps-invp)
                  (:instance fn-scjs-ocfg-store-step-keeps-versions)
-                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)))
-                 (:instance fn-oix-ocfg-step-keeps-view-indexed (event (list :store ev)))))))
+                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)))))))
 
 ; -----------------------------------------------------------------------------
 ; The connection events keep the store and the view.
@@ -173,7 +171,7 @@
                 (fn-scj-versions-okp o2))
            (fn-sjh-okp o2 pending fn-arena fn-cat))
   :hints (("Goal" :do-not-induct t
-           :in-theory '(fn-sjh-okp fn-scjs-seenp fn-scjs-historyp fn-scar-view-indexedp fn-sjh-linkp))))
+           :in-theory '(fn-sjh-okp fn-scjs-seenp fn-scjs-historyp fn-sjh-linkp))))
 
 (defthm fn-sjh-ocfg-conn-event-keeps-store-and-view
   (implies (member-equal (car event) '(:open :open-peer :advance :close :fault))

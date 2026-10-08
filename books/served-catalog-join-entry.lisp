@@ -15,8 +15,8 @@
 ; fn-scj-acc-rowsp-of-cpr-loop) makes those articles the acceptance's; the
 ; view's visible list is a filter of the same articles
 ; (fn-ocl-view-historyp) with distinct Message-IDs, and its index is built
-; from it (fn-scar-view-indexedp), so the filter by the index IS the visible
-; list (fn-scj-shown-of-build-of-filter).
+; from it (the transient build the loaders are handed), so the filter by the
+; index IS the visible list (fn-scj-shown-of-build-of-filter).
 
 (in-package "ACL2")
 
@@ -201,7 +201,7 @@
   (if (consp xs) (and (consp (car xs)) (fn-scj-consesp (cdr xs))) t))
 
 (defthm fn-scj-has-shown-of-cons-other
-  (implies (and (not (member-equal (fn-article-msgid x) (fn-article-msgids ys))))
+  (implies (not (member-equal (fn-article-msgid x) (fn-article-msgids ys)))
            (equal (fn-scj-has-shown ys (cons x v)) (fn-scj-has-shown ys v)))
   :hints (("Goal" :induct (fn-scj-has-shown ys v))))
 
@@ -494,14 +494,13 @@
          (rows (fn-sf-records (fn-sn-files st))))
     (implies (and (fn-ocl-relation oc)
                   (fn-own-store-idlep st)
-                  (fn-scar-view-indexedp o)
                   (fn-scj-view-currentp o)
                   (fn-scj-rows-clearp rows)
                   (fn-scj-rows-seqs-below rows (fn-own-view-version view)))
              (fn-scj-joinp view fn-arena
                            (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn-scar-view-indexedp fn-midx-correspondencep)
+           :in-theory (union-theories '()
                                       (theory 'minimal-theory))
            :use ((:instance fn-scj-current-view-filters-the-acceptance)
                  (:instance fn-scj-acc-rowsp-at-idle-related-owner
@@ -550,7 +549,6 @@
          (rows (fn-sf-records (fn-sn-files st))))
     (implies (and (fn-ocl-relation oc)
                   (fn-own-store-idlep st)
-                  (fn-scar-view-indexedp o)
                   (fn-scj-view-currentp o)
                   (fn-scj-rows-clearp rows)
                   (fn-rows-composites-okp rows fn-arena))
@@ -572,7 +570,7 @@
            (fn-scj-view-currentp (fn-own-start store max-conns)))
   :hints (("Goal" :in-theory (e/d (fn-own-start fn-own-refresh fn-scj-view-currentp)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-own-prefix-archive fn-ctl-visible-state fn-midx-build fn-gidx-build
                                    fn-ctl-subseq-diff fn-ctl-visible-state-of)))))
 
@@ -580,7 +578,7 @@
   (equal (fn-own-store (fn-own-start store max-conns)) store)
   :hints (("Goal" :in-theory (e/d (fn-own-start fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-own-prefix-archive fn-ctl-visible-state fn-midx-build fn-gidx-build
                                    fn-ctl-subseq-diff fn-ctl-visible-state-of)))))
 
@@ -597,29 +595,18 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-ock-install) (fn-own-start fn-own-configure)))))
 
-(defthm fn-scj-view-indexedp-by-view
-  (implies (equal (fn-own-view o) (fn-own-view p))
-           (equal (fn-scar-view-indexedp o) (fn-scar-view-indexedp p)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory '(fn-scar-view-indexedp))))
-
-(defthm fn-scj-installed-view-current-and-indexed
+(defthm fn-scj-installed-view-current
   (let ((o (fn-ocfg-owner (fn-ock-install replayed opened max-conns))))
     (implies (and (not (equal (fn-ock-install replayed opened max-conns) :fault))
                   (fn-own-store-idlep (fn-own-store o)))
-             (and (fn-scj-view-currentp o)
-                  (fn-scar-view-indexedp o))))
+             (fn-scj-view-currentp o)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-scj-view-currentp)
-                                  (fn-own-start fn-ock-install fn-own-store-idlep fn-scar-view-indexedp
-                                   fn-midx-correspondencep))
-           :use ((:instance fn-scj-view-indexedp-by-view
-                            (o (fn-ocfg-owner (fn-ock-install replayed opened max-conns)))
-                            (p (fn-own-start (fn-sn-open-state opened) max-conns)))
+                                  (fn-own-start fn-ock-install fn-own-store-idlep))
+           :use (
                  (:instance fn-scj-ock-install-owner)
                  (:instance fn-scj-own-start-store (store (fn-sn-open-state opened)))
-                 (:instance fn-scj-own-start-view-current (store (fn-sn-open-state opened)))
-                 (:instance fn-oix-own-start-is-view-indexed (store (fn-sn-open-state opened)))))))
+                 (:instance fn-scj-own-start-view-current (store (fn-sn-open-state opened)))))))
 
 ; -----------------------------------------------------------------------------
 ; The open's intern writes no withdrawal.
@@ -712,11 +699,13 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-ock-recover-extended) (theory 'minimal-theory))
            :use ((:instance fn-sca-ocl-relation-at-recover
-                            (view-index (fn-own-view-index
-                                         (fn-own-view (fn-ocfg-owner
-                                                       (fn-ock-recover-extended
-                                                        (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
-                                                        configs frontier max-conns))))))
+                            (view-index (fn-midx-build
+                                         (fn-state-articles
+                                          (fn-own-view-archive
+                                           (fn-own-view (fn-ocfg-owner
+                                                         (fn-ock-recover-extended
+                                                          (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
+                                                          configs frontier max-conns))))))))
                  (:instance fn-scj-cat-ocl-relation-gives-ocl-relation
                             (oc (fn-ock-recover-extended
                                  (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
@@ -726,13 +715,15 @@
                                       (fn-ock-recover-extended
                                        (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
                                        configs frontier max-conns)))))
-                                     (fn-own-view-index
-                                      (fn-own-view (fn-ocfg-owner
-                                                    (fn-ock-recover-extended
-                                                     (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
-                                                     configs frontier max-conns))))
+                                     (fn-midx-build
+                                      (fn-state-articles
+                                       (fn-own-view-archive
+                                        (fn-own-view (fn-ocfg-owner
+                                                      (fn-ock-recover-extended
+                                                       (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
+                                                       configs frontier max-conns))))))
                                      fn-arena fn-cat)))
-                 (:instance fn-scj-installed-view-current-and-indexed
+                 (:instance fn-scj-installed-view-current
                             (replayed (fn-sco-cpr-finish
                                        (fn-sco-cpr (fn-sco-extend (fn-sco-capture configs prefix) configs suffix))
                                        configs))

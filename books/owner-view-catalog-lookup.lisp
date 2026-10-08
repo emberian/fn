@@ -6,10 +6,9 @@
 ; the view's archive articles), the article the view's archive holds for a
 ; Message-ID is the row article of the newest visible row of the id's
 ; column.  The statement is about existing functions only; it is the
-; replacement for every read of the view's trie (fn-own-view-index) that
-; asks which article a Message-ID names among the shown ones.  The trie's
-; own value is fn-find-article (fn-midx-lookup-is-find-article); this
-; theorem leaves no trie premise.
+; replacement for every read of the view's former Message-ID trie that asks
+; which article a Message-ID names among the shown ones (the view carries no
+; trie; fn-find-article is what the trie answered).
 
 (in-package "ACL2")
 

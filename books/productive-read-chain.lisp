@@ -179,9 +179,7 @@
                   (equal (fn-served-conn-pinned (fn-served-result-conn p))
                          (fn-served-conn-pinned conn))
                   (equal (fn-served-conn-archive (fn-served-result-conn p))
-                         (fn-served-conn-archive conn))
-                  (equal (fn-served-conn-index (fn-served-result-conn p))
-                         (fn-served-conn-index conn)))))
+                         (fn-served-conn-archive conn)))))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core
                                   fn-pcr-article-keeps-the-pinned-view-by-definition)
                                  (fn-auth-step-pinned fn-post-result-submission
@@ -189,7 +187,7 @@
                                   fn-post-offeredp fn-served-advance-eventp
                                   fn-served-make-result fn-served-make-conn-live
                                   fn-served-conn-session fn-served-conn-pinned
-                                  fn-served-conn-archive fn-served-conn-index
+                                  fn-served-conn-archive
                                   fn-served-result-conn fn-served-result-effects
                                   fn-wire-begin-article-with-line-limit)))))
 
@@ -217,7 +215,7 @@
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-pcr-retrieval-answers-220-with-the-stored-octets
-                            (trie (fn-gidx-pin-trie index)) (server (fn-nntp-xref-server env)))
+                            (arts (fn-state-articles archive)) (server (fn-nntp-xref-server env)))
                  (:instance fn-nntp-archive-command-pinned-article-head-is-served
                             (keyword *fn-pcr-article-keyword*) (args (list token))))
            :in-theory (e/d (fn-rcompat-retrieval-kind fn-nntp-keywordp)
@@ -413,9 +411,7 @@
                   (equal (fn-served-conn-pinned (fn-served-result-conn p))
                          (fn-served-conn-pinned conn))
                   (equal (fn-served-conn-archive (fn-served-result-conn p))
-                         (fn-served-conn-archive conn))
-                  (equal (fn-served-conn-index (fn-served-result-conn p))
-                         (fn-served-conn-index conn)))))
+                         (fn-served-conn-archive conn)))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-pcr-auth-article-has-the-numbered-reply (as (fn-served-conn-session conn)) (config (fn-served-conn-config conn)) (archive (fn-served-conn-archive conn)) (index (fn-served-conn-pinned-index conn)) (verdicts (fn-served-conn-verdicts conn)) (observation (fn-served-conn-observation conn)) (injection (fn-served-conn-injection conn))) fn-pcr-served-reader-dispatch-is-the-auth-answer-by-definition (:instance fn-pcr-220-is-a-reply-without-an-offer-by-definition (session (fn-post-session-base (fn-peer-session-base (fn-auth-view-session (fn-served-conn-session conn) (fn-served-conn-config conn))))) (article (fn-nntp-find-group-number (fn-nntp-session-group (fn-post-session-base (fn-peer-session-base (fn-auth-view-session (fn-served-conn-session conn) (fn-served-conn-config conn))))) (fn-nntp-decimal-value token) (fn-state-articles (fn-auth-view-archive (fn-served-conn-session conn) (fn-served-conn-config conn) (fn-served-conn-archive conn))))) (number (fn-nntp-decimal-value token)) (group (fn-nntp-session-group (fn-post-session-base (fn-peer-session-base (fn-auth-view-session (fn-served-conn-session conn) (fn-served-conn-config conn)))))) (server (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session conn) (fn-auth-moderation-config (fn-served-conn-session conn) (fn-served-conn-config conn)) (fn-served-conn-archive conn)) (fn-served-conn-observation conn)))))) :in-theory (theory 'minimal-theory))))
 
@@ -645,7 +641,7 @@
             :in-theory (enable true-list-fix)))))
 
 (defthm fn-pcr-served-step-answers-the-numbered-article
-(let* ((as (fn-served-conn-session conn)) (config (fn-served-conn-config conn)) (archive (fn-served-conn-archive conn)) (index (fn-served-conn-pinned-index conn)) (observation (fn-served-conn-observation conn)) (peer (fn-auth-view-session as config)) (viewarchive (fn-auth-view-archive as config archive)) (viewindex (fn-auth-view-index as config archive index)) (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive)) (ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env viewconfig observation)) (group (fn-nntp-session-group session)) (number (fn-nntp-decimal-value token)) (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive))) (server (fn-nntp-xref-server env)) (r (fn-pcr-220-reply session article number group server fn-arena)) (p (fn-served-step conn (append line (quote (13 10))) fn-arena))) (implies (and (fn-served-conn-shapep conn) (equal (fn-served-conn-wire conn) (fn-wire-make-state :command nil 0 nil nil 0 line-limit body-limit)) (fn-wire-statep (fn-served-conn-wire conn)) (fn-wire-line-contentp line) (natp line-limit) (<= (len line) line-limit) (not (fn-served-haltedp conn)) (fn-auth-sessionp as) (not (fn-auth-session-handshakingp as)) (not (fn-auth-sasl-waitingp as)) (or (not (fn-auth-config-requiredp (fn-auth-session-config as))) (fn-auth-session-subject as)) (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* token)) (equal (fn-nntp-tokenize line) (list *fn-pcr-article-keyword* token)) (fn-arena-p fn-arena) (fn-nntp-number-tokenp token) group (consp article) server (fn-gidx-pinp viewindex) (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token)) (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article) (fn-nntp-response-okp-of-bytes article (fn-pcr-served-octets server article fn-arena) :article)) (and (equal (fn-served-result-effects p) (fn-nntp-result-effects r)) (equal (fn-post-session-base (fn-peer-session-base (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p))))) (fn-nntp-result-session r)) (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn)) (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)) (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+(let* ((as (fn-served-conn-session conn)) (config (fn-served-conn-config conn)) (archive (fn-served-conn-archive conn)) (index (fn-served-conn-pinned-index conn)) (observation (fn-served-conn-observation conn)) (peer (fn-auth-view-session as config)) (viewarchive (fn-auth-view-archive as config archive)) (viewindex (fn-auth-view-index as config archive index)) (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive)) (ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env viewconfig observation)) (group (fn-nntp-session-group session)) (number (fn-nntp-decimal-value token)) (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive))) (server (fn-nntp-xref-server env)) (r (fn-pcr-220-reply session article number group server fn-arena)) (p (fn-served-step conn (append line (quote (13 10))) fn-arena))) (implies (and (fn-served-conn-shapep conn) (equal (fn-served-conn-wire conn) (fn-wire-make-state :command nil 0 nil nil 0 line-limit body-limit)) (fn-wire-statep (fn-served-conn-wire conn)) (fn-wire-line-contentp line) (natp line-limit) (<= (len line) line-limit) (not (fn-served-haltedp conn)) (fn-auth-sessionp as) (not (fn-auth-session-handshakingp as)) (not (fn-auth-sasl-waitingp as)) (or (not (fn-auth-config-requiredp (fn-auth-session-config as))) (fn-auth-session-subject as)) (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* token)) (equal (fn-nntp-tokenize line) (list *fn-pcr-article-keyword* token)) (fn-arena-p fn-arena) (fn-nntp-number-tokenp token) group (consp article) server (fn-gidx-pinp viewindex) (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token)) (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article) (fn-nntp-response-okp-of-bytes article (fn-pcr-served-octets server article fn-arena) :article)) (and (equal (fn-served-result-effects p) (fn-nntp-result-effects r)) (equal (fn-post-session-base (fn-peer-session-base (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p))))) (fn-nntp-result-session r)) (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn)) (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes nil
   :hints (("Goal" :use (
  fn-pcr-served-dispatch-has-the-numbered-reply
@@ -686,7 +682,6 @@
       (not (consp views))
       (fn-gacc-okp cache)
       (fn-ocl-relation oc)
-      (fn-scar-view-indexedp (fn-ocfg-owner oc))
       (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
       (fn-scol-okp fn-arena fn-cat)
       (natp i)
@@ -790,7 +785,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp o)
         (fn-scr-owner-catalogp o id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         (natp i)
@@ -928,7 +922,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         (natp i)
@@ -1302,7 +1295,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp o)
         (fn-scr-owner-catalogp o id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         completed
@@ -1416,7 +1408,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         completed

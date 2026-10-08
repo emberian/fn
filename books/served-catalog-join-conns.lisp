@@ -28,7 +28,7 @@
 (include-book "served-catalog-join-finish")
 
 (defun-nx fn-scj-conn-pinned-index (conn)
-  (fn-served-pinned-index (fn-own-conn-archive conn) (fn-own-conn-index conn)
+  (fn-served-pinned-index (fn-own-conn-archive conn)
                           (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
 
 (defun-nx fn-scj-conn-pinp (conn fn-arena fn-cat)
@@ -97,7 +97,7 @@
            (fn-scj-vvp (fn-own-refresh o)))
   :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-scj-vvp)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-ctl-visible-state-of)))))
 
 (defthm fn-scj-refresh-not-idle
@@ -115,7 +115,7 @@
                   (equal (fn-own-view-withdrawals view2) (fn-own-view-withdrawals view)))))
   :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-scj-vvp fn-ctl-refresh-visible
                                    fn-ctl-refresh-withdrawals)
-                                  (fn-own-store-idlep fn-ctl-refresh-withdrawn fn-midx-refresh
+                                  (fn-own-store-idlep fn-ctl-refresh-withdrawn
                                    fn-gidx-refresh fn-ctl-visible-articles fn-ctl-visible-add
                                    fn-ctl-articles-withdrawals fn-ctl-prepend)))))
 

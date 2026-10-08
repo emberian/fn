@@ -208,7 +208,6 @@
                           (fn-served-conn-observation conn)
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
-                          (fn-served-conn-index conn)
                           (fn-served-conn-group-index conn) (fn-served-conn-control conn)
                           (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (mbe :logic (append effects

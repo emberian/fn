@@ -935,8 +935,7 @@
 ;; visible list grown by one article at its head; the index of the grown list
 ;; is the old index with that article's entries put in (`fn-gidx-build-of-
 ;; cons'), work in the article's memberships and the group count, not in N.
-;; Any other change (a withdrawal, a verdict, a recovery view) rebuilds, as
-;; `fn-midx-refresh' does for the Message-ID index.  The keystone
+;; Any other change (a withdrawal, a verdict, a recovery view) rebuilds.  The keystone
 ;; `fn-gidx-refresh-is-build': from an index that is the build of the old
 ;; list (or no index), the refreshed index IS the build of the new list, so
 ;; every served read over it answers as before.

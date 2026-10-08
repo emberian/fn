@@ -210,7 +210,7 @@
                                     (fn-own-view-verdicts view2)))
          (equal (fn-own-view-version view2) (len (fn-sf-records (fn-sn-files s))))))
   :hints (("Goal" :in-theory (e/d (fn-crf-apply-article fn-own-view-fields-of-make-visible)
-                                  (fn-ctl-visible-add fn-midx-refresh fn-ctl-article-withdrawals
+                                  (fn-ctl-visible-add fn-ctl-article-withdrawals
                                    fn-ctl-prepend fn-ctl-resolve-tlocks fn-ctl-subseq-diff
                                    fn-gidx-refresh fn-ctl-visible-state-of fn-own-view-make-visible)))))
 
@@ -257,7 +257,7 @@
              (fn-scj-joinp view2 fn-arena c2)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
-                       '(fn-scj-joinp fn-cat-view-articles fn-cat-count-is-len fn-midx-correspondencep
+                       '(fn-scj-joinp fn-cat-view-articles fn-cat-count-is-len
                          fn-scj-row-article-of-commit-after-withdraw-targets)
                        (theory 'minimal-theory))
            :use ((:instance fn-scj-apply-article-projections)
