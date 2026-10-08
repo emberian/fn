@@ -309,6 +309,37 @@ if [ -n "$STACK_KIB" ]; then
         echo "build_native_host: could not set the launcher's --dynamic-space-size" >&2; exit 1; }
     grep -q -- "--dynamic-space-size $HEAP_MB " "$IMAGE" || {
         echo "build_native_host: the launcher does not run at $HEAP_MB MB of heap" >&2; exit 1; }
+    # The decided heap, per command.  The figure above is the small preset's,
+    # the right default for a start that names no store; a default-profile
+    # store decides more (1934 MB at 207ed2afd), a BP node more again (3927 MB),
+    # and the read pool refuses a start below what its profile needs
+    # (:default-pool-read-headroom-unavailable).  So a bare launch of the image
+    # decides its heap as packaging/fn's installed branch does: the image's own
+    # `heap -- ARGV' probe (ACL2's fn-heap-decide), through the very lines
+    # packaging/fn defines as fn_decide_heap.  A caller's SBCL_USER_ARGS is its
+    # own figure and wins; FN_TEST_HEAP_MB is the tests' named override.
+    {
+        echo '#!/bin/sh'
+        sed -n '/^# BEGIN fn_decide_heap/,/^# END fn_decide_heap/p' packaging/fn
+        cat <<'PRELUDE'
+fn_decide_command_heap() {
+    shift
+    fn_decide_heap "$0" "$@"
+}
+if [ -z "${SBCL_USER_ARGS:-}" ] && [ "${1:-}" = --fn ] && [ "${2:-}" != heap ]; then
+    if [ -n "${FN_TEST_HEAP_MB:-}" ]; then
+        SBCL_USER_ARGS="--dynamic-space-size $FN_TEST_HEAP_MB"
+        export SBCL_USER_ARGS
+    else
+        fn_decide_command_heap "$@"
+    fi
+fi
+PRELUDE
+        sed 1d "$IMAGE"
+    } > "$IMAGE.decide" && chmod 755 "$IMAGE.decide" && mv "$IMAGE.decide" "$IMAGE" || {
+        echo "build_native_host: could not splice the heap decision into the launcher" >&2; exit 1; }
+    grep -q 'fn_decide_command_heap "\$@"' "$IMAGE" || {
+        echo "build_native_host: the launcher does not decide its heap" >&2; exit 1; }
 else
     case "$BUILD" in
         host/native/build.lisp|host/native/build-dtn.lisp)

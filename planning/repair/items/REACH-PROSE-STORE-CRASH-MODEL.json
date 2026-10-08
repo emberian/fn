@@ -88,7 +88,8 @@
   "PRF-342: fn-hp-x-append-step-refines (books/history-pages-step.lisp; subjects fn-hp-lens, fn-hp-piw, fn-hp-x-append-step)",
   "PRF-342: fn-hp-x-relocate-refines (books/history-pages-relocate.lisp; subjects fn-hp-piw, fn-hp-x-relocate)",
   "PRF-372: fn-hrc-flush-one-rel (books/history-records.lisp; subjects fn-hrc-flush-one)",
-  "PRF-372: fn-hrs-loop-placement (books/history-records.lisp; subjects fn-hp-lens, fn-hp-x-append-loop)"
+  "PRF-372: fn-hrs-loop-placement (books/history-records.lisp; subjects fn-hp-lens, fn-hp-x-append-loop)",
+  "World reach gate at 87daf18f5 (first --world --strict run, N; build/coordinator/lanedumps/n-world34-reach.log): 79 of this item's events recur as NEW orphans with no baseline entry. Coordinator rule 2026-10-08: no baseline entry; the reach step stays red by design while this item owns them; each event's disposition says host code or unreachable-in-composition."
  ],
- "updated": "2026-10-07T14:30:00Z"
+ "updated": "2026-10-08T07:30:00Z"
 }

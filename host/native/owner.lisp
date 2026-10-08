@@ -273,6 +273,8 @@ not armed. Instrumentation has no semantic or admission role."
   (mux-slot-lock (sb-thread:make-mutex :name "fn mux slots"))
   (mux-slot-free (sb-thread:make-waitqueue :name "fn mux slot free"))
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
+  ;; The roster owns the one shutdown receipt; :calling is already taken.
+  (stop-wake nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
   ;; the value names a real connection envelope, not a second fault decision.
   (connection-fault-operation nil)
@@ -2607,6 +2609,18 @@ finds nil was left by something that is no condition -- a throw, a thread
 termination -- an unclassified exit, which is a fault (lane failure-scope
 review M3), installed before the mutex is released.")
 
+(defun fnn-owner-post-section (service)
+  "Drain physical cleanup after releasing O, preserving the section's failure
+context. Cleanup never changes an immutable publication's durable verdict."
+  (handler-case
+      (fnn-unwind-cleanups ()
+        (fnn-owner-stop-wake service)
+        (fnn-log-drain-spare-discards (fnn-store-log (fnn-owner-service-store service)))
+        (fnn-immutable-drain-cleanups))
+    (serious-condition (condition)
+      (fnn-owner-thread-escape service condition "post-section cleanup")
+      (error condition))))
+
 (defmacro fnn-section-envelope ((service class &key cid classes name admission)
                                 &body body)
   "GEN: the ONE host envelope of an owner section (lane WRAPPER, rebuild step
@@ -2630,7 +2644,10 @@ installs what ACL2 decided, and decides nothing itself:
      nor a classified condition -- a throw, a thread termination -- is a
      fault, installed while the mutex is still held (review M3), the line
      after the fence;
-  4. the gate's leave, whose failure fences before the mutex is released.
+  4. the gate's leave, whose failure fences before the mutex is released;
+  5. after owner release, take staged shutdown and file cleanup receipts,
+     do their I/O, and settle custody; classify any cleanup escape with the
+     section's carried failure context.
 CLASSES and NAME are evaluated (CLASSES nil skips step 1's declaration
 check: the transitional forms).  ADMISSION is the admission step's form:
 fn-fs-section-admit's stopping refusal for a :live entry, nil for the
@@ -2655,14 +2672,17 @@ fnn-section-run and fnn-section-run-cleanup."
                   (serious-condition (,failure)
                     ;; The gate's mutex has unwound before taking the owner.
                     (fnn-owner-gate-abort ,g ,failure)
-                    (fnn-with-observed-owner ((fnn-owner-service-lock ,s))
-                      (fnn-owner-gate-fail-locked ,s ,g ,failure)))))
+                    (unwind-protect
+                        (fnn-with-observed-owner ((fnn-owner-service-lock ,s))
+                          (fnn-owner-gate-fail-locked ,s ,g ,failure))
+                      (fnn-owner-stop-wake ,s)))))
             (,h (get-internal-real-time))
             (*fnn-boundary-outcome* nil)
             (*fnn-section-step* nil)
             ;; A read refused in this section is raised in it, never thrown
             ;; past its boundary (host/native/io.lisp fnn-extent-with-read-refusal).
             (*fnn-extent-read-refusal* nil))
+       (unwind-protect
        (fnn-with-observed-owner ((fnn-owner-service-lock ,s))
          (unwind-protect
               (fnn-owner-shared-action-locked
@@ -2692,7 +2712,8 @@ fnn-section-run and fnn-section-run-cleanup."
            ;; owner exclusion; gate abort wakes waiters without another pick.
            (handler-case (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)
              (serious-condition (,failure)
-               (fnn-owner-gate-fail-locked ,s ,g ,failure))))))))
+               (fnn-owner-gate-fail-locked ,s ,g ,failure)))))
+         (fnn-owner-post-section ,s)))))
 
 (defun fnn-section-run (service class cid admits classes name thunk)
   "A :live section's entry (ADMITS :live): THUNK through the one envelope,
@@ -2890,7 +2911,9 @@ fence; no semantic action of any worker, that one included, can run after it
 
 ANSWERING is also remembered in SPARING (PKT-562): a later stop -- the run's
 cleanup stop, which passes no ANSWERING -- spares it too, so it cannot shut
-the socket while that worker is still writing its reply."
+the socket while that worker is still writing its reply. Shutdown targets are
+staged in one roster-owned receipt; the outer boundary wakes them, and runs
+the stop hooks, only after releasing O."
   (let ((first-stop nil) (dominated nil))
     ;; Install the irreversible service fence before any fallible core drain,
     ;; I/O or log line (review M3c: the fence step cannot fail).  Lifecycle
@@ -2915,39 +2938,57 @@ the socket while that worker is still writing its reply."
                    (when answering
                      (pushnew answering (fnn-owner-service-sparing service)))
                    (copy-list (fnn-owner-service-sparing service)))))
-  (let ((listener (fnn-owner-service-listener service)))
-    (when listener
-      ;; close(2) in another thread does not reliably wake a blocked accept(2)
-      ;; on Linux.  Shutdown first so the accept loop observes a socket error,
-      ;; sees STOPPING while this mutex is still held, and returns.
-      (ignore-errors
-        (sb-bsd-sockets:socket-shutdown listener :direction :io))))
-  ;; Wake every client before command cleanup waits for its worker.  Shared
-  ;; journals and Store state remain open until all workers have returned.
-  ;; Only the worker that cached the socket fd may close it; shutdown wakes its
-  ;; raw read without making that integer available for reuse underneath it.
-  (dolist (socket (fnn-with-roster (service)
-                    (copy-list (fnn-owner-service-clients service))))
-    (unless (member socket sparing)
-      (ignore-errors
-        (sb-bsd-sockets:socket-shutdown socket :direction :io)))))
+    (fnn-with-roster (service)
+     (unless (fnn-owner-service-stop-wake service)
+      (setf (fnn-owner-service-stop-wake service)
+            (list :pending
+                  (remove nil
+                          (cons (fnn-owner-service-listener service)
+                                (remove-if (lambda (socket) (member socket sparing))
+                                           (copy-list (fnn-owner-service-clients service))))))))))
   ;; The committer thread wakes, finds the owner stopping and returns.
   (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
     (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service)))
   ;; PRF-252: a sleeping consumer wait wakes, finds the owner stopping and
   ;; is answered (its next step is refused by fnn-owner-serialized).
   (fnn-owner-signal-commit service)
-  ;; Hooks only signal external listeners/clients.  They run inside the same
-  ;; first-terminal boundary and must be idempotent and nonblocking.
-  (dolist (hook (fnn-owner-service-stop-hooks service))
-    (ignore-errors (funcall hook service))))))
+  ;; The section boundary takes this receipt after releasing O. Workers
+  ;; still own close; shutdown only wakes their I/O, preserving fd custody.
+  nil)))
+
+(defun fnn-owner-stop-wake (service)
+  "Claim the staged stop once under the roster, signal off locks, then settle under the roster.
+The irreversible STOPPING fence precedes the receipt, so a waiting actor
+cannot enter a live quantum while its sockets have not yet been signalled."
+  (let ((receipt
+          (fnn-with-roster (service)
+            (let ((receipt (fnn-owner-service-stop-wake service)))
+              (when (and receipt (eq (first receipt) :pending))
+                (setf (first receipt) :calling)
+                receipt)))))
+    (when receipt
+      (dolist (socket (second receipt))
+        (fnn-socket-shutdown socket))
+      ;; The hooks are installed at start and never change after; the one
+      ;; claimed receipt runs them once, off O.
+      (dolist (hook (fnn-owner-service-stop-hooks service))
+        (ignore-errors (funcall hook service)))
+      (fnn-with-roster (service)
+        (unless (and (eq receipt (fnn-owner-service-stop-wake service))
+                     (eq (first receipt) :calling)
+                     (fnn-owner-service-stopping service))
+          (fnn-fault "owner stop wake lost its receipt"))
+        (setf (first receipt) :returned)))
+    nil))
 
 (defun fnn-owner-stop-service (service exit-code)
   ;; Shutdown cannot ask an aborted scheduler for permission. This is the
   ;; irreversible fence/wakeup boundary, not another semantic quantum.
   ;; The caller is outside owner exclusion, as with the previous gate entry.
-  (sb-thread:with-mutex ((fnn-owner-service-lock service))
-    (fnn-owner-stop-service-locked service exit-code)))
+  (unwind-protect
+      (sb-thread:with-mutex ((fnn-owner-service-lock service))
+        (fnn-owner-stop-service-locked service exit-code))
+    (fnn-owner-stop-wake service)))
 
 (defun fnn-owner-fence-service (service)
   "Stop this owner image after an ambiguous Store or FNFD observation."
@@ -2964,7 +3005,8 @@ counterpart is fnn-owner-classify-escape-locked, through the section boundary."
   ;; An irreversible fault boundary cannot request permission from the
   ;; scheduler that may have just aborted. The owner mutex still excludes
   ;; live state, matching STOP-SERVICE's fence/wakeup entry (S081).
-  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+  (unwind-protect
+   (sb-thread:with-mutex ((fnn-owner-service-lock service))
     (unless *fnn-owner-last-fault*
       (setq *fnn-owner-last-fault*
             (ignore-errors
@@ -2975,6 +3017,7 @@ counterpart is fnn-owner-classify-escape-locked, through the section boundary."
     ;; A later cleanup fault must still reach ACL2's monotone stop lattice.
     ;; Already stopping prevents semantic mutation, never escalation.
     (fnn-owner-stop-service-locked service +fnn-exit-fault+))
+   (fnn-owner-stop-wake service))
   (fnn-err "owner core/store fault; process stopped: ~a" condition))
 
 (defun fnn-owner-classify-escape-locked (service cid condition)
@@ -8624,18 +8667,8 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
 ;;; makes the count and the verdict one step whichever thread ticks.  The
 ;;; collection itself runs outside it (a collection stops the world; nothing
 ;;; else waits on this lock).
-;;; MEM-012: the collection under load.  Beside the idle verdict, ACL2 answers
-;;; from the dynamic space in use now and the figure recorded right after the
-;;; last collection of either kind (books/idle-collection.lisp
-;;; fn-load-gc-decide): a burst releases nothing otherwise, and the garbage it
-;;; promotes into generations 0-3 is in the whole-process peak.  Asked only
-;;; when the idle verdict is :wait; the first tick records the figure.
-(defvar *fnn-load-gc-base* nil)
-(fnn-guarded-by *fnn-load-gc-base* *fnn-idle-gc-lock*)
-
 (defun fnn-owner-maybe-collect-idle (service)
   (let* ((consed (sb-ext:get-bytes-consed))
-         (usage (sb-kernel:dynamic-usage))
          (publishing (fnn-with-roster (service)
                        (and (or (fnn-owner-service-publisher service)
                                 (fnn-owner-service-exporter service))
@@ -8645,23 +8678,16 @@ retiring node's drain step (row S9, host/native/admin.lisp)."
              (unless *fnn-idle-gc-tick-mark*
                (setq *fnn-idle-gc-tick-mark* consed
                      *fnn-idle-gc-collect-mark* consed))
-             (unless *fnn-load-gc-base*
-               (setq *fnn-load-gc-base* usage))
              (setq *fnn-idle-gc-quiet*
                    (fnn-core 'fn-idle-gc-quiet *fnn-idle-gc-quiet* publishing
                              (- consed *fnn-idle-gc-tick-mark*))
                    *fnn-idle-gc-tick-mark* consed)
-             (let ((idle (fnn-core 'fn-idle-gc-decide *fnn-idle-gc-quiet* publishing
-                                   (- consed *fnn-idle-gc-collect-mark*))))
-               (if (consp idle)
-                   idle
-                   (fnn-core 'fn-load-gc-decide usage *fnn-load-gc-base*))))))
+             (fnn-core 'fn-idle-gc-decide *fnn-idle-gc-quiet* publishing
+                       (- consed *fnn-idle-gc-collect-mark*)))))
     (when (consp verdict)
       (sb-ext:gc :gen (second verdict))
-      (let ((after (sb-ext:get-bytes-consed))
-            (in-use (sb-kernel:dynamic-usage)))
+      (let ((after (sb-ext:get-bytes-consed)))
         (sb-thread:with-mutex (*fnn-idle-gc-lock*)
-          (setq *fnn-load-gc-base* in-use)
           (setq *fnn-idle-gc-tick-mark* after
                 *fnn-idle-gc-collect-mark* after))))))
 
