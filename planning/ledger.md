@@ -19,8 +19,8 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 3457 |
 | Functions left at the default with an explicit guard | 14503 |
 | Functions left at the default with no guard | 4302 |
-| `assert-event` checks | 28366 |
-| `must-fail` checks | 2803 |
+| `assert-event` checks | 28367 |
+| `must-fail` checks | 2802 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
 | Theorems flagged SUSPECT by shape | 1522 |
@@ -3046,7 +3046,7 @@ that `make certify` requests.
 | `tests/acl2/store-log-durable-tests.lisp` | root | 0 | 30 | 0/24/6/0 | 24 | 0 | 0 |
 | `tests/acl2/store-log-entry-bound-tests.lisp` | root | 2 | 5 | 0/4/1/0 | 15 | 0 | 0 |
 | `tests/acl2/store-log-extend-tests.lisp` | root | 0 | 23 | 0/18/5/0 | 17 | 0 | 0 |
-| `tests/acl2/store-log-kernel-concrete-tests.lisp` | root | 0 | 11 | 0/6/4/1 | 18 | 1 | 0 |
+| `tests/acl2/store-log-kernel-concrete-tests.lisp` | root | 0 | 11 | 0/6/4/1 | 19 | 0 | 0 |
 | `tests/acl2/store-log-kernel-tests.lisp` | root | 0 | 20 | 0/15/5/0 | 11 | 0 | 0 |
 | `tests/acl2/store-log-lineage-tests.lisp` | root | 0 | 10 | 0/5/5/0 | 10 | 0 | 0 |
 | `tests/acl2/store-log-open-barriers-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 19 | 0 | 0 |
