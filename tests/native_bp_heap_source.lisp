@@ -31,7 +31,8 @@
    do (progn (eval form) (setf names (remove (second form) names)))
    finally (assert (null names)))))
 (source-functions "books/bp-heap-command.lisp"
- '(fn-bph-decimal-characters fn-bph-connections fn-bph-command-plan fn-bph-refusal-line))
+ '(fn-bph-decimal-characters fn-bph-connections fn-bph-command-plan fn-bph-refusal-line
+   fn-bph-before-control fn-bph-node-serve-p fn-bph-node-journal fn-bph-node-transfer))
 (defvar *events* nil)
 (define-condition fixture-refused (error) ())
 (defun fnn-core (name &rest args) (apply name args))
@@ -51,7 +52,7 @@
  (let ((*events* nil))
   (assert (equal (multiple-value-list (fnn-heap-command-profile (first entry)))
                  (list '(:profile "/captured/store") (second entry) :run nil nil nil "/captured/store"
-                       '(:peer "/captured/store"))))
+                       '(:peer "/captured/store") nil)))
   (assert (equal *events* '((:peer "/captured/store") (:profile "/captured/store"))))))
 (dolist (argv
  '(("bp-node" "serve")
@@ -64,6 +65,31 @@
 (let ((*events* nil))
  (assert (equal (multiple-value-list
                  (fnn-heap-command-profile '("bp-node" "dispatch" "journal" "store")))
-                '(nil 0 nil nil nil nil nil nil)))
+                '(nil 0 nil nil nil nil nil nil nil)))
  (assert (null *events*)))
+;; The probe's BP terms (fnn-heap-bp-terms): the two profiles read under the
+;; command's journal root with the node's own readers, the transfer argument
+;; (default when absent) and the segment MRU; nothing for any other command.
+(defconstant +fnn-tcl-transfer-mru+ 1048576)
+(defconstant +fnn-tcl-segment-mru+ 1024)
+(defun fnn-bp-session-profile (root) (push (list :session root) *events*) (list :session root))
+(defun fnn-bps-read-profile (root) (push (list :node root) *events*) (list :node root))
+(source-functions "host/native/heap.lisp" '(fnn-heap-bp-terms))
+(let ((*events* nil))
+ (assert (equal (fnn-heap-bp-terms '("bp-node" "serve" "0" "journal" "store" "receipts" "workflow" "node" "peer"
+                                     "dest" "policy" "issuer" "host" "4556" "1" "3600000" "2" "32" "65536"))
+                '((:session "journal") (:node "journal") 65536 1024)))
+ (assert (equal (fnn-heap-bp-terms '("bp-node" "serve" "0" "journal" "store" "receipts" "workflow" "node" "peer"
+                                     "dest" "policy" "issuer" "host" "4556"))
+                '((:session "journal") (:node "journal") 1048576 1024))))
+(let ((*events* nil))
+ (assert (null (fnn-heap-bp-terms '("bp-app" "receive" "0" "spool" "store" "receipts" "node" "peer" "dest"
+                                    "policy" "issuer" "1" "02"))))
+ (assert (null (fnn-heap-bp-terms '("bp-node" "dispatch" "journal" "store"))))
+ (assert (null *events*)))
+(let ((refused nil))
+ (handler-case (fnn-heap-bp-terms '("bp-node" "serve" "0" "journal" "store" "receipts" "workflow" "node" "peer"
+                                    "dest" "policy" "issuer" "host" "4556" "1" "3600000" "2" "32" "0"))
+  (fixture-refused () (setq refused t)))
+ (assert refused))
 (format t "PASS actual BP heap source root and connection propagation~%")

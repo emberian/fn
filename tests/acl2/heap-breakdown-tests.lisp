@@ -43,7 +43,7 @@
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
 (assert! (equal (fn-heap-init-reservation-octets *hbt-small* *hbt-core* *hbt-nursery*)
-                1036096512))
+                1100059648))
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
                 '((:image-dynamic . 147604131)
@@ -58,8 +58,9 @@
                   (:taken-submission-lists . 1580864)
                   (:octet-buffers . 50725002)
                   (:articles . 3441664)
-                  (:collector-room . 80355573)
-                  (:megabyte-rounding . 981086)
+                  (:history-roots . 56760640)
+                  (:collector-room . 88464235)
+                  (:megabyte-rounding . 74920)
                   (:image-outside-heap . 214012928)
                   (:thread-stacks . 35651584)
                   (:thread-runtime . 142606336))))
@@ -71,10 +72,11 @@
 ;; profile's limits (lane heap-bounds; the empty store's open chunk is 0), 520
 ;; MB with the header charged to the history budget (lane heap-pool), 470 MB
 ;; with the articles in flight charged as packed submissions (lane
-;; chunked-body-2), 472 MB with THE SWITCH's keyed index.
+;; chunked-body-2), 472 MB with THE SWITCH's keyed index, 534 MB with the
+;; history roots' reserve (lane mem10-hroot).
 (assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core*
                                                                  *hbt-nursery* nil))
-                472))
+                534))
 (assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
 
 ;; The hypothesis is needed: `store compact' reserves the larger of its list

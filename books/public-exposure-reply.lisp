@@ -33,6 +33,7 @@
 
 (in-package "ACL2")
 (include-book "public-exposure")
+(include-book "send-progress")
 
 ; -----------------------------------------------------------------------------
 ; The recognizer
@@ -342,3 +343,133 @@
                             fn-exp-counters nfix)))))
 
 (in-theory (disable fn-exp-progress))
+
+; -----------------------------------------------------------------------------
+; The reply's tail: delivery is activity (CONVERGE-2 row 20)
+;
+; The socket taking a reply's last octet is not the peer reading it.  On
+; Linux the kernel's send queue absorbs megabytes (loopback autotuning): the
+; slow-drain ARTICLE of test_native_over_pins hands its last octet with
+; 3.2 MB still queued, which a 38 KB/s reader takes ~84 s to read.  The mux
+; checks idle every second once no reply is outstanding, so with LAST at the
+; handoff (fn-exp-progress, above) the autologout closed a reader that was
+; still reading.
+;
+; The TAIL is the reply after its last octet was handed while the kernel
+; still queues some of it: ST is the reply's send state (books/send-progress.lisp,
+; carried on from the reply's own windows), OBS the idle check's observation
+; (NOW-MS OUTQ HANDED).  At each idle check of a connection with a tail:
+;   - octets still queued: the send verdict judges the tail as it judged the
+;     reply (stall window, pace floor over the whole reply).  A refusal is the
+;     answer, by name; on :continue, a shrink of the queue is progress
+;     (fn-exp-progress at NOW) and the idle decision follows;
+;   - the queue empty: the reply is delivered, which is progress, and the tail
+;     ends;
+;   - no tail (ST nil): the idle decision exactly as before.
+; NOW is the exposure clock (fn-owner-exposure-now); OBS carries the
+; monotonic clock the send verdict reads.  The answer is (DECISION XS' ST'):
+; DECISION :keep, :close, or (:refuse REASON); ST' the tail kept, or nil.
+
+(defun fn-exp-tail-queued-p (st obs)
+  (declare (xargs :guard t))
+  (and (fn-send-pair-p st obs) (posp (nth 1 obs))))
+
+(defun fn-exp-tail-delivered-p (st obs)
+  (declare (xargs :guard t))
+  (and (fn-send-pair-p st obs) (equal (nth 1 obs) 0)))
+
+; The tail a reply leaves when its last octet is handed: its send state
+; advanced to OBS, when the kernel still queues part of it; otherwise none.
+(defun fn-exp-tail-start (st obs)
+  (declare (xargs :guard t))
+  (if (fn-exp-tail-queued-p st obs) (fn-send-progress-next st obs) nil))
+
+(defun fn-exp-idle-delivery (xs lim id now st obs)
+  (declare (xargs :guard t))
+  (if (fn-exp-tail-queued-p st obs)
+      (let ((v (fn-send-progress-decide st obs)))
+        (if (equal v :continue)
+            (let ((r (fn-exp-idle (if (fn-send-progress-p st obs)
+                                      (fn-exp-progress xs id now)
+                                    xs)
+                                  lim id now)))
+              (list (car r) (cdr r) (fn-send-progress-next st obs)))
+          (list v xs nil)))
+    (let ((r (fn-exp-idle (if (fn-exp-tail-delivered-p st obs)
+                              (fn-exp-progress xs id now)
+                            xs)
+                          lim id now)))
+      (list (car r) (cdr r) nil))))
+
+; The idle check at the very instant of progress keeps, whatever the limits
+; (fn-exp-idle-keeps-after-progress at LATER = NOW, its idle limit zero
+; included).
+(defthm fn-exp-idle-keeps-at-its-own-progress
+  (equal (car (fn-exp-idle (fn-exp-progress xs id now) lim id now)) :keep)
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-exp-idle fn-exp-progress fn-exp-with fn-exp-idle-limit)
+                           (fn-exp-find fn-exp-replace fn-exp-entry fn-exp-entry-id
+                            fn-exp-entry-last fn-exp-entry-answered fn-exp-entry-address
+                            fn-exp-entry-principal fn-exp-entry-pending fn-exp-make
+                            fn-exp-conns fn-exp-rates fn-exp-fails fn-exp-posts
+                            fn-exp-counters fn-exp-counters-bump fn-exp-lim-idle
+                            fn-exp-lim-first)))))
+
+(local (defthm fn-exp-ids-of-replace-here
+  (equal (fn-exp-ids (fn-exp-replace e conns)) (fn-exp-ids conns))
+  :hints (("Goal" :in-theory (enable fn-exp-replace fn-exp-ids)))))
+
+(defthm fn-exp-progress-keeps-the-connection-ids
+  (equal (fn-exp-ids (fn-exp-conns (fn-exp-progress xs id now)))
+         (fn-exp-ids (fn-exp-conns xs)))
+  :hints (("Goal" :in-theory (e/d (fn-exp-progress fn-exp-with)
+                                  (fn-exp-replace fn-exp-ids fn-exp-entry fn-exp-find)))))
+
+(local (defthm fn-exp-tail-delivered-is-not-queued
+  (implies (fn-exp-tail-delivered-p st obs) (not (fn-exp-tail-queued-p st obs)))))
+
+(local (in-theory (disable fn-exp-idle fn-exp-progress fn-send-progress-decide fn-send-progress-p
+                           fn-send-progress-next fn-exp-tail-queued-p fn-exp-tail-delivered-p)))
+
+; KEYSTONE (a reader that is still reading the tail is not idle).  A queued
+; tail whose queue shrank since the last look, and that the send verdict
+; lets continue, is kept.
+(defthm fn-exp-idle-delivery-keeps-while-the-peer-reads
+  (implies (and (fn-exp-tail-queued-p st obs)
+                (fn-send-progress-p st obs)
+                (equal (fn-send-progress-decide st obs) :continue))
+           (equal (car (fn-exp-idle-delivery xs lim id now st obs)) :keep)))
+
+; KEYSTONE (the delivered reply is activity).  The tail's queue empty: kept.
+(defthm fn-exp-idle-delivery-keeps-at-delivery
+  (implies (fn-exp-tail-delivered-p st obs)
+           (equal (car (fn-exp-idle-delivery xs lim id now st obs)) :keep)))
+
+; KEYSTONE (a stalled or too-slow tail is refused by name).  A queued tail the
+; send verdict refuses is refused with the verdict's reason, and the tail
+; ends.
+(defthm fn-exp-idle-delivery-refuses-what-the-send-verdict-refuses
+  (implies (and (fn-exp-tail-queued-p st obs)
+                (not (equal (fn-send-progress-decide st obs) :continue)))
+           (equal (fn-exp-idle-delivery xs lim id now st obs)
+                  (list (fn-send-progress-decide st obs) xs nil))))
+
+; KEYSTONE (silence still closes).  With no tail, or a tail whose queue did
+; not shrink, the decision and the exposure state are the idle check's own.
+(defthm fn-exp-idle-delivery-is-idle-without-delivery
+  (implies (and (not (fn-exp-tail-delivered-p st obs))
+                (not (and (fn-exp-tail-queued-p st obs)
+                          (fn-send-progress-p st obs)))
+                (or (not (fn-exp-tail-queued-p st obs))
+                    (equal (fn-send-progress-decide st obs) :continue)))
+           (and (equal (car (fn-exp-idle-delivery xs lim id now st obs))
+                       (car (fn-exp-idle xs lim id now)))
+                (equal (cadr (fn-exp-idle-delivery xs lim id now st obs))
+                       (cdr (fn-exp-idle xs lim id now))))))
+
+; FRAME: the tail touches no connection's membership.
+(defthm fn-exp-idle-delivery-keeps-the-connection-ids
+  (implies (member-equal x (fn-exp-ids (fn-exp-conns xs)))
+           (member-equal x (fn-exp-ids (fn-exp-conns
+                                        (cadr (fn-exp-idle-delivery xs lim id now st obs))))))
+  :hints (("Goal" :in-theory (disable fn-exp-ids fn-exp-conns))))
