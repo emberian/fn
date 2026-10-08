@@ -711,7 +711,10 @@ def framing_trial(campaign, recipe, split=None, policy=False):
             sender_errors = []
             def send():
                 try:
-                    cuts = [0, len(wire)] if split is None else sorted({0, min(split, len(wire)), len(wire)})
+                    if split == 'all':      # every octet its own write: every boundary at once
+                        cuts = list(range(len(wire) + 1))
+                    else:
+                        cuts = [0, len(wire)] if split is None else sorted({0, min(split, len(wire)), len(wire)})
                     for lo, hi in zip(cuts, cuts[1:]):
                         for begin, end, op in ranges:
                             if begin < hi and end > lo and op['outcome'] == 'not-attempted':
@@ -776,7 +779,7 @@ def framing(run, ph):
     wire, _ = wire_operations(recipe, History())
     points = sample_points(len(wire) - 1, ph.get('split_budget', 64))
     trials = []
-    for split, policy in [(p, False) for p in points] + [(None, True)]:
+    for split, policy in [(p, False) for p in points] + [(None, True), ('all', False), ('all', True)]:
         h, findings, actual, mem = framing_trial(campaign, recipe, split, policy)
         if actual != sequence:
             findings.append(('P8-CLIENTS', 'reply-sequence differs from unfragmented reference'))
