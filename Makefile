@@ -307,6 +307,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/def-representation-lib \
 	books/def-representation-pages \
 	books/checkpoint-payload-ref \
+	books/checkpoint-payloads \
+	books/checkpoint-payloads-extent \
 	books/paged-checkpoint \
 	books/catalog-pages \
 	books/paged-checkpoint-host \
@@ -319,6 +321,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-representation-pages-tests \
 	tests/acl2/paged-checkpoint-tests \
 	tests/acl2/paged-checkpoint-host-tests \
+	tests/acl2/checkpoint-payloads-tests \
 	tests/acl2/paged-checkpoint-exec-tests \
 	tests/acl2/paged-checkpoint-stage-tests \
 	tests/acl2/paged-checkpoint-image-tests \
