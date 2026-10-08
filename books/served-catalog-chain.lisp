@@ -50,6 +50,7 @@
 (in-package "ACL2")
 
 (include-book "served-span")
+(include-book "def-loop")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
 (include-book "protocol-served") ; generated served dispatcher and declared row keystones
 (include-book "group-access-cache")
@@ -1128,46 +1129,18 @@
    (equal (fn-ag-rev-onto (fn-ag-rev-onto a acc) b)
           (fn-ag-rev-onto acc (append a b)))))
 
-(defun fn-scr-dispatch-events-loop (conn events live trie lver arts cache fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
-                  :verify-guards nil))
-  (if (consp events)
-      (let ((here (fn-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat)))
-        (fn-scr-dispatch-events-loop
-         (fn-served-result-conn here) (cdr events) live trie lver arts cache fn-arena fn-cat
-         (fn-ag-rev-onto (fn-served-result-effects here) acc)))
-    (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
-
-(defun fn-scr-dispatch-events (conn events live trie lver arts cache fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
-                  :verify-guards nil))
-  (mbe :logic
-  (if (consp events)
-      (let* ((here (fn-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat))
-             (tail (fn-scr-dispatch-events (fn-served-result-conn here)
-                                           (cdr events) live trie lver arts cache fn-arena fn-cat)))
-        (fn-served-make-result
-         (fn-served-result-conn tail)
-         (mbe :logic (append (fn-served-result-effects here)
-                             (fn-served-result-effects tail))
-              :exec (fn-ag-append (fn-served-result-effects here)
-                                  (fn-served-result-effects tail)))))
-    (fn-served-make-result conn nil))
-  :exec (fn-scr-dispatch-events-loop conn events live trie lver arts cache fn-arena fn-cat nil)))
-
-(defthm fn-scr-dispatch-events-loop-is-rev-onto
-  (equal (fn-scr-dispatch-events-loop conn events live trie lver arts cache fn-arena fn-cat acc)
-         (fn-served-make-result
-          (fn-served-result-conn
-           (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
-          (fn-ag-rev-onto acc (fn-served-result-effects
-                               (fn-scr-dispatch-events conn events live trie lver arts
-                                                       cache fn-arena fn-cat)))))
-  :hints (("Goal" :induct (fn-scr-dispatch-events-loop conn events live trie lver arts
-                                                       cache fn-arena fn-cat acc)
-                  :in-theory (disable fn-scr-dispatch))))
+(def-loop fn-scr-dispatch-events (conn events live trie lver arts cache fn-arena fn-cat)
+  :shape :thread :over events :st conn :elt e
+  :let ((here (fn-scr-dispatch conn e live trie lver arts cache fn-arena fn-cat)))
+  :row (fn-served-result-effects here) :next (fn-served-result-conn here)
+  :make (fn-served-make-result conn dl-rows) :st-of (fn-served-result-conn dl-r)
+  :rows-of (fn-served-result-effects dl-r) :rev fn-ag-rev-onto
+  :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat) :stobjs (fn-arena fn-cat)
+  :guard-hints (("Goal"
+                 :expand
+                 ((fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+                 :in-theory
+                 (disable fn-scr-dispatch))))
 
 (defthm fn-scr-dispatch-events-is-scar-dispatch-events
   (implies (and (fn-gacc-okp cache) (fn-scr-live-joinp trie lver arts fn-arena fn-cat) (fn-scr-conn-okp conn fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
@@ -1182,12 +1155,6 @@
                          fn-served-result-effects-of-fn-served-make-result
                          fn-ovw-expand-of-append fn-ovw-expand-of-nil)
                        (theory 'minimal-theory)))))
-
-(verify-guards fn-scr-dispatch-events-loop)
-
-(verify-guards fn-scr-dispatch-events
-  :hints (("Goal" :expand ((fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
-                  :in-theory (disable fn-scr-dispatch))))
 
 (defthm fn-scr-conn-okp-of-scar-dispatch-events
   (implies (fn-scr-conn-okp conn fn-arena fn-cat)

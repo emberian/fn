@@ -1243,7 +1243,11 @@
                  fn-sn-update-replayed fn-sn-observed-seed fn-sn-make
                  fn-sn-make-v2 fn-osr-context-view fn-sn-identity-context
                  fn-stxk-context fn-sn-observed-topic-okp)
-                (fn-osr-live-current-identity-and-consumer-ok
+                (fn-csi-enabled-phase-by-definition fn-osr-configured-completing-enables-finish
+                 fn-sti-local-admin-is-topic-event fn-th-local-admin-eventp
+                 fn-hls-kind4-disjoint-from-other-store-events fn-stxa-p
+                 fn-sn-keyring-snapshot-listp fn-osr-ready-topic-exact fn-scram-printable-facts
+                 fn-osr-live-current-identity-and-consumer-ok
                  fn-sti-current-records-topic-ok-including-completed
                  fn-sn-make-v6 fn-sn-with-configuration fn-sn-statep
                  fn-cnode-statep fn-cpr-replay fn-cpr-loop fn-replay-identity

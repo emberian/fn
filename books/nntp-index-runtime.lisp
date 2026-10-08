@@ -36,99 +36,33 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-nntp-numbers-count-loop (rev acc)
-  (declare (xargs :guard (natp acc) :verify-guards nil))
-  (if (consp rev) (fn-nntp-numbers-count-loop (cdr rev) (+ 1 acc)) acc))
-
-(defun fn-nntp-numbers-count (numbers)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (+ 1 (fn-nntp-numbers-count (fn-ag-cdr numbers)))
-         0)
-       :exec (fn-nntp-numbers-count-loop (fn-ag-rev-onto numbers nil) 0)))
-
-(local
- (defthm fn-nntp-numbers-count-loop-of-rev-onto
-   (equal (fn-nntp-numbers-count-loop (fn-ag-rev-onto numbers zs) 0)
-          (fn-nntp-numbers-count-loop zs (fn-nntp-numbers-count numbers)))
-   :hints (("Goal" :induct (fn-ag-rev-onto numbers zs)
-                   :in-theory (union-theories '(fn-nntp-numbers-count-loop fn-nntp-numbers-count fn-ag-rev-onto fn-ag-car fn-ag-cdr
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-numbers-count (numbers)
+  :shape :foldr :over numbers :elt n
+  :combine (+ 1 acc) :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (natp acc))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-nntp-numbers-min-loop (rev acc)
-  (declare (xargs :guard (rationalp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-nntp-numbers-min-loop (cdr rev)
-                                (let ((number (fn-ag-car rev))
-                                      (rest acc))
-                                  (if (and (posp number)
-                                           (or (not (posp rest)) (< number rest)))
-                                      number
-                                    rest)))
-    acc))
-
-(defun fn-nntp-numbers-min (numbers)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let ((number (fn-ag-car numbers))
-                 (rest (fn-nntp-numbers-min (fn-ag-cdr numbers))))
-             (if (and (posp number)
-                      (or (not (posp rest)) (< number rest)))
-                 number
-               rest))
-         0)
-       :exec (fn-nntp-numbers-min-loop (fn-ag-rev-onto numbers nil) 0)))
-
-(local
- (defthm fn-nntp-numbers-min-loop-of-rev-onto
-   (equal (fn-nntp-numbers-min-loop (fn-ag-rev-onto numbers zs) 0)
-          (fn-nntp-numbers-min-loop zs (fn-nntp-numbers-min numbers)))
-   :hints (("Goal" :induct (fn-ag-rev-onto numbers zs)
-                   :in-theory (union-theories '(fn-nntp-numbers-min-loop fn-nntp-numbers-min fn-ag-rev-onto fn-ag-car fn-ag-cdr
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-numbers-min (numbers)
+  :shape :foldr :over numbers :elt n
+  :combine (let ((number n))
+                (if (and (posp number) (or (not (posp acc)) (< number acc))) number acc))
+  :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (rationalp acc))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-nntp-numbers-max-loop (rev acc)
-  (declare (xargs :guard (rationalp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-nntp-numbers-max-loop (cdr rev)
-                                (let ((number (fn-ag-car rev))
-                                      (rest acc))
-                                  (if (and (posp number) (< rest number)) number rest)))
-    acc))
-
-(defun fn-nntp-numbers-max (numbers)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let ((number (fn-ag-car numbers))
-                 (rest (fn-nntp-numbers-max (fn-ag-cdr numbers))))
-             (if (and (posp number) (< rest number)) number rest))
-         0)
-       :exec (fn-nntp-numbers-max-loop (fn-ag-rev-onto numbers nil) 0)))
-
-(local
- (defthm fn-nntp-numbers-max-loop-of-rev-onto
-   (equal (fn-nntp-numbers-max-loop (fn-ag-rev-onto numbers zs) 0)
-          (fn-nntp-numbers-max-loop zs (fn-nntp-numbers-max numbers)))
-   :hints (("Goal" :induct (fn-ag-rev-onto numbers zs)
-                   :in-theory (union-theories '(fn-nntp-numbers-max-loop fn-nntp-numbers-max fn-ag-rev-onto fn-ag-car fn-ag-cdr
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-numbers-max (numbers)
+  :shape :foldr :over numbers :elt n
+  :combine (let ((number n)) (if (and (posp number) (< acc number)) number acc)) :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (rationalp acc))
 
 (defthm fn-nntp-numbers-max-natp
   (natp (fn-nntp-numbers-max numbers))
@@ -138,85 +72,29 @@
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-nntp-numbers-min-above-loop (current rev acc)
-  (declare (xargs :guard (rationalp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-nntp-numbers-min-above-loop current
-                                      (cdr rev)
-                                      (let ((number (fn-ag-car rev))
-                                            (rest acc))
-                                        (if (and (posp number)
-                                                 (fn-ag-less current number)
-                                                 (or (not (posp rest)) (< number rest)))
-                                            number
-                                          rest)))
-    acc))
-
-(defun fn-nntp-numbers-min-above (current numbers)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let ((number (fn-ag-car numbers))
-                 (rest (fn-nntp-numbers-min-above current (fn-ag-cdr numbers))))
-             (if (and (posp number)
-                      (fn-ag-less current number)
-                      (or (not (posp rest)) (< number rest)))
-                 number
-               rest))
-         0)
-       :exec (fn-nntp-numbers-min-above-loop current (fn-ag-rev-onto numbers nil) 0)))
-
-(local
- (defthm fn-nntp-numbers-min-above-loop-of-rev-onto
-   (equal (fn-nntp-numbers-min-above-loop current (fn-ag-rev-onto numbers zs) 0)
-          (fn-nntp-numbers-min-above-loop current zs (fn-nntp-numbers-min-above current numbers)))
-   :hints (("Goal" :induct (fn-ag-rev-onto numbers zs)
-                   :in-theory (union-theories '(fn-nntp-numbers-min-above-loop fn-nntp-numbers-min-above fn-ag-rev-onto fn-ag-car fn-ag-cdr
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-numbers-min-above (current numbers)
+  :shape :foldr :over numbers :elt n
+  :combine (let ((number n))
+                (if (and (posp number)
+                         (fn-ag-less current number)
+                         (or (not (posp acc)) (< number acc)))
+                    number
+                    acc))
+  :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (rationalp acc))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
 ; same step.
-(defun fn-nntp-numbers-max-below-loop (current rev acc)
-  (declare (xargs :guard (rationalp acc) :verify-guards nil))
-  (if (consp rev)
-      (fn-nntp-numbers-max-below-loop current
-                                      (cdr rev)
-                                      (let ((number (fn-ag-car rev))
-                                            (rest acc))
-                                        (if (and (posp number)
-                                                 (fn-ag-less number current)
-                                                 (< rest number))
-                                            number
-                                          rest)))
-    acc))
-
-(defun fn-nntp-numbers-max-below (current numbers)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp numbers)
-           (let ((number (fn-ag-car numbers))
-                 (rest (fn-nntp-numbers-max-below current (fn-ag-cdr numbers))))
-             (if (and (posp number)
-                      (fn-ag-less number current)
-                      (< rest number))
-                 number
-               rest))
-         0)
-       :exec (fn-nntp-numbers-max-below-loop current (fn-ag-rev-onto numbers nil) 0)))
-
-(local
- (defthm fn-nntp-numbers-max-below-loop-of-rev-onto
-   (equal (fn-nntp-numbers-max-below-loop current (fn-ag-rev-onto numbers zs) 0)
-          (fn-nntp-numbers-max-below-loop current zs (fn-nntp-numbers-max-below current numbers)))
-   :hints (("Goal" :induct (fn-ag-rev-onto numbers zs)
-                   :in-theory (union-theories '(fn-nntp-numbers-max-below-loop fn-nntp-numbers-max-below fn-ag-rev-onto fn-ag-car fn-ag-cdr
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
+(def-loop fn-nntp-numbers-max-below (current numbers)
+  :shape :foldr :over numbers :elt n
+  :combine (let ((number n))
+                (if (and (posp number) (fn-ag-less number current) (< acc number)) number acc))
+  :init 0
+  :rev fn-ag-rev-onto
+  :loop-guard (rationalp acc))
 
 (defthm fn-nntp-numbers-max-below-natp
   (natp (fn-nntp-numbers-max-below current numbers))
@@ -357,41 +235,6 @@
   (fn-nntp-numbers-sort
    (fn-nntp-index-numbers (fn-index-query-range index group low high))))
 
-(verify-guards fn-nntp-numbers-count-loop)
-
-(verify-guards fn-nntp-numbers-count
-  :hints (("Goal" :in-theory (union-theories '(fn-nntp-numbers-count fn-nntp-numbers-count-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-numbers-count-loop-of-rev-onto (zs nil))))))
-(verify-guards fn-nntp-numbers-min-loop)
-
-(verify-guards fn-nntp-numbers-min
-  :hints (("Goal" :in-theory (union-theories '(fn-nntp-numbers-min fn-nntp-numbers-min-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-numbers-min-loop-of-rev-onto (zs nil))))))
-(verify-guards fn-nntp-numbers-max-loop)
-
-(verify-guards fn-nntp-numbers-max
-  :hints (("Goal" :in-theory (union-theories '(fn-nntp-numbers-max fn-nntp-numbers-max-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-numbers-max-loop-of-rev-onto (zs nil))))))
-(verify-guards fn-nntp-numbers-min-above-loop)
-
-(verify-guards fn-nntp-numbers-min-above
-  :hints (("Goal" :in-theory (union-theories '(fn-nntp-numbers-min-above fn-nntp-numbers-min-above-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-numbers-min-above-loop-of-rev-onto (zs nil))))))
-(verify-guards fn-nntp-numbers-max-below-loop)
-
-(verify-guards fn-nntp-numbers-max-below
-  :hints (("Goal" :in-theory (union-theories '(fn-nntp-numbers-max-below fn-nntp-numbers-max-below-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nntp-numbers-max-below-loop-of-rev-onto (zs nil))))))
 (verify-guards fn-nntp-numbers-sort-loop)
 (verify-guards fn-nntp-numbers-sort
   :hints (("Goal" :in-theory (disable fn-nntp-insert-number)

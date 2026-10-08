@@ -1,0 +1,539 @@
+{
+ "schema": 1,
+ "note": "Workloads are data (LOAD-PROGRAM section 2). tools/load/workloads.py parses and validates; tools/load/driver.py executes the phase kinds. rss-small-filled is the one definition of the 128 MiB bar's reference workload nmem3-clean; tests/test_native_image_heap.py reads it from here.",
+ "presets": {
+  "small": [
+   "--profile",
+   "development",
+   "--max-transactions",
+   "16384",
+   "--max-history-octets",
+   "8388608",
+   "--max-record-octets",
+   "196608",
+   "--max-groups-per-article",
+   "16",
+   "--max-open-suffix",
+   "128"
+  ],
+  "development": [
+   "--profile",
+   "development"
+  ],
+  "scale": [
+   "--profile",
+   "scale"
+  ],
+  "default": [],
+  "filled": [
+   "--profile",
+   "development",
+   "--max-transactions",
+   "100000",
+   "--max-history-octets",
+   "268435456",
+   "--max-record-octets",
+   "196608",
+   "--max-groups-per-article",
+   "16",
+   "--max-open-suffix",
+   "128"
+  ],
+  "scale-1m": [
+   "--profile",
+   "scale",
+   "--max-transactions",
+   "1048576",
+   "--max-history-octets",
+   "4294967296",
+   "--max-article-octets",
+   "16384"
+  ],
+  "big-articles": [
+   "--profile",
+   "development",
+   "--max-transactions",
+   "4096",
+   "--max-history-octets",
+   "536870912",
+   "--max-record-octets",
+   "1179648",
+   "--max-article-octets",
+   "1114112",
+   "--max-groups-per-article",
+   "16"
+  ]
+ },
+ "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up).",
+ "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384",
+ "workloads": {
+  "smoke": {
+   "about": "50 POSTs, 50 ARTICLEs, 1 reader: proves the driver end to end.",
+   "preset": "small",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "phases": [
+    {
+     "name": "post",
+     "kind": "post",
+     "count": 50,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "read",
+     "kind": "read",
+     "readers": 1,
+     "count": 50,
+     "cmd": "ARTICLE",
+     "measure": true
+    }
+   ]
+  },
+  "rss-small-filled": {
+   "about": "nmem3-clean: the small preset, 1000 POSTs x 2048 on one connection, 32 idle connections (8, then 24 more) opened and closed, 20 s idle, VmRSS of the owner. Launch shape: the image's own launcher with SBCL_USER_ARGS after it.",
+   "preset": "small",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "heap": "declared",
+   "phases": [
+    {
+     "name": "fill",
+     "kind": "post",
+     "count": 1000,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "idle-connections",
+     "kind": "hold",
+     "steps": [
+      8,
+      24
+     ],
+     "step_settle_s": 2,
+     "close": true
+    },
+    {
+     "name": "idle",
+     "kind": "idle",
+     "seconds": 20,
+     "measure": true
+    }
+   ]
+  },
+  "article-sizes": {
+   "about": "ARTICLE wall time, request to terminating dot, over sizes 4 KiB to 1 MiB in doubling steps (L-LIN). Sizes the preset refuses are recorded as refusals, not skipped silently.",
+   "preset": "big-articles",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "phases": [
+    {
+     "name": "sizes",
+     "kind": "article_sizes",
+     "sizes_kib": [
+      4,
+      8,
+      16,
+      32,
+      64,
+      128,
+      256,
+      512,
+      1024
+     ],
+     "reps": 5,
+     "measure": true
+    }
+   ]
+  },
+  "post-rate": {
+   "about": "Closed-loop POSTs/s at 1 and 8 connections, alone and beside 3 readers (L-POST, T-POST, T-RATE). A 1000-article store is preloaded for the readers. The variant names the preset: post-rate/small, /development, /default.",
+   "preset": "filled",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "variants": [
+    "small",
+    "development",
+    "default"
+   ],
+   "phases": [
+    {
+     "name": "c1",
+     "kind": "post",
+     "duration_s": 20,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "c8",
+     "kind": "post",
+     "duration_s": 20,
+     "octets": 2048,
+     "connections": 8
+    },
+    {
+     "name": "c1r3",
+     "kind": "post",
+     "duration_s": 20,
+     "octets": 2048,
+     "connections": 1,
+     "background_readers": 3
+    },
+    {
+     "name": "c8r3",
+     "kind": "post",
+     "duration_s": 20,
+     "octets": 2048,
+     "connections": 8,
+     "background_readers": 3,
+     "measure": true
+    }
+   ],
+   "store": {
+    "preload": 1000,
+    "octets": 2048
+   },
+   "policy": {
+    "exposure-connections": 64
+   }
+  },
+  "readers": {
+   "about": "Readers looping ARTICLE on a filled store (preloaded by POSTs, cached per image; the small preset holds only ~4000 2 KiB articles in its 8 MiB history bound, so this runs at the filled preset) beside one open-loop poster at 5 POSTs/s, at R = 1, 4, 16, 64 (L-READ). The variant R<n> runs one R. The connection cap is 32 by default (books/profile-limits.lisp:65); fn.toml has no max_connections key (the comment there is stale), so the cell tries `policy set exposure-connections 128` and records the verb result and the connections refused.",
+   "preset": "filled",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 10000,
+    "octets": 2048
+   },
+   "phases": [
+    {
+     "name": "R1",
+     "kind": "read",
+     "readers": 1,
+     "duration_s": 20,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     }
+    },
+    {
+     "name": "R4",
+     "kind": "read",
+     "readers": 4,
+     "duration_s": 20,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     }
+    },
+    {
+     "name": "R16",
+     "kind": "read",
+     "readers": 16,
+     "duration_s": 20,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     }
+    },
+    {
+     "name": "R64",
+     "kind": "read",
+     "readers": 64,
+     "duration_s": 20,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     },
+     "measure": true
+    }
+   ],
+   "policy": {
+    "exposure-connections": 128
+   }
+  },
+  "growth": {
+   "about": "Store growth (L-GROW): the store at N articles (2 KiB, scale profile), open time by replay, POST and OVER-40 latency, a checkpoint, open from it, VmRSS and VmHWM at each N. N = 4000, 40000, 100000; the cell's store names N. A store comes from a POST preload within the preload budget.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 4000,
+    "octets": 2048
+   },
+   "phases": [
+    {
+     "name": "post",
+     "kind": "post",
+     "count": 200,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "over40",
+     "kind": "read",
+     "readers": 1,
+     "count": 200,
+     "cmd": "OVER40"
+    },
+    {
+     "name": "checkpoint",
+     "kind": "checkpoint"
+    },
+    {
+     "name": "reopen-checkpoint",
+     "kind": "reopen",
+     "measure": true
+    }
+   ]
+  },
+  "m1-durable": {
+   "about": "4000 POSTs, a live reclaim pass, reopen, every article byte-identical (L-DURABLE).",
+   "preset": "filled",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "phases": [
+    {
+     "name": "post",
+     "kind": "post",
+     "count": 4000,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "reclaim",
+     "kind": "unimplemented",
+     "reason": "the live reclaim verb is not driven yet; the lane that owns L-DURABLE names it"
+    },
+    {
+     "name": "reopen",
+     "kind": "reopen"
+    },
+    {
+     "name": "verify",
+     "kind": "verify",
+     "count": 4000,
+     "measure": true
+    }
+   ]
+  },
+  "fresh-start": {
+   "about": "A fresh node (operator init, run to LISTENING) under a whole-process limit of 256 MB and of 1024 MB (cgroup MemoryMax, not the heap flag), serving one POST and one ARTICLE. Started the way an installed node starts (packaging/fn: the image's heap probe, which may refuse the profile), each inside systemd-run --user --scope -p MemoryMax=LIMIT -p MemorySwapMax=0; a refusal is the result and is recorded verbatim. Absorbed from tools/load_fresh_start.py.",
+   "preset": "small",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 1,
+   "phases": [
+    {
+     "name": "limits",
+     "kind": "fresh_start",
+     "limits_mb": [
+      256,
+      1024
+     ],
+     "measure": true
+    }
+   ],
+   "own_nodes": true
+  },
+  "catchup": {
+   "about": "Two nodes on one box; B pulls a 1000- then a 10000-article backlog from A (L-CATCHUP).",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "phases": [
+    {
+     "name": "pull",
+     "kind": "unimplemented",
+     "reason": "the two-node harness is lane L6; tests/test_native_peer_catchup measures the pace today",
+     "measure": true
+    }
+   ]
+  },
+  "commands": {
+   "about": "Per-command latency and owner CPU per command on one connection (GROUP, OVER-40, STAT, HEAD, LIST, greeting) at 1k, 10k, 40k-class stores, with the exponent against n (T-CMD).",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "sweep": [
+    "1k",
+    "10k",
+    "25k",
+    "50k"
+   ],
+   "store": {
+    "preload": 1000,
+    "octets": 2048,
+    "fixture": "curve/n{N}"
+   },
+   "phases": [
+    {
+     "name": "commands",
+     "kind": "commands",
+     "reps": 300,
+     "measure": true
+    }
+   ]
+  },
+  "mem-vs-size": {
+   "about": "Memory against store size (W15, ember 2026-10-07): at each N, owner open by replay (wall, CPU), at-rest VmRSS/anon/file and the peak VmHWM, SBCL heap census by type grouped by owner structure, an offline publication (wall, CPU, octets in touched files, component sizes on disk), and the open from that checkpoint. The merged cell fits each metric's exponent against n.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "census": true,
+   "sweep": [
+    "1k",
+    "10k",
+    "25k",
+    "50k",
+    "100k"
+   ],
+   "store": {
+    "preload": 1000,
+    "octets": 2048,
+    "fixture": "curve/n{N}"
+   },
+   "phases": [
+    {
+     "name": "at-rest",
+     "kind": "idle",
+     "seconds": 20,
+     "measure": true
+    },
+    {
+     "name": "census",
+     "kind": "census"
+    },
+    {
+     "name": "publish",
+     "kind": "publish"
+    },
+    {
+     "name": "reopen-checkpoint",
+     "kind": "reopen"
+    }
+   ]
+  },
+  "conn-capacity": {
+   "about": "Connection capacity per preset (deputy L, from books/profile-limits.lisp:65): the decided default cap, the largest fn.toml [server] max_connections the image admits (doubling then bisection; a cold start that refuses is the end), RSS per held connection, the greeting past the cap.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 1,
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "capacity",
+     "kind": "conn_capacity",
+     "presets": [
+      "small",
+      "development",
+      "default"
+     ],
+     "max_try": 4096,
+     "measure": true
+    }
+   ]
+  },
+  "prof-ops": {
+   "about": "T-ALLOC / T-CALLS / T-SYNC through E's prof2.lisp hook (hooked: counts and bytes, not latency): per operation (POST 2 KiB, GROUP, ARTICLE at 2/8/32/128 KiB) a restarted owner and 100 commands in one hook window: host-to-ACL2 calls, the owner's own fnn-durable-barrier and fnn-log-fdatasync count and wall, bytes consed, GC time. Every cell carries the site's 4 KiB write+fdatasync probe beside.",
+   "preset": "big-articles",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "prof": true,
+   "store": {
+    "preload": 1000,
+    "octets": 2048
+   },
+   "phases": [
+    {
+     "name": "prof",
+     "kind": "prof",
+     "article_kib": [
+      2,
+      8,
+      32,
+      128
+     ],
+     "reps": 100,
+     "measure": true
+    }
+   ]
+  }
+ },
+ "cells": {
+  "smoke": "smoke",
+  "W13": "rss-small-filled",
+  "W14": "article-sizes",
+  "W1": "post-rate",
+  "W2": "readers",
+  "W8": "growth",
+  "W9": "m1-durable",
+  "W6a": "catchup",
+  "L-FRESH": "fresh-start",
+  "T-CMD": "commands",
+  "W15": "mem-vs-size",
+  "conn-capacity": "conn-capacity",
+  "T-OPS": "prof-ops"
+ },
+ "stores": {
+  "1k": 1000,
+  "4k": 4000,
+  "10k": 10000,
+  "40k": 40000,
+  "100k": 100000,
+  "25k": 25000,
+  "50k": 50000
+ }
+}

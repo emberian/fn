@@ -90,6 +90,32 @@
     (equal (fn-durable-realize-octets file eoff elen poff plen trailer)
            (fn-durable-octets file poff plen))))
 
+;; THE SPAN REALIZER (row 21, ARTICLE-RENDER-WALKS-FROM-WINDOW).  The
+;; renderer reads a payload a span at a time: `(fn-durable-realize-span file
+;; eoff elen poff plen trailer i n)' is the host's realizer for the N octets
+;; from payload coordinate I in one call (one lock, one ledger decision per
+;; borrowed window, host/native/extent.lisp fnn-extent-window-realize-span).
+;; The constraint says it is the list of the per-octet realizer's answers at
+;; I, I+1, ..., I+N-1 -- no new fact about the file, only that the one call
+;; and the N calls answer alike (a refinement the host owes, like the
+;; page-window span's fn-owner-page-window-span-at-is-the-scalar-borrows).
+(defun fn-durable-span-spec (file eoff elen poff plen trailer i n)
+  (declare (xargs :guard (and (natp i) (natp n)) :measure (nfix n)))
+  (if (zp n)
+      nil
+    (cons (fn-durable-realize-octet file eoff elen poff plen trailer i)
+          (fn-durable-span-spec file eoff elen poff plen trailer (+ 1 (nfix i)) (1- n)))))
+
+(encapsulate
+  (((fn-durable-realize-span * * * * * * * *) => *))
+
+  (local (defun fn-durable-realize-span (file eoff elen poff plen trailer i n)
+           (fn-durable-span-spec file eoff elen poff plen trailer i n)))
+
+  (defthm fn-durable-realize-span-is-the-octets
+    (equal (fn-durable-realize-span file eoff elen poff plen trailer i n)
+           (fn-durable-span-spec file eoff elen poff plen trailer i n))))
+
 (local
  (defun fn-durable-ind (off len)
    (if (zp len) (list off) (fn-durable-ind (+ 1 (nfix off)) (1- len)))))

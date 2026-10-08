@@ -3176,6 +3176,10 @@
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-open-establishes-the-relation))
 
+(definterface fn-bpnjc-answer
+  :class :common-lisp-compliant
+  :keystones (fn-bpnjc-answer-is-contact-next))
+
 (definterface fn-bpnjc-contact-next
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-offer-keeps-the-relation
@@ -3783,6 +3787,12 @@
   :keystones ((fn-idle-gc-verdict-collects-only-when-owed :via fn-idle-gc-verdict)
               (fn-idle-gc-verdict-collects-when-owed :via fn-idle-gc-verdict)
               fn-idle-gc-decide-never-collects-during-a-publication))
+
+(definterface fn-load-gc-decide
+  :class :common-lisp-compliant
+  :keystones ((fn-load-gc-verdict-collects-only-when-grown :via fn-load-gc-verdict)
+              (fn-load-gc-verdict-collects-when-grown :via fn-load-gc-verdict)
+              (fn-load-gc-wait-bounds-the-growth :via fn-load-gc-verdict)))
 
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)
@@ -5887,7 +5897,7 @@
 (definterface fn-bpsp-read-bound :class :common-lisp-compliant)
 (definterface fn-bpsp-root-release-ready :class :common-lisp-compliant)
 (definterface fn-bpsp-node-startup :class :common-lisp-compliant
-  :keystones ((fn-bpsp-node-startup-holds-the-capacity :via fn-bpsp-node-capacity)))
+  :keystones (fn-bpsp-node-startup-holds-the-capacity))
 (definterface fn-bpsp-write :class :common-lisp-compliant)
 (definterface fn-bpsrx-abort-plan :class :common-lisp-compliant)
 (definterface fn-bpsrx-authorizedp :class :common-lisp-compliant)

@@ -457,6 +457,13 @@ export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
 # the tank's ZFS cost 4.7 s at load 33 and one command 194 s (tooling-truth-3).
 export FN_TEST_DURABLE_TMP=\${FN_TEST_DURABLE_TMP:-/var/tmp}
 export FN_ACL2=\$ACL2 FN_CERT_CACHE=\$CACHE FN_CERT_ORIGIN_KIND=run
+# One install per run (tools/certs.py INSTALL_RECORD): the install step and
+# the incremental certify share this id, so the certify reuses the install
+# step's selection instead of running it again.
+export FN_INSTALL_RUN=\$S-\$\$
+# One content-hash memo per run tree (tools/certs.py content_hash): the
+# install, certify and acquire steps stat a file another step already read.
+export FN_CONTENT_HASH_FILE=\$T/build/.content-hashes.json
 # The book reader's per-text cache (tools/ledger.py), shared by this box's
 # runs: content-addressed, so a fresh tree reads only what changed.
 export FN_LEDGER_FORMS_CACHE=\${FN_LEDGER_FORMS_CACHE:-$BASE/.ledger-forms}

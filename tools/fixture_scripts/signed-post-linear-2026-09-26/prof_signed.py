@@ -36,6 +36,8 @@ tree, image, work = Path(a.tree), Path(a.image).resolve(), Path(a.work)
 sys.path.insert(0, str(tree))
 from tests.test_fn_verify import big_body, source_for, dot_stuff  # noqa: E402
 from tests.native_process import wait_for_announcement, stop_and_diagnostics  # noqa: E402
+sys.path.insert(0, str(tree / "tools"))
+from rep_measure import decided_heap_env  # noqa: E402
 OPENSSL = "/tank/fn/toolchains/openssl-3.5.8/bin/openssl"
 TICK = os.sysconf("SC_CLK_TCK")
 env = dict(os.environ, ACL2_CUSTOMIZATION="NONE"); env.pop("ACL2_SYSTEM_BOOKS", None)
@@ -68,7 +70,7 @@ def owner(dirp, config, extra_env=None):
     e = dict(env, **(extra_env or {}))
     err = open(dirp / "owner.stderr", "wb")
     proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"], cwd=tree,
-                            env=e, stdout=subprocess.PIPE, stderr=err)
+                            env=decided_heap_env(image, config, e), stdout=subprocess.PIPE, stderr=err)
     line = wait_for_announcement(proc, b"LISTENING ", timeout=3600)
     assert line.startswith(b"LISTENING "), line
     return proc

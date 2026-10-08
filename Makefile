@@ -311,6 +311,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-host \
 	books/paged-checkpoint-exec \
 	books/paged-checkpoint-stage \
+	books/paged-checkpoint-image \
+	books/paged-checkpoint-open \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
 	tests/acl2/def-representation-pages-tests \
@@ -318,6 +320,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/paged-checkpoint-host-tests \
 	tests/acl2/paged-checkpoint-exec-tests \
 	tests/acl2/paged-checkpoint-stage-tests \
+	tests/acl2/paged-checkpoint-image-tests \
+	tests/acl2/paged-checkpoint-open-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
@@ -2147,6 +2151,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-time-bars-tests \
 	books/owner-queued-work \
 	tests/acl2/owner-queued-work-tests \
+	books/owner-commit-held \
+	tests/acl2/owner-commit-held-tests \
+	books/owner-time-held \
+	tests/acl2/owner-time-held-tests \
 	books/feed-journal-order \
 	tests/acl2/feed-journal-order-tests \
 	tests/acl2/tls-handshake-budget-tests \
@@ -2939,12 +2947,9 @@ check:
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
-# The raw host code (host/native/*.lisp) runs on the same 1,024 KiB stack and
-# depth_check reads only ACL2 functions: every non-tail recursion there is in
-# tools/raw_depth_baseline.json with its bound named (lane depth-debt; the
-# mux's per-step re-entry and the BP effect chain were loops made here).
-	@$(CHECK_STEP) $(PYTHON) tools/raw_depth_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_raw_depth_check
+# depth_check also reads the raw host code (host/native/*.lisp: the "raw" section
+# of the same baseline; the mux's per-step re-entry and the BP effect chain were
+# loops made by lane depth-debt).
 # Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
 # arithmetic on an observation's fields at a call site assumed a unit twice
 # (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json

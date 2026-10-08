@@ -40,6 +40,7 @@ transcript; nothing is derived from RSS.
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -50,6 +51,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT))
 import msgid_measure as m  # noqa: E402
+from msgid_measure import decided_heap_env  # noqa: E402,F401  (the one definition lives there)
 from tests.native_harness import wait_for_announcement  # noqa: E402
 
 HEAD = ("From: rep@example.invalid\r\nNewsgroups: fn.test\r\nSubject: rep %d\r\n"
@@ -142,6 +144,7 @@ class Heap:
 
 
 def start_owner(image, config, env, stderr_path, timeout=3600):
+    env = decided_heap_env(image, config, env)
     stderr = open(stderr_path, "ab")
     started = time.perf_counter()
     proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],

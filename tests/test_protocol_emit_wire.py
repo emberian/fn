@@ -17,17 +17,45 @@ import protocol_emit  # noqa: E402
 
 
 class WireCheck(unittest.TestCase):
-    def run_check(self, committed, rendered, write=False):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "specs" / "wire-grammar.json"
+    def run_check(self, committed, rendered, write=False, key="k1", stamp=None, d=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(d or tmp)
+            path = d / "specs" / "wire-grammar.json"
             if committed is not None:
-                path.parent.mkdir(parents=True)
+                path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(committed)
+            stamp_path = d / "build" / "cache" / "wire-emit.json"
+            if stamp is not None:
+                stamp_path.parent.mkdir(parents=True, exist_ok=True)
+                stamp_path.write_text(stamp)
+            evaluate = mock.Mock(return_value=rendered)
             with mock.patch.object(protocol_emit, "WIRE_FILE", path), \
-                 mock.patch.object(protocol_emit, "ROOT", Path(d)), \
-                 mock.patch.object(protocol_emit, "wire_octets", return_value=rendered):
+                 mock.patch.object(protocol_emit, "WIRE_STAMP", stamp_path), \
+                 mock.patch.object(protocol_emit, "ROOT", d), \
+                 mock.patch.object(protocol_emit, "_wire_key", return_value=key), \
+                 mock.patch.object(protocol_emit, "wire_octets", evaluate):
                 code = protocol_emit.wire(write)
+            self.evaluated = evaluate.called
             return code, (path.read_bytes() if path.exists() else None)
+
+    def stamp_for(self, key, octets):
+        import hashlib, json
+        return json.dumps({"key": key, "sha256": hashlib.sha256(octets).hexdigest()})
+
+    def test_unchanged_closure_skips_the_evaluation(self):
+        code, _ = self.run_check(b'{"v":1}', b'{"v":2}', key="k1",
+                                 stamp=self.stamp_for("k1", b'{"v":1}'))
+        self.assertEqual((code, self.evaluated), (0, False))
+
+    def test_changed_closure_evaluates(self):
+        code, _ = self.run_check(b'{"v":1}', b'{"v":2}', key="k2",
+                                 stamp=self.stamp_for("k1", b'{"v":1}'))
+        self.assertEqual((code, self.evaluated), (1, True))
+
+    def test_edited_file_evaluates(self):
+        code, _ = self.run_check(b'{"v":9}', b'{"v":1}', key="k1",
+                                 stamp=self.stamp_for("k1", b'{"v":1}'))
+        self.assertEqual((code, self.evaluated), (1, True))
 
     def test_stale_file_is_red(self):
         code, _ = self.run_check(b'{"version":1,"families":[]}', b'{"version":1,"families":[1]}')

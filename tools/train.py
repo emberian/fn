@@ -7,10 +7,18 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
 
     train.py merge LANE@SHA [LANE@SHA ...]
     train.py regen [--label N]
-    train.py boxstep BOX             # hbox or persvati: the box step, recorded
+    train.py certify BOX             # books train: ONE farm run (install, certify), then the emits in its tree
+    train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
     train.py gate [--strict-lock]
     train.py push
     train.py status
+
+A books train runs `certify BOX`: one farm run of books/wire-export plus the
+train's changed books and tests (one cache install, one certify), then the emit
+and check half of BOX_CMD over ssh in that run's tree, under swarm-build and a
+timeout.  It records the same box-step.json as `boxstep` plus the farm run, the
+certify id and the install/certify/emit wall seconds (also in the train state,
+shown by `status`).
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
@@ -30,7 +38,10 @@ import os
 import shutil
 import subprocess
 import sys
+import re
+import shlex
 import tempfile
+import time
 from pathlib import Path
 
 PY = os.environ.get("TRAIN_PY", "python3.12")
@@ -71,6 +82,25 @@ BOX_CMD = (
     "python3 tools/extract/world.py --check && python3 tools/host_check.py --build-lists && "
     "python3 tools/host_check.py --read && python3 tools/host_check.py --world"
 )
+
+# The half of BOX_CMD after the certify step; `certify` runs it in the farm tree.
+# Timed one by one; interface_emit writes and checks in ONE invocation (it
+# computes the declarations and the host reading once).
+EMIT_STEPS = (
+    ("interface_emit", "python3 tools/interface_emit.py --write --check"),
+    ("protocol_emit", "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check"),
+    ("world", "python3 tools/extract/world.py --check"),
+    ("build_lists", "python3 tools/host_check.py --build-lists"),
+    ("host_read", "python3 tools/host_check.py --read"),
+    ("host_world", "python3 tools/host_check.py --world"),
+)
+EMIT_CMD = " && ".join(
+    f"{{ s=$(date +%s); {c}; r=$?; echo \"== step {n} $(( $(date +%s) - s ))\"; [ $r = 0 ]; }}"
+    for n, c in EMIT_STEPS)
+EMIT_TIMEOUT_SECONDS = 3600
+FARM_TIMEOUT_SECONDS = 1800
+SSH = os.environ.get("TRAIN_SSH", "ssh")
+WRAPS = {"hbox": "swarm-build"}
 
 # Paths whose change since the last box step makes a new box step necessary.
 BOX_PATHS = ("books", "specs", "tests/acl2")
@@ -359,6 +389,84 @@ def cmd_boxstep(t: Train, args) -> int:
     return 0
 
 
+def _changed_roots(t: Train, prefix: str) -> list[str]:
+    out = git(t.root, "diff", "--name-only", "--diff-filter=AM", "origin/dev", "HEAD", "--", prefix).stdout.split()
+    return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
+
+
+def cmd_certify(t: Train, args) -> int:
+    if t.dirty():
+        # farm ships the worktree (rsync without .git/ and build/), so an
+        # untracked file would be certified and emitted as if it were HEAD
+        raise TrainError("working tree is dirty (untracked files included); the box step ships HEAD")
+    ran_at = t.head()
+    books = _changed_roots(t, "books")
+    tests = _changed_roots(t, "tests/acl2")
+    roots = list(dict.fromkeys(["books/wire-export", *books, *tests]))
+    argv = [PY, "tools/farm.py"]
+    if books:
+        argv += ["--lane"]
+        for b in books:
+            argv += ["--affected-by", b]
+    argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", args.box, *roots]
+    t0 = time.monotonic()
+    say("$ " + " ".join(argv))
+    sub = subprocess.run(argv, cwd=t.root, capture_output=True, text=True)
+    t.logs.mkdir(parents=True, exist_ok=True)
+    (t.logs / f"certify-submit-{args.box}.log").write_text(sub.stdout + sub.stderr)
+    for line in sub.stderr.splitlines()[-12:]:
+        say("  | " + line)
+    run = sub.stdout.strip().splitlines()[-1].strip() if sub.stdout.strip() else ""
+    if sub.returncode != 0 or not run:
+        say(f"certify on {args.box}: submit failed (rc {sub.returncode}); nothing recorded")
+        return sub.returncode or 1
+    t1 = time.monotonic()
+    rc = t.run(f"certify-wait-{args.box}", [PY, "tools/farm.py", "wait", args.box, run])
+    t2 = time.monotonic()
+    if rc != 0:
+        say(f"certify on {args.box} failed (rc {rc}); nothing recorded")
+        return rc
+    rec = json.loads((t.root / "build" / "farm" / f"{run}.json").read_text())
+    tree = rec["remote_path"]
+    env = subprocess.run([PY3, "tools/box_table.py", "env", args.box], cwd=t.root, capture_output=True, text=True)
+    envs = env.stdout.strip() if env.returncode == 0 and env.stdout.strip() else "true"
+    wrap = WRAPS.get(args.box, "")
+    remote_cmd = (f"cd {shlex.quote(tree)} && {envs}; "
+                  f"eval \"$(python3 tools/native_env.py sbcl --export 2>/dev/null)\"; "
+                  f"{wrap} timeout {EMIT_TIMEOUT_SECONDS} sh -c {shlex.quote(EMIT_CMD)}").replace("  ", " ")
+    say(f"$ {SSH} {args.box} <emits in {tree}>")
+    log = t.logs / f"certify-emit-{args.box}.log"
+    p = subprocess.run([SSH, args.box, remote_cmd], capture_output=True, text=True)
+    log.write_text(p.stdout + p.stderr)
+    steps = {m.group(1): int(m.group(2)) for m in re.finditer(r"^== step (\S+) (\d+)$", p.stdout, re.M)}
+    if p.returncode != 0:
+        say(f"emits on {args.box} failed (rc {p.returncode}; log {log}); nothing recorded")
+        for line in (p.stdout + p.stderr).splitlines()[-30:]:
+            say("  | " + line)
+        return p.returncode
+    for out in HBOX_OUTPUTS:
+        f = subprocess.run(f"{shlex.quote(SSH)} {args.box} {shlex.quote('cd ' + shlex.quote(tree) + ' && tar cf - ' + out)} | tar xf - -C {shlex.quote(str(t.root))}",
+                           shell=True, capture_output=True, text=True)
+        if f.returncode != 0:
+            say(f"could not fetch {out} from {args.box}:{tree}: {f.stderr.strip()}; nothing recorded")
+            return 1
+    t3 = time.monotonic()
+    wall = {"install": round(t1 - t0), "certify": round(t2 - t1), "emit": round(t3 - t2), "total": round(t3 - t0), "emit_steps": steps}
+    _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the train certify's emits on {args.box} at {ran_at[:9]}")
+    record = {"sha": t.head(), "ran_at": ran_at, "box": args.box, "run": run,
+              "certify_id": rec.get("certify_id"), "wall": wall}
+    t.dir.mkdir(parents=True, exist_ok=True)
+    box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    st = t.load()
+    st["box_wall"] = wall
+    st["box_run"] = run
+    t.save(st)
+    say(f"certify recorded: {args.box} run {run} at {record['sha'][:9]}; wall install {wall['install']}s "
+        f"certify {wall['certify']}s emit {wall['emit']}s "
+        f"({', '.join(f'{k} {v}s' for k, v in steps.items())}) total {wall['total']}s")
+    return 0
+
+
 # --------------------------------------------------------------------------- gate
 
 def _lock_keys(t: Train, cwd: Path) -> set[str] | None:
@@ -501,6 +609,9 @@ def cmd_status(t: Train, args) -> int:
         say(f"  lane {l['name']}@{l['sha'][:9]}: {l['status']}" + (f" ({', '.join(l['files'])})" if l["files"] else ""))
     for s in st.get("regen", []):
         say(f"  regen {s['step']}: rc {s['rc']}")
+    if st.get("box_wall"):
+        w = st["box_wall"]
+        say(f"  certify {st.get('box_run')}: install {w['install']}s, certify {w['certify']}s, emit {w['emit']}s, total {w['total']}s")
     for n in GATES:
         g = st.get("gates", {}).get(n)
         if g:
@@ -519,6 +630,8 @@ def main(argv=None) -> int:
     r.add_argument("--label", metavar="N", help="the train number for the regen commit messages")
     b = sub.add_parser("boxstep")
     b.add_argument("box", choices=("hbox", "persvati"))
+    c = sub.add_parser("certify")
+    c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
     g.add_argument("--strict-lock", action="store_true")
     sub.add_parser("push")
@@ -526,7 +639,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     try:
         t = Train(toplevel(Path.cwd()))
-        return {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "gate": cmd_gate,
+        return {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
                 "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
     except TrainError as e:
         say(f"train: {e}")

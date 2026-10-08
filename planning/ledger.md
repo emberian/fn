@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3093 |
-| Certification roots in the Makefile | 2607 |
-| Books inside the root closure | 2938 |
-| `defthm` and `defthmd` events | 41881 |
-| `defun` events | 26450 |
-| Functions with verified guards | 4173 |
-| Functions declared `:verify-guards nil` and never verified | 3468 |
-| Functions left at the default with an explicit guard | 14507 |
-| Functions left at the default with no guard | 4302 |
-| `assert-event` checks | 28378 |
-| `must-fail` checks | 2805 |
+| Books read | 3104 |
+| Certification roots in the Makefile | 2615 |
+| Books inside the root closure | 2947 |
+| `defthm` and `defthmd` events | 42080 |
+| `defun` events | 26594 |
+| Functions with verified guards | 4184 |
+| Functions declared `:verify-guards nil` and never verified | 3514 |
+| Functions left at the default with an explicit guard | 14525 |
+| Functions left at the default with no guard | 4371 |
+| `assert-event` checks | 28456 |
+| `must-fail` checks | 2823 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 257 |
+| `encapsulate` events | 255 |
 | Theorems flagged SUSPECT by shape | 1522 |
-| Export-hygiene warnings | 434 |
+| Export-hygiene warnings | 438 |
 | Enabled-projection warnings | 78 |
-| Teeth-form warnings | 316 |
-| Include-hygiene warnings | 3712 |
-| Host-names warnings | 3423 |
+| Teeth-form warnings | 320 |
+| Include-hygiene warnings | 3711 |
+| Host-names warnings | 3424 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -162,14 +162,14 @@ that `make certify` requests.
 | `books/article-stream-owner-bridge.lisp` | root | 26 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/article-stream-owner.lisp` | root | 35 | 32 | 0/2/30/0 | 0 | 0 | 4 |
 | `books/article-stream-server.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/article-stream.lisp` | root | 23 | 39 | 1/2/36/0 | 0 | 0 | 0 |
+| `books/article-stream.lisp` | root | 32 | 45 | 1/2/41/1 | 0 | 0 | 0 |
 | `books/article-subject.lisp` | root | 34 | 14 | 1/0/13/0 | 0 | 0 | 0 |
 | `books/article-work-budget.lisp` | root | 4 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/article-work-primitives.lisp` | root | 25 | 14 | 0/0/0/14 | 0 | 0 | 2 |
 | `books/article-work-scanners.lisp` | root | 12 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/article-work.lisp` | root | 25 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/article.lisp` | root | 38 | 61 | 50/0/11/0 | 0 | 0 | 1 |
-| `books/assumptions-durable.lisp` | closure | 7 | 6 | 0/0/0/6 | 0 | 0 | 0 |
+| `books/assumptions-durable.lisp` | closure | 8 | 8 | 0/0/1/7 | 0 | 0 | 0 |
 | `books/assumptions-pgs-host-io.lisp` | closure | 28 | 11 | 0/0/10/1 | 0 | 0 | 0 |
 | `books/assumptions-publication.lisp` | root | 4 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/assumptions-recovery.lisp` | closure | 4 | 7 | 0/0/0/7 | 0 | 0 | 0 |
@@ -180,7 +180,7 @@ that `make certify` requests.
 | `books/blake3-stobj.lisp` | root | 53 | 15 | 2/2/8/3 | 0 | 0 | 6 |
 | `books/blake3-string.lisp` | root | 60 | 12 | 0/1/9/2 | 0 | 0 | 6 |
 | `books/blake3-tree.lisp` | root | 124 | 24 | 0/10/14/0 | 0 | 0 | 5 |
-| `books/blake3.lisp` | root | 42 | 44 | 8/0/36/0 | 0 | 0 | 0 |
+| `books/blake3.lisp` | root | 42 | 39 | 8/0/31/0 | 0 | 0 | 0 |
 | `books/body-chunks-span.lisp` | closure | 14 | 5 | 2/0/3/0 | 0 | 0 | 1 |
 | `books/body-chunks.lisp` | closure | 107 | 37 | 2/0/32/3 | 0 | 0 | 1 |
 | `books/bp-adu.lisp` | root | 22 | 41 | 7/0/34/0 | 0 | 0 | 0 |
@@ -294,7 +294,7 @@ that `make certify` requests.
 | `books/bp-node-host-machine.lisp` | root | 8 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-host-sequence.lisp` | closure | 7 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-node-host-transfer.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/bp-node-job-cursor.lisp` | root | 103 | 32 | 2/16/14/0 | 0 | 0 | 2 |
+| `books/bp-node-job-cursor.lisp` | root | 105 | 33 | 2/16/15/0 | 0 | 0 | 2 |
 | `books/bp-node-job-offer-guards.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer-progress.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-job-offer.lisp` | root | 67 | 26 | 5/5/16/0 | 0 | 0 | 1 |
@@ -467,8 +467,9 @@ that `make certify` requests.
 | `books/catalog-number-index.lisp` | root | 46 | 10 | 3/0/6/1 | 0 | 0 | 1 |
 | `books/catalog-number-window.lisp` | root | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/catalog-paged-attach.lisp` | root | 0 | 1 | 0/0/0/1 | 2 | 0 | 0 |
-| `books/catalog-paged.lisp` | root | 243 | 81 | 0/7/35/39 | 4 | 0 | 2 |
-| `books/catalog-pages.lisp` | root | 21 | 7 | 0/5/2/0 | 0 | 0 | 1 |
+| `books/catalog-paged.lisp` | root | 247 | 81 | 0/7/35/39 | 4 | 0 | 2 |
+| `books/catalog-pages.lisp` | root | 50 | 11 | 0/8/2/1 | 0 | 0 | 3 |
+| `books/catalog-pool.lisp` | - | 17 | 7 | 0/7/0/0 | 0 | 0 | 0 |
 | `books/catalog-prepare-sealed.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/catalog-prepare.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/catalog-prepared-record.lisp` | closure | 12 | 11 | 5/0/6/0 | 0 | 0 | 0 |
@@ -695,13 +696,14 @@ that `make certify` requests.
 | `books/def-cursor.lisp` | root | 4 | 8 | 1/0/6/1 | 0 | 0 | 0 |
 | `books/def-holder.lisp` | root | 30 | 50 | 0/0/14/36 | 0 | 0 | 0 |
 | `books/def-keyset-check.lisp` | root | 2 | 19 | 0/2/0/17 | 0 | 0 | 0 |
-| `books/def-loop.lisp` | root | 26 | 88 | 0/0/0/88 | 0 | 0 | 0 |
-| `books/def-representation-lib.lisp` | root | 22 | 6 | 0/1/5/0 | 0 | 0 | 1 |
-| `books/def-representation-paged.lisp` | closure | 221 | 63 | 0/54/2/7 | 0 | 0 | 3 |
-| `books/def-representation-pages.lisp` | root | 111 | 44 | 0/26/10/8 | 0 | 0 | 2 |
+| `books/def-loop.lisp` | root | 34 | 101 | 0/0/0/101 | 0 | 0 | 0 |
+| `books/def-representation-lib.lisp` | root | 45 | 10 | 0/2/5/3 | 0 | 0 | 1 |
+| `books/def-representation-paged.lisp` | closure | 254 | 78 | 1/68/2/7 | 0 | 0 | 3 |
+| `books/def-representation-pageread.lisp` | closure | 48 | 10 | 0/7/2/1 | 0 | 0 | 0 |
+| `books/def-representation-pages.lisp` | root | 120 | 46 | 0/28/10/8 | 0 | 0 | 2 |
 | `books/def-representation-tree-walk.lisp` | closure | 70 | 26 | 1/17/4/4 | 0 | 0 | 3 |
 | `books/def-representation-tree.lisp` | closure | 12 | 8 | 0/7/1/0 | 0 | 0 | 0 |
-| `books/def-representation.lisp` | root | 0 | 40 | 0/0/0/40 | 0 | 0 | 0 |
+| `books/def-representation.lisp` | root | 0 | 68 | 0/0/0/68 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/definterface.lisp` | root | 0 | 54 | 0/0/0/54 | 0 | 0 | 0 |
 | `books/defkeystone.lisp` | root | 0 | 78 | 0/0/0/78 | 0 | 0 | 0 |
@@ -849,7 +851,7 @@ that `make certify` requests.
 | `books/history-pages-relocate-step.lisp` | root | 20 | 10 | 3/0/6/1 | 0 | 0 | 0 |
 | `books/history-pages-relocate.lisp` | root | 70 | 11 | 0/0/4/7 | 0 | 0 | 0 |
 | `books/history-pages-resident.lisp` | closure | 9 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/history-pages-row.lisp` | root | 45 | 11 | 1/4/5/1 | 0 | 0 | 4 |
+| `books/history-pages-row.lisp` | root | 45 | 11 | 2/4/4/1 | 0 | 0 | 4 |
 | `books/history-pages-step.lisp` | root | 22 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/history-pages-view.lisp` | root | 9 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/history-pages-words.lisp` | root | 22 | 5 | 2/0/0/3 | 0 | 0 | 0 |
@@ -892,7 +894,7 @@ that `make certify` requests.
 | `books/identity-invariants.lisp` | root | 43 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
 | `books/identity.lisp` | root | 2 | 20 | 4/0/16/0 | 0 | 0 | 0 |
-| `books/idle-collection.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 2 |
+| `books/idle-collection.lisp` | root | 11 | 6 | 0/0/6/0 | 0 | 0 | 3 |
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1014,14 +1016,14 @@ that `make certify` requests.
 | `books/native-admin-peer-budget.lisp` | closure | 26 | 13 | 4/0/9/0 | 0 | 0 | 2 |
 | `books/native-admin-peer.lisp` | root | 42 | 57 | 13/0/44/0 | 0 | 0 | 5 |
 | `books/native-admin-shape.lisp` | root | 6 | 17 | 3/0/14/0 | 0 | 0 | 0 |
-| `books/native-admin.lisp` | root | 44 | 66 | 13/0/53/0 | 0 | 0 | 4 |
+| `books/native-admin.lisp` | root | 45 | 66 | 13/0/53/0 | 0 | 0 | 4 |
 | `books/native-auth-admin.lisp` | root | 17 | 60 | 12/0/48/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 9 | 25 | 3/0/22/0 | 0 | 0 | 1 |
 | `books/native-config-observation.lisp` | root | 10 | 21 | 10/0/11/0 | 0 | 0 | 0 |
 | `books/native-config-paths.lisp` | root | 13 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/native-config-show.lisp` | root | 144 | 41 | 0/0/37/4 | 0 | 0 | 4 |
 | `books/native-config.lisp` | root | 32 | 114 | 2/0/112/0 | 0 | 0 | 0 |
-| `books/native-control-buffer.lisp` | root | 23 | 12 | 1/0/11/0 | 0 | 0 | 0 |
+| `books/native-control-buffer.lisp` | root | 24 | 12 | 1/0/11/0 | 0 | 0 | 0 |
 | `books/native-control-kinds.lisp` | closure | 12 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/native-control-launch.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/native-control-line.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -1140,7 +1142,7 @@ that `make certify` requests.
 | `books/output-tariff-family.lisp` | root | 3 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/output-tariff-input.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/output-tariff-line.lisp` | root | 15 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/over-window.lisp` | root | 48 | 14 | 2/8/4/0 | 0 | 0 | 0 |
+| `books/over-window.lisp` | root | 51 | 14 | 2/8/4/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 33 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/owner-agent.lisp` | root | 46 | 19 | 10/0/9/0 | 0 | 0 | 4 |
@@ -1160,6 +1162,7 @@ that `make certify` requests.
 | `books/owner-commit-carried.lisp` | root | 39 | 18 | 8/0/10/0 | 0 | 0 | 0 |
 | `books/owner-commit-class.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/owner-commit-fairness.lisp` | root | 38 | 16 | 0/0/16/0 | 0 | 0 | 0 |
+| `books/owner-commit-held.lisp` | root | 16 | 16 | 0/0/15/1 | 0 | 0 | 0 |
 | `books/owner-commit-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-commit-pipeline.lisp` | root | 12 | 13 | 0/0/13/0 | 0 | 0 | 0 |
 | `books/owner-commit-steps.lisp` | root | 32 | 32 | 2/0/30/0 | 0 | 0 | 1 |
@@ -1186,7 +1189,7 @@ that `make certify` requests.
 | `books/owner-feed-reconfigure-counted.lisp` | closure | 19 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-feed-subject.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/owner-feed-txid-reuse.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-feed.lisp` | root | 117 | 117 | 27/0/90/0 | 0 | 0 | 1 |
+| `books/owner-feed.lisp` | root | 117 | 117 | 28/0/89/0 | 0 | 0 | 1 |
 | `books/owner-host-relation-span.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-host-relation.lisp` | root | 141 | 2 | 0/0/2/0 | 0 | 0 | 9 |
 | `books/owner-identity-intern.lisp` | root | 5 | 5 | 1/1/3/0 | 0 | 0 | 0 |
@@ -1217,7 +1220,7 @@ that `make certify` requests.
 | `books/owner-offer-indexed.lisp` | root | 56 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/owner-open-carried.lisp` | root | 14 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner-operation-report.lisp` | closure | 3 | 2 | 2/0/0/0 | 0 | 0 | 1 |
-| `books/owner-outcome-counted.lisp` | closure | 19 | 7 | 5/0/2/0 | 0 | 0 | 1 |
+| `books/owner-outcome-counted.lisp` | closure | 21 | 8 | 5/0/3/0 | 0 | 0 | 1 |
 | `books/owner-outcome-pinned.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-parse-carried.lisp` | root | 48 | 41 | 1/0/40/0 | 0 | 0 | 1 |
 | `books/owner-post-carried.lisp` | root | 4 | 2 | 0/2/0/0 | 0 | 0 | 0 |
@@ -1241,7 +1244,7 @@ that `make certify` requests.
 | `books/owner-reclaim-pass.lisp` | closure | 22 | 20 | 6/5/9/0 | 0 | 0 | 0 |
 | `books/owner-reclaim-ready.lisp` | closure | 10 | 4 | 0/2/2/0 | 0 | 0 | 2 |
 | `books/owner-reclaim-seal.lisp` | root | 7 | 9 | 1/0/8/0 | 0 | 0 | 1 |
-| `books/owner-reclaim.lisp` | root | 19 | 12 | 1/2/9/0 | 0 | 0 | 1 |
+| `books/owner-reclaim.lisp` | root | 19 | 12 | 2/2/8/0 | 0 | 0 | 1 |
 | `books/owner-recover-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-recovery-retain.lisp` | closure | 15 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/owner-refresh-indexed.lisp` | root | 10 | 5 | 0/0/5/0 | 0 | 0 | 1 |
@@ -1275,12 +1278,13 @@ that `make certify` requests.
 | `books/owner-store-budget.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-store-indexed.lisp` | closure | 16 | 7 | 0/5/2/0 | 0 | 0 | 2 |
 | `books/owner-submission-record.lisp` | closure | 22 | 10 | 0/0/10/0 | 0 | 0 | 8 |
-| `books/owner-time-admission.lisp` | root | 28 | 16 | 3/0/13/0 | 0 | 0 | 5 |
+| `books/owner-time-admission.lisp` | root | 28 | 16 | 4/0/12/0 | 0 | 0 | 5 |
 | `books/owner-time-bars.lisp` | root | 48 | 17 | 0/0/17/0 | 0 | 0 | 1 |
+| `books/owner-time-held.lisp` | root | 8 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner-time-journal-stream.lisp` | root | 51 | 15 | 0/0/11/4 | 0 | 0 | 3 |
 | `books/owner-time-journal-writer.lisp` | root | 88 | 33 | 0/3/27/3 | 0 | 0 | 1 |
 | `books/owner-time-journal.lisp` | root | 53 | 32 | 1/0/23/8 | 0 | 0 | 1 |
-| `books/owner-time-model.lisp` | root | 87 | 102 | 0/0/102/0 | 0 | 0 | 1 |
+| `books/owner-time-model.lisp` | root | 90 | 104 | 0/0/104/0 | 0 | 0 | 2 |
 | `books/owner-tls-prefix.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 1 |
 | `books/owner-verdict-read.lisp` | root | 21 | 2 | 0/0/1/1 | 0 | 0 | 3 |
 | `books/owner-xref-read.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -1294,7 +1298,7 @@ that `make certify` requests.
 | `books/page-read-bindings-transaction.lisp` | - | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/page-read-budget-growth.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/page-read-counter-transaction.lisp` | root | 0 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/page-read-direct.lisp` | root | 67 | 19 | 0/0/18/1 | 0 | 0 | 1 |
+| `books/page-read-direct.lisp` | root | 69 | 19 | 0/0/18/1 | 0 | 0 | 1 |
 | `books/page-read-executor.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-issue-source-cost.lisp` | root | 13 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
@@ -1305,10 +1309,12 @@ that `make certify` requests.
 | `books/page-window-executor.lisp` | root | 13 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/page-window-lease.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-window-read.lisp` | root | 8 | 9 | 0/0/9/0 | 0 | 0 | 0 |
-| `books/page-window-span.lisp` | root | 26 | 4 | 0/0/4/0 | 0 | 0 | 2 |
+| `books/page-window-span.lisp` | root | 25 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/page-window-worker-storage.lisp` | closure | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/paged-checkpoint-exec.lisp` | root | 15 | 7 | 0/4/0/3 | 0 | 0 | 0 |
 | `books/paged-checkpoint-host.lisp` | root | 15 | 10 | 0/6/4/0 | 0 | 0 | 0 |
+| `books/paged-checkpoint-image.lisp` | root | 71 | 12 | 0/4/0/8 | 0 | 0 | 1 |
+| `books/paged-checkpoint-open.lisp` | root | 86 | 18 | 4/7/3/4 | 0 | 0 | 2 |
 | `books/paged-checkpoint-stage.lisp` | root | 92 | 18 | 0/11/2/5 | 0 | 0 | 2 |
 | `books/paged-checkpoint.lisp` | root | 59 | 28 | 0/21/4/3 | 0 | 0 | 1 |
 | `books/pagestore-digest-block-predicate.lisp` | root | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -1333,11 +1339,11 @@ that `make certify` requests.
 | `books/path-update.lisp` | root | 83 | 33 | 10/0/22/1 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 1 | 22 | 2/0/20/0 | 0 | 0 | 0 |
 | `books/payload-arena-attach.lisp` | root | 0 | 1 | 0/0/0/1 | 1 | 0 | 0 |
-| `books/payload-arena-bytes.lisp` | root | 79 | 28 | 3/3/19/3 | 0 | 0 | 2 |
+| `books/payload-arena-bytes.lisp` | root | 10 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/payload-arena-extent-logic.lisp` | root | 3 | 10 | 0/0/10/0 | 0 | 0 | 0 |
-| `books/payload-arena-extent.lisp` | root | 162 | 39 | 0/4/28/7 | 0 | 0 | 4 |
-| `books/payload-arena-paged.lisp` | root | 129 | 28 | 7/6/11/4 | 0 | 0 | 2 |
-| `books/payload-arena.lisp` | root | 82 | 20 | 0/1/16/3 | 0 | 0 | 0 |
+| `books/payload-arena-extent.lisp` | root | 167 | 41 | 0/4/30/7 | 0 | 0 | 4 |
+| `books/payload-arena-paged.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/payload-arena.lisp` | root | 85 | 21 | 0/1/17/3 | 0 | 0 | 0 |
 | `books/payload-commit-extent.lisp` | root | 22 | 7 | 0/0/6/1 | 0 | 0 | 0 |
 | `books/payload-deflate.lisp` | root | 6 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/payload-extent-read.lisp` | root | 8 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -1563,11 +1569,11 @@ that `make certify` requests.
 | `books/resource-output-chain.lisp` | root | 43 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `books/resource-output.lisp` | root | 62 | 13 | 8/0/5/0 | 0 | 0 | 1 |
 | `books/resource-syncer.lisp` | closure | 16 | 11 | 8/0/3/0 | 0 | 0 | 0 |
-| `books/resource-vector-exec.lisp` | root | 124 | 24 | 9/0/9/6 | 1 | 0 | 0 |
+| `books/resource-vector-exec.lisp` | root | 126 | 24 | 9/0/9/6 | 1 | 0 | 0 |
 | `books/resource-vector-relations-heap.lisp` | - | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/resource-vector-relations.lisp` | root | 15 | 6 | 0/0/5/1 | 0 | 0 | 0 |
 | `books/resource-vector-tree.lisp` | root | 47 | 14 | 0/5/9/0 | 0 | 0 | 1 |
-| `books/resource-vector.lisp` | root | 151 | 53 | 1/1/48/3 | 0 | 0 | 3 |
+| `books/resource-vector.lisp` | root | 161 | 53 | 1/1/48/3 | 0 | 0 | 3 |
 | `books/response-identity.lisp` | closure | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/response-plan-pins.lisp` | root | 13 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/retention-figures.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
@@ -1595,12 +1601,12 @@ that `make certify` requests.
 | `books/send-progress.lisp` | root | 8 | 11 | 0/0/11/0 | 0 | 0 | 1 |
 | `books/served-access-revoke.lisp` | root | 7 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/served-auth-wire-bridge.lisp` | root | 15 | 1 | 1/0/0/0 | 0 | 0 | 0 |
-| `books/served-availability.lisp` | root | 14 | 8 | 1/0/5/2 | 0 | 0 | 1 |
+| `books/served-availability.lisp` | root | 14 | 8 | 2/0/4/2 | 0 | 0 | 1 |
 | `books/served-available-access.lisp` | root | 19 | 7 | 0/7/0/0 | 0 | 0 | 2 |
 | `books/served-available-commands.lisp` | root | 2 | 17 | 6/0/10/1 | 0 | 0 | 0 |
 | `books/served-available-read.lisp` | root | 4 | 25 | 0/25/0/0 | 0 | 0 | 0 |
 | `books/served-carried.lisp` | root | 18 | 13 | 1/0/12/0 | 0 | 0 | 0 |
-| `books/served-catalog-chain.lisp` | root | 102 | 52 | 27/1/14/10 | 0 | 0 | 11 |
+| `books/served-catalog-chain.lisp` | root | 102 | 52 | 27/1/14/10 | 0 | 0 | 10 |
 | `books/served-catalog-dispatch.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/served-catalog-join-conns.lisp` | root | 12 | 7 | 0/0/1/6 | 0 | 0 | 1 |
 | `books/served-catalog-join-entry.lisp` | root | 62 | 11 | 0/5/4/2 | 0 | 0 | 5 |
@@ -1634,27 +1640,27 @@ that `make certify` requests.
 | `books/served-catalog-owner-keyed.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/served-catalog-owner.lisp` | root | 93 | 13 | 2/3/5/3 | 0 | 0 | 7 |
 | `books/served-catalog-view.lisp` | root | 62 | 24 | 6/0/17/1 | 0 | 0 | 0 |
-| `books/served-catalog.lisp` | root | 186 | 103 | 35/8/59/1 | 0 | 0 | 11 |
+| `books/served-catalog.lisp` | root | 187 | 103 | 36/8/58/1 | 0 | 0 | 11 |
 | `books/served-chunk-live-free.lisp` | root | 17 | 3 | 1/0/2/0 | 0 | 0 | 4 |
 | `books/served-columns.lisp` | root | 50 | 19 | 2/2/14/1 | 0 | 0 | 1 |
 | `books/served-date-current.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/served-head-bridge.lisp` | root | 40 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/served-implicit-tls.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/served-plan-cursor.lisp` | root | 32 | 12 | 1/4/7/0 | 0 | 0 | 0 |
+| `books/served-plan-cursor.lisp` | root | 34 | 13 | 2/4/7/0 | 0 | 0 | 0 |
 | `books/served-plan-head-window.lisp` | root | 4 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/served-plan-line-buffer.lisp` | root | 9 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/served-plan-position.lisp` | root | 12 | 17 | 1/1/15/0 | 0 | 0 | 0 |
 | `books/served-plan-shape.lisp` | root | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/served-plan-window.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/served-plan.lisp` | root | 31 | 21 | 0/1/20/0 | 0 | 0 | 2 |
-| `books/served-query-plan.lisp` | root | 24 | 14 | 0/0/10/4 | 0 | 0 | 1 |
+| `books/served-query-plan.lisp` | root | 34 | 16 | 1/0/11/4 | 0 | 0 | 1 |
 | `books/served-render-holder.lisp` | root | 5 | 6 | 0/1/5/0 | 0 | 0 | 0 |
 | `books/served-reply-buffer.lisp` | root | 8 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/served-scan.lisp` | root | 12 | 2 | 1/1/0/0 | 0 | 0 | 2 |
 | `books/served-span.lisp` | root | 13 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/served-step.lisp` | root | 2 | 9 | 0/0/9/0 | 0 | 0 | 1 |
-| `books/served-tls-prefix.lisp` | root | 47 | 11 | 1/3/7/0 | 0 | 0 | 2 |
-| `books/served.lisp` | root | 171 | 89 | 7/5/77/0 | 0 | 0 | 54 |
+| `books/served-tls-prefix.lisp` | root | 47 | 11 | 1/3/7/0 | 0 | 0 | 1 |
+| `books/served.lisp` | root | 171 | 89 | 8/5/76/0 | 0 | 0 | 53 |
 | `books/sha256.lisp` | root | 30 | 31 | 2/0/29/0 | 0 | 0 | 0 |
 | `books/snapshot-capture-lease.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/snapshot-decode-remap.lisp` | root | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
@@ -1914,8 +1920,8 @@ that `make certify` requests.
 | `books/web-reply-stream.lisp` | closure | 11 | 11 | 0/11/0/0 | 0 | 0 | 0 |
 | `books/web-request.lisp` | root | 46 | 109 | 5/0/104/0 | 0 | 0 | 2 |
 | `books/web-session-keystones.lisp` | root | 56 | 7 | 0/0/7/0 | 0 | 0 | 1 |
-| `books/web-session.lisp` | root | 42 | 157 | 12/0/145/0 | 0 | 0 | 2 |
-| `books/wildmat-cursor.lisp` | root | 107 | 57 | 0/12/36/9 | 0 | 0 | 5 |
+| `books/web-session.lisp` | root | 42 | 157 | 13/0/144/0 | 0 | 0 | 2 |
+| `books/wildmat-cursor.lisp` | root | 124 | 57 | 0/12/36/9 | 0 | 0 | 5 |
 | `books/wildmat-live.lisp` | root | 55 | 27 | 2/0/0/25 | 0 | 0 | 3 |
 | `books/wildmat-matcher-invariants.lisp` | root | 19 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/wildmat-parser-invariants.lisp` | root | 18 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -1979,7 +1985,7 @@ that `make certify` requests.
 | `tests/acl2/article-stream-owner-teeth-tests.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/article-stream-owner-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/article-stream-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
-| `tests/acl2/article-stream-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 13 | 0 | 0 |
+| `tests/acl2/article-stream-tests.lisp` | root | 0 | 5 | 0/1/0/4 | 14 | 0 | 0 |
 | `tests/acl2/article-subject-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/article-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/article-tests.lisp` | root | 5 | 4 | 0/0/0/4 | 39 | 0 | 0 |
@@ -2194,6 +2200,7 @@ that `make certify` requests.
 | `tests/acl2/catalog-load-index-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 1 | 0 |
 | `tests/acl2/catalog-number-index-tests.lisp` | root | 8 | 4 | 0/0/0/4 | 2 | 3 | 0 |
 | `tests/acl2/catalog-paged-tests.lisp` | root | 0 | 17 | 0/0/0/17 | 14 | 0 | 0 |
+| `tests/acl2/catalog-pool-tests.lisp` | - | 0 | 10 | 0/3/0/7 | 19 | 5 | 0 |
 | `tests/acl2/catalog-record-tests.lisp` | root | 12 | 3 | 0/0/1/2 | 5 | 6 | 0 |
 | `tests/acl2/catalog-refresh-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 24 | 0 | 0 |
 | `tests/acl2/catalog-relation-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 3 | 2 | 0 |
@@ -2357,11 +2364,11 @@ that `make certify` requests.
 | `tests/acl2/def-cursor-tests.lisp` | root | 13 | 7 | 1/2/4/0 | 9 | 7 | 0 |
 | `tests/acl2/def-holder-tests.lisp` | root | 4 | 6 | 0/0/6/0 | 40 | 19 | 0 |
 | `tests/acl2/def-keyset-check-tests.lisp` | root | 7 | 15 | 2/0/13/0 | 21 | 1 | 0 |
-| `tests/acl2/def-loop-tests.lisp` | root | 40 | 93 | 68/2/23/0 | 114 | 53 | 0 |
+| `tests/acl2/def-loop-tests.lisp` | root | 43 | 101 | 74/2/25/0 | 121 | 55 | 0 |
 | `tests/acl2/def-representation-late-world-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/def-representation-paged-tests.lisp` | root | 33 | 3 | 0/3/0/0 | 1 | 0 | 0 |
-| `tests/acl2/def-representation-pages-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 22 | 8 | 0 |
-| `tests/acl2/def-representation-tests.lisp` | root | 16 | 28 | 0/15/8/5 | 31 | 12 | 0 |
+| `tests/acl2/def-representation-pages-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 25 | 8 | 0 |
+| `tests/acl2/def-representation-tests.lisp` | root | 22 | 37 | 0/19/9/9 | 34 | 33 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-recognizer-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 9 | 14 | 0/0/9/5 | 48 | 26 | 1 |
@@ -2489,7 +2496,7 @@ that `make certify` requests.
 | `tests/acl2/hybrid-store-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 4 | 8 | 0 |
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
-| `tests/acl2/idle-collection-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 3 | 0 |
+| `tests/acl2/idle-collection-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 5 | 0 |
 | `tests/acl2/index-backing-publication-row-carry-tests.lisp` | - | 19 | 8 | 0/2/0/6 | 0 | 0 | 0 |
 | `tests/acl2/index-backing-served-producer-tests.lisp` | - | 16 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `tests/acl2/index-reader-render-establishment-tests.lisp` | root | 3 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -2652,6 +2659,7 @@ that `make certify` requests.
 | `tests/acl2/owner-commit-carried-tests.lisp` | root | 0 | 6 | 0/2/0/4 | 26 | 5 | 0 |
 | `tests/acl2/owner-commit-class-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 16 | 2 | 0 |
 | `tests/acl2/owner-commit-fairness-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 46 | 0 | 0 |
+| `tests/acl2/owner-commit-held-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
 | `tests/acl2/owner-commit-pipeline-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 58 | 2 | 0 |
 | `tests/acl2/owner-commit-steps-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 89 | 9 | 0 |
 | `tests/acl2/owner-compact-request-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 2 | 0 |
@@ -2733,6 +2741,7 @@ that `make certify` requests.
 | `tests/acl2/owner-store-indexed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 5 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 31 | 0/1/1/29 | 440 | 41 | 0 |
 | `tests/acl2/owner-time-bars-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 34 | 1 | 0 |
+| `tests/acl2/owner-time-held-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 13 | 0 | 0 |
 | `tests/acl2/owner-time-journal-stream-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 16 | 0 | 0 |
 | `tests/acl2/owner-time-journal-writer-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 23 | 2 | 0 |
 | `tests/acl2/owner-time-model-tests.lisp` | root | 1 | 16 | 0/0/0/16 | 126 | 2 | 0 |
@@ -2756,11 +2765,13 @@ that `make certify` requests.
 | `tests/acl2/page-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/page-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/page-window-read-tests.lisp` | root | 10 | 14 | 0/1/0/13 | 0 | 0 | 0 |
-| `tests/acl2/page-window-span-tests.lisp` | root | 7 | 9 | 0/0/0/9 | 0 | 0 | 0 |
+| `tests/acl2/page-window-span-tests.lisp` | root | 6 | 8 | 0/0/0/8 | 0 | 0 | 0 |
 | `tests/acl2/paged-checkpoint-exec-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 1 | 2 | 0 |
 | `tests/acl2/paged-checkpoint-host-tests.lisp` | root | 1 | 9 | 0/3/3/3 | 8 | 7 | 0 |
+| `tests/acl2/paged-checkpoint-image-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 1 | 2 | 0 |
+| `tests/acl2/paged-checkpoint-open-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 4 | 2 | 0 |
 | `tests/acl2/paged-checkpoint-stage-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 1 | 1 | 0 |
-| `tests/acl2/paged-checkpoint-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 20 | 7 | 0 |
+| `tests/acl2/paged-checkpoint-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 24 | 9 | 0 |
 | `tests/acl2/pagestore-digest-byte-cursor-tests.lisp` | root | 9 | 3 | 0/1/0/2 | 0 | 0 | 0 |
 | `tests/acl2/pagestore-digest-byte-domain-tests.lisp` | root | 9 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/pagestore-digest-cursor-domain-tests.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -2771,8 +2782,8 @@ that `make certify` requests.
 | `tests/acl2/pagestore-refine-tests.lisp` | root | 0 | 10 | 0/5/5/0 | 6 | 0 | 0 |
 | `tests/acl2/pagestore-tests.lisp` | root | 0 | 39 | 0/0/2/37 | 41 | 0 | 0 |
 | `tests/acl2/payload-arena-extent-tests.lisp` | root | 13 | 7 | 0/2/1/4 | 6 | 10 | 0 |
-| `tests/acl2/payload-arena-paged-tests.lisp` | root | 41 | 12 | 0/6/2/4 | 5 | 20 | 0 |
-| `tests/acl2/payload-arena-tests.lisp` | root | 23 | 13 | 0/0/1/12 | 7 | 10 | 0 |
+| `tests/acl2/payload-arena-paged-tests.lisp` | root | 0 | 10 | 0/4/2/4 | 4 | 0 | 0 |
+| `tests/acl2/payload-arena-tests.lisp` | root | 20 | 13 | 0/0/1/12 | 7 | 10 | 0 |
 | `tests/acl2/payload-commit-extent-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 3 | 4 | 0 |
 | `tests/acl2/payload-deflate-vectors.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/payload-extent-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 13 | 7 | 0 |
@@ -2962,7 +2973,7 @@ that `make certify` requests.
 | `tests/acl2/served-catalog-raw-availability-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 2 | 0 | 0 |
 | `tests/acl2/served-catalog-scan-tests.lisp` | root | 0 | 10 | 0/6/0/4 | 9 | 0 | 0 |
 | `tests/acl2/served-catalog-source-scan-tests.lisp` | root | 0 | 11 | 0/10/0/1 | 10 | 0 | 0 |
-| `tests/acl2/served-catalog-tests.lisp` | root | 26 | 3 | 0/0/0/3 | 0 | 12 | 0 |
+| `tests/acl2/served-catalog-tests.lisp` | root | 27 | 3 | 0/0/0/3 | 0 | 14 | 0 |
 | `tests/acl2/served-catalog-view-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 0 | 1 | 0 |
 | `tests/acl2/served-chunk-live-free-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 16 | 0 | 0 |
 | `tests/acl2/served-columns-tests.lisp` | root | 3 | 10 | 0/6/4/0 | 3 | 3 | 0 |
@@ -2978,7 +2989,7 @@ that `make certify` requests.
 | `tests/acl2/served-plan-line-buffer-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 9 | 0 | 0 |
 | `tests/acl2/served-plan-newnews-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/served-plan-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 41 | 8 | 0 |
-| `tests/acl2/served-query-plan-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 6 | 0 | 0 |
+| `tests/acl2/served-query-plan-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 8 | 0 | 0 |
 | `tests/acl2/served-reply-buffer-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 7 | 2 | 0 |
 | `tests/acl2/served-scan-tests.lisp` | root | 0 | 18 | 0/15/0/3 | 22 | 0 | 0 |
 | `tests/acl2/served-span-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 3 | 0 |
@@ -3191,9 +3202,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | --- | --- | --- | --- |
 | `adt-between-step` | `books/def-representation-lib.lisp` | 166 | arm-of-definition: the hypotheses select one IF/COND arm of adt-between and the conclusion is that arm's value |
 | `adt-h-puts-of-atom` | `books/def-representation-tree-walk.lisp` | 352 | arm-of-definition: the hypotheses select one IF/COND arm of adt-h-puts and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-h-puts and the conclusion is that branch's value |
-| `adt-pg-dflat-is-rtab` | `books/def-representation-paged.lisp` | 1565 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
-| `adt-pg-fresh-done` | `books/def-representation-paged.lisp` | 1241 | arm-of-definition: the hypotheses select one IF/COND arm of adt-pg-fresh and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-pg-fresh and the conclusion is that branch's value |
-| `adt-pg-set-c-is-room-then-set` | `books/def-representation-paged.lisp` | 2233 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `adt-pg-dflat-is-rtab` | `books/def-representation-paged.lisp` | 1630 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `adt-pg-fresh-done` | `books/def-representation-paged.lisp` | 1306 | arm-of-definition: the hypotheses select one IF/COND arm of adt-pg-fresh and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-pg-fresh and the conclusion is that branch's value |
+| `adt-pg-set-c-is-room-then-set` | `books/def-representation-paged.lisp` | 2670 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `adt-pool-cputs-of-atom` | `books/def-representation-tree-walk.lisp` | 290 | arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-cputs and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-pool-cputs and the conclusion is that branch's value |
 | `adt-pool-puts-of-atom` | `books/def-representation-tree-walk.lisp` | 181 | arm-of-definition: the hypotheses select one IF/COND arm of adt-pool-puts and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of adt-pool-puts and the conclusion is that branch's value |
 | `adt-tp-dirty-at-is-dirty` | `books/def-representation-pages.lisp` | 687 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
@@ -3215,20 +3226,16 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-anchor-octets-of-lengthp-forward` | `books/anchor.lisp` | 130 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp |
 | `fn-apc-own-finish-is-own-finish` | `books/owner-parse-carried.lisp` | 1077 | closed-theory-corollary: proved only by fn-apc-own-finish-is-ccar-own-finish, fn-ccar-own-finish-is-own-finish |
 | `fn-apr-initial-node-has-no-articles` | `books/acceptance-payload-ref.lisp` | 334 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-arn-rangesp-empty` | `books/payload-arena-bytes.lisp` | 165 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arn-rangesp and the conclusion is that arm's value |
-| `fn-arn-slices-empty` | `books/payload-arena-bytes.lisp` | 161 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arn-slices and the conclusion is that arm's value |
-| `fn-arp-okp-forward` | `books/payload-arena-paged.lisp` | 508 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-arp-okp |
-| `fn-arp-put-is-put-kj` | `books/payload-arena-paged.lisp` | 980 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-ars-result-okp-is-line-okp` | `books/article-buffer.lisp` | 464 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-article-add-fold-raw-lines` | `books/article-invariants.lisp` | 532 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-article-parse-is-the-ceiling-limits-by-definition` | `books/article-header-limits.lisp` | 232 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-article-parse; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-article-payload-of-make-article` | `books/store-intern.lisp` | 780 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-article-source-recomposes` | `books/article.lisp` | 849 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-arx-composite-payload-octets` | `books/payload-extent.lisp` | 309 | instance-corollary: the statement is fn-arx-record-payload-octets instantiated, discharging nothing |
-| `fn-arx-entry-file-of-extent-by-definition` | `books/payload-arena-extent.lisp` | 1600 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry-file and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-arx-entry-file and the conclusion is that branch's value |
-| `fn-arx-entry-of-extent` | `books/payload-arena-extent.lisp` | 194 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
-| `fn-arx-entry-of-resident` | `books/payload-arena-extent.lisp` | 208 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
-| `fn-arx-view-empty` | `books/payload-arena-extent.lisp` | 258 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-view and the conclusion is that arm's value |
+| `fn-arx-entry-file-of-extent-by-definition` | `books/payload-arena-extent.lisp` | 1687 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry-file and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-arx-entry-file and the conclusion is that branch's value |
+| `fn-arx-entry-of-extent` | `books/payload-arena-extent.lisp` | 204 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
+| `fn-arx-entry-of-resident` | `books/payload-arena-extent.lisp` | 218 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
+| `fn-arx-view-empty` | `books/payload-arena-extent.lisp` | 268 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-view and the conclusion is that arm's value |
 | `fn-asto-capture-selection-restricted` | `books/article-stream-owner.lisp` | 341 | arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-capture-selection and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-asto-capture-selection and the conclusion is that branch's value |
 | `fn-asto-capture-selection-unrestricted` | `books/article-stream-owner.lisp` | 346 | arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-capture-selection and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-asto-capture-selection and the conclusion is that branch's value |
 | `fn-asto-plan-unavailable-without-a-preflight-by-definition` | `books/article-stream-owner.lisp` | 828 | arm-of-definition: the hypotheses select one IF/COND arm of fn-asto-plan-unavailable and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-asto-plan-unavailable and the conclusion is that branch's value |
@@ -3347,8 +3354,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpnf-reassemble-ok-covers-zero` | `books/bp-node-fragment-family.lisp` | 228 | instance-corollary: the statement is fn-bpfw-spec-ok-covers-zero instantiated, discharging nothing |
 | `fn-bpnfg-car-is-car` | `books/bp-node-fragment-guards.lisp` | 165 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-cbor-ag-car; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpnj-step-delegates-every-other-event` | `books/bp-node-job-offer.lisp` | 221 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnj-step and the conclusion is that arm's value |
-| `fn-bpnjc-with-status-keeps-the-key` | `books/bp-node-job-cursor.lisp` | 1213 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-bpnjc-with-status-keeps-the-peer` | `books/bp-node-job-cursor.lisp` | 1142 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-bpnjc-with-status-keeps-the-key` | `books/bp-node-job-cursor.lisp` | 1239 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-bpnjc-with-status-keeps-the-peer` | `books/bp-node-job-cursor.lisp` | 1168 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpnp-operation-key-by-definition` | `books/bp-node-progress-selection-invariants.lisp` | 126 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpnp-payload-of-held` | `books/bp-node-progress-invariants.lisp` | 14 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpnp-primary-of-held` | `books/bp-node-progress-invariants.lisp` | 7 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-bpnp-primary |
@@ -3461,8 +3468,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-col-bind-refusal-refuses-exactly-an-unregistered-bind` | `books/consumer-owner-local.lisp` | 120 | iff-of-definition-test: fn-col-bind-refusal is (if TEST non-nil nil) and the statement is its truth iff TEST |
 | `fn-col-poll-index-get-non-uint-is-nil-by-definition` | `books/consumer-poll-index.lisp` | 145 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cei-get and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-cei-get and the conclusion is that branch's value |
 | `fn-cp-cursor-decode-overlong-by-definition` | `books/consumer-position.lisp` | 850 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cp-cursor-decode and the conclusion is that arm's value |
-| `fn-cp-numbers-of-held` | `books/catalog-paged.lisp` | 1863 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-cp-withdrawn-of-held` | `books/catalog-paged.lisp` | 1855 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-cp-numbers-of-held` | `books/catalog-paged.lisp` | 1864 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-cp-withdrawn-of-held` | `books/catalog-paged.lisp` | 1856 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cpc-assemble-accessors` | `books/checkpoint-codec.lisp` | 1242 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1270 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
 | `fn-cpl-assign-fields` | `books/catalog-live-links.lisp` | 167 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3585,11 +3592,11 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-hmac-octet-listp-true-listp` | `books/hmac-sha256.lisp` | 246 | instance-corollary: the statement is fn-sha256-octet-listp-implies-true-listp instantiated, discharging nothing |
 | `fn-hmc-worker-accessors-are-nths` | `books/host-model.lisp` | 46 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hmc-worker-phase and the conclusion is that arm's value |
 | `fn-hmc-worker-fields-are-nths` | `books/host-model.lisp` | 1418 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hmc-worker-phase and the conclusion is that arm's value |
-| `fn-hp-cells-of-is` | `books/history-pages-row.lisp` | 206 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-hp-len-pe-bound` | `books/history-pages-row.lisp` | 431 | instance-corollary: the statement is fn-hp-len-enc-le-pe instantiated, discharging nothing |
+| `fn-hp-cells-of-is` | `books/history-pages-row.lisp` | 207 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-hp-len-pe-bound` | `books/history-pages-row.lisp` | 416 | instance-corollary: the statement is fn-hp-len-enc-le-pe instantiated, discharging nothing |
 | `fn-hp-lens-is` | `books/history-pages-exec.lisp` | 407 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-hp-pe-def` | `books/history-pages-row.lisp` | 227 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-hp-pe |
-| `fn-hp-pe-is-pad8` | `books/history-pages-row.lisp` | 70 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-hp-pe |
+| `fn-hp-pe-def` | `books/history-pages-row.lisp` | 228 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-hp-pe |
+| `fn-hp-pe-is-pad8` | `books/history-pages-row.lisp` | 71 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-hp-pe |
 | `fn-hp-starts-is` | `books/history-pages-exec.lisp` | 404 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-hp-starts |
 | `fn-hp-w-cells-of-is` | `books/history-pages-write.lisp` | 257 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-hrcur-cold-tasksp-control-unfolds` | `books/history-cold-record-cursor.lisp` | 716 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-hrcur-cold-tasksp |
@@ -3659,6 +3666,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lgw-slice-when-not-declared` | `books/store-log-stream.lisp` | 339 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-slice and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value |
 | `fn-lgx-rotation-frame-is-frame` | `books/store-log-kernel-concrete.lisp` | 629 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-lgx-trailer-is-trailer` | `books/store-log-kernel-concrete.lisp` | 312 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-load-gc-verdict-collects-when-grown` | `books/idle-collection.lisp` | 196 | arm-of-definition: the hypotheses select one IF/COND arm of fn-load-gc-verdict and the conclusion is that arm's value |
 | `fn-lpv-add-fold-value-by-definition` | `books/legacy-parser-columns.lisp` | 270 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lpv-make-field-value-by-definition` | `books/legacy-parser-columns.lisp` | 411 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lpv-nil-span-value-by-definition` | `books/legacy-parser-catalog.lisp` | 161 | arm-of-definition: constant arguments select one IF/COND arm of fn-lpc-span-value and the conclusion is that arm's value |
@@ -3702,7 +3710,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-mpxt-okp-pages-okp` | `books/msgid-pages-exec.lisp` | 2319 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-mpxt-okp |
 | `fn-mpxt-reach-opened` | `books/msgid-pages-exec.lisp` | 1757 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-mpxt-reach; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-mvb-held-article-is-the-model-body-by-definition` | `books/moderation-verbs.lisp` | 444 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-native-admin-plan-deltas-over-other-plans-by-definition` | `books/native-admin.lisp` | 1241 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value |
+| `fn-native-admin-plan-deltas-over-other-plans-by-definition` | `books/native-admin.lisp` | 1247 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value |
 | `fn-native-auth-load-protected-without-tls-refuses` | `books/native-auth-profile.lisp` | 359 | arm-of-definition: constant arguments select one IF/COND arm of fn-native-auth-load and the conclusion is that arm's value |
 | `fn-native-control-host-refusal-reason-of-a-class` | `books/native-control-reason.lisp` | 512 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-control-host-refusal-reason and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-native-control-host-refusal-reason and the conclusion is that branch's value |
 | `fn-native-control-host-refusal-reason-outside-is-none` | `books/native-control-reason.lisp` | 544 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-control-host-refusal-reason and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-native-control-host-refusal-reason and the conclusion is that branch's value |
@@ -3719,7 +3727,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ndh-node-of-non-node` | `books/number-durability-handles.lisp` | 419 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-node and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ndh-node and the conclusion is that branch's value |
 | `fn-ndh-state-of-non-state` | `books/number-durability-handles.lisp` | 423 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ndh-state and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ndh-state and the conclusion is that branch's value |
 | `fn-nnm-matcher-does-not-visit-entries` | `books/newnews-matching-selector.lisp` | 128 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nnm-entry-visits and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-nnm-entry-visits and the conclusion is that branch's value |
-| `fn-nntp-article-alpha-fields` | `books/nntp-session.lisp` | 72 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-nntp-article-alpha-fields` | `books/nntp-session.lisp` | 73 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-article-framedp-unfolds` | `books/nntp-article-pass.lisp` | 229 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-article-idp-is-msgid-okp` | `books/nntp-index.lisp` | 58 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-article-section-unfolds` | `books/nntp-article-pass.lisp` | 224 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3737,10 +3745,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-nntp-multi-octets-preserves-session` | `books/nntp-invariants.lisp` | 105 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-multi-preserves-session` | `books/nntp-invariants.lisp` | 102 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-open-session-records-the-projection` | `books/nntp-invariants.lisp` | 76 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-nntp-payload-bytes-of-non-handle` | `books/nntp-session.lisp` | 83 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nntp-payload-bytes and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nntp-payload-bytes and the conclusion is that branch's value |
+| `fn-nntp-payload-bytes-of-non-handle` | `books/nntp-session.lisp` | 84 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nntp-payload-bytes and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nntp-payload-bytes and the conclusion is that branch's value |
 | `fn-nntp-result-session-of-make-result` | `books/nntp-invariants.lisp` | 95 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-set-cursor-keeps-projection` | `books/nntp-invariants.lisp` | 90 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-nntp-set-cursor-preserves-group` | `books/nntp-session.lisp` | 132 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-nntp-set-cursor-preserves-group` | `books/nntp-session.lisp` | 133 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-single-keeps-projection` | `books/nntp-invariants.lisp` | 170 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-single-preserves-session` | `books/nntp-invariants.lisp` | 99 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-withdrawn-reply-preserves-session` | `books/nntp.lisp` | 468 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3798,7 +3806,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ocpr-reason-is-the-word-when-refused-by-definition` | `books/owner-control-post-reason.lisp` | 41 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-ocpr-reason; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-ocs-member-uncertain-word-told-uncertain` | `books/owner-commit-steps.lisp` | 388 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ocs-member-release and the conclusion is that arm's value |
 | `fn-oct-list-from-empty` | `books/octets-stobj.lisp` | 99 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-list-from and the conclusion is that arm's value |
-| `fn-oct-set-conns-keeps-feeds` | `books/owner-outcome-counted.lisp` | 205 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-oct-set-conns-keeps-feeds` | `books/owner-outcome-counted.lisp` | 232 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oct-slice-list-empty` | `books/octets-stobj.lisp` | 1234 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oct-slice-list and the conclusion is that arm's value |
 | `fn-octl-injection-of-with-wire` | `books/owner-control-read.lisp` | 56 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-octl-reply-of-with-wire` | `books/owner-control-read.lisp` | 61 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
@@ -3834,7 +3842,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-opl-record-count` | `books/owner-publication-lifecycle.lisp` | 227 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-opl-record-not-before` | `books/owner-publication-lifecycle.lisp` | 221 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-opl-settle-never-touches-another-capture` | `books/owner-publication-lifecycle.lisp` | 313 | arm-of-definition: the hypotheses select one IF/COND arm of fn-opl-settle and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-opl-settle and the conclusion is that branch's value |
-| `fn-orc-one-pass-in-flight-by-definition` | `books/owner-reclaim.lisp` | 289 | arm-of-definition: the hypotheses select one IF/COND arm of fn-orc-request-word and the conclusion is that arm's value |
+| `fn-orc-one-pass-in-flight-by-definition` | `books/owner-reclaim.lisp` | 269 | arm-of-definition: the hypotheses select one IF/COND arm of fn-orc-request-word and the conclusion is that arm's value |
 | `fn-orc-zero-current-requires-complete-current-scan-by-definition` | `books/owner-retire-cursor.lisp` | 83 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-orc-zero-currentp |
 | `fn-orcn-swap-base-view` | `books/owner-reclaim-conns.lisp` | 59 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-orcn-swapped-ocfg-fields` | `books/owner-reclaim-conns.lisp` | 70 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3868,26 +3876,27 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-osr-identity-context-of-with-topic-by-definition` | `books/owner-snapshot-recovery.lisp` | 209 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-osr-live-context-fields-by-definition` | `books/owner-snapshot-recovery.lisp` | 485 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-otb-replay-of-a-start-shape` | `books/owner-time-bars.lisp` | 424 | branch-of-definition: the hypothesis is a branch test of fn-otm-replay and the conclusion is that branch's value |
-| `fn-otm-conn-allow-of-with-refused` | `books/owner-time-admission.lisp` | 305 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-otm-conns-of-set-conns` | `books/owner-time-admission.lisp` | 253 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-otm-disk-elapsed-when-not-pending` | `books/owner-time-model.lisp` | 972 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otm-disk-elapsed and the conclusion is that arm's value |
+| `fn-otm-conn-allow-of-with-refused` | `books/owner-time-admission.lisp` | 278 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-otm-conns-of-set-conns` | `books/owner-time-admission.lisp` | 226 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-otm-disk-elapsed-when-not-pending` | `books/owner-time-model.lisp` | 1000 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otm-disk-elapsed and the conclusion is that arm's value |
 | `fn-otm-jw-start-line-is-the-start-entry` | `books/owner-time-journal-writer.lisp` | 921 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-otm-ocfg-owner-of-with-owner` | `books/owner-time-admission.lisp` | 248 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-otm-read-span-when-admitted-unfolds` | `books/owner-time-admission.lisp` | 201 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otm-read-span and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-otm-read-span and the conclusion is that branch's value |
+| `fn-otm-keep-unheld-is-make` | `books/owner-time-model.lisp` | 557 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otm-keep and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-otm-keep and the conclusion is that branch's value |
+| `fn-otm-ocfg-owner-of-with-owner` | `books/owner-time-admission.lisp` | 221 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-otm-read-span-when-admitted-unfolds` | `books/owner-time-admission.lisp` | 174 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otm-read-span and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-otm-read-span and the conclusion is that branch's value |
 | `fn-otm-same-dc-reflexive` | `books/owner-time-journal.lisp` | 551 | reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-otm-with-refused-fields` | `books/owner-time-admission.lisp` | 298 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-otm-with-refused-fields` | `books/owner-time-admission.lisp` | 271 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ovc-child-done-meaning-by-definition` | `books/obligation-view-cursor-refinement.lisp` | 19 | arm-of-definition: the hypotheses select one IF/COND arm of fn-vcu-meaning and the conclusion is that arm's value |
 | `fn-ovc-done-meaning-by-definition` | `books/obligation-view-cursor-refinement.lisp` | 39 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ovc-meaning and the conclusion is that arm's value |
 | `fn-ovr-fields-of-with-wire` | `books/owner-verdict-read.lisp` | 212 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ovr-handshaking-of-with-wire` | `books/owner-verdict-read.lisp` | 157 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ovr-wire-of-with-wire` | `books/owner-verdict-read.lisp` | 155 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ovw-cursor-fields` | `books/served-catalog.lisp` | 859 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ovw-cursor-has-no-source` | `books/served-catalog.lisp` | 1015 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ovw-hdr-cursor-fields` | `books/served-catalog.lisp` | 1007 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ovw-session-of-multi` | `books/served-catalog.lisp` | 1179 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ovw-session-of-multi-octets` | `books/served-catalog.lisp` | 1183 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ovw-session-of-single` | `books/served-catalog.lisp` | 1175 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ovw-status-is-crlf` | `books/served-catalog.lisp` | 1296 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-ovw-status |
+| `fn-ovw-cursor-fields` | `books/served-catalog.lisp` | 779 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ovw-cursor-has-no-source` | `books/served-catalog.lisp` | 935 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ovw-hdr-cursor-fields` | `books/served-catalog.lisp` | 927 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ovw-session-of-multi` | `books/served-catalog.lisp` | 1099 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ovw-session-of-multi-octets` | `books/served-catalog.lisp` | 1103 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ovw-session-of-single` | `books/served-catalog.lisp` | 1095 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ovw-status-is-crlf` | `books/served-catalog.lisp` | 1216 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-ovw-status |
 | `fn-owb-fields-of-make` | `books/owner-batch.lisp` | 130 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-owb-lgk-append-when-refused` | `books/owner-batch.lisp` | 333 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-append and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lgk-append and the conclusion is that branch's value |
 | `fn-owb-lgk-finish-one-when-nothing-waits` | `books/owner-batch.lisp` | 382 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-finish-one and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-lgk-finish-one and the conclusion is that branch's value |
@@ -3996,19 +4005,21 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-pcb-event-carriage-needs-a-composite` | `books/peer-carriage.lisp` | 62 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-event-carriage and the conclusion is that arm's value |
 | `fn-pcb-transit-verdict-names-the-accepted-arm` | `books/peer-carriage.lisp` | 865 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-transit-verdict and the conclusion is that arm's value |
 | `fn-pck-held-accessors-of-with-withdrawn` | `books/catalog-pages.lisp` | 71 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-pck-msgid-octets-of-with-withdrawn` | `books/catalog-pages.lisp` | 346 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-pck-record-payload-of-with-withdrawn` | `books/catalog-pages.lisp` | 262 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pcr-counted-accessors-of-make-by-definition` | `books/productive-read-chain.lisp` | 536 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pcr-finish-read-effects-by-definition` | `books/productive-read-chain.lisp` | 618 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pcr-tls-served-wire-by-definition` | `books/productive-read-absent.lisp` | 652 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-peer-archive-command-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2153 | instance-corollary: the statement is fn-nntp-archive-command-pinned-preserves-consistent-session instantiated, discharging nothing |
+| `fn-peer-archive-command-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2160 | instance-corollary: the statement is fn-nntp-archive-command-pinned-preserves-consistent-session instantiated, discharging nothing |
 | `fn-peer-decide-transfer-under-keeps-refusals-and-duplicates-by-definition` | `books/transit-header-limits.lisp` | 91 | arm-of-definition: the hypotheses select one IF/COND arm of fn-peer-decide-transfer-under and the conclusion is that arm's value |
 | `fn-peer-decision-kind-of-fn-peer-decision` | `books/peer-inbound.lisp` | 132 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-peer-decision-reason-of-fn-peer-decision` | `books/peer-inbound.lisp` | 134 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-peer-full-feed-queue-is-a-retry-code-by-definition` | `books/peer-inbound.lisp` | 1186 | arm-of-definition: constant arguments select one IF/COND arm of fn-peer-transit-code and the conclusion is that arm's value |
 | `fn-peer-full-store-is-a-retry-code` | `books/peer-inbound.lisp` | 1174 | arm-of-definition: constant arguments select one IF/COND arm of fn-peer-transit-code and the conclusion is that arm's value |
 | `fn-peer-injection-stamp-is-owner-observation` | `books/peer-inbound-invariants.lisp` | 42 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-peer-nntp-command-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2168 | instance-corollary: the statement is fn-nntp-command-pinned-preserves-consistent-session instantiated, discharging nothing |
-| `fn-peer-nntp-step-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2183 | instance-corollary: the statement is fn-nntp-step-pinned-preserves-consistent-session instantiated, discharging nothing |
-| `fn-peer-post-step-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2196 | instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing |
+| `fn-peer-nntp-command-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2175 | instance-corollary: the statement is fn-nntp-command-pinned-preserves-consistent-session instantiated, discharging nothing |
+| `fn-peer-nntp-step-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2190 | instance-corollary: the statement is fn-nntp-step-pinned-preserves-consistent-session instantiated, discharging nothing |
+| `fn-peer-post-step-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2203 | instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing |
 | `fn-peer-session-base-of-fn-peer-make-session` | `books/peer-inbound.lisp` | 836 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-peer-session-base-of-fn-peer-with-base` | `books/peer-inbound.lisp` | 1852 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-peer-session-base-of-fn-peer-with-node` | `books/peer-inbound.lisp` | 1868 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -4089,7 +4100,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-pwz-raw-plan-phase-keeps-compressed-length-by-definition` | `books/decoded-window-budget-completion.lisp` | 242 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pwz-span-at-byte-at-is-byte` | `books/decoded-window-span.lisp` | 130 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pwz-byte-at and the conclusion is that arm's value |
 | `fn-pxy-observe-at-deadline-by-definition` | `books/tls-proxy.lisp` | 274 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pxy-observe and the conclusion is that arm's value |
-| `fn-qplan-budget-is-window-size` | `books/served-query-plan.lisp` | 287 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-qplan-budget-is-window-size` | `books/served-query-plan.lisp` | 413 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rca-result-okp-is-line-okp` | `books/reclaim-admission.lisp` | 84 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rccap-target-field-retains-exact-candidate-unfolds` | `books/admission-semantic-census-lineage.lisp` | 6 | instance-corollary: the statement is fn-sfr-list-of-fn-sfr-snoc instantiated, discharging nothing |
 | `fn-rci-unrecorded-is-refused-by-definition` | `books/reclaim-instant.lisp` | 194 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rci-decide-stream and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-rci-decide-stream and the conclusion is that branch's value |
@@ -4181,11 +4192,11 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sca-pc-fields-of-make` | `books/served-catalog-owner.lisp` | 265 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sca-withdrawn-of-assign` | `books/served-catalog-owner.lisp` | 965 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sca-withdrawn-of-with-withdrawn` | `books/served-catalog-owner.lisp` | 1085 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scat-article-idp-is-msgid-idp` | `books/served-catalog.lisp` | 534 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scat-available-archive-keeps-state-fields` | `books/served-availability.lisp` | 103 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scat-group-low-by-definition` | `books/served-catalog.lisp` | 1642 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-scat-group-low; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-scat-group-summary-by-definition` | `books/served-catalog.lisp` | 1590 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-scat-group-summary; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-scat-single-is-status` | `books/served-catalog.lisp` | 2089 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scat-article-idp-is-msgid-idp` | `books/served-catalog.lisp` | 535 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scat-available-archive-keeps-state-fields` | `books/served-availability.lisp` | 80 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scat-group-low-by-definition` | `books/served-catalog.lisp` | 1580 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-scat-group-low; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-scat-group-summary-by-definition` | `books/served-catalog.lisp` | 1510 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-scat-group-summary; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-scat-single-is-status` | `books/served-catalog.lisp` | 1985 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sccv-segs-of-atom` | `books/store-checkpoint-verify.lisp` | 181 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sccv-segs and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sccv-segs and the conclusion is that branch's value |
 | `fn-scf-debt-from-of-atom` | `books/store-carried-folds.lisp` | 43 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cvec-debt-from and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
 | `fn-scf-tally-records-of-atom` | `books/store-carried-folds.lisp` | 49 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-tally-records and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-pcb-tally-records and the conclusion is that branch's value |
@@ -4243,17 +4254,16 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sco-select-named-unfolds` | `books/store-checkpoint-tables.lisp` | 940 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value |
 | `fn-scol-body-lines-of-held-facts-of` | `books/served-columns.lisp` | 222 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scol-okp-of-load-held-rows` | `books/served-catalog-owner.lisp` | 1263 | instance-corollary: the statement is fn-sca-load-held-rows-establishes-byte-facts instantiated, discharging nothing |
-| `fn-scr-auth-view-archive-unrestricted` | `books/served-catalog-chain.lisp` | 713 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-archive and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-view-archive and the conclusion is that branch's value |
-| `fn-scr-auth-view-index-unrestricted` | `books/served-catalog-chain.lisp` | 719 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-index and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-view-index and the conclusion is that branch's value |
-| `fn-scr-consumed-of-counted-make` | `books/served-catalog-chain.lisp` | 882 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scr-finish-read-effects` | `books/served-catalog-chain.lisp` | 1924 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scr-msgid-argp-forward` | `books/served-catalog-chain.lisp` | 610 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp |
-| `fn-scr-result-of-counted-make` | `books/served-catalog-chain.lisp` | 886 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scr-tls-result-of-make` | `books/served-catalog-chain.lisp` | 239 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scrs-consumed-of-counted-make` | `books/served-catalog-chain.lisp` | 2154 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scrs-dispatch-no-events` | `books/served-catalog-chain.lisp` | 1721 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scr-dispatch-events and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scr-dispatch-events and the conclusion is that branch's value |
-| `fn-scrs-handshaking-of-with-wire` | `books/served-catalog-chain.lisp` | 1704 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scrs-result-of-counted-make` | `books/served-catalog-chain.lisp` | 2159 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scr-auth-view-archive-unrestricted` | `books/served-catalog-chain.lisp` | 714 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-archive and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-view-archive and the conclusion is that branch's value |
+| `fn-scr-auth-view-index-unrestricted` | `books/served-catalog-chain.lisp` | 720 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-index and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-view-index and the conclusion is that branch's value |
+| `fn-scr-consumed-of-counted-make` | `books/served-catalog-chain.lisp` | 883 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scr-finish-read-effects` | `books/served-catalog-chain.lisp` | 1891 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scr-msgid-argp-forward` | `books/served-catalog-chain.lisp` | 611 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp |
+| `fn-scr-result-of-counted-make` | `books/served-catalog-chain.lisp` | 887 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scr-tls-result-of-make` | `books/served-catalog-chain.lisp` | 240 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scrs-consumed-of-counted-make` | `books/served-catalog-chain.lisp` | 2121 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scrs-handshaking-of-with-wire` | `books/served-catalog-chain.lisp` | 1671 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scrs-result-of-counted-make` | `books/served-catalog-chain.lisp` | 2126 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sctr-plan-segments-nil` | `books/store-checkpoint-tables-reader.lisp` | 592 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sccr-plan-segments and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sccr-plan-segments and the conclusion is that branch's value |
 | `fn-send-progress-verdict-answers` | `books/send-progress.lisp` | 215 | arm-of-definition: the hypotheses select one IF/COND arm of fn-send-progress-verdict and the conclusion is that arm's value |
 | `fn-served-conn-archive-of-fn-served-make-conn` | `books/served.lisp` | 601 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -4298,22 +4308,20 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-served-conn-wire-of-make-group-indexed` | `books/served.lisp` | 376 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-counted-accessors-of-make` | `books/served-tls-prefix.lisp` | 105 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-dispatch-without-advance-is-core` | `books/served.lisp` | 1491 | arm-of-definition: the hypotheses select one IF/COND arm of fn-served-dispatch and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-served-dispatch and the conclusion is that branch's value |
-| `fn-served-feed-of-closed-wire` | `books/served.lisp` | 2706 | arm-of-definition: the hypotheses select one IF/COND arm of fn-served-feed and the conclusion is that arm's value |
-| `fn-served-haltedp-of-conn-with-wire` | `books/served.lisp` | 1636 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-served-open-indexed-pins` | `books/served.lisp` | 2338 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-served-open-peer-indexed-pins` | `books/served.lisp` | 2406 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-served-pin-old-or-live-p-cases` | `books/served.lisp` | 1861 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-served-pin-old-or-live-p |
-| `fn-served-pin-old-or-live-p-reflexive` | `books/served.lisp` | 1834 | reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-served-haltedp-of-conn-with-wire` | `books/served.lisp` | 1610 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-served-open-indexed-pins` | `books/served.lisp` | 2276 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-served-open-peer-indexed-pins` | `books/served.lisp` | 2344 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-served-pin-old-or-live-p-cases` | `books/served.lisp` | 1799 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-served-pin-old-or-live-p |
+| `fn-served-pin-old-or-live-p-reflexive` | `books/served.lisp` | 1772 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-served-pin-verdicts-retains-effects` | `books/served.lisp` | 686 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-pin-verdicts-selects-verdicts` | `books/served.lisp` | 690 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-pinned-fields` | `books/served.lisp` | 89 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-served-post-outcome-effects-by-definition` | `books/served.lisp` | 2222 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-served-post-outcome-effects-by-definition` | `books/served.lisp` | 2160 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-repin-without-live` | `books/nntp-auth-invariants.lisp` | 509 | arm-of-definition: the hypotheses select one IF/COND arm of fn-served-repin and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-served-repin and the conclusion is that branch's value |
 | `fn-served-reply-octets-of-atom` | `books/public-exposure-reply.lisp` | 144 | arm-of-definition: the hypotheses select one IF/COND arm of fn-served-reply-octets and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-served-reply-octets and the conclusion is that branch's value |
 | `fn-served-result-conn-of-fn-served-make-result` | `books/served.lisp` | 664 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-result-effects-of-fn-served-make-result` | `books/served.lisp` | 667 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-served-successful-selection-is-the-repinned-dispatch` | `books/served.lisp` | 1921 | arm-of-definition: the hypotheses select one IF/COND arm of fn-served-dispatch and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-served-dispatch and the conclusion is that branch's value |
-| `fn-served-tls-feed-of-closed-wire` | `books/served-tls-prefix.lisp` | 660 | arm-of-definition: the hypotheses select one IF/COND arm of fn-served-feed and the conclusion is that arm's value |
+| `fn-served-successful-selection-is-the-repinned-dispatch` | `books/served.lisp` | 1859 | arm-of-definition: the hypotheses select one IF/COND arm of fn-served-dispatch and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-served-dispatch and the conclusion is that branch's value |
 | `fn-sf-barriers-of-fn-sf-make` | `books/store-files.lisp` | 187 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sf-completion-of-fn-sf-make` | `books/store-files.lisp` | 179 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sf-frontier-candidate-of-fn-sf-make` | `books/store-files.lisp` | 165 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -4627,38 +4635,38 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-wg-valuep-opener-uint` | `books/wire-grammar.lisp` | 1200 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wg-valuep and the conclusion is that arm's value |
 | `fn-wire-drive-closed-is-noop` | `books/wire-invariants.lisp` | 719 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-drive and the conclusion is that arm's value |
 | `fn-wire-drive-of-empty-chunk` | `books/wire-invariants.lisp` | 713 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-drive and the conclusion is that arm's value |
-| `fn-wire-feed-closed-noop` | `books/wire.lisp` | 1321 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-feed and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
+| `fn-wire-feed-closed-noop` | `books/wire.lisp` | 1258 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-feed and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
 | `fn-wire-feed-proper-closed-is-noop` | `books/wire-invariants.lisp` | 674 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-feed-proper and the conclusion is that arm's value |
 | `fn-wire-feed-proper-of-empty-chunk` | `books/wire-invariants.lisp` | 680 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-feed-proper and the conclusion is that arm's value |
 | `fn-wire-feed-span-is-span-fold` | `books/wire-span.lisp` | 224 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-wire-feed-span; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-wire-line-room-of-make-state` | `books/wire.lisp` | 901 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-line-room-outside-article` | `books/wire.lisp` | 890 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-line-room and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-wire-line-room and the conclusion is that branch's value |
-| `fn-wire-next-event-of-fn-wire-make-next` | `books/wire.lisp` | 1224 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-line-room-of-make-state` | `books/wire.lisp` | 838 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-line-room-outside-article` | `books/wire.lisp` | 827 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-line-room and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-wire-line-room and the conclusion is that branch's value |
+| `fn-wire-next-event-of-fn-wire-make-next` | `books/wire.lisp` | 1161 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wire-next-loop-of-empty-chunk` | `books/wire-invariants.lisp` | 686 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-next-loop and the conclusion is that arm's value |
-| `fn-wire-next-state-of-fn-wire-make-next` | `books/wire.lisp` | 1220 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-next-unconsumed-of-fn-wire-make-next` | `books/wire.lisp` | 1228 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-result-events-of-fn-wire-make-result` | `books/wire.lisp` | 629 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-next-state-of-fn-wire-make-next` | `books/wire.lisp` | 1157 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-next-unconsumed-of-fn-wire-make-next` | `books/wire.lisp` | 1165 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-result-events-of-fn-wire-make-result` | `books/wire.lisp` | 566 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wire-result-events-of-make-result` | `books/wire-invariants.lisp` | 72 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-result-state-of-fn-wire-make-result` | `books/wire.lisp` | 625 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-result-state-of-fn-wire-make-result` | `books/wire.lisp` | 562 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wire-result-state-of-make-result` | `books/wire-invariants.lisp` | 68 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-state-body-limit-of-fn-wire-make-state` | `books/wire.lisp` | 435 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-state-body-rev-of-fn-wire-make-state` | `books/wire.lisp` | 419 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-state-body-size-of-fn-wire-make-state` | `books/wire.lisp` | 427 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-state-line-len-of-fn-wire-make-state` | `books/wire.lisp` | 415 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-state-line-limit-of-fn-wire-make-state` | `books/wire.lisp` | 431 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-state-line-rev-of-fn-wire-make-state` | `books/wire.lisp` | 411 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-state-mode-of-fn-wire-make-state` | `books/wire.lisp` | 407 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-wire-state-pending-crp-of-fn-wire-make-state` | `books/wire.lisp` | 423 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-state-body-limit-of-fn-wire-make-state` | `books/wire.lisp` | 386 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-state-body-rev-of-fn-wire-make-state` | `books/wire.lisp` | 370 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-state-body-size-of-fn-wire-make-state` | `books/wire.lisp` | 378 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-state-line-len-of-fn-wire-make-state` | `books/wire.lisp` | 366 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-state-line-limit-of-fn-wire-make-state` | `books/wire.lisp` | 382 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-state-line-rev-of-fn-wire-make-state` | `books/wire.lisp` | 362 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-state-mode-of-fn-wire-make-state` | `books/wire.lisp` | 358 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wire-state-pending-crp-of-fn-wire-make-state` | `books/wire.lisp` | 374 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wire-stuff-line-of-atom` | `books/wire-outbound-invariants.lisp` | 468 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wire-stuff-line and the conclusion is that arm's value |
 | `fn-wm-match-codepoints-work-cost-decomposition` | `books/wildmat-work.lisp` | 490 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wm-pattern-match-work-cost-decomposition` | `books/wildmat-work.lisp` | 394 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wm-work-cost-result` | `books/wildmat-work.lisp` | 21 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wm-work-value-result` | `books/wildmat-work.lisp` | 18 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wmc-core-unfunded-step-is-identical` | `books/wildmat-cursor.lisp` | 242 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wmc-core-step and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-wmc-core-step and the conclusion is that branch's value |
-| `fn-wmc-ok-value` | `books/wildmat-cursor.lisp` | 856 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-wmc-ok-value` | `books/wildmat-cursor.lisp` | 1118 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-wmc-resume-open` | `books/wildmat-cursor.lisp` | 289 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wmc-resume and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-wmc-resume and the conclusion is that branch's value |
-| `fn-wmc-stack-steps-open` | `books/wildmat-cursor.lisp` | 528 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wmc-stack-steps and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-wmc-stack-steps and the conclusion is that branch's value |
-| `fn-wmc-unfunded-step-is-identical` | `books/wildmat-cursor.lisp` | 1071 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wmc-step and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-wmc-step and the conclusion is that branch's value |
+| `fn-wmc-stack-steps-open` | `books/wildmat-cursor.lisp` | 633 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wmc-stack-steps and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-wmc-stack-steps and the conclusion is that branch's value |
+| `fn-wmc-unfunded-step-is-identical` | `books/wildmat-cursor.lisp` | 1333 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wmc-step and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-wmc-step and the conclusion is that branch's value |
 | `fn-wml-frames-room-open` | `books/wildmat-live.lisp` | 99 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wml-frames-room and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-wml-frames-room and the conclusion is that branch's value |
 | `fn-wml-frames-target-open` | `books/wildmat-live.lisp` | 365 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wml-frames-target and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-wml-frames-target and the conclusion is that branch's value |
 | `fn-wml-rightmost-empty` | `books/wildmat-live.lisp` | 158 | arm-of-definition: the hypotheses select one IF/COND arm of fn-wildmat-rightmost-match and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-wildmat-rightmost-match and the conclusion is that branch's value |
@@ -4694,7 +4702,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `otjs-consume-atom` | `books/owner-time-journal-stream.lisp` | 490 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otjs-consume and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-otjs-consume and the conclusion is that branch's value |
 | `otjs-consume-consp` | `books/owner-time-journal-stream.lisp` | 482 | arm-of-definition: the hypotheses select one IF/COND arm of fn-otjs-consume and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-otjs-consume and the conclusion is that branch's value |
 | `otjs-revonto-singleton` | `books/owner-time-journal-stream.lisp` | 207 | instance-corollary: the statement is otjs-revonto-is-append instantiated, discharging nothing |
-| `pck-disk-holds-facts` | `books/paged-checkpoint.lisp` | 554 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-pck-disk-holds |
+| `pck-disk-holds-facts` | `books/paged-checkpoint.lisp` | 559 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-pck-disk-holds |
+| `pcki-grow-same` | `books/paged-checkpoint-image.lisp` | 226 | arm-of-definition: the hypotheses select one IF/COND arm of pgs-x-grow-image and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of pgs-x-grow-image and the conclusion is that branch's value |
+| `pcko-intern-bad-is-absorbing` | `books/paged-checkpoint-open.lisp` | 348 | arm-of-definition: constant arguments select one IF/COND arm of fn-ssr-intern-step and the conclusion is that arm's value |
+| `pcko-nth-is-nth` | `books/paged-checkpoint-open.lisp` | 830 | arm-of-definition: the hypotheses select one IF/COND arm of pcko-nth and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of pcko-nth and the conclusion is that branch's value |
 | `pcks-res-step` | `books/paged-checkpoint-stage.lisp` | 238 | arm-of-definition: the hypotheses select one IF/COND arm of pcks-res and the conclusion is that arm's value |
 | `pcks-stage-done` | `books/paged-checkpoint-stage.lisp` | 385 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pck-x-stage-rows and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-pck-x-stage-rows and the conclusion is that branch's value |
 | `pgs-dcs-byte-step-outside-tail-is-page-step` | `books/pagestore-digest-cursor-semantics.lisp` | 212 | arm-of-definition: the hypotheses select one IF/COND arm of pgs-dcb-step and the conclusion is that arm's value |
