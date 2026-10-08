@@ -13,6 +13,7 @@
 (include-book "../books/bp-listener-set")
 (include-book "../books/definterface")
 (include-book "../books/owner-config-state")
+(include-book "../books/bp-app-handoff") ; fn-bpah-request-trustedp (fn-owner-bp-request-trustedp)
 (include-book "owner-host")
 
 (defun fn-owner-bp-session-admission (channel announced-uri state)
