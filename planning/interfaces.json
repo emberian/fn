@@ -1417,7 +1417,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/raw-trap.lisp"
+      ]
     },
     {
       "name": "fn-rdv-carried-problem",
@@ -1434,7 +1436,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/raw-trap.lisp"
+      ]
     },
     {
       "name": "fn-rdv-raw-declared-p",
@@ -1451,7 +1455,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/raw-trap.lisp"
+      ]
     },
     {
       "name": "fn-rdv-row-digest",
@@ -1468,7 +1474,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/raw-trap.lisp"
+      ]
     },
     {
       "name": "fn-octets$c-reserve",
@@ -1556,7 +1564,10 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp",
+        "host/native/tcpcl.lisp"
+      ]
     },
     {
       "name": "fn-fs-classify-job",
@@ -1580,7 +1591,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-exit-code",
@@ -1601,7 +1614,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/io.lisp"
+      ]
     },
     {
       "name": "fn-fs-stop-exit-escalate",
@@ -1628,7 +1643,10 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/io.lisp",
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-section-declp",
@@ -1649,7 +1667,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-actor-declp",
@@ -1670,7 +1690,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-section-class-ok",
@@ -1691,7 +1713,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-section-admit",
@@ -1715,7 +1739,10 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/bp-listener-control.lisp",
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-unwind",
@@ -1736,7 +1763,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-actor-exit-kind",
@@ -1757,7 +1786,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-actor-step",
@@ -1781,7 +1812,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-actor-join-action",
@@ -1802,7 +1835,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-actor-receipt",
@@ -1826,7 +1861,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-fs-inbox-admit",
@@ -1843,7 +1880,10 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/mux.lisp",
+        "host/native/web-host.lisp"
+      ]
     },
     {
       "name": "fn-mxa-reserve",
@@ -1914,7 +1954,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-cmt-step",
@@ -1941,7 +1983,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-cmt-pass-target",
@@ -1958,7 +2002,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-cmt-pass-ready",
@@ -1975,7 +2021,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/owner.lisp"
+      ]
     },
     {
       "name": "fn-arena-count",
@@ -32410,7 +32458,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/extent.lisp"
+      ]
     },
     {
       "name": "fn-pwx-boundp",
@@ -33329,7 +33379,9 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [],
-      "applied_directly_in": []
+      "applied_directly_in": [
+        "host/native/extent.lisp"
+      ]
     },
     {
       "name": "fn-crb-open",
