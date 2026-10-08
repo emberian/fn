@@ -556,11 +556,11 @@
                   (equal (pgs-x-words 0 a k (mv-nth 2 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)))
                          (pcks-put (- (+ 16384 p) a) (pcks-wlist rows base st fn-arena) (pgs-x-words 0 a k pgs-mem))))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance pcks-res-hi (lo p) (hi (+ p (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta (fn-row-wire-of (car rows) fn-arena) st)))) (pcks-wlen (cdr rows) fn-arena st1)))
+           :use ((:instance pcks-res-hi (lo p) (hi (+ p (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta (fn-row-wire-of (car rows) fn-arena) st)))) (pcks-wlen (cdr rows) fn-arena (fn-pck-x-st-next (car rows) fn-arena st))))
                                  (hi2 (+ p (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta (fn-row-wire-of (car rows) fn-arena) st)))))))
                  (:instance pcks-put-row-res-rest
                                  (nw (fn-pck-x-row-words (len (fn-scc-program (fn-pck-meta (fn-row-wire-of (car rows) fn-arena) st)))))
-                                 (r (pcks-wlen (cdr rows) fn-arena st1))
+                                 (r (pcks-wlen (cdr rows) fn-arena (fn-pck-x-st-next (car rows) fn-arena st)))
                                  (tl (fn-pck-x-tl (car rows) fn-arena base))
                                  (fn-octets (fn-pck-x-encode-row (car rows) fn-arena st fn-octets))))
            :in-theory (union-theories '(pcks-put-nil pcks-put-row pcks-put-row-ok-car pcks-res-hi pcks-wlen-natp pcks-row-dwords2 pcks-octets-len-of-encode-row
@@ -571,10 +571,10 @@
                                                pcks-res pcks-put pgs-x-words pgs-dlo fn-pck-x-put-row
                                                fn-pck-x-encode-row fn-pck-x-row-words fn-row-wire-of fn-pck-enc-row adt-tp-rw
                                                fn-oct-len-is-len pcks-words-step pcks-update-nth-cons
-                                               pcks-wlen pcks-wlist fn-pck-x-tl fn-pck-meta fn-pck-x-payload-len)))
+                                               pcks-wlen pcks-wlist fn-pck-x-st-next fn-pck-x-tl fn-pck-meta fn-pck-x-payload-len)))
           (and stable-under-simplificationp
                '(:expand ((fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)
-                          (pcks-wlen rows fn-arena st) (pcks-wlist rows base st fn-arena) (pcks-treesp rows fn-arena st))))))
+                          (pcks-wlen rows fn-arena st) (pcks-wlist rows base st fn-arena) (pcks-treesp rows fn-arena st) (fn-pck-x-st-next (car rows) fn-arena st))))))
 
 (defthm pcks-stage-rows
   (implies (and (natp p) (natp a) (natp k)
@@ -850,6 +850,19 @@
            :in-theory (disable pcks-abs-dirty-iota pcks-put pgs-x-words adt-tp-pages adt-tp-number pcks-iota
                                pgs-x-abs-dirty adt-tp-zeros))))
 
+(defthm pcks-adt-take-is-take
+  (implies (and (natp j) (<= j (len w)))
+           (equal (adt-tp-take j w) (take j w)))
+  :hints (("Goal" :induct (adt-tp-take j w) :in-theory (enable adt-tp-take))))
+
+(defthm pcks-adt-take-of-words
+  (implies (and (natp j) (natp k) (<= j k))
+           (equal (adt-tp-take j (pgs-x-words 0 a k pgs-mem)) (pgs-x-words 0 a j pgs-mem)))
+  :hints (("Goal" :use ((:instance pgs-x-take-of-words (s 0))
+                        (:instance pcks-adt-take-is-take (j j) (w (pgs-x-words 0 a k pgs-mem)))
+                        (:instance pcks-len-words (a a) (k k)))
+           :in-theory (disable pgs-x-take-of-words pcks-adt-take-is-take pcks-len-words pgs-x-words))))
+
 (defthm pcks-stage-dirty-at-cons
   (let* ((recs (fn-rows-wire-of rows fn-arena))
          (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)))
@@ -876,7 +889,7 @@
                             (mem1 (mv-nth 2 (fn-pck-x-stage-rows rows cnt base st fn-arena fn-octets pgs-mem)))))
            :in-theory (union-theories '(pcks-shift-of-number pcks-dirty-lpages-of-number pcks-dirty-at-open
                                         pcks-len-pages-of-tail-words pcks-consp-zeros pcks-wlen-is-len-words pcks-wlist-is-dlo-of-words
-                                        pcks-dlo-list-id)
+                                        pcks-dlo-list-id pcks-adt-take-of-words)
                                       (disable pcks-stage-rows fn-pck-x-stage-rows pcks-res pcks-put pgs-x-words
                                                pcks-wlen pcks-wlist pgs-x-abs-dirty adt-tp-zeros adt-tp-tail-is-page-prefix)))))
 
