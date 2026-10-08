@@ -1,13 +1,13 @@
-; Round 5a: candidate definitions and guard checks, not certified keystones.
+; Entry and decoded-window backing; contracts are proved in sibling books.
 ; The contracts for review are in planning/design/xc-span-walk-statements-2026-10-08.md.
 (in-package "ACL2")
 (include-book "extent-cache-span")
 (include-book "decoded-window-span")
-(include-book "def-buffer")
+(include-book "def-buffer-exact")
 
 ; Entries are growable octet arrays, not fixed-size entry reservations.
-(def-buffer fn-xce-entry :view t)
-(def-buffer fn-xce-stage :view t)
+(def-buffer-exact fn-xce-entry)
+(def-buffer-exact fn-xce-stage)
 (defmacro fn-xce-define ()
   `(defstobj fn-xce
      (fn-xce-keys :type (array t (,(fn-profile-limit :extent-cache-entries))) :initially nil)

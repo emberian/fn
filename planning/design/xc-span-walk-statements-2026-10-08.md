@@ -51,6 +51,11 @@ this design. The new read exports bounded spans; scalar requests use END=p+1,
 and full-payload consumers resume at p+count. They must consume ACL2's count,
 not rederive coordinates or truncate the payload to one span.
 
+Round 5b binding condition from S: END=p+1 scalar entry reads are permitted
+only off served paths. Lane s-xc2 must show in its caller inventory that no
+served ARTICLE, HEAD, BODY, OVER or HDR path uses scalar entry reads. Those
+paths consume bounded spans, including their one-octet final remainder.
+
 `host/native/extent-decoded.lisp:185-253`: kind 3 currently moves job child 7
 (the decoded `fn-ew-buffer`), drops the controller and inserts PLAN=NIL.
 Capture **Z = fn-dwa-controller of the job's fn-pww-carry before retirement**.
