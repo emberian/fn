@@ -68,9 +68,9 @@ def globals_of(text):
 
 def parked(root=ROOT):
     """Host files no build loads, parked with their owner (planning/host-
-    parked.json, tools/host_loaded_check.py KNOWN).  Their globals are not
+    parked.json, tools/host_check.py --loaded KNOWN).  Their globals are not
     the running owner's; when one is wired into a build its KNOWN entry must
-    go (host_loaded_check is red until it does), and it is counted here."""
+    go (host_check --loaded is red until it does), and it is counted here."""
     import json
     path = root / "planning" / "host-parked.json"
     if not path.exists():
