@@ -143,3 +143,36 @@
 (assert-event (qpt-local nil 256))
 (assert-event (qpt-empty-local 1))
 (assert-event (qpt-empty-local 256))
+
+; The skipped prefix of non-cursor effects before the first cursor is carried
+; by a tail-recursive worker (fn-qplan-rest-cursor-step-acc): the step over
+; PREFIX ++ SUFFIX is PREFIX ++ the step over SUFFIX (the logical recursion),
+; for a three-effect prefix, and a prefix far deeper than the control stack
+; of a non-tail recursion (the 100,000-article OVER crash) completes.
+(defun qpt-skip-run (n w fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((archive (fn-make-state '("fn.first") nil nil 0 nil nil))
+         (cur (fn-lst-start archive nil t nil nil nil 0))
+         (suffix (list (fn-lst-effect cur) (fn-nntp-reply-effect '(65))))
+         (e1 (fn-nntp-reply-effect '(1 2 3)))
+         (prefix (make-list n :initial-element e1)))
+    (mv-let (status-s next-s) (fn-qplan-rest-cursor-step suffix w fn-arena fn-cat)
+      (mv-let (status next) (fn-qplan-rest-cursor-step (append prefix suffix) w fn-arena fn-cat)
+        (and (eq status-s :ok) (eq status :ok)
+             (equal next (append prefix next-s))
+             (equal (mv-list 2 (fn-qplan-rest-cursor-step-acc (append prefix suffix) w nil fn-arena fn-cat))
+                    (list status next)))))))
+
+(defun qpt-skip-local (n w)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (answer fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (answer fn-arena fn-cat)
+          (mv (qpt-skip-run n w fn-arena fn-cat) fn-arena fn-cat)
+          (mv answer fn-arena)))
+      (declare (ignore fn-arena))
+      answer)))
+
+(assert-event (qpt-skip-local 3 8))
+(assert-event (qpt-skip-local 1000000 8))

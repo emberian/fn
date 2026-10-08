@@ -140,9 +140,13 @@
 
 ; The step: the first cursor of REST, stepped once
 
-(defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
+; The skipped prefix grows with the range, so the executable is a worker that
+; carries it reversed in ACC (tail recursion: a bounded stack however many
+; effects precede the first cursor); the logical definition is the plain
+; recursion and the worker is proved equal to it below.
+(defun fn-splan-rest-cursor-step-acc (rest w acc fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (natp w)
+                  :guard (and (natp w) (true-listp acc))
                   :verify-guards nil))
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
@@ -151,22 +155,77 @@
                 (mv-let (octets next calls state)
                   (fn-nnw-stream-batch cur w w fn-arena fn-cat)
                   (declare (ignore calls state))
-                  (mv :ok (cons (fn-nntp-reply-effect octets)
-                                (if (fn-nnw-meta-livep next)
-                                    (cons (fn-nnw-meta-effect next) (cdr rest))
-                                  (cdr rest)))))
+                  (mv :ok (revappend acc
+                                     (cons (fn-nntp-reply-effect octets)
+                                           (if (fn-nnw-meta-livep next)
+                                               (cons (fn-nnw-meta-effect next) (cdr rest))
+                                             (cdr rest))))))
               (if (and (consp cur) (fn-ovw-cursorp cur))
                 (mv-let (octets next)
                   (fn-ovw-step cur w fn-arena fn-cat)
-                  (mv :ok (cons (fn-nntp-reply-effect octets)
-                                (if next
-                                    (cons (fn-ovw-cursor-effect next) (cdr rest))
-                                  (cdr rest)))))
-              (mv :malformed rest))))
-        (mv-let (status rest2)
-          (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
-          (mv status (cons (car rest) rest2))))
-    (mv :ok rest)))
+                  (mv :ok (revappend acc
+                                     (cons (fn-nntp-reply-effect octets)
+                                           (if next
+                                               (cons (fn-ovw-cursor-effect next) (cdr rest))
+                                             (cdr rest))))))
+              (mv :malformed (revappend acc rest)))))
+        (fn-splan-rest-cursor-step-acc (cdr rest) w (cons (car rest) acc)
+                                       fn-arena fn-cat))
+    (mv :ok (revappend acc rest))))
+
+(verify-guards fn-splan-rest-cursor-step-acc
+  :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
+
+(defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (natp w)
+                  :verify-guards nil))
+  (mbe
+   :logic
+     (if (consp rest)
+         (if (fn-splan-cursor-effectp (car rest))
+             (let ((cur (car (cdr (car rest)))))
+               (if (fn-nnw-meta-effectp (car rest))
+                   (mv-let (octets next calls state)
+                     (fn-nnw-stream-batch cur w w fn-arena fn-cat)
+                     (declare (ignore calls state))
+                     (mv :ok (cons (fn-nntp-reply-effect octets)
+                                   (if (fn-nnw-meta-livep next)
+                                       (cons (fn-nnw-meta-effect next) (cdr rest))
+                                     (cdr rest)))))
+                 (if (and (consp cur) (fn-ovw-cursorp cur))
+                   (mv-let (octets next)
+                     (fn-ovw-step cur w fn-arena fn-cat)
+                     (mv :ok (cons (fn-nntp-reply-effect octets)
+                                   (if next
+                                       (cons (fn-ovw-cursor-effect next) (cdr rest))
+                                     (cdr rest)))))
+                 (mv :malformed rest))))
+           (mv-let (status rest2)
+             (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
+             (mv status (cons (car rest) rest2))))
+       (mv :ok rest))
+   :exec (fn-splan-rest-cursor-step-acc rest w nil fn-arena fn-cat)))
+
+; fn-splan-rest-cursor-step returns exactly two values.
+(defthm fn-splan-rest-cursor-step-is-an-mv
+  (equal (list (car (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+               (mv-nth 1 (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))
+         (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest w fn-arena fn-cat)
+           :in-theory (e/d (fn-splan-rest-cursor-step)
+                           (fn-ovw-step fn-ovw-cursorp fn-nnw-stream-batch
+                            fn-nnw-meta-livep)))))
+
+; The worker is the logical function with the reversed prefix put back.
+(defthm fn-splan-rest-cursor-step-acc-is-the-reference
+  (equal (fn-splan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
+         (mv (mv-nth 0 (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+             (revappend acc (mv-nth 1 (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
+           :in-theory (e/d (fn-splan-rest-cursor-step)
+                           (fn-ovw-step fn-ovw-cursorp fn-nnw-stream-batch
+                            fn-nnw-meta-livep)))))
 
 (verify-guards fn-splan-rest-cursor-step
   :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))

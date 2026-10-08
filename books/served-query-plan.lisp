@@ -63,24 +63,65 @@
 
 ; Exactly one accepted LIST controller call per activation. Empty progress
 ; retains the cursor and response capture; no warmth-based completion.
-(defun fn-qplan-rest-cursor-step (rest w fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp w)))
+;
+; The skipped prefix of non-cursor effects grows with the range (an OVER over
+; a whole group skips one effect per article before the first cursor), so the
+; executable is a tail-recursive worker that carries the skipped prefix
+; reversed in ACC and restores it with revappend at the first cursor or LIST
+; effect; the logical definition below is the plain recursion.
+(defun fn-qplan-rest-cursor-step-acc (rest w acc fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp w) (true-listp acc))))
   (if (consp rest)
       (cond
        ((fn-lst-effectp (car rest))
         (mv-let (octets next calls state)
           (fn-lst-step (fn-cur-at 1 (car rest)) w w fn-cat)
           (declare (ignore calls state))
-          (mv :ok (cons (fn-nntp-reply-effect octets)
-                        (if (fn-lst-livep next)
-                            (cons (fn-lst-effect next) (cdr rest))
-                          (cdr rest))))))
+          (mv :ok (revappend acc
+                             (cons (fn-nntp-reply-effect octets)
+                                   (if (fn-lst-livep next)
+                                       (cons (fn-lst-effect next) (cdr rest))
+                                     (cdr rest)))))))
        ((fn-splan-cursor-effectp (car rest))
-        (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
-       (t (mv-let (status next)
-            (fn-qplan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
-            (mv status (cons (car rest) next)))))
-    (mv :ok rest)))
+        (mv-let (status next)
+          (fn-splan-rest-cursor-step rest w fn-arena fn-cat)
+          (mv status (revappend acc next))))
+       (t (fn-qplan-rest-cursor-step-acc (cdr rest) w (cons (car rest) acc)
+                                         fn-arena fn-cat)))
+    (mv :ok (revappend acc rest))))
+
+(defun fn-qplan-rest-cursor-step (rest w fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp w)
+                  :verify-guards nil))
+  (mbe
+   :logic
+   (if (consp rest)
+       (cond
+        ((fn-lst-effectp (car rest))
+         (mv-let (octets next calls state)
+           (fn-lst-step (fn-cur-at 1 (car rest)) w w fn-cat)
+           (declare (ignore calls state))
+           (mv :ok (cons (fn-nntp-reply-effect octets)
+                         (if (fn-lst-livep next)
+                             (cons (fn-lst-effect next) (cdr rest))
+                           (cdr rest))))))
+        ((fn-splan-cursor-effectp (car rest))
+         (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+        (t (mv-let (status next)
+             (fn-qplan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
+             (mv status (cons (car rest) next)))))
+     (mv :ok rest))
+   :exec (fn-qplan-rest-cursor-step-acc rest w nil fn-arena fn-cat)))
+
+; The worker is the logical function with the reversed prefix put back.
+(defthm fn-qplan-rest-cursor-step-acc-is-the-reference
+  (equal (fn-qplan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
+         (mv (mv-nth 0 (fn-qplan-rest-cursor-step rest w fn-arena fn-cat))
+             (revappend acc (mv-nth 1 (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-qplan-rest-cursor-step-acc rest w acc fn-arena fn-cat))))
+
+(verify-guards fn-qplan-rest-cursor-step)
 
 (defun fn-qplan-cursor-step (plan w fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp w)))
