@@ -164,5 +164,65 @@ class CheckTables(unittest.TestCase):
             closure_why.snapshot_tables(SNAPSHOT + "(FN-CORE-TABLE-DIGESTS (TABLE-ALIST))")
 
 
+# O2's world reads: a snapshot with one carried world global and one function, and units reading them.
+PROP_SNAPSHOT = """(IN-PACKAGE "ACL2")
+(XL-SET-WORLD-SNAPSHOT (QUOTE ((KNOWN-PACKAGE-ALIST (GLOBAL-VALUE ("ACL2" NIL)))
+ (FN-A (FORMALS X) (GUARD . T) (STOBJS-IN NIL)))))
+"""
+PROP_DEFS = """;;;; UNIT raw:ACL2::KNOWN-PACKAGE-ALIST
+(COMMON-LISP:DEFUN ACL2::KNOWN-PACKAGE-ALIST (ACL2::STATE) (ACL2::FGETPROP (COMMON-LISP:QUOTE ACL2::KNOWN-PACKAGE-ALIST) (COMMON-LISP:QUOTE ACL2::GLOBAL-VALUE) COMMON-LISP:NIL (ACL2::W ACL2::STATE)))
+;;;; UNIT raw:ACL2::FN-B
+(COMMON-LISP:DEFUN ACL2::FN-B (ACL2::F) (ACL2::GETPROPC ACL2::F (COMMON-LISP:QUOTE ACL2::FORMALS) :NONE (ACL2::W ACL2::*THE-LIVE-STATE*)))
+;;;; UNIT raw:ACL2::FGETPROP
+(COMMON-LISP:DEFUN ACL2::FGETPROP (ACL2::S ACL2::KEY ACL2::D ACL2::W) (ACL2::SGETPROP ACL2::S ACL2::KEY ACL2::D ACL2::W))
+"""
+
+
+class CheckProps(unittest.TestCase):
+    """O2: an emitted form never reads a world property the snapshot does not carry."""
+
+    def run_check(self, defs, snapshot=PROP_SNAPSHOT):
+        import contextlib, io
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "defs.lisp").write_text(defs, encoding="latin-1")
+            (Path(d) / "core-world.lisp").write_text(snapshot, encoding="latin-1")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+                rc = closure_why.main([d, "--check-props"])
+        return rc, err.getvalue()
+
+    def test_carried_reads_pass(self):
+        self.assertEqual(self.run_check(PROP_DEFS), (0, ""))
+
+    def test_an_uncarried_world_global_is_refused_by_unit(self):
+        rc, err = self.run_check(PROP_DEFS, PROP_SNAPSHOT.replace("(KNOWN-PACKAGE-ALIST (GLOBAL-VALUE (\"ACL2\" NIL)))", ""))
+        self.assertEqual(rc, 1)
+        self.assertIn("raw:ACL2::KNOWN-PACKAGE-ALIST: FGETPROP reads ACL2::GLOBAL-VALUE of ACL2::KNOWN-PACKAGE-ALIST", err)
+
+    def test_a_global_val_of_an_uncarried_name_is_refused(self):
+        defs = PROP_DEFS + """;;;; UNIT raw:ACL2::PROJECT-DIR-ALIST
+(COMMON-LISP:DEFUN ACL2::PROJECT-DIR-ALIST (ACL2::W) (ACL2::GLOBAL-VAL (COMMON-LISP:QUOTE ACL2::PROJECT-DIR-ALIST) ACL2::W))
+"""
+        rc, err = self.run_check(defs)
+        self.assertEqual(rc, 1)
+        self.assertIn("GLOBAL-VAL reads ACL2::GLOBAL-VALUE of ACL2::PROJECT-DIR-ALIST", err)
+
+    def test_a_non_function_property_of_a_computed_symbol_is_refused(self):
+        defs = PROP_DEFS + """;;;; UNIT raw:ACL2::FN-C
+(COMMON-LISP:DEFUN ACL2::FN-C (ACL2::S) (ACL2::GETPROPC ACL2::S (COMMON-LISP:QUOTE ACL2::UNNORMALIZED-BODY) COMMON-LISP:NIL (ACL2::W ACL2::*THE-LIVE-STATE*)))
+"""
+        rc, err = self.run_check(defs)
+        self.assertEqual(rc, 1)
+        self.assertIn("raw:ACL2::FN-C: GETPROPC reads ACL2::UNNORMALIZED-BODY of a symbol computed at run time", err)
+
+    def test_a_computed_property_outside_the_accessors_is_refused(self):
+        defs = PROP_DEFS + """;;;; UNIT raw:ACL2::FN-D
+(COMMON-LISP:DEFUN ACL2::FN-D (ACL2::P) (ACL2::GETPROPC (COMMON-LISP:QUOTE ACL2::FN-A) ACL2::P COMMON-LISP:NIL (ACL2::W ACL2::*THE-LIVE-STATE*)))
+"""
+        rc, err = self.run_check(defs)
+        self.assertEqual(rc, 1)
+        self.assertIn("raw:ACL2::FN-D: GETPROPC reads a property computed at run time", err)
+
+
 if __name__ == "__main__":
     unittest.main()
