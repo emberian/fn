@@ -1,3 +1,3 @@
-; Definitions moved to the production book; no second model.
+; All arm lemmas moved beside their functions in books/.
 (in-package "ACL2")
 (include-book "../../../books/owner-commit-durability")

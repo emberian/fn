@@ -434,7 +434,8 @@ function, whose counterparts fn-owner-index-rx-close / -connection-settle /
 ;;; (fnn-log-seal-capture); RESOLUTIONS the members' resolution frames, after
 ;;; the barrier.
 (defstruct (fnn-owner-job (:constructor %make-fnn-owner-job))
-  (kind :batch) (intents nil) (plan nil) (resolutions nil))
+  (kind :batch) (intents nil) (plan nil) (resolutions nil)
+  (pipeline nil) (which :current) (action :none))
 
 ;;; The batch job a START is filling (fnn-owner-feed-intent), NIL outside one.
 (defvar *fnn-owner-job* nil)
@@ -1719,7 +1720,54 @@ one ring, so the table's key and the served boundary's are one source."
   ;; First native scheduler failure. Retain its provenance and wake all
   ;; waiters; an aborted gate never invokes the scheduler again.
   (aborted nil)
-  (sched nil))
+  (sched nil)
+  ;; Canonical composed state while a commit is attached. SCHED and the
+  ;; log's KERNEL are its installed projections, not separately stepped.
+  (pipeline nil) (pipeline-log nil))
+
+(defun fnn-owner-pipeline-install-locked (gate x)
+  "Install a derived entry's projections. Caller holds Gate; no I/O."
+  (let ((log (fnn-owner-gate-pipeline-log gate)))
+    (fnn-log-with-kernel (log)
+      (setf (fnn-log-kernel log) (first (first x))
+            (fnn-log-extent log) (nth 11 x)
+            (fnn-owner-gate-pipeline gate) x
+            (fnn-owner-gate-sched gate) (second x)))
+    x))
+
+(defun fnn-owner-pipeline-open (service)
+  "Attach the actual idle kernel and scheduler before the first drain."
+  (let* ((gate (fnn-owner-service-gate service))
+         (log (fnn-store-log (fnn-owner-service-store service))))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (unless (fnn-owner-gate-pipeline gate)
+        (fnn-log-with-kernel (log)
+          (setf (fnn-owner-gate-pipeline-log gate) log
+                (fnn-log-pipeline-gate log) gate)
+          (fnn-owner-pipeline-install-locked
+           gate (fnn-core 'fn-ocp-gc-open (fnn-log-kernel log)
+                           (fnn-owner-gate-sched gate) (fnn-log-unit log)
+                           (fnn-log-extent log) (fnn-log-bmax log) (fnn-log-omax log))))))))
+
+(defun fnn-owner-pipeline-close (service)
+  "Detach only the scheduler offered by CLOSE, retaining the kernel projection.
+Stopping is the existing irreversible service fence, observed under O."
+  (let* ((gate (fnn-owner-service-gate service))
+         (log (fnn-owner-gate-pipeline-log gate)))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (unless (fnn-owner-gate-pipeline gate)
+        (return-from fnn-owner-pipeline-close :none))
+      (let* ((x (fnn-owner-pipeline-install-locked
+                 gate (fnn-core 'fn-ocp-gc-entry-close (fnn-owner-gate-pipeline gate)
+                                 (and (fnn-owner-service-stopping service) t))))
+             (out (nth 14 x)))
+        (unless (eq (first out) :closed) (fnn-fault "pipeline refused detach"))
+        (fnn-log-with-kernel (log)
+          (setf (fnn-owner-gate-sched gate) (second out)
+                (fnn-owner-gate-pipeline gate) nil
+                (fnn-owner-gate-pipeline-log gate) nil
+                (fnn-log-pipeline-gate log) nil))
+        (third out)))))
 
 ;;; Physical actor lifecycle. An operation receipt never discharges this
 ;;; registration. Custody tokens are retained opaque values, supplied by the
@@ -2343,8 +2391,13 @@ recognise is a host fault."
       ;; part of ACL2's value; the six counts are the host's observation.
       ;; books/owner-time-model.lisp: the value also carries the disk's
       ;; state; the pick is the pipeline's (fn-otm-next-is-ocp-next).
-      (fnn-call 'fn-otm-next (fnn-owner-gate-sched gate)
-                (coerce (fnn-owner-gate-waiting gate) 'list))
+      (if (fnn-owner-gate-pipeline gate)
+          (let ((x (fnn-owner-pipeline-install-locked
+                    gate (fnn-core 'fn-ocp-gc-entry-pick (fnn-owner-gate-pipeline gate)
+                                    (coerce (fnn-owner-gate-waiting gate) 'list)))))
+            (list (nth 14 x) (second x)))
+        (fnn-call 'fn-otm-next (fnn-owner-gate-sched gate)
+                  (coerce (fnn-owner-gate-waiting gate) 'list)))
     (setf (fnn-owner-gate-sched gate) sched
           (fnn-owner-gate-turn gate) (and class (fnn-owner-class-index class)))
     ;; Wake the waiters only when ACL2 named a class: a nil answer while
@@ -2407,8 +2460,12 @@ the next class (none when nothing waits: fn-osch-next answers nil)."
           (setf (fnn-owner-gate-busy gate) nil
                 (fnn-owner-gate-holder gate) nil
                 (fnn-owner-gate-sched gate)
-                (fnn-core 'fn-otm-observe (fnn-owner-gate-sched gate)
-                          class hold-ms wait-ms))
+                (if (fnn-owner-gate-pipeline gate)
+                    (second (fnn-owner-pipeline-install-locked
+                             gate (fnn-core 'fn-ocp-gc-entry-observe
+                                             (fnn-owner-gate-pipeline gate) class hold-ms wait-ms)))
+                  (fnn-core 'fn-otm-observe (fnn-owner-gate-sched gate)
+                            class hold-ms wait-ms)))
           (fnn-owner-gate-pick gate))
       (serious-condition (condition)
         (fnn-owner-gate-abort-locked gate condition)
@@ -2487,7 +2544,11 @@ Returns (values WORD READING)."
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
       (setq reading (fnn-owner-monotonic-ms))
       (destructuring-bind (w sched jline lline)
-          (fnn-core 'fn-otm-disk-step (fnn-owner-gate-sched gate) kind reading arg)
+          (if (fnn-owner-gate-pipeline gate)
+              (nth 14 (fnn-owner-pipeline-install-locked
+                       gate (fnn-core 'fn-ocp-gc-entry-disk
+                                       (fnn-owner-gate-pipeline gate) kind reading arg)))
+            (fnn-core 'fn-otm-disk-step (fnn-owner-gate-sched gate) kind reading arg))
         ;; The words are ACL2's table (books/owner-time-journal.lisp, defevent
         ;; fn-otm-word): its generated recognizer decides, not a host copy.
         (unless (fnn-core 'fn-otm-wordp w)
@@ -2513,7 +2574,10 @@ decision that changed nothing in the value, with its two counts."
   (let ((gate (fnn-owner-service-gate service)) (entry nil))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
       (destructuring-bind (sched jline)
-          (fnn-core 'fn-otm-note-step (fnn-owner-gate-sched gate) a b)
+          (if (fnn-owner-gate-pipeline gate)
+              (nth 14 (fnn-owner-pipeline-install-locked
+                       gate (fnn-core 'fn-ocp-gc-entry-note (fnn-owner-gate-pipeline gate) a b)))
+            (fnn-core 'fn-otm-note-step (fnn-owner-gate-sched gate) a b))
         (setf (fnn-owner-gate-sched gate) sched entry jline)
         ;; Under the gate mutex, in sequence (fnn-owner-disk-event).
         (fnn-journal-line entry)))))
@@ -4456,7 +4520,7 @@ it."
                      (cons deliver socket))
                nil)))))
 
-(defun fnn-owner-commit-start-locked (service &key (seal t))
+(defun fnn-owner-commit-start-locked (service &key (seal t) pipeline held)
   "START (books/owner-commit-pipeline.lisp): drain at most the operator's
 batch bound of queued members into the log's open batch, each through its
 sequential life; the caller holds the owner mutex.  With SEAL (the START of
@@ -4483,12 +4547,21 @@ nil when nothing was queued (or the store does not commit through the log)."
       (return-from fnn-owner-commit-start-locked (values nil nil deferred job)))
     (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
       (setf (fnn-owner-service-queued service) 0))
-    (let ((members nil) (uncertain nil) (drained 0)
+    (let ((members nil) (uncertain nil) (drained 0) (room-ended nil)
           (log (fnn-store-log store)))
       (destructuring-bind (bmax omax) (fnn-owner-core 'fn-owner-log-bounds)
         (setf (fnn-log-bmax log) bmax (fnn-log-omax log) omax))
       (fnn-owner-refresh-compression log)
+      (when pipeline
+        (fnn-owner-pipeline-open service)
+        (setf (fnn-owner-job-pipeline job) t
+              (fnn-owner-job-which job) (if seal :current :next))
+        (fnn-log-pipeline-step (log x)
+          (if seal (fnn-core 'fn-ocp-gc-entry-start x)
+            (fnn-core 'fn-ocp-gc-entry-start-next x)))
+        (fnn-owner-reader-capture (if seal :start :next)))
       (let ((*fnn-log-batch* t)
+            (*fnn-log-pipeline-which* (if seal :current :next))
             (*fnn-owner-deferred* deferred)
             (*fnn-owner-job* job))
         (handler-case
@@ -4497,6 +4570,11 @@ nil when nothing was queued (or the store does not commit through the log)."
               ;; members (a work bound per step, D27); the rest stay queued
               ;; for the next batch.
               (loop repeat (fnn-log-bmax log) do
+                ;; ACL2 leaves the next submission queued when a profile-
+                ;; sized record could exceed this batch's encoded-octet cap.
+                (unless (fnn-log-queue-roomp log)
+                  (setq room-ended t)
+                  (return))
                 (setq *fnn-owner-uncertain-render* nil)
                 (let ((mark (cdr deferred)))
                   (multiple-value-bind (cid reply stop word) (fnn-owner-drain-one service)
@@ -4529,13 +4607,17 @@ nil when nothing was queued (or the store does not commit through the log)."
                         ;; A member ACL2 answered uncertain ends the START: the
                         ;; batch is not appended (its :started-uncertain).
                         (push (list cid reply word *fnn-owner-uncertain-render*) members)
+                        (when pipeline
+                          (fnn-log-pipeline-step (log x)
+                            (fnn-core 'fn-ocp-gc-entry-member x *fnn-log-pipeline-which*
+                                      (list word (and *fnn-owner-uncertain-render* t)))))
                         (when stop (setq uncertain t) (return)))))))
               ;; The bound ended the drain: members may still be queued.
               ;; Keep the committer's wake-up count positive (host
               ;; bookkeeping: a START-NEXT or the next START that finds
               ;; nothing reports so), or the backlog would wait for a new
               ;; submission's wake-up.
-              (when (and (= drained (fnn-log-bmax log)) (not uncertain))
+              (when (and (or room-ended (= drained (fnn-log-bmax log))) (not uncertain))
                 (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
                   (setf (fnn-owner-service-queued service)
                         (max 1 (fnn-owner-service-queued service)))))
@@ -4544,7 +4626,7 @@ nil when nothing was queued (or the store does not commit through the log)."
               (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
                 (fnn-err "start: seal=~a bmax=~d members=~d" seal (fnn-log-bmax log)
                          (length members)))
-              (when (and seal members (not uncertain))
+              (when (and (not pipeline) seal members (not uncertain))
                 (setf (fnn-owner-job-plan job) (fnn-log-seal-capture store))
                 ;; Lane credits (books/owner-credits.lisp fn-mca-seal): the
                 ;; taken members' credit is the batch in flight's until its
@@ -4557,6 +4639,22 @@ nil when nothing was queued (or the store does not commit through the log)."
           (fnn-store-indeterminate (e)
             (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
             (setq uncertain t))))
+      (when pipeline
+        (let* ((x (fnn-log-pipeline-step (log before)
+                    (cond (uncertain
+                           (fnn-core 'fn-ocp-gc-entry-abort before (fnn-owner-job-which job)))
+                          (held (fnn-core 'fn-ocp-gc-entry-seal-held before))
+                          (t (fnn-core 'fn-ocp-gc-entry-seal before (fnn-owner-job-which job))))))
+               (output (nth 14 x))
+               (packet (if held (third output) output)))
+          (setf (fnn-owner-job-action job)
+                (cond (uncertain output) (held (second output)) (t (fourth packet))))
+          (when (and (not uncertain) (fifth packet))
+            (fnn-owner-reader-capture (fifth packet)))
+          (when (and seal members (not uncertain))
+            (setf (fnn-owner-job-plan job)
+                  (fnn-log-pipeline-capture log (second packet) (third packet)))
+            (fnn-owner-action 'fn-owner-credits-seal))))
       ;; The job's frames in drain order; the members' resolution frames
       ;; leave the deferred list (its log lines stay for the COMPLETE) for
       ;; the job's :resolutions phase, after the barrier, journals resolved
@@ -4703,8 +4801,39 @@ written inside START did."
 (defun fnn-owner-batch-job (service job)
   "The whole batch JOB, off the owner mutex (the syncer thread's body, or
 inline in a bound submission's quantum).  Returns (values FINAL CONDITION)."
-  (fnn-owner-run-job (fnn-owner-job-kind job)
-                     (lambda (phase) (fnn-owner-batch-effect service job phase))))
+  (if (fnn-owner-job-pipeline job)
+      (fnn-owner-run-pipeline-job service job)
+    (fnn-owner-run-job (fnn-owner-job-kind job)
+                       (lambda (phase) (fnn-owner-batch-effect service job phase)))))
+
+(defun fnn-owner-pipeline-job-effect (service job)
+  "Read the effect offered by the canonical job, never a host phase copy."
+  (let ((gate (fnn-owner-service-gate service)))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (fnn-core 'fn-ocp-gc-job-effect (fnn-owner-gate-pipeline gate)
+                (fnn-owner-job-which job)))))
+
+(defun fnn-owner-pipeline-receipt (service job word)
+  "One receipt quantum after I/O. It cannot interleave a drain's member
+registration. The effect, including fdatasync, holds neither O nor Gate."
+  (fnn-owner-gated (service :commit)
+    (let ((log (fnn-store-log (fnn-owner-service-store service))))
+      (fnn-log-pipeline-step (log x)
+        (fnn-core 'fn-ocp-gc-entry-syncer x (fnn-owner-job-which job) word)))))
+
+(defun fnn-owner-run-pipeline-job (service job)
+  "Execute only effects offered by the composed dispatcher. A promoted
+job already at :fence does not repeat its intents or positioned append."
+  (loop
+    (let ((phase (fnn-owner-pipeline-job-effect service job)))
+      (case phase
+        ((:done :uncertain :fault :ready) (return (values phase nil)))
+        ((:intents :extend :append :fence :resolutions)
+         (multiple-value-bind (word condition) (fnn-owner-batch-effect service job phase)
+           (fnn-owner-pipeline-receipt service job word)
+           (unless (eq word :ok)
+             (return (values (fnn-core 'fn-oqw-step :batch phase word) condition)))))
+        (t (fnn-fault "pipeline offered no runnable job effect: ~a" phase))))))
 
 (defun fnn-owner-commit-start-event (members uncertain)
   "The START's observation for fn-ocs-commit-step, ACL2's
@@ -4843,20 +4972,39 @@ START-NEXT that took nobody, :complete after a COMPLETE's replies, :drop
 after a START that took nobody or a stop.  The caller holds the owner."
   (fnn-owner-core 'fn-owner-reader-views-capture event))
 
+(defun fnn-owner-pipeline-advance (service)
+  "The derived view-advance entry, after COMPLETE's reply effects under O."
+  (let* ((log (fnn-store-log (fnn-owner-service-store service)))
+         (x (fnn-log-pipeline-step (log before)
+              (fnn-core 'fn-ocp-gc-entry-reader-advance before)))
+         (action (nth 14 x)))
+    (unless (member action '(:sync :none :submit))
+      (fnn-fault "pipeline refused view advance: ~a" action))
+    (fnn-owner-reader-capture :complete)
+    (if (eq action :sync)
+        (progn (fnn-log-pipeline-promote log)
+               (fnn-owner-action 'fn-owner-credits-seal))
+      (fnn-owner-pipeline-close service))
+    action))
+
 (defun fnn-owner-commit-event (service event)
-  "Apply the commit's EVENT to ACL2's scheduler value (books/owner-commit-pipeline.lisp
-fn-ocp-commit-event) and return the ACTION it names; the gate's next pick
-reads the phase it leaves.  Called inside the committer's :commit quanta."
-  (let ((gate (fnn-owner-service-gate service)))
-    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-      (destructuring-bind (action sched)
-          (fnn-call 'fn-otm-commit-event (fnn-owner-gate-sched gate) event)
-        (unless (member action '(:sync :wait :complete :stop :none :fault))
-          (fnn-fault "owner returned a malformed commit step ~a" action))
-        (when (eq action :fault)
-          (fnn-fault "owner refused the commit event ~a" event))
-        (setf (fnn-owner-gate-sched gate) sched)
-        action))))
+  "The collector and final view boundary call their derived dispatcher arms.
+START's action comes directly from its SEAL output, not a second scheduler step."
+  (let ((log (fnn-store-log (fnn-owner-service-store service))))
+    (case event
+      ((:fenced :failed)
+       (let* ((x (fnn-log-pipeline-step (log before)
+                   (fnn-core 'fn-ocp-gc-entry-complete before)))
+              (action (nth 14 x)))
+         (unless (member action '(:complete :stop))
+           (fnn-fault "pipeline refused COMPLETE: ~a" action))
+         action))
+      (:completed
+       (if (fnn-owner-service-stopping service)
+           (fnn-owner-pipeline-close service)
+         (fnn-owner-pipeline-advance service)))
+      (:completed-stopping (fnn-owner-pipeline-close service))
+      (t (fnn-fault "not a collector event: ~a" event)))))
 
 (defun fnn-owner-commit-wake (service returned queued)
   "ACL2's wake for the committer while a batch is in flight
@@ -4874,7 +5022,7 @@ preparing another batch (books/owner-commit-fairness.lisp)."
                     (when (and queued (not returned)
                                (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE"))
                       (fnn-err "pipeline: wake waiting=~a" waiting))
-                    (fnn-core 'fn-otm-committer-wake sched returned queued waiting)))))
+                    (fnn-core 'fn-otm-held-committer-wake sched returned queued waiting)))))
       (unless (member wake '(:collect :start-next :wait))
         (fnn-fault "owner returned a malformed committer wake ~a" wake))
       wake)))
@@ -4987,16 +5135,15 @@ leave only in its COMPLETE, after its barrier returned
        ;; (fnn-owner-space-preobserve).
        (setf (fnn-owner-service-space-need service) need)
        ;; PKT-828: the view the readers read while this batch is in flight.
-       (fnn-owner-reader-capture :start)
        (multiple-value-setq (members uncertain deferred job)
-         (fnn-owner-commit-start-locked service))
-       (setq action (fnn-owner-commit-event
-                     service (fnn-owner-commit-start-event members uncertain)))
+         (fnn-owner-commit-start-locked service :pipeline t))
+       (setq action (fnn-owner-job-action job))
        (case action
          (:sync nil)
          (:stop (fnn-owner-reader-capture :drop)
-                (fnn-owner-commit-complete-locked service :stop members deferred))
-         (:none (fnn-owner-reader-capture :drop))
+                (fnn-owner-commit-complete-locked service :stop members deferred)
+                (fnn-owner-pipeline-close service))
+         (:none (fnn-owner-pipeline-close service))
          (t (fnn-fault "owner named ~a after a START" action))))
      :commit)
     ;; A START that captured no batch: its drain's frames and its refusals'
@@ -5110,23 +5257,18 @@ leave only in its COMPLETE, after its barrier returned
                  (if (not (eq (fnn-owner-commit-wake
                                service nil (plusp (fnn-owner-service-queued service)))
                               :start-next))
-                     (setq step (fnn-owner-commit-event service :next-none))
+                     nil
                  (progn
                  ;; PKT-828: the next batch's reader view, taken before its
                  ;; members join the working view.
-                 (fnn-owner-reader-capture :next)
                  (multiple-value-bind (m u d j)
-                     (fnn-owner-commit-start-locked service :seal nil)
+                     (fnn-owner-commit-start-locked service :seal nil :pipeline t)
                    (setq next m next-deferred d next-job j)
                    ;; Developer image only: the native test's evidence that
                    ;; a batch was prepared behind a barrier.
                    (when (and m (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE"))
                      (fnn-err "pipeline: ~d member~:p prepared behind the barrier" (length m)))
-                   (setq step (fnn-owner-commit-event
-                               service (cond (u :next-uncertain)
-                                             ((null m) :next-none)
-                                             (t :next-started))))
-                   (when (and (null m) (not u)) (fnn-owner-reader-capture :unnext))
+                   (setq step (fnn-owner-job-action j))
                    ;; Nothing kept: the drain's frames go after this quantum.
                    (when (null m) (setq frames-only j next-job nil))
                    (when (eq step :stop)

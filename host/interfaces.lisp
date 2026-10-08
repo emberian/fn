@@ -243,6 +243,16 @@
   :exempt ((octets "the open batch's running octet count"))
   :keystones (fn-lgc-take-refines))
 
+(definterface fn-olr-gc-queue-roomp
+  :class :common-lisp-compliant
+  :kinds ((ks true-listp))
+  :keystones (fn-olr-gc-queue-room-prevents-full))
+
+(definterface fn-olr-gc-profile-fitp
+  :class :common-lisp-compliant
+  :kinds ((ks true-listp))
+  :keystones (fn-olr-gc-queue-room-implies-profile-fit))
+
 ; Total decoders over any value: a non-octet argument decodes to the
 ; decoder's own refusal, which the host names.
 
@@ -6001,3 +6011,105 @@
 (definterface fn-stid-host-reply-read :class ::program)
 (definterface fn-stid-host-line :class ::program)
 (definterface fn-stid-host-exit-code :class ::program)
+
+; Derived pipeline entries, guard kinds extracted by register_entries.py.
+(definterface fn-ocp-gc-entry-seal-held
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-seal-held-by-definition))
+
+(definterface fn-ocp-gc-entry-start
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-start-by-definition))
+
+(definterface fn-ocp-gc-entry-start-next
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-start-next-by-definition))
+
+(definterface fn-ocp-gc-entry-complete
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-complete-by-definition))
+
+(definterface fn-ocp-gc-entry-syncer
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-syncer-by-definition))
+
+(definterface fn-ocp-gc-entry-reader-advance
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-reader-advance-by-definition))
+
+(definterface fn-ocp-gc-entry-append-issue
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-append-issue-by-definition))
+
+(definterface fn-ocp-gc-entry-begin
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-begin-by-definition))
+
+(definterface fn-ocp-gc-entry-reserve
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-reserve-by-definition))
+
+(definterface fn-ocp-gc-entry-take
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-take-by-definition))
+
+(definterface fn-ocp-gc-entry-member
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-member-by-definition))
+
+(definterface fn-ocp-gc-entry-seal
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-seal-by-definition))
+
+(definterface fn-ocp-gc-entry-abort
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-abort-by-definition))
+
+(definterface fn-ocp-gc-entry-pick
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-pick-by-definition))
+
+(definterface fn-ocp-gc-entry-observe
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-observe-by-definition))
+
+(definterface fn-ocp-gc-entry-disk
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-disk-by-definition))
+
+(definterface fn-ocp-gc-entry-note
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-note-by-definition))
+
+(definterface fn-ocp-gc-open
+  :class :common-lisp-compliant
+  :kinds ((ks true-listp))
+  :keystones (fn-ocp-gc-open-linked))
+
+(definterface fn-ocp-gc-job-effect
+  :class :common-lisp-compliant
+  :kinds ((x true-listp))
+  :keystones (fn-ocp-gc-resolution-effect-is-after-the-fence))
+
+; Derived pipeline entries, guard kinds extracted by register_entries.py.
+(definterface fn-ocp-gc-entry-close
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-ocp-gc-entry-close-by-definition))
